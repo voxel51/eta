@@ -1,4 +1,5 @@
 .DS_store
 .md5
 .pyc
-.egg-info
+
+*.egg-info/
