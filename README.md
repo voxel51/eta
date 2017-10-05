@@ -2,8 +2,8 @@
 
 An open and extensible video analytics infrastructure.
 
-This project is supported by the NIST Public Safety Innovation Accelerator
-Program.
+This project is supported by the [NIST Public Safety Innovation Accelerator
+Program](https://www.nist.gov/news-events/news/2017/06/nist-awards-385-million-accelerate-public-safety-communications).
 
 ## Installation
 
