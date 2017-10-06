@@ -32,6 +32,18 @@ pip install -e .
 Now `import eta` will still work from anywhere, and any changes you make in
 your local copy of `eta/` will take effect immediately.
 
+## Testing your installation
+
+To test your installation, run the following commands:
+
+```shell
+# Test image manipulation
+python samples/demo_images.py
+
+# Test video processing pipeline
+python eta/core/pipeline.py samples/demo_video/pipeline-config.json
+```
+
 ## External dependencies
 
 The ETA package requires

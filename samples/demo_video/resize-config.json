@@ -1,0 +1,9 @@
+{
+    "data": [
+        {
+            "input_path": "samples/data/water.mp4",
+            "output_path": "samples/out/water-512w.mp4",
+            "size": [512, -1]
+        }
+    ]
+}

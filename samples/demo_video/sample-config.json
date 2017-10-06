@@ -1,0 +1,14 @@
+{
+    "data": [
+        {
+            "input_path": "samples/out/water-512w.mp4",
+            "output_path": "samples/out/water-512w-2fps/%05d.jpg",
+            "fps": 2.0
+        },
+        {
+            "input_path": "samples/out/water-512w.mp4",
+            "output_path": "samples/out/water-512w-10fps.mp4",
+            "fps": 10.0
+        }
+    ]
+}

@@ -1,0 +1,25 @@
+{
+    "name": "test",
+    "working_dir": ".",
+    "overwrite": true,
+    "jobs": [
+        {
+            "name": "resize",
+            "working_dir": ".",
+            "script": "eta/modules/resize_videos.py",
+            "config_path": "samples/configs/resize-config.json"
+        },
+        {
+            "name": "sample",
+            "working_dir": ".",
+            "script": "eta/modules/sample_videos.py",
+            "config_path": "samples/configs/sample-config.json"
+        },
+        {
+            "name": "clip",
+            "working_dir": ".",
+            "script": "eta/modules/clip_videos.py",
+            "config_path": "samples/configs/clip-config.json"
+        }
+    ]
+}
