@@ -1,4 +1,4 @@
-# ETA Developer's Guide
+# ETA Module Developer's Guide
 
 This document describes best practices for contributing modules to ETA.
 
