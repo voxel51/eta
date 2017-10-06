@@ -44,7 +44,11 @@ Currently ETA supports both `OpenCV 2.4` or later and `OpenCV 3.0` or later.
 To install these external dependencies, run the install script
 
 ```shell
+# Install default OpenCV release (3.3.0)
 bash install_externals.bash
+
+# Install specific OpenCV release
+bash install_externals.bash 2.4.13.3
 ```
 
 ## Uninstallation
