@@ -890,7 +890,7 @@ class FFmpegVideoResizer(FFmpeg):
             FFmpegVideoResizerError: if a valid scale option could not be
                 generated from the given args
         '''
-        out_opts = kwargs.pop("out_opts", self.DEFAULT_OUT_OPTS)
+        out_opts = kwargs.pop("out_opts", self.DEFAULT_OUT_OPTS) or []
         out_opts += [
             "-vf",
             "scale={0}".format(self._gen_scale_opt(
@@ -929,7 +929,7 @@ class FFmpegVideoSampler(FFmpeg):
             fps: the desired frame rate
             **kwargs: optional keyword arguments for FFmpeg()
         '''
-        out_opts = kwargs.pop("out_opts", [])
+        out_opts = kwargs.pop("out_opts", []) or []
         out_opts += ["-vf", "fps={0}".format(fps)]
         super(FFmpegVideoSampler, self).__init__(out_opts=out_opts, **kwargs)
 
