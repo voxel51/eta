@@ -1,6 +1,8 @@
 # ETA Module Developer's Guide
 
-This document describes best practices for contributing modules to ETA.
+This document describes best practices for contributing modules to ETA. See
+`core_dev_guide.md` for instructions on contributing to the core ETA
+infrastructure.
 
 ## What are ETA modules?
 
@@ -95,7 +97,10 @@ The `from_json` method, which is inherited from the super class
 `eta.core.serial.Serializable`, reads the JSON dictionary and passes it to the
 `ExampleConfig` constructor.
 
-#### Defining custom output data types
+#### Defining new data types
+
+In ETA, data is usually written to disk in JSON format. The following snippet
+demonstrates how to define a custom data type in ETA:
 
 The following snippet demonstrates how to define a custom data type in ETA:
 
