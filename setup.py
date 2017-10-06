@@ -1,4 +1,9 @@
 #!/usr/bin/env python
+# Install ETA
+#
+# Copyright 2017, Voxel51, LLC
+# voxel51.com
+#
 from setuptools import setup, find_packages
 
 setup(
