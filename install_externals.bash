@@ -31,7 +31,7 @@ echo "*** INSTALLATION STARTED ***"
 if [ ${OS} == "Linux" ]
 then
     (lspci | grep -q "NVIDIA") >>${EXTLOG} 2>>${EXTERR} || exit 1
-    if [ ! $? ]
+    if [ $? -eq 0 ]
     then
       GCARD=ON
     else
