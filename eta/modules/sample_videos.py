@@ -9,11 +9,10 @@ Brian Moore, brian@voxel51.com
 '''
 import sys
 
-sys.path.insert(0, "..")
-from core.config import Config
-import core.events as ev
-import core.video  as vd
-import core.image  as im
+from eta.core.config import Config
+import eta.core.events as ev
+import eta.core.video as vd
+import eta.core.image as im
 
 
 def sample_video_by_fps(data_config):

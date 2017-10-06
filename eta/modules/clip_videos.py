@@ -9,10 +9,9 @@ Brian Moore, brian@voxel51.com
 '''
 import sys
 
-sys.path.insert(0, "..")
-from core.config import Config, ConfigError
-import core.events as ev
-import core.video as vd
+from eta.core.config import Config, ConfigError
+import eta.core.events as ev
+import eta.core.video as vd
 
 
 def clip_videos(clip_config):

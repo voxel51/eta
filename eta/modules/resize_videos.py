@@ -9,9 +9,8 @@ Brian Moore, brian@voxel51.com
 '''
 import sys
 
-sys.path.insert(0, "..")
-from core.config import Config
-import core.video as vd
+from eta.core.config import Config
+import eta.core.video as vd
 
 
 def resize_videos(resize_config):
