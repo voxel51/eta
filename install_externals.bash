@@ -25,12 +25,39 @@ rm -rf ${EXTERR}
 
 OS=`uname -s`
 
-
 echo "*** INSTALLATION STARTED ***"
+
+# GPU flag
+if [ ${OS} == "Linux" ]
+then
+    (lspci | grep -q "NVIDIA") >>${EXTLOG} 2>>${EXTERR} || exit 1
+    if [ ! $? ]
+    then
+      GCARD=ON
+    else
+      GCARD=OFF
+    fi
+elif [ ${OS} == "Darwin" ]
+then
+    GCARD=OFF
+fi
+echo "*** Checking System for GPU.  Setting GPU: ${GCARD}"
 
 if [ ${OS} == "Linux" ]
 then
     sudo apt-get -y install build-essential >>${EXTLOG} 2>>${EXTERR} || exit 1
+fi
+
+# install python requirements first
+#  note that tensorflow is also a requirement, but it depends on the GPU.
+#  so, we check that explicitly
+pip install -r requirements.txt
+
+if [ ${GCARD} == "ON" ]
+then
+    pip install tensorflow-gpu
+else
+    pip install tensorflow
 fi
 
 
@@ -75,21 +102,6 @@ then
     echo "OpenCV already installed"
 else
     echo "Installing OpenCV ${OPENCV_VERSION}"
-
-    # GPU flag
-    if [ ${OS} == "Linux" ]
-    then
-        (lspci | grep -q "NVIDIA") >>${EXTLOG} 2>>${EXTERR} || exit 1
-        if [ ! $? ]
-        then
-          GCARD=ON
-        else
-          GCARD=OFF
-        fi
-    elif [ ${OS} == "Darwin" ]
-    then
-        GCARD=OFF
-    fi
 
     # Download source
     wget -q https://github.com/opencv/opencv/archive/${OPENCV_VERSION}.zip
