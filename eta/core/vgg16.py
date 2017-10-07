@@ -13,6 +13,9 @@ Model from https://gist.github.com/ksimonyan/211839e770f7b538e2d8#file-readme-md
 Weights from Caffe converted using https://github.com/ethereon/caffe-tensorflow
 These weights are stored at XXX add this.
 
+This is not a generic network that can have its layers manipulated.  It is 
+hardcoded to be the exact implementation of the VGG16 network that outputs 
+to 1000 classes.
 
 Copyright 2017, Voxel51, LLC
 voxel51.com
@@ -28,6 +31,7 @@ import tensorflow as tf
 from config import Config
 import video as vd
 import weights as wt
+import image as im
 
 
 
@@ -41,10 +45,15 @@ class VGG16Config(Config):
         no configuration is provided by the invoker of VGG16
     '''
     def __init__(self, d):
-        self.weights_config = self.parse_object(d, "weights")
+        self.weights_config = self.parse_object(d, "weights",wt.WeightsConfig)
 
 
 class VGG16:
+    ''' VGG16 Network structure in TensorFlow.  Hardcoded.
+
+        @todo: generalize to a None tf session--> if it is none, then 
+               start one up and manage it until this object is del'd.
+    '''
     def __init__(self, imgs, sess, config=None):
         self.imgs = imgs
         self.convlayers()
@@ -56,7 +65,7 @@ class VGG16:
 
         if config is None:
             # load the default config from disk
-            cdir = os.path.dirname(os.path.realpath(__file__)))
+            cdir = os.path.dirname(os.path.realpath(__file__))
             cnam = 'vgg16-config.json'
             cpat = os.path.join(cdir,cnam)
             assert(os.path.isfile(cpat))
@@ -341,6 +350,6 @@ class VGG16Featurizer(vd.VideoFeaturizer):
     def featurize_frame(self,frame):
         # this resize needs to be changed and more adaptable to the needs
         # allow a function plugin functionality?
-        img1 = imresize(frame, (224, 224))
+        img1 = im.resize(frame, (224, 224))
         return self.sess.run(self.vgg.fc2l, feed_dict={self.vgg.imgs: [img1]})[0]
 
