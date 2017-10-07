@@ -28,8 +28,25 @@ from config import Config
 import video as vd
 
 
-class vgg16:
-    def __init__(self, imgs, weights=None, sess=None):
+
+
+class VGG16Config(Config):
+    ''' VGG16 Model Config
+
+        This implements the configuration settings for the VGG16 network.
+
+        A default configuration is included in ETA and will be loaded if 
+        no configuration is provided by the invoker of VGG16
+
+        @todo: the weights_path should be relative to some global path that
+               stores cached big-files.
+    '''
+    def __init__(self, d):
+        self.weights_path = self.parse_string(d, "weights_path")
+        self.weights_url = self.parse_string(d, "weights_url", default=None)
+
+class VGG16:
+    def __init__(self, imgs, config=None, sess=None):
         self.imgs = imgs
         self.convlayers()
         self.fc_layers()
@@ -287,7 +304,7 @@ class VGG16FeaturizerConfig(Config):
 
 class VGG16Featurizer(vd.VideoFeaturizer):
     ''' Implements the VGG16 network as a VideoFeaturizer.  
-        Embeds fc layer nearest the final activations (named vgg.fc21)
+        Embeds fc layer nearest the final activations (named VGG16.fc21)
 
         @todo It is probably more efficient to send multiple frames to the gpu at
         once.  Is this doable?
@@ -302,7 +319,7 @@ class VGG16Featurizer(vd.VideoFeaturizer):
 
     def featurize_start(self):
         self.sess = tf.Session()
-        self.vgg = vgg16(self.imgs, self.weights_path, self.sess)
+        self.vgg = VGG16(self.imgs, self.weights_path, self.sess)
 
     def featurize_end(self):
         self.sess.close()
