@@ -49,7 +49,24 @@ def download_large_google_drive_file(url):
     d = soup.find('a',{'id':'uc-download-link'})['href']
     assert(d != '')
     # is it bad practice to return large chunks of data?
-    return session.get("https://drive.google.com"+d)
+    page2 = return session.get("https://drive.google.com"+d)
+    if (page2.status_code != 200):
+        # @todo log an error here
+        return None
+    return page2.content
+
+
+def download_file(url):
+    '''Downloads a file from a URL checking the status to be correct.
+    Returns the download file (a binary chunk) or None if failed.
+    '''
+    session = requests.Session()
+    session.headers.update({'User-Agent':'ETA v0.1.0, Voxel51, LLC'})
+    page = session.get(url)
+    if (page.status_code != 200):
+        # @todo log an error here
+        return None
+    return page.content
 
 
 def ensure_path(path):

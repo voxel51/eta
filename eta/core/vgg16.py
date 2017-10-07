@@ -19,6 +19,7 @@ voxel51.com
 
 Jason Corso, jjc@voxel51.com
 '''
+import os
 import numpy as np
 from scipy.misc import imresize
 import tensorflow as tf
@@ -26,6 +27,7 @@ import tensorflow as tf
 # eta imports
 from config import Config
 import video as vd
+import weights as wt
 
 
 
@@ -37,22 +39,32 @@ class VGG16Config(Config):
 
         A default configuration is included in ETA and will be loaded if 
         no configuration is provided by the invoker of VGG16
-
-        @todo: the weights_path should be relative to some global path that
-               stores cached big-files.
     '''
     def __init__(self, d):
-        self.weights_path = self.parse_string(d, "weights_path")
-        self.weights_url = self.parse_string(d, "weights_url", default=None)
+        self.weights_config = self.parse_object(d, "weights")
+
 
 class VGG16:
-    def __init__(self, imgs, config=None, sess=None):
+    def __init__(self, imgs, sess, config=None):
         self.imgs = imgs
         self.convlayers()
         self.fc_layers()
         self.probs = tf.nn.softmax(self.fc3l)
-        if weights is not None and sess is not None:
-            self.load_weights(weights, sess)
+        self.config = config
+
+        assert(sess is not None)
+
+        if config is None:
+            # load the default config from disk
+            cdir = os.path.dirname(os.path.realpath(__file__)))
+            cnam = 'vgg16-config.json'
+            cpat = os.path.join(cdir,cnam)
+            assert(os.path.isfile(cpat))
+
+            config = VGG16Config.from_json(cpat)
+
+        self.load_weights(config.weights_config, sess)
+
 
 
     def convlayers(self):
@@ -277,12 +289,12 @@ class VGG16:
             self.fc3l = tf.nn.bias_add(tf.matmul(self.fc2, fc3w), fc3b)
             self.parameters += [fc3w, fc3b]
 
-    def load_weights(self, weight_file, sess):
-        weights = np.load(weight_file)
-        keys = sorted(weights.keys())
+    def load_weights(self, weight_config, sess):
+        weights = wt.Weights(weight_config)
+        keys = sorted(weights.data.keys())
         for i, k in enumerate(keys):
-            print i, k, np.shape(weights[k])
-            sess.run(self.parameters[i].assign(weights[k]))
+            print i, k, np.shape(weights.data[k])
+            sess.run(self.parameters[i].assign(weights.data[k]))
 
 
 class VGG16FeaturizerConfig(Config):
