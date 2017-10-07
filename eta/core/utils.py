@@ -5,6 +5,7 @@ Copyright 2017, Voxel51, LLC
 voxel51.com
 
 Brian Moore, brian@voxel51.com
+Jason Corso, jjc@voxel51.com
 '''
 import hashlib
 import json
@@ -12,6 +13,8 @@ import os
 import shutil
 import subprocess
 import tempfile
+import requests
+from BeautifulSoup import BeautifulSoup
 
 import numpy as np
 
@@ -25,6 +28,28 @@ def run_cmd(args):
         args: command and any flags given as a ["list", "of", "strings"]
     '''
     return subprocess.call(args, shell=False) == 0
+
+
+def download_large_google_drive_file(url):
+    '''Scrapes the Google Drive web page to confirm that we want to download
+    the file even though it is too big to scan for viruses.
+    This function assumes the url is valid and will link to the confirmation
+    page via the first request.
+    '''
+    session = requests.Session()
+
+    session.headers.update({'User-Agent':'ETA v0.1.0, Voxel51, LLC'})
+
+    page = session.get(url)
+    if (page.status_code != 200):
+        # @todo log an error here
+        return None
+
+    soup = BeautifulSoup(page.content)
+    d = soup.find('a',{'id':'uc-download-link'})['href']
+    assert(d != '')
+    # is it bad practice to return large chunks of data?
+    return session.get("https://drive.google.com"+d)
 
 
 def ensure_path(path):

@@ -1,0 +1,7 @@
+{
+    "_comment": [ "Default configuration for the VGG16 class",
+                  " including default web-downloadable model weights" ],
+    "weights_path": "cache/vgg16_weights.npz",
+    "weights_url":  "https://drive.google.com/uc?export=download&confirm=tIba&id=0B_-5gc091ngGMzBFMVJ0RE9HNmc",
+    "weights_large_file_flag": true
+}
