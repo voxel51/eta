@@ -20,7 +20,7 @@ import os
 
 import numpy as np
 
-from core.config import Config
+from config import Config
 import utils as ut
 
 
@@ -33,13 +33,14 @@ class WeightsConfig(Config):
     def __init__(self, d):
         self.weights_cache = self.parse_string(d,"weights_cache",default=None)
         if self.weights_cache is None:
-            cdir = os.path.dirname(os.path.realpath(__file__)))
+            cdir = os.path.dirname(os.path.realpath(__file__))
             cnam = 'cache'
             self.weights_cache = os.path.join(cdir,cnam)
-        ut.ensure_dir(self.weights_cache)
+        #ut.ensure_dir(self.weights_cache) FLAGGED FOR NEED AFTER REFACTOR
         self.weights_filename = self.parse_string(d, "weights_filename")
         self.weights_path = os.path.join(self.weights_cache,
                                          self.weights_filename)
+        ut.ensure_dir(self.weights_path)
         self.weights_url = self.parse_string(d, "weights_url", default=None)
         self.weights_large_google_drive_file_flag = self.parse_bool(d,
                 "weights_large_google_drive_file_flag",default=False)
@@ -52,16 +53,16 @@ class Weights(Config):
                dictionary it loads, by overloading/implementing the same
                methods.
     '''
-    def __init__(self, d):
-        self.config = d
+    def __init__(self, weights_config):
+        self.config = weights_config
         self.data   = None
 
         # check if the file is locally stored
-        if not os.path.isfile(self.config.weights.weights_path):
+        if not os.path.isfile(self.config.weights_path):
             if self.config.weights_large_google_drive_file_flag:
-                b = ut.download_large_google_drive_file(self.weights_url)
-            else
-                b = ut.download_file(self.weights_url)
+                b = ut.download_large_google_drive_file(self.config.weights_url)
+            else:
+                b = ut.download_file(self.config.weights_url)
 
             with open(self.config.weights_path,'wb') as f:
                 f.write(b)
