@@ -1,0 +1,33 @@
+{
+    "_comment": [ "Example configuration file for the embed_vgg16 module"
+                 ," Uses the sample data twice (real-use configs can"
+                 ,"  obviously use different input video."
+                 ," Uses the default network config."
+                ],
+
+    "video_featurizers": [
+        {
+            "backing_path": "/tmp/eta-backing/embed/1",
+            "video_path": "../data/water-20frames/%05d.png"
+        }
+        ,
+        {
+            "backing_path": "/tmp/eta-backing/embed/2",
+            "video_path": "../data/water-20frames/%05d.png"
+        }
+    ] ,
+
+    "crop_box": 
+    {
+        "_comment": "This is just an example crop box.",
+        "top_left": {
+            "y": 0.1,
+            "x": 0.1
+        },
+        "bottom_right": {
+            "y": 0.4,
+            "x": 0.6
+        }
+    }
+}
+
