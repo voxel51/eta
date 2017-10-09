@@ -6,13 +6,16 @@
 #
 from setuptools import setup, find_packages
 
+from eta import constants
+
+
 setup(
-    name="eta",
-    version="0.1.0",
-    description="ETA: Extensible Toolkit for Analytics",
-    author="Voxel51, LLC",
-    author_email="support@voxel51.com",
-    url="https://github.com/voxel51/eta",
+    name=constants.NAME,
+    version=constants.VERSION,
+    description=constants.DESCRIPTION,
+    author=constants.AUTHOR,
+    author_email=constants.CONTACT,
+    url=constants.URL,
+    license=constants.LICENSE,
     packages=find_packages(),
-    license="BSD 4-clause",
 )
