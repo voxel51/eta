@@ -21,22 +21,19 @@ import utils as ut
 
 
 class WeightsConfig(Config):
-    '''Weights Config.
-
-    @todo: the weights_path should be relative to some global path that stores
-    cached big-files.
-    '''
+    '''Weights configuration settings.'''
 
     def __init__(self, d):
         self.weights_cache = self.parse_string(
             d, "weights_cache", default=constants.DEFAULT_CACHE_DIR)
-
         self.weights_filename = self.parse_string(d, "weights_filename")
-        self.weights_path = os.path.join(
-            self.weights_cache, self.weights_filename)
         self.weights_url = self.parse_string(d, "weights_url", default=None)
         self.weights_large_google_drive_file_flag = self.parse_bool(
             d, "weights_large_google_drive_file_flag", default=False)
+
+    @property
+    def weights_path(self):
+        return os.path.join(self.weights_cache, self.weights_filename)
 
 
 class Weights(Config):
