@@ -32,10 +32,6 @@ def embed_image(image_path):
         Uses the default weights specified in the default config.
         Embeds the image the VGG16-net.  Store the embedded vectors as
         a npz-->Uses a VideoFeaturizer to handle IO and storage on disk
-
-        @param config Path to the config file for the VGG16 Featurizer, which
-        contains information for the network, video, and the backing location
-        for the featurized video
     '''
 
     image = im.read(image_path)

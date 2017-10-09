@@ -47,6 +47,16 @@ class VGG16Config(Config):
     def __init__(self, d):
         self.weights_config = self.parse_object(d, "weights",wt.WeightsConfig)
 
+    @staticmethod
+    def load_default():
+        # load the default config from disk
+        cdir = os.path.dirname(os.path.realpath(__file__))
+        cnam = 'vgg16-config.json'
+        cpat = os.path.join(cdir,cnam)
+        assert(os.path.isfile(cpat))
+        config = VGG16Config.from_json(cpat)
+        return config
+
 
 class VGG16:
     ''' VGG16 Network structure in TensorFlow.  Hardcoded.
@@ -64,13 +74,7 @@ class VGG16:
         assert(sess is not None)
 
         if config is None:
-            # load the default config from disk
-            cdir = os.path.dirname(os.path.realpath(__file__))
-            cnam = 'vgg16-config.json'
-            cpat = os.path.join(cdir,cnam)
-            assert(os.path.isfile(cpat))
-
-            config = VGG16Config.from_json(cpat)
+            config = VGG16Config.load_default()
 
         self.load_weights(config.weights_config, sess)
 
@@ -319,8 +323,9 @@ class VGG16FeaturizerConfig(Config):
             self.video_featurizer = self.parse_object(d,"video_featurizer",vd.VideoFeaturizerConfig)
         else:
             self.video_featurizer = vfconfig
-        self.weights_path = self.parse_string(d, "weights_path")
-        #self.data = self.parse_object_array(d, "data", DataConfig)
+        # note that if this is None, then the VGG16 class itself will load the
+        #  class defaults for the config
+        self.vgg16config = self.parse_object(d, "vgg16",VGG16Config,default=None)
 
 
 class VGG16Featurizer(vd.VideoFeaturizer):
@@ -333,14 +338,14 @@ class VGG16Featurizer(vd.VideoFeaturizer):
 
     def __init__(self,config):
         super(VGG16Featurizer,self).__init__(config.video_featurizer)
-        self.weights_path = config.weights_path
+        self.vgg16config = config.vgg16config
         self.sess = None
         self.imgs = tf.placeholder(tf.float32, [None, 224, 224, 3])
         self.vgg  = None
 
     def featurize_start(self):
         self.sess = tf.Session()
-        self.vgg = VGG16(self.imgs, self.weights_path, self.sess)
+        self.vgg = VGG16(self.imgs, self.sess, self.vgg16config)
 
     def featurize_end(self):
         self.sess.close()
@@ -350,6 +355,6 @@ class VGG16Featurizer(vd.VideoFeaturizer):
     def featurize_frame(self,frame):
         # this resize needs to be changed and more adaptable to the needs
         # allow a function plugin functionality?
-        img1 = im.resize(frame, (224, 224))
+        img1 = im.resize(frame, 224, 224)
         return self.sess.run(self.vgg.fc2l, feed_dict={self.vgg.imgs: [img1]})[0]
 
