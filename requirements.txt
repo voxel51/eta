@@ -1,9 +1,9 @@
+BeautifulSoup
 Cython
 numpy==1.13.1
 Pillow==4.2.1
 python-dateutil==2.6.1
-scipy==0.19.1
 scikit-learn==0.19.0
+scipy==0.19.1
 simplejson==3.8.1
 subprocess32==3.2.7
-BeautifulSoup
