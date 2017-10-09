@@ -23,17 +23,19 @@ voxel51.com
 Jason Corso, jjc@voxel51.com
 '''
 import os
+
 import numpy as np
 from scipy.misc import imresize
 import tensorflow as tf
 
-# eta imports
 from config import Config
+from eta import constants
 import video as vd
 import weights as wt
 import image as im
 
 
+DEFAULT_CONFIG_PATH = os.path.join(constants.CONFIGS_DIR, "vgg16-config.json")
 
 
 class VGG16Config(Config):
@@ -47,15 +49,10 @@ class VGG16Config(Config):
     def __init__(self, d):
         self.weights_config = self.parse_object(d, "weights",wt.WeightsConfig)
 
-    @staticmethod
-    def load_default():
-        # load the default config from disk
-        cdir = os.path.dirname(os.path.realpath(__file__))
-        cnam = 'vgg16-config.json'
-        cpat = os.path.join(cdir,cnam)
-        assert(os.path.isfile(cpat))
-        config = VGG16Config.from_json(cpat)
-        return config
+    @classmethod
+    def load_default(cls):
+        '''Loads the default config file from disk.'''
+        return cls.from_json(DEFAULT_CONFIG_PATH)
 
 
 class VGG16:
