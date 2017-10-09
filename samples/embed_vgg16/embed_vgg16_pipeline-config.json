@@ -1,0 +1,12 @@
+{
+   "working_dir": ".",
+   "jobs": [
+        {
+            "name": "embed_vgg16_module",
+            "working_dir": ".",
+            "script": "../../eta/modules/embed_vgg16.py",
+            "config_path": "./embed_vgg16_module-config.json"
+        }
+    ]
+}
+
