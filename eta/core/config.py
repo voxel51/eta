@@ -100,7 +100,10 @@ class Config(Serializable):
             ConfigError: if no default value was provided and the key was
                 not present in the dictionary.
         '''
-        return cls(Config._parse_key(d, key, object, default=default))
+        d_ = Config._parse_key(d, key, object, default=default)
+        if d_ == default:
+            return default
+        return cls(d_)
 
     @staticmethod
     def parse_object_array(d, key, cls, default=no_default):
