@@ -16,6 +16,7 @@ import os
 import numpy as np
 
 from config import Config
+from eta import constants
 import utils as ut
 
 
@@ -27,16 +28,12 @@ class WeightsConfig(Config):
     '''
 
     def __init__(self, d):
-        self.weights_cache = self.parse_string(d, "weights_cache", default=None)
-        if self.weights_cache is None:
-            cdir = os.path.dirname(os.path.realpath(__file__))
-            self.weights_cache = os.path.join(cdir, "cache")
+        self.weights_cache = self.parse_string(
+            d, "weights_cache", default=constants.DEFAULT_CACHE_DIR)
 
-        #ut.ensure_dir(self.weights_cache) FLAGGED FOR NEED AFTER REFACTOR
         self.weights_filename = self.parse_string(d, "weights_filename")
         self.weights_path = os.path.join(
             self.weights_cache, self.weights_filename)
-        ut.ensure_dir(self.weights_path)
         self.weights_url = self.parse_string(d, "weights_url", default=None)
         self.weights_large_google_drive_file_flag = self.parse_bool(
             d, "weights_large_google_drive_file_flag", default=False)
@@ -61,6 +58,7 @@ class Weights(Config):
             else:
                 b = ut.download_file(self.config.weights_url)
 
+            ut.ensure_dir(self.weights_path)
             with open(self.config.weights_path, "wb") as f:
                 f.write(b)
 
