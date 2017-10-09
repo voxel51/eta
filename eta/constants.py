@@ -14,6 +14,7 @@ from core.config import Config
 # Directories
 ETA_DIR = os.path.abspath(os.path.dirname(__file__))
 CONFIGS_DIR = os.path.join(ETA_DIR, "configs")
+DEFAULT_CACHE_DIR = os.path.join(ETA_DIR, "cache")
 
 
 # Paths
