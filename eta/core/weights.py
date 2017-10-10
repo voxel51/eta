@@ -15,7 +15,7 @@ import os
 
 import numpy as np
 
-from config import Config
+from config import Config, Configurable
 from eta import constants
 import utils
 import web
@@ -37,7 +37,7 @@ class WeightsConfig(Config):
         return os.path.join(self.cache_dir, self.filename)
 
 
-class Weights(Config):
+class Weights(Configurable):
     '''Weights class that encapsulates model weights and can load them from the
     net if needed (if paths are provided).
 
@@ -55,6 +55,7 @@ class Weights(Config):
             OSError: if the weights file was not found on disk and no web
                 address was provided.
         '''
+        self.validate(config)
         self.config = config
         self.data = None
 
