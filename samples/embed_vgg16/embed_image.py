@@ -26,11 +26,12 @@ from eta.core.vgg16 import VGG16
 
 
 def embed_image(impath):
-    '''Embeds the image using VGG16.
+    '''Embeds the image using VGG16. Uses the default weights specified in the
+    default ETA config. Stores the embedded vector as .npz, using
+    VideoFeaturizer to handle I/O.
 
-    Uses the default weights specified in the default ETA config.
-
-    Stores the embedded vector as .npz, using VideoFeaturizer to handle I/O.
+    Args:
+        impath: path to an image to embed
     '''
     img = im.read(impath)
 
