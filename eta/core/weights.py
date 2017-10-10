@@ -17,48 +17,62 @@ import numpy as np
 
 from config import Config
 from eta import constants
-import utils as ut
+import utils
+import web
 
 
 class WeightsConfig(Config):
     '''Weights configuration settings.'''
 
     def __init__(self, d):
-        self.weights_cache = self.parse_string(
-            d, "weights_cache", default=constants.DEFAULT_CACHE_DIR)
-        self.weights_filename = self.parse_string(d, "weights_filename")
-        self.weights_url = self.parse_string(d, "weights_url", default=None)
-        self.weights_large_google_drive_file_flag = self.parse_bool(
-            d, "weights_large_google_drive_file_flag", default=False)
+        self.cache_dir = self.parse_string(
+            d, "cache_dir", default=constants.DEFAULT_CACHE_DIR)
+        self.filename = self.parse_string(d, "filename")
+        self.url = self.parse_string(d, "url", default=None)
+        self.google_drive_id = self.parse_string(
+            d, "google_drive_id", default=None)
 
     @property
-    def weights_path(self):
-        return os.path.join(self.weights_cache, self.weights_filename)
+    def path(self):
+        return os.path.join(self.cache_dir, self.filename)
 
 
 class Weights(Config):
     '''Weights class that encapsulates model weights and can load them from the
-    net if needed (and if paths are provided).
+    net if needed (if paths are provided).
 
     @todo: Would be great to make this class act like the actual dictionary it
     loads, by overloading/implementing the same methods.
     '''
 
-    def __init__(self, weights_config):
-        self.config = weights_config
+    def __init__(self, config):
+        '''Initializes a Weights instance.
+
+        Args:
+            config: a WeightsConfig instance
+
+        Raises:
+            OSError: if the weights file was not found on disk and no web
+                address was provided.
+        '''
+        self.config = config
         self.data = None
 
-        # Check if the file is locally stored.
-        if not os.path.isfile(self.config.weights_path):
-            if self.config.weights_large_google_drive_file_flag:
-                b = ut.download_large_google_drive_file(self.config.weights_url)
+        if not os.path.isfile(self.config.path):
+            utils.ensure_dir(self.config.path)
+
+            # Download the weights from the web.
+            if self.config.google_drive_id:
+                web.download_google_drive_file(
+                    self.config.google_drive_id, path=self.config.path)
+            elif self.config.url:
+                web.download_file(
+                    self.config.url, path=self.config.path)
             else:
-                b = ut.download_file(self.config.weights_url)
+                raise OSError(
+                    "Weights file '%s' not found and no web address was "
+                    "provided" % self.config.path
+                )
 
-            ut.ensure_dir(self.weights_path)
-            with open(self.config.weights_path, "wb") as f:
-                f.write(b)
-
-        # Can this be ingested directly from 'b' if we downloaded it?
-        self.data = np.load(self.config.weights_path)
-
+        # Load weights from local file.
+        self.data = np.load(self.config.path)
