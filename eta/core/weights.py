@@ -37,12 +37,11 @@ class WeightsConfig(Config):
         return os.path.join(self.cache_dir, self.filename)
 
 
-class Weights(Configurable):
+class Weights(Configurable, dict):
     '''Weights class that encapsulates model weights and can load them from the
     net if needed (if paths are provided).
 
-    @todo: Would be great to make this class act like the actual dictionary it
-    loads, by overloading/implementing the same methods.
+    Provides a dictionary interface to the loaded weights.
     '''
 
     def __init__(self, config):
@@ -57,7 +56,6 @@ class Weights(Configurable):
         '''
         self.validate(config)
         self.config = config
-        self.data = None
 
         if not os.path.isfile(self.config.path):
             utils.ensure_dir(self.config.path)
@@ -76,4 +74,4 @@ class Weights(Configurable):
                 )
 
         # Load weights from local file.
-        self.data = np.load(self.config.path)
+        self.update(np.load(self.config.path))
