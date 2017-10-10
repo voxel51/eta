@@ -16,12 +16,26 @@ import utils
 
 
 def read(path, flag=cv2.IMREAD_UNCHANGED):
-    '''Reads image from path.'''
+    '''Reads image from path.
+
+    Args:
+        path: the path to the image on disk
+        flag: an optional OpenCV image format flag. By default, the image is
+            returned in it's native format (color, grayscale, transparent, etc)
+
+    Returns:
+        A uint8 numpy array containing the image
+        '''
     return cv2.imread(path, flag)
 
 
 def write(img, path):
-    '''Writes image to file, creating the output directory if necessary.'''
+    '''Writes image to file. The output directory is created if necessary.
+
+    Args:
+        img: a numpy array
+        path: the output path
+    '''
     utils.ensure_dir(path)
     cv2.imwrite(path, img)
 
