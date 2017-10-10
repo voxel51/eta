@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 '''
-ETA example image embbeding via VGG16.
+ETA example image embedding via VGG16.
 
 Note that the embed_video.py example shows the use of the VideoFeaturization
 classes, which is the preferred approach for ETA modules since they maintain
