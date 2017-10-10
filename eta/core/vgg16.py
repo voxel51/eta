@@ -20,6 +20,7 @@ Copyright 2017, Voxel51, LLC
 voxel51.com
 
 Jason Corso, jjc@voxel51.com
+Brian Moore, brian@voxel51.com
 '''
 import os
 
@@ -27,52 +28,51 @@ import numpy as np
 from scipy.misc import imresize
 import tensorflow as tf
 
-from config import Config
+from config import Config, Configurable
 from eta import constants
 import video as vd
-import weights as wt
+from weights import Weights, WeightsConfig
 import image as im
 
 
-DEFAULT_CONFIG_PATH = os.path.join(constants.CONFIGS_DIR, "vgg16-config.json")
+DEFAULT_CONFIG_PATH = os.path.join(constants.CONFIGS_DIR, 'vgg16-config.json')
 
 
 class VGG16Config(Config):
-    '''VGG16 Model Config.
+    '''Configuration settings for the VGG16 network.'''
 
-    This implements the configuration settings for the VGG16 network.
-
-    A default configuration is included in ETA and will be loaded if no
-    configuration is provided by the invoker of VGG16.
-    '''
     def __init__(self, d):
-        self.weights_config = self.parse_object(d, "weights", wt.WeightsConfig)
+        self.weights = self.parse_object(d, "weights", WeightsConfig)
 
     @classmethod
     def load_default(cls):
-        '''Loads the default config file from disk.'''
+        '''Loads the default config file.'''
         return cls.from_json(DEFAULT_CONFIG_PATH)
 
 
 class VGG16(object):
-    '''VGG16 Network structure in TensorFlow.  Hardcoded.
+    '''VGG16 network structure hardcoded in TensorFlow.
 
-    @todo: generalize to a None tf session--> if it is none, then start one up
-    and manage it until this object is del'd.
+    @todo allow sess to be None, in which case we should start up a tf Session
+    and manage it.
+
+    Args:
+        imgs: a tf.Variable of shape [XXXX, 224, 224, 3] containing images to
+            embed
+        sess: a tf.Session to use
+        config: an optional VGG16Config instance. If omitted, the default ETA
+            configuration will be used.
     '''
     def __init__(self, imgs, sess, config=None):
+        assert sess is not None, 'None sessions are not currently allowed!'
+
         self.imgs = imgs
         self.convlayers()
         self.fc_layers()
         self.probs = tf.nn.softmax(self.fc3l)
-        self.config = config
+        self.config = config or VGG16Config.load_default()
 
-        assert sess is not None, 'None sessions are not allowed'
-
-        if config is None:
-            config = VGG16Config.load_default()
-
-        self.load_weights(config.weights_config, sess)
+        self.load_weights(self.config.weights, sess)
 
     def convlayers(self):
         self.parameters = []
@@ -438,31 +438,28 @@ class VGG16FeaturizerConfig(Config):
                 d, "video_featurizer", vd.VideoFeaturizerConfig)
         else:
             self.video_featurizer = vfconfig
-        # Note that if this is None, then the VGG16 class itself will load the
-        # defult config.
-        self.vgg16config = self.parse_object(
-            d, "vgg16", VGG16Config, default=None)
+        self.vgg16 = self.parse_object(d, "vgg16", VGG16Config, default=None)
 
 
 class VGG16Featurizer(vd.VideoFeaturizer):
     '''Implements the VGG16 network as a VideoFeaturizer.
 
-    Embeds fc layer nearest the final activations (named VGG16.fc21)
+    Embeds the fully-connected layer nearest the final activations (VGG16.fc21).
 
     @todo It is probably more efficient to send multiple frames to the gpu at
     once. Is this doable?
     '''
 
     def __init__(self, config):
-        super(VGG16Featurizer,self).__init__(config.video_featurizer)
-        self.vgg16config = config.vgg16config
+        super(VGG16Featurizer, self).__init__(config.video_featurizer)
+        self.vgg16_config = config.vgg16
         self.sess = None
         self.imgs = tf.placeholder(tf.float32, [None, 224, 224, 3])
-        self.vgg  = None
+        self.vgg = None
 
     def featurize_start(self):
         self.sess = tf.Session()
-        self.vgg = VGG16(self.imgs, self.sess, self.vgg16config)
+        self.vgg = VGG16(self.imgs, self.sess, self.vgg16_config)
 
     def featurize_end(self):
         self.sess.close()
@@ -475,4 +472,3 @@ class VGG16Featurizer(vd.VideoFeaturizer):
         img1 = im.resize(frame, 224, 224)
         return self.sess.run(
             self.vgg.fc2l, feed_dict={self.vgg.imgs: [img1]})[0]
-
