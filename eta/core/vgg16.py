@@ -8,13 +8,15 @@ David Frossard, 2016
 VGG16 implementation in TensorFlow
 http://www.cs.toronto.edu/~frossard/post/vgg16/
 
-Model from https://gist.github.com/ksimonyan/211839e770f7b538e2d8#file-readme-md
-Weights from Caffe converted using https://github.com/ethereon/caffe-tensorflow
-These weights are stored at XXX add this.
+Model from:
+https://gist.github.com/ksimonyan/211839e770f7b538e2d8#file-readme-md
+
+Weights from Caffe converted using:
+https://github.com/ethereon/caffe-tensorflow
 
 This is not a generic network that can have its layers manipulated.  It is
-hardcoded to be the exact implementation of the VGG16 network that outputs
-to 1000 classes.
+hardcoded to be the exact implementation of the VGG16 network that outputs to
+1000 classes.
 
 Copyright 2017, Voxel51, LLC
 voxel51.com
@@ -25,10 +27,9 @@ Brian Moore, brian@voxel51.com
 import os
 
 import numpy as np
-from scipy.misc import imresize
 import tensorflow as tf
 
-from config import Config, Configurable
+from config import Config
 from eta import constants
 import video as vd
 from weights import Weights, WeightsConfig
@@ -67,14 +68,14 @@ class VGG16(object):
         assert sess is not None, 'None sessions are not currently allowed!'
 
         self.imgs = imgs
-        self.convlayers()
-        self.fc_layers()
+        self._build_conv_layers()
+        self._build_fc_layers()
         self.probs = tf.nn.softmax(self.fc3l)
         self.config = config or VGG16Config.load_default()
 
-        self.load_weights(self.config.weights, sess)
+        self._load_weights(self.config.weights, sess)
 
-    def convlayers(self):
+    def _build_conv_layers(self):
         self.parameters = []
 
         # zero-mean input
@@ -99,7 +100,7 @@ class VGG16(object):
                 tf.constant(0.0, shape=[64], dtype=tf.float32),
                 trainable=True,
                 name='biases',
-             )
+            )
             out = tf.nn.bias_add(conv, biases)
             self.conv1_1 = tf.nn.relu(out, name=scope)
             self.parameters += [kernel, biases]
@@ -365,7 +366,7 @@ class VGG16(object):
             name='pool4',
         )
 
-    def fc_layers(self):
+    def _build_fc_layers(self):
         # fc1
         with tf.name_scope('fc1') as scope:
             shape = int(np.prod(self.pool5.get_shape()[1:]))
@@ -416,7 +417,7 @@ class VGG16(object):
             self.fc3l = tf.nn.bias_add(tf.matmul(self.fc2, fc3w), fc3b)
             self.parameters += [fc3w, fc3b]
 
-    def load_weights(self, weights_config, sess):
+    def _load_weights(self, weights_config, sess):
         weights = Weights(weights_config)
         for i, k in enumerate(sorted(weights)):
             print i, k, np.shape(weights[k])
@@ -444,7 +445,7 @@ class VGG16FeaturizerConfig(Config):
 class VGG16Featurizer(vd.VideoFeaturizer):
     '''Implements the VGG16 network as a VideoFeaturizer.
 
-    Embeds the fully-connected layer nearest the final activations (VGG16.fc21).
+    Embeds VGG16.fc21, the fully-connected layer nearest the final activations.
 
     @todo It is probably more efficient to send multiple frames to the gpu at
     once. Is this doable?
