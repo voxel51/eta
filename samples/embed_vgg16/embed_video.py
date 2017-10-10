@@ -1,54 +1,50 @@
 #!/usr/bin/env python
 '''
-Example Code: Embed an video (frame-by-frame) via VGG16.
+ETA example (frame-by-frame) video embbeding via VGG16.
 
-Also shows the use of the frame_preprocessor functionality in the vgg16 featurizer
+Note: must be run from this directory!
+
+Also shows the use of the frame_preprocessor functionality in VGG16Featurizer.
 
 Copyright 2017, Voxel51, LLC
 voxel51.com
 
 Jason Corso, jjc@voxel51.com
 '''
-import errno
 import os
 import sys
 
-import tensorflow as tf
-import numpy as np
-
-from eta.core.config import Config
-import eta.core.video as vd
-import eta.core.vgg16 as vgg
-import eta.core.image as im
+from eta.core.vgg16 import VGG16FeaturizerConfig, VGG16Featurizer
 
 
 def crop(img):
-    ''' a quick function to show the use of frame_preprocessor in 
-        VideoFeaturizer.
+    '''A quick function to show the use of frame_preprocessor in
+    VideoFeaturizer.
     '''
-    return img[10:100,10:100,:]
+    return img[10:100, 10:100, :]
 
 
 def embed_video(config):
-    '''
-        Uses the default weights specified in the default config.
-        Embed each
-        frame of the video using the VGG16-net.  Store the embedded vectors as
-        a npz.  Uses a VideoFeaturizer to handle IO and storage on disk
+    '''Embeds each frame of the video using the VGG16-net. Uses the default
+    weights specified in the default ETA config. Stores the embedded vector as
+    .npz, using VideoFeaturizer to handle I/O.
 
-        @param config Path to the config file for the VGG16 Featurizer, which
-        contains information for the network, video, and the backing location
-        for the featurized video
+    Args:
+        config: a VGG16FeaturizerConfig instance
     '''
-
-    vf = vgg.VGG16Featurizer(config)
+    vf = VGG16Featurizer(config)
     vf.frame_preprocessor = crop
     vf.featurize(frames="1-12")
 
 
+def _abspath(path):
+    return os.path.realpath(os.path.join(os.path.dirname(__file__), path))
+
+
 if __name__ == '__main__':
-    config_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),"embed_video-config.json")
     if len(sys.argv) == 2:
         config_path = sys.argv[1]
-    embed_video(vgg.VGG16FeaturizerConfig.from_json(config_path))
+    else:
+        config_path = _abspath("embed_video-config.json")
 
+    embed_video(VGG16FeaturizerConfig.from_json(config_path))
