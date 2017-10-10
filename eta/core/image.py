@@ -13,6 +13,7 @@ import cv2
 import numpy as np
 
 import utils
+import web
 
 
 def read(path, flag=cv2.IMREAD_UNCHANGED):
@@ -38,6 +39,36 @@ def write(img, path):
     '''
     utils.ensure_dir(path)
     cv2.imwrite(path, img)
+
+
+def download(url, flag=cv2.IMREAD_UNCHANGED):
+    '''Downloads an image from a URL.
+
+    Args:
+        url: the URL of the image
+        flag: an optional OpenCV image format flag. By default, the image is
+            returned in it's raw format
+
+    Returns:
+        A uint8 numpy array containing the image
+    '''
+    return decode(web.download_file(url), flag=flag)
+
+
+def decode(bytes, flag=cv2.IMREAD_UNCHANGED):
+    '''Decodes an image from raw bytes.
+
+    Args:
+        bytes: the raw bytes of an image (e.g. from read() or from a web
+            download)
+        flag: an optional OpenCV image format flag. By default, the image is
+            returned in it's native format (color, grayscale, transparent, ...)
+
+    Returns:
+        A uint8 numpy array containing the image
+    '''
+    vec = np.asarray(bytearray(bytes), dtype="uint8")
+    return cv2.imdecode(vec, flag)
 
 
 def resize(img, width=None, height=None, *args, **kwargs):
