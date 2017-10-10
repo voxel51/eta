@@ -34,12 +34,16 @@ def ensure_path(path):
     '''
     if os.path.isfile(path):
         os.remove(path)
-    ensure_dir(path)
+    ensure_basedir(path)
 
 
-def ensure_dir(path):
-    '''Makes base directory, if necessary.'''
-    dirname = os.path.dirname(path)
+def ensure_basedir(path):
+    '''Makes the base directory of the given path, if necessary.'''
+    ensure_dir(os.path.dirname(path))
+
+
+def ensure_dir(dirname):
+    '''Makes the given directory, if necessary.'''
     if dirname and not os.path.isdir(dirname):
         os.makedirs(dirname)
 
@@ -48,7 +52,7 @@ def copy_file(inpath, outpath):
     '''Copies input file to the output file (the actual file, not the
     directory), creating the output directory if necessary.
     '''
-    ensure_dir(outpath)
+    ensure_basedir(outpath)
     shutil.copy(inpath, outpath)
 
 
@@ -68,7 +72,7 @@ def write_json(obj, path):
     '''
     if serial.is_serializable(obj):
         obj = obj.serialize()
-    ensure_dir(path)
+    ensure_basedir(path)
     with open(path, "w") as f:
         json.dump(obj, f, indent=4, cls=JSONNumpyEncoder)
 
