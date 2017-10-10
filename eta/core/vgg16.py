@@ -416,12 +416,11 @@ class VGG16(object):
             self.fc3l = tf.nn.bias_add(tf.matmul(self.fc2, fc3w), fc3b)
             self.parameters += [fc3w, fc3b]
 
-    def load_weights(self, weight_config, sess):
-        weights = wt.Weights(weight_config)
-        keys = sorted(weights.data.keys())
-        for i, k in enumerate(keys):
-            print i, k, np.shape(weights.data[k])
-            sess.run(self.parameters[i].assign(weights.data[k]))
+    def load_weights(self, weights_config, sess):
+        weights = Weights(weights_config)
+        for i, k in enumerate(sorted(weights)):
+            print i, k, np.shape(weights[k])
+            sess.run(self.parameters[i].assign(weights[k]))
 
 
 class VGG16FeaturizerConfig(Config):
