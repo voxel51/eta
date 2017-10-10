@@ -1,6 +1,6 @@
 '''
 Encapsulates an npz file that stores model weights locally in a cache and has
-the ability to pull a version of the  weights down from the net.
+the ability to pull a version of the weights down from the net.
 
 @todo: this should probably be:
     (1) extended to allow for methods to visualize, display, and debug weights
@@ -58,7 +58,7 @@ class Weights(Configurable, dict):
         self.config = config
 
         if not os.path.isfile(self.config.path):
-            utils.ensure_dir(self.config.path)
+            utils.ensure_basedir(self.config.path)
 
             # Download the weights from the web.
             if self.config.google_drive_id:

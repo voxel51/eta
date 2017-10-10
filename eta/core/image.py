@@ -37,7 +37,7 @@ def write(img, path):
         img: a numpy array
         path: the output path
     '''
-    utils.ensure_dir(path)
+    utils.ensure_basedir(path)
     cv2.imwrite(path, img)
 
 
