@@ -87,6 +87,10 @@ class Config(Serializable):
     def parse_object(d, key, cls, default=no_default):
         '''Parses an object attribute.
 
+        Normally, if the key is not present, the default value should be a JSON
+        dictionary, which is passed to cls(). However, in the special case when
+        default=None, None is returned directly.
+
         Args:
             d: a JSON dictionary
             key: the key to parse
@@ -100,10 +104,8 @@ class Config(Serializable):
             ConfigError: if no default value was provided and the key was
                 not present in the dictionary.
         '''
-        d_ = Config._parse_key(d, key, object, default=default)
-        if d_ == default:
-            return default
-        return cls(d_)
+        val = Config._parse_key(d, key, object, default=default)
+        return cls(val) if val is not None else None
 
     @staticmethod
     def parse_object_array(d, key, cls, default=no_default):
