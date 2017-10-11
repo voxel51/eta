@@ -163,7 +163,7 @@ but the current format is:
 
 The `data` field contains a list of specs, each of which contains the input
 and output fields specified by the module's metadata file. This field expects
-a list so that multiple datasets can be processed by in a single module
+a list so that multiple datasets can be processed in a single module
 execution, if desired. The remaining fields contain the parameters specified
 by the module's metadata file.
 
@@ -189,7 +189,7 @@ above metadata file is:
 ```
 
 Note that the `annotated_frames_path` is omitted from the second data spec,
-which is allowed since the field was optional (i.e., a default value was
+which is allowed since the field was optional (a default value was
 provided in the metadata file).
 
 
@@ -197,10 +197,9 @@ provided in the metadata file).
 
 Since ETA modules are just executables, they can be implemented in any language
 as long as they provide a valid metadata file and write their outputs in
-ETA-supported formats.
-
-Even if you don't intend to develop using ETA, you must be familiar with the
-ETA supported data types.
+ETA-supported formats. Thus, even if developers don't intend to use ETA
+libraries to build their modules, they must be familiar with the ETA supported
+data types.
 
 
 ## Building Modules using ETA
