@@ -10,3 +10,4 @@
 #  and not a directory
 /eta/cache
 
+/docs/*.tex
