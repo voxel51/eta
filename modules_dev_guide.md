@@ -195,8 +195,8 @@ provided in the metadata file).
 ## Building Standalone Modules
 
 Since ETA modules are just executables, they can be implemented in any language
-as long as they provide a valid metadata file and write outputs their outputs
-in ETA-supported formats.
+as long as they provide a valid metadata file and write their outputs in 
+ETA-supported formats.
 
 Even if you don't intend to develop using ETA, you must be familiar with the
 ETA supported data types.
@@ -332,7 +332,7 @@ Often in ETA, one may want to define a class that can be initialized from a
 configuration file. Furthermore, one may have multiple classes that all derive
 from a common base class (e.g., different types of filters to apply to an
 image), and one wants to select and configure a particular type of filter from
-in a configuration file. The `eta.core.config.Configurable` class is provided
+a configuration file. The `eta.core.config.Configurable` class is provided
 to facilitate these use cases.
 
 Consider the following definitions:
