@@ -43,7 +43,7 @@ is a mockup of the metadata file for a fictitious object detector:
 ```json
 {
     "info": {
-        "id": 82af03f3fe7d5f8fa96677,
+        "id": "82af03f3fe7d5f8fa96677",
         "name": "ObjectDetector",
         "type": "eta.types.modules.detector",
         "version": "0.1.0",
