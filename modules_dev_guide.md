@@ -209,6 +209,7 @@ class ExampleConfig(Config):
     def __init__(self, d):
         self.data = self.parse_object_array(d, "data", DataConfig)
 
+
 class DataConfig(Config):
     '''An example data config class.'''
 
@@ -223,14 +224,13 @@ a single `data` field that contains an array of `DataConfig` instances.
 
 Note that the `ExampleConfig` and `DataConfig` classes derive from the
 `eta.core.config.Config` class, which implements the basic semantics of
-configuration classes. In particular, the `Config` class provides `parse_*`
-static methods, which are used to define the names and data types of the JSON
-fields.
+configuration classes. In particular, the `Config.parse_*` methods are used
+to define the names and data types of the JSON fields.
 
-Fields with no `default=` keyword value are *mandatory*, and fields with a
-`default=` keyword are *optional*.
+Fields defined with no `default` keyword are *mandatory*, and fields with a
+`default` keyword are *optional*.
 
-The following JSON file defines a valid `ExampleConfig` instance:
+The following JSON file is a valid `ExampleConfig` configuration file:
 
 ```json
 {
@@ -246,7 +246,7 @@ The following JSON file defines a valid `ExampleConfig` instance:
 Note that the `parameter` field is omitted, which is allowed since a default
 value was specified in the `DataConfig` class.
 
-To load the JSON file into an `ExampleConfig` instance, simply do:
+To load the configuration file into an `ExampleConfig` instance, simply do:
 
 ```python
 # Load config from JSON
@@ -257,12 +257,11 @@ The `from_json` method, which is inherited from the super class
 `eta.core.serial.Serializable`, reads the JSON dictionary and passes it to the
 `ExampleConfig` constructor.
 
+
 #### Defining new data types
 
 In ETA, data is usually written to disk in JSON format. The following snippet
 demonstrates how to define a custom data type in ETA:
-
-The following snippet demonstrates how to define a custom data type in ETA:
 
 ```python
 from eta.core.serial import Serializable
@@ -286,7 +285,7 @@ implements the semantics of classes that are meant to be read/written to JSON.
 To write a `Point` instance to a JSON file, simply do:
 
 ```python
-import eta.core.utils as utils
+from eta.core import utils
 
 # Serialize Point to JSON
 point = Point(0, 1)
