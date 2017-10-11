@@ -4,7 +4,7 @@ This document describes best practices for contributing modules to ETA. See
 `core_dev_guide.md` for instructions on contributing to the core ETA
 infrastructure.
 
-## What are ETA modules?
+## What Are ETA Modules?
 
 Modules are the workhorses of the ETA system. They perform the actual
 computations required to process videos and generate specific features or
@@ -29,7 +29,7 @@ repository on your local machine, in the cloud, or behind a pay-wall on a
 vendor's cloud.
 
 
-## Module metadata JSON files
+## Module Metadata JSON Files
 
 Every ETA module must provide a metadata JSON file describing the inputs and
 outputs of the module. The metadata file contains all the necessary information
@@ -139,7 +139,7 @@ Each spec has the fields:
 - `description`: a short free-text description of the field
 
 
-## Module configuration files
+## Module Configuration Files
 
 The module metadata file contains all the information necessary for the ETA
 system to automatically generate module configuration JSON files for a module.
@@ -192,7 +192,7 @@ which is allowed since the field was optional (i.e., a default value was
 provided in the metadata file).
 
 
-## Building standalone modules
+## Building Standalone Modules
 
 Since ETA modules are just executables, they can be implemented in any language
 as long as they provide a valid metadata file and write outputs their outputs
@@ -202,7 +202,7 @@ Even if you don't intend to develop using ETA, you must be familiar with the
 ETA supported data types.
 
 
-## Building modules using ETA
+## Building Modules Using ETA
 
 ETA provides a core library that can be leveraged to easily define new
 analytics modules. This is the most common method for creating new modules.
