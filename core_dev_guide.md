@@ -4,21 +4,36 @@ This document describes best practices for contributing to the core ETA
 infrastructure. See `modules_dev_guide.md` to learn how to contribute modules
 to ETA, which are more general and may even live outside of this codebase.
 
-## Repository structure and best practices
+
+## Repository structure
 
 The `master` branch is the latest stable release of ETA. It is protected and
 cannot be directly pushed to.
 
-The `develop` branch is the bleeding edge (mostly) stable version of ETA.  It 
-is also protected and hence directly committing to it is not allowed.  Instead, 
-we like to use the [Git branching 
-workflow](https://git-scm.com/book/en/v2/Git-Branching-Branching-Workflows).  
-Therefore, your typical workflow when contributing to ETA will be
+The `develop` branch is the bleeding edge (mostly) stable version of ETA. It
+is also protected and hence directly committing to it is not allowed.
+Instead, when a feature is ready to be integrated, we open a pull-request on
+develop, which initiates a code chat (we prefer "code chat" to "code review",
+since this should be a friendly endeavour!) where we discuss the changes and
+ultimately merge them into develop.
+
+Other unprotected remote branches may be created as necessary for collaborative
+development on new features.
+
+
+## Git workflow
+
+Given our branch protection conventions, we typically use [Git branching
+workflows](https://git-scm.com/book/en/v2/Git-Branching-Branching-Workflows)
+for development work. Therefore, your typical workflow when contributing to ETA
+will be
 
 ```shell
-git checkout -b new_branch_name
+git checkout -b <new_branch_name>
 # WORK WORK WORK
-pylint your_new_code
+pylint <changed_files>
+pep8 <changed_files>
+# ADDRESS LINT OUTPUT
 git status -s
 git add <changed_files>
 git commit -m "message describing your changes"
@@ -26,12 +41,8 @@ git commit -m "message describing your changes"
 # CODE CHAT AND DISCUSSION
 # MORE CHANGES MADE
 # PULL REQUEST APPROVED AND MERGED ON GITHUB
-git fetch/merge
-git branch -d new_branch_name
+git branch -d <new_branch_name>
 ```
-
-Other remote branches may be created as necessary to develop large or
-experimental features.
 
 ## Style guide
 
@@ -40,15 +51,16 @@ our style. Our priority is *consistency*, so that developers can quickly ingest
 and understand the entire ETA codebase. When in doubt, follow the existing style
 in the module you are contributing to.
 
-Generally, we follow the [Google Python style](https://google.github.io/styleguide/pyguide.html),
-so please review it before contributing.
+Generally, we follow the [Google Python style](
+https://google.github.io/styleguide/pyguide.html), so please review it before
+contributing.
 
 Here are some highlights of our Python style:
 
 - Maximum line length is **80 characters**, with the exception of long URLs that
   cannot be split
 
-- Indent your code with **4 spaces**.  This says: **no tabs**.
+- Indent your code with **4 spaces**. That is, **no tabs**!
 
 - Leave two blank lines between top-level definitions, and one blank line
   between class method definitions
