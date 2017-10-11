@@ -14,7 +14,7 @@ The `develop` branch is the bleeding edge (mostly) stable version of ETA. It
 is also protected and hence directly committing to it is not allowed.
 Instead, when a feature is ready to be integrated, we open a pull-request on
 develop, which initiates a code chat (we prefer "code chat" to "code review",
-since this should be a friendly endeavour!) where we discuss the changes and
+since this should be a friendly endeavor!) where we discuss the changes and
 ultimately merge them into develop.
 
 Other unprotected remote branches may be created as necessary for collaborative
