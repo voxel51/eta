@@ -49,7 +49,7 @@ python eta/core/pipeline.py samples/demo_video/pipeline-config.json
 The ETA package requires various Python packages, as well as
 [OpenCV](http://opencv.org),
 [ffmpeg](https://www.ffmpeg.org), and
-[convert](https://www.imagemagick.org/script/index.php).
+[ImageMagick](https://www.imagemagick.org/script/index.php).
 
 Currently ETA supports both `OpenCV 2.4` or later and `OpenCV 3.0` or later.
 
