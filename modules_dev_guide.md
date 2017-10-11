@@ -4,7 +4,7 @@ This document describes best practices for contributing modules to ETA. See
 `core_dev_guide.md` for instructions on contributing to the core ETA
 infrastructure.
 
-## What Are ETA Modules?
+## What are ETA Modules?
 
 Modules are the workhorses of the ETA system. They perform the actual
 computations required to process videos and generate specific features or
@@ -16,7 +16,7 @@ path through the graph.
 Concretely, ETA modules are simply executables that take JSON files as input
 and write output data to disk. The input JSON configures a module for execution
 by telling it what parameter settings to use, what data to read as input, and
-where to write it's output data. Modules must also provide a metadata JSON file
+where to write its output data. Modules must also provide a metadata JSON file
 that tells the ETA system what parameters they expect and the input/output
 data formats they use. We chose this generic modular architecture for ETA
 because we want to support as many third-party modules as possible!
@@ -38,7 +38,7 @@ execution. Indeed, the ETA system automatically generates configuration files
 whenever it builds and executes pipelines.
 
 The precise syntax of the metadata files is still under development, but here
-is a mockup of the metadata file for a fictitious object detector:
+is a mockup of a typical metadata file for an object detector:
 
 ```json
 {
@@ -99,13 +99,13 @@ The metadata file contains the following top-level fields:
 - `info`: a spec containing basic information about the module
 
 - `inputs`: a list of specs describing each input data-related field that
-    the module expects in it's configuration file
+    the module expects in its configuration file
 
 - `outputs`: a list of specs describing each output data-related field that
-    the module expects in it's configuration file
+    the module expects in its configuration file
 
 - `parameters`: a list of specs describing additional parameters that the
-    module expects in it's configuration file
+    module expects in its configuration file
 
 The `info` spec contains the following fields:
 
@@ -166,8 +166,8 @@ a list so that multiple datasets can be processed by in a single module
 execution, if desired. The remaining fields contain the parameters specified
 by the module's metadata file.
 
-For example, a valid configuration file for the fictitious object detector
-defined by the above metadata file is:
+For example, a valid configuration file for the object detector defined by the
+above metadata file is:
 
 ```json
 {
@@ -202,7 +202,7 @@ Even if you don't intend to develop using ETA, you must be familiar with the
 ETA supported data types.
 
 
-## Building Modules Using ETA
+## Building Modules using ETA
 
 ETA provides a core library that can be leveraged to easily define new
 analytics modules. This is the most common method for creating new modules.
@@ -385,7 +385,7 @@ we intend to instantiate shapes from configuration files.
 
 Along with these classes, a `ShapeConfig` class is defined that uses the
 `Configurable.parse` method to dynamically load the shape's type from the
-configuration file and then build it's config instance. The class also provides
+configuration file and then build its config instance. The class also provides
 a `build` method to instantiate the shape from its config. Finally, the
 `CircleConfig` class is provided to specify the semantics of a `Circle`
 configuration file.
