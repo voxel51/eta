@@ -310,3 +310,89 @@ point = Point.from_json(path)
 
 The `eta.core.serial.Serializable` class provides the `from_json` method, which
 internally calls `Point.from_dict` to parse the JSON data.
+
+
+#### Building objects from configuration files
+
+Often in ETA, one may want to define a class that can be initialized from a
+configuration file. Furthermore, one may have multiple classes that all derive
+from a common base class (e.g., different types of filters to apply to an
+image), and one wants to select and configure a particular type of filter from
+in a configuration file. The `eta.core.config.Configurable` class is provided
+to facilitate these use cases.
+
+Consider the following definitions:
+
+```python
+import math
+from eta.core.config import Config, Configurable
+
+class ShapeConfig(Config):
+    '''Parses a Shape config.'''
+
+    def __init__(self, d):
+        self.type = self.parse_string(d, "type")
+        self._shape, config_cls = Configurable.parse(__name__, self.type)
+        self.config = self.parse_object(d, "config", config_cls)
+
+    def build(self):
+        '''Builds the Shape instance specified by the config.'''
+        return self._shape(self.config)
+
+
+class Shape(Configurable):
+    '''Base class for shapes.'''
+
+    def area(self):
+        raise NotImplementedError("subclass must implement area()")
+
+
+class CirleConfig(Config):
+    '''Configuration settings for a circle.'''
+
+    def __init__(self, d):
+        self.radius = self.parse_number(d, "radius")
+
+
+class Circle(Shape):
+    '''Class representing a circle.'''
+
+    def __init__(self, config):
+        self.validate(config)
+        self.config = config
+
+    def area(self):
+        return math.pi * self.config.radius ** 2.0
+```
+
+The above code define a `Shape` base class and a `Circle` class that
+derives from it. Note that the `Shape` class derives from `Configurable`, since
+we intend to instantiate shapes from configuration files.
+
+Along with these classes, a `ShapeConfig` class is defined that uses the
+`Configurable.parse` method to dynamically load the shape's type from the
+configuration file and then build it's config instance. The class also provides
+a `build` method to instantiate the shape from it's config. Finally, the
+`CircleConfig` class is provided to specify the semantics of a `Circle`
+configuration file.
+
+We can use the above definitions to parse configuration files like this:
+
+```json
+{
+    "type": "Circle",
+    "config": {
+        "radius": 1.0
+    }
+}
+```
+
+To load the configuration file and build the shape, simply do:
+
+```python
+# Load Circle configured in JSON
+shape_config = ShapeConfig.from_json(path)
+circle = shape_config.build()
+
+area = circle.area()  # pi
+```
