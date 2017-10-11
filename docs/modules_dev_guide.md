@@ -4,6 +4,7 @@ This document describes best practices for contributing modules to ETA. See
 `core_dev_guide.md` for instructions on contributing to the core ETA
 infrastructure.
 
+
 ## What are ETA Modules?
 
 Modules are the workhorses of the ETA system. They perform the actual
@@ -195,7 +196,7 @@ provided in the metadata file).
 ## Building Standalone Modules
 
 Since ETA modules are just executables, they can be implemented in any language
-as long as they provide a valid metadata file and write their outputs in 
+as long as they provide a valid metadata file and write their outputs in
 ETA-supported formats.
 
 Even if you don't intend to develop using ETA, you must be familiar with the
