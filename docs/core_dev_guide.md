@@ -81,24 +81,25 @@ Here are some highlights of our Python style:
   Within each group, imports should be sorted alphabetically by full package
   path
 
-  ```python
-  import os
-  import sys
+```python
+import os
+import sys
 
-  import cv2
-  import numpy as np
+import cv2
+import numpy as np
 
-  from eta.core import utils
-  from eta.core.serial import Serializable
-  import eta.core.video as vd
-  ```
+from eta.core import utils
+from eta.core.serial import Serializable
+import eta.core.video as vd
+```
 
 - Names should follow the conventions
-  ```python
-  module_name, package_name, ClassName, method_name, ExceptionName,
-  function_name, GLOBAL_CONSTANT_NAME, global_var_name, instance_var_name,
-  function_parameter_name, local_var_name
-  ```
+
+```python
+module_name, package_name, ClassName, method_name, ExceptionName,
+function_name, GLOBAL_CONSTANT_NAME, global_var_name, instance_var_name,
+function_parameter_name, local_var_name
+```
 
 - Use `@todo` to mark todo items in the source
 
@@ -106,56 +107,58 @@ Here are some highlights of our Python style:
   `object`
 
 - Follow standard typographic rules for spaces around punctuation
-  ```python
-  # YES!
-  spam(ham[1], {eggs: 2}, [])
 
-  def complex(real, imag=0.0):
-      return magic(r=real, i=imag)
+```python
+# YES!
+spam(ham[1], {eggs: 2}, [])
 
-  foo = 1000  # comment
-  long_name = 2  # comment that should not be aligned
+def complex(real, imag=0.0):
+    return magic(r=real, i=imag)
 
-  dictionary = {
-      'foo': 1,
-      'long_name': 2,
-  }
-  ```
+foo = 1000  # comment
+long_name = 2  # comment that should not be aligned
 
-  ```python
-  # NO!
-  spam( ham[ 1 ], { eggs: 2 }, [ ] )
+dictionary = {
+    'foo': 1,
+    'long_name': 2,
+}
+```
 
-  def complex(real, imag = 0.0):
-      return magic(r = real, i = imag)
+```python
+# NO!
+spam( ham[ 1 ], { eggs: 2 }, [ ] )
 
-  foo       = 1000  # comment
-  long_name = 2     # comment that should not be aligned
+def complex(real, imag = 0.0):
+    return magic(r = real, i = imag)
 
-  dictionary = {
-      'foo'      : 1,
-      'long_name': 2,
-  }
-  ```
+foo       = 1000  # comment
+long_name = 2     # comment that should not be aligned
+
+dictionary = {
+    'foo'      : 1,
+    'long_name': 2,
+}
+```
 
 - All non-trivial public module/class methods should have docstrings describing
   their behavior, inputs, outputs, and exceptions (when appropriate)
-  ```python
-  def parse_object(d, key, cls, default=None):
-      '''Parses an object attribute.
 
-      Args:
-          d: a JSON dictionary
-          key: the key to parse
-          cls: the class of the d[key]
-          default: default value if key is not present
+```python
+def parse_object(d, key, cls, default=None):
+    '''Parses an object attribute.
 
-      Returns:
-          an instance of cls
+    Args:
+        d: a JSON dictionary
+        key: the key to parse
+        cls: the class of the d[key]
+        default: default value if key is not present
 
-      Raises:
-          ConfigError: if no default value was provided and the key was
-              not present in the dictionary.
-    '''
-    pass
-  ```
+    Returns:
+        an instance of cls
+
+    Raises:
+        ConfigError: if no default value was provided and the key was
+            not present in the dictionary.
+  '''
+  pass
+```
