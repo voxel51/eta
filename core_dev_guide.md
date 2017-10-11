@@ -30,19 +30,24 @@ will be
 
 ```shell
 git checkout -b <new_branch_name>
-# WORK WORK WORK
+# WORK
 pylint <changed_files>
 pep8 <changed_files>
 # ADDRESS LINT OUTPUT
 git status -s
 git add <changed_files>
 git commit -m "message describing your changes"
+# MORE WORK, LINTING, AND COMMITS
 # GITHUB PULL REQUEST
 # CODE CHAT AND DISCUSSION
-# MORE CHANGES MADE
+# MORE WORK, LINTING, AND COMMITS
 # PULL REQUEST APPROVED AND MERGED ON GITHUB
 git branch -d <new_branch_name>
 ```
+
+Note that it is best practice to commit *often* in small, logical chunks rather
+than combining multiple changes into a single commit.
+
 
 ## Style guide
 
