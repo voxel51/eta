@@ -31,11 +31,11 @@ vendor's cloud.
 
 ## Module metadata JSON files
 
-Every ETA module `my-module` must provide a metadata JSON file `my-module.json`
-describing the inputs and outputs of the module. The metadata file contains
-all the necessary information to generate configuration JSON files that are
-passed to a module during execution. Indeed, the ETA system automatically
-generates configuration files whenever it builds and executes pipelines.
+Every ETA module must provide a metadata JSON file describing the inputs and
+outputs of the module. The metadata file contains all the necessary information
+to generate configuration JSON files that are passed to a module during
+execution. Indeed, the ETA system automatically generates configuration files
+whenever it builds and executes pipelines.
 
 The precise syntax of the metadata files is still under development, but here
 is a mockup of the metadata file for a fictitious object detector:
@@ -122,7 +122,7 @@ Each spec has the fields:
 - `default`: an optional default value for the field. When the default field
     is specified, this field is optional in configuration files. When no
     default value is provided, this field is mandatory
-- `description`: a short fre-text description of the field
+- `description`: a short free-text description of the field
 
 
 ## Module configuration files
@@ -140,8 +140,8 @@ but the current format is:
         {<inputs2>, <outputs2>},
         ...
     ],
-    "param1": ...
-    "param2": ...
+    "param1": <val1>,
+    "param2": <val2>,
     ...
 }
 ```
@@ -153,7 +153,7 @@ execution, if desired. The remaining fields contain the parameters specified
 by the module's metadata file.
 
 For example, a valid configuration file for the fictitious object detector
-defined my the above metadata file is:
+defined by the above metadata file is:
 
 ```json
 {
@@ -347,7 +347,7 @@ class Shape(Configurable):
         raise NotImplementedError("subclass must implement area()")
 
 
-class CirleConfig(Config):
+class CircleConfig(Config):
     '''Configuration settings for a circle.'''
 
     def __init__(self, d):
@@ -372,7 +372,7 @@ we intend to instantiate shapes from configuration files.
 Along with these classes, a `ShapeConfig` class is defined that uses the
 `Configurable.parse` method to dynamically load the shape's type from the
 configuration file and then build it's config instance. The class also provides
-a `build` method to instantiate the shape from it's config. Finally, the
+a `build` method to instantiate the shape from its config. Finally, the
 `CircleConfig` class is provided to specify the semantics of a `Circle`
 configuration file.
 
