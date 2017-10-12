@@ -5,6 +5,7 @@ An open and extensible video analytics infrastructure.
 This project is supported by the [NIST Public Safety Innovation Accelerator
 Program](https://www.nist.gov/news-events/news/2017/06/nist-awards-385-million-accelerate-public-safety-communications).
 
+
 ## Installation
 
 Clone the repository
@@ -32,6 +33,7 @@ pip install -e .
 Now `import eta` will still work from anywhere, and any changes you make in
 your local copy of `eta/` will take effect immediately.
 
+
 ## Testing your installation
 
 To test your installation, run the following commands:
@@ -42,7 +44,23 @@ python samples/demo_images.py
 
 # Test video processing pipeline
 python eta/core/pipeline.py samples/demo_video/pipeline-config.json
+
+# Test image/video embedding
+#
+# NOTE: A 550MB VGG16 weights file will be downloaded from the web and stored
+#       in eta/cache/ the first time you run one of these!
+#
+cd samples/embed_vgg16
+# Example image embedding
+python embed_image.py
+# Example video embedding
+python embed_video.py
+# Example use of the embed_vgg16 module
+bash embed_vgg16_module.bash
+# Example pipeline
+bash embed_vgg16_pipeline.bash
 ```
+
 
 ## External dependencies
 
