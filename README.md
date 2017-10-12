@@ -63,6 +63,9 @@ bash install_externals.bash
 bash install_externals.bash 2.4.13.3
 ```
 
+After installation, ensure that the binaries installed by the above script
+are on your system `PATH` in your execution environment.
+
 ## Uninstallation
 
 ```shell
