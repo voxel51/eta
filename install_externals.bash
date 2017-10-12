@@ -18,16 +18,27 @@ EXTLOG="${CWD}/${EXTDIR}/install.log"
 EXTERR="${CWD}/${EXTDIR}/install.err"
 
 mkdir -p ${EXTDIR}
-cd ${EXTDIR}
-
 rm -rf ${EXTLOG}
 rm -rf ${EXTERR}
 
 OS=`uname -s`
 
-echo "*** INSTALLATION STARTED ***"
+
+# Print to STDOUT and EXTLOG
+log () {
+    printf "${1}\n"
+    printf "${1}\n" >> "${EXTLOG}"
+}
+
+
+log "***** INSTALLATION STARTED"
+
+log "Log file: ${EXTLOG}"
+log "Error file: ${EXTERR}"
+
 
 # GPU flag
+log "Checking system for GPU"
 if [ ${OS} == "Linux" ]
 then
     (lspci | grep -q "NVIDIA") >>${EXTLOG} 2>>${EXTERR} || exit 1
@@ -41,23 +52,29 @@ elif [ ${OS} == "Darwin" ]
 then
     GCARD=OFF
 fi
-echo "*** Checking System for GPU.  Setting GPU: ${GCARD}"
+log "Setting GCARD=${GCARD}"
 
+
+# Linux-specific items
 if [ ${OS} == "Linux" ]
 then
     sudo apt-get -y install build-essential >>${EXTLOG} 2>>${EXTERR} || exit 1
 fi
 
-# install python requirements first
-#  note that tensorflow is also a requirement, but it depends on the GPU.
-#  so, we check that explicitly
-pip install -r requirements.txt
 
+# Install python requirements
+log "Installing Python packages"
+pip install -r requirements.txt >>${EXTLOG} 2>>${EXTERR} || exit 1
+
+
+# Tensorflow is also a requirement, but it depends on the GPU, so we install
+# that explicitly
+log "Installing TensorFlow"
 if [ ${GCARD} == "ON" ]
 then
-    pip install tensorflow-gpu
+    pip install tensorflow-gpu >>${EXTLOG} 2>>${EXTERR} || exit 1
 else
-    pip install tensorflow
+    pip install tensorflow >>${EXTLOG} 2>>${EXTERR} || exit 1
 fi
 
 
@@ -65,9 +82,9 @@ fi
 (command -v ffmpeg) >>${EXTLOG} 2>>${EXTERR} || exit 1
 if [ $? -eq 0 ]
 then
-    echo "ffmpeg already installed"
+    log "ffmpeg already installed"
 else
-    echo "Installing ffmpeg"
+    log "Installing ffmpeg"
     if [ ${OS} == "Linux" ]
     then
         sudo apt-get -y install ffmpeg >>${EXTLOG} 2>>${EXTERR} || exit 1
@@ -82,9 +99,9 @@ fi
 (command -v convert) >>${EXTLOG} 2>>${EXTERR} || exit 1
 if [ $? -eq 0 ]
 then
-    echo "imagemagick already installed"
+    log "imagemagick already installed"
 else
-    echo "Installing imagemagick"
+    log "Installing imagemagick"
     if [ ${OS} == "Linux" ]
     then
         sudo apt-get -y install imagemagick >>${EXTLOG} 2>>${EXTERR} || exit 1
@@ -99,11 +116,12 @@ fi
 (pkg-config --cflags opencv) >>${EXTLOG} 2>>${EXTERR} || exit 1
 if [ $? -eq 0 ]
 then
-    echo "OpenCV already installed"
+    log "OpenCV already installed"
 else
-    echo "Installing OpenCV ${OPENCV_VERSION}"
+    log "Installing OpenCV ${OPENCV_VERSION}"
 
     # Download source
+    cd ${EXTDIR}
     wget -q https://github.com/opencv/opencv/archive/${OPENCV_VERSION}.zip
     unzip ${OPENCV_VERSION}.zip >>${EXTLOG} 2>>${EXTERR} || exit 1
     rm -rf ${OPENCV_VERSION}.zip
@@ -122,9 +140,8 @@ else
     make -j8 >>${EXTLOG} 2>>${EXTERR} || exit 1
     sudo make -j8 install >>${EXTLOG} 2>>${EXTERR} || exit 1
 
-    cd ../..
+    cd "${CWD}"
 fi
 
 
-cd "${CWD}"
-echo "*** INSTALLATION COMPLETE ***"
+log "***** INSTALLATION COMPLETE"
