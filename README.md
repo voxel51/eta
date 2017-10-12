@@ -39,25 +39,25 @@ your local copy of `eta/` will take effect immediately.
 To test your installation, run the following commands:
 
 ```shell
-# Test image manipulation
-python samples/demo_images.py
+# Example image manipulation
+python examples/demo_images.py
 
-# Test video processing pipeline
-python eta/core/pipeline.py samples/demo_video/pipeline-config.json
+# Example video processing pipeline
+python eta/core/pipeline.py examples/demo_video/pipeline-config.json
 
-# Test image/video embedding
+# Example image/video embedding
 #
 # NOTE: A 550MB VGG16 weights file will be downloaded from the web and stored
 #       in eta/cache/ the first time you run one of these!
 #
-cd samples/embed_vgg16
+cd examples/embed_vgg16
 # Example image embedding
 python embed_image.py
 # Example video embedding
 python embed_video.py
 # Example use of the embed_vgg16 module
 bash embed_vgg16_module.bash
-# Example pipeline
+# Example embedding pipeline
 bash embed_vgg16_pipeline.bash
 ```
 

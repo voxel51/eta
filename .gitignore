@@ -5,7 +5,7 @@
 *.egg-info/
 
 /external/
-/samples/out/
+/examples/out/
 # /eta/cache has no trailing '.' in case it is a sym-link to elsewhere
 #  and not a directory
 /eta/cache
