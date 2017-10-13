@@ -7,29 +7,45 @@ to ETA, which are more general and may even live outside of this codebase.
 
 ## Repository structure
 
-The `master` branch is the latest stable release of ETA. It is protected and
-cannot be directly pushed to.
+We use the [GitFlow branching model](
+https://datasift.github.io/gitflow/IntroducingGitFlow.html) for ETA.
+Thus our repositories have protected `master` and `develop` branches, a
+temporary *release branch* when we are ready to deploy a new release, and
+multiple unprotected *feature branches* for work on new features. You can read
+more about branching workflows in general [here](
+https://git-scm.com/book/en/v2/Git-Branching-Branching-Workflows).
+
+The `master` branch is the latest stable release of ETA. It is protected, and
+it is only merged from a release branch. Each merge corresponds to a new ETA
+release and is tagged with a version number. The one exception to this rule
+are *hotfix branches*, which are directly merged into `master` if an emergency
+bug fix is required.
 
 The `develop` branch is the bleeding edge (mostly) stable version of ETA. It
 is also protected and hence directly committing to it is not allowed.
-Instead, when a feature is ready to be integrated, we open a pull-request on
-develop, which initiates a code chat (we prefer "code chat" to "code review",
+Instead, when a feature is ready to be integrated, we open a pull request on
+`develop`, which initiates a code chat (we prefer "code chat" to "code review",
 since this should be a friendly endeavor!) where we discuss the changes and
-ultimately merge them into develop.
+ultimately merge them into `develop`.
 
-Other unprotected remote branches may be created as necessary for collaborative
-development on new features.
+A *release branch* is created from `develop` when we are ready to make a new
+release. Only bugfixes (not new features) are committed to a release branch.
+When the release is ready, the branch is merged into `master` (and back into
+`develop`) and then deleted. The release is done!
+
+*Feature branches* are where most of the development work is done. They are
+unprotected, collaborative spaces to develop new features. When a new feature
+is ready for deployment, a pull request is made to `develop`.
 
 
-## Git workflow
+## Development workflow
 
-Given our branch protection conventions, we typically use [Git branching
-workflows](https://git-scm.com/book/en/v2/Git-Branching-Branching-Workflows)
-for development work. Therefore, your typical workflow when contributing to ETA
-will be
+Your typical workflow when contributing a new feature to ETA will be:
 
 ```shell
-git checkout -b <new_branch_name>
+git checkout develop
+git checkout -b <new_feature_branch>
+git push -u origin <new_feature_branch>
 # WORK
 pylint <changed_files>
 pep8 <changed_files>
@@ -38,11 +54,11 @@ git status -s
 git add <changed_files>
 git commit -m "message describing your changes"
 # MORE WORK, LINTING, AND COMMITS
-# GITHUB PULL REQUEST
+# PULL REQUEST
 # CODE CHAT AND DISCUSSION
 # MORE WORK, LINTING, AND COMMITS
-# PULL REQUEST APPROVED AND MERGED ON GITHUB
-git branch -d <new_branch_name>
+# PULL REQUEST APPROVED AND MERGED
+git branch -d <new_feature_branch>
 ```
 
 Note that it is best practice to commit *often* in small, logical chunks rather
