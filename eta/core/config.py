@@ -20,15 +20,16 @@ class Configurable(object):
     class `MyClassConfig`.
     '''
 
-    def validate(self, config):
+    @classmethod
+    def validate(cls, config):
         '''Validate that the config instance is of the correct type.
 
         Raises:
             ConfigurableError: if config is not an instance of the Config
-                subclass for self
+                subclass for cls
         '''
         actual = config.__class__.__name__
-        expected = self.__class__.__name__ + "Config"
+        expected = cls.__name__ + "Config"
         if expected != actual:
             raise ConfigurableError(actual, expected)
 
