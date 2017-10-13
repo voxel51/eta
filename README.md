@@ -8,6 +8,8 @@ Program](https://www.nist.gov/news-events/news/2017/06/nist-awards-385-million-a
 
 ## Installation
 
+> ETA is currently built on Python 2.7.
+
 Clone the repository
 
 ```shell
