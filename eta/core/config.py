@@ -26,7 +26,7 @@ class Configurable(object):
 
         Raises:
             ConfigurableError: if config is not an instance of the Config
-                subclass for self
+                subclass for cls
         '''
         actual = config.__class__.__name__
         expected = cls.__name__ + "Config"
