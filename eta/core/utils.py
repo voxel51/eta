@@ -60,8 +60,8 @@ def copy_file(inpath, outpath):
 
 def random_key(n):
     '''Generates an n-len random key of lowercase characters and digits.'''
-    return ''.join(random.SystemRandom().choice( \
-            string.ascii_lowercase + string.digits) for _ in range(n))
+    return ''.join(random.SystemRandom().choice(
+        string.ascii_lowercase + string.digits) for _ in range(n))
 
 
 def read_json(path):
