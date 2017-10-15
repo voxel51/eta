@@ -10,7 +10,9 @@ Jason Corso, jjc@voxel51.com
 import hashlib
 import json
 import os
+import random
 import shutil
+import string
 import subprocess
 import tempfile
 
@@ -54,6 +56,12 @@ def copy_file(inpath, outpath):
     '''
     ensure_basedir(outpath)
     shutil.copy(inpath, outpath)
+
+
+def random_key(n):
+    '''Generates an n-len random key of lowercase characters and digits.'''
+    return ''.join(random.SystemRandom().choice( \
+            string.ascii_lowercase + string.digits) for _ in range(n))
 
 
 def read_json(path):
