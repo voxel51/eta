@@ -22,11 +22,17 @@ class Configurable(object):
 
     @classmethod
     def from_json(cls, json_path):
-        '''Encapsulates the common behavior of loading in the configuration from
-        a json file and then instantiating the class.
+        '''Encapsulates the common behavior of loading a configuration from a
+        JSON file and then instantiating the class.
+
+        Args:
+            json_path: path to a JSON config of type <cls>Config
+
+        Returns:
+            an instance of cls instantiated from the config
         '''
         cls_, config_cls = Configurable.parse(cls.__module__, cls.__name__)
-        assert cls == cls_
+        assert cls == cls_, "Expected %s, found %s" % (cls, cls_)
         config = config_cls.from_json(json_path)
         return cls(config)
 
