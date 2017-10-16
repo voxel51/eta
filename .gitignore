@@ -11,3 +11,7 @@
 /eta/cache
 
 /docs/*.tex
+
+# IDE Specific excludes
+.project
+.pydevproject
