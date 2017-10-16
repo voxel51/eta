@@ -21,6 +21,16 @@ class Configurable(object):
     '''
 
     @classmethod
+    def from_json(cls, json_path):
+        '''Encapsulates the common behavior of loading in the configuration from
+        a json file and then instantiating the class.
+        '''
+        cls_, config_cls = Configurable.parse(cls.__module__, cls.__name__)
+        assert cls == cls_
+        config = config_cls.from_json(json_path)
+        return cls(config)
+
+    @classmethod
     def validate(cls, config):
         '''Validate that the config instance is of the correct type.
 
@@ -212,4 +222,3 @@ class Config(Serializable):
 
 class ConfigError(Exception):
     pass
-
