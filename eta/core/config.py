@@ -16,8 +16,8 @@ from serial import Serializable
 class Configurable(object):
     '''Base class for classes that can be initialized with a Config instance.
 
-    Enforces the convention that configurable class `MyClass` has configuration
-    class `MyClassConfig`.
+    Enforces the convention that configurable class `Foo` has configuration
+    class `FooConfig`.
     '''
 
     @classmethod
@@ -41,8 +41,7 @@ class Configurable(object):
         '''Validate that the config instance is of the correct type.
 
         Raises:
-            ConfigurableError: if config is not an instance of the Config
-                subclass for cls
+            ConfigurableError: if config is not an instance of <cls>Config
         '''
         actual = config.__class__.__name__
         expected = cls.__name__ + "Config"
@@ -54,8 +53,10 @@ class Configurable(object):
         '''Parse a Configurable subclass name string.
 
         Args:
-            module_name: the parent module string (usually, __name__)
-            class_name: the class name string
+            module_name: a string. The name of the module (usually, __name__)
+                containing the Configurable subclass and its associated Config
+                subclass
+            class_name: a string. The name of the Configurable subclass
 
         Returns:
             cls: the Configurable subclass
