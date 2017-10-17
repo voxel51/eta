@@ -8,16 +8,39 @@ Program](https://www.nist.gov/news-events/news/2017/06/nist-awards-385-million-a
 
 ## Installation
 
-> ETA is currently built on Python 2.7.
-
-Clone the repository
+First, clone the repository
 
 ```shell
 git clone https://github.com/voxel51/eta
 cd eta/
 ```
 
-If you want to simply install the toolkit and use it, run
+The ETA package requires various Python packages, as well as
+[OpenCV](http://opencv.org),
+[ffmpeg](https://www.ffmpeg.org), and
+[ImageMagick](https://www.imagemagick.org/script/index.php).
+
+> ETA is built on Python 2.7.
+
+> ETA supports both `OpenCV 2.4` or later and `OpenCV 3.0` or later.
+
+To install the external dependencies, run the install script
+
+```shell
+# Install default OpenCV release (3.3.0)
+bash install_externals.bash
+
+# Install specific OpenCV release
+bash install_externals.bash 2.4.13.3
+```
+
+Depending on your Python environment, you may need to run the script as root:
+`sudo bash ...`.
+
+After installation, ensure that the binaries installed by the above script
+are on your system `PATH` in your execution environment.
+
+Next, if you want to simply install the toolkit and use it, run
 
 ```shell
 pip install .
@@ -63,31 +86,6 @@ bash embed_vgg16_module.bash
 bash embed_vgg16_pipeline.bash
 ```
 
-
-## External dependencies
-
-The ETA package requires various Python packages, as well as
-[OpenCV](http://opencv.org),
-[ffmpeg](https://www.ffmpeg.org), and
-[ImageMagick](https://www.imagemagick.org/script/index.php).
-
-Currently ETA supports both `OpenCV 2.4` or later and `OpenCV 3.0` or later.
-
-To install the external dependencies, run the install script
-
-```shell
-# Install default OpenCV release (3.3.0)
-bash install_externals.bash
-
-# Install specific OpenCV release
-bash install_externals.bash 2.4.13.3
-```
-
-Depending on the permissions of your Python installation, you may need to run
-the install script as root: `sudo bash ...`.
-
-After installation, ensure that the binaries installed by the above script
-are on your system `PATH` in your execution environment.
 
 ## Uninstallation
 
