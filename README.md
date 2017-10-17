@@ -22,7 +22,7 @@ The ETA package requires various Python packages, as well as
 
 > ETA is built on Python 2.7.
 
-> ETA supports both `OpenCV 2.4` or later and `OpenCV 3.0` or later.
+> ETA supports both OpenCV 2.4 or later and OpenCV 3.0 or later.
 
 To install the external dependencies, run the install script
 
