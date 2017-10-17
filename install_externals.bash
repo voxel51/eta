@@ -49,24 +49,16 @@ CRITICAL () {
 }
 
 
-# Print to STDOUT and EXTLOG
-log () {
-    printf "${1}\n"
-    printf "${1}\n" >> "${EXTLOG}"
-}
-
-
-log "***** INSTALLATION STARTED"
-
-log "Log file: ${EXTLOG}"
-log "Error file: ${EXTERR}"
+ECHO "***** INSTALLATION STARTED"
+ECHO "Log file: ${EXTLOG}"
+ECHO "Error file: ${EXTERR}"
 
 
 # GPU flag
-log "Checking system for GPU"
+ECHO "Checking system for GPU"
 if [ ${OS} == "Linux" ]
 then
-    (lspci | grep -q "NVIDIA") >>${EXTLOG} 2>>${EXTERR} || exit 1
+    CRITICAL lspci | grep -q "NVIDIA"
     if [ $? -eq 0 ]
     then
       GCARD=ON
@@ -77,96 +69,96 @@ elif [ ${OS} == "Darwin" ]
 then
     GCARD=OFF
 fi
-log "Setting GCARD=${GCARD}"
+ECHO "Setting GCARD=${GCARD}"
 
 
 # Linux-specific items
 if [ ${OS} == "Linux" ]
 then
-    sudo apt-get -y install build-essential >>${EXTLOG} 2>>${EXTERR} || exit 1
+    CRITICAL sudo apt-get -y install build-essential
 fi
 
 
 # Install python requirements
-log "Installing Python packages"
-pip install -r requirements.txt >>${EXTLOG} 2>>${EXTERR} || exit 1
+ECHO "Installing Python packages"
+CRITICAL pip install -r requirements.txt
 
 
 # Tensorflow is also a requirement, but it depends on the GPU, so we install
 # that explicitly
-log "Installing TensorFlow"
+ECHO "Installing TensorFlow"
 if [ ${GCARD} == "ON" ]
 then
-    pip install tensorflow-gpu >>${EXTLOG} 2>>${EXTERR} || exit 1
+    CRITICAL pip install tensorflow-gpu
 else
-    pip install tensorflow >>${EXTLOG} 2>>${EXTERR} || exit 1
+    CRITICAL pip install tensorflow
 fi
 
 
 # ffmpeg
-(command -v ffmpeg) >>${EXTLOG} 2>>${EXTERR} || exit 1
+INFO command -v ffmpeg
 if [ $? -eq 0 ]
 then
-    log "ffmpeg already installed"
+    ECHO "ffmpeg already installed"
 else
-    log "Installing ffmpeg"
+    ECHO "Installing ffmpeg"
     if [ ${OS} == "Linux" ]
     then
-        sudo apt-get -y install ffmpeg >>${EXTLOG} 2>>${EXTERR} || exit 1
+        CRITICAL sudo apt-get -y install ffmpeg
     elif [ ${OS} == "Darwin" ]
     then
-        brew install ffmpeg >>${EXTLOG} 2>>${EXTERR} || exit 1
+        CRITICAL brew install ffmpeg
     fi
 fi
 
 
 # imagemagick
-(command -v convert) >>${EXTLOG} 2>>${EXTERR} || exit 1
+INFO command -v convert
 if [ $? -eq 0 ]
 then
-    log "imagemagick already installed"
+    ECHO "imagemagick already installed"
 else
-    log "Installing imagemagick"
+    ECHO "Installing imagemagick"
     if [ ${OS} == "Linux" ]
     then
-        sudo apt-get -y install imagemagick >>${EXTLOG} 2>>${EXTERR} || exit 1
+        CRITICAL sudo apt-get -y install imagemagick
     elif [ ${OS} == "Darwin" ]
     then
-        brew install imagemagick >>${EXTLOG} 2>>${EXTERR} || exit 1
+        CRITICAL brew install imagemagick
     fi
 fi
 
 
 # OpenCV
-(pkg-config --cflags opencv) >>${EXTLOG} 2>>${EXTERR} || exit 1
+INFO pkg-config --cflags opencv
 if [ $? -eq 0 ]
 then
-    log "OpenCV already installed"
+    ECHO "OpenCV already installed"
 else
-    log "Installing OpenCV ${OPENCV_VERSION}"
+    ECHO "Installing OpenCV ${OPENCV_VERSION}"
 
     # Download source
     cd ${EXTDIR}
     wget -q https://github.com/opencv/opencv/archive/${OPENCV_VERSION}.zip
-    unzip ${OPENCV_VERSION}.zip >>${EXTLOG} 2>>${EXTERR} || exit 1
+    CRITICAL unzip ${OPENCV_VERSION}.zip
     rm -rf ${OPENCV_VERSION}.zip
     mkdir opencv-${OPENCV_VERSION}/release
     cd opencv-${OPENCV_VERSION}/release
 
     # Setup build
-    cmake \
+    CRITICAL cmake \
         -D CMAKE_BUILD_TYPE=RELEASE \
         -D CMAKE_INSTALL_PREFIX=/usr/local \
         -D BUILD_PYTHON_SUPPORT=ON \
         -D BUILD_EXAMPLES=ON \
-        -D WITH_CUDA=${GCARD} .. >>${EXTLOG} 2>>${EXTERR} || exit 1
+        -D WITH_CUDA=${GCARD} ..
 
     # Make + install
-    make -j8 >>${EXTLOG} 2>>${EXTERR} || exit 1
-    sudo make -j8 install >>${EXTLOG} 2>>${EXTERR} || exit 1
+    CRITICAL make -j8
+    CRITICAL sudo make -j8 install
 
     cd "${CWD}"
 fi
 
 
-log "***** INSTALLATION COMPLETE"
+ECHO "***** INSTALLATION COMPLETE"
