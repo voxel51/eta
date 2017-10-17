@@ -24,6 +24,31 @@ rm -rf ${EXTERR}
 OS=`uname -s`
 
 
+# Print message
+ECHO () {
+    printf "${1}\n"
+    printf "${1}\n" >> "${EXTLOG}"
+}
+
+
+# Run command and log stdout/stderr
+INFO () {
+    "$@" >>${EXTLOG} 2>>${EXTERR}
+}
+
+
+# Run command, log stdout/stderr, and exit upon error
+CRITICAL () {
+    INFO "$@"
+    if [ $? -ne 0 ]
+    then
+        ECHO "***** INSTALLATION FAILED WITH ERROR:"
+        cat ${EXTERR}
+        exit 1
+    fi
+}
+
+
 # Print to STDOUT and EXTLOG
 log () {
     printf "${1}\n"
