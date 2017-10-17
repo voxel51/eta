@@ -83,6 +83,9 @@ bash install_externals.bash
 bash install_externals.bash 2.4.13.3
 ```
 
+Depending on the permissions of your Python installation, you may need to run
+the install script as root: `sudo bash ...`.
+
 After installation, ensure that the binaries installed by the above script
 are on your system `PATH` in your execution environment.
 
