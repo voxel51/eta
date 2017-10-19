@@ -27,18 +27,19 @@ The ETA package requires various Python packages, as well as
 To install the external dependencies, run the install script
 
 ```shell
+# See install options
+bash install_externals.bash -h
+
 # Install default OpenCV release (3.3.0)
 bash install_externals.bash
 
 # Install specific OpenCV release
-bash install_externals.bash 2.4.13.3
+bash install_externals.bash -v 2.4.13.3
 ```
 
-Depending on your Python environment, you may need to run the script as root:
-`sudo bash ...`
-
-After installation, ensure that the binaries installed by the above script
-are on your system `PATH` in your execution environment.
+Depending on your Python environment, you may need to run the script with
+sudo privileges. Note that the install script supports flags that control
+things like (on macOS) whether `port` or `brew` is used to install packages.s
 
 Next, if you want to simply install the toolkit and use it, run
 
