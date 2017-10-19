@@ -65,6 +65,9 @@ your local copy of `eta/` will take effect immediately.
 To test your installation, run the following commands:
 
 ```shell
+# Download example data
+bash examples/download_data.bash
+
 # Example image manipulation
 python examples/demo_images.py
 
