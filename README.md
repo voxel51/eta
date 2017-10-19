@@ -114,7 +114,7 @@ or [Ubuntu](https://conda.io/docs/user-guide/install/linux.html))
 * Setup a Conda environment:
 `conda create --name etaenv python=2.7`
 * Activate the Conda environment: `source activate etaenv`
-* PRoceed with [ETA installation](#installation)
+* Proceed with [ETA installation](#installation)
 * Helpful utility functions:
   * Deactivate the environment: `[source] deactivate`
   * List packages: `conda list`
