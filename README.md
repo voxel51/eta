@@ -39,7 +39,7 @@ bash install_externals.bash -v 2.4.13.3
 
 Depending on your Python environment, you may need to run the script with
 sudo privileges. Note that the install script supports flags that control
-things like (on macOS) whether `port` or `brew` is used to install packages.s
+things like (on macOS) whether `port` or `brew` is used to install packages.
 
 Next, if you want to simply install the toolkit and use it, run
 
