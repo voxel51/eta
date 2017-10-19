@@ -89,24 +89,35 @@ bash embed_vgg16_module.bash
 # Example embedding pipeline
 bash embed_vgg16_pipeline.bash
 ```
-## Using virtual Environments or Conda 
 
-You can use virtualenv or conda to maintain a clean working environment, to install packages without sudo privileges, to experiment with repeated installation of python packages and 
-dependencies, or to maintain independent python working environments on the same machine.
+## Using virtual environments or Conda
 
-VirtualEnv:
-* Install virtualenv: `[sudo] pip install virtualenv`
-* Setup an environment: `mkdir etaenv; virtualenv [-p PYTHON_EXE] [--system-site-packages] etaenv`
-* Activate the virtual environment before install setup: `source etatest/bin/activate`
-* (proceed with dependency installation instructions above)
-* Utility functions: Deactivate: `[source] deactivate`, List packages: `virtualenv list`
+You can use [Virtualenv](https://virtualenv.pypa.io/en/stable) or [Conda](
+https://conda.io/docs) to maintain a separate Python working environment
+for ETA that operates independently of other packages and Python applications
+on your machine. Additionally, these environments allow for installing packages
+without sudo privileges.
+
+Virtualenv:
+* Install Virtualenv: `[sudo] pip install virtualenv`
+* Setup an environment:
+`mkdir etaenv; virtualenv [-p PYTHON_EXE] [--system-site-packages] etaenv`
+* Activate the virtual environment: `source etatest/bin/activate`
+* Proceed with [ETA installation](#Installation)
+* Helpful utility functions:
+  * Deactivate the environment: `[source] deactivate`
+  * List packages: `virtualenv list`
 
 Conda:
-* Install conda (platform specific): [MacOs](https://conda.io/docs/user-guide/install/macos.html) [Ubuntu](https://conda.io/docs/user-guide/install/linux.html)
-* Setup a conda environment: `conda create --name etaenv python=2.7`
-* Activate the conda environment before install setup: `source activate etaenv`
-* (proceed with installation instructions above)
-* Utility functions: Deactivate `[source] deactivate`, List packages: `conda list`
+* Install Conda ([macOS](https://conda.io/docs/user-guide/install/macos.html)
+or [Ubuntu](https://conda.io/docs/user-guide/install/linux.html))
+* Setup a Conda environment:
+`conda create --name etaenv python=2.7`
+* Activate the Conda environment: `source activate etaenv`
+* PRoceed with [ETA installation](#Installation)
+* Helpful utility functions:
+  * Deactivate the environment: `[source] deactivate`
+  * List packages: `conda list`
 
 
 ## Uninstallation
