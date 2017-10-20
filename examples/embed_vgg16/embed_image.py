@@ -46,7 +46,7 @@ def embed_image(impath):
     print "image embedded to vector of length %d" % len(embedded_vector)
     print embedded_vector
 
-    outpath = _abspath("../out/result_embed_image.npz")
+    outpath = _abspath("out/result_embed_image.npz")
     utils.ensure_basedir(outpath)
     np.savez_compressed(outpath, v=embedded_vector)
     print "result saved to:", outpath

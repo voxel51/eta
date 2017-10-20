@@ -12,3 +12,4 @@ Jason Corso, jjc@voxel51.com
 - `embed_vgg16_module.bash`: a bash-script to run just the module
 - `embed_vgg16_pipeine-config.json`: an example config for a one-step pipeline with the embedding module that is provided in eta.
 - `embed_vgg16_pipeline.bash`: a bash-script to run just the pipeline
+- `clean.bash`: a bash-script that removes the computed files (in their default locations)
