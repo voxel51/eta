@@ -36,6 +36,8 @@ def embed_video(config):
     vf.frame_preprocessor = crop
     vf.featurize(frames="1-12")
 
+    print("features stored in %s" % (config.video_featurizer.backing_path))
+
 
 def _abspath(path):
     return os.path.realpath(os.path.join(os.path.dirname(__file__), path))
@@ -48,3 +50,4 @@ if __name__ == '__main__':
         config_path = _abspath("embed_video-config.json")
 
     embed_video(VGG16FeaturizerConfig.from_json(config_path))
+

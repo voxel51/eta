@@ -6,7 +6,7 @@
     ],
     "video_featurizer":
         {
-            "backing_path": "/tmp/eta-backing",
+            "backing_path": "out/eta-backing",
             "video_path": "../data/water-20frames/%05d.png"
         }
 }
