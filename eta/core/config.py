@@ -10,7 +10,7 @@ import numbers
 import sys
 import types
 
-from serial import Serializable
+from eta.core.serial import Serializable
 
 
 class Configurable(object):
@@ -197,7 +197,7 @@ class Config(Serializable):
             ConfigError: if no default value was provided and the key was
                 not present in the dictionary.
         '''
-        return Config._parse_key(d, key, numbers.Number,  default=default)
+        return Config._parse_key(d, key, numbers.Number, default=default)
 
     @staticmethod
     def parse_bool(d, key, default=no_default):
@@ -219,7 +219,7 @@ class Config(Serializable):
 
     @staticmethod
     def _parse_key(d, key, t, default=no_default):
-        if (key in d and isinstance(d[key], t)):
+        if key in d and isinstance(d[key], t):
             return d[key]
         elif default is not no_default:
             return default
