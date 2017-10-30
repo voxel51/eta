@@ -6,9 +6,8 @@ voxel51.com
 
 Brian Moore, brian@voxel51.com
 '''
-from geometry import BoundingBox, RelativePoint
-import image
-from serial import Serializable
+from eta.core.geometry import BoundingBox
+from eta.core.serial import Serializable
 
 
 class Frame(Serializable):
@@ -89,4 +88,3 @@ class DetectedObject(Serializable):
             d["confidence"],
             BoundingBox.from_dict(d["bounding_box"]),
         )
-
