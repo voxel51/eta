@@ -8,9 +8,9 @@ Brian Moore, brian@voxel51.com
 '''
 import sys
 
-from config import Config
-import job
-import utils
+from eta.core.config import Config
+from eta.core import job
+from eta.core import utils
 
 
 def run(pipeline_config):
@@ -22,7 +22,7 @@ def run(pipeline_config):
     with utils.WorkingDir(pipeline_config.working_dir):
         for job_config in pipeline_config.jobs:
             if ran_job and not overwrite:
-                print "A config change was detected, running all remaining jobs"
+                print "Config change detected, running all remaining jobs"
                 overwrite = True
 
             ran_job = job.run(job_config, overwrite=overwrite)
