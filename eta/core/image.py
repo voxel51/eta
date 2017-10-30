@@ -6,14 +6,15 @@ voxel51.com
 
 Brian Moore, brian@voxel51.com
 '''
+import errno
 import os
 from subprocess import Popen, PIPE
 
 import cv2
 import numpy as np
 
-import utils
-import web
+from eta.core import utils
+from eta.core import web
 
 
 def read(path, flag=cv2.IMREAD_UNCHANGED):
@@ -55,7 +56,7 @@ def download(url, flag=cv2.IMREAD_UNCHANGED):
     return decode(web.download_file(url), flag=flag)
 
 
-def decode(bytes, flag=cv2.IMREAD_UNCHANGED):
+def decode(b, flag=cv2.IMREAD_UNCHANGED):
     '''Decodes an image from raw bytes.
 
     Args:
@@ -67,7 +68,7 @@ def decode(bytes, flag=cv2.IMREAD_UNCHANGED):
     Returns:
         A uint8 numpy array containing the image
     '''
-    vec = np.asarray(bytearray(bytes), dtype="uint8")
+    vec = np.asarray(bytearray(b), dtype="uint8")
     return cv2.imdecode(vec, flag)
 
 
@@ -229,8 +230,8 @@ class Convert(object):
 
         Raises:
             ExecutableNotFoundError: if the convert binary cannot be found
-            ExecutableRuntimeError: if the convert binary raises an error during
-                execution
+            ExecutableRuntimeError: if the convert binary raises an error
+                during execution
         '''
         self._args = (
             [self._executable] +
@@ -278,7 +279,8 @@ class Length(object):
         else:
             raise TypeError(
                 "Expected '<float>%%' or '<int>px', received '%s'" %
-                    str(length_str))
+                str(length_str)
+            )
 
     def render(self, frame_size=None, shape=None, img=None):
         '''Returns the length in pixels for the given frame size/shape/img.
@@ -302,8 +304,7 @@ class Length(object):
 
         if self.relunits:
             return int(round(self.rellength * shape[self.dim]))
-        else:
-            return self.length
+        return self.length
 
 
 class LengthError(Exception):
@@ -344,10 +345,10 @@ class Location(object):
     '''Represents a location in an image.'''
 
     # Valid loc strings
-    TOP_LEFT  = ["top-left", "tl"]
+    TOP_LEFT = ["top-left", "tl"]
     TOP_RIGHT = ["top-right", "tr"]
     BOTTOM_RIGHT = ["bottom-right", "br"]
-    BOTTOM_LEFT  = ["bottom-left", "bl"]
+    BOTTOM_LEFT = ["bottom-left", "bl"]
 
     def __init__(self, loc):
         '''Constructs a Location object.
@@ -409,4 +410,3 @@ def rgb_to_bgr(img):
 def bgr_to_rgb(img):
     '''Converts a BGR image to an RGB image.'''
     return rgb_to_bgr(img)  # this operation is symmetric
-
