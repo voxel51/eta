@@ -10,15 +10,16 @@ Copyright 2017, Voxel51, LLC
 voxel51.com
 
 Jason Corso, jjc@voxel51.com
+Brian Moore, brian@voxel51.com
 '''
 import os
 
 import numpy as np
 
-from config import Config, Configurable
+from eta.core.config import Config, Configurable
 from eta import constants
-import utils
-import web
+from eta.core import utils
+from eta.core import web
 
 
 class WeightsConfig(Config):
