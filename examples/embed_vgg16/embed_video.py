@@ -17,13 +17,6 @@ import sys
 from eta.core.vgg16 import VGG16FeaturizerConfig, VGG16Featurizer
 
 
-def crop(img):
-    '''A quick function to show the use of frame_preprocessor in
-    VideoFeaturizer.
-    '''
-    return img[10:100, 10:100, :]
-
-
 def embed_video(config):
     '''Embeds each frame of the video using the VGG16-net. Uses the default
     weights specified in the default ETA config. Stores the embedded vector as
@@ -32,8 +25,11 @@ def embed_video(config):
     Args:
         config: a VGG16FeaturizerConfig instance
     '''
+    def _crop(img):
+        return img[10:100, 10:100, :]
+
     vf = VGG16Featurizer(config)
-    vf.frame_preprocessor = crop
+    vf.frame_preprocessor = _crop
     vf.featurize(frames="1-12")
 
     print("features stored in %s" % (config.video_featurizer.backing_path))
