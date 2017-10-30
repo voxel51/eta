@@ -9,7 +9,7 @@ Brian Moore, brian@voxel51.com
 import collections
 import types
 
-import utils
+import eta.core.utils as ut
 
 
 class Serializable(object):
@@ -57,10 +57,11 @@ class Serializable(object):
     def from_json(cls, json_path):
         '''Constructs a Serializable object from a JSON file.
 
-        Subclasses may override this method, but, by default, this method simply
-        reads the JSON and calls from_dict(), which subclasses must implement.
+        Subclasses may override this method, but, by default, this method
+        simply reads the JSON and calls from_dict(), which subclasses must
+        implement.
         '''
-        return cls.from_dict(utils.read_json(json_path))
+        return cls.from_dict(ut.read_json(json_path))
 
 
 def is_serializable(obj):
@@ -75,6 +76,4 @@ def _recurse(v):
         return [_recurse(vi) for vi in v]
     elif is_serializable(v):
         return v.serialize()
-    else:
-        return v
-
+    return v
