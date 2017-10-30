@@ -10,16 +10,15 @@ import errno
 import json
 import os
 from subprocess import Popen, PIPE
-import sys
 import threading
 
 import cv2
 import numpy as np
 
-from config import Config
-import image as im
-from numutils import GrowableArray
-import utils
+from eta.core.config import Config
+import eta.core.image as im
+from eta.core.numutils import GrowableArray
+from eta.core import utils
 
 
 def get_stream_info(inpath):
@@ -55,7 +54,8 @@ def get_encoding_str(inpath, use_ffmpeg=True):
         use_ffmpeg: whether to use ffmpeg (True) or OpenCV (False)
     '''
     r = FFmpegVideoReader(inpath) if use_ffmpeg else OpenCVVideoReader(inpath)
-    with r: return r.encoding_str
+    with r:
+        return r.encoding_str
 
 
 def get_frame_rate(inpath, use_ffmpeg=True):
@@ -66,7 +66,8 @@ def get_frame_rate(inpath, use_ffmpeg=True):
         use_ffmpeg: whether to use ffmpeg (True) or OpenCV (False)
     '''
     r = FFmpegVideoReader(inpath) if use_ffmpeg else OpenCVVideoReader(inpath)
-    with r: return r.frame_rate
+    with r:
+        return r.frame_rate
 
 
 def get_frame_size(inpath, use_ffmpeg=True):
@@ -77,7 +78,8 @@ def get_frame_size(inpath, use_ffmpeg=True):
         use_ffmpeg: whether to use ffmpeg (True) or OpenCV (False)
     '''
     r = FFmpegVideoReader(inpath) if use_ffmpeg else OpenCVVideoReader(inpath)
-    with r: return r.frame_size
+    with r:
+        return r.frame_size
 
 
 # @todo: don't use FFmpeg here until we figure out how to handle directories
@@ -90,7 +92,8 @@ def get_frame_count(inpath, use_ffmpeg=False):
         use_ffmpeg: whether to use ffmpeg (True) or OpenCV (False)
     '''
     r = FFmpegVideoReader(inpath) if use_ffmpeg else OpenCVVideoReader(inpath)
-    with r: return r.total_frame_count
+    with r:
+        return r.total_frame_count
 
 
 class VideoProcessor(object):
@@ -125,8 +128,8 @@ class VideoProcessor(object):
             frames: a string specifying the range(s) of frames to process.
                 Passed directly to a VideoReader
 
-            in_use_ffmpeg: whether to use FFmpegVideoReader to read input videos
-                rather than OpenCVVideoReader
+            in_use_ffmpeg: whether to use FFmpegVideoReader to read input
+                videos rather than OpenCVVideoReader
 
             out_use_ffmpeg: whether to use FFmpegVideoWriter to write output
                 videos rather than OpenCVVideoWriter
@@ -137,9 +140,9 @@ class VideoProcessor(object):
                 None or "", no images are written
 
             out_vidpath: a path like "/path/to/video/%05d-%05d.mp4" with two
-                placeholders that specifies where to save output videos for each
-                frame range when the write() method is called. When out_vidpath
-                is None or "", no videos are written
+                placeholders that specifies where to save output videos for
+                each frame range when the write() method is called. When
+                out_vidpath is None or "", no videos are written
 
             out_fps: a frame rate for the output video, if any. If the input
                 source is a video and fps is None, the same frame rate is used
@@ -147,8 +150,9 @@ class VideoProcessor(object):
             out_size: the frame size for the output video, if any. If out_size
                 is None, the input frame size is assumed
 
-            out_opts: a list of output video options for ffmpeg. Passed directly
-                to FFmpegVideoWriter. Only applicable when out_use_ffmpeg = True
+            out_opts: a list of output video options for ffmpeg. Passed
+                directly to FFmpegVideoWriter. Only applicable when
+                out_use_ffmpeg = True
 
         Raises:
             VideoProcessorError: if insufficient options are supplied to
@@ -174,9 +178,9 @@ class VideoProcessor(object):
             self.out_fps = self._reader.frame_rate
         else:
             raise VideoProcessorError((
-                    "The inferred frame rate '%s' cannot be used. You must " +
-                    "manually specify a frame rate"
-                ) % str(self._reader.frame_rate))
+                "The inferred frame rate '%s' cannot be used. You must " +
+                "manually specify a frame rate"
+            ) % str(self._reader.frame_rate))
         self.out_size = out_size if out_size else self._reader.frame_size
         self.out_opts = out_opts
 
@@ -471,7 +475,8 @@ class OpenCVVideoReader(VideoReader):
                 cv2.VideoCapture.
 
             frames: a string like "1-5,10-15" specifying the range(s) of frames
-                in the input video to read. Set frames = "*" to read all frames.
+                in the input video to read. Set frames = "*" to read all
+                frames.
 
         Raises:
             VideoReaderError: if the input video could not be opened.
@@ -553,9 +558,6 @@ class OpenCVVideoReader(VideoReader):
 class VideoWriter(object):
     '''Base class for writing videos.'''
 
-    def __init__(self):
-        pass
-
     def __enter__(self):
         return self
 
@@ -585,12 +587,13 @@ class FFmpegVideoWriter(VideoWriter):
         '''Constructs a VideoWriter with ffmpeg backend.
 
         Args:
-            outpath: the output video path, e.g., "/path/to/video.mp4". Existing
-                files are overwritten, and the directory is created if needed
+            outpath: the output video path, e.g., "/path/to/video.mp4".
+                Existing files are overwritten, and the directory is created
+                if needed
             fps: the frame rate
             size: the (width, height) of each frame
-            out_opts: A list of output options for ffmpeg. If not specified, the
-                DEFAULT_OUT_OPTS list is used
+            out_opts: A list of output options for ffmpeg. If not specified,
+                the DEFAULT_OUT_OPTS list is used
         '''
         self.outpath = outpath
         self.fps = fps
@@ -632,8 +635,9 @@ class OpenCVVideoWriter(VideoWriter):
         '''Constructs a VideoWriter with OpenCV backend.
 
         Args:
-            outpath: the output video path, e.g., "/path/to/video.mp4". Existing
-                files are overwritten, and the directory is created if needed
+            outpath: the output video path, e.g., "/path/to/video.mp4".
+                Existing files are overwritten, and the directory is created
+                if needed
             fps: the frame rate
             size: the (width, height) of each frame
 
@@ -660,7 +664,7 @@ class OpenCVVideoWriter(VideoWriter):
 
     def close(self):
         '''Closes the video writer.'''
-        #self._writer.release()  # warns to use a separate thread
+        # self._writer.release()  # warns to use a separate thread
         threading.Thread(target=self._writer.release, args=()).start()
 
 
@@ -708,8 +712,8 @@ class FFprobe(object):
 
         Raises:
             ExecutableNotFoundError: if the ffprobe binary cannot be found
-            ExecutableRuntimeError: if the ffprobe binary raises an error during
-                execution
+            ExecutableRuntimeError: if the ffprobe binary raises an error
+                during execution
         '''
         self._args = (
             [self._executable] +
@@ -879,7 +883,8 @@ class FFmpegVideoResizer(FFmpeg):
 
         Args:
             size: the output (width, height) of each frame. At most one
-                dimension can be -1, in which case the aspect ratio is preserved
+                dimension can be -1, in which case the aspect ratio is
+                preserved
             scale: a positive number by which to scale the input video
                 (e.g., 0.5 or 2)
             scale_str: a string that directly specifies a valid ffmpeg scale=
@@ -978,11 +983,11 @@ class VideoFeaturizer(object):
         super(SubClass, self).__init__(config)
 
         Member self.frame_preprocessor is a "function pointer" that takes in a
-        frame and returns a preprocessed frame.  It is by default None and hence
-        not call. You could, of course, chain together two video featurizers
-        (once the class handles general output types) instead of this
-        preprocessor function.  But, this is included her for speed (and it's
-        what I needed initially).
+        frame and returns a preprocessed frame.  It is by default None and
+        hence not call. You could, of course, chain together two video
+        featurizers (once the class handles general output types) instead of
+        this preprocessor function.  But, this is included her for speed (and
+        it's what I needed initially).
         '''
 
         self._frame_string = "%08d.npz"
@@ -1014,14 +1019,15 @@ class VideoFeaturizer(object):
         ''' Checks the backing store to determine whether or not the frame
         number is already featurized and stored to disk.
         '''
-        return os.path.isfile(self.featurized_frame_path)
+        return os.path.isfile(self.featurized_frame_path(frame_number))
 
     def retrieve_featurized_frame(self, frame_number):
         '''The frame_number here is rendered into a string for the filepath.
         So, if it is not available as part of the video, then it will be an
         error.
 
-        No checking is explicitly done here. Careful about starting from 0 or 1.
+        No checking is explicitly done here. Careful about starting from
+        0 or 1.
         '''
         p = self.featurized_frame_path(frame_number)
 
@@ -1053,8 +1059,7 @@ class VideoFeaturizer(object):
 
                 try:
                     v = self.retrieve_featurized_frame(p.frame_number)
-                except FeaturizedFrameNotFoundError as e:
-
+                except FeaturizedFrameNotFoundError:
                     if not has_started:
                         has_started = True
                         self.featurize_start()
@@ -1078,7 +1083,7 @@ class VideoFeaturizer(object):
     def featurized_frame_path(self, frame_number):
         '''Returns the backing path for the given frame number.'''
         return os.path.join(
-            self.config.backing_path,self._frame_string % frame_number)
+            self.config.backing_path, self._frame_string % frame_number)
 
     def featurize_frame(self, frame):
         '''The actual featurization. Should return a numpy vector.'''
@@ -1116,7 +1121,7 @@ class VideoFeaturizer(object):
 
                 try:
                     self.retrieve_featurized_frame(p.frame_number)
-                except FeaturizedFrameNotFoundError as e:
+                except FeaturizedFrameNotFoundError:
                     # The frame is not yet cached, so compute it.
                     if self._frame_preprocessor is not None:
                         v = self.featurize_frame(self._frame_preprocessor(img))
@@ -1141,24 +1146,24 @@ class VideoFeaturizer(object):
 class FOURCC(object):
     '''Class reprsesenting a FOURCC code.'''
 
-    def __init__(self, i=None, s=None):
+    def __init__(self, _i=None, _s=None):
         '''Don't call this directly!'''
-        if i:
-            self.int = i
-            self.str = FOURCC.int_to_str(i)
-        elif s:
-            self.int = FOURCC.str_to_int(s)
-            self.str = s
+        if _i:
+            self.int = _i
+            self.str = FOURCC.int_to_str(_i)
+        elif _s:
+            self.int = FOURCC.str_to_int(_s)
+            self.str = _s
 
     @classmethod
     def from_str(cls, s):
         '''Construct a FOURCC instance from a string.'''
-        return cls(s=s)
+        return cls(_s=s)
 
     @classmethod
     def from_int(cls, i):
         '''Construct a FOURCC instance from an integer.'''
-        return cls(i=i)
+        return cls(_i=i)
 
     @staticmethod
     def str_to_int(s):
@@ -1168,8 +1173,8 @@ class FOURCC(object):
     @staticmethod
     def int_to_str(i):
         '''Convert the FOURCC int to a string.'''
-        return chr((i & 0x000000FF) >>  0) + \
-               chr((i & 0x0000FF00) >>  8) + \
+        return chr((i & 0x000000FF) >> 0) + \
+               chr((i & 0x0000FF00) >> 8) + \
                chr((i & 0x00FF0000) >> 16) + \
                chr((i & 0xFF000000) >> 24)
 
@@ -1216,8 +1221,7 @@ class FrameRanges(object):
         '''The current frame number, or -1 if no frames have been read.'''
         if self._started:
             return self._ranges[self._idx].idx
-        else:
-            return -1
+        return -1
 
     @property
     def frame_range(self):
@@ -1226,16 +1230,14 @@ class FrameRanges(object):
         '''
         if self._started:
             return self._ranges[self._idx].first, self._ranges[self._idx].last
-        else:
-            return -1, -1
+        return -1, -1
 
     @property
     def is_new_frame_range(self):
         '''Whether the current frame is the first in a new range.'''
         if self._started:
             return self._ranges[self._idx].is_first_frame
-        else:
-            return False
+        return False
 
     def to_list(self):
         '''Return a list of frames in the frame ranges.'''
@@ -1306,4 +1308,3 @@ class FrameRange(object):
         '''Constructs a FrameRange object from a string like "1-5".'''
         v = map(int, frames.split('-'))
         return cls(v[0], v[-1])
-
