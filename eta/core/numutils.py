@@ -17,11 +17,13 @@ class GrowableArray(object):
         self.rowlen = rowlen
 
     def update(self, row):
+        '''Add row to array.'''
         assert len(row) == self.rowlen, "Expected row length %d" % self.rowlen
         for r in row:
             self.data.append(r)
 
     def finalize(self):
+        '''Return numpy array.'''
         return np.reshape(
             self.data,
             newshape=(len(self.data) / self.rowlen, self.rowlen),
