@@ -22,7 +22,7 @@ pylint <file>
 
 ## Customizing pylint
 
-Edit `~/.pylintrc` and by setting the following values:
+Edit `~/.pylintrc` and set the following values:
 
 ```
 max-line-length=79
