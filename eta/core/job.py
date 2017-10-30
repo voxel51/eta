@@ -10,8 +10,8 @@ import os
 import subprocess
 import sys
 
-from config import Config
-import utils
+from eta.core.config import Config
+from eta.core import utils
 
 
 def run(job_config, overwrite=True):
@@ -55,6 +55,7 @@ def run(job_config, overwrite=True):
             print "Skipping job '%s'" % job_config.name
             return False
 
+
 def _run(job_config):
     if job_config.binary:
         # Run binary
@@ -92,7 +93,8 @@ class JobConfig(Config):
     def __init__(self, d):
         self.name = self.parse_string(d, "name", default="")
         self.working_dir = self.parse_string(d, "working_dir", default=".")
-        self.interpreter = self.parse_string(d, "interpreter", default="python")
+        self.interpreter = self.parse_string(
+            d, "interpreter", default="python")
         self.script = self.parse_string(d, "script", default=None)
         self.binary = self.parse_string(d, "binary", default=None)
         self.custom = self.parse_array(d, "custom", default=None)
