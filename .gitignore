@@ -1,18 +1,18 @@
 .DS_Store
+
 *.md5
+
 *.pyc
+__pycache__
 
-*.egg-info/
+*.egg-info
 
-/external/
-/examples/data/
-/examples/out/
-# /eta/cache has no trailing '.' in case it is a sym-link to elsewhere
-#  and not a directory
-/eta/cache
+.project
+.pydevproject
 
 /docs/*.tex
 
-# IDE Specific excludes
-.project
-.pydevproject
+/external
+/examples/data
+/examples/out
+/eta/cache
