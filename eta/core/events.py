@@ -11,13 +11,11 @@ voxel51.com
 Brian Moore, brian@voxel51.com
 '''
 import collections
-import sys
 
 import numpy as np
 
-from config import Config, Configurable
-from serial import Serializable
-import utils
+from eta.core.config import Config, Configurable
+from eta.core.serial import Serializable
 
 
 class Event(Serializable):
@@ -71,8 +69,9 @@ class EventDetection(Serializable):
         detections.
 
         Args:
-            bools: an optional list (or 1D numpy array) of per-frame detections.
-                The values can be any type convertable to boolean via bool()
+            bools: an optional list (or 1D numpy array) of per-frame
+                detections. The values can be any type convertable to boolean
+                via bool()
         '''
         if bools is None:
             bools = []
@@ -161,4 +160,3 @@ class HysteresisFilter(Filter):
                 in_event = (vi.mean() >= self.config.start_density)
             filt[idx] = in_event
         return EventDetection(bools=filt)
-
