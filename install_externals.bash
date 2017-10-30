@@ -1,6 +1,9 @@
 #!/bin/bash
 # Install external dependencies
 #
+# @todo add ability to install OpenCV in a virtual environment. Currently it
+# is installed globally
+#
 # Copyright 2017, Voxel51, LLC
 # voxel51.com
 #
@@ -172,6 +175,8 @@ fi
 
 
 # OpenCV
+# @todo use `python -c "import cv2"` to check for OpenCV installation in the
+# current python environment?
 INFO pkg-config --cflags opencv
 if [ $? -eq 0 ]; then
     MSG "OpenCV already installed"
