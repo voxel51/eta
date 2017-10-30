@@ -8,4 +8,3 @@ scipy==0.19.1
 setuptools==36.5.0
 simplejson==3.8.1
 six==1.10.0
-subprocess32==3.2.7
