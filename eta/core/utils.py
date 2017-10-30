@@ -18,7 +18,7 @@ import tempfile
 
 import numpy as np
 
-import serial
+import eta.core.serial as se
 
 
 def run_cmd(args):
@@ -31,8 +31,8 @@ def run_cmd(args):
 
 
 def ensure_path(path):
-    '''Ensures that the given path is ready for writing by deleting any existing
-    file and ensuring that the base directory exists.
+    '''Ensures that the given path is ready for writing by deleting any
+    existing file and ensuring that the base directory exists.
     '''
     if os.path.isfile(path):
         os.remove(path)
@@ -78,7 +78,7 @@ def write_json(obj, path):
             an instance of a subclass of serial.Serializable
         path: the output path
     '''
-    if serial.is_serializable(obj):
+    if se.is_serializable(obj):
         obj = obj.serialize()
     ensure_basedir(path)
     with open(path, "w") as f:
@@ -147,27 +147,31 @@ class MD5FileHasher(FileHasher):
 class TempDir(object):
     '''Context manager that creates and destroys a temporary directory.'''
 
+    def __init__(self):
+        self._name = None
+
     def __enter__(self):
-        self.name = tempfile.mkdtemp()
-        return self.name
+        self._name = tempfile.mkdtemp()
+        return self._name
 
     def __exit__(self, *args):
-        shutil.rmtree(self.name)
+        shutil.rmtree(self._name)
 
 
 class WorkingDir(object):
     '''Context manager that temporarily changes working directories.'''
 
     def __init__(self, working_dir):
-        self.working_dir = working_dir
+        self._orig_dir = None
+        self._working_dir = working_dir
 
     def __enter__(self):
-        self.orig_dir = os.getcwd()
-        os.chdir(self.working_dir)
+        self._orig_dir = os.getcwd()
+        os.chdir(self._working_dir)
         return self
 
     def __exit__(self, *args):
-        os.chdir(self.orig_dir)
+        os.chdir(self._orig_dir)
 
 
 class JSONNumpyEncoder(json.JSONEncoder):
@@ -180,8 +184,7 @@ class JSONNumpyEncoder(json.JSONEncoder):
             return float(obj)
         elif isinstance(obj, np.ndarray):
             return obj.tolist()
-        else:
-            return super(JSONNumpyEncoder, self).default(obj)
+        return super(JSONNumpyEncoder, self).default(obj)
 
 
 class ExecutableNotFoundError(Exception):
