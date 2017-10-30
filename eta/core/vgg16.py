@@ -29,11 +29,11 @@ import os
 import numpy as np
 import tensorflow as tf
 
-from config import Config
+from eta.core.config import Config
 from eta import constants
-import video as vd
-from weights import Weights, WeightsConfig
-import image as im
+import eta.core.video as vd
+from eta.core.weights import Weights, WeightsConfig
+import eta.core.image as im
 
 
 DEFAULT_CONFIG_PATH = os.path.join(constants.CONFIGS_DIR, 'vgg16-config.json')
