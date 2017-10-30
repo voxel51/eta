@@ -12,7 +12,6 @@ import sys
 from eta.core.config import Config
 import eta.core.events as ev
 import eta.core.video as vd
-import eta.core.image as im
 
 
 def sample_video_by_fps(data_config):
