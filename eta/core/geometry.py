@@ -6,8 +6,8 @@ voxel51.com
 
 Brian Moore, brian@voxel51.com
 '''
-import image
-from serial import Serializable
+import eta.core.image as im
+from eta.core.serial import Serializable
 
 
 class BoundingBox(Serializable):
@@ -26,7 +26,7 @@ class BoundingBox(Serializable):
         '''Returns the coordinates of the bounding box in the specified image.
 
         Args:
-            **kwargs: a valid argument for image.to_frame_size()
+            **kwargs: a valid argument for im.to_frame_size()
 
         Returns:
             box: a (top-left-x, top-left-y, width, height) tuple describing the
@@ -79,12 +79,12 @@ class RelativePoint(Serializable):
         specified image.
 
         Args:
-            **kwargs: a valid argument for image.to_frame_size()
+            **kwargs: a valid argument for im.to_frame_size()
 
         Returns:
             (x, y): the absolute x, y coordinates of this point
         '''
-        w, h = image.to_frame_size(**kwargs)
+        w, h = im.to_frame_size(**kwargs)
         return int(w * 1.0 * self.x), int(h * 1.0 * self.y)
 
     @classmethod
@@ -92,9 +92,9 @@ class RelativePoint(Serializable):
         '''Constructs a RelativePoint from absolute (x, y) pixel coordinates.
 
         Args:
-            **kwargs: a valid argument for image.to_frame_size()
+            **kwargs: a valid argument for im.to_frame_size()
         '''
-        w, h = image.to_frame_size(**kwargs)
+        w, h = im.to_frame_size(**kwargs)
         x /= 1.0 * w
         y /= 1.0 * h
         return cls(x, y)
@@ -133,4 +133,3 @@ def make_square(x, y, w, h):
 
     dy = min(0, w - dx - ws)
     return pad(x, dx + dy, w), pad(y, dy, h)
-
