@@ -1,6 +1,9 @@
 #!/bin/bash
 # Install external dependencies
 #
+# @todo Installing OpenCV 2 in a virtual environment doesn't seem to work. The
+#       cv2.so file can't find the dylibs, even though they exist...
+#
 # Copyright 2017, Voxel51, LLC
 # voxel51.com
 #
