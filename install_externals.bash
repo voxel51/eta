@@ -57,9 +57,9 @@ EXTDIR=external
 EXTLOG="${CWD}/${EXTDIR}/install.log"
 EXTERR="${CWD}/${EXTDIR}/install.err"
 
-mkdir -p ${EXTDIR}
-rm -rf ${EXTLOG}
-rm -rf ${EXTERR}
+mkdir -p "${EXTDIR}"
+rm -rf "${EXTLOG}"
+rm -rf "${EXTERR}"
 
 OS=$(uname -s)
 
@@ -68,13 +68,13 @@ set -o pipefail
 
 # Run command and print stdout/stderr to terminal and (separate) logs
 INFO () {
-    ("$@" | tee -a ${EXTLOG}) 3>&1 1>&2 2>&3 | tee -a ${EXTERR}
+    ("$@" | tee -a "${EXTLOG}") 3>&1 1>&2 2>&3 | tee -a "${EXTERR}"
 }
 
 
 # Print message and log to stderr log
 WARN () {
-    printf "***** WARNING: ${1}\n" 2>&1 | tee -a ${EXTERR}
+    printf "***** WARNING: ${1}\n" 2>&1 | tee -a "${EXTERR}"
 }
 
 
@@ -107,14 +107,14 @@ MSG "INSTALLATION STARTED"
 
 # GPU flag
 MSG "Checking system for GPU"
-if [ ${OS} == "Linux" ]; then
+if [ "${OS}" == "Linux" ]; then
     CRITICAL lspci | grep -q "NVIDIA"
     if [ $? -eq 0 ]; then
         GCARD=ON
     else
         GCARD=OFF
     fi
-elif [ ${OS} == "Darwin" ]; then
+elif [ "${OS}" == "Darwin" ]; then
     GCARD=OFF
 fi
 MSG "Setting GCARD=${GCARD}"
@@ -122,10 +122,10 @@ MSG "Setting GCARD=${GCARD}"
 
 # Update package managers
 if [ ${UPDATE_PACKAGES} = true ]; then
-    if [ ${OS} == "Linux" ]; then
+    if [ "${OS}" == "Linux" ]; then
         MSG "Installing build-essential"
         CRITICAL sudo apt-get -y install build-essential
-    elif [ ${OS} == "Darwin" ]; then
+    elif [ "${OS}" == "Darwin" ]; then
         if [ ${USE_MACPORTS} = true ]; then
             MSG "Updating MacPorts"
             CRITICAL sudo port selfupdate
@@ -145,7 +145,7 @@ CRITICAL pip install -r requirements.txt
 # Tensorflow is also a requirement, but it depends on the GPU, so we install
 # that explicitly
 MSG "Installing TensorFlow"
-if [ ${GCARD} == "ON" ]; then
+if [ "${GCARD}" == "ON" ]; then
     CRITICAL pip install tensorflow-gpu
 else
     CRITICAL pip install tensorflow
@@ -158,9 +158,9 @@ if [ $? -eq 0 ]; then
     MSG "ffmpeg already installed"
 else
     MSG "Installing ffmpeg"
-    if [ ${OS} == "Linux" ]; then
+    if [ "${OS}" == "Linux" ]; then
         CRITICAL sudo apt-get -y install ffmpeg
-    elif [ ${OS} == "Darwin" ]; then
+    elif [ "${OS}" == "Darwin" ]; then
         if [ ${USE_MACPORTS} = true ]; then
             CRITICAL sudo port install ffmpeg
         else
@@ -176,9 +176,9 @@ if [ $? -eq 0 ]; then
     MSG "imagemagick already installed"
 else
     MSG "Installing imagemagick"
-    if [ ${OS} == "Linux" ]; then
+    if [ "${OS}" == "Linux" ]; then
         CRITICAL sudo apt-get -y install imagemagick
-    elif [ ${OS} == "Darwin" ]; then
+    elif [ "${OS}" == "Darwin" ]; then
         if [ ${USE_MACPORTS} = true ]; then
             CRITICAL sudo port install imagemagick
         else
@@ -209,25 +209,25 @@ else
     MSG "Installing OpenCV ${OPENCV_VERSION}"
 
     # Download source
-    if [ ! -z "$VIRTUAL_ENV" ]; then
+    if [ ! -z "${VIRTUAL_ENV}" ]; then
         # Write source to virtual environment directory
         cd "${VIRTUAL_ENV}"
     else
         # Write source to eta/externals directory
         cd "${EXTDIR}"
     fi
-    wget -q https://github.com/opencv/opencv/archive/${OPENCV_VERSION}.zip
-    CRITICAL unzip ${OPENCV_VERSION}.zip
-    rm -rf ${OPENCV_VERSION}.zip
-    mkdir opencv-${OPENCV_VERSION}/release
-    cd opencv-${OPENCV_VERSION}/release
+    wget -q "https://github.com/opencv/opencv/archive/${OPENCV_VERSION}.zip"
+    CRITICAL unzip "${OPENCV_VERSION}.zip"
+    rm -rf "${OPENCV_VERSION}.zip"
+    mkdir "opencv-${OPENCV_VERSION}/release"
+    cd "opencv-${OPENCV_VERSION}/release"
 
     # Setup build
-    if [ ! -z "$VIRTUAL_ENV" ]; then
+    if [ ! -z "${VIRTUAL_ENV}" ]; then
         # Install in a virtual environment
         # This function is needed because Python 2/3 have slightly different
         # naming conventions for these folders...
-        pydir() { ls -d "$1/python"* | head -1; }
+        pydir() { ls -d "${1}/python"* | head -1; }
         PYTHON_EXECUTABLE="${VIRTUAL_ENV}/bin/python"
         PYTHON_INCLUDE_DIR="$(pydir "${VIRTUAL_ENV}/include")"
         PYTHON_LIBRARY="$(pydir "${VIRTUAL_ENV}/lib")"
