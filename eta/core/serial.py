@@ -29,7 +29,7 @@ def write_json(obj, path):
             an instance of a subclass of serial.Serializable
         path: the output path
     '''
-    if se.is_serializable(obj):
+    if is_serializable(obj):
         obj = obj.serialize()
     ut.ensure_basedir(path)
     with open(path, "w") as f:
