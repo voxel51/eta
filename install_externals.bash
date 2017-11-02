@@ -1,9 +1,6 @@
 #!/bin/bash
 # Install external dependencies
 #
-# @todo add ability to install OpenCV in a virtual environment. Currently it
-# is installed globally
-#
 # Copyright 2017, Voxel51, LLC
 # voxel51.com
 #
@@ -13,36 +10,48 @@
 
 # Show usage information
 usage() {
-    echo "Usage:  bash $0 [-h] [-bp] [-u] [-v <opencv-version>]
+    echo "Usage:  bash $0 [-h] [-e dir] [-v ver] [-u] [-bp]
 
-Options:
-     -h    Display this help message.
-     -b    Use brew to install packages (mac only). The default is false.
-     -p    Use port to install packages (mac only). The default is true.
-     -u    Update package manager before installing. The default is false.
-     -v    A specific OpenCV version to install. The default is 3.3.0."
+Getting help:
+-h      Display this help message.
+
+OpenCV options:
+-e dir  Install OpenCV in the virtual environment defined in the given
+        directory. By default, OpenCV is installed globally in /usr/local.
+-v ver  A specific OpenCV version to install. The default is 3.3.0.
+
+Package manager options:
+-u      Update package manager before installing. The default is false.
+
+Mac-only options:
+-b      Use brew to install packages (mac only). The default is false.
+-p      Use port to install packages (mac only). The default is true.
+"
 }
 
 
 # Parse flags
 SHOW_HELP=false
+VIRTUAL_ENV=""
+GLOBAL_ENV="/usr/local"
+OPENCV_VERSION="3.3.0"
 USE_MACPORTS=true
 UPDATE_PACKAGES=false
-OPENCV_VERSION=3.3.0
-while getopts "hbpuv:" FLAG; do
+while getopts "he:v:ubp" FLAG; do
     case "${FLAG}" in
         h) SHOW_HELP=true ;;
+        e) VIRTUAL_ENV="${OPTARG}" ;;
+        v) OPENCV_VERSION="${OPTARG}" ;;
+        u) UPDATE_PACKAGES=true ;;
         b) USE_MACPORTS=false ;;
         p) USE_MACPORTS=true ;;
-        u) UPDATE_PACKAGES=true ;;
-        v) OPENCV_VERSION="${OPTARG}" ;;
         *) usage ;;
     esac
 done
 [ ${SHOW_HELP} = true ] && usage && exit 0
 
 
-CWD=`pwd`
+CWD=$(pwd)
 
 EXTDIR=external
 EXTLOG="${CWD}/${EXTDIR}/install.log"
@@ -52,19 +61,24 @@ mkdir -p ${EXTDIR}
 rm -rf ${EXTLOG}
 rm -rf ${EXTERR}
 
-OS=`uname -s`
+OS=$(uname -s)
 
 set -o pipefail
 
 
 # Run command and print stdout/stderr to terminal and (separate) logs
 INFO () {
-    #"$@" >>${EXTLOG} 2>>${EXTERR}
     ("$@" | tee -a ${EXTLOG}) 3>&1 1>&2 2>&3 | tee -a ${EXTERR}
 }
 
 
-# Print message
+# Print message and log to stderr log
+WARN () {
+    printf "***** WARNING: ${1}\n" 2>&1 | tee -a ${EXTERR}
+}
+
+
+# Print message and log to stdout log
 MSG () {
     INFO printf "***** ${1}\n"
 }
@@ -175,16 +189,33 @@ fi
 
 
 # OpenCV
-# @todo use `python -c "import cv2"` to check for OpenCV installation in the
-# current python environment?
-INFO pkg-config --cflags opencv
+if [ ! -z "${VIRTUAL_ENV}" ]; then
+    # Check for existing installation in virtual environment
+    PKG_CONFIG_PATH="${VIRTUAL_ENV}/lib/pkgconfig"
+else
+    # Check for existing global installation
+    PKG_CONFIG_PATH="${GLOBAL_ENV}/lib/pkgconfig"
+fi
+CURR_VER=$(pkg-config --modversion opencv)
 if [ $? -eq 0 ]; then
-    MSG "OpenCV already installed"
+    MSG "OpenCV ${CURR_VER} already installed"
+
+    if [ "${CURR_VER}" != "${OPENCV_VERSION}" ]; then
+        WARN "Found OpenCV ${CURR_VER}, but you requested ${OPENCV_VERSION}"
+        WARN "To uninstall ${OPENCV_VERSION}, navigate to the directory where"
+        WARN "OpenCV was built and run \"sudo make uninstall\""
+    fi
 else
     MSG "Installing OpenCV ${OPENCV_VERSION}"
 
     # Download source
-    cd ${EXTDIR}
+    if [ ! -z "$VIRTUAL_ENV" ]; then
+        # Write source to virtual environment directory
+        cd "${VIRTUAL_ENV}"
+    else
+        # Write source to eta/externals directory
+        cd "${EXTDIR}"
+    fi
     wget -q https://github.com/opencv/opencv/archive/${OPENCV_VERSION}.zip
     CRITICAL unzip ${OPENCV_VERSION}.zip
     rm -rf ${OPENCV_VERSION}.zip
@@ -192,16 +223,39 @@ else
     cd opencv-${OPENCV_VERSION}/release
 
     # Setup build
-    CRITICAL cmake \
-        -D CMAKE_BUILD_TYPE=RELEASE \
-        -D CMAKE_INSTALL_PREFIX=/usr/local \
-        -D BUILD_PYTHON_SUPPORT=ON \
-        -D BUILD_EXAMPLES=ON \
-        -D WITH_CUDA=${GCARD} ..
+    if [ ! -z "$VIRTUAL_ENV" ]; then
+        # Install in a virtual environment
+        # This function is needed because Python 2/3 have slightly different
+        # naming conventions for these folders...
+        pydir() { ls -d "$1/python"* | head -1; }
+        PYTHON_EXECUTABLE="${VIRTUAL_ENV}/bin/python"
+        PYTHON_INCLUDE_DIR="$(pydir "${VIRTUAL_ENV}/include")"
+        PYTHON_LIBRARY="$(pydir "${VIRTUAL_ENV}/lib")"
+        PYTHON_PACKAGES_PATH="$(pydir "${VIRTUAL_ENV}/lib")/site-packages"
 
-    # Make + install
-    CRITICAL make -j8
-    CRITICAL sudo make -j8 install
+        CRITICAL cmake \
+            -D CMAKE_BUILD_TYPE=RELEASE \
+            -D CMAKE_INSTALL_PREFIX="${VIRTUAL_ENV}" \
+            -D PYTHON_EXECUTABLE="${PYTHON_EXECUTABLE}" \
+            -D PYTHON_INCLUDE_DIR="${PYTHON_INCLUDE_DIR}" \
+            -D PYTHON_LIBRARY="${PYTHON_LIBRARY}" \
+            -D PYTHON_PACKAGES_PATH="${PYTHON_PACKAGES_PATH}" \
+            -D BUILD_PYTHON_SUPPORT=ON \
+            -D WITH_CUDA="${GCARD}" ..
+
+        CRITICAL make -j8
+        CRITICAL make -j8 install
+    else
+        # Install globally
+        CRITICAL cmake \
+            -D CMAKE_BUILD_TYPE=RELEASE \
+            -D CMAKE_INSTALL_PREFIX="${GLOBAL_ENV}" \
+            -D BUILD_PYTHON_SUPPORT=ON \
+            -D WITH_CUDA="${GCARD}" ..
+
+        CRITICAL make -j8
+        CRITICAL sudo make -j8 install
+    fi
 
     cd "${CWD}"
 fi
