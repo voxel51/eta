@@ -127,59 +127,61 @@ pip freeze
 ```
 
 
-## Installing OpenCV
+## Manually installing OpenCV
 
-Use one of the following methods to install OpenCV in your virtual environment.
+You can use the `-e` flag of the `install_externals.bash` script to install
+OpenCV in a virtual environment. However, we also provide two options here for
+manually installing OpenCV in a virtual environment.
 
-### Install a fresh copy of OpenCV
+### Install a fresh copy of OpenCV in a virtual environment
 
 > This is the preferred method.
 
-Follow these instructions to install a fresh copy of OpenCV that is accessible
-only from the virtual environment.
+Follow these instructions to install a fresh copy of OpenCV in a virtual
+environment.
 
 * Configure the installation by setting the following environment variables
-to their appropriate values:
+to their appropriate values. For example:
 
 ```shell
 # eta2
 VIRTUAL_ENV="${ENV_DIR}/eta2"
-PYTHON_EXECUTABLE="${VIRTUAL_ENV}/bin/python"
-PYTHON_INCLUDE_DIR="${VIRTUAL_ENV}/include/python2.7"
-PYTHON_LIBRARY="${VIRTUAL_ENV}/lib/python2.7"
-PYTHON_PACKAGES_PATH="${VIRTUAL_ENV}/lib/python2.7/site-packages"
-OPENCV_VERSION=2.4.13.3  # modify this
-WITH_CUDA=OFF  # modify this
+OPENCV_VERSION=2.4.13.3
+WITH_CUDA=OFF
 ```
 
 ```shell
 # eta3
 VIRTUAL_ENV="${ENV_DIR}/eta3"
-PYTHON_EXECUTABLE="${VIRTUAL_ENV}/bin/python"
-PYTHON_INCLUDE_DIR="${VIRTUAL_ENV}/include/python3.6m"
-PYTHON_LIBRARY="${VIRTUAL_ENV}/lib/python3.6"
-PYTHON_PACKAGES_PATH="${VIRTUAL_ENV}/lib/python3.6/site-packages"
-OPENCV_VERSION=3.3.0  # modify this
-WITH_CUDA=OFF  # modify this
+OPENCV_VERSION=3.3.0
+WITH_CUDA=OFF
 ```
 
-* Navigate to the virtual environment directory:
+* Download the OpenCV source:
 
 ```shell
+# Navigate to virtual environment directory
 cd "${VIRTUAL_ENV}"
-```
 
-* Install OpenCV from source
-
-```
 # Download source
 wget -q https://github.com/opencv/opencv/archive/${OPENCV_VERSION}.zip
 unzip ${OPENCV_VERSION}.zip
 rm -rf ${OPENCV_VERSION}.zip
+```
 
+* Install OpenCV from source:
+
+```shell
 # Make release directory
 mkdir opencv-${OPENCV_VERSION}/release
 cd opencv-${OPENCV_VERSION}/release
+
+# Compute python-related paths
+pydir() { ls -d "$1/python"* | head -1; }
+PYTHON_EXECUTABLE="${VIRTUAL_ENV}/bin/python"
+PYTHON_INCLUDE_DIR="$(pydir "${VIRTUAL_ENV}/include")"
+PYTHON_LIBRARY="$(pydir "${VIRTUAL_ENV}/lib")"
+PYTHON_PACKAGES_PATH="$(pydir "${VIRTUAL_ENV}/lib")/site-packages"
 
 # Setup build
 cmake \
@@ -190,17 +192,13 @@ cmake \
     -D PYTHON_LIBRARY="${PYTHON_LIBRARY}" \
     -D PYTHON_PACKAGES_PATH="${PYTHON_PACKAGES_PATH}" \
     -D BUILD_PYTHON_SUPPORT=ON \
-    -D INSTALL_PYTHON_EXAMPLES=ON \
-    -D BUILD_EXAMPLES=ON \
-    -D WITH_CUDA=${WITH_CUDA} ..
+    -D WITH_CUDA="${WITH_CUDA}" ..
 
 # Install
 make -j8
 make -j8 install
 
-# Delete source (to save disk space)
 cd ../..
-rm -rf opencv-${OPENCV_VERSION}
 ```
 
 
@@ -208,8 +206,8 @@ rm -rf opencv-${OPENCV_VERSION}
 
 > This is a bit of a hack, but it seems to work.
 
-You can symlink an existing global OpenCV installation into your virtual
-environment. For example:
+You can symlink an existing globally-installed OpenCV distribution on your
+machine into a virtual environment. For example:
 
 ```shell
 # eta2
