@@ -216,7 +216,9 @@ else
         # Write source to eta/externals directory
         cd "${EXTDIR}"
     fi
-    wget -q "https://github.com/opencv/opencv/archive/${OPENCV_VERSION}.zip"
+    URL="https://github.com/opencv/opencv/archive/${OPENCV_VERSION}.zip"
+    MSG "Downloading OpenCV source from ${URL}"
+    CRITICAL wget -nv "${URL}"
     CRITICAL unzip "${OPENCV_VERSION}.zip"
     rm -rf "${OPENCV_VERSION}.zip"
     mkdir "opencv-${OPENCV_VERSION}/release"
