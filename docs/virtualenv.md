@@ -92,16 +92,19 @@ which pip
 pip freeze
 ```
 
-* Proceed with standasrd ETA installation:
+* Proceed with standard ETA installation:
 
-```bash
+```shell
 cd /path/to/eta  # modify this
-bash install_externals.bash
+
+# Install externel dependencies in virtual environment
+VIRTUAL_ENV="${ENV_DIR}/eta2"
+OPENCV_VERSION=3.3.0
+bash install_externals.bash -e "${VIRTUAL_ENV}" -v "${OPENCV_VERSION}"
+
+# Install ETA
 pip install -e .
 ```
-
-* Install OpenCV in your virtual environment via one of
-[these methods](#installing-opencv).
 
 * See what packages were installed in your virtual environment:
 
