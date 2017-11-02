@@ -54,9 +54,9 @@ activating and deactivating the environments:
 ```bash
 # Python environments
 export ENV_DIR="/path/to/env"  # modify this
-function eta2 { source "${ENV_DIR}/eta2/bin/activate"; }
-function eta3 { source "${ENV_DIR}/eta3/bin/activate"; }
-function exit {
+eta2() { source "${ENV_DIR}/eta2/bin/activate"; }
+eta3() { source "${ENV_DIR}/eta3/bin/activate"; }
+exit() {
     case `command -v python` in
         ${ENV_DIR}/*) deactivate;;
         *) builtin exit;;
@@ -215,7 +215,9 @@ GLOBAL="/usr/local/lib/python2.7/site-packages"
 VIRTUAL="${ENV_DIR}/eta2/lib/python2.7/site-packages"
 ln -s "${GLOBAL}/cv.py" "${VIRTUAL}/cv.py"
 ln -s "${GLOBAL}/cv2.so" "${VIRTUAL}/cv2.so"
+```
 
+```shell
 # eta3
 GLOBAL="/usr/local/lib/python3.6/site-packages"
 VIRTUAL="${ENV_DIR}/eta3/lib/python3.6/site-packages"
