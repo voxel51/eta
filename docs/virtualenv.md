@@ -223,6 +223,23 @@ ln -s "${GLOBAL}/cv2.cpython-36m-darwin.so" "${VIRTUAL}/cv2.so"
 ```
 
 
+## Uninstalling OpenCV
+
+Follow these instructions to uninstall OpenCV.
+
+* Navigate to the directory from which `cmake` was run to install OpenCV:
+
+```shell
+cd "${VIRTUAL_ENV}/opencv-${OPENCV_VERSION}/release"
+```
+
+* Run the uninstaller:
+
+```shell
+sudo make uninstall
+```
+
+
 ## More resources
 
 `virtualenv` user guide:
