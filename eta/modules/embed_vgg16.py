@@ -13,7 +13,7 @@ import argparse
 import tensorflow as tf
 
 from eta.core.config import Config
-import eta.core.utils as ut
+import eta.core.serial as se
 import eta.core.video as vd
 import eta.core.vgg16 as vgg
 
@@ -85,7 +85,7 @@ def featurize_driver(config):
     necessary. This could somehow reuse the vgg network instance for each
     featurizer.
     '''
-    d = ut.read_json(args.config)
+    d = se.read_json(args.config)
     config = EmbedVGG16Config(d)
 
     for avfc in config.video_featurizers:

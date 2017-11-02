@@ -8,17 +8,12 @@ Brian Moore, brian@voxel51.com
 Jason Corso, jjc@voxel51.com
 '''
 import hashlib
-import json
 import os
 import random
 import shutil
 import string
 import subprocess
 import tempfile
-
-import numpy as np
-
-import eta.core.serial as se
 
 
 def run_cmd(args):
@@ -62,27 +57,6 @@ def random_key(n):
     '''Generates an n-len random key of lowercase characters and digits.'''
     return ''.join(random.SystemRandom().choice(
         string.ascii_lowercase + string.digits) for _ in range(n))
-
-
-def read_json(path):
-    '''Reads JSON from file.'''
-    with open(path) as f:
-        return json.load(f)
-
-
-def write_json(obj, path):
-    '''Writes JSON object to file, creating the output directory if necessary.
-
-    Args:
-        obj: is either an object that can be directly dumped to a JSON file or
-            an instance of a subclass of serial.Serializable
-        path: the output path
-    '''
-    if se.is_serializable(obj):
-        obj = obj.serialize()
-    ensure_basedir(path)
-    with open(path, "w") as f:
-        json.dump(obj, f, indent=4, cls=JSONNumpyEncoder)
 
 
 class FileHasher(object):
@@ -172,19 +146,6 @@ class WorkingDir(object):
 
     def __exit__(self, *args):
         os.chdir(self._orig_dir)
-
-
-class JSONNumpyEncoder(json.JSONEncoder):
-    '''Extends basic JSONEncoder to handle numpy scalars/arrays.'''
-
-    def default(self, obj):
-        if isinstance(obj, np.integer):
-            return int(obj)
-        elif isinstance(obj, np.floating):
-            return float(obj)
-        elif isinstance(obj, np.ndarray):
-            return obj.tolist()
-        return super(JSONNumpyEncoder, self).default(obj)
 
 
 class ExecutableNotFoundError(Exception):

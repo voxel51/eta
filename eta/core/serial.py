@@ -7,9 +7,33 @@ voxel51.com
 Brian Moore, brian@voxel51.com
 '''
 import collections
+import json
 import types
 
+import numpy as np
+
 import eta.core.utils as ut
+
+
+def read_json(path):
+    '''Reads JSON from file.'''
+    with open(path) as f:
+        return json.load(f)
+
+
+def write_json(obj, path):
+    '''Writes JSON object to file, creating the output directory if necessary.
+
+    Args:
+        obj: is either an object that can be directly dumped to a JSON file or
+            an instance of a subclass of serial.Serializable
+        path: the output path
+    '''
+    if se.is_serializable(obj):
+        obj = obj.serialize()
+    ut.ensure_basedir(path)
+    with open(path, "w") as f:
+        json.dump(obj, f, indent=4, cls=JSONNumpyEncoder)
 
 
 class Serializable(object):
@@ -61,7 +85,7 @@ class Serializable(object):
         simply reads the JSON and calls from_dict(), which subclasses must
         implement.
         '''
-        return cls.from_dict(ut.read_json(json_path))
+        return cls.from_dict(read_json(json_path))
 
 
 def is_serializable(obj):
@@ -77,3 +101,16 @@ def _recurse(v):
     elif is_serializable(v):
         return v.serialize()
     return v
+
+
+class JSONNumpyEncoder(json.JSONEncoder):
+    '''Extends basic JSONEncoder to handle numpy scalars/arrays.'''
+
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return super(JSONNumpyEncoder, self).default(obj)
