@@ -62,7 +62,7 @@ renamed, remove the following lines from the post-`futurize`-ed module:
 
 ```
 from future import standard_library
-+standard_library.install_aliases()
+standard_library.install_aliases()
 ```
 
 This code looks ugly at the top of a module!
@@ -71,8 +71,8 @@ This code looks ugly at the top of a module!
 ## Python 2/3 compatible idioms
 
 See [these compatible idioms](
-http://python-future.org/compatible_idioms.html#compatible-idioms) for
-explanation
+http://python-future.org/compatible_idioms.html#compatible-idioms) for more
+details, but here are the basic idioms to follow:
 
 #### Essentials
 
@@ -134,8 +134,7 @@ for key, value in iteritems(heights):
 # for key, value in heights.items():  # Python 2/3
 ```
 
-
-#### Iterables
+#### Objects
 
 ```python
 from builtins import object
