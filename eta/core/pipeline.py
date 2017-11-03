@@ -6,6 +6,12 @@ voxel51.com
 
 Brian Moore, brian@voxel51.com
 '''
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+from builtins import *
+
 import sys
 
 from eta.core.config import Config
@@ -15,19 +21,19 @@ from eta.core import utils
 
 def run(pipeline_config):
     '''Run the pipeline specified by the PipelineConfig.'''
-    print "Starting pipeline '%s'" % pipeline_config.name
+    print("Starting pipeline '%s'" % pipeline_config.name)
 
     overwrite = pipeline_config.overwrite
     ran_job = False
     with utils.WorkingDir(pipeline_config.working_dir):
         for job_config in pipeline_config.jobs:
             if ran_job and not overwrite:
-                print "Config change detected, running all remaining jobs"
+                print("Config change detected, running all remaining jobs")
                 overwrite = True
 
             ran_job = job.run(job_config, overwrite=overwrite)
 
-    print "Pipeline '%s' complete" % pipeline_config.name
+    print("Pipeline '%s' complete" % pipeline_config.name)
 
 
 class PipelineConfig(Config):
