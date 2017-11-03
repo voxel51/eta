@@ -24,6 +24,12 @@ voxel51.com
 Jason Corso, jjc@voxel51.com
 Brian Moore, brian@voxel51.com
 '''
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+from builtins import *
+
 import os
 
 import numpy as np
@@ -420,7 +426,7 @@ class VGG16(object):
     def _load_weights(self, weights_config, sess):
         weights = Weights(weights_config)
         for i, k in enumerate(sorted(weights)):
-            print i, k, np.shape(weights[k])
+            print(i, k, np.shape(weights[k]))
             sess.run(self.parameters[i].assign(weights[k]))
 
 
