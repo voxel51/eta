@@ -6,9 +6,14 @@ voxel51.com
 
 Brian Moore, brian@voxel51.com
 '''
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+from builtins import *
+
 import numbers
 import sys
-import types
 
 from eta.core.serial import Serializable
 
@@ -142,7 +147,7 @@ class Config(Serializable):
             ConfigError: if no default value was provided and the key was
                 not present in the dictionary.
         '''
-        objects = Config._parse_key(d, key, types.ListType, default=default)
+        objects = Config._parse_key(d, key, list, default=default)
         return [cls(obj) for obj in objects]
 
     @staticmethod
@@ -161,7 +166,7 @@ class Config(Serializable):
             ConfigError: if no default value was provided and the key was
                 not present in the dictionary.
         '''
-        return Config._parse_key(d, key, types.ListType, default=default)
+        return Config._parse_key(d, key, list, default=default)
 
     @staticmethod
     def parse_string(d, key, default=no_default):
@@ -173,13 +178,13 @@ class Config(Serializable):
             default: default value if key is not present
 
         Returns:
-            a string (i.e., an object with type in types.StringTypes)
+            a string
 
         Raises:
             ConfigError: if no default value was provided and the key was
                 not present in the dictionary.
         '''
-        return Config._parse_key(d, key, types.StringTypes, default=default)
+        return Config._parse_key(d, key, str, default=default)
 
     @staticmethod
     def parse_number(d, key, default=no_default):
@@ -215,7 +220,7 @@ class Config(Serializable):
             ConfigError: if no default value was provided and the key was
                 not present in the dictionary.
         '''
-        return Config._parse_key(d, key, types.BooleanType, default=default)
+        return Config._parse_key(d, key, bool, default=default)
 
     @staticmethod
     def _parse_key(d, key, t, default=no_default):
