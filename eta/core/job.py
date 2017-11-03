@@ -6,6 +6,12 @@ voxel51.com
 
 Brian Moore, brian@voxel51.com
 '''
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+from builtins import *
+
 import os
 import subprocess
 import sys
@@ -37,11 +43,11 @@ def run(job_config, overwrite=True):
     with utils.WorkingDir(job_config.working_dir):
         hasher = utils.MD5FileHasher(job_config.config_path)
         if hasher.has_changed:
-            print "Config '%s' changed" % job_config.config_path
+            print("Config '%s' changed" % job_config.config_path)
 
         if overwrite or not hasher.has_record or hasher.has_changed:
-            print "Starting job '%s'" % job_config.name
-            print "Working directory: %s" % os.getcwd()
+            print("Starting job '%s'" % job_config.name)
+            print("Working directory: %s" % os.getcwd())
 
             code = _run(job_config)
             if code:
@@ -49,10 +55,10 @@ def run(job_config, overwrite=True):
 
             hasher.write()
 
-            print "Job '%s' complete" % job_config.name
+            print("Job '%s' complete" % job_config.name)
             return True
         else:
-            print "Skipping job '%s'" % job_config.name
+            print("Skipping job '%s'" % job_config.name)
             return False
 
 
