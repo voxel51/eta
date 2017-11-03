@@ -6,6 +6,13 @@ voxel51.com
 
 Brian Moore, brian@voxel51.com
 '''
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+from builtins import *
+from future.utils import iteritems
+
 import requests
 
 from eta import constants
@@ -119,7 +126,7 @@ class GoogleDriveSession(WebSession):
         r = WebSession._get_streaming_response(self, url, params=params)
 
         # Handle download warning for large files
-        for key, token in r.cookies.iteritems():
+        for key, token in iteritems(r.cookies):
             if key.startswith("download_warning"):
                 # Retry the get request with a confirm parameter
                 # @todo log this
