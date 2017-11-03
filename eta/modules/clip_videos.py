@@ -7,6 +7,12 @@ voxel51.com
 
 Brian Moore, brian@voxel51.com
 '''
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+from builtins import *
+
 import sys
 
 from eta.core.config import Config, ConfigError
@@ -16,7 +22,7 @@ import eta.core.video as vd
 
 def clip_videos(clip_config):
     for data_config in clip_config.data:
-        print "Generating video clips for '%s'" % data_config.input_path
+        print("Generating video clips for '%s'" % data_config.input_path)
         with vd.VideoProcessor(
             data_config.input_path,
             frames=data_config.get_frames(),
