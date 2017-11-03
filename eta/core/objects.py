@@ -6,6 +6,12 @@ voxel51.com
 
 Brian Moore, brian@voxel51.com
 '''
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+from builtins import *
+
 from eta.core.geometry import BoundingBox
 from eta.core.serial import Serializable
 
@@ -36,10 +42,10 @@ class Frame(Serializable):
             filters: a list of functions that accept DetectedObjects and return
                 True/False
         '''
-        self.objects = filter(
+        self.objects = list(filter(
             lambda o: any(f(o) for f in filters),
             self.objects,
-        )
+        ))
 
     @classmethod
     def from_dict(cls, d):
