@@ -14,6 +14,12 @@ voxel51.com
 
 Jason Corso, jjc@voxel51.com
 '''
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+from builtins import *
+
 import os
 import sys
 
@@ -43,13 +49,13 @@ def embed_image(impath):
 
     embedded_vector = sess.run(vggn.fc2l, feed_dict={vggn.imgs: [rimg]})[0]
 
-    print "image embedded to vector of length %d" % len(embedded_vector)
-    print embedded_vector
+    print("image embedded to vector of length %d" % len(embedded_vector))
+    print(embedded_vector)
 
     outpath = _abspath("out/result_embed_image.npz")
     utils.ensure_basedir(outpath)
     np.savez_compressed(outpath, v=embedded_vector)
-    print "result saved to:", outpath
+    print("result saved to:", outpath)
 
 
 def _abspath(path):
