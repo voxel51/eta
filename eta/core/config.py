@@ -11,6 +11,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
+import six
 
 import numbers
 import sys
@@ -184,7 +185,8 @@ class Config(Serializable):
             ConfigError: if no default value was provided and the key was
                 not present in the dictionary.
         '''
-        return Config._parse_key(d, key, str, default=default)
+        val = Config._parse_key(d, key, six.string_types, default=default)
+        return str(val)
 
     @staticmethod
     def parse_number(d, key, default=no_default):
