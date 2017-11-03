@@ -95,18 +95,16 @@ class FileHasher(object):
         return self.has_record and self._new_hash != self._cur_hash
 
     def read(self):
-        '''Returns the current hash record (bytes), or None if there is no
-        record.
-        '''
+        '''Returns the current hash record, or None if there is no record.'''
         try:
-            with open(self.record_path, "rb") as f:
+            with open(self.record_path, "rt") as f:
                 return f.read()
         except:
             return None
 
     def write(self):
-        '''Writes the current hash record (bytes).'''
-        with open(self.record_path, "wb") as f:
+        '''Writes the current hash record.'''
+        with open(self.record_path, "wt") as f:
             f.write(self._new_hash)
 
     @staticmethod
@@ -121,9 +119,9 @@ class MD5FileHasher(FileHasher):
 
     @staticmethod
     def hash(path):
-        '''Computes the MD5 hash (bytes) of the file contents.'''
+        '''Computes the MD5 hash of the file contents.'''
         with open(path, "rb") as f:
-            return hashlib.md5(f.read()).hexdigest()
+            return str(hashlib.md5(f.read()).hexdigest())
 
 
 class TempDir(object):
