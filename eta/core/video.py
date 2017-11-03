@@ -178,7 +178,7 @@ class VideoProcessor(object):
         self.out_use_ffmpeg = out_use_ffmpeg
         self.out_impath = out_impath
         self.out_vidpath = out_vidpath
-        if out_fps > 0:
+        if out_fps is not None and out_fps > 0:
             self.out_fps = out_fps
         elif self._reader.frame_rate > 0:
             self.out_fps = self._reader.frame_rate
