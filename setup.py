@@ -21,4 +21,10 @@ setup(
     url=constants.URL,
     license=constants.LICENSE,
     packages=find_packages(),
+    classifiers=[
+        "Operating System :: MacOS :: MacOS X",
+        "Operating System :: POSIX :: Linux",
+        "Programming Language :: Python :: 2.7",
+        "Programming Language :: Python :: 3",
+    ],
 )
