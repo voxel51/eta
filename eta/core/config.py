@@ -127,7 +127,7 @@ class Config(Serializable):
             ConfigError: if no default value was provided and the key was
                 not present in the dictionary.
         '''
-        val = Config._parse_key(d, key, object, default=default)
+        val = Config._parse_key(d, key, dict, default=default)
         return cls(val) if val is not None else None
 
     @staticmethod
