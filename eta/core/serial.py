@@ -6,9 +6,14 @@ voxel51.com
 
 Brian Moore, brian@voxel51.com
 '''
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+from builtins import *
+
 import collections
 import json
-import types
 
 import numpy as np
 
@@ -96,7 +101,7 @@ def is_serializable(obj):
 
 
 def _recurse(v):
-    if isinstance(v, types.ListType):
+    if isinstance(v, list):
         return [_recurse(vi) for vi in v]
     elif is_serializable(v):
         return v.serialize()
