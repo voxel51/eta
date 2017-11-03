@@ -22,7 +22,7 @@ import eta.core.utils as ut
 
 def read_json(path):
     '''Reads JSON from file.'''
-    with open(path) as f:
+    with open(path, "rt") as f:
         return json.load(f)
 
 
@@ -37,7 +37,7 @@ def write_json(obj, path):
     if is_serializable(obj):
         obj = obj.serialize()
     ut.ensure_basedir(path)
-    with open(path, "w") as f:
+    with open(path, "wt") as f:
         json.dump(obj, f, indent=4, cls=JSONNumpyEncoder)
 
 
