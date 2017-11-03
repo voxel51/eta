@@ -8,6 +8,12 @@ voxel51.com
 
 Brian Moore, brian@voxel51.com
 '''
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+from builtins import *
+
 import json
 import os
 
@@ -23,12 +29,12 @@ VERSION_JSON_PATH = os.path.join(ETA_DIR, "version.json")
 
 
 # Version
-with open(VERSION_JSON_PATH) as f:
+with open(VERSION_JSON_PATH, "rt") as f:
     _VERSION = json.load(f)
-NAME = str(_VERSION["name"])
-VERSION = str(_VERSION["version"])
-DESCRIPTION = str(_VERSION["description"])
-AUTHOR = str(_VERSION["author"])
-CONTACT = str(_VERSION["contact"])
-URL = str(_VERSION["url"])
-LICENSE = str(_VERSION["license"])
+NAME = _VERSION["name"]
+VERSION = _VERSION["version"]
+DESCRIPTION = _VERSION["description"]
+AUTHOR = _VERSION["author"]
+CONTACT = _VERSION["contact"]
+URL = _VERSION["url"]
+LICENSE = _VERSION["license"]
