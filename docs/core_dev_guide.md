@@ -110,6 +110,7 @@ Here are some highlights of our Python style:
   any module comments and doc strings. Imports should be grouped by type with
   one space between each group, with the groups sorted in order of most generic
   to least generic
+    * future import block for Python 2/3 compatibility
     * standard library imports
     * third-party imports
     * application-specific imports
@@ -118,6 +119,12 @@ Here are some highlights of our Python style:
   path
 
 ```python
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+from builtins import *
+
 import os
 import sys
 
