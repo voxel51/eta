@@ -65,6 +65,26 @@ Note that it is best practice to commit *often* in small, logical chunks rather
 than combining multiple changes into a single commit.
 
 
+## Python 2 and 3 compatibility
+
+ETA supports both Python 2 and 3 via the `future` package. Therefore, we
+include the following imports at the top of each module:
+
+```python
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+from builtins import *
+```
+
+By convention, we add this block to *every* module, even if some of the imports
+aren't used. These imports clearly state our intention to support both Python 2
+and 3.
+
+See `python23_tips.md` for more tips on writing cross-compatible code.
+
+
 ## Style guide
 
 ETA is implemented in Python, and we require all contributed code to adhere to

@@ -40,6 +40,33 @@ automatically interprets all strings as unicode unless explicility specified
 
 * Run tests on Python 2 and 3!
 
+#### Style conventions
+
+* Replace all `__future__` and `builtins` imports added to the module by
+ `futurize` with the following block:
+
+```python
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+from builtins import *
+```
+
+By convention, we add this block to *every* module, even if some of the imports
+aren't specified used. These imports clearly state our intention to support
+both Python 2 and 3.
+
+* Unless the module specifically uses a standard library function that was
+renamed, remove the following lines from the post-`futurize`-ed module:
+
+```
+from future import standard_library
++standard_library.install_aliases()
+```
+
+This code looks ugly at the top of a module!
+
 
 ## Python 2/3 compatible idioms
 
