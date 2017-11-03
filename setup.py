@@ -9,17 +9,17 @@ Brian Moore, brian@voxel51.com
 '''
 from setuptools import setup, find_packages
 
-from eta import constants
+import eta.constants as c
 
 
 setup(
-    name=constants.NAME,
-    version=constants.VERSION,
-    description=constants.DESCRIPTION,
-    author=constants.AUTHOR,
-    author_email=constants.CONTACT,
-    url=constants.URL,
-    license=constants.LICENSE,
+    name=c.NAME,
+    version=c.VERSION,
+    description=c.DESCRIPTION,
+    author=c.AUTHOR,
+    author_email=c.CONTACT,
+    url=c.URL,
+    license=c.LICENSE,
     packages=find_packages(),
     classifiers=[
         "Operating System :: MacOS :: MacOS X",
