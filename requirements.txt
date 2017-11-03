@@ -1,4 +1,5 @@
 Cython==0.25.2
+future==0.16.0
 numpy==1.13.1
 Pillow==4.2.1
 pycodestyle==2.3.1
