@@ -10,28 +10,35 @@ This document:
 ## Necessary packages
 
 ```shell
-pip install six
 pip install future
 ```
 
 ## Updating existing Python 2 code
 
-See what changes are required for Python 3 compatibility:
+* See what changes are required for Python 3 compatibility:
 
 ```shell
 # single file
-futurize <file>
+futurize -ua <file>
 
 # multiple files
-futurize *.py
+futurize -ua *.py
 ```
 
-Apply changes:
+* Apply changes:
 
 ```shell
-futurize --stage1 -w <file>
-futurize --stage2 -w <file>
+# Perform safe fixes
+futurize -ua --stage1 -w <file>
+
+# Add any dependencies on future package
+futurize -ua --stage2 -w <file>
 ```
+
+* Manually mark any binary strings with `b''`. Using the `futurize -a` option
+automatically interprets all strings as unicode unless explicility specified
+
+* Run tests on Python 2 and 3!
 
 
 ## Python 2/3 compatible idioms
@@ -47,6 +54,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
+from builtins import *
 ```
 
 * `absolute_import`: `import foo` is an absolute import (searches `sys.path`)
@@ -58,6 +66,9 @@ rather than a relative import (searches current directory)
 
 * `unicode_literals`: undecorated strings like `"text"` are unicode by default.
 To create a binary string, use `b"binary"`
+
+* `builtins`: use the Python 3 versions of the builtin functions
+(`str`, `range`, `open`, etc)
 
 #### Strings
 
@@ -74,7 +85,7 @@ b = b"binary"
 #### Iterable objects
 
 ```python
-from six import itervalues
+from future.utils import itervalues
 
 for key in itervalues(heights):
     ...
@@ -86,7 +97,7 @@ for key in itervalues(heights):
 ```
 
 ```python
-from six import iteritems
+from future.utils import iteritems
 
 for key, value in iteritems(heights):
     ...
@@ -151,12 +162,12 @@ except ValueError as e:
 
 ## References
 
-https://pythonhosted.org/six
-
 https://docs.python.org/3/howto/pyporting.html
 
 http://python-future.org/automatic_conversion.html
 
 http://python-future.org/futurize_cheatsheet.html
+
+http://python-future.org/unicode_literals.html
 
 http://python-future.org/compatible_idioms.html#compatible-idioms
