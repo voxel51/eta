@@ -97,14 +97,14 @@ class FileHasher(object):
     def read(self):
         '''Returns the current hash record, or None if there is no record.'''
         try:
-            with open(self.record_path, "r") as f:
+            with open(self.record_path, "rt") as f:
                 return f.read()
         except:
             return None
 
     def write(self):
         '''Writes the current hash record.'''
-        with open(self.record_path, "w") as f:
+        with open(self.record_path, "wt") as f:
             f.write(self._new_hash)
 
     @staticmethod
@@ -120,7 +120,7 @@ class MD5FileHasher(FileHasher):
     @staticmethod
     def hash(path):
         '''Computes the MD5 hash of the file contents.'''
-        with open(path, "r") as f:
+        with open(path, "rt") as f:
             return hashlib.md5(f.read()).hexdigest()
 
 
