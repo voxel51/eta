@@ -6,6 +6,12 @@ voxel51.com
 
 Brian Moore, brian@voxel51.com
 '''
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+from builtins import *
+
 import errno
 import json
 import os
@@ -193,7 +199,7 @@ class VideoProcessor(object):
     def __iter__(self):
         return self
 
-    def next(self):
+    def __next__(self):
         return self.process()
 
     @property
@@ -304,7 +310,7 @@ class VideoReader(object):
     def __iter__(self):
         return self
 
-    def next(self):
+    def __next__(self):
         return self.read()
 
     @property
@@ -427,7 +433,7 @@ class FFmpegVideoReader(VideoReader):
             StopIteration: if there are no more frames to process
             VideoReaderError: if unable to load the next frame from file
         '''
-        for idx in range(max(0, self.frame_number), self._ranges.next()):
+        for idx in range(max(0, self.frame_number), next(self._ranges)):
             if not self._grab():
                 raise VideoReaderError(
                     "Failed to grab frame %d" % (idx + 1))
@@ -544,7 +550,7 @@ class OpenCVVideoReader(VideoReader):
             StopIteration: if there are no more frames to process
             VideoReaderError: if unable to load the next frame from file
         '''
-        for idx in range(max(0, self.frame_number), self._ranges.next()):
+        for idx in range(max(0, self.frame_number), next(self._ranges)):
             if not self._cap.grab():
                 raise VideoReaderError(
                     "Failed to grab frame %d" % (idx + 1))
@@ -1200,7 +1206,7 @@ class FrameRanges(object):
     def __iter__(self):
         return self
 
-    def next(self):
+    def __next__(self):
         '''Returns the next frame number.
 
         Raises:
@@ -1208,10 +1214,10 @@ class FrameRanges(object):
         '''
         self._started = True
         try:
-            frame = self._ranges[self._idx].next()
+            frame = next(self._ranges[self._idx])
         except StopIteration:
             self._idx += 1
-            return self.next()
+            return next(self)
         except IndexError:
             raise StopIteration
         return frame
@@ -1255,7 +1261,7 @@ class FrameRanges(object):
         '''Constructs a FrameRanges object from a string like "1-5,10-15".'''
         ranges = []
         for r in frames.split(','):
-            v = map(int, r.split('-'))
+            v = list(map(int, r.split('-')))
             ranges.append((v[0], v[-1]))
         return cls(ranges)
 
@@ -1281,7 +1287,7 @@ class FrameRange(object):
         '''Whether the current frame is first in the range.'''
         return self.idx == self.first
 
-    def next(self):
+    def __next__(self):
         '''Returns the next frame number.
 
         Raises:
@@ -1297,7 +1303,7 @@ class FrameRange(object):
 
     def to_list(self):
         '''Return a list of frames in the range.'''
-        return range(self.first, self.last + 1)
+        return list(range(self.first, self.last + 1))
 
     def to_str(self):
         '''Return a string representation of the range.'''
@@ -1306,5 +1312,5 @@ class FrameRange(object):
     @classmethod
     def from_str(cls, frames):
         '''Constructs a FrameRange object from a string like "1-5".'''
-        v = map(int, frames.split('-'))
+        v = list(map(int, frames.split('-')))
         return cls(v[0], v[-1])
