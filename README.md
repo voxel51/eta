@@ -20,7 +20,7 @@ The ETA package requires various Python packages, as well as
 [ffmpeg](https://www.ffmpeg.org), and
 [ImageMagick](https://www.imagemagick.org/script/index.php).
 
-> ETA is built on Python 2.7.
+> ETA supports both Python 2.7 and Python 3.0 or later.
 
 > ETA supports both OpenCV 2.4 or later and OpenCV 3.0 or later.
 
@@ -90,34 +90,12 @@ bash embed_vgg16_module.bash
 bash embed_vgg16_pipeline.bash
 ```
 
-## Using virtual environments or Conda
+## Using virtual environments
 
-You can use [Virtualenv](https://virtualenv.pypa.io/en/stable) or [Conda](
-https://conda.io/docs) to maintain a separate Python working environment
-for ETA that operates independently of other packages and Python applications
-on your machine. Additionally, these environments allow for installing packages
-without sudo privileges.
-
-Virtualenv:
-* Install Virtualenv: `[sudo] pip install virtualenv`
-* Setup an environment:
-`mkdir etaenv; virtualenv [-p PYTHON_EXE] [--system-site-packages] etaenv`
-* Activate the virtual environment: `source etatest/bin/activate`
-* Proceed with [ETA installation](#installation)
-* Helpful utility functions:
-  * Deactivate the environment: `[source] deactivate`
-  * List packages: `virtualenv list`
-
-Conda:
-* Install Conda ([macOS](https://conda.io/docs/user-guide/install/macos.html)
-or [Ubuntu](https://conda.io/docs/user-guide/install/linux.html))
-* Setup a Conda environment:
-`conda create --name etaenv python=2.7`
-* Activate the Conda environment: `source activate etaenv`
-* Proceed with [ETA installation](#installation)
-* Helpful utility functions:
-  * Deactivate the environment: `[source] deactivate`
-  * List packages: `conda list`
+You can use [virtual environments](https://virtualenv.pypa.io/en/stable) to
+maintain a separate Python working environment for ETA that operates
+independently of other packages and Python applications on your machine. See
+`docs/virtualenv.md` for more details and setup instructions.
 
 
 ## Uninstallation
