@@ -7,6 +7,12 @@ voxel51.com
 
 Brian Moore, brian@voxel51.com
 '''
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+from builtins import *
+
 import sys
 
 from eta.core.config import Config
@@ -15,7 +21,7 @@ import eta.core.video as vd
 
 def resize_videos(resize_config):
     for data_config in resize_config.data:
-        print "Resizing video '%s'" % data_config.input_path
+        print("Resizing video '%s'" % data_config.input_path)
         vd.FFmpegVideoResizer(
             size=data_config.size,
             scale=data_config.scale,
