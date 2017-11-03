@@ -16,17 +16,21 @@ pip install future
 
 ## Updating existing Python 2 code
 
-See what changes are required to make Pytho
+See what changes are required for Python 3 compatibility:
 
 ```shell
+# single file
+futurize <file>
+
+# multiple files
 futurize *.py
 ```
 
 Apply changes:
 
 ```shell
-futurize --stage1 -w *.py
-futurize --stage2 -w *.py
+futurize --stage1 -w <file>
+futurize --stage2 -w <file>
 ```
 
 
