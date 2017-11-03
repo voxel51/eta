@@ -6,6 +6,12 @@ voxel51.com
 
 Brian Moore, brian@voxel51.com
 '''
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+from builtins import *
+
 import errno
 import os
 from subprocess import Popen, PIPE
@@ -404,7 +410,7 @@ def bgr_to_hex(blue, green, red):
 
 def rgb_to_bgr(img):
     '''Converts an RGB image to a BGR image.'''
-    return img[..., [2, 1, 0] + range(3, img.shape[2])]
+    return img[..., [2, 1, 0] + list(range(3, img.shape[2]))]
 
 
 def bgr_to_rgb(img):
