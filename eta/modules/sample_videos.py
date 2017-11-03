@@ -7,6 +7,12 @@ voxel51.com
 
 Brian Moore, brian@voxel51.com
 '''
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+from builtins import *
+
 import sys
 
 from eta.core.config import Config
@@ -16,8 +22,8 @@ import eta.core.video as vd
 
 def sample_video_by_fps(data_config):
     assert data_config.fps != -1, "Must provide 'fps'"
-    print "Sampling video '%s' at %s fps" % (
-        data_config.input_path, str(data_config.fps))
+    print("Sampling video '%s' at %s fps" % (
+        data_config.input_path, str(data_config.fps)))
 
     vd.FFmpegVideoSampler(fps=data_config.fps).run(
         data_config.input_path,
@@ -27,8 +33,8 @@ def sample_video_by_fps(data_config):
 
 def sample_video_by_clips(data_config):
     assert data_config.clips_path != None, "Must provide 'clips_path'"
-    print "Sampling video '%s' by clips '%s'" % (
-        data_config.input_path, data_config.clips_path)
+    print("Sampling video '%s' by clips '%s'" % (
+        data_config.input_path, data_config.clips_path))
 
     detections = ev.EventDetection.from_json(data_config.clips_path)
     frames = detections.to_series().to_str()
