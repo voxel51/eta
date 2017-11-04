@@ -505,7 +505,7 @@ class OpenCVVideoReader(VideoReader):
         '''Return the video encoding string.'''
         try:
             # OpenCV 3
-            code = int(self._cap.get(cv2.CV_CAP_PROP_FOURCC))
+            code = int(self._cap.get(cv2.CAP_PROP_FOURCC))
         except AttributeError:
             # OpenCV 2
             code = int(self._cap.get(cv2.cv.CV_CAP_PROP_FOURCC))
@@ -1181,7 +1181,12 @@ class FOURCC(object):
     @staticmethod
     def str_to_int(s):
         '''Convert the FOURCC string to an int.'''
-        return cv2.cv.FOURCC(*s)
+        try:
+            # OpenCV 3
+            return cv2.VideoWriter_fourcc(*s)
+        except AttributeError:
+            # OpenCV 2
+            return cv2.cv.FOURCC(*s)
 
     @staticmethod
     def int_to_str(i):
