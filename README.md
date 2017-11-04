@@ -95,7 +95,7 @@ bash embed_vgg16_pipeline.bash
 You can use [virtual environments](https://virtualenv.pypa.io/en/stable) to
 maintain a separate Python working environment for ETA that operates
 independently of other packages and Python applications on your machine. See
-`docs/virtualenv.md` for more details and setup instructions.
+`docs/virtualenv_guide.md` for more details and setup instructions.
 
 
 ## Uninstallation
