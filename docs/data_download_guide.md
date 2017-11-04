@@ -1,4 +1,4 @@
-# Data download guide
+# ETA Data Download Guide
 
 This document describes how to download (and upload) data for ETA in the
 `public` Voxel51 Team Drive.
