@@ -1,6 +1,6 @@
-# Python 2/3 compatibility
+# ETA Python 2/3 Compatibility Guide
 
-This document:
+The ETA codebase supports both Python 2 and 3. This document:
 
 * explains how to update existing Python 2 code to make it Python 3 compatible
 
@@ -46,11 +46,17 @@ automatically interprets all strings as unicode unless explicility specified
  `futurize` with the following block:
 
 ```python
+# pragma pylint: disable=redefined-builtin
+# pragma pylint: disable=unused-wildcard-import
+# pragma pylint: disable=wildcard-import
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
+# pragma pylint: enable=redefined-builtin
+# pragma pylint: enable=unused-wildcard-import
+# pragma pylint: enable=wildcard-import
 ```
 
 By convention, we add this block to *every* module, even if some of the imports
@@ -77,11 +83,17 @@ details, but here are the basic idioms to follow:
 #### Essentials
 
 ```python
+# pragma pylint: disable=redefined-builtin
+# pragma pylint: disable=unused-wildcard-import
+# pragma pylint: disable=wildcard-import
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
+# pragma pylint: enable=redefined-builtin
+# pragma pylint: enable=unused-wildcard-import
+# pragma pylint: enable=wildcard-import
 ```
 
 * `absolute_import`: `import foo` is an absolute import (searches `sys.path`)
@@ -97,16 +109,56 @@ To create a binary string, use `b"binary"`
 * `builtins`: use the Python 3 versions of the builtin functions
 (`str`, `range`, `open`, etc)
 
-#### Strings
+* the pylint directives are included to prevent `pylint` from generating
+superfluous warnings
+
+#### Strings and bytes
+
+In Python 2 you could use the `str` type for both text and binary data.
+However, in Python 3 text and binary data distinct types that cannot blindly
+be mixed together. Indeed:
+
+```python
+# Python 2
+type( "asdf")  # 'str'
+type(u"asdf")  # 'unicode'
+type(b"asdf")  # 'str'
+
+# Python 3
+type( "asdf")  # 'str'
+type(u"asdf")  # 'str'
+type(b"asdf")  # 'bytes'
+```
+
+To write Python 2/3 compatible strings, we use `__future__` to force all
+unspecified string literals to be unicode:
 
 ```python
 from __future__ import unicode_literals
 
-# text strings
-s = "text"
+# text
+t = "text"  # interpreted as u"text"
 
-# binary strings
+# binary
 b = b"binary"
+```
+
+The text vs binary string distinction can be especially tricky when ETA code
+interfaces with external libraries written in Python 2. Therefore, it is
+recommended to explicitly convert *text strings* to Python 3 style using:
+
+```python
+from builtins import str
+
+s = str(text_string_from_python2_code)
+```
+
+To check if an object is a Python 2/3 text string, you can use:
+
+```python
+import six
+
+is_str = isinstance(string, six.string_types)
 ```
 
 #### Iterable objects
@@ -119,8 +171,7 @@ for key in itervalues(heights):
 
 # not these!
 # for value in heights.itervalues():  # Python 2
-# for value in heights.values():  # Python 2/3
-
+# for value in heights.values():      # Python 2/3
 ```
 
 ```python
@@ -131,7 +182,7 @@ for key, value in iteritems(heights):
 
 # not these!
 # for key, value in heights.iteritems():  # Python 2
-# for key, value in heights.items():  # Python 2/3
+# for key, value in heights.items():      # Python 2/3
 ```
 
 #### Objects
