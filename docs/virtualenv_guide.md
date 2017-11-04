@@ -1,4 +1,4 @@
-# ETA virtual environments
+# ETA Virtual Environment Guide
 
 This document describes how to install ETA in Python 2 and Python 3 virtual
 environments running independent copies of OpenCV.
