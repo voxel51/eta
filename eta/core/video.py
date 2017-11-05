@@ -129,7 +129,7 @@ class VideoProcessor(object):
             out_fps=None,
             out_size=None,
             out_opts=None,
-        ):
+    ):
         '''Construct a new video processor.
 
         Args:
@@ -687,7 +687,7 @@ class FFprobe(object):
             executable="ffprobe",
             global_opts=None,
             opts=None,
-        ):
+    ):
         '''Constructs an ffprobe command, minus the input path.
 
         Args:
@@ -761,7 +761,7 @@ class FFmpeg(object):
             global_opts=None,
             in_opts=None,
             out_opts=None,
-        ):
+    ):
         '''Constructs an ffmpeg command, minus the input/output paths.
 
         Args:
