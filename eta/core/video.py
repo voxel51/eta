@@ -94,9 +94,7 @@ def get_frame_size(inpath, use_ffmpeg=True):
         return r.frame_size
 
 
-# @todo: once frame counts for directories of frames are resolved for
-#        FFmpegVideoReader, use FFmpeg here
-def get_frame_count(inpath, use_ffmpeg=False):
+def get_frame_count(inpath, use_ffmpeg=True):
     '''Get the number of frames in the input video.
 
     Args:
@@ -120,12 +118,11 @@ class VideoProcessor(object):
     ```
     '''
 
-    # @todo: switch to in_use_ffmpeg=True
     def __init__(
             self,
             inpath,
             frames="*",
-            in_use_ffmpeg=False,
+            in_use_ffmpeg=True,
             out_use_ffmpeg=True,
             out_impath=None,
             out_vidpath=None,
@@ -423,11 +420,10 @@ class FFmpegVideoReader(VideoReader):
         determined.
         '''
         try:
-            # this fails for directories of frames...
+            # this fails for directories of frames
             return int(self._stream["nb_frames"])
         except KeyError:
-            # @todo: this seems to work for directories of frames...
-            #        can we count on it?
+            # this seems to work for directories of frames
             return int(self._stream.get("duration_ts", 0))
 
     def read(self):
