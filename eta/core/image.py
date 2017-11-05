@@ -267,8 +267,8 @@ class Convert(object):
 
 
 class Length(object):
-    '''Represents a length along a specified dimension of an image as a relative
-    percentage or an absolute pixel count.
+    '''Represents a length along a specified dimension of an image as a
+    relative percentage or an absolute pixel count.
     '''
 
     def __init__(self, length_str, dim):
@@ -339,8 +339,8 @@ class Width(Length):
 
 
 class Height(Length):
-    '''Represents the height of an image as a relative percentage or an absolute
-    pixel count.
+    '''Represents the height of an image as a relative percentage or an
+    absolute pixel count.
     '''
 
     def __init__(self, height_str):
