@@ -38,7 +38,7 @@ def sample_video_by_fps(data_config):
 
 
 def sample_video_by_clips(data_config):
-    assert data_config.clips_path != None, "Must provide 'clips_path'"
+    assert data_config.clips_path is not None, "Must provide 'clips_path'"
     print("Sampling video '%s' by clips '%s'" % (
         data_config.input_path, data_config.clips_path))
 
