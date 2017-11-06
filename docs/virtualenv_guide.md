@@ -97,7 +97,7 @@ pip freeze
 ```shell
 cd /path/to/eta  # modify this
 
-# Install externel dependencies in virtual environment
+# Install external dependencies in virtual environment
 VIRTUAL_ENV="${ENV_DIR}/eta2"
 OPENCV_VERSION=3.3.0
 bash install_externals.bash -e "${VIRTUAL_ENV}" -v "${OPENCV_VERSION}"
