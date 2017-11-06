@@ -211,7 +211,7 @@ mylist = list(range(5))
 #### Files
 
 ```python
-from io import open
+from builtins import open
 
 f = open(pathname, "rb")   # f.read() will return bytes
 f = open(pathname, "rt")   # f.read() will return unicode
