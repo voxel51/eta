@@ -44,7 +44,8 @@ def write_json(obj, path):
         obj = obj.serialize()
     ut.ensure_basedir(path)
     with open(path, "wt") as f:
-        json.dump(obj, f, indent=4, cls=JSONNumpyEncoder)
+        f.write(json.dumps(obj, f, indent=4, cls=JSONNumpyEncoder,
+            ensure_ascii=False))
 
 
 class Serializable(object):
