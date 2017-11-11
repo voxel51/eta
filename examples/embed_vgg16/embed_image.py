@@ -26,6 +26,7 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+import logging
 import os
 import sys
 
@@ -35,6 +36,9 @@ import numpy as np
 import eta.core.image as im
 from eta.core import utils
 from eta.core.vgg16 import VGG16
+
+
+logger = logging.getLogger(__name__)
 
 
 def embed_image(impath):
@@ -55,13 +59,13 @@ def embed_image(impath):
 
     embedded_vector = sess.run(vggn.fc2l, feed_dict={vggn.imgs: [rimg]})[0]
 
-    print("image embedded to vector of length %d" % len(embedded_vector))
-    print(embedded_vector)
+    logger.info("image embedded to vector of length %d", len(embedded_vector))
+    logger.info("%s", embedded_vector)
 
     outpath = _abspath("out/result_embed_image.npz")
     utils.ensure_basedir(outpath)
     np.savez_compressed(outpath, v=embedded_vector)
-    print("result saved to:", outpath)
+    logger.info("result saved to '%s'", outpath)
 
 
 def _abspath(path):

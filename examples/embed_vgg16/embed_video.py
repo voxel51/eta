@@ -23,10 +23,14 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+import logging
 import os
 import sys
 
 from eta.core.vgg16 import VGG16FeaturizerConfig, VGG16Featurizer
+
+
+logger = logging.getLogger(__name__)
 
 
 def embed_video(config):
@@ -44,7 +48,8 @@ def embed_video(config):
     vf.frame_preprocessor = _crop
     vf.featurize(frames="1-12")
 
-    print("features stored in %s" % (config.video_featurizer.backing_path))
+    logger.info(
+        "features stored in '%s'", config.video_featurizer.backing_path)
 
 
 def _abspath(path):
