@@ -54,7 +54,7 @@ def get_stream_info(inpath):
     try:
         info = json.loads(out)
         return info["streams"][0]  # assume first stream is main video
-    except:
+    except Exception:
         raise VideoReaderError("Unable to get stream info for '%s'" % inpath)
 
 
@@ -451,7 +451,7 @@ class FFmpegVideoReader(VideoReader):
             width, height = self.frame_size
             self._raw_frame = self._ffmpeg.read(width * height * 3)
             return True
-        except:
+        except Exception:
             return False
 
     def _retrieve(self):
@@ -737,7 +737,7 @@ class FFprobe(object):
                 stdout=PIPE,
                 stderr=PIPE,
             )
-        except OSError as e:
+        except EnvironmentError as e:
             if e.errno == errno.ENOENT:
                 raise utils.ExecutableNotFoundError(self._executable)
             else:
@@ -819,7 +819,7 @@ class FFmpeg(object):
 
         try:
             self._p = Popen(self._args, stdin=PIPE, stdout=PIPE, stderr=PIPE)
-        except OSError as e:
+        except EnvironmentError as e:
             if e.errno == errno.ENOENT:
                 raise utils.ExecutableNotFoundError(self._executable)
             else:
