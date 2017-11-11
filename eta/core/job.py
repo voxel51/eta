@@ -18,12 +18,16 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+import logging
 import os
 import subprocess
 import sys
 
 from eta.core.config import Config
 from eta.core import utils
+
+
+logger = logging.getLogger(__name__)
 
 
 def run(job_config, overwrite=True):
@@ -49,22 +53,23 @@ def run(job_config, overwrite=True):
     with utils.WorkingDir(job_config.working_dir):
         hasher = utils.MD5FileHasher(job_config.config_path)
         if hasher.has_changed:
-            print("Config '%s' changed" % job_config.config_path)
+            logger.info("Config '%s' changed" % job_config.config_path)
 
         if overwrite or not hasher.has_record or hasher.has_changed:
-            print("Starting job '%s'" % job_config.name)
-            print("Working directory: %s" % os.getcwd())
+            logger.info("Starting job '%s'", job_config.name)
+            logger.info("Working directory: %s", os.getcwd())
 
-            code = _run(job_config)
-            if code:
+            success = _run(job_config)
+            if not success:
+                logger.error("Job '%s' failed... exiting now", job_config.name)
                 sys.exit()
 
             hasher.write()
 
-            print("Job '%s' complete" % job_config.name)
+            logger.info("Job '%s' complete\n", job_config.name)
             return True
         else:
-            print("Skipping job '%s'" % job_config.name)
+            logger.info("Skipping job '%s'\n", job_config.name)
             return False
 
 
@@ -103,7 +108,7 @@ class JobConfig(Config):
     '''Job configuration settings'''
 
     def __init__(self, d):
-        self.name = self.parse_string(d, "name", default="")
+        self.name = self.parse_string(d, "name", default="job")
         self.working_dir = self.parse_string(d, "working_dir", default=".")
         self.interpreter = self.parse_string(
             d, "interpreter", default="python")
