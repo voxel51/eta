@@ -36,6 +36,7 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+import logging
 import os
 
 import numpy as np
@@ -46,6 +47,9 @@ from eta import constants
 import eta.core.video as vd
 from eta.core.weights import Weights, WeightsConfig
 import eta.core.image as im
+
+
+logger = logging.getLogger(__name__)
 
 
 DEFAULT_CONFIG_PATH = os.path.join(constants.CONFIGS_DIR, 'vgg16-config.json')
@@ -432,7 +436,7 @@ class VGG16(object):
     def _load_weights(self, weights_config, sess):
         weights = Weights(weights_config)
         for i, k in enumerate(sorted(weights)):
-            print(i, k, np.shape(weights[k]))
+            logger.debug("%s %s %s" % (i, k, np.shape(weights[k])))
             sess.run(self.parameters[i].assign(weights[k]))
 
 
