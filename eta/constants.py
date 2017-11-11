@@ -36,11 +36,11 @@ VERSION_JSON_PATH = os.path.join(ETA_DIR, "version.json")
 
 # Version
 with open(VERSION_JSON_PATH, "rt") as f:
-    _VERSION = json.load(f)
-NAME = _VERSION["name"]
-VERSION = _VERSION["version"]
-DESCRIPTION = _VERSION["description"]
-AUTHOR = _VERSION["author"]
-CONTACT = _VERSION["contact"]
-URL = _VERSION["url"]
-LICENSE = _VERSION["license"]
+    _VER = json.load(f)
+NAME = _VER["name"]
+VERSION = _VER["version"]
+DESCRIPTION = _VER["description"]
+AUTHOR = _VER["author"]
+CONTACT = _VER["contact"]
+URL = _VER["url"]
+LICENSE = _VER["license"]
