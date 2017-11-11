@@ -19,17 +19,41 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+import logging
 import sys
 
 from eta.core.config import Config
 import eta.core.events as ev
+import eta.core.module as mo
 import eta.core.video as vd
 
 
-def sample_video_by_fps(data_config):
+logger = logging.getLogger(__name__)
+
+
+def run(config_path):
+    '''Run the sample_videos module.
+
+    Args:
+        config_path: path to a SampleConfig file
+    '''
+    sample_config = SampleConfig.from_json(config_path)
+    mo.setup(sample_config)
+    _sample_videos(sample_config)
+
+
+def _sample_videos(sample_config):
+    for data_config in sample_config.data:
+        if data_config.fps != -1:
+            _sample_video_by_fps(data_config)
+        else:
+            _sample_video_by_clips(data_config)
+
+
+def _sample_video_by_fps(data_config):
     assert data_config.fps != -1, "Must provide 'fps'"
-    print("Sampling video '%s' at %s fps" % (
-        data_config.input_path, str(data_config.fps)))
+    logger.info("Sampling video '%s' at %s fps",
+        data_config.input_path, data_config.fps)
 
     vd.FFmpegVideoSampler(fps=data_config.fps).run(
         data_config.input_path,
@@ -37,10 +61,10 @@ def sample_video_by_fps(data_config):
     )
 
 
-def sample_video_by_clips(data_config):
+def _sample_video_by_clips(data_config):
     assert data_config.clips_path is not None, "Must provide 'clips_path'"
-    print("Sampling video '%s' by clips '%s'" % (
-        data_config.input_path, data_config.clips_path))
+    logger.info("Sampling video '%s' by clips '%s'",
+        data_config.input_path, data_config.clips_path)
 
     detections = ev.EventDetection.from_json(data_config.clips_path)
     frames = detections.to_series().to_str()
@@ -55,18 +79,11 @@ def sample_video_by_clips(data_config):
             processor.write(img)
 
 
-def sample_videos(sample_config):
-    for data_config in sample_config.data:
-        if data_config.fps != -1:
-            sample_video_by_fps(data_config)
-        else:
-            sample_video_by_clips(data_config)
-
-
-class SampleConfig(Config):
+class SampleConfig(mo.BaseModuleConfig):
     '''Sampler configuration settings.'''
 
     def __init__(self, d):
+        super(SampleConfig, self).__init__(d)
         self.data = self.parse_object_array(d, "data", DataConfig)
 
 
@@ -86,4 +103,4 @@ class DataConfig(Config):
 
 
 if __name__ == "__main__":
-    sample_videos(SampleConfig.from_json(sys.argv[1]))
+    run(sys.argv[1])
