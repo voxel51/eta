@@ -123,7 +123,7 @@ class Config(Serializable):
         '''Constructs a Config object from a JSON dictionary.
 
         Config subclass constructors accept JSON dictionaries, so this method
-        simply passes the dictionary to cls()
+        simply passes the dictionary to cls().
 
         Args:
             d: a JSON dictionary containing the fields expected by cls
@@ -137,15 +137,11 @@ class Config(Serializable):
     def parse_object(d, key, cls, default=no_default):
         '''Parses an object attribute.
 
-        Normally, if the key is not present, the default value should be a JSON
-        dictionary, which is passed to cls(). However, in the special case when
-        default=None, None is returned directly.
-
         Args:
             d: a JSON dictionary
             key: the key to parse
             cls: the class of the d[key]
-            default: default value if key is not present
+            default: a default value to return if key is not present
 
         Returns:
             an instance of cls
@@ -154,8 +150,8 @@ class Config(Serializable):
             ConfigError: if no default value was provided and the key was
                 not present in the dictionary.
         '''
-        val = Config._parse_key(d, key, dict, default=default)
-        return cls(val) if val is not None else None
+        val, found = Config._parse_key(d, key, dict, default=default)
+        return cls(val) if found else val
 
     @staticmethod
     def parse_object_array(d, key, cls, default=no_default):
@@ -165,7 +161,7 @@ class Config(Serializable):
             d: a JSON dictionary
             key: the key to parse
             cls: the class of the elements of list d[key]
-            default: default value if key is not present
+            default: a default value to return if key is not present
 
         Returns:
             a list of cls instances
@@ -174,8 +170,8 @@ class Config(Serializable):
             ConfigError: if no default value was provided and the key was
                 not present in the dictionary.
         '''
-        objects = Config._parse_key(d, key, list, default=default)
-        return [cls(obj) for obj in objects]
+        val, found = Config._parse_key(d, key, list, default=default)
+        return [cls(obj) for obj in val] if found else val
 
     @staticmethod
     def parse_array(d, key, default=no_default):
@@ -184,7 +180,7 @@ class Config(Serializable):
         Args:
             d: a JSON dictionary
             key: the key to parse
-            default: default value if key is not present
+            default: a default value to return if key is not present
 
         Returns:
             a list (e.g., of strings from the raw JSON dictionary value)
@@ -193,7 +189,7 @@ class Config(Serializable):
             ConfigError: if no default value was provided and the key was
                 not present in the dictionary.
         '''
-        return Config._parse_key(d, key, list, default=default)
+        return Config._parse_key(d, key, list, default=default)[0]
 
     @staticmethod
     def parse_string(d, key, default=no_default):
@@ -202,7 +198,7 @@ class Config(Serializable):
         Args:
             d: a JSON dictionary
             key: the key to parse
-            default: default value if key is not present
+            default: a default value to return if key is not present
 
         Returns:
             a string
@@ -211,8 +207,8 @@ class Config(Serializable):
             ConfigError: if no default value was provided and the key was
                 not present in the dictionary.
         '''
-        val = Config._parse_key(d, key, six.string_types, default=default)
-        return str(val)
+        val = Config._parse_key(d, key, six.string_types, default=default)[0]
+        return str(val) if val is not None else val
 
     @staticmethod
     def parse_number(d, key, default=no_default):
@@ -221,7 +217,7 @@ class Config(Serializable):
         Args:
             d: a JSON dictionary
             key: the key to parse
-            default: default value if key is not present
+            default: a default value to return if key is not present
 
         Returns:
             a number (e.g. int, float)
@@ -230,7 +226,7 @@ class Config(Serializable):
             ConfigError: if no default value was provided and the key was
                 not present in the dictionary.
         '''
-        return Config._parse_key(d, key, numbers.Number, default=default)
+        return Config._parse_key(d, key, numbers.Number, default=default)[0]
 
     @staticmethod
     def parse_bool(d, key, default=no_default):
@@ -239,7 +235,7 @@ class Config(Serializable):
         Args:
             d: a JSON dictionary
             key: the key to parse
-            default: default value if key is not present
+            default: a default value to return if key is not present
 
         Returns:
             True/False
@@ -248,14 +244,14 @@ class Config(Serializable):
             ConfigError: if no default value was provided and the key was
                 not present in the dictionary.
         '''
-        return Config._parse_key(d, key, bool, default=default)
+        return Config._parse_key(d, key, bool, default=default)[0]
 
     @staticmethod
     def _parse_key(d, key, t, default=no_default):
         if key in d and isinstance(d[key], t):
-            return d[key]
+            return d[key], True
         elif default is not no_default:
-            return default
+            return default, False
         else:
             raise ConfigError("Expected key '%s' of %s" % (key, str(t)))
 
