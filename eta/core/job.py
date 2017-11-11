@@ -74,30 +74,30 @@ def run(job_config, overwrite=True):
 
 
 def _run(job_config):
+    # Construct command
     if job_config.binary:
-        # Run binary
-        code = subprocess.call([
+        args = [
             job_config.binary,          # binary
             job_config.config_path,     # config file
-        ], shell=False)
+        ]
     elif job_config.script:
-        # Run script
-        code = subprocess.call([
+        args = [
             job_config.interpreter,     # interpreter
             job_config.script,          # script
             job_config.config_path,     # config file
-        ], shell=False)
+        ]
     elif job_config.custom:
         # Run custom command-line
-        code = subprocess.call(
+        args = (
             job_config.custom +         # custom args
-            [job_config.config_path],   # config file
-            shell=False,
+            [job_config.config_path]    # config file
         )
     else:
         raise JobConfigError("Invalid JobConfig")
 
-    return code
+    # Run command
+    success = utils.call(args)
+    return success
 
 
 class JobConfigError(Exception):
