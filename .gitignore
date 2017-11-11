@@ -1,6 +1,7 @@
 .DS_Store
 
 *.md5
+*.log
 
 *.pyc
 __pycache__
