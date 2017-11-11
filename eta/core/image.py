@@ -112,7 +112,7 @@ def rasterize(vector_path, width):
                 out_opts=["-resize", str(width)],
             ).run(vector_path, png_path)
             return read(png_path)
-        except:
+        except Exception:
             # Fail gracefully
             return None
 
@@ -123,7 +123,7 @@ def rasterize(vector_path, width):
     #         out_opts=["-resize", str(width)],
     #     ).run(vector_path, "png:-")
     #     return read(out)
-    # except:
+    # except Exception:
     #     # Fail gracefully
     #     return None
 
@@ -253,7 +253,7 @@ class Convert(object):
 
         try:
             self._p = Popen(self._args, stdin=PIPE, stdout=PIPE, stderr=PIPE)
-        except OSError as e:
+        except EnvironmentError as e:
             if e.errno == errno.ENOENT:
                 raise utils.ExecutableNotFoundError(self._executable)
             else:
