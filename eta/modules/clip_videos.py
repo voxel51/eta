@@ -19,16 +19,32 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+import logging
 import sys
 
 from eta.core.config import Config, ConfigError
 import eta.core.events as ev
+import eta.core.module as mo
 import eta.core.video as vd
 
 
-def clip_videos(clip_config):
+logger = logging.getLogger(__name__)
+
+
+def run(config_path):
+    '''Run the clip_videos module.
+
+    Args:
+        config_path: path to a ClipConfig file
+    '''
+    clip_config = ClipConfig.from_json(config_path)
+    mo.setup(clip_config)
+    _clip_videos(clip_config)
+
+
+def _clip_videos(clip_config):
     for data_config in clip_config.data:
-        print("Generating video clips for '%s'" % data_config.input_path)
+        logger.info("Generating video clips for '%s'", data_config.input_path)
         with vd.VideoProcessor(
             data_config.input_path,
             frames=data_config.get_frames(),
@@ -38,10 +54,11 @@ def clip_videos(clip_config):
                 p.write(img)
 
 
-class ClipConfig(Config):
+class ClipConfig(mo.BaseModuleConfig):
     '''Clip configuration settings.'''
 
     def __init__(self, d):
+        super(ClipConfig, self).__init__(d)
         self.data = self.parse_object_array(d, "data", DataConfig)
 
 
@@ -65,4 +82,4 @@ class DataConfig(Config):
 
 
 if __name__ == "__main__":
-    clip_videos(ClipConfig.from_json(sys.argv[1]))
+    run(sys.argv[1])
