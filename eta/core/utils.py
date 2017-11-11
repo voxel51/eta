@@ -27,14 +27,43 @@ import string
 import subprocess
 import tempfile
 
+import eta.constants as c
 
-def run_cmd(args):
-    '''Runs command and returns True if successful and False otherwise.
+
+def get_eta_rev():
+    '''Returns the hash of the last commit to the current ETA branch or "" if
+    something went wrong with git.'''
+    with WorkingDir(c.ETA_DIR):
+        success, rev, _ = communicate(["git", "rev-parse", "HEAD"])
+    return rev.strip() if success else ""
+
+
+def communicate(args):
+    '''Runs the command via subprocess.communicate()
 
     Args:
-        args: command and any flags given as a ["list", "of", "strings"]
+        args: the command specified as a ["list", "of", "strings"]
+
+    Returns:
+        True/False: if the command executed successfully
+        out: the stdout string
+        err: the stderr string
     '''
-    return subprocess.call(args, shell=False) == 0
+    p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    out, err = p.communicate()
+    return p.returncode == 0, out, err
+
+
+def call(args):
+    '''Runs the command via subprocess.call()
+
+    Args:
+        args: the command specified as a ["list", "of", "strings"]
+
+    Returns:
+        True/False: if the command executed successfully
+    '''
+    return subprocess.call(args) == 0
 
 
 def ensure_path(path):
