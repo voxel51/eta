@@ -32,6 +32,7 @@ DEFAULT_CACHE_DIR = os.path.join(ETA_DIR, "cache")
 
 # Paths
 VERSION_JSON_PATH = os.path.join(ETA_DIR, "version.json")
+ASCII_ART_PATH = os.path.join(ETA_DIR, "eta-ascii.txt")
 
 
 # Version
@@ -44,3 +45,8 @@ AUTHOR = _VER["author"]
 CONTACT = _VER["contact"]
 URL = _VER["url"]
 LICENSE = _VER["license"]
+
+
+# ASCII art
+with open(ASCII_ART_PATH, "rt") as f:
+    ASCII_ART = f.read()
