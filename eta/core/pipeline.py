@@ -18,39 +18,57 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+import logging
+import os
 import sys
 
 from eta.core.config import Config
 from eta.core import job
+from eta.core import log
 from eta.core import utils
 
 
-def run(pipeline_config):
-    '''Run the pipeline specified by the PipelineConfig.'''
-    print("Starting pipeline '%s'" % pipeline_config.name)
+logger = logging.getLogger(__name__)
 
+
+def run(pipeline_config_path):
+    '''Run the pipeline specified by the PipelineConfig.
+
+    Args:
+        pipeline_config_path: path to a PipelineConfig file
+    '''
+    pipeline_config = PipelineConfig.from_json(pipeline_config_path)
+
+    log.custom_setup(pipeline_config.logging_config)
+
+    logger.info("Starting pipeline '%s'" % pipeline_config.name)
     overwrite = pipeline_config.overwrite
     ran_job = False
     with utils.WorkingDir(pipeline_config.working_dir):
         for job_config in pipeline_config.jobs:
             if ran_job and not overwrite:
-                print("Config change detected, running all remaining jobs")
+                logger.info(
+                    "Config change detected, running all remaining jobs")
                 overwrite = True
 
             ran_job = job.run(job_config, overwrite=overwrite)
 
-    print("Pipeline '%s' complete" % pipeline_config.name)
+    logger.info("Pipeline '%s' complete" % pipeline_config.name)
 
 
 class PipelineConfig(Config):
     '''Pipeline configuration settings'''
 
     def __init__(self, d):
-        self.name = self.parse_string(d, "name", default="")
+        self.name = self.parse_string(d, "name", default="pipeline")
         self.working_dir = self.parse_string(d, "working_dir", default=".")
         self.overwrite = self.parse_bool(d, "overwrite", default=True)
-        self.jobs = self.parse_object_array(d, "jobs", job.JobConfig)
+        self.jobs = self.parse_object_array(
+            d, "jobs", job.JobConfig, default=[])
+        self.logging_config = self.parse_object(
+            d, "logging_config", log.LoggingConfig,
+            default=log.LoggingConfig.default())
 
 
 if __name__ == "__main__":
-    run(PipelineConfig.from_json(sys.argv[1]))
+    run(sys.argv[1])
