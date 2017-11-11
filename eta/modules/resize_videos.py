@@ -19,15 +19,31 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+import logging
 import sys
 
 from eta.core.config import Config
+import eta.core.module as mo
 import eta.core.video as vd
 
 
-def resize_videos(resize_config):
+logger = logging.getLogger(__name__)
+
+
+def run(config_path):
+    '''Run the resize_videos module.
+
+    Args:
+        config_path: path to a ResizeConfig file
+    '''
+    resize_config = ResizeConfig.from_json(config_path)
+    mo.setup(resize_config)
+    _resize_videos(resize_config)
+
+
+def _resize_videos(resize_config):
     for data_config in resize_config.data:
-        print("Resizing video '%s'" % data_config.input_path)
+        logger.info("Resizing video '%s'", data_config.input_path)
         vd.FFmpegVideoResizer(
             size=data_config.size,
             scale=data_config.scale,
@@ -39,10 +55,11 @@ def resize_videos(resize_config):
         )
 
 
-class ResizeConfig(Config):
+class ResizeConfig(mo.BaseModuleConfig):
     '''Resize configuration settings.'''
 
     def __init__(self, d):
+        super(ResizeConfig, self).__init__(d)
         self.data = self.parse_object_array(d, "data", DataConfig)
 
 
@@ -60,4 +77,4 @@ class DataConfig(Config):
 
 
 if __name__ == "__main__":
-    resize_videos(ResizeConfig.from_json(sys.argv[1]))
+    run(sys.argv[1])
