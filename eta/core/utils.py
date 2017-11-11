@@ -19,7 +19,9 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+import errno
 import hashlib
+import logging
 import os
 import random
 import shutil
@@ -28,6 +30,9 @@ import subprocess
 import tempfile
 
 import eta.constants as c
+
+
+logger = logging.getLogger(__name__)
 
 
 def get_eta_rev():
@@ -71,6 +76,7 @@ def ensure_path(path):
     existing file and ensuring that the base directory exists.
     '''
     if os.path.isfile(path):
+        logger.debug("Deleting '%s'" % path)
         os.remove(path)
     ensure_basedir(path)
 
@@ -83,6 +89,7 @@ def ensure_basedir(path):
 def ensure_dir(dirname):
     '''Makes the given directory, if necessary.'''
     if dirname and not os.path.isdir(dirname):
+        logger.debug("Making directory '%s'" % dirname)
         os.makedirs(dirname)
 
 
@@ -96,7 +103,7 @@ def copy_file(inpath, outpath):
 
 def random_key(n):
     '''Generates an n-len random key of lowercase characters and digits.'''
-    return ''.join(random.SystemRandom().choice(
+    return "".join(random.SystemRandom().choice(
         string.ascii_lowercase + string.digits) for _ in range(n))
 
 
@@ -133,9 +140,14 @@ class FileHasher(object):
         '''Returns the current hash record, or None if there is no record.'''
         try:
             with open(self.record_path, "rt") as f:
+                logger.debug("Found hash record '%s'" % self.record_path)
                 return f.read()
-        except:
-            return None
+        except EnvironmentError as e:
+            if e.errno == errno.ENOENT:
+                logger.debug("No hash record '%s'" % self.record_path)
+                return None
+            else:
+                raise
 
     def write(self):
         '''Writes the current hash record.'''
