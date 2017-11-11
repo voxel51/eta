@@ -99,6 +99,26 @@ class Config(Serializable):
     '''
 
     @classmethod
+    def load_default(cls):
+        '''Loads the default config instance from file.
+
+        Subclasses must implement this method if they intend to support
+        default instances.
+        '''
+        raise NotImplementedError("subclass must implement load_default()")
+
+    @classmethod
+    def default(cls):
+        '''Returns the default config instance.
+
+        By default, this method instantiates the class from an empty
+        dictionary, which will only succeed if all attributes are optional.
+        Otherwise, subclasses should override this method to provide the
+        desired default configuration.
+        '''
+        return cls({})
+
+    @classmethod
     def from_dict(cls, d):
         '''Constructs a Config object from a JSON dictionary.
 
