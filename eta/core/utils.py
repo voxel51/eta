@@ -39,23 +39,29 @@ def get_eta_rev():
     '''Returns the hash of the last commit to the current ETA branch or "" if
     something went wrong with git.'''
     with WorkingDir(c.ETA_DIR):
-        success, rev, _ = communicate(["git", "rev-parse", "HEAD"])
-    return rev.decode().strip() if success else ""
+        success, rev, _ = communicate(
+            ["git", "rev-parse", "HEAD"], decode=True)
+    return rev.strip() if success else ""
 
 
-def communicate(args):
+def communicate(args, decode=False):
     '''Runs the command via subprocess.communicate()
 
     Args:
         args: the command specified as a ["list", "of", "strings"]
+        decode: whether to decode the output bytes into utf-8 strings. By
+            default, the raw bytes are returned
 
     Returns:
         True/False: if the command executed successfully
-        out: the stdout string
-        err: the stderr string
+        out: the command's stdout
+        err: the command's stderr
     '''
     p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = p.communicate()
+    if decode:
+        out = out.decode()
+        err = err.decode()
     return p.returncode == 0, out, err
 
 
