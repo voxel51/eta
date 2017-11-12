@@ -26,7 +26,6 @@ import sys
 from eta.core.config import Config
 from eta.core import utils
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -50,27 +49,39 @@ def run(job_config, overwrite=True):
     Raises:
         JobConfigError: if the JobConfig was invalid
     '''
+    logger.info("Starting job '%s'", job_config.name)
+
     with utils.WorkingDir(job_config.working_dir):
+        # Check config hash
         hasher = utils.MD5FileHasher(job_config.config_path)
         if hasher.has_changed:
             logger.info("Config '%s' changed" % job_config.config_path)
+            should_run = True
+        elif hasher.has_record:
+            if overwrite:
+                logger.info("Overwriting existing job output")
+                should_run = True
+            else:
+                logger.info("Skipping job '%s'\n", job_config.name)
+                should_run = False
+        else:
+            should_run = True
 
-        if overwrite or not hasher.has_record or hasher.has_changed:
-            logger.info("Starting job '%s'", job_config.name)
+        if should_run:
             logger.info("Working directory: %s", os.getcwd())
 
+            # Run the job
             success = _run(job_config)
             if not success:
                 logger.error("Job '%s' failed... exiting now", job_config.name)
                 sys.exit()
 
+            # Write config hash
             hasher.write()
 
             logger.info("Job '%s' complete\n", job_config.name)
-            return True
-        else:
-            logger.info("Skipping job '%s'\n", job_config.name)
-            return False
+
+        return should_run
 
 
 def _run(job_config):
