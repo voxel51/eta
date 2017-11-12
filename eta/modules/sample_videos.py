@@ -52,7 +52,8 @@ def _sample_videos(sample_config):
 
 def _sample_video_by_fps(data_config):
     assert data_config.fps != -1, "Must provide 'fps'"
-    logger.info("Sampling video '%s' at %s fps",
+    logger.info(
+        "Sampling video '%s' at %s fps",
         data_config.input_path, data_config.fps)
 
     vd.FFmpegVideoSampler(fps=data_config.fps).run(
@@ -63,7 +64,8 @@ def _sample_video_by_fps(data_config):
 
 def _sample_video_by_clips(data_config):
     assert data_config.clips_path is not None, "Must provide 'clips_path'"
-    logger.info("Sampling video '%s' by clips '%s'",
+    logger.info(
+        "Sampling video '%s' by clips '%s'",
         data_config.input_path, data_config.clips_path)
 
     detections = ev.EventDetection.from_json(data_config.clips_path)
