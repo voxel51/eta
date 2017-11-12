@@ -43,7 +43,6 @@ DEFAULT_FILENAME = None
 DEFAULT_FILE_FORMAT = \
     "%(asctime)s - %(name)-18s - %(levelname)-8s - %(message)s"
 DEFAULT_FILE_LEVEL = "INFO"
-DEFAULT_FILE_MODE = "wt"
 DEFAULT_DATEFMT = "%Y-%m-%d %H:%M:%S"
 DEFAULT_ENCODING = "utf8"
 
@@ -86,11 +85,14 @@ def basic_setup(level=DEFAULT_BASIC_LEVEL, fmt=DEFAULT_BASIC_FORMAT):
     root_logger.addHandler(handler)
 
 
-def custom_setup(lc):
+def custom_setup(lc, overwrite=False):
     '''Setup custom logging.
 
     Args:
-        lc: a LoggingConfig instance.'''
+        lc: a LoggingConfig instance
+        overwrite: whether to overwrite (True) any existing log, or append
+            to it (False). The default is False
+    '''
     # Messages to log after setup
     msgs = []
 
@@ -110,8 +112,12 @@ def custom_setup(lc):
 
     # File logging
     if lc.filename:
+        if overwrite and os.path.isfile(lc.filename):
+            msgs.append("Deleting existing log '%s'" % lc.filename)
+            os.remove(lc.filename)
+
         file_handler = logging.FileHandler(
-            lc.filename, mode=lc.file_mode, encoding=lc.encoding)
+            lc.filename, mode="at", encoding=lc.encoding)
         file_handler.setFormatter(
             logging.Formatter(fmt=lc.file_format, datefmt=lc.datefmt))
         file_handler.setLevel(getattr(logging, lc.file_level))
@@ -147,8 +153,6 @@ class LoggingConfig(Config):
             d, "file_format", default=DEFAULT_FILE_FORMAT)
         self.file_level = self.parse_string(
             d, "file_level", default=DEFAULT_FILE_LEVEL)
-        self.file_mode = self.parse_string(
-            d, "file_mode", default=DEFAULT_FILE_MODE)
         self.datefmt = self.parse_string(
             d, "datefmt", default=DEFAULT_DATEFMT)
         self.encoding = self.parse_string(
