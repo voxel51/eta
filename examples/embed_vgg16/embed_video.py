@@ -63,4 +63,3 @@ if __name__ == '__main__':
         config_path = _abspath("embed_video-config.json")
 
     embed_video(VGG16FeaturizerConfig.from_json(config_path))
-
