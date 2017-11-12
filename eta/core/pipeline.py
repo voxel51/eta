@@ -19,7 +19,6 @@ from builtins import *
 # pragma pylint: enable=wildcard-import
 
 import logging
-import os
 import sys
 
 from eta.core.config import Config
@@ -44,7 +43,7 @@ def run(pipeline_config_path):
     log.custom_setup(pipeline_config.logging_config, overwrite=True)
 
     # Run pipeline
-    logger.info("Starting pipeline '%s'\n" % pipeline_config.name)
+    logger.info("Starting pipeline '%s'\n", pipeline_config.name)
     overwrite = pipeline_config.overwrite
     ran_job = False
     with utils.WorkingDir(pipeline_config.working_dir):
@@ -56,7 +55,7 @@ def run(pipeline_config_path):
 
             ran_job = job.run(job_config, overwrite=overwrite)
 
-    logger.info("Pipeline '%s' complete" % pipeline_config.name)
+    logger.info("Pipeline '%s' complete", pipeline_config.name)
 
 
 class PipelineConfig(Config):
