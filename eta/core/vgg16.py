@@ -436,7 +436,7 @@ class VGG16(object):
     def _load_weights(self, weights_config, sess):
         weights = Weights(weights_config)
         for i, k in enumerate(sorted(weights)):
-            logger.debug("%s %s %s" % (i, k, np.shape(weights[k])))
+            logger.debug("%s %s %s", i, k, np.shape(weights[k]))
             sess.run(self.parameters[i].assign(weights[k]))
 
 
