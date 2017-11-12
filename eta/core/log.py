@@ -48,6 +48,16 @@ DEFAULT_DATEFMT = "%Y-%m-%d %H:%M:%S"
 DEFAULT_ENCODING = "utf8"
 
 
+def flush():
+    '''Flush logging handlers.
+
+    It is only necessary to call this method when multiple processes are
+    writing to a single log file (e.g., when running a pipeline).
+    '''
+    for h in root_logger.handlers:
+        h.flush()
+
+
 def reset():
     '''Reset logging.
 
