@@ -142,7 +142,7 @@ class LoggingConfig(Config):
 
     def __init__(self, d):
         self.stream_to_stdout = self.parse_bool(
-            d , "stream_to_stdout", default=DEFAULT_STREAM_TO_STDOUT)
+            d, "stream_to_stdout", default=DEFAULT_STREAM_TO_STDOUT)
         self.stdout_format = self.parse_string(
             d, "stdout_format", default=DEFAULT_STDOUT_FORMAT)
         self.stdout_level = self.parse_string(
