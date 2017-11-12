@@ -24,6 +24,7 @@ import subprocess
 import sys
 
 from eta.core.config import Config
+from eta.core import log
 from eta.core import utils
 
 logger = logging.getLogger(__name__)
@@ -69,6 +70,7 @@ def run(job_config, overwrite=True):
 
         if should_run:
             logger.info("Working directory: %s", os.getcwd())
+            log.flush()
 
             # Run the job
             success = _run(job_config)
