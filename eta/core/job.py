@@ -20,7 +20,6 @@ from builtins import *
 
 import logging
 import os
-import subprocess
 import sys
 
 from eta.core.config import Config
@@ -56,7 +55,7 @@ def run(job_config, overwrite=True):
         # Check config hash
         hasher = utils.MD5FileHasher(job_config.config_path)
         if hasher.has_changed:
-            logger.info("Config '%s' changed" % job_config.config_path)
+            logger.info("Config '%s' changed", job_config.config_path)
             should_run = True
         elif hasher.has_record:
             if overwrite:
