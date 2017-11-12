@@ -31,8 +31,8 @@ logger = logging.getLogger(__name__)
 def startup_message():
     '''Logs ETA startup message.'''
     logger.info("Starting...\n" + c.ASCII_ART)
-    logger.info("%s %s, %s" % (c.NAME, c.VERSION, c.AUTHOR))
-    logger.info("Revision %s\n" % utils.get_eta_rev())
+    logger.info("%s %s, %s", c.NAME, c.VERSION, c.AUTHOR)
+    logger.info("Revision %s\n", utils.get_eta_rev())
 
 
 # Default logging behavior
