@@ -37,11 +37,14 @@ def run(pipeline_config_path):
     Args:
         pipeline_config_path: path to a PipelineConfig file
     '''
+    # Load config
     pipeline_config = PipelineConfig.from_json(pipeline_config_path)
 
-    log.custom_setup(pipeline_config.logging_config)
+    # Setup logging
+    log.custom_setup(pipeline_config.logging_config, overwrite=True)
 
-    logger.info("Starting pipeline '%s'" % pipeline_config.name)
+    # Run pipeline
+    logger.info("Starting pipeline '%s'\n" % pipeline_config.name)
     overwrite = pipeline_config.overwrite
     ran_job = False
     with utils.WorkingDir(pipeline_config.working_dir):
