@@ -82,7 +82,7 @@ def ensure_path(path):
     existing file and ensuring that the base directory exists.
     '''
     if os.path.isfile(path):
-        logger.debug("Deleting '%s'" % path)
+        logger.debug("Deleting '%s'", path)
         os.remove(path)
     ensure_basedir(path)
 
@@ -95,7 +95,7 @@ def ensure_basedir(path):
 def ensure_dir(dirname):
     '''Makes the given directory, if necessary.'''
     if dirname and not os.path.isdir(dirname):
-        logger.debug("Making directory '%s'" % dirname)
+        logger.debug("Making directory '%s'", dirname)
         os.makedirs(dirname)
 
 
@@ -146,11 +146,11 @@ class FileHasher(object):
         '''Returns the current hash record, or None if there is no record.'''
         try:
             with open(self.record_path, "rt") as f:
-                logger.debug("Found hash record '%s'" % self.record_path)
+                logger.debug("Found hash record '%s'", self.record_path)
                 return f.read()
         except EnvironmentError as e:
             if e.errno == errno.ENOENT:
-                logger.debug("No hash record '%s'" % self.record_path)
+                logger.debug("No hash record '%s'", self.record_path)
                 return None
             else:
                 raise
