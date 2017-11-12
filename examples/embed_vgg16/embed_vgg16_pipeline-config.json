@@ -9,5 +9,8 @@
             "script": "../../eta/modules/embed_vgg16.py",
             "config_path": "./embed_vgg16_module-config.json"
         }
-    ]
+    ],
+    "logging_config": {
+        "filename": "embed-vgg16-pipeline.log"
+    }
 }
