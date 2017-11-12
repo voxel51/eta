@@ -21,5 +21,8 @@
             "script": "eta/modules/clip_videos.py",
             "config_path": "examples/demo_video/clip-config.json"
         }
-    ]
+    ],
+    "logging_config": {
+        "filename": "examples/demo_video/demo-video.log"
+    }
 }

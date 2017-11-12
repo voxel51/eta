@@ -10,5 +10,8 @@
             "output_path": "examples/out/water-512w-10fps.mp4",
             "fps": 10.0
         }
-    ]
+    ],
+    "logging_config": {
+        "filename": "examples/demo_video/demo-video.log"
+    }
 }

@@ -5,5 +5,8 @@
             "output_path": "examples/out/water-512w.mp4",
             "size": [512, -1]
         }
-    ]
+    ],
+    "logging_config": {
+        "filename": "examples/demo_video/demo-video.log"
+    }
 }
