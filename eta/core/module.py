@@ -37,14 +37,5 @@ class BaseModuleConfig(Config):
 
     def __init__(self, d):
         self.logging_config = self.parse_object(
-            d, "logging_config", ModuleLoggingConfig,
-            default=ModuleLoggingConfig.default())
-
-
-class ModuleLoggingConfig(log.LoggingConfig):
-    '''Module logging configuration settings.'''
-
-    def __init__(self, d):
-        super(ModuleLoggingConfig, self).__init__(d)
-        self.file_mode = self.parse_string(
-            d, "file_mode", default="at")
+            d, "logging_config", log.LoggingConfig,
+            default=log.LoggingConfig.default())
