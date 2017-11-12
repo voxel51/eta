@@ -40,7 +40,7 @@ def get_eta_rev():
     something went wrong with git.'''
     with WorkingDir(c.ETA_DIR):
         success, rev, _ = communicate(["git", "rev-parse", "HEAD"])
-    return rev.strip() if success else ""
+    return rev.decode().strip() if success else ""
 
 
 def communicate(args):
