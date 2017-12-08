@@ -123,3 +123,39 @@ class DetectedObject(Serializable):
             d["confidence"],
             BoundingBox.from_dict(d["bounding_box"]),
         )
+
+
+class ObjectCounts(Serializable):
+    '''Container for counting objects in an image.'''
+
+    def __init__(self, counts=None):
+        '''Constructs an ObjectCounts container.
+
+        Args:
+            counts: optional list of ObjectCount objects
+        '''
+        self.counts = counts or []
+
+    def add(self, count):
+        '''Adds an ObjectCount to the container.'''
+        self.counts.append(count)
+
+    @classmethod
+    def from_dict(cls, d):
+        '''Constructs an ObjectCounts from a JSON dictionary.'''
+        return ObjectCounts(counts=[
+            ObjectCount.from_dict(dc) for dc in d["counts"]
+        ])
+
+
+class ObjectCount(Serializable):
+    '''The number of instances of an object found in an image.'''
+
+    def __init__(self, label, count):
+        self.label = str(label)
+        self.count = int(count)
+
+    @classmethod
+    def from_dict(cls, d):
+        '''Constructs an ObjectCount from a JSON dictionary.'''
+        return ObjectCount(d["label"], d["count"])
