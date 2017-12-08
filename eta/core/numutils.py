@@ -38,5 +38,5 @@ class GrowableArray(object):
         '''Return numpy array.'''
         return np.reshape(
             self.data,
-            newshape=(len(self.data) / self.rowlen, self.rowlen),
+            newshape=(len(self.data) // self.rowlen, self.rowlen),
         )
