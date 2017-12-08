@@ -30,7 +30,6 @@ import numpy as np
 
 from eta.core.config import Config, Configurable
 from eta.core.serial import Serializable
-import eta.core.utils as ut
 
 
 class Event(Serializable):
