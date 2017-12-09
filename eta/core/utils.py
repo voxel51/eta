@@ -45,6 +45,18 @@ def get_eta_rev():
     return rev.strip() if success else ""
 
 
+def has_gpu():
+    '''Determine if the current device has a GPU'''
+    if sys.platform == "darwin":
+        # No GPU on mac
+        return False
+    try:
+        return "NVIDIA" in communicate(["lspci"])[1]
+    except OSError:
+        # couldn't find lspci command...
+        return False
+
+
 def get_full_class_name(obj):
     '''Returns the fully-qualified class name of the given object.'''
     return obj.__module__ + "." + obj.__class__.__name__
