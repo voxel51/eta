@@ -40,7 +40,7 @@ def run(pipeline_config_path):
     pipeline_config = PipelineConfig.from_json(pipeline_config_path)
 
     # Setup logging
-    log.custom_setup(pipeline_config.logging_config, overwrite=True)
+    log.custom_setup(pipeline_config.logging_config, rotate=True)
 
     # Run pipeline
     logger.info("Starting pipeline '%s'\n", pipeline_config.name)
