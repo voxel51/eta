@@ -20,8 +20,8 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-import argparse
 import logging
+import sys
 
 import tensorflow as tf
 
@@ -35,16 +35,17 @@ import eta.core.vgg16 as vgg
 logger = logging.getLogger(__name__)
 
 
-def run(config_path):
+def run(config_path, pipeline_config_path=None):
     '''Run the embed_vgg16 module.
 
     Args:
         config_path: path to a config file containing the fields to define
             both an EmbedVGG16Config and a VGG16FeaturizerConfig
+        pipeline_config_path: optional path to a PipelineConfig file
     '''
     d = se.read_json(config_path)
     embed_vgg16_config = EmbedVGG16Config(d)
-    mo.setup(embed_vgg16_config)
+    mo.setup(embed_vgg16_config, pipeline_config_path=pipeline_config_path)
     _featurize_driver(embed_vgg16_config, d)
 
 
@@ -128,8 +129,4 @@ class RectangleConfig(Config):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(prog='embed_vgg16', add_help=True)
-    parser.add_argument(
-        'config', help='Name of the config file needed to run the program')
-    args = parser.parse_args()
-    run(args.config)
+    run(*sys.argv[1:])
