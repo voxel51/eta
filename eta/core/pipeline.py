@@ -53,6 +53,7 @@ def run(pipeline_config_path):
                     "Config change detected, running all remaining jobs")
                 overwrite = True
 
+            job_config.pipeline_config_path = pipeline_config_path
             ran_job = job.run(job_config, overwrite=overwrite)
 
     logger.info("Pipeline '%s' complete", pipeline_config.name)
