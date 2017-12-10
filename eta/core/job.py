@@ -88,24 +88,22 @@ def run(job_config, overwrite=True):
 def _run(job_config):
     # Construct command
     if job_config.binary:
-        args = [
-            job_config.binary,          # binary
-            job_config.config_path,     # config file
-        ]
+        args = [job_config.binary]      # binary
     elif job_config.script:
         args = [
             job_config.interpreter,     # interpreter
             job_config.script,          # script
-            job_config.config_path,     # config file
         ]
     elif job_config.custom:
         # Run custom command-line
-        args = (
-            job_config.custom +         # custom args
-            [job_config.config_path]    # config file
-        )
+        args = job_config.custom        # custom args
     else:
         raise JobConfigError("Invalid JobConfig")
+
+    # Add config files
+    args.append(job_config.config_path)                 # module config
+    if job_config.pipeline_config_path:
+        args.append(job_config.pipeline_config_path)    # pipeline config
 
     # Run command
     success = utils.call(args)
@@ -128,7 +126,5 @@ class JobConfig(Config):
         self.binary = self.parse_string(d, "binary", default=None)
         self.custom = self.parse_array(d, "custom", default=None)
         self.config_path = self.parse_string(d, "config_path")
-
-
-if __name__ == "__main__":
-    run(JobConfig.from_json(sys.argv[1]))
+        self.pipeline_config_path = self.parse_string(
+            d, "pipeline_config_path", default=None)
