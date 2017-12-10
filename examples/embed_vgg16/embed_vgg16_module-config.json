@@ -25,8 +25,5 @@
             "x": 0.6,
             "y": 0.4
         }
-    },
-    "logging_config": {
-        "filename": "embed-vgg16-pipeline.log"
     }
 }
