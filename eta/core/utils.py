@@ -137,11 +137,19 @@ def ensure_dir(dirname):
 
 
 def copy_file(inpath, outpath):
-    '''Copies input file to the output file (the actual file, not the
-    directory), creating the output directory if necessary.
+    '''Copies the input file to the output location, creating the base output
+    directory if necessary.
     '''
     ensure_basedir(outpath)
     shutil.copy(inpath, outpath)
+
+
+def move_file(inpath, outpath):
+    '''Copies the input file to the output location, creating the base output
+    directory if necessary.
+    '''
+    ensure_basedir(outpath)
+    shutil.move(inpath, outpath)
 
 
 def random_key(n):
