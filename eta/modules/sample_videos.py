@@ -31,14 +31,15 @@ import eta.core.video as vd
 logger = logging.getLogger(__name__)
 
 
-def run(config_path):
+def run(config_path, pipeline_config_path=None):
     '''Run the sample_videos module.
 
     Args:
         config_path: path to a SampleConfig file
+        pipeline_config_path: optional path to a PipelineConfig file
     '''
     sample_config = SampleConfig.from_json(config_path)
-    mo.setup(sample_config)
+    mo.setup(sample_config, pipeline_config_path=pipeline_config_path)
     _sample_videos(sample_config)
 
 
@@ -105,4 +106,4 @@ class DataConfig(Config):
 
 
 if __name__ == "__main__":
-    run(sys.argv[1])
+    run(*sys.argv[1:])
