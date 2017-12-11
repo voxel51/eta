@@ -44,9 +44,10 @@ import tensorflow as tf
 
 from eta.core.config import Config
 from eta import constants
-import eta.core.video as vd
-from eta.core.weights import Weights, WeightsConfig
+from eta.core.features import Featurizer, VideoFeaturizer, \
+        VideoFeaturizerConfig
 import eta.core.image as im
+from eta.core.weights import Weights, WeightsConfig
 
 
 logger = logging.getLogger(__name__)
@@ -441,6 +442,50 @@ class VGG16(object):
 
 
 class VGG16FeaturizerConfig(Config):
+    '''Configuration settings for a VGG16Featurizer that works on images.'''
+
+    def __init__(self, d):
+        self.weights = self.parse_object(d, "weights", WeightsConfig,
+                default = None)
+        if self.weights is None:
+            self.default_config = VGG16Config.load_default()
+            self.weights = self.default_config.weights
+
+
+class VGG16Featurizer(Featurizer):
+    '''Featurizer for images or frames using the VGG16 network structure.'''
+
+    def __init__(self, config):
+        self.validate(config)
+        self.config = config
+
+        self.sess = None
+        self.imgs = tf.placeholder(tf.float32, [None, 224, 224, 3])
+        self.vgg = None
+
+    def dim(self):
+        '''This returns the known size of the output embedding layer; remember
+        this class and its instances instantiate the known VGG16 network.
+        Hence this embedding dimension is known and can be hard-coded.
+        '''
+        return 4096
+
+    def featurize_start(self):
+        self.sess = tf.Session()
+        self.vgg = VGG16(self.imgs, self.sess, self.config)
+
+    def featurize_end(self):
+        self.sess.close()
+        self.sess = None
+        self.vgg = None
+
+    def featurize(self, image):
+        img1 = im.resize(image, 224, 224)
+        return self.sess.run(
+            self.vgg.fc2l, feed_dict={self.vgg.imgs: [img1]})[0]
+
+
+class VGG16VideoFeaturizerConfig(Config):
     '''VGG16 Featurization configuration settings.
 
     Allows you to do a standard parse of the video featurizer config.
@@ -452,19 +497,22 @@ class VGG16FeaturizerConfig(Config):
     def __init__(self, d, vfconfig=None):
         if vfconfig is None:
             self.video_featurizer = self.parse_object(
-                d, "video_featurizer", vd.VideoFeaturizerConfig)
+                d, "video_featurizer", VideoFeaturizerConfig)
         else:
             self.video_featurizer = vfconfig
         self.vgg16 = self.parse_object(d, "vgg16", VGG16Config, default=None)
 
 
-class VGG16Featurizer(vd.VideoFeaturizer):
+class VGG16VideoFeaturizer(VideoFeaturizer):
     '''Implements the VGG16 network as a VideoFeaturizer.
 
     Embeds VGG16.fc21, the fully-connected layer nearest the final activations.
 
     @todo It is probably more efficient to send multiple frames to the gpu at
     once. Is this doable?
+
+    @todo Refactor to meet new design interface/standard for configs and
+    inheritance of this type
     '''
 
     def __init__(self, config):
