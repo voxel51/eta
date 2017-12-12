@@ -39,6 +39,7 @@ from builtins import *
 import logging
 import os
 
+import cv2
 import numpy as np
 import tensorflow as tf
 
@@ -480,6 +481,14 @@ class VGG16Featurizer(Featurizer):
         self.vgg = None
 
     def featurize(self, image):
+        if len(image.shape) == 2:
+            # GRAY input
+            t = cv2.cvtColor(image,cv2.COLOR_GRAY2RGB)
+            image = t
+            del t
+        if image.shape[2] == 4:
+            # RGBA input
+            image = image[:,:,:3]
         img1 = im.resize(image, 224, 224)
         return self.sess.run(
             self.vgg.fc2l, feed_dict={self.vgg.imgs: [img1]})[0]
