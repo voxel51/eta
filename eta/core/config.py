@@ -251,11 +251,11 @@ class Config(Serializable):
         if key in d:
             if isinstance(d[key], t):
                 return d[key], True
-            raise ConfigError("Expected key '%s' of %s; found %s" % (
-                key, str(t), type(d[key])))
+            raise ConfigError(
+                "Expected key '%s' of %s; found %s" % (key, t, type(d[key])))
         elif default is not no_default:
             return default, False
-        raise ConfigError("Expected key '%s' of %s" % (key, str(t)))
+        raise ConfigError("Expected key '%s' of %s" % (key, t))
 
 
 class ConfigError(Exception):
