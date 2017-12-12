@@ -21,6 +21,7 @@ from builtins import *
 
 import errno
 import hashlib
+import importlib
 import logging
 import os
 import random
@@ -105,6 +106,26 @@ def copy_file(inpath, outpath):
     '''
     ensure_basedir(outpath)
     shutil.copy(inpath, outpath)
+
+
+def get_class_from_global_name(global_name):
+    '''Function to take a string for a class using the global name for it,
+    such as eta.core.utils.FileHasher, and returning it.
+
+    Will load the module containing the function.
+    '''
+    return get_function_from_global_name(global_name)
+
+
+def get_function_from_global_name(global_name):
+    '''Function to take a string for a function using the global name for it,
+    such as eta.core.utils.get_function_from_global_name, and returning it.
+
+    Will load the module containing the function.
+    '''
+    (module_name, function_name) = global_name.rsplit('.', 1)
+    m = importlib.import_module(module_name)
+    return getattr(m,function_name)
 
 
 def random_key(n):
