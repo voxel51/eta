@@ -47,7 +47,7 @@ class FeaturizerConfig(Config):
             mname = tlookup[0]
             cname = tlookup[1]
             importlib.import_module(mname)
-            self._featurizer_cls, config_cls = Configurable.parse(mname,cname)
+            self._featurizer_cls, config_cls = Configurable.parse(mname, cname)
         self.config = self.parse_object(d, "config", config_cls)
 
     def build(self):
