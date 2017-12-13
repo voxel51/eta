@@ -447,7 +447,7 @@ class VGG16FeaturizerConfig(Config):
 
     def __init__(self, d):
         self.weights = self.parse_object(d, "weights", WeightsConfig,
-                default = None)
+                                         default=None)
         if self.weights is None:
             self.default_config = VGG16Config.load_default()
             self.weights = self.default_config.weights
@@ -472,24 +472,27 @@ class VGG16Featurizer(Featurizer):
         return 4096
 
     def featurize_start(self):
+        '''Starts the TF session and loads network.'''
         self.sess = tf.Session()
         self.vgg = VGG16(self.imgs, self.sess, self.config)
 
     def featurize_end(self):
+        '''Closes the session and frees up network.'''
         self.sess.close()
         self.sess = None
         self.vgg = None
 
-    def featurize(self, image):
-        if len(image.shape) == 2:
+    def featurize(self, data):
+        '''Featurize the data (image) through the VGG16 network.'''
+        if len(data.shape) == 2:
             # GRAY input
-            t = cv2.cvtColor(image,cv2.COLOR_GRAY2RGB)
-            image = t
+            t = cv2.cvtColor(data, cv2.COLOR_GRAY2RGB)
+            data = t
             del t
-        if image.shape[2] == 4:
+        if data.shape[2] == 4:
             # RGBA input
-            image = image[:,:,:3]
-        img1 = im.resize(image, 224, 224)
+            data = data[:, :, :3]
+        img1 = im.resize(data, 224, 224)
         return self.sess.run(
             self.vgg.fc2l, feed_dict={self.vgg.imgs: [img1]})[0]
 
@@ -512,7 +515,7 @@ class VGG16VideoFeaturizerConfig(Config):
         self.vgg16 = self.parse_object(d, "vgg16", VGG16Config, default=None)
 
 
-class VGG16VideoFeaturizer(VideoFeaturizer):
+class VGG16VideoFeaturizer(VideoFeaturizer, VGG16Featurizer):
     '''Implements the VGG16 network as a VideoFeaturizer.
 
     Embeds VGG16.fc21, the fully-connected layer nearest the final activations.
@@ -525,7 +528,7 @@ class VGG16VideoFeaturizer(VideoFeaturizer):
     '''
 
     def __init__(self, config):
-        super(VGG16Featurizer, self).__init__(config.video_featurizer)
+        super(VGG16VideoFeaturizer, self).__init__(config.video_featurizer)
         self.vgg16_config = config.vgg16
         self.sess = None
         self.imgs = tf.placeholder(tf.float32, [None, 224, 224, 3])

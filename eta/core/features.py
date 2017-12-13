@@ -19,9 +19,12 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+import errno
 import importlib
+import os
 
-from eta.core.serial import Serializable
+import numpy as np
+
 from eta.core.config import Config, Configurable
 from eta.core.numutils import GrowableArray
 import eta.core.video as etav
@@ -42,7 +45,7 @@ class FeaturizerConfig(Config):
         tlookup = self.type.rsplit('.', 1)
         if len(tlookup) == 1:
             self._featurizer_cls, config_cls = Configurable.parse(__name__,
-                self.type)
+                                                                  self.type)
         else:
             mname = tlookup[0]
             cname = tlookup[1]
@@ -51,6 +54,8 @@ class FeaturizerConfig(Config):
         self.config = self.parse_object(d, "config", config_cls)
 
     def build(self):
+        '''Factory method to build the featurizer instance by the class
+        name.'''
         return self._featurizer_cls(self.config)
 
 
@@ -73,12 +78,13 @@ class Featurizer(Configurable):
         '''
         raise NotImplementedError("subclass must implement featurize_end().")
 
-    def featurize(self):
+    def featurize(self, data):
         '''The core feature extraction routine.'''
         raise NotImplementedError("subclass must implement featurize().")
 
 
 class FeaturizedFrameNotFoundError(OSError):
+    '''Error for case when the featurized frame is not yet computed.'''
     pass
 
 
@@ -147,6 +153,7 @@ class VideoFeaturizer(Featurizer):
 
     @property
     def frame_preprocessor(self):
+        '''Access to the frame_preprocessor attribute.'''
         return self._frame_preprocessor
 
     @frame_preprocessor.setter
@@ -284,5 +291,3 @@ class VideoFeaturizer(Featurizer):
         ]
         for f in filelist:
             os.remove(os.path.join(self.config.backing_path, f))
-
-

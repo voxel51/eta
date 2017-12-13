@@ -20,14 +20,12 @@ from builtins import *
 
 import errno
 import json
-import os
 from subprocess import Popen, PIPE
 import threading
 
 import cv2
 import numpy as np
 
-from eta.core.config import Config
 import eta.core.image as im
 from eta.core import utils
 
