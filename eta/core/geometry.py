@@ -80,10 +80,10 @@ class BoundingBox(Serializable):
         wpad = w*relative_percent
         hpad = h*relative_percent
 
-        (brx,bry) = RelativePoint.clamp(self.bottom_right.x + wpad,
-                self.bottom_right.y + hpad)
-        (tlx,tly) = RelativePoint.clamp(self.top_left.x - wpad,
-                self.top_left.y - hpad)
+        (brx, bry) = RelativePoint.clamp(self.bottom_right.x + wpad,
+                                         self.bottom_right.y + hpad)
+        (tlx, tly) = RelativePoint.clamp(self.top_left.x - wpad,
+                                         self.top_left.y - hpad)
 
         return BoundingBox(RelativePoint(tlx, tly), RelativePoint(brx, bry))
 
@@ -127,11 +127,16 @@ class RelativePoint(Serializable):
 
     @staticmethod
     def clamp(x, y):
-        if x < 0.0: x = 0.0
-        if x > 1.0: x = 1.0
-        if y < 0.0: y = 0.0
-        if y > 1.0: y = 1.0
-        return (x,y)
+        '''Clamps the relative point to (0.0,1.0).'''
+        if x < 0.0:
+            x = 0.0
+        if x > 1.0:
+            x = 1.0
+        if y < 0.0:
+            y = 0.0
+        if y > 1.0:
+            y = 1.0
+        return (x, y)
 
     @classmethod
     def from_abs(cls, x, y, **kwargs):
