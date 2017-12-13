@@ -44,13 +44,13 @@ class FeaturizerConfig(Config):
 
         tlookup = self.type.rsplit('.', 1)
         if len(tlookup) == 1:
-            self._featurizer_cls, config_cls = Configurable.parse(__name__,
-                                                                  self.type)
+            self._featurizer_cls, config_cls = Configurable.parse(self.type,
+                                                                  __name__)
         else:
             mname = tlookup[0]
             cname = tlookup[1]
             importlib.import_module(mname)
-            self._featurizer_cls, config_cls = Configurable.parse(mname, cname)
+            self._featurizer_cls, config_cls = Configurable.parse(cname, mname)
         self.config = self.parse_object(d, "config", config_cls)
 
     def build(self):
