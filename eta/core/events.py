@@ -5,6 +5,8 @@ Core data structures for working with events in videos.
 
 @todo generalize to allow multi-class event detections/series.
 
+@todo add ability to store metadata inside an event
+
 Copyright 2017, Voxel51, LLC
 voxel51.com
 
@@ -45,6 +47,7 @@ class Event(Serializable):
     @classmethod
     def from_dict(cls, d):
         '''Constructs an Event from a JSON dictionary.'''
+
         return cls(d["start"], d["stop"])
 
 
@@ -127,8 +130,8 @@ class FilterConfig(Config):
 
     def __init__(self, d):
         self.type = self.parse_string(d, "type")
-        self._filter_cls, config_cls = Configurable.parse(__name__, self.type)
-        self.config = self.parse_object(d, "config", config_cls)
+        self._filter_cls, _config_cls = Configurable.parse(self.type)
+        self.config = self.parse_object(d, "config", _config_cls)
 
     def build(self):
         return self._filter_cls(self.config)

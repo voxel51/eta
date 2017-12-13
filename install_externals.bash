@@ -111,7 +111,7 @@ MSG "INSTALLATION STARTED"
 # GPU flag
 MSG "Checking system for GPU"
 if [ "${OS}" == "Linux" ]; then
-    CRITICAL lspci | grep -q "NVIDIA"
+    lspci | grep -q "NVIDIA"
     if [ $? -eq 0 ]; then
         GCARD=ON
     else

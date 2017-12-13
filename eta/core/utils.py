@@ -28,6 +28,7 @@ import random
 import shutil
 import string
 import subprocess
+import sys
 import tempfile
 
 import eta.constants as c
@@ -43,6 +44,57 @@ def get_eta_rev():
         success, rev, _ = communicate(
             ["git", "rev-parse", "HEAD"], decode=True)
     return rev.strip() if success else ""
+
+
+def has_gpu():
+    '''Determine if the current device has a GPU'''
+    if sys.platform == "darwin":
+        # No GPU on mac
+        return False
+    try:
+        return "NVIDIA" in communicate(["lspci"])[1]
+    except OSError:
+        # couldn't find lspci command...
+        return False
+
+
+def get_full_class_name(obj):
+    '''Returns the fully-qualified class name of the given object.'''
+    return obj.__module__ + "." + obj.__class__.__name__
+
+
+def get_class(class_name, module_name=None):
+    '''Returns the class specified by the given string.
+
+    Loads the parent module if necessary.
+
+    Args:
+        class_name: the "ClassName" or a fully-qualified class name like
+            "eta.core.utils.ClassName"
+        module_name: the fully-qualified module name like "eta.core.utils", or
+            None if class_name includes the module name. Set module_name to
+            __name__ to load a class from the calling module
+    '''
+    if module_name is None:
+        module_name, class_name = class_name.rsplit(".", 1)
+
+    __import__(module_name)  # does nothing if module is already imported
+    return getattr(sys.modules[module_name], class_name)
+
+
+def get_function(function_name, module_name=None):
+    '''Returns the function specified by the given string.
+
+    Loads the parent module if necessary.
+
+    Args:
+        function_name: local function name by string fully-qualified name
+            like "eta.core.utils.get_function"
+        module_name: the fully-qualified module name like "eta.core.utils", or
+            None if function_name includes the module name. Set module_name to
+            __name__ to load a function from the calling module
+    '''
+    return get_class(function_name, module_name)
 
 
 def communicate(args, decode=False):
@@ -101,31 +153,19 @@ def ensure_dir(dirname):
 
 
 def copy_file(inpath, outpath):
-    '''Copies input file to the output file (the actual file, not the
-    directory), creating the output directory if necessary.
+    '''Copies the input file to the output location, creating the base output
+    directory if necessary.
     '''
     ensure_basedir(outpath)
     shutil.copy(inpath, outpath)
 
 
-def get_class_from_global_name(global_name):
-    '''Function to take a string for a class using the global name for it,
-    such as eta.core.utils.FileHasher, and returning it.
-
-    Will load the module containing the function.
+def move_file(inpath, outpath):
+    '''Copies the input file to the output location, creating the base output
+    directory if necessary.
     '''
-    return get_function_from_global_name(global_name)
-
-
-def get_function_from_global_name(global_name):
-    '''Function to take a string for a function using the global name for it,
-    such as eta.core.utils.get_function_from_global_name, and returning it.
-
-    Will load the module containing the function.
-    '''
-    (module_name, function_name) = global_name.rsplit('.', 1)
-    m = importlib.import_module(module_name)
-    return getattr(m,function_name)
+    ensure_basedir(outpath)
+    shutil.move(inpath, outpath)
 
 
 def random_key(n):

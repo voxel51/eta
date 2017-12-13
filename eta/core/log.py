@@ -23,7 +23,7 @@ import os
 import sys
 
 import eta
-from eta.core import utils
+import eta.core.utils as ut
 from eta.core.config import Config
 
 
@@ -85,13 +85,14 @@ def basic_setup(level=DEFAULT_BASIC_LEVEL, fmt=DEFAULT_BASIC_FORMAT):
     root_logger.addHandler(handler)
 
 
-def custom_setup(lc, overwrite=False):
+def custom_setup(lc, rotate=False):
     '''Setup custom logging.
 
     Args:
         lc: a LoggingConfig instance
-        overwrite: whether to overwrite (True) any existing log, or append
-            to it (False). The default is False
+        rotate: True/False. If True, any existing logs are rotated and
+            new messages are written to a new logfile. If False, new messages
+            are appended to the existing log (if any). The default is False
     '''
     # Messages to log after setup
     msgs = []
@@ -112,9 +113,8 @@ def custom_setup(lc, overwrite=False):
 
     # File logging
     if lc.filename:
-        if overwrite and os.path.isfile(lc.filename):
-            msgs.append("Deleting existing log '%s'" % lc.filename)
-            os.remove(lc.filename)
+        if rotate:
+            msgs += _rotate_logs(lc.filename)
 
         file_handler = logging.FileHandler(
             lc.filename, mode="at", encoding=lc.encoding)
@@ -131,6 +131,29 @@ def custom_setup(lc, overwrite=False):
     eta.startup_message()
     for msg in msgs:
         logger.info(msg)
+
+
+def _rotate_logs(filename):
+    # Locate existing logs
+    logfile = _rotate_lambda(filename)
+    num = 0
+    while os.path.isfile(logfile(num)):
+        num += 1
+
+    # Rotate existing logs, if necessary
+    msgs = []
+    if num > 0:
+        msgs.append("Rotating %d existing log(s)" % num)
+        for idx in range(num - 1, -1, -1):
+            ut.move_file(logfile(idx), logfile(idx + 1))
+
+    return msgs
+
+
+def _rotate_lambda(filename):
+    p, e = os.path.splitext(filename)
+    patt = p + "-%d" + e
+    return lambda num: patt % num if num > 0 else filename
 
 
 def _exception_logger(*exc_info):

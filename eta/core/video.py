@@ -994,6 +994,10 @@ class FrameRanges(object):
     def __init__(self, ranges):
         '''Constructs a frame range series from a list of (first, last) tuples,
         which must be disjoint and monotonically increasing.
+
+        Raises:
+            FrameRangesError: if the series is not disjoint and monotonically
+                increasing
         '''
         self._idx = 0
         self._ranges = []
@@ -1002,7 +1006,8 @@ class FrameRanges(object):
         end = -1
         for first, last in ranges:
             if first <= end:
-                raise ValueError("Expected first:%d > last:%d" % (first, end))
+                raise FrameRangesError(
+                    "Expected first:%d > last:%d" % (first, end))
             self._ranges.append(FrameRange(first, last))
             end = last
 
@@ -1064,9 +1069,14 @@ class FrameRanges(object):
         '''Constructs a FrameRanges object from a string like "1-5,10-15".'''
         ranges = []
         for r in frames.split(','):
-            v = list(map(int, r.split('-')))
-            ranges.append((v[0], v[-1]))
+            if r:
+                fr = FrameRange.from_str(r)
+                ranges.append((fr.first, fr.last))
         return cls(ranges)
+
+
+class FrameRangesError(Exception):
+    pass
 
 
 class FrameRange(object):
@@ -1075,9 +1085,13 @@ class FrameRange(object):
     def __init__(self, first, last):
         '''Constructs a frame range with the given first and last values,
         inclusive.
+
+        Raises:
+            FrameRangeError: if last < first
         '''
         if last < first:
-            raise ValueError("Expected first:%d <= last:%d" % (first, last))
+            raise FrameRangeError(
+                "Expected first:%d <= last:%d" % (first, last))
         self.first = first
         self.last = last
         self.idx = -1
@@ -1114,6 +1128,17 @@ class FrameRange(object):
 
     @classmethod
     def from_str(cls, frames):
-        '''Constructs a FrameRange object from a string like "1-5".'''
-        v = list(map(int, frames.split('-')))
-        return cls(v[0], v[-1])
+        '''Constructs a FrameRange object from a string like "1-5".
+
+        Raises:
+            FrameRangeError: if the frame range string is invalid
+        '''
+        try:
+            v = list(map(int, frames.split('-')))
+            return cls(v[0], v[-1])
+        except ValueError:
+            raise FrameRangeError("Invalid frame range string '%s'" % frames)
+
+
+class FrameRangeError(Exception):
+    pass

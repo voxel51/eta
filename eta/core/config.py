@@ -23,6 +23,7 @@ import numbers
 import sys
 
 from eta.core.serial import Serializable
+import eta.core.utils as ut
 
 
 class Configurable(object):
@@ -43,14 +44,15 @@ class Configurable(object):
         Returns:
             an instance of cls instantiated from the config
         '''
-        cls_, config_cls = Configurable.parse(cls.__module__, cls.__name__)
+        cls_, config_cls = Configurable.parse(
+            cls.__name__, module_name=cls.__module__)
         assert cls == cls_, "Expected %s, found %s" % (cls, cls_)
         config = config_cls.from_json(json_path)
         return cls(config)
 
     @classmethod
     def validate(cls, config):
-        '''Validate that the config instance is of the correct type.
+        '''Validates that the config instance is of the correct type.
 
         Raises:
             ConfigurableError: if config is not an instance of <cls>Config
@@ -61,21 +63,32 @@ class Configurable(object):
             raise ConfigurableError(actual, expected)
 
     @staticmethod
-    def parse(module_name, class_name):
-        '''Parse a Configurable subclass name string.
+    def parse(class_name, module_name=None):
+        '''Parses a Configurable subclass name string.
+
+        Assumes both the Configurable class and the Config class are defined
+        in the same module. The module containing the classes will be loaded
+        if necessary.
 
         Args:
-            module_name: a string. The name of the module (usually, __name__)
-                containing the Configurable subclass and its associated Config
-                subclass
-            class_name: a string. The name of the Configurable subclass
+            class_name: a string containing the name of the Configurable class,
+                e.g. "ClassName", or a fully-qualified class name, e.g.
+                "eta.core.config.ClassName"
+            module_name: a string containing the fully-qualified module name,
+                e.g. "eta.core.config", or None if class_name includes the
+                module name. Set module_name = __name__ to load a class from
+                the calling module
 
         Returns:
-            cls: the Configurable subclass
-            config_cls: the Config subclass associated with cls
+            cls: the Configurable class
+            config_cls: the Config class associated with cls
         '''
-        cls = getattr(sys.modules[module_name], class_name)
-        config_cls = getattr(sys.modules[module_name], class_name + "Config")
+        if module_name is None:
+            module_name, class_name = class_name.rsplit(".", 1)
+
+        cls = ut.get_class(class_name, module_name=module_name)
+        config_cls = ut.get_class(
+            class_name + "Config", module_name=module_name)
         return cls, config_cls
 
 
@@ -248,12 +261,14 @@ class Config(Serializable):
 
     @staticmethod
     def _parse_key(d, key, t, default=no_default):
-        if key in d and isinstance(d[key], t):
-            return d[key], True
+        if key in d:
+            if isinstance(d[key], t):
+                return d[key], True
+            raise ConfigError(
+                "Expected key '%s' of %s; found %s" % (key, t, type(d[key])))
         elif default is not no_default:
             return default, False
-        else:
-            raise ConfigError("Expected key '%s' of %s" % (key, str(t)))
+        raise ConfigError("Expected key '%s' of %s" % (key, t))
 
 
 class ConfigError(Exception):

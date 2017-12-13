@@ -18,16 +18,26 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-from eta.core.config import Config
 from eta.core import log
+from eta.core.config import Config
+from eta.core.pipeline import PipelineConfig
 
 
-def setup(module_config):
+def setup(module_config, pipeline_config_path=None):
     '''Perform module setup.
+
+    If a pipeline config is provided, it overrides any applicable values in
+    the module config.
 
     Args:
         module_config: a Config instance derived from BaseModuleConfig
+        pipeline_config_path: an optional path to a PipelineConfig
     '''
+    # Set/override module config settings
+    if pipeline_config_path:
+        pipeline_config = PipelineConfig.from_json(pipeline_config_path)
+        module_config.logging_config = pipeline_config.logging_config
+
     # Setup logging
     log.custom_setup(module_config.logging_config)
 
