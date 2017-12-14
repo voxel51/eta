@@ -34,6 +34,9 @@ class BoundingBox(Serializable):
         self.top_left = top_left
         self.bottom_right = bottom_right
 
+    def __str__(self):
+        return self.top_left.__str__() + " -- " + self.bottom_right.__str__()
+
     def coords_in(self, **kwargs):
         '''Returns the coordinates of the bounding box in the specified image.
 
@@ -65,6 +68,25 @@ class BoundingBox(Serializable):
             x, y = make_square(x, y, w, h)
         return img[y, x, ...]
 
+    def pad_relative(self, relative_percent):
+        '''Returns a padded bounding box.  The padding amount is relative to
+        the size of the bounding box itself to allow for various scaling.
+
+        Argument relative_percent is expected to float between 0 and 1.
+        '''
+        w = self.bottom_right.x - self.top_left.x
+        h = self.bottom_right.y - self.top_left.y
+
+        wpad = w * relative_percent
+        hpad = h * relative_percent
+
+        brx, bry = RelativePoint.clamp(
+            self.bottom_right.x + wpad, self.bottom_right.y + hpad)
+        tlx, tly = RelativePoint.clamp(
+            self.top_left.x - wpad, self.top_left.y - hpad)
+
+        return BoundingBox(RelativePoint(tlx, tly), RelativePoint(brx, bry))
+
     @classmethod
     def from_dict(cls, d):
         '''Constructs a BoundingBox from a JSON dictionary.'''
@@ -86,6 +108,9 @@ class RelativePoint(Serializable):
         self.x = float(x)
         self.y = float(y)
 
+    def __str__(self):
+        return "(%.3f, %.3f)" % (self.x, self.y)
+
     def coords_in(self, **kwargs):
         '''Returns the absolute (x, y) coordinates of this point in the
         specified image.
@@ -98,6 +123,11 @@ class RelativePoint(Serializable):
         '''
         w, h = im.to_frame_size(**kwargs)
         return int(w * 1.0 * self.x), int(h * 1.0 * self.y)
+
+    @staticmethod
+    def clamp(x, y):
+        '''Clamps the (x, y) coordinates to [0, 1].'''
+        return max(0, min(x, 1)), max(0, min(y, 1))
 
     @classmethod
     def from_abs(cls, x, y, **kwargs):

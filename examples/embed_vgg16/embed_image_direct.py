@@ -2,12 +2,17 @@
 '''
 ETA example image embedding via VGG16.
 
-This example has the same effect as embed_image.py except that it directly uses
-the low-level functionality rather than the higher level Featurization
-functionality.  It is included here for pedagogical reasons with ETA.
+Note that the embed_video.py example shows the use of the VideoFeaturization
+classes, which is the preferred approach for ETA modules since they maintain
+the on-disk backing store for the class which is used to communication between
+modules.
+
+Also shows an example of starting a TensorFlow session.
 
 Copyright 2017, Voxel51, LLC
 voxel51.com
+
+Jason Corso, jjc@voxel51.com
 '''
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
@@ -30,7 +35,7 @@ import numpy as np
 
 import eta.core.image as im
 from eta.core import utils
-from eta.core.vgg16 import VGG16FeaturizerConfig, VGG16Featurizer
+from eta.core.vgg16 import VGG16
 
 
 logger = logging.getLogger(__name__)
@@ -46,10 +51,13 @@ def embed_image(impath):
     '''
     img = im.read(impath)
 
-    vconfig = VGG16FeaturizerConfig({})
-    vfeaturizer = VGG16Featurizer(vconfig)
+    imgs = tf.placeholder(tf.float32, [None, 224, 224, 3])
+    sess = tf.Session()
+    vggn = VGG16(imgs, sess)
 
-    embedded_vector = vfeaturizer.featurize(img)
+    rimg = im.resize(img, 224, 224)
+
+    embedded_vector = sess.run(vggn.fc2l, feed_dict={vggn.imgs: [rimg]})[0]
 
     logger.info("image embedded to vector of length %d", len(embedded_vector))
     logger.info("%s", embedded_vector)

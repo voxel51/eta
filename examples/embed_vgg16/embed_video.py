@@ -27,10 +27,21 @@ import logging
 import os
 import sys
 
-from eta.core.vgg16 import VGG16FeaturizerConfig, VGG16Featurizer
+from eta.core.config import Config
+from eta.core.features import VideoFramesFeaturizer, \
+                              VideoFramesFeaturizerConfig
+import eta.core.log as log
 
 
 logger = logging.getLogger(__name__)
+log.basic_setup(level=logging.DEBUG)
+
+
+class EmbedVideoConfig(Config):
+    def __init__(self, d):
+        self.video_path = self.parse_string(d, "video_path")
+        self.video_frames_featurizer = self.parse_object(
+                d, "video_frames_featurizer", VideoFramesFeaturizerConfig)
 
 
 def embed_video(config):
@@ -39,17 +50,26 @@ def embed_video(config):
     .npz, using VideoFeaturizer to handle I/O.
 
     Args:
-        config: a VGG16FeaturizerConfig instance
+        config: an EmbedConfig instance
     '''
     def _crop(img):
         return img[10:100, 10:100, :]
 
-    vf = VGG16Featurizer(config)
-    vf.frame_preprocessor = _crop
-    vf.featurize(frames="1-12")
+
+    vff = VideoFramesFeaturizer(config.video_frames_featurizer)
+    vff.frame_preprocessor = _crop
+    # the following call is not needed in most cases (or this one); it is just
+    # here to force the refeaturization of the frames.
+    vff.flush_backing()
+    vff.featurize(config.video_path, frames="1-6")
+
+    # Note that after the above call frames 1-6 are featurized.  Here, we will
+    # featurize only from 7-9, even tho we say 4-9, because the other ones were
+    # already computed and cached.
+    vff.featurize(config.video_path, frames="4-9")
 
     logger.info(
-        "features stored in '%s'", config.video_featurizer.backing_path)
+        "features stored in '%s'", config.video_frames_featurizer.backing_path)
 
 
 def _abspath(path):
@@ -62,4 +82,4 @@ if __name__ == '__main__':
     else:
         config_path = _abspath("embed_video-config.json")
 
-    embed_video(VGG16FeaturizerConfig.from_json(config_path))
+    embed_video(EmbedVideoConfig.from_json(config_path))
