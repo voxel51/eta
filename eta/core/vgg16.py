@@ -39,14 +39,15 @@ from builtins import *
 import logging
 import os
 
+import cv2
 import numpy as np
 import tensorflow as tf
 
 from eta.core.config import Config
 from eta import constants
-import eta.core.video as vd
-from eta.core.weights import Weights, WeightsConfig
+from eta.core.features import Featurizer
 import eta.core.image as im
+from eta.core.weights import Weights, WeightsConfig
 
 
 logger = logging.getLogger(__name__)
@@ -441,51 +442,57 @@ class VGG16(object):
 
 
 class VGG16FeaturizerConfig(Config):
-    '''VGG16 Featurization configuration settings.
+    '''Configuration settings for a VGG16Featurizer that works on images.'''
 
-    Allows you to do a standard parse of the video featurizer config.
-
-    If you have already parsed the config in a different place, then you can
-    optionally pass the vfconfig object here and it will be used rather than a
-    parsed one.
-    '''
-    def __init__(self, d, vfconfig=None):
-        if vfconfig is None:
-            self.video_featurizer = self.parse_object(
-                d, "video_featurizer", vd.VideoFeaturizerConfig)
-        else:
-            self.video_featurizer = vfconfig
-        self.vgg16 = self.parse_object(d, "vgg16", VGG16Config, default=None)
+    def __init__(self, d):
+        self.weights = self.parse_object(
+            d, "weights", WeightsConfig, default=None)
+        if self.weights is None:
+            self.default_config = VGG16Config.load_default()
+            self.weights = self.default_config.weights
 
 
-class VGG16Featurizer(vd.VideoFeaturizer):
-    '''Implements the VGG16 network as a VideoFeaturizer.
-
-    Embeds VGG16.fc21, the fully-connected layer nearest the final activations.
-
-    @todo It is probably more efficient to send multiple frames to the gpu at
-    once. Is this doable?
-    '''
+class VGG16Featurizer(Featurizer):
+    '''Featurizer for images or frames using the VGG16 network structure.'''
 
     def __init__(self, config):
-        super(VGG16Featurizer, self).__init__(config.video_featurizer)
-        self.vgg16_config = config.vgg16
+        super(VGG16Featurizer, self).__init__()
+
+        self.validate(config)
+        self.config = config
+
         self.sess = None
         self.imgs = tf.placeholder(tf.float32, [None, 224, 224, 3])
         self.vgg = None
 
-    def featurize_start(self):
-        self.sess = tf.Session()
-        self.vgg = VGG16(self.imgs, self.sess, self.vgg16_config)
+    def dim(self):
+        '''This returns the known size of the output embedding layer; remember
+        this class and its instances instantiate the known VGG16 network.
+        Hence this embedding dimension is known and can be hard-coded.
+        '''
+        return 4096
 
-    def featurize_end(self):
+    def _start(self):
+        '''Starts the TF session and loads network.'''
+        self.sess = tf.Session()
+        self.vgg = VGG16(self.imgs, self.sess, self.config)
+
+    def _stop(self):
+        '''Closes the session and frees up network.'''
         self.sess.close()
         self.sess = None
         self.vgg = None
 
-    def featurize_frame(self, frame):
-        # @todo this resize needs to be changed and more adaptable to the needs
-        # allow a function plugin functionality?
-        img1 = im.resize(frame, 224, 224)
+    def _featurize(self, data):
+        '''Featurize the data (image) through the VGG16 network.'''
+        if len(data.shape) == 2:
+            # GRAY input
+            t = cv2.cvtColor(data, cv2.COLOR_GRAY2RGB)
+            data = t
+            del t
+        if data.shape[2] == 4:
+            # RGBA input
+            data = data[:, :, :3]
+        img1 = im.resize(data, 224, 224)
         return self.sess.run(
             self.vgg.fc2l, feed_dict={self.vgg.imgs: [img1]})[0]

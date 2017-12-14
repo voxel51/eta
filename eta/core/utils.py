@@ -81,6 +81,22 @@ def get_class(class_name, module_name=None):
     return getattr(sys.modules[module_name], class_name)
 
 
+def get_function(function_name, module_name=None):
+    '''Returns the function specified by the given string.
+
+    Loads the parent module if necessary.
+
+    Args:
+        function_name: local function name by string fully-qualified name
+            like "eta.core.utils.get_function"
+        module_name: the fully-qualified module name like "eta.core.utils", or
+            None if function_name includes the module name. Set module_name to
+            __name__ to load a function from the calling module
+    '''
+    # reuse implementation for getting a class
+    return get_class(function_name, module_name=module_name)
+
+
 def communicate(args, decode=False):
     '''Runs the command via subprocess.communicate()
 
