@@ -93,7 +93,8 @@ def get_function(function_name, module_name=None):
             None if function_name includes the module name. Set module_name to
             __name__ to load a function from the calling module
     '''
-    return get_class(function_name, module_name)
+    # reuse implementation for getting a class
+    return get_class(function_name, module_name=module_name)
 
 
 def communicate(args, decode=False):
