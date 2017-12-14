@@ -76,7 +76,7 @@ class Featurizer(Configurable):
         '''Actual start code that subclasses need to override.  The public
         start function will set up state and then invoke this one.
         '''
-        raise NotImplementedError("subclass must implement _start().")
+        pass
 
     def start(self, warn_on_restart=True, keep_alive=True):
         '''Called by featurize before it starts in case any environment needs
@@ -100,7 +100,7 @@ class Featurizer(Configurable):
         '''Actual stop code that subclasses need to override.  The public stop
         function will manage state and invoke this one.
         '''
-        raise NotImplementedError("subclass must implement _stop().")
+        pass
 
     def stop(self):
         '''Called by featurize after it finishes to handle state management.
@@ -118,7 +118,7 @@ class Featurizer(Configurable):
     def _featurize(self, data):
         '''The core feature extraction routine that subclasses need to
         implement.'''
-        raise NotImplementedError("subclass must implement featurize().")
+        raise NotImplementedError("subclass must implement _featurize().")
 
     def featurize(self, data):
         '''The core feature extraction routine to be called by users of the
@@ -213,18 +213,6 @@ class VideoFramesFeaturizer(Featurizer):
     @frame_preprocessor.deleter
     def frame_preprocessor(self):
         self._frame_preprocessor = None
-
-    def _start(self):
-        '''Called by featurize before it starts in case any environment needs
-        to be set up by subclasses.
-        '''
-        pass
-
-    def _stop(self):
-        '''Called by featurize after it end in case any environment needs to be
-        cleaned up by subclasses.
-        '''
-        pass
 
     def is_featurized(self, frame_number):
         ''' Checks the backing store to determine whether or not the frame
