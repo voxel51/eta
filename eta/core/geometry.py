@@ -77,16 +77,15 @@ class BoundingBox(Serializable):
         w = self.bottom_right.x - self.top_left.x
         h = self.bottom_right.y - self.top_left.y
 
-        wpad = w*relative_percent
-        hpad = h*relative_percent
+        wpad = w * relative_percent
+        hpad = h * relative_percent
 
-        (brx, bry) = RelativePoint.clamp(self.bottom_right.x + wpad,
-                                         self.bottom_right.y + hpad)
-        (tlx, tly) = RelativePoint.clamp(self.top_left.x - wpad,
-                                         self.top_left.y - hpad)
+        brx, bry = RelativePoint.clamp(
+            self.bottom_right.x + wpad, self.bottom_right.y + hpad)
+        tlx, tly = RelativePoint.clamp(
+            self.top_left.x - wpad, self.top_left.y - hpad)
 
         return BoundingBox(RelativePoint(tlx, tly), RelativePoint(brx, bry))
-
 
     @classmethod
     def from_dict(cls, d):
