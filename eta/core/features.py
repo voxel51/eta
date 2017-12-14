@@ -200,12 +200,10 @@ class VideoFramesFeaturizer(Featurizer):
         self._frame_preprocessor = None
         self.config = video_featurizer_config
         self._frame_featurizer = None
+        self._backing_path = None
 
-        try:
-            os.makedirs(self.config.backing_path)
-        except OSError as e:
-            if e.errno != errno.EEXIST:
-                raise
+        self.update_backing_path(self.config.backing_path)
+
 
     @property
     def frame_preprocessor(self):
@@ -327,7 +325,7 @@ class VideoFramesFeaturizer(Featurizer):
     def featurized_frame_path(self, frame_number):
         '''Returns the backing path for the given frame number.'''
         return os.path.join(
-            self.config.backing_path, self._frame_string % frame_number)
+            self._backing_path, self._frame_string % frame_number)
 
 
     def featurize_to_disk(self, data, frames="*"):
@@ -346,8 +344,17 @@ class VideoFramesFeaturizer(Featurizer):
         directory.
         '''
         filelist = [
-            f for f in os.listdir(self.config.backing_path)
+            f for f in os.listdir(self._backing_path)
             if f.endswith(".npz")
         ]
         for f in filelist:
-            os.remove(os.path.join(self.config.backing_path, f))
+            os.remove(os.path.join(self._backing_path, f))
+
+    def update_backing_path(self, backing_path):
+        '''Update the backing path and create the directory tree if needed.'''
+        self._backing_path = backing_path
+        try:
+            os.makedirs(self._backing_path)
+        except OSError as e:
+            if e.errno != errno.EEXIST:
+                raise
