@@ -16,7 +16,7 @@
         }
     ],
     "video_frames_featurizer": {
-        "backing_path": "out/eta-backing",
+        "backing_path": "/tmp",
         "frame_featurizer": {
             "type": "eta.core.vgg16.VGG16Featurizer",
             "config": {}
