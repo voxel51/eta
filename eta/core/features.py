@@ -20,6 +20,7 @@ from builtins import *
 # pragma pylint: enable=wildcard-import
 
 import errno
+import logging
 import os
 
 import numpy as np
@@ -27,6 +28,9 @@ import numpy as np
 from eta.core.config import Config, Configurable
 from eta.core.numutils import GrowableArray
 import eta.core.video as etav
+
+
+logger = logging.getLogger(__name__)
 
 
 class FeaturizerConfig(Config):
@@ -55,6 +59,8 @@ class Featurizer(Configurable):
     `super(SUBCLASSNAME, self).__init__()` in their __init__() in order for the
     Featurizer state management to be set up properly.  (This is necessitated
     by the loose inheritance implementation in Python.)
+
+    @todo Sub-class to an ImageFeaturizer for typing concerns.
     '''
 
     def __init__(self):
@@ -72,29 +78,29 @@ class Featurizer(Configurable):
         '''
         raise NotImplementedError("subclass must implement _start().")
 
-    def start(self, warnOnRestart=True, keepAlive=True):
+    def start(self, warn_on_restart=True, keep_alive=True):
         '''Called by featurize before it starts in case any environment needs
         to be set up by subclasses.  It can be explicitly called by users of
         subclasses; state will be managed nonetheless.  The default parameter
         settings handle the case where an outside user of the class wants to
-        `start()` the process once and then will featurizer many cases until they
-        explicitly call `stop()`.
+        `start()` the process once and then will featurizer many cases until
+        they explicitly call `stop()`.
         '''
-        if warnOnRestart and self._started:
+        if warn_on_restart and self._started:
             logger.warning('featurizer start called when already started.')
 
         if self._started:
             return
 
         self._started = True
-        self._keep_alive = keepAlive
+        self._keep_alive = keep_alive
         self._start()
 
     def _stop(self):
         '''Actual stop code that subclasses need to override.  The public stop
         function will manage state and invoke this one.
         '''
-        raise NotImplementedError("subclass must implement _end().")
+        raise NotImplementedError("subclass must implement _stop().")
 
     def stop(self):
         '''Called by featurize after it finishes to handle state management.
@@ -118,7 +124,7 @@ class Featurizer(Configurable):
         '''The core feature extraction routine to be called by users of the
         featurizer.  It appropriately interacts with the featurizer state
         management.'''
-        self.start(warnOnRestart=False, keepAlive=False)
+        self.start(warn_on_restart=False, keep_alive=False)
         v = self._featurize(data)
         if self._keep_alive is False:
             self.stop()
@@ -130,29 +136,35 @@ class FeaturizedFrameNotFoundError(OSError):
     pass
 
 
-class VideoFeaturizerConfig(Config):
+class VideoFramesFeaturizerConfig(Config):
     '''Specifies the configuration settings for the VideoFeaturizer class.'''
 
     def __init__(self, d):
         self.backing_path = self.parse_string(d, "backing_path")
-        self.video_path = self.parse_string(d, "video_path")
+        self.frame_featurizer = self.parse_object(
+                d, "frame_featurizer", FeaturizerConfig)
 
 
-class VideoFeaturizer(Featurizer):
+class VideoFramesFeaturizer(Featurizer):
     '''Class that encapsulates creating features from frames in a video and
     storing them to disk.
 
     Needs the following to be specified:
         backingPath: location on disk where featurized frames will be cached
             (this is a directory and not a printf like path)
-        videoPath: location of the input video (suitable as input to
-            VideoProcessor)
+        frame_featurizer: this is any image featurizer
     These are immutable quantities and are hence provided as a config.
 
     Frames are not part of the config as a new VideoProcessor can be created
     with a different frame range depending on execution needs.
 
     Featurized frames are store indexed by frame_number as compressed pickles.
+
+    Design note: a VideoFramesFeaturizer is a Featurizer that also has a
+    Featurizer member, which processes each frame.  This frame featurizer gets
+    instantiated and deleted on each start() and stop() call, so implement
+    accordingly.  (Remember that featurizers can handle start and stop outside
+    of a featurize loop.)
 
     @todo Should objects from this class are serializable.  If you initialize
     with the same video and the same config then it is essentially the same
@@ -181,11 +193,13 @@ class VideoFeaturizer(Featurizer):
         this preprocessor function.  But, this is included her for speed (and
         it's what I needed initially).
         '''
+        super(VideoFramesFeaturizer, self).__init__()
 
         self._frame_string = "%08d.npz"
         self.most_recent_frame = -1
         self._frame_preprocessor = None
         self.config = video_featurizer_config
+        self._frame_featurizer = None
 
         try:
             os.makedirs(self.config.backing_path)
@@ -206,7 +220,17 @@ class VideoFeaturizer(Featurizer):
     def frame_preprocessor(self):
         self._frame_preprocessor = None
 
-    # def serialize(self):
+    def _start(self):
+        '''Called by featurize before it starts in case any environment needs
+        to be set up by subclasses.
+        '''
+        pass
+
+    def _stop(self):
+        '''Called by featurize after it end in case any environment needs to be
+        cleaned up by subclasses.
+        '''
+        pass
 
     def is_featurized(self, frame_number):
         ''' Checks the backing store to determine whether or not the frame
@@ -230,20 +254,41 @@ class VideoFeaturizer(Featurizer):
         f = np.load(p)
         return f["v"]
 
-    def featurize(self, frames="*"):
+    def featurize(self, data, frames="*", returnX=True):
+        '''The core feature extraction routine to be called by users of the
+        featurizer.  It appropriately interacts with the featurizer state
+        management.
+
+        Need to overload the Featurizer.featurize because we want to add some
+        extra arguments.  It will still work as default if no arguments are
+        expected.
+        '''
+        self.start(warn_on_restart=False, keep_alive=False)
+        v = self._featurize(data, frames, returnX)
+        if self._keep_alive is False:
+            self.stop()
+        return v
+
+    def _featurize(self, data, frames="*", returnX=True):
         '''Main general use driver.  Works through a frame range to retrieve a
         matrix X of the features.
+
+        data is the video *path*
 
         X.shape is [n_frames,featurized_length]
 
         Will do the featurization if needed.
 
         '''
+        logger.debug("Featurizing frames %s" % frames)
+
+        # the has_started manages the state of the frame_featurizer
         has_started = False
 
-        X = None
+        if returnX:
+            X = None
 
-        with etav.VideoProcessor(self.config.video_path, frames) as p:
+        with etav.VideoProcessor(data, frames) as p:
             for img in p:
                 self.most_recent_frame = p.frame_number
                 f = self.featurized_frame_path(p.frame_number)
@@ -251,77 +296,50 @@ class VideoFeaturizer(Featurizer):
                 try:
                     v = self.retrieve_featurized_frame(p.frame_number)
                 except FeaturizedFrameNotFoundError:
+                    logger.debug("Featurizing frame %d" % p.frame_number)
                     if not has_started:
                         has_started = True
-                        self.featurize_start()
+                        self._frame_featurizer = \
+                            self.config.frame_featurizer.build()
+                        self._frame_featurizer.start()
 
                     # The frame is not yet cached, so compute and cache it.
                     if self._frame_preprocessor is not None:
-                        v = self.featurize_frame(self._frame_preprocessor(img))
+                        v = self._frame_featurizer.featurize(
+                            self._frame_preprocessor(img))
                     else:
-                        v = self.featurize_frame(img)
+                        v = self._frame_featurizer.featurize(img)
                     np.savez_compressed(f, v=v)
                 finally:
-                    if X is None:
-                        X = GrowableArray(len(v))
-                    X.update(v)
+                    if returnX:
+                        if X is None:
+                            X = GrowableArray(len(v))
+                        X.update(v)
 
         if has_started:
-            self.featurize_end()
+            self._frame_featurizer.stop()
+            self._frame_featurizer = None
 
-        return X.finalize()
+        if returnX:
+            return X.finalize()
+        return None
 
     def featurized_frame_path(self, frame_number):
         '''Returns the backing path for the given frame number.'''
         return os.path.join(
             self.config.backing_path, self._frame_string % frame_number)
 
-    def featurize_frame(self, frame):
-        '''The actual featurization. Should return a numpy vector.'''
-        raise NotImplementedError("subclass must implement featurize_frame()")
 
-    def featurize_start(self):
-        '''Called by featurize before it starts in case any environment needs
-        to be set up by subclasses.
-        '''
-        pass
-
-    def featurize_end(self):
-        '''Called by featurize after it end in case any environment needs to be
-        cleaned up by subclasses.
-        '''
-        pass
-
-    def featurize_to_disk(self, frames="*"):
+    def featurize_to_disk(self, data, frames="*"):
         '''Featurize all frames in the specified range by calling
         featurize_frame() for each frame and storing results directly to disk.
         Does not keep the results in memory.
-
-        Creates a VideoProcessor on the fly for this.
-
-        Checks the backing store to see if the frame is already featurized.
-
-        @todo Check for refactorization possibilities with retrieve() as there
-        is some redundant code.
         '''
-        self.featurize_start()
-
-        with etav.VideoProcessor(self.config.video_path, frames) as p:
-            for img in p:
-                self.most_recent_frame = p.frame_number
-                f = self.featurized_frame_path(p.frame_number)
-
-                try:
-                    self.retrieve_featurized_frame(p.frame_number)
-                except FeaturizedFrameNotFoundError:
-                    # The frame is not yet cached, so compute it.
-                    if self._frame_preprocessor is not None:
-                        v = self.featurize_frame(self._frame_preprocessor(img))
-                    else:
-                        v = self.featurize_frame(img)
-                    np.savez_compressed(f, v=v)
-
-        self.featurize_end()
+        self.start(warn_on_restart=False, keep_alive=False)
+        v = self._featurize(data, frames, returnX=False)
+        if self._keep_alive is False:
+            self.stop()
+        return v
 
     def flush_backing(self):
         '''CAUTION! Deletes all featurized files on disk but not the

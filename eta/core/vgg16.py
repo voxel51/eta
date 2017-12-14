@@ -45,8 +45,7 @@ import tensorflow as tf
 
 from eta.core.config import Config
 from eta import constants
-from eta.core.features import Featurizer, VideoFeaturizer, \
-        VideoFeaturizerConfig
+from eta.core.features import Featurizer
 import eta.core.image as im
 from eta.core.weights import Weights, WeightsConfig
 
@@ -495,59 +494,5 @@ class VGG16Featurizer(Featurizer):
             # RGBA input
             data = data[:, :, :3]
         img1 = im.resize(data, 224, 224)
-        return self.sess.run(
-            self.vgg.fc2l, feed_dict={self.vgg.imgs: [img1]})[0]
-
-
-class VGG16VideoFeaturizerConfig(Config):
-    '''VGG16 Featurization configuration settings.
-
-    Allows you to do a standard parse of the video featurizer config.
-
-    If you have already parsed the config in a different place, then you can
-    optionally pass the vfconfig object here and it will be used rather than a
-    parsed one.
-    '''
-    def __init__(self, d, vfconfig=None):
-        if vfconfig is None:
-            self.video_featurizer = self.parse_object(
-                d, "video_featurizer", VideoFeaturizerConfig)
-        else:
-            self.video_featurizer = vfconfig
-        self.vgg16 = self.parse_object(d, "vgg16", VGG16Config, default=None)
-
-
-class VGG16VideoFeaturizer(VideoFeaturizer, VGG16Featurizer):
-    '''Implements the VGG16 network as a VideoFeaturizer.
-
-    Embeds VGG16.fc21, the fully-connected layer nearest the final activations.
-
-    @todo It is probably more efficient to send multiple frames to the gpu at
-    once. Is this doable?
-
-    @todo Refactor to meet new design interface/standard for configs and
-    inheritance of this type
-    '''
-
-    def __init__(self, config):
-        super(VGG16VideoFeaturizer, self).__init__(config.video_featurizer)
-        self.vgg16_config = config.vgg16
-        self.sess = None
-        self.imgs = tf.placeholder(tf.float32, [None, 224, 224, 3])
-        self.vgg = None
-
-    def featurize_start(self):
-        self.sess = tf.Session()
-        self.vgg = VGG16(self.imgs, self.sess, self.vgg16_config)
-
-    def featurize_end(self):
-        self.sess.close()
-        self.sess = None
-        self.vgg = None
-
-    def featurize_frame(self, frame):
-        # @todo this resize needs to be changed and more adaptable to the needs
-        # allow a function plugin functionality?
-        img1 = im.resize(frame, 224, 224)
         return self.sess.run(
             self.vgg.fc2l, feed_dict={self.vgg.imgs: [img1]})[0]
