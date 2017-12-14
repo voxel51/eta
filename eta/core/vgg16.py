@@ -457,6 +457,8 @@ class VGG16Featurizer(Featurizer):
     '''Featurizer for images or frames using the VGG16 network structure.'''
 
     def __init__(self, config):
+        super(VGG16Featurizer, self).__init__()
+
         self.validate(config)
         self.config = config
 
@@ -471,18 +473,18 @@ class VGG16Featurizer(Featurizer):
         '''
         return 4096
 
-    def featurize_start(self):
+    def _start(self):
         '''Starts the TF session and loads network.'''
         self.sess = tf.Session()
         self.vgg = VGG16(self.imgs, self.sess, self.config)
 
-    def featurize_end(self):
+    def _stop(self):
         '''Closes the session and frees up network.'''
         self.sess.close()
         self.sess = None
         self.vgg = None
 
-    def featurize(self, data):
+    def _featurize(self, data):
         '''Featurize the data (image) through the VGG16 network.'''
         if len(data.shape) == 2:
             # GRAY input

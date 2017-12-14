@@ -49,27 +49,80 @@ class FeaturizerConfig(Config):
 
 
 class Featurizer(Configurable):
-    '''Interface for feature extraction methods.'''
+    '''Interface for feature extraction methods.
+
+    Note that subclasses of Featurizer MUST call
+    `super(SUBCLASSNAME, self).__init__()` in their __init__() in order for the
+    Featurizer state management to be set up properly.  (This is necessitated
+    by the loose inheritance implementation in Python.)
+    '''
+
+    def __init__(self):
+        '''Initializes any featurizer by setting up internal state.'''
+        self._started = False
+        self._keep_alive = False
 
     def dim(self):
         '''Return the dimension of the features extracted by this method.'''
         raise NotImplementedError("subclass must implement dim().")
 
-    def featurize_start(self):
-        '''Called by featurize before it starts in case any environment needs
-        to be set up by subclasses.
+    def _start(self):
+        '''Actual start code that subclasses need to override.  The public
+        start function will set up state and then invoke this one.
         '''
-        raise NotImplementedError("subclass must implement featurize_start().")
+        raise NotImplementedError("subclass must implement _start().")
 
-    def featurize_end(self):
-        '''Called by featurize after it end in case any environment needs to be
-        cleaned up by subclasses.
+    def start(self, warnOnRestart=True, keepAlive=True):
+        '''Called by featurize before it starts in case any environment needs
+        to be set up by subclasses.  It can be explicitly called by users of
+        subclasses; state will be managed nonetheless.  The default parameter
+        settings handle the case where an outside user of the class wants to
+        `start()` the process once and then will featurizer many cases until they
+        explicitly call `stop()`.
         '''
-        raise NotImplementedError("subclass must implement featurize_end().")
+        if warnOnRestart and self._started:
+            logger.warning('featurizer start called when already started.')
+
+        if self._started:
+            return
+
+        self._started = True
+        self._keep_alive = keepAlive
+        self._start()
+
+    def _stop(self):
+        '''Actual stop code that subclasses need to override.  The public stop
+        function will manage state and invoke this one.
+        '''
+        raise NotImplementedError("subclass must implement _end().")
+
+    def stop(self):
+        '''Called by featurize after it finishes to handle state management.
+        If the user called start themselves, this should BE called by them as
+        well; the Featurizer is not able to know the process has ended in this
+        case.
+        '''
+        if not self._started:
+            return
+
+        self._stop()
+        self._started = False
+        self._keep_alive = False
+
+    def _featurize(self, data):
+        '''The core feature extraction routine that subclasses need to
+        implement.'''
+        raise NotImplementedError("subclass must implement featurize().")
 
     def featurize(self, data):
-        '''The core feature extraction routine.'''
-        raise NotImplementedError("subclass must implement featurize().")
+        '''The core feature extraction routine to be called by users of the
+        featurizer.  It appropriately interacts with the featurizer state
+        management.'''
+        self.start(warnOnRestart=False, keepAlive=False)
+        v = self._featurize(data)
+        if self._keep_alive is False:
+            self.stop()
+        return v
 
 
 class FeaturizedFrameNotFoundError(OSError):
