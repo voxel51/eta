@@ -126,16 +126,8 @@ class RelativePoint(Serializable):
 
     @staticmethod
     def clamp(x, y):
-        '''Clamps the relative point to (0.0,1.0).'''
-        if x < 0.0:
-            x = 0.0
-        if x > 1.0:
-            x = 1.0
-        if y < 0.0:
-            y = 0.0
-        if y > 1.0:
-            y = 1.0
-        return (x, y)
+        '''Clamps the (x, y) coordinates to [0, 1].'''
+        return max(0, min(x, 1)), max(0, min(y, 1))
 
     @classmethod
     def from_abs(cls, x, y, **kwargs):
