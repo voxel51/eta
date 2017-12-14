@@ -20,7 +20,6 @@ from builtins import *
 # pragma pylint: enable=wildcard-import
 
 import errno
-import importlib
 import os
 
 import numpy as np
@@ -33,24 +32,14 @@ import eta.core.video as etav
 class FeaturizerConfig(Config):
     '''Featurizer configuration settings.
 
-    d['type'] is the class name for the object.  This is somewhat flexible.  If
-    it is a dotted-moduled-path like (foo.bar.foobar) then we handle parsing it
-    and loading foo.bar and invoking foobar when needed.  Otherwise, if it is
-    just a class name foobar, then we assume it is defined in this module.
+    d['type'] is the fully-qualified class name of the Featurizer, e.g.
+    "eta.core.features.VideoFeaturizer". The parent module is loaded if
+    necessary.
     '''
 
     def __init__(self, d):
         self.type = self.parse_string(d, "type")
-
-        tlookup = self.type.rsplit('.', 1)
-        if len(tlookup) == 1:
-            self._featurizer_cls, config_cls = Configurable.parse(self.type,
-                                                                  __name__)
-        else:
-            mname = tlookup[0]
-            cname = tlookup[1]
-            importlib.import_module(mname)
-            self._featurizer_cls, config_cls = Configurable.parse(cname, mname)
+        self._featurizer_cls, config_cls = Configurable.parse(self.type)
         self.config = self.parse_object(d, "config", config_cls)
 
     def build(self):
