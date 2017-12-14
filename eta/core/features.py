@@ -174,10 +174,6 @@ class VideoFramesFeaturizer(Featurizer):
     pickles, eg).  I can imagine a featurizer might actually output an image.
     Think about this.
 
-    @todo: REFACTOR a videofeaturizer is a featurizer that works on videos but
-    also has a featurizer that does the actual work.  This will reduce total
-    LOC.  See the vgg16.py where we have two VGG16 featurizers, but really
-    there is only one bit of functionality.
     '''
 
     def __init__(self, video_featurizer_config):
