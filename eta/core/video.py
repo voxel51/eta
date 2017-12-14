@@ -103,6 +103,31 @@ def get_frame_count(inpath, use_ffmpeg=True):
         return r.total_frame_count
 
 
+def get_raw_frame_number(raw_frame_rate, raw_frame_count, fps, sampled_frame):
+    '''Get the raw frame number corresponding to the given sampled frame
+    number.
+
+    This function assumes that the sampling was performed using the command
+    ```
+    FFmpegVideoSampler(fps).run(raw_video_path, ...)
+    ```
+
+    Args:
+        raw_frame_rate: the frame rate of the raw video
+        raw_frame_count: the number of frames in the raw video
+        fps: the sampling rate that was used
+        sampled_frame: the sampled frame number
+
+    Returns:
+        raw_frame: the raw frame number from the input video corresponding to
+            the given sampled frame number
+    '''
+    delta = raw_frame_rate / (1.0 * fps)
+    raw_frame = np.minimum(
+        np.ceil(delta * (sampled_frame - 0.5)), raw_frame_count)
+    return int(raw_frame)
+
+
 class VideoProcessor(object):
     '''Class for reading a video and writing a new video frame-by-frame.
 
