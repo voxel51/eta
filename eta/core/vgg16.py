@@ -446,8 +446,8 @@ class VGG16FeaturizerConfig(Config):
     '''Configuration settings for a VGG16Featurizer that works on images.'''
 
     def __init__(self, d):
-        self.weights = self.parse_object(d, "weights", WeightsConfig,
-                                         default=None)
+        self.weights = self.parse_object(
+            d, "weights", WeightsConfig, default=None)
         if self.weights is None:
             self.default_config = VGG16Config.load_default()
             self.weights = self.default_config.weights
