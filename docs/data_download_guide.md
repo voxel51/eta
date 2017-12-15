@@ -15,6 +15,8 @@ You can download a file from ETA using the `file-id` from the sharing link:
 https://drive.google.com/a/voxel51.com/file/d/<file-id>
 ```
 
+You can also download individual files using the ETA module `gdrive_download.py`.
+
 
 ## Single files
 

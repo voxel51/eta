@@ -48,7 +48,7 @@ git checkout -b <new_feature_branch>
 git push -u origin <new_feature_branch>
 # WORK
 pylint <changed_files>
-pep8 <changed_files>
+pycodestyle <changed_files>
 # ADDRESS LINT OUTPUT
 git status -s
 git add <changed_files>
