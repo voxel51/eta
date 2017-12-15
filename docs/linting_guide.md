@@ -40,7 +40,7 @@ To disable a pylint message for the current line:
 from builtins import *  # pylint disable=wildcard-import
 ```
 
-To disable pylint errors temporarility in a module:
+To disable pylint errors temporarily in a module:
 
 ```python
 # pragma pylint: disable=redefined-builtin

@@ -14,7 +14,7 @@ order to compute a desired analytic, the ETA system chooses a path through the
 graph and configures a pipeline of modules to run that traverses the chosen
 path through the graph.
 
-Concretely, ETA modules are simply executables that take JSON files as input
+Concretely, ETA modules are simply _executables_ that take JSON files as input
 and write output data to disk. The input JSON configures a module for execution
 by telling it what parameter settings to use, what data to read as input, and
 where to write its output data. Modules must also provide a metadata JSON file
@@ -195,11 +195,11 @@ provided in the metadata file).
 
 ## Building Standalone Modules
 
-Since ETA modules are just executables, they can be implemented in any language
-as long as they provide a valid metadata file and write their outputs in
-ETA-supported formats. Thus, even if developers don't intend to use ETA
-libraries to build their modules, they must be familiar with the ETA supported
-data types.
+Since ETA modules are independent programs or scripts, they can be implemented 
+in any language as long as they provide a valid metadata file and write their 
+outputs in ETA-supported formats. Thus, even if developers don't intend to use 
+ETA libraries to build their modules, they must be familiar with the ETA 
+supported data types.
 
 
 ## Building Modules using ETA
@@ -209,18 +209,85 @@ analytics modules. This is the most common method for creating new modules.
 
 This section summarizes the key features of the ETA module creation syntax.
 
+#### Conventions for implementing modules using ETA
+
+The file `docs/module_template.json` contains an example ETA module template.  The content of the file is included below.
+
+```python
+#!/usr/bin/env python
+'''
+{{Description Of The Module}}
+
+Copyright 2017, Voxel51, LLC
+voxel51.com
+'''
+# pragma pylint: disable=redefined-builtin
+# pragma pylint: disable=unused-wildcard-import
+# pragma pylint: disable=wildcard-import
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+from builtins import *
+# pragma pylint: enable=redefined-builtin
+# pragma pylint: enable=unused-wildcard-import
+# pragma pylint: enable=wildcard-import
+
+import logging
+import sys
+
+import eta.core.module as etam
+
+
+logger = logging.getLogger(__name__)
+
+
+class {{ModuleTemplate}}Config(etam.BaseModuleConfig):
+    '''Module configuration settings.'''
+
+    def __init__(self, d):
+        super({{ModuleTemplate}}Config, self).__init__(d)
+
+
+def main(config_path, pipeline_config_path=None):
+    '''Run the module.
+
+    Args:
+        config_path: path to {{ModuleTemplate}}Config file
+        pipeline_config_path: optional path to a PipelineConfig file
+    '''
+    config = {{ModuleTemplate}}Config.from_json(config_path)
+    etam.setup(config, pipeline_config_path=pipeline_config_path)
+
+
+if __name__ == "__main__":
+    main(*sys.argv[1:])
+```
+
+Modules include the following, in this order from top to bottom
+- a full docstring at the top of the file to describe the module capabilities, 
+- the _futurize_ a set of imports, pragmas, and other defines to allow for cross version python support (see `python23_guide.md`), 
+- imports organized according to our `style_guide.md`, namely standard library imports, third-party library imports, ETA imports and project imports with a single blank line separating each,
+- logging setup,
+- definition of module configuration class,
+- main function code to drive the engine, 
+- any addition code needed by the main function,
+- and the canonical `if __name__ == "__main__":` startup statement.
+
+
 #### Parsing module configuration files
 
 The following snippet shows a canonical definition of a module configuration in
 ETA:
 
 ```python
-from eta.core.config import Config
+import eta.core.module as etam
 
-class ExampleConfig(Config):
+class ExampleConfig(etam.BaseModuleConfig):
     '''An example config class.'''
 
     def __init__(self, d):
+        super({{ExampleConfig}}, self).__init__(d)
         self.data = self.parse_object_array(d, "data", DataConfig)
 
 
@@ -236,10 +303,12 @@ class DataConfig(Config):
 The snippet defines a configuration class called `ExampleConfig` which contains
 a single `data` field that contains an array of `DataConfig` instances.
 
-Note that the `ExampleConfig` and `DataConfig` classes derive from the
-`eta.core.config.Config` class, which implements the basic semantics of
-configuration classes. In particular, the `Config.parse_*` methods are used
-to define the names and data types of the JSON fields.
+Note that the `DataConfig` class derives from the `eta.core.config.Config` 
+class, which implements the basic semantics of configuration classes.  Further, 
+note that the `ExampleConfig` class derives from 
+`eta.core.module.BaseModuleConfig` which implements additional configuration 
+functionality for modules.  The `Config.parse_*` methods are 
+used to define the names and data types of the JSON fields.
 
 Fields defined with no `default` keyword are *mandatory*, and fields with a
 `default` keyword are *optional*.

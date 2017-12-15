@@ -2,10 +2,10 @@
 
 ETA is implemented in Python, and we require all contributed code to adhere to
 our style. Our priority is *consistency*, so that developers can quickly ingest
-and understand the entire ETA codebase. When in doubt, follow the existing
-style in the module you are contributing to.
+and understand the entire ETA codebase. *When in doubt, follow the existing
+style in the module you are contributing to.*
 
-Generally, we follow the [Google Python style](
+We mostly follow the [Google Python style](
 https://google.github.io/styleguide/pyguide.html), so please review it before
 contributing.
 
@@ -26,7 +26,16 @@ to least generic
     * future import block for Python 2/3 compatibility
     * standard library imports
     * third-party imports
+    * ETA-library imports
     * application-specific imports
+
+For ETA-library imports, we support importing the full name, a four (or five-character) abbreviated name that is `etaxy` where `x` is the first letter of the module imported and `y` is the second letter of the module import and only present when there is a name clash, or direct attribute imports.
+
+```python
+from eta.core import utils
+from eta.core.serial import Serializable
+import eta.core.utils as etau
+```
 
 Within each group, imports should be sorted alphabetically by full package
 path:
@@ -46,7 +55,14 @@ import numpy as np
 
 from eta.core import utils
 from eta.core.serial import Serializable
-import eta.core.video as vd
+import eta.core.video as etav
+```
+
+Long imports should be implemented with hanging indentation:
+
+```python
+from eta.core.features import VideoFramesFeaturizer, \
+                              VideoFramesFeaturizerConfig
 ```
 
 - Names should follow the conventions
@@ -62,7 +78,7 @@ function_parameter_name, local_var_name
 - If a class inherits from no other base classes, explicitly inherit from
   `object`
 
-- Follow standard typographic rules for spaces around punctuation
+- Follow standard typographic rules for spaces around punctuation except for colons, which should only have one space rather than two.
 
 ```python
 # YES!
@@ -118,3 +134,47 @@ def parse_object(d, key, cls, default=None):
   '''
   pass
 ```
+
+- Indentation follows the general pep8 guidelines for indentation, including the optional note that hanging indents may be aligned to other than 4-spaces.  [Reference](https://www.python.org/dev/peps/pep-0008/#indentation).  The highlights of these guidelines are below.
+
+```python
+# Yes!
+# Aligned with opening delimiter.
+foo = long_function_name(var_one, var_two,
+                         var_three, var_four)
+
+# More indentation included to distinguish this from the rest.
+def long_function_name(
+        var_one, var_two, var_three,
+        var_four):
+    print(var_one)
+
+# Hanging indents should add a level.
+foo = long_function_name(
+    var_one, var_two,
+    var_three, var_four)
+
+# Hanging indents *may* be indented to other than 4 spaces.
+# Note that this is option in the pep8 spec and we follow it.  
+# Use your human judgement for when to leverage it.
+foo = long_function_name(
+  var_one, var_two,
+  var_three, var_four)
+```
+
+```python
+# No!
+
+# Arguments on first line forbidden when not using vertical alignment.
+foo = long_function_name(var_one, var_two,
+    var_three, var_four)
+
+# Further indentation required as indentation is not distinguishable.
+def long_function_name(
+    var_one, var_two, var_three,
+    var_four):
+    print(var_one)
+The 4-space rule is optional for continuation lines.
+```
+
+
