@@ -39,6 +39,9 @@ def write_json(obj, path, pretty_print=True):
         obj: is either an object that can be directly dumped to a JSON file or
             an instance of a subclass of serial.Serializable
         path: the output path
+        pretty_print: when True (default), the resulting json will be outputted
+            to be human readable; when False, the it will be compact with no
+            extra spaces or newline characters.
     '''
     if is_serializable(obj):
         obj = obj.serialize()
