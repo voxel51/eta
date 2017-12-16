@@ -32,7 +32,7 @@ def read_json(path):
         return json.load(f)
 
 
-def write_json(obj, path):
+def write_json(obj, path, pretty_print=True):
     '''Writes JSON object to file, creating the output directory if necessary.
 
     Args:
@@ -42,7 +42,10 @@ def write_json(obj, path):
     '''
     if is_serializable(obj):
         obj = obj.serialize()
-    s = json.dumps(obj, indent=4, cls=JSONNumpyEncoder, ensure_ascii=False)
+    if pretty_print:
+        s = json.dumps(obj, indent=4, cls=JSONNumpyEncoder, ensure_ascii=False)
+    else:
+        s = json.dumps(obj, cls=JSONNumpyEncoder, ensure_ascii=False)
     ut.ensure_basedir(path)
     with open(path, "wt") as f:
         f.write(str(s))
