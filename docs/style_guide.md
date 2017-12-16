@@ -26,7 +26,6 @@ to least generic
     * future import block for Python 2/3 compatibility
     * standard library imports
     * third-party imports
-    * ETA-library imports
     * application-specific imports
 
 For ETA-library imports, we support importing the full name, a four (or five-character) abbreviated name that is `etaxy` where `x` is the first letter of the module imported and `y` is the second letter of the module import and only present when there is a name clash, or direct attribute imports.
@@ -174,7 +173,6 @@ def long_function_name(
     var_one, var_two, var_three,
     var_four):
     print(var_one)
-The 4-space rule is optional for continuation lines.
 ```
 
 

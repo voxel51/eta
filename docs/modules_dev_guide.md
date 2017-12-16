@@ -211,7 +211,7 @@ This section summarizes the key features of the ETA module creation syntax.
 
 #### Conventions for implementing modules using ETA
 
-The file `docs/module_template.json` contains an example ETA module template.  The content of the file is included below.
+Here is a not-exactly-python-code template example for a module in ETA.
 
 ```python
 #!/usr/bin/env python
@@ -249,7 +249,7 @@ class {{ModuleTemplate}}Config(etam.BaseModuleConfig):
         super({{ModuleTemplate}}Config, self).__init__(d)
 
 
-def main(config_path, pipeline_config_path=None):
+def run(config_path, pipeline_config_path=None):
     '''Run the module.
 
     Args:
@@ -261,13 +261,13 @@ def main(config_path, pipeline_config_path=None):
 
 
 if __name__ == "__main__":
-    main(*sys.argv[1:])
+    run(*sys.argv[1:])
 ```
 
 Modules include the following, in this order from top to bottom
 - a full docstring at the top of the file to describe the module capabilities, 
 - the _futurize_ a set of imports, pragmas, and other defines to allow for cross version python support (see `python23_guide.md`), 
-- imports organized according to our `style_guide.md`, namely standard library imports, third-party library imports, ETA imports and project imports with a single blank line separating each,
+- imports organized according to our `style_guide.md`, namely standard library imports, third-party library imports, and application-specific imports with a single blank line separating each,
 - logging setup,
 - definition of module configuration class,
 - main function code to drive the engine, 
