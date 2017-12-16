@@ -32,17 +32,23 @@ def read_json(path):
         return json.load(f)
 
 
-def write_json(obj, path):
+def write_json(obj, path, pretty_print=True):
     '''Writes JSON object to file, creating the output directory if necessary.
 
     Args:
         obj: is either an object that can be directly dumped to a JSON file or
             an instance of a subclass of serial.Serializable
         path: the output path
+        pretty_print: when True (default), the resulting json will be outputted
+            to be human readable; when False, it will be compact with no
+            extra spaces or newline characters.
     '''
     if is_serializable(obj):
         obj = obj.serialize()
-    s = json.dumps(obj, indent=4, cls=JSONNumpyEncoder, ensure_ascii=False)
+    if pretty_print:
+        s = json.dumps(obj, indent=4, cls=JSONNumpyEncoder, ensure_ascii=False)
+    else:
+        s = json.dumps(obj, cls=JSONNumpyEncoder, ensure_ascii=False)
     ut.ensure_basedir(path)
     with open(path, "wt") as f:
         f.write(str(s))
