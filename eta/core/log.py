@@ -113,6 +113,7 @@ def custom_setup(lc, rotate=False):
 
     # File logging
     if lc.filename:
+        ut.ensure_basedir(lc.filename)
         if rotate:
             msgs += _rotate_logs(lc.filename)
 
