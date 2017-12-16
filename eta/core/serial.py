@@ -40,7 +40,7 @@ def write_json(obj, path, pretty_print=True):
             an instance of a subclass of serial.Serializable
         path: the output path
         pretty_print: when True (default), the resulting json will be outputted
-            to be human readable; when False, the it will be compact with no
+            to be human readable; when False, it will be compact with no
             extra spaces or newline characters.
     '''
     if is_serializable(obj):
