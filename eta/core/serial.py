@@ -37,11 +37,11 @@ def write_json(obj, path, pretty_print=True):
 
     Args:
         obj: is either an object that can be directly dumped to a JSON file or
-            an instance of a subclass of serial.Serializable
+            an instance of a subclass of Serializable
         path: the output path
-        pretty_print: when True (default), the resulting json will be outputted
+        pretty_print: when True (default), the resulting JSON will be outputted
             to be human readable; when False, it will be compact with no
-            extra spaces or newline characters.
+            extra spaces or newline characters
     '''
     if is_serializable(obj):
         obj = obj.serialize()
@@ -87,6 +87,17 @@ class Serializable(object):
         '''
         return [a for a in vars(self) if not a.startswith("_")]
 
+    def write_json(self, path, pretty_print=True):
+        '''Serializes the object and writes it to disk.
+
+        Args:
+            path: the output path
+            pretty_print: when True (default), the resulting JSON will be
+                outputted to be human readable; when False, it will be compact
+                with no extra spaces or newline characters
+        '''
+        write_json(self.serialize(), path, pretty_print=pretty_print)
+
     @classmethod
     def from_dict(cls, d):
         '''Constructs a Serializable object from a JSON dictionary.
@@ -96,14 +107,14 @@ class Serializable(object):
         raise NotImplementedError("subclass must implement from_dict()")
 
     @classmethod
-    def from_json(cls, json_path):
+    def from_json(cls, path):
         '''Constructs a Serializable object from a JSON file.
 
         Subclasses may override this method, but, by default, this method
         simply reads the JSON and calls from_dict(), which subclasses must
         implement.
         '''
-        return cls.from_dict(read_json(json_path))
+        return cls.from_dict(read_json(path))
 
 
 def is_serializable(obj):
