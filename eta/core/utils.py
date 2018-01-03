@@ -20,7 +20,9 @@ from builtins import *
 # pragma pylint: enable=wildcard-import
 
 import errno
+import glob
 import hashlib
+import itertools as it
 import logging
 import os
 import random
@@ -31,7 +33,6 @@ import sys
 import tempfile
 
 import eta.constants as c
-
 
 logger = logging.getLogger(__name__)
 
@@ -130,6 +131,14 @@ def call(args):
     return subprocess.call(args) == 0
 
 
+def copy_file(inpath, outpath):
+    '''Copies the input file to the output location, creating the base output
+    directory if necessary.
+    '''
+    ensure_basedir(outpath)
+    shutil.copy(inpath, outpath)
+
+
 def ensure_path(path):
     '''Ensures that the given path is ready for writing by deleting any
     existing file and ensuring that the base directory exists.
@@ -152,12 +161,10 @@ def ensure_dir(dirname):
         os.makedirs(dirname)
 
 
-def copy_file(inpath, outpath):
-    '''Copies the input file to the output location, creating the base output
-    directory if necessary.
-    '''
-    ensure_basedir(outpath)
-    shutil.copy(inpath, outpath)
+def glob_videos(path):
+    '''Returns an iterator over all supported video files in path.'''
+    return multiglob(*c.VIDEO_FILE_TYPES_SUPPORTED,
+            root=os.path.join(path, '*.'))
 
 
 def move_file(inpath, outpath):
@@ -166,6 +173,27 @@ def move_file(inpath, outpath):
     '''
     ensure_basedir(outpath)
     shutil.move(inpath, outpath)
+
+
+def multiglob(*patterns, **kwargs):
+    ''' Returns an iterable for globbing over multiple patterns.
+
+    Args:
+        patterns is the set of patterns to search for
+        kwargs['root'] allows for a `root` path to be specified once and
+            applied to all patterns
+
+    Note that this does not us os.path.join if a root=FOO is provided. So, if
+        you want to just search by extensions, you can use root="path/*." and
+        provide only extensions in the patterns.
+    '''
+    if 'root' not in kwargs:
+        return it.chain.from_iterable(glob.iglob(pattern)
+                for pattern in patterns)
+
+    root = kwargs['root']
+    return it.chain.from_iterable(glob.iglob(root + pattern)
+            for pattern in patterns)
 
 
 def random_key(n):
