@@ -47,6 +47,9 @@ URL = _VER["url"]
 LICENSE = _VER["license"]
 
 
+# Supported File Types
+VIDEO_FILE_TYPES_SUPPORTED = ['mp4', 'avi', 'mpg']
+
 # ASCII art
 with open(ASCII_ART_PATH, "rt") as f:
     ASCII_ART = f.read()
