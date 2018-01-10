@@ -140,7 +140,8 @@ class VideoFramesFeaturizerConfig(Config):
     '''Specifies the configuration settings for the VideoFeaturizer class.'''
 
     def __init__(self, d):
-        self.backing_path = self.parse_string(d, "backing_path")
+        self.backing_path = self.parse_string(d, "backing_path",
+                default="/tmp")
         self.frame_featurizer = self.parse_object(
                 d, "frame_featurizer", FeaturizerConfig)
 
@@ -213,6 +214,16 @@ class VideoFramesFeaturizer(Featurizer):
     @frame_preprocessor.deleter
     def frame_preprocessor(self):
         self._frame_preprocessor = None
+
+    def dim(self):
+        ''' Return the dim of the underlying frame featurizer. '''
+        if not self._frame_featurizer:
+            self._frame_featurizer = self.config.frame_featurizer.build()
+            d = self._frame_featurizer.dim()
+            self._frame_featurizer = None
+        else:
+            d = self._frame_featurizer.dim()
+        return d
 
     def is_featurized(self, frame_number):
         ''' Checks the backing store to determine whether or not the frame
