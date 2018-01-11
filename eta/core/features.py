@@ -142,6 +142,9 @@ class VideoFramesFeaturizerConfig(Config):
     def __init__(self, d):
         self.backing_path = self.parse_string(d, "backing_path",
                 default="/tmp")
+        # This is any valid frames string for eta.
+        self.frames = self.parse_string(d, "frames", default="*")
+        # frame_featurizer is the sub-featurizer that does that work per frame
         self.frame_featurizer = self.parse_object(
                 d, "frame_featurizer", FeaturizerConfig)
 
@@ -247,7 +250,7 @@ class VideoFramesFeaturizer(Featurizer):
         f = np.load(p)
         return f["v"]
 
-    def featurize(self, data, frames="*", returnX=True):
+    def featurize(self, data, frames=None, returnX=True):
         '''The core feature extraction routine to be called by users of the
         featurizer.  It appropriately interacts with the featurizer state
         management.
@@ -256,13 +259,17 @@ class VideoFramesFeaturizer(Featurizer):
         extra arguments.  It will still work as default if no arguments are
         expected.
         '''
+
+        if not frames:
+            frames = self.config.frames
+
         self.start(warn_on_restart=False, keep_alive=False)
         v = self._featurize(data, frames, returnX)
         if self._keep_alive is False:
             self.stop()
         return v
 
-    def _featurize(self, data, frames="*", returnX=True):
+    def _featurize(self, data, frames=None, returnX=True):
         '''Main general use driver.  Works through a frame range to retrieve a
         matrix X of the features.
 
@@ -273,6 +280,10 @@ class VideoFramesFeaturizer(Featurizer):
         Will do the featurization if needed.
 
         '''
+
+        if not frames:
+            frames = self.config.frames
+
         logger.debug("Featurizing frames %s" % frames)
 
         # the has_started manages the state of the frame_featurizer
