@@ -238,6 +238,7 @@ class VideoFramesFeaturizer(Featurizer):
             }
 
         self.update_backing_path(self.config.backing_path)
+        self._backing_manager_random_last_tempdir = None
 
 
     @property
@@ -363,9 +364,6 @@ class VideoFramesFeaturizer(Featurizer):
 
         logger.debug("Featurizing frames %s" % frames)
 
-        # the has_started manages the state of the frame_featurizer
-        has_started = False
-
         if returnX:
             X = None
 
@@ -378,8 +376,7 @@ class VideoFramesFeaturizer(Featurizer):
                     v = self.retrieve_featurized_frame(p.frame_number)
                 except FeaturizedFrameNotFoundError:
                     logger.debug("Featurizing frame %d" % p.frame_number)
-                    if not has_started:
-                        has_started = True
+                    if not self._frame_featurizer:
                         self._frame_featurizer = \
                             self.config.frame_featurizer.build()
                         self._frame_featurizer.start()
@@ -397,7 +394,8 @@ class VideoFramesFeaturizer(Featurizer):
                             X = GrowableArray(len(v))
                         X.update(v)
 
-        if has_started:
+        # only stop and kill the frame featurizer if we are not keep_alive
+        if self._frame_featurizer and not self._keep_alive:
             self._frame_featurizer.stop()
             self._frame_featurizer = None
 
@@ -432,6 +430,14 @@ class VideoFramesFeaturizer(Featurizer):
         ]
         for f in filelist:
             os.remove(os.path.join(self._backing_path, f))
+
+    def _stop(self):
+        ''' Internal stop that handles the removal of an active
+        _frame_featurizer.
+        '''
+        if self._frame_featurizer:
+            self._frame_featurizer.stop()
+            self._frame_featurizer = None
 
     def update_backing_path(self, backing_path):
         '''Update the backing path and create the directory tree if needed.'''
