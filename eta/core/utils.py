@@ -202,6 +202,15 @@ def random_key(n):
         string.ascii_lowercase + string.digits) for _ in range(n))
 
 
+def replace_strings(string, replacers):
+    '''Replacers is a 2D list of [find, replace] strings.'''
+
+    output = string
+    for sfind, srepl in replacers:
+        output = output.replace(sfind, srepl)
+    return output
+
+
 class FileHasher(object):
     '''Base class for file hashers.'''
 
