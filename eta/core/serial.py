@@ -20,6 +20,7 @@ from builtins import *
 
 import collections
 import json
+import pickle
 
 import numpy as np
 
@@ -52,6 +53,25 @@ def write_json(obj, path, pretty_print=True):
     ut.ensure_basedir(path)
     with open(path, "wt") as f:
         f.write(str(s))
+
+
+class Picklable(object):
+    '''Mixin class for objects that can be pickled.
+
+    Subclasses need not implement anything.
+    '''
+    def pickle(self, path):
+        ''' Saves the instance to disk in a pickle. '''
+        ut.ensure_basedir(path)
+        with open(path, 'wb') as mf:
+            pickle.dump(self, mf)
+
+    @classmethod
+    def from_pickle(cls, path):
+        ''' Loads the pickle from disk and returns the instance. '''
+        with open(path, 'rb') as mf:
+            M = pickle.load(mf)
+        return M
 
 
 class Serializable(object):
