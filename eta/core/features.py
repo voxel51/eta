@@ -254,36 +254,36 @@ class VideoFramesFeaturizer(Featurizer):
     def frame_preprocessor(self):
         self._frame_preprocessor = None
 
-    def _backing_manager_manual(self, data, isFeaturizeStart=True):
+    def _backing_manager_manual(self, data, is_featurize_start=True):
         ''' Manual manager for the backing store on a new featurization call.
         '''
         pass
 
-    def _backing_manager_random(self, data, isFeaturizeStart=True):
+    def _backing_manager_random(self, data, is_featurize_start=True):
         ''' Manual manager for the backing store on a new featurization call.
         '''
-        if isFeaturizeStart:
+        if is_featurize_start:
             td = tempfile.mkdtemp(dir="/tmp", prefix="eta.backing.")
             self._backing_manager_random_last_tempdir = td
             self.update_backing_path(td)
             return
 
-        # not isFeaturizeStart  (->isFeaturizeStop)
+        # not is_featurize_start  (->is_featurize_stop)
         if self.config.backing_manager_remove_random:
             shutil.rmtree(self._backing_manager_random_last_tempdir)
         self.update_backing_path(self.config.backing_path)
 
-    def _backing_manager_replace(self, data, isFeaturizeStart=True):
+    def _backing_manager_replace(self, data, is_featurize_start=True):
         ''' Manual manager for the backing store on a new featurization call.
         '''
-        if isFeaturizeStart:
+        if is_featurize_start:
             rp = etau.replace_strings(data,
                     self.config.backing_manager_path_replace)
             self._backing_manager_random_last_tempdir = rp
             self.update_backing_path(rp)
             return
 
-        # not isFeaturizeStart  (->isFeaturizeStop)
+        # not is_featurize_start  (->is_featurize_stop)
         self.update_backing_path(self.config.backing_path)
 
     def dim(self):
