@@ -22,12 +22,15 @@ from builtins import *
 import errno
 import logging
 import os
+import shutil
+import tempfile
 
 import numpy as np
 
 from eta.core.config import Config, Configurable
 from eta.core.numutils import GrowableArray
 import eta.core.video as etav
+import eta.core.utils as etau
 
 
 logger = logging.getLogger(__name__)
@@ -140,7 +143,17 @@ class VideoFramesFeaturizerConfig(Config):
     '''Specifies the configuration settings for the VideoFeaturizer class.'''
 
     def __init__(self, d):
-        self.backing_path = self.parse_string(d, "backing_path")
+        self.backing_path = self.parse_string(d, "backing_path",
+                default="/tmp")
+        self.backing_manager = self.parse_string(d, "backing_manager",
+                default="random")
+        self.backing_manager_remove_random = self.parse_bool(d,
+                "backing_manager_remove_random", default=True)
+        self.backing_manager_path_replace = self.parse_array(d,
+                "backing_manager_path_replace", default=[])
+        # This is any valid frames string for eta.
+        self.frames = self.parse_string(d, "frames", default="*")
+        # frame_featurizer is the sub-featurizer that does that work per frame
         self.frame_featurizer = self.parse_object(
                 d, "frame_featurizer", FeaturizerConfig)
 
@@ -150,15 +163,35 @@ class VideoFramesFeaturizer(Featurizer):
     storing them to disk.
 
     Needs the following to be specified:
-        backingPath: location on disk where featurized frames will be cached
+        backing_path: location on disk where featurized frames will be cached
             (this is a directory and not a printf like path)
         frame_featurizer: this is any image featurizer
     These are immutable quantities and are hence provided as a config.
 
-    Frames are not part of the config as a new VideoProcessor can be created
-    with a different frame range depending on execution needs.
+    Frames are also part of the config, but these can be overridden at
+    call-time.
 
     Featurized frames are store indexed by frame_number as compressed pickles.
+
+    The backing_path stores the featurized frames to disk as a cache.  It uses
+    `/tmp` as the default location for the backing store.  **WARNING** if you
+    do not set the backing path per video and then use this featurizer for
+    multiple videos, then your features will be invalid (they will just be
+    computed on the first such video).  To help with this management, we
+    provide an optional field `backing_manager` that has three possible
+    settings (strings):
+        manual: this is the fully manual setting and a use-at-your-own-risk
+        random (default): this will create a new random location for the
+            backing_path each time the featurize method is called.  By
+            construction, this will force the featurization to be recomputed.
+            The randomly created backing store will be removed after
+            featurization, unless config field
+            `backing_manager_remove_random` is set to false.
+        replace: this uses the config field "backing_manager_path_replace"
+            to replace substrings in the new input filename to be featurized
+            and *hopefully* yield a new, unique output path.  The
+            `eta.core.utils.replace_strings` function is used to actually
+            perform the operation.
 
     Design note: a VideoFramesFeaturizer is a Featurizer that also has a
     Featurizer member, which processes each frame.  This frame featurizer gets
@@ -198,7 +231,14 @@ class VideoFramesFeaturizer(Featurizer):
         self._frame_featurizer = None
         self._backing_path = None
 
+        self._backing_manager_lookup = {
+                "manual": self._backing_manager_manual,
+                "random": self._backing_manager_random,
+                "replace": self._backing_manager_replace
+            }
+
         self.update_backing_path(self.config.backing_path)
+        self._backing_manager_random_last_tempdir = None
 
 
     @property
@@ -213,6 +253,48 @@ class VideoFramesFeaturizer(Featurizer):
     @frame_preprocessor.deleter
     def frame_preprocessor(self):
         self._frame_preprocessor = None
+
+    def _backing_manager_manual(self, data, is_featurize_start=True):
+        ''' Manual manager for the backing store on a new featurization call.
+        '''
+        pass
+
+    def _backing_manager_random(self, data, is_featurize_start=True):
+        ''' Manual manager for the backing store on a new featurization call.
+        '''
+        if is_featurize_start:
+            td = tempfile.mkdtemp(dir="/tmp", prefix="eta.backing.")
+            self._backing_manager_random_last_tempdir = td
+            self.update_backing_path(td)
+            return
+
+        # not is_featurize_start  (->is_featurize_stop)
+        if self.config.backing_manager_remove_random:
+            shutil.rmtree(self._backing_manager_random_last_tempdir)
+        self.update_backing_path(self.config.backing_path)
+
+    def _backing_manager_replace(self, data, is_featurize_start=True):
+        ''' Manual manager for the backing store on a new featurization call.
+        '''
+        if is_featurize_start:
+            rp = etau.replace_strings(data,
+                    self.config.backing_manager_path_replace)
+            self._backing_manager_random_last_tempdir = rp
+            self.update_backing_path(rp)
+            return
+
+        # not is_featurize_start  (->is_featurize_stop)
+        self.update_backing_path(self.config.backing_path)
+
+    def dim(self):
+        ''' Return the dim of the underlying frame featurizer. '''
+        if not self._frame_featurizer:
+            self._frame_featurizer = self.config.frame_featurizer.build()
+            d = self._frame_featurizer.dim()
+            self._frame_featurizer = None
+        else:
+            d = self._frame_featurizer.dim()
+        return d
 
     def is_featurized(self, frame_number):
         ''' Checks the backing store to determine whether or not the frame
@@ -236,7 +318,7 @@ class VideoFramesFeaturizer(Featurizer):
         f = np.load(p)
         return f["v"]
 
-    def featurize(self, data, frames="*", returnX=True):
+    def featurize(self, data, frames=None, returnX=True):
         '''The core feature extraction routine to be called by users of the
         featurizer.  It appropriately interacts with the featurizer state
         management.
@@ -244,14 +326,28 @@ class VideoFramesFeaturizer(Featurizer):
         Need to overload the Featurizer.featurize because we want to add some
         extra arguments.  It will still work as default if no arguments are
         expected.
+
+        This is the place that we manage the `backing_path` based on the
+        setting for the `backing_manager`
         '''
+
+        if not frames:
+            frames = self.config.frames
+
+        backing_manager = \
+            self._backing_manager_lookup[self.config.backing_manager]
+        backing_manager(data)
+
         self.start(warn_on_restart=False, keep_alive=False)
         v = self._featurize(data, frames, returnX)
         if self._keep_alive is False:
             self.stop()
+
+        backing_manager(data, False)
+
         return v
 
-    def _featurize(self, data, frames="*", returnX=True):
+    def _featurize(self, data, frames=None, returnX=True):
         '''Main general use driver.  Works through a frame range to retrieve a
         matrix X of the features.
 
@@ -262,10 +358,11 @@ class VideoFramesFeaturizer(Featurizer):
         Will do the featurization if needed.
 
         '''
-        logger.debug("Featurizing frames %s" % frames)
 
-        # the has_started manages the state of the frame_featurizer
-        has_started = False
+        if not frames:
+            frames = self.config.frames
+
+        logger.debug("Featurizing frames %s" % frames)
 
         if returnX:
             X = None
@@ -279,8 +376,7 @@ class VideoFramesFeaturizer(Featurizer):
                     v = self.retrieve_featurized_frame(p.frame_number)
                 except FeaturizedFrameNotFoundError:
                     logger.debug("Featurizing frame %d" % p.frame_number)
-                    if not has_started:
-                        has_started = True
+                    if not self._frame_featurizer:
                         self._frame_featurizer = \
                             self.config.frame_featurizer.build()
                         self._frame_featurizer.start()
@@ -298,7 +394,8 @@ class VideoFramesFeaturizer(Featurizer):
                             X = GrowableArray(len(v))
                         X.update(v)
 
-        if has_started:
+        # only stop and kill the frame featurizer if we are not keep_alive
+        if self._frame_featurizer and not self._keep_alive:
             self._frame_featurizer.stop()
             self._frame_featurizer = None
 
@@ -333,6 +430,14 @@ class VideoFramesFeaturizer(Featurizer):
         ]
         for f in filelist:
             os.remove(os.path.join(self._backing_path, f))
+
+    def _stop(self):
+        ''' Internal stop that handles the removal of an active
+        _frame_featurizer.
+        '''
+        if self._frame_featurizer:
+            self._frame_featurizer.stop()
+            self._frame_featurizer = None
 
     def update_backing_path(self, backing_path):
         '''Update the backing path and create the directory tree if needed.'''
