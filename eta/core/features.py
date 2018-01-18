@@ -233,6 +233,10 @@ class CanFeaturize(object):
                     if isinstance(data, str):
                         if os.path.exists(data):
                             needs_featurize = True
+                        else:
+                            # If it is a string but not a file, it may be a
+                            # video. Test that with our video library.
+                            needs_featurize = etav.is_video(data)
 
                 if needs_featurize:
                     data = cfobject.featurizer.featurize(data)
