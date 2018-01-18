@@ -140,37 +140,43 @@ class CanFeaturize(object):
     '''
 
     def __init__(self, featurizer=None, hint_featurize=False):
-        '''Initialize CanFeaturize instance.'''
+        '''Initialize CanFeaturize instance.
+
+        Args:
+            featurizer: the actual featurizer to use when needed
+            hint_featurize: when True, this will force any input to the
+            decorator featurize_if_needed to always featurize.
+        '''
         self.featurizer = featurizer
         self.hint_featurize = hint_featurize
 
     @staticmethod
     def featurize_if_needed(*args, **kwargs):
-        '''This decorator function will check the `argX_to_featurize` to see if
+        '''This decorator function will check the `arg_X` to see if
         it needs to be featurized and if so, it will featurize it using the arg
-        featurizer (already defined).  Note that argX_to_featurize is either
+        featurizer (already defined).  Note that `arg_X` is either
         the numeric index of the argument to featurize in *args or a named
         argument.  The code tries to reconcile one of them, ultimately failing
         if it cannot find one.
 
-        The method we use to tell if the `argX_to_featurize` needs to be
+        The method we use to tell if the `arg_X` needs to be
         featurized is by checking if it is a string that points to a file on
         the disk.
 
         You can decorate with either just `@CanFeaturize.featurize_if_needed`
         or by specifying specific names of arguments to operate on
-        `@CanFeaturize.featurize_if_needed(argname_to_featurize="foo")`
+        `@CanFeaturize.featurize_if_needed(arg_name="foo")`
         or just
         `@CanFeaturize.featurize_if_needed("foo")` and this will be a name not
         an index.
 
         Args:
-            argname_to_featurize ("X") specifies the name of the argument
+            arg_name ("X") specifies the name of the argument
             passed to the original function that you want to featurize
 
-            argindex_to_featurize (0) specifies the index of the argument
+            arg_index (0) specifies the index of the argument
             passed to the original function that you want to featurize.  The
-            argname takes precedence over the argindex.
+            `arg_name` takes precedence over the `arg_index`.
         '''
         # Handling the various types of invocations of the decorator.
         arg = None
@@ -178,22 +184,22 @@ class CanFeaturize(object):
             arg = args[0]
 
         # Default argument settings are set here.
-        argname_to_featurize = "X"
+        arg_name = "X"
         # This is 1 and not 0 because we assume this is being used to annotate
         # a class member and not a generic function.
-        argindex_to_featurize = 1
+        arg_index = 1
 
         if not callable(arg):
             n = len(args)
             if n >= 1:
-                argname_to_featurize = args[0]
-            elif 'argname_to_featurize' in kwargs:
-                argname_to_featurize = kwargs['argname_to_featurize']
+                arg_name = args[0]
+            elif 'arg_name' in kwargs:
+                arg_name = kwargs['arg_name']
 
             if n >= 2:
-                argindex_to_featurize = args[1]
-            elif 'argindex_to_featurize' in kwargs:
-                argindex_to_featurize = kwargs['argindex_to_featurize']
+                arg_index = args[1]
+            elif 'arg_index' in kwargs:
+                arg_index = kwargs['arg_index']
         # At this point, we have processed all possible invocations of the
         # annotation (the decorator) and we have the arguments to use.
 
@@ -220,11 +226,11 @@ class CanFeaturize(object):
                 data = None
                 used_name = False
                 used_index = False
-                if argname_to_featurize in kwargs:
-                    data = kwargs[argname_to_featurize]
+                if arg_name in kwargs:
+                    data = kwargs[arg_name]
                     used_name = True
-                elif len(args) >= argindex_to_featurize:
-                    data = args[argindex_to_featurize]
+                elif len(args) >= arg_index:
+                    data = args[arg_index]
                     used_index = True
                 else:
                     logger.warning('CanFeaturize: skipping test; unknown arg')
@@ -242,10 +248,10 @@ class CanFeaturize(object):
                     data = cfobject.featurizer.featurize(data)
                     # Replace the call-structure before calling.
                     if used_name:
-                        kwargs[argname_to_featurize] = data
+                        kwargs[arg_name] = data
                     if used_index:
                         targs = list(args)
-                        targs[argindex_to_featurize] = data
+                        targs[arg_index] = data
                         args = tuple(targs)
 
                 return caller(*args, **kwargs)

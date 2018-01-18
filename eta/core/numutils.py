@@ -18,6 +18,8 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+import operator
+
 import numpy as np
 
 
@@ -62,15 +64,7 @@ class Accumulator(object):
         '''Return a tuple of (entry, count) for the entry with the highest
         count.
         '''
-        bkey = 0
-        bval = -1
-
-        for k, v in self.data.items():
-            if v > bval:
-                bval = v
-                bkey = k
-
-        return (bkey, bval)
+        return max(self.data.items(), key=operator.itemgetter(1))
 
 
 class GrowableArray(object):
