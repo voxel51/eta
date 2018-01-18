@@ -1,5 +1,5 @@
 '''
-Core numeric utilities.
+Core numeric and computational utilities.
 
 Copyright 2017, Voxel51, LLC
 voxel51.com
@@ -19,6 +19,58 @@ from builtins import *
 # pragma pylint: enable=wildcard-import
 
 import numpy as np
+
+
+class Accumulator(object):
+    '''Accumulates counts of entries, like a histogram.  Then provides
+    functions for extracting properties over that.  Inputs can be anything
+    hashable.
+
+    For classical histogram needs, the numpy histogram functions are probably
+    better.  This class lets you accumulate entries of any type and is hence
+    slower but more general.
+    '''
+
+    def __init__(self):
+        '''Initialize the accumulator.'''
+        self.data = {}
+
+    def __str__(self):
+        '''Renders the accumulator.'''
+        return self.data.__str__()
+
+    def add(self, thing):
+        '''Add `thing` to the accumulator.
+
+        Args:
+            thing: anything hashable
+
+        Returns:
+            Count for entry `thing` after added.
+        '''
+        if thing in self.data:
+            self.data[thing] += 1
+        else:
+            self.data[thing] = 1
+        return self.data[thing]
+
+    def argmax(self):
+        '''Return the entry with the highest count.'''
+        return self.max()[0]
+
+    def max(self):
+        '''Return a tuple of (entry, count) for the entry with the highest
+        count.
+        '''
+        bkey = 0
+        bval = -1
+
+        for k, v in self.data.items():
+            if v > bval:
+                bval = v
+                bkey = k
+
+        return (bkey, bval)
 
 
 class GrowableArray(object):
