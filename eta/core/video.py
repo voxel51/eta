@@ -128,6 +128,21 @@ def get_raw_frame_number(raw_frame_rate, raw_frame_count, fps, sampled_frame):
     return int(raw_frame)
 
 
+def is_video(inpath):
+    '''Check if the inpath points to a video that the can be read.  Returns
+    True if so and False if not.
+
+    Args:
+        inpath: filesystem path to the video (or video-as-collection-of-frames)
+    '''
+    answer = True
+    try:
+        get_frame_count(inpath)
+    except utils.ExecutableRuntimeError:
+        answer = False
+    return answer
+
+
 class VideoProcessor(object):
     '''Class for reading a video and writing a new video frame-by-frame.
 
