@@ -134,6 +134,138 @@ class Featurizer(Configurable):
         return v
 
 
+class CanFeaturize(object):
+    '''Class exposes the ability to featurize data by storing a featurizer,
+    allowing it to be set, get and used.
+    '''
+
+    def __init__(self, featurizer=None, hint_featurize=False):
+        '''Initialize CanFeaturize instance.'''
+        self.featurizer = featurizer
+        self.hint_featurize = hint_featurize
+
+    @staticmethod
+    def featurize_if_needed(*args, **kwargs):
+        '''This decorator function will check the `argX_to_featurize` to see if
+        it needs to be featurized and if so, it will featurize it using the arg
+        featurizer (already defined).  Note that argX_to_featurize is either
+        the numeric index of the argument to featurize in *args or a named
+        argument.  The code tries to reconcile one of them, ultimately failing
+        if it cannot find one.
+
+        The method we use to tell if the `argX_to_featurize` needs to be
+        featurized is by checking if it is a string that points to a file on
+        the disk.
+
+        You can decorate with either just `@CanFeaturize.featurize_if_needed`
+        or by specifying specific names of arguments to operate on
+        `@CanFeaturize.featurize_if_needed(argname_to_featurize="foo")`
+        or just
+        `@CanFeaturize.featurize_if_needed("foo")` and this will be a name not
+        an index.
+
+        Args:
+            argname_to_featurize ("X") specifies the name of the argument
+            passed to the original function that you want to featurize
+
+            argindex_to_featurize (0) specifies the index of the argument
+            passed to the original function that you want to featurize.  The
+            argname takes precedence over the argindex.
+        '''
+        # Handling the various types of invocations of the decorator.
+        arg = None
+        if args:
+            arg = args[0]
+
+        # Default argument settings are set here.
+        argname_to_featurize = "X"
+        # This is 1 and not 0 because we assume this is being used to annotate
+        # a class member and not a generic function.
+        argindex_to_featurize = 1
+
+        if not callable(arg):
+            n = len(args)
+            if n >= 1:
+                argname_to_featurize = args[0]
+            elif 'argname_to_featurize' in kwargs:
+                argname_to_featurize = kwargs['argname_to_featurize']
+
+            if n >= 2:
+                argindex_to_featurize = args[1]
+            elif 'argindex_to_featurize' in kwargs:
+                argindex_to_featurize = kwargs['argindex_to_featurize']
+        # At this point, we have processed all possible invocations of the
+        # annotation (the decorator) and we have the arguments to use.
+
+        def decorated_(caller):
+            '''Just the outside decorator that will pop the caller off the
+            argument list.
+            '''
+            def decorated(*args, **kwargs):
+                '''The main decorator function that handles featurization.'''
+                #args[0] is the "self", the calling object.
+                cfobject = args[0]
+                assert isinstance(cfobject, CanFeaturize), \
+                    "featurize_if_needed only decorates CanFeaturize methods"
+
+                if not cfobject.featurizer:
+                    # Cannot featurize if there is no featurizer
+                    # This is also a potential efficiency option: do not set
+                    # the featurizer if you want this decorator to early exit.
+                    return caller(*args, **kwargs)
+
+                needs_featurize = cfobject.hint_featurize
+
+                # Here, have a featurizer and are not forced to featurize.
+                data = None
+                used_name = False
+                used_index = False
+                if argname_to_featurize in kwargs:
+                    data = kwargs[argname_to_featurize]
+                    used_name = True
+                elif len(args) >= argindex_to_featurize:
+                    data = args[argindex_to_featurize]
+                    used_index = True
+                else:
+                    logger.warning('CanFeaturize: skipping test; unknown arg')
+
+                if not needs_featurize and (used_name or used_index):
+                    if isinstance(data, str):
+                        if os.path.exists(data):
+                            needs_featurize = True
+
+                if needs_featurize:
+                    v = cfobject.featurizer.featurize(data)
+                    data = v.reshape(1, -1)
+                    # Replace the call-structure before calling.
+                    if used_name:
+                        kwargs[argname_to_featurize] = data
+                    if used_index:
+                        targs = list(args)
+                        targs[argindex_to_featurize] = data
+                        args = tuple(targs)
+
+                return caller(*args, **kwargs)
+            return decorated
+
+        # Be careful how to return; need to check the way we were invoked.
+        # If arg is callable then we called it just with @featurize_if_needed.
+        # Otherwise, we gave it parameters or even just parentheses.
+        if callable(arg):
+            return decorated_(arg)
+        return decorated_
+
+    def get_featurizer(self):
+        return self.featurizer
+
+    @property
+    def has_featurizer(self):
+        return bool(self.featurizer)
+
+    def set_featurizer(self, featurizer):
+        self.featurizer = featurizer
+
+
 class FeaturizedFrameNotFoundError(OSError):
     '''Error for case when the featurized frame is not yet computed.'''
     pass
