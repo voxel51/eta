@@ -235,8 +235,7 @@ class CanFeaturize(object):
                             needs_featurize = True
 
                 if needs_featurize:
-                    v = cfobject.featurizer.featurize(data)
-                    data = v.reshape(1, -1)
+                    data = cfobject.featurizer.featurize(data)
                     # Replace the call-structure before calling.
                     if used_name:
                         kwargs[argname_to_featurize] = data
