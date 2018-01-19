@@ -128,7 +128,7 @@ def get_raw_frame_number(raw_frame_rate, raw_frame_count, fps, sampled_frame):
     return int(raw_frame)
 
 
-def is_video(inpath):
+def is_valid_video(inpath):
     '''Check if the inpath points to a video that the can be read.  Returns
     True if so and False if not.
 
