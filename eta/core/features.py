@@ -152,16 +152,19 @@ class CanFeaturize(object):
 
     @staticmethod
     def featurize_if_needed(*args, **kwargs):
-        '''This decorator function will check the `arg_X` to see if
-        it needs to be featurized and if so, it will featurize it using the arg
-        featurizer (already defined).  Note that `arg_X` is either
-        the numeric index of the argument to featurize in *args or a named
-        argument.  The code tries to reconcile one of them, ultimately failing
-        if it cannot find one.
+        '''This decorator function will check a specified argument of the
+        decorated function needs to be featurized, and if so, featurizes it
+        using the `featurizer` attribute of the class instances (already
+        defined).
 
-        The method we use to tell if the `arg_X` needs to be
-        featurized is by checking if it is a string that points to a file on
-        the disk.
+        The argument to featurize can be specified as either the numeric index
+        of the argument to featurize in *args or a named argument.  The code
+        tries to reconcile one of them, ultimately failing if it cannot find
+        one.
+
+        The method we use to tell if the argument needs to be featurized is by
+        checking if it is a string that points to a file on the disk, and if
+        that fails, if it is a string that points to a valid video.
 
         You can decorate with either just `@CanFeaturize.featurize_if_needed`
         or by specifying specific names of arguments to operate on
