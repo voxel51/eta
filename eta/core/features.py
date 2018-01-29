@@ -627,31 +627,3 @@ class ORBFeaturizer(Featurizer):
         Featurizer._stop(self)
         pass
 
-
-class RandFeaturizer(Featurizer):
-    ''' random Featurizer. '''
-
-    DIMS=1024
-    
-    def __init__(self):
-        Featurizer.__init__(self)
-        self.name = "Random Featurizer"
-
-    def _start(self):
-        Featurizer._start(self)
-        pass
-    
-    def dim(self):
-        ''' Return the dim of the underlying frame featurizer. '''
-        return FeatRand.DIMS
-
-
-    def _featurize(self, data_in):  # @UnusedVariable
-        ''' encode an input regardless of the input as a random number '''
-        return [ random.random() for _ in xrange(FeatRand.DIMS) ]
-
-    def _stop(self):
-        Featurizer._stop(self)
-        pass
-
-
