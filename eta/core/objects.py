@@ -18,9 +18,11 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+import random
+
 from eta.core.geometry import BoundingBox
 from eta.core.serial import Serializable
-
+import eta.core.image as etai
 
 class Frame(Serializable):
     '''Container for detected objects in an image.'''
@@ -159,3 +161,114 @@ class ObjectCount(Serializable):
     def from_dict(cls, d):
         '''Constructs an ObjectCount from a JSON dictionary.'''
         return ObjectCount(d["label"], d["count"])
+
+class ScoredDetection(Serializable):
+    '''A detection attributed with source and score
+
+    Attributes:
+        label: object label
+        confidence: detection confidence
+        bounding_box: A BoundingBox around the object
+    '''
+
+    def __init__(self, detection, source=None, score=0.0, feat=None, chip_path=None, chip=None):
+        '''Constructs a DetectedObject.
+
+        Args:
+            label: object label string
+            confidence: detection confidence, in [0, 1]
+            bounding_box: A BoundingBox around the object
+        '''
+        self.detection = detection
+        self.source = source
+        self.score = score
+        self.feat = feat
+        self._chip = None
+        self.chip_path = chip_path
+        self.orig_order = 0
+
+    def get_chip(self, img, force_square=False):
+        '''Extracts the subimage containing this object from the image.
+
+        Args:
+            img: an image
+            force_square: whether to (minimally) manipulate the object bounding
+                box during extraction so that the returned subimage is square
+        '''
+        img = etai.read(self.source)
+        self._chip = self.detection.bounding_box.extract_from(img, force_square=force_square)
+        return self._chip
+
+    @classmethod
+    def from_dict(cls, d):
+        '''Constructs a DetectedObject from a JSON dictionary.'''
+        return cls(
+            DetectedObject.from_dict(d["detection"]),
+            d["source"],
+            d["score"],
+            d["feat"],
+            d["chip_path"]
+        )
+
+class ScoredObjectList(Serializable):
+    ''' A list of scored objects.'''
+    
+    def __init__(self, objects=None):
+        '''Constructs a ScoredObjectList.
+
+        Args:
+            objects: optional list of ScoredObjects in the frame.
+        '''
+        self.objects = objects or []
+
+    def add(self, obj):
+        '''Adds a ScoredObject to the ScoredObjectList.
+
+        Args:
+            obj: A ScoredObject instance
+        '''
+        self.objects.append(obj)
+
+    def label_set(self):
+        '''Returns a set containing the labels of objects in this ScoredObjectList.'''
+        return set(obj.detection.label for obj in self.objects)
+
+    def get_matches(self, filters, match=any):
+        '''Returns a ScoredObjectList containing only objects that match the filters.
+
+        Args:
+            filters: a list of functions that accept DetectedObjects and return
+                True/False
+            match: a function (usually any or all) that accepts an iterable and
+                returns True/False. Used to aggregate the outputs of each
+                filter to decide whether a match has occurred. The default is
+                any
+        '''
+        return ScoredObjectList(
+            objects=list(filter(
+                lambda o: match(f(o) for f in filters),
+                self.objects,
+            )),
+        )
+        
+    def randomize_scores(self):
+        ''' randomize scores '''
+        for obj in self.objects:
+            obj.score=random.randrange(0.0, 1.0)
+            
+    def sort(self):
+        ''' sort list by score and store original order '''
+        for i in range(len(self.objects)):
+            self.objects[i].orig_order=i;
+        self.objects.sort(key=lambda x: x.score)
+        return [obj.orig_order for obj in self.objects]
+
+    @classmethod
+    def from_dict(cls, d):
+        '''Constructs a ScoredObjectList from a JSON dictionary.'''
+        return ScoredObjectList(objects=[
+            ScoredDetection.from_dict(so) for so in d["objects"]
+        ])
+
+
+    

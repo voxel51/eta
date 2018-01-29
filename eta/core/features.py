@@ -26,6 +26,8 @@ import shutil
 import tempfile
 
 import numpy as np
+import cv2
+import random
 
 from eta.core.config import Config, Configurable
 from eta.core.numutils import GrowableArray
@@ -591,3 +593,65 @@ class VideoFramesFeaturizer(Featurizer):
         except OSError as e:
             if e.errno != errno.EEXIST:
                 raise
+
+
+
+# ************************* FEATURIZERS ******************************
+class ORBFeaturizer(Featurizer):
+    ''' ORB Featurizer. '''
+
+    def __init__(self):
+        ''' ORB Featurizer constructor '''
+        Featurizer.__init__(self)
+        self.name = "ORBFeaturizer"
+        self.orb = cv2.xfeatures2d.ORB_create()
+
+    def _start(self):
+        Featurizer._start(self)
+        pass
+
+    def dim(self):
+        ''' Return the dim of the underlying frame featurizer. '''
+        return 128
+    
+    def _featurize(self, data_in):
+        ''' encode an image using ORB features. '''
+        gray = cv2.cvtColor(data_in, cv2.COLOR_BGR2GRAY)
+        _, des = self.orb.detectAndCompute(gray, None)
+        embedded_vector = des
+        logger.info("image embedded to vector of length %d", len(embedded_vector))
+        logger.info("%s", embedded_vector)
+        return embedded_vector
+
+    def _stop(self):
+        Featurizer._stop(self)
+        pass
+
+
+class RandFeaturizer(Featurizer):
+    ''' random Featurizer. '''
+
+    DIMS=1024
+    
+    def __init__(self):
+        Featurizer.__init__(self)
+        self.name = "Random Featurizer"
+
+    def _start(self):
+        Featurizer._start(self)
+        pass
+    
+    def dim(self):
+        ''' Return the dim of the underlying frame featurizer. '''
+        return FeatRand.DIMS
+
+
+    def _featurize(self, data_in):  # @UnusedVariable
+        ''' encode an input regardless of the input as a random number '''
+        return [ random.random() for _ in xrange(FeatRand.DIMS) ]
+
+    def _stop(self):
+        Featurizer._stop(self)
+        pass
+
+
