@@ -19,8 +19,8 @@ from builtins import *
 # pragma pylint: enable=wildcard-import
 
 import collections
+import dill as pickle
 import json
-import pickle
 
 import numpy as np
 
