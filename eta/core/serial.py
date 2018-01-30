@@ -74,8 +74,8 @@ class Picklable(object):
             M = pickle.load(mf)
         return M
 
-    @classmethod
-    def is_pickle_path(cls, path):
+    @staticmethod
+    def is_pickle_path(path):
         '''Checks the path to see if it has a pickle extension.'''
         return path.endswith(".pkl")
 
