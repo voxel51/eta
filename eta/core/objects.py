@@ -19,10 +19,13 @@ from builtins import *
 # pragma pylint: enable=wildcard-import
 
 import random
+import os
+from platform import _abspath
 
 from eta.core.geometry import BoundingBox
 from eta.core.serial import Serializable
 import eta.core.image as etai
+import eta.core.utils as etau
 
 class Frame(Serializable):
     '''Container for detected objects in an image.'''
@@ -261,7 +264,36 @@ class ScoredObjectList(Serializable):
         for i in range(len(self.objects)):
             self.objects[i].orig_order=i;
         self.objects.sort(key=lambda x: x.score)
+        return self.get_order();
+    
+    def get_order(self):
+        ''' return the order of '''
         return [obj.orig_order for obj in self.objects]
+
+    def to_html(self, result_path, query_img):
+        # output query image
+        etau.ensure_path(result_path)
+        queryimg_path = os.path.join(result_path, 'query.png')
+        etai.write(query_img, queryimg_path)
+        # output html file
+        top_imgs_str = ""
+        order=self.get_order();
+        for pos in range(min(len(order), 50)):
+            obj=self.objects[pos]
+            top_imgs_str = top_imgs_str+"<img src=%s height=50>score:%.02f<br>"\
+              % (_abspath(obj.chip_path), obj.score)
+        html_str = """
+            <html>
+            <body>
+            Query:<img src=query.png height=50><hr>Top Matches<hr>""" + \
+            top_imgs_str + \
+            """</body>
+            </html>
+        """
+        html_file = open(os.path.join(result_path, "index.html"), "w")
+        html_file.write(html_str)
+        html_file.close()
+
 
     @classmethod
     def from_dict(cls, d):
