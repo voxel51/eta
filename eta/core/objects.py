@@ -165,13 +165,17 @@ class ObjectCount(Serializable):
         '''Constructs an ObjectCount from a JSON dictionary.'''
         return ObjectCount(d["label"], d["count"])
 
+
 class ScoredDetection(Serializable):
     '''A detection attributed with source and score
 
     Attributes:
-        label: object label
-        confidence: detection confidence
-        bounding_box: A BoundingBox around the object
+        detection: DetectedObject
+        source: path to the source of the detection
+        score: score or distance
+        feat: feature data (builtin type only)
+        chip_path: the path to the cached chip image
+        chip (not serialized)
     '''
 
     def __init__(self, detection, source=None, score=0.0, feat=None, chip_path=None, chip=None):
@@ -213,19 +217,20 @@ class ScoredDetection(Serializable):
             d["chip_path"]
         )
 
-class ScoredObjectList(Serializable):
-    ''' A list of scored objects.'''
+
+class ScoredDetectionList(Serializable):
+    '''A list of scored objects.'''
     
     def __init__(self, objects=None):
-        '''Constructs a ScoredObjectList.
+        '''Constructs a ScoredDetectionList.
 
         Args:
-            objects: optional list of ScoredObjects in the frame.
+            objects: optional list of ScoredDetections in the frame.
         '''
         self.objects = objects or []
 
     def add(self, obj):
-        '''Adds a ScoredObject to the ScoredObjectList.
+        '''Adds a ScoredObject to the ScoredDetectionList.
 
         Args:
             obj: A ScoredObject instance
@@ -233,11 +238,11 @@ class ScoredObjectList(Serializable):
         self.objects.append(obj)
 
     def label_set(self):
-        '''Returns a set containing the labels of objects in this ScoredObjectList.'''
+        '''Returns a set containing the labels of objects in this ScoredDetectionList.'''
         return set(obj.detection.label for obj in self.objects)
 
     def get_matches(self, filters, match=any):
-        '''Returns a ScoredObjectList containing only objects that match the filters.
+        '''Returns a ScoredDetectionList containing only objects that match the filters.
 
         Args:
             filters: a list of functions that accept DetectedObjects and return
@@ -247,7 +252,7 @@ class ScoredObjectList(Serializable):
                 filter to decide whether a match has occurred. The default is
                 any
         '''
-        return ScoredObjectList(
+        return ScoredDetectionList(
             objects=list(filter(
                 lambda o: match(f(o) for f in filters),
                 self.objects,
@@ -255,22 +260,23 @@ class ScoredObjectList(Serializable):
         )
         
     def randomize_scores(self):
-        ''' randomize scores '''
+        '''Randomize object scores.'''
         for obj in self.objects:
             obj.score=random.randrange(0.0, 1.0)
             
     def sort(self):
-        ''' sort list by score and store original order '''
+        '''Sort list by score and store original order.'''
         for i in range(len(self.objects)):
             self.objects[i].orig_order=i;
         self.objects.sort(key=lambda x: x.score)
         return self.get_order();
     
     def get_order(self):
-        ''' return the order of '''
+        '''Return the order of last sort.'''
         return [obj.orig_order for obj in self.objects]
 
     def to_html(self, result_path, query_img):
+        '''Output current label set to html for visualization.'''
         # output query image
         etau.ensure_path(result_path)
         queryimg_path = os.path.join(result_path, 'query.png')
@@ -294,13 +300,9 @@ class ScoredObjectList(Serializable):
         html_file.write(html_str)
         html_file.close()
 
-
     @classmethod
     def from_dict(cls, d):
-        '''Constructs a ScoredObjectList from a JSON dictionary.'''
-        return ScoredObjectList(objects=[
+        '''Constructs a ScoredDetectionList from a JSON dictionary.'''
+        return ScoredDetectionList(objects=[
             ScoredDetection.from_dict(so) for so in d["objects"]
         ])
-
-
-    

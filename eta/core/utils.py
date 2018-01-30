@@ -166,6 +166,16 @@ def glob_videos(path):
     return multiglob(*c.VIDEO_FILE_TYPES_SUPPORTED,
             root=os.path.join(path, '*.'))
 
+def find_corresp_file(filepath, valid_exts=['.jpg', '.gif', '.png', '.jpeg']):
+    ''' finds an image that matches the json file. '''
+    _file_noext, _ext = os.path.splitext(filepath)
+    logger.info("Looking for corresponding file for %s with ext %s", _file_noext, _ext)
+    for _file in glob.glob(_file_noext + "*"):
+        _ext2 = os.path.splitext(_file)[1]
+        if _ext2.lower() in valid_exts:
+            return _file
+    return None
+
 
 def move_file(inpath, outpath):
     '''Copies the input file to the output location, creating the base output

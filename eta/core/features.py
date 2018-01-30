@@ -25,8 +25,8 @@ import os
 import shutil
 import tempfile
 
-import numpy as np
 import cv2
+import numpy as np
 import random
 
 from eta.core.config import Config, Configurable
@@ -401,12 +401,12 @@ class VideoFramesFeaturizer(Featurizer):
         self._frame_preprocessor = None
 
     def _backing_manager_manual(self, data, is_featurize_start=True):
-        ''' Manual manager for the backing store on a new featurization call.
+        '''Manual manager for the backing store on a new featurization call.
         '''
         pass
 
     def _backing_manager_random(self, data, is_featurize_start=True):
-        ''' Manual manager for the backing store on a new featurization call.
+        '''Manual manager for the backing store on a new featurization call.
         '''
         if is_featurize_start:
             td = tempfile.mkdtemp(dir="/tmp", prefix="eta.backing.")
@@ -420,7 +420,7 @@ class VideoFramesFeaturizer(Featurizer):
         self.update_backing_path(self.config.backing_path)
 
     def _backing_manager_replace(self, data, is_featurize_start=True):
-        ''' Manual manager for the backing store on a new featurization call.
+        '''Manual manager for the backing store on a new featurization call.
         '''
         if is_featurize_start:
             rp = etau.replace_strings(data,
@@ -433,7 +433,7 @@ class VideoFramesFeaturizer(Featurizer):
         self.update_backing_path(self.config.backing_path)
 
     def dim(self):
-        ''' Return the dim of the underlying frame featurizer. '''
+        '''Return the dim of the underlying frame featurizer.'''
         if not self._frame_featurizer:
             self._frame_featurizer = self.config.frame_featurizer.build()
             d = self._frame_featurizer.dim()
@@ -443,7 +443,7 @@ class VideoFramesFeaturizer(Featurizer):
         return d
 
     def is_featurized(self, frame_number):
-        ''' Checks the backing store to determine whether or not the frame
+        '''Checks the backing store to determine whether or not the frame
         number is already featurized and stored to disk.
         '''
         return os.path.isfile(self.featurized_frame_path(frame_number))
@@ -578,7 +578,7 @@ class VideoFramesFeaturizer(Featurizer):
             os.remove(os.path.join(self._backing_path, f))
 
     def _stop(self):
-        ''' Internal stop that handles the removal of an active
+        '''Internal stop that handles the removal of an active
         _frame_featurizer.
         '''
         if self._frame_featurizer:
@@ -597,33 +597,48 @@ class VideoFramesFeaturizer(Featurizer):
 
 
 # ************************* FEATURIZERS ******************************
+
+
 class ORBFeaturizer(Featurizer):
-    ''' ORB Featurizer. '''
+    '''ORB Featurizer.'''
+    
+    KEYPOINTS = 128
 
     def __init__(self):
-        ''' ORB Featurizer constructor '''
+        '''ORB Featurizer constructor (Oriented FAST and rotated BRIEF features
+            http://www.willowgarage.com/sites/default/files/orb_final.pdf'''
         Featurizer.__init__(self)
         self.name = "ORBFeaturizer"
         self.orb = cv2.xfeatures2d.ORB_create()
 
-    def _start(self):
-        Featurizer._start(self)
-        pass
-
     def dim(self):
-        ''' Return the dim of the underlying frame featurizer. '''
-        return 128
+        '''Return the dim of the underlying frame featurizer.'''
+        return ORBFeaturizer.KEYPOINTS * 32
     
     def _featurize(self, data_in):
-        ''' encode an image using ORB features. '''
+        '''Encode an image using ORB features.'''
         gray = cv2.cvtColor(data_in, cv2.COLOR_BGR2GRAY)
-        _, des = self.orb.detectAndCompute(gray, None)
-        embedded_vector = des
-        logger.info("image embedded to vector of length %d", len(embedded_vector))
-        logger.info("%s", embedded_vector)
+        _, embedded_vector = self.orb.detectAndCompute(gray, None)
+        logger.debug("%s", embedded_vector)
         return embedded_vector
+    
 
-    def _stop(self):
-        Featurizer._stop(self)
-        pass
+class RandFeaturizer(Featurizer):
+    '''Random Featurizer.'''
+    
+    DIMS=1024
 
+    def __init__(self):
+        Featurizer.__init__(self)
+        self.name = "Random Featurizer"
+ 
+    def dim(self):
+        '''Return the dim of the underlying frame featurizer.'''
+        return RandFeaturizer.DIMS
+ 
+ 
+    def _featurize(self, data_in):  # @UnusedVariable
+        '''Encode an input regardless of the input as a random number.'''
+        return [ random.random() for _ in xrange(RandFeaturizer.DIMS) ]
+ 
+ 
