@@ -21,6 +21,7 @@ from builtins import *
 import collections
 import dill as pickle
 import json
+import os
 
 import numpy as np
 
@@ -61,17 +62,22 @@ class Picklable(object):
     Subclasses need not implement anything.
     '''
     def pickle(self, path):
-        ''' Saves the instance to disk in a pickle. '''
+        '''Saves the instance to disk in a pickle. '''
         ut.ensure_basedir(path)
         with open(path, 'wb') as mf:
             pickle.dump(self, mf)
 
     @classmethod
     def from_pickle(cls, path):
-        ''' Loads the pickle from disk and returns the instance. '''
+        '''Loads the pickle from disk and returns the instance. '''
         with open(path, 'rb') as mf:
             M = pickle.load(mf)
         return M
+
+    @classmethod
+    def is_pickle_path(cls, path):
+        '''Checks the path to see if it has a pickle extension.'''
+        return "pkl" == os.path.splitext(path)[1][1:]
 
 
 class Serializable(object):
