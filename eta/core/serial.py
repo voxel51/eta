@@ -77,7 +77,7 @@ class Picklable(object):
     @classmethod
     def is_pickle_path(cls, path):
         '''Checks the path to see if it has a pickle extension.'''
-        return "pkl" == os.path.splitext(path)[1][1:]
+        return path.endswith(".pkl")
 
 
 class Serializable(object):
