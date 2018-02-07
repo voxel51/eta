@@ -19,6 +19,7 @@ from builtins import *
 # pragma pylint: enable=wildcard-import
 
 import collections
+import datetime as dt
 import dill as pickle
 import json
 import os
@@ -48,9 +49,9 @@ def write_json(obj, path, pretty_print=True):
     if is_serializable(obj):
         obj = obj.serialize()
     if pretty_print:
-        s = json.dumps(obj, indent=4, cls=JSONNumpyEncoder, ensure_ascii=False)
+        s = json.dumps(obj, indent=4, cls=EtaJSONEncoder, ensure_ascii=False)
     else:
-        s = json.dumps(obj, cls=JSONNumpyEncoder, ensure_ascii=False)
+        s = json.dumps(obj, cls=EtaJSONEncoder, ensure_ascii=False)
     ut.ensure_basedir(path)
     with open(path, "wt") as f:
         f.write(str(s))
@@ -158,8 +159,10 @@ def _recurse(v):
     return v
 
 
-class JSONNumpyEncoder(json.JSONEncoder):
-    '''Extends basic JSONEncoder to handle numpy scalars/arrays.'''
+class EtaJSONEncoder(json.JSONEncoder):
+    '''Extends basic JSONEncoder to handle numpy scalars/arrays and datatime
+    data-types.
+    '''
 
     def default(self, obj):
         if isinstance(obj, np.integer):
@@ -168,4 +171,6 @@ class JSONNumpyEncoder(json.JSONEncoder):
             return float(obj)
         elif isinstance(obj, np.ndarray):
             return obj.tolist()
-        return super(JSONNumpyEncoder, self).default(obj)
+        elif isinstance(obj, (dt.datetime, dt.date)):
+            return obj.isoformat()
+        return super(EtaNumpyEncoder, self).default(obj)
