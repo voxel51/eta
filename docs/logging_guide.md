@@ -17,10 +17,19 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# A debugging message. Only recorded if logging is specifically customized to
+# log messages at level logging.DEBUG and above
 logger.debug(...)
+
+# A standard info message
 logger.info(...)
+
+# A non-fatal warning message
 logger.warning(...)
-logger.error(...)
+
+# There is no need to call logger.error(...) because ETA automatically
+# captures raised exceptions and logs them before the process is terminated
+raise Exception("A FATAL ERROR HERE")
 ```
 
 
