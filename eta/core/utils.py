@@ -119,6 +119,34 @@ def communicate(args, decode=False):
     return p.returncode == 0, out, err
 
 
+def communicate_or_die(*args, **kwargs):
+    '''Wrapper around communicate() that raises an exception if any error
+    occurs.
+
+    Args:
+        same as communicate()
+
+    Returns:
+        out: the command's stdout
+
+    Raises:
+        ExecutableNotFoundError: if the executable in the command was not found
+        ExecutableRuntimeError: if an error occurred while executing the
+            command
+    '''
+    try:
+        success, out, err = communicate(*args, **kwargs)
+        if not success:
+            raise ExecutableRuntimeError(" ".join(args), err)
+
+        return out
+    except EnvironmentError as e:
+        if e.errno == errno.ENOENT:
+            raise ExecutableNotFoundError(args[0])
+        else:
+            raise
+
+
 def call(args):
     '''Runs the command via subprocess.call()
 
@@ -161,6 +189,7 @@ def ensure_dir(dirname):
         os.makedirs(dirname)
 
 
+# @todo move to eta/core/video.py
 def glob_videos(path):
     '''Returns an iterator over all supported video files in path.'''
     return multiglob(*c.VIDEO_FILE_TYPES_SUPPORTED,
