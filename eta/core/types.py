@@ -20,11 +20,7 @@ from builtins import *
 
 
 class Type(object):
-    DESCRIPTION = ""
-
-    @classmethod
-    def description(cls):
-        return self.DESCRIPTION
+    DESCRIPTION = "Base class for all types"
 
 
 ###### Data types ##############################################################
@@ -32,6 +28,10 @@ class Type(object):
 
 class Data(Type):
     DESCRIPTION = "The base type for data"
+
+
+class Builtin(Data):
+    DESCRIPTION = "A builtin data type"
 
 
 class Image(Data):
