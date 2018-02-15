@@ -27,6 +27,45 @@ from eta.core.diagram import BlockDiagram, BlockdiagModule
 import eta.core.log as etal
 import eta.core.utils as etau
 
+
+def load_metadata(module_name):
+    '''Loads the module metadata file for the module with the given name.
+
+    Args:
+        module_name: the name of the module
+
+    Returns:
+        the ModuleMetadata instance for the given module
+
+    Raises:
+        ModuleMetadataError: if the module metadata file could not be found
+    '''
+    return ModuleMetadata.from_json(find_metadata(module_name))
+
+
+def find_metadata(module_name):
+    '''Find the module metadata file for the module with the given name.
+
+    Modules must be located in one of the directories in the
+    `eta.config.module_dirs` list
+
+    Args:
+        module_name: the name of the module
+
+    Returns:
+        the absolute path to the module metadata file
+
+    Raises:
+        ModuleMetadataError: if the module metadata file could not be found
+    '''
+    for d in eta.config.module_dirs:
+        abspath = os.path.join(d, module_name + ".json")
+        if os.path.isfile(abspath):
+            return abspath
+
+    raise ModuleMetadataError("Could not find module '%s'" % module_name)
+
+
 def setup(module_config, pipeline_config_path=None):
     '''Perform module setup.
 
