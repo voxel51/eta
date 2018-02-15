@@ -13,6 +13,7 @@ __pycache__
 
 /docs/*.tex
 
+/config.json
 /external
 /examples/**/data
 /examples/**/out
