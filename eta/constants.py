@@ -3,7 +3,7 @@ ETA package-wide constants.
 
 IMPORTANT: this module should not import any ETA modules!
 
-Copyright 2017, Voxel51, LLC
+Copyright 2017-2018, Voxel51, LLC
 voxel51.com
 
 Brian Moore, brian@voxel51.com
@@ -26,14 +26,14 @@ import os
 
 # Directories
 ETA_DIR = os.path.abspath(os.path.dirname(__file__))
+BASE_DIR = os.path.dirname(ETA_DIR)
 CONFIGS_DIR = os.path.join(ETA_DIR, "configs")
 DEFAULT_CACHE_DIR = os.path.join(ETA_DIR, "cache")
-
 
 # Paths
 VERSION_JSON_PATH = os.path.join(ETA_DIR, "version.json")
 ASCII_ART_PATH = os.path.join(ETA_DIR, "eta-ascii.txt")
-
+CONFIG_JSON_PATH = os.path.join(BASE_DIR, "config.json")
 
 # Version
 with open(VERSION_JSON_PATH, "rt") as f:
