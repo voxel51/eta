@@ -35,6 +35,7 @@ def setup(module_config, pipeline_config_path=None):
     '''
     # Set/override module config settings
     if pipeline_config_path:
+        from eta.core.pipeline import PipelineConfig
         pipeline_config = PipelineConfig.from_json(pipeline_config_path)
         module_config.logging_config = pipeline_config.logging_config
 
