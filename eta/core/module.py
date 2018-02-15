@@ -1,7 +1,7 @@
 '''
 Core module infrastructure.
 
-Copyright 2017, Voxel51, LLC
+Copyright 2017-2018, Voxel51, LLC
 voxel51.com
 
 Brian Moore, brian@voxel51.com
@@ -18,10 +18,14 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-from eta.core import log
-from eta.core.config import Config
-from eta.core.pipeline import PipelineConfig
+import os
 
+import eta
+import eta.constants as etac
+from eta.core.config import Config, Configurable
+from eta.core.diagram import BlockDiagram, BlockdiagModule
+import eta.core.log as etal
+import eta.core.utils as etau
 
 def setup(module_config, pipeline_config_path=None):
     '''Perform module setup.
@@ -40,7 +44,7 @@ def setup(module_config, pipeline_config_path=None):
         module_config.logging_config = pipeline_config.logging_config
 
     # Setup logging
-    log.custom_setup(module_config.logging_config)
+    etal.custom_setup(module_config.logging_config)
 
 
 class BaseModuleConfig(Config):
