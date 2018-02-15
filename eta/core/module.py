@@ -66,6 +66,9 @@ def find_metadata(module_name):
     raise ModuleMetadataError("Could not find module '%s'" % module_name)
 
 
+# @todo should pass a PipelineConfig instance here, not just the path. The need
+# to use PipelineConfig here is causing a circular import with eta.core.module.
+# This suggests bad design...
 def setup(module_config, pipeline_config_path=None):
     '''Perform module setup.
 
