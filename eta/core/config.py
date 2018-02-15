@@ -1,7 +1,7 @@
 '''
 Core tools for defining, reading and writing configuration files.
 
-Copyright 2017, Voxel51, LLC
+Copyright 2017-2018, Voxel51, LLC
 voxel51.com
 
 Brian Moore, brian@voxel51.com
@@ -260,9 +260,27 @@ class Config(Serializable):
         return Config._parse_key(d, key, bool, default=default)[0]
 
     @staticmethod
+    def parse_raw(d, key, default=no_default):
+        '''Parses a raw (arbitrary) JSON field.
+
+        Args:
+            d: a JSON dictionary
+            key: the key to parse
+            default: a default value to return if key is not present
+
+        Returns:
+            the raw (untouched) value of the given field
+
+        Raises:
+            ConfigError: if no default value was provided and the key was
+                not present in the dictionary.
+        '''
+        return Config._parse_key(d, key, None, default=default)[0]
+
+    @staticmethod
     def _parse_key(d, key, t, default=no_default):
         if key in d:
-            if isinstance(d[key], t):
+            if t is None or isinstance(d[key], t):
                 return d[key], True
             raise ConfigError(
                 "Expected key '%s' of %s; found %s" % (key, t, type(d[key])))
