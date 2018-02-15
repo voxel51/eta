@@ -46,9 +46,11 @@ CONTACT = _VER["contact"]
 URL = _VER["url"]
 LICENSE = _VER["license"]
 
-
-# Supported File Types
-VIDEO_FILE_TYPES_SUPPORTED = ['mp4', 'avi', 'mpg']
+# Supported file types
+# @todo move to eta/core/video.py
+VIDEO_FILE_TYPES_SUPPORTED = ["mp4", "avi", "mpg"]
+# @todo move to eta/core/image.py
+IMAGE_FILE_TYPES_SUPPORTED = [".png", ".jpg", ".jpeg", ".gif"]
 
 # ASCII art
 with open(ASCII_ART_PATH, "rt") as f:
