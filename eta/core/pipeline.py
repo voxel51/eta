@@ -1,7 +1,7 @@
 '''
 Pipeline infrastructure for running series of jobs.
 
-Copyright 2017, Voxel51, LLC
+Copyright 2017-2018, Voxel51, LLC
 voxel51.com
 
 Brian Moore, brian@voxel51.com
@@ -22,10 +22,12 @@ import logging
 import os
 import sys
 
-from eta.core.config import Config
-from eta.core import job
-from eta.core import log
-from eta.core import utils
+from eta.core.config import Config, Configurable
+from eta.core.diagram import BlockDiagram
+import eta.core.job as etaj
+import eta.core.log as etal
+import eta.core.module as etam
+import eta.core.utils as etau
 
 
 logger = logging.getLogger(__name__)
@@ -45,13 +47,13 @@ def run(pipeline_config_path):
     pipeline_config_path = os.path.abspath(pipeline_config_path)
 
     # Setup logging
-    log.custom_setup(pipeline_config.logging_config, rotate=True)
+    etal.custom_setup(pipeline_config.logging_config, rotate=True)
 
     # Run pipeline
     logger.info("Starting pipeline '%s'\n", pipeline_config.name)
     overwrite = pipeline_config.overwrite
     ran_job = False
-    with utils.WorkingDir(pipeline_config.working_dir):
+    with etau.WorkingDir(pipeline_config.working_dir):
         for job_config in pipeline_config.jobs:
             if ran_job and not overwrite:
                 logger.info(
@@ -59,7 +61,7 @@ def run(pipeline_config_path):
                 overwrite = True
 
             job_config.pipeline_config_path = pipeline_config_path
-            ran_job = job.run(job_config, overwrite=overwrite)
+            ran_job = etaj.run(job_config, overwrite=overwrite)
 
     logger.info("Pipeline '%s' complete", pipeline_config.name)
 
@@ -72,7 +74,7 @@ class PipelineConfig(Config):
         self.working_dir = self.parse_string(d, "working_dir", default=".")
         self.overwrite = self.parse_bool(d, "overwrite", default=True)
         self.jobs = self.parse_object_array(
-            d, "jobs", job.JobConfig, default=[])
+            d, "jobs", etaj.JobConfig, default=[])
         self.logging_config = self.parse_object(
             d, "logging_config", log.LoggingConfig,
             default=log.LoggingConfig.default())
