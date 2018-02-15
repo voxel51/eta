@@ -76,8 +76,74 @@ class PipelineConfig(Config):
         self.jobs = self.parse_object_array(
             d, "jobs", etaj.JobConfig, default=[])
         self.logging_config = self.parse_object(
-            d, "logging_config", log.LoggingConfig,
-            default=log.LoggingConfig.default())
+            d, "logging_config", etal.LoggingConfig,
+            default=etal.LoggingConfig.default())
+
+
+class PipelineMetadataConfig(Config):
+    '''Pipeline metadata configuration class'''
+
+    def __init__(self, d):
+        self.info = self.parse_object(d, "info", InfoConfig)
+        self.modules = self.parse_array(d, "modules")
+        self.connections = self.parse_object_array(
+            d, "connections", ConnectionConfig)
+
+
+class InfoConfig(Config):
+    '''Pipeline info configuration class'''
+
+    def __init__(self, d):
+        self.name = self.parse_string(d, "name")
+        self.version = self.parse_string(d, "version")
+        self.description = self.parse_string(d, "description")
+        self.id = self.parse_string(d, "id")
+
+
+class ConnectionConfig(Config):
+    '''Connection edge configuration class.'''
+
+    def __init__(self, d):
+        self.source = self.parse_string(d, "source")
+        self.sink = self.parse_string(d, "sink")
+
+
+class PipelineMetadata(Configurable, BlockDiagram):
+    '''Class the encapsulates the architecture of a pipeline.'''
+
+    def __init__(self, config):
+        '''Initializes a PipelineMetadata instance.
+
+        Args:
+            config: a PipelineMetadataConfig instance
+
+        Raises:
+            PipelineMetadataError: if there was an error parsing the pipeline
+                definition
+        '''
+        self.validate(config)
+        self.config = config
+        self.modules = []
+        self.parse_metadata()
+
+    def parse_metadata(self):
+        '''Parses the pipeline metadata config.'''
+        # Load modules
+        for name in self.config.modules:
+            self.modules.append(etam.load_metadata(name))
+
+        # Parse connections
+        for c in self.config.connections:
+            # @todo implement
+
+    def _to_blockdiag(self, path):
+        bp = BlockdiagPipeline(self.config.info.name)
+        # @todo implement
+        bp.write(path)
+
+
+class PipelineMetadataError(Exception):
+    pass
 
 
 if __name__ == "__main__":
