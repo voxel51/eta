@@ -52,5 +52,105 @@ class BaseModuleConfig(Config):
 
     def __init__(self, d):
         self.logging_config = self.parse_object(
-            d, "logging_config", log.LoggingConfig,
-            default=log.LoggingConfig.default())
+            d, "logging_config", etal.LoggingConfig,
+            default=etal.LoggingConfig.default())
+
+
+class ModuleMetadataConfig(Config):
+    '''Module metadata configuration class.'''
+
+    def __init__(self, d):
+        self.info = self.parse_object(d, "info", InfoConfig)
+        self.inputs = self.parse_object_array(d, "inputs", FieldConfig)
+        self.outputs = self.parse_object_array(d, "outputs", FieldConfig)
+        self.parameters = self.parse_object_array(d, "parameters", FieldConfig)
+
+
+class InfoConfig(Config):
+    '''Module info.'''
+
+    def __init__(self, d):
+        self.name = self.parse_string(d, "name")
+        self.type = self.parse_string(d, "type")
+        self.version = self.parse_string(d, "version")
+        self.description = self.parse_string(d, "description")
+        self.id = self.parse_string(d, "id")
+        self.exe = self.parse_string(d, "exe")
+
+
+# This exists so that None can be a default value for Config fields
+class mandatory(object):
+    pass
+
+
+class FieldConfig(Config):
+    '''Module field descriptor.'''
+
+    def __init__(self, d):
+        self.name = self.parse_string(d, "name")
+        self.type = self.parse_string(d, "type")
+        self.description = self.parse_string(d, "description")
+        self.default = self.parse_raw(d, "default", default=mandatory)
+
+    @property
+    def is_mandatory(self):
+        '''Returns True/False indicating whether this field is mandatory.'''
+        return self.default is mandatory
+
+
+class ModuleMetadata(Configurable, BlockDiagram):
+    '''Class the encapsulates the architecture of a module.'''
+
+    def __init__(self, config):
+        '''Initializes a ModuleMetadata instance.
+
+        Args:
+            config: a ModuleMetadataConfig instance
+
+        Raises:
+            ModuleMetadataError: if there was an error parsing the module
+                definition
+        '''
+        self.validate(config)
+        self.config = config
+        self.parse_metadata()
+
+    def parse_metadata(self):
+        '''Parses the module metadata config.'''
+        # Verify types
+        for i in self.config.inputs:
+            self.verify_field_type(i)
+        for o in self.config.outputs:
+            self.verify_field_type(o)
+        for p in self.config.parameters:
+            self.verify_field_type(p)
+
+    @staticmethod
+    def verify_field_type(field):
+        '''Verifies that the field has a valid type.
+
+        Args:
+            field: a FieldConfig instance
+
+        Raises:
+            ModuleMetadataError if the type is invalid.
+        '''
+        try:
+            etau.get_class(field.type)
+        except ImportError:
+            raise ModuleMetadataError(
+                "Field '%s' has unknown type '%s'" % (field.name, field.type))
+
+    def _to_blockdiag(self, path):
+        bm = BlockdiagModule(self.config.info.name)
+        for i in self.config.inputs:
+            bm.add_input(i.name)
+        for o in self.config.outputs:
+            bm.add_output(o.name)
+        for p in self.config.parameters:
+            bm.add_parameter(p.name)
+        bm.write(path)
+
+
+class ModuleMetadataError(Exception):
+    pass
