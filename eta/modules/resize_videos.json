@@ -1,0 +1,49 @@
+{
+    "info": {
+        "name": "resize-videos",
+        "type": "eta.core.types.Module",
+        "version": "0.1.0",
+        "description": "Resizes a video",
+        "exe": "resize_videos.py"
+    },
+    "inputs": [
+        {
+            "name": "input_path",
+            "type": "eta.core.types.Video",
+            "description": "The input video"
+        }
+    ],
+    "outputs": [
+        {
+            "name": "output_path",
+            "type": "eta.core.types.Video",
+            "description": "The output resized video"
+        }
+    ],
+    "parameters": [
+        {
+            "name": "size",
+            "type": "eta.core.types.Array",
+            "description": "The output [width, height] of the video",
+            "default": null
+        },
+        {
+            "name": "scale",
+            "type": "eta.core.types.Number",
+            "description": "A numeric scale factor",
+            "default": null
+        },
+        {
+            "name": "scale_str",
+            "type": "eta.core.types.String",
+            "description": "A scale string; an argument for ffmpeg scale=",
+            "default": null
+        },
+        {
+            "name": "ffmpeg_out_opts",
+            "type": "eta.core.types.Array",
+            "description": "An array of ffmpeg output options",
+            "default": null
+        }
+    ]
+}
