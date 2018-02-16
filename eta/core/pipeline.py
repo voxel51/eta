@@ -1,5 +1,5 @@
 '''
-Pipeline infrastructure for running series of jobs.
+Core pipeline infrastructure.
 
 Copyright 2017-2018, Voxel51, LLC
 voxel51.com
@@ -67,7 +67,7 @@ def run(pipeline_config_path):
 
 
 class PipelineConfig(Config):
-    '''Pipeline configuration settings'''
+    '''Pipeline configuration class.'''
 
     def __init__(self, d):
         self.name = self.parse_string(d, "name", default="pipeline")
@@ -81,27 +81,46 @@ class PipelineConfig(Config):
 
 
 class PipelineMetadataConfig(Config):
-    '''Pipeline metadata configuration class'''
+    '''Pipeline metadata configuration class.'''
 
     def __init__(self, d):
-        self.info = self.parse_object(d, "info", InfoConfig)
+        self.info = self.parse_object(d, "info", PipelineInfoConfig)
         self.modules = self.parse_array(d, "modules")
         self.connections = self.parse_object_array(
-            d, "connections", ConnectionConfig)
+            d, "connections", PipelineConnectionConfig)
 
 
-class InfoConfig(Config):
-    '''Pipeline info configuration class'''
+class PipelineInfoConfig(Config):
+    '''Pipeline info configuration class.'''
 
     def __init__(self, d):
         self.name = self.parse_string(d, "name")
+        self.type = self.parse_string(d, "type")
         self.version = self.parse_string(d, "version")
         self.description = self.parse_string(d, "description")
-        self.id = self.parse_string(d, "id")
 
 
-class ConnectionConfig(Config):
-    '''Connection edge configuration class.'''
+class PipelineInfo(Configurable):
+    '''Pipeline info descriptor.'''
+
+    def __init__(self, config):
+        self.validate(config)
+        self.name = config.name
+        self.type = self._parse_type(config.type)
+        self.version = config.version
+        self.description = config.description
+
+    @staticmethod
+    def _parse_type(type_str):
+        type_ = etat.parse_type(type_str)
+        if not etat.is_pipeline(type_):
+            raise PipelineMetadataError(
+                    "'%s' is not a valid pipeline type" % type_)
+        return type_
+
+
+class PipelineConnectionConfig(Config):
+    '''Pipeline connection configuration class.'''
 
     def __init__(self, d):
         self.source = self.parse_string(d, "source")
