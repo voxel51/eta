@@ -90,7 +90,7 @@ def setup(module_config, pipeline_config_path=None):
 
 
 class BaseModuleConfig(Config):
-    '''Base module configuration settings.'''
+    '''Base module configuration class.'''
 
     def __init__(self, d):
         self.logging_config = self.parse_object(
@@ -102,22 +102,47 @@ class ModuleMetadataConfig(Config):
     '''Module metadata configuration class.'''
 
     def __init__(self, d):
-        self.info = self.parse_object(d, "info", InfoConfig)
-        self.inputs = self.parse_object_array(d, "inputs", FieldConfig)
-        self.outputs = self.parse_object_array(d, "outputs", FieldConfig)
-        self.parameters = self.parse_object_array(d, "parameters", FieldConfig)
+        self.info = self.parse_object(d, "info", ModuleInfoConfig)
+        self.inputs = self.parse_object_array(d, "inputs", ModuleFieldConfig)
+        self.outputs = self.parse_object_array(d, "outputs", ModuleFieldConfig)
+        self.parameters = self.parse_object_array(
+            d, "parameters", ModuleFieldConfig)
 
 
-class InfoConfig(Config):
-    '''Module info.'''
+class ModuleInfoConfig(Config):
+    '''Module info configuration class.'''
 
     def __init__(self, d):
         self.name = self.parse_string(d, "name")
         self.type = self.parse_string(d, "type")
         self.version = self.parse_string(d, "version")
         self.description = self.parse_string(d, "description")
-        self.id = self.parse_string(d, "id")
         self.exe = self.parse_string(d, "exe")
+
+
+class ModuleInfo(Configurable):
+    '''Module info descriptor.'''
+
+    def __init__(self, config):
+        self.validate(config)
+        self.name = config.name
+        self.type = self._parse_type(config.type)
+        self.version = config.version
+        self.description = config.description
+        self.exe = config.exe
+
+    @property
+    def is_mandatory(self):
+        '''Returns True/False indicating whether this field is mandatory.'''
+        return self.default is mandatory
+
+    @staticmethod
+    def _parse_type(type_str):
+        type_ = etat.parse_type(type_str)
+        if not etat.is_module(type_):
+            raise ModuleMetadataError(
+                "'%s' is not a valid module type" % type_)
+        return type_
 
 
 # This exists so that None can be a default value for Config fields
@@ -125,8 +150,8 @@ class mandatory(object):
     pass
 
 
-class FieldConfig(Config):
-    '''Module field descriptor.'''
+class ModuleFieldConfig(Config):
+    '''Module field descriptor configuration.'''
 
     def __init__(self, d):
         self.name = self.parse_string(d, "name")
@@ -134,10 +159,29 @@ class FieldConfig(Config):
         self.description = self.parse_string(d, "description")
         self.default = self.parse_raw(d, "default", default=mandatory)
 
+
+class ModuleField(Configurable):
+    '''Module field descriptor.'''
+
+    def __init__(self, config):
+        self.validate(config)
+        self.name = config.name
+        self.type = self._parse_type(config.type)
+        self.description = config.description
+        self.default = config.default
+
     @property
     def is_mandatory(self):
         '''Returns True/False indicating whether this field is mandatory.'''
         return self.default is mandatory
+
+    @staticmethod
+    def _parse_type(type_str):
+        type_ = etat.parse_type(type_str)
+        if not etat.is_data(type_):
+            raise ModuleMetadataError(
+                "'%s' is not a valid data type" % type_)
+        return type_
 
 
 class ModuleMetadata(Configurable, BlockDiagram):
