@@ -1,0 +1,37 @@
+{
+    "info": {
+        "name": "clip-videos",
+        "type": "eta.core.types.Module",
+        "version": "0.1.0",
+        "description": "Generates clips from a video",
+        "exe": "clip_videos.py"
+    },
+    "inputs": [
+        {
+            "name": "input_path",
+            "type": "eta.core.types.Video",
+            "description": "The input video"
+        },
+        {
+            "name": "events_json_path",
+            "type": "eta.core.types.EventSeries",
+            "description": "An EventSeries speciying the clips to generate",
+            "default": null
+        }
+    ],
+    "outputs": [
+        {
+            "name": "output_path",
+            "type": "eta.core.types.VideoClips",
+            "description": "The output pattern for the video clips"
+        }
+    ],
+    "parameters": [
+        {
+            "name": "frames",
+            "type": "eta.core.types.FramesString",
+            "description": "A frames string speciying the clips to generate",
+            "default": null
+        }
+    ]
+}
