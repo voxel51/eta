@@ -18,13 +18,14 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+from collections import OrderedDict
 import os
 
 import eta
-import eta.constants as etac
 from eta.core.config import Config, Configurable
 from eta.core.diagram import BlockDiagram, BlockdiagModule
 import eta.core.log as etal
+import eta.core.types as etat
 import eta.core.utils as etau
 
 
@@ -185,7 +186,17 @@ class ModuleField(Configurable):
 
 
 class ModuleMetadata(Configurable, BlockDiagram):
-    '''Class the encapsulates the architecture of a module.'''
+    '''Class the encapsulates the architecture of a module.
+
+    Attributes:
+        info: a ModuleInfo instance describing the module
+        inputs: a dictionary mapping input names to ModuleField instances
+            describing the inputs
+        outputs: a dictionary mapping output names to ModuleField instances
+            describing the outputs
+        parameters: a dictionary mapping parameter names to ModuleField
+            instances describing the parameters
+    '''
 
     def __init__(self, config):
         '''Initializes a ModuleMetadata instance.
@@ -198,44 +209,61 @@ class ModuleMetadata(Configurable, BlockDiagram):
                 definition
         '''
         self.validate(config)
-        self.config = config
-        self.parse_metadata()
+        self.info = None
+        self.inputs = OrderedDict()
+        self.outputs = OrderedDict()
+        self.parameters = OrderedDict()
+        self._parse_metadata(config)
 
-    def parse_metadata(self):
-        '''Parses the module metadata config.'''
-        # Verify types
-        for i in self.config.inputs:
-            self.verify_field_type(i)
-        for o in self.config.outputs:
-            self.verify_field_type(o)
-        for p in self.config.parameters:
-            self.verify_field_type(p)
-
-    @staticmethod
-    def verify_field_type(field):
-        '''Verifies that the field has a valid type.
-
-        Args:
-            field: a FieldConfig instance
-
-        Raises:
-            ModuleMetadataError if the type is invalid.
+    def has_input(self, name):
+        '''Returns True/False if the module has an input with the given
+        name.
         '''
-        try:
-            etau.get_class(field.type)
-        except ImportError:
-            raise ModuleMetadataError(
-                "Field '%s' has unknown type '%s'" % (field.name, field.type))
+        return name in self.inputs
 
-    def _to_blockdiag(self, path):
-        bm = BlockdiagModule(self.config.info.name)
-        for i in self.config.inputs:
-            bm.add_input(i.name)
-        for o in self.config.outputs:
-            bm.add_output(o.name)
-        for p in self.config.parameters:
-            bm.add_parameter(p.name)
-        bm.write(path)
+    def has_output(self, name):
+        '''Returns True/False if the module has an output with the given
+        name.
+        '''
+        return name in self.outputs
+
+    def has_parameter(self, name):
+        '''Returns True/False if the module has a parameter with the given
+        name.
+        '''
+        return name in self.parameters
+
+    def get_input(self, name):
+        '''Returns the input ModuleField with the given name.'''
+        return self.inputs[name]
+
+    def get_output(self, name):
+        '''Returns the output ModuleField with the given name.'''
+        return self.outputs[name]
+
+    def get_parameter(self, name):
+        '''Returns the parameter ModuleField with the given name.'''
+        return self.parameters[name]
+
+    def to_blockdiag(self):
+        '''Returns a BlockdiagModule representation of this module.'''
+        bm = BlockdiagModule(self.info.name)
+        for name in self.inputs:
+            bm.add_input(name)
+        for name in self.outputs:
+            bm.add_output(name)
+        for name in self.parameters:
+            bm.add_parameter(name)
+        return bm
+
+    def _parse_metadata(self, config):
+        self.info = ModuleInfo(config.info)
+        for i in config.inputs:
+            self.inputs[i.name] = ModuleField(i)
+        for o in config.outputs:
+            self.outputs[o.name] = ModuleField(o)
+        for p in config.parameters:
+            self.parameters[p.name] = ModuleField(p)
 
 
 class ModuleMetadataError(Exception):
