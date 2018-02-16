@@ -37,6 +37,44 @@ import eta.core.utils as etau
 logger = logging.getLogger(__name__)
 
 
+def load_metadata(pipeline_name):
+    '''Loads the pipeline metadata file for the pipeline with the given name.
+
+    Args:
+        pipeline_name: the name of the pipeline
+
+    Returns:
+        the PipelineMetadata instance for the given pipeline
+
+    Raises:
+        PipelineMetadataError: if the pipeline metadata file could not be found
+    '''
+    return PipelineMetadata.from_json(find_metadata(pipeline_name))
+
+
+def find_metadata(pipeline_name):
+    '''Finds the pipeline metadata file for the pipeline with the given name.
+
+    Modules must be located in one of the directories in the
+    `eta.config.pipeline_dirs` list
+
+    Args:
+        pipeline_name: the name of the pipeline
+
+    Returns:
+        the absolute path to the pipeline metadata file
+
+    Raises:
+        PipelineMetadata: if the pipeline metadata file could not be found
+    '''
+    for d in eta.config.pipeline_dirs:
+        abspath = os.path.join(d, pipeline_name + ".json")
+        if os.path.isfile(abspath):
+            return abspath
+
+    raise PipelineMetadata("Could not find pipeline '%s'" % pipeline_name)
+
+
 def run(pipeline_config_path):
     '''Run the pipeline specified by the PipelineConfig.
 
