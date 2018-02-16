@@ -1,0 +1,24 @@
+{
+    "info": {
+        "name": "gdrive-download",
+        "type": "eta.core.types.Module",
+        "version": "0.1.0",
+        "description": "Downloads a file from Google Drive",
+        "exe": "gdrive_download.py"
+    },
+    "inputs": [
+        {
+            "name": "google_drive_id",
+            "type": "eta.core.types.String",
+            "description": "The ID of the file to download from Google Drive"
+        }
+    ],
+    "outputs": [
+        {
+            "name": "filename",
+            "type": "eta.core.types.File",
+            "description": "The output destination for the downloaded file"
+        }
+    ],
+    "parameters": []
+}
