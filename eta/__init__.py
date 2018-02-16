@@ -42,6 +42,7 @@ class EtaConfig(Config):
 
     def __init__(self, d):
         self.module_dirs = self.parse_array(d, "module_dirs", default=[])
+        self.pipeline_dirs = self.parse_array(d, "pipeline_dirs", default=[])
 
 
 # Default logging behavior
