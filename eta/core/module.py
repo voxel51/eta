@@ -44,7 +44,7 @@ def load_metadata(module_name):
 
 
 def find_metadata(module_name):
-    '''Find the module metadata file for the module with the given name.
+    '''Finds the module metadata file for the module with the given name.
 
     Modules must be located in one of the directories in the
     `eta.config.module_dirs` list
