@@ -1,0 +1,35 @@
+{
+    "info": {
+        "name": "video-formatter",
+        "type": "eta.core.types.Pipeline",
+        "version": "0.1.0",
+        "description": "A pipeline for formatting video files"
+    },
+    "modules": [
+        "resize_videos",
+        "clip_videos",
+        "sample_videos"
+    ],
+    "connections": [
+        {
+            "source": "INPUT.video",
+            "sink": "resize_videos.input_path"
+        },
+        {
+            "source": "INPUT.event_detection",
+            "sink": "clip_videos.events_json_path"
+        },
+        {
+            "source": "resize_videos.output_path",
+            "sink": "clip_videos.input_path"
+        },
+        {
+            "source": "clip_videos.output_path",
+            "sink": "sample_videos.input_path"
+        },
+        {
+            "source": "sample_videos.output_path",
+            "sink": "OUTPUT.sampled_frames"
+        }
+    ]
+}
