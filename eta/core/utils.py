@@ -119,7 +119,7 @@ def communicate(args, decode=False):
     return p.returncode == 0, out, err
 
 
-def communicate_or_die(*args, **kwargs):
+def communicate_or_die(args, decode=False):
     '''Wrapper around communicate() that raises an exception if any error
     occurs.
 
@@ -135,7 +135,7 @@ def communicate_or_die(*args, **kwargs):
             command
     '''
     try:
-        success, out, err = communicate(*args, **kwargs)
+        success, out, err = communicate(args, decode=decode)
         if not success:
             raise ExecutableRuntimeError(" ".join(args), err)
 
