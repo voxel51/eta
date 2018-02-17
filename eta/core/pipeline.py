@@ -329,12 +329,18 @@ class PipelineMetadata(Configurable, BlockDiagram):
 
         # Parse connections
         for c in config.connections:
-            # Get (unique) nodes
-            source = self._register_node(PipelineNode(c.source, self.modules))
-            sink = self._register_node(PipelineNode(c.sink, self.modules))
+            # Parse nodes
+            source = _parse_node_str(
+                c.source, self.inputs, self.outputs, self.modules)
+            sink = _parse_node_str(
+                c.sink, self.inputs, self.outputs, self.modules)
+
+            # Make sure we don't duplicate nodes
+            source = self._register_node(source)
+            sink = self._register_node(sink)
 
             # Record connection
-            connection = PipelineConnection(source, sink, self.modules)
+            connection = _create_node_connection(source, sink, self.modules)
             self.connections.append(connection)
 
 
