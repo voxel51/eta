@@ -296,3 +296,100 @@ def _parse_key(d, key, t, default):
 
 class ConfigError(Exception):
     pass
+
+
+class EnvConfig(Serializable):
+    '''Base class for reading JSON configuration files whose values can be
+    specified or overridden via environment variables.
+
+    EnvConfig subclasses should implement constructors that take a possibly
+    empty JSON dictionary as input and parse the desired fields using the
+    static methods defined by this class.
+    '''
+
+    @staticmethod
+    def parse_string_array(d, key, env_var=None, default=no_default):
+        '''Parses a string array attribute.
+
+        Args:
+            d: a JSON dictionary
+            key: the key to parse
+            env_var: an optional environment variable to load the attribute
+                from rather than using the JSON dictionary
+            default: an optional default value to return if key is not present
+
+        Returns:
+            a list of strings
+
+        Raises:
+            EnvConfigError: if the environment variable, the dictionary key, or
+                a default value was not provided.
+        '''
+        return _parse_env_var_or_key(d, key, list, env_var, True, default)
+
+    @staticmethod
+    def parse_string(d, key, env_var=None, default=no_default):
+        '''Parses a string attribute.
+
+        Args:
+            d: a JSON dictionary
+            key: the key to parse
+            env_var: an optional environment variable to load the attribute
+                from rather than using the JSON dictionary
+            default: an optional default value to return if key is not present
+
+        Returns:
+            a string
+
+        Raises:
+            EnvConfigError: if the environment variable, the dictionary key, or
+                a default value was not provided.
+        '''
+        val = _parse_env_var_or_key(
+            d, key, six.string_types, env_var, False, default)
+        return str(val) if val is not None else val
+
+    @classmethod
+    def from_dict(cls, d):
+        '''Constructs an EnvConfig object from a JSON dictionary.
+
+        EnvConfig subclass constructors accept JSON dictionaries, so this
+        method simply passes the dictionary to cls().
+
+        Args:
+            d: a JSON dictionary containing the fields expected by cls
+
+        Returns:
+            an instance of cls
+        '''
+        return cls(d)
+
+    @classmethod
+    def from_json(cls, path):
+        '''Constructs an EnvConfig object from a JSON file.
+
+        EnvConfig instances allow their values to be overriden by environment
+        variables, so, if the JSON file does not exist, this method silently
+        loads an empty dictionary in its place.
+        '''
+        d = etas.read_json(path) if os.path.isfile(path) else {}
+        return cls.from_dict(d)
+
+
+def _parse_env_var_or_key(d, key, t, env_var, sep, default):
+    val = os.environ.get(env_var)
+    if val:
+        return val.split(ENV_VAR_PATH_SEP) if sep else val
+    if key in d:
+        if t is None or isinstance(d[key], t):
+            return d[key]
+        raise EnvConfigError(
+            "Expected key '%s' of %s; found %s" % (key, t, type(d[key])))
+    elif default is not no_default:
+        return default
+    raise EnvConfigError(
+        "Expected environment variable '%s' or key '%s'" % (env_var, key))
+
+
+class EnvConfigError(Exception):
+    pass
