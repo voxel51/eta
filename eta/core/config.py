@@ -210,6 +210,24 @@ class Config(Serializable):
         return _parse_key(d, key, list, default)[0]
 
     @staticmethod
+    def parse_dict(d, key, default=no_default):
+        '''Parses an dictionary attribute.
+
+        Args:
+            d: a JSON dictionary
+            key: the key to parse
+            default: a default value to return if key is not present
+
+        Returns:
+            a dictionary
+
+        Raises:
+            ConfigError: if no default value was provided and the key was
+                not present in the dictionary.
+        '''
+        return _parse_key(d, key, dict, default)[0]
+
+    @staticmethod
     def parse_string(d, key, default=no_default):
         '''Parses a string attribute.
 
