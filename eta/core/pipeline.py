@@ -37,6 +37,10 @@ import eta.core.utils as etau
 logger = logging.getLogger(__name__)
 
 
+PIPELINE_INPUT_NAME = "INPUT"
+PIPELINE_OUTPUT_NAME = "OUTPUT"
+
+
 def load_metadata(pipeline_name):
     '''Loads the pipeline metadata file for the pipeline with the given name.
 
@@ -192,31 +196,28 @@ class PipelineConnectionConfig(Config):
         self.sink = self.parse_string(d, "sink")
 
 
-class PipelineNode(object):
-    '''Class representing a node in a pipeline.'''
-
-    PIPELINE_INPUT_NAME = "INPUT"
-    PIPELINE_OUTPUT_NAME = "OUTPUT"
+class PipelineNodeType(object):
+    '''Class enumerating the types of pipeline nodes.'''
     PIPELINE_INPUT = 1
     PIPELINE_OUTPUT = 2
     MODULE_INPUT = 3
     MODULE_OUTPUT = 4
 
-    def __init__(self, node_str, modules):
+
+class PipelineNode(object):
+    '''Class representing a node in a pipeline.'''
+
+    def __init__(self, module, field, _type):
         '''Creates a new PipelineNode instance.
 
         Args:
-            node_str: a string of the form <module>.<field>
-            modules: a dictionary mapping module names to ModuleMetadata
-                instances
-
-        Raises:
-            PipelineMetadataError: if the pipeline node string was invalid
+            module: the module name string
+            field: the field name string
+            _type: the PipelineNodeType of the node
         '''
-        m, f, _t = self._parse_node_str(node_str, modules)
-        self.module = m
-        self.field = f
-        self._type = _t
+        self.module = module
+        self.field = field
+        self._type = _type
 
     def __str__(self):
         return "%s.%s" % (self.module, self.field)
@@ -228,97 +229,39 @@ class PipelineNode(object):
     @property
     def is_pipeline_input(self):
         '''Returns True/False if this node is a pipeline input.'''
-        return self._type == PipelineNode.PIPELINE_INPUT
+        return self._type == PipelineNodeType.PIPELINE_INPUT
 
     @property
     def is_pipeline_output(self):
         '''Returns True/False if this node is a pipeline output.'''
-        return self._type == PipelineNode.PIPELINE_OUTPUT
+        return self._type == PipelineNodeType.PIPELINE_OUTPUT
 
     @property
     def is_module_input(self):
         '''Returns True/False if this node is a module input.'''
-        return self._type == PipelineNode.MODULE_INPUT
+        return self._type == PipelineNodeType.MODULE_INPUT
 
     @property
     def is_module_output(self):
         '''Returns True/False if this node is a module output.'''
-        return self._type == PipelineNode.MODULE_OUTPUT
-
-    @staticmethod
-    def _parse_node_str(node_str, modules):
-        try:
-            module, field = node_str.split(".")
-        except ValueError:
-            raise PipelineMetadataError(
-                "Expected '%s' to have form <module>.<field>" % node_str)
-
-        if module == PipelineNode.PIPELINE_INPUT_NAME:
-            _type = PipelineNode.PIPELINE_INPUT
-        elif module == PipelineNode.PIPELINE_OUTPUT_NAME:
-            _type = PipelineNode.PIPELINE_OUTPUT
-        else:
-            try:
-                mod = modules[module]
-            except KeyError:
-                raise PipelineMetadataError(
-                    "Module '%s' not found in pipeline" % module)
-
-            if mod.has_input(field):
-                _type = PipelineNode.MODULE_INPUT
-            elif mod.has_output(field):
-                _type = PipelineNode.MODULE_OUTPUT
-            else:
-                raise PipelineMetadataError(
-                    "Module '%s' has no input or output named '%s'" % (
-                        module, field))
-
-        return module, field, _type
+        return self._type == PipelineNodeType.MODULE_OUTPUT
 
 
 class PipelineConnection(object):
     '''Class representing a connection between two nodes in a pipeline.'''
 
-    def __init__(self, source, sink, modules):
+    def __init__(self, source, sink):
         '''Creates a new PipelineConnection instance.
 
         Args:
             source: the source PipelineNode
             sink: the sink PipelineNode
-            modules: a dictionary mapping module names to ModuleMetadata
-                instances
-
-        Raises:
-            PipelineMetadataError: if the pipeline connection was invalid
         '''
-        self._validate_connection(source, sink, modules)
         self.source = source
         self.sink = sink
 
     def __str__(self):
         return "%s -> %s" % (self.source, self.sink)
-
-    @staticmethod
-    def _validate_connection(source, sink, modules):
-        if source.is_pipeline_input and not sink.is_module_input:
-            raise PipelineMetadataError(
-                "'%s' must be connected to a module input" % source)
-        if source.is_pipeline_output or source.is_module_input:
-            raise PipelineMetadataError(
-                "'%s' cannot be a connection source" % source)
-        if sink.is_pipeline_input or  sink.is_module_output:
-            raise PipelineMetadataError(
-            "'%s' cannot be a connection sink" % sink)
-        if source.is_module_output and sink.is_module_input:
-            src = modules[source.module].get_output(source.field)
-            snk = modules[sink.module].get_input(sink.field)
-            if not issubclass(src.type, snk.type):
-                raise PipelineMetadataError(
-                    (
-                        "Module output '%s' ('%s') is not a valid input "
-                        "to module '%s' ('%s')"
-                    ) % (source, src.type, sink, snk.type)
-                )
 
 
 class PipelineMetadata(Configurable, BlockDiagram):
@@ -397,6 +340,97 @@ class PipelineMetadata(Configurable, BlockDiagram):
 
 class PipelineMetadataError(Exception):
     pass
+
+
+def _parse_node_str(node_str, inputs, outputs, modules):
+    '''Parses a pipeline node string.
+
+        Args:
+            node_str: a string of the form <module>.<field>
+            inputs: a list of pipeline inputs
+            outputs: a list of pipeline outputs
+            modules: a dictionary mapping module names to PipelineModule
+                instances
+
+        Returns:
+            a PipelineNode instance describing the node
+
+        Raises:
+            PipelineMetadataError: if the pipeline node string was invalid
+        '''
+    try:
+        module, field = node_str.split(".")
+    except ValueError:
+        raise PipelineMetadataError(
+            "Expected '%s' to have form <module>.<field>" % node_str)
+
+    if module == PIPELINE_INPUT_NAME:
+        if field not in inputs:
+            raise PipelineMetadataError(
+                "Pipeline has no input '%s'" % field)
+
+        _type = PipelineNodeType.PIPELINE_INPUT
+    elif module == PIPELINE_OUTPUT_NAME:
+        if field not in outputs:
+            raise PipelineMetadataError(
+                "Pipeline has no output '%s'" % field)
+
+        _type = PipelineNodeType.PIPELINE_OUTPUT
+    else:
+        try:
+            meta = modules[module].metadata
+        except KeyError:
+            raise PipelineMetadataError(
+                "Module '%s' not found in pipeline" % module)
+
+        if meta.has_input(field):
+            _type = PipelineNodeType.MODULE_INPUT
+        elif meta.has_output(field):
+            _type = PipelineNodeType.MODULE_OUTPUT
+        else:
+            raise PipelineMetadataError(
+                "Module '%s' has no input or output named '%s'" % (
+                    module, field))
+
+    return PipelineNode(module, field, _type)
+
+
+def _create_node_connection(source, sink, modules):
+    '''Creates a pipeline connection between two nodes.
+
+    Args:
+        source: the source PipelineNode
+        sink: the sink PipelineNode
+        modules: a dictionary mapping module names to PipelineModule
+            instances
+
+    Returns:
+        a PipelineConnection instance describing the connection
+
+    Raises:
+        PipelineMetadataError: if the pipeline connection was invalid
+    '''
+    if source.is_pipeline_input and not sink.is_module_input:
+        raise PipelineMetadataError(
+            "'%s' must be connected to a module input" % source)
+    if source.is_pipeline_output or source.is_module_input:
+        raise PipelineMetadataError(
+            "'%s' cannot be a connection source" % source)
+    if sink.is_pipeline_input or  sink.is_module_output:
+        raise PipelineMetadataError(
+        "'%s' cannot be a connection sink" % sink)
+    if source.is_module_output and sink.is_module_input:
+        src = modules[source.module].metadata.get_output(source.field)
+        snk = modules[sink.module].metadata.get_input(sink.field)
+        if not issubclass(src.type, snk.type):
+            raise PipelineMetadataError(
+                (
+                    "Module output '%s' ('%s') is not a valid input "
+                    "to module '%s' ('%s')"
+                ) % (source, src.type, sink, snk.type)
+            )
+
+    return PipelineConnection(source, sink)
 
 
 if __name__ == "__main__":
