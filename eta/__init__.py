@@ -22,12 +22,26 @@ import logging
 import os
 
 import eta.constants as etac
-from eta.core.config import Config
+from eta.core.config import EnvConfig
 import eta.core.log as etal
 import eta.core.utils as etau
 
 
 logger = logging.getLogger(__name__)
+
+
+class ETAConfig(EnvConfig):
+    '''Sytem-wide ETA configuration settings.'''
+
+    def __init__(self, d):
+        self.output_dir = self.parse_string(
+            d, "output_dir", env_var="ETA_OUTPUT_DIR", default=None)
+        self.module_dirs = self.parse_string_array(
+            d, "module_dirs", env_var="ETA_MODULE_DIRS", default=[])
+        self.pipeline_dirs = self.parse_string_array(
+            d, "pipeline_dirs", env_var="ETA_PIPELINE_DIRS", default=[])
+        self.model_dirs = self.parse_string_array(
+            d, "model_dirs", env_var="ETA_MODEL_DIRS", default=[])
 
 
 def startup_message():
@@ -37,22 +51,8 @@ def startup_message():
     logger.info("Revision %s\n", etau.get_eta_rev())
 
 
-class EtaConfig(Config):
-    '''Sytem-wide ETA configuration settings.'''
-
-    def __init__(self, d):
-        self.module_dirs = self.parse_array(d, "module_dirs", default=[])
-        self.pipeline_dirs = self.parse_array(d, "pipeline_dirs", default=[])
-
-
 # Default logging behavior
 etal.basic_setup()
 
-
 # Load config
-# @todo allow configs to be overridden by environment variables
-if os.path.isfile(etac.CONFIG_JSON_PATH):
-    config = EtaConfig.from_json(etac.CONFIG_JSON_PATH)
-else:
-    logger.warning("Could not find config '%s'", etac.CONFIG_JSON_PATH)
-    config = EtaConfig.default()
+config = ETAConfig.from_json(etac.CONFIG_JSON_PATH)
