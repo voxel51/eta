@@ -46,10 +46,24 @@ formatting pipeline:
         "version": "0.1.0",
         "description": "A pipeline for formatting video files"
     },
+    "inputs": ["video", "event_detection"],
+    "outputs": ["sampled_frames"],
     "modules": [
-        "resize_videos",
-        "clip_videos",
-        "sample_videos"
+        {
+            "name": "resize_videos",
+            "set_parameters": {},
+            "tunable_parameters": ["size", "scale"]
+        },
+        {
+            "name": "clip_videos",
+            "set_parameters": {},
+            "tunable_parameters": ["frames"]
+        },
+        {
+            "name": "sample_videos",
+            "set_parameters": {},
+            "tunable_parameters": ["fps"]
+        }
     ],
     "connections": [
         {
@@ -84,6 +98,10 @@ The pipeline metadata file contains the following top-level fields:
 
 - `info`: a spec containing basic information about the module
 
+- `inputs`: a list defining the names of the pipeline inputs
+
+- `inputs`: a list defining the names of the pipeline outputs
+
 - `modules`: a list of specs describing the modules (nodes) in the pipeline
 
 - `connections`: a list of specs describing the connections (edges) between
@@ -101,23 +119,26 @@ The `info` spec contains the following fields:
 - `description`: a short free-text description of the pipeline purpose and
     implementation
 
-The `modules` field contains a list of module (node) specs with the following
-fields:
+The `modules` field contains a list of module specs with the following fields:
 
-- `label`: a label for the module for use when defining connections
+- `name`: the name of the module to include
 
-- `module`: a pointer to the module implementation
+- `set_parameters`: a dictionary whose keys are module parameters and whose
+    values are values to assign to those parameters
+
+- `tunable_parameters': a list of module parameters that are exposed to the
+    end-user for tuning
 
 The `connections` field contains a list of connection (edge) specs with the
 following fields:
 
 - `source`: the source (starting point) of the edge. The syntax for a source is
-    `"<module_label>.<output_field_name>"`. Alternatively, the special module
-    label `"INPUT"` can be used to refer to a pipeline input
+    `"<module>.<field>"`. Alternatively, the special module `"INPUT"` can be
+    used to refer to a pipeline input
 
 - `sink`: the sink (stopping point) of the edge. The syntax for a sink is
-    `"<module_label>.<input_field_name>"`. Alternatively, the special module
-    label `"OUTPUT"` can be used to refer to a pipeline output
+    `"<module>.<field>"`. Alternatively, the special module `"OUTPUT"` can be
+    used to refer to a pipeline output
 
 The pipeline metadata file defines the connectivity of the computation graph.
 In practice, the pipeline builder uses this information to instantiate the
