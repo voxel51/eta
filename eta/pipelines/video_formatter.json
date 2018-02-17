@@ -1,6 +1,6 @@
 {
     "info": {
-        "name": "video-formatter",
+        "name": "video_formatter",
         "type": "eta.core.types.Pipeline",
         "version": "0.1.0",
         "description": "A pipeline for formatting video files"
