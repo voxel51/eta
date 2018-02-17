@@ -46,7 +46,7 @@ def load_all_metadata():
     '''Loads all pipeline metadata files.
 
     Assumes any JSON files in the `eta.config.pipeline_dirs` directories are
-    pipeline metdata files.
+    pipeline metadata files.
 
     Returns:
         a dictionary mapping pipeline names to PipelineMetadata instances
@@ -61,7 +61,7 @@ def load_all_metadata():
 def load_metadata(pipeline_name):
     '''Loads the pipeline metadata file for the pipeline with the given name.
 
-    Pipeline metdata files must JSON files in one of the directories in
+    Pipeline metadata files must JSON files in one of the directories in
     `eta.config.pipeline_dirs`.
 
     Args:
@@ -92,7 +92,7 @@ def find_all_metadata():
     '''Finds all pipeline metadata files.
 
     Assumes any JSON files in the `eta.config.pipeline_dirs` directories are
-    pipeline metdata files. To load these files, use `load_all_metadata()`.
+    pipeline metadata files. To load these files, use `load_all_metadata()`.
 
     Returns:
         a dictionary mapping pipeline names to pipeline metadata filenames
@@ -115,11 +115,11 @@ def find_all_metadata():
 def find_metadata(pipeline_name):
     '''Finds the pipeline metadata file for the pipeline with the given name.
 
-    Pipeline metdata files must be JSON files in one of the directories in
+    Pipeline metadata files must be JSON files in one of the directories in
     `eta.config.pipeline_dirs`.
 
     Returns:
-        the path to the pipeline metdata file
+        the path to the pipeline metadata file
 
     Raises:
         PipelineMetadataError: if the pipeline could not be found
