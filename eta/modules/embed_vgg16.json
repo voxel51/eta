@@ -1,6 +1,6 @@
 {
     "info": {
-        "name": "embed-vgg16",
+        "name": "embed_vgg16",
         "type": "eta.core.types.Module",
         "version": "0.1.0",
         "description": "Embeds video frames into the VGG-16 feature space",

@@ -1,6 +1,6 @@
 {
     "info": {
-        "name": "clip-videos",
+        "name": "clip_videos",
         "type": "eta.core.types.Module",
         "version": "0.1.0",
         "description": "Generates clips from a video",

@@ -1,6 +1,6 @@
 {
     "info": {
-        "name": "sample-videos",
+        "name": "sample_videos",
         "type": "eta.core.types.Module",
         "version": "0.1.0",
         "description": "Samples frames of a video",

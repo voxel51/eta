@@ -1,6 +1,6 @@
 {
     "info": {
-        "name": "gdrive-download",
+        "name": "gdrive_download",
         "type": "eta.core.types.Module",
         "version": "0.1.0",
         "description": "Downloads a file from Google Drive",
