@@ -100,7 +100,7 @@ The pipeline metadata file contains the following top-level fields:
 
 - `inputs`: a list defining the names of the pipeline inputs
 
-- `inputs`: a list defining the names of the pipeline outputs
+- `outputs`: a list defining the names of the pipeline outputs
 
 - `modules`: a list of specs describing the modules (nodes) in the pipeline
 
