@@ -20,10 +20,15 @@ import six
 # pragma pylint: enable=wildcard-import
 
 import numbers
+import os
 import sys
 
+import eta.core.serial as etas
 from eta.core.serial import Serializable
-import eta.core.utils as ut
+import eta.core.utils as etau
+
+
+ENV_VAR_PATH_SEP = ":"
 
 
 class Configurable(object):
@@ -86,8 +91,8 @@ class Configurable(object):
         if module_name is None:
             module_name, class_name = class_name.rsplit(".", 1)
 
-        cls = ut.get_class(class_name, module_name=module_name)
-        config_cls = ut.get_class(
+        cls = etau.get_class(class_name, module_name=module_name)
+        config_cls = etau.get_class(
             class_name + "Config", module_name=module_name)
         return cls, config_cls
 
