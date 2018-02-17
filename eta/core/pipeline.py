@@ -127,7 +127,10 @@ class PipelineMetadataConfig(Config):
 
     def __init__(self, d):
         self.info = self.parse_object(d, "info", PipelineInfoConfig)
-        self.modules = self.parse_array(d, "modules")
+        self.inputs = self.parse_array(d, "inputs")
+        self.outputs = self.parse_array(d, "outputs")
+        self.modules = self.parse_object_array(
+            d, "modules", PipelineModuleConfig)
         self.connections = self.parse_object_array(
             d, "connections", PipelineConnectionConfig)
 
@@ -159,6 +162,26 @@ class PipelineInfo(Configurable):
             raise PipelineMetadataError(
                     "'%s' is not a valid pipeline type" % type_)
         return type_
+
+
+class PipelineModuleConfig(Config):
+    '''Pipeline module configuration class.'''
+
+    def __init__(self, d):
+        self.name = self.parse_string(d, "name")
+        self.set_parameters = self.parse_raw(d, "set_parameters")
+        self.tunable_parameters = self.parse_array(d, "tunable_parameters")
+
+
+class PipelineModule(Configurable):
+    '''Pipeline module class.'''
+
+    def __init__(self, config):
+        self.validate(config)
+        self.name = config.name
+        self.metadata = etam.load_metadata(config.name)
+        self.set_parameters = config.set_parameters
+        self.tunable_parameters = config.tunable_parameters
 
 
 class PipelineConnectionConfig(Config):
@@ -303,11 +326,11 @@ class PipelineMetadata(Configurable, BlockDiagram):
 
     Attributes:
         info: a PipelineInfo instance describing the pipeline
-        modules: a dictionary mapping module names to ModuleMetadata instances
+        modules: a dictionary mapping module names to PipelineModule instances
         nodes: a list of PipelineNode instances describing the connection
             pipeline-level sources and sinks for all pipeline-level connections
         connections: a list of PipelineConnection instances describing the
-            pipeline-level connections between pipeline inputs, modules and
+            pipeline-level connections between pipeline inputs, modules, and
             pipeline outputs
     '''
 
@@ -323,6 +346,8 @@ class PipelineMetadata(Configurable, BlockDiagram):
         '''
         self.validate(config)
         self.info = None
+        self.inputs = None
+        self.outputs = None
         self.modules = OrderedDict()
         self.nodes = []
         self.connections = []
@@ -331,8 +356,8 @@ class PipelineMetadata(Configurable, BlockDiagram):
     def to_blockdiag(self):
         '''Returns a BlockdiagPipeline representation of this pipeline.'''
         bp = BlockdiagPipeline(self.info.name)
-        for name, mm in iteritems(self.modules):
-            bp.add_module(name, mm.to_blockdiag())
+        for name, module in iteritems(self.modules):
+            bp.add_module(name, module.metadata.to_blockdiag())
         for n in self.nodes:
             if n.is_pipeline_input:
                 bp.add_input(n.field)
@@ -351,10 +376,13 @@ class PipelineMetadata(Configurable, BlockDiagram):
 
     def _parse_metadata(self, config):
         self.info = PipelineInfo(config.info)
+        self.inputs = config.inputs
+        self.outputs = config.outputs
 
         # Parse modules
-        for name in config.modules:
-            self.modules[name] = etam.load_metadata(name)
+        for module_config in config.modules:
+            module = PipelineModule(module_config)
+            self.modules[module.name] = module
 
         # Parse connections
         for c in config.connections:
