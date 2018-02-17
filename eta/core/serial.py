@@ -26,7 +26,7 @@ import os
 
 import numpy as np
 
-import eta.core.utils as ut
+import eta.core.utils as etau
 
 
 def read_json(path):
@@ -64,7 +64,7 @@ class Picklable(object):
     '''
     def pickle(self, path):
         '''Saves the instance to disk in a pickle. '''
-        ut.ensure_basedir(path)
+        etau.ensure_basedir(path)
         with open(path, 'wb') as mf:
             pickle.dump(self, mf)
 
