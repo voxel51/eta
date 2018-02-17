@@ -14,11 +14,13 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
+from future.utils import iteritems
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
 from collections import OrderedDict
+from glob import glob
 import os
 
 import eta
@@ -29,8 +31,26 @@ import eta.core.types as etat
 import eta.core.utils as etau
 
 
+def load_all_metadata():
+    '''Loads all module metadata files.
+
+    Assumes any JSON files in the `eta.config.module_dirs` directories are
+    module metadata files.
+
+    Returns:
+        a dictionary mapping module names to ModuleMetadata instances
+
+    Raises:
+        ModuleMetadataError: if any of the module metadata files are invalid
+    '''
+    return {k: _load_metadata(v) for k, v in iteritems(find_all_metadata())}
+
+
 def load_metadata(module_name):
     '''Loads the module metadata file for the module with the given name.
+
+    Module metadata files must JSON files in one of the directories in
+    `eta.config.module_dirs`.
 
     Args:
         module_name: the name of the module
@@ -40,31 +60,63 @@ def load_metadata(module_name):
 
     Raises:
         ModuleMetadataError: if the module metadata file could not be found
+            or was invalid
     '''
-    return ModuleMetadata.from_json(find_metadata(module_name))
+    return _load_metadata(find_metadata(module_name))
+
+
+def _load_metadata(config):
+    metadata = ModuleMetadata.from_json(config)
+    name = os.path.splitext(os.path.basename(config))[0]
+    if metadata.info.name != name:
+        raise ModuleMetadataError(
+            "Name '%s' from ModuleMetadata must match module name '%s'" % (
+                metadata.info.name, name))
+
+    return metadata
+
+
+def find_all_metadata():
+    '''Finds all module metadata files.
+
+    Assumes any JSON files in the `eta.config.module_dirs` directories are
+    module metadata files. To load these files, use `load_all_metadata()`.
+
+    Returns:
+        a dictionary mapping module names to module metadata filenames
+
+    Raises:
+        ModuleMetadataError: if the module names are not unique
+    '''
+    d = {}
+    for pdir in eta.config.module_dirs:
+        for path in glob(os.path.join(pdir, "*.json")):
+            name = os.path.splitext(os.path.basename(path))[0]
+            if name in d:
+                raise ModuleMetadataError(
+                    "Found two '%s' modules. Names must be unique." % name)
+            d[name] = path
+
+    return d
 
 
 def find_metadata(module_name):
     '''Finds the module metadata file for the module with the given name.
 
-    Modules must be located in one of the directories in the
-    `eta.config.module_dirs` list
-
-    Args:
-        module_name: the name of the module
+    Module metadata files must be JSON files in one of the directories in
+    `eta.config.module_dirs`.
 
     Returns:
-        the absolute path to the module metadata file
+        the path to the module metadata file
 
     Raises:
-        ModuleMetadataError: if the module metadata file could not be found
+        ModuleMetadataError: if the module could not be found
     '''
-    for d in eta.config.module_dirs:
-        abspath = os.path.join(d, module_name + ".json")
-        if os.path.isfile(abspath):
-            return abspath
-
-    raise ModuleMetadataError("Could not find module '%s'" % module_name)
+    try:
+        return find_all_metadata()[module_name]
+    except KeyError:
+        raise ModuleMetadataError(
+            "Could not find module '%s'" % module_name)
 
 
 # @todo should pass a PipelineConfig instance here, not just the path. The need
