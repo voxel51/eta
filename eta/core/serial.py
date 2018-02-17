@@ -102,6 +102,11 @@ class Serializable(object):
     serializable object from a JSON dictionary.
     '''
 
+    def __str__(self):
+        '''Returns the string representation of this object as it would be
+        written to JSON.'''
+        return json_to_str(self.serialize(), pretty_print=True)
+
     def serialize(self):
         '''Serializes the object into a dictionary.
 
