@@ -20,6 +20,7 @@ from future.utils import iteritems
 # pragma pylint: enable=wildcard-import
 
 from collections import OrderedDict
+from glob import glob
 import logging
 import os
 import sys
@@ -41,8 +42,27 @@ PIPELINE_INPUT_NAME = "INPUT"
 PIPELINE_OUTPUT_NAME = "OUTPUT"
 
 
+def load_all_metadata():
+    '''Loads all pipeline metadata files.
+
+    Assumes any JSON files in the `eta.config.pipeline_dirs` directories are
+    pipeline metdata files.
+
+    Returns:
+        a dictionary mapping pipeline names to PipelineMetadata instances
+
+    Raises:
+        PipelineMetadataError: if any of the pipeline metadata files are
+            invalid
+    '''
+    return {k: _load_metadata(v) for k, v in iteritems(find_all_metadata())}
+
+
 def load_metadata(pipeline_name):
     '''Loads the pipeline metadata file for the pipeline with the given name.
+
+    Pipeline metdata files must JSON files in one of the directories in
+    `eta.config.pipeline_dirs`.
 
     Args:
         pipeline_name: the name of the pipeline
@@ -52,31 +72,63 @@ def load_metadata(pipeline_name):
 
     Raises:
         PipelineMetadataError: if the pipeline metadata file could not be found
+            or was invalid
     '''
-    return PipelineMetadata.from_json(find_metadata(pipeline_name))
+    return _load_metadata(find_metadata(pipeline_name))
+
+
+def _load_metadata(config):
+    metadata = PipelineMetadata.from_json(config)
+    name = os.path.splitext(os.path.basename(config))[0]
+    if metadata.info.name != name:
+        raise PipelineMetadataError(
+            "Name '%s' from PipelineMetadata must match pipeline name '%s'" % (
+                metadata.info.name, name))
+
+    return metadata
+
+
+def find_all_metadata():
+    '''Finds all pipeline metadata files.
+
+    Assumes any JSON files in the `eta.config.pipeline_dirs` directories are
+    pipeline metdata files. To load these files, use `load_all_metadata()`.
+
+    Returns:
+        a dictionary mapping pipeline names to pipeline metadata filenames
+
+    Raises:
+        PipelineMetadataError: if the pipeline names are not unique
+    '''
+    d = {}
+    for pdir in eta.config.pipeline_dirs:
+        for path in glob(os.path.join(pdir, "*.json")):
+            name = os.path.splitext(os.path.basename(path))[0]
+            if name in d:
+                raise PipelineMetadataError(
+                    "Found two '%s' pipelines. Names must be unique." % name)
+            d[name] = path
+
+    return d
 
 
 def find_metadata(pipeline_name):
     '''Finds the pipeline metadata file for the pipeline with the given name.
 
-    Modules must be located in one of the directories in the
-    `eta.config.pipeline_dirs` list
-
-    Args:
-        pipeline_name: the name of the pipeline
+    Pipeline metdata files must be JSON files in one of the directories in
+    `eta.config.pipeline_dirs`.
 
     Returns:
-        the absolute path to the pipeline metadata file
+        the path to the pipeline metdata file
 
     Raises:
-        PipelineMetadata: if the pipeline metadata file could not be found
+        PipelineMetadataError: if the pipeline could not be found
     '''
-    for d in eta.config.pipeline_dirs:
-        abspath = os.path.join(d, pipeline_name + ".json")
-        if os.path.isfile(abspath):
-            return abspath
-
-    raise PipelineMetadata("Could not find pipeline '%s'" % pipeline_name)
+    try:
+        return find_all_metadata()[pipeline_name]
+    except KeyError:
+        raise PipelineMetadataError(
+            "Could not find pipeline '%s'" % pipeline_name)
 
 
 def run(pipeline_config_path):
