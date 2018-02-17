@@ -163,7 +163,7 @@ class Config(Serializable):
             ConfigError: if no default value was provided and the key was
                 not present in the dictionary.
         '''
-        val, found = Config._parse_key(d, key, dict, default=default)
+        val, found = _parse_key(d, key, dict, default)
         return cls(val) if found else val
 
     @staticmethod
@@ -183,7 +183,7 @@ class Config(Serializable):
             ConfigError: if no default value was provided and the key was
                 not present in the dictionary.
         '''
-        val, found = Config._parse_key(d, key, list, default=default)
+        val, found = _parse_key(d, key, list, default)
         return [cls(obj) for obj in val] if found else val
 
     @staticmethod
@@ -202,7 +202,7 @@ class Config(Serializable):
             ConfigError: if no default value was provided and the key was
                 not present in the dictionary.
         '''
-        return Config._parse_key(d, key, list, default=default)[0]
+        return _parse_key(d, key, list, default)[0]
 
     @staticmethod
     def parse_string(d, key, default=no_default):
@@ -220,7 +220,7 @@ class Config(Serializable):
             ConfigError: if no default value was provided and the key was
                 not present in the dictionary.
         '''
-        val = Config._parse_key(d, key, six.string_types, default=default)[0]
+        val = _parse_key(d, key, six.string_types, default)[0]
         return str(val) if val is not None else val
 
     @staticmethod
@@ -239,7 +239,7 @@ class Config(Serializable):
             ConfigError: if no default value was provided and the key was
                 not present in the dictionary.
         '''
-        return Config._parse_key(d, key, numbers.Number, default=default)[0]
+        return _parse_key(d, key, numbers.Number, default)[0]
 
     @staticmethod
     def parse_bool(d, key, default=no_default):
@@ -257,7 +257,7 @@ class Config(Serializable):
             ConfigError: if no default value was provided and the key was
                 not present in the dictionary.
         '''
-        return Config._parse_key(d, key, bool, default=default)[0]
+        return _parse_key(d, key, bool, default)[0]
 
     @staticmethod
     def parse_raw(d, key, default=no_default):
@@ -275,18 +275,18 @@ class Config(Serializable):
             ConfigError: if no default value was provided and the key was
                 not present in the dictionary.
         '''
-        return Config._parse_key(d, key, None, default=default)[0]
+        return _parse_key(d, key, None, default)[0]
 
-    @staticmethod
-    def _parse_key(d, key, t, default=no_default):
-        if key in d:
-            if t is None or isinstance(d[key], t):
-                return d[key], True
-            raise ConfigError(
-                "Expected key '%s' of %s; found %s" % (key, t, type(d[key])))
-        elif default is not no_default:
-            return default, False
-        raise ConfigError("Expected key '%s' of %s" % (key, t))
+
+def _parse_key(d, key, t, default):
+    if key in d:
+        if t is None or isinstance(d[key], t):
+            return d[key], True
+        raise ConfigError(
+            "Expected key '%s' of %s; found %s" % (key, t, type(d[key])))
+    elif default is not no_default:
+        return default, False
+    raise ConfigError("Expected key '%s' of %s" % (key, t))
 
 
 class ConfigError(Exception):
