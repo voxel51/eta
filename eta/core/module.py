@@ -25,7 +25,7 @@ import os
 
 import eta
 from eta.core.config import Config, Configurable
-from eta.core.diagram import BlockDiagram, BlockdiagModule
+from eta.core.diagram import HasBlockDiagram, BlockdiagModule
 import eta.core.log as etal
 import eta.core.types as etat
 import eta.core.utils as etau
@@ -237,7 +237,7 @@ class ModuleField(Configurable):
         return type_
 
 
-class ModuleMetadata(Configurable, BlockDiagram):
+class ModuleMetadata(Configurable, HasBlockDiagram):
     '''Class the encapsulates the architecture of a module.
 
     Attributes:
