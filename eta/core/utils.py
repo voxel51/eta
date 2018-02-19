@@ -235,20 +235,16 @@ def multiglob(*patterns, **kwargs):
 
     Args:
         patterns is the set of patterns to search for
-        kwargs['root'] allows for a `root` path to be specified once and
+        kwargs["root"] allows for a `root` path to be specified once and
             applied to all patterns
 
     Note that this does not us os.path.join if a root=FOO is provided. So, if
-        you want to just search by extensions, you can use root="path/*." and
-        provide only extensions in the patterns.
+    you want to just search by extensions, you can use root="path/*" and
+    provide only extensions in the patterns.
     '''
-    if 'root' not in kwargs:
-        return it.chain.from_iterable(glob.iglob(pattern)
-                for pattern in patterns)
-
-    root = kwargs['root']
-    return it.chain.from_iterable(glob.iglob(root + pattern)
-            for pattern in patterns)
+    root = kwargs.get("root", "")
+    return it.chain.from_iterable(
+        glob.iglob(root + pattern) for pattern in patterns)
 
 
 def random_key(n):
