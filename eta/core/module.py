@@ -220,6 +220,8 @@ class ModuleInfo(Configurable):
 class ModuleField(Configurable):
     '''Module field descriptor.
 
+    A module field definition is valid if its type is a subclass of
+    eta.core.types.Builtin or eta.core.types.Data.
 
     Attributes:
         name: the name of the field
@@ -236,22 +238,42 @@ class ModuleField(Configurable):
         self.description = config.description
         self.default = config.default
 
+    def is_valid_value(self, val):
+        '''Returns True/False indicating whether the given value is a valid
+        setting for this field.'''
+        if self.is_builtin:
+            return self.type.is_valid_value(val)
+        return self.type.is_valid_path(val)
+
     @property
     def is_mandatory(self):
         '''Returns True/False indicating whether this field is mandatory.'''
         return self.default is mandatory
 
+    @property
+    def is_builtin(self):
+        '''Returns True/False indicating whether this field is a Builtin.'''
+        return etat.is_builtin(self.type)
+
+    @property
+    def is_data(self):
+        '''Returns True/False indicating whether this field is Data.'''
+        return etat.is_data(self.type)
+
     @staticmethod
     def _parse_type(type_str):
         type_ = etat.parse_type(type_str)
-        if not etat.is_data(type_):
+        if not etat.is_builtin(type_) and not etat.is_data(type_):
             raise ModuleMetadataError(
-                "'%s' is not a valid data type" % type_)
+                "'%s' is not a valid Builtin or Data type" % type_)
         return type_
 
 
 class ModuleMetadata(Configurable, HasBlockDiagram):
     '''Class the encapsulates the architecture of a module.
+
+    A module definition is valid if each input, output, and parameter has a
+    type that is a subclass of eta.core.types.Builtin or eta.core.types.Data.
 
     Attributes:
         info: a ModuleInfo instance describing the module
