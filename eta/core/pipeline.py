@@ -409,6 +409,8 @@ class PipelineMetadata(Configurable, HasBlockDiagram):
         - every pipeline output is connected to exactly one module output
         - every module input either has a default value or has exactly one
             incoming connection
+        - every module output either has a default value or has at least one
+            outgoing connection
         - every module parameter is either tunable, is set by the pipeline, or
             is exposed to the end-user as tunable
 
@@ -588,14 +590,18 @@ def _validate_output_connections(outputs, connections):
 
 
 def _validate_module_connections(modules, connections):
-    '''Ensures that every module input either has a default value or one
-    incoming connection.
+    '''Ensures that the modules connections are valid, i.e., that:
+        - every module input either has a default value or one incoming
+            connection
+        - every module output either has a default value or at least one
+            outgoing connection
 
     Args:
         modules: a dictionary mapping module names to ModuleMetadata instances
         connections: a list of PipelineConnection instances
     '''
     for mname, module in iteritems(modules):
+        # Validate inputs
         for iname, field in iteritems(module.metadata.inputs):
             node_str = PipelineNode.get_node_str(mname, iname)
             num_sources = len(_get_sources_with_sink(node_str, connections))
@@ -609,6 +615,16 @@ def _validate_module_connections(modules, connections):
                     "Module '%s' input '%s' must have one incoming connection "
                     "but instead has %d connections") % (
                         mname, iname, num_sources)
+                )
+
+        # Validate outputs
+        for oname, field in iteritems(module.metadata.outputs):
+            node_str = PipelineNode.get_node_str(mname, oname)
+            num_sinks = len(_get_sinks_with_source(node_str, connections))
+            if num_sinks == 0 and field.is_mandatory:
+                raise PipelineMetadataError((
+                    "Module '%s' output '%s' has no default value and no "
+                    "outgoing connections") % (mname, oname)
                 )
 
 
