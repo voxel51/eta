@@ -292,44 +292,53 @@ class ModuleMetadata(Configurable, HasBlockDiagram):
             config: a ModuleMetadataConfig instance
 
         Raises:
-            ModuleMetadataError: if there was an error parsing the module
-                definition
+            ModuleMetadataError: if the module definition was invalid
         '''
         self.validate(config)
+
         self.info = None
         self.inputs = OrderedDict()
         self.outputs = OrderedDict()
         self.parameters = OrderedDict()
+
         self._parse_metadata(config)
 
     def has_input(self, name):
-        '''Returns True/False if the module has an input with the given
-        name.
-        '''
+        '''Returns True/False if the module has an input `name`.'''
         return name in self.inputs
 
     def has_output(self, name):
-        '''Returns True/False if the module has an output with the given
-        name.
-        '''
+        '''Returns True/False if the module has an output `name`.'''
         return name in self.outputs
 
     def has_parameter(self, name):
-        '''Returns True/False if the module has a parameter with the given
-        name.
-        '''
+        '''Returns True/False if the module has a parameter `name`.'''
         return name in self.parameters
 
-    def get_input(self, name):
-        '''Returns the input ModuleField with the given name.'''
+    def is_valid_input(self, name, val):
+        '''Returns True/False if `val` is a valid value for input `name`.'''
+        return self.get_input_field(name).is_valid_value(val)
+
+    def is_valid_output(self, name, val):
+        '''Returns True/False if `val` is a valid value for output `name`.'''
+        return self.get_output_field(name).is_valid_value(val)
+
+    def is_valid_parameter(self, name, val):
+        '''Returns True/False if `val` is a valid value for parameter
+        `name`.
+        '''
+        return self.get_parameter_field(name).is_valid_value(val)
+
+    def get_input_field(self, name):
+        '''Returns the ModuleField for input `name`.'''
         return self.inputs[name]
 
-    def get_output(self, name):
-        '''Returns the output ModuleField with the given name.'''
+    def get_output_field(self, name):
+        '''Returns the ModuleField for output `name`.'''
         return self.outputs[name]
 
-    def get_parameter(self, name):
-        '''Returns the parameter ModuleField with the given name.'''
+    def get_parameter_field(self, name):
+        '''Returns the ModuleField for parameter `name`.'''
         return self.parameters[name]
 
     def to_blockdiag(self):
