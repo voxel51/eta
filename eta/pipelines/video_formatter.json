@@ -5,23 +5,18 @@
         "version": "0.1.0",
         "description": "A pipeline for formatting video files"
     },
-    "inputs": ["video", "event_detection"],
+    "inputs": ["video"],
     "outputs": ["sampled_frames"],
     "modules": [
         {
             "name": "resize_videos",
-            "set_parameters": {},
-            "tunable_parameters": ["size", "scale"]
-        },
-        {
-            "name": "clip_videos",
-            "set_parameters": {},
-            "tunable_parameters": ["frames"]
+            "tunable_parameters": ["size", "scale"],
+            "set_parameters": {}
         },
         {
             "name": "sample_videos",
-            "set_parameters": {},
-            "tunable_parameters": ["fps"]
+            "tunable_parameters": ["fps"],
+            "set_parameters": {}
         }
     ],
     "connections": [
@@ -30,15 +25,7 @@
             "sink": "resize_videos.input_path"
         },
         {
-            "source": "INPUT.event_detection",
-            "sink": "clip_videos.events_json_path"
-        },
-        {
             "source": "resize_videos.output_path",
-            "sink": "clip_videos.input_path"
-        },
-        {
-            "source": "clip_videos.output_path",
             "sink": "sample_videos.input_path"
         },
         {
