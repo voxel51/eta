@@ -32,7 +32,8 @@ import subprocess
 import sys
 import tempfile
 
-import eta.constants as c
+import eta.constants as etac
+
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +41,7 @@ logger = logging.getLogger(__name__)
 def get_eta_rev():
     '''Returns the hash of the last commit to the current ETA branch or "" if
     something went wrong with git.'''
-    with WorkingDir(c.ETA_DIR):
+    with WorkingDir(etac.ETA_DIR):
         success, rev, _ = communicate(
             ["git", "rev-parse", "HEAD"], decode=True)
     return rev.strip() if success else ""
@@ -192,8 +193,33 @@ def ensure_dir(dirname):
 # @todo move to eta/core/video.py
 def glob_videos(path):
     '''Returns an iterator over all supported video files in path.'''
-    return multiglob(*c.VIDEO_FILE_TYPES_SUPPORTED,
-            root=os.path.join(path, '*.'))
+    return multiglob(
+        *etac.VIDEO_FILE_TYPES_SUPPORTED,
+        root=os.path.join(path, "*")
+    )
+
+
+def has_extenstion(filename, *args):
+    '''Determines whether the filename has any of the given extensions.
+
+    Args:
+        filename: a file name
+        *args: extensions like ".txt" or ".json"
+    '''
+    ext = os.path.splitext(filename)[1]
+    return any(ext == a for a in args)
+
+
+# @todo move to eta/core/image.py
+def is_supported_image_type(filename):
+    '''Determines whether the filename has a supported image extension.'''
+    return os.path.splitext(filename)[1] in etac.IMAGE_FILE_TYPES_SUPPORTED
+
+
+# @todo move to eta/core/video.py
+def is_supported_video_type(filename):
+    '''Determines whether the filename has a supported video extension.'''
+    return os.path.splitext(filename)[1] in etac.VIDEO_FILE_TYPES_SUPPORTED
 
 
 def move_file(inpath, outpath):
