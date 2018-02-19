@@ -48,7 +48,7 @@ LICENSE = _VER["license"]
 
 # Supported file types
 # @todo move to eta/core/video.py
-VIDEO_FILE_TYPES_SUPPORTED = ["mp4", "avi", "mpg"]
+VIDEO_FILE_TYPES_SUPPORTED = [".mp4", ".avi", ".mpg"]
 # @todo move to eta/core/image.py
 IMAGE_FILE_TYPES_SUPPORTED = [".png", ".jpg", ".jpeg", ".gif"]
 
