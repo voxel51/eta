@@ -27,7 +27,7 @@ import sys
 
 import eta
 from eta.core.config import Config, Configurable
-from eta.core.diagram import BlockDiagram, BlockdiagPipeline
+from eta.core.diagram import HasBlockDiagram, BlockdiagPipeline
 import eta.core.job as etaj
 import eta.core.log as etal
 import eta.core.module as etam
@@ -316,7 +316,7 @@ class PipelineConnection(object):
         return "%s -> %s" % (self.source, self.sink)
 
 
-class PipelineMetadata(Configurable, BlockDiagram):
+class PipelineMetadata(Configurable, HasBlockDiagram):
     '''Class the encapsulates the architecture of a pipeline.
 
     Attributes:
