@@ -14,7 +14,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
-from future.utils import iteritems
+from future.utils import iteritems, itervalues
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
@@ -257,6 +257,8 @@ class PipelineInfo(Configurable):
 class PipelineModule(Configurable):
     '''Pipeline module class.
 
+    A pipeline module definition is valid if every module parameter is either
+    tunable, is set by the pipeline, or is exposed to the end-user as tunable.
 
     Attributes:
         name: the name of the module
@@ -280,24 +282,43 @@ class PipelineModule(Configurable):
 
         self.name = config.name
         self.metadata = etam.load_metadata(config.name)
-        self.set_parameters = config.set_parameters
         self.tunable_parameters = config.tunable_parameters
+        self.set_parameters = config.set_parameters
 
+        self._parse_parameters()
 
-class PipelineConnectionConfig(Config):
-    '''Pipeline connection configuration class.'''
+    def _parse_parameters(self):
+        # Verify parameter settings
+        self._verify_has_parameters(self.tunable_parameters)
+        self._verify_has_parameters(self.set_parameters.keys())
+        self._verify_parameter_values(self.set_parameters)
 
-    def __init__(self, d):
-        self.source = self.parse_string(d, "source")
-        self.sink = self.parse_string(d, "sink")
+        # Verify that each parameter is accounted for
+        for param in itervalues(self.metadata.parameters):
+            if not self._is_param_configured(param):
+                raise PipelineMetadataError((
+                    "Module '%s' parameter '%s' must be set, tunable, or "
+                    "have a default value") % (self.name, param.name))
 
+    def _is_param_configured(self, param):
+        return (
+            not param.is_mandatory or
+            param.name in self.tunable_parameters or
+            param.name in self.set_parameters.keys()
+        )
 
-class PipelineNodeType(object):
-    '''Class enumerating the types of pipeline nodes.'''
-    PIPELINE_INPUT = 1
-    PIPELINE_OUTPUT = 2
-    MODULE_INPUT = 3
-    MODULE_OUTPUT = 4
+    def _verify_has_parameters(self, param_names):
+        for name in param_names:
+            if not self.metadata.has_parameter(name):
+                raise PipelineMetadataError(
+                    "Module '%s' has no parameter '%s'" % (self.name, name))
+
+    def _verify_parameter_values(self, param_dict):
+        for name, val in param_dict:
+            if not self.metadata.is_valid_parameter(name, val):
+                raise PipelineMetadataError((
+                    "'%s' is an invalid value for parameter '%s' of module "
+                    "'%s'") % (val, name, self.name))
 
 
 class PipelineNode(object):
@@ -346,6 +367,23 @@ class PipelineNode(object):
         '''Returns True/False if this node is a module output.'''
         return self._type == PipelineNodeType.MODULE_OUTPUT
 
+    @staticmethod
+    def get_input_str(name):
+        '''Gets the node string for a pipeline input with the given name.'''
+        return "%s.%s" % (PIPELINE_INPUT_NAME, name)
+
+    @staticmethod
+    def get_output_str(name):
+        '''Gets the node string for a pipeline output with the given name.'''
+        return "%s.%s" % (PIPELINE_OUTPUT_NAME, name)
+
+    @staticmethod
+    def get_node_str(module, field):
+        '''Gets the node string for a pipeline node with the given module and
+        field names.
+        '''
+        return "%s.%s" % (module, field)
+
 
 class PipelineConnection(object):
     '''Class representing a connection between two nodes in a pipeline.
@@ -366,8 +404,18 @@ class PipelineConnection(object):
 class PipelineMetadata(Configurable, HasBlockDiagram):
     '''Class the encapsulates the architecture of a pipeline.
 
+    A pipeline definition is valid if the following conditions are met:
+        - every pipeline input is connected to at least one module input
+        - every pipeline output is connected to exactly one module output
+        - every module input either has a default value or has exactly one
+            incoming connection
+        - every module parameter is either tunable, is set by the pipeline, or
+            is exposed to the end-user as tunable
+
     Attributes:
         info: a PipelineInfo instance describing the pipeline
+        inputs: a list of pipeline input names
+        outputs: a list of pipeline output names
         modules: a dictionary mapping module names to PipelineModule instances
         nodes: a list of PipelineNode instances describing the connection
             pipeline-level sources and sinks for all pipeline-level connections
@@ -383,17 +431,68 @@ class PipelineMetadata(Configurable, HasBlockDiagram):
             config: a PipelineMetadataConfig instance
 
         Raises:
-            PipelineMetadataError: if there was an error parsing the pipeline
-                definition
+            PipelineMetadataError: if the pipeline definition was invalid
         '''
         self.validate(config)
+
         self.info = None
         self.inputs = None
         self.outputs = None
         self.modules = OrderedDict()
         self.nodes = []
         self.connections = []
+
         self._parse_metadata(config)
+
+    def has_input(self, name):
+        '''Returns True/False if the pipeline has an input `name`.'''
+        return name in self.inputs
+
+    def has_output(self, name):
+        '''Returns True/False if the pipeline has an output `name`.'''
+        return name in self.outputs
+
+    def has_module(self, name):
+        '''Returns True/False if the pipeline has a module `name`.'''
+        return name in self.modules
+
+    def has_parameter(self, param_str):
+        '''Returns True/False if this pipeline has the specified module
+        parameter.
+
+        Args:
+            param_str: a string of the form <module>.<parameter>
+        '''
+        module, field = _parse_module_field_str(param_str)
+        return (
+            self.has_module(module) and
+            self.modules[module].metadata.has_parameter(field)
+        )
+
+    def is_valid_input(self, name, val):
+        '''Returns True/False if `val` is a valid value for input `name`.'''
+        node_str = PipelineNode.get_input_str(name)
+        sinks = _get_sinks_with_source(node_str, self.connections)
+        return all(
+            self.modules[node.module].metadata.is_valid_input(node.field, val)
+            for node in sinks
+        )
+
+    def is_valid_output(self, name, val):
+        '''Returns True/False if `val` is a valid vale for output `name`.'''
+        node_str = PipelineNode.get_output_str(name)
+        sources = _get_sources_with_sink(node_str, self.connections)
+        return all(
+            self.modules[node.module].metadata.is_valid_output(node.field, val)
+            for node in sources
+        )
+
+    def is_valid_parameter(self, param_str, val):
+        '''Returns True/False if `val` is a valid value for parameter
+        `param_str`.
+        '''
+        module, field = _parse_module_field_str(param_str)
+        return self.modules[module].metadata.is_valid_parameter(field, val)
 
     def to_blockdiag(self):
         '''Returns a BlockdiagPipeline representation of this pipeline.'''
@@ -416,7 +515,12 @@ class PipelineMetadata(Configurable, HasBlockDiagram):
         self.nodes.append(node)
         return node
 
+    def _parse_node_str(self, node_str):
+        return _parse_node_str(
+            node_str, self.inputs, self.outputs, self.modules)
+
     def _parse_metadata(self, config):
+        # Parse info and I/O
         self.info = PipelineInfo(config.info)
         self.inputs = config.inputs
         self.outputs = config.outputs
@@ -429,10 +533,8 @@ class PipelineMetadata(Configurable, HasBlockDiagram):
         # Parse connections
         for c in config.connections:
             # Parse nodes
-            source = _parse_node_str(
-                c.source, self.inputs, self.outputs, self.modules)
-            sink = _parse_node_str(
-                c.sink, self.inputs, self.outputs, self.modules)
+            source = self._parse_node_str(c.source)
+            sink = self._parse_node_str(c.sink)
 
             # Make sure we don't duplicate nodes
             source = self._register_node(source)
@@ -442,32 +544,140 @@ class PipelineMetadata(Configurable, HasBlockDiagram):
             connection = _create_node_connection(source, sink, self.modules)
             self.connections.append(connection)
 
+        # Validate connections
+        _validate_input_connections(self.inputs, self.connections)
+        _validate_output_connections(self.outputs, self.connections)
+        _validate_module_connections(self.modules, self.connections)
+
 
 class PipelineMetadataError(Exception):
     pass
 
 
+def _validate_input_connections(inputs, connections):
+    '''Ensures that every pipeline input is connected to at least one module
+    input.
+
+    Args:
+        inputs: a list of pipeline input names
+        connections: a list of PipelineConnection instances
+    '''
+    for name in inputs:
+        node_str = PipelineNode.get_input_str(name)
+        num_sinks = len(_get_sinks_with_source(node_str, connections))
+        if num_sinks == 0:
+            raise PipelineMetadataError(
+                "Pipeline input '%s' is not connected to any modules" % name)
+
+
+def _validate_output_connections(outputs, connections):
+    '''Ensures that every pipeline output is connected to one module output.
+
+    Args:
+        outputs: a list of pipeline output names
+        connections: a list of PipelineConnection instances
+    '''
+    for name in outputs:
+        node_str = PipelineNode.get_output_str(name)
+        num_sources = len(_get_sources_with_sink(node_str, connections))
+        if num_sources != 1:
+            raise PipelineMetadataError((
+                "Pipeline output '%s' must be connected to one module "
+                "output, but was connected to %d") % (name, num_sources)
+            )
+
+
+def _validate_module_connections(modules, connections):
+    '''Ensures that every module input either has a default value or one
+    incoming connection.
+
+    Args:
+        modules: a dictionary mapping module names to ModuleMetadata instances
+        connections: a list of PipelineConnection instances
+    '''
+    for mname, module in iteritems(modules):
+        for iname, field in iteritems(module.metadata.inputs):
+            node_str = PipelineNode.get_node_str(mname, iname)
+            num_sources = len(_get_sources_with_sink(node_str, connections))
+            if num_sources == 0 and field.is_mandatory:
+                raise PipelineMetadataError((
+                    "Module '%s' input '%s' has no default value and no "
+                    "incoming connection") % (mname, iname)
+                )
+            if num_sources > 1:
+                raise PipelineMetadataError((
+                    "Module '%s' input '%s' must have one incoming connection "
+                    "but instead has %d connections") % (
+                        mname, iname, num_sources)
+                )
+
+
+def _get_sinks_with_source(node_str, connections):
+    '''Returns the sink nodes that are connected to the source node with the
+    given string representation.
+
+    Args:
+        node_str: a string representation of a PipelineNode
+        connections: a list of PipelineConnection instances
+
+    Returns:
+        a list of PipelineNodes that are connected to the given source node.
+    '''
+    return [c.sink for c in connections if c.source.is_same_node_str(node_str)]
+
+
+def _get_sources_with_sink(node_str, connections):
+    '''Returns the source nodes that are connected to the sink node with the
+    given string representation.
+
+    Args:
+        node_str: a string representation of a PipelineNode
+        connections: a list of PipelineConnection instances
+
+    Returns:
+        a list of PipelineNodes that are connected to the given sink node.
+    '''
+    return [c.source for c in connections if c.sink.is_same_node_str(node_str)]
+
+
+def _parse_module_field_str(field_str):
+    '''Parses a module field string.
+
+    Args:
+        field_str: a string of the form <module>.<field>
+
+    Returns:
+        the module and field components of the module field string
+
+    Raises:
+        PipelineMetadataError: if the module field string was invalid
+    '''
+    try:
+        module, field = field_str.split(".")
+    except ValueError:
+        raise PipelineMetadataError(
+            "Expected '%s' to have form <module>.<field>" % field_str)
+
+    return module, field
+
+
 def _parse_node_str(node_str, inputs, outputs, modules):
     '''Parses a pipeline node string.
 
-        Args:
-            node_str: a string of the form <module>.<field>
-            inputs: a list of pipeline inputs
-            outputs: a list of pipeline outputs
-            modules: a dictionary mapping module names to PipelineModule
-                instances
+    Args:
+        node_str: a string of the form <module>.<field>
+        inputs: a list of pipeline inputs
+        outputs: a list of pipeline outputs
+        modules: a dictionary mapping module names to PipelineModule
+            instances
 
-        Returns:
-            a PipelineNode instance describing the node
+    Returns:
+        a PipelineNode instance describing the node
 
-        Raises:
-            PipelineMetadataError: if the pipeline node string was invalid
-        '''
-    try:
-        module, field = node_str.split(".")
-    except ValueError:
-        raise PipelineMetadataError(
-            "Expected '%s' to have form <module>.<field>" % node_str)
+    Raises:
+        PipelineMetadataError: if the pipeline node string was invalid
+    '''
+    module, field = _parse_module_field_str(node_str)
 
     if module == PIPELINE_INPUT_NAME:
         if field not in inputs:
@@ -513,7 +723,7 @@ def _create_node_connection(source, sink, modules):
         a PipelineConnection instance describing the connection
 
     Raises:
-        PipelineMetadataError: if the pipeline connection was invalid
+        PipelineMetadataError: if the connection was invalid
     '''
     if source.is_pipeline_input and not sink.is_module_input:
         raise PipelineMetadataError(
@@ -525,8 +735,8 @@ def _create_node_connection(source, sink, modules):
         raise PipelineMetadataError(
         "'%s' cannot be a connection sink" % sink)
     if source.is_module_output and sink.is_module_input:
-        src = modules[source.module].metadata.get_output(source.field)
-        snk = modules[sink.module].metadata.get_input(sink.field)
+        src = modules[source.module].metadata.get_output_field(source.field)
+        snk = modules[sink.module].metadata.get_input_field(sink.field)
         if not issubclass(src.type, snk.type):
             raise PipelineMetadataError(
                 (
