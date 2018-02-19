@@ -173,31 +173,6 @@ class ModuleInfoConfig(Config):
         self.exe = self.parse_string(d, "exe")
 
 
-class ModuleInfo(Configurable):
-    '''Module info descriptor.'''
-
-    def __init__(self, config):
-        self.validate(config)
-        self.name = config.name
-        self.type = self._parse_type(config.type)
-        self.version = config.version
-        self.description = config.description
-        self.exe = config.exe
-
-    @property
-    def is_mandatory(self):
-        '''Returns True/False indicating whether this field is mandatory.'''
-        return self.default is mandatory
-
-    @staticmethod
-    def _parse_type(type_str):
-        type_ = etat.parse_type(type_str)
-        if not etat.is_module(type_):
-            raise ModuleMetadataError(
-                "'%s' is not a valid module type" % type_)
-        return type_
-
-
 # This exists so that None can be a default value for Config fields
 class mandatory(object):
     pass
@@ -213,11 +188,49 @@ class ModuleFieldConfig(Config):
         self.default = self.parse_raw(d, "default", default=mandatory)
 
 
-class ModuleField(Configurable):
-    '''Module field descriptor.'''
+class ModuleInfo(Configurable):
+    '''Module info descriptor.
+
+    Attributes:
+        name: the name of the module
+        type: the eta.core.types.Type of the module
+        version: the version of the module
+        description: a free text description of the module
+        exe: the executable for the module
+    '''
 
     def __init__(self, config):
         self.validate(config)
+
+        self.name = config.name
+        self.type = self._parse_type(config.type)
+        self.version = config.version
+        self.description = config.description
+        self.exe = config.exe
+
+    @staticmethod
+    def _parse_type(type_str):
+        type_ = etat.parse_type(type_str)
+        if not etat.is_module(type_):
+            raise ModuleMetadataError(
+                "'%s' is not a valid module type" % type_)
+        return type_
+
+
+class ModuleField(Configurable):
+    '''Module field descriptor.
+
+
+    Attributes:
+        name: the name of the field
+        type: the eta.core.types.Type of the field
+        description: a free text description of the field
+        default: the default value (if any) of the field
+    '''
+
+    def __init__(self, config):
+        self.validate(config)
+
         self.name = config.name
         self.type = self._parse_type(config.type)
         self.description = config.description
