@@ -29,7 +29,7 @@
     "parameters": [
         {
             "name": "frames",
-            "type": "eta.core.types.FramesString",
+            "type": "eta.core.types.String",
             "description": "A frames string speciying the clips to generate",
             "default": null
         }
