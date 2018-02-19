@@ -201,11 +201,45 @@ class PipelineInfoConfig(Config):
         self.description = self.parse_string(d, "description")
 
 
+class PipelineModuleConfig(Config):
+    '''Pipeline module configuration class.'''
+
+    def __init__(self, d):
+        self.name = self.parse_string(d, "name")
+        self.tunable_parameters = self.parse_array(d, "tunable_parameters")
+        self.set_parameters = self.parse_dict(d, "set_parameters")
+
+
+class PipelineConnectionConfig(Config):
+    '''Pipeline connection configuration class.'''
+
+    def __init__(self, d):
+        self.source = self.parse_string(d, "source")
+        self.sink = self.parse_string(d, "sink")
+
+
+class PipelineNodeType(object):
+    '''Class enumerating the types of pipeline nodes.'''
+
+    PIPELINE_INPUT = 1
+    PIPELINE_OUTPUT = 2
+    MODULE_INPUT = 3
+    MODULE_OUTPUT = 4
+
+
 class PipelineInfo(Configurable):
-    '''Pipeline info descriptor.'''
+    '''Pipeline info descriptor.
+
+    Attributes:
+        name: the name of the pipeline
+        type: the eta.core.types.Type of the pipeline
+        version: the pipeline version
+        description: a free text description of the pipeline
+    '''
 
     def __init__(self, config):
         self.validate(config)
+
         self.name = config.name
         self.type = self._parse_type(config.type)
         self.version = config.version
@@ -220,20 +254,30 @@ class PipelineInfo(Configurable):
         return type_
 
 
-class PipelineModuleConfig(Config):
-    '''Pipeline module configuration class.'''
-
-    def __init__(self, d):
-        self.name = self.parse_string(d, "name")
-        self.set_parameters = self.parse_raw(d, "set_parameters")
-        self.tunable_parameters = self.parse_array(d, "tunable_parameters")
-
-
 class PipelineModule(Configurable):
-    '''Pipeline module class.'''
+    '''Pipeline module class.
+
+
+    Attributes:
+        name: the name of the module
+        metadata: the ModuleMetadata instance for the module
+        tunable_parameters: a list of module parameters that can be tuned by
+            end-users
+        set_parameters: a dictionary of param: value pairs that set the values
+            of
+    '''
 
     def __init__(self, config):
+        '''Creates a PipelineModule instance.
+
+        Args:
+            config: a PipelineModuleConfig instance
+
+        Raises:
+            PipelineMetadataError: if the module configuration was invalid
+        '''
         self.validate(config)
+
         self.name = config.name
         self.metadata = etam.load_metadata(config.name)
         self.set_parameters = config.set_parameters
@@ -257,16 +301,14 @@ class PipelineNodeType(object):
 
 
 class PipelineNode(object):
-    '''Class representing a node in a pipeline.'''
+    '''Class representing a node in a pipeline.
+
+    Attributes:
+        module: the module name
+        field: the field name
+    '''
 
     def __init__(self, module, field, _type):
-        '''Creates a new PipelineNode instance.
-
-        Args:
-            module: the module name string
-            field: the field name string
-            _type: the PipelineNodeType of the node
-        '''
         self.module = module
         self.field = field
         self._type = _type
@@ -275,8 +317,14 @@ class PipelineNode(object):
         return "%s.%s" % (self.module, self.field)
 
     def is_same_node(self, node):
-        '''Returns True/False if the given node string refers to this node.'''
+        '''Returns True/False if the given node is equal to this node, i.e.,
+        if they refer to the same field of the same module.
+        '''
         return str(self) == str(node)
+
+    def is_same_node_str(self, node_str):
+        '''Returns True/False if the given node string refers to this node.'''
+        return str(self) == node_str
 
     @property
     def is_pipeline_input(self):
@@ -300,15 +348,14 @@ class PipelineNode(object):
 
 
 class PipelineConnection(object):
-    '''Class representing a connection between two nodes in a pipeline.'''
+    '''Class representing a connection between two nodes in a pipeline.
+
+    Attributes:
+        source: the source PipelineNode
+        sink: the sink PipelineNode
+    '''
 
     def __init__(self, source, sink):
-        '''Creates a new PipelineConnection instance.
-
-        Args:
-            source: the source PipelineNode
-            sink: the sink PipelineNode
-        '''
         self.source = source
         self.sink = sink
 
