@@ -39,10 +39,11 @@ MODULE_HEIGHT = 60
 NODE_HEIGHT = 40
 
 
-class BlockDiagram(object):
+class HasBlockDiagram(object):
     '''Mixin class for objects that can be rendered as block diagrams.'''
 
     def to_blockdiag(self):
+        '''Returns a BlockdiagFile representation of the instance.'''
         raise NotImplementedError("subclass must implement to_blockdiag()")
 
     def render(self, path):
