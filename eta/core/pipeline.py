@@ -270,7 +270,7 @@ class PipelineInput(object):
     @property
     def is_mandatory(self):
         '''Returns True/False if this input is mandatory.'''
-        return self.field.is_mandatory
+        return any(field.is_mandatory for field in self.fields)
 
     def is_valid_value(self, val):
         '''Returns True/False if `val` is a valid value for this input.'''
