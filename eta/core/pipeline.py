@@ -502,14 +502,15 @@ class PipelineMetadata(Configurable, HasBlockDiagram):
 
     Attributes:
         info: a PipelineInfo instance describing the pipeline
-        inputs: a list of pipeline input names
-        outputs: a list of pipeline output names
+        inputs: a dictionary mapping input names to PipelineInput instances
+        outputs: a dictionary mapping output names to PipelineOutput instances
+        parameters: a dictionary mapping <module>.<parameter> strings to
+            PipelineParameter instances
         modules: a dictionary mapping module names to PipelineModule instances
-        nodes: a list of PipelineNode instances describing the connection
-            pipeline-level sources and sinks for all pipeline-level connections
+        nodes: a list of PipelineNode instances describing the sources and
+            sinks for all pipeline connections
         connections: a list of PipelineConnection instances describing the
-            pipeline-level connections between pipeline inputs, modules, and
-            pipeline outputs
+            connections between pipeline inputs, modules, and pipeline outputs
     '''
 
     def __init__(self, config):
@@ -524,8 +525,9 @@ class PipelineMetadata(Configurable, HasBlockDiagram):
         self.validate(config)
 
         self.info = None
-        self.inputs = None
-        self.outputs = None
+        self.inputs = OrderedDict()
+        self.outputs = OrderedDict()
+        self.parameters = OrderedDict()
         self.modules = OrderedDict()
         self.nodes = []
         self.connections = []
@@ -604,15 +606,14 @@ class PipelineMetadata(Configurable, HasBlockDiagram):
         return node
 
     def _parse_metadata(self, config):
-        # Parse info and I/O
+        # Parse info
         self.info = PipelineInfo(config.info)
-        self.inputs = config.inputs
-        self.outputs = config.outputs
 
         # Parse modules
         for module_config in config.modules:
             module = PipelineModule(module_config)
             self.modules[module.name] = module
+            self.parameters.update(module.active_parameters)
 
         # Parse connections
         for c in config.connections:
@@ -630,9 +631,17 @@ class PipelineMetadata(Configurable, HasBlockDiagram):
             connection = _create_node_connection(source, sink, self.modules)
             self.connections.append(connection)
 
+        # Parse inputs
+        for name in config.inputs:
+            self.inputs[name] = _parse_input(
+                name, self.connections, self.modules)
+
+        # Parse outputs
+        for name in config.outputs:
+            self.outputs[name] = _parse_output(
+                name, self.connections, self.modules)
+
         # Validate connections
-        _validate_input_connections(self.inputs, self.connections)
-        _validate_output_connections(self.outputs, self.connections)
         _validate_module_connections(self.modules, self.connections)
 
 
