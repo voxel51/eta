@@ -647,7 +647,7 @@ def _parse_input(name, connections, modules):
     sinks = _get_sinks_with_source(node_str, connections)
     if len(sinks) == 0:
         raise PipelineMetadataError(
-            "Pipeline input '%s' is not connected to any modules") % name)
+            "Pipeline input '%s' is not connected to any modules" % name)
 
     fields = [
         modules[node.module].metadata.get_input_field(node.field)
