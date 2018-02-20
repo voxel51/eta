@@ -14,7 +14,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
-from future.utils import iteritems, itervalues
+from future.utils import iteritems
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
@@ -341,13 +341,15 @@ class PipelineModule(Configurable):
     A pipeline module definition is valid if every module parameter is either
     tunable, is set by the pipeline, or is exposed to the end-user as tunable.
 
+    A module parameter is active if it is exposed as tunable and/or is set by
+    the pipeline.
+
     Attributes:
         name: the name of the module
         metadata: the ModuleMetadata instance for the module
-        tunable_parameters: a list of module parameters that can be tuned by
-            end-users
-        set_parameters: a dictionary of param: value pairs that set the values
-            of
+        active_parameters: a dictionary mapping <module>.<parameter> strings to
+            PipelineParameter instances describing the active parameters of the
+            module
     '''
 
     def __init__(self, config):
@@ -363,30 +365,33 @@ class PipelineModule(Configurable):
 
         self.name = config.name
         self.metadata = etam.load_metadata(config.name)
-        self.tunable_parameters = config.tunable_parameters
-        self.set_parameters = config.set_parameters
+        self.active_parameters = OrderedDict()
 
-        self._parse_parameters()
+        self._parse_parameters(
+            config.tunable_parameters, config.set_parameters)
 
-    def _parse_parameters(self):
+    def _parse_parameters(self, tunable_parameters, set_parameters):
         # Verify parameter settings
-        self._verify_has_parameters(self.tunable_parameters)
-        self._verify_has_parameters(self.set_parameters.keys())
-        self._verify_parameter_values(self.set_parameters)
+        self._verify_has_parameters(tunable_parameters)
+        self._verify_has_parameters(set_parameters.keys())
+        self._verify_parameter_values(set_parameters)
 
         # Verify that each parameter is accounted for
-        for param in itervalues(self.metadata.parameters):
-            if not self._is_param_configured(param):
+        for pname, param in iteritems(self.metadata.parameters):
+            is_tunable = pname in tunable_parameters
+            is_set = pname in set_parameters
+            is_active = is_tunable or is_set
+            if param.is_mandatory and not is_active:
                 raise PipelineMetadataError((
                     "Module '%s' parameter '%s' must be set, tunable, or "
-                    "have a default value") % (self.name, param.name))
+                    "have a default value") % (self.name, pname))
 
-    def _is_param_configured(self, param):
-        return (
-            not param.is_mandatory or
-            param.name in self.tunable_parameters or
-            param.name in self.set_parameters.keys()
-        )
+            # Record active parameter
+            if is_active:
+                param_str = PipelineNode.get_node_str(self.name, pname)
+                set_val = set_parameters[pname] if is_set else no_set_val
+                self.active_parameters[param_str] = PipelineParameter(
+                    param_str, param, is_tunable, set_val=set_val)
 
     def _verify_has_parameters(self, param_names):
         for name in param_names:
