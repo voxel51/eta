@@ -254,6 +254,87 @@ class PipelineInfo(Configurable):
         return type_
 
 
+class PipelineInput(object):
+    '''Class describing a pipeline input.
+
+    Attributes:
+        name: the input name
+        fields: the list ModuleField instance(s) of the module input field(s)
+            that the pipeline input is connected to
+    '''
+
+    def __init__(self, name, fields):
+        self.name = name
+        self.fields = fields
+
+    @property
+    def is_mandatory(self):
+        '''Returns True/False if this input is mandatory.'''
+        return self.field.is_mandatory
+
+    def is_valid_value(self, val):
+        '''Returns True/False if `val` is a valid value for this input.'''
+        return all(field.is_valid_value(val) for field in self.fields)
+
+
+class PipelineOutput(object):
+    '''Class describing a pipeline output.
+
+    Attributes:
+        name: the output name
+        field: the ModuleField instance of the module output field that the
+            pipeline output is connected to
+    '''
+
+    def __init__(self, name, field):
+        self.name = name
+        self.field = field
+
+    def is_valid_value(self, val):
+        '''Returns True/False if `val` is a valid value for this output.'''
+        return self.field.is_valid_value(val)
+
+
+# This exists so that None can be a valid value for parameters
+class no_set_val(object):
+    pass
+
+
+class PipelineParameter(object):
+    '''Class describing a tunable pipeline parameter.
+
+    Attributes:
+        param_str: the <module>.<parameter> string for the parameter
+        field: the ModuleField instance of the module parameter that the
+            pipeline parameter corresponds to
+        is_tunable: whether the parameter is tunable
+    '''
+
+    def __init__(self, param_str, field, is_tunable, set_val=no_set_val):
+        self.param_str = param_str
+        self.field = field
+        self.is_tunable = is_tunable
+        self.set_val = set_val
+
+    @property
+    def has_set_val(self):
+        '''Returns True/False if this parameter has a value set by the
+        pipeline.
+        '''
+        return self.set_val is not no_set_val
+
+    @property
+    def is_mandatory(self):
+        '''Returns True/False if this parameter must be set by the
+        end-user.
+        '''
+        return self.field.is_mandatory and not self.has_set_val
+
+    def is_valid_value(self, val):
+        '''Returns True/False if `val` is a valid value for this parameter.'''
+        return self.field.is_valid_value(val)
+
+
 class PipelineModule(Configurable):
     '''Pipeline module class.
 
