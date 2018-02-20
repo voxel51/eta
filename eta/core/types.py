@@ -101,7 +101,7 @@ class Builtin(Type):
     '''
 
     @staticmethod
-    def is_valid_value(self, val):
+    def is_valid_value(val):
         '''Returns True/False if `val` is a valid value for this type.'''
         raise NotImplementedError("subclass must implement is_valid_value()")
 
@@ -110,7 +110,7 @@ class Null(Builtin):
     '''A JSON null value. None in Python.'''
 
     @staticmethod
-    def is_valid_value(self, val):
+    def is_valid_value(val):
         return val is None
 
 
@@ -118,7 +118,7 @@ class Boolean(Builtin):
     '''A JSON boolean value. A bool in Python.'''
 
     @staticmethod
-    def is_valid_value(self, val):
+    def is_valid_value(val):
         return isinstance(val, bool)
 
 
@@ -126,7 +126,7 @@ class String(Builtin):
     '''A JSON string. A str in Python.'''
 
     @staticmethod
-    def is_valid_value(self, val):
+    def is_valid_value(val):
         return isinstance(val, six.string_types)
 
 
@@ -134,7 +134,7 @@ class Number(Builtin):
     '''A numeric value.'''
 
     @staticmethod
-    def is_valid_value(self, val):
+    def is_valid_value(val):
         return isinstance(val, numbers.Number)
 
 
@@ -142,7 +142,7 @@ class Array(Builtin):
     '''A JSON array. A list in Python.'''
 
     @staticmethod
-    def is_valid_value(self, val):
+    def is_valid_value(val):
         return isinstance(val, list)
 
 
@@ -150,7 +150,7 @@ class StringArray(Array):
     '''An array of strings in JSON. A list of strings in Python.'''
 
     @staticmethod
-    def is_valid_value(self, val):
+    def is_valid_value(val):
         return (
             Array.is_valid_value(val) and
             all(String.is_valid_value(s) for s in val)
@@ -161,7 +161,7 @@ class Object(Builtin):
     '''An object in JSON. A dict in Python.'''
 
     @staticmethod
-    def is_valid_value(self, val):
+    def is_valid_value(val):
         return isinstance(val, dict)
 
 
@@ -172,7 +172,7 @@ class Data(Type):
     '''The base type for data, which are types that are stored on disk.'''
 
     @staticmethod
-    def is_valid_path(self, val):
+    def is_valid_path(val):
         '''Returns True/False if `path` is a valid filepath for this type.'''
         raise NotImplementedError("subclass must implement is_valid_path()")
 
@@ -185,7 +185,7 @@ class Directory(Data):
     '''
 
     @staticmethod
-    def is_valid_path(self, val):
+    def is_valid_path(val):
         return String.is_valid_value(val)
 
 
@@ -197,7 +197,7 @@ class File(Data):
     '''
 
     @staticmethod
-    def is_valid_path(self, val):
+    def is_valid_path(val):
         return String.is_valid_value(val)
 
 
@@ -210,7 +210,7 @@ class FileSequence(Data):
     '''
 
     @staticmethod
-    def is_valid_path(self, val):
+    def is_valid_path(val):
         if not String.is_valid_value(val):
             return False
         try:
@@ -228,7 +228,7 @@ class JSONFile(File):
     '''
 
     @staticmethod
-    def is_valid_path(self, val):
+    def is_valid_path(val):
         return File.is_valid_path(val) and etau.has_extenstion(val, ".json")
 
 
@@ -241,7 +241,7 @@ class JSONFileSequence(FileSequence):
     '''
 
     @staticmethod
-    def is_valid_path(self, val):
+    def is_valid_path(val):
         return (
             FileSequence.is_valid_path(val) and
             etau.has_extenstion(val, ".json")
@@ -257,7 +257,7 @@ class DualFileSequence(Data):
     '''
 
     @staticmethod
-    def is_valid_path(self, val):
+    def is_valid_path(val):
         if not String.is_valid_value(val):
             return False
         try:
@@ -284,7 +284,7 @@ class Image(File):
     '''
 
     @staticmethod
-    def is_valid_path(self, val):
+    def is_valid_path(val):
         return File.is_valid_path(val) and etau.is_supported_image_type(val)
 
 
@@ -297,7 +297,7 @@ class Video(Data):
     '''
 
     @staticmethod
-    def is_valid_path(self, val):
+    def is_valid_path(val):
         return (
             VideoFile.is_valid_path(val) or
             ImageSequence.is_valid_path(val)
@@ -312,7 +312,7 @@ class VideoFile(Video, File):
     '''
 
     @staticmethod
-    def is_valid_path(self, val):
+    def is_valid_path(val):
         return File.is_valid_path(val) and etau.is_supported_video_type(val)
 
 
@@ -324,7 +324,7 @@ class ImageSequence(Video, FileSequence):
     '''
 
     @staticmethod
-    def is_valid_path(self, val):
+    def is_valid_path(val):
         return (
             FileSequence.is_valid_path(val) and
             etau.is_supported_image_type(val)
@@ -339,7 +339,7 @@ class VideoSequece(FileSequence):
     '''
 
     @staticmethod
-    def is_valid_path(self, val):
+    def is_valid_path(val):
         return (
             FileSequence.is_valid_path(val) and
             etau.is_supported_video_type(val)
@@ -354,7 +354,7 @@ class VideoClips(DualFileSequence):
     '''
 
     @staticmethod
-    def is_valid_path(self, val):
+    def is_valid_path(val):
         return (
             DualFileSequence.is_valid_path(val) and
             etau.is_supported_video_type(val)
