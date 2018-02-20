@@ -173,7 +173,7 @@ class ModuleInfoConfig(Config):
         self.exe = self.parse_string(d, "exe")
 
 
-# This exists so that None can be a default value for Config fields
+# This exists so that None can be a default value for module fields
 class mandatory(object):
     pass
 
