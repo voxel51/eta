@@ -649,37 +649,58 @@ class PipelineMetadataError(Exception):
     pass
 
 
-def _validate_input_connections(inputs, connections):
-    '''Ensures that every pipeline input is connected to at least one module
-    input.
+def _parse_input(name, connections, modules):
+    '''Parses the pipeline input with the given name.
 
     Args:
-        inputs: a list of pipeline input names
+        name: the pipeline input name
         connections: a list of PipelineConnection instances
+        modules: a dictionary mapping module names to ModuleMetadata instances
+
+    Returns:
+        a PipelineInput instance describing the pipeline input
+
+    Raises:
+        PipelineMetadataError: if the input was not properly connected
     '''
-    for name in inputs:
-        node_str = PipelineNode.get_input_str(name)
-        num_sinks = len(_get_sinks_with_source(node_str, connections))
-        if num_sinks == 0:
-            raise PipelineMetadataError(
-                "Pipeline input '%s' is not connected to any modules" % name)
+    node_str = PipelineNode.get_input_str(name)
+    sinks = _get_sinks_with_source(node_str, connections)
+    if len(sinks) == 0:
+        raise PipelineMetadataError(
+            "Pipeline input '%s' is not connected to any modules") % name)
+
+    fields = [
+        modules[node.module].metadata.get_input_field(node.field)
+        for node in sinks
+    ]
+    return PipelineInput(name, fields)
 
 
-def _validate_output_connections(outputs, connections):
-    '''Ensures that every pipeline output is connected to one module output.
+def _parse_output(name, connections, modules):
+    '''Parses the pipeline output with the given name.
 
     Args:
-        outputs: a list of pipeline output names
+        name: the pipeline output name
         connections: a list of PipelineConnection instances
+        modules: a dictionary mapping module names to ModuleMetadata instances
+
+    Returns:
+        a PipelineOutput instance describing the pipeline output
+
+    Raises:
+        PipelineMetadataError: if the output was not properly connected
     '''
-    for name in outputs:
-        node_str = PipelineNode.get_output_str(name)
-        num_sources = len(_get_sources_with_sink(node_str, connections))
-        if num_sources != 1:
-            raise PipelineMetadataError((
-                "Pipeline output '%s' must be connected to one module "
-                "output, but was connected to %d") % (name, num_sources)
-            )
+    node_str = PipelineNode.get_output_str(name)
+    sources = _get_sources_with_sink(node_str, connections)
+    if len(sources) != 1:
+        raise PipelineMetadataError((
+            "Pipeline output '%s' must be connected to one module "
+            "output, but was connected to %d") % (name, len(sources))
+        )
+
+    node = sources[0]
+    field = modules[node.module].metadata.get_output_field(node.field)
+    return PipelineOutput(name, field)
 
 
 def _validate_module_connections(modules, connections):
@@ -692,6 +713,9 @@ def _validate_module_connections(modules, connections):
     Args:
         modules: a dictionary mapping module names to ModuleMetadata instances
         connections: a list of PipelineConnection instances
+
+    Raises:
+        PipelineMetadataError: if the modules were not properly connected
     '''
     for mname, module in iteritems(modules):
         # Validate inputs
