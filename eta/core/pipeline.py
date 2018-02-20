@@ -365,7 +365,7 @@ class PipelineModule(Configurable):
 
         self.name = config.name
         self.metadata = etam.load_metadata(config.name)
-        self.active_parameters = OrderedDict()
+        self.active_parameters = {}
 
         self._parse_parameters(
             config.tunable_parameters, config.set_parameters)
@@ -525,10 +525,10 @@ class PipelineMetadata(Configurable, HasBlockDiagram):
         self.validate(config)
 
         self.info = None
-        self.inputs = OrderedDict()
-        self.outputs = OrderedDict()
-        self.parameters = OrderedDict()
-        self.modules = OrderedDict()
+        self.inputs = {}
+        self.outputs = {}
+        self.parameters = {}
+        self.modules = OrderedDict()  # module order encodes execution order
         self.nodes = []
         self.connections = []
 
