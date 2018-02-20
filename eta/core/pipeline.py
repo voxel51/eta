@@ -517,10 +517,6 @@ class PipelineMetadata(Configurable, HasBlockDiagram):
         self.nodes.append(node)
         return node
 
-    def _parse_node_str(self, node_str):
-        return _parse_node_str(
-            node_str, self.inputs, self.outputs, self.modules)
-
     def _parse_metadata(self, config):
         # Parse info and I/O
         self.info = PipelineInfo(config.info)
@@ -535,8 +531,10 @@ class PipelineMetadata(Configurable, HasBlockDiagram):
         # Parse connections
         for c in config.connections:
             # Parse nodes
-            source = self._parse_node_str(c.source)
-            sink = self._parse_node_str(c.sink)
+            source = _parse_node_str(
+                c.source, config.inputs, config.outputs, self.modules)
+            sink = _parse_node_str(
+                c.sink, config.inputs, config.outputs, self.modules)
 
             # Make sure we don't duplicate nodes
             source = self._register_node(source)
