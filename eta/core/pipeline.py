@@ -547,42 +547,22 @@ class PipelineMetadata(Configurable, HasBlockDiagram):
         return name in self.modules
 
     def has_parameter(self, param_str):
-        '''Returns True/False if this pipeline has the specified module
-        parameter.
-
-        Args:
-            param_str: a string of the form <module>.<parameter>
-        '''
-        module, field = _parse_module_field_str(param_str)
-        return (
-            self.has_module(module) and
-            self.modules[module].metadata.has_parameter(field)
-        )
+        '''Returns True/False if this pipeline has parameter `param_str`.'''
+        return param_str in self.parameters
 
     def is_valid_input(self, name, val):
         '''Returns True/False if `val` is a valid value for input `name`.'''
-        node_str = PipelineNode.get_input_str(name)
-        sinks = _get_sinks_with_source(node_str, self.connections)
-        return all(
-            self.modules[node.module].metadata.is_valid_input(node.field, val)
-            for node in sinks
-        )
+        return self.inputs[name].is_valid_value(val)
 
     def is_valid_output(self, name, val):
         '''Returns True/False if `val` is a valid vale for output `name`.'''
-        node_str = PipelineNode.get_output_str(name)
-        sources = _get_sources_with_sink(node_str, self.connections)
-        return all(
-            self.modules[node.module].metadata.is_valid_output(node.field, val)
-            for node in sources
-        )
+        return self.outputs[name].is_valid_value(val)
 
     def is_valid_parameter(self, param_str, val):
         '''Returns True/False if `val` is a valid value for parameter
         `param_str`.
         '''
-        module, field = _parse_module_field_str(param_str)
-        return self.modules[module].metadata.is_valid_parameter(field, val)
+        return self.parameters[param_str].is_valid_value(val)
 
     def to_blockdiag(self):
         '''Returns a BlockdiagPipeline representation of this pipeline.'''
