@@ -28,6 +28,7 @@ import sys
 import eta
 from eta.core.config import Config, Configurable
 from eta.core.diagram import HasBlockDiagram, BlockdiagPipeline
+import eta.core.graph as etag
 import eta.core.job as etaj
 import eta.core.log as etal
 import eta.core.module as etam
@@ -738,6 +739,35 @@ def _validate_module_connections(modules, connections):
                     "Module '%s' output '%s' has no default value and no "
                     "outgoing connections") % (mname, oname)
                 )
+
+
+def _compute_execution_order(connections):
+    '''Computes a valid execution order for the pipeline defined by the given
+    module connections.
+
+    Args:
+        connections: a list of PipelineConnection instances
+
+    Returns:
+        a list defining a valid execution order for the modules
+
+    Raises:
+        PipelineMetadataError: if the module connections form a cyclic graph
+    '''
+    module_graph = etag.DirectedGraph()
+    for c in connections:
+        if c.is_module_connection:
+            module_graph.add_edge(c.source.module, c.sink.module)
+
+    try:
+        execution_order = module_graph.sort()
+    except etag.CyclicGraphError:
+        raise PipelineMetadataError(
+            "Unable to compute a valid execution order; "
+            "modules connections form a cyclic graph."
+        )
+
+    return execution_order
 
 
 def _get_sinks_with_source(node_str, connections):
