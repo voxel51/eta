@@ -172,7 +172,20 @@ class Data(Type):
     '''The base type for data, which are types that are stored on disk.'''
 
     @staticmethod
-    def is_valid_path(val):
+    def gen_path(basedir, params):
+        '''Generates the output path for the given data
+
+        Args:
+            basedir: the base output directory
+            params: a dictionary of string formatting parameters
+
+        Returns:
+            the appropriate path for the data
+        '''
+        raise NotImplementedError("subclass must implement gen_path()")
+
+    @staticmethod
+    def is_valid_path(path):
         '''Returns True/False if `path` is a valid filepath for this type.'''
         raise NotImplementedError("subclass must implement is_valid_path()")
 
@@ -185,8 +198,12 @@ class Directory(Data):
     '''
 
     @staticmethod
-    def is_valid_path(val):
-        return String.is_valid_value(val)
+    def gen_path(basedir, params):
+        return os.path.join(basedir, "%(field)s").format(params)
+
+    @staticmethod
+    def is_valid_path(path):
+        return String.is_valid_value(path)
 
 
 class File(Data):
@@ -197,8 +214,12 @@ class File(Data):
     '''
 
     @staticmethod
-    def is_valid_path(val):
-        return String.is_valid_value(val)
+    def gen_path(basedir, params):
+        return os.path.join(basedir, "%(field)s%(file_ext)s").format(params)
+
+    @staticmethod
+    def is_valid_path(path):
+        return String.is_valid_value(path)
 
 
 class FileSequence(Data):
@@ -206,15 +227,44 @@ class FileSequence(Data):
     parameter.
 
     Examples:
-        /path/to/data-%05d.txt
+        /path/to/data/%05d.txt
     '''
 
     @staticmethod
-    def is_valid_path(val):
-        if not String.is_valid_value(val):
+    def gen_path(basedir, params):
+        return os.path.join(
+            basedir, "%(field)s", "%(idx)s%(file_ext)s").format(params)
+
+    @staticmethod
+    def is_valid_path(path):
+        if not String.is_valid_value(path):
             return False
         try:
-            val % 1
+            path % 1
+            return True
+        except TypeError:
+            return False
+
+
+class DualFileSequence(Data):
+    '''The base type for a collection of files indexed by two numeric
+    parameters.
+
+    Examples:
+        /path/to/data/%05d-%05d.json
+    '''
+
+    @staticmethod
+    def gen_path(basedir, params):
+        return os.path.join(
+            basedir, "%(field)s", "%(idx)s-%(idx)s%(file_ext)s").format(params)
+
+    @staticmethod
+    def is_valid_path(path):
+        if not String.is_valid_value(path):
+            return False
+        try:
+            path % (1, 2)
             return True
         except TypeError:
             return False
@@ -228,8 +278,12 @@ class JSONFile(File):
     '''
 
     @staticmethod
-    def is_valid_path(val):
-        return File.is_valid_path(val) and etau.has_extenstion(val, ".json")
+    def gen_path(basedir, params):
+        return os.path.join(basedir, "%(field)s.json").format(params)
+
+    @staticmethod
+    def is_valid_path(path):
+        return File.is_valid_path(path) and etau.has_extenstion(path, ".json")
 
 
 class JSONFileSequence(FileSequence):
@@ -237,34 +291,20 @@ class JSONFileSequence(FileSequence):
     parameter.
 
     Examples:
-        /path/to/data-%05d.json
+        /path/to/jsons/%05d.json
     '''
 
     @staticmethod
-    def is_valid_path(val):
+    def gen_path(basedir, params):
+        return os.path.join(
+            basedir, "%(field)s", "%(idx)s.json").format(params)
+
+    @staticmethod
+    def is_valid_path(path):
         return (
-            FileSequence.is_valid_path(val) and
-            etau.has_extenstion(val, ".json")
+            FileSequence.is_valid_path(path) and
+            etau.has_extenstion(path, ".json")
         )
-
-
-class DualFileSequence(Data):
-    '''The base type for a collection of files indexed by two numeric
-    parameters.
-
-    Examples:
-        /path/to/data-%05d-%05d.json
-    '''
-
-    @staticmethod
-    def is_valid_path(val):
-        if not String.is_valid_value(val):
-            return False
-        try:
-            val % (1, 2)
-            return True
-        except TypeError:
-            return False
 
 
 class Weights(File):
@@ -273,7 +313,10 @@ class Weights(File):
     Examples:
         /path/to/weights.npz
     '''
-    pass
+
+    @staticmethod
+    def gen_path(basedir, params):
+        return os.path.join(basedir, "%(field)s%(weights_ext)s").format(params)
 
 
 class Image(File):
@@ -284,8 +327,12 @@ class Image(File):
     '''
 
     @staticmethod
-    def is_valid_path(val):
-        return File.is_valid_path(val) and etau.is_supported_image_type(val)
+    def gen_path(basedir, params):
+        return os.path.join(basedir, "%(field)s%(image_ext)s").format(params)
+
+    @staticmethod
+    def is_valid_path(path):
+        return File.is_valid_path(path) and etau.is_supported_image_type(path)
 
 
 class Video(Data):
@@ -293,14 +340,18 @@ class Video(Data):
 
     Examples:
         /path/to/video.mp4
-        /path/to/frame-%05d.png
+        /path/to/video/%05d.png
     '''
 
     @staticmethod
-    def is_valid_path(val):
+    def gen_path(basedir, params):
+        return VideoFile.gen_path(basedir, params)
+
+    @staticmethod
+    def is_valid_path(path):
         return (
-            VideoFile.is_valid_path(val) or
-            ImageSequence.is_valid_path(val)
+            VideoFile.is_valid_path(path) or
+            ImageSequence.is_valid_path(path)
         )
 
 
@@ -312,22 +363,31 @@ class VideoFile(Video, File):
     '''
 
     @staticmethod
-    def is_valid_path(val):
-        return File.is_valid_path(val) and etau.is_supported_video_type(val)
+    def gen_path(basedir, params):
+        return os.path.join(basedir, "%(field)s%(video_ext)s").format(params)
+
+    @staticmethod
+    def is_valid_path(path):
+        return File.is_valid_path(path) and etau.is_supported_video_type(path)
 
 
 class ImageSequence(Video, FileSequence):
     '''A video represented as a sequence of images with one numeric parameter.
 
     Examples:
-        /path/to/frame-%05d.png
+        /path/to/video/%05d.png
     '''
 
     @staticmethod
-    def is_valid_path(val):
+    def gen_path(basedir, params):
+        return os.path.join(
+            basedir, "%(field)s", "%(idx)s%(image_ext)s").format(params)
+
+    @staticmethod
+    def is_valid_path(path):
         return (
-            FileSequence.is_valid_path(val) and
-            etau.is_supported_image_type(val)
+            FileSequence.is_valid_path(path) and
+            etau.is_supported_image_type(path)
         )
 
 
@@ -335,14 +395,19 @@ class VideoSequece(FileSequence):
     '''A sequence of video files with one numeric parameter.
 
     Examples:
-        /path/to/video-%05d.mp4
+        /path/to/videos/%05d.mp4
     '''
 
     @staticmethod
-    def is_valid_path(val):
+    def gen_path(basedir, params):
+        return os.path.join(
+            basedir, "%(field)s", "%(idx)s%(video_ext)s").format(params)
+
+    @staticmethod
+    def is_valid_path(path):
         return (
-            FileSequence.is_valid_path(val) and
-            etau.is_supported_video_type(val)
+            FileSequence.is_valid_path(path) and
+            etau.is_supported_video_type(path)
         )
 
 
@@ -350,14 +415,21 @@ class VideoClips(DualFileSequence):
     '''A sequence of video files with two numeric parameters.
 
     Examples:
-        /path/to/video-%05d-%05d.mp4
+        /path/to/videos/%05d-%05d.mp4
     '''
 
     @staticmethod
-    def is_valid_path(val):
+    def gen_path(basedir, params):
+        return os.path.join(
+            basedir,
+            "%(field)s", "%(idx)s-%(idx)s%(video_ext)s"
+        ).format(params)
+
+    @staticmethod
+    def is_valid_path(path):
         return (
-            DualFileSequence.is_valid_path(val) and
-            etau.is_supported_video_type(val)
+            DualFileSequence.is_valid_path(path) and
+            etau.is_supported_video_type(path)
         )
 
 
@@ -393,6 +465,6 @@ class FrameSequence(JSONFileSequence):
     indexed by one numeric parameter.
 
     Examples:
-        /path/to/frame-%05d.json
+        /path/to/frames/%05d.json
     '''
     pass
