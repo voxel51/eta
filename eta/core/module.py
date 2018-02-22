@@ -110,13 +110,34 @@ def find_metadata(module_name):
         the path to the module metadata file
 
     Raises:
-        ModuleMetadataError: if the module could not be found
+        ModuleMetadataError: if the module metadata file could not be found
     '''
     try:
         return find_all_metadata()[module_name]
     except KeyError:
         raise ModuleMetadataError(
             "Could not find module '%s'" % module_name)
+
+
+def find_exe(module_exe):
+    '''Finds the given module executable.
+
+    Module executables must be in one of the directories in
+    `eta.config.module_dirs`.
+
+    Returns:
+        the path to the module executable
+
+    Raises:
+        ModuleMetadataError: if the module executable could not be found
+    '''
+    for pdir in eta.config.module_dirs:
+        exe_path = os.path.join(pdir, module_exe)
+        if os.path.isfile(exe_path):
+            return exe_path
+
+    raise ModuleMetadataError(
+        "Could not find module executable '%s'" % module_exe)
 
 
 # @todo should pass a PipelineConfig instance here, not just the path. The need
