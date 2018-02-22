@@ -34,8 +34,10 @@ class ETAConfig(EnvConfig):
     '''Sytem-wide ETA configuration settings.'''
 
     def __init__(self, d):
+        self.config_dir = self.parse_string(
+            d, "config_dir", env_var="ETA_CONFIG_DIR", default="")
         self.output_dir = self.parse_string(
-            d, "output_dir", env_var="ETA_OUTPUT_DIR", default=None)
+            d, "output_dir", env_var="ETA_OUTPUT_DIR", default="")
         self.module_dirs = self.parse_string_array(
             d, "module_dirs", env_var="ETA_MODULE_DIRS", default=[])
         self.pipeline_dirs = self.parse_string_array(
