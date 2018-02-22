@@ -19,7 +19,6 @@ from future.utils import iteritems
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-from collections import OrderedDict
 from glob import glob
 import logging
 import os
@@ -506,7 +505,7 @@ class PipelineConnection(object):
 class PipelineMetadata(Configurable, HasBlockDiagram):
     '''Class the encapsulates the architecture of a pipeline.
 
-    A pipeline definition is valid if the following conditions are met:
+    A pipeline definition is valid if all of the following conditions are met:
         - every pipeline input is connected to at least one module input
         - every pipeline output is connected to exactly one module output
         - every module input either has a default value or has exactly one
@@ -515,6 +514,7 @@ class PipelineMetadata(Configurable, HasBlockDiagram):
             outgoing connection
         - every module parameter is either tunable, is set by the pipeline, or
             is exposed to the end-user as tunable
+        - the module graph defined by the pipeline is acyclic
 
     Attributes:
         info: a PipelineInfo instance describing the pipeline
@@ -523,6 +523,8 @@ class PipelineMetadata(Configurable, HasBlockDiagram):
         parameters: a dictionary mapping <module>.<parameter> strings to
             PipelineParameter instances
         modules: a dictionary mapping module names to PipelineModule instances
+        execution_order: a list of module names defining the order in which the
+            modules should be executed
         nodes: a list of PipelineNode instances describing the sources and
             sinks for all pipeline connections
         connections: a list of PipelineConnection instances describing the
@@ -544,7 +546,8 @@ class PipelineMetadata(Configurable, HasBlockDiagram):
         self.inputs = {}
         self.outputs = {}
         self.parameters = {}
-        self.modules = OrderedDict()  # module order encodes execution order
+        self.modules = {}
+        self.execution_order = []
         self.nodes = []
         self.connections = []
 
@@ -583,8 +586,8 @@ class PipelineMetadata(Configurable, HasBlockDiagram):
     def to_blockdiag(self):
         '''Returns a BlockdiagPipeline representation of this pipeline.'''
         bp = BlockdiagPipeline(self.info.name)
-        for name, module in iteritems(self.modules):
-            bp.add_module(name, module.metadata.to_blockdiag())
+        for name in self.execution_order:  # iterate in order of execution
+            bp.add_module(name, self.modules[name].metadata.to_blockdiag())
         for n in self.nodes:
             if n.is_pipeline_input:
                 bp.add_input(n.field)
@@ -639,6 +642,9 @@ class PipelineMetadata(Configurable, HasBlockDiagram):
 
         # Validate connections
         _validate_module_connections(self.modules, self.connections)
+
+        # Compute execution order
+        self.execution_order = _compute_execution_order(self.connections)
 
 
 class PipelineMetadataError(Exception):
