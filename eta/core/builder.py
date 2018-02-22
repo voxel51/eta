@@ -34,9 +34,25 @@ class PipelineRequestConfig(Config):
 
 
 class PipelineRequest(Configurable):
-    '''Pipeline request class.'''
+    '''Pipeline request class.
+
+    Attributes:
+        name: the name of the pipeline to be run
+        metadata: the PipelineMetadata instance for the pipeline
+        inputs: a dictionary mapping input names to input paths
+        parameters: a dictionary mapping <module>.<parameter> names to
+            parameter values
+    '''
 
     def __init__(self, config):
+        '''Creates a new PipelineRequest instance.
+
+        Args:
+            config: a PipelineRequestConfig instance.
+
+        Raises:
+            PipelineRequestError: if the pipeline request was invalid
+        '''
         self.validate(config)
 
         self.name = config.pipeline
