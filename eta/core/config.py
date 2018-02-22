@@ -108,6 +108,39 @@ class no_default(object):
     pass
 
 
+class ConfigBuilder(object):
+    '''A class for building Config instances field by field.'''
+
+    def __init__(self, cls):
+        '''Creates a ConfigBuilder instance for the given class.
+
+        Args:
+            cls: the Config subclass to build.
+        '''
+        self.cls = cls
+        self.fields = {}
+
+    def set(self, **kwargs):
+        '''Sets the given fields.
+
+        Args:
+            **kwargs: a dictionary of fields and values to set
+
+        Returns:
+            the ConfigBuilder instance
+        '''
+        self.fields.update(kwargs)
+        return self
+
+    def build(self):
+        '''Builds the Config instance.
+
+        Returns:
+            an instance of the Config subclass built from the provided fields
+        '''
+        return self.cls.from_dict(self.fields)
+
+
 class Config(Serializable):
     '''Base class for reading JSON configuration files.
 
