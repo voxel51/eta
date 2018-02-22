@@ -434,6 +434,11 @@ class PipelineNode(object):
         return str(self) == node_str
 
     @property
+    def is_pipeline_node(self):
+        '''Returns True/False if this node is a pipeline input or output.'''
+        return self.is_pipeline_input or self.is_pipeline_output
+
+    @property
     def is_pipeline_input(self):
         '''Returns True/False if this node is a pipeline input.'''
         return self._type == PipelineNodeType.PIPELINE_INPUT
@@ -442,6 +447,11 @@ class PipelineNode(object):
     def is_pipeline_output(self):
         '''Returns True/False if this node is a pipeline output.'''
         return self._type == PipelineNodeType.PIPELINE_OUTPUT
+
+    @property
+    def is_module_node(self):
+        '''Returns True/False if this node is a module input or output.'''
+        return self.is_module_input or self.is_module_output
 
     @property
     def is_module_input(self):
@@ -485,6 +495,11 @@ class PipelineConnection(object):
 
     def __str__(self):
         return "%s -> %s" % (self.source, self.sink)
+
+    @property
+    def is_module_connection(self):
+        '''Returns True/False if this connection is between module nodes.'''
+        return self.source.is_module_node and self.sink.is_module_node
 
 
 class PipelineMetadata(Configurable, HasBlockDiagram):
