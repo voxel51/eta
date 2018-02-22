@@ -1,3 +1,4 @@
+
 .DS_Store
 
 *.md5
@@ -11,13 +12,14 @@ __pycache__
 .project
 .pydevproject
 
-/docs/*.tex
-
-data
-out
-
 /config.json
+/configs
+/data
+/docs/*.tex
 /external
+/out
+
+/eta/cache
+
 /examples/**/data
 /examples/**/out
-/eta/cache
