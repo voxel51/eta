@@ -184,6 +184,23 @@ class Config(Serializable):
         '''
         return cls(d)
 
+    @classmethod
+    def builder(cls):
+        '''Returns a ConfigBuilder instance for this class.'''
+        return ConfigBuilder(cls)
+
+    @classmethod
+    def from_kwargs(cls, **kwargs):
+        '''Constructs a Config object from keyword arguments.
+
+        Args:
+            **kwargs: keyword arguments that define the fields expected by cls
+
+        Returns:
+            an instance of cls
+        '''
+        return cls(kwargs)
+
     @staticmethod
     def parse_object(d, key, cls, default=no_default):
         '''Parses an object attribute.
