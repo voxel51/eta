@@ -720,15 +720,18 @@ def _parse_input(name, connections, modules):
         raise PipelineMetadataError(
             "Pipeline input '%s' is not connected to any modules" % name)
 
-    fields = [
-        modules[node.module].metadata.get_input_field(node.field)
-        for node in sinks
+    nodes = [
+        modules[sink.module].metadata.get_input(sink.node)
+        for sink in sinks
     ]
-    return PipelineInput(name, fields)
+    return PipelineInput(name, nodes)
 
 
 def _parse_output(name, connections, modules):
     '''Parses the pipeline output with the given name.
+
+    A pipeline output is properly configured if it is connected to exactly one
+    module output.
 
     Args:
         name: the pipeline output name
@@ -745,21 +748,23 @@ def _parse_output(name, connections, modules):
     sources = _get_sources_with_sink(node_str, connections)
     if len(sources) != 1:
         raise PipelineMetadataError((
-            "Pipeline output '%s' must be connected to one module "
+            "Pipeline output '%s' must be connected to exactly one module "
             "output, but was connected to %d") % (name, len(sources))
         )
 
-    node = sources[0]
-    field = modules[node.module].metadata.get_output_field(node.field)
-    return PipelineOutput(name, field)
+    source = sources[0]
+    node = modules[source.module].metadata.get_output(source.node)
+    return PipelineOutput(name, node)
 
 
 def _validate_module_connections(modules, connections):
-    '''Ensures that the modules connections are valid, i.e., that:
-        - every module input either has a default value or one incoming
-            connection
-        - every module output either has a default value or at least one
-            outgoing connection
+    '''Ensures that the modules connections are valid.
+
+    The module connections are valid if:
+        - every module input either has exactly one incoming connection or is
+            not required
+        - every module output either has at least one outgoing connection or
+            is not required
 
     Args:
         modules: a dictionary mapping module names to ModuleMetadata instances
@@ -770,29 +775,29 @@ def _validate_module_connections(modules, connections):
     '''
     for mname, module in iteritems(modules):
         # Validate inputs
-        for iname, field in iteritems(module.metadata.inputs):
+        for iname, node in iteritems(module.metadata.inputs):
             node_str = PipelineNode.get_node_str(mname, iname)
             num_sources = len(_get_sources_with_sink(node_str, connections))
-            if num_sources == 0 and field.is_mandatory:
+            if num_sources == 0 and node.is_required:
                 raise PipelineMetadataError((
-                    "Module '%s' input '%s' has no default value and no "
-                    "incoming connection") % (mname, iname)
+                    "Module '%s' input '%s' is required but has no incoming "
+                    "connection") % (mname, iname)
                 )
             if num_sources > 1:
                 raise PipelineMetadataError((
                     "Module '%s' input '%s' must have one incoming connection "
-                    "but instead has %d connections") % (
+                    "but instead has %d incoming connections") % (
                         mname, iname, num_sources)
                 )
 
         # Validate outputs
-        for oname, field in iteritems(module.metadata.outputs):
+        for oname, node in iteritems(module.metadata.outputs):
             node_str = PipelineNode.get_node_str(mname, oname)
             num_sinks = len(_get_sinks_with_source(node_str, connections))
-            if num_sinks == 0 and field.is_mandatory:
+            if num_sinks == 0 and node.is_required:
                 raise PipelineMetadataError((
-                    "Module '%s' output '%s' has no default value and no "
-                    "outgoing connections") % (mname, oname)
+                    "Module '%s' output '%s' is required but has no outgoing "
+                    "connections") % (mname, oname)
                 )
 
 
@@ -818,8 +823,8 @@ def _compute_execution_order(connections):
         execution_order = module_graph.sort()
     except etag.CyclicGraphError:
         raise PipelineMetadataError(
-            "Unable to compute a valid execution order; "
-            "modules connections form a cyclic graph."
+            "Unable to compute a valid execution order because the module "
+            "connections form a cyclic graph."
         )
 
     return execution_order
@@ -853,32 +858,32 @@ def _get_sources_with_sink(node_str, connections):
     return [c.source for c in connections if c.sink.is_same_node_str(node_str)]
 
 
-def _parse_module_field_str(field_str):
-    '''Parses a module field string.
+def _parse_module_node_str(node_str):
+    '''Parses a module node string.
 
     Args:
-        field_str: a string of the form <module>.<field>
+        node_str: a string of the form <module>.<node>
 
     Returns:
-        the module and field components of the module field string
+        the module and node components of the module node string
 
     Raises:
-        PipelineMetadataError: if the module field string was invalid
+        PipelineMetadataError: if the module node string was invalid
     '''
     try:
-        module, field = field_str.split(".")
+        module, node = node_str.split(".")
     except ValueError:
         raise PipelineMetadataError(
-            "Expected '%s' to have form <module>.<field>" % field_str)
+            "Expected '%s' to have form <module>.<node>" % node_str)
 
-    return module, field
+    return module, node
 
 
-def _parse_node_str(node_str, inputs, outputs, modules):
+def _parse_pipeline_node_str(node_str, inputs, outputs, modules):
     '''Parses a pipeline node string.
 
     Args:
-        node_str: a string of the form <module>.<field>
+        node_str: a string of the form <module>.<node>
         inputs: a list of pipeline inputs
         outputs: a list of pipeline outputs
         modules: a dictionary mapping module names to PipelineModule
@@ -890,18 +895,16 @@ def _parse_node_str(node_str, inputs, outputs, modules):
     Raises:
         PipelineMetadataError: if the pipeline node string was invalid
     '''
-    module, field = _parse_module_field_str(node_str)
+    module, node = _parse_module_node_str(node_str)
 
     if module == PIPELINE_INPUT_NAME:
-        if field not in inputs:
-            raise PipelineMetadataError(
-                "Pipeline has no input '%s'" % field)
+        if node not in inputs:
+            raise PipelineMetadataError("Pipeline has no input '%s'" % node)
 
         _type = PipelineNodeType.PIPELINE_INPUT
     elif module == PIPELINE_OUTPUT_NAME:
-        if field not in outputs:
-            raise PipelineMetadataError(
-                "Pipeline has no output '%s'" % field)
+        if node not in outputs:
+            raise PipelineMetadataError("Pipeline has no output '%s'" % node)
 
         _type = PipelineNodeType.PIPELINE_OUTPUT
     else:
@@ -911,16 +914,16 @@ def _parse_node_str(node_str, inputs, outputs, modules):
             raise PipelineMetadataError(
                 "Module '%s' not found in pipeline" % module)
 
-        if meta.has_input(field):
+        if meta.has_input(node):
             _type = PipelineNodeType.MODULE_INPUT
-        elif meta.has_output(field):
+        elif meta.has_output(node):
             _type = PipelineNodeType.MODULE_OUTPUT
         else:
             raise PipelineMetadataError(
                 "Module '%s' has no input or output named '%s'" % (
-                    module, field))
+                    module, node))
 
-    return PipelineNode(module, field, _type)
+    return PipelineNode(module, node, _type)
 
 
 def _create_node_connection(source, sink, modules):
@@ -948,8 +951,8 @@ def _create_node_connection(source, sink, modules):
         raise PipelineMetadataError(
         "'%s' cannot be a connection sink" % sink)
     if source.is_module_output and sink.is_module_input:
-        src = modules[source.module].metadata.get_output_field(source.field)
-        snk = modules[sink.module].metadata.get_input_field(sink.field)
+        src = modules[source.module].metadata.get_output(source.node)
+        snk = modules[sink.module].metadata.get_input(sink.node)
         if not issubclass(src.type, snk.type):
             raise PipelineMetadataError(
                 (
