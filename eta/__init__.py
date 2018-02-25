@@ -42,8 +42,20 @@ class ETAConfig(EnvConfig):
             d, "module_dirs", env_var="ETA_MODULE_DIRS", default=[])
         self.pipeline_dirs = self.parse_string_array(
             d, "pipeline_dirs", env_var="ETA_PIPELINE_DIRS", default=[])
-        self.model_dirs = self.parse_string_array(
-            d, "model_dirs", env_var="ETA_MODEL_DIRS", default=[])
+        self.weights_dirs = self.parse_string_array(
+            d, "weights_dirs", env_var="ETA_WEIGHTS_DIRS", default=[])
+        self.default_sequence_idx = self.parse_string(
+            d, "default_sequence_idx", env_var="ETA_DEFAULT_SEQUENCE_IDX",
+            default="%05d")
+        self.default_file_ext = self.parse_string(
+            d, "default_file_ext", env_var="ETA_DEFAULT_FILE_EXT",
+            default="")
+        self.default_image_ext = self.parse_string(
+            d, "default_image_ext", env_var="ETA_DEFAULT_IMAGE_EXT",
+            default=".png")
+        self.default_video_ext = self.parse_string(
+            d, "default_video_ext", env_var="ETA_DEFAULT_VIDEO_EXT",
+            default=".mp4")
 
 
 def startup_message():
