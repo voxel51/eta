@@ -60,6 +60,15 @@ Now `import eta` will still work from anywhere, and any changes you make in
 your local copy of `eta/` will take effect immediately.
 
 
+## Installing the command-line utility
+
+To globally install the `eta` command-line utility on your machine, run
+
+```shell
+ln -s "$(pwd)/eta/eta" /usr/local/bin/eta
+```
+
+
 ## Testing your installation
 
 To test your installation, run the following commands:
