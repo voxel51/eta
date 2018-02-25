@@ -177,10 +177,10 @@ class ModuleMetadataConfig(Config):
 
     def __init__(self, d):
         self.info = self.parse_object(d, "info", ModuleInfoConfig)
-        self.inputs = self.parse_object_array(d, "inputs", ModuleFieldConfig)
-        self.outputs = self.parse_object_array(d, "outputs", ModuleFieldConfig)
+        self.inputs = self.parse_object_array(d, "inputs", ModuleNodeConfig)
+        self.outputs = self.parse_object_array(d, "outputs", ModuleNodeConfig)
         self.parameters = self.parse_object_array(
-            d, "parameters", ModuleFieldConfig)
+            d, "parameters", ModuleParameterConfig)
 
 
 class ModuleInfoConfig(Config):
@@ -366,16 +366,21 @@ class ModuleParameter(Configurable):
 class ModuleMetadata(Configurable, HasBlockDiagram):
     '''Class the encapsulates the architecture of a module.
 
-    A module definition is valid if each input, output, and parameter has a
-    type that is a subclass of eta.core.types.Builtin or eta.core.types.Data.
+    A module definition is valid if all of the following are true:
+        - all inputs and outputs have types that are subclasses of
+            eta.core.types.Data
+        - all parameters have types that are subclasses of
+            eta.core.types.Builtin or eta.core.types.Data
+        - any default parameter values are valid settings for their associated
+            parameter types
 
     Attributes:
         info: a ModuleInfo instance describing the module
-        inputs: a dictionary mapping input names to ModuleField instances
+        inputs: a dictionary mapping input names to ModuleNode instances
             describing the inputs
-        outputs: a dictionary mapping output names to ModuleField instances
+        outputs: a dictionary mapping output names to ModuleNode instances
             describing the outputs
-        parameters: a dictionary mapping parameter names to ModuleField
+        parameters: a dictionary mapping parameter names to ModuleParameter
             instances describing the parameters
     '''
 
@@ -409,30 +414,30 @@ class ModuleMetadata(Configurable, HasBlockDiagram):
         '''Returns True/False if the module has a parameter `name`.'''
         return name in self.parameters
 
-    def is_valid_input(self, name, val):
-        '''Returns True/False if `val` is a valid value for input `name`.'''
-        return self.get_input_field(name).is_valid_value(val)
+    def is_valid_input(self, name, path):
+        '''Returns True/False if `path` is a valid path for input `name`.'''
+        return self.get_input(name).is_valid_path(path)
 
-    def is_valid_output(self, name, val):
-        '''Returns True/False if `val` is a valid value for output `name`.'''
-        return self.get_output_field(name).is_valid_value(val)
+    def is_valid_output(self, name, path):
+        '''Returns True/False if `path` is a valid path for output `name`.'''
+        return self.get_output(name).is_valid_path(path)
 
     def is_valid_parameter(self, name, val):
         '''Returns True/False if `val` is a valid value for parameter
         `name`.
         '''
-        return self.get_parameter_field(name).is_valid_value(val)
+        return self.get_parameter(name).is_valid_value(val)
 
-    def get_input_field(self, name):
-        '''Returns the ModuleField for input `name`.'''
+    def get_input(self, name):
+        '''Returns the ModuleNode instance for input `name`.'''
         return self.inputs[name]
 
-    def get_output_field(self, name):
-        '''Returns the ModuleField for output `name`.'''
+    def get_output(self, name):
+        '''Returns the ModuleNode instance for output `name`.'''
         return self.outputs[name]
 
-    def get_parameter_field(self, name):
-        '''Returns the ModuleField for parameter `name`.'''
+    def get_parameter(self, name):
+        '''Returns the ModuleParameter instance for parameter `name`.'''
         return self.parameters[name]
 
     def to_blockdiag(self):
@@ -449,11 +454,11 @@ class ModuleMetadata(Configurable, HasBlockDiagram):
     def _parse_metadata(self, config):
         self.info = ModuleInfo(config.info)
         for i in config.inputs:
-            self.inputs[i.name] = ModuleField(i)
+            self.inputs[i.name] = ModuleNode(i)
         for o in config.outputs:
-            self.outputs[o.name] = ModuleField(o)
+            self.outputs[o.name] = ModuleNode(o)
         for p in config.parameters:
-            self.parameters[p.name] = ModuleField(p)
+            self.parameters[p.name] = ModuleParameter(p)
 
 
 class ModuleMetadataError(Exception):
