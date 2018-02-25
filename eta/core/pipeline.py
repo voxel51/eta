@@ -42,6 +42,39 @@ PIPELINE_INPUT_NAME = "INPUT"
 PIPELINE_OUTPUT_NAME = "OUTPUT"
 
 
+def run(pipeline_config_path):
+    '''Run the pipeline specified by the PipelineConfig.
+
+    Args:
+        pipeline_config_path: path to a PipelineConfig file
+    '''
+    # Load config
+    pipeline_config = PipelineConfig.from_json(pipeline_config_path)
+
+    # Convert to absolute path so jobs can find the pipeline config later
+    # regardless of their working directory
+    pipeline_config_path = os.path.abspath(pipeline_config_path)
+
+    # Setup logging
+    etal.custom_setup(pipeline_config.logging_config, rotate=True)
+
+    # Run pipeline
+    logger.info("Starting pipeline '%s'\n", pipeline_config.name)
+    overwrite = pipeline_config.overwrite
+    ran_job = False
+    with etau.WorkingDir(pipeline_config.working_dir):
+        for job_config in pipeline_config.jobs:
+            if ran_job and not overwrite:
+                logger.info(
+                    "Config change detected, running all remaining jobs")
+                overwrite = True
+
+            job_config.pipeline_config_path = pipeline_config_path
+            ran_job = etaj.run(job_config, overwrite=overwrite)
+
+    logger.info("Pipeline '%s' complete", pipeline_config.name)
+
+
 def load_all_metadata():
     '''Loads all pipeline metadata files.
 
@@ -129,39 +162,6 @@ def find_metadata(pipeline_name):
     except KeyError:
         raise PipelineMetadataError(
             "Could not find pipeline '%s'" % pipeline_name)
-
-
-def run(pipeline_config_path):
-    '''Run the pipeline specified by the PipelineConfig.
-
-    Args:
-        pipeline_config_path: path to a PipelineConfig file
-    '''
-    # Load config
-    pipeline_config = PipelineConfig.from_json(pipeline_config_path)
-
-    # Convert to absolute path so jobs can find the pipeline config later
-    # regardless of their working directory
-    pipeline_config_path = os.path.abspath(pipeline_config_path)
-
-    # Setup logging
-    etal.custom_setup(pipeline_config.logging_config, rotate=True)
-
-    # Run pipeline
-    logger.info("Starting pipeline '%s'\n", pipeline_config.name)
-    overwrite = pipeline_config.overwrite
-    ran_job = False
-    with etau.WorkingDir(pipeline_config.working_dir):
-        for job_config in pipeline_config.jobs:
-            if ran_job and not overwrite:
-                logger.info(
-                    "Config change detected, running all remaining jobs")
-                overwrite = True
-
-            job_config.pipeline_config_path = pipeline_config_path
-            ran_job = etaj.run(job_config, overwrite=overwrite)
-
-    logger.info("Pipeline '%s' complete", pipeline_config.name)
 
 
 class PipelineConfig(Config):
