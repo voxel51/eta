@@ -14,6 +14,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
+from future.utils import iteritems
 import six
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
@@ -120,8 +121,8 @@ class no_default(object):
     pass
 
 
-class ConfigBuilder(object):
-    '''A class for building Config instances field by field.'''
+class ConfigBuilder(Serializable):
+    '''A class for building Config instances programmatically.'''
 
     def __init__(self, cls):
         '''Creates a ConfigBuilder instance for the given class.
@@ -129,28 +130,75 @@ class ConfigBuilder(object):
         Args:
             cls: the Config subclass to build.
         '''
-        self.cls = cls
-        self.fields = {}
+        self._cls = cls
+        self._attributes = []
+        self._is_validated = False
 
     def set(self, **kwargs):
-        '''Sets the given fields.
+        '''Sets the given attributes.
 
         Args:
-            **kwargs: a dictionary of fields and values to set
+            **kwargs: a dictionary of attributes and values to set
 
         Returns:
             the ConfigBuilder instance
         '''
-        self.fields.update(kwargs)
+        for k, v in iteritems(kwargs):
+            setattr(self, k, v)
+            self._attributes.append(k)
+        self._is_validated = False
+        return self
+
+    def validate(self):
+        '''Validates that the ConfigBuilder instance is ready to be built or
+        serialized.
+
+        Returns:
+            the ConfigBuilder instance
+
+        Raises:
+            ConfigError: if the required attributes were not provided to build
+                the specified Config subclass
+        '''
+        self.build()
+        self._is_validated = True
         return self
 
     def build(self):
-        '''Builds the Config instance.
+        '''Builds the Config subclass instance from this builder.
 
         Returns:
-            an instance of the Config subclass built from the provided fields
+            the Config subclass instance
+
+        Raises:
+            ConfigError: if the required attributes were not provided to build
+                the specified Config subclass
         '''
-        return self.cls.from_dict(self.fields)
+        return self._cls.from_dict(self._serialize())
+
+    def serialize(self):
+        '''Serializes the ConfigBuilder into a dictionary.
+
+        Raises:
+            ConfigBuilderError: if the builder has not been validated
+        '''
+        if not self._is_validated:
+            raise ConfigBuilderError(
+                "Must call validate() before serializing a ConfigBuilder")
+
+        return self._serialize()
+
+    def _serialize(self):
+        return super(ConfigBuilder, self).serialize(
+            attributes=self._attributes)
+
+    @classmethod
+    def from_json(*args, **kwargs):
+        raise NotImplementedError("ConfigBuilders cannot be read from JSON")
+
+
+class ConfigBuilderError(Exception):
+    pass
 
 
 class Config(Serializable):
