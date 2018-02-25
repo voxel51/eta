@@ -365,7 +365,7 @@ class ModuleParameter(Configurable):
         if self.is_builtin:
             is_valid = self.type.is_valid_value(self.default)
         else:
-            is_valid = elf.type.is_valid_path(self.default)
+            is_valid = self.type.is_valid_path(self.default)
         if not is_valid:
             raise ModuleMetadataError((
                 "Default value '%s' is invalid for module parameter '%s' of "
