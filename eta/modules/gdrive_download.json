@@ -10,14 +10,16 @@
         {
             "name": "google_drive_id",
             "type": "eta.core.types.String",
-            "description": "The ID of the file to download from Google Drive"
+            "description": "The ID of the file to download from Google Drive",
+            "required": true
         }
     ],
     "outputs": [
         {
             "name": "filename",
             "type": "eta.core.types.File",
-            "description": "The output destination for the downloaded file"
+            "description": "The output destination for the downloaded file",
+            "required": true
         }
     ],
     "parameters": []
