@@ -194,19 +194,25 @@ class ModuleInfoConfig(Config):
         self.exe = self.parse_string(d, "exe")
 
 
-# This exists so that None can be a default value for module fields
-class mandatory(object):
-    pass
-
-
-class ModuleFieldConfig(Config):
-    '''Module field descriptor configuration.'''
+class ModuleNodeConfig(Config):
+    '''Module I/O node descriptor configuration.'''
 
     def __init__(self, d):
         self.name = self.parse_string(d, "name")
         self.type = self.parse_string(d, "type")
         self.description = self.parse_string(d, "description")
-        self.default = self.parse_raw(d, "default", default=mandatory)
+        self.required = self.parse_bool(d, "required", default=True)
+
+
+class ModuleParameterConfig(Config):
+    '''Module parameter descriptor configuration.'''
+
+    def __init__(self, d):
+        self.name = self.parse_string(d, "name")
+        self.type = self.parse_string(d, "type")
+        self.description = self.parse_string(d, "description")
+        self.required = self.parse_bool(d, "required", default=True)
+        self.default = self.parse_raw(d, "default", default=None)
 
 
 class ModuleInfo(Configurable):
@@ -238,56 +244,123 @@ class ModuleInfo(Configurable):
         return type_
 
 
-class ModuleField(Configurable):
-    '''Module field descriptor.
+class ModuleNode(Configurable):
+    '''Module I/O node descriptor.
 
-    A module field definition is valid if its type is a subclass of
-    eta.core.types.Builtin or eta.core.types.Data.
+    Module nodes must be subclasses of eta.core.types.Data.
 
     Attributes:
-        name: the name of the field
-        type: the eta.core.types.Type of the field
-        description: a free text description of the field
-        default: the default value (if any) of the field
+        name: the name of the node
+        type: the eta.core.types.Type of the node
+        description: a free text description of the node
+        required: whether the node is required
+    '''
+
+    def __init__(self, config):
+        '''Creates a new ModuleNode instance.
+
+        Args:
+            config: a ModuleNodeConfig instance
+
+        Raises:
+        '''
+        self.validate(config)
+
+        self.name = config.name
+        self.type = self._parse_type(config.type)
+        self.description = config.description
+        self.required = config.required
+
+    def is_valid_path(self, path):
+        '''Returns True/False indicating whether the given path is a valid
+        setting for this node.'''
+        return self.type.is_valid_path(path)
+
+    @property
+    def is_required(self):
+        '''Returns True/False if this node is required.'''
+        return self.required
+
+    def _parse_type(self, type_str):
+        type_ = etat.parse_type(type_str)
+        if not etat.is_data(type_):
+            raise ModuleMetadataError((
+                "Module node '%s' has type '%s' but must be a subclass "
+                "of Data") % (self.name, type_))
+        return type_
+
+
+class ModuleParameter(Configurable):
+    '''Module parameter descriptor.
+
+    Module parameters must be subclasses of eta.core.types.Builtin or
+    eta.core.types.Data
+
+    Attributes:
+        name: the name of the parameter
+        type: the eta.core.types.Type of the parameter
+        description: a free text description of the parameter
+        required: whether the parameter is required
+        default: an optional default value for the parameter
     '''
 
     def __init__(self, config):
         self.validate(config)
 
         self.name = config.name
-        self.type = self._parse_type(config.type)
+        self.type = self._parse_type(config.name, config.type)
         self.description = config.description
+        self.required = config.required
         self.default = config.default
+
+        if self.has_default_value:
+            self._validate_default()
 
     def is_valid_value(self, val):
         '''Returns True/False indicating whether the given value is a valid
-        setting for this field.'''
+        setting for this parameter.'''
         if self.is_builtin:
             return self.type.is_valid_value(val)
         return self.type.is_valid_path(val)
 
     @property
-    def is_mandatory(self):
-        '''Returns True/False indicating whether this field is mandatory.'''
-        return self.default is mandatory
+    def is_required(self):
+        '''Returns True/False if this parameter is required.'''
+        return self.required
+
+    @property
+    def has_default_value(self):
+        '''Returns True/false if this parameter has a default value.'''
+        return self.default is not None
 
     @property
     def is_builtin(self):
-        '''Returns True/False indicating whether this field is a Builtin.'''
+        '''Returns True/False if this parameter is a Builtin.'''
         return etat.is_builtin(self.type)
 
     @property
     def is_data(self):
-        '''Returns True/False indicating whether this field is Data.'''
+        '''Returns True/False if this parameter is Data.'''
         return etat.is_data(self.type)
 
     @staticmethod
-    def _parse_type(type_str):
+    def _parse_type(name, type_str):
         type_ = etat.parse_type(type_str)
         if not etat.is_builtin(type_) and not etat.is_data(type_):
-            raise ModuleMetadataError(
-                "'%s' is not a valid Builtin or Data type" % type_)
+            raise ModuleMetadataError((
+                "Module parameter '%s' has type '%s' but must be a subclass "
+                "of Builtin or Data") % (name, type_))
         return type_
+
+    def _validate_default(self):
+        if self.is_builtin:
+            is_valid = self.type.is_valid_value(self.default)
+        else:
+            is_valid = elf.type.is_valid_path(self.default)
+        if not is_valid:
+            raise ModuleMetadataError((
+                "Default value '%s' is invalid for module parameter '%s' of "
+                "'%s'") % (self.default, self.name, self.type))
 
 
 class ModuleMetadata(Configurable, HasBlockDiagram):
