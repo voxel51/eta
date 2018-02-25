@@ -28,10 +28,37 @@ import os
 
 import numpy as np
 
+import eta
 from eta.core.config import Config, Configurable
-from eta import constants
-from eta.core import utils
-from eta.core import web
+import eta.constants as etac
+import eta.core.utils as etau
+import eta.core.web as etaw
+
+
+def find_weights(weights_file):
+    '''Finds the given weights file, which must be located in a directory in
+    `eta.config.weights_dirs`.
+
+    Args:
+        weights_file: the filename (with extension) of the weights file
+
+    Returns:
+        the full path to the weights file
+
+    Raises:
+        WeightsError: if the weights file could not be found
+    '''
+    for wdir in eta.config.weights_dirs:
+        fullpath = os.path.join(wdir, weights_file)
+        if os.path.isfile(fullpath):
+            return fullpath
+
+    raise WeightsError(
+        "The weights file '%s' could not be found" % weights_file)
+
+
+class WeightsError(Exception):
+    pass
 
 
 class WeightsConfig(Config):
