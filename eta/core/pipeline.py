@@ -259,22 +259,22 @@ class PipelineInput(object):
 
     Attributes:
         name: the input name
-        fields: the list ModuleField instance(s) of the module input field(s)
+        nodes: the list ModuleNode instance(s) of the module input node(s)
             that the pipeline input is connected to
     '''
 
-    def __init__(self, name, fields):
+    def __init__(self, name, nodes):
         self.name = name
-        self.fields = fields
+        self.nodes = nodes
 
     @property
-    def is_mandatory(self):
-        '''Returns True/False if this input is mandatory.'''
-        return any(field.is_mandatory for field in self.fields)
+    def is_required(self):
+        '''Returns True/False if this input is required.'''
+        return any(node.is_required for node in self.nodes)
 
-    def is_valid_value(self, val):
-        '''Returns True/False if `val` is a valid value for this input.'''
-        return all(field.is_valid_value(val) for field in self.fields)
+    def is_valid_path(self, path):
+        '''Returns True/False if `path` is a valid path for this input.'''
+        return all(node.is_valid_path(path) for node in self.nodes)
 
 
 class PipelineOutput(object):
@@ -282,17 +282,17 @@ class PipelineOutput(object):
 
     Attributes:
         name: the output name
-        field: the ModuleField instance of the module output field that the
-            pipeline output is connected to
+        node: the ModuleNode instance of the module output that the pipeline
+            output is connected to
     '''
 
-    def __init__(self, name, field):
+    def __init__(self, name, node):
         self.name = name
-        self.field = field
+        self.node = node
 
-    def is_valid_value(self, val):
-        '''Returns True/False if `val` is a valid value for this output.'''
-        return self.field.is_valid_value(val)
+    def is_valid_path(self, path):
+        '''Returns True/False if `path` is a valid path for this output.'''
+        return self.node.is_valid_path(path)
 
 
 class PipelineParameter(object):
