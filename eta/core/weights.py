@@ -66,7 +66,7 @@ class WeightsConfig(Config):
 
     def __init__(self, d):
         self.cache_dir = self.parse_string(
-            d, "cache_dir", default=constants.DEFAULT_CACHE_DIR)
+            d, "cache_dir", default=etac.DEFAULT_CACHE_DIR)
         self.filename = self.parse_string(d, "filename")
         self.url = self.parse_string(d, "url", default=None)
         self.google_drive_id = self.parse_string(
@@ -98,14 +98,14 @@ class Weights(Configurable, dict):
         self.config = config
 
         if not os.path.isfile(self.config.path):
-            utils.ensure_basedir(self.config.path)
+            etau.ensure_basedir(self.config.path)
 
             # Download the weights from the web.
             if self.config.google_drive_id:
-                web.download_google_drive_file(
+                etaw.download_google_drive_file(
                     self.config.google_drive_id, path=self.config.path)
             elif self.config.url:
-                web.download_file(
+                etaw.download_file(
                     self.config.url, path=self.config.path)
             else:
                 raise OSError(
