@@ -10,14 +10,16 @@
         {
             "name": "input_path",
             "type": "eta.core.types.Video",
-            "description": "The input video"
+            "description": "The input video",
+            "required": true
         }
     ],
     "outputs": [
         {
             "name": "output_path",
             "type": "eta.core.types.Video",
-            "description": "The output resized video"
+            "description": "The output resized video",
+            "required": true
         }
     ],
     "parameters": [
@@ -25,25 +27,25 @@
             "name": "size",
             "type": "eta.core.types.Array",
             "description": "The output [width, height] of the video",
-            "default": null
+            "required": false
         },
         {
             "name": "scale",
             "type": "eta.core.types.Number",
             "description": "A numeric scale factor",
-            "default": null
+            "required": false
         },
         {
             "name": "scale_str",
             "type": "eta.core.types.String",
             "description": "A scale string; an argument for ffmpeg scale=",
-            "default": null
+            "required": false
         },
         {
             "name": "ffmpeg_out_opts",
             "type": "eta.core.types.Array",
             "description": "An array of ffmpeg output options",
-            "default": null
+            "required": false
         }
     ]
 }
