@@ -166,8 +166,8 @@ class BlockdiagPipeline(BlockdiagFile):
             sink (PipelineNode): the sink of the edge
         '''
         # Apply name prefixes
-        src = source.field
-        snk = sink.field
+        src = source.node
+        snk = sink.node
         if source.is_module_input or source.is_module_output:
             src = self._get_prefix(source.module) + src
         if sink.is_module_input or sink.is_module_output:
