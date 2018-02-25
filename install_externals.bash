@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Install external dependencies
 #
 # @todo Installing OpenCV 2 in a virtual environment doesn't seem to work. The
