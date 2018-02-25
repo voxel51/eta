@@ -1,8 +1,6 @@
 '''
 ETA core type system.
 
-@todo document the semantics of each type more fully.
-
 Copyright 2018, Voxel51, LLC
 voxel51.com
 
@@ -24,21 +22,16 @@ import six
 import numbers
 import os
 
+import eta
 import eta.core.utils as etau
-import eta.core.video as etav
+import eta.core.weights as etaw
 
 
 ###### Utilities ###############################################################
 
 
 def parse_type(type_str):
-    '''Parses the type string and returns the associated type.
-
-    Args:
-        type_str: a string like "eta.core.types.Video
-
-    Returns:
-        the Type class referred to by the given type string
+    '''Parses the type string and returns the associated Type.
 
     Raises:
         TypeError: is the type string was not a recognized type
