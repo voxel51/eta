@@ -172,6 +172,15 @@ class BaseModuleConfig(Config):
             default=etal.LoggingConfig.default())
 
 
+class GenericModuleConfig(Config):
+    '''Generic module configuration class.'''
+
+    def __init__(self, d):
+        self.inputs = self.parse_dict(d, "inputs", default={})
+        self.outputs = self.parse_dict(d, "outputs", default={})
+        self.parameters = self.parse_dict(d, "parameters", default={})
+
+
 class ModuleMetadataConfig(Config):
     '''Module metadata configuration class.'''
 
