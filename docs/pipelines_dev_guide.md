@@ -41,28 +41,23 @@ formatting pipeline:
 ```json
 {
     "info": {
-        "name": "video-formatter",
+        "name": "video_formatter",
         "type": "eta.core.types.Pipeline",
         "version": "0.1.0",
         "description": "A pipeline for formatting video files"
     },
-    "inputs": ["video", "event_detection"],
+    "inputs": ["video"],
     "outputs": ["sampled_frames"],
     "modules": [
         {
             "name": "resize_videos",
-            "set_parameters": {},
-            "tunable_parameters": ["size", "scale"]
-        },
-        {
-            "name": "clip_videos",
-            "set_parameters": {},
-            "tunable_parameters": ["frames"]
+            "tunable_parameters": ["size", "scale"],
+            "set_parameters": {}
         },
         {
             "name": "sample_videos",
-            "set_parameters": {},
-            "tunable_parameters": ["fps"]
+            "tunable_parameters": ["fps"],
+            "set_parameters": {}
         }
     ],
     "connections": [
@@ -71,15 +66,7 @@ formatting pipeline:
             "sink": "resize_videos.input_path"
         },
         {
-            "source": "INPUT.event_detection",
-            "sink": "clip_videos.events_json_path"
-        },
-        {
             "source": "resize_videos.output_path",
-            "sink": "clip_videos.input_path"
-        },
-        {
-            "source": "clip_videos.output_path",
             "sink": "sample_videos.input_path"
         },
         {
@@ -119,25 +106,29 @@ The `info` spec contains the following fields:
 - `description`: a short free-text description of the pipeline purpose and
     implementation
 
+The `inputs` field defines the names of the inputs exposed by the pipeline
+
+The `outputs` field defines the names of the outputs exposed by the pipeline
+
 The `modules` field contains a list of module specs with the following fields:
 
 - `name`: the name of the module to include
 
-- `set_parameters`: a dictionary whose keys are module parameters and whose
-    values are values to assign to those parameters
-
 - `tunable_parameters': a list of module parameters that are exposed to the
     end-user for tuning
+
+- `set_parameters`: a dictionary whose keys are module parameters and whose
+    values are values to assign to those parameters
 
 The `connections` field contains a list of connection (edge) specs with the
 following fields:
 
 - `source`: the source (starting point) of the edge. The syntax for a source is
-    `"<module>.<field>"`. Alternatively, the special module `"INPUT"` can be
+    `"<module>.<node>"`. Alternatively, the special module `"INPUT"` can be
     used to refer to a pipeline input
 
 - `sink`: the sink (stopping point) of the edge. The syntax for a sink is
-    `"<module>.<field>"`. Alternatively, the special module `"OUTPUT"` can be
+    `"<module>.<node>"`. Alternatively, the special module `"OUTPUT"` can be
     used to refer to a pipeline output
 
 The pipeline metadata file defines the connectivity of the computation graph.
@@ -163,33 +154,30 @@ pipeline = etap.load_metadata("video_formatter")
 pipeline.render("pipeline_block_diagram.svg")
 ```
 
-The above code generates a `block_diagram.svg` vector graphics image of the
-block diagram. It also generates the following intermediate
-`block_diagram.diag` file describing the network architecture:
+The above code generates a `pipeline_block_diagram.svg` vector graphics image
+of the pipeline block diagram. It also generates the following intermediate
+`pipeline_block_diagram.diag` file describing the network architecture:
 
 ```
 blockdiag {
 
   // inputs
   video [width = 114, shape = cloud, height = 40];
-  event_detection [width = 214, shape = cloud, height = 40];
 
   // outputs
   sampled_frames [width = 204, shape = cloud, height = 40];
 
   // connections
   video -> 1.input_path;
-  event_detection -> 2.events_json_path;
   1.output_path -> 2.input_path;
-  2.output_path -> 3.input_path;
-  3.output_path -> sampled_frames;
+  2.output_path -> sampled_frames;
 
   // modules
   group {
     color = "#AAAAAA";
 
     // module
-    1.resize-videos [width = 110, shape = box, height = 60];
+    1.resize_videos [width = 110, shape = box, height = 60];
 
     // inputs
     1.input_path [width = 164, shape = endpoint, height = 40];
@@ -204,73 +192,45 @@ blockdiag {
     1.ffmpeg_out_opts [width = 40, shape = beginpoint, rotate = 270, height = 214];
 
     // I/O connections
-    1.input_path -> 1.resize-videos;
-    1.resize-videos -> 1.output_path;
+    1.input_path -> 1.resize_videos;
+    1.resize_videos -> 1.output_path;
 
     // parameter connections
     group {
       color = "#EE7531";
       orientation = portrait;
-      1.size -> 1.resize-videos;
-      1.scale -> 1.resize-videos;
-      1.scale_str -> 1.resize-videos;
-      1.ffmpeg_out_opts -> 1.resize-videos;
+      1.size -> 1.resize_videos;
+      1.scale -> 1.resize_videos;
+      1.scale_str -> 1.resize_videos;
+      1.ffmpeg_out_opts -> 1.resize_videos;
     }
   }
   group {
     color = "#AAAAAA";
 
     // module
-    2.clip-videos [width = 94, shape = box, height = 60];
+    2.sample_videos [width = 110, shape = box, height = 60];
 
     // inputs
     2.input_path [width = 164, shape = endpoint, height = 40];
-    2.events_json_path [width = 224, shape = endpoint, height = 40];
+    2.clips_path [width = 164, shape = endpoint, height = 40];
 
     // outputs
     2.output_path [width = 174, shape = endpoint, height = 40];
 
     // parameters
-    2.frames [width = 40, shape = beginpoint, rotate = 270, height = 124];
+    2.fps [width = 40, shape = beginpoint, rotate = 270, height = 94];
 
     // I/O connections
-    2.input_path -> 2.clip-videos;
-    2.events_json_path -> 2.clip-videos;
-    2.clip-videos -> 2.output_path;
+    2.input_path -> 2.sample_videos;
+    2.clips_path -> 2.sample_videos;
+    2.sample_videos -> 2.output_path;
 
     // parameter connections
     group {
       color = "#EE7531";
       orientation = portrait;
-      2.frames -> 2.clip-videos;
-    }
-  }
-  group {
-    color = "#AAAAAA";
-
-    // module
-    3.sample-videos [width = 110, shape = box, height = 60];
-
-    // inputs
-    3.input_path [width = 164, shape = endpoint, height = 40];
-    3.clips_path [width = 164, shape = endpoint, height = 40];
-
-    // outputs
-    3.output_path [width = 174, shape = endpoint, height = 40];
-
-    // parameters
-    3.fps [width = 40, shape = beginpoint, rotate = 270, height = 94];
-
-    // I/O connections
-    3.input_path -> 3.sample-videos;
-    3.clips_path -> 3.sample-videos;
-    3.sample-videos -> 3.output_path;
-
-    // parameter connections
-    group {
-      color = "#EE7531";
-      orientation = portrait;
-      3.fps -> 3.sample-videos;
+      2.fps -> 2.sample_videos;
     }
   }
 }
