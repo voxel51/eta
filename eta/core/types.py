@@ -49,6 +49,14 @@ def parse_type(type_str):
         raise TypeError("Unknown type '%s'" % type_str)
 
 
+def resolve_value(val, type_):
+    '''Resolves the given value of the given type.'''
+    if isinstance(type_, Weights):
+        val = etaw.find_weights(val)
+
+    return val
+
+
 def is_pipeline(type_):
     '''Returns True/False if the given type is a subtype of Pipeline.'''
     return issubclass(type_, Pipeline)
