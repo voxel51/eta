@@ -10,20 +10,22 @@
         {
             "name": "input_path",
             "type": "eta.core.types.Video",
-            "description": "The input video"
+            "description": "The input video",
+            "required": true
         },
         {
             "name": "clips_path",
             "type": "eta.core.types.EventDetection",
             "description": "Per-frame binary labels indicating which frames to sample",
-            "default": null
+            "required": false
         }
     ],
     "outputs": [
         {
             "name": "output_path",
             "type": "eta.core.types.ImageSequence",
-            "description": "The output pattern to write the sampled video frames"
+            "description": "The output pattern to write the sampled video frames",
+            "required": true
         }
     ],
     "parameters": [
@@ -31,7 +33,7 @@
             "name": "fps",
             "type": "eta.core.types.Number",
             "description": "The output frame rate",
-            "default": null
+            "required": false
         }
     ]
 }
