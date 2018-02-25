@@ -452,20 +452,20 @@ class PipelineNode(object):
 
     Attributes:
         module: the module name
-        field: the field name
+        node: the node name
     '''
 
-    def __init__(self, module, field, _type):
+    def __init__(self, module, node, _type):
         self.module = module
-        self.field = field
+        self.node = node
         self._type = _type
 
     def __str__(self):
-        return "%s.%s" % (self.module, self.field)
+        return "%s.%s" % (self.module, self.node)
 
     def is_same_node(self, node):
         '''Returns True/False if the given node is equal to this node, i.e.,
-        if they refer to the same field of the same module.
+        if they refer to the same node of the same module.
         '''
         return str(self) == str(node)
 
@@ -514,11 +514,11 @@ class PipelineNode(object):
         return "%s.%s" % (PIPELINE_OUTPUT_NAME, name)
 
     @staticmethod
-    def get_node_str(module, field):
+    def get_node_str(module, node):
         '''Gets the node string for a pipeline node with the given module and
-        field names.
+        node names.
         '''
-        return "%s.%s" % (module, field)
+        return "%s.%s" % (module, node)
 
 
 class PipelineConnection(object):
