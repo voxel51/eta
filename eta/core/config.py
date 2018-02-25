@@ -40,8 +40,8 @@ class Configurable(object):
 
     @classmethod
     def from_json(cls, json_path):
-        '''Encapsulates the common behavior of loading a configuration from a
-        JSON file and then instantiating the class.
+        '''Encapsulates the common behavior of instantiating a Configurable
+        class from a Config JSON file.
 
         Args:
             json_path: path to a JSON config of type <cls>Config
@@ -49,11 +49,24 @@ class Configurable(object):
         Returns:
             an instance of cls instantiated from the config
         '''
-        cls_, config_cls = Configurable.parse(
-            cls.__name__, module_name=cls.__module__)
-        assert cls == cls_, "Expected %s, found %s" % (cls, cls_)
-        config = config_cls.from_json(json_path)
-        return cls(config)
+        config_cls = Configurable.parse(
+            cls.__name__, module_name=cls.__module__)[1]
+        return cls(config_cls.from_json(json_path))
+
+    @classmethod
+    def from_dict(cls, d):
+        '''Encapsulates the common behavior of instantiating a Configurable
+        class from a Config JSON dictionary.
+
+        Args:
+            d: a JSON dictionary of type <cls>Config
+
+        Returns:
+            an instance of cls instantiated from the config
+        '''
+        config_cls = Configurable.parse(
+            cls.__name__, module_name=cls.__module__)[1]
+        return cls(config_cls.from_dict(d))
 
     @classmethod
     def validate(cls, config):
@@ -65,7 +78,8 @@ class Configurable(object):
         actual = config.__class__.__name__
         expected = cls.__name__ + "Config"
         if expected != actual:
-            raise ConfigurableError(actual, expected)
+            raise ConfigurableError(
+                "Found Config '%s'; expected '%s'" % (actual, expected))
 
     @staticmethod
     def parse(class_name, module_name=None):
@@ -98,9 +112,7 @@ class Configurable(object):
 
 
 class ConfigurableError(Exception):
-    def __init__(self, actual, expected):
-        message = "Found config '%s', expected '%s'" % (actual, expected)
-        super(ConfigurableError, self).__init__(message)
+    pass
 
 
 # This exists so that None can be a default value for Config fields
