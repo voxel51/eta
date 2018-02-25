@@ -61,9 +61,12 @@ class ETAConfig(EnvConfig):
 def startup_message():
     '''Logs ETA startup message.'''
     logger.info("Starting...\n" + etac.ASCII_ART)
-    logger.info("%s %s, %s", etac.NAME, etac.VERSION, etac.AUTHOR)
+    logger.info(version)
     logger.info("Revision %s\n", etau.get_eta_rev())
 
+
+# Version string
+version = "%s %s, %s" % (etac.NAME, etac.VERSION, etac.AUTHOR)
 
 # Default logging behavior
 etal.basic_setup()
