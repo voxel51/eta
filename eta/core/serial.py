@@ -29,6 +29,21 @@ import numpy as np
 import eta.core.utils as etau
 
 
+def load_json(path_or_str):
+    '''Loads JSON from argument.
+
+    Args:
+        path_or_str: can either be the path to a JSON file or a JSON string
+
+    Returns:
+        the JSON dictionary
+    '''
+    if os.path.isfile(path_or_str):
+        return read_json(path_or_str)
+    else:
+        return json.loads(path_or_str)
+
+
 def read_json(path):
     '''Reads JSON from file.'''
     with open(path, "rt") as f:
