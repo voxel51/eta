@@ -548,12 +548,12 @@ class PipelineMetadata(Configurable, HasBlockDiagram):
     A pipeline definition is valid if all of the following conditions are met:
         - every pipeline input is connected to at least one module input
         - every pipeline output is connected to exactly one module output
-        - every module input either has a default value or has exactly one
-            incoming connection
-        - every module output either has a default value or has at least one
-            outgoing connection
-        - every module parameter is either tunable, is set by the pipeline, or
-            is exposed to the end-user as tunable
+        - every module input either has exactly one incoming connection or is
+            not required
+        - every module output either has at least one outgoing connection or
+            is not required
+        - every *required* module parameter is exposed to the end-user as
+            tunable, is set by the pipeline, and/or has a default value
         - the module graph defined by the pipeline is acyclic
 
     Attributes:
@@ -561,7 +561,8 @@ class PipelineMetadata(Configurable, HasBlockDiagram):
         inputs: a dictionary mapping input names to PipelineInput instances
         outputs: a dictionary mapping output names to PipelineOutput instances
         parameters: a dictionary mapping <module>.<parameter> strings to
-            PipelineParameter instances
+            PipelineParameter instances describing the *active* module
+            parameters of the pipeline
         modules: a dictionary mapping module names to PipelineModule instances
         execution_order: a list of module names defining the order in which the
             modules should be executed
@@ -605,20 +606,25 @@ class PipelineMetadata(Configurable, HasBlockDiagram):
         '''Returns True/False if the pipeline has a module `name`.'''
         return name in self.modules
 
-    def has_parameter(self, param_str):
-        '''Returns True/False if this pipeline has parameter `param_str`.'''
-        return param_str in self.parameters
+    def has_tunable_parameter(self, param_str):
+        '''Returns True/False if this pipeline has tunable parameter
+        `param_str`.
+        '''
+        return (
+            param_str in self.parameters and
+            self.parameters[param_str].is_tunable
+        )
 
-    def is_valid_input(self, name, val):
-        '''Returns True/False if `val` is a valid value for input `name`.'''
-        return self.inputs[name].is_valid_value(val)
+    def is_valid_input(self, name, path):
+        '''Returns True/False if `path` is a valid path for input `name`.'''
+        return self.inputs[name].is_valid_path(path)
 
-    def is_valid_output(self, name, val):
-        '''Returns True/False if `val` is a valid vale for output `name`.'''
-        return self.outputs[name].is_valid_value(val)
+    def is_valid_output(self, name, path):
+        '''Returns True/False if `path` is a valid path for output `name`.'''
+        return self.outputs[name].is_valid_path(path)
 
     def is_valid_parameter(self, param_str, val):
-        '''Returns True/False if `val` is a valid value for parameter
+        '''Returns True/False if `val` is a valid value for tunable parameter
         `param_str`.
         '''
         return self.parameters[param_str].is_valid_value(val)
@@ -630,9 +636,9 @@ class PipelineMetadata(Configurable, HasBlockDiagram):
             bp.add_module(name, self.modules[name].metadata.to_blockdiag())
         for n in self.nodes:
             if n.is_pipeline_input:
-                bp.add_input(n.field)
+                bp.add_input(n.node)
             if n.is_pipeline_output:
-                bp.add_output(n.field)
+                bp.add_output(n.node)
         for c in self.connections:
             bp.add_connection(c.source, c.sink)
         return bp
@@ -652,14 +658,14 @@ class PipelineMetadata(Configurable, HasBlockDiagram):
         for module_config in config.modules:
             module = PipelineModule(module_config)
             self.modules[module.name] = module
-            self.parameters.update(module.active_parameters)
+            self.parameters.update(module.parameters)
 
         # Parse connections
         for c in config.connections:
             # Parse nodes
-            source = _parse_node_str(
+            source = _parse_pipeline_node_str(
                 c.source, config.inputs, config.outputs, self.modules)
-            sink = _parse_node_str(
+            sink = _parse_pipeline_node_str(
                 c.sink, config.inputs, config.outputs, self.modules)
 
             # Make sure we don't duplicate nodes
@@ -693,6 +699,9 @@ class PipelineMetadataError(Exception):
 
 def _parse_input(name, connections, modules):
     '''Parses the pipeline input with the given name.
+
+    A pipeline input is properly configured if it is connected to at least one
+    module input.
 
     Args:
         name: the pipeline input name
