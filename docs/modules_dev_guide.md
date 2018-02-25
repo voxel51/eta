@@ -54,33 +54,37 @@ detector module:
         {
             "name": "raw_video_path",
             "type": "eta.core.types.Video",
-            "description": "The input video"
+            "description": "The input video",
+            "required": true
         }
     ],
     "outputs": [
         {
             "name": "objects_json_path",
             "type": "eta.core.types.Frame",
-            "description": "The output path for the objects JSON file"
+            "description": "The output path for the objects JSON file",
+            "required": true
         },
         {
             "name": "annotated_frames_path",
             "type": "eta.core.types.ImageSequence",
             "description": "The output path for the annotated frames",
-            "default": null
+            "required": false
         }
     ],
     "parameters": [
         {
             "name": "labels",
             "type": "eta.core.types.Array",
-            "description": "The classes of objects to detect"
+            "description": "The classes of objects to detect",
+            "required": true
         },
         {
             "name": "weights",
             "type": "eta.core.types.Weights",
-            "default": "/path/to/weights.npz",
-            "description": "The weights for the network"
+            "description": "The weights for the network",
+            "required": true,
+            "default": "/path/to/weights.npz"
         }
     ]
 }
@@ -107,13 +111,15 @@ The `info` spec contains the following fields:
 
 - `name`: the name of the module
 
-- `type`: the type of the module, i.e., what computation it performs. Must be a
-    valid module type exposed by the ETA library
+- `type`: the type of the module from `eta.core.types`, i.e., what computation
+    it performs. Must be a valid module type exposed by the ETA library
 
 - `version`: the current module version
 
 - `description`: a short free-text description of the module purpose and
     implementation
+
+- `exe`: the name of the module executable file
 
 The remaining specs describe the fields in the module's configuration files.
 Each spec has the fields:
@@ -125,9 +131,10 @@ Each spec has the fields:
 
 - `description`: a short free-text description of the field
 
-- `default`: an optional default value for the field. When the default field
-    is specified, this field is optional in configuration files. When no
-    default value is provided, this field is mandatory
+- `required`: whether the field is required or optional for the module to
+    function
+
+- `default`: (parameters only) an optional default value for the parameter
 
 
 ## Visualizing Modules
@@ -148,9 +155,9 @@ module = etam.load_metadata("simple_object_detector")
 module.render("module_block_diagram.svg")
 ```
 
-The above code generates a `block_diagram.svg` vector graphics image of the
-block diagram. It also generates the following intermediate
-`block_diagram.diag` file describing the network architecture:
+The above code generates a `module_block_diagram.svg` vector graphics image of
+the module block diagram. It also generates the following intermediate
+`module_block_diagram.diag` file describing the network architecture:
 
 ```
 blockdiag {
