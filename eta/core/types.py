@@ -197,6 +197,29 @@ class Object(Builtin):
         return isinstance(val, dict)
 
 
+class Point(Object):
+    '''An (x, y) coordinate point.'''
+
+    @staticmethod
+    def is_valid_value(val):
+        return (
+            Object.is_valid_value(val) and
+            "x" in val and "y" in val
+        )
+
+
+class Rectangle(Object):
+    '''A rectangle specified by its top-left and bottom-right Points.'''
+
+    @staticmethod
+    def is_valid_value(val):
+        return (
+            Object.is_valid_value(val) and
+            "top_left" in val and Point.is_valid_value(val["top_left"]) and
+            "bottom_right" in val and Point.is_valid_value(val["bottom_right"])
+        )
+
+
 ###### Data types ##############################################################
 
 
