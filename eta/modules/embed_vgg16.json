@@ -10,14 +10,16 @@
         {
             "name": "video_path",
             "type": "eta.core.types.Video",
-            "description": "The input video"
+            "description": "The input video",
+            "required": true
         }
     ],
     "outputs": [
         {
             "name": "backing_path",
             "type": "eta.core.types.Directory",
-            "description": "The output directory in which to write the embeddings"
+            "description": "A directory in which to write the embeddings",
+            "required": true
         }
     ],
     "parameters": [
@@ -25,7 +27,7 @@
             "name": "crop_box",
             "type": "eta.core.types.Rectangle",
             "description": "A region of interest of each frame to extract before embedding",
-            "default": null
+            "required": false
         }
     ]
 }
