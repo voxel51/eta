@@ -18,7 +18,7 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-import collections
+from collections import OrderedDict
 import datetime as dt
 import dill as pickle
 import json
@@ -122,8 +122,12 @@ class Serializable(object):
         written to JSON.'''
         return json_to_str(self.serialize(), pretty_print=True)
 
-    def serialize(self):
+    def serialize(self, attributes=None):
         '''Serializes the object into a dictionary.
+
+        Args:
+            attributes: an optional list of attributes to serialize. By default
+                this list is obtained by calling self.attributes()
 
         Subclasses can override this method, but, by default, Serializable
         objects are serialized by:
@@ -132,9 +136,9 @@ class Serializable(object):
                values untouched
             c) applying b) element-wise on list values
         '''
-        return collections.OrderedDict(
-            (a, _recurse(getattr(self, a))) for a in self.attributes()
-        )
+        if attributes is None:
+            attributes = self.attributes()
+        return OrderedDict((a, _recurse(getattr(self, a))) for a in attributes)
 
     def attributes(self):
         '''Returns a list of class attributes to be serialized.
@@ -163,7 +167,8 @@ class Serializable(object):
     def from_dict(cls, d):
         '''Constructs a Serializable object from a JSON dictionary.
 
-        Subclasses must implement this method.
+        Subclasses must implement this method if they intend to support being
+        read from disk.
         '''
         raise NotImplementedError("subclass must implement from_dict()")
 
