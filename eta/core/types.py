@@ -199,7 +199,7 @@ class Directory(Data):
 
     @staticmethod
     def gen_path(basedir, params):
-        return os.path.join(basedir, "%(field)s").format(params)
+        return os.path.join(basedir, "%(name)s").format(params)
 
     @staticmethod
     def is_valid_path(path):
@@ -210,12 +210,12 @@ class File(Data):
     '''The base type for file.
 
     Examples:
-        /path/to/data.txt
+        /path/to/file.txt
     '''
 
     @staticmethod
     def gen_path(basedir, params):
-        return os.path.join(basedir, "%(field)s%(file_ext)s").format(params)
+        return os.path.join(basedir, "%(name)s%(file_ext)s").format(params)
 
     @staticmethod
     def is_valid_path(path):
@@ -227,13 +227,13 @@ class FileSequence(Data):
     parameter.
 
     Examples:
-        /path/to/data/%05d.txt
+        /path/to/file/%05d.txt
     '''
 
     @staticmethod
     def gen_path(basedir, params):
         return os.path.join(
-            basedir, "%(field)s", "%(idx)s%(file_ext)s").format(params)
+            basedir, "%(name)s", "%(idx)s%(file_ext)s").format(params)
 
     @staticmethod
     def is_valid_path(path):
@@ -251,13 +251,13 @@ class DualFileSequence(Data):
     parameters.
 
     Examples:
-        /path/to/data/%05d-%05d.json
+        /path/to/data/%05d-%05d.txt
     '''
 
     @staticmethod
     def gen_path(basedir, params):
         return os.path.join(
-            basedir, "%(field)s", "%(idx)s-%(idx)s%(file_ext)s").format(params)
+            basedir, "%(name)s", "%(idx)s-%(idx)s%(file_ext)s").format(params)
 
     @staticmethod
     def is_valid_path(path):
@@ -279,7 +279,7 @@ class JSONFile(File):
 
     @staticmethod
     def gen_path(basedir, params):
-        return os.path.join(basedir, "%(field)s.json").format(params)
+        return os.path.join(basedir, "%(name)s.json").format(params)
 
     @staticmethod
     def is_valid_path(path):
@@ -297,7 +297,7 @@ class JSONFileSequence(FileSequence):
     @staticmethod
     def gen_path(basedir, params):
         return os.path.join(
-            basedir, "%(field)s", "%(idx)s.json").format(params)
+            basedir, "%(name)s", "%(idx)s.json").format(params)
 
     @staticmethod
     def is_valid_path(path):
@@ -316,7 +316,7 @@ class Weights(File):
 
     @staticmethod
     def gen_path(basedir, params):
-        return os.path.join(basedir, "%(field)s%(weights_ext)s").format(params)
+        return os.path.join(basedir, "%(name)s").format(params)
 
 
 class Image(File):
@@ -328,7 +328,7 @@ class Image(File):
 
     @staticmethod
     def gen_path(basedir, params):
-        return os.path.join(basedir, "%(field)s%(image_ext)s").format(params)
+        return os.path.join(basedir, "%(name)s%(image_ext)s").format(params)
 
     @staticmethod
     def is_valid_path(path):
@@ -364,7 +364,7 @@ class VideoFile(Video, File):
 
     @staticmethod
     def gen_path(basedir, params):
-        return os.path.join(basedir, "%(field)s%(video_ext)s").format(params)
+        return os.path.join(basedir, "%(name)s%(video_ext)s").format(params)
 
     @staticmethod
     def is_valid_path(path):
@@ -381,7 +381,7 @@ class ImageSequence(Video, FileSequence):
     @staticmethod
     def gen_path(basedir, params):
         return os.path.join(
-            basedir, "%(field)s", "%(idx)s%(image_ext)s").format(params)
+            basedir, "%(name)s", "%(idx)s%(image_ext)s").format(params)
 
     @staticmethod
     def is_valid_path(path):
@@ -401,7 +401,7 @@ class VideoSequece(FileSequence):
     @staticmethod
     def gen_path(basedir, params):
         return os.path.join(
-            basedir, "%(field)s", "%(idx)s%(video_ext)s").format(params)
+            basedir, "%(name)s", "%(idx)s%(video_ext)s").format(params)
 
     @staticmethod
     def is_valid_path(path):
@@ -422,7 +422,7 @@ class VideoClips(DualFileSequence):
     def gen_path(basedir, params):
         return os.path.join(
             basedir,
-            "%(field)s", "%(idx)s-%(idx)s%(video_ext)s"
+            "%(name)s", "%(idx)s-%(idx)s%(video_ext)s"
         ).format(params)
 
     @staticmethod
