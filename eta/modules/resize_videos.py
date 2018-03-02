@@ -30,33 +30,6 @@ import eta.core.video as vd
 logger = logging.getLogger(__name__)
 
 
-def run(config_path, pipeline_config_path=None):
-    '''Run the resize_videos module.
-
-    Args:
-        config_path: path to a ResizeConfig file
-        pipeline_config_path: optional path to a PipelineConfig file
-    '''
-    resize_config = ResizeConfig.from_json(config_path)
-    mo.setup(resize_config, pipeline_config_path=pipeline_config_path)
-    _resize_videos(resize_config)
-
-
-def _resize_videos(resize_config):
-    parameters = resize_config.parameters
-    for data_config in resize_config.data:
-        logger.info("Resizing video '%s'", data_config.input_path)
-        vd.FFmpegVideoResizer(
-            size=parameters.size,
-            scale=parameters.scale,
-            scale_str=parameters.scale_str,
-            out_opts=parameters.ffmpeg_out_opts,
-        ).run(
-            data_config.input_path,
-            data_config.output_path,
-        )
-
-
 class ResizeConfig(mo.BaseModuleConfig):
     '''Resize configuration settings.'''
 
@@ -83,6 +56,33 @@ class ParametersConfig(Config):
         self.scale_str = self.parse_string(d, "scale_str", default=None)
         self.ffmpeg_out_opts = self.parse_array(
             d, "ffmpeg_out_opts", default=None)
+
+
+def _resize_videos(resize_config):
+    parameters = resize_config.parameters
+    for data_config in resize_config.data:
+        logger.info("Resizing video '%s'", data_config.input_path)
+        vd.FFmpegVideoResizer(
+            size=parameters.size,
+            scale=parameters.scale,
+            scale_str=parameters.scale_str,
+            out_opts=parameters.ffmpeg_out_opts,
+        ).run(
+            data_config.input_path,
+            data_config.output_path,
+        )
+
+
+def run(config_path, pipeline_config_path=None):
+    '''Run the resize_videos module.
+
+    Args:
+        config_path: path to a ResizeConfig file
+        pipeline_config_path: optional path to a PipelineConfig file
+    '''
+    resize_config = ResizeConfig.from_json(config_path)
+    mo.setup(resize_config, pipeline_config_path=pipeline_config_path)
+    _resize_videos(resize_config)
 
 
 if __name__ == "__main__":
