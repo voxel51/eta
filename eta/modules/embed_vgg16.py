@@ -27,16 +27,15 @@ import tensorflow as tf
 
 from eta.core.config import Config
 import eta.core.features as etaf
-import eta.core.module as mo
-import eta.core.serial as se
-import eta.core.video as vd
-import eta.core.vgg16 as vgg
+import eta.core.module as etam
+import eta.core.serial as etas
+import eta.core.vgg16 as etav
 
 
 logger = logging.getLogger(__name__)
 
 
-class EmbedVGG16Config(mo.BaseModuleConfig):
+class EmbedVGG16Config(etam.BaseModuleConfig):
     '''VGG16 embedding configuration settings.
 
     This is basically the VGG16FeaturizerConfig except that it allows for an
@@ -62,7 +61,7 @@ class ParametersConfig(Config):
 
     def __init__(self, d):
         self.vgg16 = self.parse_object(
-                d, "vgg16", vgg.VGG16Config, default=None)
+                d, "vgg16", etav.VGG16Config, default=None)
         self.crop_box = self.parse_object(
                 d, "crop_box", RectangleConfig, default=None)
 
@@ -149,9 +148,9 @@ def run(config_path, pipeline_config_path=None):
             both an EmbedVGG16Config and a VGG16FeaturizerConfig
         pipeline_config_path: optional path to a PipelineConfig file
     '''
-    d = se.read_json(config_path)
+    d = etas.read_json(config_path)
     embed_vgg16_config = EmbedVGG16Config(d)
-    mo.setup(embed_vgg16_config, pipeline_config_path=pipeline_config_path)
+    etam.setup(embed_vgg16_config, pipeline_config_path=pipeline_config_path)
     _featurize_driver(embed_vgg16_config, d)
 
 
