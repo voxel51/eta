@@ -31,6 +31,7 @@ import eta.core.graph as etag
 import eta.core.job as etaj
 import eta.core.log as etal
 import eta.core.module as etam
+from eta.core.serial import Serializable
 import eta.core.types as etat
 import eta.core.utils as etau
 
@@ -162,6 +163,111 @@ def find_metadata(pipeline_name):
     except KeyError:
         raise PipelineMetadataError(
             "Could not find pipeline '%s'" % pipeline_name)
+
+
+class JobStatus(Serializable):
+    '''Class for recording the status of a job within a module.
+
+    Attributes:
+        name: the name of the job
+        status: the current status of the job (from the JobStatus "enum")
+        start_time: the time the job was started, or None if not started
+        fail_time: the time the job was failed, or None if it has not or did
+            not fail
+        completion_time: the time the job was competed, or None if it has not
+            or did not fail
+        message: an  message string describing the current status of the job
+    '''
+
+    # Valid job statuses
+    QUEUED = "QUEUED"
+    RUNNING = "RUNNING"
+    FAILED = "FAILED"
+    COMPLETE = "COMPLETE"
+
+    def __init__(self, name):
+        self.name = name
+        self.status = JobStatus.QUEUED
+        self.start_time = None
+        self.fail_time = None
+        self.completion_time = None
+        self.message = ""
+
+    def start(self, message=""):
+        self.start_time = etau.get_isotime()
+        self.status = JobStatus.RUNNING
+        self.message = message
+
+    def fail(self, message=""):
+        self.fail_time = etau.get_isotime()
+        self.status = JobStatus.FAILED
+        self.message = message
+
+    def complete(self, message=""):
+        self.completion_time = etau.get_isotime()
+        self.status = JobStatus.COMPLETE
+        self.message = message
+
+
+class PipelineStatus(Serializable):
+    '''Class for recording the status of a running pipeline.
+
+    Attributes:
+        name: the name of the pipeline
+        tid: the task ID for the running pipeline
+        status: the current status of the pipeline (from the PipelineStatus
+            "enum")
+        start_time: the time the pipeline was started, or None if not started
+        fail_time: the time the pipeline failed, or None if it has not or did
+            not fail
+        completion_time: the time the pipeline was competed, or None if it has
+            not or did not fail
+        message: an  message string describing the current status of the
+            pipeline
+        jobs: a list of JobStatus objects describing the status of the jobs
+            that make up the pipeline
+    '''
+
+    # Valid pipeline statuses
+    QUEUED = "QUEUED"
+    RUNNING = "RUNNING"
+    FAILED = "FAILED"
+    COMPLETE = "COMPLETE"
+
+    def __init__(self, name, tid=""):
+        self.name = name
+        self.tid = tid
+        self.status = PipelineStatus.QUEUED
+        self.start_time = None
+        self.fail_time = None
+        self.completion_time = None
+        self.message = ""
+        self.jobs = []
+
+        self._active_job = None
+
+    @property
+    def active_job(self):
+        return self._active_job
+
+    def start(self, message=""):
+        self.start_time = etau.get_isotime()
+        self.status = PipelineStatus.RUNNING
+        self.message = message
+
+    def add_job(self, name):
+        self._active_job = JobStatus(name)
+        self.jobs.append(self._active_job)
+
+    def fail(self, message=""):
+        self.fail_time = etau.get_isotime()
+        self.status = PipelineStatus.FAILED
+        self.message = message
+
+    def complete(self, message=""):
+        self.completion_time = etau.get_isotime()
+        self.status = PipelineStatus.COMPLETE
+        self.message = message
 
 
 class PipelineConfig(Config):
