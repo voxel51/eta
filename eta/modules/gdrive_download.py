@@ -20,14 +20,14 @@ from builtins import *
 import logging
 import sys
 
-import eta.core.module as mo
+import eta.core.module as etam
 import eta.core.web as etaw
 
 
 logger = logging.getLogger(__name__)
 
 
-class GDriveDownloadConfig(mo.BaseModuleConfig):
+class GDriveDownloadConfig(etam.BaseModuleConfig):
     '''Clip configuration settings.'''
 
     def __init__(self, d):
@@ -75,7 +75,7 @@ def run(config_path, pipeline_config_path=None):
         pipeline_config_path: optional path to a PipelineConfig file
     '''
     download_config = GDriveDownloadConfig.from_json(config_path)
-    mo.setup(download_config, pipeline_config_path=pipeline_config_path)
+    etam.setup(download_config, pipeline_config_path=pipeline_config_path)
     _download_files(download_config)
 
 
