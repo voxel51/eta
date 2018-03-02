@@ -122,7 +122,7 @@ class Serializable(object):
     def __str__(self):
         '''Returns the string representation of this object as it would be
         written to JSON.'''
-        return json_to_str(self.serialize(), pretty_print=True)
+        return self.to_str()
 
     def serialize(self, attributes=None):
         '''Serializes the object into a dictionary.
@@ -153,6 +153,17 @@ class Serializable(object):
         want their JSON files to be organized in a particular way.
         '''
         return [a for a in vars(self) if not a.startswith("_")]
+
+    def to_str(self, pretty_print=True):
+        '''Returns the string representation of this object as it would be
+        written to JSON.
+
+        Args:
+            pretty_print: if True (default), the string will be formatted to be
+                human readable; when False, it will be compact with no extra
+                spaces or newline characters
+        '''
+        return json_to_str(self, pretty_print=pretty_print)
 
     def write_json(self, path, pretty_print=True):
         '''Serializes the object and writes it to disk.
