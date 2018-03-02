@@ -83,20 +83,6 @@ class RectangleConfig(Config):
         self.bottom_right = self.parse_object(d, "bottom_right", Point2Config)
 
 
-def run(config_path, pipeline_config_path=None):
-    '''Run the embed_vgg16 module.
-
-    Args:
-        config_path: path to a config file containing the fields to define
-            both an EmbedVGG16Config and a VGG16FeaturizerConfig
-        pipeline_config_path: optional path to a PipelineConfig file
-    '''
-    d = se.read_json(config_path)
-    embed_vgg16_config = EmbedVGG16Config(d)
-    mo.setup(embed_vgg16_config, pipeline_config_path=pipeline_config_path)
-    _featurize_driver(embed_vgg16_config, d)
-
-
 def _featurize_driver(config, d):
     '''For each of the featurizers in the config, creates a VGG16Featurizer and
     processes the video.
@@ -118,13 +104,13 @@ def _featurize_driver(config, d):
 
         vffcd_ = {"type": "eta.core.vgg16.VGG16Featurizer"}
         if parameters.vgg16 is None:
-            vffcd_['config'] = {}
+            vffcd_["config"] = {}
         else:
-            vffcd_['config'] = parameters.vgg16
+            vffcd_["config"] = parameters.vgg16
 
         vffcd = {
-            'backing_path': data.backing_path,
-            'frame_featurizer': vffcd_,
+            "backing_path": data.backing_path,
+            "frame_featurizer": vffcd_,
         }
 
         vffc = etaf.VideoFramesFeaturizerConfig(vffcd)
@@ -153,6 +139,20 @@ def _crop(crop_box):
         ]
 
     return crop_image
+
+
+def run(config_path, pipeline_config_path=None):
+    '''Run the embed_vgg16 module.
+
+    Args:
+        config_path: path to a config file containing the fields to define
+            both an EmbedVGG16Config and a VGG16FeaturizerConfig
+        pipeline_config_path: optional path to a PipelineConfig file
+    '''
+    d = se.read_json(config_path)
+    embed_vgg16_config = EmbedVGG16Config(d)
+    mo.setup(embed_vgg16_config, pipeline_config_path=pipeline_config_path)
+    _featurize_driver(embed_vgg16_config, d)
 
 
 if __name__ == '__main__':
