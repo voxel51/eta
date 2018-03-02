@@ -2,7 +2,7 @@
 '''
 Module for embedding videos into the fc6 vgg16 vector space.
 
-Copyright 2017, Voxel51, LLC
+Copyright 2017-2018, Voxel51, LLC
 voxel51.com
 
 Jason Corso, jjc@voxel51.com
@@ -45,18 +45,26 @@ class EmbedVGG16Config(mo.BaseModuleConfig):
 
     def __init__(self, d):
         super(EmbedVGG16Config, self).__init__(d)
-        self.videos = self.parse_object_array(
-                d, "videos", VideoConfig)
-        self.vgg16 = self.parse_object(
-                d, "vgg16", vgg.VGG16Config, default=None)
-        self.crop_box = self.parse_object(
-                d, "crop_box", RectangleConfig, default=None)
+        self.data = self.parse_object_array(d, "data", DataConfig)
+        self.parameters = self.parse_object(d, "parameters", ParametersConfig)
 
-class VideoConfig(Config):
+
+class DataConfig(Config):
+    '''Data configuration settings.'''
 
     def __init__(self, d):
         self.backing_path = self.parse_string(d, "backing_path")
         self.video_path = self.parse_string(d, "video_path")
+
+
+class ParametersConfig(Config):
+    '''Parameter configuration settings.'''
+
+    def __init__(self, d):
+        self.vgg16 = self.parse_object(
+                d, "vgg16", vgg.VGG16Config, default=None)
+        self.crop_box = self.parse_object(
+                d, "crop_box", RectangleConfig, default=None)
 
 
 class Point2Config(Config):
@@ -101,28 +109,31 @@ def _featurize_driver(config, d):
     necessary. This could somehow reuse the vgg network instance for each
     featurizer.
     '''
-    for avfc in config.videos:
+    parameters = config.parameters
+    for data in config.data:
         # Needed to avoid running out of memory.
         # The proper fix is reuse the vgg-net across featurizers, but this
         # works and keeps the VGG16Featurizer easy to understand.
         tf.reset_default_graph()
 
         vffcd_ = {"type": "eta.core.vgg16.VGG16Featurizer"}
-        if config.vgg16 is None:
+        if parameters.vgg16 is None:
             vffcd_['config'] = {}
         else:
-            vffcd_['config'] = config.vgg16
+            vffcd_['config'] = parameters.vgg16
 
-        vffcd = {'backing_path': avfc.backing_path,
-                'frame_featurizer': vffcd_}
+        vffcd = {
+            'backing_path': data.backing_path,
+            'frame_featurizer': vffcd_,
+        }
 
         vffc = etaf.VideoFramesFeaturizerConfig(vffcd)
         vf = etaf.VideoFramesFeaturizer(vffc)
-        if config.crop_box is not None:
-            vf.frame_preprocessor = _crop(config.crop_box)
+        if parameters.crop_box is not None:
+            vf.frame_preprocessor = _crop(parameters.crop_box)
 
         # @todo should frames be a part of the config?
-        vf.featurize(avfc.video_path)
+        vf.featurize(data.video_path)
 
 
 def _crop(crop_box):
@@ -142,6 +153,7 @@ def _crop(crop_box):
         ]
 
     return crop_image
+
 
 if __name__ == '__main__':
     run(*sys.argv[1:])
