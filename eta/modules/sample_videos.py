@@ -2,7 +2,7 @@
 '''
 Sample video frames.
 
-Copyright 2017, Voxel51, LLC
+Copyright 2017-2018, Voxel51, LLC
 voxel51.com
 
 Brian Moore, brian@voxel51.com
@@ -44,32 +44,33 @@ def run(config_path, pipeline_config_path=None):
 
 
 def _sample_videos(sample_config):
+    parameters = sample_config.parameters
     for data_config in sample_config.data:
         if data_config.fps != -1:
-            _sample_video_by_fps(data_config)
+            _sample_video_by_fps(data_config, parameters)
         else:
-            _sample_video_by_clips(data_config)
+            _sample_video_by_clips(data_config, parameters)
 
 
-def _sample_video_by_fps(data_config):
-    assert data_config.fps != -1, "Must provide 'fps'"
+def _sample_video_by_fps(data_config, parameters):
+    assert parameters.fps != -1, "Must provide 'fps'"
     logger.info(
         "Sampling video '%s' at %s fps",
-        data_config.input_path, data_config.fps)
+        data_config.input_path, parameters.fps)
 
-    vd.FFmpegVideoSampler(fps=data_config.fps).run(
+    vd.FFmpegVideoSampler(fps=parameters.fps).run(
         data_config.input_path,
         data_config.output_path,
     )
 
 
-def _sample_video_by_clips(data_config):
-    assert data_config.clips_path is not None, "Must provide 'clips_path'"
+def _sample_video_by_clips(data_config, parameters):
+    assert parameters.clips_path is not None, "Must provide 'clips_path'"
     logger.info(
         "Sampling video '%s' by clips '%s'",
-        data_config.input_path, data_config.clips_path)
+        data_config.input_path, parameters.clips_path)
 
-    detections = ev.EventDetection.from_json(data_config.clips_path)
+    detections = ev.EventDetection.from_json(parameters.clips_path)
     frames = detections.to_series().to_str()
 
     processor = vd.VideoProcessor(
@@ -88,10 +89,19 @@ class SampleConfig(mo.BaseModuleConfig):
     def __init__(self, d):
         super(SampleConfig, self).__init__(d)
         self.data = self.parse_object_array(d, "data", DataConfig)
+        self.parameters = self.parse_object(d, "parameters", ParametersConfig)
 
 
 class DataConfig(Config):
-    '''Data configuration settings.
+    '''Data configuration settings.'''
+
+    def __init__(self, d):
+        self.input_path = self.parse_string(d, "input_path")
+        self.output_path = self.parse_string(d, "output_path")
+
+
+class ParametersConfig(Config):
+    '''Parameter configuration settings.
 
     Either `fps` or `clips_path` must be specified.
 
@@ -99,8 +109,6 @@ class DataConfig(Config):
     '''
 
     def __init__(self, d):
-        self.input_path = self.parse_string(d, "input_path")
-        self.output_path = self.parse_string(d, "output_path")
         self.fps = self.parse_number(d, "fps", default=-1)
         self.clips_path = self.parse_string(d, "clips_path", default=None)
 
