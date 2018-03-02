@@ -300,10 +300,8 @@ class PipelineBuilder(object):
         return os.path.join(self.config_dir, module + MODULE_CONFIG_EXT)
 
     def _get_data_path(self, module, node):
-        params = self._data_params.render(node.name)
-        time_str = self._get_timestamp_str()
-        basedir = os.path.join(
-            self.output_dir, self.request.pipeline, time_str, module)
+        params = self._data_params.render_for(node.name)
+        basedir = os.path.join(self.output_dir, module)
         return node.type.gen_path(basedir, params)
 
 
