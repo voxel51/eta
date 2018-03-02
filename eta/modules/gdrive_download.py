@@ -52,18 +52,6 @@ class ParametersConfig(Config):
         pass
 
 
-def run(config_path, pipeline_config_path=None):
-    '''Run the gdrive_download module.
-
-    Args:
-        config_path: path to a ClipConfig file
-        pipeline_config_path: optional path to a PipelineConfig file
-    '''
-    download_config = GDriveDownloadConfig.from_json(config_path)
-    mo.setup(download_config, pipeline_config_path=pipeline_config_path)
-    _download_files(download_config)
-
-
 def _download_files(download_config):
     for data in download_config.data:
         logger.info("Downloading %s from Google Drive", data.filename)
@@ -77,6 +65,18 @@ def _download_files(download_config):
             )
         except:
             logger.error("Unknown error occurred")
+
+
+def run(config_path, pipeline_config_path=None):
+    '''Run the gdrive_download module.
+
+    Args:
+        config_path: path to a ClipConfig file
+        pipeline_config_path: optional path to a PipelineConfig file
+    '''
+    download_config = GDriveDownloadConfig.from_json(config_path)
+    mo.setup(download_config, pipeline_config_path=pipeline_config_path)
+    _download_files(download_config)
 
 
 if __name__ == "__main__":
