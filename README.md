@@ -97,12 +97,19 @@ To test your installation, run the following commands:
 # Download example data
 bash examples/download_data.bash
 
-# Example image manipulation
+# Perform some image manipulation
 python examples/demo_images.py
 
-# Example video processing pipeline
-python eta/core/pipeline.py examples/demo_video/pipeline-config.json
+# Run a pre-configued video processing pipeline
+python eta/core/pipeline.py examples/demo_video/pipeline.json
 
+# Build and run a video formatting pipeline from a request using
+# the `eta` command-line tool
+eta build -r examples/demo_video_formatter/request.json
+PIPELINE_JSON= # copy the pipeline config path printed above here
+eta run "${PIPELINE_JSON}"
+
+#
 # Example image/video embedding
 #
 # NOTE: A 550MB VGG16 weights file will be downloaded from the web and stored
@@ -111,6 +118,8 @@ python eta/core/pipeline.py examples/demo_video/pipeline-config.json
 cd examples/embed_vgg16
 # Example image embedding
 python embed_image.py
+# Another example image embedding
+python embed_image_direct.py
 # Example video embedding
 python embed_video.py
 # Example use of the embed_vgg16 module
