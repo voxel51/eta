@@ -67,22 +67,24 @@ def write_json(obj, path, pretty_print=True):
 
     etau.ensure_basedir(path)
     with open(path, "wt") as f:
-        f.write(str(s))
+        f.write(s)
 
 
-def json_to_str(d, pretty_print=True):
-    '''Converts the JSON dictionary to a string.
+def json_to_str(obj, pretty_print=True):
+    '''Converts the JSON object to a string.
 
     Args:
-        d: a JSON dictionary
-        pretty_print: when True (default), the strubg will be formatted to be
+        obj: a JSON dictionary or an instance of a Serializable subclass
+        pretty_print: when True (default), the string will be formatted to be
             human readable; when False, it will be compact with no extra spaces
             or newline characters
     '''
+    if is_serializable(obj):
+        obj = obj.serialize()
     if pretty_print:
-        s = json.dumps(d, indent=4, cls=EtaJSONEncoder, ensure_ascii=False)
+        s = json.dumps(obj, indent=4, cls=EtaJSONEncoder, ensure_ascii=False)
     else:
-        s = json.dumps(d, cls=EtaJSONEncoder, ensure_ascii=False)
+        s = json.dumps(obj, cls=EtaJSONEncoder, ensure_ascii=False)
     return str(s)
 
 
