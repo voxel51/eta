@@ -23,15 +23,15 @@ import logging
 import sys
 
 from eta.core.config import Config, ConfigError
-import eta.core.events as ev
-import eta.core.module as mo
-import eta.core.video as vd
+import eta.core.events as etae
+import eta.core.module as etam
+import eta.core.video as etav
 
 
 logger = logging.getLogger(__name__)
 
 
-class ClipConfig(mo.BaseModuleConfig):
+class ClipConfig(etam.BaseModuleConfig):
     '''Clip configuration settings.'''
 
     def __init__(self, d):
@@ -58,7 +58,7 @@ class ParametersConfig(Config):
 
     def get_frames(self):
         if self.events_json_path:
-            return ev.EventSeries.from_json(self.events_json_path).to_str()
+            return etae.EventSeries.from_json(self.events_json_path).to_str()
         elif self.frames:
             return self.frames
         else:
@@ -69,7 +69,7 @@ def _clip_videos(clip_config):
     parameters = clip_config.parameters
     for data_config in clip_config.data:
         logger.info("Generating video clips for '%s'", data_config.input_path)
-        with vd.VideoProcessor(
+        with etav.VideoProcessor(
             data_config.input_path,
             frames=parameters.get_frames(),
             out_vidpath=data_config.output_path,
@@ -86,7 +86,7 @@ def run(config_path, pipeline_config_path=None):
         pipeline_config_path: optional path to a PipelineConfig file
     '''
     clip_config = ClipConfig.from_json(config_path)
-    mo.setup(clip_config, pipeline_config_path=pipeline_config_path)
+    etam.setup(clip_config, pipeline_config_path=pipeline_config_path)
     _clip_videos(clip_config)
 
 
