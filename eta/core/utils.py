@@ -174,6 +174,14 @@ def copy_file(inpath, outpath):
     shutil.copy(inpath, outpath)
 
 
+def delete_file(path):
+    '''Deletes the file at the given path and recursively deletes any empty
+    directories from the resulting directory tree.
+    '''
+    os.remove(path)
+    os.removedirs(os.path.dirname(path))
+
+
 def ensure_path(path):
     '''Ensures that the given path is ready for writing by deleting any
     existing file and ensuring that the base directory exists.
