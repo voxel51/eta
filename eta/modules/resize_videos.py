@@ -2,7 +2,7 @@
 '''
 Resize videos.
 
-Copyright 2017, Voxel51, LLC
+Copyright 2017-2018, Voxel51, LLC
 voxel51.com
 
 Brian Moore, brian@voxel51.com
@@ -43,13 +43,14 @@ def run(config_path, pipeline_config_path=None):
 
 
 def _resize_videos(resize_config):
+    parameters = resize_config.parameters
     for data_config in resize_config.data:
         logger.info("Resizing video '%s'", data_config.input_path)
         vd.FFmpegVideoResizer(
-            size=data_config.size,
-            scale=data_config.scale,
-            scale_str=data_config.scale_str,
-            out_opts=data_config.ffmpeg_out_opts,
+            size=parameters.size,
+            scale=parameters.scale,
+            scale_str=parameters.scale_str,
+            out_opts=parameters.ffmpeg_out_opts,
         ).run(
             data_config.input_path,
             data_config.output_path,
@@ -62,6 +63,7 @@ class ResizeConfig(mo.BaseModuleConfig):
     def __init__(self, d):
         super(ResizeConfig, self).__init__(d)
         self.data = self.parse_object_array(d, "data", DataConfig)
+        self.parameters = self.parse_object(d, "parameters", ParametersConfig)
 
 
 class DataConfig(Config):
@@ -70,6 +72,12 @@ class DataConfig(Config):
     def __init__(self, d):
         self.input_path = self.parse_string(d, "input_path")
         self.output_path = self.parse_string(d, "output_path")
+
+
+class ParametersConfig(Config):
+    '''Parameter configuration settings.'''
+
+    def __init__(self, d):
         self.size = self.parse_array(d, "size", default=None)
         self.scale = self.parse_number(d, "scale", default=None)
         self.scale_str = self.parse_string(d, "scale_str", default=None)
