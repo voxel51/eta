@@ -375,6 +375,7 @@ class ModuleMetadata(Configurable, HasBlockDiagram):
     '''Class the encapsulates the architecture of a module.
 
     A module definition is valid if all of the following are true:
+        - all input, output, and parameter names are mutually unique
         - all inputs and outputs have types that are subclasses of
             eta.core.types.Data
         - all parameters have types that are subclasses of
@@ -462,11 +463,25 @@ class ModuleMetadata(Configurable, HasBlockDiagram):
     def _parse_metadata(self, config):
         self.info = ModuleInfo(config.info)
         for i in config.inputs:
+            self._verify_uniqueness(i.name)
             self.inputs[i.name] = ModuleNode(i)
         for o in config.outputs:
+            self._verify_uniqueness(o.name)
             self.outputs[o.name] = ModuleNode(o)
         for p in config.parameters:
+            self._verify_uniqueness(p.name)
             self.parameters[p.name] = ModuleParameter(p)
+
+    def _verify_uniqueness(self, name):
+        is_duplicate = (
+            name in self.inputs or
+            name in self.outputs or
+            name in self.parameters
+        )
+        if is_duplicate:
+            raise ModuleMetadataError(
+                "Duplicate field '%s' found for module '%s'" % (
+                    name, self.info.name))
 
 
 class ModuleMetadataError(Exception):
