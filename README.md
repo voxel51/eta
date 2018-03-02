@@ -60,6 +60,26 @@ Now `import eta` will still work from anywhere, and any changes you make in
 your local copy of `eta/` will take effect immediately.
 
 
+## Setting up your execution environment
+
+When the root `eta` package is imported, it (tries to) read the
+`eta/config.json` file to configure various package-level constants.
+
+> If you do not create this file, `import eta` will still work and you will
+> still be able to use most of the ETA library. However, if you want to use
+> advanced features such as pipeline building, you will need to properly
+> configure your `eta/config.json` file.
+
+To setup your environment, copy the example configuration file
+
+```shell
+cp eta/config-example.json eta/config.json
+```
+
+and then edit your config file to provide the (full) paths to the relevant
+directories in your installation.
+
+
 ## Installing the command-line utility
 
 To globally install the `eta` command-line utility on your machine, run
