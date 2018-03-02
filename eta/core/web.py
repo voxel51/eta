@@ -24,6 +24,9 @@ import requests
 from eta import constants
 
 
+CHUNK_SIZE = 1024 * 1024 * 5  # in bytes
+
+
 def download_file(url, path=None):
     '''Downloads a file from a URL. If a path is specified, the file is written
     there. Otherwise, the content is returned as a binary string.
@@ -63,8 +66,6 @@ def download_google_drive_file(fid, path=None):
 
 class WebSession(object):
     '''Class for downloading files from the web.'''
-
-    CHUNK_SIZE = 32768  # 32MB
 
     def __init__(self):
         '''Constructs a WebSession instance.'''
@@ -107,7 +108,7 @@ class WebSession(object):
         '''
         r = self._get_streaming_response(url, params=params)
         with open(path, "wb") as f:
-            for chunk in r.iter_content(self.CHUNK_SIZE):
+            for chunk in r.iter_content(CHUNK_SIZE):
                 # @todo log progress periodically?
                 f.write(chunk)
 
