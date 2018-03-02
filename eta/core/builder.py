@@ -31,6 +31,7 @@ import eta.core.log as etal
 import eta.core.module as etam
 import eta.core.pipeline as etap
 import eta.core.types as etat
+import eta.core.utils as etau
 
 
 logger = logging.getLogger(__name__)
@@ -266,9 +267,10 @@ class PipelineBuilder(object):
         # Generate module configs
         for module in pmeta.execution_order:
             # Build module config
+            data = etau.join_dicts(
+                module_inputs[module], module_outputs[module])
             module_config_builder = (etam.GenericModuleConfig.builder()
-                .set(inputs=module_inputs[module])
-                .set(outputs=module_outputs[module])
+                .set(data=[data])
                 .set(parameters=module_params[module])
                 .validate())
 
