@@ -31,16 +31,34 @@ import eta.core.video as vd
 logger = logging.getLogger(__name__)
 
 
-def run(config_path, pipeline_config_path=None):
-    '''Run the sample_videos module.
+class SampleConfig(mo.BaseModuleConfig):
+    '''Sampler configuration settings.'''
 
-    Args:
-        config_path: path to a SampleConfig file
-        pipeline_config_path: optional path to a PipelineConfig file
+    def __init__(self, d):
+        super(SampleConfig, self).__init__(d)
+        self.data = self.parse_object_array(d, "data", DataConfig)
+        self.parameters = self.parse_object(d, "parameters", ParametersConfig)
+
+
+class DataConfig(Config):
+    '''Data configuration settings.'''
+
+    def __init__(self, d):
+        self.input_path = self.parse_string(d, "input_path")
+        self.output_path = self.parse_string(d, "output_path")
+
+
+class ParametersConfig(Config):
+    '''Parameter configuration settings.
+
+    Either `fps` or `clips_path` must be specified.
+
+    @todo add a fps/clips module keyword to handle each case separately.
     '''
-    sample_config = SampleConfig.from_json(config_path)
-    mo.setup(sample_config, pipeline_config_path=pipeline_config_path)
-    _sample_videos(sample_config)
+
+    def __init__(self, d):
+        self.fps = self.parse_number(d, "fps", default=-1)
+        self.clips_path = self.parse_string(d, "clips_path", default=None)
 
 
 def _sample_videos(sample_config):
@@ -83,34 +101,16 @@ def _sample_video_by_clips(data_config, parameters):
             processor.write(img)
 
 
-class SampleConfig(mo.BaseModuleConfig):
-    '''Sampler configuration settings.'''
+def run(config_path, pipeline_config_path=None):
+    '''Run the sample_videos module.
 
-    def __init__(self, d):
-        super(SampleConfig, self).__init__(d)
-        self.data = self.parse_object_array(d, "data", DataConfig)
-        self.parameters = self.parse_object(d, "parameters", ParametersConfig)
-
-
-class DataConfig(Config):
-    '''Data configuration settings.'''
-
-    def __init__(self, d):
-        self.input_path = self.parse_string(d, "input_path")
-        self.output_path = self.parse_string(d, "output_path")
-
-
-class ParametersConfig(Config):
-    '''Parameter configuration settings.
-
-    Either `fps` or `clips_path` must be specified.
-
-    @todo add a fps/clips module keyword to handle each case separately.
+    Args:
+        config_path: path to a SampleConfig file
+        pipeline_config_path: optional path to a PipelineConfig file
     '''
-
-    def __init__(self, d):
-        self.fps = self.parse_number(d, "fps", default=-1)
-        self.clips_path = self.parse_string(d, "clips_path", default=None)
+    sample_config = SampleConfig.from_json(config_path)
+    mo.setup(sample_config, pipeline_config_path=pipeline_config_path)
+    _sample_videos(sample_config)
 
 
 if __name__ == "__main__":
