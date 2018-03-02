@@ -276,6 +276,21 @@ def replace_strings(string, replacers):
     return output
 
 
+def join_dicts(*args):
+    '''Joins any number of dictionaries into a new single dictionary.
+
+    Args:
+        *args: one or more dictionaries
+
+    Returns:
+        a single dictionary containing all items.
+    '''
+    d = {}
+    for di in args:
+        d.update(di)
+    return d
+
+
 class FileHasher(object):
     '''Base class for file hashers.'''
 
