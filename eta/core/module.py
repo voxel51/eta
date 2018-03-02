@@ -176,8 +176,7 @@ class GenericModuleConfig(Config):
     '''Generic module configuration class.'''
 
     def __init__(self, d):
-        self.inputs = self.parse_dict(d, "inputs", default={})
-        self.outputs = self.parse_dict(d, "outputs", default={})
+        self.data = self.parse_array(d, "data", default=[])
         self.parameters = self.parse_dict(d, "parameters", default={})
 
 
