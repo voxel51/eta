@@ -23,15 +23,15 @@ import logging
 import sys
 
 from eta.core.config import Config
-import eta.core.events as ev
-import eta.core.module as mo
-import eta.core.video as vd
+import eta.core.events as etae
+import eta.core.module as etam
+import eta.core.video as etav
 
 
 logger = logging.getLogger(__name__)
 
 
-class SampleConfig(mo.BaseModuleConfig):
+class SampleConfig(etam.BaseModuleConfig):
     '''Sampler configuration settings.'''
 
     def __init__(self, d):
@@ -76,7 +76,7 @@ def _sample_video_by_fps(data_config, parameters):
         "Sampling video '%s' at %s fps",
         data_config.input_path, parameters.fps)
 
-    vd.FFmpegVideoSampler(fps=parameters.fps).run(
+    etav.FFmpegVideoSampler(fps=parameters.fps).run(
         data_config.input_path,
         data_config.output_path,
     )
@@ -88,10 +88,10 @@ def _sample_video_by_clips(data_config, parameters):
         "Sampling video '%s' by clips '%s'",
         data_config.input_path, parameters.clips_path)
 
-    detections = ev.EventDetection.from_json(parameters.clips_path)
+    detections = etae.EventDetection.from_json(parameters.clips_path)
     frames = detections.to_series().to_str()
 
-    processor = vd.VideoProcessor(
+    processor = etav.VideoProcessor(
         data_config.input_path,
         frames=frames,
         out_impath=data_config.output_path,
@@ -109,7 +109,7 @@ def run(config_path, pipeline_config_path=None):
         pipeline_config_path: optional path to a PipelineConfig file
     '''
     sample_config = SampleConfig.from_json(config_path)
-    mo.setup(sample_config, pipeline_config_path=pipeline_config_path)
+    etam.setup(sample_config, pipeline_config_path=pipeline_config_path)
     _sample_videos(sample_config)
 
 
