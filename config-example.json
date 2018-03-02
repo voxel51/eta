@@ -1,0 +1,11 @@
+{
+    "config_dir": "/path/to/eta/configs",
+    "output_dir": "/path/to/eta/out",
+    "module_dirs": ["/path/to/eta/eta/modules"],
+    "pipeline_dirs": ["/path/to/eta/eta/pipelines"],
+    "weights_dirs": ["/path/to/eta/eta/cache"],
+    "default_sequence_idx" : "%05d",
+    "default_file_ext": "",
+    "default_video_ext": ".mp4",
+    "default_image_ext": ".png"
+}
