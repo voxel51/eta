@@ -19,6 +19,7 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+import datetime
 import errno
 import glob
 import hashlib
@@ -36,6 +37,11 @@ import eta.constants as etac
 
 
 logger = logging.getLogger(__name__)
+
+
+def get_isotime():
+    '''Gets the local time in ISO 8601 format: "YYYY-MM-DD HH:MM:SS".'''
+    return datetime.datetime.now().replace(microsecond=0).isoformat(" ")
 
 
 def get_eta_rev():
