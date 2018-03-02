@@ -2,7 +2,7 @@
 '''
 Download a file from Google Drive by ID.
 
-Copyright 2017, Voxel51, LLC
+Copyright 2017-2018, Voxel51, LLC
 voxel51.com
 '''
 # pragma pylint: disable=redefined-builtin
@@ -32,8 +32,24 @@ class GDriveDownloadConfig(mo.BaseModuleConfig):
 
     def __init__(self, d):
         super(GDriveDownloadConfig, self).__init__(d)
+        self.data = self.parse_object_array(d, "data", DataConfig)
+        self.parameters = self.parse_object(d, "parameters", ParametersConfig)
+
+
+class DataConfig(Config):
+    '''Data configuration settings.'''
+
+    def __init__(self, d):
         self.filename = self.parse_string(d, "filename")
         self.google_drive_id = self.parse_string(d, "google_drive_id")
+
+
+class ParametersConfig(Config):
+    '''Parameter configuration settings.'''
+
+    def __init__(self, d):
+        # no parameters
+        pass
 
 
 def run(config_path, pipeline_config_path=None):
@@ -43,18 +59,24 @@ def run(config_path, pipeline_config_path=None):
         config_path: path to a ClipConfig file
         pipeline_config_path: optional path to a PipelineConfig file
     '''
-    config = GDriveDownloadConfig.from_json(config_path)
-    mo.setup(config, pipeline_config_path=pipeline_config_path)
+    download_config = GDriveDownloadConfig.from_json(config_path)
+    mo.setup(download_config, pipeline_config_path=pipeline_config_path)
+    _download_files(download_config)
 
-    logger.info("Downloading %s from google drive", config.filename)
-    try:
-        etaw.download_google_drive_file(
-                config.google_drive_id, path=config.filename)
-    except etaw.WebSessionError:
-        logger.error("Could not download google drive file id %s",
-                     config.google_drive_id)
-    except:
-        logger.error("Unknown error occurred")
+
+def _download_files(download_config):
+    for data in download_config.data:
+        logger.info("Downloading %s from Google Drive", data.filename)
+        try:
+            etaw.download_google_drive_file(
+                data.google_drive_id, path=data.filename)
+        except etaw.WebSessionError:
+            logger.error(
+                "Could not download Google Drive file id %s",
+                data.google_drive_id
+            )
+        except:
+            logger.error("Unknown error occurred")
 
 
 if __name__ == "__main__":
