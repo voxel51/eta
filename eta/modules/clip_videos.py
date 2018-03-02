@@ -2,7 +2,7 @@
 '''
 Generate clips from a video.
 
-Copyright 2017, Voxel51, LLC
+Copyright 2017-2018, Voxel51, LLC
 voxel51.com
 
 Brian Moore, brian@voxel51.com
@@ -44,11 +44,12 @@ def run(config_path, pipeline_config_path=None):
 
 
 def _clip_videos(clip_config):
+    parameters = clip_config.parameters
     for data_config in clip_config.data:
         logger.info("Generating video clips for '%s'", data_config.input_path)
         with vd.VideoProcessor(
             data_config.input_path,
-            frames=data_config.get_frames(),
+            frames=parameters.get_frames(),
             out_vidpath=data_config.output_path,
         ) as p:
             for img in p:
@@ -61,6 +62,7 @@ class ClipConfig(mo.BaseModuleConfig):
     def __init__(self, d):
         super(ClipConfig, self).__init__(d)
         self.data = self.parse_object_array(d, "data", DataConfig)
+        self.parameters = self.parse_object(d, "parameters", ParametersConfig)
 
 
 class DataConfig(Config):
@@ -69,6 +71,12 @@ class DataConfig(Config):
     def __init__(self, d):
         self.input_path = self.parse_string(d, "input_path")
         self.output_path = self.parse_string(d, "output_path")
+
+
+class ParametersConfig(Config):
+    '''Parameter configuration settings.'''
+
+    def __init__(self, d):
         self.events_json_path = self.parse_string(
             d, "events_json_path", default=None)
         self.frames = self.parse_string(d, "frames", default=None)
