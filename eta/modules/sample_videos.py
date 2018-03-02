@@ -64,7 +64,7 @@ class ParametersConfig(Config):
 def _sample_videos(sample_config):
     parameters = sample_config.parameters
     for data_config in sample_config.data:
-        if data_config.fps != -1:
+        if parameters.fps != -1:
             _sample_video_by_fps(data_config, parameters)
         else:
             _sample_video_by_clips(data_config, parameters)
