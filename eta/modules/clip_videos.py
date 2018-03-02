@@ -31,31 +31,6 @@ import eta.core.video as vd
 logger = logging.getLogger(__name__)
 
 
-def run(config_path, pipeline_config_path=None):
-    '''Run the clip_videos module.
-
-    Args:
-        config_path: path to a ClipConfig file
-        pipeline_config_path: optional path to a PipelineConfig file
-    '''
-    clip_config = ClipConfig.from_json(config_path)
-    mo.setup(clip_config, pipeline_config_path=pipeline_config_path)
-    _clip_videos(clip_config)
-
-
-def _clip_videos(clip_config):
-    parameters = clip_config.parameters
-    for data_config in clip_config.data:
-        logger.info("Generating video clips for '%s'", data_config.input_path)
-        with vd.VideoProcessor(
-            data_config.input_path,
-            frames=parameters.get_frames(),
-            out_vidpath=data_config.output_path,
-        ) as p:
-            for img in p:
-                p.write(img)
-
-
 class ClipConfig(mo.BaseModuleConfig):
     '''Clip configuration settings.'''
 
@@ -88,6 +63,31 @@ class ParametersConfig(Config):
             return self.frames
         else:
             raise ConfigError("Expected 'events_json_path' or 'frames'")
+
+
+def _clip_videos(clip_config):
+    parameters = clip_config.parameters
+    for data_config in clip_config.data:
+        logger.info("Generating video clips for '%s'", data_config.input_path)
+        with vd.VideoProcessor(
+            data_config.input_path,
+            frames=parameters.get_frames(),
+            out_vidpath=data_config.output_path,
+        ) as p:
+            for img in p:
+                p.write(img)
+
+
+def run(config_path, pipeline_config_path=None):
+    '''Run the clip_videos module.
+
+    Args:
+        config_path: path to a ClipConfig file
+        pipeline_config_path: optional path to a PipelineConfig file
+    '''
+    clip_config = ClipConfig.from_json(config_path)
+    mo.setup(clip_config, pipeline_config_path=pipeline_config_path)
+    _clip_videos(clip_config)
 
 
 if __name__ == "__main__":
