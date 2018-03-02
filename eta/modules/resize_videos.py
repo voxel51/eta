@@ -23,14 +23,14 @@ import logging
 import sys
 
 from eta.core.config import Config
-import eta.core.module as mo
-import eta.core.video as vd
+import eta.core.module as etam
+import eta.core.video as etav
 
 
 logger = logging.getLogger(__name__)
 
 
-class ResizeConfig(mo.BaseModuleConfig):
+class ResizeConfig(etam.BaseModuleConfig):
     '''Resize configuration settings.'''
 
     def __init__(self, d):
@@ -62,7 +62,7 @@ def _resize_videos(resize_config):
     parameters = resize_config.parameters
     for data_config in resize_config.data:
         logger.info("Resizing video '%s'", data_config.input_path)
-        vd.FFmpegVideoResizer(
+        etav.FFmpegVideoResizer(
             size=parameters.size,
             scale=parameters.scale,
             scale_str=parameters.scale_str,
@@ -81,7 +81,7 @@ def run(config_path, pipeline_config_path=None):
         pipeline_config_path: optional path to a PipelineConfig file
     '''
     resize_config = ResizeConfig.from_json(config_path)
-    mo.setup(resize_config, pipeline_config_path=pipeline_config_path)
+    etam.setup(resize_config, pipeline_config_path=pipeline_config_path)
     _resize_videos(resize_config)
 
 
