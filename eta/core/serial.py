@@ -173,4 +173,4 @@ class EtaJSONEncoder(json.JSONEncoder):
             return obj.tolist()
         elif isinstance(obj, (dt.datetime, dt.date)):
             return obj.isoformat()
-        return super(EtaNumpyEncoder, self).default(obj)
+        return super(EtaJSONEncoder, self).default(obj)
