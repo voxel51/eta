@@ -164,7 +164,7 @@ class ObjectCount(Serializable):
     def from_dict(cls, d):
         '''Constructs an ObjectCount from a JSON dictionary.'''
         return ObjectCount(d["label"], d["count"])
-
+    
 
 class ScoredDetection(Serializable):
     '''A detection attributed with source and score
@@ -190,9 +190,14 @@ class ScoredDetection(Serializable):
         self.source = source
         self.score = score
         self.feat = feat
-        self._chip = None
+        self._chip = chip
         self.chip_path = chip_path
-        self.orig_order = 0
+        
+    def randomize_score(self):
+        '''
+        Randomizes the score in [0, 1]
+        '''
+        self.score = random.randrange(0.0, 1.0)
 
     def get_chip(self, img, force_square=False):
         '''Extracts the subimage containing this object from the image.
@@ -202,7 +207,8 @@ class ScoredDetection(Serializable):
             force_square: whether to (minimally) manipulate the object bounding
                 box during extraction so that the returned subimage is square
         '''
-        img = etai.read(self.source)
+        if not img:
+            img = etai.read(self.source)
         self._chip = self.detection.bounding_box.extract_from(img, force_square=force_square)
         return self._chip
 
@@ -228,6 +234,7 @@ class ScoredDetectionList(Serializable):
             objects: optional list of ScoredDetections in the frame.
         '''
         self.objects = objects or []
+        self._orig_order
 
     def add(self, obj):
         '''Adds a ScoredObject to the ScoredDetectionList.
@@ -262,19 +269,18 @@ class ScoredDetectionList(Serializable):
     def randomize_scores(self):
         '''Randomize object scores.'''
         for obj in self.objects:
-            obj.score=random.randrange(0.0, 1.0)
+            obj.randomize_score()
             
     def sort(self):
         '''Sort list by score and store original order.'''
-        for i in range(len(self.objects)):
-            self.objects[i].orig_order=i;
-        self.objects.sort(key=lambda x: x.score)
-        return self.get_order();
+        ord_obj = sorted(enumerate(self.objects), key=lambda x: x[1].score)
+        self._orig_order, self.objects = zip(*ord_obj)
+        return self.objects
     
-    def get_order(self):
-        '''Return the order of last sort.'''
-        return [obj.orig_order for obj in self.objects]
-
+    def get_orig_order(self):
+        '''Returns a list of the original orders of each object before the last sort.'''
+        return self._orig_order
+        
     def to_html(self, result_path, query_img):
         '''Output current label set to html for visualization.'''
         # output query image

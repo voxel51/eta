@@ -22,12 +22,12 @@ from builtins import *
 import errno
 import logging
 import os
+import random
 import shutil
 import tempfile
 
 import cv2
 import numpy as np
-import random
 
 from eta.core.config import Config, Configurable
 from eta.core.numutils import GrowableArray
@@ -595,10 +595,7 @@ class VideoFramesFeaturizer(Featurizer):
                 raise
 
 
-
 # ************************* FEATURIZERS ******************************
-
-
 class ORBFeaturizer(Featurizer):
     '''ORB Featurizer.'''
     
@@ -607,7 +604,7 @@ class ORBFeaturizer(Featurizer):
     def __init__(self):
         '''ORB Featurizer constructor (Oriented FAST and rotated BRIEF features
             http://www.willowgarage.com/sites/default/files/orb_final.pdf'''
-        Featurizer.__init__(self)
+        super(ORBFeaturizer, self).__init__(self)
         self.name = "ORBFeaturizer"
         self.orb = cv2.xfeatures2d.ORB_create()
 
@@ -626,15 +623,14 @@ class ORBFeaturizer(Featurizer):
 class RandFeaturizer(Featurizer):
     '''Random Featurizer.'''
     
-    DIMS=1024
-
-    def __init__(self):
-        Featurizer.__init__(self)
+    def __init__(self, dims=1024):
+        super(RandFeaturizer, self).__init__(self)
         self.name = "Random Featurizer"
+        self.dims = dims
  
     def dim(self):
         '''Return the dim of the underlying frame featurizer.'''
-        return RandFeaturizer.DIMS
+        return self.dims
  
  
     def _featurize(self, data_in):  # @UnusedVariable

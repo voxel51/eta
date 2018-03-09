@@ -33,6 +33,7 @@ import sys
 import tempfile
 
 import eta.constants as c
+import eta.core.image as etai
 
 logger = logging.getLogger(__name__)
 
@@ -166,7 +167,7 @@ def glob_videos(path):
     return multiglob(*c.VIDEO_FILE_TYPES_SUPPORTED,
             root=os.path.join(path, '*.'))
 
-def find_corresp_file(filepath, valid_exts=['.jpg', '.gif', '.png', '.jpeg']):
+def find_match_file(filepath, valid_exts=etai.VALID_IMAGE_EXTENSIONS):
     ''' finds an image that matches the json file. '''
     _file_noext, _ext = os.path.splitext(filepath)
     logger.info("Looking for corresponding file for %s with ext %s", _file_noext, _ext)

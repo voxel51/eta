@@ -496,32 +496,3 @@ class VGG16Featurizer(Featurizer):
         img1 = im.resize(data, 224, 224)
         return self.sess.run(
             self.vgg.fc2l, feed_dict={self.vgg.imgs: [img1]})[0]
-            
-            
-class FeatVGG16(Featurizer):
-    ''' VGG16 Featurizer. '''
-
-    def __init__(self):
-        Featurizer.__init__(self)
-        self.name = "VGG16Featurizer"
-        self.vconfig = VGG16FeaturizerConfig({})
-        self.vfeaturizer = VGG16Featurizer(self.vconfig)
-
-    def _start(self):
-        ''' start the Featurizer '''
-        Featurizer._start(self)
-        self.vfeaturizer.start(warn_on_restart=True, keep_alive=True)
-
-    def _featurize(self, data_in):
-        ''' encode an image using VGG features. '''
-        embedded_vector = self.vfeaturizer.featurize(data_in)
-        logger.info("image embedded to vector of length %d", len(embedded_vector))
-        logger.info("%s", embedded_vector)
-        return embedded_vector
-
-    def _stop(self):
-        ''' stop the Featurizer '''
-        Featurizer._stop(self)
-        self.vfeaturizer.stop()
-
-

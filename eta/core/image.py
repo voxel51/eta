@@ -28,6 +28,8 @@ import numpy as np
 from eta.core import utils
 from eta.core import web
 
+VALID_IMAGE_EXTENSIONS = [".png", ".jpg", ".jpeg", ".gif"]
+
 
 def read(path, flag=cv2.IMREAD_UNCHANGED):
     '''Reads image from path.
