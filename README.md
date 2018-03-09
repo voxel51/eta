@@ -1,5 +1,4 @@
 # ETA: Extensible Toolkit for Analytics
-kunyi
 
 An open and extensible video analytics infrastructure.
 
