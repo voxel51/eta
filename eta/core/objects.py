@@ -175,7 +175,7 @@ class ScoredDetection(Serializable):
         score: score or distance
         feat: feature data (builtin type only)
         chip_path: the path to the cached chip image
-        chip (not serialized)
+        chip: the chip, if already available (not serialized)
     '''
 
     def __init__(self, detection, source=None, score=0.0, feat=None, chip_path=None, chip=None):
