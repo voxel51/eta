@@ -245,14 +245,60 @@ class RelativePoint(Object):
 
 
 class Rectangle(Object):
-    '''A rectangle specified by its top-left and bottom-right Points.'''
+    '''A rectangle specified by its top-left and bottom-right Points.
+
+    Example:
+        ```json
+        {
+            "top_left": {
+                "x": 32,
+                "y": 64
+            },
+            "bottom_right": {
+                "x": 64,
+                "y": 128
+            }
+        }
+        ```
+    '''
 
     @staticmethod
     def is_valid_value(val):
         return (
             Object.is_valid_value(val) and
-            "top_left" in val and Point.is_valid_value(val["top_left"]) and
-            "bottom_right" in val and Point.is_valid_value(val["bottom_right"])
+            "top_left" in val and
+            "bottom_right" in val and
+            Point.is_valid_value(val["top_left"]) and
+            Point.is_valid_value(val["bottom_right"])
+        )
+
+
+class RelativeRectangle(Object):
+    '''A rectangle specified by its top-left and bottom-right RelativePoints.
+
+    Example:
+        ```json
+        {
+            "top_left": {
+                "x": 0.25,
+                "y": 0.5
+            },
+            "bottom_right": {
+                "x": 0.5,
+                "y": 0.75
+            }
+        }
+        ```
+    '''
+
+    @staticmethod
+    def is_valid_value(val):
+        return (
+            Object.is_valid_value(val) and
+            "top_left" in val and
+            "bottom_right" in val and
+            RelativePoint.is_valid_value(val["top_left"]) and
+            RelativePoint.is_valid_value(val["bottom_right"])
         )
 
 
