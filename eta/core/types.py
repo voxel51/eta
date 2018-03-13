@@ -209,7 +209,38 @@ class Point(Object):
     def is_valid_value(val):
         return (
             Object.is_valid_value(val) and
-            "x" in val and "y" in val
+            "x" in val and
+            "y" in val and
+            val["x"] >= 0 and
+            val["y"] >= 0
+        )
+
+
+class RelativePoint(Object):
+    '''An (x, y) coordinate point defined by "x" and "y" coordinates, which
+    must take values in [0, 1].
+
+    Typically, RelativePoints describe the coordiantes of pixels in images
+    relative to the image dimensions. This is useful so that the coordinates
+    can be automatically rendered for images of different resolution.
+
+    Example:
+        ```json
+        {
+            "x": 0.5,
+            "y": 0.5
+        }
+        ```
+    '''
+
+    @staticmethod
+    def is_valid_value(val):
+        return (
+            Object.is_valid_value(val) and
+            "x" in val and
+            "y" in val and
+            0 <= val["x"] <= 1 and
+            0 <= val["y"] <= 1
         )
 
 
