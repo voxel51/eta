@@ -460,6 +460,9 @@ class Weights(File):
 class Image(File):
     '''An image.
 
+    ETA uses OpenCV to read images, so any image type understood by OpenCV is
+    valid.
+
     Examples:
         /path/to/image.png
     '''
@@ -496,6 +499,9 @@ class Video(Data):
 class VideoFile(Video, File):
     '''A video represented as a single (encoded) video file.
 
+    ETA uses ffmpeg (default) or OpenCV (if specified) to load video files,
+    so any video encoding types understood by these tools are valid.
+
     Examples:
         /path/to/video.mp4
     '''
@@ -511,6 +517,10 @@ class VideoFile(Video, File):
 
 class ImageSequence(Video, FileSequence):
     '''A video represented as a sequence of images with one numeric parameter.
+
+    ETA uses ffmpeg (default) or OpenCV (if specified) to load videos stored
+    as sequences of images, so any image types understood by these tools are
+    valid.
 
     Examples:
         /path/to/video/%05d.png
@@ -570,7 +580,10 @@ class VideoClips(DualFileSequence):
 
 
 class EventDetection(JSONFile):
-    '''Per-frame binary detections of an event in a video.
+    '''A per-frame binary event detection.
+
+    This type is implemented in ETA by the `eta.core.events.EventDetection`
+    class.
 
     Examples:
         /path/to/event_detection.json
@@ -581,6 +594,8 @@ class EventDetection(JSONFile):
 class EventSeries(JSONFile):
     '''A series of events in a video.
 
+    This type is implemented in ETA by the `eta.core.events.EventSeries` class.
+
     Examples:
         /path/to/event_series.json
     '''
@@ -589,6 +604,8 @@ class EventSeries(JSONFile):
 
 class Frame(JSONFile):
     '''Detected objects in a frame.
+
+    This type is implemented in ETA by the `eta.core.objects.Frame` class.
 
     Examples:
         /path/to/frame.json
