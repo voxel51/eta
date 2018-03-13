@@ -191,7 +191,19 @@ class Object(Builtin):
 
 
 class Point(Object):
-    '''An (x, y) coordinate point.'''
+    '''An (x, y) coordinate point defined by "x" and "y" coordinates, which
+    must be nonnegative.
+
+    Typically, Points represent coordinates of pixels in images.
+
+    Example:
+        ```json
+        {
+            "x": 0,
+            "y": 128
+        }
+        ```
+    '''
 
     @staticmethod
     def is_valid_value(val):
