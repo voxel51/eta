@@ -99,12 +99,13 @@ The `info` spec contains the following fields:
 - `name`: the name of the pipeline
 
 - `type`: the type of the pipeline, i.e., what computation it performs. Must
-    be a valid pipeline type exposed by the ETA library
+  be a valid pipeline type exposed by the ETA library, i.e. a subclass of
+    `eta.core.types.Pipeline`
 
 - `version`: the current pipeline version
 
-- `description`: a short free-text description of the pipeline purpose and
-    implementation
+- `description`: a free-text description of the pipeline purpose and
+  implementation
 
 The `inputs` field defines the names of the inputs exposed by the pipeline
 
@@ -134,6 +135,45 @@ following fields:
 The pipeline metadata file defines the connectivity of the computation graph.
 In practice, the pipeline builder uses this information to instantiate the
 necessary configuration files to run a pipeline on new input data.
+
+
+## Types in the ETA System
+
+Because the ETA system is generic and supports third-party pipelines that may
+be written in languages other than Python or otherwise developed independently
+from the ETA codebase and exposed only through executable files (perhaps even
+remotely via a REST API), the ETA library exposes a **type system** in the
+`eta.core.types` module that defines a common framework that pipelines must
+use to define their semantics.
+
+The ETA types must be used by all pipeline metadata files whether or not the
+pipeline is built using the ETA library. In particular, if a third-party
+pipeline performs a new type of operation, a corresponding class must be added
+to the `eta.core.types` module describing the type so that ETA that can
+understand the semantics of the pipeline. This information is used when
+presenting user-facing information about available pipelines.
+
+The `eta.core.types` module defines four top-level categories of types:
+pipelines, modules, builtins, and data. See `modules_dev_guide.md` for more
+information about module-specific types, which are beyond the scope of this
+guide.
+
+> Note: types may be defined in modules other than `eta.core.types` if
+> necessary (e.g. on a project-specific basis), but these types must still
+> inherit from the base type `eta.core.types.Type`. More specifically, for
+> pipelines, new types must be subclasses of `eta.core.types.Pipeline`.
+
+#### Pipelines
+
+All ETA pipelines must be declared with a `type` in their pipeline metadata
+file that is a subclass of `eta.core.types.Pipeline`. Pipeline types allow
+developers to declare the purpose of their pipelines and allow the ETA system
+to classify and organize the available pipelines by purpose.
+
+> Currently, only the base pipeline type `eta.core.types.Pipeline` is available,
+> so all pipelines must declare this as their type. As the ETA system grows,
+> more fine-grained pipeline types will be added to make the pipeline taxonomy
+> more descriptive for the end-user.
 
 
 ## Visualizing Pipelines
