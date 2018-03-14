@@ -81,9 +81,18 @@ def get_class(class_name, module_name=None):
         module_name: the fully-qualified module name like "eta.core.utils", or
             None if class_name includes the module name. Set module_name to
             __name__ to load a class from the calling module
+
+    Raises:
+        ImportError: if the class could not be imported
     '''
     if module_name is None:
-        module_name, class_name = class_name.rsplit(".", 1)
+        try:
+            module_name, class_name = class_name.rsplit(".", 1)
+        except ValueError:
+            raise ImportError((
+                "Class name '%s' must be fully-qualified when no module "
+                "name is provided") % class_name
+            )
 
     __import__(module_name)  # does nothing if module is already imported
     return getattr(sys.modules[module_name], class_name)
