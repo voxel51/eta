@@ -1,6 +1,9 @@
 '''
 ETA core type system.
 
+More types may be defined in other modules, but they must inherit from the
+base type `eta.core.types.Type` defined here.
+
 Copyright 2018, Voxel51, LLC
 voxel51.com
 
@@ -37,9 +40,14 @@ def parse_type(type_str):
         TypeError: is the type string was not a recognized type
     '''
     try:
-        return etau.get_class(type_str)
+        type_cls = etau.get_class(type_str)
     except ImportError:
         raise TypeError("Unknown type '%s'" % type_str)
+
+    if not issubclass(type_cls, Type):
+        raise TypeError("Type '%s' must be a subclass of Type" % type_cls)
+
+    return type_cls
 
 
 def resolve_value(val, type_):
