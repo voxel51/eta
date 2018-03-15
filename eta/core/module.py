@@ -198,7 +198,11 @@ class BaseModuleConfigSettings(Config):
 
 
 class GenericModuleConfig(Config):
-    '''Generic module configuration class.'''
+    '''Generic module configuration class.
+
+    This class is used by `eta.core.builder.PipelineBuilder` to build
+    module configuration files.
+    '''
 
     def __init__(self, d):
         self.data = self.parse_array(d, "data", default=[])
