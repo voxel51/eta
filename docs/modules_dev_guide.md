@@ -36,16 +36,16 @@ vendor's cloud.
 Every ETA module must provide a metadata JSON file describing the inputs and
 outputs of the module. The metadata file contains all the necessary information
 to generate configuration JSON files that are passed to a module during
-execution. Indeed, the ETA system automatically generates configuration files
+execution. The ETA system automatically generates these configuration files
 whenever it builds and executes pipelines.
 
-The following JSON gives an example of the metadata file for a simple object
-detector module:
+The following shows an example metadata file `simple_object_detector.json` for
+a simple object detector module:
 
 ```json
 {
     "info": {
-        "name": "simple-object-detector",
+        "name": "simple_object_detector",
         "type": "eta.core.types.Module",
         "version": "0.1.0",
         "description": "A simple object detector",
@@ -110,10 +110,12 @@ The module metadata file contains the following top-level fields:
 
 The `info` spec contains the following fields:
 
-- `name`: the name of the module
+- `name`: the name of the module. By convention, this name should match the
+    name of the module metadata file without the extension
 
-- `type`: the type of the module from `eta.core.types`, i.e., what computation
-    it performs. Must be a valid module type exposed by the ETA library
+- `type`: the type of the module, i.e., what computation it performs. Must be a
+    valid module type exposed by the ETA library, i.e. a subclass of
+    `eta.core.types.Module`
 
 - `version`: the current module version
 
