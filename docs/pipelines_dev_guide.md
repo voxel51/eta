@@ -15,10 +15,10 @@ tunable parameters of the analytic that the user can provide, access, and
 customize.
 
 Each ETA pipeline is represented internally as a graph whose nodes are ETA
-modules and whose edges define the flow of data between the modules. Thus the
-ETA pipeline system is general purpose and highly customizable. The ETA
-repository defines a collection of pre-configured pipelines that combine the
-builtin ETA modules in many ways to useful video analytics capabilities.\
+modules and whose edges define the flow of data between the modules. As such,
+the ETA pipeline system is general purpose and highly customizable. The ETA
+repository defines a collection of pre-configured pipelines that arrange the
+builtin ETA modules in graphs to implement various useful video analytics.
 
 New pipelines can be easily added to the ETA system by writing a simple JSON
 configuration file whose syntax is described in the next section.
@@ -29,11 +29,11 @@ configuration file whose syntax is described in the next section.
 Every ETA pipeline must provide a metadata JSON file describing the inputs,
 outputs, modules (nodes), and data flow (edges) of the computational graph.
 
-The metadata file contains all the necessary information to instantiate the
-pipeline and module configuration files that are required under-the-hood to run
-an ETA pipeline on data. The pipeline and associated metadata files of the
-constituent modules define a template that is populated by the pipeline builder
-for each new piece of input data.
+The pipeline metadata file contains all the necessary information to
+instantiate the pipeline and module configuration files that are required
+under-the-hood to run an ETA pipeline on data. The pipeline and associated
+metadata files of the constituent modules define a template that is populated
+by the pipeline builder for each new piece of input data.
 
 The following JSON gives an example of the metadata file for a simple video
 formatting pipeline:
@@ -79,7 +79,7 @@ formatting pipeline:
 
 When discussing pipeline metadata files, we refer to each JSON object `{}` as a
 **spec** (specification) because it specifies the semantics of a certain
-entity, and we refer to the keys of a JSON object (e.g., "info") as **fields**.
+entity, and we refer to the keys of a JSON object (e.g., `info`) as **fields.**
 
 The pipeline metadata file contains the following top-level fields:
 
@@ -107,15 +107,15 @@ The `info` spec contains the following fields:
 - `description`: a free-text description of the pipeline purpose and
   implementation
 
-The `inputs` field defines the names of the inputs exposed by the pipeline
+The `inputs` field defines the names of the inputs exposed by the pipeline.
 
-The `outputs` field defines the names of the outputs exposed by the pipeline
+The `outputs` field defines the names of the outputs exposed by the pipeline.
 
 The `modules` field contains a list of module specs with the following fields:
 
 - `name`: the name of the module to include
 
-- `tunable_parameters': a list of module parameters that are exposed to the
+- `tunable_parameters`: a list of module parameters that are exposed to the
     end-user for tuning
 
 - `set_parameters`: a dictionary whose keys are module parameters and whose
@@ -125,15 +125,15 @@ The `connections` field contains a list of connection (edge) specs with the
 following fields:
 
 - `source`: the source (starting point) of the edge. The syntax for a source is
-    `"<module>.<node>"`. Alternatively, the special module `"INPUT"` can be
+    `<module>.<node>`. Alternatively, the special module `INPUT` can be
     used to refer to a pipeline input
 
 - `sink`: the sink (stopping point) of the edge. The syntax for a sink is
-    `"<module>.<node>"`. Alternatively, the special module `"OUTPUT"` can be
+    `<module>.<node>`. Alternatively, the special module `OUTPUT` can be
     used to refer to a pipeline output
 
-The pipeline metadata file defines the connectivity of the computation graph.
-In practice, the pipeline builder uses this information to instantiate the
+The pipeline metadata file defines the connectivity of the computation graph,
+and the pipeline builder uses this information to instantiate the
 necessary configuration files to run a pipeline on new input data.
 
 
