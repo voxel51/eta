@@ -341,8 +341,10 @@ pipeline.render("pipeline_block_diagram.svg")
 ```
 
 The above code generates a `pipeline_block_diagram.svg` vector graphics image
-of the pipeline block diagram. It also generates the following intermediate
-`pipeline_block_diagram.diag` file describing the network architecture:
+that depicts the pipeline as a block diagram. Behind the scenes, it first
+generates the following intermediate `pipeline_block_diagram.diag` file
+describing the network architecture in the format understood by the `blockdiag`
+package:
 
 ```
 blockdiag {
