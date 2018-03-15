@@ -346,7 +346,7 @@ module.render("module_block_diagram.svg")
 The above code generates the following `module_block_diagram.svg` image that
 depicts the module as a block diagram:
 
-<embed src="https://drive.google.com/uc?id=1v3CLijGzcXawzR8L44bhr_lC5B7aYPzv" width="100%" type='application/pdf', class="center">
+<embed src="https://drive.google.com/uc?id=1v3CLijGzcXawzR8L44bhr_lC5B7aYPzv" width="100%" type='application/pdf', class="center" />
 
 Behind the scenes, it first generates the following intermediate
 `module_block_diagram.diag` file describing the module definition in a format
