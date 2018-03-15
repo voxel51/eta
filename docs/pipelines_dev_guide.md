@@ -343,7 +343,7 @@ pipeline.render("pipeline_block_diagram.svg")
 The above code generates the following `pipeline_block_diagram.svg` image that
 depicts the pipeline as a block diagram:
 
-![pipeline_block_diagram.svg](https://drive.google.com/open?id=1G69zSKFJIXkp3mgfztHmKXpolrPIGsb3)
+<embed src="https://drive.google.com/uc?id=1ArnECNoNFm_f9--vxWVtn80RQqDQgtKH" width="100%" type='application/pdf', class="center">
 
 Behind the scenes, it first generates the following intermediate
 `pipeline_block_diagram.diag` file describing the network architecture in the
