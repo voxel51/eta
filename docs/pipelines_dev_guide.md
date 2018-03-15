@@ -137,6 +137,18 @@ and the pipeline builder uses this information to instantiate the
 necessary configuration files to run a pipeline on new input data.
 
 
+#### Exposing a new pipeline
+
+In order for ETA to use a pipeline, its metadata JSON file must be placed in a
+directory where the ETA system can find it. The `pipeline_dirs` field in the
+ETA-wide `config.json` file defines a list of directories for which all JSON
+files contained in them are assumed to be pipeline metadata files.
+
+> To add a new pipeline directory to the ETA path, either append it to the
+> `pipeline_dirs` list in the ETA-wide `config.json` file or add it to the
+> `ETA_PIPELINE_DIRS` environment variable during execution.
+
+
 ## Types in the ETA System
 
 Because the ETA system is generic and supports third-party pipelines that may
