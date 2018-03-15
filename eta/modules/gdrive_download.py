@@ -18,6 +18,7 @@ from builtins import *
 # pragma pylint: enable=wildcard-import
 
 import logging
+import os
 import sys
 
 import eta.core.module as etam
@@ -40,28 +41,29 @@ class DataConfig(Config):
     '''Data configuration settings.'''
 
     def __init__(self, d):
-        self.filename = self.parse_string(d, "filename")
-        self.google_drive_id = self.parse_string(d, "google_drive_id")
+        self.output_dir = self.parse_string(d, "output_dir")
 
 
 class ParametersConfig(Config):
     '''Parameter configuration settings.'''
 
     def __init__(self, d):
-        # no parameters
-        pass
+        self.google_drive_id = self.parse_string(d, "google_drive_id")
+        self.filename = self.parse_string(d, "filename")
 
 
 def _download_files(download_config):
+    params = download_config.parameters
     for data in download_config.data:
-        logger.info("Downloading %s from Google Drive", data.filename)
+        output_path = os.path.join(data.output_dir, params.filename)
+        logger.info("Downloading %s from Google Drive", output_path)
         try:
             etaw.download_google_drive_file(
-                data.google_drive_id, path=data.filename)
+                params.google_drive_id, path=output_path)
         except etaw.WebSessionError:
             logger.error(
                 "Could not download Google Drive file id %s",
-                data.google_drive_id
+                params.google_drive_id
             )
         except:
             logger.error("Unknown error occurred")
