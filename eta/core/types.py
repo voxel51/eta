@@ -140,6 +140,9 @@ class Module(Type):
 class Builtin(Type):
     '''The base type for builtins, which are types whose values are consumed
     directly.
+
+    Builtin types must know how to validate whether a given value is valid for
+    their type.
     '''
 
     @staticmethod
