@@ -73,11 +73,17 @@ When the root `eta` package is imported, it (tries to) read the
 To setup your environment, copy the example configuration file
 
 ```shell
-cp eta/config-example.json eta/config.json
+cp config-example.json config.json
 ```
 
 and then edit your config file to provide the (full) paths to the relevant
-directories in your installation.
+directories in your installation. If you do not require a customized
+installation, the example configuration file contains the pattern `{{eta}}`
+that you can perform a quick find-and-replace on to populate the config:
+
+```shell
+sed -i '' -e "s|{{eta}}|$(pwd)|g" config.json
+```
 
 
 ## Installing the command-line utility
