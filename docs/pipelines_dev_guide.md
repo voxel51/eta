@@ -340,11 +340,14 @@ pipeline = etap.load_metadata("video_formatter")
 pipeline.render("pipeline_block_diagram.svg")
 ```
 
-The above code generates a `pipeline_block_diagram.svg` vector graphics image
-that depicts the pipeline as a block diagram. Behind the scenes, it first
-generates the following intermediate `pipeline_block_diagram.diag` file
-describing the network architecture in the format understood by the `blockdiag`
-package:
+The above code generates the following `pipeline_block_diagram.svg` image that
+depicts the pipeline as a block diagram:
+
+![pipeline_block_diagram.svg](https://drive.google.com/open?id=1G69zSKFJIXkp3mgfztHmKXpolrPIGsb3)
+
+Behind the scenes, it first generates the following intermediate
+`pipeline_block_diagram.diag` file describing the network architecture in the
+format understood by the `blockdiag` package:
 
 ```
 blockdiag {
