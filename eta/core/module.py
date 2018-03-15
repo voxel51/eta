@@ -164,7 +164,32 @@ def setup(module_config, pipeline_config_path=None):
 
 
 class BaseModuleConfig(Config):
-    '''Base module configuration class.'''
+    '''Base module configuration class that defines common configuration
+    fields that all modules must support.
+
+    All fields defined here should provide default values.
+
+    Attributes:
+        base: an `eta.core.module.BaseModuleConfigSettings` instance defining
+            module configuration parameters
+    '''
+
+    def __init__(self, d):
+        self.base = self.parse_object(
+            d, "base", BaseModuleConfigSettings,
+            default=BaseModuleConfigSettings.default(),
+        )
+
+
+class BaseModuleConfigSettings(Config):
+    '''Base module configuration settings that all modules must support.
+
+    All fields defined here should provide default values.
+
+    Attributes:
+        logging_config: an `eta.core.log.LoggingConfig` instance defining
+            the logging configuration settings for the module
+    '''
 
     def __init__(self, d):
         self.logging_config = self.parse_object(
