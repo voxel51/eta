@@ -471,38 +471,89 @@ object detector module defined earlier:
 ```
 
 Note that the `annotated_frames_path` is omitted from the second data spec,
-which is allowed since the field was optional (a default value was
-provided in the metadata file).
+which is allowed since the field is optional. Similarly, the `weights`
+parameter is omitted, which is allowed because a default value was provided for
+that parameter in the metadata file. The top-level `base` field was omitted
+entirely, which is allowed since this field is always optional.
+
+
+## Module Execution Syntax
+
+Recall that ETA modules are simply _executables_ that take JSON files as input
+and write output data to disk. All ETA modules must follow the following
+command-line syntax, regardless of whether they are implemented using the ETA
+library:
+
+```shell
+<module-name> MODULE_CONFIG_PATH [PIPELINE_CONFIG_PATH]
+```
+
+Here, `<module-name>` is the name of the module and `MODULE_CONFIG_PATH` is
+the path to a valid module configuration JSON file for the module as described
+in the previous section.
+
+Modules executables must support an optional `PIPELINE_CONFIG_PATH` argument
+that specifies the path to a _pipeline configuration JSON file_, which is
+supplied when a module is executed in the context of a pipeline.
+Pipeline configuration JSON files may set/override zero or more base module
+configuration settings defined by `eta.core.module.BaseModuleConfigSettings`,
+so ETA modules must check for and appropriately handle these fields.
+
+> Pipeline configuration JSON files also contain various pipeline-level fields
+> that are not relevant to modules and should be ignored.
 
 
 ## Building Standalone Modules
 
-Since ETA modules are independent programs or scripts, they can be implemented
-in any language as long as they provide a valid metadata file and write their
-outputs in ETA-supported formats. Thus, even if developers don't intend to use
-ETA libraries to build their modules, they must be familiar with the ETA
-supported data types.
+Since ETA modules are simply executables, they can be implemented in any
+language as long as they provide a valid metadata file, follow the ETA module
+execution syntax, and
+module execution syntax.
+
+However, even if developers don't intend to use ETA libraries to build their
+modules, they must be familiar with the ETA supported data types in order to
+properly generate their module metadata files, and they must be familiar with
+the `eta.core.module.BaseModuleConfig` class in order to appropriately
+implement the generic module configuration settings that all modules must
+support.
 
 
-## Building Modules using ETA
+## Building Modules Using ETA
 
-ETA provides a core library that can be leveraged to easily define new
-analytics modules. This is the most common method for creating new modules.
+ETA provides a core library that can be leveraged to easily define new modules.
+This section provides numerous examples describing the key features of the
+module implementation utilities in ETA.
 
-This section summarizes the key features of the ETA module creation syntax.
 
-#### Conventions for implementing modules using ETA
+#### Module template
 
-Here is a not-exactly-python-code template example for a module in ETA.
+The following liberally-documented Python code describes the template that most
+modules provided in the ETA repository follow.
+
+> The `{{}}` blocks denote placeholders that are replaced in practice by the
+> appropriate strings for the module being written.
 
 ```python
 #!/usr/bin/env python
-'''
-{{Description Of The Module}}
+# ETA modules are simply executables, so the module definition must start with
+# a shebang line declaring the python interpreter to use during execution
 
-Copyright 2017, Voxel51, LLC
+# All modules should provide a docstring that describes the purpose of the
+module.
+'''
+{{Description of the module}}
+
+Copyright 2017-2018, Voxel51, LLC
 voxel51.com
 '''
+#
+# Inputs in ETA are separated into groups and sorted alphabetically within
+# each group. See `style_guide.md` for more information
+#
+# The first block of `__future__` imports allow for cross-version Python
+# support. See `python23_guide.md` for more information
+#
+
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
 # pragma pylint: disable=wildcard-import
@@ -521,92 +572,127 @@ import sys
 import eta.core.module as etam
 
 
+# By convention, all ETA modules should use a logger whose name is `__name__`
+# to log all messages
 logger = logging.getLogger(__name__)
 
 
-class {{ModuleTemplate}}Config(etam.BaseModuleConfig):
+# Defines the module configuration file.
+# Inherits from `BaseModuleConfig`, which handles the parsing of the base
+# module settings automatically
+class {{ModuleName}}Config(etam.BaseModuleConfig):
     '''Module configuration settings.'''
 
     def __init__(self, d):
-        super({{ModuleTemplate}}Config, self).__init__(d)
+        # Call the `BaseModuleConfig` constructor, which parses the optional
+        # `base` field
+        super({{ModuleName}}Config, self).__init__(d)
+
+        # Parse the `data` field, which is defined by an array of `DataConfig`
+        # instances
+        self.data = self.parse_object_array(d, "data", DataConfig)
+
+        # Parse the `parameters` field, which is defined by a
+        # `ParametersConfig` instance
+        self.parameters = self.parse_object(d, "parameters", ParametersConfig)
 
 
+# Parses the inputs and outputs for the module as defined in its module
+# metadata file
+class DataConfig(Config):
+    '''Data configuration settings.'''
+
+    def __init__(self, d):
+        # Template for parsing an input field
+        self.{{input}} = self.parse_{{input_type}}(d, "{{input}}")
+
+        # Template for parsing an output field
+        self.{{output}} = self.parse_{{output_type}}(d, "{{output}}")
+
+
+# Parses the parameters for the module as defined in its module metadata file
+class ParametersConfig(Config):
+    '''Parameter configuration settings.'''
+
+    def __init__(self, d):
+        # Template for parsing a parameter with a default value
+        self.{{parameter}} = self.parse_{{parameter_type}}(
+            d, "{{parameter}}", default={{parameter_default_value}})
+
+
+# By convention, all modules in the ETA library define a `run()` method that
+# parses the command-line arguments, performs base module setup, and then calls
+# another method that implements the actual module-specific actions
 def run(config_path, pipeline_config_path=None):
-    '''Run the module.
+    '''Run the {{module_name}} module.
 
     Args:
-        config_path: path to {{ModuleTemplate}}Config file
+        config_path: path to a {{ModuleName}}Config file
         pipeline_config_path: optional path to a PipelineConfig file
     '''
-    config = {{ModuleTemplate}}Config.from_json(config_path)
+    # Load the module config
+    config = {{ModuleName}}Config.from_json(config_path)
+
+    # Perform base module setup via the `eta.core.module.setup()` method
+    # provided by the ETA library
     etam.setup(config, pipeline_config_path=pipeline_config_path)
+
+    # Now pass the `config` instance to another private method to perform the
+    # actual module computations
+    # ...
 
 
 if __name__ == "__main__":
+    # Pass the command-line arguments to the `run()` method for parsing and
+    # processing
     run(*sys.argv[1:])
 ```
 
-Modules include the following, in this order from top to bottom:
 
-- A full docstring at the top of the file to describe the module capabilities
+#### Concrete module configuration example
 
-- The `__future__` imports, pragmas, and other definitions to alow for cross
-    cross version python support (see `python23_guide.md`)
-
-- Imports organized according to our `style_guide.md`, namely standard library
-    imports, third-party library imports, and application-specific imports,
-    alphabetized within each group and with a single blank line between each
-
-- Logging setup
-
-- Definitions of module configuration classes
-
-- A `run` fuction that defines the main driver of the module
-
-- Any additional methods needed by the main driver
-
-- The canonical `if __name__ == "__main__":` startup statement
-
-
-#### Parsing module configuration files
-
-The following snippet shows a canonical definition of a module configuration in
-ETA:
+The following snippet shows a concrete example of a module configuration
+definition using the ETA library:
 
 ```python
 import eta.core.module as etam
 
-class ExampleConfig(etam.BaseModuleConfig):
+class ExampleModuleConfig(etam.BaseModuleConfig):
     '''An example config class.'''
 
     def __init__(self, d):
-        super({{ExampleConfig}}, self).__init__(d)
+        super(ExampleModuleConfig, self).__init__(d)
         self.data = self.parse_object_array(d, "data", DataConfig)
+        self.parameters = self.parse_object(d, "parameters", ParametersConfig)
 
 
 class DataConfig(Config):
-    '''An example data config class.'''
+    '''Data configuration settings.'''
 
     def __init__(self, d):
         self.input_path = self.parse_string(d, "input_path")
         self.output_path = self.parse_string(d, "output_path")
+
+
+class ParametersConfig(Config):
+    '''Parameter configuration settings.'''
+
+    def __init__(self, d):
         self.parameter = self.parse_number(d, "parameter", default=1.0)
 ```
 
-The snippet defines a configuration class called `ExampleConfig` which contains
-a single `data` field that contains an array of `DataConfig` instances.
+The snippet defines a configuration class called `ExampleModuleConfig` that
+defines a `data` field that contains an array of `DataConfig` instances and
+a `parameters` field that contains an instance of `ParametersConfig`. Also,
+`ExampleModuleConfig` derives from `eta.core.module.BaseModuleConfig`, which
+which handles the parsing of the optional `base` field containing any base
+module settings.
 
-Note that the `DataConfig` class derives from the `eta.core.config.Config`
-class, which implements the basic semantics of configuration classes.  Further,
-note that the `ExampleConfig` class derives from
-`eta.core.module.BaseModuleConfig` which implements additional configuration
-functionality for modules.  The `Config.parse_*` methods are
-used to define the names and data types of the JSON fields.
+The `eta.core.config.Config.parse_*` methods are used to parse the JSON fields
+according to their declared types. Fields defined with no `default` keyword
+are _required_, and fields with a `default` keyword are _optional_.
 
-Fields defined with no `default` keyword are *mandatory*, and fields with a
-`default` keyword are *optional*.
-
-The following JSON file is a valid `ExampleConfig` configuration file:
+The following JSON file is a valid `ExampleModuleConfig` configuration file:
 
 ```json
 {
@@ -615,23 +701,27 @@ The following JSON file is a valid `ExampleConfig` configuration file:
             "input_path": "/path/to/input.mp4",
             "output_path": "/path/to/output.mp4"
         }
-    ]
+    ],
+    "parameters": {}
 }
 ```
 
-Note that the `parameter` field is omitted, which is allowed since a default
-value was specified in the `DataConfig` class.
+Note that the `parameter` field is omitted from the `parameters` spec, which
+is allowed since a default value was specified in the `ParametersConfig` class.
+The top-level `base` field is also omitted entirely, which is allowed since
+the `eta.core.module.BaseModuleConfig` class supports a default value for it.
 
-To load the configuration file into an `ExampleConfig` instance, simply do:
+To load the configuration file into an `ExampleModuleConfig` instance,
+simply do:
 
 ```python
 # Load config from JSON
-example_config = ExampleConfig.from_json(path)
+example_config = ExampleModuleConfig.from_json(path)
 ```
 
 The `from_json` method, which is inherited from the super class
 `eta.core.serial.Serializable`, reads the JSON dictionary and passes it to the
-`ExampleConfig` constructor.
+`ExampleModuleConfig` constructor.
 
 
 #### Defining new data types
