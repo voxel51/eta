@@ -157,10 +157,10 @@ def setup(module_config, pipeline_config_path=None):
     if pipeline_config_path:
         from eta.core.pipeline import PipelineConfig
         pipeline_config = PipelineConfig.from_json(pipeline_config_path)
-        module_config.logging_config = pipeline_config.logging_config
+        module_config.base.logging_config = pipeline_config.logging_config
 
     # Setup logging
-    etal.custom_setup(module_config.logging_config)
+    etal.custom_setup(module_config.base.logging_config)
 
 
 class BaseModuleConfig(Config):
