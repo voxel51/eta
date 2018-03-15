@@ -343,9 +343,11 @@ module = etam.load_metadata("simple_object_detector")
 module.render("module_block_diagram.svg")
 ```
 
-The above code generates a `module_block_diagram.svg` vector graphics image of
-the module block diagram. It also generates the following intermediate
-`module_block_diagram.diag` file describing the network architecture:
+The above code generates a `module_block_diagram.svg` vector graphics image
+that depicts the module as a block diagram. Behind the scenes, it first
+generates the following intermediate `module_block_diagram.diag` file
+describing the module definition in a format understood by the `blockdiag`
+package:
 
 ```
 blockdiag {
