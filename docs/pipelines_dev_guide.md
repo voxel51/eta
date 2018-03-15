@@ -343,6 +343,8 @@ pipeline.render("pipeline_block_diagram.svg")
 The above code generates the following `pipeline_block_diagram.svg` image that
 depicts the pipeline as a block diagram:
 
+<a href="https://drive.google.com/uc?id=1ArnECNoNFm_f9--vxWVtn80RQqDQgtKH"><embed src="https://drive.google.com/uc?id=1ArnECNoNFm_f9--vxWVtn80RQqDQgtKH" width="750px" height="500px" align="middle"/></a>
+
 ![pipeline\_block\_diagram.pdf](
 https://drive.google.com/uc?id=1ArnECNoNFm_f9--vxWVtn80RQqDQgtKH)
 
