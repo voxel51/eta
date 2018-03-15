@@ -343,11 +343,14 @@ module = etam.load_metadata("simple_object_detector")
 module.render("module_block_diagram.svg")
 ```
 
-The above code generates a `module_block_diagram.svg` vector graphics image
-that depicts the module as a block diagram. Behind the scenes, it first
-generates the following intermediate `module_block_diagram.diag` file
-describing the module definition in a format understood by the `blockdiag`
-package:
+The above code generates the following `module_block_diagram.svg` image that
+depicts the module as a block diagram:
+
+![module_block_diagram.svg](https://drive.google.com/open?id=1jcQfN4BKqdHMA0evsc2B0wx6b3A33meL)
+
+Behind the scenes, it first generates the following intermediate
+`module_block_diagram.diag` file describing the module definition in a format
+understood by the `blockdiag` package:
 
 ```
 blockdiag {
