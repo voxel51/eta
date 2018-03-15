@@ -199,7 +199,7 @@ pipeline, it is straightforward to run a pipeline on new input data using the
 #### Pipeline build requests
 
 Pipeline build requests provide a JSON format that can be used to request that
-a given pipeline be run on some given input data(s). The generaal syntax for
+a given pipeline be run on some given input data(s). The general syntax for
 pipeline build requests is:
 
 ```json

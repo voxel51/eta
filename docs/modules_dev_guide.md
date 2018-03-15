@@ -276,8 +276,8 @@ Concrete data types must implement a static `gen_path(basedir, params)` method,
 which is used to automatically generate filepaths. In this method, `basedir`
 is the base output directory where the data will be written, and `params` is an
 instance of the `eta.core.types.ConcreteDataParams` class, which contains a
-dictionary of configuration settings that the `ConreteData` subclass can use to
-properly generate output paths. This automatic path generation capability is
+dictionary of configuration settings that the `ConcreteData` subclass can use
+to properly generate output paths. This automatic path generation capability is
 utilized during the pipeline building process when populating module configs
 based on a pipeline request.
 
@@ -320,7 +320,7 @@ that describe the various JSON formats used by modules. For example:
 - `eta.core.types.EventDetection`: A per-frame binary event detection. This
     type is implemented in ETA by the `eta.core.events.EventDetection` class
 
-Whenver a new JSON data type is used by an ETA module, a corresponding class
+Whenever a new JSON data type is used by an ETA module, a corresponding class
 must be added to the `eta.core.types` module to define this type so that other
 modules can declare their compatibility with this JSON format.
 
@@ -412,14 +412,14 @@ The general format of a module configuration file is:
 ```
 
 The `data` field contains a list of specs, each of which contains a valid set
-of input and output fields specifiying where to read input data and write
+of input and output fields specifying where to read input data and write
 output data when the module is executed. This field expects a list so that
 multiple datasets can be processed in a single module execution, if desired.
 The possible fields that can be listed in `<inputs>` and `<outputs>` in the
 above JSON are defined by the `inputs` and `outputs` fields of the module's
 metadata JSON file. In particular, each spec in the `data` field must contain
 all inputs and outputs that are marked as _required_ in the module metadata
-file and may also contain any inputs and ouptuts that are optional.
+file and may also contain any inputs and outputs that are optional.
 
 The `parameters` field defines the parameter values to use when executing the
 module. The possible fields that can be listed in `<parameters>` in the
