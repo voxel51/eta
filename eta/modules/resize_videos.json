@@ -17,7 +17,7 @@
     "outputs": [
         {
             "name": "output_path",
-            "type": "eta.core.types.Video",
+            "type": "eta.core.types.VideoFile",
             "description": "The output resized video",
             "required": true
         }
