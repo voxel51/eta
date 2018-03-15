@@ -343,19 +343,14 @@ module = etam.load_metadata("simple_object_detector")
 module.render("module_block_diagram.svg")
 ```
 
-The above code generates the following `module_block_diagram.svg` image that
-depicts the module as a block diagram:
-
-<a href="https://drive.google.com/uc?id=1v3CLijGzcXawzR8L44bhr_lC5B7aYPzv"><embed src="https://drive.google.com/uc?id=1v3CLijGzcXawzR8L44bhr_lC5B7aYPzv" width="750px" height="500px" align="middle"/></a>
-
-![module\_block\_diagram.pdf](
-https://drive.google.com/uc?id=1v3CLijGzcXawzR8L44bhr_lC5B7aYPzv)
-
-<a href="https://drive.google.com/uc?id=1v3CLijGzcXawzR8L44bhr_lC5B7aYPzv"><img src="https://drive.google.com/uc?id=1v3CLijGzcXawzR8L44bhr_lC5B7aYPzv" style="width: 500px; max-width: 100%; height: auto" title="module_block_diagram.pdf" /></a>
-
-Behind the scenes, it first generates the following intermediate
-`module_block_diagram.diag` file describing the module definition in a format
-understood by the `blockdiag` package:
+The above code generates this
+<a href="https://drive.google.com/uc?id=1v3CLijGzcXawzR8L44bhr_lC5B7aYPzv">
+module_block_diagram.svg
+</a>
+image that depicts the module as a block diagram. Behind the scenes, it first
+generates the following intermediate `module_block_diagram.diag` file
+describing the module definition in a format understood by the `blockdiag`
+package:
 
 ```
 blockdiag {
