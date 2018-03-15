@@ -96,7 +96,6 @@ class ConcreteDataParams(object):
     def __init__(self):
         self._params = {
             "idx": eta.config.default_sequence_idx,
-            "file_ext": eta.config.default_file_ext,
             "image_ext": eta.config.default_image_ext,
             "video_ext": eta.config.default_video_ext,
         }
@@ -363,50 +362,34 @@ class AbstractData(Data):
     '''The base type for abstract data types, which define base data types that
     encapsulate one or more `ConcreteData` types.
 
-class Directory(Data):
-    '''The base type for directories that contain data.
+    Abstract data types allow modules to declare that their inputs or
+    parameters can accept one of many equivalent representations of a given
+    type.
 
-    Examples:
-        /path/to/dir
+    However, abstract data types cannot be used for module outputs, which must
+    return a concrete data type.
     '''
 
     @staticmethod
-    def gen_path(basedir, params):
-        return os.path.join(basedir, "{name}").format(**params)
+    def gen_path(*args, **kwargs):
+        '''Raises an error clarifying that AbstractData types cannot generate
+        output paths.
+        '''
+        raise ValueError("AbstractData types cannot generate output paths")
+
+
+class File(AbstractData):
+    '''The abstract data type describing a file.'''
 
     @staticmethod
     def is_valid_path(path):
         return String.is_valid_value(path)
 
 
-class File(Data):
-    '''The base type for file.
-
-    Examples:
-        /path/to/file.txt
+class FileSequence(AbstractData):
+    '''The abstract data type describing a collection of files indexed by one
+    numeric parameter.
     '''
-
-    @staticmethod
-    def gen_path(basedir, params):
-        return os.path.join(basedir, "{name}{file_ext}").format(**params)
-
-    @staticmethod
-    def is_valid_path(path):
-        return String.is_valid_value(path)
-
-
-class FileSequence(Data):
-    '''The base type for a collection of files indexed by one numeric
-    parameter.
-
-    Examples:
-        /path/to/file/%05d.txt
-    '''
-
-    @staticmethod
-    def gen_path(basedir, params):
-        return os.path.join(
-            basedir, "{name}", "{idx}{file_ext}").format(**params)
 
     @staticmethod
     def is_valid_path(path):
@@ -419,18 +402,10 @@ class FileSequence(Data):
             return False
 
 
-class DualFileSequence(Data):
-    '''The base type for a collection of files indexed by two numeric
-    parameters.
-
-    Examples:
-        /path/to/data/%05d-%05d.txt
+class DualFileSequence(AbstractData):
+    '''The abstract data type describing a collection of files indexed by two
+    numeric parameters.
     '''
-
-    @staticmethod
-    def gen_path(basedir, params):
-        return os.path.join(
-            basedir, "{name}", "{idx}-{idx}{file_ext}").format(**params)
 
     @staticmethod
     def is_valid_path(path):
