@@ -464,8 +464,9 @@ object detector module defined earlier:
             "objects_json_path": "/path/to/obj2/%05d.json"
         }
     ],
-    "labels": ["car", "truck", "bus"],
-    "weights": "/path/to/better/weights.npz"
+    "parameters": {
+        "labels": ["car", "truck", "bus"]
+    }
 }
 ```
 
