@@ -613,6 +613,7 @@ class EventDetection(JSONFile):
     Examples:
         /path/to/event_detection.json
     '''
+
     pass
 
 
@@ -624,6 +625,7 @@ class EventSeries(JSONFile):
     Examples:
         /path/to/event_series.json
     '''
+
     pass
 
 
@@ -635,6 +637,7 @@ class Frame(JSONFile):
     Examples:
         /path/to/frame.json
     '''
+
     pass
 
 
@@ -645,4 +648,5 @@ class FrameSequence(JSONFileSequence):
     Examples:
         /path/to/frames/%05d.json
     '''
+
     pass
