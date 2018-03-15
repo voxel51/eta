@@ -129,15 +129,200 @@ Each spec has the fields:
 
 - `name`: the name of the field
 
-- `type`: the type of the data referenced by this field. Must be a valid
-    data type exposed by the ETA library
+- `type`: the type of the field, which must be a valid type exposed by the ETA
+    library. Module inputs must have a type that is a subclass of
+    `eta.core.types.ConcreteData` or `eta.core.types.AbstractData`. Module
+    outputs must have a type that is a subclass of
+    `eta.core.types.ConcreteData`. Module parameters can have types that are
+    subclasses of `eta.core.types.ConcreteData` or `eta.core.types.Builtin`
 
 - `description`: a short free-text description of the field
 
 - `required`: whether the field is required or optional for the module to
     function
 
-- `default`: (parameters only) an optional default value for the parameter
+- `default`: (parameters only) an optional default value for the parameter. If
+    a parameter is required but has a default value, it may be omitted from the
+    module configuration file
+
+
+#### Exposing a new module
+
+In order for ETA to use a module, its metadata JSON file must be placed in a
+directory where the ETA system can find it. The `module_dirs` field in the
+ETA-wide `config.json` file defines a list of directories for which all JSON
+files contained in them are assumed to be module metadata files.
+
+> To add a new module directory to the ETA path, either append it to the
+> `module_dirs` list in the ETA-wide `config.json` file or add it to the
+> `ETA_MODULE_DIRS` environment variable during execution.
+
+
+## Types in the ETA System
+
+Because the ETA module system is generic and supports third-party modules that
+may be written in languages other than Python or otherwise developed
+independently from the ETA codebase and exposed only through executable files
+(perhaps even remotely via a REST API), the ETA library exposes a
+**type system** in the `eta.core.types` module that defines a common framework
+that modules must use to define the semantics of their fields (inputs, outputs,
+and parameters).
+
+The ETA types must be used by all module metadata files whether or not the
+module is built using the ETA library. In particular, if a third-party module
+introduces a new type of field (e.g., a new output JSON format or a new type of
+parameter), a corresponding class must be added to the `eta.core.types` module
+describing the type so that ETA that can understand the semantics of the module
+and properly configure it and invoke it in the midst of a pipeline.
+
+The `eta.core.types` module defines four top-level categories of types:
+pipelines, modules, builtins, and data. The following sections provide a brief
+overview of these basic types and describe their use.
+
+> Types may be defined in modules other than `eta.core.types` if necessary
+> (e.g. on a project-specific basis), but these types must still inherit from
+> the base type `eta.core.types.Type` and from the relevant base module,
+> pipeline, builtin, or data types as appropriate.
+
+
+#### Pipelines
+
+All ETA pipelines must be declared with a `type` in their pipeline metadata
+file that is a subclass of `eta.core.types.Pipeline`. Pipeline types allow
+developers to declare the purpose of their pipelines and allow the ETA system
+to classify and organize the available pipelines by purpose. See
+`piplines_dev_guide.md` for more information about pipeline types, which are
+beyond the scope of this guide.
+
+
+#### Modules
+
+All ETA modules must be declared with a `type` in their module metadata file
+that is a subclass of `eta.core.types.Module`. Module types allow developers
+to declare the purpose of their module and allows the ETA system to classify
+and organize the available modules in an informative fashion for end-users.
+
+> Currently only the base module type `eta.core.types.Module` is available, so
+> all modules must declare this as their type. As the ETA system grows, more
+> fine-grained module types will be added to make the module taxonomy more
+> descriptive and useful for building custom pipelines.
+
+
+#### Builtins
+
+Builtins are literal types that are extracted directly from JSON files.
+All builtin types must be subclasses of `eta.core.types.Builtin`. There is a
+builtin type corresponding to each of the main types of data that can be stored
+in JSON files:
+
+- `eta.core.types.Null`: A JSON null value. `None` in Python
+
+- `eta.core.types.Boolean`: A JSON boolean value. A `bool` in Python
+
+- `eta.core.types.String`: A JSON string. A `str` in Python
+
+- `eta.core.types.Number`: A numeric value
+
+- `eta.core.types.Array`: A JSON array. A `list` in Python
+
+- `eta.core.types.Object`: An object in JSON. A dict in Python
+
+In addition, more specific types can be defined that are subclasses of the
+above base types. For example, the following class is a subclass of
+`eta.core.types.Array`:
+
+- `eta.core.types.StringArray`: An array of strings in JSON. A list of strings
+    in Python.
+
+There are also a number of subclasses of `eta.core.types.Object` that define
+custom object types, which are typically used to define module parameters that
+are more sophisticated than simple JSON primitives:
+
+- `eta.core.types.Point`: An (x, y) coordinate point defined by "x" and "y"
+    coordinates, which must be nonnegative. Typically, Points represent
+    coordinates of pixels in images. For example:
+    ```json
+    {
+        "x": 0,
+        "y": 128
+    }
+    ```
+
+In the context of module metadata files, only _parameters_ can have types that
+are subclasses of `Builtin`, since module inputs must be read from disk and
+module outputs must be written to disk (i.e. they must be `Data` types, as
+described below).
+
+All `Builtin` subclasses must implement a static `is_valid_value(val)` method
+that verifies that `val` is a valid value for that type.
+
+
+#### Data
+
+Data are types that are stored on disk and referenced by a filepath. All data
+types must be subclasses of `eta.core.types.Data`, and they must implement a
+static `is_valid_path(path)` method that validates whether the given `path` is
+a valid filepath for that type.
+
+There are two primary classes of data:
+
+- `eta.core.types.ConcreteData`: the base type for concrete data types, which
+    represent well-defined data types that can be written to disk
+
+- `eta.core.types.AbstractData`: the base type for abstract data types, which
+    define base data types that encapsulate one or more `ConcreteData` types
+
+Concrete data types must implement a static `gen_path(basedir, params)` method,
+which is used to automatically generate filepaths. In this method, `basedir`
+is the base output directory where the data will be written, and `params` is an
+instance of the `eta.core.types.ConcreteDataParams` class, which contains a
+dictionary of configuration settings that the `ConreteData` subclass can use to
+properly generate output paths. This automatic path generation capability is
+utilized during the pipeline building process when populating module configs
+based on a pipeline request.
+
+Abstract data types allow the ETA type system to express that multiple concrete
+data types are interchangable instantiations of a single concept. Since
+abstract types do not refer to a unique concrete data type, they do not provide
+`gen_path` methods. An example of an abstract data type is:
+
+- `eta.core.types.Video`: the abstract data type representing a single video
+
+The abstract video type currently has two concrete implementations in ETA:
+
+- `eta.core.types.VideoFile`: a video represented as a single encoded video
+    file, e.g. `"/path/to/video.mp4"`
+
+- `eta.core.types.ImageSequence`: a video represented as a sequence of images
+    with one numeric parameter, e.g. `"/path/to/video/%05d.png"`
+
+In the context of module metadata files, module inputs can have types that are
+subclasses of `ConcreteData` or `AbstractData`. A module input declared with an
+abstract data type promises that it can understand any concrete subclass of
+that type.  Module inputs inherit data paths from their incoming connections,
+so they do not require the ability to generate paths automatically during
+pipeline building. Conversely, module outputs must be subclasses of
+`ConcreteData` because they must be able to generate their output paths during
+pipeline building. Module parameters may have types that are subclasses of
+`ConcreteData` (e.g. a model weights file) or they may have `Builtin` types.
+
+An important class of concrete data types in ETA are JSON files:
+
+- `eta.core.types.JSONFile`: a JSON file on disk
+
+JSON files are important because they are the primary way that modules write
+their analytic outputs to disk. As such, there are many subclasses of JSON
+that describe the various JSON formats used by modules. For example:
+
+- `eta.core.types.Frame`: A type describing detected objects in a frame. This
+    type is implemented in ETA by the `eta.core.objects.Frame` class
+
+- `eta.core.types.EventDetection`: A per-frame binary event detection. This
+    type is implemented in ETA by the `eta.core.events.EventDetection` class
+
+Whenver a new JSON data type is used by an ETA module, a corresponding class
+must be added to the `eta.core.types` module to define this type so that other
+modules can declare their compatibility with this JSON format.
 
 
 ## Visualizing Modules
