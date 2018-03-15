@@ -95,7 +95,7 @@ def load_all_metadata():
 def load_metadata(pipeline_name):
     '''Loads the pipeline metadata file for the pipeline with the given name.
 
-    Pipeline metadata files must JSON files in one of the directories in
+    Pipeline metadata files must be JSON files in one of the directories in
     `eta.config.pipeline_dirs`.
 
     Args:
