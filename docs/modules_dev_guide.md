@@ -384,33 +384,72 @@ blockdiag {
 
 ## Module Configuration Files
 
-The module metadata file contains all the information necessary for the ETA
-system to automatically generate module configuration JSON files for a module.
+Module configuration files define the necessary information for the ETA system
+to configure the parameters of a module and execute it on some input data to
+generate some output data.
 
-The precise syntax of the configuration files is still under development,
-but the current format is:
+The general format of a module configuration file is:
 
 ```json
 {
     "data": [
-        {<inputs1>, <outputs1>},
-        {<inputs2>, <outputs2>},
+        {
+            <inputs>,
+            <outputs>
+        },
         ...
     ],
-    "param1": <val1>,
-    "param2": <val2>,
-    ...
+    "parameters": {
+        <parameters>
+    },
+    "base": {
+        <base-settings>
+    }
 }
 ```
 
-The `data` field contains a list of specs, each of which contains the input
-and output fields specified by the module's metadata file. This field expects
-a list so that multiple datasets can be processed in a single module
-execution, if desired. The remaining fields contain the parameters specified
-by the module's metadata file.
+The `data` field contains a list of specs, each of which contains a valid set
+of input and output fields specifiying where to read input data and write
+output data when the module is executed. This field expects a list so that
+multiple datasets can be processed in a single module execution, if desired.
+The possible fields that can be listed in `<inputs>` and `<outputs>` in the
+above JSON are defined by the `inputs` and `outputs` fields of the module's
+metadata JSON file. In particular, each spec in the `data` field must contain
+all inputs and outputs that are marked as _required_ in the module metadata
+file and may also contain any inputs and ouptuts that are optional.
 
-For example, a valid configuration file for the object detector defined by the
-above metadata file is:
+The `parameters` field defines the parameter values to use when executing the
+module. The possible fields that can be listed in `<parameters>` in the
+above JSON are defined by the `parameters` field of the module's metadata JSON
+file. In particular, each spec in the `parameters` field must contain all
+parameters that are _required_ and have _no default value_ in the module
+metadata file and may also contain any optional parameters.
+Again, the particular parameters supported by the module are defined by
+the module's metadata JSON file, and all required parameters and zero or more
+optional parameters must be specified.
+
+Finally, the `base` field defines module configuration fields that all ETA
+modules must support. Note that the `base` field is not mentioned in the
+module metadata file because it contains generic fields that are the same for
+all modules. Indeed, the `base` field is an instance of the
+`eta.core.module.BaseModuleConfigSettings` class, which defines the following
+fields:
+
+- `logging_config`: an `eta.core.log.LoggingConfig` instance that configures
+    the logging behavior of the module during execution
+
+Importantly, all ETA modules must obey the convention that the `base` field and
+all of its sub-fields are _optional_; i.e., modules must internally provide
+default values for these parameters and module configuration files need not
+specify these values. The ETA library automates these boilerplate constructs
+via the `BaseModuleConfig` and the `setup()` methods from the `eta.core.module`
+module.
+
+
+#### Example module configuration file
+
+The following JSON depicts a valid module configuration file for the simple
+object detector module defined earlier:
 
 ```json
 {
