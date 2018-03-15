@@ -161,7 +161,7 @@ use to define their semantics.
 The ETA types must be used by all pipeline metadata files whether or not the
 pipeline is built using the ETA library. In particular, if a third-party
 pipeline performs a new type of operation, a corresponding class must be added
-to the `eta.core.types` module describing the type so that ETA that can
+to the `eta.core.types` module describing the associated type so that ETA can
 understand the semantics of the pipeline. This information is used when
 presenting user-facing information about available pipelines.
 
@@ -173,19 +173,153 @@ guide.
 > Note: types may be defined in modules other than `eta.core.types` if
 > necessary (e.g. on a project-specific basis), but these types must still
 > inherit from the base type `eta.core.types.Type`. More specifically, for
-> pipelines, new types must be subclasses of `eta.core.types.Pipeline`.
+> pipelines, all new types must be subclasses of `eta.core.types.Pipeline`.
+
 
 #### Pipelines
 
 All ETA pipelines must be declared with a `type` in their pipeline metadata
 file that is a subclass of `eta.core.types.Pipeline`. Pipeline types allow
 developers to declare the purpose of their pipelines and allow the ETA system
-to classify and organize the available pipelines by purpose.
+to classify and organize the available pipelines by function.
 
-> Currently, only the base pipeline type `eta.core.types.Pipeline` is available,
+> Currently only the base pipeline type `eta.core.types.Pipeline` is available,
 > so all pipelines must declare this as their type. As the ETA system grows,
 > more fine-grained pipeline types will be added to make the pipeline taxonomy
 > more descriptive for the end-user.
+
+
+## Building and Running Pipelines
+
+Once a pipeline metadata file exists describing the architecture of the
+pipeline, it is straightforward to run a pipeline on new input data using the
+`eta.core.builder` module. The following subsections describe the process.
+
+
+#### Pipeline build requests
+
+Pipeline build requests provide a JSON format that can be used to request that
+a given pipeline be run on some given input data(s). The generaal syntax for
+pipeline build requests is:
+
+```json
+{
+    "pipeline": <pipeline-name>,
+    "inputs": {
+        <inputs>
+    },
+    "parameters": {
+        <parameters>
+    }
+}
+```
+
+Here, `<pipeline-name>` specifies the name of the pipeline to run, and
+`<inputs>` and `<parameters>` define the data to pass into the pipeline and
+the parameter values to use during processing, respectively.
+
+A pipeline build request is valid only if all of the following conditions are
+met:
+
+- The pipeline name must be the name of a valid pipeline metadata file exposed
+  by the ETA system
+
+- All required pipeline inputs (as defined by the pipeline metadata file) are
+  provided and have valid values
+
+- All required pipeline parameters (as defined by the pipeline metadata file)
+  are provided and have valid values
+
+For example, the following JSON defines a valid pipeline build request for the
+video formatting pipeline whose metadata file was given earlier:
+
+```json
+{
+    "pipeline": "video_formatter",
+    "inputs": {
+        "video": "examples/data/water.mp4"
+    },
+    "parameters": {
+        "resize_videos.scale": 0.5,
+        "sample_videos.fps": 1
+    }
+}
+```
+
+Note that the `<module>.<parameter>` notion is used in the above JSON to
+set the parameters of the relevant modules in the pipeline.
+
+Pipeline build requests are defined in the ETA library by the
+`eta.core.builder.PipelineBuildRequestConfig` class, and they can be loaded
+from JSON via the simple pattern:
+
+```python
+import eta.core.builder as etab
+
+# Load a pipeline request from JSON
+request = etab.PipelineBuildRequest.from_json("/path/to/pipeline-request.json")
+```
+
+
+#### Building a pipeline instance
+
+Given a valid pipeline build request, it is straightforward to build a pipeline
+that can execute it using the `eta.core.builder.PipelineBuilder` class. The
+class constructor accepts an `eta.core.builder.PipelineBuildRequest` instance
+and provides a `build()` method that instantiates the module and pipeline
+configuration files. In other words,
+
+```python
+import eta.core.builder as etab
+
+# Build the pipeline defined by the given PipelineBuildRequest instance
+builder = etab.PipelineBuilder(request)
+builder.build()
+```
+
+When the `build()` method is called, a pipeline config file and the associated
+module config files necessary to run the pipeline on the given input data with
+the given parameters are automatically generated and written to disk. The
+outputs of each module are written to a specified output directory with a
+folder structure based on the names of the constituent modules. Both the
+config directory and the base output directory can be configured as desired.
+
+> To change the directory where pipeline configs are written, either modify
+> the `config_dir` field in the ETA-wide `config.json` file or set the
+> `ETA_CONFIG_DIR` environment variable during execution.
+
+> To change the directory where pipeline outputs are written, either modify
+> the `output_dir` field in the ETA-wide `config.json` file or set the
+> `ETA_OUTPUT_DIR` environment variable during execution.
+
+
+#### Full pipeline building example
+
+Combining the above steps, the following Python code shows how to build and run
+a pipeline from a build request:
+
+```python
+import eta.core.builder as etab
+import eta.core.pipeline as etap
+
+# Load the pipeline request
+request = etab.PipelineBuildRequest.from_json("/path/to/pipeline-request.json")
+
+# Build the pipeline
+builder = etab.PipelineBuilder(request)
+builder.build()
+
+# Run the pipeline
+etap.run(builder.pipeline_config_path)
+```
+
+Alternatively, one can build and run a pipeline from the command-line using the
+`eta` executable:
+
+```shell
+# Build and run the pipeline
+eta build -r "/path/to/pipeline-request.json" --run-now
+```
 
 
 ## Visualizing Pipelines
@@ -199,7 +333,7 @@ above can be generated by executing:
 ```python
 import eta.core.pipeline as etap
 
-# Load the pipeline
+# Load the pipeline metadata
 pipeline = etap.load_metadata("video_formatter")
 
 # Render the block diagram
