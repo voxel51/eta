@@ -111,9 +111,7 @@ python eta/core/pipeline.py examples/demo_video/pipeline.json
 
 # Build and run a video formatting pipeline from a request using
 # the `eta` command-line tool
-eta build -r examples/demo_video_formatter/request.json
-PIPELINE_JSON= # copy the pipeline config path printed above here
-eta run "${PIPELINE_JSON}"
+eta build -r examples/demo_video_formatter/request.json --run-now
 
 #
 # Example image/video embedding
