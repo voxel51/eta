@@ -2,7 +2,8 @@
 
 This document describes best practices for contributing modules to ETA. See
 `core_dev_guide.md` for instructions on contributing to the core ETA
-infrastructure.
+infrastructure, and see `pipelines_dev_guide.md` for more information about
+ETA pipelines and how to define, build, and run them.
 
 
 ## What are ETA Modules?
