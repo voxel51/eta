@@ -421,45 +421,24 @@ class DualFileSequence(AbstractData):
             return False
 
 
-class JSONFile(File):
-    '''The base type for JSON files.
+class Directory(ConcreteData):
+    '''The base type for directories that contain data.
 
     Examples:
-        /path/to/data.json
+        /path/to/dir
     '''
 
     @staticmethod
     def gen_path(basedir, params):
-        return os.path.join(basedir, "{name}.json").format(**params)
+        return os.path.join(basedir, "{name}").format(**params)
 
     @staticmethod
     def is_valid_path(path):
-        return File.is_valid_path(path) and etau.has_extenstion(path, ".json")
+        return String.is_valid_value(path)
 
 
-class JSONFileSequence(FileSequence):
-    '''The base type for a collection of JSON files indexed by one numeric
-    parameter.
-
-    Examples:
-        /path/to/jsons/%05d.json
-    '''
-
-    @staticmethod
-    def gen_path(basedir, params):
-        return os.path.join(
-            basedir, "{name}", "{idx}.json").format(**params)
-
-    @staticmethod
-    def is_valid_path(path):
-        return (
-            FileSequence.is_valid_path(path) and
-            etau.has_extenstion(path, ".json")
-        )
-
-
-class Weights(File):
-    '''The base type for model weights files.
+class Weights(File, ConcreteData):
+    '''A model weights file of any type.
 
     Examples:
         /path/to/weights.npz
@@ -470,7 +449,7 @@ class Weights(File):
         return os.path.join(basedir, "{name}").format(**params)
 
 
-class Image(File):
+class Image(File, ConcreteData):
     '''An image.
 
     ETA uses OpenCV to read images, so any image type understood by OpenCV is
@@ -489,17 +468,13 @@ class Image(File):
         return File.is_valid_path(path) and etau.is_supported_image_type(path)
 
 
-class Video(Data):
-    '''The base type for a single video.
+class Video(AbstractData):
+    '''The abstract data type representing a single video.
 
     Examples:
         /path/to/video.mp4
         /path/to/video/%05d.png
     '''
-
-    @staticmethod
-    def gen_path(basedir, params):
-        return VideoFile.gen_path(basedir, params)
 
     @staticmethod
     def is_valid_path(path):
@@ -509,8 +484,8 @@ class Video(Data):
         )
 
 
-class VideoFile(Video, File):
-    '''A video represented as a single (encoded) video file.
+class VideoFile(Video, File, ConcreteData):
+    '''A video represented as a single encoded video file.
 
     ETA uses ffmpeg (default) or OpenCV (if specified) to load video files,
     so any video encoding types understood by these tools are valid.
@@ -528,7 +503,7 @@ class VideoFile(Video, File):
         return File.is_valid_path(path) and etau.is_supported_video_type(path)
 
 
-class ImageSequence(Video, FileSequence):
+class ImageSequence(Video, FileSequence, ConcreteData):
     '''A video represented as a sequence of images with one numeric parameter.
 
     ETA uses ffmpeg (default) or OpenCV (if specified) to load videos stored
@@ -552,8 +527,8 @@ class ImageSequence(Video, FileSequence):
         )
 
 
-class VideoSequece(FileSequence):
-    '''A sequence of video files with one numeric parameter.
+class VideoSequece(FileSequence, ConcreteData):
+    '''A sequence of encoded video files with one numeric parameter.
 
     Examples:
         /path/to/videos/%05d.mp4
@@ -572,7 +547,7 @@ class VideoSequece(FileSequence):
         )
 
 
-class VideoClips(DualFileSequence):
+class VideoClips(DualFileSequence, ConcreteData):
     '''A sequence of video files with two numeric parameters.
 
     Examples:
@@ -589,6 +564,43 @@ class VideoClips(DualFileSequence):
         return (
             DualFileSequence.is_valid_path(path) and
             etau.is_supported_video_type(path)
+        )
+
+
+class JSONFile(File, ConcreteData):
+    '''The base type for JSON files.
+
+    Examples:
+        /path/to/data.json
+    '''
+
+    @staticmethod
+    def gen_path(basedir, params):
+        return os.path.join(basedir, "{name}.json").format(**params)
+
+    @staticmethod
+    def is_valid_path(path):
+        return File.is_valid_path(path) and etau.has_extenstion(path, ".json")
+
+
+class JSONFileSequence(FileSequence, ConcreteData):
+    '''The base type for a collection of JSON files indexed by one numeric
+    parameter.
+
+    Examples:
+        /path/to/jsons/%05d.json
+    '''
+
+    @staticmethod
+    def gen_path(basedir, params):
+        return os.path.join(
+            basedir, "{name}", "{idx}.json").format(**params)
+
+    @staticmethod
+    def is_valid_path(path):
+        return (
+            FileSequence.is_valid_path(path) and
+            etau.has_extenstion(path, ".json")
         )
 
 
