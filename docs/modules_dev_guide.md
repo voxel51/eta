@@ -348,6 +348,8 @@ depicts the module as a block diagram:
 
 <embed src="https://drive.google.com/uc?id=1v3CLijGzcXawzR8L44bhr_lC5B7aYPzv" width="100%" type='application/pdf', class="center" />
 
+[module_block_diagram.pdf](https://drive.google.com/uc?id=1v3CLijGzcXawzR8L44bhr_lC5B7aYPzv)
+
 Behind the scenes, it first generates the following intermediate
 `module_block_diagram.diag` file describing the module definition in a format
 understood by the `blockdiag` package:
