@@ -5,7 +5,6 @@
     "pipeline_dirs": ["{{eta}}/eta/pipelines"],
     "weights_dirs": ["{{eta}}/eta/cache"],
     "default_sequence_idx" : "%05d",
-    "default_file_ext": "",
     "default_video_ext": ".mp4",
     "default_image_ext": ".png"
 }
