@@ -37,7 +37,7 @@ import eta.core.utils as etau
 logger = logging.getLogger(__name__)
 
 
-PIPELINE_JSON_FILE = "pipeline.json"
+PIPELINE_CONFIG_FILE = "pipeline.json"
 PIPELINE_LOG_FILE = "pipeline.log"
 MODULE_CONFIG_EXT = ".json"
 
@@ -293,7 +293,7 @@ class PipelineBuilder(object):
             eta.config.output_dir, self.request.pipeline, time_str)
 
     def _get_pipeline_config_path(self):
-        return os.path.join(self.config_dir, PIPELINE_JSON_FILE)
+        return os.path.join(self.config_dir, PIPELINE_CONFIG_FILE)
 
     def _get_pipeline_log_path(self):
         return os.path.join(self.config_dir, PIPELINE_LOG_FILE)

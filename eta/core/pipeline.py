@@ -196,7 +196,7 @@ class PipelineConfig(Config):
     def __init__(self, d):
         self.name = self.parse_string(d, "name", default="pipeline")
         self.working_dir = self.parse_string(d, "working_dir", default=".")
-        self.status_path = self.parse_string(d, "status_path", default="")
+        self.status_path = self.parse_string(d, "status_path", default=None)
         self.overwrite = self.parse_bool(d, "overwrite", default=True)
         self.jobs = self.parse_object_array(
             d, "jobs", etaj.JobConfig, default=[])
