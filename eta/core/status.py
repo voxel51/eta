@@ -134,6 +134,7 @@ class JobStatus(Serializable):
 
     # Job status enum
     QUEUED = "QUEUED"
+    SKIPPED = "SKIPPED"
     RUNNING = "RUNNING"
     FAILED = "FAILED"
     COMPLETE = "COMPLETE"
@@ -156,6 +157,11 @@ class JobStatus(Serializable):
         status_message = StatusMessage(message)
         self.messages.append(status_message)
         return status_message.time
+
+    def skip(self, message="Job skipped"):
+        '''Document that the job was skipped.'''
+        self.add_message(message)
+        self.status = JobStatus.SKIPPED
 
     def start(self, message="Job started"):
         '''Document that the job was started.'''
