@@ -32,6 +32,7 @@ import eta.core.job as etaj
 import eta.core.log as etal
 import eta.core.module as etam
 from eta.core.serial import Serializable
+import eta.core.status as etas
 import eta.core.types as etat
 import eta.core.utils as etau
 
@@ -59,21 +60,45 @@ def run(pipeline_config_path):
     # Setup logging
     etal.custom_setup(pipeline_config.logging_config, rotate=True)
 
+    # Create status object
+    pipeline_status = etas.PipelineStatus(pipeline_config.name)
+
     # Run pipeline
+    _run(pipeline_config, pipeline_config_path, pipeline_status)
+
+    # Write pipeline status
+    if pipeline_config.status_path:
+        logger.info(
+            "Writing pipeline status to '%s'", pipeline_config.status_path)
+        pipeline_status.write_json(pipeline_config.status_path)
+
+
+def _run(pipeline_config, pipeline_config_path, pipeline_status):
     logger.info("Starting pipeline '%s'\n", pipeline_config.name)
+    pipeline_status.start()
+
     overwrite = pipeline_config.overwrite
-    ran_job = False
+    ran_last_job = False
     with etau.WorkingDir(pipeline_config.working_dir):
         for job_config in pipeline_config.jobs:
-            if ran_job and not overwrite:
+            if ran_last_job and not overwrite:
                 logger.info(
                     "Config change detected, running all remaining jobs")
                 overwrite = True
 
+            # Run the job
             job_config.pipeline_config_path = pipeline_config_path
-            ran_job = etaj.run(job_config, overwrite=overwrite)
+            ran_last_job, success = etaj.run(
+                job_config, pipeline_status, overwrite=overwrite)
+            if not success:
+                # Pipeline failed
+                pipeline_status.fail()
+                return False
 
+    # Pipeline complete!
     logger.info("Pipeline '%s' complete", pipeline_config.name)
+    pipeline_status.complete()
+    return True
 
 
 def load_all_metadata():
@@ -171,6 +196,7 @@ class PipelineConfig(Config):
     def __init__(self, d):
         self.name = self.parse_string(d, "name", default="pipeline")
         self.working_dir = self.parse_string(d, "working_dir", default=".")
+        self.status_path = self.parse_string(d, "status_path", default="")
         self.overwrite = self.parse_bool(d, "overwrite", default=True)
         self.jobs = self.parse_object_array(
             d, "jobs", etaj.JobConfig, default=[])
