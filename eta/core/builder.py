@@ -39,6 +39,7 @@ logger = logging.getLogger(__name__)
 
 PIPELINE_CONFIG_FILE = "pipeline.json"
 PIPELINE_LOG_FILE = "pipeline.log"
+PIPELINE_STATUS_FILE = "status.json"
 MODULE_CONFIG_EXT = ".json"
 
 
@@ -146,6 +147,8 @@ class PipelineBuilder(object):
             pipeline
         pipeline_log_path: the path to the pipeline log file that will be
             generated when the pipeline is run
+        pipeline_status_path: the path to the pipeline status JSON file that
+            will be generated when the pipeline is run
         outputs: a dictionary mapping pipeline outputs to the paths where they
             will be written when the pipeline is run
     '''
@@ -162,6 +165,7 @@ class PipelineBuilder(object):
         self.output_dir = None
         self.pipeline_config_path = None
         self.pipeline_log_path = None
+        self.pipeline_status_path = None
         self.outputs = {}
 
         self._concrete_data_params = etat.ConcreteDataParams()
@@ -208,9 +212,11 @@ class PipelineBuilder(object):
             .validate())
 
         # Build pipeline config
+        self.pipeline_status_path = self._get_pipeline_status_path()
         pipeline_config_builder = (etap.PipelineConfig.builder()
             .set(name=self.request.pipeline)
             .set(working_dir=".")
+            .set(status_path=self.pipeline_status_path)
             .set(overwrite=False)
             .set(jobs=job_builders)
             .set(logging_config=logging_config_builder)
@@ -297,6 +303,9 @@ class PipelineBuilder(object):
 
     def _get_pipeline_log_path(self):
         return os.path.join(self.config_dir, PIPELINE_LOG_FILE)
+
+    def _get_pipeline_status_path(self):
+        return os.path.join(self.output_dir, PIPELINE_STATUS_FILE)
 
     def _get_module_config_path(self, module):
         return os.path.join(self.config_dir, module + MODULE_CONFIG_EXT)
