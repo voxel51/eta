@@ -66,13 +66,20 @@ class PipelineStatus(Serializable):
 
     @property
     def active_job(self):
-        '''The currently active job, or None if no job is active.'''
+        '''The JobStatus instance for the active job, or None if no job is
+        active.
+        '''
         return self._active_job
 
     def add_job(self, name):
-        '''Add a new job with the given name and activate it.'''
+        '''Add a new job with the given name and activate it.
+
+        Returns:
+            the JobStatus instance for the job
+        '''
         self._active_job = JobStatus(name)
         self.jobs.append(self._active_job)
+        return self._active_job
 
     def add_message(self, message):
         '''Add the given message to the messages list.'''
@@ -151,17 +158,17 @@ class JobStatus(Serializable):
         return status_message.time
 
     def start(self, message="Job started"):
-        '''Start the job and record the given message.'''
+        '''Document that the job was started.'''
         self.start_time = self.add_message(message)
         self.status = JobStatus.RUNNING
 
     def fail(self, message="Job failed"):
-        '''Mark the job as failed and record the given message.'''
+        '''Document that the job was failed.'''
         self.fail_time = self.add_message(message)
         self.status = JobStatus.FAILED
 
     def complete(self, message="Job completed"):
-        '''Mark the job as complete and record the given message.'''
+        '''Document that the job was completed.'''
         self.complete_time = self.add_message(message)
         self.status = JobStatus.COMPLETE
 
