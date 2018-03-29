@@ -19,6 +19,8 @@ from future.utils import iteritems
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+import logging
+
 from eta.core.serial import Serializable
 import eta.core.utils as etau
 
