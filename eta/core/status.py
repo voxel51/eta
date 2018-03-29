@@ -35,9 +35,9 @@ class PipelineStatus(Serializable):
         name: the name of the pipeline
         status: the current status of the pipeline
         start_time: the time the pipeline was started, or None if not started
-        fail_time: the time the pipeline failed, or None if not failed
         complete_time: the time the pipeline was completed, or None if not
             completed
+        fail_time: the time the pipeline failed, or None if not failed
         messages: a list of StatusMessage objects listing the status updates
             for the pipeline
         jobs: a list of JobStatus objects describing the status of the jobs
@@ -59,12 +59,18 @@ class PipelineStatus(Serializable):
         self.name = name
         self.status = PipelineStatus.QUEUED
         self.start_time = None
-        self.fail_time = None
         self.complete_time = None
+        self.fail_time = None
         self.messages = []
         self.jobs = []
 
         self._active_job = None
+
+    def attributes(self):
+        return [
+            "name", "status", "start_time", "complete_time", "fail_time",
+            "messages", "jobs",
+        ]
 
     @property
     def active_job(self):
@@ -90,19 +96,19 @@ class PipelineStatus(Serializable):
         return status_message.time
 
     def start(self, message="Pipeline started"):
-        '''Start the pipelne and record the given message.'''
+        '''Mark the pipeline as started and record the given message.'''
         self.start_time = self.add_message(message)
         self.status = PipelineStatus.RUNNING
+
+    def complete(self, message="Pipeline completed"):
+        '''Mark the pipelne as complete and record the given message.'''
+        self.complete_time = self.add_message(message)
+        self.status = PipelineStatus.COMPLETE
 
     def fail(self, message="Pipeline failed"):
         '''Mark the pipelne as failed and record the given message.'''
         self.fail_time = self.add_message(message)
         self.status = PipelineStatus.FAILED
-
-    def complete(self, message="Pipeline completed"):
-        '''Mark the pipelne as complete and record the given message.'''
-        self.complete_time = elf.add_message(message)
-        self.status = PipelineStatus.COMPLETE
 
     @classmethod
     def from_dict(cls, d):
@@ -110,8 +116,8 @@ class PipelineStatus(Serializable):
         pipeline_status = PipelineStatus(d["name"])
         pipeline_status.status = d["status"]
         pipeline_status.start_time = d["start_time"]
-        pipeline_status.fail_time = d["fail_time"]
         pipeline_status.complete_time = d["complete_time"]
+        pipeline_status.fail_time = d["fail_time"]
         pipeline_status.messages = [
             StatusMessage.from_dict(_d) for _d in d["messages"]
         ]
@@ -128,8 +134,8 @@ class JobStatus(Serializable):
         name: the name of the job
         status: the current status of the job
         start_time: the time the job was started, or None if not started
-        fail_time: the time the job failed, or None if not failed
         complete_time: the time the job was completed, or None if not completed
+        fail_time: the time the job failed, or None if not failed
         messages: a list of StatusMessage objects listing the status updates
             for the job
     '''
@@ -150,9 +156,15 @@ class JobStatus(Serializable):
         self.name = name
         self.status = JobStatus.QUEUED
         self.start_time = None
-        self.fail_time = None
         self.complete_time = None
+        self.fail_time = None
         self.messages = []
+
+    def attributes(self):
+        return [
+            "name", "status", "start_time", "complete_time", "fail_time",
+            "messages",
+        ]
 
     def add_message(self, message):
         '''Add the given message to the messages list.'''
@@ -161,24 +173,24 @@ class JobStatus(Serializable):
         return status_message.time
 
     def skip(self, message="Job skipped"):
-        '''Document that the job was skipped.'''
+        '''Mark the job as skipped and record the given message.'''
         self.add_message(message)
         self.status = JobStatus.SKIPPED
 
     def start(self, message="Job started"):
-        '''Document that the job was started.'''
+        '''Mark the job as started and record the given message.'''
         self.start_time = self.add_message(message)
         self.status = JobStatus.RUNNING
 
-    def fail(self, message="Job failed"):
-        '''Document that the job was failed.'''
-        self.fail_time = self.add_message(message)
-        self.status = JobStatus.FAILED
-
     def complete(self, message="Job completed"):
-        '''Document that the job was completed.'''
+        '''Mark the job as complete and record the given message.'''
         self.complete_time = self.add_message(message)
         self.status = JobStatus.COMPLETE
+
+    def fail(self, message="Job failed"):
+        '''Mark the job as failed and record the given message.'''
+        self.fail_time = self.add_message(message)
+        self.status = JobStatus.FAILED
 
     @classmethod
     def from_dict(cls, d):
@@ -186,8 +198,8 @@ class JobStatus(Serializable):
         job_status = JobStatus(d["name"])
         job_status.status = d["status"]
         job_status.start_time = d["start_time"]
-        job_status.fail_time = d["fail_time"]
         job_status.complete_time = d["complete_time"]
+        job_status.fail_time = d["fail_time"]
         job_status.messages = [
             StatusMessage.from_dict(_d) for _d in d["messages"]
         ]
@@ -212,6 +224,9 @@ class StatusMessage(Serializable):
         '''
         self.message = message
         self.time = time or etau.get_isotime()
+
+    def attributes(self):
+        return ["message", "time"]
 
     @classmethod
     def from_dict(cls, d):
