@@ -28,6 +28,7 @@ import logging
 import os
 import random
 import shutil
+import six
 import string
 import subprocess
 import sys
@@ -37,6 +38,11 @@ import eta.constants as etac
 
 
 logger = logging.getLogger(__name__)
+
+
+def is_str(val):
+    '''Returns True/False whether the given value is a string.'''
+    return isinstance(val, six.string_types)
 
 
 def get_isotime():
