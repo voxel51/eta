@@ -338,6 +338,26 @@ class Config(Serializable):
         return _parse_key(d, key, dict, default)[0]
 
     @staticmethod
+    def parse_object_dict(d, key, cls, default=no_default):
+        '''Parses a dictionary whose values are objects.
+
+        Args:
+            d: a JSON dictionary
+            key: the key to parse
+            cls: the class of the values of dictionary d[key]
+            default: a default value to return if key is not present
+
+        Returns:
+            a dictionary whose values are cls instances
+
+        Raises:
+            ConfigError: if no default value was provided and the key was
+                not present in the dictionary.
+        '''
+        val, found = _parse_key(d, key, list, default)
+        return {k: cls(v) for k, v in iteritems(val)} if found else val
+
+    @staticmethod
     def parse_string(d, key, default=no_default):
         '''Parses a string attribute.
 
