@@ -41,7 +41,7 @@ logger = logging.getLogger(__name__)
 
 def get_isotime():
     '''Gets the local time in ISO 8601 format: "YYYY-MM-DD HH:MM:SS".'''
-    return datetime.datetime.now().replace(microsecond=0).isoformat(" ")
+    return str(datetime.datetime.now().replace(microsecond=0))
 
 
 def get_eta_rev():
