@@ -354,7 +354,7 @@ class Config(Serializable):
             ConfigError: if no default value was provided and the key was
                 not present in the dictionary.
         '''
-        val, found = _parse_key(d, key, list, default)
+        val, found = _parse_key(d, key, dict, default)
         return {k: cls(v) for k, v in iteritems(val)} if found else val
 
     @staticmethod
