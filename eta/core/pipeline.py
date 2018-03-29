@@ -68,15 +68,16 @@ def run(pipeline_config_path):
 
     # Write pipeline status
     if pipeline_config.status_path:
-        logger.info(
-            "Writing pipeline status to '%s'", pipeline_config.status_path)
         pipeline_status.write_json(pipeline_config.status_path)
+        logger.info(
+            "Pipeline status written to '%s'", pipeline_config.status_path)
 
 
 def _run(pipeline_config, pipeline_config_path, pipeline_status):
     logger.info("Starting pipeline '%s'\n", pipeline_config.name)
     pipeline_status.start()
 
+    # Run jobs in series
     overwrite = pipeline_config.overwrite
     ran_last_job = False
     with etau.WorkingDir(pipeline_config.working_dir):
@@ -86,7 +87,8 @@ def _run(pipeline_config, pipeline_config_path, pipeline_status):
                     "Config change detected, running all remaining jobs")
                 overwrite = True
 
-            # Run the job
+            # Run job
+            pipeline_status.add_message("Starting job %s" % job_config.name)
             job_config.pipeline_config_path = pipeline_config_path
             ran_last_job, success = etaj.run(
                 job_config, pipeline_status, overwrite=overwrite)
