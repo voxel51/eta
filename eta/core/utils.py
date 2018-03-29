@@ -176,11 +176,22 @@ def call(args):
 
 
 def copy_file(inpath, outpath):
-    '''Copies the input file to the output location, creating the base output
-    directory if necessary.
+    '''Copies the input file to the output location, which can be a filepath or
+    a directory in which to write the file. The base output directory is
+    created if necessary, and any existing file will be overwritten.
     '''
     ensure_basedir(outpath)
     shutil.copy(inpath, outpath)
+
+
+def copy_dir(indir, outdir):
+    '''Copies the input directory to the output directory. The base output
+    directory is created if necessary, and any existing output directory will
+    be deleted.
+    '''
+    if os.path.isdir(outdir):
+        shutil.rmtree(outdir)
+    shutil.copytree(indir, outdir)
 
 
 def delete_file(path):
