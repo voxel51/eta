@@ -50,11 +50,14 @@ class PipelineStatus(Serializable):
     FAILED = "FAILED"
     COMPLETE = "COMPLETE"
 
-    def __init__(self, name):
+    def __init__(self, name, callback=None):
         '''Construct a new PipelineStatus instance.
 
         Args:
             name: the name of the pipeline
+            callback: an optional callback function to invoke after each time
+                the `write_json()` method is invoked. By default, no callback
+                is invoked
         '''
         self.name = name
         self.status = PipelineStatus.QUEUED
@@ -64,6 +67,7 @@ class PipelineStatus(Serializable):
         self.messages = []
         self.jobs = []
 
+        self._callback = callback
         self._active_job = None
 
     def attributes(self):
@@ -109,6 +113,26 @@ class PipelineStatus(Serializable):
         '''Mark the pipelne as failed and record the given message.'''
         self.fail_time = self.add_message(message)
         self.status = PipelineStatus.FAILED
+
+    def attributes(self):
+        return [
+            "name", "status", "start_time", "complete_time", "fail_time",
+            "messages", "jobs",
+        ]
+
+    def write_json(self, path, pretty_print=True):
+        '''Serializes the PipelineStatus object and writes it to disk. Then
+        calls the instance's callback function, if any.
+
+        Args:
+            path: the output path
+            pretty_print: when True (default), the resulting JSON will be
+                outputted to be human readable; when False, it will be compact
+                with no extra spaces or newline characters
+        '''
+        super(PipelineStatus, self).write_json(path, pretty_print=pretty_print)
+        if self._callback:
+            self._callback(path)  # invoke callback
 
     @classmethod
     def from_dict(cls, d):
