@@ -70,12 +70,6 @@ class PipelineStatus(Serializable):
         self._callback = callback
         self._active_job = None
 
-    def attributes(self):
-        return [
-            "name", "status", "start_time", "complete_time", "fail_time",
-            "messages", "jobs",
-        ]
-
     @property
     def active_job(self):
         '''The JobStatus instance for the active job, or None if no job is
@@ -184,12 +178,6 @@ class JobStatus(Serializable):
         self.fail_time = None
         self.messages = []
 
-    def attributes(self):
-        return [
-            "name", "status", "start_time", "complete_time", "fail_time",
-            "messages",
-        ]
-
     def add_message(self, message):
         '''Add the given message to the messages list.'''
         status_message = StatusMessage(message)
@@ -215,6 +203,12 @@ class JobStatus(Serializable):
         '''Mark the job as failed and record the given message.'''
         self.fail_time = self.add_message(message)
         self.status = JobStatus.FAILED
+
+    def attributes(self):
+        return [
+            "name", "status", "start_time", "complete_time", "fail_time",
+            "messages",
+        ]
 
     @classmethod
     def from_dict(cls, d):
