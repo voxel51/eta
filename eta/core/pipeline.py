@@ -84,7 +84,7 @@ def _make_flush_status(pipeline_status, status_path):
 
 def _run(
         pipeline_config, pipeline_config_path, pipeline_status, flush_status):
-    logger.info("Starting pipeline '%s'\n", pipeline_config.name)
+    logger.info("Starting pipeline '%s'", pipeline_config.name)
     pipeline_status.start()
     flush_status()
 

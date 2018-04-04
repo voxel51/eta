@@ -126,7 +126,7 @@ def custom_setup(lc, rotate=False):
         msgs.append(
             "Logging to '%s' at level %s" % (lc.filename, lc.file_level))
 
-    msgs.append("Logging initialized\n")
+    msgs.append("Logging initialized")
 
     # Initial logging output
     eta.startup_message()

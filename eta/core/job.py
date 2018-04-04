@@ -62,7 +62,7 @@ def run(job_config, pipeline_status, overwrite=True):
                 logger.info("Overwriting existing job output")
                 should_run = True
             else:
-                logger.info("Skipping job '%s'\n", job_config.name)
+                logger.info("Skipping job '%s'", job_config.name)
                 should_run = False
         else:
             should_run = True
@@ -81,7 +81,7 @@ def run(job_config, pipeline_status, overwrite=True):
                 return should_run, False
 
             # Job complete!
-            logger.info("Job '%s' complete\n", job_config.name)
+            logger.info("Job '%s' complete", job_config.name)
             hasher.write()  # write config hash
             job_status.complete()
         else:
