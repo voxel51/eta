@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 
 
 PIPELINE_CONFIG_FILE = "pipeline.json"
-PIPELINE_LOG_FILE = "pipeline.log"
+PIPELINE_LOGFILE_FILE = "pipeline.log"
 PIPELINE_STATUS_FILE = "status.json"
 MODULE_CONFIG_EXT = ".json"
 
@@ -145,10 +145,10 @@ class PipelineBuilder(object):
             when the pipeline is run
         pipeline_config_path: the path to the pipeline config file to run the
             pipeline
-        pipeline_log_path: the path to the pipeline log file that will be
-            generated when the pipeline is run
         pipeline_status_path: the path to the pipeline status JSON file that
             will be generated when the pipeline is run
+        pipeline_logfile_path: the path to the pipeline logfile that will be
+            generated when the pipeline is run
         outputs: a dictionary mapping pipeline outputs to the paths where they
             will be written when the pipeline is run
     '''
@@ -164,7 +164,7 @@ class PipelineBuilder(object):
         self.config_dir = None
         self.output_dir = None
         self.pipeline_config_path = None
-        self.pipeline_log_path = None
+        self.pipeline_logfile_path = None
         self.pipeline_status_path = None
         self.outputs = {}
 
@@ -206,9 +206,9 @@ class PipelineBuilder(object):
             )
 
         # Build logging config
-        self.pipeline_log_path = self._get_pipeline_log_path()
+        self.pipeline_logfile_path = self._get_pipeline_logfile_path()
         logging_config_builder = (etal.LoggingConfig.builder()
-            .set(filename=self.pipeline_log_path)
+            .set(filename=self.pipeline_logfile_path)
             .validate())
 
         # Build pipeline config
@@ -301,8 +301,8 @@ class PipelineBuilder(object):
     def _get_pipeline_config_path(self):
         return os.path.join(self.config_dir, PIPELINE_CONFIG_FILE)
 
-    def _get_pipeline_log_path(self):
-        return os.path.join(self.config_dir, PIPELINE_LOG_FILE)
+    def _get_pipeline_logfile_path(self):
+        return os.path.join(self.config_dir, PIPELINE_LOGFILE_FILE)
 
     def _get_pipeline_status_path(self):
         return os.path.join(self.output_dir, PIPELINE_STATUS_FILE)
