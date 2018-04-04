@@ -59,7 +59,7 @@ def startup_message():
     '''Logs ETA startup message.'''
     logger.info("Starting...\n" + etac.ASCII_ART)
     logger.info(version)
-    logger.info("Revision %s\n", etau.get_eta_rev())
+    logger.info("Revision %s", etau.get_eta_rev())
 
 
 # Version string
