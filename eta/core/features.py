@@ -22,7 +22,6 @@ from builtins import *
 import errno
 import logging
 import os
-import random
 import shutil
 import tempfile
 
@@ -635,6 +634,6 @@ class RandFeaturizer(Featurizer):
  
     def _featurize(self, data_in):  # @UnusedVariable
         '''Encode an input regardless of the input as a random number.'''
-        return [ random.random() for _ in xrange(RandFeaturizer.DIMS) ]
+        return np.random.rand(RandFeaturizer.DIMS)
  
  
