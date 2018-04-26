@@ -149,9 +149,9 @@ CRITICAL pip install -r requirements.txt
 # that explicitly
 MSG "Installing TensorFlow"
 if [ "${GCARD}" == "ON" ]; then
-    CRITICAL pip install tensorflow-gpu
+    CRITICAL pip install --upgrade tensorflow-gpu
 else
-    CRITICAL pip install tensorflow
+    CRITICAL pip install --upgrade tensorflow
 fi
 
 
