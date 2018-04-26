@@ -23,9 +23,6 @@ OpenCV options:
         directory. By default, OpenCV is installed globally in /usr/local.
 -v ver  A specific OpenCV version to install. The default is 3.3.0.
 
-Package manager options:
--u      Update package manager before installing. The default is false.
-
 Mac-only options:
 -b      Use brew to install packages (mac only). The default is false.
 -p      Use port to install packages (mac only). The default is true.
@@ -39,13 +36,11 @@ VIRTUAL_ENV=""
 GLOBAL_ENV="/usr/local"
 OPENCV_VERSION="3.3.0"
 USE_MACPORTS=true
-UPDATE_PACKAGES=false
-while getopts "he:v:ubp" FLAG; do
+while getopts "he:v:bp" FLAG; do
     case "${FLAG}" in
         h) SHOW_HELP=true ;;
         e) VIRTUAL_ENV="${OPTARG}" ;;
         v) OPENCV_VERSION="${OPTARG}" ;;
-        u) UPDATE_PACKAGES=true ;;
         b) USE_MACPORTS=false ;;
         p) USE_MACPORTS=true ;;
         *) usage ;;
@@ -123,21 +118,27 @@ fi
 MSG "Setting GCARD=${GCARD}"
 
 
-# Update package managers
-if [ ${UPDATE_PACKAGES} = true ]; then
-    if [ "${OS}" == "Linux" ]; then
-        MSG "Installing build-essential"
-        CRITICAL sudo apt-get -y install build-essential
-    elif [ "${OS}" == "Darwin" ]; then
-        if [ ${USE_MACPORTS} = true ]; then
-            MSG "Updating MacPorts"
-            CRITICAL sudo port selfupdate
-        else
-            MSG "Updating Homebrew"
-            CRITICAL brew update
-        fi
+# Install base packages
+MSG "Installing base machine packages"
+if [ "${OS}" == "Linux" ]; then
+    CRITICAL sudo apt-get update
+    CRITICAL sudo apt-get -y install build-essential
+    CRITICAL sudo apt-get -y install pkg-config
+    CRITICAL sudo apt-get -y install python-pip
+    CRITICAL sudo apt-get -y install python-dev
+    CRITICAL sudo apt-get -y install cmake
+    CRITICAL sudo apt-get -y install cmake-data
+    CRITICAL sudo apt-get -y install unzip
+elif [ "${OS}" == "Darwin" ]; then
+    # Macs already have most goodies, so just update package managers
+    if [ ${USE_MACPORTS} = true ]; then
+        CRITICAL sudo port selfupdate
+    else
+        CRITICAL brew update
     fi
 fi
+CRITICAL pip install --upgrade pip
+CRITICAL pip install --upgrade virtualenv
 
 
 # Install python requirements
