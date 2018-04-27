@@ -16,6 +16,8 @@ __pycache__
 /configs
 /data
 /docs/*.tex
+/docs/*.html
+/docs/*.pdf
 /external
 /out
 
