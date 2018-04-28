@@ -92,9 +92,14 @@ sed -i -e "s|{{eta}}|$(pwd)|g" config.json
 
 ## Installing the command-line utility
 
-To globally install the `eta` command-line utility on your machine, run
+You can install the ETA command-line utility by simply placing the `eta/eta`
+executable on your system path.
+
+For example, you could make a symlink to an appropriate `bin` directory on your
+path:
 
 ```shell
+# Choose a different target directory if you prefer
 ln -s "$(pwd)/eta/eta" /usr/local/bin/eta
 ```
 
