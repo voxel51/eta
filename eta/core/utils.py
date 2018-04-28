@@ -239,7 +239,7 @@ def glob_videos(path):
     )
 
 
-def has_extenstion(filename, *args):
+def has_extension(filename, *args):
     '''Determines whether the filename has any of the given extensions.
 
     Args:
