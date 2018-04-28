@@ -580,7 +580,7 @@ class JSONFile(File, ConcreteData):
 
     @staticmethod
     def is_valid_path(path):
-        return File.is_valid_path(path) and etau.has_extenstion(path, ".json")
+        return File.is_valid_path(path) and etau.has_extension(path, ".json")
 
 
 class JSONFileSequence(FileSequence, ConcreteData):
@@ -600,7 +600,7 @@ class JSONFileSequence(FileSequence, ConcreteData):
     def is_valid_path(path):
         return (
             FileSequence.is_valid_path(path) and
-            etau.has_extenstion(path, ".json")
+            etau.has_extension(path, ".json")
         )
 
 
