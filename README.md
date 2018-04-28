@@ -82,7 +82,11 @@ installation, the example configuration file contains the pattern `{{eta}}`
 that you can perform a quick find-and-replace on to populate the config:
 
 ```shell
+# on a mac
 sed -i '' -e "s|{{eta}}|$(pwd)|g" config.json
+
+# on most linux distributions
+sed -i -e "s|{{eta}}|$(pwd)|g" config.json
 ```
 
 
