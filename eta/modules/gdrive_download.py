@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 '''
-Download a file from Google Drive by ID.
+Downloads files from Google Drive.
 
 Copyright 2017-2018, Voxel51, LLC
 voxel51.com
@@ -21,6 +21,7 @@ import logging
 import os
 import sys
 
+from eta.core.config import Config
 import eta.core.module as etam
 import eta.core.web as etaw
 
@@ -28,55 +29,45 @@ import eta.core.web as etaw
 logger = logging.getLogger(__name__)
 
 
-class GDriveDownloadConfig(etam.BaseModuleConfig):
-    '''Clip configuration settings.'''
+class GoogleDriveDownloadConfig(etam.BaseModuleConfig):
+    '''Google Drive download configuration settings.'''
 
     def __init__(self, d):
-        super(GDriveDownloadConfig, self).__init__(d)
+        super(GoogleDriveDownloadConfig, self).__init__(d)
         self.data = self.parse_object_array(d, "data", DataConfig)
-        self.parameters = self.parse_object(d, "parameters", ParametersConfig)
 
 
 class DataConfig(Config):
     '''Data configuration settings.'''
 
     def __init__(self, d):
-        self.output_dir = self.parse_string(d, "output_dir")
-
-
-class ParametersConfig(Config):
-    '''Parameter configuration settings.'''
-
-    def __init__(self, d):
+        self.output_path = self.parse_string(d, "output_path")
         self.google_drive_id = self.parse_string(d, "google_drive_id")
-        self.filename = self.parse_string(d, "filename")
 
 
 def _download_files(download_config):
-    params = download_config.parameters
     for data in download_config.data:
-        output_path = os.path.join(data.output_dir, params.filename)
-        logger.info("Downloading %s from Google Drive", output_path)
+        logger.info("Downloading %s from Google Drive", data.output_path)
         try:
             etaw.download_google_drive_file(
-                params.google_drive_id, path=output_path)
+                data.google_drive_id, path=data.output_path)
         except etaw.WebSessionError:
             logger.error(
-                "Could not download Google Drive file id %s",
-                params.google_drive_id
+                "Could not download Google Drive file with ID %s",
+                data.google_drive_id
             )
         except:
             logger.error("Unknown error occurred")
 
 
 def run(config_path, pipeline_config_path=None):
-    '''Run the gdrive_download module.
+    '''Run the google_drive_download module.
 
     Args:
-        config_path: path to a ClipConfig file
+        config_path: path to a GoogleDriveDownloadConfig file
         pipeline_config_path: optional path to a PipelineConfig file
     '''
-    download_config = GDriveDownloadConfig.from_json(config_path)
+    download_config = GoogleDriveDownloadConfig.from_json(config_path)
     etam.setup(download_config, pipeline_config_path=pipeline_config_path)
     _download_files(download_config)
 
