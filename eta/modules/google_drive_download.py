@@ -56,8 +56,6 @@ def _download_files(download_config):
                 "Could not download Google Drive file with ID %s",
                 data.google_drive_id
             )
-        except:
-            logger.error("Unknown error occurred")
 
 
 def run(config_path, pipeline_config_path=None):
