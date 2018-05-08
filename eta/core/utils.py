@@ -250,6 +250,28 @@ def has_extension(filename, *args):
     return any(ext == a for a in args)
 
 
+def to_human_bytes_str(num_bytes):
+    '''Returns a human-readable string represntation of the given number of
+    bytes.
+    '''
+    return _to_human_binary_str(num_bytes, "B")
+
+
+def to_human_bits_str(num_bits):
+    '''Returns a human-readable string represntation of the given number of
+    bits.
+    '''
+    return _to_human_binary_str(num_bits, "b")
+
+
+def _to_human_binary_str(num, suffix):
+    for unit in ["", "K", "M", "G", "T", "P"]:
+        if abs(num) < 1024.0:
+            break;
+        num /= 1024.0
+    return "%3.1f %s%s" % (num, unit, suffix)
+
+
 # @todo move to eta/core/image.py
 def is_supported_image_type(filename):
     '''Determines whether the filename has a supported image extension.'''
