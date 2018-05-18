@@ -33,8 +33,8 @@ import sys
 import tensorflow as tf
 import numpy as np
 
-import eta.core.image as im
-from eta.core import utils
+import eta.core.image as etai
+import eta.core.utils as etau
 from eta.core.vgg16 import VGG16
 
 
@@ -49,13 +49,13 @@ def embed_image(impath):
     Args:
         impath: path to an image to embed
     '''
-    img = im.read(impath)
+    img = etai.read(impath)
 
     imgs = tf.placeholder(tf.float32, [None, 224, 224, 3])
     sess = tf.Session()
     vggn = VGG16(imgs, sess)
 
-    rimg = im.resize(img, 224, 224)
+    rimg = etai.resize(img, 224, 224)
 
     embedded_vector = sess.run(vggn.fc2l, feed_dict={vggn.imgs: [rimg]})[0]
 
@@ -63,7 +63,7 @@ def embed_image(impath):
     logger.info("%s", embedded_vector)
 
     outpath = _abspath("out/result_embed_image.npz")
-    utils.ensure_basedir(outpath)
+    etau.ensure_basedir(outpath)
     np.savez_compressed(outpath, v=embedded_vector)
     logger.info("result saved to '%s'", outpath)
 

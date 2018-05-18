@@ -28,8 +28,8 @@ import sys
 import tensorflow as tf
 import numpy as np
 
-import eta.core.image as im
-from eta.core import utils
+import eta.core.image as etai
+import eta.core.utils as etau
 from eta.core.vgg16 import VGG16FeaturizerConfig, VGG16Featurizer
 
 
@@ -44,7 +44,7 @@ def embed_image(impath):
     Args:
         impath: path to an image to embed
     '''
-    img = im.read(impath)
+    img = etai.read(impath)
 
     vconfig = VGG16FeaturizerConfig({})
     vfeaturizer = VGG16Featurizer(vconfig)
@@ -55,7 +55,7 @@ def embed_image(impath):
     logger.info("%s", embedded_vector)
 
     outpath = _abspath("out/result_embed_image.npz")
-    utils.ensure_basedir(outpath)
+    etau.ensure_basedir(outpath)
     np.savez_compressed(outpath, v=embedded_vector)
     logger.info("result saved to '%s'", outpath)
 

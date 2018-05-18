@@ -1,7 +1,7 @@
 '''
 Core system and file I/O utilities.
 
-Copyright 2017, Voxel51, LLC
+Copyright 2017-2018, Voxel51, LLC
 voxel51.com
 
 Brian Moore, brian@voxel51.com
@@ -19,6 +19,7 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+import datetime
 import errno
 import glob
 import hashlib
@@ -27,21 +28,32 @@ import logging
 import os
 import random
 import shutil
+import six
 import string
 import subprocess
 import sys
 import tempfile
 
-import eta.constants as c
-import eta.core.image as etai
+import eta.constants as etac
+
 
 logger = logging.getLogger(__name__)
+
+
+def is_str(val):
+    '''Returns True/False whether the given value is a string.'''
+    return isinstance(val, six.string_types)
+
+
+def get_isotime():
+    '''Gets the local time in ISO 8601 format: "YYYY-MM-DD HH:MM:SS".'''
+    return str(datetime.datetime.now().replace(microsecond=0))
 
 
 def get_eta_rev():
     '''Returns the hash of the last commit to the current ETA branch or "" if
     something went wrong with git.'''
-    with WorkingDir(c.ETA_DIR):
+    with WorkingDir(etac.ETA_DIR):
         success, rev, _ = communicate(
             ["git", "rev-parse", "HEAD"], decode=True)
     return rev.strip() if success else ""
@@ -75,9 +87,18 @@ def get_class(class_name, module_name=None):
         module_name: the fully-qualified module name like "eta.core.utils", or
             None if class_name includes the module name. Set module_name to
             __name__ to load a class from the calling module
+
+    Raises:
+        ImportError: if the class could not be imported
     '''
     if module_name is None:
-        module_name, class_name = class_name.rsplit(".", 1)
+        try:
+            module_name, class_name = class_name.rsplit(".", 1)
+        except ValueError:
+            raise ImportError((
+                "Class name '%s' must be fully-qualified when no module "
+                "name is provided") % class_name
+            )
 
     __import__(module_name)  # does nothing if module is already imported
     return getattr(sys.modules[module_name], class_name)
@@ -120,6 +141,34 @@ def communicate(args, decode=False):
     return p.returncode == 0, out, err
 
 
+def communicate_or_die(args, decode=False):
+    '''Wrapper around communicate() that raises an exception if any error
+    occurs.
+
+    Args:
+        same as communicate()
+
+    Returns:
+        out: the command's stdout
+
+    Raises:
+        ExecutableNotFoundError: if the executable in the command was not found
+        ExecutableRuntimeError: if an error occurred while executing the
+            command
+    '''
+    try:
+        success, out, err = communicate(args, decode=decode)
+        if not success:
+            raise ExecutableRuntimeError(" ".join(args), err)
+
+        return out
+    except EnvironmentError as e:
+        if e.errno == errno.ENOENT:
+            raise ExecutableNotFoundError(args[0])
+        else:
+            raise
+
+
 def call(args):
     '''Runs the command via subprocess.call()
 
@@ -133,11 +182,30 @@ def call(args):
 
 
 def copy_file(inpath, outpath):
-    '''Copies the input file to the output location, creating the base output
-    directory if necessary.
+    '''Copies the input file to the output location, which can be a filepath or
+    a directory in which to write the file. The base output directory is
+    created if necessary, and any existing file will be overwritten.
     '''
     ensure_basedir(outpath)
     shutil.copy(inpath, outpath)
+
+
+def copy_dir(indir, outdir):
+    '''Copies the input directory to the output directory. The base output
+    directory is created if necessary, and any existing output directory will
+    be deleted.
+    '''
+    if os.path.isdir(outdir):
+        shutil.rmtree(outdir)
+    shutil.copytree(indir, outdir)
+
+
+def delete_file(path):
+    '''Deletes the file at the given path and recursively deletes any empty
+    directories from the resulting directory tree.
+    '''
+    os.remove(path)
+    os.removedirs(os.path.dirname(path))
 
 
 def ensure_path(path):
@@ -162,20 +230,58 @@ def ensure_dir(dirname):
         os.makedirs(dirname)
 
 
+# @todo move to eta/core/video.py
 def glob_videos(path):
     '''Returns an iterator over all supported video files in path.'''
-    return multiglob(*c.VIDEO_FILE_TYPES_SUPPORTED,
-            root=os.path.join(path, '*.'))
+    return multiglob(
+        *etac.VIDEO_FILE_TYPES_SUPPORTED,
+        root=os.path.join(path, "*")
+    )
 
-def find_matching_file(filepath, valid_exts=etai.VALID_IMAGE_EXTENSIONS):
-    ''' finds an image that matches the json file. '''
-    _file_noext, _ext = os.path.splitext(filepath)
-    logger.info("Looking for corresponding file for %s with ext %s", _file_noext, _ext)
-    for _file in glob.glob(_file_noext + "*"):
-        _ext2 = os.path.splitext(_file)[1]
-        if _ext2.lower() in valid_exts:
-            return _file
-    return None
+
+def has_extension(filename, *args):
+    '''Determines whether the filename has any of the given extensions.
+
+    Args:
+        filename: a file name
+        *args: extensions like ".txt" or ".json"
+    '''
+    ext = os.path.splitext(filename)[1]
+    return any(ext == a for a in args)
+
+
+def to_human_bytes_str(num_bytes):
+    '''Returns a human-readable string represntation of the given number of
+    bytes.
+    '''
+    return _to_human_binary_str(num_bytes, "B")
+
+
+def to_human_bits_str(num_bits):
+    '''Returns a human-readable string represntation of the given number of
+    bits.
+    '''
+    return _to_human_binary_str(num_bits, "b")
+
+
+def _to_human_binary_str(num, suffix):
+    for unit in ["", "K", "M", "G", "T", "P"]:
+        if abs(num) < 1024.0:
+            break;
+        num /= 1024.0
+    return "%3.1f %s%s" % (num, unit, suffix)
+
+
+# @todo move to eta/core/image.py
+def is_supported_image_type(filename):
+    '''Determines whether the filename has a supported image extension.'''
+    return os.path.splitext(filename)[1] in etac.IMAGE_FILE_TYPES_SUPPORTED
+
+
+# @todo move to eta/core/video.py
+def is_supported_video_type(filename):
+    '''Determines whether the filename has a supported video extension.'''
+    return os.path.splitext(filename)[1] in etac.VIDEO_FILE_TYPES_SUPPORTED
 
 
 def move_file(inpath, outpath):
@@ -191,20 +297,16 @@ def multiglob(*patterns, **kwargs):
 
     Args:
         patterns is the set of patterns to search for
-        kwargs['root'] allows for a `root` path to be specified once and
+        kwargs["root"] allows for a `root` path to be specified once and
             applied to all patterns
 
     Note that this does not us os.path.join if a root=FOO is provided. So, if
-        you want to just search by extensions, you can use root="path/*." and
-        provide only extensions in the patterns.
+    you want to just search by extensions, you can use root="path/*" and
+    provide only extensions in the patterns.
     '''
-    if 'root' not in kwargs:
-        return it.chain.from_iterable(glob.iglob(pattern)
-                for pattern in patterns)
-
-    root = kwargs['root']
-    return it.chain.from_iterable(glob.iglob(root + pattern)
-            for pattern in patterns)
+    root = kwargs.get("root", "")
+    return it.chain.from_iterable(
+        glob.iglob(root + pattern) for pattern in patterns)
 
 
 def random_key(n):
@@ -220,6 +322,21 @@ def replace_strings(string, replacers):
     for sfind, srepl in replacers:
         output = output.replace(sfind, srepl)
     return output
+
+
+def join_dicts(*args):
+    '''Joins any number of dictionaries into a new single dictionary.
+
+    Args:
+        *args: one or more dictionaries
+
+    Returns:
+        a single dictionary containing all items.
+    '''
+    d = {}
+    for di in args:
+        d.update(di)
+    return d
 
 
 class FileHasher(object):
