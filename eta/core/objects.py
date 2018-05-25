@@ -20,7 +20,6 @@ from builtins import *
 
 import random
 import os
-from platform import _abspath
 
 from eta.core.geometry import BoundingBox
 from eta.core.serial import Serializable
@@ -164,7 +163,7 @@ class ObjectCount(Serializable):
     def from_dict(cls, d):
         '''Constructs an ObjectCount from a JSON dictionary.'''
         return ObjectCount(d["label"], d["count"])
-    
+
 
 class ScoredDetection(Serializable):
     '''A detection attributed with source and score
@@ -178,7 +177,9 @@ class ScoredDetection(Serializable):
         chip: the chip, if already available (not serialized)
     '''
 
-    def __init__(self, detection, source=None, score=0.0, feat=None, chip_path=None, chip=None):
+    def __init__(
+            self, detection, source=None, score=0.0, feat=None,
+            chip_path=None, chip=None):
         '''Constructs a DetectedObject.
 
         Args:
@@ -192,7 +193,7 @@ class ScoredDetection(Serializable):
         self.feat = feat
         self._chip = chip
         self.chip_path = chip_path
-        
+
     def randomize_score(self):
         '''
         Randomizes the score in [0, 1]
@@ -209,7 +210,8 @@ class ScoredDetection(Serializable):
         '''
         if not img:
             img = etai.read(self.source)
-        self._chip = self.detection.bounding_box.extract_from(img, force_square=force_square)
+        self._chip = self.detection.bounding_box.extract_from(
+            img, force_square=force_square)
         return self._chip
 
     @classmethod
@@ -226,7 +228,7 @@ class ScoredDetection(Serializable):
 
 class ScoredDetectionList(Serializable):
     '''A list of scored objects.'''
-    
+
     def __init__(self, objects=None):
         '''Constructs a ScoredDetectionList.
 
@@ -245,11 +247,14 @@ class ScoredDetectionList(Serializable):
         self.objects.append(obj)
 
     def label_set(self):
-        '''Returns a set containing the labels of objects in this ScoredDetectionList.'''
+        '''Returns a set containing the labels of objects in this
+        ScoredDetectionList.
+        '''
         return set(obj.detection.label for obj in self.objects)
 
     def get_matches(self, filters, match=any):
-        '''Returns a ScoredDetectionList containing only objects that match the filters.
+        '''Returns a ScoredDetectionList containing only objects that match the
+        filters.
 
         Args:
             filters: a list of functions that accept DetectedObjects and return
@@ -265,22 +270,24 @@ class ScoredDetectionList(Serializable):
                 self.objects,
             )),
         )
-        
+
     def randomize_scores(self):
         '''Randomize object scores.'''
         for obj in self.objects:
             obj.randomize_score()
-            
+
     def sort(self):
         '''Sort list by score and store original order.'''
         ord_obj = sorted(enumerate(self.objects), key=lambda x: x[1].score)
         self._orig_order, self.objects = zip(*ord_obj)
         return self.objects
-    
+
     def get_orig_order(self):
-        '''Returns a list of the original orders of each object before the last sort.'''
+        '''Returns a list of the original orders of each object before the
+        last sort.
+        '''
         return self._orig_order
-        
+
     def to_html(self, result_path, query_img):
         '''Output current label set to html for visualization.'''
         # output query image
@@ -292,8 +299,9 @@ class ScoredDetectionList(Serializable):
         order=self.get_order();
         for pos in range(min(len(order), 50)):
             obj=self.objects[pos]
-            top_imgs_str = top_imgs_str+"<img src=%s height=50>score:%.02f<br>"\
-              % (_abspath(obj.chip_path), obj.score)
+            top_imgs_str = top_imgs_str + \
+                "<img src=%s height=50>score:%.02f<br>"\
+                    % (os.path.abspath(obj.chip_path), obj.score)
         html_str = """
             <html>
             <body>
