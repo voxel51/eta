@@ -23,6 +23,7 @@ import datetime
 import errno
 import glob
 import hashlib
+import inspect
 import itertools as it
 import logging
 import os
@@ -71,15 +72,37 @@ def has_gpu():
         return False
 
 
-def get_full_class_name(obj):
-    '''Returns the fully-qualified class name of the given object.'''
-    return obj.__module__ + "." + obj.__class__.__name__
+def get_class_name(cls_or_obj):
+    '''Returns the fully-qualified class name for the given input, which can
+    be a class or class instance.
+
+    Args:
+        cls_or_obj: a class or class instance
+
+    Returns:
+        class_name: a fully-qualified class name string like
+            "eta.core.utils.ClassName"
+    '''
+    cls = cls_or_obj if inspect.isclass(cls_or_obj) else cls_or_obj.__class__
+    return cls_or_obj.__module__ + "." + cls.__name__
+
+
+def get_function_name(fcn):
+    '''Returns the fully-qualified function name for the given function.
+
+    Args:
+        fcn: a function
+
+    Returns:
+        function_name: a fully-qualified function name string like
+            "eta.core.utils.function_name"
+    '''
+    return fcn.__module__ + "." + fcn.__name__
 
 
 def get_class(class_name, module_name=None):
-    '''Returns the class specified by the given string.
-
-    Loads the parent module if necessary.
+    '''Returns the class specified by the given class string, loading the
+    parent module if necessary.
 
     Args:
         class_name: the "ClassName" or a fully-qualified class name like
