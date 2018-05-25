@@ -6,6 +6,7 @@ Copyright 2017, Voxel51, LLC
 voxel51.com
 
 Jason Corso, jason@voxel51.com
+Brian Moore, brian@voxel51.com
 '''
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
@@ -40,9 +41,11 @@ logger = logging.getLogger(__name__)
 class FeaturizerConfig(Config):
     '''Featurizer configuration settings.
 
-    d['type'] is the fully-qualified class name of the Featurizer, e.g.
-    "eta.core.features.VideoFeaturizer". The parent module is loaded if
-    necessary.
+    Attributes:
+        type: the fully-qualified class name of the Featurizer, e.g.,
+            "eta.core.features.VideoFeaturizer"
+        config: an instance of the Config class associated with the specified
+            Featurizer
     '''
 
     def __init__(self, d):
@@ -51,58 +54,66 @@ class FeaturizerConfig(Config):
         self.config = self.parse_object(d, "config", config_cls)
 
     def build(self):
-        '''Factory method to build the featurizer instance by the class
-        name.'''
+        '''Factory method that builds the Featurizer instance from the config
+        specified by this class.
+        '''
         return self._featurizer_cls(self.config)
 
 
 class Featurizer(Configurable):
-    '''Interface for feature extraction methods.
+    '''Base class for all featurizers.
 
-    Note that subclasses of Featurizer MUST call
-    `super(SUBCLASSNAME, self).__init__()` in their __init__() in order for the
-    Featurizer state management to be set up properly.  (This is necessitated
-    by the loose inheritance implementation in Python.)
+    Note that all subclasses must call the superclass constructor defined by
+    this base class.
 
-    @todo Sub-class to an ImageFeaturizer for typing concerns.
+    Subclasses of Featurizer must implement the `dim()` and `_featurize()`
+    methods, and if necessary, should also implement the `_start()` and
+    `_stop()` methods.
     '''
 
     def __init__(self):
         '''Initializes any featurizer by setting up internal state.'''
-        self._started = False
+        self._is_started = False
         self._keep_alive = False
 
     def dim(self):
-        '''Return the dimension of the features extracted by this method.'''
+        '''Returns the dimension of the features extracted by this
+        Featurizer.
+        '''
         raise NotImplementedError("subclass must implement dim().")
 
-    def _start(self):
-        '''Actual start code that subclasses need to override.  The public
-        start function will set up state and then invoke this one.
-        '''
-        pass
-
     def start(self, warn_on_restart=True, keep_alive=True):
-        '''Called by featurize before it starts in case any environment needs
-        to be set up by subclasses.  It can be explicitly called by users of
+        '''Start method that is called by the Featurizer before any features
+        can be computed.
+
+        This method can be explicitly called by users. If it is not called
+        manually, it will be called when `featurize`
+
         subclasses; state will be managed nonetheless.  The default parameter
         settings handle the case where an outside user of the class wants to
-        `start()` the process once and then will featurizer many cases until
-        they explicitly call `stop()`.
-        '''
-        if warn_on_restart and self._started:
-            logger.warning('featurizer start called when already started.')
+        `start` the process once and then will featurizer many cases until
+        they explicitly call `stop`.
 
-        if self._started:
+        Args:
+            warn_on_restart: whether to generate a warning if `start` is
+                called when the Featurizer is already started. The default
+                value is True
+            keep_alive: whether to keep the Featurizer
+        '''
+        if warn_on_restart and self._is_started:
+            logger.warning("Featurizer.start() called when already started.")
+
+        if self._is_started:
             return
 
-        self._started = True
+        self._is_started = True
         self._keep_alive = keep_alive
         self._start()
 
-    def _stop(self):
-        '''Actual stop code that subclasses need to override.  The public stop
-        function will manage state and invoke this one.
+    def _start(self):
+        '''The backend implementation that is called when the public `start()`
+        method is called. Subclasses that require startup configuration should
+        override this method.
         '''
         pass
 
@@ -112,32 +123,51 @@ class Featurizer(Configurable):
         well; the Featurizer is not able to know the process has ended in this
         case.
         '''
-        if not self._started:
+        if not self._is_started:
             return
 
         self._stop()
-        self._started = False
+        self._is_started = False
         self._keep_alive = False
 
-    def _featurize(self, data):
-        '''The core feature extraction routine that subclasses need to
-        implement.'''
-        raise NotImplementedError("subclass must implement _featurize().")
+    def _stop(self):
+        '''Actual stop code that subclasses need to override.  The public stop
+        function will manage state and invoke this one.
+        '''
+        pass
 
     def featurize(self, data):
         '''The core feature extraction routine to be called by users of the
-        featurizer.  It appropriately interacts with the featurizer state
-        management.'''
+        featurizer. It appropriately interacts with the featurizer state
+        management.
+
+        Args:
+            data: the data to featurize
+
+        Returns:
+            the feature vector
+        '''
         self.start(warn_on_restart=False, keep_alive=False)
-        v = self._featurize(data)
+        fv = self._featurize(data)
         if self._keep_alive is False:
             self.stop()
-        return v
+        return fv
+
+    def _featurize(self, data):
+        '''The core feature extraction routine that subclasses must implement.
+
+        Args:
+            data: the data to featurize
+
+        Returns:
+            the feature vector
+        '''
+        raise NotImplementedError("subclass must implement _featurize()")
 
 
 class CanFeaturize(object):
-    '''Class exposes the ability to featurize data by storing a featurizer,
-    allowing it to be set, get and used.
+    '''Mixin class that exposes the ability to featurize data just-in-time by
+    managing and using a Featurizer instance.
     '''
 
     def __init__(self, featurizer=None, hint_featurize=False):
@@ -597,7 +627,7 @@ class VideoFramesFeaturizer(Featurizer):
 # ************************* FEATURIZERS ******************************
 class ORBFeaturizer(Featurizer):
     '''ORB Featurizer.'''
-    
+
     KEYPOINTS = 128
 
     def __init__(self):
@@ -610,30 +640,30 @@ class ORBFeaturizer(Featurizer):
     def dim(self):
         '''Return the dim of the underlying frame featurizer.'''
         return ORBFeaturizer.KEYPOINTS * 32
-    
+
     def _featurize(self, data_in):
         '''Encode an image using ORB features.'''
         gray = cv2.cvtColor(data_in, cv2.COLOR_BGR2GRAY)
         _, embedded_vector = self.orb.detectAndCompute(gray, None)
         logger.debug("%s", embedded_vector)
         return embedded_vector
-    
+
 
 class RandFeaturizer(Featurizer):
     '''Random Featurizer.'''
-    
+
     def __init__(self, dims=1024):
         super(RandFeaturizer, self).__init__(self)
         self.name = "Random Featurizer"
         self.dims = dims
- 
+
     def dim(self):
         '''Return the dim of the underlying frame featurizer.'''
         return self.dims
- 
- 
+
+
     def _featurize(self, data_in):  # @UnusedVariable
         '''Encode an input regardless of the input as a random number.'''
         return np.random.rand(RandFeaturizer.DIMS)
- 
- 
+
+
