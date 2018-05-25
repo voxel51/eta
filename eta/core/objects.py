@@ -26,41 +26,55 @@ from eta.core.serial import Serializable
 import eta.core.image as etai
 import eta.core.utils as etau
 
-class Frame(Serializable):
-    '''Container for detected objects in an image.'''
+
+class ObjectContainer(Serializable):
+    '''Base class for containers that store lists of objects.
+
+    This class should not be instantiated directly. Instead a subclass should
+    be created for each type of object to be stored.
+
+    Attributes:
+        objects: a list of objects
+    '''
+
+    # The class of the objects stored in the container
+    _obj_cls = None
 
     def __init__(self, objects=None):
-        '''Constructs a Frame.
+        '''Constructs an ObjectContainer.
 
         Args:
-            objects: optional list of DetectedObjects in the frame.
+            objects: optional list of objects to store.
         '''
+        self._validate()
         self.objects = objects or []
 
+    @classmethod
+    def get_object_class(cls):
+        '''Gets the class of object stored in this container.'''
+        return cls._obj_cls
+
     def add(self, obj):
-        '''Adds a DetectedObject to the frame.
+        '''Adds an object to the container.
 
         Args:
-            obj: A DetectedObject instance
+            obj: an object instance
         '''
         self.objects.append(obj)
 
-    def label_set(self):
-        '''Returns a set containing the labels of objects in this frame.'''
-        return set(obj.label for obj in self.objects)
-
     def get_matches(self, filters, match=any):
-        '''Returns a Frame containing only objects that match the filters.
+        '''Returns an object container containing only objects that match the
+        filters.
 
         Args:
-            filters: a list of functions that accept DetectedObjects and return
+            filters: a list of functions that accept objects and return
                 True/False
-            match: a function (usually any or all) that accepts an iterable and
-                returns True/False. Used to aggregate the outputs of each
+            match: a function (usually `any` or `all`) that accepts an iterable
+                and returns True/False. Used to aggregate the outputs of each
                 filter to decide whether a match has occurred. The default is
-                any
+                `any`
         '''
-        return Frame(
+        return self.__class__(
             objects=list(filter(
                 lambda o: match(f(o) for f in filters),
                 self.objects,
@@ -68,24 +82,31 @@ class Frame(Serializable):
         )
 
     def count_matches(self, filters, match=any):
-        '''Counts number of detected objects that match the filters.
+        '''Counts number of objects that match the filters.
 
         Args:
-            filters: a list of functions that accept DetectedObjects and return
+            filters: a list of functions that accept objects and return
                 True/False
-            match: a function (usually any or all) that accepts an iterable and
-                returns True/False. Used to aggregate the outputs of each
+            match: a function (usually `any` or `all`) that accepts an iterable
+                and returns True/False. Used to aggregate the outputs of each
                 filter to decide whether a match has occurred. The default is
-                any
+                `any`
         '''
         return len(self.get_matches(filters, match=match).objects)
 
     @classmethod
     def from_dict(cls, d):
-        '''Constructs a Frame from a JSON dictionary.'''
-        return Frame(objects=[
-            DetectedObject.from_dict(do) for do in d["objects"]
-        ])
+        '''Constructs an ObjectContainer (subclass) from a JSON dictionary.'''
+        cls._validate()
+        return cls(objects=[cls._obj_cls.from_dict(do) for do in d["objects"]])
+
+    @classmethod
+    def _validate(cls):
+        if cls._obj_cls is None:
+            raise ValueError(
+                "_obj_cls is None; note that you cannot instantiate "
+                "ObjectContainer directly."
+            )
 
 
 class DetectedObject(Serializable):
@@ -94,7 +115,7 @@ class DetectedObject(Serializable):
     Attributes:
         label: object label
         confidence: detection confidence
-        bounding_box: A BoundingBox around the object
+        bounding_box: a BoundingBox around the object
     '''
 
     def __init__(self, label, confidence, bounding_box):
@@ -103,7 +124,7 @@ class DetectedObject(Serializable):
         Args:
             label: object label string
             confidence: detection confidence, in [0, 1]
-            bounding_box: A BoundingBox around the object
+            bounding_box: a BoundingBox around the object
         '''
         self.label = str(label)
         self.confidence = float(confidence)
@@ -129,6 +150,16 @@ class DetectedObject(Serializable):
         )
 
 
+class Frame(ObjectContainer):
+    '''Container for DetectedObjects in a frame.'''
+
+    _obj_cls = DetectedObject
+
+    def label_set(self):
+        '''Returns a set containing the labels of the DetectedObjects.'''
+        return set(obj.label for obj in self.objects)
+
+
 class ObjectCounts(Serializable):
     '''Container for counting objects in an image.'''
 
@@ -147,9 +178,9 @@ class ObjectCounts(Serializable):
     @classmethod
     def from_dict(cls, d):
         '''Constructs an ObjectCounts from a JSON dictionary.'''
-        return ObjectCounts(counts=[
-            ObjectCount.from_dict(dc) for dc in d["counts"]
-        ])
+        return ObjectCounts(
+            counts=[ObjectCount.from_dict(dc) for dc in d["counts"]]
+        )
 
 
 class ObjectCount(Serializable):
