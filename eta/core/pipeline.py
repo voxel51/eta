@@ -49,10 +49,9 @@ def run(pipeline_config_path, status_callback=None):
 
     Args:
         pipeline_config_path: path to a PipelineConfig file
-        status_callback: an optional callback function that takes as input the
-            path to the PipelineStatus file and is called after each time the
-            pipeline status is written to disk. By default, no callback is
-            provided
+        status_callback: an optional callback function that takes as input a
+            PipelineStatus instance and is called each time the pipeline status
+            is flushed. By default, no callback is provided
     '''
     # Load config
     pipeline_config = PipelineConfig.from_json(pipeline_config_path)
@@ -65,20 +64,24 @@ def run(pipeline_config_path, status_callback=None):
     etal.custom_setup(pipeline_config.logging_config, rotate=True)
 
     # Create status object
-    pipeline_status = etas.PipelineStatus(
-        pipeline_config.name, callback=status_callback)
+    pipeline_status = etas.PipelineStatus(pipeline_config.name)
 
     # Run pipeline
-    status_path = pipeline_config.status_path
-    flush_status = _make_flush_status(pipeline_status, status_path)
+    flush_status = _make_flush_status_callback(
+        pipeline_status, pipeline_config.status_path, status_callback)
     _run(pipeline_config, pipeline_config_path, pipeline_status, flush_status)
 
 
-def _make_flush_status(pipeline_status, status_path):
+def _make_flush_status_callback(pipeline_status, status_path, status_callback):
     def _flush_status():
         if status_path:
             pipeline_status.write_json(status_path)
             logger.info("Pipeline status written to '%s'", status_path)
+
+        if status_callback:
+            status_callback(pipeline_status)
+            logger.info("Excuted pipeline status callback")
+
     return _flush_status
 
 

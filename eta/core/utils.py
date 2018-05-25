@@ -228,7 +228,11 @@ def delete_file(path):
     directories from the resulting directory tree.
     '''
     os.remove(path)
-    os.removedirs(os.path.dirname(path))
+    try:
+        os.removedirs(os.path.dirname(path))
+    except OSError:
+        # found a non-empty directory or directory with no write access
+        pass
 
 
 def ensure_path(path):
