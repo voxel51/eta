@@ -28,12 +28,22 @@ import eta.core.utils as etau
 logger = logging.getLogger(__name__)
 
 
+class PipelineState(object):
+    '''Enum describing the possible states of a pipeline.'''
+
+    READY = "READY"
+    QUEUED = "QUEUED"
+    RUNNING = "RUNNING"
+    FAILED = "FAILED"
+    COMPLETE = "COMPLETE"
+
+
 class PipelineStatus(Serializable):
     '''Class for recording the status of a pipeline.
 
     Attributes:
         name: the name of the pipeline
-        status: the current status of the pipeline
+        state: the current state of the pipeline
         start_time: the time the pipeline was started, or None if not started
         complete_time: the time the pipeline was completed, or None if not
             completed
@@ -44,12 +54,6 @@ class PipelineStatus(Serializable):
             that make up the pipeline
     '''
 
-    # Pipeline status enum
-    QUEUED = "QUEUED"
-    RUNNING = "RUNNING"
-    FAILED = "FAILED"
-    COMPLETE = "COMPLETE"
-
     def __init__(self, name):
         '''Construct a new PipelineStatus instance.
 
@@ -57,7 +61,7 @@ class PipelineStatus(Serializable):
             name: the name of the pipeline
         '''
         self.name = name
-        self.status = PipelineStatus.QUEUED
+        self.state = PipelineState.QUEUED
         self.start_time = None
         self.complete_time = None
         self.fail_time = None
@@ -92,21 +96,21 @@ class PipelineStatus(Serializable):
     def start(self, message="Pipeline started"):
         '''Mark the pipeline as started and record the given message.'''
         self.start_time = self.add_message(message)
-        self.status = PipelineStatus.RUNNING
+        self.state = PipelineState.RUNNING
 
     def complete(self, message="Pipeline completed"):
         '''Mark the pipelne as complete and record the given message.'''
         self.complete_time = self.add_message(message)
-        self.status = PipelineStatus.COMPLETE
+        self.state = PipelineState.COMPLETE
 
     def fail(self, message="Pipeline failed"):
         '''Mark the pipelne as failed and record the given message.'''
         self.fail_time = self.add_message(message)
-        self.status = PipelineStatus.FAILED
+        self.state = PipelineState.FAILED
 
     def attributes(self):
         return [
-            "name", "status", "start_time", "complete_time", "fail_time",
+            "name", "state", "start_time", "complete_time", "fail_time",
             "messages", "jobs",
         ]
 
@@ -114,7 +118,7 @@ class PipelineStatus(Serializable):
     def from_dict(cls, d):
         '''Constructs a PipelineStatus instance from a JSON dictionary.'''
         pipeline_status = PipelineStatus(d["name"])
-        pipeline_status.status = d["status"]
+        pipeline_status.state = d["state"]
         pipeline_status.start_time = d["start_time"]
         pipeline_status.complete_time = d["complete_time"]
         pipeline_status.fail_time = d["fail_time"]
@@ -127,25 +131,29 @@ class PipelineStatus(Serializable):
         return pipeline_status
 
 
+class JobState(object):
+    '''Enum describing the possible states of a pipeline.'''
+
+    READY = "READY"
+    QUEUED = "QUEUED"
+    SKIPPED = "SKIPPED"
+    RUNNING = "RUNNING"
+    FAILED = "FAILED"
+    COMPLETE = "COMPLETE"
+
+
 class JobStatus(Serializable):
     '''Class for recording the status of a job.
 
     Attributes:
         name: the name of the job
-        status: the current status of the job
+        state: the current state of the job
         start_time: the time the job was started, or None if not started
         complete_time: the time the job was completed, or None if not completed
         fail_time: the time the job failed, or None if not failed
         messages: a list of StatusMessage objects listing the status updates
             for the job
     '''
-
-    # Job status enum
-    QUEUED = "QUEUED"
-    SKIPPED = "SKIPPED"
-    RUNNING = "RUNNING"
-    FAILED = "FAILED"
-    COMPLETE = "COMPLETE"
 
     def __init__(self, name):
         '''Construct a new JobStatus instance.
@@ -154,7 +162,7 @@ class JobStatus(Serializable):
             name: the name of the job
         '''
         self.name = name
-        self.status = JobStatus.QUEUED
+        self.state = JobState.QUEUED
         self.start_time = None
         self.complete_time = None
         self.fail_time = None
@@ -169,26 +177,26 @@ class JobStatus(Serializable):
     def skip(self, message="Job skipped"):
         '''Mark the job as skipped and record the given message.'''
         self.add_message(message)
-        self.status = JobStatus.SKIPPED
+        self.state = JobState.SKIPPED
 
     def start(self, message="Job started"):
         '''Mark the job as started and record the given message.'''
         self.start_time = self.add_message(message)
-        self.status = JobStatus.RUNNING
+        self.state = JobState.RUNNING
 
     def complete(self, message="Job completed"):
         '''Mark the job as complete and record the given message.'''
         self.complete_time = self.add_message(message)
-        self.status = JobStatus.COMPLETE
+        self.state = JobState.COMPLETE
 
     def fail(self, message="Job failed"):
         '''Mark the job as failed and record the given message.'''
         self.fail_time = self.add_message(message)
-        self.status = JobStatus.FAILED
+        self.state = JobState.FAILED
 
     def attributes(self):
         return [
-            "name", "status", "start_time", "complete_time", "fail_time",
+            "name", "state", "start_time", "complete_time", "fail_time",
             "messages",
         ]
 
@@ -196,7 +204,7 @@ class JobStatus(Serializable):
     def from_dict(cls, d):
         '''Constructs a JobStatus instance from a JSON dictionary.'''
         job_status = JobStatus(d["name"])
-        job_status.status = d["status"]
+        job_status.state = d["state"]
         job_status.start_time = d["start_time"]
         job_status.complete_time = d["complete_time"]
         job_status.fail_time = d["fail_time"]
