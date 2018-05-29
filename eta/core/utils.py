@@ -337,17 +337,27 @@ def multiglob(*patterns, **kwargs):
 
 
 def random_key(n):
-    '''Generates an n-len random key of lowercase characters and digits.'''
-    return "".join(random.SystemRandom().choice(
-        string.ascii_lowercase + string.digits) for _ in range(n))
+    '''Generates an n-lenth random key of lowercase characters and digits.'''
+    return "".join(
+        random.SystemRandom().choice(string.ascii_lowercase + string.digits)
+        for _ in range(n)
+    )
 
 
 def replace_strings(string, replacers):
-    '''Replacers is a 2D list of [find, replace] strings.'''
+    '''Performs a sequence of find-replace operations on the given string.
 
+    Args:
+        string: the input string
+        replaces: a list of (find, replace) strings
+
+    Returns:
+        a copy of the input strings with all of the find-and-replacements made
+    '''
     output = string
     for sfind, srepl in replacers:
         output = output.replace(sfind, srepl)
+
     return output
 
 
