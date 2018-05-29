@@ -1,7 +1,7 @@
 '''
-Job infrastructure for running modules in a pipeline.
+Core job infrastructure for running modules in a pipeline.
 
-Copyright 2017, Voxel51, LLC
+Copyright 2017-2018, Voxel51, LLC
 voxel51.com
 
 Brian Moore, brian@voxel51.com
@@ -29,27 +29,27 @@ from eta.core import utils
 logger = logging.getLogger(__name__)
 
 
-def run(job_config, overwrite=True):
+def run(job_config, pipeline_status, overwrite=True):
     '''Run the job specified by the JobConfig.
 
     If the job completes succesfully, the hash of the config file is written to
     disk.
 
-    If the job raises an error, execution is terminated immediately.
-
     Args:
         job_config: a JobConfig instance
+        pipeline_status: a PipelineStatus instance
         overwrite: overwrite mode. When True, always run the job. When False,
             only run the job if the config file has changed since the last time
             the job was (succesfully) run
 
     Returns:
-        True/False: if the job was run
+        True/False: if the job was actually run
+        True/False: if execution terminated succesfully
 
     Raises:
         JobConfigError: if the JobConfig was invalid
     '''
-    logger.info("Starting job '%s'", job_config.name)
+    job_status = pipeline_status.add_job(job_config.name)
 
     with utils.WorkingDir(job_config.working_dir):
         # Check config hash
@@ -62,27 +62,33 @@ def run(job_config, overwrite=True):
                 logger.info("Overwriting existing job output")
                 should_run = True
             else:
-                logger.info("Skipping job '%s'\n", job_config.name)
+                logger.info("Skipping job '%s'", job_config.name)
                 should_run = False
         else:
             should_run = True
 
         if should_run:
             logger.info("Working directory: %s", os.getcwd())
-            log.flush()
 
-            # Run the job
+            # Run job
+            logger.info("Starting job '%s'", job_config.name)
+            job_status.start()
             success = _run(job_config)
             if not success:
+                # Job failed
                 logger.error("Job '%s' failed... exiting now", job_config.name)
-                sys.exit()
+                job_status.fail()
+                return should_run, False
 
-            # Write config hash
-            hasher.write()
+            # Job complete!
+            logger.info("Job '%s' complete", job_config.name)
+            hasher.write()  # write config hash
+            job_status.complete()
+        else:
+            # Skip job
+            job_status.skip()
 
-            logger.info("Job '%s' complete\n", job_config.name)
-
-        return should_run
+        return should_run, True
 
 
 def _run(job_config):
@@ -106,6 +112,7 @@ def _run(job_config):
         args.append(job_config.pipeline_config_path)    # pipeline config
 
     # Run command
+    log.flush()  # must flush because subprocess will append to same logfile
     success = utils.call(args)
     return success
 

@@ -3,7 +3,7 @@ ETA package-wide constants.
 
 IMPORTANT: this module should not import any ETA modules!
 
-Copyright 2017, Voxel51, LLC
+Copyright 2017-2018, Voxel51, LLC
 voxel51.com
 
 Brian Moore, brian@voxel51.com
@@ -26,14 +26,14 @@ import os
 
 # Directories
 ETA_DIR = os.path.abspath(os.path.dirname(__file__))
+BASE_DIR = os.path.dirname(ETA_DIR)
 CONFIGS_DIR = os.path.join(ETA_DIR, "configs")
 DEFAULT_CACHE_DIR = os.path.join(ETA_DIR, "cache")
-
 
 # Paths
 VERSION_JSON_PATH = os.path.join(ETA_DIR, "version.json")
 ASCII_ART_PATH = os.path.join(ETA_DIR, "eta-ascii.txt")
-
+CONFIG_JSON_PATH = os.path.join(BASE_DIR, "config.json")
 
 # Version
 with open(VERSION_JSON_PATH, "rt") as f:
@@ -46,9 +46,11 @@ CONTACT = _VER["contact"]
 URL = _VER["url"]
 LICENSE = _VER["license"]
 
-
-# Supported File Types
-VIDEO_FILE_TYPES_SUPPORTED = ['mp4', 'avi', 'mpg']
+# Supported file types
+# @todo move to eta/core/video.py
+VIDEO_FILE_TYPES_SUPPORTED = [".mp4", ".avi", ".mpg"]
+# @todo move to eta/core/image.py
+IMAGE_FILE_TYPES_SUPPORTED = [".png", ".jpg", ".jpeg", ".gif"]
 
 # ASCII art
 with open(ASCII_ART_PATH, "rt") as f:

@@ -30,11 +30,11 @@ import sys
 from eta.core.config import Config
 from eta.core.features import VideoFramesFeaturizer, \
                               VideoFramesFeaturizerConfig
-import eta.core.log as log
+import eta.core.log as etal
 
 
 logger = logging.getLogger(__name__)
-log.basic_setup(level=logging.DEBUG)
+etal.basic_setup(level=logging.DEBUG)
 
 
 class EmbedVideoConfig(Config):

@@ -28,10 +28,37 @@ import os
 
 import numpy as np
 
+import eta
 from eta.core.config import Config, Configurable
-from eta import constants
-from eta.core import utils
-from eta.core import web
+import eta.constants as etac
+import eta.core.utils as etau
+import eta.core.web as etaw
+
+
+def find_weights(weights_file):
+    '''Finds the given weights file, which must be located in a directory in
+    `eta.config.weights_dirs`.
+
+    Args:
+        weights_file: the filename (with extension) of the weights file
+
+    Returns:
+        the full path to the weights file
+
+    Raises:
+        WeightsError: if the weights file could not be found
+    '''
+    for wdir in eta.config.weights_dirs:
+        fullpath = os.path.join(wdir, weights_file)
+        if os.path.isfile(fullpath):
+            return fullpath
+
+    raise WeightsError(
+        "The weights file '%s' could not be found" % weights_file)
+
+
+class WeightsError(Exception):
+    pass
 
 
 class WeightsConfig(Config):
@@ -39,7 +66,7 @@ class WeightsConfig(Config):
 
     def __init__(self, d):
         self.cache_dir = self.parse_string(
-            d, "cache_dir", default=constants.DEFAULT_CACHE_DIR)
+            d, "cache_dir", default=etac.DEFAULT_CACHE_DIR)
         self.filename = self.parse_string(d, "filename")
         self.url = self.parse_string(d, "url", default=None)
         self.google_drive_id = self.parse_string(
@@ -71,14 +98,14 @@ class Weights(Configurable, dict):
         self.config = config
 
         if not os.path.isfile(self.config.path):
-            utils.ensure_basedir(self.config.path)
+            etau.ensure_basedir(self.config.path)
 
             # Download the weights from the web.
             if self.config.google_drive_id:
-                web.download_google_drive_file(
+                etaw.download_google_drive_file(
                     self.config.google_drive_id, path=self.config.path)
             elif self.config.url:
-                web.download_file(
+                etaw.download_file(
                     self.config.url, path=self.config.path)
             else:
                 raise OSError(

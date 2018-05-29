@@ -18,7 +18,7 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-import collections
+from collections import OrderedDict
 import datetime as dt
 import dill as pickle
 import json
@@ -26,7 +26,22 @@ import os
 
 import numpy as np
 
-import eta.core.utils as ut
+import eta.core.utils as etau
+
+
+def load_json(path_or_str):
+    '''Loads JSON from argument.
+
+    Args:
+        path_or_str: can either be the path to a JSON file or a JSON string
+
+    Returns:
+        the JSON dictionary
+    '''
+    if os.path.isfile(path_or_str):
+        return read_json(path_or_str)
+    else:
+        return json.loads(path_or_str)
 
 
 def read_json(path):
@@ -48,13 +63,29 @@ def write_json(obj, path, pretty_print=True):
     '''
     if is_serializable(obj):
         obj = obj.serialize()
+    s = json_to_str(obj, pretty_print=pretty_print)
+
+    etau.ensure_basedir(path)
+    with open(path, "wt") as f:
+        f.write(s)
+
+
+def json_to_str(obj, pretty_print=True):
+    '''Converts the JSON object to a string.
+
+    Args:
+        obj: a JSON dictionary or an instance of a Serializable subclass
+        pretty_print: when True (default), the string will be formatted to be
+            human readable; when False, it will be compact with no extra spaces
+            or newline characters
+    '''
+    if is_serializable(obj):
+        obj = obj.serialize()
     if pretty_print:
         s = json.dumps(obj, indent=4, cls=EtaJSONEncoder, ensure_ascii=False)
     else:
         s = json.dumps(obj, cls=EtaJSONEncoder, ensure_ascii=False)
-    ut.ensure_basedir(path)
-    with open(path, "wt") as f:
-        f.write(str(s))
+    return str(s)
 
 
 class Picklable(object):
@@ -64,7 +95,7 @@ class Picklable(object):
     '''
     def pickle(self, path):
         '''Saves the instance to disk in a pickle. '''
-        ut.ensure_basedir(path)
+        etau.ensure_basedir(path)
         with open(path, 'wb') as mf:
             pickle.dump(self, mf)
 
@@ -88,8 +119,17 @@ class Serializable(object):
     serializable object from a JSON dictionary.
     '''
 
-    def serialize(self):
+    def __str__(self):
+        '''Returns the string representation of this object as it would be
+        written to JSON.'''
+        return self.to_str()
+
+    def serialize(self, attributes=None):
         '''Serializes the object into a dictionary.
+
+        Args:
+            attributes: an optional list of attributes to serialize. By default
+                this list is obtained by calling self.attributes()
 
         Subclasses can override this method, but, by default, Serializable
         objects are serialized by:
@@ -98,9 +138,9 @@ class Serializable(object):
                values untouched
             c) applying b) element-wise on list values
         '''
-        return collections.OrderedDict(
-            (a, _recurse(getattr(self, a))) for a in self.attributes()
-        )
+        if attributes is None:
+            attributes = self.attributes()
+        return OrderedDict((a, _recurse(getattr(self, a))) for a in attributes)
 
     def attributes(self):
         '''Returns a list of class attributes to be serialized.
@@ -113,6 +153,17 @@ class Serializable(object):
         want their JSON files to be organized in a particular way.
         '''
         return [a for a in vars(self) if not a.startswith("_")]
+
+    def to_str(self, pretty_print=True):
+        '''Returns the string representation of this object as it would be
+        written to JSON.
+
+        Args:
+            pretty_print: if True (default), the string will be formatted to be
+                human readable; when False, it will be compact with no extra
+                spaces or newline characters
+        '''
+        return json_to_str(self, pretty_print=pretty_print)
 
     def write_json(self, path, pretty_print=True):
         '''Serializes the object and writes it to disk.
@@ -129,7 +180,8 @@ class Serializable(object):
     def from_dict(cls, d):
         '''Constructs a Serializable object from a JSON dictionary.
 
-        Subclasses must implement this method.
+        Subclasses must implement this method if they intend to support being
+        read from disk.
         '''
         raise NotImplementedError("subclass must implement from_dict()")
 

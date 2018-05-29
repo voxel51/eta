@@ -4,25 +4,25 @@
     "overwrite": true,
     "jobs": [
         {
-            "name": "resize",
+            "name": "resize_videos",
             "working_dir": ".",
             "script": "eta/modules/resize_videos.py",
-            "config_path": "examples/demo_video/resize-config.json"
+            "config_path": "examples/demo_video/resize_videos.json"
         },
         {
-            "name": "sample",
+            "name": "sample_videos",
             "working_dir": ".",
             "script": "eta/modules/sample_videos.py",
-            "config_path": "examples/demo_video/sample-config.json"
+            "config_path": "examples/demo_video/sample_videos.json"
         },
         {
-            "name": "clip",
+            "name": "clip_videos",
             "working_dir": ".",
             "script": "eta/modules/clip_videos.py",
-            "config_path": "examples/demo_video/clip-config.json"
+            "config_path": "examples/demo_video/clip_videos.json"
         }
     ],
     "logging_config": {
-        "filename": "examples/demo_video/demo-video.log"
+        "filename": "examples/demo_video/pipeline.log"
     }
 }

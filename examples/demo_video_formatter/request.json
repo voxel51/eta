@@ -1,0 +1,10 @@
+{
+    "pipeline": "video_formatter",
+    "inputs": {
+        "video": "examples/data/water.mp4"
+    },
+    "parameters": {
+        "resize_videos.scale": 0.5,
+        "sample_videos.fps": 1
+    }
+}

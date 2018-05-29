@@ -19,9 +19,15 @@ from future.utils import iteritems
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+import logging
 import requests
+import time
 
-from eta import constants
+import eta.constants as etac
+import eta.core.utils as etau
+
+
+logger = logging.getLogger(__name__)
 
 
 def download_file(url, path=None):
@@ -64,15 +70,12 @@ def download_google_drive_file(fid, path=None):
 class WebSession(object):
     '''Class for downloading files from the web.'''
 
-    CHUNK_SIZE = 32768  # 32MB
-
     def __init__(self):
         '''Constructs a WebSession instance.'''
         self.sess = requests.Session()
 
         # Tell the website who is downloading
-        header = "%s v%s, %s" % (
-            constants.NAME, constants.VERSION, constants.AUTHOR)
+        header = "%s v%s, %s" % (etac.NAME, etac.VERSION, etac.AUTHOR)
         self.sess.headers.update({"User-Agent": header})
 
     def get(self, url, params=None):
@@ -95,7 +98,7 @@ class WebSession(object):
         '''Writes the URL content to the given local path.
 
         The download is performed in chunks, so arbitrarily large files can
-        be downloaded.
+        be downloaded. The output directory is created, if necessary.
 
         Args:
             path: the output path
@@ -106,10 +109,17 @@ class WebSession(object):
             WebSessionError: if the download failed
         '''
         r = self._get_streaming_response(url, params=params)
+        etau.ensure_basedir(path)
+
+        num_bytes = 0
+        start_time = time.time()
         with open(path, "wb") as f:
-            for chunk in r.iter_content(self.CHUNK_SIZE):
-                # @todo log progress periodically?
+            for chunk in r.iter_content(None):
+                num_bytes += len(chunk)
                 f.write(chunk)
+
+        time_elapsed = time.time() - start_time
+        _log_download_stats(num_bytes, time_elapsed)
 
     def _get_streaming_response(self, url, params=None):
         r = self.sess.get(url, params=params, stream=True)
@@ -140,8 +150,7 @@ class GoogleDriveSession(WebSession):
         # Handle download warning for large files
         for key, token in iteritems(r.cookies):
             if key.startswith("download_warning"):
-                # Retry the get request with a confirm parameter
-                # @todo log this
+                logger.debug("Retrying request with a confirm parameter")
                 r.close()
                 new = params.copy()
                 new["confirm"] = token
@@ -149,3 +158,10 @@ class GoogleDriveSession(WebSession):
                 break
 
         return r
+
+
+def _log_download_stats(num_bytes, time_elapsed):
+    bytes_str = etau.to_human_bytes_str(num_bytes)
+    avg_speed = etau.to_human_bits_str(8 * num_bytes / time_elapsed) + "/s"
+    logger.info(
+        "%s downloaded in %.1fs (%s)" % (bytes_str, time_elapsed, avg_speed))
