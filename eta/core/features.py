@@ -1,8 +1,7 @@
 '''
 Core interfaces, data structures, and methods for feature extraction in images.
-features.py
 
-Copyright 2017, Voxel51, LLC
+Copyright 2017-2018, Voxel51, LLC
 voxel51.com
 
 Jason Corso, jason@voxel51.com
@@ -310,7 +309,6 @@ class CanFeaturize(object):
 
 
 class FeaturizedFrameNotFoundError(OSError):
-    '''Error for case when the featurized frame is not yet computed.'''
     pass
 
 
@@ -318,19 +316,17 @@ class VideoFramesFeaturizerConfig(Config):
     '''Specifies the configuration settings for the VideoFeaturizer class.'''
 
     def __init__(self, d):
-        self.backing_path = self.parse_string(d, "backing_path",
-                default="/tmp")
-        self.backing_manager = self.parse_string(d, "backing_manager",
-                default="random")
-        self.backing_manager_remove_random = self.parse_bool(d,
-                "backing_manager_remove_random", default=True)
-        self.backing_manager_path_replace = self.parse_array(d,
-                "backing_manager_path_replace", default=[])
-        # This is any valid frames string for eta.
+        self.backing_path = self.parse_string(
+            d, "backing_path", default="/tmp")
+        self.backing_manager = self.parse_string(
+            d, "backing_manager", default="random")
+        self.backing_manager_remove_random = self.parse_bool(
+            d, "backing_manager_remove_random", default=True)
+        self.backing_manager_path_replace = self.parse_array(
+            d, "backing_manager_path_replace", default=[])
         self.frames = self.parse_string(d, "frames", default="*")
-        # frame_featurizer is the sub-featurizer that does that work per frame
         self.frame_featurizer = self.parse_object(
-                d, "frame_featurizer", FeaturizerConfig)
+            d, "frame_featurizer", FeaturizerConfig)
 
 
 class VideoFramesFeaturizer(Featurizer):
@@ -381,14 +377,10 @@ class VideoFramesFeaturizer(Featurizer):
     @todo: can be generalized to not rely only on pickles (subclassed for
     pickles, eg).  I can imagine a featurizer might actually output an image.
     Think about this.
-
     '''
 
     def __init__(self, video_featurizer_config):
         '''Initializes the featurizer and creates the storage path.
-
-        Implementing sub-classes need to explicitly call this :(
-        super(SubClass, self).__init__(config)
 
         Member self.frame_preprocessor is a "function pointer" that takes in a
         frame and returns a preprocessed frame.  It is by default None and
@@ -415,15 +407,14 @@ class VideoFramesFeaturizer(Featurizer):
         self.update_backing_path(self.config.backing_path)
         self._backing_manager_random_last_tempdir = None
 
-
     @property
     def frame_preprocessor(self):
         '''Access to the frame_preprocessor attribute.'''
         return self._frame_preprocessor
 
     @frame_preprocessor.setter
-    def frame_preprocessor(self, f):
-        self._frame_preprocessor = f
+    def frame_preprocessor(self, fp):
+        self._frame_preprocessor = fp
 
     @frame_preprocessor.deleter
     def frame_preprocessor(self):
@@ -624,43 +615,41 @@ class VideoFramesFeaturizer(Featurizer):
                 raise
 
 
-# ************************* FEATURIZERS ******************************
 class ORBFeaturizer(Featurizer):
-    '''ORB Featurizer.'''
+    '''ORB (Oriented FAST and rotated BRIEF features) Featurizer.
+
+    Reference:
+        http://www.willowgarage.com/sites/default/files/orb_final.pdf
+    '''
 
     KEYPOINTS = 128
 
     def __init__(self):
-        '''ORB Featurizer constructor (Oriented FAST and rotated BRIEF features
-            http://www.willowgarage.com/sites/default/files/orb_final.pdf'''
+        '''Constructs a new ORB Featurizer instance.'''
         super(ORBFeaturizer, self).__init__(self)
         self.name = "ORBFeaturizer"
         self.orb = cv2.xfeatures2d.ORB_create()
 
     def dim(self):
         '''Return the dim of the underlying frame featurizer.'''
-        return ORBFeaturizer.KEYPOINTS * 32
+        return 32 * ORBFeaturizer.KEYPOINTS
 
-    def _featurize(self, data_in):
+    def _featurize(self, data):
         '''Encode an image using ORB features.'''
-        gray = cv2.cvtColor(data_in, cv2.COLOR_BGR2GRAY)
-        _, embedded_vector = self.orb.detectAndCompute(gray, None)
-        logger.debug("%s", embedded_vector)
-        return embedded_vector
+        gray = cv2.cvtColor(data, cv2.COLOR_BGR2GRAY)
+        return self.orb.detectAndCompute(gray, None)[1]
 
 
 class RandFeaturizer(Featurizer):
     '''Random Featurizer.'''
 
-    def __init__(self, dims=1024):
+    def __init__(self, dim=1024):
         super(RandFeaturizer, self).__init__(self)
-        self.name = "Random Featurizer"
-        self.dims = dims
+        self._dim = dim
 
     def dim(self):
         '''Return the dim of the underlying frame featurizer.'''
-        return self.dims
-
+        return self._dim
 
     def _featurize(self, data_in):  # @UnusedVariable
         '''Encode an input regardless of the input as a random number.'''
