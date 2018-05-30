@@ -51,11 +51,14 @@ class DataConfig(Config):
 class ParametersConfig(Config):
     '''Parameter configuration settings.
 
+    If `clips_path` is specified, it is used. Otherwise `fps` is used, with the
+    native frame rate of the video being used if `fps` is also absent.
+
     @todo add a fps/clips module keyword to handle each case separately.
     '''
 
     def __init__(self, d):
-        self.fps = self.parse_number(d, "fps", default=-1)
+        self.fps = self.parse_number(d, "fps", default=None)
         self.clips_path = self.parse_string(d, "clips_path", default=None)
 
 
