@@ -60,6 +60,9 @@ class PipelineBuildRequest(Configurable):
         - all required pipeline inputs are provided and have valid values
         - all required pipeline parameters are provided and have valid values
 
+    Note that input/parameter fields set to `None` are ignored (and thus must
+    be optional in order for the build request to be valid).
+
     Attributes:
         pipeline: the (name of the) pipeline to run
         metadata: the PipelineMetadata instance for the pipeline
@@ -81,8 +84,8 @@ class PipelineBuildRequest(Configurable):
 
         self.pipeline = config.pipeline
         self.metadata = etap.load_metadata(config.pipeline)
-        self.inputs = config.inputs
-        self.parameters = config.parameters
+        self.inputs = etau.remove_none_values(config.inputs)
+        self.parameters = etau.remove_none_values(config.parameters)
 
         self._validate_inputs()
         self._validate_parameters()
