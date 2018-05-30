@@ -68,7 +68,24 @@ class PipelineStatus(Serializable):
         self.messages = []
         self.jobs = []
 
+        self._publish_callback = None
         self._active_job = None
+
+    def set_publish_callback(self, publish_callback):
+        '''Sets the callback to use when `publish()` is called.
+
+        Args:
+            publish_callback: a function that accepts a PipelineStatus object
+                and performs some desired action with it
+        '''
+        self._publish_callback = publish_callback
+
+    def publish(self):
+        '''Publishes the pipeline status using the callback provided via the
+        `set_publish_callback()` method (if any).
+        '''
+        if self._publish_callback:
+            self._publish_callback(self)
 
     @property
     def active_job(self):
