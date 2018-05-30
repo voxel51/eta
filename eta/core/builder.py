@@ -163,6 +163,11 @@ class PipelineBuilder(object):
             request: a PipelineBuildRequest instance
         '''
         self.request = request
+        self._concrete_data_params = etat.ConcreteDataParams()
+        self.reset()
+
+    def reset(self):
+        '''Resets the builder so that another pipeline can be built.'''
         self.timestamp = None
         self.config_dir = None
         self.output_dir = None
@@ -170,8 +175,6 @@ class PipelineBuilder(object):
         self.pipeline_logfile_path = None
         self.pipeline_status_path = None
         self.outputs = {}
-
-        self._concrete_data_params = etat.ConcreteDataParams()
 
     def build(self):
         '''Builds the pipeline and writes the associated config files.'''
@@ -186,8 +189,23 @@ class PipelineBuilder(object):
         # image.
         #
         self.timestamp = time.localtime()
-        self.config_dir = self._get_config_dir()
-        self.output_dir = self._get_output_dir()
+
+        # Generate paths, if necessary
+        if not self.config_dir:
+            self.config_dir = self._get_config_dir()
+
+        if not self.output_dir:
+            self.output_dir = self._get_output_dir()
+
+        if not self.pipeline_config_path:
+            self.pipeline_config_path = self._make_pipeline_config_path()
+
+        if not self.pipeline_logfile_path:
+            self.pipeline_logfile_path = self._make_pipeline_logfile_path()
+
+        if not self.pipeline_status_path:
+            self.pipeline_status_path = self._make_pipeline_status_path()
+
         self.outputs = {}
 
         self._build_pipeline_config()
@@ -209,13 +227,11 @@ class PipelineBuilder(object):
             )
 
         # Build logging config
-        self.pipeline_logfile_path = self._get_pipeline_logfile_path()
         logging_config_builder = (etal.LoggingConfig.builder()
             .set(filename=self.pipeline_logfile_path)
             .validate())
 
         # Build pipeline config
-        self.pipeline_status_path = self._get_pipeline_status_path()
         pipeline_config_builder = (etap.PipelineConfig.builder()
             .set(name=self.request.pipeline)
             .set(working_dir=".")
@@ -226,7 +242,6 @@ class PipelineBuilder(object):
             .validate())
 
         # Write pipeline config
-        self.pipeline_config_path = self._get_pipeline_config_path()
         logger.info("Writing pipeline config '%s'", self.pipeline_config_path)
         pipeline_config_builder.write_json(self.pipeline_config_path)
 
@@ -301,13 +316,13 @@ class PipelineBuilder(object):
         return os.path.join(
             eta.config.output_dir, self.request.pipeline, time_str)
 
-    def _get_pipeline_config_path(self):
+    def _make_pipeline_config_path(self):
         return os.path.join(self.config_dir, PIPELINE_CONFIG_FILE)
 
-    def _get_pipeline_logfile_path(self):
+    def _make_pipeline_logfile_path(self):
         return os.path.join(self.config_dir, PIPELINE_LOGFILE_FILE)
 
-    def _get_pipeline_status_path(self):
+    def _make_pipeline_status_path(self):
         return os.path.join(self.output_dir, PIPELINE_STATUS_FILE)
 
     def _get_module_config_path(self, module):
