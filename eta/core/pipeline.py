@@ -44,7 +44,7 @@ PIPELINE_INPUT_NAME = "INPUT"
 PIPELINE_OUTPUT_NAME = "OUTPUT"
 
 
-def run(pipeline_config_path, status_callback=None):
+def run(pipeline_config_path, status_callback=None, set_excepthook=True):
     '''Run the pipeline specified by the PipelineConfig.
 
     Args:
@@ -52,6 +52,8 @@ def run(pipeline_config_path, status_callback=None):
         status_callback: an optional callback function that takes as input a
             PipelineStatus instance and is called each time the pipeline status
             is flushed. By default, no callback is provided
+        set_excepthook: whether to the set `sys.excepthook` to log unhandled
+            exceptions. By default, this is True
     '''
     # Load config
     pipeline_config = PipelineConfig.from_json(pipeline_config_path)
@@ -61,7 +63,8 @@ def run(pipeline_config_path, status_callback=None):
     pipeline_config_path = os.path.abspath(pipeline_config_path)
 
     # Setup logging
-    etal.custom_setup(pipeline_config.logging_config, rotate=True)
+    lc = pipeline_config.logging_config
+    etal.custom_setup(lc, rotate=True, set_excepthook=set_excepthook)
 
     # Create status object
     pipeline_status = etas.PipelineStatus(pipeline_config.name)
