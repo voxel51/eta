@@ -38,13 +38,15 @@ logger = logging.getLogger(__name__)
 
 
 class FeaturizerConfig(Config):
-    '''Featurizer configuration settings.
+    '''Configuration class that encapsulates the name of a Featurizer and an
+    instance of its associated Config class.
 
     Attributes:
         type: the fully-qualified class name of the Featurizer, e.g.,
-            "eta.core.features.VideoFeaturizer"
+            "eta.core.features.VideoFramesFeaturizer"
         config: an instance of the Config class associated with the specified
-            Featurizer
+            Featurizer (e.g. an instance of
+            eta.core.features.VideoFramesFeaturizerConfig)
     '''
 
     def __init__(self, d):
