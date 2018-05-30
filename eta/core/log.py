@@ -57,48 +57,61 @@ def flush():
         h.flush()
 
 
-def reset():
-    '''Reset logging.
+def reset(set_excepthook=True):
+    '''Resets logging.
+
+    Args:
+        set_excepthook: whether to the set `sys.excepthook` to log unhandled
+            exceptions. By default, this is True
 
     Performs the following tasks:
         - removes all existing handlers from the root logger
         - sets the root logger level to DEBUG (the effective logging level is
             determined on a per-handler basis)
-        - routes all uncaught exceptions to the root logger
+        - routes all uncaught exceptions to the root logger (if requested)
     '''
     root_logger.handlers = []
     root_logger.setLevel(logging.DEBUG)
-    sys.excepthook = _exception_logger
+
+    if set_excepthook:
+        sys.excepthook = _exception_logger
 
 
-def basic_setup(level=DEFAULT_BASIC_LEVEL, fmt=DEFAULT_BASIC_FORMAT):
-    '''Setup basic logging to stdout.
+def basic_setup(
+        level=DEFAULT_BASIC_LEVEL, fmt=DEFAULT_BASIC_FORMAT,
+        set_excepthook=True,
+    ):
+    '''Sets up basic logging to stdout.
 
     Args:
         level: the logging level. The default is DEFAULT_BASIC_LEVEL
         fmt: the logging format. The default is DEFAULT_BASIC_FORMAT
+        set_excepthook: whether to the set `sys.excepthook` to log unhandled
+            exceptions. By default, this is True
     '''
-    reset()
+    reset(set_excepthook=set_excepthook)
     handler = logging.StreamHandler(stream=sys.stdout)
     handler.setFormatter(logging.Formatter(fmt=fmt))
     handler.setLevel(level)
     root_logger.addHandler(handler)
 
 
-def custom_setup(lc, rotate=False):
-    '''Setup custom logging.
+def custom_setup(lc, rotate=False, set_excepthook=True):
+    '''Sets up custom logging.
 
     Args:
         lc: a LoggingConfig instance
         rotate: True/False. If True, any existing logs are rotated and
             new messages are written to a new logfile. If False, new messages
             are appended to the existing log (if any). The default is False
+        set_excepthook: whether to the set `sys.excepthook` to log unhandled
+            exceptions. By default, this is True
     '''
     # Messages to log after setup
     msgs = []
 
     # Reset logging
-    reset()
+    reset(set_excepthook=set_excepthook)
     msgs.append("Resetting logging")
     msgs.append("Logging all uncaught exceptions")
 
