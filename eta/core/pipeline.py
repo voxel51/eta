@@ -44,16 +44,24 @@ PIPELINE_INPUT_NAME = "INPUT"
 PIPELINE_OUTPUT_NAME = "OUTPUT"
 
 
-def run(pipeline_config_path, status_callback=None, set_excepthook=True):
+def run(
+        pipeline_config_path, pipeline_status=None, mark_as_complete=True,
+        rotate_logs=True,
+    ):
     '''Run the pipeline specified by the PipelineConfig.
 
     Args:
         pipeline_config_path: path to a PipelineConfig file
-        status_callback: an optional callback function that takes as input a
-            PipelineStatus instance and is called each time the pipeline status
-            is flushed. By default, no callback is provided
-        set_excepthook: whether to the set `sys.excepthook` to log unhandled
-            exceptions. By default, this is True
+        pipeline_status: an optional PipelineStatus instance. By default, a
+            PipelineStatus object is created that logs its status to the path
+            specified in the provided PipelineConfig (if specified)
+        mark_as_complete: whether to mark the PipelineStatus as complete when
+            the
+        rotate_logs: whether to rotate any existing pipeline log(s) before
+            running. By default, this is True
+
+    Returns:
+        True/False whether the pipeline completed successfully
     '''
     # Load config
     pipeline_config = PipelineConfig.from_json(pipeline_config_path)
@@ -64,37 +72,47 @@ def run(pipeline_config_path, status_callback=None, set_excepthook=True):
 
     # Setup logging
     lc = pipeline_config.logging_config
-    etal.custom_setup(lc, rotate=True, set_excepthook=set_excepthook)
+    etal.custom_setup(lc, rotate=rotate_logs)
 
-    # Create status object
-    pipeline_status = etas.PipelineStatus(pipeline_config.name)
+    # Create a PipelineStatus instance, if necessary
+    if not pipeline_status:
+        pipeline_status = _make_pipeline_status(pipeline_config)
 
     # Run pipeline
-    flush_status = _make_flush_status_callback(
-        pipeline_status, pipeline_config.status_path, status_callback)
-    _run(pipeline_config, pipeline_config_path, pipeline_status, flush_status)
+    return _run(
+        pipeline_config, pipeline_config_path, pipeline_status,
+        mark_as_complete,
+    )
 
 
-def _make_flush_status_callback(pipeline_status, status_path, status_callback):
-    def _flush_status():
-        if status_path:
-            pipeline_status.write_json(status_path)
-            logger.info("Pipeline status written to '%s'", status_path)
+def _make_pipeline_status(pipeline_config):
+    pipeline_status = etas.PipelineStatus(pipeline_config.name)
 
-        if status_callback:
-            status_callback(pipeline_status)
-            logger.info("Excuted pipeline status callback")
+    if pipeline_config.status_path:
+        pcb = _make_publish_status_callback(pipeline_config.status_path)
+        pipeline_status.set_publish_callback(pcb)
 
-    return _flush_status
+    return pipeline_status
+
+
+def _make_publish_status_callback(status_path):
+    def _publish_status(pipeline_status):
+        pipeline_status.write_json(status_path)
+        logger.info("Pipeline status written to '%s'", status_path)
+
+    return _publish_status
 
 
 def _run(
-        pipeline_config, pipeline_config_path, pipeline_status, flush_status):
-    logger.info("Starting pipeline '%s'", pipeline_config.name)
+        pipeline_config, pipeline_config_path, pipeline_status,
+        mark_as_complete,
+    ):
+    # Starting pipeline
+    logger.info("Pipeline %s started", pipeline_config.name)
     pipeline_status.start()
-    flush_status()
+    pipeline_status.publish()
 
-    # Run jobs in series
+    # Run jobs
     overwrite = pipeline_config.overwrite
     ran_last_job = False
     with etau.WorkingDir(pipeline_config.working_dir):
@@ -105,23 +123,25 @@ def _run(
                 overwrite = True
 
             # Run job
-            pipeline_status.add_message("Starting job %s" % job_config.name)
+            pipeline_status.add_message("Job %s started" % job_config.name)
             job_config.pipeline_config_path = pipeline_config_path
             ran_last_job, success = etaj.run(
                 job_config, pipeline_status, overwrite=overwrite)
-            flush_status()
+            pipeline_status.publish()
 
             if not success:
                 # Pipeline failed
-                logger.info("Pipeline '%s' failed", pipeline_config.name)
+                logger.info("Pipeline %s failed", pipeline_config.name)
                 pipeline_status.fail()
-                flush_status()
+                pipeline_status.publish()
                 return False
 
-    # Pipeline complete!
-    logger.info("Pipeline '%s' complete", pipeline_config.name)
-    pipeline_status.complete()
-    flush_status()
+    if mark_as_complete:
+        # Pipeline complete
+        logger.info("Pipeline %s complete", pipeline_config.name)
+        pipeline_status.complete()
+        pipeline_status.publish()
+
     return True
 
 
