@@ -51,8 +51,6 @@ class DataConfig(Config):
 class ParametersConfig(Config):
     '''Parameter configuration settings.
 
-    Either `fps` or `clips_path` must be specified.
-
     @todo add a fps/clips module keyword to handle each case separately.
     '''
 
@@ -64,38 +62,35 @@ class ParametersConfig(Config):
 def _sample_videos(sample_config):
     parameters = sample_config.parameters
     for data_config in sample_config.data:
-        if parameters.fps != -1:
-            _sample_video_by_fps(data_config, parameters)
+        if parameters.clips_path:
+            _sample_video_by_clips(data_config, parameters.clips_path)
         else:
-            _sample_video_by_clips(data_config, parameters)
+            _sample_video_by_fps(data_config, parameters.fps)
 
 
-def _sample_video_by_fps(data_config, parameters):
-    assert parameters.fps != -1, "Must provide 'fps'"
+def _sample_video_by_fps(data_config, fps):
+    if fps:
+        logger.info(
+            "Sampling video %s at %s fps", data_config.input_path, fps)
+    else:
+        logger.info(
+            "Sampling video %s at native frame rate ", data_config.input_path)
+
+    etav.FFmpegVideoSampler(fps=fps).run(
+        data_config.input_path, data_config.output_path)
+
+
+def _sample_video_by_clips(data_config, clips_path):
     logger.info(
-        "Sampling video '%s' at %s fps",
-        data_config.input_path, parameters.fps)
-
-    etav.FFmpegVideoSampler(fps=parameters.fps).run(
-        data_config.input_path,
-        data_config.output_path,
-    )
-
-
-def _sample_video_by_clips(data_config, parameters):
-    assert parameters.clips_path is not None, "Must provide 'clips_path'"
-    logger.info(
-        "Sampling video '%s' by clips '%s'",
-        data_config.input_path, parameters.clips_path)
-
-    detections = etae.EventDetection.from_json(parameters.clips_path)
+        "Sampling video %s by clips %s", data_config.input_path, clips_path)
+    detections = etae.EventDetection.from_json(clips_path)
     frames = detections.to_series().to_str()
-
     processor = etav.VideoProcessor(
         data_config.input_path,
         frames=frames,
         out_impath=data_config.output_path,
     )
+
     with processor:
         for img in processor:
             processor.write(img)
