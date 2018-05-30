@@ -433,12 +433,19 @@ class Config(Serializable):
 
 def _parse_key(d, key, t, default):
     if key in d:
-        if t is None or isinstance(d[key], t):
-            return d[key], True
-        raise ConfigError(
-            "Expected key '%s' of %s; found %s" % (key, t, type(d[key])))
-    elif default is not no_default:
+        val = d[key]
+        if t is None or isinstance(val, t):
+            # Return provided value
+            return val, True
+
+        if val is not None:
+            raise ConfigError(
+                "Expected key '%s' of %s; found %s" % (key, t, type(val)))
+
+    if default is not no_default:
+        # Return default value
         return default, False
+
     raise ConfigError("Expected key '%s' of %s" % (key, t))
 
 
