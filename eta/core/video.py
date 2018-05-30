@@ -982,7 +982,7 @@ class FFmpegVideoSampler(FFmpeg):
             **kwargs: optional keyword arguments for FFmpeg()
         '''
         out_opts = kwargs.pop("out_opts", []) or []
-        if fps:
+        if fps > 0:
             out_opts += ["-vf", "fps={0}".format(fps)]
 
         super(FFmpegVideoSampler, self).__init__(out_opts=out_opts, **kwargs)
