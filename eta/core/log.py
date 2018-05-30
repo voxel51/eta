@@ -123,8 +123,7 @@ def custom_setup(lc, rotate=False):
             logging.Formatter(fmt=lc.file_format, datefmt=lc.datefmt))
         file_handler.setLevel(getattr(logging, lc.file_level))
         root_logger.addHandler(file_handler)
-        msgs.append(
-            "Logging to '%s' at level %s" % (lc.filename, lc.file_level))
+        msgs.append("Logging to %s at level %s" % (lc.filename, lc.file_level))
 
     msgs.append("Logging initialized")
 
