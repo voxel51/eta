@@ -127,12 +127,12 @@ def _run(
             job_config.pipeline_config_path = pipeline_config_path
             ran_last_job, success = etaj.run(
                 job_config, pipeline_status, overwrite=overwrite)
-            pipeline_status.publish()
 
             if not success:
                 # Pipeline failed
                 logger.info("Pipeline %s failed", pipeline_config.name)
                 pipeline_status.fail()
+
                 pipeline_status.publish()
                 return False
 
@@ -140,8 +140,8 @@ def _run(
         # Pipeline complete
         logger.info("Pipeline %s complete", pipeline_config.name)
         pipeline_status.complete()
-        pipeline_status.publish()
 
+    pipeline_status.publish()
     return True
 
 
