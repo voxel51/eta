@@ -535,14 +535,22 @@ class EnvConfig(Serializable):
 def _parse_env_var_or_key(d, key, t, env_var, sep, default):
     val = os.environ.get(env_var)
     if val:
-        return val.split(ENV_VAR_PATH_SEP) if sep else val
+        # Return value from environment variable
+        return val.split(":") if sep else val
+
     if key in d:
-        if t is None or isinstance(d[key], t):
-            return d[key]
-        raise EnvConfigError(
-            "Expected key '%s' of %s; found %s" % (key, t, type(d[key])))
-    elif default is not no_default:
+        val = d[key]
+        if t is None or isinstance(val, t):
+            # Return provided value
+            return val
+
+        if val is not None:
+            raise EnvConfigError(
+                "Expected key '%s' of %s; found %s" % (key, t, type(val)))
+
+    if default is not no_default:
         return default
+
     raise EnvConfigError(
         "Expected environment variable '%s' or key '%s'" % (env_var, key))
 
