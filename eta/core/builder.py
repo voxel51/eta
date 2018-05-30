@@ -133,6 +133,7 @@ class PipelineBuildRequest(Configurable):
 
 
 class PipelineBuildRequestError(Exception):
+    '''Exception raised when an invalid PipelineBuildRequest is encountered.'''
     pass
 
 
@@ -140,12 +141,12 @@ class PipelineBuilder(object):
     '''Class for building a pipeline based on a PipelineBuildRequest.
 
     Attributes:
-        request: the PipelineBuildRequest instance
+        request: the PipelineBuildRequest instance used to build the pipeline
         timestamp: the time when the pipeline was built
         config_dir: the directory where the pipeline and module configuration
-            files were written
-        output_dir: the base directory where pipeline outputs will be written
-            when the pipeline is run
+            files were written and where the pipeline log will be written
+        output_dir: the base directory where pipeline outputs and pipeline
+            status will be written when the pipeline is run
         pipeline_config_path: the path to the pipeline config file to run the
             pipeline
         pipeline_status_path: the path to the pipeline status JSON file that
