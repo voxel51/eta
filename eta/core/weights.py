@@ -100,7 +100,7 @@ class Weights(Configurable, dict):
         if not os.path.isfile(self.config.path):
             etau.ensure_basedir(self.config.path)
 
-            # Download the weights from the web.
+            # Download the weights from the web
             if self.config.google_drive_id:
                 etaw.download_google_drive_file(
                     self.config.google_drive_id, path=self.config.path)
@@ -113,5 +113,5 @@ class Weights(Configurable, dict):
                     "provided" % self.config.path
                 )
 
-        # Load weights from local file.
+        # Load weights from local file
         self.update(np.load(self.config.path))
