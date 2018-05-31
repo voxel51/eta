@@ -222,6 +222,7 @@ def copy_dir(indir, outdir):
     '''
     if os.path.isdir(outdir):
         shutil.rmtree(outdir)
+
     shutil.copytree(indir, outdir)
 
 
@@ -244,6 +245,7 @@ def ensure_path(path):
     if os.path.isfile(path):
         logger.debug("Deleting '%s'", path)
         os.remove(path)
+
     ensure_basedir(path)
 
 
@@ -263,9 +265,7 @@ def ensure_dir(dirname):
 def glob_videos(path):
     '''Returns an iterator over all supported video files in path.'''
     return multiglob(
-        *etac.VIDEO_FILE_TYPES_SUPPORTED,
-        root=os.path.join(path, "*")
-    )
+        *etac.VIDEO_FILE_TYPES_SUPPORTED, root=os.path.join(path, "*"))
 
 
 def has_extension(filename, *args):
