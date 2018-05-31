@@ -108,7 +108,7 @@ class BuildPipeline(Command):
     @staticmethod
     def run(args):
         # PipelineBuildRequest dictionary
-        d = args.request or {}
+        d = args.request or {"inputs": {}, "parameters": {}}
 
         # Set values interactively
         if args.name:
