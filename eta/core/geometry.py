@@ -18,7 +18,7 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-import eta.core.image as im
+import eta.core.image as etai
 from eta.core.serial import Serializable
 
 
@@ -41,7 +41,7 @@ class BoundingBox(Serializable):
         '''Returns the coordinates of the bounding box in the specified image.
 
         Args:
-            **kwargs: a valid argument for im.to_frame_size()
+            **kwargs: a valid argument for etai.to_frame_size()
 
         Returns:
             box: a (top-left-x, top-left-y, width, height) tuple describing the
@@ -116,12 +116,12 @@ class RelativePoint(Serializable):
         specified image.
 
         Args:
-            **kwargs: a valid argument for im.to_frame_size()
+            **kwargs: a valid argument for etai.to_frame_size()
 
         Returns:
             (x, y): the absolute x, y coordinates of this point
         '''
-        w, h = im.to_frame_size(**kwargs)
+        w, h = etai.to_frame_size(**kwargs)
         return int(w * 1.0 * self.x), int(h * 1.0 * self.y)
 
     @staticmethod
@@ -134,9 +134,9 @@ class RelativePoint(Serializable):
         '''Constructs a RelativePoint from absolute (x, y) pixel coordinates.
 
         Args:
-            **kwargs: a valid argument for im.to_frame_size()
+            **kwargs: a valid argument for etai.to_frame_size()
         '''
-        w, h = im.to_frame_size(**kwargs)
+        w, h = etai.to_frame_size(**kwargs)
         x /= 1.0 * w
         y /= 1.0 * h
         return cls(x, y)
@@ -165,6 +165,7 @@ def _make_square(x, y, w, h):
     dx = hs - ws
     if dx < 0:
         return _make_square(y, x, h, w)[::-1]
+
     # subimage is now always skinny
 
     def pad(z, dz, zmax):
