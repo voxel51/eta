@@ -1,0 +1,26 @@
+{
+    "info": {
+        "name": "video_stream_info",
+        "type": "eta.core.types.Module",
+        "version": "0.1.0",
+        "description": "Get stream info for a video",
+        "exe": "video_stream_info.py"
+    },
+    "inputs": [
+        {
+            "name": "video",
+            "type": "eta.core.types.Video",
+            "description": "A video",
+            "required": true
+        }
+    ],
+    "outputs": [
+        {
+            "name": "video_stream_info",
+            "type": "eta.core.types.VideoStreamInfo",
+            "description": "The stream info for the video",
+            "required": true
+        }
+    ],
+    "parameters": []
+}
