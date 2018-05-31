@@ -1,0 +1,27 @@
+{
+    "info": {
+        "name": "video_stream_info",
+        "type": "eta.core.types.Pipeline",
+        "version": "0.1.0",
+        "description": "A pipeline for getting stream info for videos"
+    },
+    "inputs": ["video"],
+    "outputs": ["video_stream_info"],
+    "modules": [
+        {
+            "name": "video_stream_info",
+            "tunable_parameters": [],
+            "set_parameters": {}
+        }
+    ],
+    "connections": [
+        {
+            "source": "INPUT.video",
+            "sink": "video_stream_info.video"
+        },
+        {
+            "source": "video_stream_info.video_stream_info",
+            "sink": "OUTPUT.video_stream_info"
+        }
+    ]
+}
