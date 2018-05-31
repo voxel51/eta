@@ -29,9 +29,6 @@ from eta.core.serial import Serializable
 import eta.core.utils as etau
 
 
-ENV_VAR_PATH_SEP = ":"
-
-
 class Configurable(object):
     '''Base class for classes that can be initialized with a Config instance.
 
@@ -113,11 +110,15 @@ class Configurable(object):
 
 
 class ConfigurableError(Exception):
+    '''Exception raised when an invalid Configurable is encountered.'''
     pass
 
 
-# This exists so that None can be a default value for Config fields
 class no_default(object):
+    '''A placeholder class typically used as a default value for a keyword
+    argument of a function to distinguish between using `None` as a default
+    value.
+    '''
     pass
 
 
@@ -198,6 +199,7 @@ class ConfigBuilder(Serializable):
 
 
 class ConfigBuilderError(Exception):
+    '''Exception raised when an invalid ConfigBuilder action is taken.'''
     pass
 
 
@@ -275,8 +277,8 @@ class Config(Serializable):
             an instance of cls
 
         Raises:
-            ConfigError: if no default value was provided and the key was
-                not present in the dictionary.
+            ConfigError: if the field value was the wrong type or no default
+                value was provided and the key was not found in the dictionary
         '''
         val, found = _parse_key(d, key, dict, default)
         return cls(val) if found else val
@@ -295,8 +297,8 @@ class Config(Serializable):
             a list of cls instances
 
         Raises:
-            ConfigError: if no default value was provided and the key was
-                not present in the dictionary.
+            ConfigError: if the field value was the wrong type or no default
+                value was provided and the key was not found in the dictionary
         '''
         val, found = _parse_key(d, key, list, default)
         return [cls(obj) for obj in val] if found else val
@@ -314,8 +316,8 @@ class Config(Serializable):
             a list (e.g., of strings from the raw JSON dictionary value)
 
         Raises:
-            ConfigError: if no default value was provided and the key was
-                not present in the dictionary.
+            ConfigError: if the field value was the wrong type or no default
+                value was provided and the key was not found in the dictionary
         '''
         return _parse_key(d, key, list, default)[0]
 
@@ -332,8 +334,8 @@ class Config(Serializable):
             a dictionary
 
         Raises:
-            ConfigError: if no default value was provided and the key was
-                not present in the dictionary.
+            ConfigError: if the field value was the wrong type or no default
+                value was provided and the key was not found in the dictionary
         '''
         return _parse_key(d, key, dict, default)[0]
 
@@ -351,8 +353,8 @@ class Config(Serializable):
             a dictionary whose values are cls instances
 
         Raises:
-            ConfigError: if no default value was provided and the key was
-                not present in the dictionary.
+            ConfigError: if the field value was the wrong type or no default
+                value was provided and the key was not found in the dictionary
         '''
         val, found = _parse_key(d, key, dict, default)
         return {k: cls(v) for k, v in iteritems(val)} if found else val
@@ -370,8 +372,8 @@ class Config(Serializable):
             a string
 
         Raises:
-            ConfigError: if no default value was provided and the key was
-                not present in the dictionary.
+            ConfigError: if the field value was the wrong type or no default
+                value was provided and the key was not found in the dictionary
         '''
         val = _parse_key(d, key, six.string_types, default)[0]
         return str(val) if val is not None else val
@@ -389,8 +391,8 @@ class Config(Serializable):
             a number (e.g. int, float)
 
         Raises:
-            ConfigError: if no default value was provided and the key was
-                not present in the dictionary.
+            ConfigError: if the field value was the wrong type or no default
+                value was provided and the key was not found in the dictionary
         '''
         return _parse_key(d, key, numbers.Number, default)[0]
 
@@ -407,8 +409,8 @@ class Config(Serializable):
             True/False
 
         Raises:
-            ConfigError: if no default value was provided and the key was
-                not present in the dictionary.
+            ConfigError: if the field value was the wrong type or no default
+                value was provided and the key was not found in the dictionary
         '''
         return _parse_key(d, key, bool, default)[0]
 
@@ -425,24 +427,14 @@ class Config(Serializable):
             the raw (untouched) value of the given field
 
         Raises:
-            ConfigError: if no default value was provided and the key was
-                not present in the dictionary.
+            ConfigError: if no default value was provided and the key was not
+                found in the dictionary
         '''
         return _parse_key(d, key, None, default)[0]
 
 
-def _parse_key(d, key, t, default):
-    if key in d:
-        if t is None or isinstance(d[key], t):
-            return d[key], True
-        raise ConfigError(
-            "Expected key '%s' of %s; found %s" % (key, t, type(d[key])))
-    elif default is not no_default:
-        return default, False
-    raise ConfigError("Expected key '%s' of %s" % (key, t))
-
-
 class ConfigError(Exception):
+    '''Exception raised when an invalid Config instance is encountered.'''
     pass
 
 
@@ -524,20 +516,47 @@ class EnvConfig(Serializable):
         return cls.from_dict(d)
 
 
+class EnvConfigError(Exception):
+    '''Exception raised when an invalid EnvConfig instance is encountered.'''
+    pass
+
+
+def _parse_key(d, key, t, default):
+    if key in d:
+        val = d[key]
+        if t is None or isinstance(val, t):
+            # Return provided value
+            return val, True
+
+        if val is not None:
+            raise ConfigError(
+                "Expected key '%s' of %s; found %s" % (key, t, type(val)))
+
+    if default is not no_default:
+        # Return default value
+        return default, False
+
+    raise ConfigError("Expected key '%s' of %s" % (key, t))
+
+
 def _parse_env_var_or_key(d, key, t, env_var, sep, default):
     val = os.environ.get(env_var)
     if val:
-        return val.split(ENV_VAR_PATH_SEP) if sep else val
+        # Return value from environment variable
+        return val.split(":") if sep else val
+
     if key in d:
-        if t is None or isinstance(d[key], t):
-            return d[key]
-        raise EnvConfigError(
-            "Expected key '%s' of %s; found %s" % (key, t, type(d[key])))
-    elif default is not no_default:
+        val = d[key]
+        if t is None or isinstance(val, t):
+            # Return provided value
+            return val
+
+        if val is not None:
+            raise EnvConfigError(
+                "Expected key '%s' of %s; found %s" % (key, t, type(val)))
+
+    if default is not no_default:
         return default
+
     raise EnvConfigError(
         "Expected environment variable '%s' or key '%s'" % (env_var, key))
-
-
-class EnvConfigError(Exception):
-    pass

@@ -15,10 +15,12 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
+from future.utils import iteritems
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+import copy
 import datetime
 import errno
 import glob
@@ -374,6 +376,19 @@ def join_dicts(*args):
     for di in args:
         d.update(di)
     return d
+
+
+def remove_none_values(d):
+    '''Returns a copy of the input dictionary with any keys with value None
+    removed.
+
+    Args:
+        d: a dictionary
+
+    Returns:
+        a copy of the input dictionary with keys whose value was None ommitted
+    '''
+    return {k: v for k, v in iteritems(d) if v is not None}
 
 
 class FileHasher(object):
