@@ -25,8 +25,8 @@ from subprocess import Popen, PIPE
 import cv2
 import numpy as np
 
-from eta.core import utils
-from eta.core import web
+import eta.core.utils as etau
+import eta.core.web as etaw
 
 
 def read(path, flag=cv2.IMREAD_UNCHANGED):
@@ -50,7 +50,7 @@ def write(img, path):
         img: a numpy array
         path: the output path
     '''
-    utils.ensure_basedir(path)
+    etau.ensure_basedir(path)
     cv2.imwrite(path, img)
 
 
@@ -65,7 +65,7 @@ def download(url, flag=cv2.IMREAD_UNCHANGED):
     Returns:
         A uint8 numpy array containing the image
     '''
-    return decode(web.download_file(url), flag=flag)
+    return decode(etaw.download_file(url), flag=flag)
 
 
 def decode(b, flag=cv2.IMREAD_UNCHANGED):
@@ -104,7 +104,7 @@ def rasterize(vector_path, width):
     '''Renders a vector image as a raster image with the given width,
     in pixels.
     '''
-    with utils.TempDir() as d:
+    with etau.TempDir() as d:
         try:
             png_path = os.path.join(d, "tmp.png")
             Convert(
@@ -255,13 +255,13 @@ class Convert(object):
             self._p = Popen(self._args, stdin=PIPE, stdout=PIPE, stderr=PIPE)
         except EnvironmentError as e:
             if e.errno == errno.ENOENT:
-                raise utils.ExecutableNotFoundError(self._executable)
+                raise etau.ExecutableNotFoundError(self._executable)
             else:
                 raise
 
         out, err = self._p.communicate()
         if self._p.returncode != 0:
-            raise utils.ExecutableRuntimeError(self.cmd, err)
+            raise etau.ExecutableRuntimeError(self.cmd, err)
 
         return out
 
