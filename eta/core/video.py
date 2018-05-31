@@ -26,9 +26,9 @@ import threading
 import cv2
 import numpy as np
 
-from eta.core import utils
-import eta.core.image as im
+import eta.core.image as etai
 from eta.core.serial import Serializable
+import eta.core.utils as etau
 
 
 class VideoStreamInfo(Serializable):
@@ -231,7 +231,7 @@ def is_valid_video(inpath):
     answer = True
     try:
         get_frame_count(inpath)
-    except utils.ExecutableRuntimeError:
+    except etau.ExecutableRuntimeError:
         answer = False
     return answer
 
@@ -387,7 +387,7 @@ class VideoProcessor(object):
     def write(self, img):
         '''Writes the given image to the output writer(s).'''
         if self._write_images:
-            im.write(img, self.out_impath % self._reader.frame_number)
+            etai.write(img, self.out_impath % self._reader.frame_number)
         if self._write_videos:
             self._video_writer.write(img)
 
@@ -782,7 +782,7 @@ class OpenCVVideoWriter(VideoWriter):
         self.size = size
         self._writer = cv2.VideoWriter()
 
-        utils.ensure_path(self.outpath)
+        etau.ensure_path(self.outpath)
         self._writer.open(self.outpath, -1, self.fps, self.size, True)
         if not self._writer.isOpened():
             raise VideoWriterError("Unable to open '%s'" % self.outpath)
@@ -863,13 +863,13 @@ class FFprobe(object):
             )
         except EnvironmentError as e:
             if e.errno == errno.ENOENT:
-                raise utils.ExecutableNotFoundError(self._executable)
+                raise etau.ExecutableNotFoundError(self._executable)
             else:
                 raise
 
         out, err = self._p.communicate()
         if self._p.returncode != 0:
-            raise utils.ExecutableRuntimeError(self.cmd, err)
+            raise etau.ExecutableRuntimeError(self.cmd, err)
 
         return out
 
@@ -944,13 +944,13 @@ class FFmpeg(object):
         )
 
         if not self.is_output_streaming:
-            utils.ensure_path(outpath)
+            etau.ensure_path(outpath)
 
         try:
             self._p = Popen(self._args, stdin=PIPE, stdout=PIPE, stderr=PIPE)
         except EnvironmentError as e:
             if e.errno == errno.ENOENT:
-                raise utils.ExecutableNotFoundError(self._executable)
+                raise etau.ExecutableNotFoundError(self._executable)
             else:
                 raise
 
@@ -958,7 +958,7 @@ class FFmpeg(object):
         if not (self.is_input_streaming or self.is_output_streaming):
             err = self._p.communicate()[1]
             if self._p.returncode != 0:
-                raise utils.ExecutableRuntimeError(self.cmd, err)
+                raise etau.ExecutableRuntimeError(self.cmd, err)
 
     def stream(self, string):
         '''Writes the string to ffmpeg's stdin stream.
