@@ -887,11 +887,12 @@ def _compute_execution_order(connections):
     '''
     module_graph = etag.DirectedGraph()
     for c in connections:
-        if c.is_module_connection:
-            module_graph.add_edge(c.source.module, c.sink.module)
+        module_graph.add_edge(c.source.module, c.sink.module)
 
     try:
         execution_order = module_graph.sort()
+        execution_order.remove(PIPELINE_INPUT_NAME)
+        execution_order.remove(PIPELINE_OUTPUT_NAME)
     except etag.CyclicGraphError:
         raise PipelineMetadataError(
             "Unable to compute a valid execution order because the module "
