@@ -1,7 +1,7 @@
 '''
 Core data structures for working with geometric objects.
 
-Copyright 2017, Voxel51, LLC
+Copyright 2017-2018, Voxel51, LLC
 voxel51.com
 
 Brian Moore, brian@voxel51.com
@@ -65,7 +65,7 @@ class BoundingBox(Serializable):
         y = slice(y1, y2)
         if force_square:
             h, w = img.shape[:2]
-            x, y = make_square(x, y, w, h)
+            x, y = _make_square(x, y, w, h)
         return img[y, x, ...]
 
     def pad_relative(self, relative_percent):
@@ -147,7 +147,7 @@ class RelativePoint(Serializable):
         return cls(d["x"], d["y"])
 
 
-def make_square(x, y, w, h):
+def _make_square(x, y, w, h):
     '''Force the x, y slices into a square by expanding the smaller dimension.
 
     If the smaller dimension can't be expanded enough and still fit
@@ -164,7 +164,7 @@ def make_square(x, y, w, h):
     hs = y.stop - y.start
     dx = hs - ws
     if dx < 0:
-        return make_square(y, x, h, w)[::-1]
+        return _make_square(y, x, h, w)[::-1]
     # subimage is now always skinny
 
     def pad(z, dz, zmax):
