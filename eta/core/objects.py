@@ -1,7 +1,7 @@
 '''
 Core data structures for working with objects in images.
 
-Copyright 2017, Voxel51, LLC
+Copyright 2017-2018, Voxel51, LLC
 voxel51.com
 
 Brian Moore, brian@voxel51.com
@@ -22,8 +22,8 @@ import random
 import os
 
 from eta.core.geometry import BoundingBox
-from eta.core.serial import Serializable
 import eta.core.image as etai
+from eta.core.serial import Serializable
 import eta.core.utils as etau
 
 
@@ -38,7 +38,7 @@ class ObjectContainer(Serializable):
     '''
 
     # The class of the objects stored in the container
-    _obj_cls = None
+    _OBJ_CLS = None
 
     def __init__(self, objects=None):
         '''Constructs an ObjectContainer.
@@ -52,7 +52,7 @@ class ObjectContainer(Serializable):
     @classmethod
     def get_object_class(cls):
         '''Gets the class of object stored in this container.'''
-        return cls._obj_cls
+        return cls._OBJ_CLS
 
     def add(self, obj):
         '''Adds an object to the container.
@@ -96,15 +96,15 @@ class ObjectContainer(Serializable):
 
     @classmethod
     def from_dict(cls, d):
-        '''Constructs an ObjectContainer (subclass) from a JSON dictionary.'''
+        '''Constructs an ObjectContainer from a JSON dictionary.'''
         cls._validate()
-        return cls(objects=[cls._obj_cls.from_dict(do) for do in d["objects"]])
+        return cls(objects=[cls._OBJ_CLS.from_dict(do) for do in d["objects"]])
 
     @classmethod
     def _validate(cls):
-        if cls._obj_cls is None:
+        if cls._OBJ_CLS is None:
             raise ValueError(
-                "_obj_cls is None; note that you cannot instantiate "
+                "_OBJ_CLS is None; note that you cannot instantiate "
                 "ObjectContainer directly."
             )
 
@@ -151,9 +151,9 @@ class DetectedObject(Serializable):
 
 
 class Frame(ObjectContainer):
-    '''Container for DetectedObjects in a frame.'''
+    '''Container for detected objects in a frame.'''
 
-    _obj_cls = DetectedObject
+    _OBJ_CLS = DetectedObject
 
     def label_set(self):
         '''Returns a set containing the labels of the DetectedObjects.'''
@@ -197,38 +197,29 @@ class ObjectCount(Serializable):
 
 
 class ScoredDetection(Serializable):
-    '''A detection attributed with source and score
+    '''A DetectedObject decorated with a source and score.
 
     Attributes:
-        detection: DetectedObject
-        source: path to the source of the detection
-        score: score or distance
-        feat: feature data (builtin type only)
-        chip_path: the path to the cached chip image
-        chip: the chip, if already available (not serialized)
+        detected_object: a DetectedObject instance
+        score: the score of the object
+        feat: the feature (embedding) of the object
+        source_path: the path to the source image of the detection
+        chip_path: the path to the chip image of the detection
     '''
 
     def __init__(
-            self, detection, source=None, score=0.0, feat=None,
+            self, detected_object, score=0.0, feat=None, source_path=None,
             chip_path=None, chip=None):
-        '''Constructs a DetectedObject.
-
-        Args:
-            label: object label string
-            confidence: detection confidence, in [0, 1]
-            bounding_box: A BoundingBox around the object
-        '''
-        self.detection = detection
-        self.source = source
+        '''Constructs a ScoredDetection.'''
+        self.detected_object = detected_object
         self.score = score
         self.feat = feat
-        self._chip = chip
+        self.source_path = source_path
         self.chip_path = chip_path
+        self._chip = chip
 
     def randomize_score(self):
-        '''
-        Randomizes the score in [0, 1]
-        '''
+        '''Sets the score to a random number in [0, 1].'''
         self.score = random.randrange(0.0, 1.0)
 
     def get_chip(self, img, force_square=False):
@@ -240,8 +231,9 @@ class ScoredDetection(Serializable):
                 box during extraction so that the returned subimage is square
         '''
         if not img:
-            img = etai.read(self.source)
-        self._chip = self.detection.bounding_box.extract_from(
+            img = etai.read(self.source_path)
+
+        self._chip = self.detected_object.bounding_box.extract_from(
             img, force_square=force_square)
         return self._chip
 
@@ -249,105 +241,85 @@ class ScoredDetection(Serializable):
     def from_dict(cls, d):
         '''Constructs a DetectedObject from a JSON dictionary.'''
         return cls(
-            DetectedObject.from_dict(d["detection"]),
-            d["source"],
-            d["score"],
-            d["feat"],
-            d["chip_path"]
+            DetectedObject.from_dict(d["detected_object"]),
+            score=d["score"],
+            feat=d["feat"],
+            source_path=d["source_path"],
+            chip_path=d["chip_path"],
         )
 
 
-class ScoredDetectionList(Serializable):
-    '''A list of scored objects.'''
+class ScoredDetections(ObjectContainer):
+    '''Container for scored detections in a frame.'''
+
+    _OBJ_CLS = ScoredDetection
 
     def __init__(self, objects=None):
-        '''Constructs a ScoredDetectionList.
+        '''Constructs a ScoredDetections instance.
 
         Args:
-            objects: optional list of ScoredDetections in the frame.
+            objects: optional list of ScoredDetection instances
         '''
-        self.objects = objects or []
-        self._orig_order
-
-    def add(self, obj):
-        '''Adds a ScoredObject to the ScoredDetectionList.
-
-        Args:
-            obj: A ScoredObject instance
-        '''
-        self.objects.append(obj)
+        super(ScoredDetections, self).__init__(objects=objects)
+        self._orig_order = None
 
     def label_set(self):
-        '''Returns a set containing the labels of objects in this
-        ScoredDetectionList.
+        '''Returns a set containing the labels of the ScoredDetection objects
+        in the container.
         '''
-        return set(obj.detection.label for obj in self.objects)
-
-    def get_matches(self, filters, match=any):
-        '''Returns a ScoredDetectionList containing only objects that match the
-        filters.
-
-        Args:
-            filters: a list of functions that accept DetectedObjects and return
-                True/False
-            match: a function (usually any or all) that accepts an iterable and
-                returns True/False. Used to aggregate the outputs of each
-                filter to decide whether a match has occurred. The default is
-                any
-        '''
-        return ScoredDetectionList(
-            objects=list(filter(
-                lambda o: match(f(o) for f in filters),
-                self.objects,
-            )),
-        )
+        return set(obj.detected_object.label for obj in self.objects)
 
     def randomize_scores(self):
-        '''Randomize object scores.'''
+        '''Sets all the scores of all objects to random numbers in [0, 1].'''
         for obj in self.objects:
             obj.randomize_score()
 
     def sort(self):
-        '''Sort list by score and store original order.'''
-        ord_obj = sorted(enumerate(self.objects), key=lambda x: x[1].score)
-        self._orig_order, self.objects = zip(*ord_obj)
+        '''Sorts the ScoredDetection object list in ascending order by score
+        and stores the original order of the objects before the sort.
+        '''
+        ord_objs = sorted(enumerate(self.objects), key=lambda x: x[1].score)
+        self._orig_order, self.objects = zip(*ord_objs)
         return self.objects
 
     def get_orig_order(self):
-        '''Returns a list of the original orders of each object before the
+        '''Returns an index list defining the order of the objects prior to the
         last sort.
         '''
         return self._orig_order
 
-    def to_html(self, result_path, query_img):
-        '''Output current label set to html for visualization.'''
-        # output query image
-        etau.ensure_path(result_path)
-        queryimg_path = os.path.join(result_path, 'query.png')
-        etai.write(query_img, queryimg_path)
-        # output html file
-        top_imgs_str = ""
-        order=self.get_order();
-        for pos in range(min(len(order), 50)):
-            obj=self.objects[pos]
-            top_imgs_str = top_imgs_str + \
-                "<img src=%s height=50>score:%.02f<br>"\
-                    % (os.path.abspath(obj.chip_path), obj.score)
+    def to_html(self, query_img, results_dir, max_objects=25):
+        '''Writes the scored detections to HTML for visualization.
+
+        This function writes `query.png` and `index.html` files to the
+        `results_dir` directory.
+
+        Args:
+            query_img: the query image used to populate the scores
+            results_dir: the directory to write the query results to
+            max_objects: the maximum number of objects to write. By default, 25
+        '''
+        etau.ensure_dir(results_dir)
+
+        # Write query image
+        etai.write(query_img, os.path.join(results_dir, "query.png"))
+
+        # Generate results HTML
+        top_matches_html = ""
+        for idx in range(min(len(self.objects), max_objects)):
+            obj = self.objects[idx]
+            top_matches_html += "<img src=%s height=50>score:%.02f<br>" % (
+                os.path.abspath(obj.chip_path), obj.score)
+
         html_str = """
             <html>
             <body>
             Query:<img src=query.png height=50><hr>Top Matches<hr>""" + \
-            top_imgs_str + \
+            top_matches_html + \
             """</body>
             </html>
         """
-        html_file = open(os.path.join(result_path, "index.html"), "w")
-        html_file.write(html_str)
-        html_file.close()
 
-    @classmethod
-    def from_dict(cls, d):
-        '''Constructs a ScoredDetectionList from a JSON dictionary.'''
-        return ScoredDetectionList(objects=[
-            ScoredDetection.from_dict(so) for so in d["objects"]
-        ])
+        # Write results HTML
+        with open(os.path.join(results_dir, "index.html"), "wt") as f:
+            f.write(html_str)
