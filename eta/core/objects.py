@@ -54,6 +54,11 @@ class ObjectContainer(Serializable):
         '''Gets the class of object stored in this container.'''
         return cls._OBJ_CLS
 
+    @property
+    def num_objects(self):
+        '''The number of objects in the container.'''
+        return len(self.objects)
+
     def add(self, obj):
         '''Adds an object to the container.
 
