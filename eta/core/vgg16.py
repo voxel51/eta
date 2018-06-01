@@ -60,7 +60,7 @@ class VGG16Config(Config):
 
     @classmethod
     def load_default(cls):
-        '''Loads the default config file.'''
+        '''Loads the default VGG16Config.'''
         return cls.from_json(DEFAULT_VGG16_CONFIG)
 
 
