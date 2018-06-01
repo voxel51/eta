@@ -547,6 +547,26 @@ class VideoSequece(FileSequence, ConcreteData):
         )
 
 
+class ImageFileDirectory(Directory):
+    '''A directory of images.
+
+    Examples:
+        /path/to/images
+    '''
+
+    pass
+
+
+class VideoFileDirectory(Directory):
+    '''A directory of encoded video files.
+
+    Examples:
+        /path/to/videos
+    '''
+
+    pass
+
+
 class VideoClips(DualFileSequence, ConcreteData):
     '''A sequence of video files with two numeric parameters.
 
@@ -602,6 +622,16 @@ class JSONFileSequence(FileSequence, ConcreteData):
             FileSequence.is_valid_path(path) and
             etau.has_extension(path, ".json")
         )
+
+
+class JSONFileDirectory(Directory):
+    '''A directory of JSON files.
+
+    Examples:
+        /path/to/jsons
+    '''
+
+    pass
 
 
 class VideoStreamInfo(JSONFile):
