@@ -317,6 +317,7 @@ class CanFeaturize(object):
 
 
 class FeaturizedFrameNotFoundError(OSError):
+    '''Exception raised when a featurized frame is not found on disk.'''
     pass
 
 
@@ -398,7 +399,7 @@ class VideoFramesFeaturizer(Featurizer):
 
         backing_managers = {
             "random": self._backing_manager_random,
-            "replace": self._backing_manager_replace
+            "replace": self._backing_manager_replace,
             "manual": self._backing_manager_manual,
         }
         self._backing_manager = backing_managers[self.config.backing_manager]
@@ -478,7 +479,7 @@ class VideoFramesFeaturizer(Featurizer):
         '''
         p = self.featurized_frame_path(frame_number)
         if not os.path.isfile(p):
-            raise FeaturizedFrameNotFoundError()
+            raise FeaturizedFrameNotFoundError("Feature %d not found", p)
 
         return np.load(p)["v"]
 
