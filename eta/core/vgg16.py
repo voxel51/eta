@@ -68,28 +68,35 @@ class VGG16(object):
     '''TensorFlow implementation of the VGG-16 network originally trained for
     the 1000 classes from ImageNet.
 
+    This implementation is hard-coded to process an array of images of size
+    [XXXX, 224, 224, 3].
+
     Reference:
         http://www.cs.toronto.edu/~frossard/post/vgg16/
         David Frossard, 2016
     '''
 
-    def __init__(self, sess, config=None):
+    def __init__(self, sess, config=None, sess=None, imgs=None):
         '''Builds a new VGG-16 network.
 
         Args:
-            sess: a tf.Session to use
-            config: an optional VGG16Config instance. If omitted, the default ETA
-                configuration will be used.
+            config: an optional VGG16Config instance. If omitted, the default
+                ETA configuration will be used
+            sess: an optional tf.Session to use. If none is provided, a new
+                tf.Session instance is created, and you are responsible for
+                calling the close() method of this class when you are done
+                computing
+            imgs: an optional tf.placeholder of size [XXXX, 224, 224, 3] to
+                use. By default, a placeholder of size [None, 224, 224, 3] is
+                used so you can evaluate any number of images at once
         '''
-        self.sess = sess
         self.config = config or VGG16Config.load_default()
+        self.sess = sess or tf.Session()
+        self.imgs = imgs or tf.placeholder(tf.float32, [None, 224, 224, 3])
 
-        self.imgs = tf.placeholder(tf.float32, [None, 224, 224, 3])
         self._build_conv_layers()
         self._build_fc_layers()
-
-        self.probs = tf.nn.softmax(self.fc3l)
-
+        self._build_output_layer()
         self._load_weights(self.config.weights)
 
     def evaluate(self, imgs, layer=None):
@@ -99,13 +106,22 @@ class VGG16(object):
             imgs: an array of size [XXXX, 224, 224, 3] containing image(s) to
                 feed into the network
             layer: an optional layer whose output to return. By default, the
-                output of the last fully-connected layer (i.e., the class
-                predictions) are returned
+                output softmax layer (i.e., the class probabilities) is
+                returned
         '''
         if layer is None:
-            layer = self.fc3l
+            layer = self.probs
 
         return self.sess.run(layer, feed_dict={self.imgs: [imgs]})[0]
+
+    def close(self):
+        '''Closes the tf.Session used by this instance.
+
+        Users who did not pass their own tf.Session to the constructor **must**
+        call this method.
+        '''
+        self.sess.close()
+        self.sess = None
 
     def _build_conv_layers(self):
         self.parameters = []
@@ -427,6 +443,9 @@ class VGG16(object):
             self.fc3l = tf.nn.bias_add(tf.matmul(self.fc2, fc3w), fc3b)
             self.parameters += [fc3w, fc3b]
 
+    def _build_output_layer(self):
+        self.probs = tf.nn.softmax(self.fc3l)
+
     def _load_weights(self, weights_config):
         weights = Weights(weights_config)
         for i, k in enumerate(sorted(weights)):
@@ -450,11 +469,8 @@ class VGG16Featurizer(Featurizer):
 
     def __init__(self, config=None):
         super(VGG16Featurizer, self).__init__()
-
         self.config = config or VGG16FeaturizerConfig({})
         self.validate(self.config)
-
-        self.sess = None
         self.vgg16 = None
 
     def dim(self):
@@ -462,14 +478,12 @@ class VGG16Featurizer(Featurizer):
         return 4096
 
     def _start(self):
-        '''Starts the TensorFlow session and loads the network.'''
-        self.sess = tf.Session()
-        self.vgg16 = VGG16(self.sess, self.config)
+        '''Starts a TensorFlow session and loads the network.'''
+        self.vgg16 = VGG16(self.config)
 
     def _stop(self):
         '''Closes the TensorFlow session and frees up the network.'''
-        self.sess.close()
-        self.sess = None
+        self.vgg16.close()
         self.vgg16 = None
 
     def _featurize(self, img):
