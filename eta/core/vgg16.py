@@ -39,17 +39,17 @@ import cv2
 import numpy as np
 import tensorflow as tf
 
-from eta import constants
+import eta.constants as etac
 from eta.core.config import Config, Configurable
 from eta.core.features import Featurizer
-import eta.core.image as im
+import eta.core.image as etai
 from eta.core.weights import Weights, WeightsConfig
 
 
 logger = logging.getLogger(__name__)
 
 
-DEFAULT_VGG16_CONFIG = os.path.join(constants.CONFIGS_DIR, "vgg16-config.json")
+DEFAULT_VGG16_CONFIG = os.path.join(etac.CONFIGS_DIR, "vgg16-config.json")
 
 
 class VGG16Config(Config):
@@ -481,5 +481,5 @@ class VGG16Featurizer(Featurizer):
             # RGBA
             img = img[:, :, :3]
 
-        img = im.resize(img, 224, 224)
+        img = etai.resize(img, 224, 224)
         return self.vgg16.evaluate(img, layer=self.vgg16.fc2l)
