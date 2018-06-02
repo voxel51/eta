@@ -52,7 +52,10 @@ class FeaturizerConfig(Config):
     def __init__(self, d):
         self.type = self.parse_string(d, "type")
         self._featurizer_cls, config_cls = Configurable.parse(self.type)
-        self.config = self.parse_object(d, "config", config_cls)
+        self.config = self.parse_object(d, "config", config_cls, default=None)
+        if not self.config:
+            # Try to load the default config for the featurizer
+            self.config = config_cls.default()
 
     def build(self):
         '''Factory method that builds the Featurizer instance from the config
