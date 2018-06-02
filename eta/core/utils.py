@@ -486,12 +486,16 @@ class WorkingDir(object):
 
 
 class ExecutableNotFoundError(Exception):
+    '''Exception raised when an executable file is not found.'''
+
     def __init__(self, executable):
         message = "Executable '%s' not found" % executable
         super(ExecutableNotFoundError, self).__init__(message)
 
 
 class ExecutableRuntimeError(Exception):
+    '''Exception raised when an executable call throws a runtime error.'''
+
     def __init__(self, cmd, err):
         message = "Command '%s' failed with error:\n%s" % (cmd, err)
         super(ExecutableRuntimeError, self).__init__(message)
