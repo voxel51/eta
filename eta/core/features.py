@@ -67,18 +67,33 @@ class FeaturizerConfig(Config):
 class Featurizer(Configurable):
     '''Base class for all featurizers.
 
-    Note that all subclasses must call the superclass constructor defined by
-    this base class.
-
     Subclasses of Featurizer must implement the `dim()` and `_featurize()`
     methods, and if necessary, should also implement the `_start()` and
     `_stop()` methods.
+
+    Subclasses must call the superclass constructor defined by this base class.
+
+    Note that Featurizer implements the context manager interface, so
+    Featurizer subclasses can be used with the following convenient `with`
+    syntax to automatically handle `start()` and `stop()` calls:
+
+    ```
+    with <My>Featurizer(...) as f:
+            f.featurize(data)
+    ```
     '''
 
     def __init__(self):
-        '''Initializes any featurizer by setting up internal state.'''
+        '''Initializes the base Featurizer instance.'''
         self._is_started = False
         self._keep_alive = False
+
+    def __enter__(self):
+        self.start()
+        return self
+
+    def __exit__(self, *args):
+        self.stop()
 
     def dim(self):
         '''Returns the dimension of the features extracted by this
