@@ -49,10 +49,7 @@ class ObjectContainer(Serializable):
         self.objects = objects or []
 
     def __iter__(self):
-        return self
-
-    def __next__(self):
-        return next(self.objects)
+        return iter(self.objects)
 
     @classmethod
     def get_object_class(cls):
