@@ -1198,17 +1198,38 @@ class FrameRanges(object):
         return ",".join([r.to_str() for r in self._ranges])
 
     @classmethod
-    def from_str(cls, frames):
-        '''Constructs a FrameRanges object from a string like "1-5,10-15".'''
+    def from_str(cls, frames_str):
+        '''Constructs a FrameRanges object from a frames string.
+
+        Args:
+            frames_str: a string like "1-3,6,8-10"
+
+        Raises:
+            FrameRangesError: if the frames string is invalid
+        '''
         ranges = []
-        for r in frames.split(','):
+        for r in frames_str.split(','):
             if r:
                 fr = FrameRange.from_str(r)
                 ranges.append((fr.first, fr.last))
+
         return cls(ranges)
+
+    @classmethod
+    def from_list(cls, frames_list):
+        '''Constructs a FrameRanges object from a frames list.
+
+        Args:
+            frames_list: a list like [1, 2, 3, 6, 8, 9, 10]
+
+        Raises:
+            FrameRangesError: if the frames list is invalid
+        '''
+        return cls(_list_to_ranges(frames_list))
 
 
 class FrameRangesError(Exception):
+    '''Exception raised when an invalid FrameRanges is encountered.'''
     pass
 
 
@@ -1225,6 +1246,7 @@ class FrameRange(object):
         if last < first:
             raise FrameRangeError(
                 "Expected first:%d <= last:%d" % (first, last))
+
         self.first = first
         self.last = last
         self.idx = -1
@@ -1249,6 +1271,7 @@ class FrameRange(object):
             self.idx += 1
         else:
             raise StopIteration
+
         return self.idx
 
     def to_list(self):
@@ -1257,23 +1280,47 @@ class FrameRange(object):
 
     def to_str(self):
         '''Return a string representation of the range.'''
+        if self.first == self.last:
+            return "%d" % self.first
+
         return "%d-%d" % (self.first, self.last)
 
     @classmethod
-    def from_str(cls, frames):
-        '''Constructs a FrameRange object from a string like "1-5".
+    def from_str(cls, frames_str):
+        '''Constructs a FrameRange object from a string.
+
+        Args:
+            frames_str: a string like "1-5"
 
         Raises:
             FrameRangeError: if the frame range string is invalid
         '''
         try:
-            v = list(map(int, frames.split('-')))
+            v = list(map(int, frames_str.split('-')))
             return cls(v[0], v[-1])
         except ValueError:
-            raise FrameRangeError("Invalid frame range string '%s'" % frames)
+            raise FrameRangeError(
+                "Invalid frame range string '%s'" % frames_str)
+
+    @classmethod
+    def from_list(cls, frames_list):
+        '''Constructs a FrameRange object from a frames list.
+
+        Args:
+            frames_list: a consecutive list like [1, 2, 3, 4, 5]
+
+        Raises:
+            FrameRangeError: if the frame range list is invalid
+        '''
+        ranges = list(_list_to_ranges(frames_list))
+        if len(ranges) != 1:
+            raise FrameRangeError("Invalid frame range list %s" % frames_list)
+
+        return cls(*ranges[0])
 
 
 class FrameRangeError(Exception):
+    '''Exception raised when an invalid FrameRange is encountered.'''
     pass
 
 
