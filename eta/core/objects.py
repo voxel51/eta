@@ -18,7 +18,6 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-import random
 import os
 
 from eta.core.geometry import BoundingBox
@@ -207,33 +206,22 @@ class ObjectCount(Serializable):
         return ObjectCount(d["label"], d["count"])
 
 
-class ScoredDetection(Serializable):
-    '''A DetectedObject decorated with a source and score.
+class ScoredObject(Serializable):
+    '''A DetectedObject decorated with a score.
 
     Attributes:
         detected_object: a DetectedObject instance
         score: the score of the object
-        feat: the feature (embedding) of the object
-        source_path: the path to the source image of the detection
-        chip_path: the path to the chip image of the detection
     '''
 
-    def __init__(
-            self, detected_object, score=0.0, feat=None, source_path=None,
-            chip_path=None, chip=None):
-        '''Constructs a ScoredDetection.'''
+    def __init__(self, detected_object, score=None, index=None):
+        '''Constructs a ScoredObject.'''
         self.detected_object = detected_object
         self.score = score
-        self.feat = feat
-        self.source_path = source_path
-        self.chip_path = chip_path
-        self._chip = chip
+        self.index = index
+        self._meta = None  # used by clients to store temporary metadata
 
-    def randomize_score(self):
-        '''Sets the score to a random number in [0, 1].'''
-        self.score = random.randrange(0.0, 1.0)
-
-    def get_chip(self, img, force_square=False):
+    def extract_from(self, img, force_square=False):
         '''Extracts the subimage containing this object from the image.
 
         Args:
@@ -241,63 +229,27 @@ class ScoredDetection(Serializable):
             force_square: whether to (minimally) manipulate the object bounding
                 box during extraction so that the returned subimage is square
         '''
-        if not img:
-            img = etai.read(self.source_path)
-
-        self._chip = self.detected_object.bounding_box.extract_from(
+        return self.detected_object.extract_from(
             img, force_square=force_square)
-        return self._chip
 
     @classmethod
     def from_dict(cls, d):
-        '''Constructs a DetectedObject from a JSON dictionary.'''
+        '''Constructs a ScoredObject from a JSON dictionary.'''
         return cls(
             DetectedObject.from_dict(d["detected_object"]),
-            score=d["score"],
-            feat=d["feat"],
-            source_path=d["source_path"],
-            chip_path=d["chip_path"],
+            d["score"],
+            d["index"],
         )
 
 
-class ScoredDetections(ObjectContainer):
-    '''Container for scored detections in a frame.'''
+class ScoredObjects(ObjectContainer):
+    '''Container for scored objects.'''
 
-    _OBJ_CLS = ScoredDetection
-
-    def __init__(self, objects=None):
-        '''Constructs a ScoredDetections instance.
-
-        Args:
-            objects: optional list of ScoredDetection instances
-        '''
-        super(ScoredDetections, self).__init__(objects=objects)
-        self._orig_order = None
-
-    def label_set(self):
-        '''Returns a set containing the labels of the ScoredDetection objects
-        in the container.
-        '''
-        return set(obj.detected_object.label for obj in self.objects)
-
-    def randomize_scores(self):
-        '''Sets all the scores of all objects to random numbers in [0, 1].'''
-        for obj in self.objects:
-            obj.randomize_score()
+    _OBJ_CLS = ScoredObject
 
     def sort(self):
-        '''Sorts the ScoredDetection object list in ascending order by score
-        and stores the original order of the objects before the sort.
-        '''
-        ord_objs = sorted(enumerate(self.objects), key=lambda x: x[1].score)
-        self._orig_order, self.objects = zip(*ord_objs)
-        return self.objects
-
-    def get_orig_order(self):
-        '''Returns an index list defining the order of the objects prior to the
-        last sort.
-        '''
-        return self._orig_order
+        '''Sorts the current object list in ascending order by score.'''
+        self.objects = sorted(self.objects, key=lambda o: o.score)
 
     def to_html(self, query_img, results_dir, max_objects=25):
         '''Writes the scored detections to HTML for visualization.
