@@ -779,7 +779,7 @@ class DualImageSequenceDirectory(Directory):
     pass
 
 
-class JSONDirectory(ZippedDirectory):
+class JSONDirectory(Directory):
     '''A directory containing a sequence of JSON files.
 
     Examples:
