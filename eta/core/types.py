@@ -100,6 +100,15 @@ class ConcreteDataParams(object):
             "video_ext": eta.config.default_video_ext,
         }
 
+    @property
+    def default(self):
+        '''Returns the default parameters
+
+        Returns:
+            the default params dict
+        '''
+        return self._params
+
     def render_for(self, name):
         '''Render the type parameters for use with field `name`.
 
