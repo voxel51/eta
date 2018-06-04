@@ -650,14 +650,14 @@ class EventDetection(JSONFile):
     pass
 
 
-class ScoredDetections(JSONFile):
-    '''A collection of scored detections.
+class ScoredObjects(JSONFile):
+    '''A collection of scored objects.
 
-    This type is implemented in ETA by the `eta.core.objects.ScoredDetections`
+    This type is implemented in ETA by the `eta.core.objects.ScoredObjects`
     class.
 
     Examples:
-        /path/to/scored_detections.json
+        /path/to/scored_objects.json
     '''
 
     pass
@@ -775,6 +775,27 @@ class ZippedVideoDirectory(ZippedDirectory):
     pass
 
 
+class ZippedImageSequenceDirectory(ZippedDirectory):
+    '''A zipped directory containing a sequence of images.
+
+    Examples:
+        /path/to/images.zip
+    '''
+
+    pass
+
+
+class ZippedDualImageSequenceDirectory(ZippedDirectory):
+    '''A zipped directory containing a collection of dual image sequence
+    directories.
+
+    Examples:
+        /path/to/dual-images.zip
+    '''
+
+    pass
+
+
 class ZippedJSONDirectory(ZippedDirectory):
     '''A zipped directory containing JSON files.
 
@@ -785,27 +806,23 @@ class ZippedJSONDirectory(ZippedDirectory):
     pass
 
 
+class ZippedFrameSequenceDirectory(ZippedDirectory):
+    '''A zipped directory containing a collection of FrameSequence directories.
+
+    Examples:
+        /path/to/frames.zip
+    '''
+
+    pass
+
+
 class ZippedVideoObjectsFeaturesDirectory(ZippedDirectory):
-    '''A zipped directory that itself contains a collection of
-    VideoObjectsFeatures directories.
-    '''
-
-    pass
-
-
-class ZippedFrameSequenceDirectory(ZippedDirectory):
-    '''A zipped directory that itself contains a collection of FrameSequence
+    '''A zipped directory containing a collection of VideoObjectsFeatures
     directories.
+
+    Examples:
+        /path/to/video-object-features.zip
     '''
 
-    pass
-
-
-
-class ZippedFrameSequenceDirectory(ZippedDirectory):
-    '''A zipped directory that iself contains a collection of FrameSequence
-    directories.
-    '''
 
     pass
-
