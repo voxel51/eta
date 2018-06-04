@@ -1164,6 +1164,7 @@ class FrameRanges(object):
             if first <= end:
                 raise FrameRangesError(
                     "Expected first:%d > last:%d" % (first, end))
+
             self._ranges.append(FrameRange(first, last))
             end = last
 
@@ -1184,6 +1185,7 @@ class FrameRanges(object):
             return next(self)
         except IndexError:
             raise StopIteration
+
         return frame
 
     @property
@@ -1191,6 +1193,7 @@ class FrameRanges(object):
         '''The current frame number, or -1 if no frames have been read.'''
         if self._started:
             return self._ranges[self._idx].idx
+
         return -1
 
     @property
@@ -1200,13 +1203,15 @@ class FrameRanges(object):
         '''
         if self._started:
             return self._ranges[self._idx].first, self._ranges[self._idx].last
-        return -1, -1
+
+        return (-1, -1)
 
     @property
     def is_new_frame_range(self):
         '''Whether the current frame is the first in a new range.'''
         if self._started:
             return self._ranges[self._idx].is_first_frame
+
         return False
 
     def to_list(self):
@@ -1214,6 +1219,7 @@ class FrameRanges(object):
         frames = []
         for r in self._ranges:
             frames += r.to_list()
+
         return frames
 
     def to_str(self):
