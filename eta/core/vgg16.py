@@ -76,7 +76,7 @@ class VGG16(object):
         David Frossard, 2016
     '''
 
-    def __init__(self, sess, config=None, sess=None, imgs=None):
+    def __init__(self, config=None, sess=None, imgs=None):
         '''Builds a new VGG-16 network.
 
         Args:
