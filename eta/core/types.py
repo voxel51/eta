@@ -739,6 +739,68 @@ class VideoObjectsFeatures(DualFileSequence, ConcreteData):
         )
 
 
+class VideoDirectory(Directory):
+    '''A directory containing encoded video files.
+
+    Examples:
+        /path/to/videos
+    '''
+
+    pass
+
+
+class ImageSequenceDirectory(Directory):
+    '''A directory containing a sequence of images.
+
+    Examples:
+        /path/to/images
+    '''
+
+    pass
+
+
+class DualImageSequenceDirectory(Directory):
+    '''A directory containing a sequence of images indexed by two numeric
+    parameters.
+
+    Examples:
+        /path/to/dual-images
+    '''
+
+    pass
+
+
+class JSONDirectory(ZippedDirectory):
+    '''A directory containing a sequence of JSON files.
+
+    Examples:
+        /path/to/jsons
+    '''
+
+    pass
+
+
+class FrameSequenceDirectory(JSONDirectory):
+    '''A directory containing a sequence of Frame JSON files.
+
+    Examples:
+        /path/to/frames
+    '''
+
+    pass
+
+
+class VideoObjectsFeaturesDirectory(Directory):
+    '''A directory containing a sequence of features of objects-in-frames
+    indexed by two numeric parameters.
+
+    Examples:
+        /path/to/features
+    '''
+
+    pass
+
+
 class ZipFile(File, ConcreteData):
     '''A zip file.
 
