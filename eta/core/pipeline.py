@@ -511,7 +511,7 @@ class PipelineModule(Configurable):
                     "Module '%s' has no parameter '%s'" % (self.name, name))
 
     def _verify_parameter_values(self, param_dict):
-        for name, val in param_dict:
+        for name, val in iteritems(param_dict):
             if not self.metadata.is_valid_parameter(name, val):
                 raise PipelineMetadataError((
                     "'%s' is an invalid value for parameter '%s' of module "
