@@ -14,6 +14,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
+import six
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
@@ -426,13 +427,27 @@ class VideoReader(object):
     '''Base class for reading videos.'''
 
     def __init__(self, inpath, frames):
-        '''Initialize base VideoReader capabilities.'''
-        if frames == "*":
-            frames = "1-%d" % self.total_frame_count
-        self._ranges = FrameRanges.from_str(frames)
-
         self.inpath = inpath
-        self.frames = frames
+        if frames is None:
+            self.frames = "1-%d" % self.total_frame_count
+            self._ranges = FrameRanges.from_str(self.frames)
+        elif isinstance(frames, six.string_types):
+            # Frames string
+            if frames == "*":
+                frames = "1-%d" % self.total_frame_count
+
+            self.frames = frames
+            self._ranges = FrameRanges.from_str(frames)
+        elif isinstance(frames, list):
+            # Frames list
+            self._ranges = FrameRanges.from_list(frames)
+            self.frames = self._ranges.to_str()
+        elif isinstance(frames, (FrameRange, FrameRanges)):
+            # FrameRange or FrameRanges
+            self._ranges = frames
+            self.frames = frames.to_str()
+        else:
+            raise VideoReaderError("Invalid frames %s" % frames)
 
     def __enter__(self):
         return self
@@ -512,8 +527,13 @@ class FFmpegVideoReader(VideoReader):
                 "/path/to/frames/%5d.png". This path is passed directly to
                 ffmpeg
 
-            frames: a string like "1-5,10-15" specifying the range(s) of frames
-                in the input video to read. Set frames="*" to read all frames
+            frames: one of the following optional quantities specifying a
+                collection of frames to process:
+                    - None (all frames)
+                    - "*" (all frames - the default)
+                    - a string like "1-3,6,8-10"
+                    - a list like [1, 2, 3, 6, 8, 9, 10]
+                    - a FrameRange or FrameRanges instance
         '''
         self._stream_info = VideoStreamInfo.build_for(inpath)
         self._ffmpeg = FFmpeg(
@@ -605,11 +625,14 @@ class OpenCVVideoReader(VideoReader):
             inpath: path to the input video, which can be a standalone video
                 file like "/path/to/video.mp4" or a directory of frames like
                 "/path/to/frames/%5d.png". This path is passed directly to
-                cv2.VideoCapture.
-
-            frames: a string like "1-5,10-15" specifying the range(s) of frames
-                in the input video to read. Set frames = "*" to read all
-                frames.
+                cv2.VideoCapture
+            frames: one of the following optional quantities specifying a
+                collection of frames to process:
+                    - None (all frames)
+                    - "*" (all frames - the default)
+                    - a string like "1-3,6,8-10"
+                    - a list like [1, 2, 3, 6, 8, 9, 10]
+                    - a FrameRange or FrameRanges instance
 
         Raises:
             VideoReaderError: if the input video could not be opened.
