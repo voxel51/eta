@@ -1275,3 +1275,19 @@ class FrameRange(object):
 
 class FrameRangeError(Exception):
     pass
+
+
+def _list_to_ranges(vals):
+    if not vals:
+        raise StopIteration
+
+    vals = sorted(vals)
+    first = last = vals[0]
+    for val in vals[1:]:
+        if val == last + 1:
+            last += 1
+        else:
+            yield (first, last)
+            first = last = val
+
+    yield (first, last)
