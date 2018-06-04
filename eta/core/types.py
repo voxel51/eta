@@ -527,6 +527,26 @@ class ImageSequence(Video, FileSequence, ConcreteData):
         )
 
 
+class DualImageSequence(DualFileSequence, ConcreteData):
+    '''A sequence of images indexed by two numeric parameters.
+
+    Examples:
+        /path/to/images/%05d-%05d.png
+    '''
+
+    @staticmethod
+    def gen_path(basedir, params):
+        return os.path.join(
+            basedir, "{name}", "{idx}-{idx}{image_ext}").format(**params)
+
+    @staticmethod
+    def is_valid_path(path):
+        return (
+            DualFileSequence.is_valid_path(path) and
+            etau.is_supported_image_type(path)
+        )
+
+
 class VideoSequece(FileSequence, ConcreteData):
     '''A sequence of encoded video files with one numeric parameter.
 
