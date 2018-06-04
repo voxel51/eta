@@ -49,6 +49,12 @@ class ObjectContainer(Serializable):
         self._validate()
         self.objects = objects or []
 
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        return next(self.objects)
+
     @classmethod
     def get_object_class(cls):
         '''Gets the class of object stored in this container.'''
