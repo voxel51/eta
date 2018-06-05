@@ -114,6 +114,8 @@ class ConfigurableError(Exception):
     pass
 
 
+# @todo move this to eta.core.serial, as it is now being used outside of this
+# class
 class no_default(object):
     '''A placeholder class typically used as a default value for a keyword
     argument of a function to distinguish between using `None` as a default
