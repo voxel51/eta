@@ -141,7 +141,12 @@ def get_stream_info(inpath):
 
     try:
         info = json.loads(out)
-        return info["streams"][0]  # assume first stream is main video
+
+        for stream in info["streams"]:
+            if stream["codec_type"] == "video":
+                return stream
+
+        return info["streams"][0]  # default to the first stream
     except Exception:
         raise FFprobeError("Unable to get stream info for '%s'" % inpath)
 
