@@ -32,6 +32,9 @@ from eta.core.serial import Serializable
 import eta.core.utils as etau
 
 
+logger = logging.getLogger(__name__)
+
+
 class VideoStreamInfo(Serializable):
     '''Class encapsulating the stream info for a video.'''
 
@@ -146,6 +149,9 @@ def get_stream_info(inpath):
             if stream["codec_type"] == "video":
                 return stream
 
+        logger.warning(
+            "No stream found with codec_type = video. Returning the first "
+            "stream")
         return info["streams"][0]  # default to the first stream
     except Exception:
         raise FFprobeError("Unable to get stream info for '%s'" % inpath)
