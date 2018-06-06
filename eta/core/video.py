@@ -21,6 +21,7 @@ import six
 
 import errno
 import json
+import logging
 from subprocess import Popen, PIPE
 import threading
 
