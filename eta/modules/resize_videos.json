@@ -3,7 +3,7 @@
         "name": "resize_videos",
         "type": "eta.core.types.Module",
         "version": "0.1.0",
-        "description": "Resizes a video",
+        "description": "Resizes video(s)",
         "exe": "resize_videos.py"
     },
     "inputs": [
@@ -11,7 +11,13 @@
             "name": "input_path",
             "type": "eta.core.types.Video",
             "description": "The input video",
-            "required": true
+            "required": false
+        },
+        {
+            "name": "input_zip",
+            "type": "eta.core.types.ZippedVideoDirectory",
+            "description": "The zipped directory of videos",
+            "required": false
         }
     ],
     "outputs": [
@@ -19,20 +25,26 @@
             "name": "output_path",
             "type": "eta.core.types.VideoFile",
             "description": "The output resized video",
-            "required": true
+            "required": false
+        },
+        {
+            "name": "output_zip",
+            "type": "eta.core.types.ZippedVideoDirectory",
+            "description": "A zipped directory containing the resized videos",
+            "required": false
         }
     ],
     "parameters": [
         {
             "name": "size",
             "type": "eta.core.types.Array",
-            "description": "The output [width, height] of the video",
+            "description": "The desired [width, height]",
             "required": false
         },
         {
             "name": "scale",
             "type": "eta.core.types.Number",
-            "description": "A numeric scale factor",
+            "description": "A numeric scale factor to apply",
             "required": false
         },
         {
