@@ -96,7 +96,7 @@ def make_zip(zip_path):
     Args:
         zip_path: the output zip file path
     '''
-    outpath = zip_path.rstrip(".zip")
+    outpath = zip_path.replace(".zip", "")
     shutil.make_archive(outpath, "zip", outpath)
 
 
@@ -146,7 +146,7 @@ def make_parallel_dirs(zip_path, ref_paths):
             directories
         ref_paths: a list of reference paths, which may be files or directories
     '''
-    base = zip_path.rstrip(".zip")
+    base = zip_path.replace(".zip", "")
     return [os.path.join(base, _get_basename_no_ext(p)) for p in ref_paths]
 
 
@@ -165,7 +165,7 @@ def make_parallel_files(zip_path, ref_files):
         zip_path: the zip file path for which to generate the parallel files
         ref_files: a list of reference filepaths
     '''
-    base = zip_path.rstrip(".zip")
+    base = zip_path.replace(".zip", "")
     return [os.path.join(base, _get_basename(p)) for p in ref_files]
 
 
