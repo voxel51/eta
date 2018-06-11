@@ -28,16 +28,20 @@ to least generic
     * third-party imports
     * application-specific imports
 
-For ETA-library imports, we support importing the full name, a four (or five-character) abbreviated name that is `etaxy` where `x` is the first letter of the module imported and `y` is the second letter of the module import and only present when there is a name clash, or direct attribute imports.
+For ETA-library imports, we import modules as `etax`, where `x` is the first
+letter of the module imported. If necessary, we use `etaxy` to disambiguate
+between two modules that start with the same letter. We also allow direct
+importing of (a small number of) attributes into the local namespace at the
+developer's discretion.
 
 ```python
-from eta.core import utils
+import eta.core.image as etai
 from eta.core.serial import Serializable
-import eta.core.utils as etau
+import eta.core.video as etav
 ```
 
 Within each group, imports should be sorted alphabetically by full package
-path:
+path, ignoring `from` and `import`:
 
 ```python
 from __future__ import absolute_import
@@ -52,7 +56,7 @@ import sys
 import cv2
 import numpy as np
 
-from eta.core import utils
+import eta.core.image as etai
 from eta.core.serial import Serializable
 import eta.core.video as etav
 ```
@@ -77,7 +81,8 @@ function_parameter_name, local_var_name
 - If a class inherits from no other base classes, explicitly inherit from
   `object`
 
-- Follow standard typographic rules for spaces around punctuation except for colons, which should only have one space rather than two.
+- Follow standard typographic rules for spaces around punctuation except for
+colons, which should only have one space rather than two.
 
 ```python
 # YES!
@@ -112,7 +117,7 @@ dictionary = {
 ```
 
 - All non-trivial public module/class methods should have docstrings describing
-  their behavior, inputs, outputs, and exceptions (when appropriate)
+their behavior, inputs, outputs, and exceptions (when appropriate)
 
 ```python
 def parse_object(d, key, cls, default=None):
@@ -134,7 +139,11 @@ def parse_object(d, key, cls, default=None):
   pass
 ```
 
-- Indentation follows the general pep8 guidelines for indentation, including the optional note that hanging indents may be aligned to other than 4-spaces.  [Reference](https://www.python.org/dev/peps/pep-0008/#indentation).  The highlights of these guidelines are below.
+- Indentation and spacing around punctuation follows the general pep8
+guidelines, including [the note](
+https://www.python.org/dev/peps/pep-0008/#indentation) that hanging indents may
+be aligned to other than 4-spaces. The highlights of these guidelines are
+below.
 
 ```python
 # Yes!
@@ -154,7 +163,7 @@ foo = long_function_name(
     var_three, var_four)
 
 # Hanging indents *may* be indented to other than 4 spaces.
-# Note that this is option in the pep8 spec and we follow it.  
+# Note that this is option in the pep8 spec and we follow it.
 # Use your human judgement for when to leverage it.
 foo = long_function_name(
   var_one, var_two,

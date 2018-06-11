@@ -48,7 +48,7 @@ DEFAULT_ENCODING = "utf8"
 
 
 def flush():
-    '''Flush logging handlers.
+    '''Flushes logging handlers.
 
     It is only necessary to call this method when multiple processes are
     writing to a single log file (e.g., when running a pipeline).
@@ -58,21 +58,22 @@ def flush():
 
 
 def reset():
-    '''Reset logging.
+    '''Resets logging.
 
     Performs the following tasks:
         - removes all existing handlers from the root logger
         - sets the root logger level to DEBUG (the effective logging level is
             determined on a per-handler basis)
-        - routes all uncaught exceptions to the root logger
+        - uses sys.excepthook to route all uncaught exceptions to the root
+            logger
     '''
     root_logger.handlers = []
     root_logger.setLevel(logging.DEBUG)
-    sys.excepthook = _exception_logger
+    sys.excepthook = _excepthook
 
 
 def basic_setup(level=DEFAULT_BASIC_LEVEL, fmt=DEFAULT_BASIC_FORMAT):
-    '''Setup basic logging to stdout.
+    '''Sets up basic logging to stdout.
 
     Args:
         level: the logging level. The default is DEFAULT_BASIC_LEVEL
@@ -86,7 +87,7 @@ def basic_setup(level=DEFAULT_BASIC_LEVEL, fmt=DEFAULT_BASIC_FORMAT):
 
 
 def custom_setup(lc, rotate=False):
-    '''Setup custom logging.
+    '''Sets up custom logging.
 
     Args:
         lc: a LoggingConfig instance
@@ -98,9 +99,8 @@ def custom_setup(lc, rotate=False):
     msgs = []
 
     # Reset logging
-    reset()
     msgs.append("Resetting logging")
-    msgs.append("Logging all uncaught exceptions")
+    reset()
 
     # Stdout logging
     if lc.stream_to_stdout:
@@ -123,8 +123,7 @@ def custom_setup(lc, rotate=False):
             logging.Formatter(fmt=lc.file_format, datefmt=lc.datefmt))
         file_handler.setLevel(getattr(logging, lc.file_level))
         root_logger.addHandler(file_handler)
-        msgs.append(
-            "Logging to '%s' at level %s" % (lc.filename, lc.file_level))
+        msgs.append("Logging to %s at level %s" % (lc.filename, lc.file_level))
 
     msgs.append("Logging initialized")
 
@@ -157,7 +156,7 @@ def _rotate_lambda(filename):
     return lambda num: patt % num if num > 0 else filename
 
 
-def _exception_logger(*exc_info):
+def _excepthook(*exc_info):
     root_logger.error("Uncaught exception", exc_info=exc_info)
 
 

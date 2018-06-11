@@ -973,15 +973,18 @@ class FFmpegVideoSampler(FFmpeg):
         sampler.run("/path/to/video.mp4", "/path/to/frames/%05d.png")
     '''
 
-    def __init__(self, fps, **kwargs):
+    def __init__(self, fps=None, **kwargs):
         '''Constructs a video sampler with ffmpeg backend.
 
         Args:
-            fps: the desired frame rate
+            fps: an optional sampling rate. By default, the native frame rate
+                of the video is used
             **kwargs: optional keyword arguments for FFmpeg()
         '''
         out_opts = kwargs.pop("out_opts", []) or []
-        out_opts += ["-vf", "fps={0}".format(fps)]
+        if fps > 0:
+            out_opts += ["-vf", "fps={0}".format(fps)]
+
         super(FFmpegVideoSampler, self).__init__(out_opts=out_opts, **kwargs)
 
 

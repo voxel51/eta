@@ -55,14 +55,14 @@ def run(job_config, pipeline_status, overwrite=True):
         # Check config hash
         hasher = utils.MD5FileHasher(job_config.config_path)
         if hasher.has_changed:
-            logger.info("Config '%s' changed", job_config.config_path)
+            logger.info("Config %s changed", job_config.config_path)
             should_run = True
         elif hasher.has_record:
             if overwrite:
                 logger.info("Overwriting existing job output")
                 should_run = True
             else:
-                logger.info("Skipping job '%s'", job_config.name)
+                logger.info("Skipping job %s", job_config.name)
                 should_run = False
         else:
             should_run = True
@@ -71,17 +71,17 @@ def run(job_config, pipeline_status, overwrite=True):
             logger.info("Working directory: %s", os.getcwd())
 
             # Run job
-            logger.info("Starting job '%s'", job_config.name)
+            logger.info("Starting job %s", job_config.name)
             job_status.start()
             success = _run(job_config)
             if not success:
                 # Job failed
-                logger.error("Job '%s' failed... exiting now", job_config.name)
+                logger.error("Job %s failed... exiting now", job_config.name)
                 job_status.fail()
                 return should_run, False
 
             # Job complete!
-            logger.info("Job '%s' complete", job_config.name)
+            logger.info("Job %s complete", job_config.name)
             hasher.write()  # write config hash
             job_status.complete()
         else:
