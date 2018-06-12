@@ -12,19 +12,13 @@
             "type": "eta.core.types.Video",
             "description": "The input video",
             "required": true
-        },
-        {
-            "name": "events_json_path",
-            "type": "eta.core.types.EventSeries",
-            "description": "An EventSeries speciying the clips to generate",
-            "required": false
         }
     ],
     "outputs": [
         {
             "name": "output_path",
             "type": "eta.core.types.VideoClips",
-            "description": "The output pattern for the video clips",
+            "description": "The output video clips",
             "required": true
         }
     ],
@@ -33,7 +27,15 @@
             "name": "frames",
             "type": "eta.core.types.String",
             "description": "A frames string speciying the clips to generate",
-            "required": false
+            "required": false,
+            "default": null
+        },
+        {
+            "name": "events_json_path",
+            "type": "eta.core.types.EventSeries",
+            "description": "An EventSeries speciying the clips to generate",
+            "required": false,
+            "default": null
         }
     ]
 }
