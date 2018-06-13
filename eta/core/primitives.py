@@ -139,7 +139,9 @@ class BackgroundSubtraction(object):
         with etav.VideoProcessor(self.input_path, out_impath=self.im_path, out_vidpath=self.vid_path) as processor:
             for img in processor:
                 fgmask = fgbg.apply(img)
-                processor.write(fgmask)
+                out = np.zeros_like(img)
+                out[..., 2] = fgmask
+                processor.write(out)
 
     def background_subtractor_MOG(self, history=500, threshold=16, detect_shadows=True):
         '''Compute background subtractor by Gaussian mixtrue-base algorithm.
@@ -157,7 +159,9 @@ class BackgroundSubtraction(object):
         with etav.VideoProcessor(self.input_path, out_impath=self.im_path, out_vidpath=self.vid_path) as processor:
             for img in processor:
                 fgmask = fgbg.apply(img)
-                processor.write(fgmask)
+                out = np.zeros_like(img)
+                out[..., 2] = fgmask
+                processor.write(out)
                 
     # def background_subtractor_GMG(self, initialization_frame=120, threshold=0.8):
     #     '''Compute background subtractor by GMG algorithm.
@@ -201,12 +205,14 @@ class EdgeDetection(object):
         '''
         with etav.VideoProcessor(self.input_path, out_impath=self.im_path, out_vidpath=self.vid_path) as processor:
             for img in processor:
-                edge = cv2.canny(img,
+                edge = cv2.Canny(img,
                                  threshold1=threshold_1,
                                  threshold2=threshold_2,
                                  apertureSize=aperture_size,
                                  L2gradient=l2_gradient)
-                processor.write(edge)
+                out = np.zeros_like(img)
+                out[..., 2] = edge
+                processor.write(out)
     
 
 class FeaturePointDetection(object):
@@ -226,21 +232,24 @@ class FeaturePointDetection(object):
         self.im_path = im_path
         self.vid_path = vid_path
 
-    def harris_corner_detector(self):
+    def harris_corner_detector(self, block_size=2, aperture_size=3, k=0.04):
         '''Detect corner point by Harris algorithm.
         
         Args:
-            
+            block_size: the size of neighbourhood considered for corner detection
+            aperture_size: aperture parameter of Sobel derivative used
+            k: Harris detector free parameter
         '''
         with etav.VideoProcessor(self.input_path, out_impath=self.im_path, out_vidpath=self.vid_path) as processor:
             for img in processor:
-                edge = cv2.canny(img,
-                         threshold1=threshold_1,
-                         threshold2=threshold_2,
-                         apertureSize=aperture_size,
-                         L2gradient=l2_gradient)
-                processor.write(edge)
-
+                gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
+                gray = np.float32(gray)
+                corner = cv2.cornerHarris(gray,
+                                          blockSize=block_size,
+                                          ksize=aperture_size,
+                                          k=k)
+                img[corner > 0.01 * corner.max()] = [0, 0, 255]
+                processor.write(img)
 
     def sift_detector(self):
         '''Detect feature point by SIFT algorithm.
@@ -250,12 +259,11 @@ class FeaturePointDetection(object):
         '''
         with etav.VideoProcessor(self.input_path, out_impath=self.im_path, out_vidpath=self.vid_path) as processor:
             for img in processor:
-                edge = cv2.canny(img,
-                         threshold1=threshold_1,
-                         threshold2=threshold_2,
-                         apertureSize=aperture_size,
-                         L2gradient=l2_gradient)
-                processor.write(edge)
+                gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
+                sift = cv2.SIFT()
+                key_point, descriptor = sift.detectAndCompute(gray, None)
+                img = cv2.drawKeypoints(gray, key_point)
+                processor.write(img)
 
     def surf_detector(self):
         '''Detect feature point by SURF algorithm.
@@ -264,43 +272,40 @@ class FeaturePointDetection(object):
             
         '''
         with etav.VideoProcessor(self.input_path, out_impath=self.im_path, out_vidpath=self.vid_path) as processor:
-            for img in processor:
-                edge = cv2.canny(img,
-                         threshold1=threshold_1,
-                         threshold2=threshold_2,
-                         apertureSize=aperture_size,
-                         L2gradient=l2_gradient)
-                processor.write(edge)
+           for img in processor:
+                gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
+                surf = cv2.SURF()
+                key_point, decriptor = surf.detectAndCompute(gray, None)
+                img = cv2.drawKeypoints(gray, key_point)
+                processor.write(img)
 
-    def fast_detector(self):
-        '''Detect corner point by FAST algorithm.
+    # def fast_detector(self):
+    #     '''Detect corner point by FAST algorithm.
         
-        Args:
+    #     Args:
             
-        '''
-        with etav.VideoProcessor(self.input_path, out_impath=self.im_path, out_vidpath=self.vid_path) as processor:
-            for img in processor:
-                edge = cv2.canny(img,
-                         threshold1=threshold_1,
-                         threshold2=threshold_2,
-                         apertureSize=aperture_size,
-                         L2gradient=l2_gradient)
-                processor.write(edge)
+    #     '''
+    #     with etav.VideoProcessor(self.input_path, out_impath=self.im_path, out_vidpath=self.vid_path) as processor:
+    #        for img in processor:
+    #             gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
+    #             surf = cv2.SURF()
+    #             key_point, decriptor = surf.detectAndCompute(gray, None)
+    #             img = cv2.drawKeypoints(gray, key_point)
+    #             processor.write(img)
 
-    def brief_detector(self):
-        '''Detect corner point by BRIEF algorithm.
+    # def brief_detector(self):
+    #     '''Detect corner point by BRIEF algorithm.
         
-        Args:
+    #     Args:
             
-        '''
-        with etav.VideoProcessor(self.input_path, out_impath=self.im_path, out_vidpath=self.vid_path) as processor:
-            for img in processor:
-                edge = cv2.canny(img,
-                         threshold1=threshold_1,
-                         threshold2=threshold_2,
-                         apertureSize=aperture_size,
-                         L2gradient=l2_gradient)
-                processor.write(edge)
+    #     '''
+    #     with etav.VideoProcessor(self.input_path, out_impath=self.im_path, out_vidpath=self.vid_path) as processor:
+    #        for img in processor:
+    #             gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
+    #             surf = cv2.SURF()
+    #             key_point, decriptor = surf.detectAndCompute(gray, None)
+    #             img = cv2.drawKeypoints(gray, key_point)
+    #             processor.write(img)
 
 
 
