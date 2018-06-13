@@ -219,6 +219,9 @@ class ModuleMetadataConfig(Config):
         self.parameters = self.parse_object_array(
             d, "parameters", ModuleParameterConfig)
 
+    def attributes(self):
+        return ["info", "inputs", "outputs", "parameters"]
+
 
 class ModuleInfoConfig(Config):
     '''Module info configuration class.'''
@@ -230,6 +233,9 @@ class ModuleInfoConfig(Config):
         self.description = self.parse_string(d, "description")
         self.exe = self.parse_string(d, "exe")
 
+    def attributes(self):
+        return ["name", "type", "version", "description", "exe"]
+
 
 class ModuleNodeConfig(Config):
     '''Module I/O node descriptor configuration.'''
@@ -239,6 +245,9 @@ class ModuleNodeConfig(Config):
         self.type = self.parse_string(d, "type")
         self.description = self.parse_string(d, "description")
         self.required = self.parse_bool(d, "required", default=True)
+
+    def attributes(self):
+        return ["name", "type", "description", "required"]
 
 
 class ModuleParameterConfig(Config):
