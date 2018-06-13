@@ -109,23 +109,52 @@ class BackgroundSubtraction(object):
         self.input_path = input_path
         self.output_path = output_path
 
-    def background_subtractor_MOG(self, history=200, mixture_number=5, background_ratio=0.7):
+    def background_subtractor_KNN(self, history=500, threshold=400.0, detect_shadows=True):
+        '''Compute background subtractor by KNN algorithm.
+        
+        Args:
+            history: length of the history
+            threshold: threshold on the squared distance between pixel and
+                       the sample to decide whether a pixel is close to that sample.
+            detect_shadows: if true, the algorithm will detect shadows and mark them
+        '''
+        fgbg = cv2.createBackgroundSubtractorKNN(history=history,
+                                                 dist2Threshold=threshold,
+                                                 detectShadows=detect_shadows)
+        with etav.VideoProcessor(self.input_path, out_impath=self.output_path) as processor:
+            for img in processor:
+                fgmask = fgbg.apply(img)
+                processor.write(fgmask)
+
+    def background_subtractor_MOG(self, history=500, threshold=16, detect_shadows=True):
         '''Compute background subtractor by Gaussian mixtrue-base algorithm.
         
         Args:
             history: length of the history
-            mixture_number: number of Gaussian mixtures
-            background_ratio: the threshold for subtracting background
+            threshold: threshold on the squared Mahalanobis distance between pixel and
+                       the model to decide whether a pixel is well described by the
+                       background model.
+            detect_shadows: if true, the algorithm will detect shadows and mark them
         '''
-        fgbg = cv2.createBackgroundSubtractorMOG(history=history,
-                                                 nmixtures=mixture_number,
-                                                 backgroundRatio=background_ratio)
-        with etav.VideoProcessor(self.input_path) as processor:
+        fgbg = cv2.createBackgroundSubtractorMOG2(history=history,
+                                                  varThreshold=threshold,
+                                                  detectShadows=detect_shadows)
+        with etav.VideoProcessor(self.input_path, out_impath=self.output_path) as processor:
             for img in processor:
                 fgmask = fgbg.apply(img)
-                cv2.imshow('frame',fgmask)
-                k = cv2.waitKey(30) & 0xff
-                if k == 27:
-                    break
-
+                processor.write(fgmask)
+                
+    def background_subtractor_GMG(self, initialization_frame=120, threshold=0.8):
+        '''Compute background subtractor by GMG algorithm.
+        
+        Args:
+            initialization_frame: number of frames used to initialize the background models
+            threshold: threshold to decide which is marked foreground, else background.
+        '''
+        fgbg = cv2.bgsegm.createBackgroundSubtractorGMG(initializationFrames=initialization_frame,
+                                                        decisionThreshold=threshold)
+        with etav.VideoProcessor(self.input_path, out_impath=self.output_path) as processor:
+            for img in processor:
+                fgmask = fgbg.apply(img)
+                processor.write(fgmask)
 
