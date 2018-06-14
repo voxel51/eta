@@ -247,66 +247,99 @@ def _get_class_docstring(module_name, class_name):
     return getattr(sys.modules[module_name], class_name).__doc__
 
 
+def _build_module_metadata(module_name, mds, dds, pds):
+    logger.info("*** Building info field")
+    info_builder = (etam.ModuleInfoConfig.builder()
+        .set(name=module_name)
+        .set(type=mds.info["type"])
+        .set(version=mds.info["version"])
+        .set(description=mds.short_desc.rstrip("?:!.,;"))
+        .set(exe=module_name + ".py")
+        .validate())
+
+    logger.info("*** Building inputs")
+    inputs = []
+    for iname, ispec in iteritems(dds.inputs):
+        node_builder = (etam.ModuleNodeConfig.builder()
+            .set(name=iname)
+            .set(type=ispec["type"])
+            .set(description=ispec["description"])
+            .set(required=ispec["required"])
+            .validate())
+        inputs.append(node_builder)
+
+    logger.info("*** Building outputs")
+    outputs = []
+    for oname, ospec in iteritems(dds.outputs):
+        node_builder = (etam.ModuleNodeConfig.builder()
+            .set(name=oname)
+            .set(type=ospec["type"])
+            .set(description=ospec["description"])
+            .set(required=ospec["required"])
+            .validate())
+        outputs.append(node_builder)
+
+    logger.info("*** Building parameters")
+    parameters = []
+    for pname, pspec in iteritems(pds.parameters):
+        parameter_builder = (etam.ModuleParameterConfig.builder()
+            .set(name=pname)
+            .set(type=pspec["type"])
+            .set(description=pspec["description"])
+            .set(required=pspec["required"])
+            .set(default=pspec["default"])
+            .validate())
+        parameters.append(parameter_builder)
+
+    logger.info("*** Building ModuleMetadataConfig")
+    return (etam.ModuleMetadataConfig.builder()
+        .set(info=info_builder)
+        .set(inputs=inputs)
+        .set(outputs=outputs)
+        .set(parameters=parameters)
+        .build())
+
+
 def main(module_path):
+    '''Generates the module metadata JSON file for the given ETA module.
+
+    Args:
+        module_path: the path to the .py file defining an ETA module
+    '''
     module_dir, module_file = os.path.split(module_path)
     module_name = os.path.splitext(module_file)[0]
     sys.path.insert(0, module_dir)
 
-    module_docstr = _get_module_docstring(module_name)
-    config_docstr = _get_module_config_docstring(module_name)
-
     logger.info("Parsing module docstring")
-    md = ModuleDocstring(module_docstr).to_dict()
-    logger.info("Parsing module config class")
-    cd = ModuleDocstring(config_docstr).to_dict()
+    module_docstr = _get_module_docstring(module_name)
+    mds = ModuleDocstring(module_docstr)
 
-    data_class = cd["attributes"]["data"]["type"]
+    logger.info("Parsing module config class docstring")
+    config_docstr = _get_module_config_docstring(module_name)
+    cds = ModuleDocstring(config_docstr)
+
+    data_class = cds.attributes["data"]["type"]
+    if not data_class:
+        raise Exception("Failed to find a data config class")
+    logger.info("Parsing data class '%s' docstring", data_class)
     data_docstr = _get_class_docstring(module_name, data_class)
-    logger.info("Parsing docstring for data class '%s'", data_class)
-    dd = ModuleDocstring(data_docstr).to_dict()
+    dds = ModuleDocstring(data_docstr)
 
-    parameters_class = cd["attributes"]["parameters"]["type"]
+    parameters_class = cds.attributes["parameters"]["type"]
+    if not parameters_class:
+        raise Exception("Failed to find a parameters config class")
+    logger.info("Parsing parameter class '%s' docstring", parameters_class)
     parameters_doctstr = _get_class_docstring(module_name, parameters_class)
-    logger.info("Parsing docstring for parameter class '%s'", parameters_class)
-    pd = ModuleDocstring(parameters_doctstr).to_dict()
+    pds = ModuleDocstring(parameters_doctstr)
 
-    logger.info("Building info field")
-    info = md["info"]
-    info["name"] = module_name
-    info["description"] = md["short_desc"].rstrip("?:!.,;")
-    info["exe"] = module_name + ".py"
+    logger.info("Building module metadata")
+    mmc = _build_module_metadata(module_name, mds, dds, pds)
 
-    logger.info("Building inputs list")
-    inputs = []
-    for iname, ispec in iteritems(dd["inputs"]):
-        ispec["name"] = iname
-        inputs.append(ispec)
-
-    logger.info("Building outputs list")
-    outputs = []
-    for oname, ospec in iteritems(dd["outputs"]):
-        ospec["name"] = oname
-        outputs.append(ospec)
-
-    logger.info("Building parameters list")
-    parameters = []
-    for pname, pspec in iteritems(pd["parameters"]):
-        pspec["name"] = pname
-        parameters.append(pspec)
-
-    logger.info("Building ModuleMetadataConfig")
-    mmc = etam.ModuleMetadataConfig.from_dict({
-        "info": info,
-        "inputs": inputs,
-        "outputs": outputs,
-        "parameters": parameters,
-    })
-
-    logger.info("Validating ModuleMetadataConfig")
+    logger.info("Validating module metadata")
     etam.ModuleMetadata(mmc)
 
     outpath = os.path.join(module_dir, module_name + ".json")
-    logger.info("Writing module metadata JSON to %s", outpath)
+    logger.info("Writing module metadata to %s", outpath)
     mmc.write_json(outpath)
 
 
