@@ -1,12 +1,10 @@
 #!/usr/bin/env python
 '''
-Generate clips from a video.
+Module that generates clips from a video.
 
-Notes:
-    name: clip_videos
-    type: eta.core.types.module
+Infoo:
+    type: eta.core.types.Module
     version: 0.1.0
-    exe: clip_videos.py
 
 Copyright 2017-2018, Voxel51, LLC
 voxel51.com
@@ -41,8 +39,8 @@ class ClipConfig(etam.BaseModuleConfig):
     '''Clip configuration settings.
 
     Attributes:
-        data (DataConfig): inputs/outputs
-        parameters (ParametersConfig): parameters
+        data (DataConfig)
+        parameters (ParametersConfig)
     '''
 
     def __init__(self, d):
@@ -54,9 +52,11 @@ class ClipConfig(etam.BaseModuleConfig):
 class DataConfig(Config):
     '''Data configuration settings.
 
-    Attributes:
-        input_path (eta.core.types.Video): [required] The input video
-        output_path (eta.core.types.VideoClips): [required] The output video
+    Inputs:
+        input_path (eta.core.types.Video): The input video
+
+    Outputs:
+        output_path (eta.core.types.VideoClips): The output video
             clips
     '''
 
@@ -68,10 +68,10 @@ class DataConfig(Config):
 class ParametersConfig(Config):
     '''Parameter configuration settings.
 
-    Attributes:
-        frames (eta.core.types.String): {null} A frames string specifying the
+    Parameters:
+        frames (eta.core.types.String): [null] A frames string specifying the
             clips to generate
-        events_json_path (eta.core.types.EventSeries): {null} An EventSeries
+        events_json_path (eta.core.types.EventSeries): [null] An EventSeries
             specifying the clips to generate
     '''
 
