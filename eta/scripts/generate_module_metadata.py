@@ -151,11 +151,11 @@ class ModuleDocstring(object):
         try:
             meta, name = name.split(" ", 1)
         except ValueError:
-            raise Exception("Invalid field '%s'" % field.astext())
+            raise Exception("Unsupported field '%s'" % field.astext())
 
         # Process based on meta tag
         if meta == "info":
-            self.info[name] = body
+            self._parse_info_body(self.info, name, body)
         elif meta == "input":
             self._parse_node_body(self.inputs[name], body)
         elif meta == "output":
@@ -167,15 +167,18 @@ class ModuleDocstring(object):
         elif meta == "type":
             self._last_dict["type"] = body
         else:
-            raise Exception("Invalid field '%s'" % field.astext())
+            raise Exception("Unsupported meta tag '%s'" % meta)
+
+    def _parse_info_body(self, d, name, body):
+        d[name] = body
+        self._last_dict = {}
 
     def _parse_node_body(self, d, body):
         body, default, required = _parse_default_element(body)
         if default:
             raise Exception(
                 "Module inputs/outputs must have empty ('' or None) default "
-                "values, but '%s' was found" % str(default)
-            )
+                "values, but '%s' was found" % str(default))
         d["description"] = body
         d["required"] = required
         self._last_dict = d
@@ -215,8 +218,7 @@ def _parse_default_element(body):
         except ValueError:
             raise Exception(
                 "Invalid default value '%s'. Remember that default values "
-                "must be expressed as JSON, not Python values." % raw
-            )
+                "must be expressed as JSON, not Python values." % raw)
         body = body.replace(m.group(0), "")
         required = False
     else:
