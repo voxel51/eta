@@ -151,7 +151,8 @@ class ModuleDocstring(object):
         try:
             meta, name = name.split(" ", 1)
         except ValueError:
-            raise Exception("Unsupported field '%s'" % field.astext())
+            raise ModuleDocstringError(
+                "Unsupported field '%s'" % field.astext())
 
         # Process based on meta tag
         if meta == "info":
@@ -167,7 +168,7 @@ class ModuleDocstring(object):
         elif meta == "type":
             self._last_dict["type"] = body
         else:
-            raise Exception("Unsupported meta tag '%s'" % meta)
+            raise ModuleDocstringError("Unsupported meta tag '%s'" % meta)
 
     def _parse_info_body(self, d, name, body):
         d[name] = body
@@ -176,7 +177,7 @@ class ModuleDocstring(object):
     def _parse_node_body(self, d, body):
         body, default, required = _parse_default_element(body)
         if default:
-            raise Exception(
+            raise ModuleDocstringError(
                 "Module inputs/outputs must have empty ('' or None) default "
                 "values, but '%s' was found" % str(default))
         d["description"] = body
@@ -195,17 +196,31 @@ class ModuleDocstring(object):
         self._last_dict = d
 
 
+class ModuleDocstringError(Exception):
+    '''Error raised when there was a problem parsing a module docstring.'''
+    pass
+
+
+class ModuleMetadataGenerationError(Exception):
+    '''Error raised when there was a problem generating the module metadata
+    file for an ETA module.
+    '''
+    pass
+
+
 def _get_name(field):
     index = field.first_child_matching_class(field_name)
     if index is None:
-        raise Exception("Expected field_name")
+        raise ModuleDocstringError(
+            "Expected field_name in field: %s" % field.astext())
     return field.children[index].astext()
 
 
 def _get_body(field):
     index = field.first_child_matching_class(field_body)
     if index is None:
-        raise Exception("Expected field_body")
+        raise ModuleDocstringError(
+            "Expected field_body in field: %s" % field.astext())
     return field.children[index].astext().replace("\n", " ").strip()
 
 
@@ -216,7 +231,7 @@ def _parse_default_element(body):
             raw = m.group("default")
             default = json.loads(raw)
         except ValueError:
-            raise Exception(
+            raise ModuleDocstringError(
                 "Invalid default value '%s'. Remember that default values "
                 "must be expressed as JSON, not Python values." % raw)
         body = body.replace(m.group(0), "")
@@ -248,56 +263,78 @@ def _get_class_docstring(module_name, class_name):
 
 
 def _build_module_metadata(module_name, mds, dds, pds):
-    logger.info("*** Building info field")
-    info_builder = (etam.ModuleInfoConfig.builder()
-        .set(name=module_name)
-        .set(type=mds.info["type"])
-        .set(version=mds.info["version"])
-        .set(description=mds.short_desc.rstrip("?:!.,;"))
-        .set(exe=module_name + ".py")
-        .validate())
-
-    logger.info("*** Building inputs")
-    inputs = []
-    for iname, ispec in iteritems(dds.inputs):
-        node_builder = (etam.ModuleNodeConfig.builder()
-            .set(name=iname)
-            .set(type=ispec["type"])
-            .set(description=ispec["description"])
-            .set(required=ispec["required"])
+    try:
+        logger.info("*** Building info field")
+        info_builder = (etam.ModuleInfoConfig.builder()
+            .set(name=module_name)
+            .set(type=mds.info["type"])
+            .set(version=mds.info["version"])
+            .set(description=mds.short_desc.rstrip("?:!.,;"))
+            .set(exe=module_name + ".py")
             .validate())
-        inputs.append(node_builder)
+    except Exception as e:
+        raise ModuleMetadataGenerationError(
+            "Error populating the 'info' field:\n" + str(e))
 
-    logger.info("*** Building outputs")
-    outputs = []
-    for oname, ospec in iteritems(dds.outputs):
-        node_builder = (etam.ModuleNodeConfig.builder()
-            .set(name=oname)
-            .set(type=ospec["type"])
-            .set(description=ospec["description"])
-            .set(required=ospec["required"])
-            .validate())
-        outputs.append(node_builder)
+    try:
+        logger.info("*** Building inputs")
+        inputs = []
+        for iname, ispec in iteritems(dds.inputs):
+            node_builder = (etam.ModuleNodeConfig.builder()
+                .set(name=iname)
+                .set(type=ispec["type"])
+                .set(description=ispec["description"])
+                .set(required=ispec["required"])
+                .validate())
+            inputs.append(node_builder)
+    except Exception as e:
+        raise ModuleMetadataGenerationError(
+            "Error populating the 'inputs' field:\n" + str(e))
 
-    logger.info("*** Building parameters")
-    parameters = []
-    for pname, pspec in iteritems(pds.parameters):
-        parameter_builder = (etam.ModuleParameterConfig.builder()
-            .set(name=pname)
-            .set(type=pspec["type"])
-            .set(description=pspec["description"])
-            .set(required=pspec["required"])
-            .set(default=pspec["default"])
-            .validate())
-        parameters.append(parameter_builder)
+    try:
+        logger.info("*** Building outputs")
+        outputs = []
+        for oname, ospec in iteritems(dds.outputs):
+            node_builder = (etam.ModuleNodeConfig.builder()
+                .set(name=oname)
+                .set(type=ospec["type"])
+                .set(description=ospec["description"])
+                .set(required=ospec["required"])
+                .validate())
+            outputs.append(node_builder)
+    except Exception as e:
+        raise ModuleMetadataGenerationError(
+            "Error populating the 'outputs' field:\n" + str(e))
 
-    logger.info("*** Building ModuleMetadataConfig")
-    return (etam.ModuleMetadataConfig.builder()
-        .set(info=info_builder)
-        .set(inputs=inputs)
-        .set(outputs=outputs)
-        .set(parameters=parameters)
-        .build())
+    try:
+        logger.info("*** Building parameters")
+        parameters = []
+        for pname, pspec in iteritems(pds.parameters):
+            parameter_builder = (etam.ModuleParameterConfig.builder()
+                .set(name=pname)
+                .set(type=pspec["type"])
+                .set(description=pspec["description"])
+                .set(required=pspec["required"])
+                .set(default=pspec["default"])
+                .validate())
+            parameters.append(parameter_builder)
+    except Exception as e:
+        raise ModuleMetadataGenerationError(
+            "Error populating the 'parameters' field:\n" + str(e))
+
+    try:
+        logger.info("*** Building ModuleMetadataConfig")
+        mmc = (etam.ModuleMetadataConfig.builder()
+            .set(info=info_builder)
+            .set(inputs=inputs)
+            .set(outputs=outputs)
+            .set(parameters=parameters)
+            .build())
+    except Exception as e:
+        raise ModuleMetadataGenerationError(
+            "Error building the ModuleMetadataConfig:\n" + str(e))
+
+    return mmc
 
 
 def main(module_path):
@@ -320,14 +357,16 @@ def main(module_path):
 
     data_class = cds.attributes["data"]["type"]
     if not data_class:
-        raise Exception("Failed to find a data config class")
+        raise ModuleMetadataGenerationError(
+            "Failed to find a data config class")
     logger.info("Parsing data class '%s' docstring", data_class)
     data_docstr = _get_class_docstring(module_name, data_class)
     dds = ModuleDocstring(data_docstr)
 
     parameters_class = cds.attributes["parameters"]["type"]
     if not parameters_class:
-        raise Exception("Failed to find a parameters config class")
+        raise ModuleMetadataGenerationError(
+            "Failed to find a parameters config class")
     logger.info("Parsing parameter class '%s' docstring", parameters_class)
     parameters_doctstr = _get_class_docstring(module_name, parameters_class)
     pds = ModuleDocstring(parameters_doctstr)
