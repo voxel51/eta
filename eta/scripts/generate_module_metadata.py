@@ -92,7 +92,24 @@ GoogleDocstring._parse = _parse
 
 
 class ModuleDocstring(object):
-    '''Class encapsulating docstrings in ETA modules.'''
+    '''Class encapsulating docstrings in ETA modules.
+
+    This class uses `sphinx-napoleon` to parse Google style docstrings with
+    `Info`, `Inputs`, `Outputs`, `Parameters`, and `Attributes` sections.
+
+    Attributes:
+        short_desc: the short description from the docstring (if any)
+        long_desc: the long description from the docstring (if any)
+        info: a dict of values specified in an `Info` section
+        inputs: a dictionary of dicts describing any fields provided in an
+            `Inputs` section
+        outputs: a dictionary of dicts describing any fields provided in an
+            `Outputs` section
+        parameters: a dictionary of dicts describing any fields provided in an
+            `Parameters` section
+        attributes: a dictionary of dicts describing any fields provided in an
+            `Attributes` section
+    '''
 
     def __init__(self, docstr):
         self.short_desc = ""
