@@ -3,7 +3,7 @@
         "name": "clip_videos",
         "type": "eta.core.types.Module",
         "version": "0.1.0",
-        "description": "Generates clips from a video",
+        "description": "Module that generates clips from a video",
         "exe": "clip_videos.py"
     },
     "inputs": [
@@ -26,14 +26,14 @@
         {
             "name": "frames",
             "type": "eta.core.types.String",
-            "description": "A frames string speciying the clips to generate",
+            "description": "A frames string specifying the clips to generate",
             "required": false,
             "default": null
         },
         {
             "name": "events_json_path",
             "type": "eta.core.types.EventSeries",
-            "description": "An EventSeries speciying the clips to generate",
+            "description": "An EventSeries specifying the clips to generate",
             "required": false,
             "default": null
         }
