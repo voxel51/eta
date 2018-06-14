@@ -260,6 +260,9 @@ class ModuleParameterConfig(Config):
         self.required = self.parse_bool(d, "required", default=True)
         self.default = self.parse_raw(d, "default", default=None)
 
+    def attributes(self):
+        return ["name", "type", "description", "required", "default"]
+
 
 class ModuleInfo(Configurable):
     '''Module info descriptor.
