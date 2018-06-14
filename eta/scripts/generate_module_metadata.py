@@ -114,25 +114,14 @@ class ModuleDocstring(object):
     def __init__(self, docstr):
         self.short_desc = ""
         self.long_desc = ""
-        self.info = defaultdict(dict)
-        self.attributes = defaultdict(dict)
-        self.inputs = defaultdict(dict)
-        self.outputs = defaultdict(dict)
-        self.parameters = defaultdict(dict)
+        self.info = defaultdict(lambda: None)
+        self.inputs = defaultdict(lambda: defaultdict(lambda: None))
+        self.outputs = defaultdict(lambda: defaultdict(lambda: None))
+        self.parameters = defaultdict(lambda: defaultdict(lambda: None))
+        self.attributes = defaultdict(lambda: defaultdict(lambda: None))
 
         self._last_dict = None
         self._parse_docstring(docstr)
-
-    def to_dict(self):
-        return {
-            "short_desc": self.short_desc.strip(),
-            "long_desc": self.long_desc.strip(),
-            "info": dict(self.info),
-            "attributes": dict(self.attributes),
-            "inputs": dict(self.inputs),
-            "outputs": dict(self.outputs),
-            "parameters": dict(self.parameters),
-        }
 
     def _parse_docstring(self, docstr):
         gds = GoogleDocstring(prepare_docstring(docstr))
