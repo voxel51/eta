@@ -1,5 +1,5 @@
 '''
-Tool for generating metadata JSON files programmatically for ETA modules.
+Tool for generating metadata JSON files for ETA modules programmatically.
 
 Syntax:
     python generate_module_metadata.py /path/to/eta_module.py
@@ -216,3 +216,88 @@ def _parse_default_element(body):
 
     return body.strip(), default, required
 
+
+def _get_module_docstring(module_name):
+    __import__(module_name)
+    return sys.modules[module_name].__doc__
+
+
+def _get_module_config_docstring(module_name):
+    __import__(module_name)
+    for cls in itervalues(sys.modules[module_name].__dict__):
+        if isinstance(cls, type) and issubclass(cls, etam.BaseModuleConfig):
+            logger.info("Found module config class '%s'", cls.__name__)
+            return cls.__doc__
+
+    raise Exception("No subclass of BaseModuleConfig found")
+
+
+def _get_class_docstring(module_name, class_name):
+    return getattr(sys.modules[module_name], class_name).__doc__
+
+
+def main(module_path):
+    module_dir, module_file = os.path.split(module_path)
+    module_name = os.path.splitext(module_file)[0]
+    sys.path.insert(0, module_dir)
+
+    module_docstr = _get_module_docstring(module_name)
+    config_docstr = _get_module_config_docstring(module_name)
+
+    logger.info("Parsing module docstring")
+    md = ModuleDocstring(module_docstr).to_dict()
+    logger.info("Parsing module config class")
+    cd = ModuleDocstring(config_docstr).to_dict()
+
+    data_class = cd["attributes"]["data"]["type"]
+    data_docstr = _get_class_docstring(module_name, data_class)
+    logger.info("Parsing docstring for data class '%s'", data_class)
+    dd = ModuleDocstring(data_docstr).to_dict()
+
+    parameters_class = cd["attributes"]["parameters"]["type"]
+    parameters_doctstr = _get_class_docstring(module_name, parameters_class)
+    logger.info("Parsing docstring for parameter class '%s'", parameters_class)
+    pd = ModuleDocstring(parameters_doctstr).to_dict()
+
+    logger.info("Building info field")
+    info = md["info"]
+    info["name"] = module_name
+    info["description"] = md["short_desc"].rstrip("?:!.,;")
+    info["exe"] = module_name + ".py"
+
+    logger.info("Building inputs list")
+    inputs = []
+    for iname, ispec in iteritems(dd["inputs"]):
+        ispec["name"] = iname
+        inputs.append(ispec)
+
+    logger.info("Building outputs list")
+    outputs = []
+    for oname, ospec in iteritems(dd["outputs"]):
+        ospec["name"] = oname
+        outputs.append(ospec)
+
+    logger.info("Building parameters list")
+    parameters = []
+    for pname, pspec in iteritems(pd["parameters"]):
+        pspec["name"] = pname
+        parameters.append(pspec)
+
+    logger.info("Building ModuleMetadataConfig")
+    mmc = etam.ModuleMetadataConfig.from_dict({
+        "info": info,
+        "inputs": inputs,
+        "outputs": outputs,
+        "parameters": parameters,
+    })
+
+    logger.info("Validating ModuleMetadataConfig")
+    etam.ModuleMetadata(mmc)
+
+    outpath = os.path.join(module_dir, module_name + ".json")
+    logger.info("Writing module metadata JSON to %s", outpath)
+    mmc.write_json(outpath)
+
+
+if __name__ == "__main__":
+    main(sys.argv[1])
