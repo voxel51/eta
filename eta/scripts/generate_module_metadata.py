@@ -368,11 +368,14 @@ def main(module_path):
 
     parameters_class = cds.attributes["parameters"]["type"]
     if not parameters_class:
-        raise ModuleMetadataGenerationError(
-            "Failed to find a parameters config class")
-    logger.info("Parsing parameter class '%s' docstring", parameters_class)
-    parameters_doctstr = _get_class_docstring(module_name, parameters_class)
-    pds = ModuleDocstring(parameters_doctstr)
+        logger.info(
+            "Failed to find a parameters config class. Assuming that this "
+            "module has no parameters")
+        pds = ModuleDocstring("")
+    else:
+        logger.info("Parsing parameter class '%s' docstring", parameters_class)
+        params_doctstr = _get_class_docstring(module_name, parameters_class)
+        pds = ModuleDocstring(params_doctstr)
 
     logger.info("Building module metadata")
     mmc = _build_module_metadata(module_name, mds, dds, pds)
