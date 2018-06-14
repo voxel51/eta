@@ -131,10 +131,13 @@ class ModuleDocstring(object):
     def _parse_doctree(self, doctree):
         for node in doctree:
             if isinstance(node, paragraph):
+                pstr = node.astext().strip()
                 if not self.short_desc:
-                    self.short_desc = node.astext()
+                    self.short_desc = pstr
+                elif not self.long_desc:
+                    self.long_desc = pstr
                 else:
-                    self.long_desc += "\n\n" + node.astext()
+                    self.long_desc += "\n\n" + pstr
             elif isinstance(node, field_list):
                 for field in node:
                     self._parse_field(field)
