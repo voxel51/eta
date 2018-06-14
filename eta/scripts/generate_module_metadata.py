@@ -1,6 +1,9 @@
 '''
 Tool for generating metadata JSON files for ETA modules programmatically.
 
+This script generates a module metadata JSON file in the same directory as the
+input module file.
+
 Syntax:
     python generate_module_metadata.py /path/to/eta_module.py
 
