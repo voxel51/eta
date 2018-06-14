@@ -2,7 +2,7 @@
 '''
 Module that generates clips from a video.
 
-Infoo:
+Info:
     type: eta.core.types.Module
     version: 0.1.0
 
