@@ -132,8 +132,7 @@ class BuildPipeline(Command):
 
 
 class GenerateMetadata(Command):
-    '''Command-line tool for generating metadata files for ETA modules from
-    source.
+    '''Command-line tool for generating metadata files for ETA modules.
 
     Examples:
         # Generate the metadata file for the given ETA module
