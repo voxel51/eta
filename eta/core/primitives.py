@@ -119,8 +119,8 @@ class FarnebackDenseOpticalFlow(DenseOpticalFlow):
             pyramid_levels=3,
             window_size=15,
             iterations=3,
-            poly_n=5,
-            poly_sigma=1.1,
+            poly_n=7,
+            poly_sigma=1.5,
             use_gaussian_filter=False):
         '''Constructs a FarnebackDenseOpticalFlow object.
 
@@ -132,9 +132,9 @@ class FarnebackDenseOpticalFlow(DenseOpticalFlow):
             window_size (15): averaging window size
             iterations (3): number of iterations to perform at each pyramid
                 level
-            poly_n (5): size of the pixel neighborhood used to find polynomial
+            poly_n (7): size of the pixel neighborhood used to find polynomial
                 expansion in each pixel
-            poly_sigma (1.1): standard deviation of the Gaussian that is used
+            poly_sigma (1.5): standard deviation of the Gaussian that is used
                 to smooth derivatives
             use_gaussian_filter (False): whether to use a Gaussian filter
                 instead of a box filer
