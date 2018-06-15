@@ -148,16 +148,15 @@ Each spec has the fields:
 
 #### Automatic generation of module metadata files
 
-For modules that are built using the ETA library, an
-`eta/scripts/generate_module_metadata.py` script is provided that can
-automatically generate the module metadata JSON file for a module. The syntax
-for the script is:
+For modules that are built using the ETA library, the `eta` command-line tool
+supports a `metadata` command that can automatically generate the module
+metadata JSON file for a module. The syntax for the command is:
 
 ```shell
-python generate_module_metadata.py </path/to/eta_module.py>
+eta metadata </path/to/eta_module.py>
 ```
 
-and the script generates a module metadata JSON file in the same directory as
+The command generates a module metadata JSON file in the same directory as
 the input module file.
 
 See [Building Modules Using ETA](#building-modules-using-eta) for more
@@ -523,7 +522,7 @@ The following liberally-documented Python code describes the template that
 modules developed using the ETA library generally follow. Note that the module
 and class docstrings contain the sections `Info`, `Inputs`, `Outputs`,
 `Parameters`, and `Attributes`, which are used by the module metadata
-generation script to automatically populate the corresponding metadata JSON
+generation tool to automatically populate the corresponding metadata JSON
 files.
 
 > The `{{}}` blocks denote placeholders that are replaced in practice by the
