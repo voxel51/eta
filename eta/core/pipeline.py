@@ -330,22 +330,22 @@ class PipelineInput(object):
 
     Attributes:
         name: the input name
-        nodes: the list ModuleNode instance(s) of the module input node(s)
-            that the pipeline input is connected to
+        inputs: a list ModuleInput instance(s) of the module input(s) that the
+            pipeline input is connected to
     '''
 
-    def __init__(self, name, nodes):
+    def __init__(self, name, inputs):
         self.name = name
-        self.nodes = nodes
+        self.inputs = inputs
 
     @property
     def is_required(self):
         '''Returns True/False if this input is required.'''
-        return any(node.is_required for node in self.nodes)
+        return any(inp.is_required for inp in self.inputs)
 
     def is_valid_path(self, path):
         '''Returns True/False if `path` is a valid path for this input.'''
-        return all(node.is_valid_path(path) for node in self.nodes)
+        return all(inp.is_valid_path(path) for inp in self.inputs)
 
 
 class PipelineOutput(object):
@@ -353,17 +353,17 @@ class PipelineOutput(object):
 
     Attributes:
         name: the output name
-        node: the ModuleNode instance of the module output that the pipeline
-            output is connected to
+        output: the ModuleOutput instance of the module output that the
+            pipeline output is connected to
     '''
 
-    def __init__(self, name, node):
+    def __init__(self, name, output):
         self.name = name
-        self.node = node
+        self.output = output
 
     def is_valid_path(self, path):
         '''Returns True/False if `path` is a valid path for this output.'''
-        return self.node.is_valid_path(path)
+        return self.output.is_valid_path(path)
 
 
 class PipelineParameter(object):
