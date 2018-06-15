@@ -477,19 +477,19 @@ command-line syntax, regardless of whether they are implemented using the ETA
 library:
 
 ```shell
-<module-name> MODULE_CONFIG_PATH [PIPELINE_CONFIG_PATH]
+<module-exe> </path/to/module_config.json> [</path/to/pipeline_config.json>]
 ```
 
-Here, `<module-name>` is the name of the module and `MODULE_CONFIG_PATH` is
-the path to a valid module configuration JSON file for the module as described
-in the previous section.
+Here, `<module-exe>` is the module executable, and the first commandline
+argument is the path to a valid _module configuration JSON file_ for the module
+as described in the previous section.
 
-Modules executables must support an optional `PIPELINE_CONFIG_PATH` argument
-that specifies the path to a _pipeline configuration JSON file_, which is
-supplied when a module is executed in the context of a pipeline.
-Pipeline configuration JSON files may set/override zero or more base module
-configuration settings defined by `eta.core.module.BaseModuleConfigSettings`,
-so ETA modules must check for and appropriately handle these fields.
+Modules executables must support an optional second argument that specifies the
+path to a _pipeline configuration JSON file_, which is supplied when a module
+is executed in the context of a pipeline. Pipeline configuration JSON files may
+set/override zero or more base module configuration settings defined by
+`eta.core.module.BaseModuleConfigSettings`, so ETA modules must check for and
+appropriately handle these fields.
 
 > Pipeline configuration JSON files also contain various pipeline-level fields
 > that are not relevant to modules and should be ignored.
