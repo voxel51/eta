@@ -56,7 +56,7 @@ class DenseOpticalFlow(object):
                 magnitude and angle of the flow fields as the value (V) and
                 hue (H), respectively, of per-frame HSV images
         '''
-        # Ensure output directories
+        # Ensure output directories exist
         if cart_path:
             etau.ensure_basedir(cart_path)
         if polar_path:
@@ -142,9 +142,9 @@ class FarnebackDenseOpticalFlow(DenseOpticalFlow):
         flags = cv2.OPTFLOW_FARNEBACK_GAUSSIAN if use_gaussian_filter else 0
 
         def _flow(prev, curr):
-            # OpenCV3
+            # works for OpenCV2 and OpenCV3
             return cv2.calcOpticalFlowFarneback(
-                prev, curr, None,  pyr_scale=pyramid_scale,
+                prev, curr, flow=None, pyr_scale=pyramid_scale,
                 levels=pyramid_levels, winsize=window_size,
                 iterations=iterations, poly_n=poly_n, poly_sigma=poly_sigma,
                 flags=flags)
