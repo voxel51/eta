@@ -101,10 +101,11 @@ class DenseOpticalFlow(object):
 
 def _polar_flow_to_img(mag, ang):
     hsv = np.zeros(mag.shape + (3,), dtype=mag.dtype)
-    hsv[..., 0] = (90.0 / np.pi) * ang
+    hsv[..., 0] = (89.5 / np.pi) * ang  # [0, 179]
     hsv[..., 1] = 255
-    hsv[..., 2] = cv2.normalize(mag, None, 0, 255, cv2.NORM_MINMAX)
-    return cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
+    #hsv[..., 2] = np.minimum(255 * mag, 255)  # [0, 255]
+    hsv[..., 2] = cv2.normalize(mag, None, 0, 255, cv2.NORM_MINMAX)  # [0, 255]
+    return cv2.cvtColor(hsv.astype(np.uint8), cv2.COLOR_HSV2BGR)
 
 
 class FarnebackDenseOpticalFlow(DenseOpticalFlow):
