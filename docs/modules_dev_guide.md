@@ -138,12 +138,31 @@ Each spec has the fields:
 
 - `description`: a short free-text description of the field
 
-- `required`: whether the field is required or optional for the module to
-    function
+- `required`: (optional) whether the field is required for the module to
+    function. If omitted, the field is assumed to be required
 
-- `default`: (parameters only) an optional default value for the parameter. If
-    a parameter is required but has a default value, it may be omitted from the
-    module configuration file
+- `default`: (optional, and parameters only) a default value for the parameter.
+    If a parameter is required but has a default value, it may be omitted from
+    the module configuration file
+
+
+#### Automatic generation of module metadata files
+
+For modules that are built using the ETA library, an
+`eta/scripts/generate_module_metadata.py` script is provided that can
+automatically generate the module metadata JSON file for a module. The syntax
+for the script is:
+
+```shell
+python generate_module_metadata.py </path/to/eta_module.py>
+```
+
+and the script generates a module metadata JSON file in the same directory as
+the input module file.
+
+See [Building Modules Using ETA](#building-modules-using-eta) for more
+information about how to properly populate the docstrings of ETA modules for
+use with the automatic metadata generation tool.
 
 
 #### Exposing a new module
