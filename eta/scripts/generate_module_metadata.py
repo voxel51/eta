@@ -228,7 +228,7 @@ def _get_body(field):
 
 
 def _parse_default_element(body):
-    m = re.search(r"\[(?P<default>\w*)\]", body)
+    m = re.search(r"\[(?P<default>[^\]]*)\]", body)
     if m:
         try:
             raw = m.group("default")
