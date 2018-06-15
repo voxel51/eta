@@ -519,21 +519,38 @@ module implementation utilities in ETA.
 
 #### Module template
 
-The following liberally-documented Python code describes the template that most
-modules provided in the ETA repository follow.
+The following liberally-documented Python code describes the template that
+modules developed using the ETA library generally follow. Note that the module
+and class docstrings contain the sections `Info`, `Inputs`, `Outputs`,
+`Parameters`, and `Attributes`, which are used by the module metadata
+generation script to automatically populate the corresponding metadata JSON
+files.
 
 > The `{{}}` blocks denote placeholders that are replaced in practice by the
 > appropriate strings for the module being written.
 
 ```python
 #!/usr/bin/env python
+#
 # ETA modules are simply executables, so the module definition must start with
 # a shebang line declaring the python interpreter to use during execution
-
-# All modules should provide a docstring that describes the purpose of the
-module.
+#
+# Module docstrings should provide the following items:
+# - a short description that describes the purpose of the module. This
+#   description is included in the `info` field of the module metadata file
+# - an optional longer description of the module. This description is useful
+#   for readers of the source code, but it is not included in the module
+#   metadata file
+# - an `Info` section that specifies the `type` and `version` of the module
+#
 '''
-{{Description of the module}}
+{{Short description of the module.}}
+
+{{Optional long description of the module.}}
+
+Info:
+    type: {{the type of the module}}
+    version: {{the module version}}
 
 Copyright 2017-2018, Voxel51, LLC
 voxel51.com
@@ -545,7 +562,6 @@ voxel51.com
 # The first block of `__future__` imports allow for cross-version Python
 # support. See `python23_guide.md` for more information
 #
-
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
 # pragma pylint: disable=wildcard-import
@@ -569,11 +585,23 @@ import eta.core.module as etam
 logger = logging.getLogger(__name__)
 
 
-# Defines the module configuration file.
-# Inherits from `BaseModuleConfig`, which handles the parsing of the base
-# module settings automatically
+#
+# The following class defines the content of the module configuration file.
+#
+# This class inherits from `BaseModuleConfig`, which handles the parsing of the
+# base module settings automatically.
+#
+# The docstring of this class must contain an `Attributes` section that
+# specifies the classes that describe the `data` and `parameters` fields. This
+# information is used by the metadata generation tool.
+#
 class {{ModuleName}}Config(etam.BaseModuleConfig):
-    '''Module configuration settings.'''
+    '''Module configuration settings.
+
+    Attributes:
+        data (DataConfig)
+        parameters (ParametersConfig)
+    '''
 
     def __init__(self, d):
         # Call the `BaseModuleConfig` constructor, which parses the optional
@@ -589,32 +617,56 @@ class {{ModuleName}}Config(etam.BaseModuleConfig):
         self.parameters = self.parse_object(d, "parameters", ParametersConfig)
 
 
-# Parses the inputs and outputs for the module as defined in its module
-# metadata file
+#
+# The following class defines the inputs and outputs for the module.
+#
+# The docstring of this class must contain `Inputs` and `Outputs` sections
+# that describe the inputs and outputs supported by the module. This
+# information is used by the metadata generation tool.
+#
 class DataConfig(Config):
-    '''Data configuration settings.'''
+    '''Data configuration settings.
+
+    Inputs:
+        {{input}} ({{type}}): {{description}}
+
+    Outputs:
+        {{output}} ({{type}}): {{description}}
+    '''
 
     def __init__(self, d):
         # Template for parsing an input field
-        self.{{input}} = self.parse_{{input_type}}(d, "{{input}}")
+        self.{{input}} = self.parse_{{type}}(d, "{{input}}")
 
         # Template for parsing an output field
-        self.{{output}} = self.parse_{{output_type}}(d, "{{output}}")
+        self.{{output}} = self.parse_{{type}}(d, "{{output}}")
 
 
-# Parses the parameters for the module as defined in its module metadata file
+#
+# The following class defines the parameters for the module.
+#
+# The docstring of this class must contain a `Parameters` section that
+# describes the parameters supported by the module. This information is used by
+# the metadata generation tool.
+#
 class ParametersConfig(Config):
     '''Parameter configuration settings.'''
 
+    Parameters:
+        {{input}} ({{type}}): [{{default}}] {{description}}
+    '''
+
     def __init__(self, d):
         # Template for parsing a parameter with a default value
-        self.{{parameter}} = self.parse_{{parameter_type}}(
-            d, "{{parameter}}", default={{parameter_default_value}})
+        self.{{parameter}} = self.parse_{{type}}(
+            d, "{{parameter}}", default={{default}})
 
 
+#
 # By convention, all modules in the ETA library define a `run()` method that
 # parses the command-line arguments, performs base module setup, and then calls
 # another method that implements the actual module-specific actions
+#
 def run(config_path, pipeline_config_path=None):
     '''Run the {{module_name}} module.
 
