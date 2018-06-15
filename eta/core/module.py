@@ -473,7 +473,7 @@ class ModuleParameter(Configurable):
 
 
 class ModuleMetadata(Configurable, HasBlockDiagram):
-    '''Class the encapsulates the architecture of a module.
+    '''Class that encapsulates the architecture of a module.
 
     A module definition is valid if all of the following are true:
         - the module has at least one input and output
