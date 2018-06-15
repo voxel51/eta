@@ -63,8 +63,12 @@ class VideoStreamInfo(Serializable):
     def frame_rate(self):
         '''The frame rate.'''
         try:
-            num, denom = self.stream_info["avg_frame_rate"].split("/")
-            return float(num) / float(denom)
+            try:
+                num, denom = self.stream_info["avg_frame_rate"].split("/")
+                return float(num) / float(denom)
+            except ZeroDivisionError:
+                num, denom = self.stream_info["r_frame_rate"].split("/")
+                return float(num) / float(denom)
         except (KeyError, ValueError):
             raise VideoStreamInfoError(
                 "Unable to determine frame rate from stream info")
