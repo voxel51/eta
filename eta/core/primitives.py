@@ -173,80 +173,182 @@ class FarnebackDenseOpticalFlow(DenseOpticalFlow):
 
 
 class BackgroundSubtractor(object):
-    '''A class for processing adaptive background subtraction to a video.'''
+    '''Base class for background subtraction methods.'''
 
-    def __init__(self, _fgbg):
-        '''Initializes the base BackgroundSubtractor object.
-
-        Args:
-            _fgbg: an object with an `apply` method that takes an image and
-                returns a foreground mask
-        '''
-        self._fgbg = _fgbg
-
-    def process(self, input_path, npy_path=None, vid_path=None):
+    def process(
+            self, input_path, fgmask_path=None, fgvid_path=None,
+            bgvid_path=None):
         '''Performs background subtraction on the given video.
 
         Args:
             input_path: the input video path
-            npy_path: an optional path to write the per-frame foreground masks
-                as .npy files
-            vid_path: an optional path to write the foreground-only video
+            fgmask_path: an optional path to write the per-frame foreground
+                masks as .npy files
+            fgvid_path: an optional path to write the foreground-only video
+            bgvid_path: an optional path to write the background video
         '''
-        with etav.VideoProcessor(input_path, out_single_vidpath=vid_path) as p:
-            for img in p:
-                # Perform
-                mask = self._fgbg.apply(img)
+        # Ensure output directories exist
+        if fgmask_path:
+            etau.ensure_basedir(fgmask_path)
 
-                if npy_path:
+        r = etav.FFmpegVideoReader(input_path)
+        try:
+            if fgvid_path:
+                fgw = etav.FFmpegVideoWriter(
+                    fgvid_path, r.frame_rate, r.frame_size)
+            if bgvid_path:
+                bgw = etav.FFmpegVideoWriter(
+                    bgvid_path, r.frame_rate, r.frame_size)
+
+            self._reset()
+            for img in r:
+                fgmask, bgimg = self._process_frame(img)
+
+                if fgmask_path:
                     # Write foreground mask
-                    np.save(npy_path % p.frame_number, mask)
+                    np.save(fgmask_path % r.frame_number, fgmask)
 
-                if vid_path:
+                if fgvid_path:
                     # Write foreground-only video
-                    img[np.where(mask == 0)] = 0
-                    p.write(img)
+                    img[np.where(fgmask == 0)] = 0
+                    fgw.write(img)
 
+                if bgvid_path:
+                    # Write background video
+                    bgw.write(bgimg)
+        finally:
+            if fgvid_path:
+                fgw.close()
+            if bgvid_path:
+                bgw.close()
 
-class MOGBackgroundSubtractor(BackgroundSubtractor):
-    '''A class that performs background subtraction on a video using the
-    Gaussian mixture-based foreground-background segmentation.
-    '''
-
-    def __init__(self, history=500, threshold=16, detect_shadows=True):
-        '''Initializes an MOGBackgroundSubtractor object.
+    def _process_frame(self, img):
+        '''Processes the next frame.
 
         Args:
-            history: length of the history
-            threshold: threshold on the squared Mahalanobis distance between
-                pixel and the model to decide whether a pixel is well described
-                by the background model
-            detect_shadows: whether to detect and mark shadows
+            img: the next frame
+
+        Returns:
+            fgmask: the foreground mask
+            bgimg: the background-only image
         '''
-        _fgbg = cv2.createBackgroundSubtractorMOG2(
-            history=history, varThreshold=threshold,
-            detectShadows=detect_shadows)
-        super(MOGBackgroundSubtractor, self).__init__(_fgbg)
+        raise NotImplementedError("subclass must implement _process_frame()")
+
+    def _reset(self):
+        '''Prepares the object to start processing a new video.'''
+        raise NotImplementedError("subclass must implement _reset()")
+
+
+class BackgroundSubtractorError(Exception):
+    '''Error raised when an error is encountered while performing background
+    subtraction.
+    '''
+    pass
+
+
+class MOG2BackgroundSubtractor(BackgroundSubtractor):
+    '''A class that performs background subtraction on a video using the
+    Gaussian mixture-based foreground-background segmentation.
+
+    This class is a wrapper around the OpenCV `BackgroundSubtractorMOG2` class.
+    '''
+
+    def __init__(
+            self, history=500, threshold=16.0, learning_rate=-1,
+            detect_shadows=False):
+        '''Initializes an MOG2BackgroundSubtractor object.
+
+        Args:
+            history (500): the number of previous frames that affect the
+                background model
+            threshold (16.0): threshold on the squared Mahalanobis distance
+                between pixel and the model to decide whether a pixel is well
+                described by the background model
+            learning_rate (-1): a value between 0 and 1 that indicates how fast
+                the background model is learnt, where 0 means that the
+                background model is not updated at all and 1 means that the
+                background model is completely reinitialized from the last
+                frame. If a negative value is provided, an automatically chosen
+                learning rate will be used
+            detect_shadows (True): whether to detect and mark shadows
+        '''
+        self.history = history
+        self.threshold = threshold
+        self.learning_rate = learning_rate
+        self.detect_shadows = detect_shadows
+        self._fgbg = None
+
+    def _process_frame(self, img):
+        fgmask = self._fgbg.apply(img, None, self.learning_rate)
+        bgimg = self._fgbg.getBackgroundImage()
+        return fgmask, bgimg
+
+    def _reset(self):
+        try:
+            # OpenCV 3
+            self._fgbg = cv2.createBackgroundSubtractorMOG2(
+                history=self.history, varThreshold=self.threshold,
+                detectShadows=self.detect_shadows)
+        except AttributeError:
+            # OpenCV 2
+            #
+            # Note that OpenCV 2 does have a BackgroundSubtractorMOG2 class,
+            # but background subtractors in OpenCV 2 don't support the
+            # getBackgroundImage method, so they are not suitable for our
+            # interface here
+            #
+            raise BackgroundSubtractorError(
+                "BackgroundSubtractorMOG2 is not supported in OpenCV 2")
 
 
 class KNNBackgroundSubtractor(BackgroundSubtractor):
     '''A class that performs background subtraction on a video using the
     K-nearest neighbors-based foreground-background segmentation.
+
+    This class is a wrapper around the OpenCV `BackgroundSubtractorKNN` class.
+
+    This model is only supported when using OpenCV 3.
     '''
 
-    def __init__(self, history=500, threshold=400.0, detect_shadows=True):
+    def __init__(
+            self, history=500, threshold=400.0, learning_rate=-1,
+            detect_shadows=False):
         '''Initializes an KNNBackgroundSubtractor object.
 
         Args:
-            history: length of the history
-            threshold: threshold on the squared distance between pixel and
-               the sample to decide whether a pixel is close to that sample
-            detect_shadows: whether to detect and mark shadows
+            history (500): length of the history
+            threshold (400.0): threshold on the squared distance between pixel
+                and the sample to decide whether a pixel is close to that
+                sample
+            learning_rate (-1): a value between 0 and 1 that indicates how fast
+                the background model is learnt, where 0 means that the
+                background model is not updated at all and 1 means that the
+                background model is completely reinitialized from the last
+                frame. If a negative value is provided, an automatically chosen
+                learning rate will be used
+            detect_shadows (True): whether to detect and mark shadows
         '''
-        _fgbg = cv2.createBackgroundSubtractorKNN(
-            history=history, dist2Threshold=threshold,
-            detectShadows=detect_shadows)
-        super(KNNBackgroundSubtractor, self).__init__(_fgbg)
+        self.history = history
+        self.threshold = threshold
+        self.learning_rate = learning_rate
+        self.detect_shadows = detect_shadows
+        self._fgbg = None
+
+    def _process_frame(self, img):
+        fgmask = self._fgbg.apply(img, None, self.learning_rate)
+        bgimg = self._fgbg.getBackgroundImage()
+        return fgmask, bgimg
+
+    def _reset(self):
+        try:
+            # OpenCV 3
+            self._fgbg = cv2.createBackgroundSubtractorKNN(
+                history=self.history, dist2Threshold=self.threshold,
+                detectShadows=self.detect_shadows)
+        except AttributeError:
+            # OpenCV 2
+            raise BackgroundSubtractorError(
+                "KNNBackgroundSubtractor is not supported in OpenCV 2")
 
 
 class EdgeDetector(object):
