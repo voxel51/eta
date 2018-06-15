@@ -268,7 +268,7 @@ def _get_class_docstring(module_name, class_name):
 def _build_module_metadata(module_name, mds, dds, pds):
     try:
         logger.info("*** Building info field")
-        info_builder = (etam.ModuleInfoConfig.builder()
+        info = (etam.ModuleInfoConfig.builder()
             .set(name=module_name)
             .set(type=mds.info["type"])
             .set(version=mds.info["version"])
@@ -283,13 +283,13 @@ def _build_module_metadata(module_name, mds, dds, pds):
         logger.info("*** Building inputs")
         inputs = []
         for iname, ispec in iteritems(dds.inputs):
-            node_builder = (etam.ModuleNodeConfig.builder()
+            ibuilder = (etam.ModuleInputConfig.builder()
                 .set(name=iname)
                 .set(type=ispec["type"])
                 .set(description=ispec["description"])
                 .set(required=ispec["required"])
                 .validate())
-            inputs.append(node_builder)
+            inputs.append(ibuilder)
     except Exception as e:
         raise ModuleMetadataGenerationError(
             "Error populating the 'inputs' field:\n" + str(e))
@@ -298,13 +298,13 @@ def _build_module_metadata(module_name, mds, dds, pds):
         logger.info("*** Building outputs")
         outputs = []
         for oname, ospec in iteritems(dds.outputs):
-            node_builder = (etam.ModuleNodeConfig.builder()
+            obuilder = (etam.ModuleOutputConfig.builder()
                 .set(name=oname)
                 .set(type=ospec["type"])
                 .set(description=ospec["description"])
                 .set(required=ospec["required"])
                 .validate())
-            outputs.append(node_builder)
+            outputs.append(obuilder)
     except Exception as e:
         raise ModuleMetadataGenerationError(
             "Error populating the 'outputs' field:\n" + str(e))
@@ -328,7 +328,7 @@ def _build_module_metadata(module_name, mds, dds, pds):
     try:
         logger.info("*** Building ModuleMetadataConfig")
         mmc = (etam.ModuleMetadataConfig.builder()
-            .set(info=info_builder)
+            .set(info=info)
             .set(inputs=inputs)
             .set(outputs=outputs)
             .set(parameters=parameters)
