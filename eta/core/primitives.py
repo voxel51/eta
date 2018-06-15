@@ -222,7 +222,7 @@ class EdgeDetector(object):
 
     def process(self, input_path, im_path=None, vid_path=None):
         '''Detect edges using self.detector.
-        
+
         Args:
             input_path: the path of the video to be processed
             im_path: the output path for each frame image
@@ -244,7 +244,7 @@ class CannyEdgeDetector(EdgeDetector):
             threshold_1: first threshold for the hysteresis procedure
             threshold_2: second threshold for the hysteresis procedure
             aperture_size: aperture size for the Sobel operator
-            l2_gradient: a flag, indicating whether a more accurate L2 norm 
+            l2_gradient: a flag, indicating whether a more accurate L2 norm
                          should be used to calculate the image gradient magnitude
             **kwargs: valid keyword arguments for EdgeDetector
         '''
@@ -269,7 +269,7 @@ class FeaturePointDetector(object):
 
     def process(self, input_path, output_format, coor_path=None, vid_path=None):
         '''Detect feature points using self.detector.
-        
+
         Args:
             input_path: the path of the video to be processed
             output_format: a list of output format from ["point_coor", "vid"]
@@ -319,7 +319,7 @@ class HarrisFeaturePointDetector(FeaturePointDetector):
             for img in processor:
                 gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
                 gray = np.float32(gray)
-                corner = self.detector(gray)                
+                corner = self.detector(gray)
                 img[corner > 0.01 * corner.max()] = [0, 0, 255]
                 processor.write(img)
 
@@ -332,7 +332,7 @@ class FASTFeaturePointDetector(FeaturePointDetector):
         Args:
             threshold: threshold on difference between intensity of the
                        central pixel and pixels of a circle around this pixel
-            nonmaxSuppression: if true, non-maximum suppression is applied to 
+            nonmaxSuppression: if true, non-maximum suppression is applied to
                                detected corners (keypoints).
             type: one of the three neighborhoods as defined in the paper
             **kwargs: valid keyword arguments for FeaturePointDetector
@@ -342,7 +342,7 @@ class FASTFeaturePointDetector(FeaturePointDetector):
 
 
 class FeaturePointDescriptor(object):
-    '''A class for detecting feature points and computing its 
+    '''A class for detecting feature points and computing its
        feature vector in a video.'''
 
     def __init__(self, descriptor):
@@ -355,7 +355,7 @@ class FeaturePointDescriptor(object):
 
     def process(self, input_path, output_format, coor_path=None, vid_path=None):
         '''Detect feature points using self.detector.
-        
+
         Args:
             input_path: the path of the video to be processed
             output_format: a list of output format from ["point_coor", "vid"]
