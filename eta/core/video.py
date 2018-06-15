@@ -20,6 +20,7 @@ from builtins import *
 
 import errno
 import json
+import logging
 from subprocess import Popen, PIPE
 import threading
 
@@ -28,6 +29,9 @@ import numpy as np
 
 import eta.core.image as im
 from eta.core import utils
+
+
+logger = logging.getLogger(__name__)
 
 
 def get_stream_info(inpath):
@@ -936,10 +940,6 @@ class FFmpegVideoResizer(FFmpeg):
             scale_str: a string that directly specifies a valid ffmpeg scale=
                 option
             **kwargs: optional keyword arguments for FFmpeg()
-
-        Raises:
-            FFmpegVideoResizerError: if a valid scale option could not be
-                generated from the given args
         '''
         out_opts = kwargs.pop("out_opts", self.DEFAULT_OUT_OPTS) or []
         out_opts += [
@@ -957,12 +957,9 @@ class FFmpegVideoResizer(FFmpeg):
             return "iw*{0}:ih*{0}".format(scale)
         elif scale_str:
             return scale_str
-        else:
-            raise FFmpegVideoResizerError("Invalid scale spec")
 
-
-class FFmpegVideoResizerError(Exception):
-    pass
+        logger.info("No scale argument found; keeping the native resolution")
+        return "iw*1:ih*1"
 
 
 class FFmpegVideoSampler(FFmpeg):

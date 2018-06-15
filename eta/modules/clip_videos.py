@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 '''
-Generate clips from a video.
+Module that generates clips from a video.
+
+Info:
+    type: eta.core.types.Module
+    version: 0.1.0
 
 Copyright 2017-2018, Voxel51, LLC
 voxel51.com
@@ -32,7 +36,12 @@ logger = logging.getLogger(__name__)
 
 
 class ClipConfig(etam.BaseModuleConfig):
-    '''Clip configuration settings.'''
+    '''Clip configuration settings.
+
+    Attributes:
+        data (DataConfig)
+        parameters (ParametersConfig)
+    '''
 
     def __init__(self, d):
         super(ClipConfig, self).__init__(d)
@@ -41,7 +50,15 @@ class ClipConfig(etam.BaseModuleConfig):
 
 
 class DataConfig(Config):
-    '''Data configuration settings.'''
+    '''Data configuration settings.
+
+    Inputs:
+        input_path (eta.core.types.Video): The input video
+
+    Outputs:
+        output_path (eta.core.types.VideoClips): The output video
+            clips
+    '''
 
     def __init__(self, d):
         self.input_path = self.parse_string(d, "input_path")
@@ -49,12 +66,19 @@ class DataConfig(Config):
 
 
 class ParametersConfig(Config):
-    '''Parameter configuration settings.'''
+    '''Parameter configuration settings.
+
+    Parameters:
+        frames (eta.core.types.String): [null] A frames string specifying the
+            clips to generate
+        events_json_path (eta.core.types.EventSeries): [null] An EventSeries
+            specifying the clips to generate
+    '''
 
     def __init__(self, d):
+        self.frames = self.parse_string(d, "frames", default=None)
         self.events_json_path = self.parse_string(
             d, "events_json_path", default=None)
-        self.frames = self.parse_string(d, "frames", default=None)
 
     def get_frames(self):
         if self.events_json_path:
