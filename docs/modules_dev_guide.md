@@ -699,10 +699,25 @@ The following snippet shows a concrete example of a module configuration
 definition using the ETA library:
 
 ```python
+'''
+Example module.
+
+Info:
+    type: eta.core.types.Module
+    version: 0.1.0
+
+Copyright 2017-2018, Voxel51, LLC
+voxel51.com
+'''
 import eta.core.module as etam
 
 class ExampleModuleConfig(etam.BaseModuleConfig):
-    '''An example config class.'''
+    '''An example config class.
+
+    Attributes:
+        data (DataConfig)
+        parameters (ParametersConfig)
+    '''
 
     def __init__(self, d):
         super(ExampleModuleConfig, self).__init__(d)
@@ -711,7 +726,16 @@ class ExampleModuleConfig(etam.BaseModuleConfig):
 
 
 class DataConfig(Config):
-    '''Data configuration settings.'''
+    '''Data configuration settings.
+
+    Inputs:
+        input_path (eta.core.types.Video): An example input with an abstract
+            data type
+
+    Outputs:
+        output_path (eta.core.types.VideoFile): An example output with a
+            concrete data type
+    '''
 
     def __init__(self, d):
         self.input_path = self.parse_string(d, "input_path")
@@ -719,15 +743,23 @@ class DataConfig(Config):
 
 
 class ParametersConfig(Config):
-    '''Parameter configuration settings.'''
+    '''Parameter configuration settings.
+
+    Parameters:
+        param1 (eta.core.types.Array): An example of a required array
+            parameter
+        param2 (eta.core.types.Number): [1.0] An example of a numeric
+            parameter with a default value
+    '''
 
     def __init__(self, d):
-        self.parameter = self.parse_number(d, "parameter", default=1.0)
+        self.param1 = self.parse_array(d, "param1")
+        self.param2 = self.parse_number(d, "param2", default=1.0)
 ```
 
 The snippet defines a configuration class called `ExampleModuleConfig` that
 defines a `data` field that contains an array of `DataConfig` instances and
-a `parameters` field that contains an instance of `ParametersConfig`. Also,
+a `parameters` field that contains an instance of `ParametersConfig`. Note that
 `ExampleModuleConfig` derives from `eta.core.module.BaseModuleConfig`, which
 which handles the parsing of the optional `base` field containing any base
 module settings.
@@ -746,14 +778,16 @@ The following JSON file is a valid `ExampleModuleConfig` configuration file:
             "output_path": "/path/to/output.mp4"
         }
     ],
-    "parameters": {}
+    "parameters": {
+        "param1": [1, 2, 3]
+    }
 }
 ```
 
-Note that the `parameter` field is omitted from the `parameters` spec, which
-is allowed since a default value was specified in the `ParametersConfig` class.
-The top-level `base` field is also omitted entirely, which is allowed since
-the `eta.core.module.BaseModuleConfig` class supports a default value for it.
+Note that `param2` was omitted from the `parameters` spec, which is allowed
+because it has a default value in the `ParametersConfig` class. The top-level
+`base` field is also omitted entirely, which is allowed since the
+`eta.core.module.BaseModuleConfig` class supports a default value for it.
 
 To load the configuration file into an `ExampleModuleConfig` instance,
 simply do:
