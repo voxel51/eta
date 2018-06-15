@@ -26,105 +26,110 @@ import eta.core.video as etav
 
 
 class DenseOpticalFlow(object):
-    '''A class for processing dense optical flow to a video.'''
+    '''Base class for dense optical flow methods.'''
 
-    def __init__(self, 
-                 initial_flow=None,
-                 pyramid_scale=None,
-                 pyramid_levels=None,
-                 window_size=None,
-                 iterations=None,
-                 poly_n=None,
-                 poly_sigma=None,
-                 flag=None):
-        '''Initiate the parameters for DenseOpticalFlow class
+    def __init__(self, _flow):
+        '''Initializes the base DenseOpticalFlow object.
 
         Args:
-            initial_flow: initialization for optical flow
-            pyramid_scale: the image scale(<1) to build pyramids for each image
-            pyramid_levels: number of pyramid layers including the initial image
-            window_size: averaging window size
-            iterations: number of iterations the algorithm does at each pyramid level
-            poly_n: size of the pixel neighborhood used to find polynomial expansion in each pixel
-            poly_sigma: standard deviation of the Gaussian that is used to smooth derivatives
-                        used as a basis for the polynomial expansion
-            flag: operation flags including cv2.OPTFLOW_USE_INITIAL_FLOW and
-                  cv2.OPTFLOW_FARNEBACK_GAUSSIAN
+            _flow: a function that accepts the previous and current frames and
+                returns an m x n x 2 array containing the dense optical flow
+                field for the current frame expressed in Cartesian (x, y)
+                coordinates
         '''
-        if pyramid_scale is None:
-            pyramid_scale = 0.5
+        self._flow = _flow
+        self._prev_frame = None
 
-        if pyramid_levels is None:
-            pyramid_levels = 3
+    def process(
+            self, input_path, cart_path=None, polar_path=None, vid_path=None):
+        '''Performs dense optical flow on the given video.
 
-        if window_size is None:
-            window_size = 15
-
-        if iterations is None:
-            iterations = 3
-
-        if poly_n is None:
-            poly_n = 5
-
-        if poly_sigma is None:
-            poly_sigma = 1.2
-
-        if flag is None:
-            flag = 0
-
-        self.initial_flow = initial_flow
-        self.pyramid_scale = pyramid_scale
-        self.pyramid_levels = pyramid_levels
-        self.window_size = window_size
-        self.iterations = iterations
-        self.poly_n = poly_n
-        self.poly_sigma = poly_sigma
-        self.flag = flag
-
-    def process(self,
-                input_path,
-                output_format,
-                cartesian_path=None,
-                polar_path=None,
-                vid_path=None,):
-        '''Compute dense optical flow by Gunnar Farneback algorithm.
-        
         Args:
-            input_path: the path of the video to be processed
-            output_format: a list of output format from ["cartesian", "polar", "vid"]
-            cartesian_path: the path for cartesian format output
-            polar_path: the path for polar format output
-            vid_path: the output path for processed video
+            input_path: the input video path
+            cart_path: an optional path to write the per-frame arrays
+                describing the flow fields in Cartesian (x, y) coordinates
+            polar_path: an optional path to write the per-frame arrays
+                describing the flow fields in polar (magnitude, angle)
+                coordinates
+            vid_path: an optional path to write a video that visualizes the
+                magnitude and angle of the flow fields as the value (V) and
+                hue (H), respectively, of per-frame HSV images
         '''
+        with etav.VideoProcessor(input_path, out_vidpath=vid_path) as p:
+            for img in p:
+                # Compute flow
+                curr_frame = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+                flow_cart = self._flow(self._prev_frame, curr_frame)
+                self._prev_frame = curr_frame
 
-        with etav.VideoProcessor(input_path, out_vidpath=vid_path) as processor:
-            for img in processor:
-                current_frame = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-                if processor.is_new_frame_range is False:
-                    opt_flow_cart = cv2.calcOpticalFlowFarneback(previous_frame,
-                                                                 current_frame,
-                                                                 self.initial_flow,
-                                                                 self.pyramid_scale,
-                                                                 self.pyramid_levels,
-                                                                 self.window_size,
-                                                                 self.iterations,
-                                                                 self.poly_n,
-                                                                 self.poly_sigma,
-                                                                 self.flag)                
-                    mag, ang = cv2.cartToPolar(opt_flow_cart[...,0], opt_flow_cart[...,1])
-                    opt_flow_polar = np.dstack((mag, ang))
-                    if "cartesian" in output_format:
-                        np.save(cartesian_path % processor.frame_number, opt_flow_cart)
-                    if "polar" in output_format:
-                        np.save(polar_path % processor.frame_number, opt_flow_polar)
-                    hsv = np.zeros_like(img)
-                    hsv[..., 1] = 255
-                    hsv[...,0] = ang * 180 / np.pi / 2
-                    hsv[...,2] = cv2.normalize(mag, None, 0, 255, cv2.NORM_MINMAX)
-                    bgr = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
-                    if "vid" in output_format:
-                        processor.write(bgr)
-                previous_frame = current_frame
+                if cart_path:
+                    # Write Cartesian fields
+                    np.save(cart_path % p.frame_number, flow_cart)
+
+                if not polar_path and not vid_path:
+                    continue;
+
+                # Convert to polar coordinates
+                mag, ang = cv2.cartToPolar(
+                    flow_cart[..., 0], flow_cart[..., 1])
+                flow_polar = np.dstack((mag, ang))
+
+                if polar_path:
+                    # Write polar fields
+                    np.save(polar_path % p.frame_number, flow_polar)
+
+                if vid_path:
+                    # Write flow visualization frame
+                    p.write(_polar_flow_to_img(mag, ang))
+
+
+def _polar_flow_to_img(mag, ang):
+    hsv = np.zeros(mag.shape + (3,), dtype=mag.dtype)
+    hsv[..., 0] = (90.0 / np.pi) * ang
+    hsv[..., 1] = 255
+    hsv[..., 2] = cv2.normalize(mag, None, 0, 255, cv2.NORM_MINMAX)
+    return cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
+
+
+class FarnebackDenseOpticalFlow(DenseOpticalFlow):
+    '''A class that computes dense optical flow on a video using Gunnar
+    Farneback’s algorithm.
+    '''
+
+    def __init__(
+            pyramid_scale=0.5,
+            pyramid_levels=3,
+            window_size=15,
+            iterations=3,
+            poly_n=5,
+            poly_sigma=1.1,
+            use_gaussian_filter=False):
+        '''Constructs a FarnebackDenseOpticalFlow object.
+
+        Args:
+            pyramid_scale (0.5): the image scale (<1) to build pyramids for
+                each image
+            pyramid_levels (3): number of pyramid layers including the initial
+                image
+            window_size (15): averaging window size
+            iterations (3): number of iterations to perform at each pyramid
+                level
+            poly_n (5): size of the pixel neighborhood used to find polynomial
+                expansion in each pixel
+            poly_sigma (1.1): standard deviation of the Gaussian that is used
+                to smooth derivatives
+            use_gaussian_filter (False): whether to use a Gaussian filter
+                instead of a box filer
+        '''
+        flags = cv2.OPTFLOW_FARNEBACK_GAUSSIAN if use_gaussian_filter else 0
+
+        def _flow(prev, curr):
+            return cv2.calcOpticalFlowFarneback(
+                prev, curr, pyr_scale=pyramid_scale, levels=pyramid_levels,
+                winsize=window_size, iterations=iterations, poly_n=poly_n,
+                poly_sigma=poly_sigma, flags=flags)
+
+        super(FarnebackDenseOpticalFlow, self).__init__(_flow)
 
 
 class BackgroundSubtractor(object):
