@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 '''
-Resize videos.
+Module that resizes videos.
+
+Info:
+    type: eta.core.types.Module
+    version: 0.1.0
 
 Copyright 2017-2018, Voxel51, LLC
 voxel51.com
@@ -31,7 +35,12 @@ logger = logging.getLogger(__name__)
 
 
 class ResizeConfig(etam.BaseModuleConfig):
-    '''Resize configuration settings.'''
+    '''Resize configuration settings.
+
+    Attributes:
+        data (DataConfig)
+        parameters (ParametersConfig)
+    '''
 
     def __init__(self, d):
         super(ResizeConfig, self).__init__(d)
@@ -40,7 +49,14 @@ class ResizeConfig(etam.BaseModuleConfig):
 
 
 class DataConfig(Config):
-    '''Data configuration settings.'''
+    '''Data configuration settings.
+
+    Inputs:
+        input_path (eta.core.types.Video): The input video
+
+    Outputs:
+        output_path (eta.core.types.VideoFile): The output resized video
+    '''
 
     def __init__(self, d):
         self.input_path = self.parse_string(d, "input_path")
@@ -48,7 +64,17 @@ class DataConfig(Config):
 
 
 class ParametersConfig(Config):
-    '''Parameter configuration settings.'''
+    '''Parameter configuration settings.
+
+    Parameters:
+        size (eta.core.types.Array): [null] The output [width, height] of the
+            video
+        scale (eta.core.types.Number): [null] A numeric scale factor to apply
+        scale_str (eta.core.types.String): [null] A scale string; an argument
+            for ffmpeg scale=
+        ffmpeg_out_opts (eta.core.types.Array): [null] An array of ffmpeg
+            output options
+    '''
 
     def __init__(self, d):
         self.size = self.parse_array(d, "size", default=None)
