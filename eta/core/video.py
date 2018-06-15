@@ -585,7 +585,7 @@ class FFmpegVideoReader(VideoReader):
         for idx in range(max(0, self.frame_number), next(self._ranges)):
             if not self._grab():
                 raise VideoReaderError(
-                    "Failed to grab frame %d" % (idx + 1))
+                    "Failed to grab frame %d" % self.frame_number)
         return self._retrieve()
 
     def close(self):
@@ -601,9 +601,13 @@ class FFmpegVideoReader(VideoReader):
             return False
 
     def _retrieve(self):
-        width, height = self.frame_size
-        vec = np.fromstring(self._raw_frame, dtype="uint8")
-        return vec.reshape((height, width, 3))
+        try:
+            vec = np.fromstring(self._raw_frame, dtype="uint8")
+            width, height = self.frame_size
+            return vec.reshape((height, width, 3))
+        except ValueError:
+            raise VideoReaderError(
+                "Unable to parse frame %d" % self.frame_number)
 
 
 class OpenCVVideoReader(VideoReader):
