@@ -272,7 +272,7 @@ def _get_module_config_docstring(module_name):
             logger.info("Found module config class '%s'", cls.__name__)
             return cls.__doc__
 
-    raise Exception("No subclass of BaseModuleConfig found")
+    raise ModuleMetadataGenerationError("No BaseModuleConfig subclass found")
 
 
 def _get_class_docstring(module_name, class_name):
