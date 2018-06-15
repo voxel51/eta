@@ -29,17 +29,6 @@ import eta.core.video as etav
 class DenseOpticalFlow(object):
     '''Base class for dense optical flow methods.'''
 
-    def __init__(self, _flow):
-        '''Initializes the base DenseOpticalFlow object.
-
-        Args:
-            _flow: a function that accepts the previous and current frames and
-                returns an m x n x 2 array containing the dense optical flow
-                field for the current frame expressed in Cartesian (x, y)
-                coordinates
-        '''
-        self._flow = _flow
-
     def process(
             self, input_path, cart_path=None, polar_path=None, vid_path=None):
         '''Performs dense optical flow on the given video.
@@ -63,20 +52,11 @@ class DenseOpticalFlow(object):
             etau.ensure_basedir(polar_path)
         # VideoProcessor ensures that the output video directory exists
 
-        # Compute optical flow
-        prev_frame = None
+        self._reset()
         with etav.VideoProcessor(input_path, out_single_vidpath=vid_path) as p:
             for img in p:
-                curr_frame = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-                if prev_frame is None:
-                    # There is no previous frame for the first frame, so we set
-                    # it to the current frame, which implies that the flow for
-                    # the first frame will always be zero
-                    prev_frame = curr_frame
-
-                # Compute flow
-                flow_cart = self._flow(prev_frame, curr_frame)
-                prev_frame = curr_frame
+                # Compute optical flow
+                flow_cart = self._process_frame(img)
 
                 if cart_path:
                     # Write Cartesian fields
@@ -98,6 +78,21 @@ class DenseOpticalFlow(object):
                     # Write flow visualization frame
                     p.write(_polar_flow_to_img(mag, ang))
 
+    def _process_frame(self, img):
+        '''Processes the next frame.
+
+        Args:
+            img: the next frame
+
+        Returns:
+            flow: the optical flow for the frame in Cartesian coordinates
+        '''
+        raise NotImplementedError("subclass must implement _process_frame()")
+
+    def _reset(self):
+        '''Prepares the object to start processing a new video.'''
+        raise NotImplementedError("subclass must implement _reset()")
+
 
 def _polar_flow_to_img(mag, ang):
     hsv = np.zeros(mag.shape + (3,), dtype=mag.dtype)
@@ -111,6 +106,9 @@ def _polar_flow_to_img(mag, ang):
 class FarnebackDenseOpticalFlow(DenseOpticalFlow):
     '''A class that computes dense optical flow on a video using Gunnar
     Farneback's algorithm.
+
+    This class is a wrapper around the OpenCV `calcOpticalFlowFarneback`
+    function.
     '''
 
     def __init__(
@@ -139,17 +137,39 @@ class FarnebackDenseOpticalFlow(DenseOpticalFlow):
             use_gaussian_filter (False): whether to use a Gaussian filter
                 instead of a box filer
         '''
-        flags = cv2.OPTFLOW_FARNEBACK_GAUSSIAN if use_gaussian_filter else 0
+        self.pyramid_scale = pyramid_scale
+        self.pyramid_levels = pyramid_levels
+        self.window_size = window_size
+        self.iterations = iterations
+        self.poly_n = poly_n
+        self.poly_sigma = poly_sigma
+        self.use_gaussian_filter = use_gaussian_filter
 
-        def _flow(prev, curr):
-            # works for OpenCV2 and OpenCV3
-            return cv2.calcOpticalFlowFarneback(
-                prev, curr, flow=None, pyr_scale=pyramid_scale,
-                levels=pyramid_levels, winsize=window_size,
-                iterations=iterations, poly_n=poly_n, poly_sigma=poly_sigma,
-                flags=flags)
+        self._prev_frame = None
+        self._flags = (
+            cv2.OPTFLOW_FARNEBACK_GAUSSIAN if use_gaussian_filter else 0)
 
-        super(FarnebackDenseOpticalFlow, self).__init__(_flow)
+    def _process_frame(self, img):
+        curr_frame = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        if self._prev_frame is None:
+            # There is no previous frame for the first frame, so we set
+            # it to the current frame, which implies that the flow for
+            # the first frame will always be zero
+            self._prev_frame = curr_frame
+
+        # works in OpenCV 3 and OpenCV 2
+        flow_cart = cv2.calcOpticalFlowFarneback(
+            self._prev_frame, curr_frame, flow=None,
+            pyr_scale=self.pyramid_scale, levels=self.pyramid_levels,
+            winsize=self.window_size, iterations=self.iterations,
+            poly_n=self.poly_n, poly_sigma=self.poly_sigma,
+            flags=self._flags)
+        self._prev_frame = curr_frame
+
+        return flow_cart
+
+    def _reset(self):
+        self._prev_frame = None
 
 
 class BackgroundSubtractor(object):
