@@ -135,72 +135,78 @@ class FarnebackDenseOpticalFlow(DenseOpticalFlow):
 class BackgroundSubtractor(object):
     '''A class for processing adaptive background subtraction to a video.'''
 
-    def __init__(self, fgbg):
-        '''Initiate the parameters for BackgroundSubtraction class
+    def __init__(self, _fgbg):
+        '''Initializes the base BackgroundSubtractor object.
 
         Args:
-            fgbg: an instance of a certain background subtractor
+            _fgbg: a background subtractor with an `apply` method that takes an
+                image and returns a foreground mask
         '''
-        self.fgbg = fgbg
+        self._fgbg = _fgbg
 
-    def process(self, input_path, output_format, npy_path=None, vid_path=None):
-        '''Process the video using the self.fgbg.
-        
+    def process(self, input_path, npy_path=None, vid_path=None):
+        '''Performs background subtraction on the given video.
+
         Args:
-            input_path: the path of the video to be processed
-            output_format: a list of output format from ["npy", "vid"]
-            npy_path: the output path for npy format foreground
-            vid_path: the output path for processed video
+            input_path: the input video path
+            npy_path: an optional path to write the per-frame foreground masks
+                as .npy files
+            vid_path: an optional path to write the foreground-only video
         '''
-        with etav.VideoProcessor(input_path, out_vidpath=vid_path) as processor:
-            for img in processor:
-                fgmask = self.fgbg.apply(img)
-                img[np.where(fgmask == 0)] = 0
-                if "npy" in output_format:
-                    np.save(npy_path % processor.frame_number, img)
-                if "vid" in output_format:
-                    processor.write(img)
+        with etav.VideoProcessor(input_path, out_vidpath=vid_path) as p:
+            for img in p:
+                # Perform
+                mask = self._fgbg.apply(img)
+
+                if npy_path:
+                    # Write foreground mask
+                    np.save(npy_path % p.frame_number, mask)
+
+                if vid_path:
+                    # Write foreground-only video
+                    img[np.where(mask == 0)] = 0
+                    p.write(img)
 
 
 class MOGBackgroundSubtractor(BackgroundSubtractor):
-    '''A class for processing adaptive background subtraction to a video
-       using Gaussian mixtrue-base algorithm.'''
+    '''A class that performs background subtraction on a video using the
+    Gaussian mixture-based foreground-background segmentation.
+    '''
 
-    def __init__(self, history=500, threshold=16, detect_shadows=True, **kwargs):
-        '''Initialize variable used by MOGBackgroundSubtractor class.
+    def __init__(self, history=500, threshold=16, detect_shadows=True):
+        '''Initializes an MOGBackgroundSubtractor object.
 
         Args:
             history: length of the history
-            threshold: threshold on the squared Mahalanobis distance between pixel and
-                       the model to decide whether a pixel is well described by the
-                       background model.
-            detect_shadows: if true, the algorithm will detect shadows and mark them
-            **kwargs: valid keyword arguments for BackgroundSubtractor
+            threshold: threshold on the squared Mahalanobis distance between
+                pixel and the model to decide whether a pixel is well described
+                by the background model
+            detect_shadows: whether to detect and mark shadows
         '''
-        fgbg = cv2.createBackgroundSubtractorMOG2(history=history,
-                                                  varThreshold=threshold,
-                                                  detectShadows=detect_shadows)
-        super(MOGBackgroundSubtractor, self).__init__(fgbg, **kwargs)
+        _fgbg = cv2.createBackgroundSubtractorMOG2(
+            history=history, varThreshold=threshold,
+            detectShadows=detect_shadows)
+        super(MOGBackgroundSubtractor, self).__init__(_fgbg)
 
 
 class KNNBackgroundSubtractor(BackgroundSubtractor):
-    '''A class for processing adaptive background subtraction to a video
-       using KNN algorithm.'''
+    '''A class that performs background subtraction on a video using the
+    K-nearest neighbors-based foreground-background segmentation.
+    '''
 
-    def __init__(self, history=500, threshold=400.0, detect_shadows=True, **kwargs):
-        '''Initialize variable used by MOGBackgroundSubtractor class.
+    def __init__(self, history=500, threshold=400.0, detect_shadows=True):
+        '''Initializes an KNNBackgroundSubtractor object.
 
         Args:
             history: length of the history
             threshold: threshold on the squared distance between pixel and
-                       the sample to decide whether a pixel is close to that sample.
-            detect_shadows: if true, the algorithm will detect shadows and mark them
-            **kwargs: valid keyword arguments for BackgroundSubtractor
+               the sample to decide whether a pixel is close to that sample
+            detect_shadows: whether to detect and mark shadows
         '''
-        fgbg = cv2.createBackgroundSubtractorKNN(history=history,
-                                                 dist2Threshold=threshold,
-                                                 detectShadows=detect_shadows)
-        super(KNNBackgroundSubtractor, self).__init__(fgbg, **kwargs)
+        _fgbg = cv2.createBackgroundSubtractorKNN(
+            history=history, dist2Threshold=threshold,
+            detectShadows=detect_shadows)
+        super(KNNBackgroundSubtractor, self).__init__(_fgbg)
 
 
 class EdgeDetector(object):
