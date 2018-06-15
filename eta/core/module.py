@@ -214,8 +214,9 @@ class ModuleMetadataConfig(Config):
 
     def __init__(self, d):
         self.info = self.parse_object(d, "info", ModuleInfoConfig)
-        self.inputs = self.parse_object_array(d, "inputs", ModuleNodeConfig)
-        self.outputs = self.parse_object_array(d, "outputs", ModuleNodeConfig)
+        self.inputs = self.parse_object_array(d, "inputs", ModuleInputConfig)
+        self.outputs = self.parse_object_array(
+            d, "outputs", ModuleOutputConfig)
         self.parameters = self.parse_object_array(
             d, "parameters", ModuleParameterConfig)
 
@@ -237,8 +238,21 @@ class ModuleInfoConfig(Config):
         return ["name", "type", "version", "description", "exe"]
 
 
-class ModuleNodeConfig(Config):
-    '''Module I/O node descriptor configuration.'''
+class ModuleInputConfig(Config):
+    '''Module input descriptor configuration.'''
+
+    def __init__(self, d):
+        self.name = self.parse_string(d, "name")
+        self.type = self.parse_string(d, "type")
+        self.description = self.parse_string(d, "description")
+        self.required = self.parse_bool(d, "required", default=True)
+
+    def attributes(self):
+        return ["name", "type", "description", "required"]
+
+
+class ModuleOutputConfig(Config):
+    '''Module output descriptor configuration.'''
 
     def __init__(self, d):
         self.name = self.parse_string(d, "name")
@@ -293,23 +307,23 @@ class ModuleInfo(Configurable):
         return type_
 
 
-class ModuleNode(Configurable):
-    '''Module I/O node descriptor.
+class ModuleInput(Configurable):
+    '''Module input descriptor.
 
-    Module nodes must be subclasses of eta.core.types.Data.
+    Module inputs must be subclasses of eta.core.types.Data.
 
     Attributes:
-        name: the name of the node
-        type: the eta.core.types.Type of the node
-        description: a free text description of the node
-        required: whether the node is required
+        name: the name of the input
+        type: the eta.core.types.Type of the input
+        description: a free text description of the input
+        required: whether the input is required
     '''
 
     def __init__(self, config):
-        '''Creates a new ModuleNode instance.
+        '''Creates a new ModuleInput instance.
 
         Args:
-            config: a ModuleNodeConfig instance
+            config: a ModuleInputConfig instance
 
         Raises:
         '''
@@ -322,20 +336,66 @@ class ModuleNode(Configurable):
 
     def is_valid_path(self, path):
         '''Returns True/False indicating whether the given path is a valid
-        setting for this node.'''
+        setting for this input.'''
         return self.type.is_valid_path(path)
 
     @property
     def is_required(self):
-        '''Returns True/False if this node is required.'''
+        '''Returns True/False if this input is required.'''
         return self.required
 
     def _parse_type(self, type_str):
         type_ = etat.parse_type(type_str)
         if not etat.is_data(type_):
             raise ModuleMetadataError((
-                "Module node '%s' has type '%s' but must be a subclass "
+                "Module input '%s' has type '%s' but must be a subclass "
                 "of Data") % (self.name, type_))
+        return type_
+
+
+class ModuleOutput(Configurable):
+    '''Module output descriptor.
+
+    Module outputs must be subclasses of eta.core.types.ConcreteData.
+
+    Attributes:
+        name: the name of the output
+        type: the eta.core.types.Type of the output
+        description: a free text description of the output
+        required: whether the output is required
+    '''
+
+    def __init__(self, config):
+        '''Creates a new ModuleOutput instance.
+
+        Args:
+            config: a ModuleOutputConfig instance
+
+        Raises:
+        '''
+        self.validate(config)
+
+        self.name = config.name
+        self.type = self._parse_type(config.type)
+        self.description = config.description
+        self.required = config.required
+
+    def is_valid_path(self, path):
+        '''Returns True/False indicating whether the given path is a valid
+        setting for this output.'''
+        return self.type.is_valid_path(path)
+
+    @property
+    def is_required(self):
+        '''Returns True/False if this output is required.'''
+        return self.required
+
+    def _parse_type(self, type_str):
+        type_ = etat.parse_type(type_str)
+        if not etat.is_concrete_data(type_):
+            raise ModuleMetadataError((
+                "Module output '%s' has type '%s' but must be a subclass "
+                "of ConcreteData") % (self.name, type_))
         return type_
 
 
@@ -343,7 +403,7 @@ class ModuleParameter(Configurable):
     '''Module parameter descriptor.
 
     Module parameters must be subclasses of eta.core.types.Builtin or
-    eta.core.types.Data
+    eta.core.types.ConcreteData.
 
     Attributes:
         name: the name of the parameter
@@ -395,10 +455,10 @@ class ModuleParameter(Configurable):
     @staticmethod
     def _parse_type(name, type_str):
         type_ = etat.parse_type(type_str)
-        if not etat.is_builtin(type_) and not etat.is_data(type_):
+        if not etat.is_builtin(type_) and not etat.is_concrete_data(type_):
             raise ModuleMetadataError((
                 "Module parameter '%s' has type '%s' but must be a subclass "
-                "of Builtin or Data") % (name, type_))
+                "of Builtin or ConcreteData") % (name, type_))
         return type_
 
     def _validate_default(self):
@@ -416,19 +476,20 @@ class ModuleMetadata(Configurable, HasBlockDiagram):
     '''Class the encapsulates the architecture of a module.
 
     A module definition is valid if all of the following are true:
+        - the module has at least one input and output
         - all input, output, and parameter names are mutually unique
-        - all inputs and outputs have types that are subclasses of
-            eta.core.types.Data
+        - all inputs have types that are subclasses of eta.core.types.Data
+        - all outputs have types that are subclasses of
+            eta.core.types.ConcreteData
         - all parameters have types that are subclasses of
-            eta.core.types.Builtin or eta.core.types.Data
-        - any default parameter values are valid settings for their associated
-            parameter types
+            eta.core.types.Builtin or eta.core.types.ConcreteData
+        - any default parameters are valid values for their associated types
 
     Attributes:
         info: a ModuleInfo instance describing the module
-        inputs: a dictionary mapping input names to ModuleNode instances
+        inputs: a dictionary mapping input names to ModuleInput instances
             describing the inputs
-        outputs: a dictionary mapping output names to ModuleNode instances
+        outputs: a dictionary mapping output names to ModuleOutput instances
             describing the outputs
         parameters: a dictionary mapping parameter names to ModuleParameter
             instances describing the parameters
@@ -479,11 +540,11 @@ class ModuleMetadata(Configurable, HasBlockDiagram):
         return self.get_parameter(name).is_valid_value(val)
 
     def get_input(self, name):
-        '''Returns the ModuleNode instance for input `name`.'''
+        '''Returns the ModuleInput instance for input `name`.'''
         return self.inputs[name]
 
     def get_output(self, name):
-        '''Returns the ModuleNode instance for output `name`.'''
+        '''Returns the ModuleOutput instance for output `name`.'''
         return self.outputs[name]
 
     def get_parameter(self, name):
@@ -503,12 +564,21 @@ class ModuleMetadata(Configurable, HasBlockDiagram):
 
     def _parse_metadata(self, config):
         self.info = ModuleInfo(config.info)
+
+        if not config.inputs:
+            raise ModuleMetadataError(
+                "Module '%s' must have at least one input" % self.info.name)
         for i in config.inputs:
             self._verify_uniqueness(i.name)
-            self.inputs[i.name] = ModuleNode(i)
+            self.inputs[i.name] = ModuleInput(i)
+
+        if not config.outputs:
+            raise ModuleMetadataError(
+                "Module '%s' must have at least one output" % self.info.name)
         for o in config.outputs:
             self._verify_uniqueness(o.name)
-            self.outputs[o.name] = ModuleNode(o)
+            self.outputs[o.name] = ModuleOutput(o)
+
         for p in config.parameters:
             self._verify_uniqueness(p.name)
             self.parameters[p.name] = ModuleParameter(p)
