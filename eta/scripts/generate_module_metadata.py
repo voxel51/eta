@@ -84,6 +84,12 @@ def _parse(self):
     self._x_original_parse()
 
 
+#
+# Here we are augmenting the parsing capabilities of the imported
+# GoogleDocstring class at runtime so it knows how to process the `Info`,
+# `Inputs`, `Outputs`, `Parameters`, and `Attributes` sections that we support
+# in module docstrings
+#
 GoogleDocstring._x_parse_section = _parse_section
 GoogleDocstring._x_parse_info_section = _parse_info_section
 GoogleDocstring._x_parse_inputs_section = _parse_inputs_section
@@ -97,24 +103,32 @@ GoogleDocstring._parse = _parse
 class ModuleDocstring(object):
     '''Class encapsulating docstrings in ETA modules.
 
-    This class uses `sphinx-napoleon` to parse Google style docstrings with
+    This class supports a modified Google-style docstring syntax with
     `Info`, `Inputs`, `Outputs`, `Parameters`, and `Attributes` sections.
+    It uses `sphinx-napoleon` to parse the docstrings.
 
     Attributes:
         short_desc: the short description from the docstring (if any)
         long_desc: the long description from the docstring (if any)
-        info: a dict of values specified in an `Info` section
-        inputs: a dictionary of dicts describing any fields provided in an
-            `Inputs` section
+        info: a dict of values specified in an `Info` section (if any)
+        inputs: a dictionary of dicts describing any fields provided in the
+            `Inputs` section (if any)
         outputs: a dictionary of dicts describing any fields provided in an
-            `Outputs` section
+            `Outputs` section (if any)
         parameters: a dictionary of dicts describing any fields provided in an
-            `Parameters` section
+            `Parameters` section (if any)
         attributes: a dictionary of dicts describing any fields provided in an
-            `Attributes` section
+            `Attributes` section (if any)
     '''
 
     def __init__(self, docstr):
+        '''Constructs a ModuleDocstring object describing the content of the
+        given docstring.
+
+        Args:
+            docstr: a module, function, or class docstring written in our
+                modified Google-style
+        '''
         self.short_desc = ""
         self.long_desc = ""
         self.info = defaultdict(lambda: None)
