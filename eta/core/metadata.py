@@ -1,11 +1,6 @@
 '''
-Tool for generating metadata JSON files for ETA modules programmatically.
-
-This script generates a module metadata JSON file in the same directory as the
-input module file.
-
-Syntax:
-    python generate_module_metadata.py /path/to/eta_module.py
+Tools for generating metadata JSON files for ETA modules programmatically from
+source.
 
 Copyright 2018, Voxel51, LLC
 voxel51.com
@@ -42,62 +37,6 @@ import eta.core.module as etam
 
 
 logger = logging.getLogger(__name__)
-
-
-def _parse_info_section(self, section):
-    return self._x_parse_section("info", section)
-
-
-def _parse_inputs_section(self, section):
-    return self._x_parse_section("input", section)
-
-
-def _parse_outputs_section(self, section):
-    return self._x_parse_section("output", section)
-
-
-def _parse_attributes_section(self, section):
-    return self._x_parse_section("attribute", section)
-
-
-def _parse_parameters_section(self, section):
-    return self._x_parse_section("parameter", section)
-
-
-def _parse_section(self, var, section):
-    lines = []
-    for _name, _type, _desc in self._consume_fields():
-        field = ":%s %s: " % (var, _name)
-        lines.extend(self._format_block(field, _desc))
-        if _type:
-            lines.append(":type %s: %s" % (_name, _type))
-    lines.append("")
-    return lines
-
-
-def _parse(self):
-    self._sections["info"] = self._x_parse_info_section
-    self._sections["inputs"] = self._x_parse_inputs_section
-    self._sections["outputs"] = self._x_parse_outputs_section
-    self._sections["attributes"] = self._x_parse_attributes_section
-    self._sections["parameters"] = self._x_parse_parameters_section
-    self._x_original_parse()
-
-
-#
-# Here we are augmenting the parsing capabilities of the imported
-# GoogleDocstring class at runtime so it knows how to process the `Info`,
-# `Inputs`, `Outputs`, `Parameters`, and `Attributes` sections that we support
-# in module docstrings
-#
-GoogleDocstring._x_parse_section = _parse_section
-GoogleDocstring._x_parse_info_section = _parse_info_section
-GoogleDocstring._x_parse_inputs_section = _parse_inputs_section
-GoogleDocstring._x_parse_outputs_section = _parse_outputs_section
-GoogleDocstring._x_parse_attributes_section = _parse_attributes_section
-GoogleDocstring._x_parse_parameters_section = _parse_parameters_section
-GoogleDocstring._x_original_parse = GoogleDocstring._parse
-GoogleDocstring._parse = _parse
 
 
 class ModuleDocstring(object):
@@ -218,13 +157,6 @@ class ModuleDocstringError(Exception):
     pass
 
 
-class ModuleMetadataGenerationError(Exception):
-    '''Error raised when there was a problem generating the module metadata
-    file for an ETA module.
-    '''
-    pass
-
-
 def _get_name(field):
     index = field.first_child_matching_class(field_name)
     if index is None:
@@ -258,6 +190,69 @@ def _parse_default_element(body):
         required = True
 
     return body.strip(), default, required
+
+
+def _parse_info_section(self, section):
+    return self._x_parse_section("info", section)
+
+
+def _parse_inputs_section(self, section):
+    return self._x_parse_section("input", section)
+
+
+def _parse_outputs_section(self, section):
+    return self._x_parse_section("output", section)
+
+
+def _parse_attributes_section(self, section):
+    return self._x_parse_section("attribute", section)
+
+
+def _parse_parameters_section(self, section):
+    return self._x_parse_section("parameter", section)
+
+
+def _parse_section(self, var, section):
+    lines = []
+    for _name, _type, _desc in self._consume_fields():
+        field = ":%s %s: " % (var, _name)
+        lines.extend(self._format_block(field, _desc))
+        if _type:
+            lines.append(":type %s: %s" % (_name, _type))
+    lines.append("")
+    return lines
+
+
+def _parse(self):
+    self._sections["info"] = self._x_parse_info_section
+    self._sections["inputs"] = self._x_parse_inputs_section
+    self._sections["outputs"] = self._x_parse_outputs_section
+    self._sections["attributes"] = self._x_parse_attributes_section
+    self._sections["parameters"] = self._x_parse_parameters_section
+    self._x_original_parse()
+
+
+#
+# Here we are augmenting the parsing capabilities of the imported
+# GoogleDocstring class at runtime so it knows how to process the `Info`,
+# `Inputs`, `Outputs`, `Parameters`, and `Attributes` sections that we support
+# in module docstrings
+#
+GoogleDocstring._x_parse_section = _parse_section
+GoogleDocstring._x_parse_info_section = _parse_info_section
+GoogleDocstring._x_parse_inputs_section = _parse_inputs_section
+GoogleDocstring._x_parse_outputs_section = _parse_outputs_section
+GoogleDocstring._x_parse_attributes_section = _parse_attributes_section
+GoogleDocstring._x_parse_parameters_section = _parse_parameters_section
+GoogleDocstring._x_original_parse = GoogleDocstring._parse
+GoogleDocstring._parse = _parse
+
+
+class ModuleMetadataGenerationError(Exception):
+    '''Error raised when there was a problem generating the module metadata
+    file for an ETA module.
+    '''
+    pass
 
 
 def _get_module_docstring(module_name):
@@ -354,8 +349,10 @@ def _build_module_metadata(module_name, mds, dds, pds):
     return mmc
 
 
-def main(module_path):
+def generate(module_path):
     '''Generates the module metadata JSON file for the given ETA module.
+
+    The JSON file is written in the same directory as the input module file.
 
     Args:
         module_path: the path to the .py file defining an ETA module
@@ -400,7 +397,3 @@ def main(module_path):
     outpath = os.path.join(module_dir, module_name + ".json")
     logger.info("Writing module metadata to %s", outpath)
     mmc.write_json(outpath)
-
-
-if __name__ == "__main__":
-    main(sys.argv[1])
