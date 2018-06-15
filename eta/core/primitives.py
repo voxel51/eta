@@ -22,6 +22,7 @@ from builtins import *
 import cv2
 import numpy as np
 
+import eta.core.utils as etau
 import eta.core.video as etav
 
 
@@ -38,7 +39,6 @@ class DenseOpticalFlow(object):
                 coordinates
         '''
         self._flow = _flow
-        self._prev_frame = None
 
     def process(
             self, input_path, cart_path=None, polar_path=None, vid_path=None):
@@ -46,28 +46,44 @@ class DenseOpticalFlow(object):
 
         Args:
             input_path: the input video path
-            cart_path: an optional path to write the per-frame arrays
-                describing the flow fields in Cartesian (x, y) coordinates
-            polar_path: an optional path to write the per-frame arrays
-                describing the flow fields in polar (magnitude, angle)
+            cart_path: an optional path to write the per-frame arrays as .npy
+                files describing the flow fields in Cartesian (x, y)
+                coordinates
+            polar_path: an optional path to write the per-frame arrays as .npy
+                files describing the flow fields in polar (magnitude, angle)
                 coordinates
             vid_path: an optional path to write a video that visualizes the
                 magnitude and angle of the flow fields as the value (V) and
                 hue (H), respectively, of per-frame HSV images
         '''
-        with etav.VideoProcessor(input_path, out_vidpath=vid_path) as p:
+        # Ensure output directories
+        if cart_path:
+            etau.ensure_basedir(cart_path)
+        if polar_path:
+            etau.ensure_basedir(polar_path)
+        # VideoProcessor ensures that the output video directory exists
+
+        # Compute optical flow
+        prev_frame = None
+        with etav.VideoProcessor(input_path, out_single_vidpath=vid_path) as p:
             for img in p:
-                # Compute flow
                 curr_frame = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-                flow_cart = self._flow(self._prev_frame, curr_frame)
-                self._prev_frame = curr_frame
+                if prev_frame is None:
+                    # There is no previous frame for the first frame, so we set
+                    # it to the current frame, which implies that the flow for
+                    # the first frame will always be zero
+                    prev_frame = curr_frame
+
+                # Compute flow
+                flow_cart = self._flow(prev_frame, curr_frame)
+                prev_frame = curr_frame
 
                 if cart_path:
                     # Write Cartesian fields
                     np.save(cart_path % p.frame_number, flow_cart)
 
                 if not polar_path and not vid_path:
-                    continue;
+                    continue
 
                 # Convert to polar coordinates
                 mag, ang = cv2.cartToPolar(
@@ -93,10 +109,11 @@ def _polar_flow_to_img(mag, ang):
 
 class FarnebackDenseOpticalFlow(DenseOpticalFlow):
     '''A class that computes dense optical flow on a video using Gunnar
-    Farneback’s algorithm.
+    Farneback's algorithm.
     '''
 
     def __init__(
+            self,
             pyramid_scale=0.5,
             pyramid_levels=3,
             window_size=15,
@@ -124,10 +141,12 @@ class FarnebackDenseOpticalFlow(DenseOpticalFlow):
         flags = cv2.OPTFLOW_FARNEBACK_GAUSSIAN if use_gaussian_filter else 0
 
         def _flow(prev, curr):
+            # OpenCV3
             return cv2.calcOpticalFlowFarneback(
-                prev, curr, pyr_scale=pyramid_scale, levels=pyramid_levels,
-                winsize=window_size, iterations=iterations, poly_n=poly_n,
-                poly_sigma=poly_sigma, flags=flags)
+                prev, curr, None,  pyr_scale=pyramid_scale,
+                levels=pyramid_levels, winsize=window_size,
+                iterations=iterations, poly_n=poly_n, poly_sigma=poly_sigma,
+                flags=flags)
 
         super(FarnebackDenseOpticalFlow, self).__init__(_flow)
 
@@ -139,8 +158,8 @@ class BackgroundSubtractor(object):
         '''Initializes the base BackgroundSubtractor object.
 
         Args:
-            _fgbg: a background subtractor with an `apply` method that takes an
-                image and returns a foreground mask
+            _fgbg: an object with an `apply` method that takes an image and
+                returns a foreground mask
         '''
         self._fgbg = _fgbg
 
@@ -153,7 +172,7 @@ class BackgroundSubtractor(object):
                 as .npy files
             vid_path: an optional path to write the foreground-only video
         '''
-        with etav.VideoProcessor(input_path, out_vidpath=vid_path) as p:
+        with etav.VideoProcessor(input_path, out_single_vidpath=vid_path) as p:
             for img in p:
                 # Perform
                 mask = self._fgbg.apply(img)
@@ -228,7 +247,7 @@ class EdgeDetector(object):
             im_path: the output path for each frame image
             vid_path: the output path for processed video
         '''
-        with etav.VideoProcessor(input_path, out_impath=im_path, out_vidpath=vid_path) as processor:
+        with etav.VideoProcessor(input_path, out_impath=im_path, out_single_vidpath=vid_path) as processor:
             for img in processor:
                 edge = self.detector(img)
                 edge_bgr = cv2.cvtColor(edge, cv2.COLOR_GRAY2BGR)
@@ -276,7 +295,7 @@ class FeaturePointDetector(object):
             coor_path: the output path for coordinates of feature points in each frame
             vid_path: the output path for processed video
         '''
-        with etav.VideoProcessor(input_path, out_vidpath=vid_path) as processor:
+        with etav.VideoProcessor(input_path, out_single_vidpath=vid_path) as processor:
             point_coor = []
             for img in processor:
                 gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -315,7 +334,7 @@ class HarrisFeaturePointDetector(FeaturePointDetector):
             im_path: the output path for each frame image
             vid_path: the output path for processed video
         '''
-        with etav.VideoProcessor(input_path, out_impath=im_path, out_vidpath=vid_path) as processor:
+        with etav.VideoProcessor(input_path, out_impath=im_path, out_single_vidpath=vid_path) as processor:
             for img in processor:
                 gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
                 gray = np.float32(gray)
@@ -362,7 +381,7 @@ class FeaturePointDescriptor(object):
             coor_path: the output path for coordinates of feature points in each frame
             vid_path: the output path for processed video
         '''
-        with etav.VideoProcessor(input_path, out_vidpath=vid_path) as processor:
+        with etav.VideoProcessor(input_path, out_single_vidpath=vid_path) as processor:
             point_coor = []
             for img in processor:
                 gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
