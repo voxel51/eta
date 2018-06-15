@@ -1,14 +1,26 @@
 '''
-Core low-level primitive operations.
+Implementations of computer vision primitive algorithms.
 
 Copyright 2018, Voxel51, LLC
 voxel51.com
 
 Kunyi Lu, kunyi@voxel51.com
+Brian Moore, brian@voxel51.com
 '''
+# pragma pylint: disable=redefined-builtin
+# pragma pylint: disable=unused-wildcard-import
+# pragma pylint: disable=wildcard-import
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+from builtins import *
+# pragma pylint: enable=redefined-builtin
+# pragma pylint: enable=unused-wildcard-import
+# pragma pylint: enable=wildcard-import
+
 import cv2
 import numpy as np
-
 
 import eta.core.video as etav
 
