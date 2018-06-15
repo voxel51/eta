@@ -369,41 +369,9 @@ block diagram:
 https://drive.google.com/uc?id=15ImaW5o20wttEfgf0vQkxeQDirBtcYOa)](
 https://drive.google.com/uc?id=1v3CLijGzcXawzR8L44bhr_lC5B7aYPzv)
 
-Behind the scenes, it first generates the following intermediate
-`module_block_diagram.diag` file describing the module in a format understood
-by the `blockdiag` package:
-
-```
-blockdiag {
-
-  // module
-  simple-object-detector [width = 187, shape = box, height = 60];
-
-  // inputs
-  raw_video_path [width = 204, shape = endpoint, height = 40];
-
-  // outputs
-  objects_json_path [width = 234, shape = endpoint, height = 40];
-  annotated_frames_path [width = 274, shape = endpoint, height = 40];
-
-  // parameters
-  labels [width = 40, shape = beginpoint, rotate = 270, height = 124];
-  weights [width = 40, shape = beginpoint, rotate = 270, height = 134];
-
-  // I/O connections
-  raw_video_path -> simple-object-detector;
-  simple-object-detector -> objects_json_path;
-  simple-object-detector -> annotated_frames_path;
-
-  // parameter connections
-  group {
-    color = "#EE7531";
-    orientation = portrait;
-    labels -> simple-object-detector;
-    weights -> simple-object-detector;
-  }
-}
-```
+Behind the scenes, an intermediate `module_block_diagram.diag` file is
+generated that describes the module in a format understood by the `blockdiag`
+package.
 
 
 ## Module Configuration Files
