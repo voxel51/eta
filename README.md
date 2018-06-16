@@ -90,17 +90,17 @@ sed -i -e "s|{{eta}}|$(pwd)|g" config.json
 ```
 
 
-## Installing the command-line utility
+## The `eta` command-line utility
 
-You can install the ETA command-line utility by simply placing the `eta/eta`
-executable on your system path.
+When you installed ETA, an `eta` command-line utility was added to your path.
+This utility provides access to many usefuel features of ETA, including
+building pipelines from requests, running pipelines, and generating module
+metadata files.
 
-For example, you could make a symlink to an appropriate `bin` directory on your
-path:
+To learn more about the supported operations and their syntaxes, type
 
-```shell
-# Choose a different target directory if you prefer
-ln -s "$(pwd)/eta/eta" /usr/local/bin/eta
+```
+eta --help
 ```
 
 
