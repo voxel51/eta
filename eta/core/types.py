@@ -462,7 +462,7 @@ class Image(AbstractData):
         return ImageFile.is_valid_path(path)
 
 
-class ImageFile(File, ConcreteData):
+class ImageFile(Image, File, ConcreteData):
     '''An image file.
 
     ETA uses OpenCV to read images, so any image type understood by OpenCV is
