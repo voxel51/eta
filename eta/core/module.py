@@ -83,7 +83,8 @@ def find_all_metadata():
     module metadata files. To load these files, use `load_all_metadata()`.
 
     Returns:
-        a dictionary mapping module names to module metadata filenames
+        a dictionary mapping module names to (absolute paths to) module
+            metadata filenames
 
     Raises:
         ModuleMetadataError: if the module names are not unique
@@ -95,7 +96,7 @@ def find_all_metadata():
             if name in d:
                 raise ModuleMetadataError(
                     "Found two '%s' modules. Names must be unique." % name)
-            d[name] = path
+            d[name] = os.path.abspath(path)
 
     return d
 
@@ -106,8 +107,11 @@ def find_metadata(module_name):
     Module metadata files must be JSON files in one of the directories in
     `eta.config.module_dirs`.
 
+    Args:
+        module_name: the name of the module
+
     Returns:
-        the path to the module metadata file
+        the (absolute) path to the module metadata file
 
     Raises:
         ModuleMetadataError: if the module metadata file could not be found
