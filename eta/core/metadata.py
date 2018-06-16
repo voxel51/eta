@@ -174,15 +174,15 @@ def _get_body(field):
 
 
 def _parse_default_element(body):
-    m = re.search(r"\[(?P<default>[^\]]*)\]", body)
+    m = re.search(r"\[(?P<default>.*)\]", body)
     if m:
         try:
             raw = m.group("default")
-            default = json.loads(raw)
-        except ValueError:
+            default = eval(raw) if raw else None
+        except Exception:
             raise ModuleDocstringError(
                 "Invalid default value '%s'. Remember that default values "
-                "must be expressed as JSON, not Python values." % raw)
+                "must be valid Python expressions, not JSON." % raw)
         body = body.replace(m.group(0), "")
         required = False
     else:
