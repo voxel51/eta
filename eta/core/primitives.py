@@ -423,6 +423,7 @@ class CannyEdgeDetector(EdgeDetector):
         self.l2_gradient = l2_gradient
 
     def _process_frame(self, img):
+        # works in OpenCV 3 and OpenCV 2
         return cv2.Canny(
             img, threshold1=self.threshold1, threshold2=self.threshold2,
             apertureSize=self.aperture_size, L2gradient=self.l2_gradient)
