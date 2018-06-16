@@ -354,50 +354,78 @@ class KNNBackgroundSubtractor(BackgroundSubtractor):
 
 
 class EdgeDetector(object):
-    '''A class for processing edge detection to a video'''
+    '''Base class for edge detection methods.'''
 
-    def __init__(self, detector):
-        '''Initiate the parameters for EdgeDetection class
-
-        Args:
-            detector: an instance of a certain edge detector
-        '''
-        self.detector = detector
-
-    def process(self, input_path, im_path=None, vid_path=None):
+    def process(self, input_path, masks_path=None, vid_path=None):
         '''Detect edges using self.detector.
 
         Args:
-            input_path: the path of the video to be processed
-            im_path: the output path for each frame image
-            vid_path: the output path for processed video
+            input_path: the input video path
+            masks_path: an optional path to write the per-frame edge masks as
+                .npy files
+            vid_path: an optional path to write the edges video
         '''
-        with etav.VideoProcessor(input_path, out_impath=im_path, out_single_vidpath=vid_path) as processor:
-            for img in processor:
-                edge = self.detector(img)
-                edge_bgr = cv2.cvtColor(edge, cv2.COLOR_GRAY2BGR)
-                processor.write(edge_bgr)
+        # Ensure output directories exist
+        if masks_path:
+            etau.ensure_basedir(masks_path)
+        # VideoProcessor ensures that the output video directory exists
+
+        with etav.VideoProcessor(input_path, out_single_vidpath=vid_path) as p:
+            for img in p:
+                # Compute edges
+                edges = self._process_frame(img)
+
+                if masks_path:
+                    # Write edges mask
+                    np.save(masks_path % p.frame_number, edges.astype(np.bool))
+
+                if vid_path:
+                    # Write edge video
+                    p.write(cv2.cvtColor(edges, cv2.COLOR_GRAY2BGR))
+
+    def _process_frame(self, img):
+        '''Processes the next frame.
+
+        Args:
+            img: the next frame
+
+        Returns:
+            edges: the edges image
+        '''
+        raise NotImplementedError("subclass must implement _process_frame()")
+
+    def _reset(self):
+        '''Prepares the object to start processing a new video.'''
+        pass
 
 
 class CannyEdgeDetector(EdgeDetector):
+    '''Performs edge detection via Canny's algorithm.
 
-    def __init__(self, threshold_1=100, threshold_2=100, aperture_size=3, l2_gradient=False, **kwargs):
-        '''Initialize variable used by CannyEdgeDetector class.
+    This class is a wrapper around the OpenCV `Canny` method.
+    '''
+
+    def __init__(
+            self, threshold1=200, threshold2=50, aperture_size=3,
+            l2_gradient=False):
+        '''Creates a new CannyEdgeDetector object.
 
         Args:
-            threshold_1: first threshold for the hysteresis procedure
-            threshold_2: second threshold for the hysteresis procedure
-            aperture_size: aperture size for the Sobel operator
-            l2_gradient: a flag, indicating whether a more accurate L2 norm
-                         should be used to calculate the image gradient magnitude
-            **kwargs: valid keyword arguments for EdgeDetector
+            threshold1 (200): the edge threshold
+            threshold2 (50): the hysteresis threshold
+            aperture_size (3): aperture size for the Sobel operator
+            l2_gradient (False): whether to use a more accurate L2 norm to
+                calculate the image gradient magnitudes
         '''
-        detector = (lambda img: cv2.Canny(img,
-                                          threshold1=threshold_1,
-                                          threshold2=threshold_2,
-                                          apertureSize=aperture_size,
-                                          L2gradient=l2_gradient))
-        super(CannyEdgeDetector, self).__init__(detector)
+        self.threshold1 = threshold1
+        self.threshold2 = threshold2
+        self.aperture_size = aperture_size
+        self.l2_gradient = l2_gradient
+
+    def _process_frame(self, img):
+        return cv2.Canny(
+            img, threshold1=self.threshold1, threshold2=self.threshold2,
+            apertureSize=self.aperture_size, L2gradient=self.l2_gradient)
 
 
 class FeaturePointDetector(object):
