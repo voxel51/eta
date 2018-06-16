@@ -459,7 +459,7 @@ class Image(AbstractData):
 
     @staticmethod
     def is_valid_path(path):
-        return File.is_valid_path(path) and etau.is_supported_image_type(path)
+        return ImageFile.is_valid_path(path)
 
 
 class ImageFile(File, ConcreteData):
