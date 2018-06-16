@@ -91,7 +91,7 @@ class DenseOpticalFlow(object):
 
     def _reset(self):
         '''Prepares the object to start processing a new video.'''
-        raise NotImplementedError("subclass must implement _reset()")
+        pass
 
 
 def _polar_flow_to_img(mag, ang):
@@ -104,8 +104,7 @@ def _polar_flow_to_img(mag, ang):
 
 
 class FarnebackDenseOpticalFlow(DenseOpticalFlow):
-    '''A class that computes dense optical flow on a video using Gunnar
-    Farneback's algorithm.
+    '''Computes dense optical flow on a video using Farneback's method.
 
     This class is a wrapper around the OpenCV `calcOpticalFlowFarneback`
     function.
@@ -190,6 +189,7 @@ class BackgroundSubtractor(object):
         # Ensure output directories exist
         if fgmask_path:
             etau.ensure_basedir(fgmask_path)
+        # VideoWriters ensure that the output video directories exist
 
         r = etav.FFmpegVideoReader(input_path)
         try:
@@ -236,7 +236,7 @@ class BackgroundSubtractor(object):
 
     def _reset(self):
         '''Prepares the object to start processing a new video.'''
-        raise NotImplementedError("subclass must implement _reset()")
+        pass
 
 
 class BackgroundSubtractorError(Exception):
@@ -247,10 +247,12 @@ class BackgroundSubtractorError(Exception):
 
 
 class MOG2BackgroundSubtractor(BackgroundSubtractor):
-    '''A class that performs background subtraction on a video using the
-    Gaussian mixture-based foreground-background segmentation.
+    '''Performs background subtraction on a video using Gaussian mixture-based
+    foreground-background segmentation.
 
     This class is a wrapper around the OpenCV `BackgroundSubtractorMOG2` class.
+
+    This model is only supported when using OpenCV 3.
     '''
 
     def __init__(
@@ -302,8 +304,8 @@ class MOG2BackgroundSubtractor(BackgroundSubtractor):
 
 
 class KNNBackgroundSubtractor(BackgroundSubtractor):
-    '''A class that performs background subtraction on a video using the
-    K-nearest neighbors-based foreground-background segmentation.
+    '''Performs background subtraction on a video using K-nearest
+    neighbors-based foreground-background segmentation.
 
     This class is a wrapper around the OpenCV `BackgroundSubtractorKNN` class.
 
