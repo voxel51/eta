@@ -67,12 +67,12 @@ class ParametersConfig(Config):
     '''Parameter configuration settings.
 
     Parameters:
-        size (eta.core.types.Array): [null] The output [width, height] of the
+        size (eta.core.types.Array): [None] The output (width, height) of the
             video
-        scale (eta.core.types.Number): [null] A numeric scale factor to apply
-        scale_str (eta.core.types.String): [null] A scale string; an argument
+        scale (eta.core.types.Number): [None] A numeric scale factor to apply
+        scale_str (eta.core.types.String): [None] A scale string; an argument
             for ffmpeg scale=
-        ffmpeg_out_opts (eta.core.types.Array): [null] An array of ffmpeg
+        ffmpeg_out_opts (eta.core.types.Array): [None] An array of ffmpeg
             output options
     '''
 

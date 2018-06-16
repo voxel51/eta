@@ -76,7 +76,7 @@ class ParametersConfig(Config):
     '''Parameter configuration settings.
 
     Parameters:
-        crop_box (eta.core.types.Rectangle): [null] A region of interest of
+        crop_box (eta.core.types.Rectangle): [None] A region of interest of
             each frame to extract before embedding
     '''
 

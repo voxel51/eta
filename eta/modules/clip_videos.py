@@ -69,9 +69,9 @@ class ParametersConfig(Config):
     '''Parameter configuration settings.
 
     Parameters:
-        frames (eta.core.types.String): [null] A frames string specifying the
+        frames (eta.core.types.String): [None] A frames string specifying the
             clips to generate
-        events_json_path (eta.core.types.EventSeries): [null] An EventSeries
+        events_json_path (eta.core.types.EventSeries): [None] An EventSeries
             specifying the clips to generate
     '''
 

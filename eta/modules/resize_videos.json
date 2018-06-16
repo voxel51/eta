@@ -47,7 +47,7 @@
         {
             "name": "size",
             "type": "eta.core.types.Array",
-            "description": "The output [width, height] of the video",
+            "description": "The output (width, height) of the video",
             "required": false,
             "default": null
         }
