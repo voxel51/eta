@@ -409,6 +409,16 @@ class PipelineParameter(object):
         self._validate()
 
     @property
+    def is_builtin(self):
+        '''Returns True/False if this parameter is a Builtin.'''
+        return self.param.is_builtin
+
+    @property
+    def is_data(self):
+        '''Returns True/False if this parameter is Data.'''
+        return self.param.is_data
+
+    @property
     def is_required(self):
         '''Returns True/False if this parameter must be set by the user.'''
         return (
