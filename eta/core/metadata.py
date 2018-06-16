@@ -184,7 +184,7 @@ def _parse_default_element(body):
                 "Invalid default value '%s'. Remember that default values "
                 "must be valid Python expressions, not JSON." % raw)
         body = body.replace(m.group(0), "")
-        required = False
+        required = (raw == "")
     else:
         default = None
         required = True
