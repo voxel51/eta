@@ -76,7 +76,7 @@ To setup your environment, copy the example configuration file
 cp config-example.json config.json
 ```
 
-and then edit your config file to provide the (full) paths to the relevant
+and then edit your config file to provide the paths to the relevant
 directories in your installation. If you do not require a customized
 installation, the example configuration file contains the pattern `{{eta}}`
 that you can perform a quick find-and-replace on to populate the config:
@@ -88,6 +88,11 @@ sed -i '' -e "s|{{eta}}|$(pwd)|g" config.json
 # on most linux distributions
 sed -i -e "s|{{eta}}|$(pwd)|g" config.json
 ```
+
+The default config includes the `eta/modules` and `eta/pipelines` directories
+in your module and pipeline config search paths, respectively. In addition,
+it includes the relative paths `./modules` and `./pipelines` to support the
+typical directory structure that we adopt for our individual projects.
 
 
 ## The `eta` command-line utility
