@@ -101,6 +101,8 @@ class PipelineBuildRequest(Configurable):
                     "'%s' is not a valid value for input '%s' of pipeline "
                     "'%s'") % (ipath, iname, self.pipeline)
                 )
+            # Convert to absolute paths
+            self.inputs[iname] = os.path.abspath(ipath)
 
         # Ensure that required inputs were supplied
         for miname, miobj in iteritems(self.metadata.inputs):
@@ -122,6 +124,9 @@ class PipelineBuildRequest(Configurable):
                     "'%s' is not a valid value for parameter '%s' of pipeline "
                     "'%s'") % (pval, pname, self.pipeline)
                 )
+            # Convert any data parameters to absolute paths
+            if self.metadata.parameters[pname].is_data:
+                self.parameters[pname] = os.path.abspath(pval)
 
         # Ensure that required parmeters were supplied
         for mpname, mpobj in iteritems(self.metadata.parameters):
