@@ -227,7 +227,7 @@ class PipelineBuilder(object):
                 etaj.JobConfig.builder()
                     .set(name=module)
                     .set(working_dir=".")
-                    .set(script=etam.find_exe(metadata.info.exe))
+                    .set(script=etam.find_exe(metadata))
                     .set(config_path=self._get_module_config_path(module))
                     .validate()
             )
