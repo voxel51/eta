@@ -285,9 +285,8 @@ class PipelineBuilder(object):
         # Populate module parameters
         module_params = defaultdict(dict)
         for param_str, param in iteritems(pmeta.parameters):
-            val, found = _get_param_value(param_str, param, self.request)
-            if found:
-                module_params[param.module][param.name] = val
+            val = _get_param_value(param_str, param, self.request)
+            module_params[param.module][param.name] = val
 
         # Generate module configs
         for module in pmeta.execution_order:
@@ -344,30 +343,22 @@ def _get_param_value(param_str, param, request):
         request: the PipelineBuildRequest instance
 
     Returns:
-        val: the parameter value, or None if a value could not be found
-        found: True/False
+        val: the parameter value
     '''
     if param_str in request.parameters:
         # User-set parameter
         val = request.parameters[param_str]
-        found = True
     elif param.has_set_value:
         # Pipeline-set parameter
         val = param.set_value
-        found = True
-    elif param.has_default_value:
-         # Module-default value
-         val = param.default_value
-         found = True
     else:
-        val = None
-        found = False
+        # Module-default value
+        val = param.default_value
 
-    if found:
-        # Resolve parameter value
+    if val is not None:
         val = etat.resolve_value(val, param.param.type)
 
-    return val, found
+    return val
 
 
 def _get_incoming_connections(module, connections):
