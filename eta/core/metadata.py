@@ -131,17 +131,17 @@ class ModuleDocstring(object):
         self._last_dict = {}
 
     def _parse_node_body(self, d, body):
-        body, default, required = _parse_default_element(body)
-        if default:
+        body, required, default = _parse_default_element(body)
+        if not required and default:
             raise ModuleDocstringError(
-                "Module inputs/outputs must have empty ('' or None) default "
-                "values, but '%s' was found" % str(default))
+                "Optional module inputs/outputs must have empty ('' or None) "
+                "default values, but '%s' was found" % str(default))
         d["description"] = body
         d["required"] = required
         self._last_dict = d
 
     def _parse_parameter_body(self, d, body):
-        body, default, required = _parse_default_element(body)
+        body, required, default = _parse_default_element(body)
         d["description"] = body
         d["default"] = default
         d["required"] = required
@@ -176,20 +176,21 @@ def _get_body(field):
 def _parse_default_element(body):
     m = re.search(r"\[(?P<default>.*)\]", body)
     if m:
-        try:
-            raw = m.group("default")
-            default = eval(raw) if raw else None
-        except Exception:
-            raise ModuleDocstringError(
-                "Invalid default value '%s'. Remember that default values "
-                "must be valid Python expressions, not JSON." % raw)
+        raw = m.group("default")
         body = body.replace(m.group(0), "")
-        required = (raw == "")
     else:
-        default = None
-        required = True
+        raw = ""
 
-    return body.strip(), default, required
+    required = (raw == "")
+
+    try:
+        default = eval(raw) if raw else None
+    except Exception:
+        raise ModuleDocstringError(
+            "Invalid default value '%s'. Default values must be valid Python "
+            "expressions." % raw)
+
+    return body.strip(), required, default
 
 
 def _parse_info_section(self, section):
@@ -326,9 +327,10 @@ def _build_module_metadata(module_name, mds, dds, pds):
                 .set(name=pname)
                 .set(type=pspec["type"])
                 .set(description=pspec["description"])
-                .set(required=pspec["required"])
-                .set(default=pspec["default"])
-                .validate())
+                .set(required=pspec["required"]))
+            if not pspec["required"]:
+                parameter_builder.set(default=pspec["default"])
+            parameter_builder.validate()
             parameters.append(parameter_builder)
     except Exception as e:
         raise ModuleMetadataGenerationError(
