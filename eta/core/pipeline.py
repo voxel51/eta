@@ -204,13 +204,14 @@ def find_all_metadata():
         PipelineMetadataError: if the pipeline names are not unique
     '''
     d = {}
-    for pdir in eta.config.pipeline_dirs:
+    pdirs = etau.make_search_path(eta.config.pipeline_dirs)
+    for pdir in pdirs:
         for path in glob(os.path.join(pdir, "*.json")):
             name = os.path.splitext(os.path.basename(path))[0]
             if name in d:
                 raise PipelineMetadataError(
                     "Found two '%s' pipelines. Names must be unique." % name)
-            d[name] = os.path.abspath(path)
+            d[name] = path
 
     return d
 

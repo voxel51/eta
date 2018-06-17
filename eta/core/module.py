@@ -28,6 +28,7 @@ from eta.core.config import Config, ConfigError, Configurable
 from eta.core.diagram import HasBlockDiagram, BlockdiagModule
 import eta.core.log as etal
 import eta.core.types as etat
+import eta.core.utils as etau
 
 
 def load_all_metadata():
@@ -89,13 +90,14 @@ def find_all_metadata():
         ModuleMetadataError: if the module names are not unique
     '''
     d = {}
-    for pdir in eta.config.module_dirs:
-        for path in glob(os.path.join(pdir, "*.json")):
+    mdirs = etau.make_search_path(eta.config.module_dirs)
+    for mdir in mdirs:
+        for path in glob(os.path.join(mdir, "*.json")):
             name = os.path.splitext(os.path.basename(path))[0]
             if name in d:
                 raise ModuleMetadataError(
                     "Found two '%s' modules. Names must be unique." % name)
-            d[name] = os.path.abspath(path)
+            d[name] = path
 
     return d
 
