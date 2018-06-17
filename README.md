@@ -76,7 +76,7 @@ To setup your environment, copy the example configuration file
 cp config-example.json config.json
 ```
 
-and then edit your config file to provide the (full) paths to the relevant
+and then edit your config file to provide the paths to the relevant
 directories in your installation. If you do not require a customized
 installation, the example configuration file contains the pattern `{{eta}}`
 that you can perform a quick find-and-replace on to populate the config:
@@ -89,18 +89,23 @@ sed -i '' -e "s|{{eta}}|$(pwd)|g" config.json
 sed -i -e "s|{{eta}}|$(pwd)|g" config.json
 ```
 
+The default config includes the `eta/modules` and `eta/pipelines` directories
+in your module and pipeline config search paths, respectively. In addition,
+it includes the relative paths `./modules` and `./pipelines` to support the
+typical directory structure that we adopt for our individual projects.
 
-## Installing the command-line utility
 
-You can install the ETA command-line utility by simply placing the `eta/eta`
-executable on your system path.
+## The `eta` command-line utility
 
-For example, you could make a symlink to an appropriate `bin` directory on your
-path:
+When you installed ETA, an `eta` command-line utility was added to your path.
+This utility provides access to many usefuel features of ETA, including
+building pipelines from requests, running pipelines, and generating module
+metadata files.
 
-```shell
-# Choose a different target directory if you prefer
-ln -s "$(pwd)/eta/eta" /usr/local/bin/eta
+To learn more about the supported operations and their syntaxes, type
+
+```
+eta --help
 ```
 
 

@@ -197,7 +197,8 @@ def find_all_metadata():
     pipeline metadata files. To load these files, use `load_all_metadata()`.
 
     Returns:
-        a dictionary mapping pipeline names to pipeline metadata filenames
+        a dictionary mapping pipeline names to (absolute paths to) pipelines
+            metadata filenames
 
     Raises:
         PipelineMetadataError: if the pipeline names are not unique
@@ -209,7 +210,7 @@ def find_all_metadata():
             if name in d:
                 raise PipelineMetadataError(
                     "Found two '%s' pipelines. Names must be unique." % name)
-            d[name] = path
+            d[name] = os.path.abspath(path)
 
     return d
 
@@ -221,7 +222,7 @@ def find_metadata(pipeline_name):
     `eta.config.pipeline_dirs`.
 
     Returns:
-        the path to the pipeline metadata file
+        the (absolute) path to the pipeline metadata file
 
     Raises:
         PipelineMetadataError: if the pipeline could not be found
@@ -401,6 +402,16 @@ class PipelineParameter(object):
         self.is_tunable = is_tunable
         self.set_value = set_value
         self._validate()
+
+    @property
+    def is_builtin(self):
+        '''Returns True/False if this parameter is a Builtin.'''
+        return self.param.is_builtin
+
+    @property
+    def is_data(self):
+        '''Returns True/False if this parameter is Data.'''
+        return self.param.is_data
 
     @property
     def is_required(self):

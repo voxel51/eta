@@ -449,8 +449,21 @@ class Weights(File, ConcreteData):
         return os.path.join(basedir, "{name}").format(**params)
 
 
-class Image(File, ConcreteData):
-    '''An image.
+class Image(AbstractData):
+    '''The abstract data type representing an image.
+
+    Examples:
+        /path/to/image.png
+        /path/to/image.jpg
+    '''
+
+    @staticmethod
+    def is_valid_path(path):
+        return ImageFile.is_valid_path(path)
+
+
+class ImageFile(Image, File, ConcreteData):
+    '''An image file.
 
     ETA uses OpenCV to read images, so any image type understood by OpenCV is
     valid.
