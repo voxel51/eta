@@ -51,7 +51,7 @@ def parse_type(type_str):
 
 
 def resolve_value(val, type_):
-    '''Resolves the given value of the given type.'''
+    '''Resolves the given value of the given type, if necessary.'''
     if isinstance(type_, Weights):
         val = etaw.find_weights(val)
 
