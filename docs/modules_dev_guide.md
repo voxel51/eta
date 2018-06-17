@@ -629,18 +629,24 @@ class DataConfig(Config):
     '''Data configuration settings.
 
     Inputs:
-        {{input}} ({{type}}): {{description}}
+        {{input1}} ({{type1}}): {{description1}}
+        {{input2}} ({{type2}}): [None] {{description2}}
 
     Outputs:
-        {{output}} ({{type}}): {{description}}
+        {{output1}} ({{type3}}): {{description3}}
+        {{output2}} ({{type4}}): [None] {{description4}}
     '''
 
     def __init__(self, d):
-        # Template for parsing an input field
-        self.{{input}} = self.parse_{{type}}(d, "{{input}}")
+        # Template for parsing a required input
+        self.{{input1}} = self.parse_{{type1}}(d, "{{input1}}")
+        # Template for parsing an optional input
+        self.{{input2}} = self.parse_{{type2}}(d, "{{input2}}", default=None)
 
-        # Template for parsing an output field
-        self.{{output}} = self.parse_{{type}}(d, "{{output}}")
+        # Template for parsing a required output
+        self.{{output1}} = self.parse_{{type3}}(d, "{{output1}}")
+        # Template for parsing an optional output
+        self.{{output2}} = self.parse_{{type4}}(d, "{{output2}}", default=None)
 
 
 #
@@ -654,13 +660,16 @@ class ParametersConfig(Config):
     '''Parameter configuration settings.'''
 
     Parameters:
-        {{input}} ({{type}}): [{{default}}] {{description}}
+        {{parameter1}} ({{type5}}): {{description5}}
+        {{parameter2}} ({{type6}}): [{{default1}}] {{description6}}
     '''
 
     def __init__(self, d):
-        # Template for parsing a parameter with a default value
-        self.{{parameter}} = self.parse_{{type}}(
-            d, "{{parameter}}", default={{default}})
+        # Template for parsing a required parameter
+        self.{{parameter1}} = self.parse_{{type5}}(d, "{{parameter1}}")
+        # Template for parsing an optional parameter
+        self.{{parameter2}} = self.parse_{{type6}}(
+            d, "{{parameter2}}", default={{default1}})
 
 
 #
