@@ -84,7 +84,7 @@ a simple object detector module:
             "name": "weights",
             "type": "eta.core.types.Weights",
             "description": "The weights for the network",
-            "required": true,
+            "required": false,
             "default": "/path/to/weights.npz"
         }
     ]
@@ -144,7 +144,7 @@ Each spec has the fields:
 - `default`: (optional parameters only) the default value that is used
     for the optional parameter when it is omitted from a module configuration
     file. The default value must either be (a) a valid value for the declared
-    type of the parameter, or (b) set to `None`, which implies that the module
+    type of the parameter, or (b) set to `null`, which implies that the module
     can function without this parameter being set to a valid typed value
 
 
@@ -415,8 +415,7 @@ The `parameters` field defines the parameter values to use when executing the
 module. The possible fields that can be listed in `<parameters>` in the
 above JSON are defined by the `parameters` field of the module's metadata JSON
 file. In particular, each spec in the `parameters` field must contain all
-parameters that are _required_ and have _no default value_ in the module
-metadata file and may also contain any optional parameters.
+parameters that are _required_ and may also contain any optional parameters.
 Again, the particular parameters supported by the module are defined by
 the module's metadata JSON file, and all required parameters and zero or more
 optional parameters must be specified.
