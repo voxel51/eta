@@ -21,7 +21,6 @@ from future.utils import iteritems, itervalues
 # pragma pylint: enable=wildcard-import
 
 from collections import defaultdict
-import json
 import logging
 import os
 import re
@@ -98,7 +97,7 @@ class ModuleDocstring(object):
                 for field in node:
                     self._parse_field(field)
             else:
-                logger.info("Ignoring unsupported node '%s'" % node.astext())
+                logger.info("Ignoring unsupported node '%s'", node.astext())
 
     def _parse_field(self, field):
         # Parse field content

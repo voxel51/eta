@@ -28,7 +28,6 @@ from eta.core.config import Config, ConfigError, Configurable
 from eta.core.diagram import HasBlockDiagram, BlockdiagModule
 import eta.core.log as etal
 import eta.core.types as etat
-import eta.core.utils as etau
 
 
 def load_all_metadata():

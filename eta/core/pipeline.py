@@ -31,7 +31,6 @@ import eta.core.graph as etag
 import eta.core.job as etaj
 import eta.core.log as etal
 import eta.core.module as etam
-from eta.core.serial import Serializable
 import eta.core.status as etas
 import eta.core.types as etat
 import eta.core.utils as etau
@@ -321,7 +320,7 @@ class PipelineInfo(Configurable):
         type_ = etat.parse_type(type_str)
         if not etat.is_pipeline(type_):
             raise PipelineMetadataError(
-                    "'%s' is not a valid pipeline type" % type_)
+                "'%s' is not a valid pipeline type" % type_)
         return type_
 
 
@@ -406,7 +405,7 @@ class PipelineParameter(object):
     @property
     def is_required(self):
         '''Returns True/False if this parameter must be set by the user.'''
-        return (self.param.is_required and not self.has_set_value)
+        return self.param.is_required and not self.has_set_value
 
     @property
     def has_set_value(self):
@@ -782,7 +781,7 @@ def _parse_input(name, connections, modules):
     '''
     node_str = PipelineNode.get_input_str(name)
     sinks = _get_sinks_with_source(node_str, connections)
-    if len(sinks) == 0:
+    if not sinks:
         raise PipelineMetadataError(
             "Pipeline input '%s' is not connected to any modules" % name)
 
@@ -858,8 +857,8 @@ def _validate_module_connections(modules, connections):
         # Validate outputs
         for oname, node in iteritems(module.metadata.outputs):
             node_str = PipelineNode.get_node_str(mname, oname)
-            num_sinks = len(_get_sinks_with_source(node_str, connections))
-            if num_sinks == 0 and node.is_required:
+            sinks = _get_sinks_with_source(node_str, connections)
+            if not sinks and node.is_required:
                 raise PipelineMetadataError(
                     "Module '%s' output '%s' is required but has no outgoing "
                     "connections" % (mname, oname))

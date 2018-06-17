@@ -30,7 +30,7 @@ import eta.core.utils as etau
 import eta.core.weights as etaw
 
 
-###### Utilities ###############################################################
+###### Utilities ##############################################################
 
 
 def parse_type(type_str):
@@ -111,14 +111,14 @@ class ConcreteDataParams(object):
         return params
 
 
-###### Base type ###############################################################
+###### Base type ##############################################################
 
 
 class Type(object):
     '''The base type for all types.'''
 
 
-###### Pipeline types ##########################################################
+###### Pipeline types #########################################################
 
 
 class Pipeline(Type):
@@ -126,7 +126,7 @@ class Pipeline(Type):
     pass
 
 
-###### Module types ############################################################
+###### Module types ###########################################################
 
 
 class Module(Type):
@@ -134,7 +134,7 @@ class Module(Type):
     pass
 
 
-###### Builtin types ###########################################################
+###### Builtin types ##########################################################
 
 
 class Builtin(Type):
@@ -322,7 +322,7 @@ class RelativeRectangle(Object):
         )
 
 
-###### Data types ##############################################################
+###### Data types #############################################################
 
 
 class Data(Type):
@@ -399,7 +399,7 @@ class FileSequence(AbstractData):
         if not String.is_valid_value(path):
             return False
         try:
-            path % 1
+            _ = path % 1
             return True
         except TypeError:
             return False
@@ -415,7 +415,7 @@ class DualFileSequence(AbstractData):
         if not String.is_valid_value(path):
             return False
         try:
-            path % (1, 2)
+            _ = path % (1, 2)
             return True
         except TypeError:
             return False

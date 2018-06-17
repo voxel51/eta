@@ -202,7 +202,7 @@ class ConfigBuilder(Serializable):
             attributes=self._attributes)
 
     @classmethod
-    def from_json(*args, **kwargs):
+    def from_json(cls, *args, **kwargs):
         raise NotImplementedError("ConfigBuilders cannot be read from JSON")
 
 

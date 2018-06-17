@@ -97,10 +97,9 @@ class PipelineBuildRequest(Configurable):
                 raise PipelineBuildRequestError(
                     "Pipeline '%s' has no input '%s'" % (self.pipeline, iname))
             if not self.metadata.is_valid_input(iname, ipath):
-                raise PipelineBuildRequestError((
+                raise PipelineBuildRequestError(
                     "'%s' is not a valid value for input '%s' of pipeline "
-                    "'%s'") % (ipath, iname, self.pipeline)
-                )
+                    "'%s'" % (ipath, iname, self.pipeline))
 
         # Ensure that required inputs were supplied
         for miname, miobj in iteritems(self.metadata.inputs):
@@ -254,7 +253,7 @@ class PipelineBuilder(object):
 
             # Populate inputs
             iconns = _get_incoming_connections(module, pmeta.connections)
-            for iname, inode in iteritems(mmeta.inputs):
+            for iname in mmeta.inputs:
                 if iname in iconns:
                     isrc = iconns[iname]
                     if isrc.is_pipeline_input:
