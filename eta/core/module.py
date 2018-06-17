@@ -272,10 +272,19 @@ class ModuleParameterConfig(Config):
         self.type = self.parse_string(d, "type")
         self.description = self.parse_string(d, "description")
         self.required = self.parse_bool(d, "required", default=True)
-        self.default = self.parse_raw(d, "default", default=None)
+        if not self.required:
+            self.default = self.parse_raw(d, "default")
+        elif "default" in d:
+            raise ConfigError(
+                "Module parameter '%s' is required, so it should not have a "
+                "default value" % self.name)
 
     def attributes(self):
-        return ["name", "type", "description", "required", "default"]
+        attrs = ["name", "type", "description", "required"]
+        if not self.required:
+            attrs.append("default")
+
+        return attrs
 
 
 class ModuleInfo(Configurable):
