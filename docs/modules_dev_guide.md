@@ -138,12 +138,14 @@ Each spec has the fields:
 
 - `description`: a short free-text description of the field
 
-- `required`: (optional) whether the field is required for the module to
-    function. If omitted, the field is assumed to be required
+- `required`: (optional) whether a value must be provided for the field in all
+    module configuration files. If omitted, the field is assumed to be required
 
-- `default`: (optional, and parameters only) a default value for the parameter.
-    If a parameter is required but has a default value, it may be omitted from
-    the module configuration file
+- `default`: (optional parameters only) the default value that is used
+    for the optional parameter when it is omitted from a module configuration
+    file. The default value must either be (a) a valid value for the declared
+    type of the parameter, or (b) set to `None`, which implies that the module
+    can function without this parameter being set to a valid typed value
 
 
 #### Automatic generation of module metadata files
