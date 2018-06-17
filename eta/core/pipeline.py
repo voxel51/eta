@@ -508,9 +508,9 @@ class PipelineModule(Configurable):
     def _verify_parameter_values(self, param_dict):
         for name, val in param_dict:
             if not self.metadata.is_valid_parameter(name, val):
-                raise PipelineMetadataError((
+                raise PipelineMetadataError(
                     "'%s' is an invalid value for parameter '%s' of module "
-                    "'%s'") % (val, name, self.name))
+                    "'%s'" % (val, name, self.name))
 
 
 class PipelineNode(object):
@@ -813,9 +813,9 @@ def _parse_output(name, connections, modules):
     node_str = PipelineNode.get_output_str(name)
     sources = _get_sources_with_sink(node_str, connections)
     if len(sources) != 1:
-        raise PipelineMetadataError((
+        raise PipelineMetadataError(
             "Pipeline output '%s' must be connected to exactly one module "
-            "output, but was connected to %d") % (name, len(sources))
+            "output, but was connected to %d" % (name, len(sources))
         )
 
     source = sources[0]
@@ -845,26 +845,24 @@ def _validate_module_connections(modules, connections):
             node_str = PipelineNode.get_node_str(mname, iname)
             num_sources = len(_get_sources_with_sink(node_str, connections))
             if num_sources == 0 and node.is_required:
-                raise PipelineMetadataError((
+                raise PipelineMetadataError(
                     "Module '%s' input '%s' is required but has no incoming "
-                    "connection") % (mname, iname)
+                    "connection" % (mname, iname)
                 )
             if num_sources > 1:
-                raise PipelineMetadataError((
+                raise PipelineMetadataError(
                     "Module '%s' input '%s' must have one incoming connection "
-                    "but instead has %d incoming connections") % (
-                        mname, iname, num_sources)
-                )
+                    "but instead has %d incoming connections" % (
+                        mname, iname, num_sources))
 
         # Validate outputs
         for oname, node in iteritems(module.metadata.outputs):
             node_str = PipelineNode.get_node_str(mname, oname)
             num_sinks = len(_get_sinks_with_source(node_str, connections))
             if num_sinks == 0 and node.is_required:
-                raise PipelineMetadataError((
+                raise PipelineMetadataError(
                     "Module '%s' output '%s' is required but has no outgoing "
-                    "connections") % (mname, oname)
-                )
+                    "connections" % (mname, oname))
 
 
 def _compute_execution_order(connections):
@@ -890,8 +888,7 @@ def _compute_execution_order(connections):
     except etag.CyclicGraphError:
         raise PipelineMetadataError(
             "Unable to compute a valid execution order because the module "
-            "connections form a cyclic graph."
-        )
+            "connections form a cyclic graph.")
 
     return execution_order
 
@@ -1015,17 +1012,14 @@ def _create_node_connection(source, sink, modules):
             "'%s' cannot be a connection source" % source)
     if sink.is_pipeline_input or  sink.is_module_output:
         raise PipelineMetadataError(
-        "'%s' cannot be a connection sink" % sink)
+            "'%s' cannot be a connection sink" % sink)
     if source.is_module_output and sink.is_module_input:
         src = modules[source.module].metadata.get_output(source.node)
         snk = modules[sink.module].metadata.get_input(sink.node)
         if not issubclass(src.type, snk.type):
             raise PipelineMetadataError(
-                (
-                    "Module output '%s' ('%s') is not a valid input "
-                    "to module '%s' ('%s')"
-                ) % (source, src.type, sink, snk.type)
-            )
+                "Module output '%s' ('%s') is not a valid input to module "
+                "'%s' ('%s')" % (source, src.type, sink, snk.type))
 
     return PipelineConnection(source, sink)
 
