@@ -105,10 +105,9 @@ class PipelineBuildRequest(Configurable):
         # Ensure that required inputs were supplied
         for miname, miobj in iteritems(self.metadata.inputs):
             if miobj.is_required and miname not in self.inputs:
-                raise PipelineBuildRequestError((
+                raise PipelineBuildRequestError(
                     "Required input '%s' of pipeline '%s' was not "
-                    "supplied") % (miname, self.pipeline)
-                )
+                    "supplied" % (miname, self.pipeline))
 
     def _validate_parameters(self):
         # Validate parameters
@@ -118,18 +117,16 @@ class PipelineBuildRequest(Configurable):
                     "Pipeline '%s' has no tunable parameter '%s'" % (
                         self.pipeline, pname))
             if not self.metadata.is_valid_parameter(pname, pval):
-                raise PipelineBuildRequestError((
+                raise PipelineBuildRequestError(
                     "'%s' is not a valid value for parameter '%s' of pipeline "
-                    "'%s'") % (pval, pname, self.pipeline)
-                )
+                    "'%s'" % (pval, pname, self.pipeline))
 
         # Ensure that required parmeters were supplied
         for mpname, mpobj in iteritems(self.metadata.parameters):
             if mpobj.is_required and mpname not in self.parameters:
-                raise PipelineBuildRequestError((
+                raise PipelineBuildRequestError(
                     "Required parameter '%s' of pipeline '%s' was not "
-                    "specified") % (mpname, self.pipeline)
-                )
+                    "specified" % (mpname, self.pipeline))
 
 
 class PipelineBuildRequestError(Exception):
