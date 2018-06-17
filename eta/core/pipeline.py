@@ -369,20 +369,18 @@ class PipelineOutput(object):
 class PipelineParameter(object):
     '''Class describing a pipeline parameter.
 
-    A pipeline parameter is valid if it is active, i.e., if it is tunable, its
-    value is set by the pipeline, and/or it has a default value.
+    A pipeline parameter is *active* if it is tunable and/or its value is set
+    by the pipeline.
 
     A pipeline parameter is required (must be set by the end-user) if it is
-    required by the module but has no value set by the pipeline and no default
-    value.
+    required by the module but has no value set by the pipeline.
 
     Attributes:
         module: the module associated with this parameter
         name: the name of this parameter
         param: the ModuleParameter instance of the module parameter
         is_tunable: whether the parameter is tunable
-        set_value: the value set by the pipeline (if any)
-        default_value: the default value provided by the module (if any)
+        set_value: the value set by the pipeline, or None if it is not set
     '''
 
     def __init__(self, module, name, param, is_tunable, set_value=None):
@@ -403,18 +401,12 @@ class PipelineParameter(object):
         self.param = param
         self.is_tunable = is_tunable
         self.set_value = set_value
-        self.default_value = param.default
-
         self._validate()
 
     @property
     def is_required(self):
         '''Returns True/False if this parameter must be set by the user.'''
-        return (
-            self.param.is_required and
-            not self.has_set_value and
-            not self.has_default_value
-        )
+        return (self.param.is_required and not self.has_set_value)
 
     @property
     def has_set_value(self):
@@ -424,41 +416,45 @@ class PipelineParameter(object):
         return self.set_value is not None
 
     @property
-    def has_default_value(self):
-        '''Returns True/False is this parameter has a default value.'''
-        return self.param.has_default_value
+    def default_value(self):
+        '''Gets the default value for this parameter.'''
+        if self.is_required:
+            raise PipelineMetadataError(
+                "Pipeline parameter '%s' is required, so it has no default "
+                "value" % self.param_str)
+        elif self.has_set_value:
+            return self.set_value
+        return self.param.default_value
+
+    @property
+    def param_str(self):
+        '''Returns the pipeline node string describing this parameter.'''
+        return PipelineNode.get_node_str(self.module, self.name)
 
     def is_valid_value(self, val):
         '''Returns True/False if `val` is a valid value for this parameter.'''
         return self.param.is_valid_value(val)
 
     def _validate(self):
-        is_valid = (
-            self.is_tunable or
-            self.has_set_value or
-            self.has_default_value
-        )
-        if not is_valid:
-            raise PipelineMetadataError((
-                "Pipeline parameter '%s' must be tunable, have value set by "
-                "the pipeline, and/or have a default value") % self.param_str
-            )
+        if not self.is_tunable and not self.has_set_value:
+            raise PipelineMetadataError(
+                "Pipeline parameter '%s' must be tunable or its value must "
+                "be set by this pipeline" % self.param_str)
 
 
 class PipelineModule(Configurable):
-    '''Pipeline module class.
+    '''Class describing a module in the context of a pipeline.
 
     A pipeline module definition is valid if every *required* module parameter
     is "active", i.e., satisfies at least one of the following conditions:
         - the parameter is exposed to the end-user as tunable
         - the parameter is set by the pipeline
-        - the parameter has a default value
 
     Attributes:
         name: the name of the module
         metadata: the ModuleMetadata instance for the module
         parameters: a dictionary mapping <module>.<parameter> strings to
-            PipelineParameter instances describing the *active* parameters
+            PipelineParameter instances describing the active parameters
     '''
 
     def __init__(self, config):
@@ -490,19 +486,18 @@ class PipelineModule(Configurable):
             # Verify that required parameters are active
             is_tunable = pname in tunable_parameters
             is_set = pname in set_parameters
-            is_active = is_tunable or is_set or param.has_default_value
+            is_active = is_tunable or is_set
             if param.is_required and not is_active:
-                raise PipelineMetadataError((
-                    "Required module '%s' parameter '%s' must be set, "
-                    "tunable and/or have a default value") % (self.name, pname)
-                )
+                raise PipelineMetadataError(
+                    "Required parameter '%s' of module '%s' must be set or "
+                    "exposed as tunable" % (pname, self.name))
 
             # Record active parameter
             if is_active:
-                param_str = PipelineNode.get_node_str(self.name, pname)
                 set_value = set_parameters[pname] if is_set else None
-                self.parameters[param_str] = PipelineParameter(
+                pparam = PipelineParameter(
                     self.name, pname, param, is_tunable, set_value=set_value)
+                self.parameters[pparam.param_str] = pparam
 
     def _verify_has_parameters(self, param_names):
         for name in param_names:
@@ -623,8 +618,8 @@ class PipelineMetadata(Configurable, HasBlockDiagram):
             not required
         - every module output either has at least one outgoing connection or
             is not required
-        - every *required* module parameter is exposed to the end-user as
-            tunable, is set by the pipeline, and/or has a default value
+        - every *required* module parameter is either exposed to the end-user
+            as tunable or is set by the pipeline
         - the module graph defined by the pipeline is acyclic
 
     Attributes:
