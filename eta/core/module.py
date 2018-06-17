@@ -24,7 +24,7 @@ from glob import glob
 import os
 
 import eta
-from eta.core.config import Config, Configurable
+from eta.core.config import Config, ConfigError, Configurable
 from eta.core.diagram import HasBlockDiagram, BlockdiagModule
 import eta.core.log as etal
 import eta.core.types as etat
@@ -90,13 +90,14 @@ def find_all_metadata():
         ModuleMetadataError: if the module names are not unique
     '''
     d = {}
-    for pdir in eta.config.module_dirs:
-        for path in glob(os.path.join(pdir, "*.json")):
+    mdirs = etau.make_search_path(eta.config.module_dirs)
+    for mdir in mdirs:
+        for path in glob(os.path.join(mdir, "*.json")):
             name = os.path.splitext(os.path.basename(path))[0]
             if name in d:
                 raise ModuleMetadataError(
                     "Found two '%s' modules. Names must be unique." % name)
-            d[name] = os.path.abspath(path)
+            d[name] = path
 
     return d
 
@@ -277,10 +278,19 @@ class ModuleParameterConfig(Config):
         self.type = self.parse_string(d, "type")
         self.description = self.parse_string(d, "description")
         self.required = self.parse_bool(d, "required", default=True)
-        self.default = self.parse_raw(d, "default", default=None)
+        if not self.required:
+            self.default = self.parse_raw(d, "default")
+        elif "default" in d:
+            raise ConfigError(
+                "Module parameter '%s' is required, so it should not have a "
+                "default value" % self.name)
 
     def attributes(self):
-        return ["name", "type", "description", "required", "default"]
+        attrs = ["name", "type", "description", "required"]
+        if not self.required:
+            attrs.append("default")
+
+        return attrs
 
 
 class ModuleInfo(Configurable):
@@ -415,7 +425,6 @@ class ModuleParameter(Configurable):
         type: the eta.core.types.Type of the parameter
         description: a free text description of the parameter
         required: whether the parameter is required
-        default: an optional default value for the parameter
     '''
 
     def __init__(self, config):
@@ -425,9 +434,8 @@ class ModuleParameter(Configurable):
         self.type = self._parse_type(config.name, config.type)
         self.description = config.description
         self.required = config.required
-        self.default = config.default
-
-        if self.has_default_value:
+        if not self.required:
+            self._default = config.default
             self._validate_default()
 
     def is_valid_value(self, val):
@@ -443,11 +451,6 @@ class ModuleParameter(Configurable):
         return self.required
 
     @property
-    def has_default_value(self):
-        '''Returns True/false if this parameter has a default value.'''
-        return self.default is not None
-
-    @property
     def is_builtin(self):
         '''Returns True/False if this parameter is a Builtin.'''
         return etat.is_builtin(self.type)
@@ -457,24 +460,37 @@ class ModuleParameter(Configurable):
         '''Returns True/False if this parameter is Data.'''
         return etat.is_data(self.type)
 
+    @property
+    def default_value(self):
+        '''Gets the default value for this parameter.'''
+        if self.is_required:
+            raise ModuleMetadataError(
+                "Module parameter '%s' is required, so it has no default "
+                "value" % self.name)
+        return self._default
+
     @staticmethod
     def _parse_type(name, type_str):
         type_ = etat.parse_type(type_str)
         if not etat.is_builtin(type_) and not etat.is_concrete_data(type_):
-            raise ModuleMetadataError((
+            raise ModuleMetadataError(
                 "Module parameter '%s' has type '%s' but must be a subclass "
-                "of Builtin or ConcreteData") % (name, type_))
+                "of Builtin or ConcreteData" % (name, type_))
         return type_
 
     def _validate_default(self):
-        if self.is_builtin:
-            is_valid = self.type.is_valid_value(self.default)
+        if self._default is None:
+            # We always allow None, which implies that the module can function
+            # without this parameter being set to a valid typed value
+            is_valid = True
+        elif self.is_builtin:
+            is_valid = self.type.is_valid_value(self._default)
         else:
-            is_valid = self.type.is_valid_path(self.default)
+            is_valid = self.type.is_valid_path(self._default)
         if not is_valid:
-            raise ModuleMetadataError((
+            raise ModuleMetadataError(
                 "Default value '%s' is invalid for module parameter '%s' of "
-                "'%s'") % (self.default, self.name, self.type))
+                "'%s'" % (self._default, self.name, self.type))
 
 
 class ModuleMetadata(Configurable, HasBlockDiagram):

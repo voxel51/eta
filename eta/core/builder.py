@@ -97,20 +97,18 @@ class PipelineBuildRequest(Configurable):
                 raise PipelineBuildRequestError(
                     "Pipeline '%s' has no input '%s'" % (self.pipeline, iname))
             if not self.metadata.is_valid_input(iname, ipath):
-                raise PipelineBuildRequestError((
+                raise PipelineBuildRequestError(
                     "'%s' is not a valid value for input '%s' of pipeline "
-                    "'%s'") % (ipath, iname, self.pipeline)
-                )
+                    "'%s'" % (ipath, iname, self.pipeline))
             # Convert to absolute paths
             self.inputs[iname] = os.path.abspath(ipath)
 
         # Ensure that required inputs were supplied
         for miname, miobj in iteritems(self.metadata.inputs):
             if miobj.is_required and miname not in self.inputs:
-                raise PipelineBuildRequestError((
+                raise PipelineBuildRequestError(
                     "Required input '%s' of pipeline '%s' was not "
-                    "supplied") % (miname, self.pipeline)
-                )
+                    "supplied" % (miname, self.pipeline))
 
     def _validate_parameters(self):
         # Validate parameters
@@ -120,10 +118,9 @@ class PipelineBuildRequest(Configurable):
                     "Pipeline '%s' has no tunable parameter '%s'" % (
                         self.pipeline, pname))
             if not self.metadata.is_valid_parameter(pname, pval):
-                raise PipelineBuildRequestError((
+                raise PipelineBuildRequestError(
                     "'%s' is not a valid value for parameter '%s' of pipeline "
-                    "'%s'") % (pval, pname, self.pipeline)
-                )
+                    "'%s'" % (pval, pname, self.pipeline))
             # Convert any data parameters to absolute paths
             if self.metadata.parameters[pname].is_data:
                 self.parameters[pname] = os.path.abspath(pval)
@@ -131,10 +128,9 @@ class PipelineBuildRequest(Configurable):
         # Ensure that required parmeters were supplied
         for mpname, mpobj in iteritems(self.metadata.parameters):
             if mpobj.is_required and mpname not in self.parameters:
-                raise PipelineBuildRequestError((
+                raise PipelineBuildRequestError(
                     "Required parameter '%s' of pipeline '%s' was not "
-                    "specified") % (mpname, self.pipeline)
-                )
+                    "specified" % (mpname, self.pipeline))
 
 
 class PipelineBuildRequestError(Exception):
@@ -262,7 +258,7 @@ class PipelineBuilder(object):
 
             # Populate inputs
             iconns = _get_incoming_connections(module, pmeta.connections)
-            for iname, inode in iteritems(mmeta.inputs):
+            for iname in mmeta.inputs:
                 if iname in iconns:
                     isrc = iconns[iname]
                     if isrc.is_pipeline_input:
@@ -290,9 +286,8 @@ class PipelineBuilder(object):
         # Populate module parameters
         module_params = defaultdict(dict)
         for param_str, param in iteritems(pmeta.parameters):
-            val, found = _get_param_value(param_str, param, self.request)
-            if found:
-                module_params[param.module][param.name] = val
+            val = _get_param_value(param_str, param, self.request)
+            module_params[param.module][param.name] = val
 
         # Generate module configs
         for module in pmeta.execution_order:
@@ -349,30 +344,22 @@ def _get_param_value(param_str, param, request):
         request: the PipelineBuildRequest instance
 
     Returns:
-        val: the parameter value, or None if a value could not be found
-        found: True/False
+        val: the parameter value
     '''
     if param_str in request.parameters:
         # User-set parameter
         val = request.parameters[param_str]
-        found = True
     elif param.has_set_value:
         # Pipeline-set parameter
         val = param.set_value
-        found = True
-    elif param.has_default_value:
-         # Module-default value
-         val = param.default_value
-         found = True
     else:
-        val = None
-        found = False
+        # Module-default value
+        val = param.default_value
 
-    if found:
-        # Resolve parameter value
+    if val is not None:
         val = etat.resolve_value(val, param.param.type)
 
-    return val, found
+    return val
 
 
 def _get_incoming_connections(module, connections):

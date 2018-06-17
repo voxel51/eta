@@ -84,7 +84,7 @@ a simple object detector module:
             "name": "weights",
             "type": "eta.core.types.Weights",
             "description": "The weights for the network",
-            "required": true,
+            "required": false,
             "default": "/path/to/weights.npz"
         }
     ]
@@ -138,12 +138,14 @@ Each spec has the fields:
 
 - `description`: a short free-text description of the field
 
-- `required`: (optional) whether the field is required for the module to
-    function. If omitted, the field is assumed to be required
+- `required`: (optional) whether a value must be provided for the field in all
+    module configuration files. If omitted, the field is assumed to be required
 
-- `default`: (optional, and parameters only) a default value for the parameter.
-    If a parameter is required but has a default value, it may be omitted from
-    the module configuration file
+- `default`: (optional parameters only) the default value that is used
+    for the optional parameter when it is omitted from a module configuration
+    file. The default value must either be (a) a valid value for the declared
+    type of the parameter, or (b) set to `null`, which implies that the module
+    can function without this parameter being set to a valid typed value
 
 
 #### Automatic generation of module metadata files
@@ -413,8 +415,7 @@ The `parameters` field defines the parameter values to use when executing the
 module. The possible fields that can be listed in `<parameters>` in the
 above JSON are defined by the `parameters` field of the module's metadata JSON
 file. In particular, each spec in the `parameters` field must contain all
-parameters that are _required_ and have _no default value_ in the module
-metadata file and may also contain any optional parameters.
+parameters that are _required_ and may also contain any optional parameters.
 Again, the particular parameters supported by the module are defined by
 the module's metadata JSON file, and all required parameters and zero or more
 optional parameters must be specified.
@@ -627,18 +628,24 @@ class DataConfig(Config):
     '''Data configuration settings.
 
     Inputs:
-        {{input}} ({{type}}): {{description}}
+        {{input1}} ({{type1}}): {{description1}}
+        {{input2}} ({{type2}}): [None] {{description2}}
 
     Outputs:
-        {{output}} ({{type}}): {{description}}
+        {{output1}} ({{type3}}): {{description3}}
+        {{output2}} ({{type4}}): [None] {{description4}}
     '''
 
     def __init__(self, d):
-        # Template for parsing an input field
-        self.{{input}} = self.parse_{{type}}(d, "{{input}}")
+        # Template for parsing a required input
+        self.{{input1}} = self.parse_{{type1}}(d, "{{input1}}")
+        # Template for parsing an optional input
+        self.{{input2}} = self.parse_{{type2}}(d, "{{input2}}", default=None)
 
-        # Template for parsing an output field
-        self.{{output}} = self.parse_{{type}}(d, "{{output}}")
+        # Template for parsing a required output
+        self.{{output1}} = self.parse_{{type3}}(d, "{{output1}}")
+        # Template for parsing an optional output
+        self.{{output2}} = self.parse_{{type4}}(d, "{{output2}}", default=None)
 
 
 #
@@ -652,13 +659,16 @@ class ParametersConfig(Config):
     '''Parameter configuration settings.'''
 
     Parameters:
-        {{input}} ({{type}}): [{{default}}] {{description}}
+        {{parameter1}} ({{type5}}): {{description5}}
+        {{parameter2}} ({{type6}}): [{{default1}}] {{description6}}
     '''
 
     def __init__(self, d):
-        # Template for parsing a parameter with a default value
-        self.{{parameter}} = self.parse_{{type}}(
-            d, "{{parameter}}", default={{default}})
+        # Template for parsing a required parameter
+        self.{{parameter1}} = self.parse_{{type5}}(d, "{{parameter1}}")
+        # Template for parsing an optional parameter
+        self.{{parameter2}} = self.parse_{{type6}}(
+            d, "{{parameter2}}", default={{default1}})
 
 
 #

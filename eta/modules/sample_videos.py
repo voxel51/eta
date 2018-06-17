@@ -74,8 +74,8 @@ class ParametersConfig(Config):
     @todo add a fps/clips module keyword to handle each case separately.
 
     Parameters:
-        fps (eta.core.types.Number): [null] The output frame rate
-        clips_path (eta.core.types.EventDetection): [null] Per-frame binary
+        fps (eta.core.types.Number): [None] The output frame rate
+        clips_path (eta.core.types.EventDetection): [None] Per-frame binary
             labels indicating which frames to sample
     '''
 

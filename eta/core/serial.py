@@ -40,8 +40,7 @@ def load_json(path_or_str):
     '''
     if os.path.isfile(path_or_str):
         return read_json(path_or_str)
-    else:
-        return json.loads(path_or_str)
+    return json.loads(path_or_str)
 
 
 def read_json(path):
