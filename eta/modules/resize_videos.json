@@ -3,7 +3,7 @@
         "name": "resize_videos",
         "type": "eta.core.types.Module",
         "version": "0.1.0",
-        "description": "Resizes video(s)",
+        "description": "Module that resizes videos",
         "exe": "resize_videos.py"
     },
     "inputs": [
@@ -11,13 +11,7 @@
             "name": "input_path",
             "type": "eta.core.types.Video",
             "description": "The input video",
-            "required": false
-        },
-        {
-            "name": "input_zip",
-            "type": "eta.core.types.ZippedVideoDirectory",
-            "description": "The zipped directory of videos",
-            "required": false
+            "required": true
         }
     ],
     "outputs": [
@@ -25,39 +19,37 @@
             "name": "output_path",
             "type": "eta.core.types.VideoFile",
             "description": "The output resized video",
-            "required": false
-        },
-        {
-            "name": "output_zip",
-            "type": "eta.core.types.ZippedVideoDirectory",
-            "description": "A zipped directory containing the resized videos",
-            "required": false
+            "required": true
         }
     ],
     "parameters": [
         {
-            "name": "size",
-            "type": "eta.core.types.Array",
-            "description": "The desired [width, height]",
-            "required": false
+            "name": "scale_str",
+            "type": "eta.core.types.String",
+            "description": "A scale string; an argument for ffmpeg scale=",
+            "required": false,
+            "default": null
         },
         {
             "name": "scale",
             "type": "eta.core.types.Number",
             "description": "A numeric scale factor to apply",
-            "required": false
-        },
-        {
-            "name": "scale_str",
-            "type": "eta.core.types.String",
-            "description": "A scale string; an argument for ffmpeg scale=",
-            "required": false
+            "required": false,
+            "default": null
         },
         {
             "name": "ffmpeg_out_opts",
             "type": "eta.core.types.Array",
             "description": "An array of ffmpeg output options",
-            "required": false
+            "required": false,
+            "default": null
+        },
+        {
+            "name": "size",
+            "type": "eta.core.types.Array",
+            "description": "The output (width, height) of the video",
+            "required": false,
+            "default": null
         }
     ]
 }

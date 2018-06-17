@@ -24,6 +24,7 @@ import sys
 
 import eta
 import eta.core.builder as etab
+import eta.core.metadata as etam
 import eta.core.pipeline as etap
 import eta.core.serial as etas
 
@@ -68,7 +69,6 @@ class RunPipeline(Command):
 
     @staticmethod
     def run(args):
-        # Run the pipeline
         logger.info("Running ETA pipeline '%s'", args.config)
         etap.run(args.config)
 
@@ -131,6 +131,24 @@ class BuildPipeline(Command):
             RunPipeline.run(run_args)
 
 
+class GenerateMetadata(Command):
+    '''Command-line tool for generating metadata files for ETA modules.
+
+    Examples:
+        # Generate the metadata file for the given ETA module
+        eta metadata '/path/to/eta_module.py'
+    '''
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument("module", help="path to an ETA module .py file")
+
+    @staticmethod
+    def run(args):
+        logger.info("Generating metadata for ETA module '%s'", args.module)
+        etam.generate(args.module)
+
+
 def _register_command(cmd, cls):
     '''Registers the Commannd subclass `cls` as a command with the name `cmd`
     in the subparsers.
@@ -152,6 +170,7 @@ subparsers = parser.add_subparsers(title="available commands")
 # Command setup
 _register_command("run", RunPipeline)
 _register_command("build", BuildPipeline)
+_register_command("metadata", GenerateMetadata)
 
 
 def main():

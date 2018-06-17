@@ -238,6 +238,28 @@ def delete_file(path):
         pass
 
 
+def make_search_path(dirs):
+    '''Makes a search path for the given directories by doing the following:
+        - converting all paths to absolute paths
+        - removing duplicate directories
+
+    The order of the original directories is preserved.
+
+    Args:
+        dirs: a list of relative or absolute directory paths
+
+    Returns:
+        a list of absolute paths with duplicates removed
+    '''
+    paths = []
+    for path in dirs:
+        apath = os.path.abspath(path)
+        if apath not in paths:
+            paths.append(apath)
+
+    return paths
+
+
 def ensure_path(path):
     '''Ensures that the given path is ready for writing by deleting any
     existing file and ensuring that the base directory exists.

@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 '''
-Sample video frames.
+Module that samples video frames.
+
+Info:
+    type: eta.core.types.Module
+    version: 0.1.0
 
 Copyright 2017-2018, Voxel51, LLC
 voxel51.com
@@ -32,7 +36,12 @@ logger = logging.getLogger(__name__)
 
 
 class SampleConfig(etam.BaseModuleConfig):
-    '''Sampler configuration settings.'''
+    '''Sampler configuration settings.
+
+    Attributes:
+        data (DataConfig)
+        parameters (ParametersConfig)
+    '''
 
     def __init__(self, d):
         super(SampleConfig, self).__init__(d)
@@ -41,7 +50,15 @@ class SampleConfig(etam.BaseModuleConfig):
 
 
 class DataConfig(Config):
-    '''Data configuration settings.'''
+    '''Data configuration settings.
+
+    Inputs:
+        input_path (eta.core.types.Video): The input video
+
+    Outputs:
+        output_path (eta.core.types.ImageSequence): The output sampled video
+            frames
+    '''
 
     def __init__(self, d):
         self.input_path = self.parse_string(d, "input_path")
@@ -55,6 +72,11 @@ class ParametersConfig(Config):
     native frame rate of the video being used if `fps` is also absent.
 
     @todo add a fps/clips module keyword to handle each case separately.
+
+    Parameters:
+        fps (eta.core.types.Number): [None] The output frame rate
+        clips_path (eta.core.types.EventDetection): [None] Per-frame binary
+            labels indicating which frames to sample
     '''
 
     def __init__(self, d):
