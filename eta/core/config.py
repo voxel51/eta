@@ -29,6 +29,22 @@ from eta.core.serial import Serializable
 import eta.core.utils as etau
 
 
+class NoDefault(object):
+    '''A placeholder class that is typically used to distinguish between an
+    argument that has _no default value_ and an argument that has the default
+    value `None`.
+    '''
+
+    def __bool__(self):
+        '''NoDefault instances always evaluate to False.'''
+        return False
+
+
+# A singleton NoDefault value that should be used whenever one needs to allow
+# `None` to be a default value
+no_default = NoDefault()
+
+
 class Configurable(object):
     '''Base class for classes that can be initialized with a Config instance.
 
@@ -111,14 +127,6 @@ class Configurable(object):
 
 class ConfigurableError(Exception):
     '''Exception raised when an invalid Configurable is encountered.'''
-    pass
-
-
-class no_default(object):
-    '''A placeholder class typically used as a default value for a keyword
-    argument of a function to distinguish between using `None` as a default
-    value.
-    '''
     pass
 
 
