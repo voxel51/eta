@@ -432,133 +432,174 @@ class CannyEdgeDetector(EdgeDetector):
 
 
 class FeaturePointDetector(object):
-    '''A class for detecting feature points in a video.'''
+    '''Base class for feature point detection methods.'''
 
-    def __init__(self, detector):
-        '''Initiate the parameters for FeaturePointDetector class
+    KEYPOINT_DRAW_COLOR = (0, 255, 0)
 
-        Args:
-            detector: an instance of a certain feature point detector
-        '''
-        self.detector = detector
-
-    def process(self, input_path, output_format, coor_path=None, vid_path=None):
+    def process(self, input_path, coords_path=None, vid_path=None):
         '''Detect feature points using self.detector.
 
         Args:
-            input_path: the path of the video to be processed
-            output_format: a list of output format from ["point_coor", "vid"]
-            coor_path: the output path for coordinates of feature points in each frame
-            vid_path: the output path for processed video
+            input_path: the input video path
+            masks_path: an optional path to write the per-frame feature points
+                as .npy files
+            vid_path: an optional path to write the feature points video
         '''
-        with etav.VideoProcessor(input_path, out_single_vidpath=vid_path) as processor:
-            point_coor = []
-            for img in processor:
-                gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-                corner = self.detector.detect(gray, None)
-                img = cv2.drawKeypoints(gray, corner, img, color=(255,0,0))
-                if "point_coor" in output_format:
-                    for i in corner:
-                        point_coor.append(i.pt)
-                    np.save(coor_path % processor.frame_number, point_coor)
-                if "vid" in output_format:
-                    processor.write(img)
+        # Ensure output directories exist
+        if coords_path:
+            etau.ensure_basedir(coords_path)
+        # VideoProcessor ensures that the output video directory exists
+
+        self._reset()
+        with etav.VideoProcessor(input_path, out_single_vidpath=vid_path) as p:
+            for img in p:
+                # Compute feature points
+                keypoints = self._process_frame(img)
+
+                if coords_path:
+                    # Write feature points to disk
+                    pts = _unpack_keypoints(keypoints)
+                    np.save(coords_path % p.frame_number, pts)
+
+                if vid_path:
+                    # Write feature points video
+                    img = cv2.drawKeypoints(
+                        img, keypoints, None, color=self.KEYPOINT_DRAW_COLOR)
+                    p.write(img)
+
+    def _process_frame(self, img):
+        '''Processes the next frame.
+
+        Args:
+            img: the next frame
+
+        Returns:
+            keypoints: a list of `cv2.KeyPoint`s describing the detected
+                features
+        '''
+        raise NotImplementedError("subclass must implement _process_frame()")
+
+    def _reset(self):
+        '''Prepares the object to start processing a new video.'''
+        pass
 
 
 class HarrisFeaturePointDetector(FeaturePointDetector):
+    '''Detects Harris corners.
 
-    def __init__(self, block_size=2, aperture_size=3, k=0.04, **kwargs):
-        '''Initialize variable used by HarrisFeaturePointDetector class.
+    This class is a wrapper around the OpenCV `cornerHarris` method.
+    '''
 
-        Args:
-            block_size: the size of neighbourhood considered for corner detection
-            aperture_size: aperture parameter of Sobel derivative used
-            k: Harris detector free parameter
-            **kwargs: valid keyword arguments for FeaturePointDetector
-        '''
-        detector = lambda img: cv2.cornerHarris(img,
-                                                blockSize=block_size,
-                                                ksize=aperture_size,
-                                                k=k)
-        super(HarrisFeaturePointDetector, self).__init__(detector)
-
-    def process(self, input_path, im_path=None, vid_path=None):
-        '''Detect feature points using self.detector.
+    def __init__(self, threshold=0.01, block_size=3, aperture_size=3, k=0.04):
+        '''Creates a new HarrisEdgeDetector object.
 
         Args:
-            input_path: the path of the video to be processed
-            im_path: the output path for each frame image
-            vid_path: the output path for processed video
+            threshold (0.01): threshold (relative to the maximum detector
+                response) to declare a corner
+            block_size (3): the size of neighborhood used for the Harris
+                operator
+            aperture_size (3): aperture size for the Sobel derivatives
+            k (0.04): Harris detector free parameter
         '''
-        with etav.VideoProcessor(input_path, out_impath=im_path, out_single_vidpath=vid_path) as processor:
-            for img in processor:
-                gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-                gray = np.float32(gray)
-                corner = self.detector(gray)
-                img[corner > 0.01 * corner.max()] = [0, 0, 255]
-                processor.write(img)
+        self.threshold = threshold
+        self.block_size = block_size
+        self.aperture_size = aperture_size
+        self.k = k
+
+    def _process_frame(self, img):
+        # works in OpenCV 3 and OpenCV 2
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        gray = np.float32(gray)
+        response = cv2.cornerHarris(
+            gray, blockSize=self.block_size, ksize=self.aperture_size,
+            k=self.k)
+        response = cv2.dilate(response, None)
+        corners = response > self.threshold * response.max()
+        return _pack_keypoints(np.argwhere(corners))
 
 
 class FASTFeaturePointDetector(FeaturePointDetector):
+    '''Detects feature points using the FAST method.
 
-    def __init__(self, threshold=1, nonmaxSuppression=True, type=cv2.FAST_FEATURE_DETECTOR_TYPE_9_16, **kwargs):
-        '''Initialize variable used by FASTFeaturePointDetector class.
+    This class is a wrapper around the OpenCV `FastFeatureDetector` class.
+    '''
 
-        Args:
-            threshold: threshold on difference between intensity of the
-                       central pixel and pixels of a circle around this pixel
-            nonmaxSuppression: if true, non-maximum suppression is applied to
-                               detected corners (keypoints).
-            type: one of the three neighborhoods as defined in the paper
-            **kwargs: valid keyword arguments for FeaturePointDetector
-        '''
-        detector = cv2.FastFeatureDetector_create()
-        super(FASTFeaturePointDetector, self).__init__(detector)
-
-
-class FeaturePointDescriptor(object):
-    '''A class for detecting feature points and computing its
-       feature vector in a video.'''
-
-    def __init__(self, descriptor):
-        '''Initiate the parameters for FeaturePointDescriptor class
+    def __init__(self, threshold=1, non_max_suppression=True):
+        '''Creates a new FastFeatureDetector instance.
 
         Args:
-            descriptor: an instance of a certain feature point descriptor
+            threshold (1): threshold on difference between intensity of the
+                central pixel and pixels of a circle around this pixel
+            non_max_suppression (True): whether to apply non-maximum
+                suppression to the detected keypoints
         '''
-        self.descriptor = descriptor
+        self.threshold = threshold
+        self.non_max_suppression = non_max_suppression
+        try:
+            # OpenCV 3
+            self._detector = cv2.FastFeatureDetector(
+                threshold=self.threshold,
+                nonmaxSuppression=self.non_max_suppression)
+        except AttributeError:
+            # OpenCV 2
+            self._detector = cv2.FastFeatureDetector_create(
+                threshold=self.threshold,
+                nonmaxSuppression=self.non_max_suppression)
 
-    def process(self, input_path, output_format, coor_path=None, vid_path=None):
-        '''Detect feature points using self.detector.
+    def _process_frame(self, img):
+        return self._detector.detect(img, None)
+
+
+class ORBFeaturePointDetector(FeaturePointDetector):
+    '''Detects feature points using the ORB (Oriented FAST and rotated BRIEF
+    features) method.
+
+    This class is a wrapper around the OpenCV `ORB` class.
+    '''
+
+    def __init__(self, max_num_features=500, score_type=cv2.ORB_HARRIS_SCORE):
+        '''Creates a new ORBFeaturePointDetector instance.
 
         Args:
-            input_path: the path of the video to be processed
-            output_format: a list of output format from ["point_coor", "vid"]
-            coor_path: the output path for coordinates of feature points in each frame
-            vid_path: the output path for processed video
+            max_num_features (500): the maximum number of features to retain
+            score_type (cv2.ORB_HARRIS_SCORE): the algorithm used to rank
+                features. The choices are `cv2.ORB_HARRIS_SCORE` and
+                `cv2.FAST_SCORE`
         '''
-        with etav.VideoProcessor(input_path, out_single_vidpath=vid_path) as processor:
-            point_coor = []
-            for img in processor:
-                gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-                key_point, des = self.descriptor.detectAndCompute(gray, None)
-                img = cv2.drawKeypoints(gray, key_point, img, color=(255,0,0))
-                if "point_coor" in output_format:
-                    for i,j in zip(key_point, des):
-                        point_coor.append([i.pt, j])
-                    np.save(coor_path % processor.frame_number, point_coor)
-                if "vid" in output_format:
-                    processor.write(img)
+        self.max_num_features = max_num_features
+        self.score_type = score_type
+        try:
+            # OpenCV 3
+            self._detector = cv2.ORB_create(
+                nfeatures=self.max_num_features, scoreType=self.score_type)
+        except AttributeError:
+            # OpenCV 2
+            self._detector = cv2.ORB(
+                nfeatures=self.max_num_features, scoreType=self.score_type)
+
+    def _process_frame(self, img):
+        return self._detector.detect(img, None)
 
 
-class ORBFeaturePointDescriptor(FeaturePointDescriptor):
+def _pack_keypoints(pts):
+    '''Pack the points into a list of `cv2.KeyPoint`s.
 
-    def __init__(self, num_features=1000, **kwargs):
-        '''Initialize variable used by ORBFeaturePointDetector class.
+    Args:
+        pts: an n x 2 array of [row, col] coordinates
 
-        Args:
-            num_features: maximum number of features to be retained
-            **kwargs: valid keyword arguments for FeaturePointDetector
-        '''
-        descriptor = cv2.ORB_create(num_features)
-        super(ORBFeaturePointDescriptor, self).__init__(descriptor)
+    Returns:
+        a list of `cv2.KeyPoint`s
+    '''
+    return [cv2.KeyPoint(x[1], x[0], 1) for x in pts]
+
+
+def _unpack_keypoints(keypoints):
+    '''Unpack the keypoints into an array of coordinates.
+
+    Returns:
+        keypoints: a list of `cv2.KeyPoint`s
+
+    Args:
+        an n x 2 array of [row, col] coordinates
+    '''
+    return np.array([[kp.pt[1], kp.pt[0]] for kp in keypoints])
