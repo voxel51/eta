@@ -4,8 +4,8 @@ Implementations of computer vision primitive algorithms.
 Copyright 2018, Voxel51, LLC
 voxel51.com
 
-Kunyi Lu, kunyi@voxel51.com
 Brian Moore, brian@voxel51.com
+Kunyi Lu, kunyi@voxel51.com
 '''
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
