@@ -370,6 +370,7 @@ class EdgeDetector(object):
             etau.ensure_basedir(masks_path)
         # VideoProcessor ensures that the output video directory exists
 
+        self._reset()
         with etav.VideoProcessor(input_path, out_single_vidpath=vid_path) as p:
             for img in p:
                 # Compute edges
@@ -380,7 +381,7 @@ class EdgeDetector(object):
                     np.save(masks_path % p.frame_number, edges.astype(np.bool))
 
                 if vid_path:
-                    # Write edge video
+                    # Write edges video
                     p.write(cv2.cvtColor(edges, cv2.COLOR_GRAY2BGR))
 
     def _process_frame(self, img):
@@ -400,7 +401,7 @@ class EdgeDetector(object):
 
 
 class CannyEdgeDetector(EdgeDetector):
-    '''Performs edge detection via Canny's algorithm.
+    '''The Canny edge detector.
 
     This class is a wrapper around the OpenCV `Canny` method.
     '''
@@ -424,8 +425,9 @@ class CannyEdgeDetector(EdgeDetector):
 
     def _process_frame(self, img):
         # works in OpenCV 3 and OpenCV 2
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         return cv2.Canny(
-            img, threshold1=self.threshold1, threshold2=self.threshold2,
+            gray, threshold1=self.threshold1, threshold2=self.threshold2,
             apertureSize=self.aperture_size, L2gradient=self.l2_gradient)
 
 
