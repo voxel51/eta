@@ -617,6 +617,19 @@ class JSONFileSequence(FileSequence, ConcreteData):
         )
 
 
+class VideoStreamInfo(JSONFile):
+    '''Stream info about a video.
+
+    This type is implemented in ETA by the `eta.core.video.VideoStreamInfo`
+    class.
+
+    Examples:
+        /path/to/video-stream-info.json
+    '''
+
+    pass
+
+
 class EventDetection(JSONFile):
     '''A per-frame binary event detection.
 
