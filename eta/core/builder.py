@@ -263,8 +263,9 @@ class PipelineBuilder(object):
                     isrc = iconns[iname]
                     if isrc.is_pipeline_input:
                         # Get input from pipeline
-                        ipath = self.request.inputs[isrc.node]
-                        module_inputs[module][iname] = ipath
+                        if isrc.node in self.request.inputs:
+                            ipath = self.request.inputs[isrc.node]
+                            module_inputs[module][iname] = ipath
                     # Other inputs are populated by connected outputs...
 
             # Populate outputs
