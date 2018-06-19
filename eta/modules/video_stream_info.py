@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 '''
-Get stream info for videos.
+Module that gets stream info for a video.
+
+Info:
+    type: eta.core.types.Module
+    version: 0.1.0
 
 Copyright 2017-2018, Voxel51, LLC
 voxel51.com
@@ -31,7 +35,11 @@ logger = logging.getLogger(__name__)
 
 
 class VideoStreamInfoConfig(etam.BaseModuleConfig):
-    '''Video stream info configuration settings.'''
+    '''Video stream info configuration settings.
+
+    Attributes:
+        data (DataConfig)
+    '''
 
     def __init__(self, d):
         super(VideoStreamInfoConfig, self).__init__(d)
@@ -39,7 +47,15 @@ class VideoStreamInfoConfig(etam.BaseModuleConfig):
 
 
 class DataConfig(Config):
-    '''Data configuration settings.'''
+    '''Data configuration settings.
+
+    Inputs:
+        video (eta.core.types.Video): The input video
+
+    Outputs:
+        video_stream_info (eta.core.types.VideoStreamInfo): The video stream
+            info
+    '''
 
     def __init__(self, d):
         self.video = self.parse_string(d, "video")
