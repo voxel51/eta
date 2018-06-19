@@ -66,7 +66,7 @@ class DenseOpticalFlow(object):
                     continue
 
                 # Convert to polar coordinates
-                flow_polar = self.cart_to_polar(flow_polar)
+                flow_polar = cart_to_polar(flow_polar)
 
                 if polar_path:
                     # Write polar fields
@@ -74,7 +74,7 @@ class DenseOpticalFlow(object):
 
                 if vid_path:
                     # Write flow visualization frame
-                    p.write(_polar_flow_to_img(flow_polar))
+                    p.write(polar_to_img(flow_polar))
 
     def process_frame(self, img):
         '''Computes the dense optical flow field for the next frame.
@@ -92,25 +92,34 @@ class DenseOpticalFlow(object):
         '''Prepares the object to start processing a new video.'''
         pass
 
-    @staticmethod
-    def cart_to_polar(flow_cart):
-        '''Converts the Cartesian optical flow vectors to polar form.
 
-        Args:
-            flow_cart: an m x n x 2 array containing the optical flow vectors
-                in Cartesian (x, y) format
+def cart_to_polar(cart):
+    '''Converts the Cartesian vectors to polar coordinates.
 
-        Returns:
-            flow_polar: an m x n x 2 array containing the optical flow vectors
-                in polar (magnitude, angle) format
-        '''
-        mag, ang = cv2.cartToPolar(flow_cart[..., 0], flow_cart[..., 1])
-        return np.dstack((mag, ang))
+    Args:
+        cart: an m x n x 2 array describing vectors in Cartesian (x, y) format
+
+    Returns:
+        an m x n x 2 array describing vectors in polar
+            (magnitude, angle) format
+    '''
+    mag, ang = cv2.cartToPolar(cart[..., 0], cart[..., 1])
+    return np.dstack((mag, ang))
 
 
-def _polar_flow_to_img(flow_polar):
-    mag = flow_polar[..., 0]
-    ang = flow_polar[..., 1]
+def polar_to_img(polar):
+    '''Converts the polar coordinates into an image whose hue encodes the
+    angle and value encodes the magnitude.
+
+    Args:
+        polar: an m x n x 2 array describing vectors in polar
+            (magnitude, angle) format
+
+    Returns:
+        an image whose HSV colors encode the input polar coordinates
+    '''
+    mag = polar[..., 0]
+    ang = polar[..., 1]
     hsv = np.zeros(mag.shape + (3,), dtype=mag.dtype)
     hsv[..., 0] = (89.5 / np.pi) * ang  # [0, 179]
     hsv[..., 1] = 255
