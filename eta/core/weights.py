@@ -31,6 +31,7 @@ import numpy as np
 import eta
 from eta.core.config import Config, Configurable
 import eta.constants as etac
+from eta.core.serial import Serializable
 import eta.core.utils as etau
 import eta.core.web as etaw
 
@@ -59,6 +60,51 @@ def find_weights(weights_file):
 
 class WeightsError(Exception):
     pass
+
+
+class WeightsManifest(Serializable):
+    '''Class that describes the contents of a weights directory.'''
+
+    def __init__(self, weights=None):
+        '''Creates a WeightsManifest instance.
+
+        Args:
+            weights: a list of ModelWeights instances
+        '''
+        self.weights = weights or []
+
+    def has_weights(self, name):
+        '''Determines whether this manifest contains the weights with the
+        given name.
+        '''
+        return any(name == e.name for e in self.weights)
+
+    @classmethod
+    def from_dict(cls, d):
+        '''Constructs a WeightsManifest from a JSON dictionary.'''
+        return WeightsManifest(
+            weights=[ModelWeights.from_dict(de) for de in d["weights"]])
+
+
+class ModelWeights(Serializable):
+    '''Class that describes a model weights file.'''
+
+    def __init__(self, name, id_, version=None):
+        '''Creates a ModelWeights instance.
+
+        Args:
+            name: the model's name
+            id_: the ID
+            version: an optional version for the model
+        '''
+        self.name = name
+        self.id = id_
+        self.version = version
+
+    @classmethod
+    def from_dict(cls, d):
+        '''Constructs a ModelWeights from a JSON dictionary.'''
+        return ModelWeights(d["name"], d["id"], d["version"])
 
 
 class WeightsConfig(Config):
