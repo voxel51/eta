@@ -225,8 +225,7 @@ class PipelineBuilder(object):
                     .set(working_dir=".")
                     .set(script=etam.find_exe(metadata))
                     .set(config_path=self._get_module_config_path(module))
-                    .validate()
-            )
+                    .validate())
 
         # Build logging config
         logging_config_builder = (etal.LoggingConfig.builder()
@@ -262,16 +261,21 @@ class PipelineBuilder(object):
             mmeta = pmeta.modules[module].metadata  # ModuleMetadata
             oconns = pmeta.get_outgoing_connections(module)
             for oname, osink in iteritems(oconns):
-                # Record output
-                onode = mmeta.outputs[oname]
-                opath = self._get_data_path(module, onode)
-                module_outputs[module][oname] = opath
+                if oname in module_outputs[module]:
+                    # This output has multiple outgoing connections; we already
+                    # generated its path
+                    opath = module_outputs[module][oname]
+                else:
+                    # Set output path
+                    onode = mmeta.outputs[oname]
+                    opath = self._get_data_path(module, onode)
+                    module_outputs[module][oname] = opath
 
                 if osink.is_pipeline_output:
-                    # Record pipeline output
+                    # Set pipeline output
                     self.outputs[osink.node] = opath
                 else:
-                    # Pass output to connected inputs
+                    # Pass output to connected module input
                     module_inputs[osink.module][osink.node] = opath
 
         # Populate module parameters
