@@ -198,7 +198,7 @@ class BackgroundSubtractor(object):
         Args:
             input_path: the input video path
             fgmask_path: an optional path to write the per-frame foreground
-                masks as .npy files
+                masks (as boolean arrays) in .npy files
             fgvid_path: an optional path to write the foreground-only video
             bgvid_path: an optional path to write the background video
         '''
@@ -222,7 +222,8 @@ class BackgroundSubtractor(object):
 
                 if fgmask_path:
                     # Write foreground mask
-                    np.save(fgmask_path % r.frame_number, fgmask)
+                    fgmask_bool = fgmask.astype(np.bool)
+                    np.save(fgmask_path % r.frame_number, fgmask_bool)
 
                 if fgvid_path:
                     # Write foreground-only video
@@ -391,8 +392,8 @@ class EdgeDetector(object):
 
         Args:
             input_path: the input video path
-            masks_path: an optional path to write the per-frame edge masks as
-                .npy files
+            masks_path: an optional path to write the per-frame edge masks (as
+                boolean arrays) in .npy files
             vid_path: an optional path to write the edges video
         '''
         # Ensure output directories exist
@@ -408,7 +409,8 @@ class EdgeDetector(object):
 
                 if masks_path:
                     # Write edges mask
-                    np.save(masks_path % p.frame_number, edges.astype(np.bool))
+                    edges_bool = edges.astype(np.bool)
+                    np.save(masks_path % p.frame_number, edges_bool)
 
                 if vid_path:
                     # Write edges video
