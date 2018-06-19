@@ -80,10 +80,11 @@ class DenseOpticalFlow(object):
         '''Computes the dense optical flow field for the next frame.
 
         Args:
-            img: the next frame
+            img: an m x n x 3 image
 
         Returns:
-            flow: the optical flow for the frame in Cartesian coordinates
+            flow: an m x n x 2 array containing the optical flow vectors
+                in Cartesian (x, y) format
         '''
         raise NotImplementedError("subclass must implement process_frame()")
 
@@ -241,7 +242,7 @@ class BackgroundSubtractor(object):
         '''Performs background subtraction on the next frame.
 
         Args:
-            img: the next frame
+            img: an image
 
         Returns:
             fgmask: the foreground mask
@@ -403,10 +404,10 @@ class EdgeDetector(object):
         '''Performs edge detection on the next frame.
 
         Args:
-            img: the next frame
+            img: an image
 
         Returns:
-            edges: the edges image
+            edges: the edges mask
         '''
         raise NotImplementedError("subclass must implement process_frame()")
 
@@ -486,7 +487,7 @@ class FeaturePointDetector(object):
         '''Detects feature points in the next frame.
 
         Args:
-            img: the next frame
+            img: an image
 
         Returns:
             keypoints: a list of `cv2.KeyPoint`s describing the detected
