@@ -67,8 +67,12 @@ class VideoStreamInfo(Serializable):
     def frame_rate(self):
         '''The frame rate.'''
         try:
-            num, denom = self.stream_info["avg_frame_rate"].split("/")
-            return float(num) / float(denom)
+            try:
+                num, denom = self.stream_info["avg_frame_rate"].split("/")
+                return float(num) / float(denom)
+            except ZeroDivisionError:
+                num, denom = self.stream_info["r_frame_rate"].split("/")
+                return float(num) / float(denom)
         except (KeyError, ValueError):
             raise VideoStreamInfoError(
                 "Unable to determine frame rate from stream info")
@@ -123,9 +127,6 @@ class VideoStreamInfoError(Exception):
     encountered.
     '''
     pass
-
-
-logger = logging.getLogger(__name__)
 
 
 def get_stream_info(inpath):
@@ -272,6 +273,7 @@ class VideoProcessor(object):
             out_use_ffmpeg=True,
             out_impath=None,
             out_vidpath=None,
+            out_single_vidpath=None,
             out_fps=None,
             out_size=None,
             out_opts=None):
@@ -299,6 +301,12 @@ class VideoProcessor(object):
                 each frame range when the write() method is called. When
                 out_vidpath is None or "", no videos are written
 
+            out_single_vidpath: a path like "/path/to/video.mp4" that specifies
+                where to save a single output video that contains all of the
+                frames passed to the write() method concatenated together,
+                regardless of any potential frame range gaps. When
+                out_single_vidpath is None or "", no video is written
+
             out_fps: a frame rate for the output video, if any. If the input
                 source is a video and fps is None, the same frame rate is used
 
@@ -318,8 +326,11 @@ class VideoProcessor(object):
         else:
             self._reader = OpenCVVideoReader(inpath, frames=frames)
         self._video_writer = None
+        self._single_video_writer = None
         self._write_images = out_impath is not None and out_impath != ""
         self._write_videos = out_vidpath is not None and out_vidpath != ""
+        self._write_single_video = (
+            out_single_vidpath is not None and out_single_vidpath != "")
 
         self.inpath = inpath
         self.frames = frames
@@ -327,6 +338,7 @@ class VideoProcessor(object):
         self.out_use_ffmpeg = out_use_ffmpeg
         self.out_impath = out_impath
         self.out_vidpath = out_vidpath
+        self.out_single_vidpath = out_single_vidpath
         if out_fps is not None and out_fps > 0:
             self.out_fps = out_fps
         elif self._reader.frame_rate > 0:
@@ -338,6 +350,10 @@ class VideoProcessor(object):
             ) % str(self._reader.frame_rate))
         self.out_size = out_size if out_size else self._reader.frame_size
         self.out_opts = out_opts
+
+        if self._write_single_video:
+            self._single_video_writer = self._new_video_writer(
+                self.out_single_vidpath)
 
     def __enter__(self):
         return self
@@ -397,7 +413,7 @@ class VideoProcessor(object):
         '''Returns the next frame.'''
         img = self._reader.read()
         if self._write_videos and self._reader.is_new_frame_range:
-            self._init_new_video_writer()
+            self._reset_video_writer()
         return img
 
     def write(self, img):
@@ -406,32 +422,31 @@ class VideoProcessor(object):
             etai.write(img, self.out_impath % self._reader.frame_number)
         if self._write_videos:
             self._video_writer.write(img)
+        if self._write_single_video:
+            self._single_video_writer.write(img)
 
     def close(self):
         '''Closes the video processor.'''
         self._reader.close()
         if self._video_writer is not None:
             self._video_writer.close()
+        if self._single_video_writer is not None:
+            self._single_video_writer.close()
 
-    def _init_new_video_writer(self):
-        # Close any existing writer
+    def _reset_video_writer(self):
         if self._video_writer is not None:
             self._video_writer.close()
 
-        # Open a new writer with outpath configured for the current frame range
+        outpath = self.out_vidpath % self._reader.frame_range
+        self._video_writer = self._new_video_writer(outpath)
+
+    def _new_video_writer(self, outpath):
         if self.out_use_ffmpeg:
-            self._video_writer = FFmpegVideoWriter(
-                self.out_vidpath % self._reader.frame_range,
-                self.out_fps,
-                self.out_size,
-                out_opts=self.out_opts,
-            )
+            return FFmpegVideoWriter(
+                outpath, self.out_fps, self.out_size, out_opts=self.out_opts)
         else:
-            self._video_writer = OpenCVVideoWriter(
-                self.out_vidpath % self._reader.frame_range,
-                self.out_fps,
-                self.out_size,
-            )
+            return OpenCVVideoWriter(
+                outpath, self.out_fps, self.out_size)
 
 
 class VideoProcessorError(Exception):
@@ -598,7 +613,7 @@ class FFmpegVideoReader(VideoReader):
         for idx in range(max(0, self.frame_number), next(self._ranges)):
             if not self._grab():
                 raise VideoReaderError(
-                    "Failed to grab frame %d" % (idx + 1))
+                    "Failed to grab frame %d" % self.frame_number)
         return self._retrieve()
 
     def close(self):
@@ -614,9 +629,13 @@ class FFmpegVideoReader(VideoReader):
             return False
 
     def _retrieve(self):
-        width, height = self.frame_size
-        vec = np.fromstring(self._raw_frame, dtype="uint8")
-        return vec.reshape((height, width, 3))
+        try:
+            vec = np.fromstring(self._raw_frame, dtype="uint8")
+            width, height = self.frame_size
+            return vec.reshape((height, width, 3))
+        except ValueError:
+            raise VideoReaderError(
+                "Unable to parse frame %d" % self.frame_number)
 
 
 class OpenCVVideoReader(VideoReader):
