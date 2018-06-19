@@ -14,7 +14,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
-from future.utils import iteritems
+from future.utils import iteritems, itervalues
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
@@ -249,40 +249,30 @@ class PipelineBuilder(object):
 
     def _build_module_configs(self):
         pmeta = self.request.metadata  # PipelineMetadata
-
-        # Populate module I/O
         module_inputs = defaultdict(dict)
         module_outputs = defaultdict(dict)
+
+        # Distribute pipeline inputs
+        for iname, ipath in iteritems(self.request.inputs):
+            for sink in pmeta.get_input_sinks(iname):
+                module_inputs[sink.module][sink.node] = ipath
+
+        # Propagate module connections
         for module in pmeta.execution_order:
             mmeta = pmeta.modules[module].metadata  # ModuleMetadata
+            oconns = pmeta.get_outgoing_connections(module)
+            for oname, osink in iteritems(oconns):
+                # Record output
+                onode = mmeta.outputs[oname]
+                opath = self._get_data_path(module, onode)
+                module_outputs[module][oname] = opath
 
-            # Populate inputs
-            iconns = _get_incoming_connections(module, pmeta.connections)
-            for iname in mmeta.inputs:
-                if iname in iconns:
-                    isrc = iconns[iname]
-                    if isrc.is_pipeline_input:
-                        # Get input from pipeline
-                        if isrc.node in self.request.inputs:
-                            ipath = self.request.inputs[isrc.node]
-                            module_inputs[module][iname] = ipath
-                    # Other inputs are populated by connected outputs...
-
-            # Populate outputs
-            oconns = _get_outgoing_connections(module, pmeta.connections)
-            for oname, onode in iteritems(mmeta.outputs):
-                if oname in oconns:
-                    # Record output
-                    opath = self._get_data_path(module, onode)
-                    module_outputs[module][oname] = opath
-
-                    osrc = oconns[oname]
-                    if osrc.is_pipeline_output:
-                        # Record pipeline output
-                        self.outputs[osrc.node] = opath
-                    else:
-                        # Pass output to connected inputs
-                        module_inputs[osrc.module][osrc.node] = opath
+                if osink.is_pipeline_output:
+                    # Record pipeline output
+                    self.outputs[osink.node] = opath
+                else:
+                    # Pass output to connected inputs
+                    module_inputs[osink.module][osink.node] = opath
 
         # Populate module parameters
         module_params = defaultdict(dict)
