@@ -83,7 +83,7 @@ class DenseOpticalFlow(object):
             img: an m x n x 3 image
 
         Returns:
-            flow: an m x n x 2 array containing the optical flow vectors
+            an m x n x 2 array containing the optical flow vectors
                 in Cartesian (x, y) format
         '''
         raise NotImplementedError("subclass must implement process_frame()")
@@ -432,7 +432,7 @@ class EdgeDetector(object):
             img: an image
 
         Returns:
-            edges: the edges mask
+            the edges mask
         '''
         raise NotImplementedError("subclass must implement process_frame()")
 
@@ -515,8 +515,7 @@ class FeaturePointDetector(object):
             img: an image
 
         Returns:
-            keypoints: a list of `cv2.KeyPoint`s describing the detected
-                features
+            a list of `cv2.KeyPoint`s describing the detected features
         '''
         raise NotImplementedError("subclass must implement process_frame()")
 
@@ -637,10 +636,10 @@ def _pack_keypoints(pts):
 def _unpack_keypoints(keypoints):
     '''Unpack the keypoints into an array of coordinates.
 
-    Returns:
+    Args:
         keypoints: a list of `cv2.KeyPoint`s
 
-    Args:
+    Returns:
         an n x 2 array of [row, col] coordinates
     '''
     return np.array([[kp.pt[1], kp.pt[0]] for kp in keypoints])
