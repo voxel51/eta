@@ -3,14 +3,14 @@
         "name": "video_stream_info",
         "type": "eta.core.types.Module",
         "version": "0.1.0",
-        "description": "Get stream info for a video",
+        "description": "Module that gets stream info for a video",
         "exe": "video_stream_info.py"
     },
     "inputs": [
         {
             "name": "video",
             "type": "eta.core.types.Video",
-            "description": "A video",
+            "description": "The input video",
             "required": true
         }
     ],
@@ -18,7 +18,7 @@
         {
             "name": "video_stream_info",
             "type": "eta.core.types.VideoStreamInfo",
-            "description": "The stream info for the video",
+            "description": "The video stream info",
             "required": true
         }
     ],
