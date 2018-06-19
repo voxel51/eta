@@ -226,8 +226,7 @@ class BackgroundSubtractor(object):
 
                 if fgvid_path:
                     # Write foreground-only video
-                    img[np.where(fgmask == 0)] = 0
-                    fgw.write(img)
+                    fgw.write(self.apply_mask(img, fgmask))
 
                 if bgvid_path:
                     # Write background video
@@ -253,6 +252,21 @@ class BackgroundSubtractor(object):
     def reset(self):
         '''Prepares the object to start processing a new video.'''
         pass
+
+    @staticmethod
+    def apply_mask(img, fgmask):
+        '''Applies the foreground mask to the image.
+
+        Args:
+            img: an image
+            fgmask: a foregound mask
+
+        Returns:
+            a copy of the input image with background pixels set to 0
+        '''
+        fgimg = img.copy()
+        fgimg[np.where(fgmask == 0)] = 0
+        return fgimg
 
 
 class BackgroundSubtractorError(Exception):
