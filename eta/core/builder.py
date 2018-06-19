@@ -276,8 +276,8 @@ class PipelineBuilder(object):
 
         # Populate module parameters
         module_params = defaultdict(dict)
-        for param_str, param in iteritems(pmeta.parameters):
-            val = _get_param_value(param_str, param, self.request)
+        for param in itervalues(pmeta.parameters):
+            val = _get_param_value(param, self.request)
             module_params[param.module][param.name] = val
 
         # Generate module configs
@@ -326,20 +326,19 @@ class PipelineBuilder(object):
         return node.type.gen_path(basedir, params)
 
 
-def _get_param_value(param_str, param, request):
+def _get_param_value(param, request):
     '''Gets the value for the parameter, resolving it if necessary.
 
     Args:
-        param_str: the <module>.<parameter> string of the parameter
         param: a PipelineParameter instance describing the parameter
         request: the PipelineBuildRequest instance
 
     Returns:
         val: the parameter value
     '''
-    if param_str in request.parameters:
+    if param.param_str in request.parameters:
         # User-set parameter
-        val = request.parameters[param_str]
+        val = request.parameters[param.param_str]
     elif param.has_set_value:
         # Pipeline-set parameter
         val = param.set_value
