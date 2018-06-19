@@ -29,7 +29,7 @@ import eta.core.video as etav
 class DenseOpticalFlow(object):
     '''Base class for dense optical flow methods.'''
 
-    def process(
+    def process_video(
             self, input_path, cart_path=None, polar_path=None, vid_path=None):
         '''Performs dense optical flow on the given video.
 
@@ -52,11 +52,11 @@ class DenseOpticalFlow(object):
             etau.ensure_basedir(polar_path)
         # VideoProcessor ensures that the output video directory exists
 
-        self._reset()
+        self.reset()
         with etav.VideoProcessor(input_path, out_single_vidpath=vid_path) as p:
             for img in p:
                 # Compute optical flow
-                flow_cart = self._process_frame(img)
+                flow_cart = self.process_frame(img)
 
                 if cart_path:
                     # Write Cartesian fields
@@ -66,9 +66,7 @@ class DenseOpticalFlow(object):
                     continue
 
                 # Convert to polar coordinates
-                mag, ang = cv2.cartToPolar(
-                    flow_cart[..., 0], flow_cart[..., 1])
-                flow_polar = np.dstack((mag, ang))
+                flow_polar = cart_to_polar(flow_cart)
 
                 if polar_path:
                     # Write polar fields
@@ -76,25 +74,52 @@ class DenseOpticalFlow(object):
 
                 if vid_path:
                     # Write flow visualization frame
-                    p.write(_polar_flow_to_img(mag, ang))
+                    p.write(polar_to_img(flow_polar))
 
-    def _process_frame(self, img):
-        '''Processes the next frame.
+    def process_frame(self, img):
+        '''Computes the dense optical flow field for the next frame.
 
         Args:
-            img: the next frame
+            img: an m x n x 3 image
 
         Returns:
-            flow: the optical flow for the frame in Cartesian coordinates
+            an m x n x 2 array containing the optical flow vectors
+                in Cartesian (x, y) format
         '''
-        raise NotImplementedError("subclass must implement _process_frame()")
+        raise NotImplementedError("subclass must implement process_frame()")
 
-    def _reset(self):
+    def reset(self):
         '''Prepares the object to start processing a new video.'''
         pass
 
 
-def _polar_flow_to_img(mag, ang):
+def cart_to_polar(cart):
+    '''Converts the Cartesian vectors to polar coordinates.
+
+    Args:
+        cart: an m x n x 2 array describing vectors in Cartesian (x, y) format
+
+    Returns:
+        an m x n x 2 array describing vectors in polar
+            (magnitude, angle) format
+    '''
+    mag, ang = cv2.cartToPolar(cart[..., 0], cart[..., 1])
+    return np.dstack((mag, ang))
+
+
+def polar_to_img(polar):
+    '''Converts the polar coordinates into an image whose hue encodes the
+    angle and value encodes the magnitude.
+
+    Args:
+        polar: an m x n x 2 array describing vectors in polar
+            (magnitude, angle) format
+
+    Returns:
+        an image whose HSV colors encode the input polar coordinates
+    '''
+    mag = polar[..., 0]
+    ang = polar[..., 1]
     hsv = np.zeros(mag.shape + (3,), dtype=mag.dtype)
     hsv[..., 0] = (89.5 / np.pi) * ang  # [0, 179]
     hsv[..., 1] = 255
@@ -148,7 +173,7 @@ class FarnebackDenseOpticalFlow(DenseOpticalFlow):
         self._flags = (
             cv2.OPTFLOW_FARNEBACK_GAUSSIAN if use_gaussian_filter else 0)
 
-    def _process_frame(self, img):
+    def process_frame(self, img):
         curr_frame = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         if self._prev_frame is None:
             # There is no previous frame for the first frame, so we set
@@ -167,14 +192,14 @@ class FarnebackDenseOpticalFlow(DenseOpticalFlow):
 
         return flow_cart
 
-    def _reset(self):
+    def reset(self):
         self._prev_frame = None
 
 
 class BackgroundSubtractor(object):
     '''Base class for background subtraction methods.'''
 
-    def process(
+    def process_video(
             self, input_path, fgmask_path=None, fgvid_path=None,
             bgvid_path=None):
         '''Performs background subtraction on the given video.
@@ -182,7 +207,7 @@ class BackgroundSubtractor(object):
         Args:
             input_path: the input video path
             fgmask_path: an optional path to write the per-frame foreground
-                masks as .npy files
+                masks (as boolean arrays) in .npy files
             fgvid_path: an optional path to write the foreground-only video
             bgvid_path: an optional path to write the background video
         '''
@@ -200,18 +225,18 @@ class BackgroundSubtractor(object):
                 bgw = etav.FFmpegVideoWriter(
                     bgvid_path, r.frame_rate, r.frame_size)
 
-            self._reset()
+            self.reset()
             for img in r:
-                fgmask, bgimg = self._process_frame(img)
+                fgmask, bgimg = self.process_frame(img)
 
                 if fgmask_path:
                     # Write foreground mask
-                    np.save(fgmask_path % r.frame_number, fgmask)
+                    fgmask_bool = fgmask.astype(np.bool)
+                    np.save(fgmask_path % r.frame_number, fgmask_bool)
 
                 if fgvid_path:
                     # Write foreground-only video
-                    img[np.where(fgmask == 0)] = 0
-                    fgw.write(img)
+                    fgw.write(apply_mask(img, fgmask))
 
                 if bgvid_path:
                     # Write background video
@@ -222,21 +247,36 @@ class BackgroundSubtractor(object):
             if bgvid_path:
                 bgw.close()
 
-    def _process_frame(self, img):
-        '''Processes the next frame.
+    def process_frame(self, img):
+        '''Performs background subtraction on the next frame.
 
         Args:
-            img: the next frame
+            img: an image
 
         Returns:
             fgmask: the foreground mask
             bgimg: the background-only image
         '''
-        raise NotImplementedError("subclass must implement _process_frame()")
+        raise NotImplementedError("subclass must implement process_frame()")
 
-    def _reset(self):
+    def reset(self):
         '''Prepares the object to start processing a new video.'''
         pass
+
+
+def apply_mask(img, mask):
+    '''Applies the mask to the image.
+
+    Args:
+        img: an image
+        mask: a mask image
+
+    Returns:
+        a copy of the input image with pixels outside the mask set to 0
+    '''
+    mimg = img.copy()
+    mimg[np.where(mask == 0)] = 0
+    return mimg
 
 
 class BackgroundSubtractorError(Exception):
@@ -280,12 +320,12 @@ class MOG2BackgroundSubtractor(BackgroundSubtractor):
         self.detect_shadows = detect_shadows
         self._fgbg = None
 
-    def _process_frame(self, img):
+    def process_frame(self, img):
         fgmask = self._fgbg.apply(img, None, self.learning_rate)
         bgimg = self._fgbg.getBackgroundImage()
         return fgmask, bgimg
 
-    def _reset(self):
+    def reset(self):
         try:
             # OpenCV 3
             self._fgbg = cv2.createBackgroundSubtractorMOG2(
@@ -336,12 +376,12 @@ class KNNBackgroundSubtractor(BackgroundSubtractor):
         self.detect_shadows = detect_shadows
         self._fgbg = None
 
-    def _process_frame(self, img):
+    def process_frame(self, img):
         fgmask = self._fgbg.apply(img, None, self.learning_rate)
         bgimg = self._fgbg.getBackgroundImage()
         return fgmask, bgimg
 
-    def _reset(self):
+    def reset(self):
         try:
             # OpenCV 3
             self._fgbg = cv2.createBackgroundSubtractorKNN(
@@ -356,13 +396,13 @@ class KNNBackgroundSubtractor(BackgroundSubtractor):
 class EdgeDetector(object):
     '''Base class for edge detection methods.'''
 
-    def process(self, input_path, masks_path=None, vid_path=None):
+    def process_video(self, input_path, masks_path=None, vid_path=None):
         '''Detect edges using self.detector.
 
         Args:
             input_path: the input video path
-            masks_path: an optional path to write the per-frame edge masks as
-                .npy files
+            masks_path: an optional path to write the per-frame edge masks (as
+                boolean arrays) in .npy files
             vid_path: an optional path to write the edges video
         '''
         # Ensure output directories exist
@@ -370,32 +410,33 @@ class EdgeDetector(object):
             etau.ensure_basedir(masks_path)
         # VideoProcessor ensures that the output video directory exists
 
-        self._reset()
+        self.reset()
         with etav.VideoProcessor(input_path, out_single_vidpath=vid_path) as p:
             for img in p:
                 # Compute edges
-                edges = self._process_frame(img)
+                edges = self.process_frame(img)
 
                 if masks_path:
                     # Write edges mask
-                    np.save(masks_path % p.frame_number, edges.astype(np.bool))
+                    edges_bool = edges.astype(np.bool)
+                    np.save(masks_path % p.frame_number, edges_bool)
 
                 if vid_path:
                     # Write edges video
                     p.write(cv2.cvtColor(edges, cv2.COLOR_GRAY2BGR))
 
-    def _process_frame(self, img):
-        '''Processes the next frame.
+    def process_frame(self, img):
+        '''Performs edge detection on the next frame.
 
         Args:
-            img: the next frame
+            img: an image
 
         Returns:
-            edges: the edges image
+            the edges mask
         '''
-        raise NotImplementedError("subclass must implement _process_frame()")
+        raise NotImplementedError("subclass must implement process_frame()")
 
-    def _reset(self):
+    def reset(self):
         '''Prepares the object to start processing a new video.'''
         pass
 
@@ -423,7 +464,7 @@ class CannyEdgeDetector(EdgeDetector):
         self.aperture_size = aperture_size
         self.l2_gradient = l2_gradient
 
-    def _process_frame(self, img):
+    def process_frame(self, img):
         # works in OpenCV 3 and OpenCV 2
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         return cv2.Canny(
@@ -436,7 +477,7 @@ class FeaturePointDetector(object):
 
     KEYPOINT_DRAW_COLOR = (0, 255, 0)
 
-    def process(self, input_path, coords_path=None, vid_path=None):
+    def process_video(self, input_path, coords_path=None, vid_path=None):
         '''Detect feature points using self.detector.
 
         Args:
@@ -450,11 +491,11 @@ class FeaturePointDetector(object):
             etau.ensure_basedir(coords_path)
         # VideoProcessor ensures that the output video directory exists
 
-        self._reset()
+        self.reset()
         with etav.VideoProcessor(input_path, out_single_vidpath=vid_path) as p:
             for img in p:
                 # Compute feature points
-                keypoints = self._process_frame(img)
+                keypoints = self.process_frame(img)
 
                 if coords_path:
                     # Write feature points to disk
@@ -467,19 +508,18 @@ class FeaturePointDetector(object):
                         img, keypoints, None, color=self.KEYPOINT_DRAW_COLOR)
                     p.write(img)
 
-    def _process_frame(self, img):
-        '''Processes the next frame.
+    def process_frame(self, img):
+        '''Detects feature points in the next frame.
 
         Args:
-            img: the next frame
+            img: an image
 
         Returns:
-            keypoints: a list of `cv2.KeyPoint`s describing the detected
-                features
+            a list of `cv2.KeyPoint`s describing the detected features
         '''
-        raise NotImplementedError("subclass must implement _process_frame()")
+        raise NotImplementedError("subclass must implement process_frame()")
 
-    def _reset(self):
+    def reset(self):
         '''Prepares the object to start processing a new video.'''
         pass
 
@@ -506,7 +546,7 @@ class HarrisFeaturePointDetector(FeaturePointDetector):
         self.aperture_size = aperture_size
         self.k = k
 
-    def _process_frame(self, img):
+    def process_frame(self, img):
         # works in OpenCV 3 and OpenCV 2
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         gray = np.float32(gray)
@@ -546,7 +586,7 @@ class FASTFeaturePointDetector(FeaturePointDetector):
                 threshold=self.threshold,
                 nonmaxSuppression=self.non_max_suppression)
 
-    def _process_frame(self, img):
+    def process_frame(self, img):
         return self._detector.detect(img, None)
 
 
@@ -577,7 +617,7 @@ class ORBFeaturePointDetector(FeaturePointDetector):
             self._detector = cv2.ORB(
                 nfeatures=self.max_num_features, scoreType=self.score_type)
 
-    def _process_frame(self, img):
+    def process_frame(self, img):
         return self._detector.detect(img, None)
 
 
@@ -596,10 +636,10 @@ def _pack_keypoints(pts):
 def _unpack_keypoints(keypoints):
     '''Unpack the keypoints into an array of coordinates.
 
-    Returns:
+    Args:
         keypoints: a list of `cv2.KeyPoint`s
 
-    Args:
+    Returns:
         an n x 2 array of [row, col] coordinates
     '''
     return np.array([[kp.pt[1], kp.pt[0]] for kp in keypoints])
