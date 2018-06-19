@@ -66,7 +66,7 @@ class DenseOpticalFlow(object):
                     continue
 
                 # Convert to polar coordinates
-                flow_polar = cart_to_polar(flow_polar)
+                flow_polar = cart_to_polar(flow_cart)
 
                 if polar_path:
                     # Write polar fields
