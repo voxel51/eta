@@ -706,6 +706,34 @@ class PipelineMetadata(Configurable, HasBlockDiagram):
         '''
         return self.parameters[param_str].is_valid_value(val)
 
+    def get_input_sinks(self, name):
+        '''Gets the sinks for the given input.
+
+        Args:
+            name: the pipeline input name
+
+        Returns:
+            a list of PipelineNode instances that the input is connected to
+        '''
+        node_str = PipelineNode.get_input_str(name)
+        return _get_sinks_with_source(node_str, self.connections)
+
+    def get_outgoing_connections(self, module):
+        '''Gets the outgoing connections for the given module.
+
+        Args:
+            module: the module name
+
+        Returns:
+            a dictionary mapping the names of the outputs of the given module
+                to the PipelineNode instances describing the nodes that they
+                are connected to
+        '''
+        return {
+            c.source.node: c.sink
+            for c in self.connections if c.source.module == module
+        }
+
     def to_blockdiag(self):
         '''Returns a BlockdiagPipeline representation of this pipeline.'''
         bp = BlockdiagPipeline(self.info.name)
