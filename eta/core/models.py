@@ -702,6 +702,26 @@ class ModelManager(Configurable, Serializable):
         self.type = type_
         self.config = config_
 
+    def download_model(self, local_path, force=False):
+        '''Downloads the model to the given local path.
+
+        If the download is forced, any existing model is overwritten. If the
+        download is not forced, the model will only be downloaded if it does
+        not already exist locally.
+
+        Args:
+            local_path: the path to which to download the model
+            force: whether to force download the model. If True, the model is
+                always downloaded. If False, the model is only downloaded if
+                necessary. The default is False
+
+        Raises:
+            ModelError: if the configuration was invalid
+        '''
+        if force or not os.path.isfile(local_path):
+            etau.ensure_basedir(local_path)
+            self._download_model(local_path)
+
     @staticmethod
     def register_model(model_path, name, version=None, models_dir=None):
         raise NotImplementedError(
@@ -711,9 +731,9 @@ class ModelManager(Configurable, Serializable):
         raise NotImplementedError(
             "subclass must implement delete_model()")
 
-    def download_if_necessary(self, local_path):
+    def _download_model(self, local_path):
         raise NotImplementedError(
-            "subclass must implement download_if_necessary()")
+            "subclass must implement _download_model()")
 
     @classmethod
     def from_dict(cls, d):
@@ -752,18 +772,7 @@ class ETAModelManager(ModelManager):
             "ETA models must be deleted by a Voxel51 administrator. "
             "Please contact %s for more information." % etac.CONTACT)
 
-    def download_if_necessary(self, local_path):
-        '''Downloads the model to the given local path, if necessary.
-
-        Args:
-            local_path: the path to which to download the model
-
-        Raises:
-            ModelError: if the configuration was invalid
-        '''
-        if os.path.isfile(local_path):
-            return
-
+    def _download_model(self, local_path):
         if self.config.google_drive_id:
             gid = self.config.google_drive_id
             logger.info(
