@@ -445,7 +445,35 @@ class Model(Serializable):
         '''Determines whether a copy of the model exists in the given models
         directory.
         '''
-        return os.path.isfiled(self.get_path_in_dir(models_dir))
+        return os.path.isfile(self.get_path_in_dir(models_dir))
+
+    @staticmethod
+    def parse_name(name):
+        '''Parses the model name, returning the base name and the version,
+        if any.
+
+        Args:
+            name: the name of the model, which can have "@<ver>" appended to
+                refer to a specific version of the model
+
+        Returns:
+            base_name: the base name of the model
+            version: the version of the model, or None if no version was found
+
+        Raises:
+            ModelError: if the model name was invalid
+        '''
+        chunks = name.split("@")
+        if len(chunks) == 1:
+            return name, None
+        if chunks[1] == "" or len(chunks) > 2:
+            raise ModelError("Invalid model name '%s'" % name)
+        return chunks[0], chunks[1]
+
+    @staticmethod
+    def has_version_str(name):
+        '''Determines whether the given model name has a version string.'''
+        return bool(Model.parse_name(name)[1])
 
     @classmethod
     def from_dict(cls, d):
