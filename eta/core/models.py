@@ -16,10 +16,12 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
+from future.utils import iteritems, itervalues
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+from collections import defaultdict
 import dill as pickle
 from distutils.version import LooseVersion
 import logging
@@ -112,6 +114,40 @@ def flush_model(name):
     model, models_dir, _ = _find_model(name)
     if model.is_in_dir(models_dir):
         _delete_model_from_dir(model, models_dir)
+
+
+def flush_old_models():
+    '''Deletes local copies of any old models, i.e. models for which the number
+    of versions stored on disk exceeds `eta.config.max_model_versions_to_keep`.
+    '''
+    max_vers = eta.config.max_model_versions_to_keep
+    if max_vers < 0:
+        # No flushing required
+        return
+
+    # Get local models
+    local_models = _load_models(local_only=True)[1]
+
+    # Group by base name
+    bmodels = defaultdict(list)
+    for model, mdir in itervalues(local_models):
+        bmodels[model.base_name].append((model, mdir))
+
+    # Sort by version
+    bmodels = {
+        k: sorted(v, reverse=True, key=lambda vi: vi[0].comp_version)
+        for k, v in iteritems(bmodels)
+    }
+
+    # Flush old models
+    for base_name, models_list in itervalues(bmodels):
+        num_to_flush = len(models_list) - max_vers
+        if num_to_flush > 0:
+            logger.info(
+                "*** Flushing %d old versions of model '%s'",
+                base_name, num_to_flush)
+            for model, models_dir in reversed(models_list[max_vers:]):
+                _delete_model_from_dir(model, models_dir)
 
 
 def flush_models_directory(models_dir):
