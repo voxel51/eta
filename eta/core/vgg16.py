@@ -44,28 +44,19 @@ import numpy as np
 import tensorflow as tf
 
 from eta.core.config import Config
-from eta import constants
+import eta.core.image as etai
 from eta.core.features import Featurizer
-import eta.core.image as im
-from eta.core.weights import Weights, WeightsConfig
+import eta.core.models as etam
 
 
 logger = logging.getLogger(__name__)
-
-
-DEFAULT_CONFIG_PATH = os.path.join(constants.CONFIGS_DIR, 'vgg16-config.json')
 
 
 class VGG16Config(Config):
     '''Configuration settings for the VGG16 network.'''
 
     def __init__(self, d):
-        self.weights = self.parse_object(d, "weights", WeightsConfig)
-
-    @classmethod
-    def load_default(cls):
-        '''Loads the default config file.'''
-        return cls.from_json(DEFAULT_CONFIG_PATH)
+        self.model = self.parse_string(d, "model", default="VGG-16")
 
 
 class VGG16(object):
@@ -78,8 +69,8 @@ class VGG16(object):
         imgs: a tf.Variable of shape [XXXX, 224, 224, 3] containing images to
             embed
         sess: a tf.Session to use
-        config: an optional VGG16Config instance. If omitted, the default ETA
-            configuration will be used.
+        config: an optional VGG16Config instance. If omitted, the default model
+            will be used
     '''
     def __init__(self, imgs, sess, config=None):
         assert sess is not None, 'None sessions are not currently allowed!'
@@ -88,9 +79,9 @@ class VGG16(object):
         self._build_conv_layers()
         self._build_fc_layers()
         self.probs = tf.nn.softmax(self.fc3l)
-        self.config = config or VGG16Config.load_default()
+        self.config = config or VGG16Config.default()
 
-        self._load_weights(self.config.weights, sess)
+        self._load_model(self.config.model, sess)
 
     def _build_conv_layers(self):
         self.parameters = []
@@ -434,33 +425,27 @@ class VGG16(object):
             self.fc3l = tf.nn.bias_add(tf.matmul(self.fc2, fc3w), fc3b)
             self.parameters += [fc3w, fc3b]
 
-    def _load_weights(self, weights_config, sess):
-        weights = Weights(weights_config)
+    def _load_model(self, model, sess):
+        weights = etam.NpzModelWeights(model)
         for i, k in enumerate(sorted(weights)):
-            logger.debug("%s %s %s", i, k, np.shape(weights[k]))
             sess.run(self.parameters[i].assign(weights[k]))
 
 
-class VGG16FeaturizerConfig(Config):
+class VGG16FeaturizerConfig(VGG16Config):
     '''Configuration settings for a VGG16Featurizer that works on images.'''
-
-    def __init__(self, d):
-        self.weights = self.parse_object(
-            d, "weights", WeightsConfig, default=None)
-        if self.weights is None:
-            self.default_config = VGG16Config.load_default()
-            self.weights = self.default_config.weights
+    pass
 
 
 class VGG16Featurizer(Featurizer):
     '''Featurizer for images or frames using the VGG16 network structure.'''
 
-    def __init__(self, config):
+    def __init__(self, config=None):
+        config = config or VGG16FeaturizerConfig.default()
+        self.validate(config)
+
         super(VGG16Featurizer, self).__init__()
 
-        self.validate(config)
         self.config = config
-
         self.sess = None
         self.imgs = tf.placeholder(tf.float32, [None, 224, 224, 3])
         self.vgg = None
@@ -493,6 +478,6 @@ class VGG16Featurizer(Featurizer):
         if data.shape[2] == 4:
             # RGBA input
             data = data[:, :, :3]
-        img1 = im.resize(data, 224, 224)
+        img1 = etai.resize(data, 224, 224)
         return self.sess.run(
             self.vgg.fc2l, feed_dict={self.vgg.imgs: [img1]})[0]
