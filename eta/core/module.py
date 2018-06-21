@@ -617,4 +617,5 @@ class ModuleMetadata(Configurable, HasBlockDiagram):
 
 
 class ModuleMetadataError(Exception):
+    '''Exception raised when an invalid module metadata file is encountered.'''
     pass
