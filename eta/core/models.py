@@ -217,7 +217,26 @@ def _find_latest_model(base_name):
         logger.info(
             "Found version %s of model '%s'", _model.version, base_name)
 
-    return _model, _mdir, _manifest
+    return _model, _mdir, manifests[_mdir]
+
+
+def _load_models(local_only=False):
+    models = {}
+    manifests = {}
+
+    mdirs = etau.make_search_path(eta.config.models_dirs)
+    for mdir in mdirs:
+        manifest = ModelsManifest.from_dir(mdir)
+        manifests[mdir] = manifest
+
+        for model in manifest:
+            if model.name in models:
+                raise ModelError(
+                    "Found two '%s' models. Names must be unique" % model.name)
+            if not local_only or model.is_in_dir(mdir):
+                models[model.name] = (model, mdir)
+
+    return models, manifests
 
 
 def _delete_model_from_dir(model, models_dir):
