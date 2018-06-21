@@ -336,11 +336,6 @@ class ModelsManifest(Serializable):
         '''
         return any(name == model.name for model in self.models)
 
-    def has_model_with_base_name(self, base_name):
-        '''Determines whether this manifest contains a model with the given
-        base name.'''
-        return any(base_name == model.base_name for model in self.models)
-
     def has_model_with_filename(self, filename):
         '''Determines whether this manifest contains a model with the given
         filename.
@@ -357,17 +352,21 @@ class ModelsManifest(Serializable):
         '''Determines whether the given directory has a models manifest.'''
         return os.path.isfile(ModelsManifest.make_manifest_path(models_dir))
 
+    def write_to_dir(self, models_dir):
+        '''Writes the ModelsManifest to the given models directory.'''
+        self.write_json(self.make_manifest_path(models_dir))
+
     @classmethod
     def from_dir(cls, models_dir):
         '''Loads the ModelsManifest from the given models directory. If no
-        manifest is found, an empty one is created and '''
+        manifest is found, an empty one is created.'''
         manifest_path = cls.make_manifest_path(models_dir)
         if not cls.dir_has_manifest(models_dir):
             logger.warning(
                 "No models manifest found at '%s'; creating an empty "
                 "manifest now", manifest_path)
             manifest = cls()
-            manifest.write_json(manifest_path)
+            manifest.write_to_dir(models_dir)
         else:
             manifest = cls.from_json(manifest_path)
         return manifest
