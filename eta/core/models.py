@@ -238,6 +238,9 @@ class ModelsManifest(Serializable):
         '''
         self.models = models or []
 
+    def __iter__(self):
+        return iter(self.models)
+
     def add_model(self, model):
         '''Adds the given model to the manifest.
 
