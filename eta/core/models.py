@@ -478,18 +478,12 @@ class ModelsManifest(Serializable):
 
     @classmethod
     def from_dir(cls, models_dir):
-        '''Loads the ModelsManifest from the given models directory. If no
-        manifest is found, an empty one is created.'''
-        manifest_path = cls.make_manifest_path(models_dir)
+        '''Loads the ModelsManifest from the given models directory.'''
         if not cls.dir_has_manifest(models_dir):
-            logger.warning(
-                "No models manifest found at '%s'; creating an empty "
-                "manifest now", manifest_path)
-            manifest = cls()
-            manifest.write_to_dir(models_dir)
-        else:
-            manifest = cls.from_json(manifest_path)
-        return manifest
+            raise ModelError(
+                "Directory '%s' has no models manifest", models_dir)
+
+        return cls.from_json(cls.make_manifest_path(models_dir))
 
     @classmethod
     def from_dict(cls, d):
