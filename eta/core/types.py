@@ -27,7 +27,6 @@ import os
 
 import eta
 import eta.core.utils as etau
-import eta.core.weights as etaw
 
 
 ###### Utilities ##############################################################
@@ -48,14 +47,6 @@ def parse_type(type_str):
         raise TypeError("Type '%s' must be a subclass of Type" % type_cls)
 
     return type_cls
-
-
-def resolve_value(val, type_):
-    '''Resolves the given value of the given type, if necessary.'''
-    if isinstance(type_, Weights):
-        val = etaw.find_weights(val)
-
-    return val
 
 
 def is_pipeline(type_):
@@ -435,18 +426,6 @@ class Directory(ConcreteData):
     @staticmethod
     def is_valid_path(path):
         return String.is_valid_value(path)
-
-
-class Weights(File, ConcreteData):
-    '''A model weights file of any type.
-
-    Examples:
-        /path/to/weights.npz
-    '''
-
-    @staticmethod
-    def gen_path(basedir, params):
-        return os.path.join(basedir, "{name}").format(**params)
 
 
 class Image(AbstractData):
