@@ -107,6 +107,34 @@ def download_model_if_necessary(name):
     return model_path
 
 
+def register_model(name, base_filename, manager, models_dir):
+    '''Registers a new model in the given models directory.
+
+    Args:
+        name: a name for the model, which can optionally have "@<ver>" appended
+            to assign a version to the model
+        base_filename: the base filename (e.g. model.npz) to use when storing
+            this model locally on disk
+        manager: the ModelManager instance for the model
+        models_dir: the directory in which
+    '''
+    _warn_if_not_on_search_path(models_dir)
+
+    # Create model
+    # @todo verify that manager is valid
+    logger.info("Creating a new model '%s'", name)
+    base_name, version = Model.parse_name(name)
+    date_created = etau.get_isotime()
+    model = Model(
+        base_name, base_filename, manager, date_created, version=version)
+
+    # Add model to manifest
+    manifest = ModelsManifest.from_dir(models_dir)
+    logger.info("Adding model '%s' to manifest in '%s'", name, models_dir)
+    manifest.add_model(model)
+    manifest.write_to_dir(models_dir)
+
+
 def flush_model(name):
     '''Deletes the local copy of the given model, if necessary.
 
