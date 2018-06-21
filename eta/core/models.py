@@ -43,6 +43,41 @@ logger = logging.getLogger(__name__)
 MODELS_MANIFEST_JSON = "manifest.json"
 
 
+def list_models(downloaded_only=False):
+    '''Returns a list of all models on the models search path.
+
+    Args:
+        downloaded_only: whether to only include models that are currently
+            downloaded. By default, this is False
+
+    Returns:
+        a list of model names (with "@<ver>" strings, if any)
+    '''
+    models = _list_models(downloaded_only=downloaded_only)[0]
+    return sorted(list(models.keys()))
+
+
+def list_models_in_directory(models_dir, downloaded_only=False):
+    '''Returns a list of all models in the given directory.
+
+    Args:
+        models_dir: the models directory
+        downloaded_only: whether to only include models that are currently
+            downloaded. By default, this is False
+
+    Returns:
+        a list of model names (with "@<ver>" strings, if any)
+
+    Raises:
+        ModelError: if the directory was not a valid models directory
+    '''
+    manifest = ModelsManifest.from_dir(models_dir)
+    return sorted([
+        model.name for model in manifest
+        if not downloaded_only or model.is_in_dir(models_dir)
+    ])
+
+
 def find_model(name):
     '''Finds the given model, which must appear in a ModelsManifest in one of
     the `eta.config.models_dirs` directories.
