@@ -186,30 +186,24 @@ def _find_model(name):
 
 
 def _find_exact_model(name):
-    mdirs = etau.make_search_path(eta.config.models_dirs)
-    for mdir in mdirs:
-        manifest = ModelsManifest.from_dir(mdir)
-        if manifest.has_model_with_name(name):
-            model = manifest.get_model_with_name(name)
-            return model, mdir, manifest
+    models, manifests = _load_models()
+    if name not in models:
+        raise ModelError("No model with name '%s' was found" % name)
 
-    raise ModelError("No model with name '%s' was found" % name)
+    model, mdir = models[name]
+    return model, mdir, manifests[mdir]
 
 
 def _find_latest_model(base_name):
     _model = None
     _mdir = None
-    _manifest = None
 
-    mdirs = etau.make_search_path(eta.config.models_dirs)
-    for mdir in mdirs:
-        manifest = ModelsManifest.from_dir(mdir)
-        if manifest.has_model_with_base_name(base_name):
-            model = manifest.get_latest_model_with_base_name(base_name)
+    models, manifests = _load_models()
+    for model, mdir in itervalues(models):
+        if model.base_name == base_name:
             if _model is None or model.comp_version > _model.comp_version:
                 _model = model
                 _mdir = mdir
-                _manifest = manifest
 
     if _model is None:
         raise ModelError("No model with base name '%s' was found" % base_name)
