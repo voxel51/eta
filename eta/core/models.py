@@ -83,7 +83,7 @@ def find_model(name):
     the `eta.config.models_dirs` directories.
 
     Note that the model might not actually exist at the returned model path.
-    To download it, use `download_model_if_necessary()`.
+    To download it, use `download_model()`.
 
     Args:
         name: the name of the model, which can have "@<ver>" appended to refer
@@ -119,15 +119,21 @@ def is_model_downloaded(name):
     return model.is_in_dir(models_dir)
 
 
-def download_model_if_necessary(name):
+def download_model(name, force=False):
     '''Downloads the given model, if necessary.
 
-    Old models (if any) are also flushed.
+    If the download is forced, the local copy of the model will be overwitten
+    if it exists.
+
+    Old models are also flushed (if necessary).
 
     Args:
         name: the name of the model, which can have "@<ver>" appended to refer
             to a specific version of the model. If no version is specified, the
             latest version of the model is assumed
+        force: whether to force download the model. If True, the model is
+            always downloaded. If False, the model is only downloaded if
+            necessary. The default is False
 
     Returns:
         the path to the downloaded model
@@ -135,12 +141,10 @@ def download_model_if_necessary(name):
     Raises:
         ModelError: if the model could not be found
     '''
-    # Download the model, if necessary
     model, models_dir, _ = _find_model(name)
     model_path = model.get_path_in_dir(models_dir)
-    model.manager.download_if_necessary(model_path)
+    model.manager.download_model(model_path, force=force)
 
-    # Flush old models
     flush_old_models()
 
     return model_path
@@ -666,7 +670,7 @@ class ModelWeights(object):
         Returns:
             the model weights
         '''
-        download_model_if_necessary(self.model_name)
+        download_model(self.model_name, force=False)
         return self._load()
 
     def _load(self):
