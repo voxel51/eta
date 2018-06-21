@@ -241,10 +241,6 @@ def flush_models_directory(models_dir):
         ModelError: if the directory contains no models manifest
     '''
     _warn_if_not_on_search_path(models_dir)
-    if not ModelsManifest.dir_has_manifest(models_dir):
-        raise ModelError(
-            "Directory '%s' has no models manifest file", models_dir)
-
     for model in ModelsManifest.from_dir(models_dir):
         if model.is_in_dir(models_dir):
             _delete_model_from_dir(model, models_dir)
