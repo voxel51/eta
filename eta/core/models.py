@@ -20,6 +20,7 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+import dill as pickle
 from distutils.version import LooseVersion
 import logging
 import os
@@ -440,12 +441,12 @@ class Model(Serializable):
             d["version"])
 
 
-class ModelWeights(dict):
-    '''Class that encapsulates model weights and can load them locally or from
-    remote storage as needed.
+class ModelWeights(object):
+    '''Base class for classes that encapsulate read-only model weights.
 
-    This class provides a dictionary interface to access the underlying
-    weights, which must be stored as an .npz file on disk.
+    This class can load the model locally or from remote storage as needed.
+
+    Subclasses must implement the `_load` method to perform the actual loading.
 
     Attributes:
         model_name: the name of the model
@@ -455,9 +456,6 @@ class ModelWeights(dict):
     def __init__(self, model_name):
         '''Initializes a ModelWeights instance.
 
-        The weights are automatically downloaded from remote storage if
-        necessary and are loaded as key-value pairs in this dictionary.
-
         Args:
             model_name: the model to load
 
@@ -465,8 +463,41 @@ class ModelWeights(dict):
             ModelError: if the model was not found
         '''
         self.model_name = model_name
-        self.model_path = download_model_if_necessary(self.model_name)
+        self.model_path = find_model(self.model_name)
+
+    def load(self):
+        '''Loads the model weights, downloading them from remote storage if
+        necessary.
+
+        Returns:
+            the model weights
+        '''
+        download_model_if_necessary(self.model_name)
+        return self._load()
+
+    def _load(self):
+        raise NotImplementedError("subclass must implement _load()")
+
+
+class NpzModelWeights(ModelWeights, dict):
+    '''A read-only model weights class that provides a dictionary interface to
+    access the underlying weights, which must be stored as an .npz file on
+    disk.
+    '''
+
+    def _load(self):
         self.update(np.load(self.model_path))
+        return self
+
+
+class PklModelWeights(ModelWeights):
+    '''A read-only model weights class that can load a model stored as a .pkl
+    file on disk.
+    '''
+
+    def _load(self):
+        with open(self.model_path, "rb") as f:
+            return pickle.load(f)
 
 
 class ModelManager(Configurable, Serializable):
