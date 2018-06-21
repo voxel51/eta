@@ -426,7 +426,7 @@ class VGG16(object):
             self.parameters += [fc3w, fc3b]
 
     def _load_model(self, model, sess):
-        weights = etam.NpzModelWeights(model)
+        weights = etam.NpzModelWeights(model).load()
         for i, k in enumerate(sorted(weights)):
             sess.run(self.parameters[i].assign(weights[k]))
 
