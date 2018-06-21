@@ -139,6 +139,29 @@ def register_model(name, base_filename, manager, models_dir):
     manifest.write_to_dir(models_dir)
 
 
+def init_models_dir(new_models_dir):
+    '''Initializes the given directory as a models directory by creating an
+    empty models manifest file for it.
+
+    The directory is created if necessary.
+
+    Note that the directory is not automatically added to your models search
+    path, so models in this directory will not be findable until you update
+    your ETA config.
+
+    Args:
+        new_models_dir: the directory to initialize
+
+    Raises:
+        ModelError: if the models directory is already initialized
+    '''
+    if ModelsManifest.dir_has_manifest(new_models_dir):
+        raise ModelError(
+            "Directory '%s' already has a models manifest", new_models_dir)
+    manifest = ModelsManifest()
+    manifest.write_to_dir(new_models_dir)
+
+
 def flush_model(name):
     '''Deletes the local copy of the given model, if necessary.
 
