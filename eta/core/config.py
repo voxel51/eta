@@ -473,7 +473,7 @@ class EnvConfig(Serializable):
             EnvConfigError: if the environment variable, the dictionary key, or
                 a default value was not provided.
         '''
-        return _parse_env_var_or_key(d, key, list, env_var, True, default)
+        return _parse_env_var_or_key(d, key, list, env_var, str, True, default)
 
     @staticmethod
     def parse_string(d, key, env_var=None, default=no_default):
@@ -494,8 +494,29 @@ class EnvConfig(Serializable):
                 a default value was not provided.
         '''
         val = _parse_env_var_or_key(
-            d, key, six.string_types, env_var, False, default)
+            d, key, six.string_types, env_var, str, False, default)
         return str(val) if val is not None else val
+
+    @staticmethod
+    def parse_number(d, key, env_var=None, default=no_default):
+        '''Parses a number attribute.
+
+        Args:
+            d: a JSON dictionary
+            key: the key to parse
+            env_var: an optional environment variable to load the attribute
+                from rather than using the JSON dictionary
+            default: an optional default value to return if key is not present
+
+        Returns:
+            a number (e.g. int, float)
+
+        Raises:
+            EnvConfigError: if the environment variable, the dictionary key, or
+                a default value was not provided.
+        '''
+        return _parse_env_var_or_key(
+            d, key, numbers.Number, env_var, float, False, default)
 
     @classmethod
     def from_dict(cls, d):
@@ -547,11 +568,16 @@ def _parse_key(d, key, t, default):
     raise ConfigError("Expected key '%s' of %s" % (key, t))
 
 
-def _parse_env_var_or_key(d, key, t, env_var, sep, default):
+def _parse_env_var_or_key(d, key, t, env_var, env_t, sep, default):
     val = os.environ.get(env_var)
     if val:
-        # Return value from environment variable
-        return val.split(":") if sep else val
+        # Return value(s) from environment variable
+        try:
+            return [env_t(vi) for vi in val.split(":")] if sep else env_t(val)
+        except ValueError:
+            raise EnvConfigError(
+                "Failed to parse environment variable '%s' using %s",
+                env_var, env_t)
 
     if key in d:
         val = d[key]
@@ -564,6 +590,7 @@ def _parse_env_var_or_key(d, key, t, env_var, sep, default):
                 "Expected key '%s' of %s; found %s" % (key, t, type(val)))
 
     if default is not no_default:
+        # Return default value
         return default
 
     raise EnvConfigError(
