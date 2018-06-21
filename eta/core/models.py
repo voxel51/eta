@@ -114,6 +114,13 @@ def download_model_if_necessary(name):
 def register_model(name, base_filename, manager, models_dir):
     '''Registers a new model in the given models directory.
 
+    The directory is created if necessary.
+
+    If the directory does not have a models manifest file, one is created.
+    Note that new models directories are not automatically added to your
+    models search path, so the new model will not be findable until you update
+    your ETA config.
+
     Args:
         name: a name for the model, which can optionally have "@<ver>" appended
             to assign a version to the model
@@ -125,7 +132,6 @@ def register_model(name, base_filename, manager, models_dir):
     _warn_if_not_on_search_path(models_dir)
 
     # Create model
-    # @todo verify that manager is valid
     logger.info("Creating a new model '%s'", name)
     base_name, version = Model.parse_name(name)
     date_created = etau.get_isotime()
