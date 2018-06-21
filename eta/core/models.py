@@ -171,7 +171,7 @@ def flush_old_models():
         return
 
     # Get downloaded models
-    downloaded_models = _load_models(downloaded_only=True)[0]
+    downloaded_models = _list_models(downloaded_only=True)[0]
 
     # Group by base name
     bmodels = defaultdict(list)
@@ -271,7 +271,7 @@ def _find_model(name):
 
 
 def _find_exact_model(name):
-    models, manifests = _load_models()
+    models, manifests = _list_models()
     if name not in models:
         raise ModelError("No model with name '%s' was found" % name)
 
@@ -283,7 +283,7 @@ def _find_latest_model(base_name):
     _model = None
     _mdir = None
 
-    models, manifests = _load_models()
+    models, manifests = _list_models()
     for model, mdir in itervalues(models):
         if model.base_name == base_name:
             if _model is None or model.comp_version > _model.comp_version:
@@ -299,7 +299,7 @@ def _find_latest_model(base_name):
     return _model, _mdir, manifests[_mdir]
 
 
-def _load_models(downloaded_only=False):
+def _list_models(downloaded_only=False):
     models = {}
     manifests = {}
 
