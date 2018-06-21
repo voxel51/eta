@@ -81,7 +81,9 @@ def is_model_downloaded(name):
 
 
 def download_model_if_necessary(name):
-    '''Downloads the given model if necessary.
+    '''Downloads the given model, if necessary.
+
+    Old models (if any) are also flushed.
 
     Args:
         name: the name of the model, which can have "@<ver>" appended to refer
@@ -94,9 +96,14 @@ def download_model_if_necessary(name):
     Raises:
         ModelError: if the model could not be found
     '''
+    # Download the model, if necessary
     model, models_dir, _ = _find_model(name)
     model_path = model.get_path_in_dir(models_dir)
     model.manager.download_if_necessary(model_path)
+
+    # Flush old models
+    flush_old_models()
+
     return model_path
 
 
