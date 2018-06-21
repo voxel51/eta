@@ -132,6 +132,10 @@ def register_model(name, base_filename, manager, models_dir):
     model = Model(
         base_name, base_filename, manager, date_created, version=version)
 
+    # Initialize models directory, if necessary
+    if not ModelsManifest.dir_has_manifest(models_dir):
+        init_models_dir(models_dir)
+
     # Add model to manifest
     manifest = ModelsManifest.from_dir(models_dir)
     logger.info("Adding model '%s' to manifest in '%s'", name, models_dir)
