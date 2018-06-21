@@ -799,6 +799,9 @@ class PipelineMetadata(Configurable, HasBlockDiagram):
 
 
 class PipelineMetadataError(Exception):
+    '''Exception raised when an invalid pipeline metadata file is
+    encountered.
+    '''
     pass
 
 
