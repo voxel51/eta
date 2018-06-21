@@ -47,13 +47,17 @@ def find_model(name):
     '''Finds the given model, which must appear in a ModelsManifest in one of
     the `eta.config.models_dirs` directories.
 
+    Note that the model might not actually exist at the returned model path.
+    To download it, use `download_model_if_necessary()`.
+
     Args:
         name: the name of the model, which can have "@<ver>" appended to refer
             to a specific version of the model. If no version is specified, the
             latest version of the model is assumed
 
     Returns:
-        the full path to the model file
+        the full path to the model file (which might not exist if it hasn't
+            been downloaded yet)
 
     Raises:
         ModelError: if the model could not be found
@@ -113,7 +117,7 @@ def register_model(name, base_filename, manager, models_dir):
     Args:
         name: a name for the model, which can optionally have "@<ver>" appended
             to assign a version to the model
-        base_filename: the base filename (e.g. model.npz) to use when storing
+        base_filename: the base filename (e.g. "model.npz") to use when storing
             this model locally on disk
         manager: the ModelManager instance for the model
         models_dir: the directory in which
@@ -138,6 +142,9 @@ def register_model(name, base_filename, manager, models_dir):
 def flush_model(name):
     '''Deletes the local copy of the given model, if necessary.
 
+    The models is not removed from its associated manifest and can be
+    downloaded again at any time.
+
     Args:
         name: the name of the model, which can have "@<ver>" appended to refer
             to a specific version of the model. If no version is specified, the
@@ -154,21 +161,24 @@ def flush_model(name):
 def flush_old_models():
     '''Deletes local copies of any old models, i.e. models for which the number
     of versions stored on disk exceeds `eta.config.max_model_versions_to_keep`.
+
+    The models are not removed from their associated manifests and can be
+    downloaded again at any time.
     '''
     max_vers = eta.config.max_model_versions_to_keep
     if max_vers < 0:
         # No flushing required
         return
 
-    # Get local models
-    local_models = _load_models(local_only=True)[1]
+    # Get downloaded models
+    downloaded_models = _load_models(downloaded_only=True)[0]
 
     # Group by base name
     bmodels = defaultdict(list)
-    for model, mdir in itervalues(local_models):
+    for model, mdir in itervalues(downloaded_models):
         bmodels[model.base_name].append((model, mdir))
 
-    # Sort by version
+    # Sort by version (newest first)
     bmodels = {
         k: sorted(v, reverse=True, key=lambda vi: vi[0].comp_version)
         for k, v in iteritems(bmodels)
@@ -188,6 +198,9 @@ def flush_old_models():
 def flush_models_directory(models_dir):
     '''Deletes the local copies of all models in the given models directory.
 
+    The models are not removed from their associated manifests and can be
+    downloaded again at any time.
+
     Args:
         models_dir: the models directory
 
@@ -205,13 +218,19 @@ def flush_models_directory(models_dir):
 
 
 def flush_all_models():
-    '''Deletes all local copies of all models on the models search path.'''
+    '''Deletes all local copies of all models on the models search path.
+
+    The models are not removed from their associated manifests and can be
+    downloaded again at any time.
+    '''
     for models_dir in etau.make_search_path(eta.config.models_dirs):
         flush_models_directory(models_dir)
 
 
 def delete_model(name, force=False):
     '''Permanently deletes the given model from local and remote storage.
+
+    CAUTION: this cannot be undone!
 
     Args:
         name: the name of the model, which can have "@<ver>" appended to refer
@@ -280,7 +299,7 @@ def _find_latest_model(base_name):
     return _model, _mdir, manifests[_mdir]
 
 
-def _load_models(local_only=False):
+def _load_models(downloaded_only=False):
     models = {}
     manifests = {}
 
@@ -293,7 +312,7 @@ def _load_models(local_only=False):
             if model.name in models:
                 raise ModelError(
                     "Found two '%s' models. Names must be unique" % model.name)
-            if not local_only or model.is_in_dir(mdir):
+            if not downloaded_only or model.is_in_dir(mdir):
                 models[model.name] = (model, mdir)
 
     return models, manifests
