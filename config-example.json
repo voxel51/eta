@@ -9,7 +9,11 @@
         "{{eta}}/eta/pipelines",
         "./pipelines"
     ],
-    "weights_dirs": ["{{eta}}/eta/cache"],
+    "models_dirs": [
+        "{{eta}}/eta/models",
+        "./models"
+    ],
+    "max_model_versions_to_keep": -1,
     "default_sequence_idx" : "%05d",
     "default_video_ext": ".mp4",
     "default_image_ext": ".png"
