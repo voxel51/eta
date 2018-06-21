@@ -123,17 +123,12 @@ def flush_models_directory(models_dir):
     Raises:
         ModelError: if the directory contains no models manifest
     '''
-    mdir = os.path.abspath(models_dir)
-    mdirs = etau.make_search_path(eta.config.models_dirs)
-    if mdir not in mdirs:
-        logger.warning(
-            "Directory '%s' is not on the ETA models path", models_dir)
-
+    _warn_if_not_on_search_path(models_dir)
     if not ModelsManifest.dir_has_manifest(models_dir):
         raise ModelError(
             "Directory '%s' has no models manifest file", models_dir)
 
-    for model in ModelsManifest.from_dir(models_dir).models:
+    for model in ModelsManifest.from_dir(models_dir):
         if model.is_in_dir(models_dir):
             _delete_model_from_dir(model, models_dir)
 
@@ -180,7 +175,7 @@ def delete_model(name, force=False):
 
 
 def _find_model(name):
-    if "@" in name:
+    if Model.has_version_str(name):
         return _find_exact_model(name)
     return _find_latest_model(name)
 
@@ -206,7 +201,7 @@ def _find_latest_model(base_name):
                 _mdir = mdir
 
     if _model is None:
-        raise ModelError("No model with base name '%s' was found" % base_name)
+        raise ModelError("No models found with base name '%s'" % base_name)
     if _model.has_version:
         logger.info(
             "Found version %s of model '%s'", _model.version, base_name)
@@ -238,6 +233,14 @@ def _delete_model_from_dir(model, models_dir):
     logger.info(
         "Deleting local copy of model '%s' from '%s'", model.name, model_path)
     os.remove(model_path)
+
+
+def _warn_if_not_on_search_path(models_dir):
+    mdir = os.path.abspath(models_dir)
+    mdirs = etau.make_search_path(eta.config.models_dirs)
+    if mdir not in mdirs:
+        logger.warning(
+            "Directory '%s' is not on the ETA models search path", models_dir)
 
 
 class ModelsManifest(Serializable):
