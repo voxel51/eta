@@ -518,6 +518,28 @@ class EnvConfig(Serializable):
         return _parse_env_var_or_key(
             d, key, numbers.Number, env_var, float, False, default)
 
+    @staticmethod
+    def parse_bool(d, key, env_var=None, default=no_default):
+        '''Parses a boolean value.
+
+        Args:
+            d: a JSON dictionary
+            key: the key to parse
+            env_var: an optional environment variable to load the attribute
+                from rather than using the JSON dictionary
+            default: a default value to return if key is not present
+
+        Returns:
+            True/False
+
+        Raises:
+            EnvConfigError: if the environment variable, the dictionary key, or
+                a default value was not provided.
+        '''
+        env_t = lambda v: str(v).lower() in ("yes", "true", "1")
+        return _parse_env_var_or_key(
+            d, key, bool, env_var, env_t, False, default)
+
     @classmethod
     def from_dict(cls, d):
         '''Constructs an EnvConfig object from a JSON dictionary.
