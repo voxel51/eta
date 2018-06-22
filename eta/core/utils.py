@@ -25,6 +25,7 @@ import datetime
 import errno
 import glob
 import hashlib
+import inspect
 import itertools as it
 import logging
 import os
@@ -73,9 +74,12 @@ def has_gpu():
         return False
 
 
-def get_full_class_name(obj):
-    '''Returns the fully-qualified class name of the given object.'''
-    return obj.__module__ + "." + obj.__class__.__name__
+def get_full_class_name(arg):
+    '''Returns the fully-qualified class name of the argument, which can
+    either be a class or a class instance.
+    '''
+    cls = arg if inspect.isclass(arg) else arg.__class__
+    return cls.__module__ + "." + cls.__name__
 
 
 def get_class(class_name, module_name=None):
