@@ -625,7 +625,7 @@ class ORBFeaturizer(Featurizer):
         return 32 * self.num_keypoints
 
     def _featurize(self, img):
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        gray = etai.rgb_to_gray(img)
         return self.orb.detectAndCompute(gray, None)[1].flatten()
 
 
