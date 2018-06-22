@@ -248,8 +248,8 @@ you to configure the maximum number of versions of a given model to keep on
 disk. If this limit is execeeded, the oldest versions of a model are deleted
 until the limit is satisifed again.
 
-The models framework automatically checks this condition and performs the
-necessary cleanup after each time a model is downloaded. However, you can
+The ETA library automatically checks this condition and performs the necessary
+cleanup each time the `eta.core.models` module is loaded. However, you can
 manually invoke the cleanup at any time by running:
 
 ```py
