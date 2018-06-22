@@ -1,15 +1,16 @@
 #!/usr/bin/env python
 '''
-ETA example (frame-by-frame) video embbeding via VGG16.
+Example of embedding the frames of a video in the VGG-16 feature space using
+`VideoFramesFeaturizer`.
 
-Note: must be run from this directory!
+Also shows the use of the `VGG16Featurizer.frame_preprocessor` functionality
+to embed a cropped version of each frame.
 
-Also shows the use of the frame_preprocessor functionality in VGG16Featurizer.
-
-Copyright 2017, Voxel51, LLC
+Copyright 2017-2018, Voxel51, LLC
 voxel51.com
 
 Jason Corso, jjc@voxel51.com
+Brian Moore, brian@voxel51.com
 '''
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
@@ -73,7 +74,7 @@ def embed_video(config):
         vff.featurize(config.video_path, frames="4-9")
 
     logger.info(
-        "features stored in '%s'", config.video_frames_featurizer.backing_path)
+        "Features stored in '%s'", config.video_frames_featurizer.backing_path)
 
 
 def _abspath(path):

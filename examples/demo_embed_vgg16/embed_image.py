@@ -1,13 +1,17 @@
 #!/usr/bin/env python
 '''
-ETA example image embedding via VGG16.
+Example of embedding an image via a `VGG16Featurizer`.
 
-This example has the same effect as embed_image.py except that it directly uses
-the low-level functionality rather than the higher level Featurization
-functionality.  It is included here for pedagogical reasons with ETA.
+Note that the `embed_video.py` example shows the use of the video featurization
+infrastructure, which is the preferred approach for ETA modules since they
+maintain the on-disk backing store for the class which is used to communicate
+between modules.
 
-Copyright 2017, Voxel51, LLC
+Copyright 2017-2018, Voxel51, LLC
 voxel51.com
+
+Jason Corso, jjc@voxel51.com
+Brian Moore, brian@voxel51.com
 '''
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
