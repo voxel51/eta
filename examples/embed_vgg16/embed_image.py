@@ -46,17 +46,18 @@ def embed_image(impath):
     '''
     img = etai.read(impath)
 
-    vfeaturizer = VGG16Featurizer()
+    # Invoke the Featurizer using the "with" syntax to automatically handle
+    # calling the start() and stop() methods
+    with VGG16Featurizer() as vfeaturizer:
+        embedded_vector = vfeaturizer.featurize(img)
 
-    embedded_vector = vfeaturizer.featurize(img)
-
-    logger.info("image embedded to vector of length %d", len(embedded_vector))
+    logger.info("Image embedded to vector of length %d", len(embedded_vector))
     logger.info("%s", embedded_vector)
 
     outpath = _abspath("out/result_embed_image.npz")
     etau.ensure_basedir(outpath)
     np.savez_compressed(outpath, v=embedded_vector)
-    logger.info("result saved to '%s'", outpath)
+    logger.info("Result saved to '%s'", outpath)
 
 
 def _abspath(path):
