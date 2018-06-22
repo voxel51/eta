@@ -247,39 +247,3 @@ class ScoredObjects(ObjectContainer):
     def sort(self):
         '''Sorts the current object list in ascending order by score.'''
         self.objects = sorted(self.objects, key=lambda o: o.score)
-
-    def to_html(self, query_img, results_dir, max_objects=25):
-        '''Writes the scored detections to HTML for visualization.
-
-        This function writes `query.png` and `index.html` files to the
-        `results_dir` directory.
-
-        Args:
-            query_img: the query image used to populate the scores
-            results_dir: the directory to write the query results to
-            max_objects: the maximum number of objects to write. By default, 25
-        '''
-        etau.ensure_dir(results_dir)
-
-        # Write query image
-        etai.write(query_img, os.path.join(results_dir, "query.png"))
-
-        # Generate results HTML
-        top_matches_html = ""
-        for idx in range(min(len(self.objects), max_objects)):
-            obj = self.objects[idx]
-            top_matches_html += "<img src=%s height=50>score:%.02f<br>" % (
-                os.path.abspath(obj.chip_path), obj.score)
-
-        html_str = """
-            <html>
-            <body>
-            Query:<img src=query.png height=50><hr>Top Matches<hr>""" + \
-            top_matches_html + \
-            """</body>
-            </html>
-        """
-
-        # Write results HTML
-        with open(os.path.join(results_dir, "index.html"), "wt") as f:
-            f.write(html_str)
