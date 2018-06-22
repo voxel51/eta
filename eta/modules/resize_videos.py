@@ -29,7 +29,7 @@ import sys
 from eta.core.config import Config
 import eta.core.module as etam
 import eta.core.video as etav
-
+import eta.core.ziputils as etaz
 
 logger = logging.getLogger(__name__)
 
@@ -59,8 +59,19 @@ class DataConfig(Config):
     '''
 
     def __init__(self, d):
-        self.input_path = self.parse_string(d, "input_path")
-        self.output_path = self.parse_string(d, "output_path")
+        self.input_zip = self.parse_string(d, "input_zip", default=None)
+        self.output_zip = self.parse_string(d, "output_zip", default=None)
+
+        self.input_path = self.parse_string(d, "input_path", default=None)
+        self.output_path = self.parse_string(d, "output_path", default=None)
+
+    @property
+    def is_zip(self):
+        return self.input_zip and self.output_zip
+
+    @property
+    def is_path(self):
+        return self.input_path and self.output_path
 
 
 class ParametersConfig(Config):
@@ -87,16 +98,36 @@ class ParametersConfig(Config):
 def _resize_videos(resize_config):
     parameters = resize_config.parameters
     for data_config in resize_config.data:
-        logger.info("Resizing video '%s'", data_config.input_path)
-        etav.FFmpegVideoResizer(
-            size=parameters.size,
-            scale=parameters.scale,
-            scale_str=parameters.scale_str,
-            out_opts=parameters.ffmpeg_out_opts,
-        ).run(
-            data_config.input_path,
-            data_config.output_path,
-        )
+        if data_config.is_zip:
+            _process_zip(
+                data_config.input_zip, data_config.output_zip, parameters)
+        elif data_config.is_path:
+            _process_video(
+                data_config.input_path, data_config.output_path, parameters)
+        else:
+            raise ValueError("Invalid ResizeConfig")
+
+
+def _process_zip(input_zip, output_zip, parameters):
+    input_paths = etaz.extract_zip(input_zip)
+    output_paths = etaz.make_parallel_files(output_zip, input_paths)
+
+    # Iterate over videos
+    for input_path, output_path in zip(input_paths, output_paths):
+        _process_video(input_path, output_path, parameters)
+
+    # Collect the objects
+    etaz.make_zip(output_zip)
+
+
+def _process_video(input_path, output_path, parameters):
+    logger.info("Resizing video '%s'", input_path)
+    etav.FFmpegVideoResizer(
+        size=parameters.size,
+        scale=parameters.scale,
+        scale_str=parameters.scale_str,
+        out_opts=parameters.ffmpeg_out_opts,
+    ).run(input_path, output_path)
 
 
 def run(config_path, pipeline_config_path=None):

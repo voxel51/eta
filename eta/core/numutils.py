@@ -71,12 +71,21 @@ class GrowableArray(object):
     '''A class for building a numpy array from streaming data.'''
 
     def __init__(self, rowlen):
+        '''Creates a GrowableArray.
+
+        Args:
+            rowlen: the desired length of each row
+        '''
         self.data = []
         self.rowlen = rowlen
 
     def update(self, row):
         '''Add row to array.'''
-        assert len(row) == self.rowlen, "Expected row length %d" % self.rowlen
+        if len(row) != self.rowlen:
+            raise GrowableArrayError(
+                "Expected row length of %d, but found %d" % (
+                    self.rowlen, len(row)))
+
         for r in row:
             self.data.append(r)
 

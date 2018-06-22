@@ -74,18 +74,37 @@ def has_gpu():
         return False
 
 
-def get_full_class_name(arg):
-    '''Returns the fully-qualified class name of the argument, which can
-    either be a class or a class instance.
+def get_class_name(cls_or_obj):
+    '''Returns the fully-qualified class name for the given input, which can
+    be a class or class instance.
+
+    Args:
+        cls_or_obj: a class or class instance
+
+    Returns:
+        class_name: a fully-qualified class name string like
+            "eta.core.utils.ClassName"
     '''
-    cls = arg if inspect.isclass(arg) else arg.__class__
-    return cls.__module__ + "." + cls.__name__
+    cls = cls_or_obj if inspect.isclass(cls_or_obj) else cls_or_obj.__class__
+    return cls_or_obj.__module__ + "." + cls.__name__
+
+
+def get_function_name(fcn):
+    '''Returns the fully-qualified function name for the given function.
+
+    Args:
+        fcn: a function
+
+    Returns:
+        function_name: a fully-qualified function name string like
+            "eta.core.utils.function_name"
+    '''
+    return fcn.__module__ + "." + fcn.__name__
 
 
 def get_class(class_name, module_name=None):
-    '''Returns the class specified by the given string.
-
-    Loads the parent module if necessary.
+    '''Returns the class specified by the given class string, loading the
+    parent module if necessary.
 
     Args:
         class_name: the "ClassName" or a fully-qualified class name like
@@ -241,6 +260,7 @@ def copy_dir(indir, outdir):
     '''
     if os.path.isdir(outdir):
         shutil.rmtree(outdir)
+
     shutil.copytree(indir, outdir)
 
 
@@ -290,6 +310,7 @@ def ensure_path(path):
     if os.path.isfile(path):
         logger.debug("Deleting '%s'", path)
         os.remove(path)
+
     ensure_basedir(path)
 
 
@@ -309,9 +330,7 @@ def ensure_dir(dirname):
 def glob_videos(path):
     '''Returns an iterator over all supported video files in path.'''
     return multiglob(
-        *etac.VIDEO_FILE_TYPES_SUPPORTED,
-        root=os.path.join(path, "*")
-    )
+        *etac.VIDEO_FILE_TYPES_SUPPORTED, root=os.path.join(path, "*"))
 
 
 def has_extension(filename, *args):
@@ -385,17 +404,27 @@ def multiglob(*patterns, **kwargs):
 
 
 def random_key(n):
-    '''Generates an n-len random key of lowercase characters and digits.'''
-    return "".join(random.SystemRandom().choice(
-        string.ascii_lowercase + string.digits) for _ in range(n))
+    '''Generates an n-lenth random key of lowercase characters and digits.'''
+    return "".join(
+        random.SystemRandom().choice(string.ascii_lowercase + string.digits)
+        for _ in range(n)
+    )
 
 
 def replace_strings(string, replacers):
-    '''Replacers is a 2D list of [find, replace] strings.'''
+    '''Performs a sequence of find-replace operations on the given string.
 
+    Args:
+        string: the input string
+        replaces: a list of (find, replace) strings
+
+    Returns:
+        a copy of the input strings with all of the find-and-replacements made
+    '''
     output = string
     for sfind, srepl in replacers:
         output = output.replace(sfind, srepl)
+
     return output
 
 
@@ -522,12 +551,16 @@ class WorkingDir(object):
 
 
 class ExecutableNotFoundError(Exception):
+    '''Exception raised when an executable file is not found.'''
+
     def __init__(self, executable):
         message = "Executable '%s' not found" % executable
         super(ExecutableNotFoundError, self).__init__(message)
 
 
 class ExecutableRuntimeError(Exception):
+    '''Exception raised when an executable call throws a runtime error.'''
+
     def __init__(self, cmd, err):
         message = "Command '%s' failed with error:\n%s" % (cmd, err)
         super(ExecutableRuntimeError, self).__init__(message)

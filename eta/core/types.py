@@ -91,6 +91,15 @@ class ConcreteDataParams(object):
             "video_ext": eta.config.default_video_ext,
         }
 
+    @property
+    def default(self):
+        '''Returns the default parameters
+
+        Returns:
+            the default params dict
+        '''
+        return self._params
+
     def render_for(self, name):
         '''Render the type parameters for use with field `name`.
 
@@ -519,6 +528,26 @@ class ImageSequence(Video, FileSequence, ConcreteData):
         )
 
 
+class DualImageSequence(DualFileSequence, ConcreteData):
+    '''A sequence of images indexed by two numeric parameters.
+
+    Examples:
+        /path/to/images/%05d-%05d.png
+    '''
+
+    @staticmethod
+    def gen_path(basedir, params):
+        return os.path.join(
+            basedir, "{name}", "{idx}-{idx}{image_ext}").format(**params)
+
+    @staticmethod
+    def is_valid_path(path):
+        return (
+            DualFileSequence.is_valid_path(path) and
+            etau.is_supported_image_type(path)
+        )
+
+
 class VideoSequece(FileSequence, ConcreteData):
     '''A sequence of encoded video files with one numeric parameter.
 
@@ -622,6 +651,19 @@ class EventDetection(JSONFile):
     pass
 
 
+class ScoredObjects(JSONFile):
+    '''A collection of scored objects.
+
+    This type is implemented in ETA by the `eta.core.objects.ScoredObjects`
+    class.
+
+    Examples:
+        /path/to/scored_objects.json
+    '''
+
+    pass
+
+
 class EventSeries(JSONFile):
     '''A series of events in a video.
 
@@ -653,5 +695,197 @@ class FrameSequence(JSONFileSequence):
     Examples:
         /path/to/frames/%05d.json
     '''
+
+    pass
+
+
+class Features(FileSequence, ConcreteData):
+    '''A sequence of features indexed by one numeric parameter.
+
+    Examples:
+        /path/to/features/%05d.npz
+    '''
+
+    @staticmethod
+    def gen_path(basedir, params):
+        return os.path.join(
+            basedir, "{name}", "{idx}.npz").format(**params)
+
+    @staticmethod
+    def is_valid_path(path):
+        return (
+            FileSequence.is_valid_path(path) and
+            etau.has_extension(path, ".npz")
+        )
+
+
+class VideoObjectsFeatures(DualFileSequence, ConcreteData):
+    '''A sequence of features of objects-in-frames indexed by two numeric
+    parameters.
+
+    Examples:
+        /path/to/features/%05d-%05d.npz
+    '''
+
+    @staticmethod
+    def gen_path(basedir, params):
+        return os.path.join(
+            basedir, "{name}", "{idx}-{idx}.npz").format(**params)
+
+    @staticmethod
+    def is_valid_path(path):
+        return (
+            DualFileSequence.is_valid_path(path) and
+            etau.has_extension(path, ".npz")
+        )
+
+
+class VideoDirectory(Directory):
+    '''A directory containing encoded video files.
+
+    Examples:
+        /path/to/videos
+    '''
+
+    pass
+
+
+class ImageSequenceDirectory(Directory):
+    '''A directory containing a sequence of images.
+
+    Examples:
+        /path/to/images
+    '''
+
+    pass
+
+
+class DualImageSequenceDirectory(Directory):
+    '''A directory containing a sequence of images indexed by two numeric
+    parameters.
+
+    Examples:
+        /path/to/dual-images
+    '''
+
+    pass
+
+
+class JSONDirectory(Directory):
+    '''A directory containing a sequence of JSON files.
+
+    Examples:
+        /path/to/jsons
+    '''
+
+    pass
+
+
+class FrameSequenceDirectory(JSONDirectory):
+    '''A directory containing a sequence of Frame JSON files.
+
+    Examples:
+        /path/to/frames
+    '''
+
+    pass
+
+
+class VideoObjectsFeaturesDirectory(Directory):
+    '''A directory containing a sequence of features of objects-in-frames
+    indexed by two numeric parameters.
+
+    Examples:
+        /path/to/features
+    '''
+
+    pass
+
+
+class ZipFile(File, ConcreteData):
+    '''A zip file.
+
+    Examples:
+        /path/to/file.zip
+    '''
+
+    @staticmethod
+    def gen_path(basedir, params):
+        return os.path.join(basedir, "{name}.zip").format(**params)
+
+    @staticmethod
+    def is_valid_path(path):
+        return File.is_valid_path(path) and etau.has_extension(path, ".zip")
+
+
+class ZippedDirectory(ZipFile):
+    '''A zip file containing a directory of the same name.
+
+    Examples:
+        /path/to/dir.zip
+    '''
+
+    pass
+
+
+class ZippedVideoDirectory(ZippedDirectory):
+    '''A zipped directory containing encoded video files.
+
+    Examples:
+        /path/to/videos.zip
+    '''
+
+    pass
+
+
+class ZippedImageSequenceDirectory(ZippedDirectory):
+    '''A zipped directory containing a sequence of images.
+
+    Examples:
+        /path/to/images.zip
+    '''
+
+    pass
+
+
+class ZippedDualImageSequenceDirectory(ZippedDirectory):
+    '''A zipped directory containing a collection of dual image sequence
+    directories.
+
+    Examples:
+        /path/to/dual-images.zip
+    '''
+
+    pass
+
+
+class ZippedJSONDirectory(ZippedDirectory):
+    '''A zipped directory containing JSON files.
+
+    Examples:
+        /path/to/jsons.zip
+    '''
+
+    pass
+
+
+class ZippedFrameSequenceDirectory(ZippedDirectory):
+    '''A zipped directory containing a collection of FrameSequence directories.
+
+    Examples:
+        /path/to/frames.zip
+    '''
+
+    pass
+
+
+class ZippedVideoObjectsFeaturesDirectory(ZippedDirectory):
+    '''A zipped directory containing a collection of VideoObjectsFeatures
+    directories.
+
+    Examples:
+        /path/to/video-object-features.zip
+    '''
+
 
     pass

@@ -813,7 +813,7 @@ class ModelManager(Configurable, Serializable):
             config: a Config for the ModelManager subclass
         '''
         self.validate(config)
-        self.type = etau.get_full_class_name(self)
+        self.type = etau.get_class_name(self)
         self.config = config
 
     @staticmethod

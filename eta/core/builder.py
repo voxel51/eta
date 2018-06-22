@@ -195,19 +195,14 @@ class PipelineBuilder(object):
         # Generate paths, if necessary
         if not self.config_dir:
             self.config_dir = self._get_config_dir()
-
         if not self.output_dir:
             self.output_dir = self._get_output_dir()
-
         if not self.pipeline_config_path:
             self.pipeline_config_path = self._make_pipeline_config_path()
-
         if not self.pipeline_logfile_path:
             self.pipeline_logfile_path = self._make_pipeline_logfile_path()
-
         if not self.pipeline_status_path:
             self.pipeline_status_path = self._make_pipeline_status_path()
-
         self.outputs = {}
 
         self._build_pipeline_config()

@@ -84,26 +84,19 @@ entity, and we refer to the keys of a JSON object (e.g., `info`) as **fields.**
 The pipeline metadata file contains the following top-level fields:
 
 - `info`: a spec containing basic information about the module
-
 - `inputs`: a list defining the names of the pipeline inputs
-
 - `outputs`: a list defining the names of the pipeline outputs
-
 - `modules`: a list of specs describing the modules (nodes) in the pipeline
-
 - `connections`: a list of specs describing the connections (edges) between
     modules in the pipeline
 
 The `info` spec contains the following fields:
 
 - `name`: the name of the pipeline
-
 - `type`: the type of the pipeline, i.e., what computation it performs. Must
-  be a valid pipeline type exposed by the ETA library, i.e. a subclass of
+    be a valid pipeline type exposed by the ETA library, i.e. a subclass of
     `eta.core.types.Pipeline`
-
 - `version`: the current pipeline version
-
 - `description`: a free-text description of the pipeline purpose and
   implementation
 
@@ -114,10 +107,8 @@ The `outputs` field defines the names of the outputs exposed by the pipeline.
 The `modules` field contains a list of module specs with the following fields:
 
 - `name`: the name of the module to include
-
 - `tunable_parameters`: a list of module parameters that are exposed to the
     end-user for tuning
-
 - `set_parameters`: a dictionary whose keys are module parameters and whose
     values are values to assign to those parameters
 
@@ -127,7 +118,6 @@ following fields:
 - `source`: the source (starting point) of the edge. The syntax for a source is
     `<module>.<node>`. Alternatively, the special module `INPUT` can be
     used to refer to a pipeline input
-
 - `sink`: the sink (stopping point) of the edge. The syntax for a sink is
     `<module>.<node>`. Alternatively, the special module `OUTPUT` can be
     used to refer to a pipeline output
@@ -222,13 +212,11 @@ A pipeline build request is valid only if all of the following conditions are
 met:
 
 - The pipeline name must be the name of a valid pipeline metadata file exposed
-  by the ETA system
-
+    by the ETA system
 - All required pipeline inputs (as defined by the pipeline metadata file) are
-  provided and have valid values
-
+    provided and have valid values
 - All required pipeline parameters (as defined by the pipeline metadata file)
-  are provided and have valid values
+    are provided and have valid values
 
 For example, the following JSON defines a valid pipeline build request for the
 video formatting pipeline whose metadata file was given earlier:

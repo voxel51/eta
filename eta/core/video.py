@@ -14,6 +14,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
+import six
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
@@ -27,9 +28,12 @@ import threading
 import cv2
 import numpy as np
 
-from eta.core import utils
-import eta.core.image as im
+import eta.core.image as etai
 from eta.core.serial import Serializable
+import eta.core.utils as etau
+
+
+logger = logging.getLogger(__name__)
 
 
 class VideoStreamInfo(Serializable):
@@ -125,9 +129,6 @@ class VideoStreamInfoError(Exception):
     pass
 
 
-logger = logging.getLogger(__name__)
-
-
 def get_stream_info(inpath):
     '''Get stream info for the video using `ffprobe -show_streams`.
 
@@ -148,7 +149,15 @@ def get_stream_info(inpath):
 
     try:
         info = json.loads(out)
-        return info["streams"][0]  # assume first stream is main video
+
+        for stream in info["streams"]:
+            if stream["codec_type"] == "video":
+                return stream
+
+        logger.warning(
+            "No stream found with codec_type = video. Returning the first "
+            "stream")
+        return info["streams"][0]  # default to the first stream
     except Exception:
         raise FFprobeError("Unable to get stream info for '%s'" % inpath)
 
@@ -239,7 +248,7 @@ def is_valid_video(inpath):
     answer = True
     try:
         get_frame_count(inpath)
-    except utils.ExecutableRuntimeError:
+    except etau.ExecutableRuntimeError:
         answer = False
     return answer
 
@@ -410,7 +419,7 @@ class VideoProcessor(object):
     def write(self, img):
         '''Writes the given image to the output writer(s).'''
         if self._write_images:
-            im.write(img, self.out_impath % self._reader.frame_number)
+            etai.write(img, self.out_impath % self._reader.frame_number)
         if self._write_videos:
             self._video_writer.write(img)
         if self._write_single_video:
@@ -448,13 +457,27 @@ class VideoReader(object):
     '''Base class for reading videos.'''
 
     def __init__(self, inpath, frames):
-        '''Initialize base VideoReader capabilities.'''
-        if frames == "*":
-            frames = "1-%d" % self.total_frame_count
-        self._ranges = FrameRanges.from_str(frames)
-
         self.inpath = inpath
-        self.frames = frames
+        if frames is None:
+            self.frames = "1-%d" % self.total_frame_count
+            self._ranges = FrameRanges.from_str(self.frames)
+        elif isinstance(frames, six.string_types):
+            # Frames string
+            if frames == "*":
+                frames = "1-%d" % self.total_frame_count
+
+            self.frames = frames
+            self._ranges = FrameRanges.from_str(frames)
+        elif isinstance(frames, list):
+            # Frames list
+            self._ranges = FrameRanges.from_list(frames)
+            self.frames = self._ranges.to_str()
+        elif isinstance(frames, (FrameRange, FrameRanges)):
+            # FrameRange or FrameRanges
+            self._ranges = frames
+            self.frames = frames.to_str()
+        else:
+            raise VideoReaderError("Invalid frames %s" % frames)
 
     def __enter__(self):
         return self
@@ -534,8 +557,13 @@ class FFmpegVideoReader(VideoReader):
                 "/path/to/frames/%5d.png". This path is passed directly to
                 ffmpeg
 
-            frames: a string like "1-5,10-15" specifying the range(s) of frames
-                in the input video to read. Set frames="*" to read all frames
+            frames: one of the following optional quantities specifying a
+                collection of frames to process:
+                    - None (all frames)
+                    - "*" (all frames - the default)
+                    - a string like "1-3,6,8-10"
+                    - a list like [1, 2, 3, 6, 8, 9, 10]
+                    - a FrameRange or FrameRanges instance
         '''
         self._stream_info = VideoStreamInfo.build_for(inpath)
         self._ffmpeg = FFmpeg(
@@ -631,11 +659,14 @@ class OpenCVVideoReader(VideoReader):
             inpath: path to the input video, which can be a standalone video
                 file like "/path/to/video.mp4" or a directory of frames like
                 "/path/to/frames/%5d.png". This path is passed directly to
-                cv2.VideoCapture.
-
-            frames: a string like "1-5,10-15" specifying the range(s) of frames
-                in the input video to read. Set frames = "*" to read all
-                frames.
+                cv2.VideoCapture
+            frames: one of the following optional quantities specifying a
+                collection of frames to process:
+                    - None (all frames)
+                    - "*" (all frames - the default)
+                    - a string like "1-3,6,8-10"
+                    - a list like [1, 2, 3, 6, 8, 9, 10]
+                    - a FrameRange or FrameRanges instance
 
         Raises:
             VideoReaderError: if the input video could not be opened.
@@ -808,7 +839,7 @@ class OpenCVVideoWriter(VideoWriter):
         self.size = size
         self._writer = cv2.VideoWriter()
 
-        utils.ensure_path(self.outpath)
+        etau.ensure_path(self.outpath)
         self._writer.open(self.outpath, -1, self.fps, self.size, True)
         if not self._writer.isOpened():
             raise VideoWriterError("Unable to open '%s'" % self.outpath)
@@ -889,13 +920,13 @@ class FFprobe(object):
             )
         except EnvironmentError as e:
             if e.errno == errno.ENOENT:
-                raise utils.ExecutableNotFoundError(self._executable)
+                raise etau.ExecutableNotFoundError(self._executable)
             else:
                 raise
 
         out, err = self._p.communicate()
         if self._p.returncode != 0:
-            raise utils.ExecutableRuntimeError(self.cmd, err)
+            raise etau.ExecutableRuntimeError(self.cmd, err)
 
         return out
 
@@ -970,13 +1001,13 @@ class FFmpeg(object):
         )
 
         if not self.is_output_streaming:
-            utils.ensure_path(outpath)
+            etau.ensure_path(outpath)
 
         try:
             self._p = Popen(self._args, stdin=PIPE, stdout=PIPE, stderr=PIPE)
         except EnvironmentError as e:
             if e.errno == errno.ENOENT:
-                raise utils.ExecutableNotFoundError(self._executable)
+                raise etau.ExecutableNotFoundError(self._executable)
             else:
                 raise
 
@@ -984,7 +1015,7 @@ class FFmpeg(object):
         if not (self.is_input_streaming or self.is_output_streaming):
             err = self._p.communicate()[1]
             if self._p.returncode != 0:
-                raise utils.ExecutableRuntimeError(self.cmd, err)
+                raise etau.ExecutableRuntimeError(self.cmd, err)
 
     def stream(self, string):
         '''Writes the string to ffmpeg's stdin stream.
@@ -1160,6 +1191,7 @@ class FrameRanges(object):
             if first <= end:
                 raise FrameRangesError(
                     "Expected first:%d > last:%d" % (first, end))
+
             self._ranges.append(FrameRange(first, last))
             end = last
 
@@ -1180,6 +1212,7 @@ class FrameRanges(object):
             return next(self)
         except IndexError:
             raise StopIteration
+
         return frame
 
     @property
@@ -1187,6 +1220,7 @@ class FrameRanges(object):
         '''The current frame number, or -1 if no frames have been read.'''
         if self._started:
             return self._ranges[self._idx].idx
+
         return -1
 
     @property
@@ -1196,13 +1230,15 @@ class FrameRanges(object):
         '''
         if self._started:
             return self._ranges[self._idx].first, self._ranges[self._idx].last
-        return -1, -1
+
+        return (-1, -1)
 
     @property
     def is_new_frame_range(self):
         '''Whether the current frame is the first in a new range.'''
         if self._started:
             return self._ranges[self._idx].is_first_frame
+
         return False
 
     def to_list(self):
@@ -1210,6 +1246,7 @@ class FrameRanges(object):
         frames = []
         for r in self._ranges:
             frames += r.to_list()
+
         return frames
 
     def to_str(self):
@@ -1217,17 +1254,38 @@ class FrameRanges(object):
         return ",".join([r.to_str() for r in self._ranges])
 
     @classmethod
-    def from_str(cls, frames):
-        '''Constructs a FrameRanges object from a string like "1-5,10-15".'''
+    def from_str(cls, frames_str):
+        '''Constructs a FrameRanges object from a frames string.
+
+        Args:
+            frames_str: a string like "1-3,6,8-10"
+
+        Raises:
+            FrameRangesError: if the frames string is invalid
+        '''
         ranges = []
-        for r in frames.split(','):
+        for r in frames_str.split(','):
             if r:
                 fr = FrameRange.from_str(r)
                 ranges.append((fr.first, fr.last))
+
         return cls(ranges)
+
+    @classmethod
+    def from_list(cls, frames_list):
+        '''Constructs a FrameRanges object from a frames list.
+
+        Args:
+            frames_list: a list like [1, 2, 3, 6, 8, 9, 10]
+
+        Raises:
+            FrameRangesError: if the frames list is invalid
+        '''
+        return cls(_list_to_ranges(frames_list))
 
 
 class FrameRangesError(Exception):
+    '''Exception raised when an invalid FrameRanges is encountered.'''
     pass
 
 
@@ -1244,6 +1302,7 @@ class FrameRange(object):
         if last < first:
             raise FrameRangeError(
                 "Expected first:%d <= last:%d" % (first, last))
+
         self.first = first
         self.last = last
         self.idx = -1
@@ -1268,6 +1327,7 @@ class FrameRange(object):
             self.idx += 1
         else:
             raise StopIteration
+
         return self.idx
 
     def to_list(self):
@@ -1276,21 +1336,61 @@ class FrameRange(object):
 
     def to_str(self):
         '''Return a string representation of the range.'''
+        if self.first == self.last:
+            return "%d" % self.first
+
         return "%d-%d" % (self.first, self.last)
 
     @classmethod
-    def from_str(cls, frames):
-        '''Constructs a FrameRange object from a string like "1-5".
+    def from_str(cls, frames_str):
+        '''Constructs a FrameRange object from a string.
+
+        Args:
+            frames_str: a string like "1-5"
 
         Raises:
             FrameRangeError: if the frame range string is invalid
         '''
         try:
-            v = list(map(int, frames.split('-')))
+            v = list(map(int, frames_str.split('-')))
             return cls(v[0], v[-1])
         except ValueError:
-            raise FrameRangeError("Invalid frame range string '%s'" % frames)
+            raise FrameRangeError(
+                "Invalid frame range string '%s'" % frames_str)
+
+    @classmethod
+    def from_list(cls, frames_list):
+        '''Constructs a FrameRange object from a frames list.
+
+        Args:
+            frames_list: a consecutive list like [1, 2, 3, 4, 5]
+
+        Raises:
+            FrameRangeError: if the frame range list is invalid
+        '''
+        ranges = list(_list_to_ranges(frames_list))
+        if len(ranges) != 1:
+            raise FrameRangeError("Invalid frame range list %s" % frames_list)
+
+        return cls(*ranges[0])
 
 
 class FrameRangeError(Exception):
+    '''Exception raised when an invalid FrameRange is encountered.'''
     pass
+
+
+def _list_to_ranges(vals):
+    if not vals:
+        raise StopIteration
+
+    vals = sorted(vals)
+    first = last = vals[0]
+    for val in vals[1:]:
+        if val == last + 1:
+            last += 1
+        else:
+            yield (first, last)
+            first = last = val
+
+    yield (first, last)
