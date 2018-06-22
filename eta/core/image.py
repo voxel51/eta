@@ -46,34 +46,25 @@ def create(width, height, background=None):
     image = np.zeros((height, width, 3), np.uint8)
 
     if background:
-        image[:] = hex_to_bgr(background)
+        image[:] = hex_to_rgb(background)
 
     return image
 
 
-def read(path, flag=cv2.IMREAD_UNCHANGED):
-    '''Reads image from path.
+def decode(b, flag=cv2.IMREAD_UNCHANGED):
+    '''Decodes an image from raw bytes.
 
     Args:
-        path: the path to the image on disk
+        bytes: the raw bytes of an image (e.g. from read() or from a web
+            download)
         flag: an optional OpenCV image format flag. By default, the image is
-            returned in it's native format (color, grayscale, transparent, etc)
+            returned in it's native format (color, grayscale, transparent, ...)
 
     Returns:
         A uint8 numpy array containing the image
-        '''
-    return cv2.imread(path, flag)
-
-
-def write(img, path):
-    '''Writes image to file. The output directory is created if necessary.
-
-    Args:
-        img: a numpy array
-        path: the output path
     '''
-    etau.ensure_basedir(path)
-    cv2.imwrite(path, img)
+    vec = np.asarray(bytearray(b), dtype="uint8")
+    return _exchange_rb(cv2.imdecode(vec, flag))
 
 
 def download(url, flag=cv2.IMREAD_UNCHANGED):
@@ -90,20 +81,55 @@ def download(url, flag=cv2.IMREAD_UNCHANGED):
     return decode(etaw.download_file(url), flag=flag)
 
 
-def decode(b, flag=cv2.IMREAD_UNCHANGED):
-    '''Decodes an image from raw bytes.
+def read(path, flag=cv2.IMREAD_UNCHANGED):
+    '''Reads image from path.
 
     Args:
-        bytes: the raw bytes of an image (e.g. from read() or from a web
-            download)
+        path: the path to the image on disk
         flag: an optional OpenCV image format flag. By default, the image is
-            returned in it's native format (color, grayscale, transparent, ...)
+            returned in it's native format (color, grayscale, transparent, etc)
 
     Returns:
         A uint8 numpy array containing the image
+        '''
+    return _exchange_rb(cv2.imread(path, flag))
+
+
+def _exchange_rb(img):
+    '''Converts an image from opencv format (BGR) to/from eta format (RGB) by
+    exchanging the red and blue channels.
+
+    This is a symmetric procedure and hence only needs one function.
+
+    Handles gray (pass-through), 3- and 4-channel images.
     '''
-    vec = np.asarray(bytearray(b), dtype="uint8")
-    return cv2.imdecode(vec, flag)
+    if is_gray(img):
+        return img
+    return rgb_to_bgr(img)
+
+
+def write(img, path):
+    '''Writes image to file. The output directory is created if necessary.
+
+    Args:
+        img: a numpy array
+        path: the output path
+    '''
+    etau.ensure_basedir(path)
+    cv2.imwrite(path, _exchange_rb(img))
+
+
+def has_alpha(img):
+    '''Checks if the image has an alpha channel.'''
+    return not is_gray(img) and img.shape[2] == 4
+
+
+def is_gray(img):
+    '''Checks if the image is grayscale and return True if so.
+
+    The check is performed by counting the number of bands.
+    '''
+    return len(img.shape) == 2
 
 
 def resize(img, width=None, height=None, *args, **kwargs):
@@ -440,10 +466,10 @@ def bgr_to_hex(blue, green, red):
 
 
 def rgb_to_bgr(img):
-    '''Converts an RGB image to a BGR image.'''
+    '''Converts an RGB image to a BGR image (supports alpha).'''
     return img[..., [2, 1, 0] + list(range(3, img.shape[2]))]
 
 
 def bgr_to_rgb(img):
-    '''Converts a BGR image to an RGB image.'''
+    '''Converts a BGR image to an RGB image (supports alpha).'''
     return rgb_to_bgr(img)  # this operation is symmetric
