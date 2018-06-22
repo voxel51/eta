@@ -6,7 +6,6 @@ images in BGR format.  ETA stores its images in RGB format.  This module's
 contract is that it expects RGB to be passed to it and RGB to be expected from
 it.  This includes video frames.
 
-
 Copyright 2017-2018, Voxel51, LLC
 voxel51.com
 
