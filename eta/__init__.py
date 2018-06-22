@@ -42,8 +42,14 @@ class ETAConfig(EnvConfig):
             d, "module_dirs", env_var="ETA_MODULE_DIRS", default=[])
         self.pipeline_dirs = self.parse_string_array(
             d, "pipeline_dirs", env_var="ETA_PIPELINE_DIRS", default=[])
-        self.weights_dirs = self.parse_string_array(
-            d, "weights_dirs", env_var="ETA_WEIGHTS_DIRS", default=[])
+        self.models_dirs = self.parse_string_array(
+            d, "models_dirs", env_var="ETA_MODELS_DIRS", default=[])
+        self.max_model_versions_to_keep = int(self.parse_number(
+            d, "max_model_versions_to_keep",
+            env_var="ETA_MAX_MODEL_VERSIONS_TO_KEEP", default=-1))
+        self.allow_model_downloads = self.parse_bool(
+            d, "allow_model_downloads", env_var="ETA_ALLOW_MODEL_DOWNLOADS",
+            default=True)
         self.default_sequence_idx = self.parse_string(
             d, "default_sequence_idx", env_var="ETA_DEFAULT_SEQUENCE_IDX",
             default="%05d")

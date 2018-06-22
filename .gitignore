@@ -21,7 +21,8 @@ __pycache__
 /external
 /out
 
-/eta/cache
+/eta/models
+!/eta/models/manifest.json
 
 /examples/**/data
 /examples/**/out

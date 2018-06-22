@@ -326,7 +326,7 @@ class PipelineBuilder(object):
 
 
 def _get_param_value(param, request):
-    '''Gets the value for the parameter, resolving it if necessary.
+    '''Gets the value for the parameter.
 
     Args:
         param: a PipelineParameter instance describing the parameter
@@ -344,9 +344,6 @@ def _get_param_value(param, request):
     else:
         # Module-default value
         val = param.default_value
-
-    if val is not None:
-        val = etat.resolve_value(val, param.param.type)
 
     return val
 

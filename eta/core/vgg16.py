@@ -39,29 +39,20 @@ import cv2
 import numpy as np
 import tensorflow as tf
 
-import eta.constants as etac
-from eta.core.config import Config, Configurable
-from eta.core.features import Featurizer
+from eta.core.config import Config
 import eta.core.image as etai
-from eta.core.weights import Weights, WeightsConfig
+from eta.core.features import Featurizer
+import eta.core.models as etam
 
 
 logger = logging.getLogger(__name__)
-
-
-DEFAULT_VGG16_CONFIG = os.path.join(etac.CONFIGS_DIR, "vgg16-config.json")
 
 
 class VGG16Config(Config):
     '''Configuration settings for the VGG-16 network.'''
 
     def __init__(self, d):
-        self.weights = self.parse_object(d, "weights", WeightsConfig)
-
-    @classmethod
-    def load_default(cls):
-        '''Loads the default VGG16Config.'''
-        return cls.from_json(DEFAULT_VGG16_CONFIG)
+        self.model = self.parse_string(d, "model", default="VGG-16")
 
 
 class VGG16(object):
@@ -71,9 +62,11 @@ class VGG16(object):
     This implementation is hard-coded to process an array of images of size
     [XXXX, 224, 224, 3].
 
-    Reference:
-        http://www.cs.toronto.edu/~frossard/post/vgg16/
-        David Frossard, 2016
+    Attributes:
+        config: the VGG16Config instance
+        sess: the tf.Session
+        imgs: a tf.Variable of shape [XXXX, 224, 224, 3] containing images to
+            embed
     '''
 
     def __init__(self, config=None, sess=None, imgs=None):
@@ -90,14 +83,14 @@ class VGG16(object):
                 use. By default, a placeholder of size [None, 224, 224, 3] is
                 used so you can evaluate any number of images at once
         '''
-        self.config = config or VGG16Config.load_default()
+        self.config = config or VGG16Config.default()
         self.sess = sess or tf.Session()
         self.imgs = imgs or tf.placeholder(tf.float32, [None, 224, 224, 3])
 
         self._build_conv_layers()
         self._build_fc_layers()
         self._build_output_layer()
-        self._load_weights(self.config.weights)
+        self._load_model(self.config.model)
 
     def evaluate(self, imgs, layer=None):
         '''Feed-forward evaluation through the net.
@@ -446,22 +439,15 @@ class VGG16(object):
     def _build_output_layer(self):
         self.probs = tf.nn.softmax(self.fc3l)
 
-    def _load_weights(self, weights_config):
-        weights = Weights(weights_config)
+    def _load_model(self, model):
+        weights = etam.NpzModelWeights(model).load()
         for i, k in enumerate(sorted(weights)):
-            logger.debug("%s %s %s", i, k, np.shape(weights[k]))
             self.sess.run(self.parameters[i].assign(weights[k]))
 
 
-class VGG16FeaturizerConfig(Config):
+class VGG16FeaturizerConfig(VGG16Config):
     '''Configuration settings for a VGG16Featurizer that works on images.'''
-
-    def __init__(self, d):
-        self.weights = self.parse_object(
-            d, "weights", WeightsConfig, default=None)
-
-        if self.weights is None:
-            self.weights = VGG16Config.load_default().weights
+    pass
 
 
 class VGG16Featurizer(Featurizer):
@@ -469,7 +455,7 @@ class VGG16Featurizer(Featurizer):
 
     def __init__(self, config=None):
         super(VGG16Featurizer, self).__init__()
-        self.config = config or VGG16FeaturizerConfig({})
+        self.config = config or VGG16FeaturizerConfig.default()
         self.validate(self.config)
         self.vgg16 = None
 
@@ -479,7 +465,8 @@ class VGG16Featurizer(Featurizer):
 
     def _start(self):
         '''Starts a TensorFlow session and loads the network.'''
-        self.vgg16 = VGG16(self.config)
+        if self.vgg16 is None:
+            self.vgg16 = VGG16(self.config)
 
     def _stop(self):
         '''Closes the TensorFlow session and frees up the network.'''

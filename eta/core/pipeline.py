@@ -1,6 +1,9 @@
 '''
 Core pipeline infrastructure.
 
+See `docs/pipelines_dev_guide.md` for detailed information about the design of
+the ETA pipeline system.
+
 Copyright 2017-2018, Voxel51, LLC
 voxel51.com
 
@@ -799,6 +802,9 @@ class PipelineMetadata(Configurable, HasBlockDiagram):
 
 
 class PipelineMetadataError(Exception):
+    '''Exception raised when an invalid pipeline metadata file is
+    encountered.
+    '''
     pass
 
 

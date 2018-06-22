@@ -1,7 +1,7 @@
 '''
-Core web tools.
+Core tools for accessing files on the web.
 
-Copyright 2017, Voxel51, LLC
+Copyright 2017-2018, Voxel51, LLC
 voxel51.com
 
 Brian Moore, brian@voxel51.com
@@ -38,6 +38,9 @@ def download_file(url, path=None):
         url: the URL to get
         path: an optional path to write the file to
 
+    Returns:
+        the binary string if path is not specified; otherwise None
+
     Raises:
         WebSessionError: if the download failed
     '''
@@ -50,15 +53,12 @@ def download_google_drive_file(fid, path=None):
     specified, the file is written there. Otherwise, the file contents are
     returned as a binary string.
 
-    @todo Note that the permissions of the file currently need to
-    be set so that anyone with the link can download and not just anyone at
-    Voxel51 can download.  We need to improve the Google Drive Session so that
-    if a login window is returned, the user actually gets the opportunity to
-    log into Google Drive.
-
     Args:
         fid: the ID of the Google Drive file (usually a 28 character string)
         path: an optional path to write the file to
+
+    Returns:
+        the binary string if path is not specified; otherwise None
 
     Raises:
         WebSessionError: if the download failed
@@ -130,6 +130,7 @@ class WebSession(object):
 
 
 class WebSessionError(Exception):
+    '''Exception raised when there is a problem with a web session.'''
     pass
 
 

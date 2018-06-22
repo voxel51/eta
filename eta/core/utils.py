@@ -145,6 +145,44 @@ def get_function(function_name, module_name=None):
     return get_class(function_name, module_name=module_name)
 
 
+def query_yes_no(question, default=None):
+    '''Asks a yes/no question via raw_input() and returns the answer.
+
+    This function is case insensitive and partially matches are allowed.
+
+    Args:
+        question: the question to ask
+        default: the default answer, which can be "yes", "no", or None (a
+            response is required). The default is None
+
+    Returns:
+        True/False whether the user replied "yes" or "no"
+
+    Raises:
+        ValueError: if the default value was invalid
+    '''
+    valid = { "y": True, "ye": True, "yes": True, "n": False, "no": False}
+
+    if default:
+        default = default.lower()
+        try:
+            prompt = " [Y/n] " if valid[default] else " [y/N] "
+        except KeyError:
+            raise ValueError("Invalid default value '%s'" % default)
+    else:
+        prompt = " [y/n] "
+
+    while True:
+        sys.stdout.write(question + prompt)
+        choice = raw_input().lower()
+        if default and not choice:
+            return valid[default]
+        elif choice in valid:
+            return valid[choice]
+        else:
+            print("Please respond with 'yes' or 'no'")
+
+
 def communicate(args, decode=False):
     '''Runs the command via subprocess.communicate()
 
@@ -241,6 +279,7 @@ def delete_file(path):
 def make_search_path(dirs):
     '''Makes a search path for the given directories by doing the following:
         - converting all paths to absolute paths
+        - removing directories that don't exist
         - removing duplicate directories
 
     The order of the original directories is preserved.
@@ -249,15 +288,19 @@ def make_search_path(dirs):
         dirs: a list of relative or absolute directory paths
 
     Returns:
-        a list of absolute paths with duplicates removed
+        a list of absolute paths with duplicates and non-existent directories
+            removed
     '''
-    paths = []
-    for path in dirs:
-        apath = os.path.abspath(path)
-        if apath not in paths:
-            paths.append(apath)
+    search_dirs = []
+    for d in dirs:
+        adir = os.path.abspath(d)
+        if os.path.isdir(adir) and adir not in search_dirs:
+            search_dirs.append(adir)
 
-    return paths
+    if not search_dirs:
+        logger.warning("Search path is empty")
+
+    return search_dirs
 
 
 def ensure_path(path):

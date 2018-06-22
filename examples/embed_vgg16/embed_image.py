@@ -30,7 +30,7 @@ import numpy as np
 
 import eta.core.image as etai
 import eta.core.utils as etau
-from eta.core.vgg16 import VGG16FeaturizerConfig, VGG16Featurizer
+from eta.core.vgg16 import VGG16Featurizer
 
 
 logger = logging.getLogger(__name__)
@@ -46,8 +46,7 @@ def embed_image(impath):
     '''
     img = etai.read(impath)
 
-    vconfig = VGG16FeaturizerConfig({})
-    vfeaturizer = VGG16Featurizer(vconfig)
+    vfeaturizer = VGG16Featurizer()
 
     embedded_vector = vfeaturizer.featurize(img)
 
