@@ -98,13 +98,10 @@ entity, and we refer to the keys of a JSON object (e.g., "info") as **fields**.
 The module metadata file contains the following top-level fields:
 
 - `info`: a spec containing basic information about the module
-
 - `inputs`: a list of specs describing each input data-related field that
     the module expects in its configuration file
-
 - `outputs`: a list of specs describing each output data-related field that
     the module expects in its configuration file
-
 - `parameters`: a list of specs describing additional parameters that the
     module expects in its configuration file
 
@@ -112,35 +109,27 @@ The `info` spec contains the following fields:
 
 - `name`: the name of the module. By convention, this name should match the
     name of the module metadata file without the extension
-
 - `type`: the type of the module, i.e., what computation it performs. Must be a
     valid module type exposed by the ETA library, i.e. a subclass of
     `eta.core.types.Module`
-
 - `version`: the current module version
-
 - `description`: a short free-text description of the module purpose and
     implementation
-
 - `exe`: the name of the module executable file
 
 The remaining specs describe the fields in the module's configuration files.
 Each spec has the fields:
 
 - `name`: the name of the field
-
 - `type`: the type of the field, which must be a valid type exposed by the ETA
     library. Module inputs must have a type that is a subclass of
     `eta.core.types.ConcreteData` or `eta.core.types.AbstractData`. Module
     outputs must have a type that is a subclass of
     `eta.core.types.ConcreteData`. Module parameters can have types that are
     subclasses of `eta.core.types.ConcreteData` or `eta.core.types.Builtin`
-
 - `description`: a short free-text description of the field
-
 - `required`: (optional) whether a value must be provided for the field in all
     module configuration files. If omitted, the field is assumed to be required
-
 - `default`: (optional parameters only) the default value that is used
     for the optional parameter when it is omitted from a module configuration
     file. The default value must either be (a) a valid value for the declared
@@ -236,15 +225,10 @@ builtin type corresponding to each of the main types of data that can be stored
 in JSON files:
 
 - `eta.core.types.Null`: A JSON null value. `None` in Python
-
 - `eta.core.types.Boolean`: A JSON boolean value. A `bool` in Python
-
 - `eta.core.types.String`: A JSON string. A `str` in Python
-
 - `eta.core.types.Number`: A numeric value
-
 - `eta.core.types.Array`: A JSON array. A `list` in Python
-
 - `eta.core.types.Object`: An object in JSON. A dict in Python
 
 In addition, more specific types can be defined that are subclasses of the
@@ -288,7 +272,6 @@ There are two primary classes of data:
 
 - `eta.core.types.ConcreteData`: the base type for concrete data types, which
     represent well-defined data types that can be written to disk
-
 - `eta.core.types.AbstractData`: the base type for abstract data types, which
     define base data types that encapsulate one or more `ConcreteData` types
 
@@ -312,7 +295,6 @@ The abstract video type currently has two concrete implementations in ETA:
 
 - `eta.core.types.VideoFile`: a video represented as a single encoded video
     file, e.g. `"/path/to/video.mp4"`
-
 - `eta.core.types.ImageSequence`: a video represented as a sequence of images
     with one numeric parameter, e.g. `"/path/to/video/%05d.png"`
 
@@ -336,7 +318,6 @@ that describe the various JSON formats used by modules. For example:
 
 - `eta.core.types.Frame`: A type describing detected objects in a frame. This
     type is implemented in ETA by the `eta.core.objects.Frame` class
-
 - `eta.core.types.EventDetection`: A per-frame binary event detection. This
     type is implemented in ETA by the `eta.core.events.EventDetection` class
 
