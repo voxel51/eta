@@ -29,6 +29,22 @@ import eta.core.utils as etau
 import eta.core.web as etaw
 
 
+def create(width, height, background=None):
+    '''Creates a blank image and optionally fills it with a color.
+
+    Args:
+        width (int): width of the image to create in pixels
+        height (int): height of the image to create in pixels
+        background (string): hex RGB (eg, "#ffffff")
+    '''
+    image = np.zeros((height, width, 3), np.uint8)
+
+    if background:
+        image[:] = hex_to_bgr(background)
+
+    return image
+
+
 def read(path, flag=cv2.IMREAD_UNCHANGED):
     '''Reads image from path.
 
@@ -131,18 +147,18 @@ def rasterize(vector_path, width):
 def overlay(im1, im2, x0=0, y0=0):
     '''Overlays im2 onto im1 at the specified coordinates.
 
+    ***Caution: im1 will be modified in-place if possible.***
+
     Args:
-        im1: a numpy array of any type containing a non-transparent image
-        im2: a numpy array of any type containing a possibly-transparent image
+        im1: a non-transparent image
+        im2: a possibly-transparent image
         (x0, y0): the top-left coordinate of im2 in im1 after overlaying, where
             (0, 0) corresponds to the top-left of im1. This coordinate may lie
             outside of im1, in which case some (even all) of im2 may be omitted
 
     Returns:
-        a uint8 numpy array containing the final image
+        the overlaid image
     '''
-    im1 = to_double(im1)
-    im2 = to_double(im2)
     h1, w1 = im1.shape[:2]
     h2, w2 = im2.shape[:2]
 
@@ -164,14 +180,17 @@ def overlay(im1, im2, x0=0, y0=0):
 
     if im2.shape[2] == 4:
         # Mix transparent image
+        im1 = to_double(im1)
+        im2 = to_double(im2)
         alpha = im2[y2, x2, 3][:, :, np.newaxis]
         im1[y1, x1, :] *= (1 - alpha)
         im1[y1, x1, :] += alpha * im2[y2, x2, :3]
+        im1 = np.uint8(255 * im1)
     else:
         # Insert opaque image
         im1[y1, x1, :] = im2[y2, x2, :]
 
-    return np.uint8(255 * im1)
+    return im1
 
 
 def to_frame_size(frame_size=None, shape=None, img=None):
