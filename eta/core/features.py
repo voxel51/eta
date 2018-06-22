@@ -582,8 +582,7 @@ class VideoFramesFeaturizer(Featurizer):
         The backing directory itself is not deleted.
         '''
         files = [
-            f for f in os.listdir(self._backing_path) if f.endswith(".npz")
-        ]
+            f for f in os.listdir(self._backing_path) if f.endswith(".npz")]
         for f in files:
             os.remove(os.path.join(self._backing_path, f))
 
