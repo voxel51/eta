@@ -133,7 +133,7 @@ eta build -r examples/demo_video_formatter/request.json --run-now
 # NOTE: A 550MB VGG16 weights file will be downloaded from the web and stored
 #       in eta/models/ the first time you run one of these!
 #
-cd examples/embed_vgg16
+cd examples/demo_embed_vgg16
 # Example image embedding
 python embed_image.py
 # Another example image embedding
