@@ -226,7 +226,7 @@ def flush_all_models():
     The models are not removed from their associated manifests and can be
     downloaded again at any time.
     '''
-    for models_dir in etau.make_search_path(eta.config.models_dirs):
+    for models_dir in _get_models_search_path():
         flush_models_directory(models_dir)
 
 
@@ -450,9 +450,7 @@ def _find_latest_model(base_name):
 def _list_models(downloaded_only=False):
     models = {}
     manifests = {}
-
-    mdirs = etau.make_search_path(eta.config.models_dirs)
-    for mdir in mdirs:
+    for mdir in _get_models_search_path():
         manifest = ModelsManifest.from_dir(mdir)
         manifests[mdir] = manifest
 
@@ -473,10 +471,22 @@ def _delete_model_from_dir(model, models_dir):
     os.remove(model_path)
 
 
+def _get_models_search_path():
+    mdirs = []
+    for mdir in etau.make_search_path(eta.config.models_dirs):
+        if ModelsManifest.dir_has_manifest(mdir):
+            mdirs.append(mdir)
+        else:
+            logger.warning(
+                "Directory '%s' is on the models search path but has no "
+                "manifest. It will be omitted from the search path", mdir)
+
+    return mdirs
+
+
 def _warn_if_not_on_search_path(models_dir):
     mdir = os.path.abspath(models_dir)
-    mdirs = etau.make_search_path(eta.config.models_dirs)
-    if mdir not in mdirs:
+    if mdir not in _get_models_search_path():
         logger.warning(
             "Directory '%s' is not on the ETA models search path", models_dir)
 
