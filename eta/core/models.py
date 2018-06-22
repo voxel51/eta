@@ -838,7 +838,7 @@ class ModelManager(Configurable, Serializable):
             ModelError: if model downloading is not currently allowed
         '''
         if force or not os.path.isfile(model_path):
-            if not eta.allow_model_downloads:
+            if not eta.config.allow_model_downloads:
                 raise ModelError(
                     "Model downloading is currently disabled. Modify your ETA "
                     "config to change this setting.")
