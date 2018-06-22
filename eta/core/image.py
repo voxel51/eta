@@ -478,6 +478,20 @@ def bgr_to_hex(blue, green, red):
     return rgb_to_hex(red, green, blue)
 
 
+def rgb_to_gray(img):
+    '''Converts the input RGB image to a grayscale image.'''
+    if is_gray(img):
+        return img
+    return cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+
+
+def bgr_to_gray(img):
+    '''Converts the input BGR image to a grayscale image.'''
+    if is_gray(img):
+        return img
+    return cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+
 def rgb_to_bgr(img):
     '''Converts an RGB image to a BGR image (supports alpha).'''
     return _exchange_rb(img)
