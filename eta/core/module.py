@@ -1,6 +1,9 @@
 '''
 Core module infrastructure.
 
+See `docs/modules_dev_guide.md` for detailed information about the design and
+usage of ETA modules.
+
 Copyright 2017-2018, Voxel51, LLC
 voxel51.com
 
