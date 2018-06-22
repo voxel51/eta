@@ -318,6 +318,12 @@ def register_model_dry_run(name, base_filename, models_dir):
     logger.info("Verifying that model '%s' does not yet exist", name)
     if name in list_models():
         raise ModelError("Model '%s' already exists" % name)
+    if base_name in list_models():
+        raise ModelError(
+            "A versionless model with name '%s' already exists, and "
+            "publishing a versioned model with the same as a versionless "
+            "model can lead to unexpected behavior. Please choose another "
+            "model name." % base_name)
 
     # Verify no filename conflicts
     if ModelsManifest.dir_has_manifest(models_dir):
