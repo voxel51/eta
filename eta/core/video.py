@@ -1,10 +1,17 @@
 '''
 Core video processing tools.
 
+ETA uses OpenCV for some of its image-related processing.  OpenCV stores its
+images in BGR format.  ETA stores its images in RGB format.  This module's
+contract is that it expects RGB to be passed to it and RGB to be expected from
+it.  This includes video frames.
+
+
 Copyright 2017-2018, Voxel51, LLC
 voxel51.com
 
 Brian Moore, brian@voxel51.com
+Jason Corso, jason@voxel51.com
 '''
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
@@ -570,7 +577,7 @@ class FFmpegVideoReader(VideoReader):
             out_opts=[
                 "-f", 'image2pipe',         # pipe frames to stdout
                 "-vcodec", "rawvideo",      # output will be raw video
-                "-pix_fmt", "bgr24",        # pixel format (BGR for OpenCV)
+                "-pix_fmt", "rgb24",        # pixel format
             ],
         )
         self._ffmpeg.run(inpath, "-")
@@ -738,7 +745,7 @@ class OpenCVVideoReader(VideoReader):
             if not self._cap.grab():
                 raise VideoReaderError(
                     "Failed to grab frame %d" % (idx + 1))
-        return self._cap.retrieve()[1]
+        return etai.bgr_to_rgb(self._cap.retrieve()[1])
 
     def close(self):
         '''Closes the video reader.'''
@@ -795,7 +802,7 @@ class FFmpegVideoWriter(VideoWriter):
                 "-f", "rawvideo",           # input will be raw video
                 "-vcodec", "rawvideo",      # input will be raw video
                 "-s", "%dx%d" % self.size,  # frame size
-                "-pix_fmt", "bgr24",        # pixel format (BGR for OpenCV)
+                "-pix_fmt", "rgb24",        # pixel format
                 "-r", str(self.fps),        # frame rate
             ],
             out_opts=self.out_opts,
@@ -806,7 +813,7 @@ class FFmpegVideoWriter(VideoWriter):
         '''Appends the image to the output video.
 
         Args:
-            img: an image in OpenCV format, e.g., img = cv2.imread(...)
+            img: an image in ETA format (RGB)
         '''
         self._ffmpeg.stream(img.tostring())
 
@@ -848,9 +855,9 @@ class OpenCVVideoWriter(VideoWriter):
         '''Appends the image to the output video.
 
         Args:
-            img: an image in OpenCV format, e.g., img = cv2.imread(...)
+            img: an image in ETA format
         '''
-        self._writer.write(img)
+        self._writer.write(etai.rgb_to_bgr(img))
 
     def close(self):
         '''Closes the video writer.'''
