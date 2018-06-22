@@ -79,7 +79,7 @@ class Featurizer(Configurable):
 
     ```
     with <My>Featurizer(...) as f:
-            f.featurize(data)
+        f.featurize(data)
     ```
     '''
 
