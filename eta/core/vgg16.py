@@ -61,12 +61,6 @@ class VGG16(object):
 
     This implementation is hard-coded to process an array of images of size
     [XXXX, 224, 224, 3].
-
-    Attributes:
-        config: the VGG16Config instance
-        sess: the tf.Session
-        imgs: a tf.Variable of shape [XXXX, 224, 224, 3] containing images to
-            embed
     '''
 
     def __init__(self, config=None, sess=None, imgs=None):

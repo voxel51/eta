@@ -124,7 +124,7 @@ def download_model(name, force=False):
     '''Downloads the given model, if necessary.
 
     If the download is forced, the local copy of the model will be overwitten
-    if it exists. Old models are also flushed (if necessary).
+    if it exists.
 
     Args:
         name: the name of the model, which can have "@<ver>" appended to refer
@@ -143,9 +143,6 @@ def download_model(name, force=False):
     model, models_dir, _ = _find_model(name)
     model_path = model.get_path_in_dir(models_dir)
     model.manager.download_model(model_path, force=force)
-
-    flush_old_models()
-
     return model_path
 
 
@@ -229,7 +226,7 @@ def flush_all_models():
     The models are not removed from their associated manifests and can be
     downloaded again at any time.
     '''
-    for models_dir in etau.make_search_path(eta.config.models_dirs):
+    for models_dir in _get_models_search_path():
         flush_models_directory(models_dir)
 
 
@@ -453,9 +450,7 @@ def _find_latest_model(base_name):
 def _list_models(downloaded_only=False):
     models = {}
     manifests = {}
-
-    mdirs = etau.make_search_path(eta.config.models_dirs)
-    for mdir in mdirs:
+    for mdir in _get_models_search_path():
         manifest = ModelsManifest.from_dir(mdir)
         manifests[mdir] = manifest
 
@@ -476,10 +471,22 @@ def _delete_model_from_dir(model, models_dir):
     os.remove(model_path)
 
 
+def _get_models_search_path():
+    mdirs = []
+    for mdir in etau.make_search_path(eta.config.models_dirs):
+        if ModelsManifest.dir_has_manifest(mdir):
+            mdirs.append(mdir)
+        else:
+            logger.warning(
+                "Directory '%s' is on the models search path but has no "
+                "manifest. It will be omitted from the search path", mdir)
+
+    return mdirs
+
+
 def _warn_if_not_on_search_path(models_dir):
     mdir = os.path.abspath(models_dir)
-    mdirs = etau.make_search_path(eta.config.models_dirs)
-    if mdir not in mdirs:
+    if mdir not in _get_models_search_path():
         logger.warning(
             "Directory '%s' is not on the ETA models search path", models_dir)
 
@@ -907,3 +914,11 @@ class ETAModelManager(ModelManager):
 class ModelError(Exception):
     '''Exception raised when an invalid model is encountered.'''
     pass
+
+
+#
+# The first time this module is loaded, perform any necessary flushing of old
+# models as per the value of the `eta.config.max_model_versions_to_keep`
+# setting
+#
+flush_old_models()

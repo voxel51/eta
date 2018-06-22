@@ -74,5 +74,5 @@ version = "%s %s, %s" % (etac.NAME, etac.VERSION, etac.AUTHOR)
 # Default logging behavior
 etal.basic_setup()
 
-# Load config
+# Load global ETA config
 config = ETAConfig.from_json(etac.CONFIG_JSON_PATH)

@@ -97,11 +97,15 @@ functionality used to download these models.
 
 #### Model weights
 
-The `eta.core.models.ModelWeights` class defines the base implementation of
-classes that can load a model by `name` either by reading it from local storage
-if it exists or by automatically downloading the model from remote storage if
-needed. It is straightforward to add new subclasses of `ModelWeights` to
-support new model formats.
+We use the term "model weights" to refer broadly to the actual data contained
+in a model, regardless of its concrete form (weights of a network, parameters,
+coefficients, etc). Obscure model formats can always be read manually from disk
+after they are downloaded, but the `eta.core.models.ModelWeights` class defines
+the interface for classes that can load models in certain "known" formats.
+Subclasses of `ModelWeights` can load models automatically based on their
+`name` either by reading it from local storage if it exists or by automatically
+downloading the model from remote storage. It is straightforward to add new
+subclasses of `ModelWeights` to support new model formats.
 
 For example, the `eta.core.models.NpzModelWeights` provides a dictionary
 interface to access weights stored as an `.npz` file on disk:
@@ -116,6 +120,7 @@ weights = NpzModelWeights(name)
 # Dictionary-based access to the weights
 weights["layer-1"]
 ```
+
 
 ## Basic Usage
 
@@ -243,8 +248,8 @@ you to configure the maximum number of versions of a given model to keep on
 disk. If this limit is execeeded, the oldest versions of a model are deleted
 until the limit is satisifed again.
 
-The models framework automatically checks this condition and performs the
-necessary cleanup after each time a model is downloaded. However, you can
+The ETA library automatically checks this condition and performs the necessary
+cleanup each time the `eta.core.models` module is loaded. However, you can
 manually invoke the cleanup at any time by running:
 
 ```py
