@@ -14,6 +14,7 @@
         "./models"
     ],
     "max_model_versions_to_keep": -1,
+    "allow_model_downloads": true,
     "default_sequence_idx" : "%05d",
     "default_video_ext": ".mp4",
     "default_image_ext": ".png"
