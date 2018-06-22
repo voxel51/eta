@@ -284,6 +284,52 @@ def recommend_paths_for_model(name):
         return None, None
 
 
+def register_model_dry_run(name, base_filename, models_dir):
+    '''Performs a dry-run of the model registration process to ensure that no
+    errors will happen when a real model registration is performed.
+
+    *** No files are modified by this function. ***
+
+    This function performs the following actions:
+        - verifies that the proposed model name is valid
+        - verifies that no models exist with the given name
+        - verifies that no filename conflicts will occur in the proposed
+            model directory
+
+    Args:
+        name: the proposed name for the model, which can optionally have
+            "@<ver>" appended to assign a version to the model
+        base_filename: the proposed base filename (e.g. "model.npz") to use
+            when storing this model locally on disk
+        models_dir: the proposed directory in which to register the model
+
+    Returns:
+        the path to the proposed model as it will appear when downloaded
+
+    Raises:
+        ModelError: if the dry run failed for any reason
+    '''
+    # Verify name
+    logger.info("Verifying that model name '%s' is valid", name)
+    base_name, version = Model.parse_name(name)
+    model = Model(base_name, base_filename, None, None, version=version)
+
+    # Verify novelty
+    logger.info("Verifying that model '%s' does not yet exist", name)
+    if name in list_models():
+        raise ModelError("Model '%s' already exists" % name)
+
+    # Verify no filename conflicts
+    if ModelsManifest.dir_has_manifest(models_dir):
+        logger.info(
+            "Verifying that no filename conflicts exist in models "
+            "directory '%s'", models_dir)
+        manifest = ModelsManifest.from_dir(models_dir)
+        manifest.add_model(model)
+
+    return model.get_path_in_dir(models_dir)
+
+
 def register_model(name, base_filename, models_dir, manager):
     '''Registers a new model in the given models directory.
 
