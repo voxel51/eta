@@ -6,8 +6,7 @@ images in BGR format.  ETA stores its images in RGB format.  This module's
 contract is that it expects RGB to be passed to it and RGB to be expected from
 it.
 
-
-Copyright 2017, Voxel51, LLC
+Copyright 2017-2018, Voxel51, LLC
 voxel51.com
 
 Brian Moore, brian@voxel51.com
@@ -46,12 +45,12 @@ def decode(b, flag=cv2.IMREAD_UNCHANGED):
         bytes: the raw bytes of an image (e.g. from read() or from a web
             download)
         flag: an optional OpenCV image format flag. By default, the image is
-            returned in it's native format (color, grayscale, transparent, ...)
+            returned in its native format (color, grayscale, transparent, ...)
 
     Returns:
         A uint8 numpy array containing the image
     '''
-    vec = np.asarray(bytearray(b), dtype="uint8")
+    vec = np.asarray(bytearray(b), dtype=np.uint8)
     return _exchange_rb(cv2.imdecode(vec, flag))
 
 
@@ -61,7 +60,7 @@ def download(url, flag=cv2.IMREAD_UNCHANGED):
     Args:
         url: the URL of the image
         flag: an optional OpenCV image format flag. By default, the image is
-            returned in it's raw format
+            returned in its raw format
 
     Returns:
         A uint8 numpy array containing the image
@@ -75,7 +74,7 @@ def read(path, flag=cv2.IMREAD_UNCHANGED):
     Args:
         path: the path to the image on disk
         flag: an optional OpenCV image format flag. By default, the image is
-            returned in it's native format (color, grayscale, transparent, etc)
+            returned in its native format (color, grayscale, transparent, ...)
 
     Returns:
         A uint8 numpy array containing the image
@@ -105,7 +104,7 @@ def create(width, height, background=None):
         height (int): height of the image to create in pixels
         background (string): hex RGB (eg, "#ffffff")
     '''
-    image = np.zeros((height, width, 3), np.uint8)
+    image = np.zeros((height, width, 3), dtype=np.uint8)
 
     if background:
         image[:] = hex_to_rgb(background)
@@ -116,7 +115,7 @@ def create(width, height, background=None):
 def overlay(im1, im2, x0=0, y0=0):
     '''Overlays im2 onto im1 at the specified coordinates.
 
-    ***Caution: im1 will be modified in-place if possible.***
+    *** Caution: im1 will be modified in-place if possible. ***
 
     Args:
         im1: a non-transparent image
