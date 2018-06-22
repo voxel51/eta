@@ -259,6 +259,31 @@ def init_models_dir(new_models_dir):
     manifest.write_to_dir(new_models_dir)
 
 
+def recommend_paths_for_model(name):
+    '''Recommends a base filename and models directory for the given model
+    name, if possible.
+
+    The recommendations are made by looking up the corresponding values from
+    the latest version of the model currently registered.
+
+    Args:
+        name: the model name, which can optionally have "@<ver>" appended
+            to assign a version to the model
+
+    Returns:
+        base_filename: the recommended base filename for the model, or None if
+            no recommendation could be made
+        models_dir: the recommended models directory to store the model, or
+            None if no recommendation could be made
+    '''
+    try:
+        base_name = Model.parse_name(name)[0]
+        model, models_dir, _ = _find_model(base_name)
+        return model.base_filename, models_dir
+    except ModelError:
+        return None, None
+
+
 def register_model(name, base_filename, models_dir, manager):
     '''Registers a new model in the given models directory.
 
