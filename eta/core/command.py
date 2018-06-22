@@ -106,8 +106,8 @@ class BuildPipeline(Command):
         parser.add_argument("--run-now",
             action="store_true", help="run the pipeline after building")
         parser.add_argument("--dry-run",
-            action="store_true",
-            help="run the pipeline and delete all files afterwards")
+            action="store_true", help="run the pipeline after building and "
+            "delete all files afterwards")
 
     @staticmethod
     def run(args):
