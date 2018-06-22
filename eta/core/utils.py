@@ -276,6 +276,19 @@ def delete_file(path):
         pass
 
 
+def delete_dir(dir_):
+    '''Deletes the given directory and recursively deletes any empty
+    directories from the resulting directory tree.
+    '''
+    dir_ = os.path.normpath(dir_)
+    shutil.rmtree(dir_)
+    try:
+        os.removedirs(os.path.dirname(dir_))
+    except OSError:
+        # found a non-empty directory or directory with no write access
+        pass
+
+
 def make_search_path(dirs):
     '''Makes a search path for the given directories by doing the following:
         - converting all paths to absolute paths
@@ -531,7 +544,7 @@ class TempDir(object):
         return self._name
 
     def __exit__(self, *args):
-        shutil.rmtree(self._name)
+        delete_dir(self._name)
 
 
 class WorkingDir(object):
