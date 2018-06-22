@@ -651,6 +651,11 @@ class Model(Serializable):
         self.date_created = date_created
         self.version = version or None
 
+    def attributes(self):
+        # We do this so we can set the order the fields appear in the JSON
+        return [
+            "base_name", "version", "base_filename", "manager", "date_created"]
+
     @property
     def name(self):
         '''The version-aware name of the model.'''
@@ -725,7 +730,7 @@ class Model(Serializable):
         return cls(
             d["base_name"], d["base_filename"],
             ModelManager.from_dict(d["manager"]), d["date_created"],
-            d["version"])
+            d.get("version", None))
 
 
 class ModelWeights(object):
@@ -861,6 +866,7 @@ class ETAModelManagerConfig(Config):
             d, "google_drive_id", default=None)
 
     def attributes(self):
+        # Omit attributes with no value, for clarity
         return [a for a in vars(self) if a is not None]
 
 
