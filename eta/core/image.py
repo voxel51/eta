@@ -6,6 +6,7 @@ images in BGR format.  ETA stores its images in RGB format.  This module's
 contract is that it expects RGB to be passed to it and RGB to be expected from
 it.
 
+
 Copyright 2017, Voxel51, LLC
 voxel51.com
 
@@ -35,20 +36,7 @@ import eta.core.utils as etau
 import eta.core.web as etaw
 
 
-def create(width, height, background=None):
-    '''Creates a blank image and optionally fills it with a color.
-
-    Args:
-        width (int): width of the image to create in pixels
-        height (int): height of the image to create in pixels
-        background (string): hex RGB (eg, "#ffffff")
-    '''
-    image = np.zeros((height, width, 3), np.uint8)
-
-    if background:
-        image[:] = hex_to_rgb(background)
-
-    return image
+###### Image IO ##############################################################
 
 
 def decode(b, flag=cv2.IMREAD_UNCHANGED):
@@ -95,19 +83,6 @@ def read(path, flag=cv2.IMREAD_UNCHANGED):
     return _exchange_rb(cv2.imread(path, flag))
 
 
-def _exchange_rb(img):
-    '''Converts an image from opencv format (BGR) to/from eta format (RGB) by
-    exchanging the red and blue channels.
-
-    This is a symmetric procedure and hence only needs one function.
-
-    Handles gray (pass-through), 3- and 4-channel images.
-    '''
-    if is_gray(img):
-        return img
-    return rgb_to_bgr(img)
-
-
 def write(img, path):
     '''Writes image to file. The output directory is created if necessary.
 
@@ -119,61 +94,23 @@ def write(img, path):
     cv2.imwrite(path, _exchange_rb(img))
 
 
-def has_alpha(img):
-    '''Checks if the image has an alpha channel.'''
-    return not is_gray(img) and img.shape[2] == 4
+###### Image Manipulation ####################################################
 
 
-def is_gray(img):
-    '''Checks if the image is grayscale and return True if so.
+def create(width, height, background=None):
+    '''Creates a blank image and optionally fills it with a color.
 
-    The check is performed by counting the number of bands.
+    Args:
+        width (int): width of the image to create in pixels
+        height (int): height of the image to create in pixels
+        background (string): hex RGB (eg, "#ffffff")
     '''
-    return len(img.shape) == 2
+    image = np.zeros((height, width, 3), np.uint8)
 
+    if background:
+        image[:] = hex_to_rgb(background)
 
-def resize(img, width=None, height=None, *args, **kwargs):
-    '''Resizes the given image to the given width and height. At most one
-    dimension can be None, in which case the aspect-preserving value is used.
-    '''
-    if height is None:
-        height = int(round(img.shape[0] * (width * 1.0 / img.shape[1])))
-    if width is None:
-        width = int(round(img.shape[1] * (height * 1.0 / img.shape[0])))
-    return cv2.resize(img, (width, height), *args, **kwargs)
-
-
-def to_double(img):
-    '''Converts img to a double precision image with values in [0, 1].'''
-    return img.astype(np.float) / np.iinfo(img.dtype).max
-
-
-def rasterize(vector_path, width):
-    '''Renders a vector image as a raster image with the given width,
-    in pixels.
-    '''
-    with etau.TempDir() as d:
-        try:
-            png_path = os.path.join(d, "tmp.png")
-            Convert(
-                in_opts=["-density", "1200", "-trim"],
-                out_opts=["-resize", str(width)],
-            ).run(vector_path, png_path)
-            return read(png_path)
-        except Exception:
-            # Fail gracefully
-            return None
-
-    # @todo why is it slightly blurry this way?
-    # try:
-    #     out = Convert(
-    #         in_opts=["-density", "1200", "-trim"],
-    #         out_opts=["-resize", str(width)],
-    #     ).run(vector_path, "png:-")
-    #     return read(out)
-    # except Exception:
-    #     # Fail gracefully
-    #     return None
+    return image
 
 
 def overlay(im1, im2, x0=0, y0=0):
@@ -225,30 +162,48 @@ def overlay(im1, im2, x0=0, y0=0):
     return im1
 
 
-def to_frame_size(frame_size=None, shape=None, img=None):
-    '''Converts an image size representation to a (width, height) tuple.
-
-    Pass *one* keyword argument to compute the frame size.
-
-    Args:
-        frame_size: the (width, height) of the image
-        shape: the (height, width, ...) of the image, e.g. from img.shape
-        img: the image itself
-
-    Returns:
-        (w, h): the width and height of the image
-
-    Raises:
-        TypeError: if none of the keyword arguments were passed
+def rasterize(vector_path, width):
+    '''Renders a vector image as a raster image with the given width,
+    in pixels.
     '''
-    if img is not None:
-        shape = img.shape
-    if shape is not None:
-        return shape[1], shape[0]
-    elif frame_size is not None:
-        return frame_size
-    else:
-        raise TypeError("A valid keyword argument must be provided")
+    with etau.TempDir() as d:
+        try:
+            png_path = os.path.join(d, "tmp.png")
+            Convert(
+                in_opts=["-density", "1200", "-trim"],
+                out_opts=["-resize", str(width)],
+            ).run(vector_path, png_path)
+            return read(png_path)
+        except Exception:
+            # Fail gracefully
+            return None
+
+    # @todo why is it slightly blurry this way?
+    # try:
+    #     out = Convert(
+    #         in_opts=["-density", "1200", "-trim"],
+    #         out_opts=["-resize", str(width)],
+    #     ).run(vector_path, "png:-")
+    #     return read(out)
+    # except Exception:
+    #     # Fail gracefully
+    #     return None
+
+
+def resize(img, width=None, height=None, *args, **kwargs):
+    '''Resizes the given image to the given width and height. At most one
+    dimension can be None, in which case the aspect-preserving value is used.
+    '''
+    if height is None:
+        height = int(round(img.shape[0] * (width * 1.0 / img.shape[1])))
+    if width is None:
+        width = int(round(img.shape[1] * (height * 1.0 / img.shape[0])))
+    return cv2.resize(img, (width, height), *args, **kwargs)
+
+
+def to_double(img):
+    '''Converts img to a double precision image with values in [0, 1].'''
+    return img.astype(np.float) / np.iinfo(img.dtype).max
 
 
 class Convert(object):
@@ -315,6 +270,48 @@ class Convert(object):
             raise etau.ExecutableRuntimeError(self.cmd, err)
 
         return out
+
+
+###### Image Properties and Representation ###################################
+
+
+def has_alpha(img):
+    '''Checks if the image has an alpha channel.'''
+    return not is_gray(img) and img.shape[2] == 4
+
+
+def is_gray(img):
+    '''Checks if the image is grayscale and return True if so.
+
+    The check is performed by counting the number of bands.
+    '''
+    return len(img.shape) == 2
+
+
+def to_frame_size(frame_size=None, shape=None, img=None):
+    '''Converts an image size representation to a (width, height) tuple.
+
+    Pass *one* keyword argument to compute the frame size.
+
+    Args:
+        frame_size: the (width, height) of the image
+        shape: the (height, width, ...) of the image, e.g. from img.shape
+        img: the image itself
+
+    Returns:
+        (w, h): the width and height of the image
+
+    Raises:
+        TypeError: if none of the keyword arguments were passed
+    '''
+    if img is not None:
+        shape = img.shape
+    if shape is not None:
+        return shape[1], shape[0]
+    elif frame_size is not None:
+        return frame_size
+    else:
+        raise TypeError("A valid keyword argument must be provided")
 
 
 class Length(object):
@@ -444,6 +441,22 @@ class Location(object):
         return self._loc in self.BOTTOM_LEFT
 
 
+###### Color Conversion ######################################################
+
+
+def _exchange_rb(img):
+    '''Converts an image from opencv format (BGR) to/from eta format (RGB) by
+    exchanging the red and blue channels.
+
+    This is a symmetric procedure and hence only needs one function.
+
+    Handles gray (pass-through), 3- and 4-channel images.
+    '''
+    if is_gray(img):
+        return img
+    return img[..., [2, 1, 0] + list(range(3, img.shape[2]))]
+
+
 def hex_to_rgb(value):
     '''Converts "#rrbbgg" to a (red, green, blue) tuple.'''
     value = value.lstrip('#')
@@ -467,9 +480,9 @@ def bgr_to_hex(blue, green, red):
 
 def rgb_to_bgr(img):
     '''Converts an RGB image to a BGR image (supports alpha).'''
-    return img[..., [2, 1, 0] + list(range(3, img.shape[2]))]
+    return _exchange_rb(img)
 
 
 def bgr_to_rgb(img):
     '''Converts a BGR image to an RGB image (supports alpha).'''
-    return rgb_to_bgr(img)  # this operation is symmetric
+    return _exchange_rb(img)
