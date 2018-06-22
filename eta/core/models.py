@@ -654,7 +654,7 @@ class Model(Serializable):
     def attributes(self):
         # We do this so we can set the order the fields appear in the JSON
         return [
-            "base_name", "version", "base_filename", "manager", "date_created"]
+            "base_name", "base_filename", "version", "manager", "date_created"]
 
     @property
     def name(self):
@@ -867,7 +867,7 @@ class ETAModelManagerConfig(Config):
 
     def attributes(self):
         # Omit attributes with no value, for clarity
-        return [a for a in vars(self) if a is not None]
+        return [a for a in vars(self) if getattr(self, a) is not None]
 
 
 class ETAModelManager(ModelManager):
