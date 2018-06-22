@@ -35,7 +35,6 @@ from builtins import *
 import logging
 import os
 
-import cv2
 import numpy as np
 import tensorflow as tf
 
@@ -469,11 +468,9 @@ class VGG16Featurizer(Featurizer):
 
     def _featurize(self, img):
         '''Featurizes the image using the VGG-16 network.'''
-        if len(img.shape) == 2:
-            # Grayscale
-            img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
-        elif img.shape[2] == 4:
-            # RGBA
+        if etai.is_gray(img):
+            img = etai.gray_to_rgb(img)
+        elif etai.has_alpha(img):
             img = img[:, :, :3]
 
         img = etai.resize(img, 224, 224)
