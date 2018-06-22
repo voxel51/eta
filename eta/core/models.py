@@ -699,14 +699,29 @@ class PklModelWeights(ModelWeights):
 
 
 class ModelManager(Configurable, Serializable):
-    '''Base class for model managers.'''
+    '''Base class for model managers.
 
-    def __init__(self, type_, config_):
-        self.validate(config_)
-        self.type = type_
-        self.config = config_
+    Attributes:
+        type: the fully-qualified name of the ModelManager subclass
+        config: the Config instance for the ModelManager subclass
+    '''
 
-    def download_model(self, local_path, force=False):
+    def __init__(self, config):
+        '''Initializes a ModelManager instance.
+
+        Args:
+            config: a Config for the ModelManager subclass
+        '''
+        self.validate(config)
+        self.type = etau.get_full_class_name(self)
+        self.config = config
+
+    @staticmethod
+    def upload_model(model_path, *args, **kwargs):
+        raise NotImplementedError(
+            "subclass must implement upload_model()")
+
+    def download_model(self, model_path, force=False):
         '''Downloads the model to the given local path.
 
         If the download is forced, any existing model is overwritten. If the
@@ -714,7 +729,7 @@ class ModelManager(Configurable, Serializable):
         not already exist locally.
 
         Args:
-            local_path: the path to which to download the model
+            model_path: the path to which to download the model
             force: whether to force download the model. If True, the model is
                 always downloaded. If False, the model is only downloaded if
                 necessary. The default is False
@@ -722,20 +737,15 @@ class ModelManager(Configurable, Serializable):
         Raises:
             ModelError: if the configuration was invalid
         '''
-        if force or not os.path.isfile(local_path):
-            etau.ensure_basedir(local_path)
-            self._download_model(local_path)
-
-    @staticmethod
-    def register_model(model_path, name, version=None, models_dir=None):
-        raise NotImplementedError(
-            "subclass must implement register_new_model()")
+        if force or not os.path.isfile(model_path):
+            etau.ensure_basedir(model_path)
+            self._download_model(model_path)
 
     def delete_model(self):
         raise NotImplementedError(
             "subclass must implement delete_model()")
 
-    def _download_model(self, local_path):
+    def _download_model(self, model_path):
         raise NotImplementedError(
             "subclass must implement _download_model()")
 
@@ -743,7 +753,7 @@ class ModelManager(Configurable, Serializable):
     def from_dict(cls, d):
         '''Builds the ModelManager subclass from a JSON dictionary.'''
         manager_cls, config_cls = cls.parse(d["type"])
-        return manager_cls(d["type"], config_cls.from_dict(d["config"]))
+        return manager_cls(config_cls.from_dict(d["config"]))
 
 
 class ETAModelManagerConfig(Config):
