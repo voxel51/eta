@@ -846,6 +846,9 @@ class ETAModelManagerConfig(Config):
         self.google_drive_id = self.parse_string(
             d, "google_drive_id", default=None)
 
+    def attributes(self):
+        return [a for a in vars(self) if a is not None]
+
 
 class ETAModelManager(ModelManager):
     '''Class that manages public models for the ETA repository.'''
