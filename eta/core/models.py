@@ -355,6 +355,9 @@ def register_model(name, base_filename, models_dir, manager):
             this model locally on disk
         models_dir: the directory in which to register the model
         manager: the ModelManager instance for the model
+
+    Raises:
+        ModelError: if the registration failed for any reason
     '''
     _warn_if_not_on_search_path(models_dir)
 
