@@ -508,11 +508,16 @@ class ModelsManifest(Serializable):
         '''
         if self.has_model_with_name(model.name):
             raise ModelError(
-                "Manifest already contains model '%s'" % model.name)
+                "Manifest already contains model called '%s'" % model.name)
         if self.has_model_with_filename(model.filename):
             raise ModelError(
                 "Manifest already contains model with filename '%s'" % (
                     model.filename))
+        if self.has_model_with_name(model.base_name):
+            raise ModelError(
+                "Manifest already contains a versionless model called '%s', "
+                "so a versioned model is not allowed" % model.base_name)
+
         self.models.append(model)
 
     def remove_model(self, name):
