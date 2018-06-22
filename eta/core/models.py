@@ -196,12 +196,12 @@ def flush_old_models():
     }
 
     # Flush old models
-    for base_name, models_list in itervalues(bmodels):
+    for base_name, models_list in iteritems(bmodels):
         num_to_flush = len(models_list) - max_vers
         if num_to_flush > 0:
             logger.info(
-                "*** Flushing %d old versions of model '%s'",
-                base_name, num_to_flush)
+                "*** Flushing %d old version(s) of model '%s'",
+                num_to_flush, base_name)
             for model, models_dir in reversed(models_list[max_vers:]):
                 _delete_model_from_dir(model, models_dir)
 
