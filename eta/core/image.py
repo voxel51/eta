@@ -147,18 +147,18 @@ def rasterize(vector_path, width):
 def overlay(im1, im2, x0=0, y0=0):
     '''Overlays im2 onto im1 at the specified coordinates.
 
+    ***Caution: im1 will be modified in-place if possible.***
+
     Args:
-        im1: a numpy array of any type containing a non-transparent image
-        im2: a numpy array of any type containing a possibly-transparent image
+        im1: a non-transparent image
+        im2: a possibly-transparent image
         (x0, y0): the top-left coordinate of im2 in im1 after overlaying, where
             (0, 0) corresponds to the top-left of im1. This coordinate may lie
             outside of im1, in which case some (even all) of im2 may be omitted
 
     Returns:
-        a uint8 numpy array containing the final image
+        the overlaid image
     '''
-    im1 = to_double(im1)
-    im2 = to_double(im2)
     h1, w1 = im1.shape[:2]
     h2, w2 = im2.shape[:2]
 
@@ -180,55 +180,15 @@ def overlay(im1, im2, x0=0, y0=0):
 
     if im2.shape[2] == 4:
         # Mix transparent image
+        im1 = to_double(im1)
+        im2 = to_double(im2)
         alpha = im2[y2, x2, 3][:, :, np.newaxis]
         im1[y1, x1, :] *= (1 - alpha)
         im1[y1, x1, :] += alpha * im2[y2, x2, :3]
+        im1 = np.uint8(255 * im1)
     else:
         # Insert opaque image
         im1[y1, x1, :] = im2[y2, x2, :]
-
-    return np.uint8(255 * im1)
-
-
-def overlay_inplace(im1, im2, x0=0, y0=0):
-    '''Overlays im2 onto im1 at the specified coordinates and maintains the
-    same memory for im1.
-
-    Does not support transparency at the current time.
-
-    Args:
-        im1: a numpy array of any type containing a non-transparent image
-        im2: a numpy array of any type containing a non-transparent image
-        (x0, y0): the top-left coordinate of im2 in im1 after overlaying, where
-            (0, 0) corresponds to the top-left of im1. This coordinate may lie
-            outside of im1, in which case some (even all) of im2 may be omitted
-
-    Returns:
-        im1 reference (the same numpy array)
-    '''
-    if im2.shape[2] == 4:
-        raise ValueError('cannot handle transparency currently')
-
-    h1, w1 = im1.shape[:2]
-    h2, w2 = im2.shape[:2]
-
-    # Active slice of im1
-    y1t = np.clip(y0, 0, h1)
-    y1b = np.clip(y0 + h2, 0, h1)
-    x1l = np.clip(x0, 0, w1)
-    x1r = np.clip(x0 + w2, 0, w1)
-    y1 = slice(y1t, y1b)
-    x1 = slice(x1l, x1r)
-
-    # Active slice of im2
-    y2t = np.clip(y1t - y0, 0, h2)
-    y2b = y2t + y1b - y1t
-    x2l = np.clip(x1l - x0, 0, w2)
-    x2r = x2l + x1r - x1l
-    y2 = slice(y2t, y2b)
-    x2 = slice(x2l, x2r)
-
-    im1[y1, x1, :] = im2[y2, x2, :]
 
     return im1
 
