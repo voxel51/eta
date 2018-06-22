@@ -150,67 +150,6 @@ def download_model(name, force=False):
     return model_path
 
 
-def register_model(name, base_filename, manager, models_dir):
-    '''Registers a new model in the given models directory.
-
-    The directory is created if necessary.
-
-    If the directory does not have a models manifest file, one is created.
-    Note that new models directories are not automatically added to your
-    models search path, so the new model will not be findable until you update
-    your ETA config.
-
-    Args:
-        name: a name for the model, which can optionally have "@<ver>" appended
-            to assign a version to the model
-        base_filename: the base filename (e.g. "model.npz") to use when storing
-            this model locally on disk
-        manager: the ModelManager instance for the model
-        models_dir: the directory in which
-    '''
-    _warn_if_not_on_search_path(models_dir)
-
-    # Create model
-    logger.info("Creating a new model '%s'", name)
-    base_name, version = Model.parse_name(name)
-    date_created = etau.get_isotime()
-    model = Model(
-        base_name, base_filename, manager, date_created, version=version)
-
-    # Initialize models directory, if necessary
-    if not ModelsManifest.dir_has_manifest(models_dir):
-        init_models_dir(models_dir)
-
-    # Add model to manifest
-    manifest = ModelsManifest.from_dir(models_dir)
-    logger.info("Adding model '%s' to manifest in '%s'", name, models_dir)
-    manifest.add_model(model)
-    manifest.write_to_dir(models_dir)
-
-
-def init_models_dir(new_models_dir):
-    '''Initializes the given directory as a models directory by creating an
-    empty models manifest file for it.
-
-    The directory is created if necessary.
-
-    Note that the directory is not automatically added to your models search
-    path, so models in this directory will not be findable until you update
-    your ETA config.
-
-    Args:
-        new_models_dir: the directory to initialize
-
-    Raises:
-        ModelError: if the models directory is already initialized
-    '''
-    if ModelsManifest.dir_has_manifest(new_models_dir):
-        raise ModelError(
-            "Directory '%s' already has a models manifest", new_models_dir)
-    manifest = ModelsManifest()
-    manifest.write_to_dir(new_models_dir)
-
-
 def flush_model(name):
     '''Deletes the local copy of the given model, if necessary.
 
@@ -293,6 +232,71 @@ def flush_all_models():
     '''
     for models_dir in etau.make_search_path(eta.config.models_dirs):
         flush_models_directory(models_dir)
+
+
+def init_models_dir(new_models_dir):
+    '''Initializes the given directory as a models directory by creating an
+    empty models manifest file for it.
+
+    The directory is created if necessary.
+
+    Note that the directory is not automatically added to your models search
+    path, so models in this directory will not be findable until you update
+    your ETA config.
+
+    Args:
+        new_models_dir: the directory to initialize
+
+    Raises:
+        ModelError: if the models directory is already initialized
+    '''
+    if ModelsManifest.dir_has_manifest(new_models_dir):
+        raise ModelError(
+            "Directory '%s' already has a models manifest", new_models_dir)
+
+    logger.info("Initializing new models directory '%s'", new_models_dir)
+    manifest = ModelsManifest()
+    manifest.write_to_dir(new_models_dir)
+
+
+def register_model(name, base_filename, models_dir, manager):
+    '''Registers a new model in the given models directory.
+
+    If the directory does not have a models manifest file, one is created.
+    Note that new models directories are not automatically added to your
+    models search path, so models in a newly initialized directory will not be
+    findable until you add the directory to your models search path.
+
+    Note that this function does not upload the model to remote storage, it
+    simply registers the model in the ETA system. To publish the model to
+    remote storage, use the relevant ModelManager.
+
+    Args:
+        name: a name for the model, which can optionally have "@<ver>" appended
+            to assign a version to the model
+        base_filename: the base filename (e.g. "model.npz") to use when storing
+            this model locally on disk
+        models_dir: the directory in which to register the model
+        manager: the ModelManager instance for the model
+    '''
+    _warn_if_not_on_search_path(models_dir)
+
+    # Create model
+    logger.info("Creating a new model '%s'", name)
+    base_name, version = Model.parse_name(name)
+    date_created = etau.get_isotime()
+    model = Model(
+        base_name, base_filename, manager, date_created, version=version)
+
+    # Initialize models directory, if necessary
+    if not ModelsManifest.dir_has_manifest(models_dir):
+        init_models_dir(models_dir)
+
+    # Add model to manifest
+    manifest = ModelsManifest.from_dir(models_dir)
+    logger.info("Adding model '%s' to manifest in '%s'", name, models_dir)
+    manifest.add_model(model)
+    manifest.write_to_dir(models_dir)
 
 
 def delete_model(name, force=False):
