@@ -22,6 +22,7 @@ from builtins import *
 import cv2
 import numpy as np
 
+import eta.core.image as etai
 import eta.core.utils as etau
 import eta.core.video as etav
 
@@ -125,7 +126,7 @@ def polar_to_img(polar):
     hsv[..., 1] = 255
     #hsv[..., 2] = np.minimum(255 * mag, 255)  # [0, 255]
     hsv[..., 2] = cv2.normalize(mag, None, 0, 255, cv2.NORM_MINMAX)  # [0, 255]
-    return cv2.cvtColor(hsv.astype(np.uint8), cv2.COLOR_HSV2BGR)
+    return cv2.cvtColor(hsv.astype(np.uint8), cv2.COLOR_HSV2RGB)
 
 
 class FarnebackDenseOpticalFlow(DenseOpticalFlow):
@@ -174,7 +175,7 @@ class FarnebackDenseOpticalFlow(DenseOpticalFlow):
             cv2.OPTFLOW_FARNEBACK_GAUSSIAN if use_gaussian_filter else 0)
 
     def process_frame(self, img):
-        curr_frame = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        curr_frame = etai.rgb_to_gray(img)
         if self._prev_frame is None:
             # There is no previous frame for the first frame, so we set
             # it to the current frame, which implies that the flow for
@@ -423,7 +424,7 @@ class EdgeDetector(object):
 
                 if vid_path:
                     # Write edges video
-                    p.write(cv2.cvtColor(edges, cv2.COLOR_GRAY2BGR))
+                    p.write(cv2.cvtColor(edges, cv2.COLOR_GRAY2RGB))
 
     def process_frame(self, img):
         '''Performs edge detection on the next frame.
@@ -466,7 +467,7 @@ class CannyEdgeDetector(EdgeDetector):
 
     def process_frame(self, img):
         # works in OpenCV 3 and OpenCV 2
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        gray = etai.rgb_to_gray(img)
         return cv2.Canny(
             gray, threshold1=self.threshold1, threshold2=self.threshold2,
             apertureSize=self.aperture_size, L2gradient=self.l2_gradient)
@@ -475,7 +476,7 @@ class CannyEdgeDetector(EdgeDetector):
 class FeaturePointDetector(object):
     '''Base class for feature point detection methods.'''
 
-    KEYPOINT_DRAW_COLOR = (0, 255, 0)
+    KEYPOINT_DRAW_COLOR = (0, 255, 0)  # BGR
 
     def process_video(self, input_path, coords_path=None, vid_path=None):
         '''Detect feature points using self.detector.
@@ -504,8 +505,10 @@ class FeaturePointDetector(object):
 
                 if vid_path:
                     # Write feature points video
-                    img = cv2.drawKeypoints(
-                        img, keypoints, None, color=self.KEYPOINT_DRAW_COLOR)
+                    img = etai.bgr_to_rgb(
+                        cv2.drawKeypoints(
+                            etai.rgb_to_bgr(img), keypoints, None,
+                            color=self.KEYPOINT_DRAW_COLOR))
                     p.write(img)
 
     def process_frame(self, img):
@@ -548,7 +551,7 @@ class HarrisFeaturePointDetector(FeaturePointDetector):
 
     def process_frame(self, img):
         # works in OpenCV 3 and OpenCV 2
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        gray = etai.rgb_to_gray(img)
         gray = np.float32(gray)
         response = cv2.cornerHarris(
             gray, blockSize=self.block_size, ksize=self.aperture_size,
