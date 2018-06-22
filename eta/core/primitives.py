@@ -322,6 +322,7 @@ class MOG2BackgroundSubtractor(BackgroundSubtractor):
         self._fgbg = None
 
     def process_frame(self, img):
+        # We pass in an RGB image b/c this algo is invariant to channel order
         fgmask = self._fgbg.apply(img, None, self.learning_rate)
         bgimg = self._fgbg.getBackgroundImage()
         return fgmask, bgimg
@@ -378,6 +379,7 @@ class KNNBackgroundSubtractor(BackgroundSubtractor):
         self._fgbg = None
 
     def process_frame(self, img):
+        # We pass in an RGB image b/c this algo is invariant to channel order
         fgmask = self._fgbg.apply(img, None, self.learning_rate)
         bgimg = self._fgbg.getBackgroundImage()
         return fgmask, bgimg
@@ -476,7 +478,7 @@ class CannyEdgeDetector(EdgeDetector):
 class FeaturePointDetector(object):
     '''Base class for feature point detection methods.'''
 
-    KEYPOINT_DRAW_COLOR = (0, 255, 0)  # BGR
+    KEYPOINT_RGB_COLOR = (0, 255, 0)  # RGB
 
     def process_video(self, input_path, coords_path=None, vid_path=None):
         '''Detect feature points using self.detector.
@@ -505,10 +507,10 @@ class FeaturePointDetector(object):
 
                 if vid_path:
                     # Write feature points video
-                    img = etai.bgr_to_rgb(
-                        cv2.drawKeypoints(
-                            etai.rgb_to_bgr(img), keypoints, None,
-                            color=self.KEYPOINT_DRAW_COLOR))
+                    # We pass in an RGB image b/c this function is invariant to
+                    # channel order
+                    img = cv2.drawKeypoints(
+                        img, keypoints, None, color=self.KEYPOINT_RGB_COLOR)
                     p.write(img)
 
     def process_frame(self, img):
@@ -550,9 +552,8 @@ class HarrisFeaturePointDetector(FeaturePointDetector):
         self.k = k
 
     def process_frame(self, img):
-        # works in OpenCV 3 and OpenCV 2
-        gray = etai.rgb_to_gray(img)
-        gray = np.float32(gray)
+        # Works in OpenCV 3 and OpenCV 2
+        gray = np.float32(etai.rgb_to_gray(img))
         response = cv2.cornerHarris(
             gray, blockSize=self.block_size, ksize=self.aperture_size,
             k=self.k)
@@ -590,6 +591,7 @@ class FASTFeaturePointDetector(FeaturePointDetector):
                 nonmaxSuppression=self.non_max_suppression)
 
     def process_frame(self, img):
+        # We pass in an RGB image b/c this algo is invariant to channel order
         return self._detector.detect(img, None)
 
 
@@ -621,6 +623,7 @@ class ORBFeaturePointDetector(FeaturePointDetector):
                 nfeatures=self.max_num_features, scoreType=self.score_type)
 
     def process_frame(self, img):
+        # We pass in an RGB image b/c this algo is invariant to channel order
         return self._detector.detect(img, None)
 
 
