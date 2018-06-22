@@ -47,6 +47,9 @@ class ETAConfig(EnvConfig):
         self.max_model_versions_to_keep = int(self.parse_number(
             d, "max_model_versions_to_keep",
             env_var="ETA_MAX_MODEL_VERSIONS_TO_KEEP", default=-1))
+        self.allow_model_downloads = self.parse_bool(
+            d, "allow_model_downloads", env_var="ETA_ALLOW_MODEL_DOWNLOADS",
+            default=True)
         self.default_sequence_idx = self.parse_string(
             d, "default_sequence_idx", env_var="ETA_DEFAULT_SEQUENCE_IDX",
             default="%05d")
