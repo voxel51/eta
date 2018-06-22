@@ -29,6 +29,22 @@ from eta.core import utils
 from eta.core import web
 
 
+def create(width, height, background=None):
+    '''Creates a blank image and optionally fills it with a color.
+
+    Args:
+        width (int): width of the image to create in pixels
+        height (int): height of the image to create in pixels
+        background (string): hex RGB (eg, "#ffffff")
+    '''
+    image = np.zeros((height, width, 3), np.uint8)
+
+    if background:
+        image[:] = hex_to_bgr(background)
+
+    return image
+
+
 def read(path, flag=cv2.IMREAD_UNCHANGED):
     '''Reads image from path.
 
