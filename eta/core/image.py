@@ -492,6 +492,16 @@ def bgr_to_gray(img):
     return cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
 
+def gray_to_bgr(img):
+    '''Convert a grayscale image to an BGR image.'''
+    return cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+
+
+def gray_to_rgb(img):
+    '''Convert a grayscale image to an RGB image.'''
+    return cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
+
+
 def rgb_to_bgr(img):
     '''Converts an RGB image to a BGR image (supports alpha).'''
     return _exchange_rb(img)
