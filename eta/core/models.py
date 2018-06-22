@@ -776,31 +776,31 @@ class ETAModelManager(ModelManager):
     '''Class that manages public models for the ETA repository.'''
 
     @staticmethod
-    def register_model(model_path, name, version=None, models_dir=None):
+    def upload_model(model_path, *args, **kwargs):
         raise NotImplementedError(
-            "ETA models must be registered by a Voxel51 administrator. "
+            "ETA models must be uploaded by a Voxel51 administrator. "
             "Please contact %s for more information." % etac.CONTACT)
+
+    def _download_model(self, model_path):
+        if self.config.google_drive_id:
+            gid = self.config.google_drive_id
+            logger.info(
+                "Downloading model from Google Drive ID '%s' to '%s'",
+                gid, model_path)
+            etaw.download_google_drive_file(gid, path=model_path)
+        elif self.config.url:
+            url = self.config.url
+            logger.info(
+                "Downloading model from '%s' to '%s'", url, model_path)
+            etaw.download_file(url, path=model_path)
+        else:
+            raise ModelError(
+                "Invalid ETAModelManagerConfig '%s'" % str(self.config))
 
     def delete_model(self):
         raise NotImplementedError(
             "ETA models must be deleted by a Voxel51 administrator. "
             "Please contact %s for more information." % etac.CONTACT)
-
-    def _download_model(self, local_path):
-        if self.config.google_drive_id:
-            gid = self.config.google_drive_id
-            logger.info(
-                "Downloading model from Google Drive ID '%s' to '%s'",
-                gid, local_path)
-            etaw.download_google_drive_file(gid, path=local_path)
-        elif self.config.url:
-            url = self.config.url
-            logger.info(
-                "Downloading model from '%s' to '%s'", url, local_path)
-            etaw.download_file(url, path=local_path)
-        else:
-            raise ModelError(
-                "Invalid ETAModelManagerConfig '%s'" % str(self.config))
 
 
 class ModelError(Exception):
