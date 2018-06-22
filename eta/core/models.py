@@ -1,7 +1,8 @@
 '''
 Core infrastructure for managing models across local and remote storage.
 
-@todo explain model storage architecture.
+See `docs/models_dev_guide.md` for detailed information about the design of
+the ETA model management system.
 
 Copyright 2018, Voxel51, LLC
 voxel51.com
@@ -123,9 +124,7 @@ def download_model(name, force=False):
     '''Downloads the given model, if necessary.
 
     If the download is forced, the local copy of the model will be overwitten
-    if it exists.
-
-    Old models are also flushed (if necessary).
+    if it exists. Old models are also flushed (if necessary).
 
     Args:
         name: the name of the model, which can have "@<ver>" appended to refer
