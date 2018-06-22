@@ -27,7 +27,7 @@ import eta.core.image as etai
 
 
 def plot(img):
-    cv2.imshow("*** Press any key to exit ***", img)
+    cv2.imshow("*** Press any key to exit ***", etai.rgb_to_bgr(img))
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
