@@ -255,10 +255,10 @@ class PipelineBuilder(object):
         for module in pmeta.execution_order:
             mmeta = pmeta.modules[module].metadata  # ModuleMetadata
             oconns = pmeta.get_outgoing_connections(module)
-            for oname, osink in iteritems(oconns):
+            for oname, osinks in iteritems(oconns):
                 if oname in module_outputs[module]:
-                    # This output has multiple outgoing connections; we already
-                    # generated its path
+                    # This output has multiple outgoing connections; we
+                    # already generated its path
                     opath = module_outputs[module][oname]
                 else:
                     # Set output path
@@ -266,12 +266,13 @@ class PipelineBuilder(object):
                     opath = self._get_data_path(module, onode)
                     module_outputs[module][oname] = opath
 
-                if osink.is_pipeline_output:
-                    # Set pipeline output
-                    self.outputs[osink.node] = opath
-                else:
-                    # Pass output to connected module input
-                    module_inputs[osink.module][osink.node] = opath
+                for osink in osinks:
+                    if osink.is_pipeline_output:
+                        # Set pipeline output
+                        self.outputs[osink.node] = opath
+                    else:
+                        # Pass output to connected module input
+                        module_inputs[osink.module][osink.node] = opath
 
         # Populate module parameters
         module_params = defaultdict(dict)
