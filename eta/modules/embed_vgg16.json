@@ -25,7 +25,7 @@
     "parameters": [
         {
             "name": "crop_box",
-            "type": "eta.core.types.Rectangle",
+            "type": "eta.core.types.Object",
             "description": "A region of interest of each frame to extract before embedding",
             "required": false,
             "default": null
