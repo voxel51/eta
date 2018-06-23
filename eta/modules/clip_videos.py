@@ -56,8 +56,7 @@ class DataConfig(Config):
         input_path (eta.core.types.Video): The input video
 
     Outputs:
-        output_path (eta.core.types.VideoClips): The output video
-            clips
+        output_path (eta.core.types.VideoClips): The output video clips
     '''
 
     def __init__(self, d):
