@@ -52,10 +52,14 @@ class DataConfig(Config):
     '''Data configuration settings.
 
     Inputs:
-        input_path (eta.core.types.Video): The input video
+        input_zip (eta.core.types.ZippedVideoDirectory): [None] A zip file
+            containing a directory of input videos
+        input_path (eta.core.types.Video): [None] The input video
 
     Outputs:
-        output_path (eta.core.types.VideoFile): The output resized video
+        output_zip (eta.core.types.ZippedVideoDirectory): [None] A zip file
+            containing a directory of resized videos
+        output_path (eta.core.types.VideoFile): [None] The output resized video
     '''
 
     def __init__(self, d):
