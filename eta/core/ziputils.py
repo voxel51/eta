@@ -15,76 +15,13 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
-import six
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
 import os
-import re
 import shutil
 from zipfile import ZipFile
-
-
-def parse_indexed_dir(dir_path):
-    '''Inspects the contents of an indexed directory, returning the numeric
-    pattern in use and the associated indexes.
-
-    The numeric pattern is guessed by analyzing the first file (alphabetically)
-    in the directory.
-
-    For example, if the directory contains:
-        "frame-00040-object-5.json"
-        "frame-00041-object-6.json"
-    then the pattern "frame-%05d-object-%d.json" will be inferred along with
-    the associated indices [(40, 5), (41, 6)]
-
-    Args:
-        dir_path: the path to the directory to inspect
-
-    Returns:
-        a tuple containing:
-            - the numeric pattern used in the directory
-            - a list (or list of tuples if the pattern contains multiple
-                numbers) describing the numeric indices in the directory
-    '''
-    files = list_files(dir_path)
-    if not files:
-        raise OSError("Directory %s contains no files" % dir_path)
-
-    def _guess_patt(m):
-        s = m.group()
-        leading_zeros = len(s) - len(str(int(s)))
-        return "%%0%dd" % len(s) if leading_zeros > 0 else "%d"
-
-    # Guess pattern from first file
-    name, ext = os.path.splitext(os.path.basename(files[0]))
-    regex = re.compile(r"\d+")
-    patt = os.path.join(dir_path, re.sub(regex, _guess_patt, name) + ext)
-
-    def _unpack(l):
-        return int(l[0]) if len(l) == 1 else tuple(map(int, l))
-
-    # Infer indices
-    indices = [_unpack(re.findall(regex, f)) for f in files]
-
-    return patt, indices
-
-
-def list_files(dir_path):
-    '''Lists the files in the given directory, sorted alphabetically and
-    excluding directories and hidden files.
-
-    Args:
-        dir_path: the path to the directory to list
-
-    Returns:
-        a sorted list of the non-hidden files in the directory
-    '''
-    return sorted(
-        f for f in os.listdir(dir_path)
-        if os.path.isfile(os.path.join(dir_path, f)) and not f.startswith(".")
-    )
 
 
 def make_zip(zip_path):
