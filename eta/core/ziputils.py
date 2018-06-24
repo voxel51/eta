@@ -97,7 +97,8 @@ def make_zip(zip_path):
         zip_path: the output zip file path
     '''
     outpath = zip_path.replace(".zip", "")
-    shutil.make_archive(outpath, "zip", outpath)
+    rootdir, basedir = os.path.split(outpath)
+    shutil.make_archive(outpath, "zip", rootdir, basedir)
 
 
 def extract_zip(zip_path):
