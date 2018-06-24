@@ -28,6 +28,7 @@ import six
 import errno
 import json
 import logging
+import os
 from subprocess import Popen, PIPE
 import threading
 
@@ -40,6 +41,19 @@ import eta.core.utils as etau
 
 
 logger = logging.getLogger(__name__)
+
+
+SUPPORTED_VIDEO_TYPES = [".mp4", ".avi", ".mpg", ".mov"]
+
+
+def is_supported_video(filepath):
+    '''Determines whether the given file has a supported video type.'''
+    return os.path.splitext(filepath)[1] in SUPPORTED_VIDEO_TYPES
+
+
+def glob_videos(dir_):
+    '''Returns an iterator over all supported video files in the directory.'''
+    return etau.multiglob(*SUPPORTED_VIDEO_TYPES, root=os.path.join(dir_, "*"))
 
 
 class VideoStreamInfo(Serializable):

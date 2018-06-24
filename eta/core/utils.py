@@ -339,13 +339,6 @@ def ensure_dir(dirname):
         os.makedirs(dirname)
 
 
-# @todo move to eta/core/video.py
-def glob_videos(path):
-    '''Returns an iterator over all supported video files in path.'''
-    return multiglob(
-        *etac.VIDEO_FILE_TYPES_SUPPORTED, root=os.path.join(path, "*"))
-
-
 def has_extension(filename, *args):
     '''Determines whether the filename has any of the given extensions.
 
@@ -374,21 +367,9 @@ def to_human_bits_str(num_bits):
 def _to_human_binary_str(num, suffix):
     for unit in ["", "K", "M", "G", "T", "P"]:
         if abs(num) < 1024.0:
-            break;
+            break
         num /= 1024.0
     return "%3.1f %s%s" % (num, unit, suffix)
-
-
-# @todo move to eta/core/image.py
-def is_supported_image_type(filename):
-    '''Determines whether the filename has a supported image extension.'''
-    return os.path.splitext(filename)[1] in etac.IMAGE_FILE_TYPES_SUPPORTED
-
-
-# @todo move to eta/core/video.py
-def is_supported_video_type(filename):
-    '''Determines whether the filename has a supported video extension.'''
-    return os.path.splitext(filename)[1] in etac.VIDEO_FILE_TYPES_SUPPORTED
 
 
 def move_file(inpath, outpath):

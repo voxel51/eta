@@ -26,7 +26,9 @@ import numbers
 import os
 
 import eta
+import eta.core.image as etai
 import eta.core.utils as etau
+import eta.core.video as etav
 
 
 ###### Utilities ##############################################################
@@ -466,7 +468,7 @@ class ImageFile(Image, File, ConcreteData):
 
     @staticmethod
     def is_valid_path(path):
-        return File.is_valid_path(path) and etau.is_supported_image_type(path)
+        return File.is_valid_path(path) and etai.is_supported_image(path)
 
 
 class Video(AbstractData):
@@ -501,7 +503,7 @@ class VideoFile(Video, File, ConcreteData):
 
     @staticmethod
     def is_valid_path(path):
-        return File.is_valid_path(path) and etau.is_supported_video_type(path)
+        return File.is_valid_path(path) and etav.is_supported_video(path)
 
 
 class ImageSequence(Video, FileSequence, ConcreteData):
@@ -524,7 +526,7 @@ class ImageSequence(Video, FileSequence, ConcreteData):
     def is_valid_path(path):
         return (
             FileSequence.is_valid_path(path) and
-            etau.is_supported_image_type(path)
+            etai.is_supported_image(path)
         )
 
 
@@ -544,7 +546,7 @@ class DualImageSequence(DualFileSequence, ConcreteData):
     def is_valid_path(path):
         return (
             DualFileSequence.is_valid_path(path) and
-            etau.is_supported_image_type(path)
+            etai.is_supported_image(path)
         )
 
 
@@ -564,7 +566,7 @@ class VideoSequece(FileSequence, ConcreteData):
     def is_valid_path(path):
         return (
             FileSequence.is_valid_path(path) and
-            etau.is_supported_video_type(path)
+            etav.is_supported_video(path)
         )
 
 
@@ -584,7 +586,7 @@ class VideoClips(DualFileSequence, ConcreteData):
     def is_valid_path(path):
         return (
             DualFileSequence.is_valid_path(path) and
-            etau.is_supported_video_type(path)
+            etav.is_supported_video(path)
         )
 
 
@@ -886,6 +888,5 @@ class ZippedVideoObjectsFeaturesDirectory(ZippedDirectory):
     Examples:
         /path/to/video-object-features.zip
     '''
-
 
     pass
