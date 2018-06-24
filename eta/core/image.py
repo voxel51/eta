@@ -35,6 +35,19 @@ import eta.core.utils as etau
 import eta.core.web as etaw
 
 
+SUPPORTED_IMAGE_TYPES = [".png", ".jpg", ".jpeg", ".gif"]
+
+
+def is_supported_image(filepath):
+    '''Determines whether the given file has a supported image type.'''
+    return os.path.splitext(filepath)[1] in SUPPORTED_IMAGE_TYPES
+
+
+def glob_images(dir_):
+    '''Returns an iterator over all supported image files in the directory.'''
+    return etau.multiglob(*SUPPORTED_IMAGE_TYPES, root=os.path.join(dir_, "*"))
+
+
 ###### Image IO ##############################################################
 
 
