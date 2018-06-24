@@ -20,7 +20,6 @@ from future.utils import iteritems
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-import copy
 import datetime
 import errno
 import glob
@@ -121,10 +120,9 @@ def get_class(class_name, module_name=None):
         try:
             module_name, class_name = class_name.rsplit(".", 1)
         except ValueError:
-            raise ImportError((
+            raise ImportError(
                 "Class name '%s' must be fully-qualified when no module "
-                "name is provided") % class_name
-            )
+                "name is provided" % class_name)
 
     __import__(module_name)  # does nothing if module is already imported
     return getattr(sys.modules[module_name], class_name)
@@ -162,7 +160,7 @@ def query_yes_no(question, default=None):
     Raises:
         ValueError: if the default value was invalid
     '''
-    valid = { "y": True, "ye": True, "yes": True, "n": False, "no": False}
+    valid = {"y": True, "ye": True, "yes": True, "n": False, "no": False}
 
     if default:
         default = default.lower()
