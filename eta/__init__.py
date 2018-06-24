@@ -20,6 +20,7 @@ from builtins import *
 
 import logging
 import os
+import sys
 
 import eta.constants as etac
 from eta.core.config import EnvConfig
@@ -44,6 +45,8 @@ class ETAConfig(EnvConfig):
             d, "pipeline_dirs", env_var="ETA_PIPELINE_DIRS", default=[])
         self.models_dirs = self.parse_string_array(
             d, "models_dirs", env_var="ETA_MODELS_DIRS", default=[])
+        self.pythonpath_dirs = self.parse_string_array(
+            d, "pythonpath_dirs", env_var="ETA_PYTHONPATH_DIRS", default=[])
         self.max_model_versions_to_keep = int(self.parse_number(
             d, "max_model_versions_to_keep",
             env_var="ETA_MAX_MODEL_VERSIONS_TO_KEEP", default=-1))
@@ -76,3 +79,6 @@ etal.basic_setup()
 
 # Load global ETA config
 config = ETAConfig.from_json(etac.CONFIG_JSON_PATH)
+
+# Augment system path
+sys.path = sys.path[:1] + config.pythonpath_dirs + sys.path[1:]
