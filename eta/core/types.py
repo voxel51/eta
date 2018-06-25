@@ -676,3 +676,72 @@ class FrameSequence(JSONFileSequence):
     '''
 
     pass
+
+
+class EmbeddedObjectsSequence(FrameSequence):
+    '''Embedded objects in a video represented as a collection of frames.
+
+    Emamples: 
+        /path/to/embedded_objects_sequence/%05d.json
+    '''
+
+    pass
+
+
+class IndexedObjectsSequence(FrameSequence):
+    '''Indexed objects in a video represented as a collection of frames.
+
+    Emamples: 
+        /path/to/indexed_objects_sequence/%05d.json
+    '''
+
+    pass
+
+
+class TrackeddObjectsSequence(JSONFileSequence):
+    '''Embedded objects in a video represented as a collection of trajectories.
+
+    Emamples: 
+        /path/to/tracked_objects_sequence/%05d.json
+    '''
+
+    pass
+
+
+class Trace(JSONFile):
+    '''Trace in a video represented as a Json file.
+
+    Examples:
+        /path/to/trace.json
+    '''
+
+    pass
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
