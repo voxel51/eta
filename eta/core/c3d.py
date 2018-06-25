@@ -66,12 +66,62 @@ class C3D(object):
                 tf.Session instance is created, and you are responsible for
                 scalling the close() method of this class when you are done
                 computing
-            imgs: an optional tf.placeholder of size [XXXX, 112, 112, 3] to
-                use. By default, a placeholder of size [None, 112, 112, 3] is
+            imgs: an optional tf.placeholder of size [XXXX, 16, 112, 112, 3] to
+                use. By default, a placeholder of size [None, 16, 112, 112, 3] is
                 used so you can evaluate any number of images at once
         '''
-        self.imgs = imgs
-        self.build_c3d()
+        self.config = config or C3DConfig.default()
+        self.sess = sess or tf.Session()
+        self.imgs = imgs or tf.placeholder(tf.float32, [None, 16, 112, 112, 3])
+        with tf.variable_scope('var_name') as var_scope:
+            weights = {
+                'wc1': _variable_with_weight_decay('wc1', [3, 3, 3, 3, 64], 0.04, 0.00),
+                'wc2': _variable_with_weight_decay('wc2', [3, 3, 3, 64, 128], 0.04, 0.00),
+                'wc3a': _variable_with_weight_decay('wc3a', [3, 3, 3, 128, 256], 0.04, 0.00),
+                'wc3b': _variable_with_weight_decay('wc3b', [3, 3, 3, 256, 256], 0.04, 0.00),
+                'wc4a': _variable_with_weight_decay('wc4a', [3, 3, 3, 256, 512], 0.04, 0.00),
+                'wc4b': _variable_with_weight_decay('wc4b', [3, 3, 3, 512, 512], 0.04, 0.00),
+                'wc5a': _variable_with_weight_decay('wc5a', [3, 3, 3, 512, 512], 0.04, 0.00),
+                'wc5b': _variable_with_weight_decay('wc5b', [3, 3, 3, 512, 512], 0.04, 0.00),
+                'wd1': _variable_with_weight_decay('wd1', [8192, 4096], 0.04, 0.001),
+                'wd2': _variable_with_weight_decay('wd2', [4096, 4096], 0.04, 0.002),
+                'out': _variable_with_weight_decay('wout', [4096, c3d_model.NUM_CLASSES], 0.04, 0.005)
+                }
+            biases = {
+                'bc1': _variable_with_weight_decay('bc1', [64], 0.04, 0.0),
+                'bc2': _variable_with_weight_decay('bc2', [128], 0.04, 0.0),
+                'bc3a': _variable_with_weight_decay('bc3a', [256], 0.04, 0.0),
+                'bc3b': _variable_with_weight_decay('bc3b', [256], 0.04, 0.0),
+                'bc4a': _variable_with_weight_decay('bc4a', [512], 0.04, 0.0),
+                'bc4b': _variable_with_weight_decay('bc4b', [512], 0.04, 0.0),
+                'bc5a': _variable_with_weight_decay('bc5a', [512], 0.04, 0.0),
+                'bc5b': _variable_with_weight_decay('bc5b', [512], 0.04, 0.0),
+                'bd1': _variable_with_weight_decay('bd1', [4096], 0.04, 0.0),
+                'bd2': _variable_with_weight_decay('bd2', [4096], 0.04, 0.0),
+                'out': _variable_with_weight_decay('bout', [c3d_model.NUM_CLASSES], 0.04, 0.0),
+                }
+        self.build_c3d(imgs, self.config.dropout, self.config.batchsize,
+            weights, biases)
+    def evaluate(self, imgs, layer=None):
+        '''Feed-forward evaluation through the net.
+        Args:
+            imgs: an array of size [XXXX, 112, 112, 3] containing image(s) to
+                feed into the network
+            layer: an optional layer whose output to return. By default, the
+                output softmax layer (i.e., the class probabilities) is
+                returned
+        '''
+        if layer is None:
+            layer = self.probs
+
+        return self.sess.run(layer, feed_dict={self.imgs: [imgs]})[0]
+    def close(self):
+        '''Closes the tf.Session used by this instance.
+        Users who did not pass their own tf.Session to the constructor **must**
+        call this method.
+        '''
+        self.sess.close()
+        self.sess = None
 
      def conv3d(name, l_input, w, b):
         return tf.nn.bias_add(
@@ -84,95 +134,88 @@ class C3D(object):
 
      def build_c3d(_X, _dropout, batch_size, _weights, _biases):
 
-          # Convolution Layer
-          conv1 = conv3d('conv1', _X, _weights['wc1'], _biases['bc1'])
-          conv1 = tf.nn.relu(conv1, 'relu1')
-          pool1 = max_pool('pool1', conv1, k=1)
+        # Convolution Layer
+        conv1 = conv3d('conv1', _X, _weights['wc1'], _biases['bc1'])
+        conv1 = tf.nn.relu(conv1, 'relu1')
+        pool1 = max_pool('pool1', conv1, k=1)
 
-          # Convolution Layer
-          conv2 = conv3d('conv2', pool1, _weights['wc2'], _biases['bc2'])
-          conv2 = tf.nn.relu(conv2, 'relu2')
-          pool2 = max_pool('pool2', conv2, k=2)
+        # Convolution Layer
+        conv2 = conv3d('conv2', pool1, _weights['wc2'], _biases['bc2'])
+        conv2 = tf.nn.relu(conv2, 'relu2')
+        pool2 = max_pool('pool2', conv2, k=2)
 
-          # Convolution Layer
-          conv3 = conv3d('conv3a', pool2, _weights['wc3a'], _biases['bc3a'])
-          conv3 = tf.nn.relu(conv3, 'relu3a')
-          conv3 = conv3d('conv3b', conv3, _weights['wc3b'], _biases['bc3b'])
-          conv3 = tf.nn.relu(conv3, 'relu3b')
-          pool3 = max_pool('pool3', conv3, k=2)
+        # Convolution Layer
+        conv3 = conv3d('conv3a', pool2, _weights['wc3a'], _biases['bc3a'])
+        conv3 = tf.nn.relu(conv3, 'relu3a')
+        conv3 = conv3d('conv3b', conv3, _weights['wc3b'], _biases['bc3b'])
+        conv3 = tf.nn.relu(conv3, 'relu3b')
+        pool3 = max_pool('pool3', conv3, k=2)
 
-          # Convolution Layer
-          conv4 = conv3d('conv4a', pool3, _weights['wc4a'], _biases['bc4a'])
-          conv4 = tf.nn.relu(conv4, 'relu4a')
-          conv4 = conv3d('conv4b', conv4, _weights['wc4b'], _biases['bc4b'])
-          conv4 = tf.nn.relu(conv4, 'relu4b')
-          pool4 = max_pool('pool4', conv4, k=2)
+        # Convolution Layer
+        conv4 = conv3d('conv4a', pool3, _weights['wc4a'], _biases['bc4a'])
+        conv4 = tf.nn.relu(conv4, 'relu4a')
+        conv4 = conv3d('conv4b', conv4, _weights['wc4b'], _biases['bc4b'])
+        conv4 = tf.nn.relu(conv4, 'relu4b')
+        pool4 = max_pool('pool4', conv4, k=2)
 
-          # Convolution Layer
-          conv5 = conv3d('conv5a', pool4, _weights['wc5a'], _biases['bc5a'])
-          conv5 = tf.nn.relu(conv5, 'relu5a')
-          conv5 = conv3d('conv5b', conv5, _weights['wc5b'], _biases['bc5b'])
-          conv5 = tf.nn.relu(conv5, 'relu5b')
-          pool5 = max_pool('pool5', conv5, k=2)
+        # Convolution Layer
+        conv5 = conv3d('conv5a', pool4, _weights['wc5a'], _biases['bc5a'])
+        conv5 = tf.nn.relu(conv5, 'relu5a')
+        conv5 = conv3d('conv5b', conv5, _weights['wc5b'], _biases['bc5b'])
+        conv5 = tf.nn.relu(conv5, 'relu5b')
+        pool5 = max_pool('pool5', conv5, k=2)
 
-          # Fully connected layer
-          pool5 = tf.transpose(pool5, perm=[0,1,4,2,3])
-          dense1 = tf.reshape(pool5, [batch_size, _weights['wd1'].get_shape().as_list()[0]]) # Reshape conv3 output to fit dense layer input
-          dense1 = tf.matmul(dense1, _weights['wd1']) + _biases['bd1']
+        # Fully connected layer
+        pool5 = tf.transpose(pool5, perm=[0,1,4,2,3])
+        dense1 = tf.reshape(pool5, [batch_size, _weights['wd1'].get_shape().as_list()[0]]) # Reshape conv3 output to fit dense layer input
+        dense1 = tf.matmul(dense1, _weights['wd1']) + _biases['bd1']
 
-          self.fc6 = tf.nn.relu(dense1, name='fc1') # Relu activation
-          dense1 = tf.nn.dropout(self.fc6, _dropout)
+        self.fc6 = tf.nn.relu(dense1, name='fc1') # Relu activation
+        dense1 = tf.nn.dropout(self.fc6, _dropout)
 
-          dense2 = tf.nn.relu(tf.matmul(dense1, _weights['wd2']) + _biases['bd2'], name='fc2') # Relu activation
-          dense2 = tf.nn.dropout(dense2, _dropout)
+        dense2 = tf.nn.relu(tf.matmul(dense1, _weights['wd2']) + _biases['bd2'], name='fc2') # Relu activation
+        dense2 = tf.nn.dropout(dense2, _dropout)
 
-          # Output: class prediction
-          out = tf.matmul(dense2, _weights['out']) + _biases['out']
+        # Output: class prediction
+        out = tf.matmul(dense2, _weights['out']) + _biases['out']
 
+    def _load_model(self):
+        saver = tf.train.Saver()
+        init = tf.global_variables_initializer()
+        self.sess.run(init)
+        saver.restore(sess, self.config.model_path)
 
 class C3DFeaturizerConfig(Config):
-    ''' C3D Featurization configuration settings that works on a video'''
-
-    def __init__(self, d):
-        self.weights = self.parse_object(
-            d, "weights", WeightsConfig, default=None)
-        if self.weights is None:
-            self.default_config = C3dConfig.load_default()
-            self.weights = self.default_config.weights
+    ''' C3D Featurization configuration settings that works on images'''
+    pass
 
 
-class C3DFeaturizer(etav.VideoFeaturizer):
-    ''' Implements the C3D network as a VideoFeaturizer.  Let's the user specify
-        which layer to embed.
-        Embeds fc6 layer nearest the final activations (named c3d.fc1)
-    '''
+class C3DFeaturizer(Featurizer):
+  '''Featurizer for images or frames using the C3D network structure.'''
 
-    def __init__(self,config):
-        super(C3DFeaturizer,self).__init__(config.video_featurizer)
-        self.model_path = config.model_path
-        self.sample_method = config.sample_method
-        self.sess = None
+    def __init__(self, config=None):
+        super(C3DFeaturizer,self).__init__()
+        self.config = config or C3DFeaturizerConfig.default()
+        self.validate(self.config)
+        self.sample_method = self.config.sample_method
         self.c3d  = None
 
-    def featurize_start(self):
-        images_placeholder = tf.placeholder(tf.float32, shape=(batch_size,
-                                                         c3d_model.NUM_FRAMES_PER_CLIP,
-                                                         c3d_model.CROP_SIZE,
-                                                         c3d_model.CROP_SIZE,
-                                                         c3d_model.CHANNELS))
-        self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
-        self.c3d = build_c3d(images_placeholder, self.sess)
+    def dim(self):
+        '''The dimension of the features extracted by this Featurizer.'''
+        return 4096
 
-    def featurize_end(self):
+    def _start(self):
+        '''Starts a TensorFlow session and loads the network.'''
+        if self.c3d is None:
+            self.c3d = C3D(self.config)
+
+    def _stops(self):
         self.sess.close()
         self.sess = None
         self.c3d = None
 
     def featurize_frame(self,frame):
-        saver = tf.train.Saver()
-        init = tf.global_variables_initializer()
-        self.sess.run(init)
-        saver.restore(sess, self.model_path)
+
         if self.sample_method == 'get_first_k_frames':
             input_imgs = get_first_k_frames(config.inpath, config.frames)
         elif self.sample_method == 'uniformly_sample_k_frames':
