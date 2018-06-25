@@ -112,7 +112,7 @@ class C3D(object):
                 returned
         '''
         if layer is None:
-            layer = self.probs
+            layer = self.out
 
         return self.sess.run(layer, feed_dict={self.imgs: [imgs]})[0]
     def close(self):
@@ -123,16 +123,16 @@ class C3D(object):
         self.sess.close()
         self.sess = None
 
-     def conv3d(name, l_input, w, b):
+     def conv3d(self, name, l_input, w, b):
         return tf.nn.bias_add(
           tf.nn.conv3d(l_input, w, strides=[1, 1, 1, 1, 1], padding='SAME'),
           b)
 
-     def max_pool(name, l_input, k):
+     def max_pool(self, name, l_input, k):
         return tf.nn.max_pool3d(l_input, ksize=[1, k, 2, 2, 1],
             strides=[1, k, 2, 2, 1], padding='SAME', name=name)
 
-     def build_c3d(_X, _dropout, batch_size, _weights, _biases):
+     def build_c3d(self, _X, _dropout, batch_size, _weights, _biases):
 
         # Convolution Layer
         conv1 = conv3d('conv1', _X, _weights['wc1'], _biases['bc1'])
@@ -177,7 +177,7 @@ class C3D(object):
         dense2 = tf.nn.dropout(dense2, _dropout)
 
         # Output: class prediction
-        out = tf.matmul(dense2, _weights['out']) + _biases['out']
+        self.out = tf.matmul(dense2, _weights['out']) + _biases['out']
 
     def _load_model(self):
         saver = tf.train.Saver()
@@ -186,8 +186,11 @@ class C3D(object):
         saver.restore(sess, self.config.model_path)
 
     #sample first k frames in a video
-    def get_first_k_frames(inpath, k, out_size=112):
+    def get_first_k_frames(self):
         data = []
+        inpath = self.config.inpath
+        k = self.config.k
+        out_size = self.config.out_size
         num_frames = etav.get_frames_count(inpath)
         assert k < num_frames
         with etav.VideoProcessor(inpath, k, out_size=out_size) as p:
@@ -198,8 +201,11 @@ class C3D(object):
         return np_arr_data
 
     #uniformly sample k frames, always including the first frame
-    def uniformly_sample_k_frames(inpath, k, out_size=112):
+    def uniformly_sample_k_frames(self):
         data = []
+        inpath = self.config.inpath
+        k = self.config.k
+        out_size = self.config.out_size
         num_frames = etav.get_frames_count(inpath)
         assert k < num_frames
 
@@ -214,36 +220,40 @@ class C3D(object):
         np_arr_data = np.array(data).astype(np.float32)
         return np_arr_data
 
-#sample video clips using sliding window of size k and stride ns
-def sliding_window_k_size_n_step(inpath, k=16, n=8, out_size=112):
-    data = []
-    num_frames = etav.get_frames_count(inpath)
-    assert k < num_frames
-    i_first = 1
-    i_last = num_frames
-    i_count = num_frames
-    logger.debug(
-        "sampling: %s; found %d frames", data_config.input_path,
-        i_count)
-    logger.debug("sample_length %d", k)
-    logger.debug("sample_stride %d", n)
-    o_count = round((i_last - k + 1.0) / n)
-    o_firsts = [i_first + n*x for x in range(0,o_count)]
-    clips = zip(o_firsts,
-                [x + k - 1 for x in o_firsts])
-    del o_firsts
-    with etav.VideoProcessor(inpath, num_frames, out_size=out_size) as p:
-        for img in p:
-            p.write(img)
-            data.append(img)
-    sampled_clips = []
-    for clip in clips:
-        first = clip[0] - 1
-        last = clip[1]
-        tmp_clip = data[first:last]
-        sampled_clips.append(tmp_clip)
-    np_arr_data = np.array(sampled_clips).astype(np.float32)
-    return np_arr_data
+    #sample video clips using sliding window of size k and stride ns
+    def sliding_window_k_size_n_step(self):
+        data = []
+        inpath = self.config.inpath
+        k = self.config.k
+        n = self.config.n
+        out_size = self.config.out_size
+        num_frames = etav.get_frames_count(inpath)
+        assert k < num_frames
+        i_first = 1
+        i_last = num_frames
+        i_count = num_frames
+        logger.debug(
+            "sampling: %s; found %d frames", data_config.input_path,
+            i_count)
+        logger.debug("sample_length %d", k)
+        logger.debug("sample_stride %d", n)
+        o_count = round((i_last - k + 1.0) / n)
+        o_firsts = [i_first + n*x for x in range(0,o_count)]
+        clips = zip(o_firsts,
+                    [x + k - 1 for x in o_firsts])
+        del o_firsts
+        with etav.VideoProcessor(inpath, num_frames, out_size=out_size) as p:
+            for img in p:
+                p.write(img)
+                data.append(img)
+        sampled_clips = []
+        for clip in clips:
+            first = clip[0] - 1
+            last = clip[1]
+            tmp_clip = data[first:last]
+            sampled_clips.append(tmp_clip)
+        np_arr_data = np.array(sampled_clips).astype(np.float32)
+        return np_arr_data
 
 class C3DFeaturizerConfig(Config):
     ''' C3D Featurization configuration settings that works on images'''
@@ -269,12 +279,11 @@ class C3DFeaturizer(Featurizer):
         if self.c3d is None:
             self.c3d = C3D(self.config)
 
-    def _stops(self):
-        self.sess.close()
-        self.sess = None
+    def _stop(self):
+        self.vgg16.close()
         self.c3d = None
 
-    def featurize_frame(self,frame):
+    def _featurize(self,img):
 
         if self.sample_method == 'get_first_k_frames':
             input_imgs = get_first_k_frames(config.inpath, config.frames)
@@ -283,4 +292,4 @@ class C3DFeaturizer(Featurizer):
         else:
             input_imgs = sliding_window_k_size_n_step(config.inpath, config.frames,
                 config.stride)
-        return self.sess.run(self.c3d.fc6, feed_dict={self.imgs: input_imgs})
+        return self.c3d.evaluate(input_imgs, layer=self.c3d.fc6)
