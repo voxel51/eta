@@ -185,6 +185,66 @@ class C3D(object):
         self.sess.run(init)
         saver.restore(sess, self.config.model_path)
 
+    #sample first k frames in a video
+    def get_first_k_frames(inpath, k, out_size=112):
+        data = []
+        num_frames = etav.get_frames_count(inpath)
+        assert k < num_frames
+        with etav.VideoProcessor(inpath, k, out_size=out_size) as p:
+            for img in p:
+                p.write(img)
+                data.append(img)
+        np_arr_data = np.array(data).astype(np.float32)
+        return np_arr_data
+
+    #uniformly sample k frames, always including the first frame
+    def uniformly_sample_k_frames(inpath, k, out_size=112):
+        data = []
+        num_frames = etav.get_frames_count(inpath)
+        assert k < num_frames
+
+        stride = math.ceil(1.0 * num_frames / k)
+        rng = range(num_frames)
+        rng = rng[::stride]
+        with etav.VideoProcessor(inpath, num_frames, out_size=out_size) as p:
+            for counter, img in enumerate(p):
+                if counter in rng:
+                    p.write(img)
+                    data.append(img)
+        np_arr_data = np.array(data).astype(np.float32)
+        return np_arr_data
+
+#sample video clips using sliding window of size k and stride ns
+def sliding_window_k_size_n_step(inpath, k=16, n=8, out_size=112):
+    data = []
+    num_frames = etav.get_frames_count(inpath)
+    assert k < num_frames
+    i_first = 1
+    i_last = num_frames
+    i_count = num_frames
+    logger.debug(
+        "sampling: %s; found %d frames", data_config.input_path,
+        i_count)
+    logger.debug("sample_length %d", k)
+    logger.debug("sample_stride %d", n)
+    o_count = round((i_last - k + 1.0) / n)
+    o_firsts = [i_first + n*x for x in range(0,o_count)]
+    clips = zip(o_firsts,
+                [x + k - 1 for x in o_firsts])
+    del o_firsts
+    with etav.VideoProcessor(inpath, num_frames, out_size=out_size) as p:
+        for img in p:
+            p.write(img)
+            data.append(img)
+    sampled_clips = []
+    for clip in clips:
+        first = clip[0] - 1
+        last = clip[1]
+        tmp_clip = data[first:last]
+        sampled_clips.append(tmp_clip)
+    np_arr_data = np.array(sampled_clips).astype(np.float32)
+    return np_arr_data
+
 class C3DFeaturizerConfig(Config):
     ''' C3D Featurization configuration settings that works on images'''
     pass
