@@ -599,7 +599,6 @@ class EmbeddedFrame(JSONFile):
     pass
 
 
-
 class EmbeddedFrameSequence(JSONFileSequence):
     '''Embedded objects in a video represented as a collection of EmbeddedFrame
     files indexed by one numeric parameter.
@@ -609,7 +608,6 @@ class EmbeddedFrameSequence(JSONFileSequence):
     '''
 
     pass
-
 
 
 class IndexedFrame(JSONFile):
