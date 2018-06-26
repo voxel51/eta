@@ -678,8 +678,8 @@ class FrameSequence(JSONFileSequence):
     pass
 
 
-class EmbeddedObjectsSequence(FrameSequence):
-    '''Embedded objects in a video represented as a collection of frames.
+class EmbeddedFrameSequence(FrameSequence):
+    '''Embedded frame in a video represented as a collection of frames.
 
     Emamples: 
         /path/to/embedded_objects_sequence/%05d.json
@@ -688,8 +688,8 @@ class EmbeddedObjectsSequence(FrameSequence):
     pass
 
 
-class IndexedObjectsSequence(FrameSequence):
-    '''Indexed objects in a video represented as a collection of frames.
+class IndexedFrameSequence(FrameSequence):
+    '''Indexed frame in a video represented as a collection of frames.
 
     Emamples: 
         /path/to/indexed_objects_sequence/%05d.json
@@ -698,7 +698,7 @@ class IndexedObjectsSequence(FrameSequence):
     pass
 
 
-class TrackeddObjectsSequence(JSONFileSequence):
+class TrackedObjectsSequence(JSONFileSequence):
     '''Embedded objects in a video represented as a collection of trajectories.
 
     Emamples: 
