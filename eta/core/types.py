@@ -212,6 +212,17 @@ class Object(Builtin):
         return isinstance(val, dict)
 
 
+class ObjectArray(Array):
+    '''An array of objects in JSON. A list of objects in Python.'''
+
+    @staticmethod
+    def is_valid_value(val):
+        return (
+            Array.is_valid_value(val) and
+            all(Objectis_valid_value(s) for s in val)
+        )
+
+
 ###### Data types #############################################################
 
 
