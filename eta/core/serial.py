@@ -89,22 +89,19 @@ def json_to_str(obj, pretty_print=True):
 
 
 class Picklable(object):
-    '''Mixin class for objects that can be pickled.
+    '''Mixin class for objects that can be pickled.'''
 
-    Subclasses need not implement anything.
-    '''
     def pickle(self, path):
         '''Saves the instance to disk in a pickle. '''
         etau.ensure_basedir(path)
-        with open(path, 'wb') as mf:
-            pickle.dump(self, mf)
+        with open(path, "wb") as f:
+            pickle.dump(self, f)
 
     @classmethod
     def from_pickle(cls, path):
-        '''Loads the pickle from disk and returns the instance. '''
-        with open(path, 'rb') as mf:
-            M = pickle.load(mf)
-        return M
+        '''Loads the pickle from disk and returns the instance.'''
+        with open(path, "rb") as f:
+            return pickle.load(f)
 
     @staticmethod
     def is_pickle_path(path):

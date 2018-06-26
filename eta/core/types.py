@@ -26,8 +26,9 @@ import numbers
 import os
 
 import eta
+import eta.core.image as etai
 import eta.core.utils as etau
-import eta.core.weights as etaw
+import eta.core.video as etav
 
 
 ###### Utilities ##############################################################
@@ -48,14 +49,6 @@ def parse_type(type_str):
         raise TypeError("Type '%s' must be a subclass of Type" % type_cls)
 
     return type_cls
-
-
-def resolve_value(val, type_):
-    '''Resolves the given value of the given type, if necessary.'''
-    if isinstance(type_, Weights):
-        val = etaw.find_weights(val)
-
-    return val
 
 
 def is_pipeline(type_):
@@ -99,6 +92,15 @@ class ConcreteDataParams(object):
             "image_ext": eta.config.default_image_ext,
             "video_ext": eta.config.default_video_ext,
         }
+
+    @property
+    def default(self):
+        '''Returns the default parameters
+
+        Returns:
+            the default params dict
+        '''
+        return self._params
 
     def render_for(self, name):
         '''Render the type parameters for use with field `name`.
@@ -208,118 +210,6 @@ class Object(Builtin):
     @staticmethod
     def is_valid_value(val):
         return isinstance(val, dict)
-
-
-class Point(Object):
-    '''An (x, y) coordinate point defined by "x" and "y" coordinates, which
-    must be nonnegative.
-
-    Typically, Points represent coordinates of pixels in images.
-
-    Example:
-        ```json
-        {
-            "x": 0,
-            "y": 128
-        }
-        ```
-    '''
-
-    @staticmethod
-    def is_valid_value(val):
-        return (
-            Object.is_valid_value(val) and
-            "x" in val and
-            "y" in val and
-            val["x"] >= 0 and
-            val["y"] >= 0
-        )
-
-
-class RelativePoint(Object):
-    '''An (x, y) coordinate point defined by "x" and "y" coordinates, which
-    must take values in [0, 1].
-
-    Typically, RelativePoints describe the coordiantes of pixels in images
-    relative to the image dimensions. This is useful so that the coordinates
-    can be automatically rendered for images of different resolution.
-
-    Example:
-        ```json
-        {
-            "x": 0.5,
-            "y": 0.5
-        }
-        ```
-    '''
-
-    @staticmethod
-    def is_valid_value(val):
-        return (
-            Object.is_valid_value(val) and
-            "x" in val and
-            "y" in val and
-            0 <= val["x"] <= 1 and
-            0 <= val["y"] <= 1
-        )
-
-
-class Rectangle(Object):
-    '''A rectangle specified by its top-left and bottom-right Points.
-
-    Example:
-        ```json
-        {
-            "top_left": {
-                "x": 32,
-                "y": 64
-            },
-            "bottom_right": {
-                "x": 64,
-                "y": 128
-            }
-        }
-        ```
-    '''
-
-    @staticmethod
-    def is_valid_value(val):
-        return (
-            Object.is_valid_value(val) and
-            "top_left" in val and
-            "bottom_right" in val and
-            Point.is_valid_value(val["top_left"]) and
-            Point.is_valid_value(val["bottom_right"])
-        )
-
-
-class RelativeRectangle(Object):
-    '''A rectangle specified by its top-left and bottom-right RelativePoints.
-
-    Example:
-        ```json
-        {
-            "top_left": {
-                "x": 0.25,
-                "y": 0.5
-            },
-            "bottom_right": {
-                "x": 0.5,
-                "y": 0.75
-            }
-        }
-        ```
-    '''
-
-    @staticmethod
-    def is_valid_value(val):
-        return (
-            Object.is_valid_value(val) and
-            "top_left" in val and
-            "bottom_right" in val and
-            RelativePoint.is_valid_value(val["top_left"]) and
-            RelativePoint.is_valid_value(val["bottom_right"])
-        )
 
 
 ###### Data types #############################################################
@@ -437,18 +327,6 @@ class Directory(ConcreteData):
         return String.is_valid_value(path)
 
 
-class Weights(File, ConcreteData):
-    '''A model weights file of any type.
-
-    Examples:
-        /path/to/weights.npz
-    '''
-
-    @staticmethod
-    def gen_path(basedir, params):
-        return os.path.join(basedir, "{name}").format(**params)
-
-
 class Image(AbstractData):
     '''The abstract data type representing an image.
 
@@ -478,7 +356,7 @@ class ImageFile(Image, File, ConcreteData):
 
     @staticmethod
     def is_valid_path(path):
-        return File.is_valid_path(path) and etau.is_supported_image_type(path)
+        return File.is_valid_path(path) and etai.is_supported_image(path)
 
 
 class Video(AbstractData):
@@ -513,7 +391,7 @@ class VideoFile(Video, File, ConcreteData):
 
     @staticmethod
     def is_valid_path(path):
-        return File.is_valid_path(path) and etau.is_supported_video_type(path)
+        return File.is_valid_path(path) and etav.is_supported_video(path)
 
 
 class ImageSequence(Video, FileSequence, ConcreteData):
@@ -536,7 +414,27 @@ class ImageSequence(Video, FileSequence, ConcreteData):
     def is_valid_path(path):
         return (
             FileSequence.is_valid_path(path) and
-            etau.is_supported_image_type(path)
+            etai.is_supported_image(path)
+        )
+
+
+class DualImageSequence(DualFileSequence, ConcreteData):
+    '''A sequence of images indexed by two numeric parameters.
+
+    Examples:
+        /path/to/images/%05d-%05d.png
+    '''
+
+    @staticmethod
+    def gen_path(basedir, params):
+        return os.path.join(
+            basedir, "{name}", "{idx}-{idx}{image_ext}").format(**params)
+
+    @staticmethod
+    def is_valid_path(path):
+        return (
+            DualFileSequence.is_valid_path(path) and
+            etai.is_supported_image(path)
         )
 
 
@@ -556,7 +454,7 @@ class VideoSequece(FileSequence, ConcreteData):
     def is_valid_path(path):
         return (
             FileSequence.is_valid_path(path) and
-            etau.is_supported_video_type(path)
+            etav.is_supported_video(path)
         )
 
 
@@ -576,7 +474,7 @@ class VideoClips(DualFileSequence, ConcreteData):
     def is_valid_path(path):
         return (
             DualFileSequence.is_valid_path(path) and
-            etau.is_supported_video_type(path)
+            etav.is_supported_video(path)
         )
 
 
@@ -643,6 +541,19 @@ class EventDetection(JSONFile):
     pass
 
 
+class ScoredObjects(JSONFile):
+    '''A collection of scored objects.
+
+    This type is implemented in ETA by the `eta.core.objects.ScoredObjects`
+    class.
+
+    Examples:
+        /path/to/scored_objects.json
+    '''
+
+    pass
+
+
 class EventSeries(JSONFile):
     '''A series of events in a video.
 
@@ -678,38 +589,73 @@ class FrameSequence(JSONFileSequence):
     pass
 
 
-class EmbeddedFrameSequence(FrameSequence):
-    '''Embedded frame in a video represented as a collection of frames.
+class EmbeddedFrame(JSONFile):
+    '''Embedded objects in a frame.
 
-    Emamples: 
-        /path/to/embedded_objects_sequence/%05d.json
+    Emamples:
+        /path/to/embedded_frame.json
     '''
 
     pass
 
 
-class IndexedFrameSequence(FrameSequence):
-    '''Indexed frame in a video represented as a collection of frames.
 
-    Emamples: 
-        /path/to/indexed_objects_sequence/%05d.json
+class EmbeddedFrameSequence(JSONFileSequence):
+    '''Embedded objects in a video represented as a collection of EmbeddedFrame
+    files indexed by one numeric parameter.
+
+    Emamples:
+        /path/to/embedded_frames/%05d.json
+    '''
+
+    pass
+
+
+
+class IndexedFrame(JSONFile):
+    '''Indexed objects in a frame.
+
+    Emamples:
+        /path/to/indexed_frame.json
+    '''
+
+    pass
+
+
+class IndexedFrameSequence(JSONFileSequence):
+    '''Indexed objects in a video represented as a collection of IndexedFrame
+    files indexed by one numeric parameter.
+
+    Emamples:
+        /path/to/indexed_frames/%05d.json
+    '''
+
+    pass
+
+
+class TrackedObjects(JSONFile):
+    '''Tracked objects in a frame.
+
+    Emamples:
+        /path/to/tracked_objects.json
     '''
 
     pass
 
 
 class TrackedObjectsSequence(JSONFileSequence):
-    '''Embedded objects in a video represented as a collection of trajectories.
+    '''Tracked objects in a video represented as a collection of TrackedObjects
+    files indexed by one numeric parameter.
 
-    Emamples: 
-        /path/to/tracked_objects_sequence/%05d.json
+    Emamples:
+        /path/to/tracked_objects/%05d.json
     '''
 
     pass
 
 
 class Trace(JSONFile):
-    '''Trace in a video represented as a Json file.
+    '''Trace describing a tracked object in a video.
 
     Examples:
         /path/to/trace.json
@@ -718,30 +664,192 @@ class Trace(JSONFile):
     pass
 
 
+class Features(FileSequence, ConcreteData):
+    '''A sequence of features indexed by one numeric parameter.
+
+    Examples:
+        /path/to/features/%05d.npz
+    '''
+
+    @staticmethod
+    def gen_path(basedir, params):
+        return os.path.join(
+            basedir, "{name}", "{idx}.npz").format(**params)
+
+    @staticmethod
+    def is_valid_path(path):
+        return (
+            FileSequence.is_valid_path(path) and
+            etau.has_extension(path, ".npz")
+        )
 
 
+class VideoObjectsFeatures(DualFileSequence, ConcreteData):
+    '''A sequence of features of objects-in-frames indexed by two numeric
+    parameters.
+
+    Examples:
+        /path/to/features/%05d-%05d.npz
+    '''
+
+    @staticmethod
+    def gen_path(basedir, params):
+        return os.path.join(
+            basedir, "{name}", "{idx}-{idx}.npz").format(**params)
+
+    @staticmethod
+    def is_valid_path(path):
+        return (
+            DualFileSequence.is_valid_path(path) and
+            etau.has_extension(path, ".npz")
+        )
 
 
+class VideoDirectory(Directory):
+    '''A directory containing encoded video files.
+
+    Examples:
+        /path/to/videos
+    '''
+
+    pass
 
 
+class ImageSequenceDirectory(Directory):
+    '''A directory containing a sequence of images.
+
+    Examples:
+        /path/to/images
+    '''
+
+    pass
 
 
+class DualImageSequenceDirectory(Directory):
+    '''A directory containing a sequence of images indexed by two numeric
+    parameters.
+
+    Examples:
+        /path/to/dual-images
+    '''
+
+    pass
 
 
+class JSONDirectory(Directory):
+    '''A directory containing a sequence of JSON files.
+
+    Examples:
+        /path/to/jsons
+    '''
+
+    pass
 
 
+class FrameSequenceDirectory(JSONDirectory):
+    '''A directory containing a sequence of Frame JSON files.
+
+    Examples:
+        /path/to/frames
+    '''
+
+    pass
 
 
+class VideoObjectsFeaturesDirectory(Directory):
+    '''A directory containing a sequence of features of objects-in-frames
+    indexed by two numeric parameters.
+
+    Examples:
+        /path/to/features
+    '''
+
+    pass
 
 
+class ZipFile(File, ConcreteData):
+    '''A zip file.
+
+    Examples:
+        /path/to/file.zip
+    '''
+
+    @staticmethod
+    def gen_path(basedir, params):
+        return os.path.join(basedir, "{name}.zip").format(**params)
+
+    @staticmethod
+    def is_valid_path(path):
+        return File.is_valid_path(path) and etau.has_extension(path, ".zip")
 
 
+class ZippedDirectory(ZipFile):
+    '''A zip file containing a directory of the same name.
+
+    Examples:
+        /path/to/dir.zip
+    '''
+
+    pass
 
 
+class ZippedVideoDirectory(ZippedDirectory):
+    '''A zipped directory containing encoded video files.
+
+    Examples:
+        /path/to/videos.zip
+    '''
+
+    pass
 
 
+class ZippedImageSequenceDirectory(ZippedDirectory):
+    '''A zipped directory containing a sequence of images.
+
+    Examples:
+        /path/to/images.zip
+    '''
+
+    pass
 
 
+class ZippedDualImageSequenceDirectory(ZippedDirectory):
+    '''A zipped directory containing a collection of dual image sequence
+    directories.
+
+    Examples:
+        /path/to/dual-images.zip
+    '''
+
+    pass
 
 
+class ZippedJSONDirectory(ZippedDirectory):
+    '''A zipped directory containing JSON files.
 
+    Examples:
+        /path/to/jsons.zip
+    '''
+
+    pass
+
+
+class ZippedFrameSequenceDirectory(ZippedDirectory):
+    '''A zipped directory containing a collection of FrameSequence directories.
+
+    Examples:
+        /path/to/frames.zip
+    '''
+
+    pass
+
+
+class ZippedVideoObjectsFeaturesDirectory(ZippedDirectory):
+    '''A zipped directory containing a collection of VideoObjectsFeatures
+    directories.
+
+    Examples:
+        /path/to/video-object-features.zip
+    '''
+
+    pass

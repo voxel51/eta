@@ -195,19 +195,14 @@ class PipelineBuilder(object):
         # Generate paths, if necessary
         if not self.config_dir:
             self.config_dir = self._get_config_dir()
-
         if not self.output_dir:
             self.output_dir = self._get_output_dir()
-
         if not self.pipeline_config_path:
             self.pipeline_config_path = self._make_pipeline_config_path()
-
         if not self.pipeline_logfile_path:
             self.pipeline_logfile_path = self._make_pipeline_logfile_path()
-
         if not self.pipeline_status_path:
             self.pipeline_status_path = self._make_pipeline_status_path()
-
         self.outputs = {}
 
         self._build_pipeline_config()
@@ -260,10 +255,10 @@ class PipelineBuilder(object):
         for module in pmeta.execution_order:
             mmeta = pmeta.modules[module].metadata  # ModuleMetadata
             oconns = pmeta.get_outgoing_connections(module)
-            for oname, osink in iteritems(oconns):
+            for oname, osinks in iteritems(oconns):
                 if oname in module_outputs[module]:
-                    # This output has multiple outgoing connections; we already
-                    # generated its path
+                    # This output has multiple outgoing connections; we
+                    # already generated its path
                     opath = module_outputs[module][oname]
                 else:
                     # Set output path
@@ -271,12 +266,13 @@ class PipelineBuilder(object):
                     opath = self._get_data_path(module, onode)
                     module_outputs[module][oname] = opath
 
-                if osink.is_pipeline_output:
-                    # Set pipeline output
-                    self.outputs[osink.node] = opath
-                else:
-                    # Pass output to connected module input
-                    module_inputs[osink.module][osink.node] = opath
+                for osink in osinks:
+                    if osink.is_pipeline_output:
+                        # Set pipeline output
+                        self.outputs[osink.node] = opath
+                    else:
+                        # Pass output to connected module input
+                        module_inputs[osink.module][osink.node] = opath
 
         # Populate module parameters
         module_params = defaultdict(dict)
@@ -331,7 +327,7 @@ class PipelineBuilder(object):
 
 
 def _get_param_value(param, request):
-    '''Gets the value for the parameter, resolving it if necessary.
+    '''Gets the value for the parameter.
 
     Args:
         param: a PipelineParameter instance describing the parameter
@@ -349,9 +345,6 @@ def _get_param_value(param, request):
     else:
         # Module-default value
         val = param.default_value
-
-    if val is not None:
-        val = etat.resolve_value(val, param.param.type)
 
     return val
 

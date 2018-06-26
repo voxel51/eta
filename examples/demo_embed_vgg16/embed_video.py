@@ -1,15 +1,16 @@
 #!/usr/bin/env python
 '''
-ETA example (frame-by-frame) video embbeding via VGG16.
+Example of embedding the frames of a video in the VGG-16 feature space using
+`VideoFramesFeaturizer`.
 
-Note: must be run from this directory!
+Also shows the use of the `VGG16Featurizer.frame_preprocessor` functionality
+to embed a cropped version of each frame.
 
-Also shows the use of the frame_preprocessor functionality in VGG16Featurizer.
-
-Copyright 2017, Voxel51, LLC
+Copyright 2017-2018, Voxel51, LLC
 voxel51.com
 
 Jason Corso, jjc@voxel51.com
+Brian Moore, brian@voxel51.com
 '''
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
@@ -55,21 +56,25 @@ def embed_video(config):
     def _crop(img):
         return img[10:100, 10:100, :]
 
+    # Invoke the VideoFramesFeaturizer using the with syntax so that start()
+    # and stop() are automatically called
+    with VideoFramesFeaturizer(config.video_frames_featurizer) as vff:
+        # Use a preprocessor on each frame
+        vff.frame_preprocessor = _crop
 
-    vff = VideoFramesFeaturizer(config.video_frames_featurizer)
-    vff.frame_preprocessor = _crop
-    # the following call is not needed in most cases (or this one); it is just
-    # here to force the refeaturization of the frames.
-    vff.flush_backing()
-    vff.featurize(config.video_path, frames="1-6")
+        # This call is not needed in general. We do it here to force
+        # refeaturization of the frames for demonstration purposes
+        vff.flush_backing()
 
-    # Note that after the above call frames 1-6 are featurized.  Here, we will
-    # featurize only from 7-9, even tho we say 4-9, because the other ones were
-    # already computed and cached.
-    vff.featurize(config.video_path, frames="4-9")
+        # Featurize frames 1-6
+        vff.featurize(config.video_path, frames="1-6")
+
+        # Featurize frames 4-9. Since frames 4-6 have already been featurized,
+        # they are skipped this time around
+        vff.featurize(config.video_path, frames="4-9")
 
     logger.info(
-        "features stored in '%s'", config.video_frames_featurizer.backing_path)
+        "Features stored in '%s'", config.video_frames_featurizer.backing_path)
 
 
 def _abspath(path):

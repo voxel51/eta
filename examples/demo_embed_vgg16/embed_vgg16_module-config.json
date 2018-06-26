@@ -1,10 +1,4 @@
 {
-    "_comment": [
-        "Example configuration file for the embed_vgg16 module. ",
-        "Uses the sample data twice (real-use configs can obviously use ",
-        "different input video). ",
-        "Uses the default VGG16 config."
-    ],
     "data": [
         {
             "backing_path": "out/eta-backing/embed/1",
@@ -17,7 +11,6 @@
     ],
     "parameters": {
         "crop_box": {
-            "_comment": "Example crop box.",
             "top_left": {
                 "x": 0.1,
                 "y": 0.1
