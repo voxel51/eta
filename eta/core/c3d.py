@@ -31,7 +31,7 @@ import math
 import os
 
 import numpy as np
-from scipy.misc import imresize
+from sklearn.preprocessing import normalize
 import tensorflow as tf
 
 from eta.core.config import Config
@@ -50,9 +50,9 @@ class C3DConfig(Config):
          self.dropout = self.parse_number(d, "dropout", default="0.6")
          self.batchsize = self.parse_number(d, "batchsize", default="1")
          self.model_path = self.parse_string(d, "model_path", default="../eta/models/sports1m_finetuning_ucf101.model")
-         self.inpath = self.parse_string(d, "inpath", default="../")
+         self.inpath = self.parse_string(d, "inpath", default="")
          self.out_size = self.parse_number(d, "out_size", default="112")
-         self.sample_method = self.parse_string(d, "sample_method", default="uniformly_sample_k_frames")
+         self.sample_method = self.parse_string(d, "sample_method", default="sliding_window")
          self.frames = self.parse_number(d, "frames", default="16")
          self.stride = self.parse_number(d, "stride", default="8")
 
@@ -307,4 +307,14 @@ class C3DFeaturizer(Featurizer):
         self.c3d = None
 
     def _featurize(self, img):
-        return self.c3d.evaluate(img, layer=self.c3d.fc6)
+        if self.sample_method == 'sliding_window':
+            clips = img.shape[0]
+            tmp_feature = np.zeros(4096)
+            for i in range(clips):
+                tmp_imgs = img[i]
+                tmp_feature += self.c3d.evaluate(tmp_imgs, layer=self.c3d.fc6)
+            tmp_feature /= clips
+            normalized_avg_feature = normalize(tmp_feature.reshape(1,-1))
+            return normalized_avg_feature
+        else:
+            return self.c3d.evaluate(img, layer=self.c3d.fc6)
