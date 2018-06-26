@@ -213,7 +213,7 @@ class Object(Builtin):
 
 
 class ObjectArray(Array):
-    '''An array of objects in JSON. A list of objects in Python.'''
+    '''An array of objects in JSON. A list of dicts in Python.'''
 
     @staticmethod
     def is_valid_value(val):
