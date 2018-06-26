@@ -1,11 +1,15 @@
 '''
-Extends and add functionality to the original C3D implementation by Hou Xin.
+Tensorflow implementation of the popular C3D network.
 
-Hou Xin, 2016
-VGG16 implementation in TensorFlow
+This implementation extends and add functionality to the original C3D
+implementation by Hou Xin.
+
+C3D implementation in TensorFlow:
 https://github.com/hx173149/C3D-tensorflow
+Hou Xin, 2016
 
-Model from https://www.dropbox.com/sh/8wcjrcadx4r31ux/AAAkz3dQ706pPO8ZavrztRCca?dl=0
+Model weights:
+https://www.dropbox.com/sh/8wcjrcadx4r31ux/AAAkz3dQ706pPO8ZavrztRCca?dl=0
 
 Copyright 2018, Voxel51, LLC
 voxel51.com
@@ -36,6 +40,7 @@ from eta.core.config import Config
 import eta.core.image as etai
 from eta.core.features import Featurizer
 import eta.core.video as etav
+
 
 logger = logging.getLogger(__name__)
 
