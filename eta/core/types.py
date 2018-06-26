@@ -185,6 +185,14 @@ class Number(Builtin):
         return isinstance(val, numbers.Number)
 
 
+class Object(Builtin):
+    '''An object in JSON. A dict in Python.'''
+
+    @staticmethod
+    def is_valid_value(val):
+        return isinstance(val, dict)
+
+
 class Array(Builtin):
     '''A JSON array. A list in Python.'''
 
@@ -202,14 +210,6 @@ class StringArray(Array):
             Array.is_valid_value(val) and
             all(String.is_valid_value(s) for s in val)
         )
-
-
-class Object(Builtin):
-    '''An object in JSON. A dict in Python.'''
-
-    @staticmethod
-    def is_valid_value(val):
-        return isinstance(val, dict)
 
 
 class ObjectArray(Array):
