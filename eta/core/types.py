@@ -219,7 +219,7 @@ class ObjectArray(Array):
     def is_valid_value(val):
         return (
             Array.is_valid_value(val) and
-            all(Objectis_valid_value(s) for s in val)
+            all(Object.is_valid_value(o) for o in val)
         )
 
 
