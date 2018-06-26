@@ -1,6 +1,9 @@
 '''
 Core pipeline infrastructure.
 
+See `docs/pipelines_dev_guide.md` for detailed information about the design of
+the ETA pipeline system.
+
 Copyright 2017-2018, Voxel51, LLC
 voxel51.com
 
@@ -19,6 +22,7 @@ from future.utils import iteritems
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+from collections import defaultdict
 from glob import glob
 import logging
 import os
@@ -517,7 +521,7 @@ class PipelineModule(Configurable):
                     "Module '%s' has no parameter '%s'" % (self.name, name))
 
     def _verify_parameter_values(self, param_dict):
-        for name, val in param_dict:
+        for name, val in iteritems(param_dict):
             if not self.metadata.is_valid_parameter(name, val):
                 raise PipelineMetadataError(
                     "'%s' is an invalid value for parameter '%s' of module "
@@ -726,13 +730,14 @@ class PipelineMetadata(Configurable, HasBlockDiagram):
 
         Returns:
             a dictionary mapping the names of the outputs of the given module
-                to the PipelineNode instances describing the nodes that they
-                are connected to
+                to lists of PipelineNode instances describing the nodes that
+                they are connected to
         '''
-        return {
-            c.source.node: c.sink
-            for c in self.connections if c.source.module == module
-        }
+        oconns = defaultdict(list)
+        for c in self.connections:
+            if c.source.module == module:
+                oconns[c.source.node].append(c.sink)
+        return dict(oconns)
 
     def to_blockdiag(self):
         '''Returns a BlockdiagPipeline representation of this pipeline.'''
@@ -799,6 +804,9 @@ class PipelineMetadata(Configurable, HasBlockDiagram):
 
 
 class PipelineMetadataError(Exception):
+    '''Exception raised when an invalid pipeline metadata file is
+    encountered.
+    '''
     pass
 
 

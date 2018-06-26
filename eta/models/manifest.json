@@ -1,0 +1,16 @@
+{
+    "models": [
+        {
+            "base_name": "VGG-16",
+            "base_filename": "vgg16_weights.npz",
+            "version": null,
+            "manager": {
+                "config": {
+                    "google_drive_id": "0B_-5gc091ngGMzBFMVJ0RE9HNmc"
+                },
+                "type": "eta.core.models.ETAModelManager"
+            },
+            "date_created": "2018-06-20 17:35:53"
+        }
+    ]
+}

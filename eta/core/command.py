@@ -1,5 +1,5 @@
 '''
-Core command-line tool.
+Core module that defines the functionality of the `eta` command-line tool.
 
 Copyright 2018, Voxel51, LLC
 voxel51.com
@@ -27,6 +27,7 @@ import eta.core.builder as etab
 import eta.core.metadata as etam
 import eta.core.pipeline as etap
 import eta.core.serial as etas
+import eta.core.utils as etau
 
 
 logger = logging.getLogger(__name__)
@@ -104,6 +105,9 @@ class BuildPipeline(Command):
             help="pipeline parameter(s)")
         parser.add_argument("--run-now",
             action="store_true", help="run the pipeline after building")
+        parser.add_argument("--dry-run",
+            action="store_true", help="run the pipeline after building and "
+            "delete all files afterwards")
 
     @staticmethod
     def run(args):
@@ -118,17 +122,25 @@ class BuildPipeline(Command):
         if args.parameters:
             d["parameters"].update(args.parameters)
 
-        # Build the pipeline
+        # Build pipeline
         logger.info("Loading pipeline build request")
         request = etab.PipelineBuildRequest.from_dict(d)
         logger.info("Building pipeline '%s' from request", request.pipeline)
         builder = etab.PipelineBuilder(request)
         builder.build()
 
-        if args.run_now:
-            # Run the pipeline immediately
-            run_args = argparse.Namespace(config=builder.pipeline_config_path)
-            RunPipeline.run(run_args)
+        if args.run_now or args.dry_run:
+            # Run pipeline now
+            RunPipeline.run(
+                argparse.Namespace(config=builder.pipeline_config_path))
+
+        if args.dry_run:
+            # Cleanup pipeline files
+            logger.info("***** Dry run complete *****")
+            logger.info("Deleting config directory '%s'", builder.config_dir)
+            etau.delete_dir(builder.config_dir)
+            logger.info("Deleting output directory '%s'", builder.output_dir)
+            etau.delete_dir(builder.output_dir)
 
 
 class GenerateMetadata(Command):

@@ -4,7 +4,7 @@
 # Usage:
 #   bash download_data.bash
 #
-# Copyright 2017, Voxel51, LLC
+# Copyright 2017-2018, Voxel51, LLC
 # voxel51.com
 #
 # Brian Moore, brian@voxel51.com
@@ -15,7 +15,7 @@ EXAMPLES=`dirname "$0"`
 ZIP="${EXAMPLES}/data.zip"
 
 python -c "from eta.core import web;\
-web.download_google_drive_file('${FILE}', path='${ZIP}')"
+    web.download_google_drive_file('${FILE}', path='${ZIP}')"
 
 unzip -o "${ZIP}" -d "${EXAMPLES}"
 rm "${ZIP}"

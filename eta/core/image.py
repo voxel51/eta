@@ -1,10 +1,16 @@
 '''
 Core image processing tools.
 
-Copyright 2017, Voxel51, LLC
+ETA uses OpenCV for some of its image-related processing.  OpenCV stores its
+images in BGR format.  ETA stores its images in RGB format.  This module's
+contract is that it expects RGB to be passed to it and RGB to be expected from
+it.
+
+Copyright 2017-2018, Voxel51, LLC
 voxel51.com
 
 Brian Moore, brian@voxel51.com
+Jason Corso, jason@voxel51.com
 '''
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
@@ -25,47 +31,24 @@ from subprocess import Popen, PIPE
 import cv2
 import numpy as np
 
-from eta.core import utils
-from eta.core import web
+import eta.core.utils as etau
+import eta.core.web as etaw
 
 
-def read(path, flag=cv2.IMREAD_UNCHANGED):
-    '''Reads image from path.
-
-    Args:
-        path: the path to the image on disk
-        flag: an optional OpenCV image format flag. By default, the image is
-            returned in it's native format (color, grayscale, transparent, etc)
-
-    Returns:
-        A uint8 numpy array containing the image
-        '''
-    return cv2.imread(path, flag)
+SUPPORTED_IMAGE_TYPES = [".png", ".jpg", ".jpeg", ".gif"]
 
 
-def write(img, path):
-    '''Writes image to file. The output directory is created if necessary.
-
-    Args:
-        img: a numpy array
-        path: the output path
-    '''
-    utils.ensure_basedir(path)
-    cv2.imwrite(path, img)
+def is_supported_image(filepath):
+    '''Determines whether the given file has a supported image type.'''
+    return os.path.splitext(filepath)[1] in SUPPORTED_IMAGE_TYPES
 
 
-def download(url, flag=cv2.IMREAD_UNCHANGED):
-    '''Downloads an image from a URL.
+def glob_images(dir_):
+    '''Returns an iterator over all supported image files in the directory.'''
+    return etau.multiglob(*SUPPORTED_IMAGE_TYPES, root=os.path.join(dir_, "*"))
 
-    Args:
-        url: the URL of the image
-        flag: an optional OpenCV image format flag. By default, the image is
-            returned in it's raw format
 
-    Returns:
-        A uint8 numpy array containing the image
-    '''
-    return decode(web.download_file(url), flag=flag)
+###### Image IO ##############################################################
 
 
 def decode(b, flag=cv2.IMREAD_UNCHANGED):
@@ -75,36 +58,127 @@ def decode(b, flag=cv2.IMREAD_UNCHANGED):
         bytes: the raw bytes of an image (e.g. from read() or from a web
             download)
         flag: an optional OpenCV image format flag. By default, the image is
-            returned in it's native format (color, grayscale, transparent, ...)
+            returned in its native format (color, grayscale, transparent, ...)
 
     Returns:
         A uint8 numpy array containing the image
     '''
-    vec = np.asarray(bytearray(b), dtype="uint8")
-    return cv2.imdecode(vec, flag)
+    vec = np.asarray(bytearray(b), dtype=np.uint8)
+    return _exchange_rb(cv2.imdecode(vec, flag))
 
 
-def resize(img, width=None, height=None, *args, **kwargs):
-    '''Resizes the given image to the given width and height. At most one
-    dimension can be None, in which case the aspect-preserving value is used.
+def download(url, flag=cv2.IMREAD_UNCHANGED):
+    '''Downloads an image from a URL.
+
+    Args:
+        url: the URL of the image
+        flag: an optional OpenCV image format flag. By default, the image is
+            returned in its raw format
+
+    Returns:
+        A uint8 numpy array containing the image
     '''
-    if height is None:
-        height = int(round(img.shape[0] * (width * 1.0 / img.shape[1])))
-    if width is None:
-        width = int(round(img.shape[1] * (height * 1.0 / img.shape[0])))
-    return cv2.resize(img, (width, height), *args, **kwargs)
+    return decode(etaw.download_file(url), flag=flag)
 
 
-def to_double(img):
-    '''Converts img to a double precision image with values in [0, 1].'''
-    return img.astype(np.float) / np.iinfo(img.dtype).max
+def read(path, flag=cv2.IMREAD_UNCHANGED):
+    '''Reads image from path.
+
+    Args:
+        path: the path to the image on disk
+        flag: an optional OpenCV image format flag. By default, the image is
+            returned in its native format (color, grayscale, transparent, ...)
+
+    Returns:
+        A uint8 numpy array containing the image
+        '''
+    return _exchange_rb(cv2.imread(path, flag))
+
+
+def write(img, path):
+    '''Writes image to file. The output directory is created if necessary.
+
+    Args:
+        img: a numpy array
+        path: the output path
+    '''
+    etau.ensure_basedir(path)
+    cv2.imwrite(path, _exchange_rb(img))
+
+
+###### Image Manipulation ####################################################
+
+
+def create(width, height, background=None):
+    '''Creates a blank image and optionally fills it with a color.
+
+    Args:
+        width (int): width of the image to create in pixels
+        height (int): height of the image to create in pixels
+        background (string): hex RGB (eg, "#ffffff")
+    '''
+    image = np.zeros((height, width, 3), dtype=np.uint8)
+
+    if background:
+        image[:] = hex_to_rgb(background)
+
+    return image
+
+
+def overlay(im1, im2, x0=0, y0=0):
+    '''Overlays im2 onto im1 at the specified coordinates.
+
+    *** Caution: im1 will be modified in-place if possible. ***
+
+    Args:
+        im1: a non-transparent image
+        im2: a possibly-transparent image
+        (x0, y0): the top-left coordinate of im2 in im1 after overlaying, where
+            (0, 0) corresponds to the top-left of im1. This coordinate may lie
+            outside of im1, in which case some (even all) of im2 may be omitted
+
+    Returns:
+        the overlaid image
+    '''
+    h1, w1 = im1.shape[:2]
+    h2, w2 = im2.shape[:2]
+
+    # Active slice of im1
+    y1t = np.clip(y0, 0, h1)
+    y1b = np.clip(y0 + h2, 0, h1)
+    x1l = np.clip(x0, 0, w1)
+    x1r = np.clip(x0 + w2, 0, w1)
+    y1 = slice(y1t, y1b)
+    x1 = slice(x1l, x1r)
+
+    # Active slice of im2
+    y2t = np.clip(y1t - y0, 0, h2)
+    y2b = y2t + y1b - y1t
+    x2l = np.clip(x1l - x0, 0, w2)
+    x2r = x2l + x1r - x1l
+    y2 = slice(y2t, y2b)
+    x2 = slice(x2l, x2r)
+
+    if im2.shape[2] == 4:
+        # Mix transparent image
+        im1 = to_double(im1)
+        im2 = to_double(im2)
+        alpha = im2[y2, x2, 3][:, :, np.newaxis]
+        im1[y1, x1, :] *= (1 - alpha)
+        im1[y1, x1, :] += alpha * im2[y2, x2, :3]
+        im1 = np.uint8(255 * im1)
+    else:
+        # Insert opaque image
+        im1[y1, x1, :] = im2[y2, x2, :]
+
+    return im1
 
 
 def rasterize(vector_path, width):
     '''Renders a vector image as a raster image with the given width,
     in pixels.
     '''
-    with utils.TempDir() as d:
+    with etau.TempDir() as d:
         try:
             png_path = os.path.join(d, "tmp.png")
             Convert(
@@ -128,76 +202,20 @@ def rasterize(vector_path, width):
     #     return None
 
 
-def overlay(im1, im2, x0=0, y0=0):
-    '''Overlays im2 onto im1 at the specified coordinates.
-
-    Args:
-        im1: a numpy array of any type containing a non-transparent image
-        im2: a numpy array of any type containing a possibly-transparent image
-        (x0, y0): the top-left coordinate of im2 in im1 after overlaying, where
-            (0, 0) corresponds to the top-left of im1. This coordinate may lie
-            outside of im1, in which case some (even all) of im2 may be omitted
-
-    Returns:
-        a uint8 numpy array containing the final image
+def resize(img, width=None, height=None, *args, **kwargs):
+    '''Resizes the given image to the given width and height. At most one
+    dimension can be None, in which case the aspect-preserving value is used.
     '''
-    im1 = to_double(im1)
-    im2 = to_double(im2)
-    h1, w1 = im1.shape[:2]
-    h2, w2 = im2.shape[:2]
-
-    # Active slice of im1
-    y1t = np.clip(y0, 0, h1)
-    y1b = np.clip(y0 + h2, 0, h1)
-    x1l = np.clip(x0, 0, w1)
-    x1r = np.clip(x0 + w2, 0, w1)
-    y1 = slice(y1t, y1b)
-    x1 = slice(x1l, x1r)
-
-    # Active slice of im2
-    y2t = np.clip(y1t - y0, 0, h2)
-    y2b = y2t + y1b - y1t
-    x2l = np.clip(x1l - x0, 0, w2)
-    x2r = x2l + x1r - x1l
-    y2 = slice(y2t, y2b)
-    x2 = slice(x2l, x2r)
-
-    if im2.shape[2] == 4:
-        # Mix transparent image
-        alpha = im2[y2, x2, 3][:, :, np.newaxis]
-        im1[y1, x1, :] *= (1 - alpha)
-        im1[y1, x1, :] += alpha * im2[y2, x2, :3]
-    else:
-        # Insert opaque image
-        im1[y1, x1, :] = im2[y2, x2, :]
-
-    return np.uint8(255 * im1)
+    if height is None:
+        height = int(round(img.shape[0] * (width * 1.0 / img.shape[1])))
+    if width is None:
+        width = int(round(img.shape[1] * (height * 1.0 / img.shape[0])))
+    return cv2.resize(img, (width, height), *args, **kwargs)
 
 
-def to_frame_size(frame_size=None, shape=None, img=None):
-    '''Converts an image size representation to a (width, height) tuple.
-
-    Pass *one* keyword argument to compute the frame size.
-
-    Args:
-        frame_size: the (width, height) of the image
-        shape: the (height, width, ...) of the image, e.g. from img.shape
-        img: the image itself
-
-    Returns:
-        (w, h): the width and height of the image
-
-    Raises:
-        TypeError: if none of the keyword arguments were passed
-    '''
-    if img is not None:
-        shape = img.shape
-    if shape is not None:
-        return shape[1], shape[0]
-    elif frame_size is not None:
-        return frame_size
-    else:
-        raise TypeError("A valid keyword argument must be provided")
+def to_double(img):
+    '''Converts img to a double precision image with values in [0, 1].'''
+    return img.astype(np.float) / np.iinfo(img.dtype).max
 
 
 class Convert(object):
@@ -255,15 +273,57 @@ class Convert(object):
             self._p = Popen(self._args, stdin=PIPE, stdout=PIPE, stderr=PIPE)
         except EnvironmentError as e:
             if e.errno == errno.ENOENT:
-                raise utils.ExecutableNotFoundError(self._executable)
+                raise etau.ExecutableNotFoundError(self._executable)
             else:
                 raise
 
         out, err = self._p.communicate()
         if self._p.returncode != 0:
-            raise utils.ExecutableRuntimeError(self.cmd, err)
+            raise etau.ExecutableRuntimeError(self.cmd, err)
 
         return out
+
+
+###### Image Properties and Representation ###################################
+
+
+def has_alpha(img):
+    '''Checks if the image has an alpha channel.'''
+    return not is_gray(img) and img.shape[2] == 4
+
+
+def is_gray(img):
+    '''Checks if the image is grayscale and return True if so.
+
+    The check is performed by counting the number of bands.
+    '''
+    return len(img.shape) == 2
+
+
+def to_frame_size(frame_size=None, shape=None, img=None):
+    '''Converts an image size representation to a (width, height) tuple.
+
+    Pass *one* keyword argument to compute the frame size.
+
+    Args:
+        frame_size: the (width, height) of the image
+        shape: the (height, width, ...) of the image, e.g. from img.shape
+        img: the image itself
+
+    Returns:
+        (w, h): the width and height of the image
+
+    Raises:
+        TypeError: if none of the keyword arguments were passed
+    '''
+    if img is not None:
+        shape = img.shape
+    if shape is not None:
+        return shape[1], shape[0]
+    elif frame_size is not None:
+        return frame_size
+    else:
+        raise TypeError("A valid keyword argument must be provided")
 
 
 class Length(object):
@@ -393,6 +453,22 @@ class Location(object):
         return self._loc in self.BOTTOM_LEFT
 
 
+###### Color Conversion ######################################################
+
+
+def _exchange_rb(img):
+    '''Converts an image from opencv format (BGR) to/from eta format (RGB) by
+    exchanging the red and blue channels.
+
+    This is a symmetric procedure and hence only needs one function.
+
+    Handles gray (pass-through), 3- and 4-channel images.
+    '''
+    if is_gray(img):
+        return img
+    return img[..., [2, 1, 0] + list(range(3, img.shape[2]))]
+
+
 def hex_to_rgb(value):
     '''Converts "#rrbbgg" to a (red, green, blue) tuple.'''
     value = value.lstrip('#')
@@ -414,11 +490,35 @@ def bgr_to_hex(blue, green, red):
     return rgb_to_hex(red, green, blue)
 
 
+def rgb_to_gray(img):
+    '''Converts the input RGB image to a grayscale image.'''
+    if is_gray(img):
+        return img
+    return cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+
+
+def bgr_to_gray(img):
+    '''Converts the input BGR image to a grayscale image.'''
+    if is_gray(img):
+        return img
+    return cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+
+def gray_to_bgr(img):
+    '''Convert a grayscale image to an BGR image.'''
+    return cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+
+
+def gray_to_rgb(img):
+    '''Convert a grayscale image to an RGB image.'''
+    return cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
+
+
 def rgb_to_bgr(img):
-    '''Converts an RGB image to a BGR image.'''
-    return img[..., [2, 1, 0] + list(range(3, img.shape[2]))]
+    '''Converts an RGB image to a BGR image (supports alpha).'''
+    return _exchange_rb(img)
 
 
 def bgr_to_rgb(img):
-    '''Converts a BGR image to an RGB image.'''
-    return rgb_to_bgr(img)  # this operation is symmetric
+    '''Converts a BGR image to an RGB image (supports alpha).'''
+    return _exchange_rb(img)

@@ -62,13 +62,10 @@ your local copy of `eta/` will take effect immediately.
 
 ## Setting up your execution environment
 
-When the root `eta` package is imported, it (tries to) read the
-`eta/config.json` file to configure various package-level constants.
-
-> If you do not create this file, `import eta` will still work and you will
-> still be able to use most of the ETA library. However, if you want to use
-> advanced features such as pipeline building, you will need to properly
-> configure your `eta/config.json` file.
+When the root `eta` package is imported, it tries to read the `eta/config.json`
+file to configure various package-level constants. Many advanced ETA features
+such as pipeline building, model management, etc. require a properly configured
+environment to function.
 
 To setup your environment, copy the example configuration file
 
@@ -89,10 +86,13 @@ sed -i '' -e "s|{{eta}}|$(pwd)|g" config.json
 sed -i -e "s|{{eta}}|$(pwd)|g" config.json
 ```
 
-The default config includes the `eta/modules` and `eta/pipelines` directories
-in your module and pipeline config search paths, respectively. In addition,
-it includes the relative paths `./modules` and `./pipelines` to support the
-typical directory structure that we adopt for our individual projects.
+The default config includes the `eta/modules`, `eta/pipelines`, and
+`eta/models` directories on your module, pipeline, and models search paths,
+respectively. These directories contain the necessary information to run the
+standard analytics exposed by the ETA library. In addition, the relative paths
+`./modules`, `./pipelines`, and `./models` are added to their respective paths
+to support the typical directory structure that we adopt for our custom
+projects.
 
 
 ## The `eta` command-line utility
@@ -131,9 +131,9 @@ eta build -r examples/demo_video_formatter/request.json --run-now
 # Example image/video embedding
 #
 # NOTE: A 550MB VGG16 weights file will be downloaded from the web and stored
-#       in eta/cache/ the first time you run one of these!
+#       in eta/models/ the first time you run one of these!
 #
-cd examples/embed_vgg16
+cd examples/demo_embed_vgg16
 # Example image embedding
 python embed_image.py
 # Another example image embedding

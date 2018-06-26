@@ -23,8 +23,9 @@ import os
 import sys
 
 from eta.core.config import Config
-from eta.core import log
-from eta.core import utils
+import eta.core.log as etal
+import eta.core.utils as etau
+
 
 logger = logging.getLogger(__name__)
 
@@ -51,9 +52,9 @@ def run(job_config, pipeline_status, overwrite=True):
     '''
     job_status = pipeline_status.add_job(job_config.name)
 
-    with utils.WorkingDir(job_config.working_dir):
+    with etau.WorkingDir(job_config.working_dir):
         # Check config hash
-        hasher = utils.MD5FileHasher(job_config.config_path)
+        hasher = etau.MD5FileHasher(job_config.config_path)
         if hasher.has_changed:
             logger.info("Config %s changed", job_config.config_path)
             should_run = True
@@ -112,8 +113,8 @@ def _run(job_config):
         args.append(job_config.pipeline_config_path)    # pipeline config
 
     # Run command
-    log.flush()  # must flush because subprocess will append to same logfile
-    success = utils.call(args)
+    etal.flush()  # must flush because subprocess will append to same logfile
+    success = etau.call(args)
     return success
 
 
