@@ -84,7 +84,7 @@ a simple object detector module:
             "name": "weights",
             "type": "eta.core.types.Weights",
             "description": "The weights for the network",
-            "required": true,
+            "required": false,
             "default": "/path/to/weights.npz"
         }
     ]
@@ -98,13 +98,10 @@ entity, and we refer to the keys of a JSON object (e.g., "info") as **fields**.
 The module metadata file contains the following top-level fields:
 
 - `info`: a spec containing basic information about the module
-
 - `inputs`: a list of specs describing each input data-related field that
     the module expects in its configuration file
-
 - `outputs`: a list of specs describing each output data-related field that
     the module expects in its configuration file
-
 - `parameters`: a list of specs describing additional parameters that the
     module expects in its configuration file
 
@@ -112,38 +109,50 @@ The `info` spec contains the following fields:
 
 - `name`: the name of the module. By convention, this name should match the
     name of the module metadata file without the extension
-
 - `type`: the type of the module, i.e., what computation it performs. Must be a
     valid module type exposed by the ETA library, i.e. a subclass of
     `eta.core.types.Module`
-
 - `version`: the current module version
-
 - `description`: a short free-text description of the module purpose and
     implementation
-
 - `exe`: the name of the module executable file
 
 The remaining specs describe the fields in the module's configuration files.
 Each spec has the fields:
 
 - `name`: the name of the field
-
 - `type`: the type of the field, which must be a valid type exposed by the ETA
     library. Module inputs must have a type that is a subclass of
     `eta.core.types.ConcreteData` or `eta.core.types.AbstractData`. Module
     outputs must have a type that is a subclass of
     `eta.core.types.ConcreteData`. Module parameters can have types that are
     subclasses of `eta.core.types.ConcreteData` or `eta.core.types.Builtin`
-
 - `description`: a short free-text description of the field
+- `required`: (optional) whether a value must be provided for the field in all
+    module configuration files. If omitted, the field is assumed to be required
+- `default`: (optional parameters only) the default value that is used
+    for the optional parameter when it is omitted from a module configuration
+    file. The default value must either be (a) a valid value for the declared
+    type of the parameter, or (b) set to `null`, which implies that the module
+    can function without this parameter being set to a valid typed value
 
-- `required`: whether the field is required or optional for the module to
-    function
 
-- `default`: (parameters only) an optional default value for the parameter. If
-    a parameter is required but has a default value, it may be omitted from the
-    module configuration file
+#### Automatic generation of module metadata files
+
+For modules that are built using the ETA library, the `eta` command-line tool
+supports a `metadata` command that can automatically generate the module
+metadata JSON file for a module. The syntax for the command is:
+
+```shell
+eta metadata </path/to/eta_module.py>
+```
+
+The command generates a module metadata JSON file in the same directory as
+the input module file.
+
+See [Building Modules Using ETA](#building-modules-using-eta) for more
+information about how to properly populate the docstrings of ETA modules for
+use with the automatic metadata generation tool.
 
 
 #### Exposing a new module
@@ -216,15 +225,10 @@ builtin type corresponding to each of the main types of data that can be stored
 in JSON files:
 
 - `eta.core.types.Null`: A JSON null value. `None` in Python
-
 - `eta.core.types.Boolean`: A JSON boolean value. A `bool` in Python
-
 - `eta.core.types.String`: A JSON string. A `str` in Python
-
 - `eta.core.types.Number`: A numeric value
-
 - `eta.core.types.Array`: A JSON array. A `list` in Python
-
 - `eta.core.types.Object`: An object in JSON. A dict in Python
 
 In addition, more specific types can be defined that are subclasses of the
@@ -268,7 +272,6 @@ There are two primary classes of data:
 
 - `eta.core.types.ConcreteData`: the base type for concrete data types, which
     represent well-defined data types that can be written to disk
-
 - `eta.core.types.AbstractData`: the base type for abstract data types, which
     define base data types that encapsulate one or more `ConcreteData` types
 
@@ -292,7 +295,6 @@ The abstract video type currently has two concrete implementations in ETA:
 
 - `eta.core.types.VideoFile`: a video represented as a single encoded video
     file, e.g. `"/path/to/video.mp4"`
-
 - `eta.core.types.ImageSequence`: a video represented as a sequence of images
     with one numeric parameter, e.g. `"/path/to/video/%05d.png"`
 
@@ -316,7 +318,6 @@ that describe the various JSON formats used by modules. For example:
 
 - `eta.core.types.Frame`: A type describing detected objects in a frame. This
     type is implemented in ETA by the `eta.core.objects.Frame` class
-
 - `eta.core.types.EventDetection`: A per-frame binary event detection. This
     type is implemented in ETA by the `eta.core.events.EventDetection` class
 
@@ -350,41 +351,9 @@ block diagram:
 https://drive.google.com/uc?id=15ImaW5o20wttEfgf0vQkxeQDirBtcYOa)](
 https://drive.google.com/uc?id=1v3CLijGzcXawzR8L44bhr_lC5B7aYPzv)
 
-Behind the scenes, it first generates the following intermediate
-`module_block_diagram.diag` file describing the module in a format understood
-by the `blockdiag` package:
-
-```
-blockdiag {
-
-  // module
-  simple-object-detector [width = 187, shape = box, height = 60];
-
-  // inputs
-  raw_video_path [width = 204, shape = endpoint, height = 40];
-
-  // outputs
-  objects_json_path [width = 234, shape = endpoint, height = 40];
-  annotated_frames_path [width = 274, shape = endpoint, height = 40];
-
-  // parameters
-  labels [width = 40, shape = beginpoint, rotate = 270, height = 124];
-  weights [width = 40, shape = beginpoint, rotate = 270, height = 134];
-
-  // I/O connections
-  raw_video_path -> simple-object-detector;
-  simple-object-detector -> objects_json_path;
-  simple-object-detector -> annotated_frames_path;
-
-  // parameter connections
-  group {
-    color = "#EE7531";
-    orientation = portrait;
-    labels -> simple-object-detector;
-    weights -> simple-object-detector;
-  }
-}
-```
+Behind the scenes, an intermediate `module_block_diagram.diag` file is
+generated that describes the module in a format understood by the `blockdiag`
+package.
 
 
 ## Module Configuration Files
@@ -427,8 +396,7 @@ The `parameters` field defines the parameter values to use when executing the
 module. The possible fields that can be listed in `<parameters>` in the
 above JSON are defined by the `parameters` field of the module's metadata JSON
 file. In particular, each spec in the `parameters` field must contain all
-parameters that are _required_ and have _no default value_ in the module
-metadata file and may also contain any optional parameters.
+parameters that are _required_ and may also contain any optional parameters.
 Again, the particular parameters supported by the module are defined by
 the module's metadata JSON file, and all required parameters and zero or more
 optional parameters must be specified.
@@ -490,19 +458,19 @@ command-line syntax, regardless of whether they are implemented using the ETA
 library:
 
 ```shell
-<module-name> MODULE_CONFIG_PATH [PIPELINE_CONFIG_PATH]
+<module-exe> </path/to/module_config.json> [</path/to/pipeline_config.json>]
 ```
 
-Here, `<module-name>` is the name of the module and `MODULE_CONFIG_PATH` is
-the path to a valid module configuration JSON file for the module as described
-in the previous section.
+Here, `<module-exe>` is the module executable, and the first commandline
+argument is the path to a valid _module configuration JSON file_ for the module
+as described in the previous section.
 
-Modules executables must support an optional `PIPELINE_CONFIG_PATH` argument
-that specifies the path to a _pipeline configuration JSON file_, which is
-supplied when a module is executed in the context of a pipeline.
-Pipeline configuration JSON files may set/override zero or more base module
-configuration settings defined by `eta.core.module.BaseModuleConfigSettings`,
-so ETA modules must check for and appropriately handle these fields.
+Modules executables must support an optional second argument that specifies the
+path to a _pipeline configuration JSON file_, which is supplied when a module
+is executed in the context of a pipeline. Pipeline configuration JSON files may
+set/override zero or more base module configuration settings defined by
+`eta.core.module.BaseModuleConfigSettings`, so ETA modules must check for and
+appropriately handle these fields.
 
 > Pipeline configuration JSON files also contain various pipeline-level fields
 > that are not relevant to modules and should be ignored.
@@ -532,21 +500,38 @@ module implementation utilities in ETA.
 
 #### Module template
 
-The following liberally-documented Python code describes the template that most
-modules provided in the ETA repository follow.
+The following liberally-documented Python code describes the template that
+modules developed using the ETA library generally follow. Note that the module
+and class docstrings contain the sections `Info`, `Inputs`, `Outputs`,
+`Parameters`, and `Attributes`, which are used by the module metadata
+generation tool to automatically populate the corresponding metadata JSON
+files.
 
 > The `{{}}` blocks denote placeholders that are replaced in practice by the
 > appropriate strings for the module being written.
 
 ```python
 #!/usr/bin/env python
+#
 # ETA modules are simply executables, so the module definition must start with
 # a shebang line declaring the python interpreter to use during execution
-
-# All modules should provide a docstring that describes the purpose of the
-module.
+#
+# Module docstrings should provide the following items:
+# - a short description that describes the purpose of the module. This
+#   description is included in the `info` field of the module metadata file
+# - an optional longer description of the module. This description is useful
+#   for readers of the source code, but it is not included in the module
+#   metadata file
+# - an `Info` section that specifies the `type` and `version` of the module
+#
 '''
-{{Description of the module}}
+{{Short description of the module.}}
+
+{{Optional long description of the module.}}
+
+Info:
+    type: {{the type of the module}}
+    version: {{the module version}}
 
 Copyright 2017-2018, Voxel51, LLC
 voxel51.com
@@ -558,7 +543,6 @@ voxel51.com
 # The first block of `__future__` imports allow for cross-version Python
 # support. See `python23_guide.md` for more information
 #
-
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
 # pragma pylint: disable=wildcard-import
@@ -582,11 +566,23 @@ import eta.core.module as etam
 logger = logging.getLogger(__name__)
 
 
-# Defines the module configuration file.
-# Inherits from `BaseModuleConfig`, which handles the parsing of the base
-# module settings automatically
+#
+# The following class defines the content of the module configuration file.
+#
+# This class inherits from `BaseModuleConfig`, which handles the parsing of the
+# base module settings automatically.
+#
+# The docstring of this class must contain an `Attributes` section that
+# specifies the classes that describe the `data` and `parameters` fields. This
+# information is used by the metadata generation tool.
+#
 class {{ModuleName}}Config(etam.BaseModuleConfig):
-    '''Module configuration settings.'''
+    '''Module configuration settings.
+
+    Attributes:
+        data (DataConfig)
+        parameters (ParametersConfig)
+    '''
 
     def __init__(self, d):
         # Call the `BaseModuleConfig` constructor, which parses the optional
@@ -602,32 +598,65 @@ class {{ModuleName}}Config(etam.BaseModuleConfig):
         self.parameters = self.parse_object(d, "parameters", ParametersConfig)
 
 
-# Parses the inputs and outputs for the module as defined in its module
-# metadata file
+#
+# The following class defines the inputs and outputs for the module.
+#
+# The docstring of this class must contain `Inputs` and `Outputs` sections
+# that describe the inputs and outputs supported by the module. This
+# information is used by the metadata generation tool.
+#
 class DataConfig(Config):
-    '''Data configuration settings.'''
+    '''Data configuration settings.
+
+    Inputs:
+        {{input1}} ({{type1}}): {{description1}}
+        {{input2}} ({{type2}}): [None] {{description2}}
+
+    Outputs:
+        {{output1}} ({{type3}}): {{description3}}
+        {{output2}} ({{type4}}): [None] {{description4}}
+    '''
 
     def __init__(self, d):
-        # Template for parsing an input field
-        self.{{input}} = self.parse_{{input_type}}(d, "{{input}}")
+        # Template for parsing a required input
+        self.{{input1}} = self.parse_{{type1}}(d, "{{input1}}")
+        # Template for parsing an optional input
+        self.{{input2}} = self.parse_{{type2}}(d, "{{input2}}", default=None)
 
-        # Template for parsing an output field
-        self.{{output}} = self.parse_{{output_type}}(d, "{{output}}")
+        # Template for parsing a required output
+        self.{{output1}} = self.parse_{{type3}}(d, "{{output1}}")
+        # Template for parsing an optional output
+        self.{{output2}} = self.parse_{{type4}}(d, "{{output2}}", default=None)
 
 
-# Parses the parameters for the module as defined in its module metadata file
+#
+# The following class defines the parameters for the module.
+#
+# The docstring of this class must contain a `Parameters` section that
+# describes the parameters supported by the module. This information is used by
+# the metadata generation tool.
+#
 class ParametersConfig(Config):
     '''Parameter configuration settings.'''
 
+    Parameters:
+        {{parameter1}} ({{type5}}): {{description5}}
+        {{parameter2}} ({{type6}}): [{{default1}}] {{description6}}
+    '''
+
     def __init__(self, d):
-        # Template for parsing a parameter with a default value
-        self.{{parameter}} = self.parse_{{parameter_type}}(
-            d, "{{parameter}}", default={{parameter_default_value}})
+        # Template for parsing a required parameter
+        self.{{parameter1}} = self.parse_{{type5}}(d, "{{parameter1}}")
+        # Template for parsing an optional parameter
+        self.{{parameter2}} = self.parse_{{type6}}(
+            d, "{{parameter2}}", default={{default1}})
 
 
+#
 # By convention, all modules in the ETA library define a `run()` method that
 # parses the command-line arguments, performs base module setup, and then calls
 # another method that implements the actual module-specific actions
+#
 def run(config_path, pipeline_config_path=None):
     '''Run the {{module_name}} module.
 
@@ -660,10 +689,25 @@ The following snippet shows a concrete example of a module configuration
 definition using the ETA library:
 
 ```python
+'''
+Example module.
+
+Info:
+    type: eta.core.types.Module
+    version: 0.1.0
+
+Copyright 2017-2018, Voxel51, LLC
+voxel51.com
+'''
 import eta.core.module as etam
 
 class ExampleModuleConfig(etam.BaseModuleConfig):
-    '''An example config class.'''
+    '''An example config class.
+
+    Attributes:
+        data (DataConfig)
+        parameters (ParametersConfig)
+    '''
 
     def __init__(self, d):
         super(ExampleModuleConfig, self).__init__(d)
@@ -672,7 +716,16 @@ class ExampleModuleConfig(etam.BaseModuleConfig):
 
 
 class DataConfig(Config):
-    '''Data configuration settings.'''
+    '''Data configuration settings.
+
+    Inputs:
+        input_path (eta.core.types.Video): An example input with an abstract
+            data type
+
+    Outputs:
+        output_path (eta.core.types.VideoFile): An example output with a
+            concrete data type
+    '''
 
     def __init__(self, d):
         self.input_path = self.parse_string(d, "input_path")
@@ -680,15 +733,23 @@ class DataConfig(Config):
 
 
 class ParametersConfig(Config):
-    '''Parameter configuration settings.'''
+    '''Parameter configuration settings.
+
+    Parameters:
+        param1 (eta.core.types.Array): An example of a required array
+            parameter
+        param2 (eta.core.types.Number): [1.0] An example of a numeric
+            parameter with a default value
+    '''
 
     def __init__(self, d):
-        self.parameter = self.parse_number(d, "parameter", default=1.0)
+        self.param1 = self.parse_array(d, "param1")
+        self.param2 = self.parse_number(d, "param2", default=1.0)
 ```
 
 The snippet defines a configuration class called `ExampleModuleConfig` that
 defines a `data` field that contains an array of `DataConfig` instances and
-a `parameters` field that contains an instance of `ParametersConfig`. Also,
+a `parameters` field that contains an instance of `ParametersConfig`. Note that
 `ExampleModuleConfig` derives from `eta.core.module.BaseModuleConfig`, which
 which handles the parsing of the optional `base` field containing any base
 module settings.
@@ -707,14 +768,16 @@ The following JSON file is a valid `ExampleModuleConfig` configuration file:
             "output_path": "/path/to/output.mp4"
         }
     ],
-    "parameters": {}
+    "parameters": {
+        "param1": [1, 2, 3]
+    }
 }
 ```
 
-Note that the `parameter` field is omitted from the `parameters` spec, which
-is allowed since a default value was specified in the `ParametersConfig` class.
-The top-level `base` field is also omitted entirely, which is allowed since
-the `eta.core.module.BaseModuleConfig` class supports a default value for it.
+Note that `param2` was omitted from the `parameters` spec, which is allowed
+because it has a default value in the `ParametersConfig` class. The top-level
+`base` field is also omitted entirely, which is allowed since the
+`eta.core.module.BaseModuleConfig` class supports a default value for it.
 
 To load the configuration file into an `ExampleModuleConfig` instance,
 simply do:

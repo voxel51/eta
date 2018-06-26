@@ -14,7 +14,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
-from future.utils import iteritems
+from future.utils import iteritems, itervalues
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
@@ -97,18 +97,18 @@ class PipelineBuildRequest(Configurable):
                 raise PipelineBuildRequestError(
                     "Pipeline '%s' has no input '%s'" % (self.pipeline, iname))
             if not self.metadata.is_valid_input(iname, ipath):
-                raise PipelineBuildRequestError((
+                raise PipelineBuildRequestError(
                     "'%s' is not a valid value for input '%s' of pipeline "
-                    "'%s'") % (ipath, iname, self.pipeline)
-                )
+                    "'%s'" % (ipath, iname, self.pipeline))
+            # Convert to absolute paths
+            self.inputs[iname] = os.path.abspath(ipath)
 
         # Ensure that required inputs were supplied
         for miname, miobj in iteritems(self.metadata.inputs):
             if miobj.is_required and miname not in self.inputs:
-                raise PipelineBuildRequestError((
+                raise PipelineBuildRequestError(
                     "Required input '%s' of pipeline '%s' was not "
-                    "supplied") % (miname, self.pipeline)
-                )
+                    "supplied" % (miname, self.pipeline))
 
     def _validate_parameters(self):
         # Validate parameters
@@ -118,18 +118,19 @@ class PipelineBuildRequest(Configurable):
                     "Pipeline '%s' has no tunable parameter '%s'" % (
                         self.pipeline, pname))
             if not self.metadata.is_valid_parameter(pname, pval):
-                raise PipelineBuildRequestError((
+                raise PipelineBuildRequestError(
                     "'%s' is not a valid value for parameter '%s' of pipeline "
-                    "'%s'") % (pval, pname, self.pipeline)
-                )
+                    "'%s'" % (pval, pname, self.pipeline))
+            # Convert any data parameters to absolute paths
+            if self.metadata.parameters[pname].is_data:
+                self.parameters[pname] = os.path.abspath(pval)
 
         # Ensure that required parmeters were supplied
         for mpname, mpobj in iteritems(self.metadata.parameters):
             if mpobj.is_required and mpname not in self.parameters:
-                raise PipelineBuildRequestError((
+                raise PipelineBuildRequestError(
                     "Required parameter '%s' of pipeline '%s' was not "
-                    "specified") % (mpname, self.pipeline)
-                )
+                    "specified" % (mpname, self.pipeline))
 
 
 class PipelineBuildRequestError(Exception):
@@ -194,19 +195,14 @@ class PipelineBuilder(object):
         # Generate paths, if necessary
         if not self.config_dir:
             self.config_dir = self._get_config_dir()
-
         if not self.output_dir:
             self.output_dir = self._get_output_dir()
-
         if not self.pipeline_config_path:
             self.pipeline_config_path = self._make_pipeline_config_path()
-
         if not self.pipeline_logfile_path:
             self.pipeline_logfile_path = self._make_pipeline_logfile_path()
-
         if not self.pipeline_status_path:
             self.pipeline_status_path = self._make_pipeline_status_path()
-
         self.outputs = {}
 
         self._build_pipeline_config()
@@ -222,10 +218,9 @@ class PipelineBuilder(object):
                 etaj.JobConfig.builder()
                     .set(name=module)
                     .set(working_dir=".")
-                    .set(script=etam.find_exe(metadata.info.exe))
+                    .set(script=etam.find_exe(metadata))
                     .set(config_path=self._get_module_config_path(module))
-                    .validate()
-            )
+                    .validate())
 
         # Build logging config
         logging_config_builder = (etal.LoggingConfig.builder()
@@ -248,46 +243,42 @@ class PipelineBuilder(object):
 
     def _build_module_configs(self):
         pmeta = self.request.metadata  # PipelineMetadata
-
-        # Populate module I/O
         module_inputs = defaultdict(dict)
         module_outputs = defaultdict(dict)
+
+        # Distribute pipeline inputs
+        for iname, ipath in iteritems(self.request.inputs):
+            for sink in pmeta.get_input_sinks(iname):
+                module_inputs[sink.module][sink.node] = ipath
+
+        # Propagate module connections
         for module in pmeta.execution_order:
             mmeta = pmeta.modules[module].metadata  # ModuleMetadata
-
-            # Populate inputs
-            iconns = _get_incoming_connections(module, pmeta.connections)
-            for iname, inode in iteritems(mmeta.inputs):
-                if iname in iconns:
-                    isrc = iconns[iname]
-                    if isrc.is_pipeline_input:
-                        # Get input from pipeline
-                        ipath = self.request.inputs[isrc.node]
-                        module_inputs[module][iname] = ipath
-                    # Other inputs are populated by connected outputs...
-
-            # Populate outputs
-            oconns = _get_outgoing_connections(module, pmeta.connections)
-            for oname, onode in iteritems(mmeta.outputs):
-                if oname in oconns:
-                    # Record output
+            oconns = pmeta.get_outgoing_connections(module)
+            for oname, osinks in iteritems(oconns):
+                if oname in module_outputs[module]:
+                    # This output has multiple outgoing connections; we
+                    # already generated its path
+                    opath = module_outputs[module][oname]
+                else:
+                    # Set output path
+                    onode = mmeta.outputs[oname]
                     opath = self._get_data_path(module, onode)
                     module_outputs[module][oname] = opath
 
-                    osrc = oconns[oname]
-                    if osrc.is_pipeline_output:
-                        # Record pipeline output
-                        self.outputs[osrc.node] = opath
+                for osink in osinks:
+                    if osink.is_pipeline_output:
+                        # Set pipeline output
+                        self.outputs[osink.node] = opath
                     else:
-                        # Pass output to connected inputs
-                        module_inputs[osrc.module][osrc.node] = opath
+                        # Pass output to connected module input
+                        module_inputs[osink.module][osink.node] = opath
 
         # Populate module parameters
         module_params = defaultdict(dict)
-        for param_str, param in iteritems(pmeta.parameters):
-            val, found = _get_param_value(param_str, param, self.request)
-            if found:
-                module_params[param.module][param.name] = val
+        for param in itervalues(pmeta.parameters):
+            val = _get_param_value(param, self.request)
+            module_params[param.module][param.name] = val
 
         # Generate module configs
         for module in pmeta.execution_order:
@@ -335,74 +326,25 @@ class PipelineBuilder(object):
         return node.type.gen_path(basedir, params)
 
 
-def _get_param_value(param_str, param, request):
-    '''Gets the value for the parameter, resolving it if necessary.
+def _get_param_value(param, request):
+    '''Gets the value for the parameter.
 
     Args:
-        param_str: the <module>.<parameter> string of the parameter
         param: a PipelineParameter instance describing the parameter
         request: the PipelineBuildRequest instance
 
     Returns:
-        val: the parameter value, or None if a value could not be found
-        found: True/False
+        val: the parameter value
     '''
-    if param_str in request.parameters:
+    if param.param_str in request.parameters:
         # User-set parameter
-        val = request.parameters[param_str]
-        found = True
+        val = request.parameters[param.param_str]
     elif param.has_set_value:
         # Pipeline-set parameter
         val = param.set_value
-        found = True
-    elif param.has_default_value:
-         # Module-default value
-         val = param.default_value
-         found = True
     else:
-        val = None
-        found = False
+        # Module-default value
+        val = param.default_value
 
-    if found:
-        # Resolve parameter value
-        val = etat.resolve_value(val, param.param.type)
+    return val
 
-    return val, found
-
-
-def _get_incoming_connections(module, connections):
-    '''Gets the incoming connections for the given module.
-
-    Args:
-        module: the module name
-        connections: a list of PipelineConnection instances describing the
-            module I/O connections in the pipeline
-
-    Returns:
-        a dictionary mapping the names of the inputs of the given module to
-            the PipelineNode instances describing the nodes that they are
-            connected to
-    '''
-    return {
-        c.sink.node: c.source
-        for c in connections if c.sink.module == module
-    }
-
-
-def _get_outgoing_connections(module, connections):
-    '''Gets the outgoing connections for the given module.
-
-    Args:
-        module: the module name
-        connections: a list of PipelineConnection instances describing the
-            module I/O connections in the pipeline
-
-    Returns:
-        a dictionary mapping the names of the outputs of the given module to
-            the PipelineNode instances describing the nodes that they are
-            connected to
-    '''
-    return {
-        c.source.node: c.sink
-        for c in connections if c.source.module == module
-    }

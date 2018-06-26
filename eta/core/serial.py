@@ -1,7 +1,7 @@
 '''
 Core data structures for working with data that can be read/written to disk.
 
-Copyright 2017, Voxel51, LLC
+Copyright 2017-2018, Voxel51, LLC
 voxel51.com
 
 Brian Moore, brian@voxel51.com
@@ -40,8 +40,7 @@ def load_json(path_or_str):
     '''
     if os.path.isfile(path_or_str):
         return read_json(path_or_str)
-    else:
-        return json.loads(path_or_str)
+    return json.loads(path_or_str)
 
 
 def read_json(path):
@@ -81,30 +80,28 @@ def json_to_str(obj, pretty_print=True):
     '''
     if is_serializable(obj):
         obj = obj.serialize()
-    if pretty_print:
-        s = json.dumps(obj, indent=4, cls=EtaJSONEncoder, ensure_ascii=False)
-    else:
-        s = json.dumps(obj, cls=EtaJSONEncoder, ensure_ascii=False)
+    kwargs = {"indent": 4} if pretty_print else {}
+    s = json.dumps(
+        obj, separators=(",", ": "), cls=EtaJSONEncoder, ensure_ascii=False,
+        **kwargs
+    )
     return str(s)
 
 
 class Picklable(object):
-    '''Mixin class for objects that can be pickled.
+    '''Mixin class for objects that can be pickled.'''
 
-    Subclasses need not implement anything.
-    '''
     def pickle(self, path):
         '''Saves the instance to disk in a pickle. '''
         etau.ensure_basedir(path)
-        with open(path, 'wb') as mf:
-            pickle.dump(self, mf)
+        with open(path, "wb") as f:
+            pickle.dump(self, f)
 
     @classmethod
     def from_pickle(cls, path):
-        '''Loads the pickle from disk and returns the instance. '''
-        with open(path, 'rb') as mf:
-            M = pickle.load(mf)
-        return M
+        '''Loads the pickle from disk and returns the instance.'''
+        with open(path, "rb") as f:
+            return pickle.load(f)
 
     @staticmethod
     def is_pickle_path(path):

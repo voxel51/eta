@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 '''
-Module for embedding videos into the fc6 vgg16 vector space.
+Module that embeds videos into VGG-16 feature space.
+
+Info:
+    type: eta.core.types.Module
+    version: 0.1.0
 
 Copyright 2017-2018, Voxel51, LLC
 voxel51.com
@@ -36,10 +40,14 @@ logger = logging.getLogger(__name__)
 
 
 class EmbedVGG16Config(etam.BaseModuleConfig):
-    '''VGG16 embedding configuration settings.
+    '''VGG-16 embedding configuration settings.
 
     This is basically the VGG16FeaturizerConfig except that it allows for an
     array of videos to be processed/featurized.
+
+    Attributes:
+        data (DataConfig)
+        parameters (ParametersConfig)
     '''
 
     def __init__(self, d):
@@ -49,15 +57,28 @@ class EmbedVGG16Config(etam.BaseModuleConfig):
 
 
 class DataConfig(Config):
-    '''Data configuration settings.'''
+    '''Data configuration settings.
+
+    Inputs:
+        video_path (eta.core.types.Video): The input video
+
+    Outputs:
+        backing_path (eta.core.types.Directory): The directory in which to
+            write the embeddings
+    '''
 
     def __init__(self, d):
-        self.backing_path = self.parse_string(d, "backing_path")
         self.video_path = self.parse_string(d, "video_path")
+        self.backing_path = self.parse_string(d, "backing_path")
 
 
 class ParametersConfig(Config):
-    '''Parameter configuration settings.'''
+    '''Parameter configuration settings.
+
+    Parameters:
+        crop_box (eta.core.types.Object): [None] A region of interest of
+            each frame to extract before embedding
+    '''
 
     def __init__(self, d):
         self.vgg16 = self.parse_object(

@@ -2,7 +2,7 @@
 '''
 Install ETA package.
 
-Copyright 2017, Voxel51, LLC
+Copyright 2017-2018, Voxel51, LLC
 voxel51.com
 
 Brian Moore, brian@voxel51.com
@@ -27,4 +27,5 @@ setup(
         "Programming Language :: Python :: 2.7",
         "Programming Language :: Python :: 3",
     ],
+    scripts=["eta/eta"],
 )

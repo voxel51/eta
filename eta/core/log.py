@@ -23,7 +23,7 @@ import os
 import sys
 
 import eta
-import eta.core.utils as ut
+import eta.core.utils as etau
 from eta.core.config import Config
 
 
@@ -113,7 +113,7 @@ def custom_setup(lc, rotate=False):
 
     # File logging
     if lc.filename:
-        ut.ensure_basedir(lc.filename)
+        etau.ensure_basedir(lc.filename)
         if rotate:
             msgs += _rotate_logs(lc.filename)
 
@@ -145,7 +145,7 @@ def _rotate_logs(filename):
     if num > 0:
         msgs.append("Rotating %d existing log(s)" % num)
         for idx in range(num - 1, -1, -1):
-            ut.move_file(logfile(idx), logfile(idx + 1))
+            etau.move_file(logfile(idx), logfile(idx + 1))
 
     return msgs
 

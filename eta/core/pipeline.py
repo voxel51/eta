@@ -1,6 +1,9 @@
 '''
 Core pipeline infrastructure.
 
+See `docs/pipelines_dev_guide.md` for detailed information about the design of
+the ETA pipeline system.
+
 Copyright 2017-2018, Voxel51, LLC
 voxel51.com
 
@@ -19,6 +22,7 @@ from future.utils import iteritems
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+from collections import defaultdict
 from glob import glob
 import logging
 import os
@@ -31,7 +35,6 @@ import eta.core.graph as etag
 import eta.core.job as etaj
 import eta.core.log as etal
 import eta.core.module as etam
-from eta.core.serial import Serializable
 import eta.core.status as etas
 import eta.core.types as etat
 import eta.core.utils as etau
@@ -198,13 +201,15 @@ def find_all_metadata():
     pipeline metadata files. To load these files, use `load_all_metadata()`.
 
     Returns:
-        a dictionary mapping pipeline names to pipeline metadata filenames
+        a dictionary mapping pipeline names to (absolute paths to) pipelines
+            metadata filenames
 
     Raises:
         PipelineMetadataError: if the pipeline names are not unique
     '''
     d = {}
-    for pdir in eta.config.pipeline_dirs:
+    pdirs = etau.make_search_path(eta.config.pipeline_dirs)
+    for pdir in pdirs:
         for path in glob(os.path.join(pdir, "*.json")):
             name = os.path.splitext(os.path.basename(path))[0]
             if name in d:
@@ -222,7 +227,7 @@ def find_metadata(pipeline_name):
     `eta.config.pipeline_dirs`.
 
     Returns:
-        the path to the pipeline metadata file
+        the (absolute) path to the pipeline metadata file
 
     Raises:
         PipelineMetadataError: if the pipeline could not be found
@@ -321,7 +326,7 @@ class PipelineInfo(Configurable):
         type_ = etat.parse_type(type_str)
         if not etat.is_pipeline(type_):
             raise PipelineMetadataError(
-                    "'%s' is not a valid pipeline type" % type_)
+                "'%s' is not a valid pipeline type" % type_)
         return type_
 
 
@@ -330,22 +335,22 @@ class PipelineInput(object):
 
     Attributes:
         name: the input name
-        nodes: the list ModuleNode instance(s) of the module input node(s)
-            that the pipeline input is connected to
+        inputs: a list ModuleInput instance(s) of the module input(s) that the
+            pipeline input is connected to
     '''
 
-    def __init__(self, name, nodes):
+    def __init__(self, name, inputs):
         self.name = name
-        self.nodes = nodes
+        self.inputs = inputs
 
     @property
     def is_required(self):
         '''Returns True/False if this input is required.'''
-        return any(node.is_required for node in self.nodes)
+        return any(inp.is_required for inp in self.inputs)
 
     def is_valid_path(self, path):
         '''Returns True/False if `path` is a valid path for this input.'''
-        return all(node.is_valid_path(path) for node in self.nodes)
+        return all(inp.is_valid_path(path) for inp in self.inputs)
 
 
 class PipelineOutput(object):
@@ -353,36 +358,34 @@ class PipelineOutput(object):
 
     Attributes:
         name: the output name
-        node: the ModuleNode instance of the module output that the pipeline
-            output is connected to
+        output: the ModuleOutput instance of the module output that the
+            pipeline output is connected to
     '''
 
-    def __init__(self, name, node):
+    def __init__(self, name, output):
         self.name = name
-        self.node = node
+        self.output = output
 
     def is_valid_path(self, path):
         '''Returns True/False if `path` is a valid path for this output.'''
-        return self.node.is_valid_path(path)
+        return self.output.is_valid_path(path)
 
 
 class PipelineParameter(object):
     '''Class describing a pipeline parameter.
 
-    A pipeline parameter is valid if it is active, i.e., if it is tunable, its
-    value is set by the pipeline, and/or it has a default value.
+    A pipeline parameter is *active* if it is tunable and/or its value is set
+    by the pipeline.
 
     A pipeline parameter is required (must be set by the end-user) if it is
-    required by the module but has no value set by the pipeline and no default
-    value.
+    required by the module but has no value set by the pipeline.
 
     Attributes:
         module: the module associated with this parameter
         name: the name of this parameter
         param: the ModuleParameter instance of the module parameter
         is_tunable: whether the parameter is tunable
-        set_value: the value set by the pipeline (if any)
-        default_value: the default value provided by the module (if any)
+        set_value: the value set by the pipeline, or None if it is not set
     '''
 
     def __init__(self, module, name, param, is_tunable, set_value=None):
@@ -403,18 +406,22 @@ class PipelineParameter(object):
         self.param = param
         self.is_tunable = is_tunable
         self.set_value = set_value
-        self.default_value = param.default
-
         self._validate()
+
+    @property
+    def is_builtin(self):
+        '''Returns True/False if this parameter is a Builtin.'''
+        return self.param.is_builtin
+
+    @property
+    def is_data(self):
+        '''Returns True/False if this parameter is Data.'''
+        return self.param.is_data
 
     @property
     def is_required(self):
         '''Returns True/False if this parameter must be set by the user.'''
-        return (
-            self.param.is_required and
-            not self.has_set_value and
-            not self.has_default_value
-        )
+        return self.param.is_required and not self.has_set_value
 
     @property
     def has_set_value(self):
@@ -424,41 +431,45 @@ class PipelineParameter(object):
         return self.set_value is not None
 
     @property
-    def has_default_value(self):
-        '''Returns True/False is this parameter has a default value.'''
-        return self.param.has_default_value
+    def default_value(self):
+        '''Gets the default value for this parameter.'''
+        if self.is_required:
+            raise PipelineMetadataError(
+                "Pipeline parameter '%s' is required, so it has no default "
+                "value" % self.param_str)
+        elif self.has_set_value:
+            return self.set_value
+        return self.param.default_value
+
+    @property
+    def param_str(self):
+        '''Returns the pipeline node string describing this parameter.'''
+        return PipelineNode.get_node_str(self.module, self.name)
 
     def is_valid_value(self, val):
         '''Returns True/False if `val` is a valid value for this parameter.'''
         return self.param.is_valid_value(val)
 
     def _validate(self):
-        is_valid = (
-            self.is_tunable or
-            self.has_set_value or
-            self.has_default_value
-        )
-        if not is_valid:
-            raise PipelineMetadataError((
-                "Pipeline parameter '%s' must be tunable, have value set by "
-                "the pipeline, and/or have a default value") % self.param_str
-            )
+        if not self.is_tunable and not self.has_set_value:
+            raise PipelineMetadataError(
+                "Pipeline parameter '%s' must be tunable or its value must "
+                "be set by this pipeline" % self.param_str)
 
 
 class PipelineModule(Configurable):
-    '''Pipeline module class.
+    '''Class describing a module in the context of a pipeline.
 
     A pipeline module definition is valid if every *required* module parameter
     is "active", i.e., satisfies at least one of the following conditions:
         - the parameter is exposed to the end-user as tunable
         - the parameter is set by the pipeline
-        - the parameter has a default value
 
     Attributes:
         name: the name of the module
         metadata: the ModuleMetadata instance for the module
         parameters: a dictionary mapping <module>.<parameter> strings to
-            PipelineParameter instances describing the *active* parameters
+            PipelineParameter instances describing the active parameters
     '''
 
     def __init__(self, config):
@@ -490,19 +501,18 @@ class PipelineModule(Configurable):
             # Verify that required parameters are active
             is_tunable = pname in tunable_parameters
             is_set = pname in set_parameters
-            is_active = is_tunable or is_set or param.has_default_value
+            is_active = is_tunable or is_set
             if param.is_required and not is_active:
-                raise PipelineMetadataError((
-                    "Required module '%s' parameter '%s' must be set, "
-                    "tunable and/or have a default value") % (self.name, pname)
-                )
+                raise PipelineMetadataError(
+                    "Required parameter '%s' of module '%s' must be set or "
+                    "exposed as tunable" % (pname, self.name))
 
             # Record active parameter
             if is_active:
-                param_str = PipelineNode.get_node_str(self.name, pname)
                 set_value = set_parameters[pname] if is_set else None
-                self.parameters[param_str] = PipelineParameter(
+                pparam = PipelineParameter(
                     self.name, pname, param, is_tunable, set_value=set_value)
+                self.parameters[pparam.param_str] = pparam
 
     def _verify_has_parameters(self, param_names):
         for name in param_names:
@@ -511,11 +521,11 @@ class PipelineModule(Configurable):
                     "Module '%s' has no parameter '%s'" % (self.name, name))
 
     def _verify_parameter_values(self, param_dict):
-        for name, val in param_dict:
+        for name, val in iteritems(param_dict):
             if not self.metadata.is_valid_parameter(name, val):
-                raise PipelineMetadataError((
+                raise PipelineMetadataError(
                     "'%s' is an invalid value for parameter '%s' of module "
-                    "'%s'") % (val, name, self.name))
+                    "'%s'" % (val, name, self.name))
 
 
 class PipelineNode(object):
@@ -623,8 +633,8 @@ class PipelineMetadata(Configurable, HasBlockDiagram):
             not required
         - every module output either has at least one outgoing connection or
             is not required
-        - every *required* module parameter is exposed to the end-user as
-            tunable, is set by the pipeline, and/or has a default value
+        - every *required* module parameter is either exposed to the end-user
+            as tunable or is set by the pipeline
         - the module graph defined by the pipeline is acyclic
 
     Attributes:
@@ -700,6 +710,35 @@ class PipelineMetadata(Configurable, HasBlockDiagram):
         '''
         return self.parameters[param_str].is_valid_value(val)
 
+    def get_input_sinks(self, name):
+        '''Gets the sinks for the given input.
+
+        Args:
+            name: the pipeline input name
+
+        Returns:
+            a list of PipelineNode instances that the input is connected to
+        '''
+        node_str = PipelineNode.get_input_str(name)
+        return _get_sinks_with_source(node_str, self.connections)
+
+    def get_outgoing_connections(self, module):
+        '''Gets the outgoing connections for the given module.
+
+        Args:
+            module: the module name
+
+        Returns:
+            a dictionary mapping the names of the outputs of the given module
+                to lists of PipelineNode instances describing the nodes that
+                they are connected to
+        '''
+        oconns = defaultdict(list)
+        for c in self.connections:
+            if c.source.module == module:
+                oconns[c.source.node].append(c.sink)
+        return dict(oconns)
+
     def to_blockdiag(self):
         '''Returns a BlockdiagPipeline representation of this pipeline.'''
         bp = BlockdiagPipeline(self.info.name)
@@ -765,6 +804,9 @@ class PipelineMetadata(Configurable, HasBlockDiagram):
 
 
 class PipelineMetadataError(Exception):
+    '''Exception raised when an invalid pipeline metadata file is
+    encountered.
+    '''
     pass
 
 
@@ -787,7 +829,7 @@ def _parse_input(name, connections, modules):
     '''
     node_str = PipelineNode.get_input_str(name)
     sinks = _get_sinks_with_source(node_str, connections)
-    if len(sinks) == 0:
+    if not sinks:
         raise PipelineMetadataError(
             "Pipeline input '%s' is not connected to any modules" % name)
 
@@ -818,9 +860,9 @@ def _parse_output(name, connections, modules):
     node_str = PipelineNode.get_output_str(name)
     sources = _get_sources_with_sink(node_str, connections)
     if len(sources) != 1:
-        raise PipelineMetadataError((
+        raise PipelineMetadataError(
             "Pipeline output '%s' must be connected to exactly one module "
-            "output, but was connected to %d") % (name, len(sources))
+            "output, but was connected to %d" % (name, len(sources))
         )
 
     source = sources[0]
@@ -850,26 +892,24 @@ def _validate_module_connections(modules, connections):
             node_str = PipelineNode.get_node_str(mname, iname)
             num_sources = len(_get_sources_with_sink(node_str, connections))
             if num_sources == 0 and node.is_required:
-                raise PipelineMetadataError((
+                raise PipelineMetadataError(
                     "Module '%s' input '%s' is required but has no incoming "
-                    "connection") % (mname, iname)
+                    "connection" % (mname, iname)
                 )
             if num_sources > 1:
-                raise PipelineMetadataError((
+                raise PipelineMetadataError(
                     "Module '%s' input '%s' must have one incoming connection "
-                    "but instead has %d incoming connections") % (
-                        mname, iname, num_sources)
-                )
+                    "but instead has %d incoming connections" % (
+                        mname, iname, num_sources))
 
         # Validate outputs
         for oname, node in iteritems(module.metadata.outputs):
             node_str = PipelineNode.get_node_str(mname, oname)
-            num_sinks = len(_get_sinks_with_source(node_str, connections))
-            if num_sinks == 0 and node.is_required:
-                raise PipelineMetadataError((
+            sinks = _get_sinks_with_source(node_str, connections)
+            if not sinks and node.is_required:
+                raise PipelineMetadataError(
                     "Module '%s' output '%s' is required but has no outgoing "
-                    "connections") % (mname, oname)
-                )
+                    "connections" % (mname, oname))
 
 
 def _compute_execution_order(connections):
@@ -887,16 +927,16 @@ def _compute_execution_order(connections):
     '''
     module_graph = etag.DirectedGraph()
     for c in connections:
-        if c.is_module_connection:
-            module_graph.add_edge(c.source.module, c.sink.module)
+        module_graph.add_edge(c.source.module, c.sink.module)
 
     try:
         execution_order = module_graph.sort()
+        execution_order.remove(PIPELINE_INPUT_NAME)
+        execution_order.remove(PIPELINE_OUTPUT_NAME)
     except etag.CyclicGraphError:
         raise PipelineMetadataError(
             "Unable to compute a valid execution order because the module "
-            "connections form a cyclic graph."
-        )
+            "connections form a cyclic graph.")
 
     return execution_order
 
@@ -1020,17 +1060,14 @@ def _create_node_connection(source, sink, modules):
             "'%s' cannot be a connection source" % source)
     if sink.is_pipeline_input or  sink.is_module_output:
         raise PipelineMetadataError(
-        "'%s' cannot be a connection sink" % sink)
+            "'%s' cannot be a connection sink" % sink)
     if source.is_module_output and sink.is_module_input:
         src = modules[source.module].metadata.get_output(source.node)
         snk = modules[sink.module].metadata.get_input(sink.node)
         if not issubclass(src.type, snk.type):
             raise PipelineMetadataError(
-                (
-                    "Module output '%s' ('%s') is not a valid input "
-                    "to module '%s' ('%s')"
-                ) % (source, src.type, sink, snk.type)
-            )
+                "Module output '%s' ('%s') is not a valid input to module "
+                "'%s' ('%s')" % (source, src.type, sink, snk.type))
 
     return PipelineConnection(source, sink)
 

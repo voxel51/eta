@@ -4,7 +4,7 @@
 # Usage:
 #   bash clean.bash
 #
-# Copyright 2017, Voxel51, LLC
+# Copyright 2017-2018, Voxel51, LLC
 # voxel51.com
 #
 # Brian Moore, brian@voxel51.com

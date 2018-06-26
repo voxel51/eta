@@ -1,6 +1,9 @@
 '''
 Core module infrastructure.
 
+See `docs/modules_dev_guide.md` for detailed information about the design and
+usage of ETA modules.
+
 Copyright 2017-2018, Voxel51, LLC
 voxel51.com
 
@@ -24,7 +27,7 @@ from glob import glob
 import os
 
 import eta
-from eta.core.config import Config, Configurable
+from eta.core.config import Config, ConfigError, Configurable
 from eta.core.diagram import HasBlockDiagram, BlockdiagModule
 import eta.core.log as etal
 import eta.core.types as etat
@@ -83,14 +86,16 @@ def find_all_metadata():
     module metadata files. To load these files, use `load_all_metadata()`.
 
     Returns:
-        a dictionary mapping module names to module metadata filenames
+        a dictionary mapping module names to (absolute paths to) module
+            metadata filenames
 
     Raises:
         ModuleMetadataError: if the module names are not unique
     '''
     d = {}
-    for pdir in eta.config.module_dirs:
-        for path in glob(os.path.join(pdir, "*.json")):
+    mdirs = etau.make_search_path(eta.config.module_dirs)
+    for mdir in mdirs:
+        for path in glob(os.path.join(mdir, "*.json")):
             name = os.path.splitext(os.path.basename(path))[0]
             if name in d:
                 raise ModuleMetadataError(
@@ -106,8 +111,11 @@ def find_metadata(module_name):
     Module metadata files must be JSON files in one of the directories in
     `eta.config.module_dirs`.
 
+    Args:
+        module_name: the name of the module
+
     Returns:
-        the path to the module metadata file
+        the (absolute) path to the module metadata file
 
     Raises:
         ModuleMetadataError: if the module metadata file could not be found
@@ -119,25 +127,26 @@ def find_metadata(module_name):
             "Could not find module '%s'" % module_name)
 
 
-def find_exe(module_exe):
-    '''Finds the given module executable.
+def find_exe(module_metadata):
+    '''Finds the executable for the given ModuleMetadata instance.
 
-    Module executables must be in one of the directories in
-    `eta.config.module_dirs`.
+    Args:
+        module_metadata: the ModuleMetadata instance for the module
 
     Returns:
-        the path to the module executable
+        the (absolute) path to the module executable
 
     Raises:
         ModuleMetadataError: if the module executable could not be found
     '''
-    for pdir in eta.config.module_dirs:
-        exe_path = os.path.join(pdir, module_exe)
-        if os.path.isfile(exe_path):
-            return exe_path
+    meta_path = find_metadata(module_metadata.info.name)
+    exe_path = os.path.join(
+        os.path.dirname(meta_path), module_metadata.info.exe)
+    if not os.path.isfile(exe_path):
+        raise ModuleMetadataError(
+            "Could not find module executable '%s'" % exe_path)
 
-    raise ModuleMetadataError(
-        "Could not find module executable '%s'" % module_exe)
+    return exe_path
 
 
 # @todo should pass a PipelineConfig instance here, not just the path. The need
@@ -214,10 +223,14 @@ class ModuleMetadataConfig(Config):
 
     def __init__(self, d):
         self.info = self.parse_object(d, "info", ModuleInfoConfig)
-        self.inputs = self.parse_object_array(d, "inputs", ModuleNodeConfig)
-        self.outputs = self.parse_object_array(d, "outputs", ModuleNodeConfig)
+        self.inputs = self.parse_object_array(d, "inputs", ModuleInputConfig)
+        self.outputs = self.parse_object_array(
+            d, "outputs", ModuleOutputConfig)
         self.parameters = self.parse_object_array(
             d, "parameters", ModuleParameterConfig)
+
+    def attributes(self):
+        return ["info", "inputs", "outputs", "parameters"]
 
 
 class ModuleInfoConfig(Config):
@@ -230,15 +243,34 @@ class ModuleInfoConfig(Config):
         self.description = self.parse_string(d, "description")
         self.exe = self.parse_string(d, "exe")
 
+    def attributes(self):
+        return ["name", "type", "version", "description", "exe"]
 
-class ModuleNodeConfig(Config):
-    '''Module I/O node descriptor configuration.'''
+
+class ModuleInputConfig(Config):
+    '''Module input descriptor configuration.'''
 
     def __init__(self, d):
         self.name = self.parse_string(d, "name")
         self.type = self.parse_string(d, "type")
         self.description = self.parse_string(d, "description")
         self.required = self.parse_bool(d, "required", default=True)
+
+    def attributes(self):
+        return ["name", "type", "description", "required"]
+
+
+class ModuleOutputConfig(Config):
+    '''Module output descriptor configuration.'''
+
+    def __init__(self, d):
+        self.name = self.parse_string(d, "name")
+        self.type = self.parse_string(d, "type")
+        self.description = self.parse_string(d, "description")
+        self.required = self.parse_bool(d, "required", default=True)
+
+    def attributes(self):
+        return ["name", "type", "description", "required"]
 
 
 class ModuleParameterConfig(Config):
@@ -249,7 +281,19 @@ class ModuleParameterConfig(Config):
         self.type = self.parse_string(d, "type")
         self.description = self.parse_string(d, "description")
         self.required = self.parse_bool(d, "required", default=True)
-        self.default = self.parse_raw(d, "default", default=None)
+        if not self.required:
+            self.default = self.parse_raw(d, "default")
+        elif "default" in d:
+            raise ConfigError(
+                "Module parameter '%s' is required, so it should not have a "
+                "default value" % self.name)
+
+    def attributes(self):
+        attrs = ["name", "type", "description", "required"]
+        if not self.required:
+            attrs.append("default")
+
+        return attrs
 
 
 class ModuleInfo(Configurable):
@@ -281,23 +325,23 @@ class ModuleInfo(Configurable):
         return type_
 
 
-class ModuleNode(Configurable):
-    '''Module I/O node descriptor.
+class ModuleInput(Configurable):
+    '''Module input descriptor.
 
-    Module nodes must be subclasses of eta.core.types.Data.
+    Module inputs must be subclasses of eta.core.types.Data.
 
     Attributes:
-        name: the name of the node
-        type: the eta.core.types.Type of the node
-        description: a free text description of the node
-        required: whether the node is required
+        name: the name of the input
+        type: the eta.core.types.Type of the input
+        description: a free text description of the input
+        required: whether the input is required
     '''
 
     def __init__(self, config):
-        '''Creates a new ModuleNode instance.
+        '''Creates a new ModuleInput instance.
 
         Args:
-            config: a ModuleNodeConfig instance
+            config: a ModuleInputConfig instance
 
         Raises:
         '''
@@ -310,20 +354,66 @@ class ModuleNode(Configurable):
 
     def is_valid_path(self, path):
         '''Returns True/False indicating whether the given path is a valid
-        setting for this node.'''
+        setting for this input.'''
         return self.type.is_valid_path(path)
 
     @property
     def is_required(self):
-        '''Returns True/False if this node is required.'''
+        '''Returns True/False if this input is required.'''
         return self.required
 
     def _parse_type(self, type_str):
         type_ = etat.parse_type(type_str)
         if not etat.is_data(type_):
             raise ModuleMetadataError((
-                "Module node '%s' has type '%s' but must be a subclass "
+                "Module input '%s' has type '%s' but must be a subclass "
                 "of Data") % (self.name, type_))
+        return type_
+
+
+class ModuleOutput(Configurable):
+    '''Module output descriptor.
+
+    Module outputs must be subclasses of eta.core.types.ConcreteData.
+
+    Attributes:
+        name: the name of the output
+        type: the eta.core.types.Type of the output
+        description: a free text description of the output
+        required: whether the output is required
+    '''
+
+    def __init__(self, config):
+        '''Creates a new ModuleOutput instance.
+
+        Args:
+            config: a ModuleOutputConfig instance
+
+        Raises:
+        '''
+        self.validate(config)
+
+        self.name = config.name
+        self.type = self._parse_type(config.type)
+        self.description = config.description
+        self.required = config.required
+
+    def is_valid_path(self, path):
+        '''Returns True/False indicating whether the given path is a valid
+        setting for this output.'''
+        return self.type.is_valid_path(path)
+
+    @property
+    def is_required(self):
+        '''Returns True/False if this output is required.'''
+        return self.required
+
+    def _parse_type(self, type_str):
+        type_ = etat.parse_type(type_str)
+        if not etat.is_concrete_data(type_):
+            raise ModuleMetadataError((
+                "Module output '%s' has type '%s' but must be a subclass "
+                "of ConcreteData") % (self.name, type_))
         return type_
 
 
@@ -331,14 +421,13 @@ class ModuleParameter(Configurable):
     '''Module parameter descriptor.
 
     Module parameters must be subclasses of eta.core.types.Builtin or
-    eta.core.types.Data
+    eta.core.types.ConcreteData.
 
     Attributes:
         name: the name of the parameter
         type: the eta.core.types.Type of the parameter
         description: a free text description of the parameter
         required: whether the parameter is required
-        default: an optional default value for the parameter
     '''
 
     def __init__(self, config):
@@ -348,9 +437,8 @@ class ModuleParameter(Configurable):
         self.type = self._parse_type(config.name, config.type)
         self.description = config.description
         self.required = config.required
-        self.default = config.default
-
-        if self.has_default_value:
+        if not self.required:
+            self._default = config.default
             self._validate_default()
 
     def is_valid_value(self, val):
@@ -366,11 +454,6 @@ class ModuleParameter(Configurable):
         return self.required
 
     @property
-    def has_default_value(self):
-        '''Returns True/false if this parameter has a default value.'''
-        return self.default is not None
-
-    @property
     def is_builtin(self):
         '''Returns True/False if this parameter is a Builtin.'''
         return etat.is_builtin(self.type)
@@ -380,43 +463,57 @@ class ModuleParameter(Configurable):
         '''Returns True/False if this parameter is Data.'''
         return etat.is_data(self.type)
 
+    @property
+    def default_value(self):
+        '''Gets the default value for this parameter.'''
+        if self.is_required:
+            raise ModuleMetadataError(
+                "Module parameter '%s' is required, so it has no default "
+                "value" % self.name)
+        return self._default
+
     @staticmethod
     def _parse_type(name, type_str):
         type_ = etat.parse_type(type_str)
-        if not etat.is_builtin(type_) and not etat.is_data(type_):
-            raise ModuleMetadataError((
+        if not etat.is_builtin(type_) and not etat.is_concrete_data(type_):
+            raise ModuleMetadataError(
                 "Module parameter '%s' has type '%s' but must be a subclass "
-                "of Builtin or Data") % (name, type_))
+                "of Builtin or ConcreteData" % (name, type_))
         return type_
 
     def _validate_default(self):
-        if self.is_builtin:
-            is_valid = self.type.is_valid_value(self.default)
+        if self._default is None:
+            # We always allow None, which implies that the module can function
+            # without this parameter being set to a valid typed value
+            is_valid = True
+        elif self.is_builtin:
+            is_valid = self.type.is_valid_value(self._default)
         else:
-            is_valid = self.type.is_valid_path(self.default)
+            is_valid = self.type.is_valid_path(self._default)
         if not is_valid:
-            raise ModuleMetadataError((
+            raise ModuleMetadataError(
                 "Default value '%s' is invalid for module parameter '%s' of "
-                "'%s'") % (self.default, self.name, self.type))
+                "'%s'" % (self._default, self.name, self.type))
 
 
 class ModuleMetadata(Configurable, HasBlockDiagram):
-    '''Class the encapsulates the architecture of a module.
+    '''Class that encapsulates the architecture of a module.
 
     A module definition is valid if all of the following are true:
+        - the module has at least one input and output
         - all input, output, and parameter names are mutually unique
-        - all inputs and outputs have types that are subclasses of
-            eta.core.types.Data
+        - all inputs have types that are subclasses of eta.core.types.Data
+        - all outputs have types that are subclasses of
+            eta.core.types.ConcreteData
         - all parameters have types that are subclasses of
-            eta.core.types.Builtin or eta.core.types.Data
-        - any default parameter values are valid settings for their associated
-            parameter types
+            eta.core.types.Builtin or eta.core.types.ConcreteData
+        - any default parameters are valid values for their associated types
 
     Attributes:
         info: a ModuleInfo instance describing the module
-        inputs: a dictionary mapping input names to ModuleNode instances
+        inputs: a dictionary mapping input names to ModuleInput instances
             describing the inputs
-        outputs: a dictionary mapping output names to ModuleNode instances
+        outputs: a dictionary mapping output names to ModuleOutput instances
             describing the outputs
         parameters: a dictionary mapping parameter names to ModuleParameter
             instances describing the parameters
@@ -467,11 +564,11 @@ class ModuleMetadata(Configurable, HasBlockDiagram):
         return self.get_parameter(name).is_valid_value(val)
 
     def get_input(self, name):
-        '''Returns the ModuleNode instance for input `name`.'''
+        '''Returns the ModuleInput instance for input `name`.'''
         return self.inputs[name]
 
     def get_output(self, name):
-        '''Returns the ModuleNode instance for output `name`.'''
+        '''Returns the ModuleOutput instance for output `name`.'''
         return self.outputs[name]
 
     def get_parameter(self, name):
@@ -491,12 +588,21 @@ class ModuleMetadata(Configurable, HasBlockDiagram):
 
     def _parse_metadata(self, config):
         self.info = ModuleInfo(config.info)
+
+        if not config.inputs:
+            raise ModuleMetadataError(
+                "Module '%s' must have at least one input" % self.info.name)
         for i in config.inputs:
             self._verify_uniqueness(i.name)
-            self.inputs[i.name] = ModuleNode(i)
+            self.inputs[i.name] = ModuleInput(i)
+
+        if not config.outputs:
+            raise ModuleMetadataError(
+                "Module '%s' must have at least one output" % self.info.name)
         for o in config.outputs:
             self._verify_uniqueness(o.name)
-            self.outputs[o.name] = ModuleNode(o)
+            self.outputs[o.name] = ModuleOutput(o)
+
         for p in config.parameters:
             self._verify_uniqueness(p.name)
             self.parameters[p.name] = ModuleParameter(p)
@@ -514,4 +620,5 @@ class ModuleMetadata(Configurable, HasBlockDiagram):
 
 
 class ModuleMetadataError(Exception):
+    '''Exception raised when an invalid module metadata file is encountered.'''
     pass

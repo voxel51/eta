@@ -20,15 +20,16 @@ from future.utils import iteritems
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-import copy
 import datetime
 import errno
 import glob
 import hashlib
+import inspect
 import itertools as it
 import logging
 import os
 import random
+import re
 import shutil
 import six
 import string
@@ -73,15 +74,37 @@ def has_gpu():
         return False
 
 
-def get_full_class_name(obj):
-    '''Returns the fully-qualified class name of the given object.'''
-    return obj.__module__ + "." + obj.__class__.__name__
+def get_class_name(cls_or_obj):
+    '''Returns the fully-qualified class name for the given input, which can
+    be a class or class instance.
+
+    Args:
+        cls_or_obj: a class or class instance
+
+    Returns:
+        class_name: a fully-qualified class name string like
+            "eta.core.utils.ClassName"
+    '''
+    cls = cls_or_obj if inspect.isclass(cls_or_obj) else cls_or_obj.__class__
+    return cls_or_obj.__module__ + "." + cls.__name__
+
+
+def get_function_name(fcn):
+    '''Returns the fully-qualified function name for the given function.
+
+    Args:
+        fcn: a function
+
+    Returns:
+        function_name: a fully-qualified function name string like
+            "eta.core.utils.function_name"
+    '''
+    return fcn.__module__ + "." + fcn.__name__
 
 
 def get_class(class_name, module_name=None):
-    '''Returns the class specified by the given string.
-
-    Loads the parent module if necessary.
+    '''Returns the class specified by the given class string, loading the
+    parent module if necessary.
 
     Args:
         class_name: the "ClassName" or a fully-qualified class name like
@@ -97,10 +120,9 @@ def get_class(class_name, module_name=None):
         try:
             module_name, class_name = class_name.rsplit(".", 1)
         except ValueError:
-            raise ImportError((
+            raise ImportError(
                 "Class name '%s' must be fully-qualified when no module "
-                "name is provided") % class_name
-            )
+                "name is provided" % class_name)
 
     __import__(module_name)  # does nothing if module is already imported
     return getattr(sys.modules[module_name], class_name)
@@ -120,6 +142,44 @@ def get_function(function_name, module_name=None):
     '''
     # reuse implementation for getting a class
     return get_class(function_name, module_name=module_name)
+
+
+def query_yes_no(question, default=None):
+    '''Asks a yes/no question via raw_input() and returns the answer.
+
+    This function is case insensitive and partially matches are allowed.
+
+    Args:
+        question: the question to ask
+        default: the default answer, which can be "yes", "no", or None (a
+            response is required). The default is None
+
+    Returns:
+        True/False whether the user replied "yes" or "no"
+
+    Raises:
+        ValueError: if the default value was invalid
+    '''
+    valid = {"y": True, "ye": True, "yes": True, "n": False, "no": False}
+
+    if default:
+        default = default.lower()
+        try:
+            prompt = " [Y/n] " if valid[default] else " [y/N] "
+        except KeyError:
+            raise ValueError("Invalid default value '%s'" % default)
+    else:
+        prompt = " [y/n] "
+
+    while True:
+        sys.stdout.write(question + prompt)
+        choice = raw_input().lower()
+        if default and not choice:
+            return valid[default]
+        elif choice in valid:
+            return valid[choice]
+        else:
+            print("Please respond with 'yes' or 'no'")
 
 
 def communicate(args, decode=False):
@@ -199,6 +259,7 @@ def copy_dir(indir, outdir):
     '''
     if os.path.isdir(outdir):
         shutil.rmtree(outdir)
+
     shutil.copytree(indir, outdir)
 
 
@@ -214,6 +275,46 @@ def delete_file(path):
         pass
 
 
+def delete_dir(dir_):
+    '''Deletes the given directory and recursively deletes any empty
+    directories from the resulting directory tree.
+    '''
+    dir_ = os.path.normpath(dir_)
+    shutil.rmtree(dir_)
+    try:
+        os.removedirs(os.path.dirname(dir_))
+    except OSError:
+        # found a non-empty directory or directory with no write access
+        pass
+
+
+def make_search_path(dirs):
+    '''Makes a search path for the given directories by doing the following:
+        - converting all paths to absolute paths
+        - removing directories that don't exist
+        - removing duplicate directories
+
+    The order of the original directories is preserved.
+
+    Args:
+        dirs: a list of relative or absolute directory paths
+
+    Returns:
+        a list of absolute paths with duplicates and non-existent directories
+            removed
+    '''
+    search_dirs = []
+    for d in dirs:
+        adir = os.path.abspath(d)
+        if os.path.isdir(adir) and adir not in search_dirs:
+            search_dirs.append(adir)
+
+    if not search_dirs:
+        logger.warning("Search path is empty")
+
+    return search_dirs
+
+
 def ensure_path(path):
     '''Ensures that the given path is ready for writing by deleting any
     existing file and ensuring that the base directory exists.
@@ -221,6 +322,7 @@ def ensure_path(path):
     if os.path.isfile(path):
         logger.debug("Deleting '%s'", path)
         os.remove(path)
+
     ensure_basedir(path)
 
 
@@ -234,15 +336,6 @@ def ensure_dir(dirname):
     if dirname and not os.path.isdir(dirname):
         logger.debug("Making directory '%s'", dirname)
         os.makedirs(dirname)
-
-
-# @todo move to eta/core/video.py
-def glob_videos(path):
-    '''Returns an iterator over all supported video files in path.'''
-    return multiglob(
-        *etac.VIDEO_FILE_TYPES_SUPPORTED,
-        root=os.path.join(path, "*")
-    )
 
 
 def has_extension(filename, *args):
@@ -273,21 +366,9 @@ def to_human_bits_str(num_bits):
 def _to_human_binary_str(num, suffix):
     for unit in ["", "K", "M", "G", "T", "P"]:
         if abs(num) < 1024.0:
-            break;
+            break
         num /= 1024.0
     return "%3.1f %s%s" % (num, unit, suffix)
-
-
-# @todo move to eta/core/image.py
-def is_supported_image_type(filename):
-    '''Determines whether the filename has a supported image extension.'''
-    return os.path.splitext(filename)[1] in etac.IMAGE_FILE_TYPES_SUPPORTED
-
-
-# @todo move to eta/core/video.py
-def is_supported_video_type(filename):
-    '''Determines whether the filename has a supported video extension.'''
-    return os.path.splitext(filename)[1] in etac.VIDEO_FILE_TYPES_SUPPORTED
 
 
 def move_file(inpath, outpath):
@@ -315,18 +396,92 @@ def multiglob(*patterns, **kwargs):
         glob.iglob(root + pattern) for pattern in patterns)
 
 
+def list_files(dir_path):
+    '''Lists the files in the given directory, sorted alphabetically and
+    excluding directories and hidden files.
+
+    Args:
+        dir_path: the path to the directory to list
+
+    Returns:
+        a sorted list of the non-hidden files in the directory
+    '''
+    return sorted(
+        f for f in os.listdir(dir_path)
+        if os.path.isfile(os.path.join(dir_path, f)) and not f.startswith(".")
+    )
+
+
+def parse_dir_pattern(dir_path):
+    '''Inspects the contents of the given directory, returning the numeric
+    pattern in use and the associated indexes.
+
+    The numeric pattern is guessed by analyzing the first file (alphabetically)
+    in the directory.
+
+    For example, if the directory contains:
+        "frame-00040-object-5.json"
+        "frame-00041-object-6.json"
+    then the pattern "frame-%05d-object-%d.json" will be inferred along with
+    the associated indices [(40, 5), (41, 6)]
+
+    Args:
+        dir_path: the path to the directory to inspect
+
+    Returns:
+        a tuple containing:
+            - the numeric pattern used in the directory
+            - a list (or list of tuples if the pattern contains multiple
+                numbers) describing the numeric indices in the directory
+
+    Raises:
+        OSError: if the directory is empty
+    '''
+    files = list_files(dir_path)
+    if not files:
+        raise OSError("Directory %s contains no files" % dir_path)
+
+    def _guess_patt(m):
+        s = m.group()
+        leading_zeros = len(s) - len(str(int(s)))
+        return "%%0%dd" % len(s) if leading_zeros > 0 else "%d"
+
+    # Guess pattern from first file
+    name, ext = os.path.splitext(os.path.basename(files[0]))
+    regex = re.compile(r"\d+")
+    patt = os.path.join(dir_path, re.sub(regex, _guess_patt, name) + ext)
+
+    def _unpack(l):
+        return int(l[0]) if len(l) == 1 else tuple(map(int, l))
+
+    # Infer indices
+    indices = [_unpack(re.findall(regex, f)) for f in files]
+
+    return patt, indices
+
+
 def random_key(n):
-    '''Generates an n-len random key of lowercase characters and digits.'''
-    return "".join(random.SystemRandom().choice(
-        string.ascii_lowercase + string.digits) for _ in range(n))
+    '''Generates an n-lenth random key of lowercase characters and digits.'''
+    return "".join(
+        random.SystemRandom().choice(string.ascii_lowercase + string.digits)
+        for _ in range(n)
+    )
 
 
 def replace_strings(string, replacers):
-    '''Replacers is a 2D list of [find, replace] strings.'''
+    '''Performs a sequence of find-replace operations on the given string.
 
+    Args:
+        string: the input string
+        replaces: a list of (find, replace) strings
+
+    Returns:
+        a copy of the input strings with all of the find-and-replacements made
+    '''
     output = string
     for sfind, srepl in replacers:
         output = output.replace(sfind, srepl)
+
     return output
 
 
@@ -433,7 +588,7 @@ class TempDir(object):
         return self._name
 
     def __exit__(self, *args):
-        shutil.rmtree(self._name)
+        delete_dir(self._name)
 
 
 class WorkingDir(object):
@@ -453,12 +608,16 @@ class WorkingDir(object):
 
 
 class ExecutableNotFoundError(Exception):
+    '''Exception raised when an executable file is not found.'''
+
     def __init__(self, executable):
         message = "Executable '%s' not found" % executable
         super(ExecutableNotFoundError, self).__init__(message)
 
 
 class ExecutableRuntimeError(Exception):
+    '''Exception raised when an executable call throws a runtime error.'''
+
     def __init__(self, cmd, err):
         message = "Command '%s' failed with error:\n%s" % (cmd, err)
         super(ExecutableRuntimeError, self).__init__(message)
