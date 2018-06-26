@@ -49,6 +49,14 @@ class C3dConfig(Config):
 
     def __init__(self, d):
          self.model = self.parse_string(d, "model", default="C3D")
+         self.dropout = self.parse_number(d, "dropout", default="0.6")
+         self.batchsize = self.parse_number(d, "batchsize", default="1")
+         self.model_path = self.parse_number(d, "model_path", default="../models/")
+         self.inpath = self.parse_string(d, "inpath", default="")
+         self.out_size = self.parse_number(d, "out_size", default="112")
+         self.sample_method = self.parse_string(d, "sample_method", default="sliding_window")
+         self.frames = self.parse_string(d, "frames", default="16")
+         self.stride = self.parse_string(d, "stride", default="8")
 
 
 class C3D(object):
@@ -186,11 +194,8 @@ class C3D(object):
         saver.restore(sess, self.config.model_path)
 
     #sample first k frames in a video
-    def get_first_k_frames(self):
+    def get_first_k_frames(self, inpath, k, out_size):
         data = []
-        inpath = self.config.inpath
-        k = self.config.k
-        out_size = self.config.out_size
         num_frames = etav.get_frames_count(inpath)
         assert k < num_frames
         with etav.VideoProcessor(inpath, k, out_size=out_size) as p:
@@ -201,11 +206,8 @@ class C3D(object):
         return np_arr_data
 
     #uniformly sample k frames, always including the first frame
-    def uniformly_sample_k_frames(self):
+    def uniformly_sample_k_frames(self, inpath, k, out_size):
         data = []
-        inpath = self.config.inpath
-        k = self.config.k
-        out_size = self.config.out_size
         num_frames = etav.get_frames_count(inpath)
         assert k < num_frames
 
@@ -221,20 +223,14 @@ class C3D(object):
         return np_arr_data
 
     #sample video clips using sliding window of size k and stride ns
-    def sliding_window_k_size_n_step(self):
+    def sliding_window_k_size_n_step(self, inpath, k, n, out_size):
         data = []
         inpath = self.config.inpath
-        k = self.config.k
-        n = self.config.n
-        out_size = self.config.out_size
         num_frames = etav.get_frames_count(inpath)
         assert k < num_frames
         i_first = 1
         i_last = num_frames
         i_count = num_frames
-        logger.debug(
-            "sampling: %s; found %d frames", data_config.input_path,
-            i_count)
         logger.debug("sample_length %d", k)
         logger.debug("sample_stride %d", n)
         o_count = round((i_last - k + 1.0) / n)
@@ -254,6 +250,7 @@ class C3D(object):
             sampled_clips.append(tmp_clip)
         np_arr_data = np.array(sampled_clips).astype(np.float32)
         return np_arr_data
+
 
 class C3DFeaturizerConfig(Config):
     ''' C3D Featurization configuration settings that works on images'''
@@ -277,12 +274,14 @@ class C3DFeaturizer(Featurizer):
     def sample_imgs(inpath):
     input_path = inpath or config.inpath
     if self.sample_method == 'get_first_k_frames':
-        input_imgs = get_first_k_frames(input_path, config.frames)
+        input_imgs = get_first_k_frames(input_path, config.frames,
+            config.out_size)
     elif self.sample_method == 'uniformly_sample_k_frames':
-        input_imgs = uniformly_sample_k_frames(input_path, config.frames)
+        input_imgs = uniformly_sample_k_frames(input_path, config.frames,
+            config.out_size)
     else:
         input_imgs = sliding_window_k_size_n_step(input_path, config.frames,
-            config.stride)
+            config.stride, config.out_size)
     return input_imgs
 
     def _start(self):
