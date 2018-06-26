@@ -1,15 +1,13 @@
 '''
-Extends and add functionality to the original C3D implementation by Frossard.
+Extends and add functionality to the original C3D implementation by Hou Xin.
 
-David Frossard, 2016
+Hou Xin, 2016
 VGG16 implementation in TensorFlow
-http://www.cs.toronto.edu/~frossard/post/vgg16/
+https://github.com/hx173149/C3D-tensorflow
 
-Model from https://gist.github.com/ksimonyan/211839e770f7b538e2d8#file-readme-md
+Model from https://www.dropbox.com/sh/8wcjrcadx4r31ux/AAAkz3dQ706pPO8ZavrztRCca?dl=0
 
-Weights from Caffe converted using https://github.com/ethereon/caffe-tensorflow
-
-Copyright 2017, Voxel51, LLC
+Copyright 2018, Voxel51, LLC
 voxel51.com
 
 Yixin Jin, yixin@voxel51.com
