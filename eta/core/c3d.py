@@ -128,6 +128,7 @@ class C3D(object):
 
     def evaluate(self, imgs, layer=None):
         '''Feed-forward evaluation through the net.
+
         Args:
             imgs: an array of size [XXXX, 112, 112, 3] containing image(s) to
                 feed into the network
@@ -140,10 +141,7 @@ class C3D(object):
 
         return self.sess.run(layer, feed_dict={self.imgs: [imgs]})[0]
     def close(self):
-        '''Closes the tf.Session used by this instance.
-        Users who did not pass their own tf.Session to the constructor **must**
-        call this method.
-        '''
+        '''Closes the TensorFlow session and frees up the network.'''
         self.sess.close()
         self.sess = None
 
@@ -214,9 +212,15 @@ class C3DFeaturizer(Featurizer):
         self.validate(self.config)
         self.sample_method = self.config.sample_method
         self.c3d  = None
-        #sample first k frames in a video
 
     def get_first_k_frames(self, inpath, k, out_size):
+        '''Sample first k frames in a video.
+
+        Args:
+            inpath: path to the input video
+            k: number of frames to extract for the input video
+            out_size: size of the output frames
+        '''
         data = []
         num_frames = etav.get_frame_count(inpath)
         assert k < num_frames
@@ -227,8 +231,14 @@ class C3DFeaturizer(Featurizer):
         np_arr_data = np.array(data).astype(np.float32)
         return np_arr_data
 
-    #uniformly sample k frames, always including the first frame
     def uniformly_sample_k_frames(self, inpath, k, out_size):
+        '''Uniformly sample k frames, always including the first frame.
+
+        Args:
+            inpath: path to the input video
+            k: number of frames to extract for the input video
+            out_size: size of the output frames
+        '''
         data = []
         num_frames = etav.get_frame_count(inpath)
         assert k < num_frames
@@ -249,8 +259,15 @@ class C3DFeaturizer(Featurizer):
         np_arr_data = np.array(data).astype(np.float32)
         return np_arr_data
 
-    #sample video clips using sliding window of size k and stride ns
     def sliding_window_k_size_n_step(self, inpath, k, n, out_size):
+        '''Sample video clips using sliding window of size k and stride n.
+
+        Args:
+            inpath: path to the input video
+            k: number of frames to extract for the input video
+            n: the stride for sliding window
+            out_size: size of the output frames
+        '''
         data = []
         num_frames = etav.get_frame_count(inpath)
         assert k < num_frames
@@ -307,7 +324,7 @@ class C3DFeaturizer(Featurizer):
     def _featurize(self, img):
         if self.sample_method == 'sliding_window':
             clips = img.shape[0]
-            tmp_feature = np.zeros(4096)
+            tmp_feature = np.zeros(self.dim())
             for i in range(clips):
                 tmp_imgs = img[i]
                 tmp_feature += self.c3d.evaluate(tmp_imgs, layer=self.c3d.fc6)
