@@ -274,6 +274,17 @@ class C3DFeaturizer(Featurizer):
         '''The dimension of the features extracted by this Featurizer.'''
         return 4096
 
+    def sample_imgs(inpath):
+    input_path = inpath or config.inpath
+    if self.sample_method == 'get_first_k_frames':
+        input_imgs = get_first_k_frames(input_path, config.frames)
+    elif self.sample_method == 'uniformly_sample_k_frames':
+        input_imgs = uniformly_sample_k_frames(input_path, config.frames)
+    else:
+        input_imgs = sliding_window_k_size_n_step(input_path, config.frames,
+            config.stride)
+    return input_imgs
+
     def _start(self):
         '''Starts a TensorFlow session and loads the network.'''
         if self.c3d is None:
@@ -283,13 +294,5 @@ class C3DFeaturizer(Featurizer):
         self.vgg16.close()
         self.c3d = None
 
-    def _featurize(self,img):
-
-        if self.sample_method == 'get_first_k_frames':
-            input_imgs = get_first_k_frames(config.inpath, config.frames)
-        elif self.sample_method == 'uniformly_sample_k_frames':
-            input_imgs = uniformly_sample_k_frames(config.inpath, config.frames)
-        else:
-            input_imgs = sliding_window_k_size_n_step(config.inpath, config.frames,
-                config.stride)
-        return self.c3d.evaluate(input_imgs, layer=self.c3d.fc6)
+    def _featurize(self, img):
+        return self.c3d.evaluate(img, layer=self.c3d.fc6)
