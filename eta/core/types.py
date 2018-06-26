@@ -589,6 +589,79 @@ class FrameSequence(JSONFileSequence):
     pass
 
 
+class EmbeddedFrame(JSONFile):
+    '''Embedded objects in a frame.
+
+    Emamples:
+        /path/to/embedded_frame.json
+    '''
+
+    pass
+
+
+class EmbeddedFrameSequence(JSONFileSequence):
+    '''Embedded objects in a video represented as a collection of EmbeddedFrame
+    files indexed by one numeric parameter.
+
+    Emamples:
+        /path/to/embedded_frames/%05d.json
+    '''
+
+    pass
+
+
+class IndexedFrame(JSONFile):
+    '''Indexed objects in a frame.
+
+    Emamples:
+        /path/to/indexed_frame.json
+    '''
+
+    pass
+
+
+class IndexedFrameSequence(JSONFileSequence):
+    '''Indexed objects in a video represented as a collection of IndexedFrame
+    files indexed by one numeric parameter.
+
+    Emamples:
+        /path/to/indexed_frames/%05d.json
+    '''
+
+    pass
+
+
+class TrackedObjects(JSONFile):
+    '''Tracked objects in a frame.
+
+    Emamples:
+        /path/to/tracked_objects.json
+    '''
+
+    pass
+
+
+class TrackedObjectsSequence(JSONFileSequence):
+    '''Tracked objects in a video represented as a collection of TrackedObjects
+    files indexed by one numeric parameter.
+
+    Emamples:
+        /path/to/tracked_objects/%05d.json
+    '''
+
+    pass
+
+
+class Trace(JSONFile):
+    '''Trace describing a tracked object in a video.
+
+    Examples:
+        /path/to/trace.json
+    '''
+
+    pass
+
+
 class Features(FileSequence, ConcreteData):
     '''A sequence of features indexed by one numeric parameter.
 
