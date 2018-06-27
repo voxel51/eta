@@ -35,6 +35,7 @@ import tensorflow as tf
 from eta.core.config import Config
 import eta.core.image as etai
 from eta.core.features import Featurizer
+import eta.core.models as etam
 import eta.core.video as etav
 
 
@@ -169,7 +170,7 @@ class C3D(object):
             self.config.num_frames_per_clip,self.config.embedding_frame_size,
             self.config.embedding_frame_size, 3])
         self.build_c3d(self.clips, self.config.dropout, self.config.batchsize)
-        self._load_model()
+        self._load_model(self.config.model)
 
     def _variable_with_weight_decay(self, name, shape, stddev, wd):
         var = tf.get_variable(name, shape,
@@ -306,11 +307,10 @@ class C3D(object):
         # Output: class prediction
         self.out = tf.matmul(dense2, _weights['out']) + _biases['out']
 
-    def _load_model(self):
-        saver = tf.train.Saver()
+    def _load_model(self, model):
         init = tf.global_variables_initializer()
         self.sess.run(init)
-        saver.restore(self.sess, self.config.model_path)
+        etam.TensorFlowModelWeights(model, self.sess).load()
 
 
 class C3DFeaturizerConfig(C3DConfig):
