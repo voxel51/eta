@@ -37,10 +37,14 @@ class DataContainer(Serializable):
 
     Examples:
         ```
-        tags= LocalizedTags(...)
+        from eta.core.data import DataContainer
+        from eta.core.geometry import LabeledPointContainer
+
+        tags = LabeledPointContainer(...)
         tags.write_json("tags.json")
+
         tags2 = DataContainer.from_json("tags.json")
-        print(tags2.__class__)  # LocalizedTags, not DataContainer
+        print(tags2.__class__)  # LabeledPointContainer, not DataContainer
         ```
 
     Attributes:
@@ -59,12 +63,14 @@ class DataContainer(Serializable):
         '''Constructs a DataContainer.
 
         Args:
-            <data>: optional list of data instances to store; the actual name
-            of the data is arbitrary and up to the subclass.  For example, if
-            we store objects in an ObjectContainer, then we expect this to be
-            `objects=...` here.  This field_name must match the `_DATA_ATTR` of
-            the subclass.  The default for this is "data" in the event the
-            subclass does not want to customize it.
+            <data>: an optional list of data instances to store in the
+                container. The appropriate name of this keyword argument is
+                determined by the `_DATA_ATTR` member of the container class.
+                If a subclass chooses not to override this attribute, then the
+                default keyword is "data"
+
+        Raises:
+            DataContainerError: if there was a problem parsing the input data
         '''
         self._validate()
 
