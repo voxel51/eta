@@ -69,7 +69,7 @@ class DataContainer(Serializable):
 
         data = []
         if kwargs is not None:
-            if not self._DATA_ATTR in kwargs:
+            if self._DATA_ATTR not in kwargs:
                 raise ValueError(
                     "DataContainer expects the class data attribute name to"
                     "match the data instances provided during init.")
@@ -87,9 +87,6 @@ class DataContainer(Serializable):
     def __iter__(self):
         return iter(self._data)
 
-    def attributes(self):
-        return ["_CLS", "_DATA_CLS", "_DATA_ATTR", self._DATA_ATTR]
-
     @property
     def _CLS(self):
         return etau.get_class_name(self)
@@ -101,26 +98,13 @@ class DataContainer(Serializable):
         '''
         return getattr(self, self._DATA_ATTR)
 
-    def serialize(self):
-        '''Custom serialization implementation for DataContainers that embeds
-        the class name, and the data class name in the JSON to enable
-        reflective parsing when reading from disk.
-        '''
-        d = OrderedDict()
-        d["_CLS"] = etau.get_class_name(self)
-        d["_DATA_CLS"] = etau.get_class_name(self._DATA_CLS)
-        d[self._DATA_ATTR] = [o.serialize() for o in self._data]
-        return d
-
     @classmethod
-    def get_data_class(cls):
-        '''Gets the class of data instances stored in this container.'''
-        return cls._DATA_CLS
-
-    @property
-    def num(self):
-        '''The number of data instances in the container.'''
-        return len(self._data)
+    def _validate(cls):
+        if cls._DATA_CLS is None:
+            raise ValueError(
+                "_DATA_CLS is None; note that you cannot instantiate "
+                "DataContainer directly."
+            )
 
     def add(self, instance):
         '''Adds a data instance to the container.
@@ -130,22 +114,8 @@ class DataContainer(Serializable):
         '''
         self._data.append(instance)
 
-    def get_matches(self, filters, match=any):
-        '''Returns a data container containing only instances that match the
-        filters.
-
-        Args:
-            filters: a list of functions that accept data instances and return
-                True/False
-            match: a function (usually `any` or `all`) that accepts an iterable
-                and returns True/False. Used to aggregate the outputs of each
-                filter to decide whether a match has occurred. The default is
-                `any`
-        '''
-        return self.__class__(**{
-            self._DATA_ATTR:
-            list(filter(lambda o: match(f(o) for f in filters), self._data))
-        })
+    def attributes(self):
+        return ["_CLS", "_DATA_CLS", "_DATA_ATTR", self._DATA_ATTR]
 
     def count_matches(self, filters, match=any):
         '''Counts number of data instances that match the filters.
@@ -183,12 +153,42 @@ class DataContainer(Serializable):
         })
 
     @classmethod
-    def _validate(cls):
-        if cls._DATA_CLS is None:
-            raise ValueError(
-                "_DATA_CLS is None; note that you cannot instantiate "
-                "DataContainer directly."
-            )
+    def get_data_class(cls):
+        '''Gets the class of data instances stored in this container.'''
+        return cls._DATA_CLS
+
+    def get_matches(self, filters, match=any):
+        '''Returns a data container containing only instances that match the
+        filters.
+
+        Args:
+            filters: a list of functions that accept data instances and return
+                True/False
+            match: a function (usually `any` or `all`) that accepts an iterable
+                and returns True/False. Used to aggregate the outputs of each
+                filter to decide whether a match has occurred. The default is
+                `any`
+        '''
+        return self.__class__(**{
+            self._DATA_ATTR:
+            list(filter(lambda o: match(f(o) for f in filters), self._data))
+        })
+
+    @property
+    def num(self):
+        '''The number of data instances in the container.'''
+        return len(self._data)
+
+    def serialize(self):
+        '''Custom serialization implementation for DataContainers that embeds
+        the class name, and the data class name in the JSON to enable
+        reflective parsing when reading from disk.
+        '''
+        d = OrderedDict()
+        d["_CLS"] = etau.get_class_name(self)
+        d["_DATA_CLS"] = etau.get_class_name(self._DATA_CLS)
+        d[self._DATA_ATTR] = [o.serialize() for o in self._data]
+        return d
 
 
 class NamedRelativePoint(Serializable):
