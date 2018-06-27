@@ -64,6 +64,9 @@ class ObjectContainer(Serializable):
     def __iter__(self):
         return iter(self.objects)
 
+    def attributes(self):
+        return ["_CLS", "_OBJ_CLS", "objects"]
+
     def serialize(self):
         '''Custom serialization implementation for ObjectContainers that embeds
         the class name and the object class name in the JSON to enable
