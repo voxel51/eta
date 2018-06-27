@@ -309,7 +309,7 @@ def register_model_dry_run(name, base_filename, models_dir):
     # Verify name
     logger.info("Verifying that model name '%s' is valid", name)
     base_name, version = Model.parse_name(name)
-    model = Model(base_name, base_filename, None, None, version=version)
+    model = Model(base_name, base_filename, None, version=version)
 
     # Verify novelty
     logger.info("Verifying that model '%s' does not yet exist", name)
@@ -333,7 +333,7 @@ def register_model_dry_run(name, base_filename, models_dir):
     return model.get_path_in_dir(models_dir)
 
 
-def register_model(name, base_filename, models_dir, manager):
+def register_model(name, base_filename, models_dir, manager, description=None):
     '''Registers a new model in the given models directory.
 
     If the directory does not have a models manifest file, one is created.
@@ -352,6 +352,7 @@ def register_model(name, base_filename, models_dir, manager):
             this model locally on disk
         models_dir: the directory in which to register the model
         manager: the ModelManager instance for the model
+        description: an optional description for the model
 
     Raises:
         ModelError: if the registration failed for any reason
@@ -363,7 +364,8 @@ def register_model(name, base_filename, models_dir, manager):
     base_name, version = Model.parse_name(name)
     date_created = etau.get_isotime()
     model = Model(
-        base_name, base_filename, manager, date_created, version=version)
+        base_name, base_filename, manager, version=version,
+        description=description, date_created=date_created)
 
     # Initialize models directory, if necessary
     if not ModelsManifest.dir_has_manifest(models_dir):
@@ -635,33 +637,37 @@ class Model(Serializable):
         base_name: the base name of the model (no version info)
         base_filename: the base filename of the model (no version info)
         manager: the ModelManager instance that describes the remote storage
-            location of the model
-        date_created: the date that the model was created
-        version: the version of the model, or None if it has no version
+            location of the models_dir
+        version: the version of the model (if any)
+        description: a description of the model (if any)
+        date_created: the date that the model was created (if any)
     '''
 
     def __init__(
-            self, base_name, base_filename, manager, date_created,
-            version=None):
+            self, base_name, base_filename, manager, version=None,
+            description=None, date_created=None):
         '''Creates a Model instance.
 
         Args:
             base_name: the base name of the model
             base_filename: the base filename for the model
             manager: the ModelManager for the model
-            date_created: the date that the model was created
             version: (optional) the model version
+            description: (optional) a description of the model
+            date_created: (optional) the date that the model was created
         '''
         self.base_name = base_name
         self.base_filename = base_filename
         self.manager = manager
-        self.date_created = date_created
         self.version = version or None
+        self.description = description or None
+        self.date_created = date_created or None
 
     def attributes(self):
         # We do this so we can set the order the fields appear in the JSON
         return [
-            "base_name", "base_filename", "version", "manager", "date_created"]
+            "base_name", "base_filename", "version", "description", "manager",
+            "date_created"]
 
     @property
     def name(self):
@@ -736,8 +742,8 @@ class Model(Serializable):
         '''Constructs a Model from a JSON dictionary.'''
         return cls(
             d["base_name"], d["base_filename"],
-            ModelManager.from_dict(d["manager"]), d["date_created"],
-            d.get("version", None))
+            ModelManager.from_dict(d["manager"]), d.get("version", None),
+            d.get("description", None), d.get("date_created", None))
 
 
 class ModelWeights(object):

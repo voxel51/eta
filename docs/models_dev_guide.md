@@ -64,6 +64,7 @@ The following is an example contents of a `manifest.json` file:
             "base_name": "VGG-16",
             "base_filename": "vgg16_weights.npz",
             "version": null,
+            "description": "VGG-16 network originally trained by Frossard for the 1000 classes from ImageNet",
             "manager": {
                 "config": {
                     "google_drive_id": "0B7phNvpRqNdpT0lZU1NOWXIzRlE"
@@ -115,7 +116,7 @@ import eta.core.models as etam
 
 # Loads the model by name
 # Automatically downloads the model from the cloud, if necessary
-weights = NpzModelWeights(name)
+weights = etam.NpzModelWeights(name).load()
 
 # Dictionary-based access to the weights
 weights["layer-1"]
@@ -189,27 +190,41 @@ automatically load a model given only its `name`. See the
 
 #### Publishing a new model
 
-To publish a new model, you can follow the general receipt:
+To publish a new model, you can follow the general receipe:
 
 ```py
 #
 # Full workflow for publishing a new model
 #
 
+name = "your-model@1.0"
+description = "a short description of your model"
+
+#
 # Recommend paths for the given model by looking for older versions
 # of the model in the model manifests
+#
+# If you already know how you want to register your model, you can provide the
+# appropriate models directory and base filename yourself
+#
 base_filename, models_dir = etam.recommend_paths_for_model(name)
 
+#
 # Perform a dry run of the model registration to check for any errors
 # before uploading the model to the cloud
+#
 etam.register_model_dry_run(name, base_filename, models_dir)
 
-# Upload the file to remote storage
-# Then instantiate the relevant ModelManager describing its location
-manager = ...
+#
+# Example use of ETAModelManager
+#
+# Assumes the model has been uploaded to Google Drive by an ETA administrator
+#
+manager = etam.ETAModelManager.from_dict({"google_drive_id": "XXXXXXXX"})
 
 # Register the model
-etam.register_model(name, base_filename, models_dir, manager)
+etam.register_model(
+    name, base_filename, models_dir, manager, description=description)
 ```
 
 The above process can be completely automated for custom cloud storage
