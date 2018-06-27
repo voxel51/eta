@@ -187,8 +187,8 @@ class DataContainer(Serializable):
         })
 
     @property
-    def num(self):
-        '''The number of data instances in the container.'''
+    def size(self):
+        '''Returns the number of data instances in the container.'''
         return len(self._data)
 
     def serialize(self):
