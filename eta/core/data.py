@@ -50,15 +50,39 @@ class DataContainer(Serializable):
 
     # The class of the data stored in the container
     _DATA_CLS = None
+    # The name of the attribute that the container will use to actually store
+    # the data in the container
+    _DATA_ATTR = "data"
 
-    def __init__(self, data=None):
+    def __init__(self, **kwargs):
         '''Constructs a DataContainer.
 
         Args:
-            data: optional list of data instances to store.
+            <data>: optional list of data instances to store; the actual name
+            of the data is arbitrary and up to the subclass.  For example, if
+            we store objects in an ObjectContainer, then we expect this to be
+            `objects=...` here.  This field_name must match the `_DATA_ATTR` of
+            the subclass.  The default for this is "data" in the event the
+            subclass does not want to customize it.
         '''
         self._validate()
-        self.data = data or []
+
+        data = []
+        if kwargs is not None:
+            if not self._DATA_ATTR in kwargs:
+                raise ValueError(
+                    "DataContainer expects the class data attribute name to"
+                    "match the data instances provided during init.")
+            data = kwargs[self._DATA_ATTR]
+
+        if data is not None:
+            for d in data:
+                if not isinstance(d, self._DATA_CLS):
+                    raise ValueError(
+                        "DataContainer initialized with nonconforming data "
+                        "instances.")
+
+        setattr(self, self._DATA_ATTR, data)
 
     def __iter__(self):
         return iter(self.data)
