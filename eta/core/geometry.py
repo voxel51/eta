@@ -1,5 +1,6 @@
 '''
-Core data structures for working with geometric objects.
+Core data structures for working with geometric concepts like points,
+bounding boxes, etc.
 
 Copyright 2017-2018, Voxel51, LLC
 voxel51.com
@@ -18,6 +19,7 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+from eta.core.data import DataContainer
 import eta.core.image as etai
 from eta.core.serial import Serializable
 
@@ -145,6 +147,44 @@ class RelativePoint(Serializable):
     def from_dict(cls, d):
         '''Constructs a RelativePoint from a JSON dictionary.'''
         return cls(d["x"], d["y"])
+
+
+class LabeledPoint(Serializable):
+    '''A relative point that has an associated label.
+
+    Attributes:
+        label: object label
+        relative_point: a RelativePoint instance
+    '''
+
+    def __init__(self, label, relative_point):
+        '''Constructs a LabeledPoint.
+
+        Args:
+            label: label string
+            relative_point: a RelativePoint instance
+        '''
+        self.label = str(label)
+        self.relative_point = relative_point
+
+    @classmethod
+    def from_dict(cls, d):
+        '''Constructs a LabeledPoint from a JSON dictionary.'''
+        return cls(
+            d["label"],
+            RelativePoint.from_dict(d["relative_point"]),
+        )
+
+
+class LabeledPointContainer(DataContainer):
+    '''Container for points in an image that each have an associated label.'''
+
+    _DATA_CLS = LabeledPoint
+    _DATA_ATTR = "points"
+
+    def label_set(self):
+        '''Returns a set containing the labels of the LabeledPoints.'''
+        return set(p.label for p in self.points)
 
 
 def _make_square(x, y, w, h):
