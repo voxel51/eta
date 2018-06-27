@@ -191,7 +191,7 @@ class DataContainer(Serializable):
         return d
 
 
-class NamedRelativePoint(Serializable):
+class PointTag(Serializable):
     '''A relative point that also has a label.
 
     Attributes:
@@ -200,7 +200,7 @@ class NamedRelativePoint(Serializable):
     '''
 
     def __init__(self, label, relative_point):
-        '''Constructs a NamedRelativePoint.
+        '''Constructs a PointTag.
 
         Args:
             label: label string
@@ -211,19 +211,20 @@ class NamedRelativePoint(Serializable):
 
     @classmethod
     def from_dict(cls, d):
-        '''Constructs a NamedRelativePoint from a JSON dictionary.'''
+        '''Constructs a PointTag from a JSON dictionary.'''
         return cls(
             d["label"],
             RelativePoint.from_dict(d["relative_point"]),
         )
 
 
-class LocalizedTags(DataContainer):
+class PointTagContainer(DataContainer):
     '''Container for points in an image or frame that each have a label
     associated with them (tags).'''
 
-    _DATA_CLS = NamedRelativePoint
+    _DATA_CLS = PointTag
+    _DATA_ATTR = "points"
 
     def label_set(self):
-        '''Returns a set containing the labels of the NamedRelativePoints.'''
-        return set(dat.label for dat in self.data)
+        '''Returns a set containing the labels of the PointTags.'''
+        return set(p.label for p in self.points)
