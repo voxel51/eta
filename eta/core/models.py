@@ -741,8 +741,8 @@ class Model(Serializable):
         '''Constructs a Model from a JSON dictionary.'''
         return cls(
             d["base_name"], d["base_filename"],
-            ModelManager.from_dict(d["manager"]), d["date_created"],
-            d.get("version", None))
+            ModelManager.from_dict(d["manager"]), d.get("version", None),
+            d.get("description", None), d.get("date_created", None))
 
 
 class ModelWeights(object):
