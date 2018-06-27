@@ -68,20 +68,17 @@ class DataContainer(Serializable):
         '''
         self._validate()
 
-        data = []
-        if kwargs is not None:
-            if self._DATA_ATTR not in kwargs:
-                raise ValueError(
-                    "DataContainer expects the class data attribute name to"
-                    "match the data instances provided during init.")
-            data = kwargs[self._DATA_ATTR]
+        if kwargs and self._DATA_ATTR not in kwargs:
+            raise DataContainerError(
+                "Expected data to be provided in keyword argument '%s'; "
+                "found keys %s" % (self._DATA_ATTR, list(kwargs.keys())))
+        data = kwargs.get(self._DATA_ATTR, [])
 
-        if data is not None:
-            for d in data:
-                if not isinstance(d, self._DATA_CLS):
-                    raise ValueError(
-                        "DataContainer initialized with nonconforming data "
-                        "instances.")
+        for d in data:
+            if not isinstance(d, self._DATA_CLS):
+                raise DataContainerError(
+                    "Data container %s expects data of type %s but found "
+                    "%s" % (self.__class__, self._DATA_CLS, d.__class__))
 
         setattr(self, self._DATA_ATTR, data)
 
@@ -105,10 +102,13 @@ class DataContainer(Serializable):
     @classmethod
     def _validate(cls):
         if cls._DATA_CLS is None:
-            raise ValueError(
+            raise DataContainerError(
                 "_DATA_CLS is None; note that you cannot instantiate "
-                "DataContainer directly."
-            )
+                "DataContainer directly.")
+        if cls._DATA_ATTR is None:
+            raise DataContainerError(
+                "_DATA_ATTR is None; note that you cannot instantiate "
+                "DataContainer directly.")
 
     def add(self, instance):
         '''Adds a data instance to the container.
