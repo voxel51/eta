@@ -89,10 +89,6 @@ class DataContainer(Serializable):
         return iter(self._data)
 
     @property
-    def _CLS(self):
-        return etau.get_class_name(self)
-
-    @property
     def _data(self):
         '''Convenience accessor to get the list of data instances stored
         independent of what the name of that attribute is.
@@ -114,12 +110,12 @@ class DataContainer(Serializable):
         '''Adds a data instance to the container.
 
         Args:
-            instance: an instance for this container
+            instance: an instance of `_DATA_CLS`
         '''
         self._data.append(instance)
 
     def attributes(self):
-        return ["_CLS", "_DATA_CLS", "_DATA_ATTR", self._DATA_ATTR]
+        return ["_CLS", "_DATA_CLS", self._DATA_ATTR]
 
     def count_matches(self, filters, match=any):
         '''Counts number of data instances that match the filters.
@@ -157,9 +153,21 @@ class DataContainer(Serializable):
         })
 
     @classmethod
+    def get_class_name(cls):
+        '''Returns the fully-qualified class name string of this container.'''
+        return etau.get_class_name(cls)
+
+    @classmethod
     def get_data_class(cls):
         '''Gets the class of data instances stored in this container.'''
         return cls._DATA_CLS
+
+    @classmethod
+    def get_data_class_name(cls):
+        '''Returns the fully-qualified class name string of the data in this
+        container.
+        '''
+        return etau.get_class_name(cls._DATA_CLS)
 
     def get_matches(self, filters, match=any):
         '''Returns a data container containing only instances that match the
@@ -189,8 +197,8 @@ class DataContainer(Serializable):
         reflective parsing when reading from disk.
         '''
         d = OrderedDict()
-        d["_CLS"] = etau.get_class_name(self)
-        d["_DATA_CLS"] = etau.get_class_name(self._DATA_CLS)
+        d["_CLS"] = self.get_class_name()
+        d["_DATA_CLS"] = self.get_data_class_name()
         d[self._DATA_ATTR] = [o.serialize() for o in self._data]
         return d
 
