@@ -2,9 +2,9 @@
     "models": [
         {
             "base_name": "VGG-16",
-            "base_filename": "vgg16_weights.npz",
+            "base_filename": "vgg16-imagenet.npz",
             "version": null,
-            "description": "VGG-16 network originally trained by Frossard for the 1000 classes from ImageNet",
+            "description": "VGG-16 model trained on ImageNet. Source: https://github.com/ethereon/caffe-tensorflow",
             "manager": {
                 "config": {
                     "google_drive_id": "0B_-5gc091ngGMzBFMVJ0RE9HNmc"
