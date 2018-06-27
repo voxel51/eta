@@ -21,7 +21,6 @@ from builtins import *
 
 from collections import OrderedDict
 
-from eta.core.geometry import RelativePoint
 from eta.core.serial import Serializable
 import eta.core.utils as etau
 
@@ -194,40 +193,6 @@ class DataContainer(Serializable):
         return d
 
 
-class PointTag(Serializable):
-    '''A relative point that also has a label.
-
-    Attributes:
-        label: object label
-        relative_point: a RelativePoint instance
-    '''
-
-    def __init__(self, label, relative_point):
-        '''Constructs a PointTag.
-
-        Args:
-            label: label string
-            relative_point: a RelativePoint instance
-        '''
-        self.label = str(label)
-        self.relative_point = relative_point
-
-    @classmethod
-    def from_dict(cls, d):
-        '''Constructs a PointTag from a JSON dictionary.'''
-        return cls(
-            d["label"],
-            RelativePoint.from_dict(d["relative_point"]),
-        )
-
-
-class PointTagContainer(DataContainer):
-    '''Container for points in an image or frame that each have a label
-    associated with them (tags).'''
-
-    _DATA_CLS = PointTag
-    _DATA_ATTR = "points"
-
-    def label_set(self):
-        '''Returns a set containing the labels of the PointTags.'''
-        return set(p.label for p in self.points)
+class DataContainerError(Exception):
+    '''Exception raised when an invalid DataContainer is encountered.'''
+    pass
