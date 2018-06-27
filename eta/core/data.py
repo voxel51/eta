@@ -19,9 +19,11 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+from collections import OrderedDict
 
 from eta.core.geometry import RelativePoint
 from eta.core.serial import Serializable
+import eta.core.utils as etau
 
 
 class DataContainer(Serializable):
@@ -30,8 +32,20 @@ class DataContainer(Serializable):
     This class should not be instantiated directly. Instead a subclass should
     be created for each type of data to be stored.
 
+    By default, DataContainer subclasses embed their class names and
+    underlying data instance class names in their JSON representations, so
+    data containers can be read reflectively from disk.
+
+    Examples:
+        ```
+        tags= LocalizedTags(...)
+        tags.write_json("tags.json")
+        tags2 = DataContainer.from_json("tags.json")
+        print(tags2.__class__)  # LocalizedTags, not DataContainer
+        ```
+
     Attributes:
-        data: a list of instances of data of a specific class
+        data: a list of instances of data of a specific class.
     '''
 
     # The class of the data stored in the container
@@ -48,6 +62,20 @@ class DataContainer(Serializable):
 
     def __iter__(self):
         return iter(self.data)
+
+    def attributes(self):
+        return ["_CLS", "_DATA_CLS", "data"]
+
+    def serialize(self):
+        '''Custom serialization implementation for DataContainers that embeds
+        the class name and the data class name in the JSON to enable
+        reflective parsing when reading from disk.
+        '''
+        d = OrderedDict()
+        d["_CLS"] = etau.get_class_name(self)
+        d["_DATA_CLS"] = etau.get_class_name(self._DATA_CLS)
+        d["data"] = [o.serialize() for o in self.data]
+        return d
 
     @classmethod
     def get_data_class(cls):
@@ -101,9 +129,22 @@ class DataContainer(Serializable):
 
     @classmethod
     def from_dict(cls, d):
-        '''Constructs an DataContainer from a JSON dictionary.'''
-        cls._validate()
-        return cls(data=[cls._DATA_CLS.from_dict(do) for do in d["data"]])
+        '''Constructs an DataContainer from a JSON dictionary.
+
+        If the JSON contains the reflective `_CLS` and `_DATA_CLS` fields, they
+        are used to infer the underlying data classes, and this method can
+        be invoked as `DataContainer.from_dict`. Otherwise, this method must
+        be called on a concrete subclass of `DataContainer`.
+        '''
+        if "_CLS" in d and "_DATA_CLS" in d:
+            # Parse reflectively
+            cls = etau.get_class(d["_CLS"])
+            data_cls = etau.get_class(d["_DATA_CLS"])
+        else:
+            # Parse using provided class
+            cls._validate()
+            data_cls = cls._DATA_CLS
+        return cls(data=[data_cls.from_dict(dd) for dd in d["data"]])
 
     @classmethod
     def _validate(cls):
