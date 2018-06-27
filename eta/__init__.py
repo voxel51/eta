@@ -14,6 +14,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
+from future.utils import iteritems
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
@@ -23,7 +24,7 @@ import os
 import sys
 
 import eta.constants as etac
-from eta.core.config import EnvConfig
+from eta.core.config import Config, EnvConfig
 import eta.core.log as etal
 import eta.core.utils as etau
 
@@ -63,6 +64,12 @@ class ETAConfig(EnvConfig):
             d, "default_video_ext", env_var="ETA_DEFAULT_VIDEO_EXT",
             default=".mp4")
 
+        # This field does not support an environment variable syntax because it
+        # contains environment variables itself and the user can just set them
+        # directly if they prefer to configure outside of this config file
+        self.environment_vars = Config.parse_dict(
+            d, "environment_vars", default={})
+
 
 def startup_message():
     '''Logs ETA startup message.'''
@@ -82,3 +89,7 @@ config = ETAConfig.from_json(etac.CONFIG_JSON_PATH)
 
 # Augment system path
 sys.path = sys.path[:1] + config.pythonpath_dirs + sys.path[1:]
+
+# Set any environment variables
+for var, val in iteritems(config.environment_vars):
+    os.environ[var] = val
