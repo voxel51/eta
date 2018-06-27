@@ -19,15 +19,14 @@ from builtins import *
 # pragma pylint: enable=wildcard-import
 
 from collections import OrderedDict
-import os
 
+from eta.core.data import DataContainer
 from eta.core.geometry import BoundingBox
-import eta.core.image as etai
 from eta.core.serial import Serializable
 import eta.core.utils as etau
 
 
-class ObjectContainer(Serializable):
+class ObjectContainer(DataContainer):
     '''Base class for containers that store lists of objects.
 
     This class should not be instantiated directly. Instead a subclass should
@@ -50,108 +49,24 @@ class ObjectContainer(Serializable):
     '''
 
     # The class of the objects stored in the container
-    _OBJ_CLS = None
-
-    def __init__(self, objects=None):
-        '''Constructs an ObjectContainer.
-
-        Args:
-            objects: optional list of objects to store.
-        '''
-        self._validate()
-        self.objects = objects or []
-
-    def __iter__(self):
-        return iter(self.objects)
-
-    def attributes(self):
-        return ["_CLS", "_OBJ_CLS", "objects"]
-
-    def serialize(self):
-        '''Custom serialization implementation for ObjectContainers that embeds
-        the class name and the object class name in the JSON to enable
-        reflective parsing when reading from disk.
-        '''
-        d = OrderedDict()
-        d["_CLS"] = etau.get_class_name(self)
-        d["_OBJ_CLS"] = etau.get_class_name(self._OBJ_CLS)
-        d["objects"] = [o.serialize() for o in self.objects]
-        return d
+    _DATA_CLS = None
+    _DATA_ATTR = "objects"
 
     @classmethod
     def get_object_class(cls):
         '''Gets the class of object stored in this container.'''
-        return cls._OBJ_CLS
+        return cls._DATA_CLS
 
     @property
     def num_objects(self):
         '''The number of objects in the container.'''
         return len(self.objects)
 
-    def add(self, obj):
-        '''Adds an object to the container.
-
-        Args:
-            obj: an object instance
-        '''
-        self.objects.append(obj)
-
-    def get_matches(self, filters, match=any):
-        '''Returns an object container containing only objects that match the
-        filters.
-
-        Args:
-            filters: a list of functions that accept objects and return
-                True/False
-            match: a function (usually `any` or `all`) that accepts an iterable
-                and returns True/False. Used to aggregate the outputs of each
-                filter to decide whether a match has occurred. The default is
-                `any`
-        '''
-        return self.__class__(
-            objects=list(filter(
-                lambda o: match(f(o) for f in filters),
-                self.objects,
-            )),
-        )
-
-    def count_matches(self, filters, match=any):
-        '''Counts number of objects that match the filters.
-
-        Args:
-            filters: a list of functions that accept objects and return
-                True/False
-            match: a function (usually `any` or `all`) that accepts an iterable
-                and returns True/False. Used to aggregate the outputs of each
-                filter to decide whether a match has occurred. The default is
-                `any`
-        '''
-        return len(self.get_matches(filters, match=match).objects)
-
-    @classmethod
-    def from_dict(cls, d):
-        '''Constructs an ObjectContainer from a JSON dictionary.
-
-        If the JSON contains the reflective `_CLS` and `_OBJ_CLS` fields, they
-        are used to infer the underlying object classes, and this method can
-        be invoked as `ObjectContainer.from_dict`. Otherwise, this method must
-        be called on a concrete subclass of `ObjectContainer`.
-        '''
-        if "_CLS" in d and "_OBJ_CLS" in d:
-            # Parse reflectively
-            cls = etau.get_class(d["_CLS"])
-            obj_cls = etau.get_class(d["_OBJ_CLS"])
-        else:
-            # Parse using provided class
-            cls._validate()
-            obj_cls = cls._OBJ_CLS
-        return cls(objects=[obj_cls.from_dict(do) for do in d["objects"]])
-
     @classmethod
     def _validate(cls):
-        if cls._OBJ_CLS is None:
+        if cls._DATA_CLS is None:
             raise ValueError(
-                "_OBJ_CLS is None; note that you cannot instantiate "
+                "_DATA_CLS is None; note that you cannot instantiate "
                 "ObjectContainer directly."
             )
 
@@ -200,7 +115,7 @@ class DetectedObject(Serializable):
 class Frame(ObjectContainer):
     '''Container for detected objects in a frame.'''
 
-    _OBJ_CLS = DetectedObject
+    _DATA_CLS = DetectedObject
 
     def label_set(self):
         '''Returns a set containing the labels of the DetectedObjects.'''
@@ -282,7 +197,7 @@ class ScoredObject(Serializable):
 class ScoredObjects(ObjectContainer):
     '''Container for scored objects.'''
 
-    _OBJ_CLS = ScoredObject
+    _DATA_CLS = ScoredObject
 
     def sort(self):
         '''Sorts the current object list in ascending order by score.'''
