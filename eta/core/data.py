@@ -66,6 +66,10 @@ class DataContainer(Serializable):
     def attributes(self):
         return ["_CLS", "_DATA_CLS", "data"]
 
+    @property
+    def _CLS(self):
+        return etau.get_class_name(self)
+
     def serialize(self):
         '''Custom serialization implementation for DataContainers that embeds
         the class name and the data class name in the JSON to enable
