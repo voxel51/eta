@@ -44,7 +44,9 @@ class DataContainer(Serializable):
         ```
 
     Attributes:
-        data: a list of instances of data of a specific class.
+        <data>: a list of data instances. The field name <data> is specified by
+            the `_DATA_ATTR` member, and the class of the data instances is
+            specified by the `_DATA_CLS` member
     '''
 
     # The class of the data stored in the container
