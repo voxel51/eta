@@ -185,6 +185,14 @@ class Number(Builtin):
         return isinstance(val, numbers.Number)
 
 
+class Object(Builtin):
+    '''An object in JSON. A dict in Python.'''
+
+    @staticmethod
+    def is_valid_value(val):
+        return isinstance(val, dict)
+
+
 class Array(Builtin):
     '''A JSON array. A list in Python.'''
 
@@ -204,12 +212,15 @@ class StringArray(Array):
         )
 
 
-class Object(Builtin):
-    '''An object in JSON. A dict in Python.'''
+class ObjectArray(Array):
+    '''An array of objects in JSON. A list of dicts in Python.'''
 
     @staticmethod
     def is_valid_value(val):
-        return isinstance(val, dict)
+        return (
+            Array.is_valid_value(val) and
+            all(Object.is_valid_value(o) for o in val)
+        )
 
 
 ###### Data types #############################################################
@@ -584,6 +595,79 @@ class FrameSequence(JSONFileSequence):
 
     Examples:
         /path/to/frames/%05d.json
+    '''
+
+    pass
+
+
+class EmbeddedFrame(JSONFile):
+    '''Embedded objects in a frame.
+
+    Emamples:
+        /path/to/embedded_frame.json
+    '''
+
+    pass
+
+
+class EmbeddedFrameSequence(JSONFileSequence):
+    '''Embedded objects in a video represented as a collection of EmbeddedFrame
+    files indexed by one numeric parameter.
+
+    Emamples:
+        /path/to/embedded_frames/%05d.json
+    '''
+
+    pass
+
+
+class IndexedFrame(JSONFile):
+    '''Indexed objects in a frame.
+
+    Emamples:
+        /path/to/indexed_frame.json
+    '''
+
+    pass
+
+
+class IndexedFrameSequence(JSONFileSequence):
+    '''Indexed objects in a video represented as a collection of IndexedFrame
+    files indexed by one numeric parameter.
+
+    Emamples:
+        /path/to/indexed_frames/%05d.json
+    '''
+
+    pass
+
+
+class TrackedObjects(JSONFile):
+    '''Tracked objects in a frame.
+
+    Emamples:
+        /path/to/tracked_objects.json
+    '''
+
+    pass
+
+
+class TrackedObjectsSequence(JSONFileSequence):
+    '''Tracked objects in a video represented as a collection of TrackedObjects
+    files indexed by one numeric parameter.
+
+    Emamples:
+        /path/to/tracked_objects/%05d.json
+    '''
+
+    pass
+
+
+class Trace(JSONFile):
+    '''Trace describing a tracked object in a video.
+
+    Examples:
+        /path/to/trace.json
     '''
 
     pass

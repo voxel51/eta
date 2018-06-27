@@ -1,5 +1,5 @@
 '''
-Core data structures for working with objects in images.
+Core data structures for working with detected objects in images.
 
 Copyright 2017-2018, Voxel51, LLC
 voxel51.com
@@ -18,102 +18,19 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-import os
-
+from eta.core.data import DataContainer
 from eta.core.geometry import BoundingBox
-import eta.core.image as etai
 from eta.core.serial import Serializable
-import eta.core.utils as etau
 
 
-class ObjectContainer(Serializable):
+class ObjectContainer(DataContainer):
     '''Base class for containers that store lists of objects.
 
-    This class should not be instantiated directly. Instead a subclass should
-    be created for each type of object to be stored.
-
-    Attributes:
-        objects: a list of objects
+    Subclasses must set the `_DATA_CLS` attribute.
     '''
 
-    # The class of the objects stored in the container
-    _OBJ_CLS = None
-
-    def __init__(self, objects=None):
-        '''Constructs an ObjectContainer.
-
-        Args:
-            objects: optional list of objects to store.
-        '''
-        self._validate()
-        self.objects = objects or []
-
-    def __iter__(self):
-        return iter(self.objects)
-
-    @classmethod
-    def get_object_class(cls):
-        '''Gets the class of object stored in this container.'''
-        return cls._OBJ_CLS
-
-    @property
-    def num_objects(self):
-        '''The number of objects in the container.'''
-        return len(self.objects)
-
-    def add(self, obj):
-        '''Adds an object to the container.
-
-        Args:
-            obj: an object instance
-        '''
-        self.objects.append(obj)
-
-    def get_matches(self, filters, match=any):
-        '''Returns an object container containing only objects that match the
-        filters.
-
-        Args:
-            filters: a list of functions that accept objects and return
-                True/False
-            match: a function (usually `any` or `all`) that accepts an iterable
-                and returns True/False. Used to aggregate the outputs of each
-                filter to decide whether a match has occurred. The default is
-                `any`
-        '''
-        return self.__class__(
-            objects=list(filter(
-                lambda o: match(f(o) for f in filters),
-                self.objects,
-            )),
-        )
-
-    def count_matches(self, filters, match=any):
-        '''Counts number of objects that match the filters.
-
-        Args:
-            filters: a list of functions that accept objects and return
-                True/False
-            match: a function (usually `any` or `all`) that accepts an iterable
-                and returns True/False. Used to aggregate the outputs of each
-                filter to decide whether a match has occurred. The default is
-                `any`
-        '''
-        return len(self.get_matches(filters, match=match).objects)
-
-    @classmethod
-    def from_dict(cls, d):
-        '''Constructs an ObjectContainer from a JSON dictionary.'''
-        cls._validate()
-        return cls(objects=[cls._OBJ_CLS.from_dict(do) for do in d["objects"]])
-
-    @classmethod
-    def _validate(cls):
-        if cls._OBJ_CLS is None:
-            raise ValueError(
-                "_OBJ_CLS is None; note that you cannot instantiate "
-                "ObjectContainer directly."
-            )
+    _DATA_CLS = None
+    _DATA_ATTR = "objects"
 
 
 class DetectedObject(Serializable):
@@ -160,34 +77,11 @@ class DetectedObject(Serializable):
 class Frame(ObjectContainer):
     '''Container for detected objects in a frame.'''
 
-    _OBJ_CLS = DetectedObject
+    _DATA_CLS = DetectedObject
 
     def label_set(self):
         '''Returns a set containing the labels of the DetectedObjects.'''
         return set(obj.label for obj in self.objects)
-
-
-class ObjectCounts(Serializable):
-    '''Container for counting objects in an image.'''
-
-    def __init__(self, counts=None):
-        '''Constructs an ObjectCounts container.
-
-        Args:
-            counts: optional list of ObjectCount objects
-        '''
-        self.counts = counts or []
-
-    def add(self, count):
-        '''Adds an ObjectCount to the container.'''
-        self.counts.append(count)
-
-    @classmethod
-    def from_dict(cls, d):
-        '''Constructs an ObjectCounts from a JSON dictionary.'''
-        return ObjectCounts(
-            counts=[ObjectCount.from_dict(dc) for dc in d["counts"]]
-        )
 
 
 class ObjectCount(Serializable):
@@ -201,6 +95,13 @@ class ObjectCount(Serializable):
     def from_dict(cls, d):
         '''Constructs an ObjectCount from a JSON dictionary.'''
         return ObjectCount(d["label"], d["count"])
+
+
+class ObjectCounts(DataContainer):
+    '''Container for counting objects in an image.'''
+
+    _DATA_CLS = ObjectCount
+    _DATA_ATTR = "counts"
 
 
 class ScoredObject(Serializable):
@@ -242,8 +143,11 @@ class ScoredObject(Serializable):
 class ScoredObjects(ObjectContainer):
     '''Container for scored objects.'''
 
-    _OBJ_CLS = ScoredObject
+    _DATA_CLS = ScoredObject
 
     def sort(self):
         '''Sorts the current object list in ascending order by score.'''
-        self.objects = sorted(self.objects, key=lambda o: o.score)
+        setattr(
+            self, self._DATA_ATTR,
+            sorted(self._data, key=lambda obj: obj.score)
+        )

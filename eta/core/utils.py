@@ -35,6 +35,7 @@ import six
 import string
 import subprocess
 import sys
+import tarfile
 import tempfile
 
 import eta.constants as etac
@@ -377,6 +378,36 @@ def move_file(inpath, outpath):
     '''
     ensure_basedir(outpath)
     shutil.move(inpath, outpath)
+
+
+def extract_tar(inpath, outdir=None, delete_tar=False):
+    '''Extracts the .tar, tar.gz, .tgz, .tar.bz, and .tbz files into the same
+    directory and then optionally deletes the tarball.
+
+    Args:
+        inpath: the path to the tar or compressed tar file
+        outdir: the directory into which to extract the archive contents. By
+            default, the directory containing the tar file is used
+        delete_tar: whether to delete the tar archive after extraction. By
+            default, this is False
+    '''
+    if inpath.endswith("tar"):
+        format = "r:"
+    elif inpath.endswith("tar.gz") or inpath.endswith("tgz"):
+        format = "r:gz"
+    elif inpath.endswith("tar.bz") or inpath.endswith("tbz"):
+        format = "r:bz2"
+    else:
+        raise ValueError(
+            "Expected file '%s' to have extension .tar, .tar.gz, .tgz,"
+            ".tar.bz, or .tbz in order to extract it" % inpath)
+
+    outdir = outdir or os.path.dirname(inpath) or "."
+    with tarfile.open(inpath, format) as tar:
+        tar.extractall(path=outdir)
+
+    if delete_tar:
+        delete_file(inpath)
 
 
 def multiglob(*patterns, **kwargs):
