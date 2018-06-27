@@ -84,29 +84,6 @@ class Frame(ObjectContainer):
         return set(obj.label for obj in self.objects)
 
 
-class ObjectCounts(Serializable):
-    '''Container for counting objects in an image.'''
-
-    def __init__(self, counts=None):
-        '''Constructs an ObjectCounts container.
-
-        Args:
-            counts: optional list of ObjectCount objects
-        '''
-        self.counts = counts or []
-
-    def add(self, count):
-        '''Adds an ObjectCount to the container.'''
-        self.counts.append(count)
-
-    @classmethod
-    def from_dict(cls, d):
-        '''Constructs an ObjectCounts from a JSON dictionary.'''
-        return ObjectCounts(
-            counts=[ObjectCount.from_dict(dc) for dc in d["counts"]]
-        )
-
-
 class ObjectCount(Serializable):
     '''The number of instances of an object found in an image.'''
 
@@ -118,6 +95,13 @@ class ObjectCount(Serializable):
     def from_dict(cls, d):
         '''Constructs an ObjectCount from a JSON dictionary.'''
         return ObjectCount(d["label"], d["count"])
+
+
+class ObjectCounts(DataContainer):
+    '''Container for counting objects in an image.'''
+
+    _DATA_CLS = ObjectCount
+    _DATA_ATTR = "counts"
 
 
 class ScoredObject(Serializable):
