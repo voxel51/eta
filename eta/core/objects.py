@@ -147,4 +147,7 @@ class ScoredObjects(ObjectContainer):
 
     def sort(self):
         '''Sorts the current object list in ascending order by score.'''
-        self.objects = sorted(self.objects, key=lambda o: o.score)
+        setattr(
+            self, self._DATA_ATTR,
+            sorted(self._data, key=lambda obj: obj.score)
+        )
