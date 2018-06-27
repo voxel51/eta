@@ -33,6 +33,18 @@ class ObjectContainer(Serializable):
     This class should not be instantiated directly. Instead a subclass should
     be created for each type of object to be stored.
 
+    By default, ObjectContainer subclasses embed their class names and
+    underlying object class names in their JSON representations, so object
+    containers can be read reflectively from disk.
+
+    Examples:
+        ```
+        frame = Frame(...)
+        frame.write_json("frame.json")
+        frame2 = ObjectContainer.from_json("frame.json")
+        print(frame2.__class__)  # Frame, not ObjectContainer
+        ```
+
     Attributes:
         objects: a list of objects
     '''
