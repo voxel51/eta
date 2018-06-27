@@ -51,9 +51,9 @@ class DataContainer(Serializable):
 
     # The class of the data stored in the container
     _DATA_CLS = None
-    # The name of the attribute that the container will use to actually store
-    # the data in the container
-    _DATA_ATTR = "data"
+
+    # The name of the attribute that will store the data in the container
+    _DATA_ATTR = None
 
     def __init__(self, **kwargs):
         '''Constructs a DataContainer.
