@@ -18,6 +18,7 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+from collections import OrderedDict
 import os
 
 from eta.core.geometry import BoundingBox
@@ -31,6 +32,18 @@ class ObjectContainer(Serializable):
 
     This class should not be instantiated directly. Instead a subclass should
     be created for each type of object to be stored.
+
+    By default, ObjectContainer subclasses embed their class names and
+    underlying object class names in their JSON representations, so object
+    containers can be read reflectively from disk.
+
+    Examples:
+        ```
+        frame = Frame(...)
+        frame.write_json("frame.json")
+        frame2 = ObjectContainer.from_json("frame.json")
+        print(frame2.__class__)  # Frame, not ObjectContainer
+        ```
 
     Attributes:
         objects: a list of objects
@@ -50,6 +63,20 @@ class ObjectContainer(Serializable):
 
     def __iter__(self):
         return iter(self.objects)
+
+    def attributes(self):
+        return ["_CLS", "_OBJ_CLS", "objects"]
+
+    def serialize(self):
+        '''Custom serialization implementation for ObjectContainers that embeds
+        the class name and the object class name in the JSON to enable
+        reflective parsing when reading from disk.
+        '''
+        d = OrderedDict()
+        d["_CLS"] = etau.get_class_name(self)
+        d["_OBJ_CLS"] = etau.get_class_name(self._OBJ_CLS)
+        d["objects"] = [o.serialize() for o in self.objects]
+        return d
 
     @classmethod
     def get_object_class(cls):
@@ -103,9 +130,22 @@ class ObjectContainer(Serializable):
 
     @classmethod
     def from_dict(cls, d):
-        '''Constructs an ObjectContainer from a JSON dictionary.'''
-        cls._validate()
-        return cls(objects=[cls._OBJ_CLS.from_dict(do) for do in d["objects"]])
+        '''Constructs an ObjectContainer from a JSON dictionary.
+
+        If the JSON contains the reflective `_CLS` and `_OBJ_CLS` fields, they
+        are used to infer the underlying object classes, and this method can
+        be invoked as `ObjectContainer.from_dict`. Otherwise, this method must
+        be called on a concrete subclass of `ObjectContainer`.
+        '''
+        if "_CLS" in d and "_OBJ_CLS" in d:
+            # Parse reflectively
+            cls = etau.get_class(d["_CLS"])
+            obj_cls = etau.get_class(d["_OBJ_CLS"])
+        else:
+            # Parse using provided class
+            cls._validate()
+            obj_cls = cls._OBJ_CLS
+        return cls(objects=[obj_cls.from_dict(do) for do in d["objects"]])
 
     @classmethod
     def _validate(cls):

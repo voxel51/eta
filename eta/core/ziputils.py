@@ -2,6 +2,13 @@
 '''
 Utility functions for working with zipped directories of files.
 
+Note that this module is not intended to provide general purpose zip-related
+utilities such as zipping and extracting arbitrary files and directories.
+For such functionality, see `eta.core.utils`. Rather, this module is
+specifically designed to automate the processing of parallel files and
+directories that arise when ETA modules support both both single inputs or zip
+files containing multiple inputs of the same type.
+
 Copyright 2017-2018, Voxel51, LLC
 voxel51.com
 
