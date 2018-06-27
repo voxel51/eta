@@ -84,6 +84,9 @@ class DataContainer(Serializable):
 
         setattr(self, self._DATA_ATTR, data)
 
+    def __getitem__(self, index):
+        return self._data.__getitem__(index)
+
     def __iter__(self):
         return iter(self._data)
 
