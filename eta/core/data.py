@@ -177,7 +177,10 @@ class DataContainer(Serializable):
             # Parse using provided class
             cls._validate()
             data_cls = cls._DATA_CLS
-        return cls(data=[data_cls.from_dict(dd) for dd in d["data"]])
+        return cls(**{
+            cls._DATA_ATTR:
+            [data_cls.from_dict(dd) for dd in d[cls._DATA_ATTR]]
+        })
 
     @classmethod
     def _validate(cls):
