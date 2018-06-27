@@ -85,24 +85,31 @@ class DataContainer(Serializable):
         setattr(self, self._DATA_ATTR, data)
 
     def __iter__(self):
-        return iter(self.data)
+        return iter(self._data)
 
     def attributes(self):
-        return ["_CLS", "_DATA_CLS", "data"]
+        return ["_CLS", "_DATA_CLS", "_DATA_ATTR", self._DATA_ATTR]
 
     @property
     def _CLS(self):
         return etau.get_class_name(self)
 
+    @property
+    def _data(self):
+        '''Convenience accessor to get the list of data instances stored
+        independent of what the name of that attribute is.
+        '''
+        return getattr(self, self._DATA_ATTR)
+
     def serialize(self):
         '''Custom serialization implementation for DataContainers that embeds
-        the class name and the data class name in the JSON to enable
+        the class name, and the data class name in the JSON to enable
         reflective parsing when reading from disk.
         '''
         d = OrderedDict()
         d["_CLS"] = etau.get_class_name(self)
         d["_DATA_CLS"] = etau.get_class_name(self._DATA_CLS)
-        d["data"] = [o.serialize() for o in self.data]
+        d[self._DATA_ATTR] = [o.serialize() for o in self._data]
         return d
 
     @classmethod
@@ -113,7 +120,7 @@ class DataContainer(Serializable):
     @property
     def num(self):
         '''The number of data instances in the container.'''
-        return len(self.data)
+        return len(self._data)
 
     def add(self, instance):
         '''Adds a data instance to the container.
@@ -121,7 +128,7 @@ class DataContainer(Serializable):
         Args:
             instance: an instance for this container
         '''
-        self.data.append(instance)
+        self._data.append(instance)
 
     def get_matches(self, filters, match=any):
         '''Returns a data container containing only instances that match the
@@ -135,12 +142,10 @@ class DataContainer(Serializable):
                 filter to decide whether a match has occurred. The default is
                 `any`
         '''
-        return self.__class__(
-            data=list(filter(
-                lambda o: match(f(o) for f in filters),
-                self.data,
-            )),
-        )
+        return self.__class__(**{
+            self._DATA_ATTR:
+            list(filter(lambda o: match(f(o) for f in filters), self._data))
+        })
 
     def count_matches(self, filters, match=any):
         '''Counts number of data instances that match the filters.
@@ -153,7 +158,7 @@ class DataContainer(Serializable):
                 filter to decide whether a match has occurred. The default is
                 `any`
         '''
-        return len(self.get_matches(filters, match=match).data)
+        return self.get_matches(filters, match=match).num
 
     @classmethod
     def from_dict(cls, d):
