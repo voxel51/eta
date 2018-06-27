@@ -1,5 +1,5 @@
 '''
-Core data structures for working with objects in images.
+Core data structures for working with detected objects in images.
 
 Copyright 2017-2018, Voxel51, LLC
 voxel51.com
@@ -18,57 +18,19 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-from collections import OrderedDict
-
 from eta.core.data import DataContainer
 from eta.core.geometry import BoundingBox
 from eta.core.serial import Serializable
-import eta.core.utils as etau
 
 
 class ObjectContainer(DataContainer):
     '''Base class for containers that store lists of objects.
 
-    This class should not be instantiated directly. Instead a subclass should
-    be created for each type of object to be stored.
-
-    By default, ObjectContainer subclasses embed their class names and
-    underlying object class names in their JSON representations, so object
-    containers can be read reflectively from disk.
-
-    Examples:
-        ```
-        frame = Frame(...)
-        frame.write_json("frame.json")
-        frame2 = ObjectContainer.from_json("frame.json")
-        print(frame2.__class__)  # Frame, not ObjectContainer
-        ```
-
-    Attributes:
-        objects: a list of objects
+    Subclasses must set the `_DATA_CLS` attribute.
     '''
 
-    # The class of the objects stored in the container
     _DATA_CLS = None
     _DATA_ATTR = "objects"
-
-    @classmethod
-    def get_object_class(cls):
-        '''Gets the class of object stored in this container.'''
-        return cls._DATA_CLS
-
-    @property
-    def num_objects(self):
-        '''The number of objects in the container.'''
-        return len(self.objects)
-
-    @classmethod
-    def _validate(cls):
-        if cls._DATA_CLS is None:
-            raise ValueError(
-                "_DATA_CLS is None; note that you cannot instantiate "
-                "ObjectContainer directly."
-            )
 
 
 class DetectedObject(Serializable):
