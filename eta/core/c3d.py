@@ -63,6 +63,7 @@ def get_first_k_frames(inpath, k, embedding_frame_size):
     np_arr_data = np.array(data).astype(np.float32)
     return np_arr_data
 
+
 def uniformly_sample_k_frames(inpath, k, embedding_frame_size):
     '''Uniformly sample k frames, always including the first frame. Return
     a numpy array of size [k, embedding_frame_siz, embedding_frame_size]
@@ -92,6 +93,7 @@ def uniformly_sample_k_frames(inpath, k, embedding_frame_size):
             data.append(img)
     np_arr_data = np.array(data).astype(np.float32)
     return np_arr_data
+
 
 def sliding_window_k_size_n_step(inpath, k, n, embedding_frame_size):
     '''Sample video clips using sliding window of size k and stride n. Return a
