@@ -1,8 +1,8 @@
 '''
 TensorFlow implementation of the popular C3D network.
 
-This module extends and add functionality to the original C3D implementation
-by Hou Xin.
+This implementation is hard-coded for the model architecture and weights that
+Hou Xin originally trained for the 101 classes from UCF101.
 
 C3D implementation in TensorFlow:
 https://github.com/hx173149/C3D-tensorflow
