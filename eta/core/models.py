@@ -683,7 +683,7 @@ class Model(Serializable):
         if not self.has_version:
             return self.base_filename
         base, ext = os.path.splitext(self.base_filename)
-        return base + "-" + self.version + ext
+        return base + "-v" + self.version + ext
 
     @property
     def has_version(self):
