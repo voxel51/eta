@@ -241,23 +241,6 @@ class C3DFeaturizer(Featurizer):
         '''The dimension of the features extracted by this Featurizer.'''
         return 4096
 
-    def sample_clips(self, inpath):
-        if self.config.sample_method == "first":
-            clips = etav.sample_first_frames(inpath, 16)
-        elif self.config.sample_method == "uniform":
-            clips = etav.uniformly_sample_frames(inpath, 16)
-        elif self.config.sample_method == "sliding_window":
-            if not self.config.stride:
-                raise ValueError(
-                    "A stride must be provided when sample_method is "
-                    "'sliding_window'")
-            clips = etav.sliding_window_sample_frames(
-                inpath, 16, self.config.stride)
-        else:
-            raise ValueError(
-                "Invalid sample_method '%s'" % self.config.sample_method)
-        return clips
-
     def _start(self):
         '''Starts a TensorFlow session and loads the network.'''
         if self.c3d is None:
@@ -268,11 +251,48 @@ class C3DFeaturizer(Featurizer):
         self.c3d.close()
         self.c3d = None
 
-    def _featurize(self, clips):
+    def featurize(self, video_path):
+        '''Featurizes the input video using C3D.
+
+        Attributes:
+            video_path: the input video path
+
+        Returns:
+            the feature vector, a 1D numpy array of length 4096
+        '''
+        self.start(warn_on_restart=False, keep_alive=False)
+        v = self._featurize(video_path)
+        if self._keep_alive is False:
+            self.stop()
+
+        return v
+
+    def _featurize(self, video_path):
+        clips = self._sample_clips(video_path)
+
         features = self.c3d.evaluate(clips, layer=self.c3d.fc6)
         if self.config.sample_method == "sliding_window":
             # Average over sliding window clips
             features = np.mean(features, axis=0, keepdims=True)
             features /= np.linalg.norm(features)
+        else:
+            features = features.reshape(-1)
 
         return features
+
+    def _sample_clips(self, video_path):
+        if self.config.sample_method == "first":
+            clips = etav.sample_first_frames(video_path, 16)
+        elif self.config.sample_method == "uniform":
+            clips = etav.uniformly_sample_frames(video_path, 16)
+        elif self.config.sample_method == "sliding_window":
+            if not self.config.stride:
+                raise ValueError(
+                    "A stride must be provided when sample_method is "
+                    "'sliding_window'")
+            clips = etav.sliding_window_sample_frames(
+                video_path, 16, self.config.stride)
+        else:
+            raise ValueError(
+                "Invalid sample_method '%s'" % self.config.sample_method)
+        return clips
