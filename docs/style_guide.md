@@ -6,8 +6,8 @@ and understand the entire ETA codebase. *When in doubt, follow the existing
 style in the module you are contributing to.*
 
 We mostly follow the [Google Python style](
-https://google.github.io/styleguide/pyguide.html), so please review it before
-contributing.
+https://github.com/google/styleguide/blob/gh-pages/pyguide.md), so please
+review it before contributing.
 
 Here are some highlights of our Python style:
 
