@@ -12,6 +12,32 @@
                 "type": "eta.core.models.ETAModelManager"
             },
             "date_created": "2018-06-20 17:35:53"
+        },
+        {
+            "base_name": "C3D-UCF101",
+            "base_filename": "c3d-ucf101.model",
+            "version": "1.0",
+            "description": "C3D model trained on UCF-101. Source: `C3D UCF101` model from https://github.com/hx173149/C3D-tensorflow",
+            "manager": {
+                "config": {
+                    "google_drive_id": "1HhSNHms-j2ypbpCqiilrVZA-hhtbM8eG"
+                },
+                "type": "eta.core.models.ETAModelManager"
+            },
+            "date_created": "2018-06-27 17:00:39"
+        },
+        {
+            "base_name": "C3D-UCF101",
+            "base_filename": "c3d-ucf101.model",
+            "version": "1.1",
+            "description": "C3D model finely trained on UCF-101. Source: `C3D UCF101 split1` model from https://github.com/hx173149/C3D-tensorflow",
+            "manager": {
+                "config": {
+                    "google_drive_id": "1gN1dxE-M_SuVKkQ9ZeeJTU3JW52KE42q"
+                },
+                "type": "eta.core.models.ETAModelManager"
+            },
+            "date_created": "2018-06-27 17:00:45"
         }
     ]
 }
