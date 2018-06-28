@@ -31,7 +31,6 @@ import math
 import os
 
 import numpy as np
-from sklearn.preprocessing import normalize
 import tensorflow as tf
 
 from eta.core.config import Config
@@ -49,11 +48,6 @@ class C3DConfig(Config):
 
     def __init__(self, d):
         self.model = self.parse_string(d, "model", default="C3D-UCF101")
-        self.batchsize = self.parse_number(d, "batchsize", default=1)
-        self.inpath = self.parse_string(d, "inpath", default="")
-        self.sample_method = self.parse_string(
-            d, "sample_method", default="sliding_window_k_size_n_step")
-        self.stride = self.parse_number(d, "stride", default=8)
 
 
 class C3D(object):
@@ -69,7 +63,7 @@ class C3D(object):
                 tf.Session instance is created, and you are responsible for
                 scalling the close() method of this class when you are done
                 computing
-            clips: an optional tf.placeholder of size [XXXX,
+            clips: an optional tf.placeholder of size [XXXX, 16, 112, 112, 3]
         '''
         self.config = config or C3DConfig.default()
         self.sess = sess or tf.Session()
@@ -119,14 +113,13 @@ class C3D(object):
         self.sess = None
 
     def _build_conv_layers(self):
-        clips = self.clips
         with tf.variable_scope('var_name') as var_scope:
             with tf.name_scope("conv1") as scope:
                 weights = self._variable_with_weight_decay(
                         'wc1', [3, 3, 3, 3, 64], 0.04, 0.00)
                 biases = self._variable_with_weight_decay(
                         'bc1', [64], 0.04, 0.0)
-                conv = self._conv3d(clips, weights, biases)
+                conv = self._conv3d(self.clips, weights, biases)
                 self.conv1 = tf.nn.relu(conv, name=scope)
 
             self.pool1 = self._max_pool('pool1', self.conv1, k=1)
@@ -233,7 +226,12 @@ class C3D(object):
 
 class C3DFeaturizerConfig(C3DConfig):
     ''' C3D Featurization configuration settings that works on images'''
-    pass
+
+    def __init__(self, d):
+        super(C3DFeaturizerConfig, self).__init__(d)
+        self.sample_method = self.parse_string(
+            d, "sample_method", default="sliding_window")
+        self.stride = self.parse_number(d, "stride", default=None)
 
 
 class C3DFeaturizer(Featurizer):
@@ -243,23 +241,28 @@ class C3DFeaturizer(Featurizer):
         super(C3DFeaturizer,self).__init__()
         self.config = config or C3DFeaturizerConfig.default()
         self.validate(self.config)
-        self.sample_method = self.config.sample_method
         self.c3d  = None
 
     def dim(self):
         '''The dimension of the features extracted by this Featurizer.'''
         return 4096
 
-    def sample_imgs(self, inpath):
-        input_path = inpath or self.config.inpath
-        if self.sample_method == 'get_first_k_frames':
-            input_imgs = get_first_k_frames(input_path)
-        elif self.sample_method == 'uniformly_sample_k_frames':
-            input_imgs = uniformly_sample_k_frames(input_path)
+    def sample_clips(self, inpath):
+        if self.config.sample_method == "first":
+            clips = etav.sample_first_frames(inpath, 16)
+        elif self.config.sample_method == "uniform":
+            clips = etav.uniformly_sample_frames(inpath, 16)
+        elif self.config.sample_method == "sliding_window":
+            if not self.config.stride:
+                raise ValueError(
+                    "A stride must be provided when sample_method is "
+                    "'sliding_window'")
+            clips = etav.sliding_window_sample_frames(
+                inpath, 16, self.config.stride)
         else:
-            input_imgs = sliding_window_k_size_n_step(input_path,
-                self.config.stride)
-        return input_imgs
+            raise ValueError(
+                "Invalid sample_method '%s'" % self.config.sample_method)
+        return clips
 
     def _start(self):
         '''Starts a TensorFlow session and loads the network.'''
@@ -267,18 +270,15 @@ class C3DFeaturizer(Featurizer):
             self.c3d = C3D(self.config)
 
     def _stop(self):
+        '''Closes the TensorFlow session and frees up the network.'''
         self.c3d.close()
         self.c3d = None
 
-    def _featurize(self, img):
-        if self.sample_method == 'sliding_window_k_size_n_step':
-            clips = img.shape[0]
-            tmp_feature = np.zeros(self.dim())
-            for i in range(clips):
-                tmp_imgs = img[i]
-                tmp_feature += self.c3d.evaluate(tmp_imgs, layer=self.c3d.fc6)
-            tmp_feature /= clips
-            normalized_avg_feature = normalize(tmp_feature.reshape(1,-1))
-            return normalized_avg_feature
-        else:
-            return self.c3d.evaluate(img, layer=self.c3d.fc6)
+    def _featurize(self, clips):
+        features = self.c3d.evaluate(imgs, layer=self.c3d.fc6)
+        if self.config.sample_method == "sliding_window":
+            # Average over sliding window clips
+            features = np.mean(features, axis=0, keepdims=True)
+            features /= np.linalg.norm(features)
+
+        return features
