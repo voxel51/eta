@@ -134,13 +134,14 @@ def sliding_window_k_size_n_step(inpath, k, n, embedding_frame_size):
 
 class C3DConfig(Config):
     '''Configuration settings for the C3D network.'''
+
     def __init__(self, d):
         self.model = self.parse_string(d, "model", default="C3D-UCF101")
         self.dropout = self.parse_number(d, "dropout", default=0.6)
         self.batchsize = self.parse_number(d, "batchsize", default=1)
         self.inpath = self.parse_string(d, "inpath", default="")
-        self.embedding_frame_size = self.parse_number(d, "embedding_frame_size",
-            default=112)
+        self.embedding_frame_size = self.parse_number(d,
+            "embedding_frame_size", default=112)
         self.sample_method = self.parse_string(d, "sample_method",
             default="sliding_window_k_size_n_step")
         self.num_frames_per_clip = self.parse_number(d, "num_frames_per_clip",
@@ -149,7 +150,8 @@ class C3DConfig(Config):
 
 
 class C3D(object):
-    '''C3D network structure hardcoded in TensorFlow.'''
+    '''C3D network structure in TensorFlow.'''
+
     def __init__(self, config=None, sess=None, clips=None):
         '''Builds a new C3D network
 
@@ -160,11 +162,11 @@ class C3D(object):
                 tf.Session instance is created, and you are responsible for
                 scalling the close() method of this class when you are done
                 computing
-            clips: an optional tf.placeholder of size [XXXX, num_frames_per_clip,
-                embedding_frame_size, embedding_frame_size, 3] to
-                use. By default, a placeholder of size [None, num_frames_per_clip,
-                embedding_frame_size, embedding_frame_size, 3] is
-                used so you can evaluate any number of images at once
+            clips: an optional tf.placeholder of size [XXXX,
+            num_frames_per_clip,embedding_frame_size, embedding_frame_size, 3]
+            to use. By default, a placeholder of size [None,
+            num_frames_per_clip, embedding_frame_size, embedding_frame_size, 3]
+            is used so you can evaluate any number of images at once
         '''
         self.config = config or C3DConfig.default()
         self.sess = sess or tf.Session()
@@ -271,29 +273,36 @@ class C3D(object):
         pool2 = self._max_pool('pool2', conv2, k=2)
 
         # Convolution Layer
-        conv3 = self._conv3d('conv3a', pool2, _weights['wc3a'], _biases['bc3a'])
+        conv3 = self._conv3d('conv3a', pool2, _weights['wc3a'],
+            _biases['bc3a'])
         conv3 = tf.nn.relu(conv3, 'relu3a')
-        conv3 = self._conv3d('conv3b', conv3, _weights['wc3b'], _biases['bc3b'])
+        conv3 = self._conv3d('conv3b', conv3, _weights['wc3b'],
+            _biases['bc3b'])
         conv3 = tf.nn.relu(conv3, 'relu3b')
         pool3 = self._max_pool('pool3', conv3, k=2)
 
         # Convolution Layer
-        conv4 = self._conv3d('conv4a', pool3, _weights['wc4a'], _biases['bc4a'])
+        conv4 = self._conv3d('conv4a', pool3, _weights['wc4a'],
+            _biases['bc4a'])
         conv4 = tf.nn.relu(conv4, 'relu4a')
-        conv4 = self._conv3d('conv4b', conv4, _weights['wc4b'], _biases['bc4b'])
+        conv4 = self._conv3d('conv4b', conv4, _weights['wc4b'],
+            _biases['bc4b'])
         conv4 = tf.nn.relu(conv4, 'relu4b')
         pool4 = self._max_pool('pool4', conv4, k=2)
 
         # Convolution Layer
-        conv5 = self._conv3d('conv5a', pool4, _weights['wc5a'], _biases['bc5a'])
+        conv5 = self._conv3d('conv5a', pool4, _weights['wc5a'],
+            _biases['bc5a'])
         conv5 = tf.nn.relu(conv5, 'relu5a')
-        conv5 = self._conv3d('conv5b', conv5, _weights['wc5b'], _biases['bc5b'])
+        conv5 = self._conv3d('conv5b', conv5, _weights['wc5b'],
+            _biases['bc5b'])
         conv5 = tf.nn.relu(conv5, 'relu5b')
         pool5 = self._max_pool('pool5', conv5, k=2)
 
         # Fully connected layer
         pool5 = tf.transpose(pool5, perm=[0, 1, 4, 2, 3])
-        dense1 = tf.reshape(pool5, [1, _weights['wd1'].get_shape().as_list()[0]])
+        dense1 = tf.reshape(pool5, [1,
+            _weights['wd1'].get_shape().as_list()[0]])
         # Reshape conv3 output to fit dense layer input
         dense1 = tf.matmul(dense1, _weights['wd1']) + _biases['bd1']
 
@@ -301,8 +310,8 @@ class C3D(object):
         dense1 = tf.nn.dropout(self.fc6, _dropout)
 
         # Relu activation
-        dense2 = tf.nn.relu(tf.matmul(dense1, _weights['wd2']) + _biases['bd2'],
-            name='fc2')
+        dense2 = tf.nn.relu(tf.matmul(dense1, _weights['wd2']) +
+            _biases['bd2'], name='fc2')
 
         dense2 = tf.nn.dropout(dense2, _dropout)
 
@@ -321,6 +330,8 @@ class C3DFeaturizerConfig(C3DConfig):
 
 
 class C3DFeaturizer(Featurizer):
+    '''Featurizer for videos using the C3D network structure.'''
+
     def __init__(self, config=None):
         super(C3DFeaturizer,self).__init__()
         self.config = config or C3DFeaturizerConfig.default()
@@ -336,10 +347,12 @@ class C3DFeaturizer(Featurizer):
         input_path = inpath or self.config.inpath
         if self.sample_method == 'get_first_k_frames':
             input_imgs = get_first_k_frames(input_path,
-                self.config.num_frames_per_clip,self.config.embedding_frame_size)
+                self.config.num_frames_per_clip,
+                self.config.embedding_frame_size)
         elif self.sample_method == 'uniformly_sample_k_frames':
             input_imgs = uniformly_sample_k_frames(input_path,
-                self.config.num_frames_per_clip,self.config.embedding_frame_size)
+                self.config.num_frames_per_clip,
+                self.config.embedding_frame_size)
         else:
             input_imgs = sliding_window_k_size_n_step(input_path,
                 self.config.num_frames_per_clip, self.config.stride,
