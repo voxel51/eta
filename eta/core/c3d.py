@@ -89,7 +89,7 @@ def uniformly_sample_k_frames(inpath, k, embedding_frame_size):
     with etav.FFmpegVideoReader(inpath, frames=rng) as vr:
         for img in vr:
             img = etai.resize(img, embedding_frame_size,
-                embedding_frame_size)
+                              embedding_frame_size)
             data.append(img)
     np_arr_data = np.array(data).astype(np.float32)
     return np_arr_data
@@ -122,7 +122,7 @@ def sliding_window_k_size_n_step(inpath, k, n, embedding_frame_size):
     with etav.FFmpegVideoReader(inpath) as vr:
         for img in vr:
             img = etai.resize(img, embedding_frame_size,
-                embedding_frame_size)
+                              embedding_frame_size)
             data.append(img)
     sampled_clips = []
     for clip in clips:
@@ -142,11 +142,14 @@ class C3DConfig(Config):
         self.dropout = self.parse_number(d, "dropout", default=0.6)
         self.batchsize = self.parse_number(d, "batchsize", default=1)
         self.inpath = self.parse_string(d, "inpath", default="")
-        self.embedding_frame_size = self.parse_number(d,
-            "embedding_frame_size", default=112)
-        self.sample_method = self.parse_string(d, "sample_method",
+        self.embedding_frame_size = self.parse_number(
+            d,"embedding_frame_size",
+            default=112)
+        self.sample_method = self.parse_string(
+            d, "sample_method",
             default="sliding_window_k_size_n_step")
-        self.num_frames_per_clip = self.parse_number(d, "num_frames_per_clip",
+        self.num_frames_per_clip = self.parse_number(
+            d, "num_frames_per_clip",
             default=16)
         self.stride = self.parse_number(d, "stride", default=8)
 
@@ -172,7 +175,8 @@ class C3D(object):
         '''
         self.config = config or C3DConfig.default()
         self.sess = sess or tf.Session()
-        self.clips = clips or tf.placeholder(tf.float32, [None,
+        self.clips = clips or tf.placeholder(
+            tf.float32,[None,
             self.config.num_frames_per_clip,self.config.embedding_frame_size,
             self.config.embedding_frame_size, 3])
         self.build_c3d(self.clips, self.config.dropout, self.config.batchsize)
@@ -188,11 +192,12 @@ class C3D(object):
 
     def _conv3d(self, name, l_input, w, b):
         return tf.nn.bias_add(
-            tf.nn.conv3d(l_input, w, strides=[1, 1, 1, 1, 1], padding='SAME'),
-            b)
+            tf.nn.conv3d(
+            l_input, w, strides=[1, 1, 1, 1, 1], padding='SAME'),b)
 
     def _max_pool(self, name, l_input, k):
-        return tf.nn.max_pool3d(l_input, ksize=[1, k, 2, 2, 1],
+        return tf.nn.max_pool3d(
+            l_input, ksize=[1, k, 2, 2, 1],
             strides=[1, k, 2, 2, 1], padding='SAME', name=name)
 
     def evaluate(self, clips, layer=None):
@@ -217,106 +222,97 @@ class C3D(object):
     def build_c3d(self, _X, _dropout, batch_size,):
         with tf.variable_scope('var_name') as var_scope:
             _weights = {
-                'wc1': self._variable_with_weight_decay('wc1',
-                    [3, 3, 3, 3, 64],0.04, 0.00),
-                'wc2': self._variable_with_weight_decay('wc2',
-                    [3, 3, 3, 64, 128],0.04, 0.00),
-                'wc3a': self._variable_with_weight_decay('wc3a',
-                    [3, 3, 3, 128, 256], 0.04, 0.00),
-                'wc3b': self._variable_with_weight_decay('wc3b',
-                    [3, 3, 3, 256, 256], 0.04, 0.00),
-                'wc4a': self._variable_with_weight_decay('wc4a',
-                    [3, 3, 3, 256, 512], 0.04, 0.00),
-                'wc4b': self._variable_with_weight_decay('wc4b',
-                    [3, 3, 3, 512, 512], 0.04, 0.00),
-                'wc5a': self._variable_with_weight_decay('wc5a',
-                    [3, 3, 3, 512, 512], 0.04, 0.00),
-                'wc5b': self._variable_with_weight_decay('wc5b',
-                    [3, 3, 3, 512, 512], 0.04, 0.00),
-                'wd1': self._variable_with_weight_decay('wd1',
-                    [8192, 4096], 0.04, 0.001),
-                'wd2': self._variable_with_weight_decay('wd2',
-                    [4096, 4096], 0.04, 0.002),
-                'out': self._variable_with_weight_decay('wout',
-                    [4096, 101], 0.04, 0.005)
+                'wc1': self._variable_with_weight_decay(
+                    'wc1', [3, 3, 3, 3, 64],0.04, 0.00),
+                'wc2': self._variable_with_weight_decay(
+                    'wc2', [3, 3, 3, 64, 128],0.04, 0.00),
+                'wc3a': self._variable_with_weight_decay(
+                    'wc3a', [3, 3, 3, 128, 256], 0.04, 0.00),
+                'wc3b': self._variable_with_weight_decay(
+                    'wc3b', [3, 3, 3, 256, 256], 0.04, 0.00),
+                'wc4a': self._variable_with_weight_decay(
+                    'wc4a', [3, 3, 3, 256, 512], 0.04, 0.00),
+                'wc4b': self._variable_with_weight_decay(
+                    'wc4b', [3, 3, 3, 512, 512], 0.04, 0.00),
+                'wc5a': self._variable_with_weight_decay(
+                    'wc5a', [3, 3, 3, 512, 512], 0.04, 0.00),
+                'wc5b': self._variable_with_weight_decay(
+                    'wc5b', [3, 3, 3, 512, 512], 0.04, 0.00),
+                'wd1': self._variable_with_weight_decay(
+                    'wd1', [8192, 4096], 0.04, 0.001),
+                'wd2': self._variable_with_weight_decay(
+                    'wd2', [4096, 4096], 0.04, 0.002),
+                'out': self._variable_with_weight_decay(
+                    'wout', [4096, 101], 0.04, 0.005)
                 }
             _biases = {
-                'bc1': self._variable_with_weight_decay('bc1',
-                    [64], 0.04, 0.0),
-                'bc2': self._variable_with_weight_decay('bc2',
-                    [128], 0.04, 0.0),
-                'bc3a': self._variable_with_weight_decay('bc3a',
-                    [256], 0.04, 0.0),
-                'bc3b': self._variable_with_weight_decay('bc3b',
-                    [256], 0.04, 0.0),
-                'bc4a': self._variable_with_weight_decay('bc4a',
-                    [512], 0.04, 0.0),
-                'bc4b': self._variable_with_weight_decay('bc4b',
-                    [512], 0.04, 0.0),
-                'bc5a': self._variable_with_weight_decay('bc5a',
-                    [512], 0.04, 0.0),
-                'bc5b': self._variable_with_weight_decay('bc5b',
-                    [512], 0.04, 0.0),
-                'bd1': self._variable_with_weight_decay('bd1',
-                    [4096], 0.04, 0.0),
-                'bd2': self._variable_with_weight_decay('bd2',
-                    [4096], 0.04, 0.0),
-                'out': self._variable_with_weight_decay('bout',
-                    [101], 0.04, 0.0),
+                'bc1': self._variable_with_weight_decay(
+                    'bc1', [64], 0.04, 0.0),
+                'bc2': self._variable_with_weight_decay(
+                    'bc2', [128], 0.04, 0.0),
+                'bc3a': self._variable_with_weight_decay(
+                    'bc3a', [256], 0.04, 0.0),
+                'bc3b': self._variable_with_weight_decay(
+                    'bc3b', [256], 0.04, 0.0),
+                'bc4a': self._variable_with_weight_decay(
+                    'bc4a', [512], 0.04, 0.0),
+                'bc4b': self._variable_with_weight_decay(
+                    'bc4b', [512], 0.04, 0.0),
+                'bc5a': self._variable_with_weight_decay(
+                    'bc5a', [512], 0.04, 0.0),
+                'bc5b': self._variable_with_weight_decay(
+                    'bc5b', [512], 0.04, 0.0),
+                'bd1': self._variable_with_weight_decay(
+                    'bd1', [4096], 0.04, 0.0),
+                'bd2': self._variable_with_weight_decay(
+                    'bd2', [4096], 0.04, 0.0),
+                'out': self._variable_with_weight_decay(
+                    'bout', [101], 0.04, 0.0),
                 }
         # Convolution Layer
         conv1 = self._conv3d('conv1', _X, _weights['wc1'], _biases['bc1'])
         conv1 = tf.nn.relu(conv1, 'relu1')
         pool1 = self._max_pool('pool1', conv1, k=1)
-
         # Convolution Layer
         conv2 = self._conv3d('conv2', pool1, _weights['wc2'], _biases['bc2'])
         conv2 = tf.nn.relu(conv2, 'relu2')
         pool2 = self._max_pool('pool2', conv2, k=2)
-
         # Convolution Layer
-        conv3 = self._conv3d('conv3a', pool2, _weights['wc3a'],
-            _biases['bc3a'])
+        conv3 = self._conv3d(
+            'conv3a', pool2, _weights['wc3a'], _biases['bc3a'])
         conv3 = tf.nn.relu(conv3, 'relu3a')
-        conv3 = self._conv3d('conv3b', conv3, _weights['wc3b'],
-            _biases['bc3b'])
+        conv3 = self._conv3d(
+            'conv3b', conv3, _weights['wc3b'], _biases['bc3b'])
         conv3 = tf.nn.relu(conv3, 'relu3b')
         pool3 = self._max_pool('pool3', conv3, k=2)
-
         # Convolution Layer
-        conv4 = self._conv3d('conv4a', pool3, _weights['wc4a'],
-            _biases['bc4a'])
+        conv4 = self._conv3d(
+            'conv4a', pool3, _weights['wc4a'], _biases['bc4a'])
         conv4 = tf.nn.relu(conv4, 'relu4a')
-        conv4 = self._conv3d('conv4b', conv4, _weights['wc4b'],
-            _biases['bc4b'])
+        conv4 = self._conv3d(
+            'conv4b', conv4, _weights['wc4b'], _biases['bc4b'])
         conv4 = tf.nn.relu(conv4, 'relu4b')
         pool4 = self._max_pool('pool4', conv4, k=2)
-
         # Convolution Layer
-        conv5 = self._conv3d('conv5a', pool4, _weights['wc5a'],
-            _biases['bc5a'])
+        conv5 = self._conv3d(
+            'conv5a', pool4, _weights['wc5a'], _biases['bc5a'])
         conv5 = tf.nn.relu(conv5, 'relu5a')
-        conv5 = self._conv3d('conv5b', conv5, _weights['wc5b'],
-            _biases['bc5b'])
+        conv5 = self._conv3d(
+            'conv5b', conv5, _weights['wc5b'], _biases['bc5b'])
         conv5 = tf.nn.relu(conv5, 'relu5b')
         pool5 = self._max_pool('pool5', conv5, k=2)
-
         # Fully connected layer
         pool5 = tf.transpose(pool5, perm=[0, 1, 4, 2, 3])
-        dense1 = tf.reshape(pool5, [1,
-            _weights['wd1'].get_shape().as_list()[0]])
+        dense1 = tf.reshape(
+            pool5, [1,_weights['wd1'].get_shape().as_list()[0]])
         # Reshape conv3 output to fit dense layer input
         dense1 = tf.matmul(dense1, _weights['wd1']) + _biases['bd1']
-
         self.fc6 = tf.nn.relu(dense1, name='fc1') # Relu activation
         dense1 = tf.nn.dropout(self.fc6, _dropout)
-
         # Relu activation
-        dense2 = tf.nn.relu(tf.matmul(dense1, _weights['wd2']) +
-            _biases['bd2'], name='fc2')
-
+        dense2 = tf.nn.relu(
+            tf.matmul(dense1, _weights['wd2']) + _biases['bd2'], name='fc2')
         dense2 = tf.nn.dropout(dense2, _dropout)
-
         # Output: class prediction
         self.out = tf.matmul(dense2, _weights['out']) + _biases['out']
 
@@ -348,15 +344,16 @@ class C3DFeaturizer(Featurizer):
     def sample_imgs(self, inpath):
         input_path = inpath or self.config.inpath
         if self.sample_method == 'get_first_k_frames':
-            input_imgs = get_first_k_frames(input_path,
-                self.config.num_frames_per_clip,
+            input_imgs = get_first_k_frames(
+                input_path, self.config.num_frames_per_clip,
                 self.config.embedding_frame_size)
         elif self.sample_method == 'uniformly_sample_k_frames':
-            input_imgs = uniformly_sample_k_frames(input_path,
-                self.config.num_frames_per_clip,
+            input_imgs = uniformly_sample_k_frames(
+                input_path, self.config.num_frames_per_clip,
                 self.config.embedding_frame_size)
         else:
-            input_imgs = sliding_window_k_size_n_step(input_path,
+            input_imgs = sliding_window_k_size_n_step(
+                input_path,
                 self.config.num_frames_per_clip, self.config.stride,
                 self.config.embedding_frame_size)
         return input_imgs
