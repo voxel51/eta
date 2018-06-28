@@ -1,18 +1,15 @@
 '''
-Tensorflow implementation of the popular VGG-16 network.
+TensorFlow implementation of the popular VGG-16 network.
 
 This implementation is hard-coded for the model architecture and weights that
 Frossard originally trained for the 1000 classes from ImageNet.
 
 VGG-16 implementation in TensorFlow:
-http://www.cs.toronto.edu/~frossard/post/vgg16/
+http://www.cs.toronto.edu/~frossard/post/vgg16
 David Frossard, 2016
 
 Model architecture:
 https://gist.github.com/ksimonyan/211839e770f7b538e2d8#file-readme-md
-
-Model weights (from Caffe):
-https://github.com/ethereon/caffe-tensorflow
 
 Copyright 2017-2018, Voxel51, LLC
 voxel51.com

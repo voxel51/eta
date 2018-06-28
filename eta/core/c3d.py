@@ -1,16 +1,18 @@
 '''
-Extends and add functionality to the original C3D implementation by Hou Xin.
+TensorFlow implementation of the popular C3D network.
 
-Hou Xin, 2016
-C3D implementation in TensorFlow
+This module extends and add functionality to the original C3D implementation
+by Hou Xin.
+
+C3D implementation in TensorFlow:
 https://github.com/hx173149/C3D-tensorflow
-
-Model from https://www.dropbox.com/sh/8wcjrcadx4r31ux/AAAkz3dQ706pPO8ZavrztRCca?dl=0
+Hou Xin, 2016
 
 Copyright 2018, Voxel51, LLC
 voxel51.com
 
 Yixin Jin, yixin@voxel51.com
+Brian Moore, brian@voxel51.com
 '''
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
