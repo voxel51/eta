@@ -418,12 +418,20 @@ def register_model_dry_run(name, base_filename, models_dir):
 
     # Verify novelty
     logger.info("Verifying that model '%s' does not yet exist", name)
-    if name in list_models():
+    models = _list_models()[0]
+    base_names = [mm[0].base_name for mm in itervalues(models)]
+    if name in models:
         raise ModelError("Model '%s' already exists" % name)
-    if base_name in list_models():
+    if name in base_names:
+        raise ModelError(
+            "A versioned model with base name '%s' already exists, and "
+            "publishing a versionless model with the same name as a versioned "
+            "model can lead to unexpected behavior. Please choose another "
+            "model name." % name)
+    if base_name in models:
         raise ModelError(
             "A versionless model with name '%s' already exists, and "
-            "publishing a versioned model with the same as a versionless "
+            "publishing a versioned model with the same name as a versionless "
             "model can lead to unexpected behavior. Please choose another "
             "model name." % base_name)
 
