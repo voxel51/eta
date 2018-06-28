@@ -217,7 +217,7 @@ class Container(Serializable):
     _ELE_CLS = None
 
     # The name of the attribute that will store the elements in the container
-    _ELE_ATTR = "elements"
+    _ELE_ATTR = None
 
     def __init__(self, **kwargs):
         '''Constructs a Container.
@@ -225,9 +225,7 @@ class Container(Serializable):
         Args:
             <element>: an optional list of elements to store in the container.
             The appropriate name of this keyword argument is determined by the
-            `_ELE_ATTR` member of the container class.  If a subclass chooses
-            not to override this attribute, then the default keyword is
-            "elements"
+            `_ELE_ATTR` member of the container class.
 
         Raises:
             ContainerError: if there was a problem parsing the input
@@ -263,59 +261,59 @@ class Container(Serializable):
 
     @classmethod
     def _validate(cls):
-        if cls._DATA_CLS is None:
-            raise DataContainerError(
-                "_DATA_CLS is None; note that you cannot instantiate "
-                "DataContainer directly.")
-        if cls._DATA_ATTR is None:
-            raise DataContainerError(
-                "_DATA_ATTR is None; note that you cannot instantiate "
-                "DataContainer directly.")
+        if cls._ELE_CLS is None:
+            raise ContainerError(
+                "_ELE_CLS is None; note that you cannot instantiate Container"
+                " directly.")
+        if cls._ELE_ATTR is None:
+            raise ContainerError(
+                "_ELE_ATTR is None; note that you cannot instantiate "
+                "Container directly.")
 
     def add(self, instance):
-        '''Adds a data instance to the container.
+        '''Adds an element to the container.
 
         Args:
-            instance: an instance of `_DATA_CLS`
+            instance: an instance of `_ELE_CLS`
         '''
-        self._data.append(instance)
+        self._elements.append(instance)
 
     def attributes(self):
-        return ["_CLS", "_DATA_CLS", self._DATA_ATTR]
+        return ["_CLS", "_ELE_CLS", self._DATA_ATTR]
 
     def count_matches(self, filters, match=any):
-        '''Counts number of data instances that match the filters.
+        '''Counts number of elements that match the filters.
 
         Args:
-            filters: a list of functions that accept data instances and return
+            filters: a list of functions that accept elements and return
                 True/False
             match: a function (usually `any` or `all`) that accepts an iterable
                 and returns True/False. Used to aggregate the outputs of each
                 filter to decide whether a match has occurred. The default is
                 `any`
         '''
-        return self.get_matches(filters, match=match).num
+        return self.get_matches(filters, match=match).size
 
     @classmethod
     def from_dict(cls, d):
-        '''Constructs an DataContainer from a JSON dictionary.
+        '''Constructs an Container from a JSON dictionary.
 
-        If the JSON contains the reflective `_CLS` and `_DATA_CLS` fields, they
-        are used to infer the underlying data classes, and this method can
-        be invoked as `DataContainer.from_dict`. Otherwise, this method must
-        be called on a concrete subclass of `DataContainer`.
+        If the JSON contains the reflective `_CLS` and `_ELE_CLS` fields, they
+        are used to infer the underlying element classes, and this method can
+        be invoked as `Container.from_dict`. Otherwise, this method must be
+        called on a concrete subclass of `Container`.
         '''
-        if "_CLS" in d and "_DATA_CLS" in d:
+        if "_CLS" in d and "_ELE_CLS" in d:
             # Parse reflectively
             cls = etau.get_class(d["_CLS"])
-            data_cls = etau.get_class(d["_DATA_CLS"])
+            ele_cls = etau.get_class(d["_ELE_CLS"])
         else:
             # Parse using provided class
             cls._validate()
-            data_cls = cls._DATA_CLS
+            ele_cls = cls._ELE_CLS
         return cls(**{
-            cls._DATA_ATTR:
-            [data_cls.from_dict(dd) for dd in d[cls._DATA_ATTR]]
+            cls._ELE_ATTR:
+            [ele_cls.from_dict(dd) for dd in d[cls._ELE_ATTR]]
         })
 
     @classmethod
@@ -324,23 +322,23 @@ class Container(Serializable):
         return etau.get_class_name(cls)
 
     @classmethod
-    def get_data_class(cls):
-        '''Gets the class of data instances stored in this container.'''
-        return cls._DATA_CLS
+    def get_element_class(cls):
+        '''Gets the class of elements stored in this container.'''
+        return cls._ELE_CLS
 
     @classmethod
-    def get_data_class_name(cls):
-        '''Returns the fully-qualified class name string of the data in this
-        container.
+    def get_element_class_name(cls):
+        '''Returns the fully-qualified class name string of the elements in
+        this container.
         '''
-        return etau.get_class_name(cls._DATA_CLS)
+        return etau.get_class_name(cls._ELE_CLS)
 
     def get_matches(self, filters, match=any):
-        '''Returns a data container containing only instances that match the
+        '''Returns a container containing only instances that match the
         filters.
 
         Args:
-            filters: a list of functions that accept data instances and return
+            filters: a list of functions that accept elements and return
                 True/False
             match: a function (usually `any` or `all`) that accepts an iterable
                 and returns True/False. Used to aggregate the outputs of each
@@ -348,24 +346,25 @@ class Container(Serializable):
                 `any`
         '''
         return self.__class__(**{
-            self._DATA_ATTR:
-            list(filter(lambda o: match(f(o) for f in filters), self._data))
+            self._ELE_ATTR:
+            list(
+                filter(lambda o: match(f(o) for f in filters), self._elements))
         })
 
     @property
     def size(self):
-        '''Returns the number of data instances in the container.'''
+        '''Returns the number of elements in the container.'''
         return len(self._data)
 
     def serialize(self):
-        '''Custom serialization implementation for DataContainers that embeds
-        the class name, and the data class name in the JSON to enable
-        reflective parsing when reading from disk.
+        '''Custom serialization implementation for Containers that embeds the
+        class name, and the element class name in the JSON to enable reflective
+        parsing when reading from disk.
         '''
         d = OrderedDict()
         d["_CLS"] = self.get_class_name()
-        d["_DATA_CLS"] = self.get_data_class_name()
-        d[self._DATA_ATTR] = [o.serialize() for o in self._data]
+        d["_ELE_CLS"] = self.get_element_class_name()
+        d[self._ELE_ATTR] = [o.serialize() for o in self._elements]
         return d
 
 
