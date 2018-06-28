@@ -274,7 +274,9 @@ def publish_public_model(
     respectively, to use when downloading the model. If you are uploading a
     new version of an existing model, these arguments can be omitted and the
     same values are inherited from the most recent version of the model. If
-    this is a brand new model, these values are required
+    this is a brand new model, the `base_filename` is required, and if a
+    `models_dir` is not provided, the first directory on your models path will
+    be used by default.
 
     If the specified models directory does not have a models manifest file, one
     is created. Note that new models directories are not automatically added to
@@ -322,6 +324,8 @@ def recommend_paths_for_model(
         (c) if `model_path` is provided, `base_filename` and `models_dir` are
             set to the filename and base directory of the model path, as
             necessary
+        (d) `models_dir` is set to the first directory on the models path, if
+            any
         (d) None is returned
 
     Args:
@@ -379,6 +383,11 @@ def recommend_paths_for_model(
                 "No previous model version found; recommending the parent "
                 "directory of the model path as the models directory: '%s'",
                 models_dir)
+        elif eta.config.models_dirs:
+            models_dir = eta.config.models_dirs[0]
+            logger.info(
+                "No models directory was specified; recommending the first "
+                "directory on the models search path: '%s'", models_dir)
         else:
             logger.info("Unable to recommended a models directory...")
             models_dir = None
