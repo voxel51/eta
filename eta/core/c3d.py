@@ -80,31 +80,31 @@ class C3D(object):
             initializer=tf.truncated_normal_initializer(stddev=stddev))
         if wd is not None:
             weight_decay = tf.nn.l2_loss(var) * wd
-            tf.add_to_collection('losses', weight_decay)
+            tf.add_to_collection("losses", weight_decay)
         return var
 
     def _conv3d(self, l_input, w, b):
         return tf.nn.bias_add(
             tf.nn.conv3d(
-                l_input, w, strides=[1, 1, 1, 1, 1], padding='SAME'), b)
+                l_input, w, strides=[1, 1, 1, 1, 1], padding="SAME"), b)
 
     def _max_pool(self, name, l_input, k):
         return tf.nn.max_pool3d(
             l_input, ksize=[1, k, 2, 2, 1],
-            strides=[1, k, 2, 2, 1], padding='SAME', name=name)
+            strides=[1, k, 2, 2, 1], padding="SAME", name=name)
 
     def evaluate(self, clips, layer=None):
         '''Feed-forward evaluation through the net.
 
         Args:
-            imgs: an array of size [XXXX, 112, 112, 3] containing image(s) to
-                feed into the network
+            imgs: an array of size [XXXX, 16, 112, 112, 3] containing clips(s)
+                to feed into the network
             layer: an optional layer whose output to return. By default, the
                 output softmax layer (i.e., the class probabilities) is
                 returned
         '''
         if layer is None:
-            layer = self.out
+            layer = self.probs
         return self.sess.run(layer, feed_dict={self.clips: [clips]})[0]
 
     def close(self):
@@ -113,110 +113,104 @@ class C3D(object):
         self.sess = None
 
     def _build_conv_layers(self):
-        with tf.variable_scope('var_name') as var_scope:
-            with tf.name_scope("conv1") as scope:
-                weights = self._variable_with_weight_decay(
-                        'wc1', [3, 3, 3, 3, 64], 0.04, 0.00)
-                biases = self._variable_with_weight_decay(
-                        'bc1', [64], 0.04, 0.0)
-                conv = self._conv3d(self.clips, weights, biases)
-                self.conv1 = tf.nn.relu(conv, name=scope)
+        with tf.name_scope("conv1") as scope:
+            weights = self._variable_with_weight_decay(
+                    "wc1", [3, 3, 3, 3, 64], 0.04, 0.00)
+            biases = self._variable_with_weight_decay(
+                    "bc1", [64], 0.04, 0.0)
+            conv = self._conv3d(self.clips, weights, biases)
+            self.conv1 = tf.nn.relu(conv, name=scope)
+            self.pool1 = self._max_pool("pool1", self.conv1, k=1)
 
-            self.pool1 = self._max_pool('pool1', self.conv1, k=1)
+        with tf.name_scope("conv2") as scope:
+            weights = self._variable_with_weight_decay(
+                    "wc2", [3, 3, 3, 64, 128], 0.04, 0.00)
+            biases = self._variable_with_weight_decay(
+                    "bc2", [128], 0.04, 0.0)
+            conv = self._conv3d(self.pool1, weights, biases)
+            self.conv2 = tf.nn.relu(conv, name=scope)
+            self.pool2 = self._max_pool("pool2", self.conv2, k=2)
 
-            with tf.name_scope("conv2") as scope:
-                weights = self._variable_with_weight_decay(
-                        'wc2', [3, 3, 3, 64, 128], 0.04, 0.00)
-                biases = self._variable_with_weight_decay(
-                        'bc2', [128], 0.04, 0.0)
-                conv = self._conv3d(self.pool1, weights, biases)
-                self.conv2 = tf.nn.relu(conv, name=scope)
+        with tf.name_scope("conv3a") as scope:
+            weights = self._variable_with_weight_decay(
+                    "wc3a", [3, 3, 3, 128, 256], 0.04, 0.00)
+            biases = self._variable_with_weight_decay(
+                    "bc3a", [256], 0.04, 0.0)
+            conv = self._conv3d(self.pool2, weights, biases)
+            self.conv3a = tf.nn.relu(conv, name=scope)
 
-            self.pool2 = self._max_pool('pool2', self.conv2, k=2)
+        with tf.name_scope("conv3b") as scope:
+            weights = self._variable_with_weight_decay(
+                    "wc3b", [3, 3, 3, 256, 256], 0.04, 0.00)
+            biases = self._variable_with_weight_decay(
+                    "bc3b", [256], 0.04, 0.0)
+            conv = self._conv3d(self.conv3a, weights, biases)
+            self.conv3b = tf.nn.relu(conv, name=scope)
+            self.pool3 = self._max_pool("pool3", self.conv3b, k=2)
 
-            with tf.name_scope("conv3a") as scope:
-                weights = self._variable_with_weight_decay(
-                        'wc3a', [3, 3, 3, 128, 256], 0.04, 0.00)
-                biases = self._variable_with_weight_decay(
-                        'bc3a', [256], 0.04, 0.0)
-                conv = self._conv3d(self.pool2, weights, biases)
-                self.conv3_1 = tf.nn.relu(conv, name=scope)
+        with tf.name_scope("conv4a") as scope:
+            weights = self._variable_with_weight_decay(
+                    "wc4a", [3, 3, 3, 256, 512], 0.04, 0.00)
+            biases = self._variable_with_weight_decay(
+                    "bc4a", [512], 0.04, 0.0)
+            conv = self._conv3d(self.pool3, weights, biases)
+            self.conv4a = tf.nn.relu(conv, name=scope)
 
-            with tf.name_scope("conv3b") as scope:
-                weights = self._variable_with_weight_decay(
-                        'wc3b', [3, 3, 3, 256, 256], 0.04, 0.00)
-                biases = self._variable_with_weight_decay(
-                        'bc3b', [256], 0.04, 0.0)
-                conv = self._conv3d(self.conv3_1, weights, biases)
-                self.conv3_2 = tf.nn.relu(conv, name=scope)
+        with tf.name_scope("conv4b") as scope:
+            weights = self._variable_with_weight_decay(
+                    "wc4b", [3, 3, 3, 512, 512], 0.04, 0.00)
+            biases = self._variable_with_weight_decay(
+                    "bc4b", [512], 0.04, 0.0)
+            conv = self._conv3d(self.conv4a, weights, biases)
+            self.conv4b = tf.nn.relu(conv, name=scope)
+            self.pool4 = self._max_pool("pool4", self.conv4b, k=2)
 
-            self.pool3 = self._max_pool('pool3', self.conv3_2, k=2)
+        with tf.name_scope("conv5a") as scope:
+            weights = self._variable_with_weight_decay(
+                    "wc5a", [3, 3, 3, 512, 512], 0.04, 0.00)
+            biases = self._variable_with_weight_decay(
+                    "bc5a", [512], 0.04, 0.0)
+            conv = self._conv3d(self.pool4, weights, biases)
+            self.conv5a = tf.nn.relu(conv, name=scope)
 
-            with tf.name_scope("conv4a") as scope:
-                weights = self._variable_with_weight_decay(
-                        'wc4a', [3, 3, 3, 256, 512], 0.04, 0.00)
-                biases = self._variable_with_weight_decay(
-                        'bc4a', [512], 0.04, 0.0)
-                conv = self._conv3d(self.pool3, weights, biases)
-                self.conv4_1 = tf.nn.relu(conv, name=scope)
-
-            with tf.name_scope("conv4b") as scope:
-                weights = self._variable_with_weight_decay(
-                        'wc4b', [3, 3, 3, 512, 512], 0.04, 0.00)
-                biases = self._variable_with_weight_decay(
-                        'bc4b', [512], 0.04, 0.0)
-                conv = self._conv3d(self.conv4_1, weights, biases)
-                self.conv4_2 = tf.nn.relu(conv, name=scope)
-
-            self.pool4 = self._max_pool('pool4', self.conv4_2, k=2)
-
-            with tf.name_scope("conv5a") as scope:
-                weights = self._variable_with_weight_decay(
-                        'wc5a', [3, 3, 3, 512, 512], 0.04, 0.00)
-                biases = self._variable_with_weight_decay(
-                        'bc5a', [512], 0.04, 0.0)
-                conv = self._conv3d(self.pool4, weights, biases)
-                self.conv5_1 = tf.nn.relu(conv, name=scope)
-
-            with tf.name_scope("conv5b") as scope:
-                weights = self._variable_with_weight_decay(
-                        'wc5b', [3, 3, 3, 512, 512], 0.04, 0.00)
-                biases = self._variable_with_weight_decay(
-                        'bc5b', [512], 0.04, 0.0)
-                conv = self._conv3d(self.conv5_1, weights, biases)
-                self.conv5_2 = tf.nn.relu(conv, name=scope)
-
-            self.pool5 = self._max_pool('pool5', self.conv5_2, k=2)
+        with tf.name_scope("conv5b") as scope:
+            weights = self._variable_with_weight_decay(
+                    "wc5b", [3, 3, 3, 512, 512], 0.04, 0.00)
+            biases = self._variable_with_weight_decay(
+                    "bc5b", [512], 0.04, 0.0)
+            conv = self._conv3d(self.conv5a, weights, biases)
+            self.conv5b = tf.nn.relu(conv, name=scope)
+            self.pool5 = self._max_pool("pool5", self.conv5b, k=2)
 
     def _build_fc_layers(self):
-        with tf.variable_scope('var_name') as var_scope:
-            with tf.name_scope("fc1") as scope:
-                self.dense1 = tf.reshape(self.pool5, [1, 8192])
-                weights = self._variable_with_weight_decay(
-                        'wd1', [8192, 4096], 0.04, 0.001)
-                biases = self._variable_with_weight_decay(
-                        'bd1', [4096], 0.04, 0.0)
-                self.dense1 = tf.matmul(self.dense1, weights) + biases
-                self.fc6 = tf.nn.relu(self.dense1, name='fc6')
-                self.dense1 = tf.nn.dropout(self.fc6, 0.6)
+        with tf.name_scope("fc1") as scope:
+            inputs = tf.reshape(self.pool5, [1, 8192])
+            weights = self._variable_with_weight_decay(
+                    "wd1", [8192, 4096], 0.04, 0.001)
+            biases = self._variable_with_weight_decay(
+                    "bd1", [4096], 0.04, 0.0)
+            activations = tf.nn.relu(
+                tf.matmul(inputs, weights) + biases, name=scope)
+            self.fc1l = tf.nn.dropout(activations, 0.6)
 
-            with tf.name_scope("fc2") as scope:
-                weights = self._variable_with_weight_decay(
-                        'wd2', [4096, 4096], 0.04, 0.002)
-                biases = self._variable_with_weight_decay(
-                        'bd2', [4096], 0.04, 0.0)
-                self.dense2 =  tf.nn.relu(
-                    tf.matmul(self.dense1, weights) + biases, name='fc7')
-                self.dense2 = tf.nn.dropout(self.dense2, 0.6)
+        with tf.name_scope("fc2") as scope:
+            weights = self._variable_with_weight_decay(
+                    "wd2", [4096, 4096], 0.04, 0.002)
+            biases = self._variable_with_weight_decay(
+                    "bd2", [4096], 0.04, 0.0)
+            activations = tf.nn.relu(
+                tf.matmul(self.fc1l, weights) + biases, name=scope)
+            self.fc2l = tf.nn.dropout(activations, 0.6)
+
+        with tf.name_scope("fc3") as scope:
+            weights = self._variable_with_weight_decay(
+                    "wout", [4096, 101], 0.04, 0.005)
+            biases = self._variable_with_weight_decay(
+                    "bout", [101], 0.04, 0.0)
+            self.fc3l = tf.matmul(self.fc2l, weights) + biases
 
     def _build_output_layer(self):
-        with tf.variable_scope('var_name') as var_scope:
-            with tf.name_scope("output") as scope:
-                weights = self._variable_with_weight_decay(
-                        'wout', [4096, 101], 0.04, 0.005)
-                biases = self._variable_with_weight_decay(
-                        'bout', [101], 0.04, 0.0)
-                self.out = tf.matmul(self.dense2, weights) + biases
+        self.probs = tf.nn.softmax(self.fc3l)
 
     def _load_model(self, model):
         init = tf.global_variables_initializer()
@@ -275,7 +269,7 @@ class C3DFeaturizer(Featurizer):
         self.c3d = None
 
     def _featurize(self, clips):
-        features = self.c3d.evaluate(imgs, layer=self.c3d.fc6)
+        features = self.c3d.evaluate(clips, layer=self.c3d.fc6)
         if self.config.sample_method == "sliding_window":
             # Average over sliding window clips
             features = np.mean(features, axis=0, keepdims=True)
