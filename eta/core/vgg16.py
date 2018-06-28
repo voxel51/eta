@@ -109,7 +109,7 @@ class VGG16(object):
     def _build_conv_layers(self):
         self.parameters = []
 
-        with tf.name_scope("preprocess") as scope:
+        with tf.name_scope("preprocess"):
             mean = tf.constant(
                 [123.68, 116.779, 103.939],
                 dtype=tf.float32,
@@ -379,7 +379,7 @@ class VGG16(object):
         )
 
     def _build_fc_layers(self):
-        with tf.name_scope("fc1") as scope:
+        with tf.name_scope("fc1"):
             shape = int(np.prod(self.pool5.get_shape()[1:]))
             fc1w = tf.Variable(
                 tf.truncated_normal(
@@ -396,7 +396,7 @@ class VGG16(object):
             self.fc1 = tf.nn.relu(fc1l)
             self.parameters += [fc1w, fc1b]
 
-        with tf.name_scope("fc2") as scope:
+        with tf.name_scope("fc2"):
             fc2w = tf.Variable(
                 tf.truncated_normal(
                     [4096, 4096], dtype=tf.float32, stddev=1e-1),
@@ -412,7 +412,7 @@ class VGG16(object):
             self.fc2 = tf.nn.relu(fc2l)
             self.parameters += [fc2w, fc2b]
 
-        with tf.name_scope("fc3") as scope:
+        with tf.name_scope("fc3"):
             fc3w = tf.Variable(
                 tf.truncated_normal(
                     [4096, 1000], dtype=tf.float32, stddev=1e-1),
