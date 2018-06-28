@@ -158,6 +158,10 @@ To download a model from the cloud, run:
 etam.download_model(name)
 ```
 
+The above function downloads the model (if necessary) from cloud storage and
+stores it in the models directory whose `manifest.json` file contains the model
+definition.
+
 Recall that model versions can be easily configured in the `name` argument.
 For example:
 
@@ -209,14 +213,15 @@ name = "your-model@1.0"
 google_drive_id = "XXXXXXXX"
 
 # A short description of your model
-description = "a short description of your model"
+description = "A short description of your model"
 
 #
 # The base filename (no version information, which is added automatically) and
 # models directory, respectively, to use when downloading the model. If you
 # are uploading a new version of an existing model, these arguments can be set
 # to None and the same values are inherited from the most recent version of the
-# model
+# model. Otherwise, if no models directory is provided, the first directory on
+# your models search path will be used by default.
 #
 base_filename = "your-model-weights.npz"
 models_dir = "/path/to/models/dir"
@@ -227,7 +232,18 @@ etam.publish_public_model(
     models_dir=None)
 ```
 
-The above code internally uses an `eta.core.models.ETAModelManager` to manage
+The above publishing process adds an entry to the `manifest.json` file for your
+new model in the models directory that you specified (or the first directory
+in `eta.config.models_dir` if none is specified). The new model will now be
+findable by all of the model-related functionality in `eta.core.models` as long
+as the models directory you chose above remains on your models search path.
+
+When a published model is downloaded from cloud storage, it will be written to
+the models directly specified above (i.e. the directory whose `manifest.json`
+file contains the model definition) and an appropriate filename will be dervied
+from the base filename and version number of the model.
+
+Internally, the models an `eta.core.models.ETAModelManager` to manage
 access to the model in the public Google Drive folder. However, the publishing
 process can be easily extended to custom cloud storage solutions. To do so,
 one should implement a new subclass of `eta.core.models.ModelManager` and use
