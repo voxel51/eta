@@ -62,12 +62,12 @@ The following is an example contents of a `manifest.json` file:
     "models": [
         {
             "base_name": "VGG-16",
-            "base_filename": "vgg16_weights.npz",
+            "base_filename": "vgg16-imagenet.npz",
             "version": null,
-            "description": "VGG-16 network originally trained by Frossard for the 1000 classes from ImageNet",
+            "description": "VGG-16 model trained on ImageNet. Source: https://github.com/ethereon/caffe-tensorflow",
             "manager": {
                 "config": {
-                    "google_drive_id": "0B7phNvpRqNdpT0lZU1NOWXIzRlE"
+                    "google_drive_id": "0B_-5gc091ngGMzBFMVJ0RE9HNmc"
                 },
                 "type": "eta.core.models.ETAModelManager"
             },
@@ -194,11 +194,15 @@ To publish a new model, you can follow the general receipe:
 
 ```py
 #
-# Full workflow for publishing a new model
+# Full workflow for publishing a new public ETA model
+#
+# Assumes the model has been uploaded to Google Drive by an ETA administrator
+# and you have the ID of the model in Google Drive
 #
 
 name = "your-model@1.0"
 description = "a short description of your model"
+google_drive_id = "XXXXXXXX"
 
 #
 # Recommend paths for the given model by looking for older versions
@@ -215,12 +219,9 @@ base_filename, models_dir = etam.recommend_paths_for_model(name)
 #
 etam.register_model_dry_run(name, base_filename, models_dir)
 
-#
-# Example use of ETAModelManager
-#
-# Assumes the model has been uploaded to Google Drive by an ETA administrator
-#
-manager = etam.ETAModelManager.from_dict({"google_drive_id": "XXXXXXXX"})
+# Construct the ModelManager instance for your model
+config = etam.ETAModelManagerConfig({"google_drive_id": google_drive_id})
+manager = etam.ETAModelManager(config)
 
 # Register the model
 etam.register_model(
