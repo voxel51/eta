@@ -43,10 +43,6 @@ import eta.core.video as etav
 
 logger = logging.getLogger(__name__)
 
-DROPOUT = 0.6
-EMBEDDING_FRAME_SIZE = 112
-NUM_FRAMES_PER_CLIP = 16
-
 
 class C3DConfig(Config):
     '''Configuration settings for the C3D network.'''
@@ -78,9 +74,7 @@ class C3D(object):
         self.config = config or C3DConfig.default()
         self.sess = sess or tf.Session()
         self.clips = clips or tf.placeholder(
-            tf.float32, [None,
-            NUM_FRAMES_PER_CLIP, EMBEDDING_FRAME_SIZE,
-            EMBEDDING_FRAME_SIZE, 3])
+            tf.float32, [None, 16, 112, 112, 3])
         self._build_conv_layers()
         self._build_fc_layers()
         self._build_output_layer()
@@ -211,7 +205,7 @@ class C3D(object):
                         'bd1', [4096], 0.04, 0.0)
                 self.dense1 = tf.matmul(self.dense1, weights) + biases
                 self.fc6 = tf.nn.relu(self.dense1, name='fc6')
-                self.dense1 = tf.nn.dropout(self.fc6, DROPOUT)
+                self.dense1 = tf.nn.dropout(self.fc6, 0.6)
 
             with tf.name_scope("fc2") as scope:
                 weights = self._variable_with_weight_decay(
@@ -220,7 +214,7 @@ class C3D(object):
                         'bd2', [4096], 0.04, 0.0)
                 self.dense2 =  tf.nn.relu(
                     tf.matmul(self.dense1, weights) + biases, name='fc7')
-                self.dense2 = tf.nn.dropout(self.dense2, DROPOUT)
+                self.dense2 = tf.nn.dropout(self.dense2, 0.6)
 
     def _build_output_layer(self):
         with tf.variable_scope('var_name') as var_scope:
