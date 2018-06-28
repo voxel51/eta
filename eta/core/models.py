@@ -256,16 +256,86 @@ def init_models_dir(new_models_dir):
     manifest.write_to_dir(new_models_dir)
 
 
-def recommend_paths_for_model(name):
-    '''Recommends a base filename and models directory for the given model
-    name, if possible.
+def publish_public_model(
+        name, google_drive_id, description=None, base_filename=None,
+        models_dir=None):
+    '''Publishes a new model to the public ETA model registry.
 
-    The recommendations are made by looking up the corresponding values from
-    the latest version of the model currently registered.
+    This function assumes that the model has been uploaded to Google Drive by
+    an ETA administrator and that you have the ID of the file to provide here.
+
+    This function performs the following actions:
+        - recommends a base filename and models directory, if necessary
+        - performs a dry run of the model registration process to check for
+            potential problems
+        - registers the model in the manifest of its models directory
+
+    The keyword arguments `base_filename` and `models_dir` configure the
+    filename (version information is added automatically) and models directory,
+    respectively, to use when downloading the model. If you are uploading a
+    new version of an existing model, these arguments can be omitted and the
+    same values are inherited from the most recent version of the model. If
+    this is a brand new model, these values are required
+
+    If the specified models directory does not have a models manifest file, one
+    is created. Note that new models directories are not automatically added to
+    your models search path, so models in a newly initialized directory will
+    not be findable until you add the directory to your models search path.
+
+    Args:
+        name: a name for the model, which can optionally have "@<ver>" appended
+            to assign a version to the model
+        google_drive_id: the ID of the model file in Google Drive
+        description: an optional description for the model
+        base_filename: an optional base filename to use when writing the model
+            to disk. By default, a value is inferred as explained above
+        models_dir: an optional directory in which to register the model. By
+            default, a value is inferred as explained above
+
+    Raises:
+        ModelError: if the publishing failed for any reason
+    '''
+    # Recommend paths if necessary
+    base_filename, models_dir = recommend_paths_for_model(
+        name, base_filename=base_filename, models_dir=models_dir)
+
+    # Perform a dry run of the model registration
+    register_model_dry_run(name, base_filename, models_dir)
+
+    # Construct model manager instance for model
+    config = ETAModelManagerConfig({"google_drive_id": google_drive_id})
+    manager = ETAModelManager(config)
+
+    # Register model
+    register_model(
+        name, base_filename, models_dir, manager, description=description)
+
+
+def recommend_paths_for_model(
+        name, model_path=None, base_filename=None, models_dir=None):
+    '''Recommends a base filename and models directory for the given model,
+    if possible, using the provided information to inform the recommendation.
+
+    The recommendations are made using the first applicable option below:
+        (a) if `base_filename` or `models_dir` is provided, that value is used
+        (b) if an older version of the model exists, the `base_filename` and
+            `models_dir` values are inherited from that model as necesasry
+        (c) if `model_path` is provided, `base_filename` and `models_dir` are
+            set to the filename and base directory of the model path, as
+            necessary
+        (d) None is returned
 
     Args:
         name: the model name, which can optionally have "@<ver>" appended
             to assign a version to the model
+        model_path: an optional path to the model on disk. If provided and
+            this path may be used to recommended values as described above
+        base_filename: an optional base filename to use when writing the model
+            to disk. If provided, this value is directly returned. If not
+            provided, a value is recommended as explained above
+        models_dir: an optional directory in which to register the model. If
+            provided, this value is directly returned. If not provided, a value
+            is recommended as explained above
 
     Returns:
         base_filename: the recommended base filename for the model, or None if
@@ -275,10 +345,46 @@ def recommend_paths_for_model(name):
     '''
     try:
         base_name = Model.parse_name(name)[0]
-        model, models_dir, _ = _find_model(base_name)
-        return model.base_filename, models_dir
+        model, _rec_models_dir, _ = _find_model(base_name)
+        _rec_base_filename = model.base_filename
     except ModelError:
-        return None, None
+        _rec_base_filename = None
+        _rec_models_dir = None
+
+    # Recommend base filename
+    if not base_filename:
+        if _rec_base_filename:
+            base_filename = _rec_base_filename
+            logger.info(
+                "Found a previous model version '%s'; recommending the same "
+                "base filename: '%s'", model.name, base_filename)
+        elif model_path:
+            base_filename = os.path.basename(model_path)
+            logger.info(
+                "No previous model version found; recommending the base "
+                "filename of the input model path: '%s'", base_filename)
+        else:
+            logger.info("Unable to recommended a base filename...")
+            base_filename = None
+
+    # Recommend models directory
+    if not models_dir:
+        if _rec_models_dir:
+            models_dir = _rec_models_dir
+            logger.info(
+                "Found a previous model version '%s'; recommending the same "
+                "model directory: '%s'", model.name, models_dir)
+        elif model_path:
+            models_dir = os.path.dirname(model_path)
+            logger.info(
+                "No previous model version found; recommending the parent "
+                "directory of the model path as the models directory: '%s'",
+                models_dir)
+        else:
+            logger.info("Unable to recommended a models directory...")
+            models_dir = None
+
+    return base_filename, models_dir
 
 
 def register_model_dry_run(name, base_filename, models_dir):
@@ -313,12 +419,20 @@ def register_model_dry_run(name, base_filename, models_dir):
 
     # Verify novelty
     logger.info("Verifying that model '%s' does not yet exist", name)
-    if name in list_models():
+    models = _list_models()[0]
+    base_names = [mm[0].base_name for mm in itervalues(models)]
+    if name in models:
         raise ModelError("Model '%s' already exists" % name)
-    if base_name in list_models():
+    if name in base_names:
+        raise ModelError(
+            "A versioned model with base name '%s' already exists, and "
+            "publishing a versionless model with the same name as a versioned "
+            "model can lead to unexpected behavior. Please choose another "
+            "model name." % name)
+    if base_name in models:
         raise ModelError(
             "A versionless model with name '%s' already exists, and "
-            "publishing a versioned model with the same as a versionless "
+            "publishing a versioned model with the same name as a versionless "
             "model can lead to unexpected behavior. Please choose another "
             "model name." % base_name)
 

@@ -190,53 +190,50 @@ automatically load a model given only its `name`. See the
 
 #### Publishing a new model
 
-To publish a new model, you can follow the general receipe:
+By default, all ETA models are stored in a Google Drive folder with permissions
+set to be publicly readable. You can publish a new model to this public
+registry as follows:
 
 ```py
 #
-# Full workflow for publishing a new public ETA model
+# Publishing a new public ETA model
 #
 # Assumes the model has been uploaded to Google Drive by an ETA administrator
 # and you have the ID of the model in Google Drive
 #
 
+# The name for your model
 name = "your-model@1.0"
-description = "a short description of your model"
+
+# The ID of your model in Google Drive
 google_drive_id = "XXXXXXXX"
 
-#
-# Recommend paths for the given model by looking for older versions
-# of the model in the model manifests
-#
-# If you already know how you want to register your model, you can provide the
-# appropriate models directory and base filename yourself
-#
-base_filename, models_dir = etam.recommend_paths_for_model(name)
+# A short description of your model
+description = "a short description of your model"
 
 #
-# Perform a dry run of the model registration to check for any errors
-# before uploading the model to the cloud
+# The base filename (no version information, which is added automatically) and
+# models directory, respectively, to use when downloading the model. If you
+# are uploading a new version of an existing model, these arguments can be set
+# to None and the same values are inherited from the most recent version of the
+# model
 #
-etam.register_model_dry_run(name, base_filename, models_dir)
+base_filename = "your-model-weights.npz"
+models_dir = "/path/to/models/dir"
 
-# Construct the ModelManager instance for your model
-config = etam.ETAModelManagerConfig({"google_drive_id": google_drive_id})
-manager = etam.ETAModelManager(config)
-
-# Register the model
-etam.register_model(
-    name, base_filename, models_dir, manager, description=description)
+# Publish the model
+etam.publish_public_model(
+    name, google_drive_id, description=description, base_filename=None,
+    models_dir=None)
 ```
 
-The above process can be completely automated for custom cloud storage
-applications, including the uploading of the model to cloud storage and the
-generation of the relevant model manager instance describing the model.
-To do this, one should implement a new subclass of
-`eta.core.models.ModelManager`.
+The above code internally uses an `eta.core.models.ETAModelManager` to manage
+access to the model in the public Google Drive folder. However, the publishing
+process can be easily extended to custom cloud storage solutions. To do so,
+one should implement a new subclass of `eta.core.models.ModelManager` and use
+it together with the `eta.core.models.register_model` function to implement a
+custom publishing workflow.
 
-> Note: Only Voxel51 administrators can upload models to cloud storage, so
-> one must submit a request to have the ETAModelManager instance generated for
-> your model
 
 #### Flushing local models
 
