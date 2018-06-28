@@ -133,7 +133,7 @@ def sliding_window_k_size_n_step(inpath, k, n, embedding_frame_size):
 class C3DConfig(Config):
     '''Configuration settings for the C3D network.'''
     def __init__(self, d):
-        self.model = self.parse_string(d, "model", default="C3D")
+        self.model = self.parse_string(d, "model", default="C3D-UCF101")
         self.dropout = self.parse_number(d, "dropout", default=0.6)
         self.batchsize = self.parse_number(d, "batchsize", default=1)
         self.inpath = self.parse_string(d, "inpath", default="")
