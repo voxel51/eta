@@ -137,14 +137,11 @@ class C3DConfig(Config):
         self.batchsize = self.parse_number(d, "batchsize", default=1)
         self.inpath = self.parse_string(d, "inpath", default="")
         self.embedding_frame_size = self.parse_number(
-            d,"embedding_frame_size",
-            default=112)
+            d, "embedding_frame_size", default=112)
         self.sample_method = self.parse_string(
-            d, "sample_method",
-            default="sliding_window_k_size_n_step")
+            d, "sample_method", default="sliding_window_k_size_n_step")
         self.num_frames_per_clip = self.parse_number(
-            d, "num_frames_per_clip",
-            default=16)
+            d, "num_frames_per_clip", default=16)
         self.stride = self.parse_number(d, "stride", default=8)
 
 
@@ -170,14 +167,15 @@ class C3D(object):
         self.config = config or C3DConfig.default()
         self.sess = sess or tf.Session()
         self.clips = clips or tf.placeholder(
-            tf.float32,[None,
+            tf.float32, [None,
             self.config.num_frames_per_clip,self.config.embedding_frame_size,
             self.config.embedding_frame_size, 3])
-        self.build_c3d(self.clips, self.config.dropout, self.config.batchsize)
+        self.build_c3d(self.clips, self.config.dropout)
         self._load_model(self.config.model)
 
     def _variable_with_weight_decay(self, name, shape, stddev, wd):
-        var = tf.get_variable(name, shape,
+        var = tf.get_variable(
+            name, shape,
             initializer=tf.truncated_normal_initializer(stddev=stddev))
         if wd is not None:
             weight_decay = tf.nn.l2_loss(var) * wd
@@ -187,7 +185,7 @@ class C3D(object):
     def _conv3d(self, name, l_input, w, b):
         return tf.nn.bias_add(
             tf.nn.conv3d(
-            l_input, w, strides=[1, 1, 1, 1, 1], padding='SAME'),b)
+                l_input, w, strides=[1, 1, 1, 1, 1], padding='SAME'), b)
 
     def _max_pool(self, name, l_input, k):
         return tf.nn.max_pool3d(
@@ -213,13 +211,13 @@ class C3D(object):
         self.sess.close()
         self.sess = None
 
-    def build_c3d(self, _X, _dropout, batch_size,):
+    def build_c3d(self, _X, _dropout):
         with tf.variable_scope('var_name') as var_scope:
             _weights = {
                 'wc1': self._variable_with_weight_decay(
-                    'wc1', [3, 3, 3, 3, 64],0.04, 0.00),
+                    'wc1', [3, 3, 3, 3, 64], 0.04, 0.00),
                 'wc2': self._variable_with_weight_decay(
-                    'wc2', [3, 3, 3, 64, 128],0.04, 0.00),
+                    'wc2', [3, 3, 3, 64, 128], 0.04, 0.00),
                 'wc3a': self._variable_with_weight_decay(
                     'wc3a', [3, 3, 3, 128, 256], 0.04, 0.00),
                 'wc3b': self._variable_with_weight_decay(
@@ -238,7 +236,8 @@ class C3D(object):
                     'wd2', [4096, 4096], 0.04, 0.002),
                 'out': self._variable_with_weight_decay(
                     'wout', [4096, 101], 0.04, 0.005)
-                }
+            }
+
             _biases = {
                 'bc1': self._variable_with_weight_decay(
                     'bc1', [64], 0.04, 0.0),
@@ -262,16 +261,19 @@ class C3D(object):
                     'bd2', [4096], 0.04, 0.0),
                 'out': self._variable_with_weight_decay(
                     'bout', [101], 0.04, 0.0),
-                }
-        # Convolution Layer
+            }
+
+        # Convolutional layer
         conv1 = self._conv3d('conv1', _X, _weights['wc1'], _biases['bc1'])
         conv1 = tf.nn.relu(conv1, 'relu1')
         pool1 = self._max_pool('pool1', conv1, k=1)
-        # Convolution Layer
+
+        # Convolutional layer
         conv2 = self._conv3d('conv2', pool1, _weights['wc2'], _biases['bc2'])
         conv2 = tf.nn.relu(conv2, 'relu2')
         pool2 = self._max_pool('pool2', conv2, k=2)
-        # Convolution Layer
+
+        # Convolutional layer
         conv3 = self._conv3d(
             'conv3a', pool2, _weights['wc3a'], _biases['bc3a'])
         conv3 = tf.nn.relu(conv3, 'relu3a')
@@ -279,7 +281,8 @@ class C3D(object):
             'conv3b', conv3, _weights['wc3b'], _biases['bc3b'])
         conv3 = tf.nn.relu(conv3, 'relu3b')
         pool3 = self._max_pool('pool3', conv3, k=2)
-        # Convolution Layer
+
+        # Convolutional layer
         conv4 = self._conv3d(
             'conv4a', pool3, _weights['wc4a'], _biases['bc4a'])
         conv4 = tf.nn.relu(conv4, 'relu4a')
@@ -287,7 +290,8 @@ class C3D(object):
             'conv4b', conv4, _weights['wc4b'], _biases['bc4b'])
         conv4 = tf.nn.relu(conv4, 'relu4b')
         pool4 = self._max_pool('pool4', conv4, k=2)
-        # Convolution Layer
+
+        # Convolutional layer
         conv5 = self._conv3d(
             'conv5a', pool4, _weights['wc5a'], _biases['bc5a'])
         conv5 = tf.nn.relu(conv5, 'relu5a')
@@ -295,20 +299,24 @@ class C3D(object):
             'conv5b', conv5, _weights['wc5b'], _biases['bc5b'])
         conv5 = tf.nn.relu(conv5, 'relu5b')
         pool5 = self._max_pool('pool5', conv5, k=2)
+
         # Fully connected layer
         pool5 = tf.transpose(pool5, perm=[0, 1, 4, 2, 3])
         dense1 = tf.reshape(
             pool5, [1,_weights['wd1'].get_shape().as_list()[0]])
+
         # Reshape conv3 output to fit dense layer input
         dense1 = tf.matmul(dense1, _weights['wd1']) + _biases['bd1']
         self.fc6 = tf.nn.relu(dense1, name='fc1')
         # Relu activation
         dense1 = tf.nn.dropout(self.fc6, _dropout)
+
         # Relu activation
         dense2 = tf.nn.relu(
             tf.matmul(dense1, _weights['wd2']) + _biases['bd2'], name='fc2')
         dense2 = tf.nn.dropout(dense2, _dropout)
-        # Output: class prediction
+
+        # Class predictions
         self.out = tf.matmul(dense2, _weights['out']) + _biases['out']
 
     def _load_model(self, model):
