@@ -1,8 +1,8 @@
 '''
 TensorFlow implementation of the popular C3D network.
 
-This implementation is hard-coded for the model architecture and weights that
-Hou Xin originally trained for the 101 classes from UCF101.
+This module extends and add functionality to the original C3D implementation
+by Hou Xin.
 
 C3D implementation in TensorFlow:
 https://github.com/hx173149/C3D-tensorflow
@@ -53,7 +53,8 @@ def get_first_k_frames(inpath):
         inpath: path to the input video
 
     Returns:
-        A numpy array of size [k, EMBEDDING_FRAME_SIZE, EMBEDDING_FRAME_SIZE]
+        A numpy array of size [NUM_FRAMES_PER_CLIP,
+        EMBEDDING_FRAME_SIZE, EMBEDDING_FRAME_SIZE]
     '''
     data = []
     num_frames = etav.get_frame_count(inpath)
@@ -72,7 +73,8 @@ def uniformly_sample_k_frames(inpath):
         inpath: path to the input video
 
     Returns:
-        A numpy array of size [k, EMBEDDING_FRAME_SIZE, EMBEDDING_FRAME_SIZE]
+        A numpy array of size [NUM_FRAMES_PER_CLIP,
+        EMBEDDING_FRAME_SIZE, EMBEDDING_FRAME_SIZE]
     '''
     data = []
     num_frames = etav.get_frame_count(inpath)
