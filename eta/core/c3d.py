@@ -43,81 +43,80 @@ import eta.core.video as etav
 
 logger = logging.getLogger(__name__)
 
+EMBEDDING_FRAME_SIZE = 112
+NUM_FRAMES_PER_CLIP = 16
 
-def get_first_k_frames(inpath, k, embedding_frame_size):
+def get_first_k_frames(inpath):
     '''Sample first k frames in a video.
 
     Args:
         inpath: path to the input video
-        k: number of frames to extract for the input video
-        embedding_frame_size: size of the output frames
 
     Returns:
-        A numpy array of size [k, embedding_frame_siz, embedding_frame_size]
+        A numpy array of size [k, EMBEDDING_FRAME_SIZE, EMBEDDING_FRAME_SIZE]
     '''
     data = []
     num_frames = etav.get_frame_count(inpath)
     assert k < num_frames
-    with etav.FFmpegVideoReader(inpath, "1-%d" % k) as vr:
+    with etav.FFmpegVideoReader(inpath, "1-%d" % NUM_FRAMES_PER_CLIP) as vr:
         for img in vr:
-            img = etai.resize(img, embedding_frame_size, embedding_frame_size)
+            img = etai.resize(img, EMBEDDING_FRAME_SIZE, EMBEDDING_FRAME_SIZE)
             data.append(img)
     return np.array(data).astype(np.float32)
 
 
-def uniformly_sample_k_frames(inpath, k, embedding_frame_size):
+def uniformly_sample_k_frames(inpath):
     '''Uniformly sample k frames, always including the first frame.
 
     Args:
         inpath: path to the input video
-        k: number of frames to extract for the input video
-        embedding_frame_size: dimension to use when embedding the frames
 
     Returns:
-        A numpy array of size [k, embedding_frame_siz, embedding_frame_size]
+        A numpy array of size [k, EMBEDDING_FRAME_SIZE, EMBEDDING_FRAME_SIZE]
     '''
     data = []
     num_frames = etav.get_frame_count(inpath)
     assert k < num_frames
-    rng = [int(round(i)) for i in np.linspace(1, num_frames, k)]
+    rng = [int(round(i)) for i in np.linspace(1, num_frames,
+        NUM_FRAMES_PER_CLIP)]
     with etav.FFmpegVideoReader(inpath, frames=rng) as vr:
         for img in vr:
-            img = etai.resize(img, embedding_frame_size,
-                              embedding_frame_size)
+            img = etai.resize(img, EMBEDDING_FRAME_SIZE,
+                              EMBEDDING_FRAME_SIZE)
             data.append(img)
     return np.array(data).astype(np.float32)
 
 
-def sliding_window_k_size_n_step(inpath, k, n, embedding_frame_size):
-    '''Sample video clips using sliding window of size k and stride n.
+def sliding_window_k_size_n_step(inpath, n):
+    '''Sample video clips using sliding window of size NUM_FRAMES_PER_CLIP
+    and stride n.
 
     Args:
         inpath: path to the input video
-        k: number of frames to extract for the input video
         n: the stride for sliding window
-        embedding_frame_size: size of the output frame
 
     Returns:
-        A numpy array [k, embedding_frame_siz, embedding_frame_size]
+        A numpy array [NUM_FRAMES_PER_CLIP,
+        EMBEDDING_FRAME_SIZE, EMBEDDING_FRAME_SIZE]
     '''
     data = []
     num_frames = etav.get_frame_count(inpath)
-    assert k < num_frames
+    assert NUM_FRAMES_PER_CLIP < num_frames
     i_first = 1
     i_last = num_frames
     i_count = num_frames
-    logger.debug("sample_length %d", k)
+    logger.debug("sample_length %d", NUM_FRAMES_PER_CLIP)
     logger.debug("sample_stride %d", n)
-    o_count = round((i_last - k + 1.0) / n)
-    o_firsts = [i_first + n*x for x in range(0,o_count)]
+    o_count = round((i_last - NUM_FRAMES_PER_CLIP + 1.0) / n)
+    o_firsts = [i_first + n * NUM_FRAMES_PER_CLIP for x in range(0,o_count)]
     clips = zip(o_firsts,
-                [x + k - 1 for x in o_firsts])
+                [x + NUM_FRAMES_PER_CLIP - 1 for x in o_firsts])
     del o_firsts
 
     with etav.FFmpegVideoReader(inpath) as vr:
         for img in vr:
-            img = etai.resize(img, embedding_frame_size,
-                              embedding_frame_size)
+            img = etai.resize(img, EMBEDDING_FRAME_SIZE,
+                              EMBEDDING_FRAME_SIZE)
             data.append(img)
     sampled_clips = []
     for clip in clips:
@@ -136,12 +135,8 @@ class C3DConfig(Config):
         self.dropout = self.parse_number(d, "dropout", default=0.6)
         self.batchsize = self.parse_number(d, "batchsize", default=1)
         self.inpath = self.parse_string(d, "inpath", default="")
-        self.embedding_frame_size = self.parse_number(
-            d, "embedding_frame_size", default=112)
         self.sample_method = self.parse_string(
             d, "sample_method", default="sliding_window_k_size_n_step")
-        self.num_frames_per_clip = self.parse_number(
-            d, "num_frames_per_clip", default=16)
         self.stride = self.parse_number(d, "stride", default=8)
 
 
@@ -159,17 +154,13 @@ class C3D(object):
                 scalling the close() method of this class when you are done
                 computing
             clips: an optional tf.placeholder of size [XXXX,
-            num_frames_per_clip,embedding_frame_size, embedding_frame_size, 3]
-            to use. By default, a placeholder of size [None,
-            num_frames_per_clip, embedding_frame_size, embedding_frame_size, 3]
-            is used so you can evaluate any number of images at once
         '''
         self.config = config or C3DConfig.default()
         self.sess = sess or tf.Session()
         self.clips = clips or tf.placeholder(
             tf.float32, [None,
-            self.config.num_frames_per_clip,self.config.embedding_frame_size,
-            self.config.embedding_frame_size, 3])
+            NUM_FRAMES_PER_CLIP, EMBEDDING_FRAME_SIZE,
+            EMBEDDING_FRAME_SIZE, 3])
         self.build_c3d(self.clips, self.config.dropout)
         self._load_model(self.config.model)
 
@@ -347,18 +338,11 @@ class C3DFeaturizer(Featurizer):
     def sample_imgs(self, inpath):
         input_path = inpath or self.config.inpath
         if self.sample_method == 'get_first_k_frames':
-            input_imgs = get_first_k_frames(
-                input_path, self.config.num_frames_per_clip,
-                self.config.embedding_frame_size)
+            input_imgs = get_first_k_frames(input_path)
         elif self.sample_method == 'uniformly_sample_k_frames':
-            input_imgs = uniformly_sample_k_frames(
-                input_path, self.config.num_frames_per_clip,
-                self.config.embedding_frame_size)
+            input_imgs = uniformly_sample_k_frames(input_path)
         else:
-            input_imgs = sliding_window_k_size_n_step(
-                input_path,
-                self.config.num_frames_per_clip, self.config.stride,
-                self.config.embedding_frame_size)
+            input_imgs = sliding_window_k_size_n_step(input_path)
         return input_imgs
 
     def _start(self):
