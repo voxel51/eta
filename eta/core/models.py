@@ -377,7 +377,7 @@ def recommend_paths_for_model(
             models_dir = os.path.dirname(model_path)
             logger.info(
                 "No previous model version found; recommending the parent "
-                "directory of the model path as the models directory:",
+                "directory of the model path as the models directory: '%s'",
                 models_dir)
         else:
             logger.info("Unable to recommended a models directory...")
