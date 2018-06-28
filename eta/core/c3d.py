@@ -45,13 +45,15 @@ logger = logging.getLogger(__name__)
 
 
 def get_first_k_frames(inpath, k, embedding_frame_size):
-    '''Sample first k frames in a video. Return a numpy array of size
-    [k, embedding_frame_siz, embedding_frame_size]
+    '''Sample first k frames in a video.
 
     Args:
         inpath: path to the input video
         k: number of frames to extract for the input video
         embedding_frame_size: size of the output frames
+
+    Returns:
+        A numpy array of size [k, embedding_frame_siz, embedding_frame_size]
     '''
     data = []
     num_frames = etav.get_frame_count(inpath)
@@ -60,50 +62,43 @@ def get_first_k_frames(inpath, k, embedding_frame_size):
         for img in vr:
             img = etai.resize(img, embedding_frame_size, embedding_frame_size)
             data.append(img)
-    np_arr_data = np.array(data).astype(np.float32)
-    return np_arr_data
+    return np.array(data).astype(np.float32)
 
 
 def uniformly_sample_k_frames(inpath, k, embedding_frame_size):
-    '''Uniformly sample k frames, always including the first frame. Return
-    a numpy array of size [k, embedding_frame_siz, embedding_frame_size]
+    '''Uniformly sample k frames, always including the first frame.
 
     Args:
         inpath: path to the input video
         k: number of frames to extract for the input video
         embedding_frame_size: dimension to use when embedding the frames
+
+    Returns:
+        A numpy array of size [k, embedding_frame_siz, embedding_frame_size]
     '''
     data = []
     num_frames = etav.get_frame_count(inpath)
     assert k < num_frames
-
-    stride = int(math.ceil(1.0 * num_frames / k))
-    rng = range(num_frames)
-    rng = list(rng[::stride])
-    if len(rng) < k:
-        rng.append(num_frames - 1)
-    elif len(rng) > k:
-        rng.pop()
-    assert len(rng) == k
-    rng = [x + 1 for x in rng]
+    rng = [int(round(i)) for i in np.linspace(1, num_frames, k)]
     with etav.FFmpegVideoReader(inpath, frames=rng) as vr:
         for img in vr:
             img = etai.resize(img, embedding_frame_size,
                               embedding_frame_size)
             data.append(img)
-    np_arr_data = np.array(data).astype(np.float32)
-    return np_arr_data
+    return np.array(data).astype(np.float32)
 
 
 def sliding_window_k_size_n_step(inpath, k, n, embedding_frame_size):
-    '''Sample video clips using sliding window of size k and stride n. Return a
-    numpy array [k, embedding_frame_siz, embedding_frame_size]
+    '''Sample video clips using sliding window of size k and stride n.
 
     Args:
         inpath: path to the input video
         k: number of frames to extract for the input video
         n: the stride for sliding window
-        embedding_frame_size: size of the output frames
+        embedding_frame_size: size of the output frame
+
+    Returns:
+        A numpy array [k, embedding_frame_siz, embedding_frame_size]
     '''
     data = []
     num_frames = etav.get_frame_count(inpath)
@@ -130,8 +125,7 @@ def sliding_window_k_size_n_step(inpath, k, n, embedding_frame_size):
         last = clip[1]
         tmp_clip = data[first:last]
         sampled_clips.append(tmp_clip)
-    np_arr_data = np.array(sampled_clips).astype(np.float32)
-    return np_arr_data
+    return np.array(sampled_clips).astype(np.float32)
 
 
 class C3DConfig(Config):
@@ -313,7 +307,8 @@ class C3D(object):
 
         # Reshape conv3 output to fit dense layer input
         dense1 = tf.matmul(dense1, _weights['wd1']) + _biases['bd1']
-        self.fc6 = tf.nn.relu(dense1, name='fc1') # Relu activation
+        self.fc6 = tf.nn.relu(dense1, name='fc1')
+        # Relu activation
         dense1 = tf.nn.dropout(self.fc6, _dropout)
 
         # Relu activation
