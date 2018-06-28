@@ -29,7 +29,6 @@ import logging
 import os
 
 import numpy as np
-import tensorflow as tf
 
 import eta
 import eta.constants as etac
@@ -918,20 +917,6 @@ class PklModelWeights(ModelWeights):
         with open(self.model_path, "rb") as f:
             return pickle.load(f)
 
-class TensorFlowModelWeights(ModelWeights):
-    '''A read-only model weights class that can load a model stored as a .model
-    file on disk using TensorFlow.
-        Attributes:
-        model_name: the name of the model
-        sess: a tensorflow session
-    '''
-    def __init__(self, model_name, sess):
-        super(TensorFlowModelWeights, self).__init__(model_name)
-        self.sess = sess
-
-    def _load(self):
-        saver = tf.train.Saver()
-        saver.restore(self.sess, model_path)
 
 class ModelManager(Configurable, Serializable):
     '''Base class for model managers.
