@@ -69,9 +69,14 @@ class C3D(object):
         self.sess = sess or tf.Session()
         self.clips = clips or tf.placeholder(
             tf.float32, [None, 16, 112, 112, 3])
-        self._build_conv_layers()
-        self._build_fc_layers()
-        self._build_output_layer()
+
+        # The source (https://github.com/hx173149/C3D-tensorflow) of the models
+        # we use picked this variable scope, so we must use it too
+        with tf.variable_scope("var_name"):
+            self._build_conv_layers()
+            self._build_fc_layers()
+            self._build_output_layer()
+
         self._load_model(self.config.model)
 
     def _variable_with_weight_decay(self, name, shape, stddev, wd):
@@ -191,26 +196,26 @@ class C3D(object):
                     "bd1", [4096], 0.04, 0.0)
             activations = tf.nn.relu(
                 tf.matmul(inputs, weights) + biases, name=scope)
-            self.fc1l = tf.nn.dropout(activations, 0.6)
+            self.fc1 = tf.nn.dropout(activations, 0.6)
 
         with tf.name_scope("fc2") as scope:
             weights = self._variable_with_weight_decay(
                     "wd2", [4096, 4096], 0.04, 0.002)
             biases = self._variable_with_weight_decay(
                     "bd2", [4096], 0.04, 0.0)
-            activations = tf.nn.relu(
-                tf.matmul(self.fc1l, weights) + biases, name=scope)
-            self.fc2l = tf.nn.dropout(activations, 0.6)
+            self.fc2l = tf.matmul(self.fc1, weights) + biases
+            activations = tf.nn.relu(self.fc2l, name=scope)
+            self.fc2 = tf.nn.dropout(activations, 0.6)
 
         with tf.name_scope("fc3") as scope:
             weights = self._variable_with_weight_decay(
                     "wout", [4096, 101], 0.04, 0.005)
             biases = self._variable_with_weight_decay(
                     "bout", [101], 0.04, 0.0)
-            self.fc3l = tf.matmul(self.fc2l, weights) + biases
+            self.fc3 = tf.matmul(self.fc2, weights) + biases
 
     def _build_output_layer(self):
-        self.probs = tf.nn.softmax(self.fc3l)
+        self.probs = tf.nn.softmax(self.fc3)
 
     def _load_model(self, model):
         init = tf.global_variables_initializer()
@@ -270,7 +275,7 @@ class C3DFeaturizer(Featurizer):
     def _featurize(self, video_path):
         clips = self._sample_clips(video_path)
 
-        features = self.c3d.evaluate(clips, layer=self.c3d.fc6)
+        features = self.c3d.evaluate(clips, layer=self.c3d.fc2l)
         if self.config.sample_method == "sliding_window":
             # Average over sliding window clips
             features = np.mean(features, axis=0, keepdims=True)
