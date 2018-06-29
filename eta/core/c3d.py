@@ -275,6 +275,7 @@ class C3DFeaturizer(Featurizer):
             the feature vector, a 1D numpy array of length 4096
         '''
         clips = self._sample_clips(video_path)
+
         features = self.c3d.evaluate(clips, layer=self.c3d.fc2l)
         if self.config.sample_method == "sliding_window":
             # Average over sliding window clips
@@ -282,6 +283,7 @@ class C3DFeaturizer(Featurizer):
             features /= np.linalg.norm(features)
         else:
             features = features.reshape(-1)
+
         return features
 
     def _sample_clips(self, video_path):
