@@ -250,8 +250,9 @@ class C3DFeaturizer(Featurizer):
 
     def _stop(self):
         '''Closes the TensorFlow session and frees up the network.'''
-        self.c3d.close()
-        self.c3d = None
+        if self.c3d:
+            self.c3d.close()
+            self.c3d = None
 
     def featurize(self, video_path):
         '''Featurizes the input video using C3D.
