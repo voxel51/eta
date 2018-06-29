@@ -423,11 +423,11 @@ class VGG16(object):
                 trainable=True,
                 name="biases",
             )
-            self.fc3l = tf.nn.bias_add(tf.matmul(self.fc2, fc3w), fc3b)
+            self.fc3 = tf.nn.bias_add(tf.matmul(self.fc2, fc3w), fc3b)
             self.parameters += [fc3w, fc3b]
 
     def _build_output_layer(self):
-        self.probs = tf.nn.softmax(self.fc3l)
+        self.probs = tf.nn.softmax(self.fc3)
 
     def _load_model(self, model):
         weights = etam.NpzModelWeights(model).load()
