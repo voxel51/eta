@@ -254,7 +254,7 @@ class C3DFeaturizer(Featurizer):
             self.c3d.close()
             self.c3d = None
 
-    def featurize(self, video_path):
+    def _featurize(self, video_path):
         '''Featurizes the input video using C3D.
 
         The frames are resized to 112 x 112 internally, if necessary.
@@ -265,20 +265,12 @@ class C3DFeaturizer(Featurizer):
         Returns:
             the feature vector, a 1D numpy array of length 4096
         '''
-        self.start(warn_on_restart=False, keep_alive=False)
-        v = self._featurize(video_path)
-        if self._keep_alive is False:
-            self.stop()
-
-        return v
-
-    def _featurize(self, video_path):
-        clips = self._sample_clips(video_path)
+        clips = self._sample_clips(video_path).astype(np.float32)
 
         features = self.c3d.evaluate(clips, layer=self.c3d.fc2l)
         if self.config.sample_method == "sliding_window":
             # Average over sliding window clips
-            features = np.mean(features, axis=0, keepdims=True)
+            features = np.mean(features, axis=0)
             features /= np.linalg.norm(features)
         else:
             features = features.reshape(-1)
