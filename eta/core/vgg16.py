@@ -95,7 +95,7 @@ class VGG16(object):
         if layer is None:
             layer = self.probs
 
-        return self.sess.run(layer, feed_dict={self.imgs: imgs})[0]
+        return self.sess.run(layer, feed_dict={self.imgs: imgs})
 
     def close(self):
         '''Closes the tf.Session used by this instance.
