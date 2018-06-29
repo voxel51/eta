@@ -97,6 +97,10 @@ class VGG16(object):
             layer: an optional layer whose output to return. By default, the
                 output softmax layer (i.e., the class probabilities) is
                 returned
+
+        Returns:
+            an array of same size as the requested layer. The first dimension
+                will always be XXXX
         '''
         if layer is None:
             layer = self.probs
@@ -479,7 +483,7 @@ class VGG16Featurizer(Featurizer):
             img: the input image
 
         Returns:
-            the feature vector, a 1D numpy array of length 4096
+            the feature vector, a 1D array of length 4096
         '''
         if etai.is_gray(img):
             img = etai.gray_to_rgb(img)
@@ -487,4 +491,4 @@ class VGG16Featurizer(Featurizer):
             img = img[:, :, :3]
 
         imgs = [etai.resize(img, 224, 224)]
-        return self.vgg16.evaluate(imgs, layer=self.vgg16.fc2l)
+        return self.vgg16.evaluate(imgs, layer=self.vgg16.fc2l)[0]
