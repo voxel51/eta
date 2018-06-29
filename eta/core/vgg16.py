@@ -95,7 +95,7 @@ class VGG16(object):
         if layer is None:
             layer = self.probs
 
-        return self.sess.run(layer, feed_dict={self.imgs: [imgs]})[0]
+        return self.sess.run(layer, feed_dict={self.imgs: imgs})[0]
 
     def close(self):
         '''Closes the tf.Session used by this instance.
@@ -480,5 +480,5 @@ class VGG16Featurizer(Featurizer):
         elif etai.has_alpha(img):
             img = img[:, :, :3]
 
-        img = etai.resize(img, 224, 224)
-        return self.vgg16.evaluate(img, layer=self.vgg16.fc2l)
+        imgs = [etai.resize(img, 224, 224)]
+        return self.vgg16.evaluate(imgs, layer=self.vgg16.fc2l)
