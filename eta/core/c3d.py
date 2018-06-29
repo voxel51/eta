@@ -186,7 +186,7 @@ class C3D(object):
 
     def _build_fc_layers(self):
         with tf.name_scope("fc1") as scope:
-            inputs = tf.reshape(self.pool5, [1, 8192])
+            inputs = tf.reshape(self.pool5, [-1, 8192])
             weights = self._variable_with_weight_decay(
                 "wd1", [8192, 4096], 0.04, 0.001)
             biases = self._variable_with_weight_decay(
