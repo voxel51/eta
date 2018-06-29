@@ -193,28 +193,28 @@ class C3D(object):
                 "wd1", [8192, 4096], 0.04, 0.001)
             biases = self._variable_with_weight_decay(
                 "bd1", [4096], 0.04, 0.0)
-            activations = tf.nn.relu(
-                tf.matmul(inputs, weights) + biases, name=scope)
-            self.fc1 = tf.nn.dropout(activations, 0.6)
+            self.fc1l = tf.nn.bias_add(tf.matmul(inputs, weights), biases)
+            self.fc1 = tf.nn.relu(self.fc1l, name=scope)
+            #self.fc1 = tf.nn.dropout(self.fc1, 0.6)  # training only
 
         with tf.name_scope("fc2") as scope:
             weights = self._variable_with_weight_decay(
                 "wd2", [4096, 4096], 0.04, 0.002)
             biases = self._variable_with_weight_decay(
                 "bd2", [4096], 0.04, 0.0)
-            self.fc2l = tf.matmul(self.fc1, weights) + biases
-            activations = tf.nn.relu(self.fc2l, name=scope)
-            self.fc2 = tf.nn.dropout(activations, 0.6)
+            self.fc2l = tf.nn.bias_add(tf.matmul(self.fc1, weights), biases)
+            self.fc2 = tf.nn.relu(self.fc2l, name=scope)
+            #self.fc2 = tf.nn.dropout(self.fc2, 0.6)  # training only
 
         with tf.name_scope("fc3") as scope:
             weights = self._variable_with_weight_decay(
                 "wout", [4096, 101], 0.04, 0.005)
             biases = self._variable_with_weight_decay(
                 "bout", [101], 0.04, 0.0)
-            self.fc3 = tf.matmul(self.fc2, weights) + biases
+            self.fc3l = tf.nn.bias_add(tf.matmul(self.fc2, weights), biases)
 
     def _build_output_layer(self):
-        self.probs = tf.nn.softmax(self.fc3)
+        self.probs = tf.nn.softmax(self.fc3l)
 
     def _load_model(self, model):
         init = tf.global_variables_initializer()
