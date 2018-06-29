@@ -441,6 +441,28 @@ class Config(Serializable):
         return _parse_key(d, key, None, default)[0]
 
 
+class ConfigContainer(etas.Container):
+    '''Class for storing lists of Configs of the same type.  This is a
+    specialization of the `eta.core.serial.Container` class for configs.
+
+    This class cannot be instantiated directly; users of it should subclass and
+    define the `_ELE_CLS` attribute to denote that class of the `Config`
+    elements that this will store.
+    '''
+    _ELE_ATTR = "configs"
+
+    @classmethod
+    def _validate(cls):
+        '''Adds a validation to all subclasses that enforces only Config's can
+        be stored in this container.
+        '''
+        super(ConfigContainer, cls)._validate()
+
+        if not issubclass(cls._ELE_CLS, Config):
+            raise etas.ContainerError(
+                "_ELE_CLS for a ConfigContainer does not inherit from Config")
+
+
 class ConfigError(Exception):
     '''Exception raised when an invalid Config instance is encountered.'''
     pass
