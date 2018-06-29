@@ -26,11 +26,11 @@ from eta.core.serial import Serializable
 class ObjectContainer(DataContainer):
     '''Base class for containers that store lists of objects.
 
-    Subclasses must set the `_DATA_CLS` attribute.
+    Subclasses must set the `_ELE_CLS` attribute.
     '''
 
-    _DATA_CLS = None
-    _DATA_ATTR = "objects"
+    _ELE_CLS = None
+    _ELE_ATTR = "objects"
 
 
 class DetectedObject(Serializable):
@@ -77,7 +77,7 @@ class DetectedObject(Serializable):
 class Frame(ObjectContainer):
     '''Container for detected objects in a frame.'''
 
-    _DATA_CLS = DetectedObject
+    _ELE_CLS = DetectedObject
 
     def label_set(self):
         '''Returns a set containing the labels of the DetectedObjects.'''
@@ -100,8 +100,8 @@ class ObjectCount(Serializable):
 class ObjectCounts(DataContainer):
     '''Container for counting objects in an image.'''
 
-    _DATA_CLS = ObjectCount
-    _DATA_ATTR = "counts"
+    _ELE_CLS = ObjectCount
+    _ELE_ATTR = "counts"
 
 
 class ScoredObject(Serializable):
@@ -143,11 +143,11 @@ class ScoredObject(Serializable):
 class ScoredObjects(ObjectContainer):
     '''Container for scored objects.'''
 
-    _DATA_CLS = ScoredObject
+    _ELE_CLS = ScoredObject
 
     def sort(self):
         '''Sorts the current object list in ascending order by score.'''
         setattr(
-            self, self._DATA_ATTR,
+            self, self._ELE_ATTR,
             sorted(self._data, key=lambda obj: obj.score)
         )
