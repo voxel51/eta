@@ -272,7 +272,7 @@ class C3DFeaturizer(Featurizer):
         Returns:
             the feature vector, a 1D numpy array of length 4096
         '''
-        clips = self._sample_clips(video_path).astype(np.float32)
+        clips = self._sample_clips(video_path)
 
         features = self.c3d.evaluate(clips, layer=self.c3d.fc2l)
         if self.config.sample_method == "sliding_window":
