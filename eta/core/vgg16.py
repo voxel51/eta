@@ -82,6 +82,12 @@ class VGG16(object):
         self._build_output_layer()
         self._load_model(self.config.model)
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.close()
+
     def evaluate(self, imgs, layer=None):
         '''Feed-forward evaluation through the net.
 
