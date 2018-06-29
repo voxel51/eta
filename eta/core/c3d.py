@@ -1,7 +1,7 @@
 '''
 TensorFlow implementation of the popular C3D network.
 
-This module extends and add functionality to the original C3D implementation
+This module extends and adds functionality to the original C3D implementation
 by Hou Xin.
 
 C3D implementation in TensorFlow:
