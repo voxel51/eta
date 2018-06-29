@@ -221,7 +221,14 @@ class C3D(object):
 
 
 class C3DFeaturizerConfig(C3DConfig):
-    '''Configuration settings for a C3DFeaturizer.'''
+    '''Configuration settings for a C3DFeaturizer.
+
+    Attributes:
+        model: the C3D UCF101 model to use
+        sample_method: the frame sampling method to use. The possible values
+            are "first", "uniform", and "sliding_window"
+        stride: the stride to use when the sampling method is "sliding_window"
+    '''
 
     def __init__(self, d):
         super(C3DFeaturizerConfig, self).__init__(d)
