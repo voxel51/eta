@@ -182,7 +182,9 @@ class C3D(object):
                 "bc5b", [512], 0.04, 0.0)
             conv = self._conv3d(self.conv5a, weights, biases)
             self.conv5b = tf.nn.relu(conv, name=scope)
-            self.pool5 = self._max_pool("pool5", self.conv5b, k=2)
+            _tmp = self._max_pool("pool5", self.conv5b, k=2)
+            # required for the `C3D UCF101 split1` model we're using
+            self.pool5 = tf.transpose(_tmp, perm=[0, 1, 4, 2, 3])
 
     def _build_fc_layers(self):
         with tf.name_scope("fc1") as scope:
