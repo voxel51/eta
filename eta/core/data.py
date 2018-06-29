@@ -53,7 +53,7 @@ class DataContainer(Container):
 
     @property
     def _data(self):
-        '''Convenience accessor to get the list of data instances stored
-        independent of what the name of that attribute is.
+        '''Convenient access to the list of data instances stored independent
+        of what the name of that attribute is.
         '''
         return self._elements
