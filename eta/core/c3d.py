@@ -278,18 +278,22 @@ class C3DFeaturizer(Featurizer):
         return features
 
     def _sample_clips(self, video_path):
-        if self.config.sample_method == "first":
-            clips = etav.sample_first_frames(video_path, 16)
-        elif self.config.sample_method == "uniform":
-            clips = etav.uniformly_sample_frames(video_path, 16)
-        elif self.config.sample_method == "sliding_window":
-            if not self.config.stride:
+        sample_method = self.config.sample_method
+        stride = self.config.stride
+        size = (112, 112)
+
+        if sample_method == "first":
+            clips = etav.sample_first_frames(video_path, 16, size=size)
+        elif sample_method == "uniform":
+            clips = etav.uniformly_sample_frames(video_path, 16, size=size)
+        elif sample_method == "sliding_window":
+            if not stride:
                 raise ValueError(
                     "A stride must be provided when sample_method is "
                     "'sliding_window'")
             clips = etav.sliding_window_sample_frames(
-                video_path, 16, self.config.stride)
+                video_path, 16, stride, size=size)
         else:
-            raise ValueError(
-                "Invalid sample_method '%s'" % self.config.sample_method)
+            raise ValueError("Invalid sample_method '%s'" % sample_method)
+
         return clips
