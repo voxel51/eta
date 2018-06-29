@@ -279,7 +279,7 @@ class Container(Serializable):
         self._elements.append(instance)
 
     def attributes(self):
-        return ["_CLS", "_ELE_CLS", self._DATA_ATTR]
+        return ["_CLS", "_ELE_CLS", self._ELE_ATTR]
 
     def count_matches(self, filters, match=any):
         '''Counts number of elements that match the filters.
