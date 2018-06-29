@@ -43,7 +43,12 @@ class C3DConfig(Config):
 
 
 class C3D(object):
-    '''C3D network structure in TensorFlow.'''
+    '''TensorFlow implementation of the C3D network architecture for the
+    101 classes from UCF101.
+
+    This implementation is hard-coded to process an tensor of video clips of
+    size [XXXX, 16, 112, 112, 3].
+    '''
 
     def __init__(self, config=None, sess=None, clips=None):
         '''Builds a new C3D network
@@ -216,7 +221,7 @@ class C3D(object):
 
 
 class C3DFeaturizerConfig(C3DConfig):
-    ''' C3D Featurization configuration settings that works on images'''
+    '''Configuration settings for a C3DFeaturizer.'''
 
     def __init__(self, d):
         super(C3DFeaturizerConfig, self).__init__(d)
@@ -226,7 +231,7 @@ class C3DFeaturizerConfig(C3DConfig):
 
 
 class C3DFeaturizer(Featurizer):
-    '''Featurizer for videos using the C3D network structure.'''
+    '''Featurizer that embeds videos into the C3D feature space.'''
 
     def __init__(self, config=None):
         super(C3DFeaturizer,self).__init__()
@@ -250,6 +255,8 @@ class C3DFeaturizer(Featurizer):
 
     def featurize(self, video_path):
         '''Featurizes the input video using C3D.
+
+        The frames are resized to 112 x 112 internally, if necessary.
 
         Attributes:
             video_path: the input video path
