@@ -52,10 +52,10 @@ class VGG16Config(Config):
 
 
 class VGG16(object):
-    '''TensorFlow implementation of the VGG-16 network originally trained for
-    the 1000 classes from ImageNet.
+    '''TensorFlow implementation of the VGG-16 network architecture for the
+    1000 classes from ImageNet.
 
-    This implementation is hard-coded to process an array of images of size
+    This implementation is hard-coded to process a tensor of images of size
     [XXXX, 224, 224, 3].
     '''
 
@@ -436,12 +436,12 @@ class VGG16(object):
 
 
 class VGG16FeaturizerConfig(VGG16Config):
-    '''Configuration settings for a VGG16Featurizer that works on images.'''
+    '''Configuration settings for a VGG16Featurizer.'''
     pass
 
 
 class VGG16Featurizer(Featurizer):
-    '''Featurizer for images or frames using the VGG16 network structure.'''
+    '''Featurizer that embeds images into the VGG-16 feature space.'''
 
     def __init__(self, config=None):
         super(VGG16Featurizer, self).__init__()
@@ -460,11 +460,21 @@ class VGG16Featurizer(Featurizer):
 
     def _stop(self):
         '''Closes the TensorFlow session and frees up the network.'''
-        self.vgg16.close()
-        self.vgg16 = None
+        if self.vgg16:
+            self.vgg16.close()
+            self.vgg16 = None
 
     def _featurize(self, img):
-        '''Featurizes the image using the VGG-16 network.'''
+        '''Featurizes the input image using VGG-16.
+
+        The image is resized to 224 x 224 internally, if necessary.
+
+        Args:
+            img: the input image
+
+        Returns:
+            the feature vector, a 1D numpy array of length 4096
+        '''
         if etai.is_gray(img):
             img = etai.gray_to_rgb(img)
         elif etai.has_alpha(img):
