@@ -234,7 +234,7 @@ class C3DFeaturizerConfig(C3DConfig):
         super(C3DFeaturizerConfig, self).__init__(d)
         self.sample_method = self.parse_string(
             d, "sample_method", default="sliding_window")
-        self.stride = self.parse_number(d, "stride", default=None)
+        self.stride = self.parse_number(d, "stride", default=8)
 
 
 class C3DFeaturizer(Featurizer):
