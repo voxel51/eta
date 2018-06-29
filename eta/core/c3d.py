@@ -26,21 +26,13 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-import logging
-import math
-import os
-
 import numpy as np
 import tensorflow as tf
 
 from eta.core.config import Config
-import eta.core.image as etai
 from eta.core.features import Featurizer
 from eta.core.tfutils import TensorFlowModelWeights
 import eta.core.video as etav
-
-
-logger = logging.getLogger(__name__)
 
 
 class C3DConfig(Config):
