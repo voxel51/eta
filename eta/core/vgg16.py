@@ -80,6 +80,7 @@ class VGG16(object):
         self._build_conv_layers()
         self._build_fc_layers()
         self._build_output_layer()
+
         self._load_model(self.config.model)
 
     def __enter__(self):
@@ -89,7 +90,7 @@ class VGG16(object):
         self.close()
 
     def evaluate(self, imgs, layer=None):
-        '''Feed-forward evaluation through the net.
+        '''Feed-forward evaluation through the network.
 
         Args:
             imgs: an array of size [XXXX, 224, 224, 3] containing image(s) to
@@ -108,13 +109,14 @@ class VGG16(object):
         return self.sess.run(layer, feed_dict={self.imgs: imgs})
 
     def close(self):
-        '''Closes the tf.Session used by this instance.
+        '''Closes the TensorFlow session used by this instance, if necessary.
 
         Users who did not pass their own tf.Session to the constructor **must**
-        call this method.
+        call this method to free up the network.
         '''
-        self.sess.close()
-        self.sess = None
+        if self.sess:
+            self.sess.close()
+            self.sess = None
 
     def _build_conv_layers(self):
         self.parameters = []
