@@ -99,7 +99,7 @@ class C3D(object):
         '''Feed-forward evaluation through the net.
 
         Args:
-            imgs: an array of size [XXXX, 16, 112, 112, 3] containing clips(s)
+            clips: an array of size [XXXX, 16, 112, 112, 3] containing clips(s)
                 to feed into the network
             layer: an optional layer whose output to return. By default, the
                 output softmax layer (i.e., the class probabilities) is
