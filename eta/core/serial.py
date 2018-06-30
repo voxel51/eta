@@ -214,13 +214,6 @@ class Container(Serializable):
     '''
 
     #
-    # The name of the private attribute that will store the class
-    #
-    # Subclasses MAY override this field
-    #
-    _CLS_FIELD = "_CLS"
-
-    #
     # The class of the element stored in the container
     #
     # Subclasses MUST set this field
@@ -333,7 +326,7 @@ class Container(Serializable):
         '''Returns the list of class attributes that will be serialized by this
         Container.
         '''
-        return [self._CLS_FIELD, self._ELE_CLS_FIELD, self._ELE_ATTR]
+        return ["_CLS", self._ELE_CLS_FIELD, self._ELE_ATTR]
 
     def serialize(self):
         '''Serializes the object into a dictionary.
@@ -343,7 +336,7 @@ class Container(Serializable):
         reflective parsing when reading from disk.
         '''
         d = OrderedDict()
-        d[self._CLS_FIELD] = self.get_class_name()
+        d["_CLS"] = self.get_class_name()
         d[self._ELE_CLS_FIELD] = etau.get_class_name(self._ELE_CLS)
         d[self._ELE_ATTR] = [o.serialize() for o in self.__elements__]
         return d
@@ -352,7 +345,7 @@ class Container(Serializable):
     def from_dict(cls, d):
         '''Constructs a Container from a JSON dictionary.
 
-        If the dictionary has the `cls._CLS_FIELD` and `cls._ELE_CLS_FIELD`
+        If the dictionary has the `"_CLS"` and `cls._ELE_CLS_FIELD`
         keys, they are used to infer the Container class and underlying element
         classes, respectively, and this method can be invoked on any
         `Container` subclass that has the same `_ELE_CLS_FIELD` setting.
@@ -362,7 +355,7 @@ class Container(Serializable):
         '''
         if cls._CLS_FIELD in d and cls._ELE_CLS_FIELD in d:
             # Parse reflectively
-            cls = etau.get_class(d[cls._CLS_FIELD])
+            cls = etau.get_class(d["_CLS"])
             ele_cls = etau.get_class(d[cls._ELE_CLS_FIELD])
         else:
             # Parse using provided class
