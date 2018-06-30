@@ -511,14 +511,20 @@ class ConfigContainer(etas.Container):
 
     @classmethod
     def _validate(cls):
-        '''Adds a validation to all subclasses that enforces only Config's can
-        be stored in this container.
+        '''Validates that a concrete ConfigContainer subclass definition is
+        valid.
+
+        ConfigContainers must only contain Config subclasses.
         '''
         super(ConfigContainer, cls)._validate()
-
         if not issubclass(cls._ELE_CLS, Config):
-            raise etas.ContainerError(
-                "_ELE_CLS for a ConfigContainer does not inherit from Config")
+            raise ConfigContainerError(
+                "%s is not a Config subclass" % cls._ELE_CLS)
+
+
+class ConfigContainerError(Exception):
+    '''Exception raised when an invalid ConfigContainer is encountered.'''
+    pass
 
 
 class ConfigError(Exception):
