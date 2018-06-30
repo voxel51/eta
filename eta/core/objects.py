@@ -164,11 +164,29 @@ class DetectedObject(Serializable):
     @classmethod
     def from_dict(cls, d):
         '''Constructs a DetectedObject from a JSON dictionary.'''
+        if "attrs" in d:
+            attrs = ObjectAttributeContainer.from_dict(d["attrs"])
+        else:
+            attrs = None
+
         return cls(
             d["label"],
             d["confidence"],
             BoundingBox.from_dict(d["bounding_box"]),
+            index=d.get("index", None),
+            frame_number=d.get("frame_number", None),
+            attrs=attrs,
         )
+
+
+class DetectedObjectContainer(ObjectContainer):
+    '''Base class for containers that store lists of `DetectedObject`s.'''
+
+    _ELE_CLS = DetectedObject
+
+    def label_set(self):
+        '''Returns a set containing the labels of the DetectedObjects.'''
+        return set(obj.label for obj in self)
 
 
 class Frame(ObjectContainer):
