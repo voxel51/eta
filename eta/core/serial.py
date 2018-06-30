@@ -366,6 +366,7 @@ class Container(Serializable):
             ele_cls = etau.get_class(d[cls._ELE_CLS_FIELD])
         else:
             # Parse using provided class
+            cls._validate()
             ele_cls = cls._ELE_CLS
 
         return cls(**{
