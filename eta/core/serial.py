@@ -194,29 +194,52 @@ class Serializable(object):
 
 
 class Container(Serializable):
-    '''Base class for flexible containers that store lists of serializable
-    elements.
+    '''Abstract base class for flexible containers that store lists of
+    `Serializable` elements.
 
-    This class should not be instantiated directly. Instead a subclass should
-    be created for each type of data to be stored.  The two common direct
-    sub-classes of this `Container` are `DataContainer` and `ConfigContainer`
-    to store data and `Config` instances respectively.  See these two class
-    definitions for examples of using `Container`.
+    Container subclasses embed their class names and underlying element class
+    names in their JSON representations, so they can be read reflectively from
+    disk.
 
-    By default, Container subclasses embed their class names and underlying
-    data instance class names in their JSON representations, so data
-    containers can be read reflectively from disk.
+    This class cannot be instantiated directly.
 
-    Attributes:
-        <element>: a list of elements. The field name <element> is specified
-            by the `_ELE_ATTR` member, and the class of the elements is
-            specified by the `_ELE_CLS` member
+    This class currently has only two direct subclasses, which bifurcate the
+    container implementation into two distinct categories:
+        - `eta.core.data.DataContainer`: base class for containers that store
+            lists of `Serializable` data instances
+        - `eta.core.config.ConfigContainer`: base class for containers that
+            store lists of `Config` instances
+
+    See `DataContainer` and `ConfigContainer` for concrete usage examples.
     '''
 
+    #
+    # The name of the private attribute that will store the class
+    #
+    # Subclasses MAY override this field
+    #
+    _CLS_FIELD = "_CLS"
+
+    #
     # The class of the element stored in the container
+    #
+    # Subclasses MUST set this field
+    #
     _ELE_CLS = None
 
+    #
+    # The name of the private attribute that will store the class of the
+    # elements in the container
+    #
+    # Subclasses MUST set this field
+    #
+    _ELE_CLS_FIELD = None
+
+    #
     # The name of the attribute that will store the elements in the container
+    #
+    # Subclasses MUST set this field
+    #
     _ELE_ATTR = None
 
     def __init__(self, **kwargs):
