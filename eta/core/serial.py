@@ -270,16 +270,13 @@ class Container(Serializable):
         setattr(self, self._ELE_ATTR, elements)
 
     def __getitem__(self, index):
-        return self._elements.__getitem__(index)
+        return self.__elements__.__getitem__(index)
 
     def __iter__(self):
-        return iter(self._elements)
+        return iter(self.__elements__)
 
     @property
-    def _elements(self):
-        '''Convenient access function to get the list of elements stored
-        independent of what the name of that attribute is.
-        '''
+    def __elements__(self):
         return getattr(self, self._ELE_ATTR)
 
     @classmethod
@@ -299,10 +296,12 @@ class Container(Serializable):
         Args:
             instance: an instance of `_ELE_CLS`
         '''
-        self._elements.append(instance)
+        self.__elements__.append(instance)
 
-    def attributes(self):
-        return ["_CLS", "_ELE_CLS", self._ELE_ATTR]
+    @property
+    def size(self):
+        '''Returns the number of elements in the container.'''
+        return len(self.__elements__)
 
     def count_matches(self, filters, match=any):
         '''Counts the number of elements in the Container that match the
