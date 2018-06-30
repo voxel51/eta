@@ -19,7 +19,7 @@ from builtins import *
 # pragma pylint: enable=wildcard-import
 
 from eta.core.data import DataContainer
-from eta.core.geometry import BoundingBox
+from eta.core.geometry import BoundingBox, HasBoundingBox
 from eta.core.serial import Serializable
 
 
@@ -33,7 +33,7 @@ class ObjectContainer(DataContainer):
     _DATA_ATTR = "objects"
 
 
-class DetectedObject(Serializable):
+class DetectedObject(Serializable, HasBoundingBox):
     '''A detected object in an image.
 
     Attributes:
@@ -72,6 +72,10 @@ class DetectedObject(Serializable):
             d["confidence"],
             BoundingBox.from_dict(d["bounding_box"]),
         )
+
+    def get_bounding_box(self):
+        '''Returns the bounding box contained in the instance.'''
+        return self.bounding_box
 
 
 class Frame(ObjectContainer):
