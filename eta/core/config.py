@@ -490,7 +490,7 @@ class ConfigContainer(etas.Container):
     _ELE_ATTR = "configs"
 
     @property
-    def _config(self):
+    def _configs(self):
         '''The list of Config instances stored in this container, independent
         of the container-specific name of the attribute in which they are
         stored.
