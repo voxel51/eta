@@ -60,9 +60,43 @@ class DataContainer(etas.Container):
             of the data instances is specified by the `_ELE_CLS` member
     '''
 
+    #
+    # The class of the data stored in the container
+    #
+    # Subclasses MUST set this field
+    #
+    _ELE_CLS = None
+
+    #
+    # The name of the private attribute that will store the class of the
+    # data in the container
+    #
+    # Subclasses MAY override this field
+    #
+    _ELE_CLS_FIELD = "_DATA_CLS"
+
+    #
+    # The name of the attribute that will store the data in the container
+    #
+    # Subclasses MAY override this field
+    #
+    _ELE_ATTR = "data"
+
     @property
     def _data(self):
-        '''Convenient access to the list of data instances stored independent
-        of what the name of that attribute is.
+        '''The list of data instances stored in this container, independent of
+        the container-specific name of the attribute in which they are stored.
         '''
-        return self._elements
+        return self.__elements__
+
+    @classmethod
+    def get_data_class(cls):
+        '''Gets the class of data stored in this container.'''
+        return cls._ELE_CLS
+
+    @classmethod
+    def get_data_class_name(cls):
+        '''Returns the fully-qualified class name string of the data instances
+        in this container.
+        '''
+        return etau.get_class_name(cls._ELE_CLS)
