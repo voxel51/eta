@@ -190,13 +190,16 @@ class DetectedObjectContainer(ObjectContainer):
 
 
 class Frame(ObjectContainer):
-    '''Container for detected objects in a frame.'''
+    '''Container for detected objects in a frame.
+
+    @todo Deprecate this container in favor of DetectedObjectContainer
+    '''
 
     _ELE_CLS = DetectedObject
 
     def label_set(self):
         '''Returns a set containing the labels of the DetectedObjects.'''
-        return set(obj.label for obj in self.objects)
+        return set(obj.label for obj in self)
 
 
 class ObjectCount(Serializable):
