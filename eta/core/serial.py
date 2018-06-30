@@ -280,15 +280,9 @@ class Container(Serializable):
         return getattr(self, self._ELE_ATTR)
 
     @classmethod
-    def _validate(cls):
-        if cls._ELE_CLS is None:
-            raise ContainerError(
-                "_ELE_CLS is None; note that you cannot instantiate Container"
-                " directly.")
-        if cls._ELE_ATTR is None:
-            raise ContainerError(
-                "_ELE_ATTR is None; note that you cannot instantiate "
-                "Container directly.")
+    def get_class_name(cls):
+        '''Returns the fully-qualified class name string of this container.'''
+        return etau.get_class_name(cls)
 
     def add(self, instance):
         '''Adds an element to the container.
@@ -317,45 +311,6 @@ class Container(Serializable):
         '''
         return self.get_matches(filters, match=match).size
 
-    @classmethod
-    def from_dict(cls, d):
-        '''Constructs an Container from a JSON dictionary.
-
-        If the JSON contains the reflective `_CLS` and `_ELE_CLS` fields, they
-        are used to infer the underlying element classes, and this method can
-        be invoked as `Container.from_dict`. Otherwise, this method must be
-        called on a concrete subclass of `Container`.
-        '''
-        if "_CLS" in d and "_ELE_CLS" in d:
-            # Parse reflectively
-            cls = etau.get_class(d["_CLS"])
-            ele_cls = etau.get_class(d["_ELE_CLS"])
-        else:
-            # Parse using provided class
-            cls._validate()
-            ele_cls = cls._ELE_CLS
-        return cls(**{
-            cls._ELE_ATTR:
-            [ele_cls.from_dict(dd) for dd in d[cls._ELE_ATTR]]
-        })
-
-    @classmethod
-    def get_class_name(cls):
-        '''Returns the fully-qualified class name string of this container.'''
-        return etau.get_class_name(cls)
-
-    @classmethod
-    def get_element_class(cls):
-        '''Gets the class of elements stored in this container.'''
-        return cls._ELE_CLS
-
-    @classmethod
-    def get_element_class_name(cls):
-        '''Returns the fully-qualified class name string of the elements in
-        this container.
-        '''
-        return etau.get_class_name(cls._ELE_CLS)
-
     def get_matches(self, filters, match=any):
         '''Returns a container containing only instances that match the
         filters.
@@ -370,25 +325,65 @@ class Container(Serializable):
         '''
         return self.__class__(**{
             self._ELE_ATTR:
-            list(
-                filter(lambda o: match(f(o) for f in filters), self._elements))
+            list(filter(
+                lambda o: match(f(o) for f in filters), self.__elements__))
         })
 
-    @property
-    def size(self):
-        '''Returns the number of elements in the container.'''
-        return len(self._data)
+    def attributes(self):
+        '''Returns the list of class attributes that will be serialized by this
+        Container.
+        '''
+        return [self._CLS_FIELD, self._ELE_CLS_FIELD, self._ELE_ATTR]
 
     def serialize(self):
-        '''Custom serialization implementation for Containers that embeds the
-        class name, and the element class name in the JSON to enable reflective
-        parsing when reading from disk.
+        '''Serializes the object into a dictionary.
+
+        Containers have a custom serialization implementation that embeds the
+        class name and element class name into the JSON, which enables
+        reflective parsing when reading from disk.
         '''
         d = OrderedDict()
-        d["_CLS"] = self.get_class_name()
-        d["_ELE_CLS"] = self.get_element_class_name()
-        d[self._ELE_ATTR] = [o.serialize() for o in self._elements]
+        d[self._CLS_FIELD] = self.get_class_name()
+        d[self._ELE_CLS_FIELD] = etau.get_class_name(self._ELE_CLS)
+        d[self._ELE_ATTR] = [o.serialize() for o in self.__elements__]
         return d
+
+    @classmethod
+    def from_dict(cls, d):
+        '''Constructs a Container from a JSON dictionary.
+
+        If the dictionary has the `cls._CLS_FIELD` and `cls._ELE_CLS_FIELD`
+        keys, they are used to infer the Container class and underlying element
+        classes, respectively, and this method can be invoked on any
+        `Container` subclass that has the same `_ELE_CLS_FIELD` setting.
+
+        Otherwise, this method must be called on the same concrete `Container`
+        subclass from which the JSON was generated.
+        '''
+        if cls._CLS_FIELD in d and cls._ELE_CLS_FIELD in d:
+            # Parse reflectively
+            cls = etau.get_class(d[cls._CLS_FIELD])
+            ele_cls = etau.get_class(d[cls._ELE_CLS_FIELD])
+        else:
+            # Parse using provided class
+            ele_cls = cls._ELE_CLS
+
+        return cls(**{
+            cls._ELE_ATTR: [ele_cls.from_dict(dd) for dd in d[cls._ELE_ATTR]]
+        })
+
+    @classmethod
+    def _validate(cls):
+        '''Validates that a concrete Container subclass definition is valid.'''
+        if cls._ELE_CLS is None:
+            raise ContainerError(
+                "Cannot instantiate a Container for which _ELE_CLS is None")
+        if cls._ELE_ATTR is None:
+            raise ContainerError(
+                "Cannot instantiate a Container for which _ELE_ATTR is None")
+        if not issubclass(cls._ELE_CLS, Serializable):
+            raise ContainerError(
+                "%s is not Serializable" % cls._ELE_CLS)
 
 
 class ContainerError(Exception):
