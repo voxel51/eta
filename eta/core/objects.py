@@ -1,5 +1,5 @@
 '''
-Core data structures for working with detected objects in images.
+Core data structures for working with detected objects in images and videos.
 
 Copyright 2017-2018, Voxel51, LLC
 voxel51.com
