@@ -146,6 +146,21 @@ class DetectedObject(Serializable):
         '''
         return self.bounding_box.extract_from(img, force_square=force_square)
 
+    def attributes(self):
+        '''Returns the list of attributes to serialize.
+
+        Optional attributes that were not provided (e.g. are None) are omitted
+        from this list.
+        '''
+        _attrs = ["label", "confidence", "bounding_box"]
+        if self.index is not None:
+            _attrs.append("index")
+        if self.frame_number is not None:
+            _attrs.append("frame_number")
+        if self.attrs is not None:
+            _attrs.append("attrs")
+        return _attrs
+
     @classmethod
     def from_dict(cls, d):
         '''Constructs a DetectedObject from a JSON dictionary.'''
