@@ -353,7 +353,19 @@ class Container(Serializable):
         Otherwise, this method must be called on the same concrete `Container`
         subclass from which the JSON was generated.
         '''
-        if cls._CLS_FIELD in d and cls._ELE_CLS_FIELD in d:
+        if cls._ELE_CLS_FIELD is None:
+            raise ContainerError(
+                "%s is an abstract container and cannot be used to load a "
+                "JSON dictionary. Please use a Container subclass that "
+                "defines its `_ELE_CLS_FIELD` member" % cls)
+
+        if "_CLS" in d:
+            if cls._ELE_CLS_FIELD not in d:
+                raise ContainerError(
+                    "Cannot use %s to reflectively load this container "
+                    "because the expected field '%s' was not found in the "
+                    "JSON dictionary" % (cls, cls._ELE_CLS_FIELD))
+
             # Parse reflectively
             cls = etau.get_class(d["_CLS"])
             ele_cls = etau.get_class(d[cls._ELE_CLS_FIELD])
