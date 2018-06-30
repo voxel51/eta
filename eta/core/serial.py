@@ -322,6 +322,23 @@ class Container(Serializable):
                 lambda o: match(f(o) for f in filters), self.__elements__))
         })
 
+    def _sort_by_attr(self, attr, reverse=False):
+        '''Sorts the elements in the container by the given attribute.
+
+        Elements whose attribute is None are always put at the end of the list.
+
+        Args:
+            attr: the element attribute to sort by
+            reverse: whether to sort in descending order. The default is False
+        '''
+        def field_none_last(ele):
+            val = getattr(ele, attr)
+            return ((val is None) ^ reverse, val)  # always puts None last
+
+        setattr(
+            self, self._ELE_ATTR, sorted(
+                self.__elements__, reverse=reverse, key=field_none_last))
+
     def attributes(self):
         '''Returns the list of class attributes that will be serialized by this
         Container.
