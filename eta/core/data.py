@@ -19,19 +19,28 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+import eta.core.serial as etas
+import eta.core.utils as etau
 
-from eta.core.serial import Container
 
+class DataContainer(etas.Container):
+    '''Abstract base class for containers that store lists of `Serializable`
+    data class instances.
 
-class DataContainer(Container):
-    '''Base class for containers that store lists of data instances.
+    This class cannot be instantiated directly. Instead a subclass should
+    be created for each type of data to be stored. Subclasses MUST set the
+    following members:
+        -  `_ELE_CLS`: the class of the element stored in the container
 
-    This class should not be instantiated directly. Instead a subclass should
-    be created for each type of data to be stored.
+    In addition, sublasses MAY override the following members:
+        - `_ELE_CLS_FIELD`: the name of the private attribute that will store
+            the class of the elements in the container
+        - `_ELE_ATTR`: the name of the attribute that will store the elements
+            in the container
 
-    By default, DataContainer subclasses embed their class names and
-    underlying data instance class names in their JSON representations, so
-    data containers can be read reflectively from disk.
+    DataContainer subclasses embed their class names and underlying data
+    instance class names in their JSON representations, so they can be read
+    reflectively from disk.
 
     Examples:
         ```
@@ -47,8 +56,8 @@ class DataContainer(Container):
 
     Attributes:
         <data>: a list of data instances. The field name <data> is specified by
-            the `_ELE_ATTR` member, and the class of the data instances is
-            specified by the `_ELE_CLS` member
+            the `_ELE_ATTR` member of the DataContainer subclass, and the class
+            of the data instances is specified by the `_ELE_CLS` member
     '''
 
     @property
