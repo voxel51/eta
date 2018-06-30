@@ -243,12 +243,12 @@ class Container(Serializable):
     _ELE_ATTR = None
 
     def __init__(self, **kwargs):
-        '''Constructs a Container.
+        '''Constructs a Container subclass.
 
         Args:
-            <element>: an optional list of elements to store in the container.
+            <element>: an optional list of elements to store in the Container.
             The appropriate name of this keyword argument is determined by the
-            `_ELE_ATTR` member of the container class.
+            `_ELE_ATTR` member of the Container subclass.
 
         Raises:
             ContainerError: if there was a problem parsing the input
@@ -305,11 +305,12 @@ class Container(Serializable):
         return ["_CLS", "_ELE_CLS", self._ELE_ATTR]
 
     def count_matches(self, filters, match=any):
-        '''Counts number of elements that match the filters.
+        '''Counts the number of elements in the Container that match the
+        given filters.
 
         Args:
-            filters: a list of functions that accept elements and return
-                True/False
+            filters: a list of functions that accept instances of class
+                `_ELE_CLS`and return True/False
             match: a function (usually `any` or `all`) that accepts an iterable
                 and returns True/False. Used to aggregate the outputs of each
                 filter to decide whether a match has occurred. The default is
