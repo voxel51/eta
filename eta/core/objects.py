@@ -107,19 +107,34 @@ class DetectedObject(Serializable):
         label: object label
         confidence: detection confidence
         bounding_box: a BoundingBox around the object
+        index: (optional) an index assigned to the object
+        frame_number: (optional) the frame number in which this object was
+            detected
+        attrs: (optional) an `ObjectAttributeContainer` describing additional
+            attributes of the object
     '''
 
-    def __init__(self, label, confidence, bounding_box):
+    def __init__(
+            self, label, confidence, bounding_box, index=None,
+            frame_number=None, attrs=None):
         '''Constructs a DetectedObject.
 
         Args:
             label: object label string
             confidence: detection confidence, in [0, 1]
             bounding_box: a BoundingBox around the object
+            index: (optional) an index assigned to the object
+            frame_number: (optional) the frame number in which this object was
+                detected
+            attrs: (optional) an `ObjectAttributeContainer` describing
+                additional attributes of the object
         '''
         self.label = str(label)
         self.confidence = float(confidence)
         self.bounding_box = bounding_box
+        self.index = index
+        self.frame_number = frame_number
+        self.attrs = attrs
 
     def extract_from(self, img, force_square=False):
         '''Extracts the subimage containing this object from the image.
