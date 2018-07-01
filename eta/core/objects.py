@@ -64,29 +64,20 @@ class ObjectAttribute(Serializable):
 
 
 class ObjectAttributeContainer(DataContainer):
-    '''A generic container for `ObjectAttribute`s or its subclasses.'''
+    '''A container for object attributes.'''
 
     _ELE_CLS = ObjectAttribute
     _ELE_CLS_FIELD = "_ATTR_CLS"
     # Note: we can't use "attributes" here due to `Serialiable.attributes()`
     _ELE_ATTR = "attrs"
 
-    @classmethod
-    def _validate(cls):
-        '''Validates that an ObjectAttributeContainer definition is valid.
+    def category_set(self):
+        '''Returns the set of attribute categories in the container.'''
+        return set(attr.category for attr in self)
 
-        `ObjectAttributeContainer`s must only contain `ObjectAttribute`s or
-        subclasses of them.
-        '''
-        super(ObjectAttributeContainer, cls)._validate()
-        if not issubclass(cls._ELE_CLS, ObjectAttribute):
-            raise ObjectAttributeContainerError(
-                "%s is not an ObjectAttribute subclass" % cls._ELE_CLS)
-
-
-class ObjectAttributeContainerError(Exception):
-    '''Exception raised when an invalid ConfigContainer is encountered.'''
-    pass
+    def label_set(self):
+        '''Returns the set of attribute labels in the container.'''
+        return set(attr.label for attr in self)
 
 
 class DetectedObject(Serializable):
