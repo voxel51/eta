@@ -97,14 +97,15 @@ class DetectedObject(Serializable):
         confidence: detection confidence
         bounding_box: a BoundingBox around the object
         index: (optional) an index assigned to the object
+        score: (optional) an optional score for the object
         frame_number: (optional) the frame number in which this object was
             detected
-        attrs: (optional) an `ObjectAttributeContainer` describing additional
+        attrs: (optional) an ObjectAttributeContainer describing additional
             attributes of the object
     '''
 
     def __init__(
-            self, label, confidence, bounding_box, index=None,
+            self, label, confidence, bounding_box, index=None, score=None,
             frame_number=None, attrs=None):
         '''Constructs a DetectedObject.
 
@@ -113,17 +114,28 @@ class DetectedObject(Serializable):
             confidence: detection confidence, in [0, 1]
             bounding_box: a BoundingBox around the object
             index: (optional) an index assigned to the object
+            score: (optional) an optional score for the object
             frame_number: (optional) the frame number in which this object was
                 detected
-            attrs: (optional) an `ObjectAttributeContainer` describing
-                additional attributes of the object
+            attrs: (optional) an ObjectAttributeContainer describing additional
+                attributes of the object
         '''
         self.label = str(label)
         self.confidence = float(confidence)
         self.bounding_box = bounding_box
         self.index = index
+        self.score = score
         self.frame_number = frame_number
-        self.attrs = attrs
+        self.attrs = attrs or ObjectAttributeContainer()
+        self._meta = None  # Usable by clients to store temporary metadata
+
+    def add_attribute(self, attr):
+        '''Adds an attribute to the object.
+
+        Args:
+            attr: an ObjectAttribute instance
+        '''
+        self.attrs.add(attr)
 
     def extract_from(self, img, force_square=False):
         '''Extracts the subimage containing this object from the image.
@@ -144,9 +156,11 @@ class DetectedObject(Serializable):
         _attrs = ["label", "confidence", "bounding_box"]
         if self.index is not None:
             _attrs.append("index")
+        if self.score is not None:
+            _attrs.append("score")
         if self.frame_number is not None:
             _attrs.append("frame_number")
-        if self.attrs is not None:
+        if self.attrs.size > 0:
             _attrs.append("attrs")
         return _attrs
 
@@ -163,6 +177,7 @@ class DetectedObject(Serializable):
             d["confidence"],
             BoundingBox.from_dict(d["bounding_box"]),
             index=d.get("index", None),
+            score=d.get("score", None),
             frame_number=d.get("frame_number", None),
             attrs=attrs,
         )
@@ -172,16 +187,58 @@ class DetectedObjectContainer(DataContainer):
     '''Base class for containers that store lists of `DetectedObject`s.'''
 
     _ELE_CLS = DetectedObject
+    _ELE_CLS_FIELD = "_OBJ_CLS"
+    _ELE_ATTR = "objects"
 
     def label_set(self):
         '''Returns a set containing the labels of the DetectedObjects.'''
         return set(obj.label for obj in self)
 
+    def sort_by_confidence(self, reverse=False):
+        '''Sorts the object list by confidence.
 
-class Frame(ObjectContainer):
+        Objects whose confidence is None are always put last.
+
+        Args:
+            reverse: whether to sort in descending order. The default is False
+        '''
+        return self._sort_by_attr("confidence", reverse=reverse)
+
+    def sort_by_index(self, reverse=False):
+        '''Sorts the object list by index.
+
+        Objects whose index is None are always put last.
+
+        Args:
+            reverse: whether to sort in descending order. The default is False
+        '''
+        return self._sort_by_attr("index", reverse=reverse)
+
+    def sort_by_score(self, reverse=False):
+        '''Sorts the object list by score.
+
+        Objects whose score is None are always put last.
+
+        Args:
+            reverse: whether to sort in descending order. The default is False
+        '''
+        return self._sort_by_attr("score", reverse=reverse)
+
+    def sort_by_frame_number(self, reverse=False):
+        '''Sorts the object list by frame number
+
+        Objects whose frame number is None are always put last.
+
+        Args:
+            reverse: whether to sort in descending order. The default is False
+        '''
+        return self._sort_by_attr("frame_number", reverse=reverse)
+
+
+class Frame(DataContainer):
     '''Container for detected objects in a frame.
 
-    @todo Deprecate this container in favor of DetectedObjectContainer
+    @todo Deprecate this in favor of DetectedObjectContainer
     '''
 
     _ELE_CLS = DetectedObject
