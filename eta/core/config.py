@@ -489,14 +489,6 @@ class ConfigContainer(etas.Container):
     #
     _ELE_ATTR = "configs"
 
-    @property
-    def _configs(self):
-        '''The list of Config instances stored in this container, independent
-        of the container-specific name of the attribute in which they are
-        stored.
-        '''
-        return self.__elements__
-
     @classmethod
     def get_config_class(cls):
         '''Gets the class of Config stored in this container.'''
