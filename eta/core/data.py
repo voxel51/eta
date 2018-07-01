@@ -82,13 +82,6 @@ class DataContainer(etas.Container):
     #
     _ELE_ATTR = "data"
 
-    @property
-    def _data(self):
-        '''The list of data instances stored in this container, independent of
-        the container-specific name of the attribute in which they are stored.
-        '''
-        return self.__elements__
-
     @classmethod
     def get_data_class(cls):
         '''Gets the class of data stored in this container.'''
