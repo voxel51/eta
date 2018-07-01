@@ -226,21 +226,6 @@ class DetectedObjectContainer(DataContainer):
         return self._sort_by_attr("frame_number", reverse=reverse)
 
 
-class Frame(DataContainer):
-    '''Container for detected objects in a frame.
-
-    @todo Deprecate this in favor of DetectedObjectContainer
-    '''
-
-    _ELE_CLS = DetectedObject
-    _ELE_CLS_FIELD = "_OBJ_CLS"
-    _ELE_ATTR = "objects"
-
-    def label_set(self):
-        '''Returns a set containing the labels of the DetectedObjects.'''
-        return set(obj.label for obj in self)
-
-
 class ObjectCount(Serializable):
     '''The number of instances of an object found in an image.'''
 
