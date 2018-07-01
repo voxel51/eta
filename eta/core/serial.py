@@ -265,8 +265,17 @@ class Container(Serializable):
     def __getitem__(self, index):
         return self.__elements__.__getitem__(index)
 
+    def __setitem__(self, index, value):
+        return self.__elements__.__setitem__(index, value)
+
     def __iter__(self):
         return iter(self.__elements__)
+
+    def __len__(self):
+        return len(self.__elements__)
+
+    def __bool__(self):
+        return self.size > 0
 
     @property
     def __elements__(self):
