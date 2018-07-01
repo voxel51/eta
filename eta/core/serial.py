@@ -300,7 +300,7 @@ class Container(Serializable):
         return len(self.__elements__)
 
     def count_matches(self, filters, match=any):
-        '''Counts the number of elements in the Container that match the
+        '''Counts the number of elements in the container that match the
         given filters.
 
         Args:
@@ -310,12 +310,14 @@ class Container(Serializable):
                 and returns True/False. Used to aggregate the outputs of each
                 filter to decide whether a match has occurred. The default is
                 `any`
+
+        Returns:
+            the number of elements in the container that match the filters
         '''
         return self.get_matches(filters, match=match).size
 
     def get_matches(self, filters, match=any):
-        '''Returns a container containing only instances that match the
-        filters.
+        '''Gets elements matching the given filters.
 
         Args:
             filters: a list of functions that accept elements and return
@@ -324,6 +326,10 @@ class Container(Serializable):
                 and returns True/False. Used to aggregate the outputs of each
                 filter to decide whether a match has occurred. The default is
                 `any`
+
+        Returns:
+            a copy of the container containing only the elements that match
+                the filters
         '''
         return self.__class__(**{
             self._ELE_ATTR:
