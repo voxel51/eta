@@ -151,7 +151,7 @@ class DetectedObject(Serializable):
             _attrs.append("score")
         if self.frame_number is not None:
             _attrs.append("frame_number")
-        if self.attrs.size > 0:
+        if self.attrs:
             _attrs.append("attrs")
         return _attrs
 
