@@ -345,18 +345,40 @@ class Container(Serializable):
         '''
         return ["_CLS", self._ELE_CLS_FIELD, self._ELE_ATTR]
 
-    def serialize(self):
-        '''Serializes the object into a dictionary.
+    def serialize(self, reflective=True):
+        '''Serializes the container into a dictionary.
 
-        Containers have a custom serialization implementation that embeds the
-        class name and element class name into the JSON, which enables
-        reflective parsing when reading from disk.
+        Containers have a custom serialization implementation that optionally
+        embeds the class name and element class name into the JSON, which
+        enables reflective parsing when reading from disk.
+
+        Args:
+            reflective: whether to include the reflective attributes in the
+                JSON representation. By default, this is True
+
+        Returns:
+            a JSON dictionary representation of the container
         '''
         d = OrderedDict()
-        d["_CLS"] = self.get_class_name()
-        d[self._ELE_CLS_FIELD] = etau.get_class_name(self._ELE_CLS)
+        if reflective:
+            d["_CLS"] = self.get_class_name()
+            d[self._ELE_CLS_FIELD] = etau.get_class_name(self._ELE_CLS)
         d[self._ELE_ATTR] = [o.serialize() for o in self.__elements__]
         return d
+
+    def write_json(self, path, pretty_print=True, reflective=True):
+        '''Serializes the container and writes it to disk.
+
+        Args:
+            path: the output path
+            pretty_print: when True (default), the resulting JSON will be
+                outputted to be human readable; when False, it will be compact
+                with no extra spaces or newline characters
+            reflective: whether to include the reflective attributes in the
+                JSON representation. By default, this is True
+        '''
+        d = self.serialize(reflective=reflective)
+        write_json(d, path, pretty_print=pretty_print)
 
     @classmethod
     def from_dict(cls, d):
