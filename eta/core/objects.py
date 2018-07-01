@@ -23,17 +23,6 @@ from eta.core.geometry import BoundingBox
 from eta.core.serial import Serializable
 
 
-class ObjectContainer(DataContainer):
-    '''Base class for containers that store lists of objects.
-
-    Subclasses must set the `_ELE_CLS` attribute.
-    '''
-
-    _ELE_CLS = None
-    _ELE_CLS_FIELD = "_OBJ_CLS"
-    _ELE_ATTR = "objects"
-
-
 class ObjectAttribute(Serializable):
     '''Base class for object attributes.'''
 
@@ -179,7 +168,7 @@ class DetectedObject(Serializable):
         )
 
 
-class DetectedObjectContainer(ObjectContainer):
+class DetectedObjectContainer(DataContainer):
     '''Base class for containers that store lists of `DetectedObject`s.'''
 
     _ELE_CLS = DetectedObject
@@ -196,6 +185,8 @@ class Frame(ObjectContainer):
     '''
 
     _ELE_CLS = DetectedObject
+    _ELE_CLS_FIELD = "_OBJ_CLS"
+    _ELE_ATTR = "objects"
 
     def label_set(self):
         '''Returns a set containing the labels of the DetectedObjects.'''
@@ -258,10 +249,12 @@ class ScoredObject(Serializable):
         )
 
 
-class ScoredObjects(ObjectContainer):
+class ScoredObjects(DataContainer):
     '''Container for scored objects.'''
 
     _ELE_CLS = ScoredObject
+    _ELE_CLS_FIELD = "_OBJ_CLS"
+    _ELE_ATTR = "objects"
 
     def sort(self):
         '''Sorts the current object list in ascending order by score.'''
