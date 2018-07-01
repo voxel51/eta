@@ -24,7 +24,7 @@ from eta.core.serial import Serializable
 
 
 class ObjectAttribute(Serializable):
-    '''Base class for object attributes.'''
+    '''An attribute of a detected object.'''
 
     def __init__(self, category=None, label=None, confidence=None):
         '''Constructs an ObjectAttribute.
@@ -308,5 +308,5 @@ class ScoredObjects(DataContainer):
         '''Sorts the current object list in ascending order by score.'''
         setattr(
             self, self._ELE_ATTR,
-            sorted(self._data, key=lambda obj: obj.score)
+            sorted(self.objects, key=lambda obj: obj.score)
         )
