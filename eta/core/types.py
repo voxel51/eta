@@ -604,6 +604,8 @@ class DetectedObjectsSequence(JSONFile):
 class EmbeddedFrame(JSONFile):
     '''Embedded objects in a frame.
 
+    @todo delete this deprecated type
+
     Emamples:
         /path/to/embedded_frame.json
     '''
@@ -615,6 +617,8 @@ class EmbeddedFrameSequence(JSONFileSequence):
     '''Embedded objects in a video represented as a collection of EmbeddedFrame
     files indexed by one numeric parameter.
 
+    @todo delete this deprecated type
+
     Emamples:
         /path/to/embedded_frames/%05d.json
     '''
@@ -624,6 +628,8 @@ class EmbeddedFrameSequence(JSONFileSequence):
 
 class IndexedFrame(JSONFile):
     '''Indexed objects in a frame.
+
+    @todo delete this deprecated type
 
     Emamples:
         /path/to/indexed_frame.json
@@ -636,6 +642,8 @@ class IndexedFrameSequence(JSONFileSequence):
     '''Indexed objects in a video represented as a collection of IndexedFrame
     files indexed by one numeric parameter.
 
+    @todo delete this deprecated type
+
     Emamples:
         /path/to/indexed_frames/%05d.json
     '''
@@ -645,6 +653,8 @@ class IndexedFrameSequence(JSONFileSequence):
 
 class TrackedObjects(JSONFile):
     '''Tracked objects in a frame.
+
+    @todo delete this deprecated type
 
     Emamples:
         /path/to/tracked_objects.json
@@ -657,6 +667,8 @@ class TrackedObjectsSequence(JSONFileSequence):
     '''Tracked objects in a video represented as a collection of TrackedObjects
     files indexed by one numeric parameter.
 
+    @todo delete this deprecated type
+
     Emamples:
         /path/to/tracked_objects/%05d.json
     '''
@@ -666,6 +678,8 @@ class TrackedObjectsSequence(JSONFileSequence):
 
 class Trace(JSONFile):
     '''Trace describing a tracked object in a video.
+
+    @todo delete this deprecated type
 
     Examples:
         /path/to/trace.json
