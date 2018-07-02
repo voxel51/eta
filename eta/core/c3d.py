@@ -76,6 +76,40 @@ class C3D(object):
 
         self._load_model(self.config.model)
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.close()
+
+    def evaluate(self, clips, layer=None):
+        '''Feed-forward evaluation through the network.
+
+        Args:
+            clips: an array of size [XXXX, 16, 112, 112, 3] containing clips(s)
+                to feed into the network
+            layer: an optional layer whose output to return. By default, the
+                output softmax layer (i.e., the class probabilities) is
+                returned
+
+        Returns:
+            an array of same size as the requested layer. The first dimension
+                will always be XXXX
+        '''
+        if layer is None:
+            layer = self.probs
+        return self.sess.run(layer, feed_dict={self.clips: clips})
+
+    def close(self):
+        '''Closes the TensorFlow session used by this instance, if necessary.
+
+        Users who did not pass their own tf.Session to the constructor **must**
+        call this method to free up the network.
+        '''
+        if self.sess:
+            self.sess.close()
+            self.sess = None
+
     def _variable_with_weight_decay(self, name, shape, stddev, wd):
         var = tf.get_variable(
             name, shape,
@@ -94,25 +128,6 @@ class C3D(object):
         return tf.nn.max_pool3d(
             l_input, ksize=[1, k, 2, 2, 1],
             strides=[1, k, 2, 2, 1], padding="SAME", name=name)
-
-    def evaluate(self, clips, layer=None):
-        '''Feed-forward evaluation through the net.
-
-        Args:
-            clips: an array of size [XXXX, 16, 112, 112, 3] containing clips(s)
-                to feed into the network
-            layer: an optional layer whose output to return. By default, the
-                output softmax layer (i.e., the class probabilities) is
-                returned
-        '''
-        if layer is None:
-            layer = self.probs
-        return self.sess.run(layer, feed_dict={self.clips: clips})
-
-    def close(self):
-        '''Closes the TensorFlow session and frees up the network.'''
-        self.sess.close()
-        self.sess = None
 
     def _build_conv_layers(self):
         with tf.name_scope("conv1") as scope:
@@ -270,7 +285,7 @@ class C3DFeaturizer(Featurizer):
             video_path: the input video path
 
         Returns:
-            the feature vector, a 1D numpy array of length 4096
+            the feature vector, a 1D array of length 4096
         '''
         clips = self._sample_clips(video_path)
 

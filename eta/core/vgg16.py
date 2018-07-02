@@ -80,10 +80,17 @@ class VGG16(object):
         self._build_conv_layers()
         self._build_fc_layers()
         self._build_output_layer()
+
         self._load_model(self.config.model)
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.close()
+
     def evaluate(self, imgs, layer=None):
-        '''Feed-forward evaluation through the net.
+        '''Feed-forward evaluation through the network.
 
         Args:
             imgs: an array of size [XXXX, 224, 224, 3] containing image(s) to
@@ -91,6 +98,10 @@ class VGG16(object):
             layer: an optional layer whose output to return. By default, the
                 output softmax layer (i.e., the class probabilities) is
                 returned
+
+        Returns:
+            an array of same size as the requested layer. The first dimension
+                will always be XXXX
         '''
         if layer is None:
             layer = self.probs
@@ -98,13 +109,14 @@ class VGG16(object):
         return self.sess.run(layer, feed_dict={self.imgs: imgs})
 
     def close(self):
-        '''Closes the tf.Session used by this instance.
+        '''Closes the TensorFlow session used by this instance, if necessary.
 
         Users who did not pass their own tf.Session to the constructor **must**
-        call this method.
+        call this method to free up the network.
         '''
-        self.sess.close()
-        self.sess = None
+        if self.sess:
+            self.sess.close()
+            self.sess = None
 
     def _build_conv_layers(self):
         self.parameters = []
@@ -473,7 +485,7 @@ class VGG16Featurizer(Featurizer):
             img: the input image
 
         Returns:
-            the feature vector, a 1D numpy array of length 4096
+            the feature vector, a 1D array of length 4096
         '''
         if etai.is_gray(img):
             img = etai.gray_to_rgb(img)
@@ -481,4 +493,4 @@ class VGG16Featurizer(Featurizer):
             img = img[:, :, :3]
 
         imgs = [etai.resize(img, 224, 224)]
-        return self.vgg16.evaluate(imgs, layer=self.vgg16.fc2l)
+        return self.vgg16.evaluate(imgs, layer=self.vgg16.fc2l)[0]

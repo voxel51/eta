@@ -441,6 +441,84 @@ class Config(Serializable):
         return _parse_key(d, key, None, default)[0]
 
 
+class ConfigContainer(etas.Container):
+    '''Abstract base class for containers that store lists of `Config` class
+    instances.
+
+    This class cannot be instantiated directly. Instead a subclass should
+    be created for each type of data to be stored. Subclasses MUST set the
+    following members:
+        -  `_ELE_CLS`: the class of the element stored in the container
+
+    In addition, sublasses MAY override the following members:
+        - `_ELE_CLS_FIELD`: the name of the private attribute that will store
+            the class of the elements in the container
+        - `_ELE_ATTR`: the name of the attribute that will store the elements
+            in the container
+
+    ConfigContainer subclasses embed their class names and underlying data
+    instance class names in their JSON representations, so they can be read
+    reflectively from disk.
+
+    Attributes:
+        <configs>: a list of Config instances. The field name <configs> is
+            specified by the `_ELE_ATTR` member of the ConfigContainer
+            subclass, and the class of the Config instances is specified by the
+            `_ELE_CLS` member
+    '''
+
+    #
+    # The class of the configs stored in the container
+    #
+    # Subclasses MUST set this field
+    #
+    _ELE_CLS = None
+
+    #
+    # The name of the private attribute that will store the class of the
+    # configs in the container
+    #
+    # Subclasses MAY override this field
+    #
+    _ELE_CLS_FIELD = "_CONFIG_CLS"
+
+    #
+    # The name of the attribute that will store the configs in the container
+    #
+    # Subclasses MAY override this field
+    #
+    _ELE_ATTR = "configs"
+
+    @classmethod
+    def get_config_class(cls):
+        '''Gets the class of Config stored in this container.'''
+        return cls._ELE_CLS
+
+    @classmethod
+    def get_config_class_name(cls):
+        '''Returns the fully-qualified class name string of the Config
+        instances in this container.
+        '''
+        return etau.get_class_name(cls._ELE_CLS)
+
+    @classmethod
+    def _validate(cls):
+        '''Validates that a concrete ConfigContainer subclass definition is
+        valid.
+
+        ConfigContainers must only contain Config subclasses.
+        '''
+        super(ConfigContainer, cls)._validate()
+        if not issubclass(cls._ELE_CLS, Config):
+            raise ConfigContainerError(
+                "%s is not a Config subclass" % cls._ELE_CLS)
+
+
+class ConfigContainerError(Exception):
+    '''Exception raised when an invalid ConfigContainer is encountered.'''
+    pass
+
+
 class ConfigError(Exception):
     '''Exception raised when an invalid Config instance is encountered.'''
     pass

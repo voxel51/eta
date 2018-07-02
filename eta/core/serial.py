@@ -196,6 +196,264 @@ class Serializable(object):
         return cls.from_dict(read_json(path))
 
 
+class Container(Serializable):
+    '''Abstract base class for flexible containers that store lists of
+    `Serializable` elements.
+
+    Container subclasses embed their class names and underlying element class
+    names in their JSON representations, so they can be read reflectively from
+    disk.
+
+    This class cannot be instantiated directly.
+
+    This class currently has only two direct subclasses, which bifurcate the
+    container implementation into two distinct categories:
+        - `eta.core.data.DataContainer`: base class for containers that store
+            lists of `Serializable` data instances
+        - `eta.core.config.ConfigContainer`: base class for containers that
+            store lists of `Config` instances
+
+    See `DataContainer` and `ConfigContainer` for concrete usage examples.
+    '''
+
+    #
+    # The class of the element stored in the container
+    #
+    # Subclasses MUST set this field
+    #
+    _ELE_CLS = None
+
+    #
+    # The name of the private attribute that will store the class of the
+    # elements in the container
+    #
+    # Subclasses MUST set this field
+    #
+    _ELE_CLS_FIELD = None
+
+    #
+    # The name of the attribute that will store the elements in the container
+    #
+    # Subclasses MUST set this field
+    #
+    _ELE_ATTR = None
+
+    def __init__(self, **kwargs):
+        '''Constructs a Container subclass.
+
+        Args:
+            <element>: an optional list of elements to store in the Container.
+            The appropriate name of this keyword argument is determined by the
+            `_ELE_ATTR` member of the Container subclass.
+
+        Raises:
+            ContainerError: if there was a problem parsing the input
+        '''
+        self._validate()
+
+        if kwargs and self._ELE_ATTR not in kwargs:
+            raise ContainerError(
+                "Expected elements to be provided in keyword argument '%s'; "
+                "found keys %s" % (self._ELE_ATTR, list(kwargs.keys())))
+        elements = kwargs.get(self._ELE_ATTR, [])
+
+        for e in elements:
+            if not isinstance(e, self._ELE_CLS):
+                raise ContainerError(
+                    "Container %s expects elements of type %s but found "
+                    "%s" % (self.__class__, self._ELE_CLS, e.__class__))
+
+        setattr(self, self._ELE_ATTR, elements)
+
+    def __getitem__(self, index):
+        return self.__elements__.__getitem__(index)
+
+    def __setitem__(self, index, value):
+        return self.__elements__.__setitem__(index, value)
+
+    def __iter__(self):
+        return iter(self.__elements__)
+
+    def __len__(self):
+        return len(self.__elements__)
+
+    def __bool__(self):
+        return self.size > 0
+
+    @property
+    def __elements__(self):
+        return getattr(self, self._ELE_ATTR)
+
+    @classmethod
+    def get_class_name(cls):
+        '''Returns the fully-qualified class name string of this container.'''
+        return etau.get_class_name(cls)
+
+    def add(self, instance):
+        '''Adds an element to the container.
+
+        Args:
+            instance: an instance of `_ELE_CLS`
+        '''
+        self.__elements__.append(instance)
+
+    @property
+    def size(self):
+        '''Returns the number of elements in the container.'''
+        return len(self.__elements__)
+
+    def count_matches(self, filters, match=any):
+        '''Counts the number of elements in the container that match the
+        given filters.
+
+        Args:
+            filters: a list of functions that accept instances of class
+                `_ELE_CLS`and return True/False
+            match: a function (usually `any` or `all`) that accepts an iterable
+                and returns True/False. Used to aggregate the outputs of each
+                filter to decide whether a match has occurred. The default is
+                `any`
+
+        Returns:
+            the number of elements in the container that match the filters
+        '''
+        return self.get_matches(filters, match=match).size
+
+    def get_matches(self, filters, match=any):
+        '''Gets elements matching the given filters.
+
+        Args:
+            filters: a list of functions that accept elements and return
+                True/False
+            match: a function (usually `any` or `all`) that accepts an iterable
+                and returns True/False. Used to aggregate the outputs of each
+                filter to decide whether a match has occurred. The default is
+                `any`
+
+        Returns:
+            a copy of the container containing only the elements that match
+                the filters
+        '''
+        return self.__class__(**{
+            self._ELE_ATTR:
+            list(filter(
+                lambda o: match(f(o) for f in filters), self.__elements__))
+        })
+
+    def _sort_by_attr(self, attr, reverse=False):
+        '''Sorts the elements in the container by the given attribute.
+
+        Elements whose attribute is None are always put at the end of the list.
+
+        Args:
+            attr: the element attribute to sort by
+            reverse: whether to sort in descending order. The default is False
+        '''
+        def field_none_last(ele):
+            val = getattr(ele, attr)
+            return ((val is None) ^ reverse, val)  # always puts None last
+
+        setattr(
+            self, self._ELE_ATTR, sorted(
+                self.__elements__, reverse=reverse, key=field_none_last))
+
+    def attributes(self):
+        '''Returns the list of class attributes that will be serialized by this
+        Container.
+        '''
+        return ["_CLS", self._ELE_CLS_FIELD, self._ELE_ATTR]
+
+    def serialize(self, reflective=True):
+        '''Serializes the container into a dictionary.
+
+        Containers have a custom serialization implementation that optionally
+        embeds the class name and element class name into the JSON, which
+        enables reflective parsing when reading from disk.
+
+        Args:
+            reflective: whether to include the reflective attributes in the
+                JSON representation. By default, this is True
+
+        Returns:
+            a JSON dictionary representation of the container
+        '''
+        d = OrderedDict()
+        if reflective:
+            d["_CLS"] = self.get_class_name()
+            d[self._ELE_CLS_FIELD] = etau.get_class_name(self._ELE_CLS)
+        d[self._ELE_ATTR] = [o.serialize() for o in self.__elements__]
+        return d
+
+    def write_json(self, path, pretty_print=True, reflective=True):
+        '''Serializes the container and writes it to disk.
+
+        Args:
+            path: the output path
+            pretty_print: when True (default), the resulting JSON will be
+                outputted to be human readable; when False, it will be compact
+                with no extra spaces or newline characters
+            reflective: whether to include the reflective attributes in the
+                JSON representation. By default, this is True
+        '''
+        d = self.serialize(reflective=reflective)
+        write_json(d, path, pretty_print=pretty_print)
+
+    @classmethod
+    def from_dict(cls, d):
+        '''Constructs a Container from a JSON dictionary.
+
+        If the dictionary has the `"_CLS"` and `cls._ELE_CLS_FIELD`
+        keys, they are used to infer the Container class and underlying element
+        classes, respectively, and this method can be invoked on any
+        `Container` subclass that has the same `_ELE_CLS_FIELD` setting.
+
+        Otherwise, this method must be called on the same concrete `Container`
+        subclass from which the JSON was generated.
+        '''
+        if cls._ELE_CLS_FIELD is None:
+            raise ContainerError(
+                "%s is an abstract container and cannot be used to load a "
+                "JSON dictionary. Please use a Container subclass that "
+                "defines its `_ELE_CLS_FIELD` member" % cls)
+
+        if "_CLS" in d:
+            if cls._ELE_CLS_FIELD not in d:
+                raise ContainerError(
+                    "Cannot use %s to reflectively load this container "
+                    "because the expected field '%s' was not found in the "
+                    "JSON dictionary" % (cls, cls._ELE_CLS_FIELD))
+
+            # Parse reflectively
+            cls = etau.get_class(d["_CLS"])
+            ele_cls = etau.get_class(d[cls._ELE_CLS_FIELD])
+        else:
+            # Parse using provided class
+            cls._validate()
+            ele_cls = cls._ELE_CLS
+
+        return cls(**{
+            cls._ELE_ATTR: [ele_cls.from_dict(dd) for dd in d[cls._ELE_ATTR]]
+        })
+
+    @classmethod
+    def _validate(cls):
+        '''Validates that a concrete Container subclass definition is valid.'''
+        if cls._ELE_CLS is None:
+            raise ContainerError(
+                "Cannot instantiate a Container for which _ELE_CLS is None")
+        if cls._ELE_ATTR is None:
+            raise ContainerError(
+                "Cannot instantiate a Container for which _ELE_ATTR is None")
+        if not issubclass(cls._ELE_CLS, Serializable):
+            raise ContainerError(
+                "%s is not Serializable" % cls._ELE_CLS)
+
+
+class ContainerError(Exception):
+    '''Exception raised when an invalid Container is encountered.'''
+    pass
+
+
 def is_serializable(obj):
     '''Returns True if the object is serializable (i.e., implements the
     Serializable interface) and False otherwise.
