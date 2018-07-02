@@ -273,6 +273,88 @@ def is_valid_video(inpath):
     return answer
 
 
+def sample_first_frames(inpath, k, size=None):
+    '''Samples the first k frames in a video.
+
+    Args:
+        inpath: path to the input video
+        k: number of frames to extract
+        size: an optional [width, height] to resize the sampled frames. By
+            default, the native dimensions of the frames are used
+
+    Returns:
+        A numpy array of size [k, height, width]
+    '''
+    imgs = []
+    frames = "1-%d" % k
+    with FFmpegVideoReader(inpath, frames=frames) as vr:
+        for img in vr:
+            if size:
+                img = etai.resize(img, *size)
+            imgs.append(img)
+    return np.array(imgs)
+
+
+def uniformly_sample_frames(inpath, k, size=None):
+    '''Uniformly samples k frames from the video, always including the first
+    and last frames.
+
+    Args:
+        inpath: path to the input video
+        k: the number of frames to extract
+        size: an optional [width, height] to resize the sampled frames. By
+            default, the native dimensions of the frames are used
+
+    Returns:
+        A numpy array of size [k, height, width]
+    '''
+    imgs = []
+    num_frames = get_frame_count(inpath)
+    frames = [int(round(i)) for i in np.linspace(1, num_frames, k)]
+    with FFmpegVideoReader(inpath, frames=frames) as vr:
+        for img in vr:
+            if size:
+                img = etai.resize(img, *size)
+            imgs.append(img)
+    return np.array(imgs)
+
+
+def sliding_window_sample_frames(inpath, k, stride, size=None):
+    '''Samples clips from the video using a sliding window of the given
+    length and stride.
+
+    Args:
+        inpath: path to the input video
+        k: the size of each window
+        stride: the stride for sliding window
+        size: an optional [width, height] to resize the sampled frames. By
+            default, the native dimensions of the frames are used
+
+    Returns:
+        A numpy array of size [XXXX, k, height, width]
+    '''
+    # Determine clip indices
+    num_frames = get_frame_count(inpath)
+    delta = np.arange(1, k + 1)
+    offsets = np.array(list(range(0, num_frames + 1 - k, stride)))
+    clip_inds = offsets[:, np.newaxis] + delta[np.newaxis, :]
+
+    # Read frames
+    imgs = {}
+    frames = list(np.unique(clip_inds))  # only read the necessary frames
+    with FFmpegVideoReader(inpath, frames=frames) as vr:
+        for img in vr:
+            if size:
+                img = etai.resize(img, *size)
+            imgs[vr.frame_number] = img
+
+    # Generate clips tensor
+    clips = []
+    for inds in clip_inds:
+        clips.append(np.array([imgs[k] for k in inds]))
+    return np.array(clips)
+
+
 class VideoProcessor(object):
     '''Class for reading a video and writing a new video frame-by-frame.
 

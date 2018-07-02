@@ -1,18 +1,15 @@
 '''
-Tensorflow implementation of the popular VGG-16 network.
+TensorFlow implementation of the popular VGG-16 network.
 
 This implementation is hard-coded for the model architecture and weights that
 Frossard originally trained for the 1000 classes from ImageNet.
 
 VGG-16 implementation in TensorFlow:
-http://www.cs.toronto.edu/~frossard/post/vgg16/
+http://www.cs.toronto.edu/~frossard/post/vgg16
 David Frossard, 2016
 
 Model architecture:
 https://gist.github.com/ksimonyan/211839e770f7b538e2d8#file-readme-md
-
-Model weights (from Caffe):
-https://github.com/ethereon/caffe-tensorflow
 
 Copyright 2017-2018, Voxel51, LLC
 voxel51.com
@@ -55,10 +52,10 @@ class VGG16Config(Config):
 
 
 class VGG16(object):
-    '''TensorFlow implementation of the VGG-16 network originally trained for
-    the 1000 classes from ImageNet.
+    '''TensorFlow implementation of the VGG-16 network architecture for the
+    1000 classes from ImageNet.
 
-    This implementation is hard-coded to process an array of images of size
+    This implementation is hard-coded to process a tensor of images of size
     [XXXX, 224, 224, 3].
     '''
 
@@ -83,10 +80,17 @@ class VGG16(object):
         self._build_conv_layers()
         self._build_fc_layers()
         self._build_output_layer()
+
         self._load_model(self.config.model)
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.close()
+
     def evaluate(self, imgs, layer=None):
-        '''Feed-forward evaluation through the net.
+        '''Feed-forward evaluation through the network.
 
         Args:
             imgs: an array of size [XXXX, 224, 224, 3] containing image(s) to
@@ -94,25 +98,30 @@ class VGG16(object):
             layer: an optional layer whose output to return. By default, the
                 output softmax layer (i.e., the class probabilities) is
                 returned
+
+        Returns:
+            an array of same size as the requested layer. The first dimension
+                will always be XXXX
         '''
         if layer is None:
             layer = self.probs
 
-        return self.sess.run(layer, feed_dict={self.imgs: [imgs]})[0]
+        return self.sess.run(layer, feed_dict={self.imgs: imgs})
 
     def close(self):
-        '''Closes the tf.Session used by this instance.
+        '''Closes the TensorFlow session used by this instance, if necessary.
 
         Users who did not pass their own tf.Session to the constructor **must**
-        call this method.
+        call this method to free up the network.
         '''
-        self.sess.close()
-        self.sess = None
+        if self.sess:
+            self.sess.close()
+            self.sess = None
 
     def _build_conv_layers(self):
         self.parameters = []
 
-        with tf.name_scope("preprocess") as scope:
+        with tf.name_scope("preprocess"):
             mean = tf.constant(
                 [123.68, 116.779, 103.939],
                 dtype=tf.float32,
@@ -382,7 +391,7 @@ class VGG16(object):
         )
 
     def _build_fc_layers(self):
-        with tf.name_scope("fc1") as scope:
+        with tf.name_scope("fc1"):
             shape = int(np.prod(self.pool5.get_shape()[1:]))
             fc1w = tf.Variable(
                 tf.truncated_normal(
@@ -399,7 +408,7 @@ class VGG16(object):
             self.fc1 = tf.nn.relu(fc1l)
             self.parameters += [fc1w, fc1b]
 
-        with tf.name_scope("fc2") as scope:
+        with tf.name_scope("fc2"):
             fc2w = tf.Variable(
                 tf.truncated_normal(
                     [4096, 4096], dtype=tf.float32, stddev=1e-1),
@@ -415,7 +424,7 @@ class VGG16(object):
             self.fc2 = tf.nn.relu(fc2l)
             self.parameters += [fc2w, fc2b]
 
-        with tf.name_scope("fc3") as scope:
+        with tf.name_scope("fc3"):
             fc3w = tf.Variable(
                 tf.truncated_normal(
                     [4096, 1000], dtype=tf.float32, stddev=1e-1),
@@ -426,11 +435,11 @@ class VGG16(object):
                 trainable=True,
                 name="biases",
             )
-            self.fc3l = tf.nn.bias_add(tf.matmul(self.fc2, fc3w), fc3b)
+            self.fc3 = tf.nn.bias_add(tf.matmul(self.fc2, fc3w), fc3b)
             self.parameters += [fc3w, fc3b]
 
     def _build_output_layer(self):
-        self.probs = tf.nn.softmax(self.fc3l)
+        self.probs = tf.nn.softmax(self.fc3)
 
     def _load_model(self, model):
         weights = etam.NpzModelWeights(model).load()
@@ -439,12 +448,12 @@ class VGG16(object):
 
 
 class VGG16FeaturizerConfig(VGG16Config):
-    '''Configuration settings for a VGG16Featurizer that works on images.'''
+    '''Configuration settings for a VGG16Featurizer.'''
     pass
 
 
 class VGG16Featurizer(Featurizer):
-    '''Featurizer for images or frames using the VGG16 network structure.'''
+    '''Featurizer that embeds images into the VGG-16 feature space.'''
 
     def __init__(self, config=None):
         super(VGG16Featurizer, self).__init__()
@@ -463,15 +472,25 @@ class VGG16Featurizer(Featurizer):
 
     def _stop(self):
         '''Closes the TensorFlow session and frees up the network.'''
-        self.vgg16.close()
-        self.vgg16 = None
+        if self.vgg16:
+            self.vgg16.close()
+            self.vgg16 = None
 
     def _featurize(self, img):
-        '''Featurizes the image using the VGG-16 network.'''
+        '''Featurizes the input image using VGG-16.
+
+        The image is resized to 224 x 224 internally, if necessary.
+
+        Args:
+            img: the input image
+
+        Returns:
+            the feature vector, a 1D array of length 4096
+        '''
         if etai.is_gray(img):
             img = etai.gray_to_rgb(img)
         elif etai.has_alpha(img):
             img = img[:, :, :3]
 
-        img = etai.resize(img, 224, 224)
-        return self.vgg16.evaluate(img, layer=self.vgg16.fc2l)
+        imgs = [etai.resize(img, 224, 224)]
+        return self.vgg16.evaluate(imgs, layer=self.vgg16.fc2l)[0]
