@@ -248,7 +248,7 @@ class C3DFeaturizerConfig(C3DConfig):
     def __init__(self, d):
         super(C3DFeaturizerConfig, self).__init__(d)
         self.sample_method = self.parse_string(
-            d, "sample_method", default="uniform")
+            d, "sample_method", default="sliding_window")
         self.stride = self.parse_number(d, "stride", default=8)
 
 
@@ -298,11 +298,6 @@ class C3DFeaturizer(Featurizer):
             features = features.reshape(-1)
 
         return features
-
-    def predict(self, video_path):
-        clips = self._sample_clips(video_path)
-        probs = self.c3d.evaluate(clips)
-        return probs
 
     def _sample_clips(self, video_path):
         sample_method = self.config.sample_method
