@@ -449,7 +449,7 @@ class DualImageSequence(DualFileSequence, ConcreteData):
         )
 
 
-class VideoSequece(FileSequence, ConcreteData):
+class VideoSequence(FileSequence, ConcreteData):
     '''A sequence of encoded video files with one numeric parameter.
 
     Examples:
@@ -590,7 +590,7 @@ class DetectedObjects(JSONFile):
     pass
 
 
-class DetectedObjectsSequence(JSONFile):
+class DetectedObjectsSequence(JSONFileSequence):
     '''Detected objects in a video represented as a collection of
     DetectedObjects files indexed by one numeric parameter.
 
