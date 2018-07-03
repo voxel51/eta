@@ -552,19 +552,6 @@ class EventDetection(JSONFile):
     pass
 
 
-class ScoredObjects(JSONFile):
-    '''A collection of scored objects.
-
-    This type is implemented in ETA by the `eta.core.objects.ScoredObjects`
-    class.
-
-    Examples:
-        /path/to/scored_objects.json
-    '''
-
-    pass
-
-
 class EventSeries(JSONFile):
     '''A series of events in a video.
 
@@ -577,24 +564,38 @@ class EventSeries(JSONFile):
     pass
 
 
-class Frame(JSONFile):
-    '''Detected objects in a frame.
+class DetectedObject(JSONFile):
+    '''A detected object in an image or video.
 
-    This type is implemented in ETA by the `eta.core.objects.Frame` class.
+    This type is implemented in ETA by the `eta.core.objects.DetectedObject`
+    class.
 
     Examples:
-        /path/to/frame.json
+        /path/to/detected_object.json
     '''
 
     pass
 
 
-class FrameSequence(JSONFileSequence):
-    '''Detected objects in a video represented as a collection of Frame files
-    indexed by one numeric parameter.
+class DetectedObjects(JSONFile):
+    '''A list of detected objects in an image or video.
+
+    This type is implemented in ETA by the
+    `eta.core.objects.DetectedObjectContainer` class.
 
     Examples:
-        /path/to/frames/%05d.json
+        /path/to/detected_objects.json
+    '''
+
+    pass
+
+
+class DetectedObjectsSequence(JSONFile):
+    '''Detected objects in a video represented as a collection of
+    DetectedObjects files indexed by one numeric parameter.
+
+    Examples:
+        /path/to/detected_objects/%05d.json
     '''
 
     pass
@@ -602,6 +603,8 @@ class FrameSequence(JSONFileSequence):
 
 class EmbeddedFrame(JSONFile):
     '''Embedded objects in a frame.
+
+    @todo delete this deprecated type
 
     Emamples:
         /path/to/embedded_frame.json
@@ -614,6 +617,8 @@ class EmbeddedFrameSequence(JSONFileSequence):
     '''Embedded objects in a video represented as a collection of EmbeddedFrame
     files indexed by one numeric parameter.
 
+    @todo delete this deprecated type
+
     Emamples:
         /path/to/embedded_frames/%05d.json
     '''
@@ -623,6 +628,8 @@ class EmbeddedFrameSequence(JSONFileSequence):
 
 class IndexedFrame(JSONFile):
     '''Indexed objects in a frame.
+
+    @todo delete this deprecated type
 
     Emamples:
         /path/to/indexed_frame.json
@@ -635,6 +642,8 @@ class IndexedFrameSequence(JSONFileSequence):
     '''Indexed objects in a video represented as a collection of IndexedFrame
     files indexed by one numeric parameter.
 
+    @todo delete this deprecated type
+
     Emamples:
         /path/to/indexed_frames/%05d.json
     '''
@@ -644,6 +653,8 @@ class IndexedFrameSequence(JSONFileSequence):
 
 class TrackedObjects(JSONFile):
     '''Tracked objects in a frame.
+
+    @todo delete this deprecated type
 
     Emamples:
         /path/to/tracked_objects.json
@@ -656,6 +667,8 @@ class TrackedObjectsSequence(JSONFileSequence):
     '''Tracked objects in a video represented as a collection of TrackedObjects
     files indexed by one numeric parameter.
 
+    @todo delete this deprecated type
+
     Emamples:
         /path/to/tracked_objects/%05d.json
     '''
@@ -665,6 +678,8 @@ class TrackedObjectsSequence(JSONFileSequence):
 
 class Trace(JSONFile):
     '''Trace describing a tracked object in a video.
+
+    @todo delete this deprecated type
 
     Examples:
         /path/to/trace.json
@@ -755,11 +770,11 @@ class JSONDirectory(Directory):
     pass
 
 
-class FrameSequenceDirectory(JSONDirectory):
-    '''A directory containing a sequence of Frame JSON files.
+class DetectedObjectsSequenceDirectory(JSONDirectory):
+    '''A directory containing a sequence of DetectedObjects JSON files.
 
     Examples:
-        /path/to/frames
+        /path/to/detected_objects
     '''
 
     pass
@@ -843,11 +858,12 @@ class ZippedJSONDirectory(ZippedDirectory):
     pass
 
 
-class ZippedFrameSequenceDirectory(ZippedDirectory):
-    '''A zipped directory containing a collection of FrameSequence directories.
+class ZippedDetectedObjectsSequenceDirectory(ZippedDirectory):
+    '''A zipped directory containing a collection of DetectedObjectsSequence
+    directories.
 
     Examples:
-        /path/to/frames.zip
+        /path/to/detected_objects.zip
     '''
 
     pass

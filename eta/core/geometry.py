@@ -187,8 +187,8 @@ class LabeledPoint(Serializable):
 class LabeledPointContainer(DataContainer):
     '''Container for points in an image that each have an associated label.'''
 
-    _DATA_CLS = LabeledPoint
-    _DATA_ATTR = "points"
+    _ELE_CLS = LabeledPoint
+    _ELE_ATTR = "points"
 
     def label_set(self):
         '''Returns a set containing the labels of the LabeledPoints.'''
