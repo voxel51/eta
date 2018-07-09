@@ -489,6 +489,41 @@ class VideoClips(DualFileSequence, ConcreteData):
         )
 
 
+class NPZFile(File, ConcreteData):
+    '''The base type for npz files.
+    Examples:
+        /path/to/data.npz
+    '''
+
+    @staticmethod
+    def gen_path(basedir, params):
+        return os.path.join(basedir, "{name}.npz").format(**params)
+
+    @staticmethod
+    def is_valid_path(path):
+        return File.is_valid_path(path) and etau.has_extension(path, ".npz")
+
+
+class NPZFileSequence(FileSequence, ConcreteData):
+    '''The base type for a collection of npz files indexed by one numeric
+    parameter.
+    Examples:
+        /path/to/jsons/%05d.npz
+    '''
+
+    @staticmethod
+    def gen_path(basedir, params):
+        return os.path.join(
+            basedir, "{name}", "{idx}.npz").format(**params)
+
+    @staticmethod
+    def is_valid_path(path):
+        return (
+            FileSequence.is_valid_path(path) and
+            etau.has_extension(path, ".npz")
+        )
+
+
 class JSONFile(File, ConcreteData):
     '''The base type for JSON files.
 
