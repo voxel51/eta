@@ -24,13 +24,13 @@ from builtins import *
 # pragma pylint: enable=wildcard-import
 
 import logging
+import os
 import sys
 
 from eta.core.config import Config
 import eta.core.events as etae
 import eta.core.module as etam
 import eta.core.video as etav
-
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +56,8 @@ class DataConfig(Config):
         input_path (eta.core.types.Video): The input video
 
     Outputs:
-        output_path (eta.core.types.ImageSequence): The output sampled video
+        output_path (eta.core.types.ImageSequenceDirectory):
+            the path to the directory containing the output sampled video
             frames
     '''
 
@@ -101,8 +102,10 @@ def _sample_video_by_fps(data_config, fps):
         logger.info(
             "Sampling video %s at native frame rate ", data_config.input_path)
 
+    file_end = "%05d.png"
+    output_path = os.path.join(data_config.output_path, file_end)
     etav.FFmpegVideoSampler(fps=fps).run(
-        data_config.input_path, data_config.output_path)
+        data_config.input_path, output_path)
 
 
 def _sample_video_by_clips(data_config, clips_path):
@@ -110,10 +113,13 @@ def _sample_video_by_clips(data_config, clips_path):
         "Sampling video %s by clips %s", data_config.input_path, clips_path)
     detections = etae.EventDetection.from_json(clips_path)
     frames = detections.to_series().to_str()
+    file_end = "%05d.png"
+    output_path = os.path.join(data_config.output_path, file_end)
+
     processor = etav.VideoProcessor(
         data_config.input_path,
         frames=frames,
-        out_impath=data_config.output_path,
+        out_impath=output_path,
     )
 
     with processor:
