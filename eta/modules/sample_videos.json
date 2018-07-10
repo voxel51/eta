@@ -17,7 +17,7 @@
     "outputs": [
         {
             "name": "output_path",
-            "type": "eta.core.types.ImageSequenceDirectory",
+            "type": "eta.core.types.VideoFile",
             "description": "the path to the directory containing the output sampled video frames",
             "required": true
         }
