@@ -56,7 +56,7 @@ class DataConfig(Config):
         input_path (eta.core.types.Video): The input video
 
     Outputs:
-        output_path (eta.core.types.ImageSequenceDirectory):
+        output_path (eta.core.types.Video):
             the path to the directory containing the output sampled video
             frames
     '''
@@ -119,7 +119,7 @@ def _sample_video_by_clips(data_config, clips_path):
     processor = etav.VideoProcessor(
         data_config.input_path,
         frames=frames,
-        out_impath=output_path,
+        out_single_vidpath=output_path,
     )
 
     with processor:
