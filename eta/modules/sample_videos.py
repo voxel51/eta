@@ -56,7 +56,7 @@ class DataConfig(Config):
         input_path (eta.core.types.Video): The input video
 
     Outputs:
-        output_path (eta.core.types.Video):
+        output_path (eta.core.types.VideoFile):
             the path to the directory containing the output sampled video
             frames
     '''
