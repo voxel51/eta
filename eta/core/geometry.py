@@ -60,6 +60,9 @@ class BoundingBox(Serializable):
             img: an image
             force_square: whether to (minimally) manipulate the bounding box
                 during extraction so that the returned subimage is square
+
+        Returns:
+            the extracted subimage
         '''
         x1, y1 = self.top_left.coords_in(img=img)
         x2, y2 = self.bottom_right.coords_in(img=img)
