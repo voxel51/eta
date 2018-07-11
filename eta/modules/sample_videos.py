@@ -57,8 +57,7 @@ class DataConfig(Config):
 
     Outputs:
         output_path (eta.core.types.VideoFile):
-            the path to the directory containing the output sampled video
-            frames
+            the path to the sampled video
     '''
 
     def __init__(self, d):
