@@ -36,7 +36,7 @@ class ObjectAttribute(Serializable):
         '''
         self.category = category
         self.label = label
-        self.confidence = float(confidence)
+        self.confidence = confidence
 
     def attributes(self):
         '''Returns the list of attributes to serialize.
@@ -236,8 +236,8 @@ class ObjectCount(Serializable):
     '''The number of instances of an object found in an image.'''
 
     def __init__(self, label, count):
-        self.label = str(label)
-        self.count = int(count)
+        self.label = label
+        self.count = count
 
     @classmethod
     def from_dict(cls, d):
