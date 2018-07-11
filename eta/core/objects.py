@@ -85,8 +85,8 @@ class DetectedObject(Serializable, HasBoundingBox):
 
     Attributes:
         label: object label
-        confidence: detection confidence
         bounding_box: a BoundingBox around the object
+        confidence: (optional) the detection confidence, in [0, 1]
         index: (optional) an index assigned to the object
         score: (optional) an optional score for the object
         frame_number: (optional) the frame number in which this object was
@@ -96,14 +96,14 @@ class DetectedObject(Serializable, HasBoundingBox):
     '''
 
     def __init__(
-            self, label, confidence, bounding_box, index=None, score=None,
+            self, label, bounding_box, confidence=None, index=None, score=None,
             frame_number=None, attrs=None):
         '''Constructs a DetectedObject.
 
         Args:
             label: object label string
-            confidence: detection confidence, in [0, 1]
             bounding_box: a BoundingBox around the object
+            confidence: (optional) the detection confidence, in [0, 1]
             index: (optional) an index assigned to the object
             score: (optional) an optional score for the object
             frame_number: (optional) the frame number in which this object was
@@ -111,9 +111,9 @@ class DetectedObject(Serializable, HasBoundingBox):
             attrs: (optional) an ObjectAttributeContainer describing additional
                 attributes of the object
         '''
-        self.label = str(label)
-        self.confidence = float(confidence)
+        self.label = label
         self.bounding_box = bounding_box
+        self.confidence = confidence
         self.index = index
         self.score = score
         self.frame_number = frame_number
@@ -144,7 +144,9 @@ class DetectedObject(Serializable, HasBoundingBox):
         Optional attributes that were not provided (e.g. are None) are omitted
         from this list.
         '''
-        _attrs = ["label", "confidence", "bounding_box"]
+        _attrs = ["label", "bounding_box"]
+        if self.confidence is not None:
+            _attrs.append("confidence")
         if self.index is not None:
             _attrs.append("index")
         if self.score is not None:
@@ -165,8 +167,8 @@ class DetectedObject(Serializable, HasBoundingBox):
 
         return cls(
             d["label"],
-            d["confidence"],
             BoundingBox.from_dict(d["bounding_box"]),
+            confidence=d.get("confidence", None),
             index=d.get("index", None),
             score=d.get("score", None),
             frame_number=d.get("frame_number", None),
