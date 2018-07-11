@@ -74,22 +74,24 @@ class BoundingBox(Serializable):
         return img[y, x, ...]
 
     def pad_relative(self, alpha):
-        '''Returns a bounding box padded by the given relative amount.
+        '''Returns a bounding box whose length and width are expanded (or
+        shrunk, when alpha < 0) by (100 * alpha)%.
 
-        The length and width of the bounding box will be
+        The coordinates are clamped to [0, 1] x [0, 1] if necessary.
+
         Args:
             alpha: the desired padding relative to the size of this
-                bounding box; a float in [0, 1]
+                bounding box; a float in [-1, \inf)
 
         Returns:
             the padded bounding box
         '''
+        w = self.bottom_right.x - self.top_left.x
+        h = self.bottom_right.y - self.top_left.y
 
-        whalf = 0.5 * (self.bottom_right.x - self.top_left.x)
-        hhalf = 0.5 * (self.bottom_right.y - self.top_left.y)
-
-        wpad = max(-whalf, alpha * whalf)
-        hpad = max(-hhalf, alpha * hhalf)
+        alpha = max(alpha, -1)
+        wpad = 0.5 * alpha * w
+        hpad = 0.5 * alpha * h
 
         tlx, tly = RelativePoint.clamp(
             self.top_left.x - wpad, self.top_left.y - hpad)
@@ -144,6 +146,7 @@ class BoundingBox(Serializable):
 
 class HasBoundingBox(object):
     '''Mixin to explicitly indicate that an instance has a bounding box.'''
+
     def get_bounding_box(self):
         raise NotImplementedError(
             "Classes implementing HasBoundingBox need to implement the "
