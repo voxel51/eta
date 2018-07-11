@@ -101,10 +101,8 @@ def _sample_video_by_fps(data_config, fps):
         logger.info(
             "Sampling video %s at native frame rate ", data_config.input_path)
 
-    file_end = "%05d.png"
-    output_path = os.path.join(data_config.output_path, file_end)
     etav.FFmpegVideoSampler(fps=fps).run(
-        data_config.input_path, output_path)
+        data_config.input_path, data_config.output_path)
 
 
 def _sample_video_by_clips(data_config, clips_path):
