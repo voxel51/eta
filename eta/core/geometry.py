@@ -70,24 +70,65 @@ class BoundingBox(Serializable):
             x, y = _make_square(x, y, w, h)
         return img[y, x, ...]
 
-    def pad_relative(self, relative_percent):
-        '''Returns a padded bounding box.  The padding amount is relative to
-        the size of the bounding box itself to allow for various scaling.
+    def pad_relative(self, alpha):
+        '''Returns a bounding box padded by the given relative amount.
 
-        Argument relative_percent is expected to float between 0 and 1.
+        The length and width of the bounding box will be
+        Args:
+            alpha: the desired padding relative to the size of this
+                bounding box; a float in [0, 1]
+
+        Returns:
+            the padded bounding box
         '''
-        w = self.bottom_right.x - self.top_left.x
-        h = self.bottom_right.y - self.top_left.y
 
-        wpad = w * relative_percent
-        hpad = h * relative_percent
+        whalf = 0.5 * (self.bottom_right.x - self.top_left.x)
+        hhalf = 0.5 * (self.bottom_right.y - self.top_left.y)
 
-        brx, bry = RelativePoint.clamp(
-            self.bottom_right.x + wpad, self.bottom_right.y + hpad)
+        wpad = max(-whalf, alpha * whalf)
+        hpad = max(-hhalf, alpha * hhalf)
+
         tlx, tly = RelativePoint.clamp(
             self.top_left.x - wpad, self.top_left.y - hpad)
+        brx, bry = RelativePoint.clamp(
+            self.bottom_right.x + wpad, self.bottom_right.y + hpad)
 
         return BoundingBox(RelativePoint(tlx, tly), RelativePoint(brx, bry))
+
+    def area(self):
+        '''Computes the area of the bounding box, in [0, 1].'''
+        dx = self.bottom_right.x - self.top_left.x
+        dy = self.bottom_right.y - self.top_left.y
+        return dx * dy
+
+    def overlap_area(self, bbox):
+        '''Computes the area of the overlap with the given bounding box.
+
+        Args:
+            bbox: a BoundingBox
+
+        Returns:
+            the overlap area, in [0, 1]
+        '''
+        xli = max(self.top_left.x, bbox.top_left.x)
+        xri = min(self.bottom_right.x, bbox.bottom_right.x)
+        yti = max(self.top_left.y, bbox.top_left.y)
+        ybi = min(self.bottom_right.y, bbox.bottom_right.y)
+        return max(0, xri - xli) * max(0, ybi - yti)
+
+    def overlap_ratio(self, bbox):
+        '''Computes the overlap ratio with the given bounding box, defined as
+        the area of the intersection (overlap) divided by the area of the
+        union of the two bounding boxes.
+
+        Args:
+            bbox: a BoundingBox
+
+        Returns:
+            the overlap ratio, in [0, 1]
+        '''
+        oa = self.overlap_area(bbox)
+        return oa / (self.area() + bbox.area() - oa) if oa > 0 else 0
 
     @classmethod
     def from_dict(cls, d):
