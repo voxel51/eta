@@ -37,7 +37,7 @@ class BoundingBox(Serializable):
         self.bottom_right = bottom_right
 
     def __str__(self):
-        return self.top_left.__str__() + " -- " + self.bottom_right.__str__()
+        return "%s x %s" % (self.top_left, self.bottom_right)
 
     def coords_in(self, **kwargs):
         '''Returns the coordinates of the bounding box in the specified image.
