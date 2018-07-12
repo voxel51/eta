@@ -129,21 +129,10 @@ class BoundingBox(Serializable):
 
         return BoundingBox(RelativePoint(tlx, tly), RelativePoint(brx, bry))
 
-    def overlap_area(self, bbox):
-        '''Computes the area of the overlap with the given bounding box.
-
-        Args:
-            bbox: a BoundingBox
-
-        Returns:
-            the overlap area, in [0, 1]
-        '''
-        return self.get_intersection(bbox).area()
-
     def overlap_ratio(self, bbox):
         '''Computes the overlap ratio with the given bounding box, defined as
-        the area of the intersection (overlap) divided by the area of the
-        union of the two bounding boxes.
+        the area of the intersection divided by the area of the union of the
+        two bounding boxes.
 
         Args:
             bbox: a BoundingBox
@@ -151,7 +140,7 @@ class BoundingBox(Serializable):
         Returns:
             the overlap ratio, in [0, 1]
         '''
-        oa = self.overlap_area(bbox)
+        oa = self.get_intersection(bbox).area()
         return oa / (self.area() + bbox.area() - oa) if oa > 0 else 0
 
     @classmethod
