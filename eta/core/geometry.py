@@ -138,11 +138,7 @@ class BoundingBox(Serializable):
         Returns:
             the overlap area, in [0, 1]
         '''
-        xli = max(self.top_left.x, bbox.top_left.x)
-        xri = min(self.bottom_right.x, bbox.bottom_right.x)
-        yti = max(self.top_left.y, bbox.top_left.y)
-        ybi = min(self.bottom_right.y, bbox.bottom_right.y)
-        return max(0, xri - xli) * max(0, ybi - yti)
+        return self.get_intersection(bbox).area()
 
     def overlap_ratio(self, bbox):
         '''Computes the overlap ratio with the given bounding box, defined as
