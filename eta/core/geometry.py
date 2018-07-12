@@ -136,6 +136,11 @@ class BoundingBox(Serializable):
         return oa / (self.area() + bbox.area() - oa) if oa > 0 else 0
 
     @classmethod
+    def empty(cls):
+        '''Returns an empty bounding box.'''
+        return cls(RelativePoint.origin(), RelativePoint.origin())
+
+    @classmethod
     def from_dict(cls, d):
         '''Constructs a BoundingBox from a JSON dictionary.'''
         return cls(
@@ -197,6 +202,11 @@ class RelativePoint(Serializable):
         x /= 1.0 * w
         y /= 1.0 * h
         return cls(x, y)
+
+    @classmethod
+    def origin(cls):
+        '''Returns an relative point at the origin.'''
+        return cls(0, 0)
 
     @classmethod
     def from_dict(cls, d):
