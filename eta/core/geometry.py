@@ -102,9 +102,32 @@ class BoundingBox(Serializable):
 
     def area(self):
         '''Computes the area of the bounding box, in [0, 1].'''
-        dx = self.bottom_right.x - self.top_left.x
-        dy = self.bottom_right.y - self.top_left.y
-        return dx * dy
+        w = self.bottom_right.x - self.top_left.x
+        h = self.bottom_right.y - self.top_left.y
+        return w * h
+
+    def get_intersection(self, bbox):
+        '''Returns the bounding box describing the intersection of this
+        bounding box with the given bounding box.
+
+        If the bounding boxes do not intersect, an empty bounding box is
+        returned.
+
+        Args:
+            bbox: a BoundingBox
+
+        Returns:
+            a bounding box describing the intersection
+        '''
+        tlx = max(self.top_left.x, bbox.top_left.x)
+        tly = max(self.top_left.y, bbox.top_left.y)
+        brx = min(self.bottom_right.x, bbox.bottom_right.x)
+        bry = min(self.bottom_right.y, bbox.bottom_right.y)
+
+        if (brx - tlx < 0) or (bry - tly < 0):
+            return BoundingBox.empty()
+
+        return BoundingBox(RelativePoint(tlx, tly), RelativePoint(brx, bry))
 
     def overlap_area(self, bbox):
         '''Computes the area of the overlap with the given bounding box.
