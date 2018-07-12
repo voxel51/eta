@@ -217,7 +217,7 @@ class RelativePoint(Serializable):
 
     @classmethod
     def origin(cls):
-        '''Returns an relative point at the origin.'''
+        '''Returns a relative point at the origin.'''
         return cls(0, 0)
 
     @classmethod
