@@ -37,7 +37,7 @@ class BoundingBox(Serializable):
         self.bottom_right = bottom_right
 
     def __str__(self):
-        return self.top_left.__str__() + " -- " + self.bottom_right.__str__()
+        return "%s x %s" % (self.top_left, self.bottom_right)
 
     def coords_in(self, **kwargs):
         '''Returns the coordinates of the bounding box in the specified image.
@@ -60,6 +60,9 @@ class BoundingBox(Serializable):
             img: an image
             force_square: whether to (minimally) manipulate the bounding box
                 during extraction so that the returned subimage is square
+
+        Returns:
+            the extracted subimage
         '''
         x1, y1 = self.top_left.coords_in(img=img)
         x2, y2 = self.bottom_right.coords_in(img=img)
@@ -70,24 +73,84 @@ class BoundingBox(Serializable):
             x, y = _make_square(x, y, w, h)
         return img[y, x, ...]
 
-    def pad_relative(self, relative_percent):
-        '''Returns a padded bounding box.  The padding amount is relative to
-        the size of the bounding box itself to allow for various scaling.
+    def pad_relative(self, alpha):
+        '''Returns a bounding box whose length and width are expanded (or
+        shrunk, when alpha < 0) by (100 * alpha)%.
 
-        Argument relative_percent is expected to float between 0 and 1.
+        The coordinates are clamped to [0, 1] x [0, 1] if necessary.
+
+        Args:
+            alpha: the desired padding relative to the size of this
+                bounding box; a float in [-1, \inf)
+
+        Returns:
+            the padded bounding box
         '''
         w = self.bottom_right.x - self.top_left.x
         h = self.bottom_right.y - self.top_left.y
 
-        wpad = w * relative_percent
-        hpad = h * relative_percent
+        alpha = max(alpha, -1)
+        wpad = 0.5 * alpha * w
+        hpad = 0.5 * alpha * h
 
-        brx, bry = RelativePoint.clamp(
-            self.bottom_right.x + wpad, self.bottom_right.y + hpad)
         tlx, tly = RelativePoint.clamp(
             self.top_left.x - wpad, self.top_left.y - hpad)
+        brx, bry = RelativePoint.clamp(
+            self.bottom_right.x + wpad, self.bottom_right.y + hpad)
 
         return BoundingBox(RelativePoint(tlx, tly), RelativePoint(brx, bry))
+
+    def area(self):
+        '''Computes the area of the bounding box, in [0, 1].'''
+        w = self.bottom_right.x - self.top_left.x
+        h = self.bottom_right.y - self.top_left.y
+        return w * h
+
+    def get_intersection(self, bbox):
+        '''Returns the bounding box describing the intersection of this
+        bounding box with the given bounding box.
+
+        If the bounding boxes do not intersect, an empty bounding box is
+        returned.
+
+        Args:
+            bbox: a BoundingBox
+
+        Returns:
+            a bounding box describing the intersection
+        '''
+        tlx = max(self.top_left.x, bbox.top_left.x)
+        tly = max(self.top_left.y, bbox.top_left.y)
+        brx = min(self.bottom_right.x, bbox.bottom_right.x)
+        bry = min(self.bottom_right.y, bbox.bottom_right.y)
+
+        if (brx - tlx < 0) or (bry - tly < 0):
+            return BoundingBox.empty()
+
+        return BoundingBox(RelativePoint(tlx, tly), RelativePoint(brx, bry))
+
+    def overlap_ratio(self, bbox):
+        '''Computes the overlap ratio with the given bounding box, defined as
+        the area of the intersection divided by the area of the union of the
+        two bounding boxes.
+
+        Args:
+            bbox: a BoundingBox
+
+        Returns:
+            the overlap ratio, in [0, 1]
+        '''
+        inter_area = self.get_intersection(bbox).area()
+        union_area = self.area() + bbox.area() - inter_area
+        try:
+            return inter_area / union_area
+        except ZeroDivisionError:
+            return 0.0
+
+    @classmethod
+    def empty(cls):
+        '''Returns an empty bounding box.'''
+        return cls(RelativePoint.origin(), RelativePoint.origin())
 
     @classmethod
     def from_dict(cls, d):
@@ -100,6 +163,7 @@ class BoundingBox(Serializable):
 
 class HasBoundingBox(object):
     '''Mixin to explicitly indicate that an instance has a bounding box.'''
+
     def get_bounding_box(self):
         raise NotImplementedError(
             "Classes implementing HasBoundingBox need to implement the "
@@ -150,6 +214,11 @@ class RelativePoint(Serializable):
         x /= 1.0 * w
         y /= 1.0 * h
         return cls(x, y)
+
+    @classmethod
+    def origin(cls):
+        '''Returns a relative point at the origin.'''
+        return cls(0, 0)
 
     @classmethod
     def from_dict(cls, d):
