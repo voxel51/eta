@@ -140,8 +140,12 @@ class BoundingBox(Serializable):
         Returns:
             the overlap ratio, in [0, 1]
         '''
-        oa = self.get_intersection(bbox).area()
-        return oa / (self.area() + bbox.area() - oa) if oa > 0 else 0
+        inter_area = self.get_intersection(bbox).area()
+        union_area = self.area() + bbox.area() - inter_area
+        try:
+            return inter_area / union_area
+        except ZeroDivisionError:
+            return 0.0
 
     @classmethod
     def empty(cls):
