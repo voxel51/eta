@@ -15,6 +15,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
+import six
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
@@ -185,8 +186,8 @@ class Featurizer(Configurable):
 
 
 class CanFeaturize(object):
-    '''Mixin class that exposes the ability to featurize data just-in-time by
-    managing and using a Featurizer instance.
+    '''Mixin class that exposes the ability to featurize data just-in-time via
+    a provided Featurizer instance.
     '''
 
     def __init__(self, featurizer=None, force_featurize=False):
@@ -201,14 +202,22 @@ class CanFeaturize(object):
         self.featurizer = featurizer
         self.force_featurize = force_featurize
 
-    def __enter__(self):
-        if self.featurizer:
-            self.featurizer.start()
-        return self
+    @property
+    def has_featurizer(self):
+        '''Determines whether this instance has a Featurizer.'''
+        return bool(self.featurizer)
 
-    def __exit__(self, *args):
-        if self.featurizer:
-            self.featurizer.stop()
+    def get_featurizer(self):
+        '''Gets the Featurizer used by this instance, if any.'''
+        return self.featurizer
+
+    def set_featurizer(self, featurizer):
+        '''Sets the Featurizer for this instance.'''
+        self.featurizer = featurizer
+
+    def remove_featurizer(self, featurizer):
+        '''Removes the Featurizer from this instance, if any.'''
+        self.featurizer = None
 
     @staticmethod
     def featurize_if_needed(*args, **kwargs):
@@ -226,44 +235,46 @@ class CanFeaturize(object):
         checking if it is a string that points to a file on the disk, and if
         that fails, if it is a string that points to a valid video.
 
-        You can decorate with either just `@CanFeaturize.featurize_if_needed`
-        or by specifying specific names of arguments to operate on
+        You can decorate with either just `@CanFeaturize.featurize_if_needed`,
+        in which case
+        or by specifying specific names of arguments to operate on either as
         `@CanFeaturize.featurize_if_needed(arg_name="foo")`
         or just
         `@CanFeaturize.featurize_if_needed("foo")` and this will be a name not
         an index.
 
         Args:
-            arg_name ("X") specifies the name of the argument
-            passed to the original function that you want to featurize
+            arg_name ("X"): a string specifying the name of the argument
+                passed to the original function that you want to featurize
 
-            arg_index (0) specifies the index of the argument
-            passed to the original function that you want to featurize.  The
-            `arg_name` takes precedence over the `arg_index`.
+            arg_index (0): an int specifying the index of the argument passed
+                to the original function that you want to featurize. If
+                `arg_name` is provided, it takes precedence over `arg_index`
+
+        Raises:
+            CanFeaturizeError: if featurization failed or was not allowed
         '''
-        # Handling the various types of invocations of the decorator.
-        arg = None
-        if args:
-            arg = args[0]
-
-        # Default argument settings are set here.
+        # The default argument name to featurize.
         arg_name = "X"
 
-        # This is 1 and not 0 because we assume this is being used to annotate
-        # a class member and not a generic function.
+        # The default positional index to featurize. This is 1, not 0, because
+        # we assume the annotated method is a class method, not a standalone
+        # function.
         arg_index = 1
 
+        # Parse input arguments.
+        arg = args[0] if args else None
         if not callable(arg):
             n = len(args)
             if n >= 1:
                 arg_name = args[0]
-            elif 'arg_name' in kwargs:
-                arg_name = kwargs['arg_name']
+            elif "arg_name" in kwargs:
+                arg_name = kwargs["arg_name"]
 
             if n >= 2:
                 arg_index = args[1]
-            elif 'arg_index' in kwargs:
-                arg_index = kwargs['arg_index']
+            elif "arg_index" in kwargs:
+                arg_index = kwargs["arg_index"]
 
         # At this point, we have processed all possible invocations of the
         # annotation (the decorator) and we have the arguments to use.
@@ -274,44 +285,60 @@ class CanFeaturize(object):
             '''
             def decorated(*args, **kwargs):
                 '''The main decorator function that handles featurization.'''
-                #args[0] is the "self", the calling object.
+                # args[0] is the the calling object.
                 cfobject = args[0]
-                assert isinstance(cfobject, CanFeaturize), \
-                    "featurize_if_needed only decorates CanFeaturize methods"
+                if not isinstance(cfobject, CanFeaturize):
+                    raise CanFeaturizeError(
+                        "featurize_if_needed can only decorate CanFeaturize "
+                        "subclass methods; found %s" % cfobject.__class__)
 
                 if not cfobject.featurizer:
-                    # Cannot featurize if there is no featurizer
-                    # This is also a potential efficiency option: do not set
-                    # the featurizer if you want this decorator to early exit.
+                    #
+                    # We cannot featurize if there is no featurizer.
+                    #
+                    # Note that this is allowed for flexibility: if you do not
+                    # want to featurize, do not set the featurizer and then
+                    # we'll early exit here.
+                    #
                     return caller(*args, **kwargs)
 
-                needs_featurize = cfobject.force_featurize
-
-                # Here, have a featurizer and are not forced to featurize.
+                # Determine what calling syntax was used.
                 data = None
                 used_name = False
                 used_index = False
                 if arg_name in kwargs:
+                    # Argument specified by name.
                     data = kwargs[arg_name]
                     used_name = True
-                elif len(args) >= arg_index:
+                elif arg_index < len(args):
+                    # Argument specified by positional index.
                     data = args[arg_index]
                     used_index = True
                 else:
-                    logger.warning('CanFeaturize: skipping test; unknown arg')
+                    logger.warning("Unknown argument; skipping featurization")
+                    return caller(*args, **kwargs)
 
-                if not needs_featurize and (used_name or used_index):
-                    if isinstance(data, str):
+                # Determine whether we need to featurize the input data.
+                should_featurize = cfobject.force_featurize
+                if not should_featurize and (used_name or used_index):
+                    if isinstance(data, six.string_types):
                         if os.path.exists(data):
-                            needs_featurize = True
+                            should_featurize = True
                         else:
-                            # If it is a string but not a file, it may be a
-                            # video. Test that with our video library.
-                            needs_featurize = etav.is_valid_video(data)
+                            #
+                            # The data is a string but not a single file, but
+                            # it might be a file sequence.
+                            #
+                            # Currently the only such sequence we support is
+                            # a video, so we check if data is a valid video.
+                            #
+                            should_featurize = etav.is_valid_video(data)
 
-                if needs_featurize:
+                # Perform the actual featurization, if necessary.
+                if should_featurize:
                     data = cfobject.featurizer.featurize(data)
-                    # Replace the call-structure before calling.
+
+                    # Replace the data with its features.
                     if used_name:
                         kwargs[arg_name] = data
                     if used_index:
@@ -320,30 +347,17 @@ class CanFeaturize(object):
                         args = tuple(targs)
 
                 return caller(*args, **kwargs)
+
             return decorated
 
-        # Be careful how to return; need to check the way we were invoked.
         # If arg is callable then we called it just with @featurize_if_needed.
         # Otherwise, we gave it parameters or even just parentheses.
-        if callable(arg):
-            return decorated_(arg)
+        return decorated_(arg) if callable(arg) else decorated_
 
-        return decorated_
 
-    def get_featurizer(self):
-        '''Gets the `Featurizer` used by this instance, or None if no
-        `Featurizer` is in use.
-        '''
-        return self.featurizer
-
-    @property
-    def has_featurizer(self):
-        '''Determines whether this instance has a `Featurizer`.'''
-        return bool(self.featurizer)
-
-    def set_featurizer(self, featurizer):
-        '''Sets the `Featurizer` to the given object.'''
-        self.featurizer = featurizer
+class CanFeaturizeError(Exception):
+    '''Exception raised when an invalid usage of CanFeaturize is found.'''
+    pass
 
 
 class FeaturizedFrameNotFoundError(OSError):
