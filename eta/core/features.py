@@ -198,7 +198,16 @@ class CanFeaturize(object):
             decorator featurize_if_needed to always featurize.
         '''
         self.featurizer = featurizer
-        self.hint_featurize = hint_featurize
+        self.force_featurize = force_featurize
+
+    def __enter__(self):
+        if self.featurizer:
+            self.featurizer.start()
+        return self
+
+    def __exit__(self, *args):
+        if self.featurizer:
+            self.featurizer.stop()
 
     @staticmethod
     def featurize_if_needed(*args, **kwargs):
