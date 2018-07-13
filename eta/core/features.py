@@ -331,13 +331,18 @@ class CanFeaturize(object):
         return decorated_
 
     def get_featurizer(self):
+        '''Gets the `Featurizer` used by this instance, or None if no
+        `Featurizer` is in use.
+        '''
         return self.featurizer
 
     @property
     def has_featurizer(self):
+        '''Determines whether this instance has a `Featurizer`.'''
         return bool(self.featurizer)
 
     def set_featurizer(self, featurizer):
+        '''Sets the `Featurizer` to the given object.'''
         self.featurizer = featurizer
 
 
