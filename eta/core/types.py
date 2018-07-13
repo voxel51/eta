@@ -489,8 +489,9 @@ class VideoClips(DualFileSequence, ConcreteData):
         )
 
 
-class NPZFile(File, ConcreteData):
-    '''The base type for npz files.
+class NpzFile(File, ConcreteData):
+    '''An .npz file.
+
     Examples:
         /path/to/data.npz
     '''
@@ -504,11 +505,11 @@ class NPZFile(File, ConcreteData):
         return File.is_valid_path(path) and etau.has_extension(path, ".npz")
 
 
-class NPZFileSequence(FileSequence, ConcreteData):
-    '''The base type for a collection of npz files indexed by one numeric
-    parameter.
+class NpzFileSequence(FileSequence, ConcreteData):
+    '''A collection of .npz files indexed by one numeric parameter.
+
     Examples:
-        /path/to/jsons/%05d.npz
+        /path/to/data/%05d.npz
     '''
 
     @staticmethod
