@@ -868,8 +868,8 @@ class Model(Serializable):
             d.get("description", None), d.get("date_created", None))
 
 
-class ModelWeights(object):
-    '''Base class for classes that encapsulate read-only model weights.
+class PublishedModel(object):
+    '''Base class for classes that encapsulate published models.
 
     This class can load the model locally or from remote storage as needed.
 
@@ -881,7 +881,7 @@ class ModelWeights(object):
     '''
 
     def __init__(self, model_name):
-        '''Initializes a ModelWeights instance.
+        '''Initializes a PublishedModel instance.
 
         Args:
             model_name: the model to load
@@ -893,11 +893,10 @@ class ModelWeights(object):
         self.model_path = find_model(self.model_name)
 
     def load(self):
-        '''Loads the model weights, downloading them from remote storage if
-        necessary.
+        '''Loads the model, downloading them from remote storage if necessary.
 
         Returns:
-            the model weights
+            the model
         '''
         download_model(self.model_name, force=False)
         return self._load()
@@ -906,25 +905,22 @@ class ModelWeights(object):
         raise NotImplementedError("subclass must implement _load()")
 
 
-class NpzModelWeights(ModelWeights, dict):
-    '''A read-only model weights class that provides a dictionary interface to
-    access the underlying weights, which must be stored as an .npz file on
-    disk.
+class PickledModel(PublishedModel):
+    '''Class that can load a published model stored as a .pkl file.'''
+
+    def _load(self):
+        with open(self.model_path, "rb") as f:
+            return pickle.load(f)
+
+
+class NpzModelWeights(PublishedModel, dict):
+    '''Class that provides a dictionary interface to a collection of published
+    model weights, which must be stored in an .npz file.
     '''
 
     def _load(self):
         self.update(np.load(self.model_path))
         return self
-
-
-class PklModelWeights(ModelWeights):
-    '''A read-only model weights class that can load a model stored as a .pkl
-    file on disk.
-    '''
-
-    def _load(self):
-        with open(self.model_path, "rb") as f:
-            return pickle.load(f)
 
 
 class ModelManager(Configurable, Serializable):
