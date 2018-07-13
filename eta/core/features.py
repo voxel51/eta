@@ -189,13 +189,14 @@ class CanFeaturize(object):
     managing and using a Featurizer instance.
     '''
 
-    def __init__(self, featurizer=None, hint_featurize=False):
-        '''Initialize CanFeaturize instance.
+    def __init__(self, featurizer=None, force_featurize=False):
+        '''Initializes a CanFeaturize instance.
 
         Args:
             featurizer: the actual featurizer to use when needed
-            hint_featurize: when True, this will force any input to the
-            decorator featurize_if_needed to always featurize.
+            force_featurize: whether to force any input to the
+                `featurize_if_needed` decorator to be featurized. By default,
+                this is False
         '''
         self.featurizer = featurizer
         self.force_featurize = force_featurize
@@ -284,7 +285,7 @@ class CanFeaturize(object):
                     # the featurizer if you want this decorator to early exit.
                     return caller(*args, **kwargs)
 
-                needs_featurize = cfobject.hint_featurize
+                needs_featurize = cfobject.force_featurize
 
                 # Here, have a featurizer and are not forced to featurize.
                 data = None
