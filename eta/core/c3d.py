@@ -31,7 +31,7 @@ import tensorflow as tf
 
 from eta.core.config import Config
 from eta.core.features import Featurizer
-from eta.core.tfutils import TensorFlowModelWeights
+from eta.core.tfutils import TensorFlowModelCheckpoint
 import eta.core.video as etav
 
 
@@ -232,7 +232,7 @@ class C3D(object):
     def _load_model(self, model):
         init = tf.global_variables_initializer()
         self.sess.run(init)
-        TensorFlowModelWeights(model, self.sess).load()
+        TensorFlowModelCheckpoint(model, self.sess).load()
 
 
 class C3DFeaturizerConfig(C3DConfig):
