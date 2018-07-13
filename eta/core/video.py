@@ -51,6 +51,23 @@ def is_supported_video(filepath):
     return os.path.splitext(filepath)[1] in SUPPORTED_VIDEO_TYPES
 
 
+def is_valid_video(inpath):
+    '''Determines if the given video is valid, i.e., if it can be read by our
+    system.
+
+    Args:
+        inpath: path to the video (or collection of frames)
+
+    Returns:
+        True/False if the video is valid
+    '''
+    try:
+        with FFmpegVideoReader(inpath):
+            return True
+    except etau.ExecutableRuntimeError:
+        return False
+
+
 def glob_videos(dir_):
     '''Returns an iterator over all supported video files in the directory.'''
     return etau.multiglob(*SUPPORTED_VIDEO_TYPES, root=os.path.join(dir_, "*"))
@@ -253,24 +270,6 @@ def get_raw_frame_number(raw_frame_rate, raw_frame_count, fps, sampled_frame):
     raw_frame = np.minimum(
         np.ceil(delta * (sampled_frame - 0.5)), raw_frame_count)
     return int(raw_frame)
-
-
-def is_valid_video(inpath):
-    '''Determines if the given video is valid, i.e., if it can be read by our
-    system.
-
-    Args:
-        inpath: path to the video (or collection of frames)
-
-    Returns:
-        True/False if the video is valid
-    '''
-    answer = True
-    try:
-        get_frame_count(inpath)
-    except etau.ExecutableRuntimeError:
-        answer = False
-    return answer
 
 
 def sample_first_frames(inpath, k, size=None):
