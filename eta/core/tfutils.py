@@ -23,13 +23,13 @@ import tensorflow as tf
 import eta.core.models as etam
 
 
-class TensorFlowModelWeights(etam.ModelWeights):
-    '''A read-only model weights class that can load a TensorFlow model
-    checkpoint stored as a .model file on disk.
+class TensorFlowModelCheckpoint(etam.PublishedModel):
+    '''Class that can load a published TensorFlow model checkpoint stored as a
+    .model file.
     '''
 
     def __init__(self, model_name, sess):
-        '''Initializes a TensorFlowModelWeights instance.
+        '''Initializes a TensorFlowModelCheckpoint instance.
 
         Args:
             model_name: the model to load
@@ -38,7 +38,7 @@ class TensorFlowModelWeights(etam.ModelWeights):
         Raises:
             ModelError: if the model was not found
         '''
-        super(TensorFlowModelWeights, self).__init__(model_name)
+        super(TensorFlowModelCheckpoint, self).__init__(model_name)
         self._sess = sess
 
     def _load(self):
