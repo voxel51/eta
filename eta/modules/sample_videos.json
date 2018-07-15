@@ -16,10 +16,28 @@
     ],
     "outputs": [
         {
-            "name": "output_path",
+            "name": "output_video_clips_path",
+            "type": "eta.core.types.VideoClips",
+            "description": "The output video clips",
+            "required": false
+        },
+        {
+            "name": "output_frames_dir",
+            "type": "eta.core.types.ImageSequenceDirectory",
+            "description": "A directory in which to write the sampled frames",
+            "required": false
+        },
+        {
+            "name": "output_frames_path",
+            "type": "eta.core.types.ImageSequence",
+            "description": "The output sampled frames",
+            "required": false
+        },
+        {
+            "name": "output_video_path",
             "type": "eta.core.types.VideoFile",
-            "description": "the path to the sampled video",
-            "required": true
+            "description": "The output sampled video",
+            "required": false
         }
     ],
     "parameters": [
