@@ -31,6 +31,7 @@ import eta.core.module as etam
 import eta.core.video as etav
 import eta.core.ziputils as etaz
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -101,13 +102,11 @@ class ParametersConfig(Config):
 
 def _resize_videos(resize_config):
     parameters = resize_config.parameters
-    for data_config in resize_config.data:
-        if data_config.is_zip:
-            _process_zip(
-                data_config.input_zip, data_config.output_zip, parameters)
-        elif data_config.is_path:
-            _process_video(
-                data_config.input_path, data_config.output_path, parameters)
+    for data in resize_config.data:
+        if data.is_zip:
+            _process_zip(data.input_zip, data.output_zip, parameters)
+        elif data.is_path:
+            _process_video(data.input_path, data.output_path, parameters)
         else:
             raise ValueError("Invalid ResizeConfig")
 
@@ -120,7 +119,7 @@ def _process_zip(input_zip, output_zip, parameters):
     for input_path, output_path in zip(input_paths, output_paths):
         _process_video(input_path, output_path, parameters)
 
-    # Collect the objects
+    # Collect outputs
     etaz.make_zip(output_zip)
 
 
