@@ -126,7 +126,7 @@ def _process_zip(input_zip, output_zip, parameters):
 
 
 def _process_video(input_path, output_path, parameters):
-    if not any(itervalues(parameters)):
+    if not any(itervalues(vars(parameters))):
         logger.info("No resizing parameters provided")
         if etav.is_same_video_format(input_path, output_path):
             logger.info(
