@@ -70,6 +70,14 @@ def is_valid_video(inpath):
         return False
 
 
+def is_same_video_format(path1, path2):
+    '''Determines whether the videos have the same (supported) format.'''
+    return (
+        is_supported_video(path1) and
+        (os.path.splitext(path1) == os.path.splitext(path2)
+    )
+
+
 def glob_videos(dir_):
     '''Returns an iterator over all supported video files in the directory.'''
     return etau.multiglob(
