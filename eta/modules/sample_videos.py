@@ -80,8 +80,8 @@ class DataConfig(Config):
             d, "output_frames_dir", default=None)
         self.output_video_path = self.parse_string(
             d, "output_video_path", default=None)
-        self.output_clips_path = self.parse_string(
-            d, "output_clips_path", default=None)
+        self.output_video_clips_path = self.parse_string(
+            d, "output_video_clips_path", default=None)
 
 
 class ParametersConfig(Config):
@@ -124,7 +124,7 @@ def _sample_video_by_fps(data, fps):
         if etav.is_same_video_format(data.input_path, output_path):
             logger.info(
                 "Same video format detected, so no computation is required. "
-                "Just sylimking '%s' to '%s'" % (output_path, input_path))
+                "Just sylimking '%s' to '%s'" % (output_path, data.input_path))
             etau.symlink_file(data.input_path, output_path)
             return
 
