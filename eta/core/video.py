@@ -43,12 +43,14 @@ import eta.core.utils as etau
 logger = logging.getLogger(__name__)
 
 
-SUPPORTED_VIDEO_TYPES = [".mp4", ".avi", ".mpg", ".mov"]
+SUPPORTED_VIDEO_FORMATS = [
+    ".mp4", ".mpg", ".mpeg", ".avi", ".mov", ".wmv", ".flv", ".mkv"
+]
 
 
 def is_supported_video(filepath):
     '''Determines whether the given file has a supported video type.'''
-    return os.path.splitext(filepath)[1] in SUPPORTED_VIDEO_TYPES
+    return os.path.splitext(filepath)[1] in SUPPORTED_VIDEO_FORMATS
 
 
 def is_valid_video(inpath):
@@ -70,7 +72,8 @@ def is_valid_video(inpath):
 
 def glob_videos(dir_):
     '''Returns an iterator over all supported video files in the directory.'''
-    return etau.multiglob(*SUPPORTED_VIDEO_TYPES, root=os.path.join(dir_, "*"))
+    return etau.multiglob(
+        *SUPPORTED_VIDEO_FORMATS, root=os.path.join(dir_, "*"))
 
 
 class VideoStreamInfo(Serializable):
