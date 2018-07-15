@@ -27,9 +27,11 @@ import logging
 import os
 import sys
 
+import eta
 from eta.core.config import Config
 import eta.core.events as etae
 import eta.core.module as etam
+import eta.core.utils as etau
 import eta.core.video as etav
 
 
@@ -122,6 +124,30 @@ def _sample_video_by_clips(data_config, clips_path):
     with processor:
         for img in processor:
             processor.write(img)
+
+
+def _parse_output_path(data, allow_video_clips=False):
+    nout = 0
+    out_args = {}
+    if data.output_frames_path:
+        nout += 1
+        out_args["out_impath"] = data.output_frames_path
+    if data.output_frames_dir:
+        nout += 1
+        patt = eta.config.default_sequence_idx + eta.config.default_image_ext
+        out_args["out_impath"] = os.path.join(data.output_frames_dir, patt)
+    if data.output_video_path:
+        nout += 1
+        out_args["out_single_vidpath"] = data.output_video_path
+    if data.output_video_clips_path:
+        if not allow_video_clips:
+            raise ValueError("Output 'output_video_clips_path' is not allowed")
+        nout += 1
+        out_args["out_vidpath"] = data.output_clips_path
+    if nout > 1:
+        raise ValueError("Only one output can be set")
+
+    return out_args
 
 
 def run(config_path, pipeline_config_path=None):
