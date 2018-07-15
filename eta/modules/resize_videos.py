@@ -19,6 +19,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
+from future.utils import itervalues
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
@@ -28,6 +29,7 @@ import sys
 
 from eta.core.config import Config
 import eta.core.module as etam
+import eta.core.utils as etau
 import eta.core.video as etav
 import eta.core.ziputils as etaz
 
@@ -124,6 +126,15 @@ def _process_zip(input_zip, output_zip, parameters):
 
 
 def _process_video(input_path, output_path, parameters):
+    if not any(itervalues(parameters)):
+        logger.info("No resizing parameters provided")
+        if etav.is_same_video_format(input_path, output_path):
+            logger.info(
+                "Same video format detected, so no computation is required. "
+                "Just sylimking '%s' to '%s'" % (output_path, input_path))
+            etau.symlink_file(input_path, output_path)
+            return
+
     logger.info("Resizing video '%s'", input_path)
     etav.FFmpegVideoResizer(
         size=parameters.size,
