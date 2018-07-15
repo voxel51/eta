@@ -74,7 +74,7 @@ def is_same_video_format(path1, path2):
     '''Determines whether the videos have the same (supported) format.'''
     return (
         is_supported_video(path1) and
-        (os.path.splitext(path1) == os.path.splitext(path2)
+        os.path.splitext(path1) == os.path.splitext(path2)
     )
 
 
@@ -556,9 +556,9 @@ class VideoProcessor(object):
         if self.out_use_ffmpeg:
             return FFmpegVideoWriter(
                 outpath, self.out_fps, self.out_size, out_opts=self.out_opts)
-        else:
-            return OpenCVVideoWriter(
-                outpath, self.out_fps, self.out_size)
+
+        return OpenCVVideoWriter(
+            outpath, self.out_fps, self.out_size)
 
 
 class VideoProcessorError(Exception):
@@ -722,7 +722,7 @@ class FFmpegVideoReader(VideoReader):
             StopIteration: if there are no more frames to process
             VideoReaderError: if unable to load the next frame from file
         '''
-        for idx in range(max(0, self.frame_number), next(self._ranges)):
+        for _ in range(max(0, self.frame_number), next(self._ranges)):
             if not self._grab():
                 raise VideoReaderError(
                     "Failed to grab frame %d" % self.frame_number)
@@ -1116,7 +1116,7 @@ class FFmpeg(object):
             etau.ensure_path(outpath)
 
         try:
-            logger.info("Excuting '%s'" % self.cmd)
+            logger.info("Excuting '%s'", self.cmd)
             self._p = Popen(self._args, stdin=PIPE, stdout=PIPE, stderr=PIPE)
         except EnvironmentError as e:
             if e.errno == errno.ENOENT:

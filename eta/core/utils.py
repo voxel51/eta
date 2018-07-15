@@ -403,18 +403,18 @@ def extract_tar(inpath, outdir=None, delete_tar=False):
             default, this is False
     '''
     if inpath.endswith("tar"):
-        format = "r:"
+        fmt = "r:"
     elif inpath.endswith("tar.gz") or inpath.endswith("tgz"):
-        format = "r:gz"
+        fmt = "r:gz"
     elif inpath.endswith("tar.bz") or inpath.endswith("tbz"):
-        format = "r:bz2"
+        fmt = "r:bz2"
     else:
         raise ValueError(
             "Expected file '%s' to have extension .tar, .tar.gz, .tgz,"
             ".tar.bz, or .tbz in order to extract it" % inpath)
 
     outdir = outdir or os.path.dirname(inpath) or "."
-    with tarfile.open(inpath, format) as tar:
+    with tarfile.open(inpath, fmt) as tar:
         tar.extractall(path=outdir)
 
     if delete_tar:
@@ -510,21 +510,21 @@ def random_key(n):
     )
 
 
-def replace_strings(string, replacers):
+def replace_strings(s, replacers):
     '''Performs a sequence of find-replace operations on the given string.
 
     Args:
-        string: the input string
-        replaces: a list of (find, replace) strings
+        s: the input string
+        replacers: a list of (find, replace) strings
 
     Returns:
         a copy of the input strings with all of the find-and-replacements made
     '''
-    output = string
+    sout = s
     for sfind, srepl in replacers:
-        output = output.replace(sfind, srepl)
+        sout = sout.replace(sfind, srepl)
 
-    return output
+    return sout
 
 
 def join_dicts(*args):
