@@ -74,7 +74,7 @@ def is_same_video_format(path1, path2):
     '''Determines whether the videos have the same (supported) format.'''
     return (
         is_supported_video(path1) and
-        os.path.splitext(path1) == os.path.splitext(path2)
+        os.path.splitext(path1)[1] == os.path.splitext(path2)[1]
     )
 
 
