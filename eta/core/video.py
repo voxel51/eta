@@ -871,7 +871,7 @@ class FFmpegVideoWriter(VideoWriter):
 
     DEFAULT_OUT_OPTS = [
         "-c:v", "libx264", "-pix_fmt", "yuv420p",
-        "-preset", "slow", "-crf", "22", "-an",
+        "-preset", "medium", "-crf", "23", "-an",
     ]
 
     def __init__(self, outpath, fps, size, out_opts=None):
@@ -1105,6 +1105,7 @@ class FFmpeg(object):
             etau.ensure_path(outpath)
 
         try:
+            logger.info("Excuting '%s'" % self.cmd)
             self._p = Popen(self._args, stdin=PIPE, stdout=PIPE, stderr=PIPE)
         except EnvironmentError as e:
             if e.errno == errno.ENOENT:
@@ -1168,7 +1169,7 @@ class FFmpegVideoResizer(FFmpeg):
 
     DEFAULT_OUT_OPTS = [
         "-c:v", "libx264", "-pix_fmt", "yuv420p",
-        "-preset", "slow", "-crf", "22", "-an",
+        "-preset", "medium", "-crf", "23", "-an",
     ]
 
     def __init__(self, size=None, scale=None, scale_str=None, **kwargs):
@@ -1188,24 +1189,23 @@ class FFmpegVideoResizer(FFmpeg):
             **kwargs: optional keyword arguments for FFmpeg()
         '''
         out_opts = kwargs.pop("out_opts", self.DEFAULT_OUT_OPTS) or []
-        out_opts += [
-            "-vf",
-            "scale={0}".format(self._gen_scale_opt(
-                size=size, scale=scale, scale_str=scale_str)),
-        ]
+        scale_opt = self._gen_scale_opt(
+            size=size, scale=scale, scale_str=scale_str)
+        if scale_opt:
+            out_opts += ["-vf", "scale={0}".format(scale_opt)]
         super(FFmpegVideoResizer, self).__init__(out_opts=out_opts, **kwargs)
 
     @staticmethod
     def _gen_scale_opt(size=None, scale=None, scale_str=None):
         if size:
             return "{0}:{1}".format(*size)
-        elif scale:
+        if scale:
             return "iw*{0}:ih*{0}".format(scale)
-        elif scale_str:
+        if scale_str:
             return scale_str
 
-        logger.info("No scale argument found; keeping the native resolution")
-        return "iw*1:ih*1"
+        logger.info("No scale argument found; retaining the native resolution")
+        return None
 
 
 class FFmpegVideoSampler(FFmpeg):
