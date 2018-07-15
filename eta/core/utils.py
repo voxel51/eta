@@ -253,6 +253,25 @@ def copy_file(inpath, outpath):
     shutil.copy(inpath, outpath)
 
 
+def symlink_file(filepath, linkpath):
+    '''Creates a symlink at the given location that points to the given file.
+    The base output directory is created if necessary, and any existing file
+    will be overwritten.
+    '''
+    ensure_basedir(linkpath)
+    if os.path.exists(linkpath):
+        os.remove(linkpath)
+    os.symlink(os.path.realpath(filepath), linkpath)
+
+
+def move_file(inpath, outpath):
+    '''Copies the input file to the output location, creating the base output
+    directory if necessary.
+    '''
+    ensure_basedir(outpath)
+    shutil.move(inpath, outpath)
+
+
 def copy_dir(indir, outdir):
     '''Copies the input directory to the output directory. The base output
     directory is created if necessary, and any existing output directory will
@@ -370,14 +389,6 @@ def _to_human_binary_str(num, suffix):
             break
         num /= 1024.0
     return "%3.1f %s%s" % (num, unit, suffix)
-
-
-def move_file(inpath, outpath):
-    '''Copies the input file to the output location, creating the base output
-    directory if necessary.
-    '''
-    ensure_basedir(outpath)
-    shutil.move(inpath, outpath)
 
 
 def extract_tar(inpath, outdir=None, delete_tar=False):
