@@ -32,6 +32,7 @@ import eta.core.events as etae
 import eta.core.module as etam
 import eta.core.video as etav
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -71,8 +72,6 @@ class ParametersConfig(Config):
     If `clips_path` is specified, it is used. Otherwise `fps` is used, with the
     native frame rate of the video being used if `fps` is also absent.
 
-    @todo add a fps/clips module keyword to handle each case separately.
-
     Parameters:
         fps (eta.core.types.Number): [None] The output frame rate
         clips_path (eta.core.types.EventDetection): [None] Per-frame binary
@@ -86,11 +85,12 @@ class ParametersConfig(Config):
 
 def _sample_videos(sample_config):
     parameters = sample_config.parameters
-    for data_config in sample_config.data:
+    for data in sample_config.data:
         if parameters.clips_path:
-            _sample_video_by_clips(data_config, parameters.clips_path)
+            _sample_video_by_clips(data, parameters.clips_path)
         else:
-            _sample_video_by_fps(data_config, parameters.fps)
+            _sample_video_by_fps(data, parameters.fps)
+
 
 
 def _sample_video_by_fps(data_config, fps):
