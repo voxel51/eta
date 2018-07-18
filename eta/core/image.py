@@ -338,17 +338,15 @@ def infer_missing_dims(frame_size, ref_size):
     Returns:
         the concrete (width, height) with no -1s
     '''
+    width, height = frame_size
     aspect_ratio = ref_size[0] / ref_size[1]
-    if frame_size[0] < 0:
-        if frame_size[1] < 0:
+    if width < 0:
+        if height < 0:
             return ref_size
-
-        frame_size[0] = int(round(frame_size[1] * aspect_ratio))
-
-    if frame_size[1] < 0:
-        frame_size[1] = int(round(frame_size[0] / aspect_ratio))
-
-    return frame_size
+        width = int(round(height * aspect_ratio))
+    elif height < 0:
+        height = int(round(width / aspect_ratio))
+    return width, height
 
 
 def scale_frame_size(frame_size, scale):
