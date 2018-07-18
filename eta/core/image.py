@@ -312,7 +312,7 @@ def to_frame_size(frame_size=None, shape=None, img=None):
         img: the image itself
 
     Returns:
-        (w, h): the width and height of the image
+        a (width, height) frame size tuple
 
     Raises:
         TypeError: if none of the keyword arguments were passed
@@ -327,8 +327,33 @@ def to_frame_size(frame_size=None, shape=None, img=None):
         raise TypeError("A valid keyword argument must be provided")
 
 
+def parse_frame_size(frame_size):
+    '''Parses the given frame size, ensuring that it is valid.
+
+    Args:
+        a (width, height) tuple or list, optionally with dimensions that are
+            -1 to indicate "fill-in" dimensions
+
+    Returns:
+        the frame size converted to a tuple, if necessary
+
+    Raises:
+        ValueError: if the frame size was invalid
+    '''
+    if isinstance(frame_size, list):
+        frame_size = tuple(frame_size)
+    if not isinstance(frame_size, tuple):
+        raise ValueError(
+            "Frame size must be a tuple or list; found '%s'" % frame_size)
+    if len(frame_size) != 2:
+        raise ValueError(
+            "frame_size must be a be a (width, height) tuple; found '%s'" %
+            frame_size)
+    return frame_size
+
+
 def infer_missing_dims(frame_size, ref_size):
-    '''Infers the missing entries of the given frame size (if any).
+    '''Infers the missing entries (if any) of the given frame size.
 
     Args:
         frame_size: a (width, height) tuple. One or both dimensions can be -1,
@@ -336,7 +361,7 @@ def infer_missing_dims(frame_size, ref_size):
         ref_size: the reference (width, height )
 
     Returns:
-        the concrete (width, height) with no -1s
+        the concrete (width, height) with no negative values
     '''
     width, height = frame_size
     aspect_ratio = ref_size[0] / ref_size[1]
