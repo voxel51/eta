@@ -88,11 +88,11 @@ class ParametersConfig(Config):
         scale (eta.core.types.Number): [None] A numeric scale factor to apply
             to the input resolution
         size (eta.core.types.Array): [None] A desired output (width, height)
-            of the video. At most one dimension can be -1, in which case the
-            aspect ratio is preserved
+            of the video. Dimensions can be -1, in which case the input aspect
+            ratio is preserved
         max_size (eta.core.types.Array): [None] A maximum (width, height)
-            allowed for the video. The video is resized if necessary to meet
-            these contraints
+            allowed for the video. Dimensions can be -1, in which case no
+            constraint is applied to them
         ffmpeg_out_opts (eta.core.types.Array): [None] An array of ffmpeg
             output options
     '''
