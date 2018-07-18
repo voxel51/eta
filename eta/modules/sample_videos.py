@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 '''
-Module that samples video frames.
+Module that (re)samples videos.
 
 Info:
     type: eta.core.types.Module

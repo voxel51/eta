@@ -3,7 +3,7 @@
         "name": "sample_videos",
         "type": "eta.core.types.Module",
         "version": "0.1.0",
-        "description": "Module that samples video frames",
+        "description": "Module that (re)samples videos",
         "exe": "sample_videos.py"
     },
     "inputs": [
