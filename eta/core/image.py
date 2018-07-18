@@ -49,7 +49,7 @@ def glob_images(dir_):
         *SUPPORTED_IMAGE_FORMATS, root=os.path.join(dir_, "*"))
 
 
-###### Image IO ##############################################################
+###### Image I/O ##############################################################
 
 
 def decode(b, flag=cv2.IMREAD_UNCHANGED):
@@ -107,7 +107,7 @@ def write(img, path):
     cv2.imwrite(path, _exchange_rb(img))
 
 
-###### Image Manipulation ####################################################
+###### Image Manipulation #####################################################
 
 
 def create(width, height, background=None):
@@ -285,7 +285,7 @@ class Convert(object):
         return out
 
 
-###### Image Properties and Representation ###################################
+###### Image Properties and Representations ###################################
 
 
 def has_alpha(img):
@@ -454,20 +454,7 @@ class Location(object):
         return self._loc in self.BOTTOM_LEFT
 
 
-###### Color Conversion ######################################################
-
-
-def _exchange_rb(img):
-    '''Converts an image from opencv format (BGR) to/from eta format (RGB) by
-    exchanging the red and blue channels.
-
-    This is a symmetric procedure and hence only needs one function.
-
-    Handles gray (pass-through), 3- and 4-channel images.
-    '''
-    if is_gray(img):
-        return img
-    return img[..., [2, 1, 0] + list(range(3, img.shape[2]))]
+###### Color Conversions ######################################################
 
 
 def hex_to_rgb(value):
@@ -523,3 +510,16 @@ def rgb_to_bgr(img):
 def bgr_to_rgb(img):
     '''Converts a BGR image to an RGB image (supports alpha).'''
     return _exchange_rb(img)
+
+
+def _exchange_rb(img):
+    '''Converts an image from opencv format (BGR) to/from eta format (RGB) by
+    exchanging the red and blue channels.
+
+    This is a symmetric procedure and hence only needs one function.
+
+    Handles gray (pass-through), 3- and 4-channel images.
+    '''
+    if is_gray(img):
+        return img
+    return img[..., [2, 1, 0] + list(range(3, img.shape[2]))]
