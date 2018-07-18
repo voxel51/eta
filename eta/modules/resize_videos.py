@@ -19,7 +19,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
-from future.utils import itervalues
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
@@ -28,6 +27,7 @@ import logging
 import sys
 
 from eta.core.config import Config
+import eta.core.image as etai
 import eta.core.module as etam
 import eta.core.utils as etau
 import eta.core.video as etav
@@ -85,19 +85,22 @@ class ParametersConfig(Config):
     '''Parameter configuration settings.
 
     Parameters:
-        size (eta.core.types.Array): [None] The output (width, height) of the
-            video
         scale (eta.core.types.Number): [None] A numeric scale factor to apply
-        scale_str (eta.core.types.String): [None] A scale string; an argument
-            for ffmpeg scale=
+            to the input resolution
+        size (eta.core.types.Array): [None] A desired output (width, height)
+            of the video. At most one dimension can be -1, in which case the
+            aspect ratio is preserved
+        max_size (eta.core.types.Array): [None] A maximum (width, height)
+            allowed for the video. The video is resized if necessary to meet
+            these contraints
         ffmpeg_out_opts (eta.core.types.Array): [None] An array of ffmpeg
             output options
     '''
 
     def __init__(self, d):
-        self.size = self.parse_array(d, "size", default=None)
         self.scale = self.parse_number(d, "scale", default=None)
-        self.scale_str = self.parse_string(d, "scale_str", default=None)
+        self.size = self.parse_array(d, "size", default=None)
+        self.max_size = self.parse_array(d, "max_size", default=None)
         self.ffmpeg_out_opts = self.parse_array(
             d, "ffmpeg_out_opts", default=None)
 
@@ -126,8 +129,22 @@ def _process_zip(input_zip, output_zip, parameters):
 
 
 def _process_video(input_path, output_path, parameters):
-    if not any(itervalues(vars(parameters))):
-        logger.info("No resizing parameters provided")
+    # Compute output frame size
+    isize = etav.get_frame_size(input_path)
+    if parameters.scale:
+        osize = etai.scale_frame_size(isize, parameters.scale)
+    elif parameters.size:
+        osize = etai.infer_missing_dims(parameters.size, isize)
+    else:
+        osize = isize
+
+    # Apply size limit, if requested
+    if parameters.max_size:
+        osize = etai.clamp_frame_size(osize, parameters.max_size)
+
+    # Handle no-ops efficiently
+    if osize == isize:
+        logger.info("No resizing requested or necessary")
         if etav.is_same_video_format(input_path, output_path):
             logger.info(
                 "Same video format detected, so no computation is required. "
@@ -135,13 +152,11 @@ def _process_video(input_path, output_path, parameters):
             etau.symlink_file(input_path, output_path)
             return
 
+    # Resize video
     logger.info("Resizing video '%s'", input_path)
     etav.FFmpegVideoResizer(
-        size=parameters.size,
-        scale=parameters.scale,
-        scale_str=parameters.scale_str,
-        out_opts=parameters.ffmpeg_out_opts,
-    ).run(input_path, output_path)
+        size=osize, out_opts=parameters.ffmpeg_out_opts).run(
+            input_path, output_path)
 
 
 def run(config_path, pipeline_config_path=None):
