@@ -134,13 +134,15 @@ def _process_video(input_path, output_path, parameters):
     if parameters.scale:
         osize = etai.scale_frame_size(isize, parameters.scale)
     elif parameters.size:
-        osize = etai.infer_missing_dims(parameters.size, isize)
+        psize = etai.parse_frame_size(parameters.size)
+        osize = etai.infer_missing_dims(psize, isize)
     else:
         osize = isize
 
     # Apply size limit, if requested
     if parameters.max_size:
-        osize = etai.clamp_frame_size(osize, parameters.max_size)
+        msize = etai.parse_frame_size(parameters.max_size)
+        osize = etai.clamp_frame_size(osize, msize)
 
     # Handle no-ops efficiently
     if osize == isize:
