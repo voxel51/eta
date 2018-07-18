@@ -10,7 +10,7 @@
     "modules": [
         {
             "name": "resize_videos",
-            "tunable_parameters": ["size", "scale"],
+            "tunable_parameters": ["size", "scale", "max_size"],
             "set_parameters": {}
         },
         {
