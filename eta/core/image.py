@@ -322,9 +322,61 @@ def to_frame_size(frame_size=None, shape=None, img=None):
     if shape is not None:
         return shape[1], shape[0]
     elif frame_size is not None:
-        return frame_size
+        return tuple(frame_size)
     else:
         raise TypeError("A valid keyword argument must be provided")
+
+
+def infer_missing_dims(frame_size, ref_size):
+    '''Infers the missing entries of the given frame size (if any).
+
+    Args:
+        frame_size: a (width, height) tuple. One or both dimensions can be -1,
+            in which case the input aspect ratio is preserved
+        ref_size: the reference (width, height )
+
+    Returns:
+        the concrete (width, height) with no -1s
+    '''
+    aspect_ratio = ref_size[0] / ref_size[1]
+    if frame_size[0] < 0:
+        if frame_size[1] < 0:
+            return ref_size
+
+        frame_size[0] = int(round(frame_size[1] * aspect_ratio))
+
+    if frame_size[1] < 0:
+        frame_size[1] = int(round(frame_size[0] / aspect_ratio))
+
+    return frame_size
+
+
+def scale_frame_size(frame_size, scale):
+    '''Scales the frame size by the given factor.
+
+    Args:
+        frame_size: a (width, height) tuple
+        scale: the desired scale factor
+
+    Returns:
+        the scaled (width, height)
+    '''
+    return tuple(int(round(scale * d)) for d in frame_size)
+
+
+def clamp_frame_size(frame_size, max_size):
+    '''Clamps the frame size to the given maximum size
+
+    Args:
+        frame_size: a (width, height) tuple
+        max_size: a (max width, max height) tuple
+
+    Returns:
+        the (width, height) scaled down if necessary so that width <= max width
+            and height <= max height
+    '''
+    alpha = min(1, max_size[0] / frame_size[0], max_size[1] / frame_size[1])
+    return scale_frame_size(frame_size, alpha)
 
 
 class Length(object):
