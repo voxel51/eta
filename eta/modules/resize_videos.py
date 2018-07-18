@@ -90,7 +90,7 @@ class ParametersConfig(Config):
         size (eta.core.types.Array): [None] A desired output (width, height)
             of the video. Dimensions can be -1, in which case the input aspect
             ratio is preserved
-        max_size (eta.core.types.Array): [None] A maximum (width, height)
+        max_size (eta.core.types.Array): [-1, 1080] A maximum (width, height)
             allowed for the video. Dimensions can be -1, in which case no
             constraint is applied to them
         ffmpeg_out_opts (eta.core.types.Array): [None] An array of ffmpeg
@@ -100,7 +100,7 @@ class ParametersConfig(Config):
     def __init__(self, d):
         self.scale = self.parse_number(d, "scale", default=None)
         self.size = self.parse_array(d, "size", default=None)
-        self.max_size = self.parse_array(d, "max_size", default=None)
+        self.max_size = self.parse_array(d, "max_size", default=[-1, 1080])
         self.ffmpeg_out_opts = self.parse_array(
             d, "ffmpeg_out_opts", default=None)
 
