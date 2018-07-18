@@ -97,7 +97,7 @@ class DetectedObject(Serializable, HasBoundingBox):
 
     def __init__(
             self, label, bounding_box, confidence=None, index=None, score=None,
-            frame_number=None, attrs=None):
+            frame_number=None, index_in_frame=None, attrs=None):
         '''Constructs a DetectedObject.
 
         Args:
@@ -176,7 +176,7 @@ class DetectedObject(Serializable, HasBoundingBox):
             index=d.get("index", None),
             score=d.get("score", None),
             frame_number=d.get("frame_number", None),
-            index_in_frame=d.get("index_in_frame", None)
+            index_in_frame=d.get("index_in_frame", None),
             attrs=attrs,
         )
 
