@@ -367,13 +367,18 @@ def clamp_frame_size(frame_size, max_size):
 
     Args:
         frame_size: a (width, height) tuple
-        max_size: a (max width, max height) tuple
+        max_size: a (max width, max height) tuple. One or both dimensions can
+            be -1, in which case no constraint is applied that dimension
 
     Returns:
         the (width, height) scaled down if necessary so that width <= max width
             and height <= max height
     '''
-    alpha = min(1, max_size[0] / frame_size[0], max_size[1] / frame_size[1])
+    alpha = 1
+    if max_size[0] > 0:
+        alpha = min(alpha, max_size[0] / frame_size[0])
+    if max_size[1] > 0:
+        alpha = min(alpha, max_size[1] / frame_size[1])
     return scale_frame_size(frame_size, alpha)
 
 
