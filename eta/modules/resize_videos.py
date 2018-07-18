@@ -90,7 +90,7 @@ class ParametersConfig(Config):
         size (eta.core.types.Array): [None] A desired output (width, height)
             of the video. Dimensions can be -1, in which case the input aspect
             ratio is preserved
-        max_size (eta.core.types.Array): [-1, 1080] A maximum (width, height)
+        max_size (eta.core.types.Array): [[-1, 1080]] A maximum (width, height)
             allowed for the video. Dimensions can be -1, in which case no
             constraint is applied to them
         ffmpeg_out_opts (eta.core.types.Array): [None] An array of ffmpeg
