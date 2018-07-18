@@ -91,13 +91,15 @@ class DetectedObject(Serializable, HasBoundingBox):
         score: (optional) an optional score for the object
         frame_number: (optional) the frame number in which this object was
             detected
+        index_in_frame: (optional) the index of this object in the frame
+            where it was detected
         attrs: (optional) an ObjectAttributeContainer describing additional
             attributes of the object
     '''
 
     def __init__(
             self, label, bounding_box, confidence=None, index=None, score=None,
-            frame_number=None, attrs=None):
+            frame_number=None, index_in_frame=None, attrs=None):
         '''Constructs a DetectedObject.
 
         Args:
@@ -108,6 +110,8 @@ class DetectedObject(Serializable, HasBoundingBox):
             score: (optional) an optional score for the object
             frame_number: (optional) the frame number in which this object was
                 detected
+            index_in_frame: (optional) the index of this object in the frame
+                where it was detected
             attrs: (optional) an ObjectAttributeContainer describing additional
                 attributes of the object
         '''
@@ -117,6 +121,7 @@ class DetectedObject(Serializable, HasBoundingBox):
         self.index = index
         self.score = score
         self.frame_number = frame_number
+        self.index_in_frame = index_in_frame
         self.attrs = attrs or ObjectAttributeContainer()
         self._meta = None  # Usable by clients to store temporary metadata
 
@@ -153,6 +158,8 @@ class DetectedObject(Serializable, HasBoundingBox):
             _attrs.append("score")
         if self.frame_number is not None:
             _attrs.append("frame_number")
+        if self.index_in_frame is not None:
+            _attrs.append("index_in_frame")
         if self.attrs:
             _attrs.append("attrs")
         return _attrs
@@ -172,6 +179,7 @@ class DetectedObject(Serializable, HasBoundingBox):
             index=d.get("index", None),
             score=d.get("score", None),
             frame_number=d.get("frame_number", None),
+            index_in_frame=d.get("index_in_frame", None),
             attrs=attrs,
         )
 
