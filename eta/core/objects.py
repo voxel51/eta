@@ -91,6 +91,8 @@ class DetectedObject(Serializable, HasBoundingBox):
         score: (optional) an optional score for the object
         frame_number: (optional) the frame number in which this object was
             detected
+        index_in_frame: (optional) the index of this object in the frame
+            where it was detected
         attrs: (optional) an ObjectAttributeContainer describing additional
             attributes of the object
     '''
