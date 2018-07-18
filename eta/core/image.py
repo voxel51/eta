@@ -344,11 +344,11 @@ def parse_frame_size(frame_size):
         frame_size = tuple(frame_size)
     if not isinstance(frame_size, tuple):
         raise ValueError(
-            "Frame size must be a tuple or list; found '%s'" % frame_size)
+            "Frame size must be a tuple or list; found '%s'" % str(frame_size))
     if len(frame_size) != 2:
         raise ValueError(
             "frame_size must be a be a (width, height) tuple; found '%s'" %
-            frame_size)
+            str(frame_size))
     return frame_size
 
 
