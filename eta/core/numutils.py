@@ -23,6 +23,29 @@ import operator
 import numpy as np
 
 
+def is_close(a, b, rel_tol=1e-09, abs_tol=0):
+    '''Determines whether two numbers are nearly equal.
+
+    The maximum of the relative-based and absolute tolerance is used to test
+    equality.
+
+    This function is taken from `math.isclose` in Python 3 but is explicitly
+    implemented here for Python 2 compatibility.
+
+    Args:
+        a: a number
+        b: a number
+        rel_tol: a relative tolerance to use when testing equality. By default,
+            this is 1e-09
+        abs_tol: an absolute tolerance to use when testing equality. By
+            default, this is 0
+
+    Returns:
+        True/False whether the numbers are close
+    '''
+    return abs(a - b) <= max(rel_tol * max(abs(a), abs(b)), abs_tol)
+
+
 class Accumulator(object):
     '''Accumulates counts of entries, like a histogram.  Then provides
     functions for extracting properties over that.  Inputs can be anything
