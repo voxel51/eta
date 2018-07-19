@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 '''
-Module that samples video frames.
+Module for (re)sampling videos.
 
 Info:
     type: eta.core.types.Module
@@ -24,11 +24,15 @@ from builtins import *
 # pragma pylint: enable=wildcard-import
 
 import logging
+import os
 import sys
 
+import eta
 from eta.core.config import Config
 import eta.core.events as etae
+import eta.core.image as etai
 import eta.core.module as etam
+import eta.core.utils as etau
 import eta.core.video as etav
 
 
@@ -52,73 +56,85 @@ class SampleConfig(etam.BaseModuleConfig):
 class DataConfig(Config):
     '''Data configuration settings.
 
+    Exactly one output path must be provided.
+
     Inputs:
         input_path (eta.core.types.Video): The input video
 
     Outputs:
-        output_path (eta.core.types.ImageSequence): The output sampled video
-            frames
+        output_video_path (eta.core.types.VideoFile): [None] The output sampled
+            video
+        output_frames_dir (eta.core.types.ImageSequenceDirectory): [None] A
+            directory in which to write the sampled frames
+        output_frames_path (eta.core.types.ImageSequence): [None] The output
+            sampled frames pattern
     '''
 
     def __init__(self, d):
         self.input_path = self.parse_string(d, "input_path")
-        self.output_path = self.parse_string(d, "output_path")
+        self.output_video_path = self.parse_string(
+            d, "output_video_path", default=None)
+        self.output_frames_dir = self.parse_string(
+            d, "output_frames_dir", default=None)
+        self.output_frames_path = self.parse_string(
+            d, "output_frames_path", default=None)
+
+        self._output_field = None
+        self._output_val = None
+        self._parse_outputs()
+
+    @property
+    def output_field(self):
+        return self._output_field
+
+    @property
+    def output_path(self):
+        return self._output_val
+
+    def _parse_outputs(self):
+        field, val = Config.parse_mutually_exclusive_fields({
+            "output_video_path": self.output_video_path,
+            "output_frames_dir": self.output_frames_dir,
+            "output_frames_path": self.output_frames_path,
+        })
+        if field == "output_frames_dir":
+            val = etai.make_image_sequence_patt(val)
+        self._output_field = field
+        self._output_val = val
 
 
 class ParametersConfig(Config):
     '''Parameter configuration settings.
 
-    If `clips_path` is specified, it is used. Otherwise `fps` is used, with the
-    native frame rate of the video being used if `fps` is also absent.
-
-    @todo add a fps/clips module keyword to handle each case separately.
-
     Parameters:
         fps (eta.core.types.Number): [None] The output frame rate
-        clips_path (eta.core.types.EventDetection): [None] Per-frame binary
-            labels indicating which frames to sample
     '''
 
     def __init__(self, d):
         self.fps = self.parse_number(d, "fps", default=None)
-        self.clips_path = self.parse_string(d, "clips_path", default=None)
 
 
 def _sample_videos(sample_config):
-    parameters = sample_config.parameters
-    for data_config in sample_config.data:
-        if parameters.clips_path:
-            _sample_video_by_clips(data_config, parameters.clips_path)
-        else:
-            _sample_video_by_fps(data_config, parameters.fps)
+    fps = sample_config.parameters.fps
+    for data in sample_config.data:
+        _sample_video(data.input_path, data.output_path, fps)
 
 
-def _sample_video_by_fps(data_config, fps):
-    if fps:
+def _sample_video(input_path, output_path, fps):
+    if fps > 0:
         logger.info(
-            "Sampling video %s at %s fps", data_config.input_path, fps)
+            "Sampling video %s at %s fps", input_path, fps)
     else:
         logger.info(
-            "Sampling video %s at native frame rate ", data_config.input_path)
+            "Retaining the native frame rate of '%s'", input_path)
+        if etav.is_same_video_format(input_path, output_path):
+            logger.info(
+                "Same video format detected, so no computation is required. "
+                "Just sylimking %s to %s" % (output_path, input_path))
+            etau.symlink_file(input_path, output_path)
+            return
 
-    etav.FFmpegVideoSampler(fps=fps).run(
-        data_config.input_path, data_config.output_path)
-
-
-def _sample_video_by_clips(data_config, clips_path):
-    logger.info(
-        "Sampling video %s by clips %s", data_config.input_path, clips_path)
-    detections = etae.EventDetection.from_json(clips_path)
-    frames = detections.to_series().to_str()
-    processor = etav.VideoProcessor(
-        data_config.input_path,
-        frames=frames,
-        out_impath=data_config.output_path,
-    )
-
-    with processor:
-        for img in processor:
-            processor.write(img)
+    etav.FFmpegVideoSampler(fps=fps).run(input_path, output_path)
 
 
 def run(config_path, pipeline_config_path=None):

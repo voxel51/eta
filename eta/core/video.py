@@ -43,12 +43,14 @@ import eta.core.utils as etau
 logger = logging.getLogger(__name__)
 
 
-SUPPORTED_VIDEO_TYPES = [".mp4", ".avi", ".mpg", ".mov"]
+SUPPORTED_VIDEO_FORMATS = [
+    ".mp4", ".mpg", ".mpeg", ".avi", ".mov", ".wmv", ".flv", ".mkv"
+]
 
 
 def is_supported_video(filepath):
     '''Determines whether the given file has a supported video type.'''
-    return os.path.splitext(filepath)[1] in SUPPORTED_VIDEO_TYPES
+    return os.path.splitext(filepath)[1] in SUPPORTED_VIDEO_FORMATS
 
 
 def is_valid_video(inpath):
@@ -68,9 +70,18 @@ def is_valid_video(inpath):
         return False
 
 
+def is_same_video_format(path1, path2):
+    '''Determines whether the videos have the same (supported) format.'''
+    return (
+        is_supported_video(path1) and
+        os.path.splitext(path1)[1] == os.path.splitext(path2)[1]
+    )
+
+
 def glob_videos(dir_):
     '''Returns an iterator over all supported video files in the directory.'''
-    return etau.multiglob(*SUPPORTED_VIDEO_TYPES, root=os.path.join(dir_, "*"))
+    return etau.multiglob(
+        *SUPPORTED_VIDEO_FORMATS, root=os.path.join(dir_, "*"))
 
 
 class VideoStreamInfo(Serializable):
@@ -372,13 +383,13 @@ class VideoProcessor(object):
             frames="*",
             in_use_ffmpeg=True,
             out_use_ffmpeg=True,
-            out_impath=None,
-            out_vidpath=None,
-            out_single_vidpath=None,
+            out_images_path=None,
+            out_video_path=None,
+            out_clips_path=None,
             out_fps=None,
             out_size=None,
             out_opts=None):
-        '''Construct a new video processor.
+        '''Constructs a new VideoProcessor instance.
 
         Args:
             inpath: path to the input video. Passed directly to a VideoReader
@@ -392,21 +403,21 @@ class VideoProcessor(object):
             out_use_ffmpeg: whether to use FFmpegVideoWriter to write output
                 videos rather than OpenCVVideoWriter
 
-            out_impath: a path like "/path/to/frames/%05d.png" with one
+            out_images_path: a path like "/path/to/frames/%05d.png" with one
                 placeholder that specifies where to save frames as individual
-                images when the write() method is called. When out_impath is
-                None or "", no images are written
+                images when the write() method is called. When out_images_path
+                is None or "", no images are written
 
-            out_vidpath: a path like "/path/to/video/%05d-%05d.mp4" with two
-                placeholders that specifies where to save output videos for
-                each frame range when the write() method is called. When
-                out_vidpath is None or "", no videos are written
-
-            out_single_vidpath: a path like "/path/to/video.mp4" that specifies
+            out_video_path: a path like "/path/to/video.mp4" that specifies
                 where to save a single output video that contains all of the
                 frames passed to the write() method concatenated together,
                 regardless of any potential frame range gaps. When
-                out_single_vidpath is None or "", no video is written
+                out_video_path is None or "", no video is written
+
+            out_clips_path: a path like "/path/to/video/%05d-%05d.mp4" with two
+                placeholders that specifies where to save output video clips
+                for each frame range when the write() method is called. When
+                out_clips_path is None or "", no videos are written
 
             out_fps: a frame rate for the output video, if any. If the input
                 source is a video and fps is None, the same frame rate is used
@@ -426,35 +437,33 @@ class VideoProcessor(object):
             self._reader = FFmpegVideoReader(inpath, frames=frames)
         else:
             self._reader = OpenCVVideoReader(inpath, frames=frames)
+        self._video_clip_writer = None
         self._video_writer = None
-        self._single_video_writer = None
-        self._write_images = out_impath is not None and out_impath != ""
-        self._write_videos = out_vidpath is not None and out_vidpath != ""
-        self._write_single_video = (
-            out_single_vidpath is not None and out_single_vidpath != "")
+        self._write_images = bool(out_images_path)
+        self._write_video = bool(out_video_path)
+        self._write_clips = bool(out_clips_path)
 
         self.inpath = inpath
         self.frames = frames
         self.in_use_ffmpeg = in_use_ffmpeg
         self.out_use_ffmpeg = out_use_ffmpeg
-        self.out_impath = out_impath
-        self.out_vidpath = out_vidpath
-        self.out_single_vidpath = out_single_vidpath
+        self.out_images_path = out_images_path
+        self.out_video_path = out_video_path
+        self.out_clips_path = out_clips_path
         if out_fps is not None and out_fps > 0:
             self.out_fps = out_fps
         elif self._reader.frame_rate > 0:
             self.out_fps = self._reader.frame_rate
         else:
-            raise VideoProcessorError((
+            raise VideoProcessorError(
                 "The inferred frame rate '%s' cannot be used. You must " +
-                "manually specify a frame rate"
-            ) % str(self._reader.frame_rate))
+                "manually specify a frame rate" % str(self._reader.frame_rate))
         self.out_size = out_size if out_size else self._reader.frame_size
         self.out_opts = out_opts
 
-        if self._write_single_video:
-            self._single_video_writer = self._new_video_writer(
-                self.out_single_vidpath)
+        if self._write_video:
+            self._video_writer = self._new_video_writer(
+                self.out_video_path)
 
     def __enter__(self):
         return self
@@ -513,41 +522,41 @@ class VideoProcessor(object):
     def process(self):
         '''Returns the next frame.'''
         img = self._reader.read()
-        if self._write_videos and self._reader.is_new_frame_range:
-            self._reset_video_writer()
+        if self._write_clips and self._reader.is_new_frame_range:
+            self._reset_video_clip_writer()
         return img
 
     def write(self, img):
         '''Writes the given image to the output writer(s).'''
         if self._write_images:
-            etai.write(img, self.out_impath % self._reader.frame_number)
-        if self._write_videos:
+            etai.write(img, self.out_images_path % self._reader.frame_number)
+        if self._write_video:
             self._video_writer.write(img)
-        if self._write_single_video:
-            self._single_video_writer.write(img)
+        if self._write_clips:
+            self._video_clip_writer.write(img)
 
     def close(self):
         '''Closes the video processor.'''
         self._reader.close()
         if self._video_writer is not None:
             self._video_writer.close()
-        if self._single_video_writer is not None:
-            self._single_video_writer.close()
+        if self._video_clip_writer is not None:
+            self._video_clip_writer.close()
 
-    def _reset_video_writer(self):
-        if self._video_writer is not None:
-            self._video_writer.close()
+    def _reset_video_clip_writer(self):
+        if self._video_clip_writer is not None:
+            self._video_clip_writer.close()
 
-        outpath = self.out_vidpath % self._reader.frame_range
-        self._video_writer = self._new_video_writer(outpath)
+        outpath = self.out_clips_path % self._reader.frame_range
+        self._video_clip_writer = self._new_video_writer(outpath)
 
     def _new_video_writer(self, outpath):
         if self.out_use_ffmpeg:
             return FFmpegVideoWriter(
                 outpath, self.out_fps, self.out_size, out_opts=self.out_opts)
-        else:
-            return OpenCVVideoWriter(
-                outpath, self.out_fps, self.out_size)
+
+        return OpenCVVideoWriter(
+            outpath, self.out_fps, self.out_size)
 
 
 class VideoProcessorError(Exception):
@@ -711,7 +720,7 @@ class FFmpegVideoReader(VideoReader):
             StopIteration: if there are no more frames to process
             VideoReaderError: if unable to load the next frame from file
         '''
-        for idx in range(max(0, self.frame_number), next(self._ranges)):
+        for _ in range(max(0, self.frame_number), next(self._ranges)):
             if not self._grab():
                 raise VideoReaderError(
                     "Failed to grab frame %d" % self.frame_number)
@@ -871,7 +880,7 @@ class FFmpegVideoWriter(VideoWriter):
 
     DEFAULT_OUT_OPTS = [
         "-c:v", "libx264", "-pix_fmt", "yuv420p",
-        "-preset", "slow", "-crf", "22", "-an",
+        "-preset", "medium", "-crf", "23", "-an",
     ]
 
     def __init__(self, outpath, fps, size, out_opts=None):
@@ -1105,6 +1114,7 @@ class FFmpeg(object):
             etau.ensure_path(outpath)
 
         try:
+            logger.info("Excuting '%s'", self.cmd)
             self._p = Popen(self._args, stdin=PIPE, stdout=PIPE, stderr=PIPE)
         except EnvironmentError as e:
             if e.errno == errno.ENOENT:
@@ -1168,7 +1178,7 @@ class FFmpegVideoResizer(FFmpeg):
 
     DEFAULT_OUT_OPTS = [
         "-c:v", "libx264", "-pix_fmt", "yuv420p",
-        "-preset", "slow", "-crf", "22", "-an",
+        "-preset", "medium", "-crf", "23", "-an",
     ]
 
     def __init__(self, size=None, scale=None, scale_str=None, **kwargs):
@@ -1188,24 +1198,23 @@ class FFmpegVideoResizer(FFmpeg):
             **kwargs: optional keyword arguments for FFmpeg()
         '''
         out_opts = kwargs.pop("out_opts", self.DEFAULT_OUT_OPTS) or []
-        out_opts += [
-            "-vf",
-            "scale={0}".format(self._gen_scale_opt(
-                size=size, scale=scale, scale_str=scale_str)),
-        ]
+        scale_opt = self._gen_scale_opt(
+            size=size, scale=scale, scale_str=scale_str)
+        if scale_opt:
+            out_opts += ["-vf", "scale={0}".format(scale_opt)]
         super(FFmpegVideoResizer, self).__init__(out_opts=out_opts, **kwargs)
 
     @staticmethod
     def _gen_scale_opt(size=None, scale=None, scale_str=None):
         if size:
             return "{0}:{1}".format(*size)
-        elif scale:
+        if scale:
             return "iw*{0}:ih*{0}".format(scale)
-        elif scale_str:
+        if scale_str:
             return scale_str
 
-        logger.info("No scale argument found; keeping the native resolution")
-        return "iw*1:ih*1"
+        logger.info("No scale argument found; retaining the native resolution")
+        return None
 
 
 class FFmpegVideoSampler(FFmpeg):

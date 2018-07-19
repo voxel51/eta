@@ -27,9 +27,12 @@ import logging
 import sys
 
 from eta.core.config import Config
+import eta.core.image as etai
 import eta.core.module as etam
+import eta.core.utils as etau
 import eta.core.video as etav
 import eta.core.ziputils as etaz
+
 
 logger = logging.getLogger(__name__)
 
@@ -82,32 +85,33 @@ class ParametersConfig(Config):
     '''Parameter configuration settings.
 
     Parameters:
-        size (eta.core.types.Array): [None] The output (width, height) of the
-            video
         scale (eta.core.types.Number): [None] A numeric scale factor to apply
-        scale_str (eta.core.types.String): [None] A scale string; an argument
-            for ffmpeg scale=
+            to the input resolution
+        size (eta.core.types.Array): [None] A desired output (width, height)
+            of the video. Dimensions can be -1, in which case the input aspect
+            ratio is preserved
+        max_size (eta.core.types.Array): [None] A maximum (width, height)
+            allowed for the video. Dimensions can be -1, in which case no
+            constraint is applied to them
         ffmpeg_out_opts (eta.core.types.Array): [None] An array of ffmpeg
             output options
     '''
 
     def __init__(self, d):
-        self.size = self.parse_array(d, "size", default=None)
         self.scale = self.parse_number(d, "scale", default=None)
-        self.scale_str = self.parse_string(d, "scale_str", default=None)
+        self.size = self.parse_array(d, "size", default=None)
+        self.max_size = self.parse_array(d, "max_size", default=None)
         self.ffmpeg_out_opts = self.parse_array(
             d, "ffmpeg_out_opts", default=None)
 
 
 def _resize_videos(resize_config):
     parameters = resize_config.parameters
-    for data_config in resize_config.data:
-        if data_config.is_zip:
-            _process_zip(
-                data_config.input_zip, data_config.output_zip, parameters)
-        elif data_config.is_path:
-            _process_video(
-                data_config.input_path, data_config.output_path, parameters)
+    for data in resize_config.data:
+        if data.is_zip:
+            _process_zip(data.input_zip, data.output_zip, parameters)
+        elif data.is_path:
+            _process_video(data.input_path, data.output_path, parameters)
         else:
             raise ValueError("Invalid ResizeConfig")
 
@@ -120,18 +124,41 @@ def _process_zip(input_zip, output_zip, parameters):
     for input_path, output_path in zip(input_paths, output_paths):
         _process_video(input_path, output_path, parameters)
 
-    # Collect the objects
+    # Collect outputs
     etaz.make_zip(output_zip)
 
 
 def _process_video(input_path, output_path, parameters):
+    # Compute output frame size
+    isize = etav.get_frame_size(input_path)
+    if parameters.scale:
+        osize = etai.scale_frame_size(isize, parameters.scale)
+    elif parameters.size:
+        psize = etai.parse_frame_size(parameters.size)
+        osize = etai.infer_missing_dims(psize, isize)
+    else:
+        osize = isize
+
+    # Apply size limit, if requested
+    if parameters.max_size:
+        msize = etai.parse_frame_size(parameters.max_size)
+        osize = etai.clamp_frame_size(osize, msize)
+
+    # Handle no-ops efficiently
+    if osize == isize:
+        logger.info("No resizing requested or necessary")
+        if etav.is_same_video_format(input_path, output_path):
+            logger.info(
+                "Same video format detected, so no computation is required. "
+                "Just sylimking '%s' to '%s'" % (output_path, input_path))
+            etau.symlink_file(input_path, output_path)
+            return
+
+    # Resize video
     logger.info("Resizing video '%s'", input_path)
     etav.FFmpegVideoResizer(
-        size=parameters.size,
-        scale=parameters.scale,
-        scale_str=parameters.scale_str,
-        out_opts=parameters.ffmpeg_out_opts,
-    ).run(input_path, output_path)
+        size=osize, out_opts=parameters.ffmpeg_out_opts).run(
+            input_path, output_path)
 
 
 def run(config_path, pipeline_config_path=None):

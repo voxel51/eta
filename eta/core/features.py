@@ -215,7 +215,7 @@ class CanFeaturize(object):
         '''Sets the Featurizer for this instance.'''
         self.featurizer = featurizer
 
-    def remove_featurizer(self, featurizer):
+    def remove_featurizer(self):
         '''Removes the Featurizer from this instance, if any.'''
         self.featurizer = None
 

@@ -1,12 +1,12 @@
 {
     "info": {
-        "name": "video_formatter",
+        "name": "video_clipper",
         "type": "eta.core.types.Pipeline",
         "version": "0.1.0",
-        "description": "A pipeline for formatting video files"
+        "description": "A pipeline for generating video clips"
     },
     "inputs": ["video"],
-    "outputs": ["sampled_video"],
+    "outputs": ["video_clips"],
     "modules": [
         {
             "name": "resize_videos",
@@ -14,8 +14,8 @@
             "set_parameters": {}
         },
         {
-            "name": "sample_videos",
-            "tunable_parameters": ["fps"],
+            "name": "clip_videos",
+            "tunable_parameters": ["frames"],
             "set_parameters": {}
         }
     ],
@@ -26,11 +26,11 @@
         },
         {
             "source": "resize_videos.output_path",
-            "sink": "sample_videos.input_path"
+            "sink": "clip_videos.input_path"
         },
         {
-            "source": "sample_videos.output_video_path",
-            "sink": "OUTPUT.sampled_video"
+            "source": "clip_videos.output_video_clips_path",
+            "sink": "OUTPUT.video_clips"
         }
     ]
 }

@@ -36,16 +36,9 @@
     ],
     "parameters": [
         {
-            "name": "scale_str",
-            "type": "eta.core.types.String",
-            "description": "A scale string; an argument for ffmpeg scale=",
-            "required": false,
-            "default": null
-        },
-        {
             "name": "scale",
             "type": "eta.core.types.Number",
-            "description": "A numeric scale factor to apply",
+            "description": "A numeric scale factor to apply to the input resolution",
             "required": false,
             "default": null
         },
@@ -57,9 +50,16 @@
             "default": null
         },
         {
+            "name": "max_size",
+            "type": "eta.core.types.Array",
+            "description": "A maximum (width, height) allowed for the video. Dimensions can be -1, in which case no constraint is applied to them",
+            "required": false,
+            "default": null
+        },
+        {
             "name": "size",
             "type": "eta.core.types.Array",
-            "description": "The output (width, height) of the video",
+            "description": "A desired output (width, height) of the video. Dimensions can be -1, in which case the input aspect ratio is preserved",
             "required": false,
             "default": null
         }

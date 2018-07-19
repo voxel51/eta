@@ -23,6 +23,7 @@ import datetime as dt
 import dill as pickle
 import json
 import os
+import pprint
 
 import numpy as np
 
@@ -89,6 +90,13 @@ def json_to_str(obj, pretty_print=True):
         **kwargs
     )
     return str(s)
+
+
+def pretty_str(obj):
+    '''Wrapper for the pprint.pformat function that generates a formatted
+    string representation of the input object.
+    '''
+    return pprint.pformat(obj, indent=4, width=79)
 
 
 class Picklable(object):

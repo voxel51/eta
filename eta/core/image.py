@@ -31,24 +31,51 @@ from subprocess import Popen, PIPE
 import cv2
 import numpy as np
 
+import eta
 import eta.core.utils as etau
 import eta.core.web as etaw
 
 
-SUPPORTED_IMAGE_TYPES = [".png", ".jpg", ".jpeg", ".gif"]
+SUPPORTED_IMAGE_FORMATS = [".png", ".jpg", ".jpeg", ".gif", ".tiff", ".bmp"]
 
 
 def is_supported_image(filepath):
     '''Determines whether the given file has a supported image type.'''
-    return os.path.splitext(filepath)[1] in SUPPORTED_IMAGE_TYPES
+    return os.path.splitext(filepath)[1] in SUPPORTED_IMAGE_FORMATS
 
 
 def glob_images(dir_):
     '''Returns an iterator over all supported image files in the directory.'''
-    return etau.multiglob(*SUPPORTED_IMAGE_TYPES, root=os.path.join(dir_, "*"))
+    return etau.multiglob(
+        *SUPPORTED_IMAGE_FORMATS, root=os.path.join(dir_, "*"))
 
 
-###### Image IO ##############################################################
+def make_image_sequence_patt(basedir, basename="", patt=None, ext=None):
+    '''Makes an image sequence pattern of the following form:
+
+    <basedir>/<basename>-<patt><ext>
+
+    where the "-" is omitted
+
+    Args:
+        basedir: the base directory
+        basename: an optional base filename. If omitted, the hyphen is also
+            omitted
+        patt: an optional image pattern to use. If omitted, the default pattern
+            `eta.config.default_sequence_idx` is used
+        ext: an optional image extension to use. If omitted, the default image
+            extension `eta.config.default_image_ext`
+
+    Returns:
+        the image sequence pattern
+    '''
+    name = basename + "-" if basename else ""
+    patt = patt or eta.config.default_sequence_idx
+    ext = ext or eta.config.default_image_ext
+    return os.path.join(basedir, name + patt + ext)
+
+
+###### Image I/O ##############################################################
 
 
 def decode(b, flag=cv2.IMREAD_UNCHANGED):
@@ -106,7 +133,7 @@ def write(img, path):
     cv2.imwrite(path, _exchange_rb(img))
 
 
-###### Image Manipulation ####################################################
+###### Image Manipulation #####################################################
 
 
 def create(width, height, background=None):
@@ -284,7 +311,7 @@ class Convert(object):
         return out
 
 
-###### Image Properties and Representation ###################################
+###### Image Properties and Representations ###################################
 
 
 def has_alpha(img):
@@ -311,7 +338,7 @@ def to_frame_size(frame_size=None, shape=None, img=None):
         img: the image itself
 
     Returns:
-        (w, h): the width and height of the image
+        a (width, height) frame size tuple
 
     Raises:
         TypeError: if none of the keyword arguments were passed
@@ -321,9 +348,89 @@ def to_frame_size(frame_size=None, shape=None, img=None):
     if shape is not None:
         return shape[1], shape[0]
     elif frame_size is not None:
-        return frame_size
+        return tuple(frame_size)
     else:
         raise TypeError("A valid keyword argument must be provided")
+
+
+def parse_frame_size(frame_size):
+    '''Parses the given frame size, ensuring that it is valid.
+
+    Args:
+        a (width, height) tuple or list, optionally with dimensions that are
+            -1 to indicate "fill-in" dimensions
+
+    Returns:
+        the frame size converted to a tuple, if necessary
+
+    Raises:
+        ValueError: if the frame size was invalid
+    '''
+    if isinstance(frame_size, list):
+        frame_size = tuple(frame_size)
+    if not isinstance(frame_size, tuple):
+        raise ValueError(
+            "Frame size must be a tuple or list; found '%s'" % str(frame_size))
+    if len(frame_size) != 2:
+        raise ValueError(
+            "frame_size must be a be a (width, height) tuple; found '%s'" %
+            str(frame_size))
+    return frame_size
+
+
+def infer_missing_dims(frame_size, ref_size):
+    '''Infers the missing entries (if any) of the given frame size.
+
+    Args:
+        frame_size: a (width, height) tuple. One or both dimensions can be -1,
+            in which case the input aspect ratio is preserved
+        ref_size: the reference (width, height )
+
+    Returns:
+        the concrete (width, height) with no negative values
+    '''
+    width, height = frame_size
+    aspect_ratio = ref_size[0] / ref_size[1]
+    if width < 0:
+        if height < 0:
+            return ref_size
+        width = int(round(height * aspect_ratio))
+    elif height < 0:
+        height = int(round(width / aspect_ratio))
+    return width, height
+
+
+def scale_frame_size(frame_size, scale):
+    '''Scales the frame size by the given factor.
+
+    Args:
+        frame_size: a (width, height) tuple
+        scale: the desired scale factor
+
+    Returns:
+        the scaled (width, height)
+    '''
+    return tuple(int(round(scale * d)) for d in frame_size)
+
+
+def clamp_frame_size(frame_size, max_size):
+    '''Clamps the frame size to the given maximum size
+
+    Args:
+        frame_size: a (width, height) tuple
+        max_size: a (max width, max height) tuple. One or both dimensions can
+            be -1, in which case no constraint is applied that dimension
+
+    Returns:
+        the (width, height) scaled down if necessary so that width <= max width
+            and height <= max height
+    '''
+    alpha = 1
+    if max_size[0] > 0:
+        alpha = min(alpha, max_size[0] / frame_size[0])
+    if max_size[1] > 0:
+        alpha = min(alpha, max_size[1] / frame_size[1])
+    return scale_frame_size(frame_size, alpha)
 
 
 class Length(object):
@@ -453,20 +560,7 @@ class Location(object):
         return self._loc in self.BOTTOM_LEFT
 
 
-###### Color Conversion ######################################################
-
-
-def _exchange_rb(img):
-    '''Converts an image from opencv format (BGR) to/from eta format (RGB) by
-    exchanging the red and blue channels.
-
-    This is a symmetric procedure and hence only needs one function.
-
-    Handles gray (pass-through), 3- and 4-channel images.
-    '''
-    if is_gray(img):
-        return img
-    return img[..., [2, 1, 0] + list(range(3, img.shape[2]))]
+###### Color Conversions ######################################################
 
 
 def hex_to_rgb(value):
@@ -522,3 +616,16 @@ def rgb_to_bgr(img):
 def bgr_to_rgb(img):
     '''Converts a BGR image to an RGB image (supports alpha).'''
     return _exchange_rb(img)
+
+
+def _exchange_rb(img):
+    '''Converts an image from opencv format (BGR) to/from eta format (RGB) by
+    exchanging the red and blue channels.
+
+    This is a symmetric procedure and hence only needs one function.
+
+    Handles gray (pass-through), 3- and 4-channel images.
+    '''
+    if is_gray(img):
+        return img
+    return img[..., [2, 1, 0] + list(range(3, img.shape[2]))]

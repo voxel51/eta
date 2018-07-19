@@ -253,6 +253,25 @@ def copy_file(inpath, outpath):
     shutil.copy(inpath, outpath)
 
 
+def symlink_file(filepath, linkpath):
+    '''Creates a symlink at the given location that points to the given file.
+    The base output directory is created if necessary, and any existing file
+    will be overwritten.
+    '''
+    ensure_basedir(linkpath)
+    if os.path.exists(linkpath):
+        os.remove(linkpath)
+    os.symlink(os.path.realpath(filepath), linkpath)
+
+
+def move_file(inpath, outpath):
+    '''Copies the input file to the output location, creating the base output
+    directory if necessary.
+    '''
+    ensure_basedir(outpath)
+    shutil.move(inpath, outpath)
+
+
 def copy_dir(indir, outdir):
     '''Copies the input directory to the output directory. The base output
     directory is created if necessary, and any existing output directory will
@@ -372,14 +391,6 @@ def _to_human_binary_str(num, suffix):
     return "%3.1f %s%s" % (num, unit, suffix)
 
 
-def move_file(inpath, outpath):
-    '''Copies the input file to the output location, creating the base output
-    directory if necessary.
-    '''
-    ensure_basedir(outpath)
-    shutil.move(inpath, outpath)
-
-
 def extract_tar(inpath, outdir=None, delete_tar=False):
     '''Extracts the .tar, tar.gz, .tgz, .tar.bz, and .tbz files into the same
     directory and then optionally deletes the tarball.
@@ -392,18 +403,18 @@ def extract_tar(inpath, outdir=None, delete_tar=False):
             default, this is False
     '''
     if inpath.endswith("tar"):
-        format = "r:"
+        fmt = "r:"
     elif inpath.endswith("tar.gz") or inpath.endswith("tgz"):
-        format = "r:gz"
+        fmt = "r:gz"
     elif inpath.endswith("tar.bz") or inpath.endswith("tbz"):
-        format = "r:bz2"
+        fmt = "r:bz2"
     else:
         raise ValueError(
             "Expected file '%s' to have extension .tar, .tar.gz, .tgz,"
             ".tar.bz, or .tbz in order to extract it" % inpath)
 
     outdir = outdir or os.path.dirname(inpath) or "."
-    with tarfile.open(inpath, format) as tar:
+    with tarfile.open(inpath, fmt) as tar:
         tar.extractall(path=outdir)
 
     if delete_tar:
@@ -499,21 +510,21 @@ def random_key(n):
     )
 
 
-def replace_strings(string, replacers):
+def replace_strings(s, replacers):
     '''Performs a sequence of find-replace operations on the given string.
 
     Args:
-        string: the input string
-        replaces: a list of (find, replace) strings
+        s: the input string
+        replacers: a list of (find, replace) strings
 
     Returns:
         a copy of the input strings with all of the find-and-replacements made
     '''
-    output = string
+    sout = s
     for sfind, srepl in replacers:
-        output = output.replace(sfind, srepl)
+        sout = sout.replace(sfind, srepl)
 
-    return output
+    return sout
 
 
 def join_dicts(*args):

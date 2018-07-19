@@ -8,6 +8,18 @@
     },
     "inputs": [
         {
+            "name": "event_detection_path",
+            "type": "eta.core.types.EventDetection",
+            "description": "Per-frame binary labels defining the clips to generate",
+            "required": false
+        },
+        {
+            "name": "event_series_path",
+            "type": "eta.core.types.EventSeries",
+            "description": "An EventSeries specifying the clips to generate",
+            "required": false
+        },
+        {
             "name": "input_path",
             "type": "eta.core.types.Video",
             "description": "The input video",
@@ -16,10 +28,22 @@
     ],
     "outputs": [
         {
-            "name": "output_path",
+            "name": "output_frames_dir",
+            "type": "eta.core.types.ImageSequenceDirectory",
+            "description": "A directory in which to write the sampled frames",
+            "required": false
+        },
+        {
+            "name": "output_frames_path",
+            "type": "eta.core.types.ImageSequence",
+            "description": "The output sampled frames",
+            "required": false
+        },
+        {
+            "name": "output_video_clips_path",
             "type": "eta.core.types.VideoClips",
             "description": "The output video clips",
-            "required": true
+            "required": false
         }
     ],
     "parameters": [
@@ -27,13 +51,6 @@
             "name": "frames",
             "type": "eta.core.types.String",
             "description": "A frames string specifying the clips to generate",
-            "required": false,
-            "default": null
-        },
-        {
-            "name": "events_json_path",
-            "type": "eta.core.types.EventSeries",
-            "description": "An EventSeries specifying the clips to generate",
             "required": false,
             "default": null
         }

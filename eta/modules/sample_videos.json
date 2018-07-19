@@ -3,7 +3,7 @@
         "name": "sample_videos",
         "type": "eta.core.types.Module",
         "version": "0.1.0",
-        "description": "Module that samples video frames",
+        "description": "Module for (re)sampling videos",
         "exe": "sample_videos.py"
     },
     "inputs": [
@@ -16,10 +16,22 @@
     ],
     "outputs": [
         {
-            "name": "output_path",
+            "name": "output_frames_dir",
+            "type": "eta.core.types.ImageSequenceDirectory",
+            "description": "A directory in which to write the sampled frames",
+            "required": false
+        },
+        {
+            "name": "output_frames_path",
             "type": "eta.core.types.ImageSequence",
-            "description": "The output sampled video frames",
-            "required": true
+            "description": "The output sampled frames pattern",
+            "required": false
+        },
+        {
+            "name": "output_video_path",
+            "type": "eta.core.types.VideoFile",
+            "description": "The output sampled video",
+            "required": false
         }
     ],
     "parameters": [
@@ -27,13 +39,6 @@
             "name": "fps",
             "type": "eta.core.types.Number",
             "description": "The output frame rate",
-            "required": false,
-            "default": null
-        },
-        {
-            "name": "clips_path",
-            "type": "eta.core.types.EventDetection",
-            "description": "Per-frame binary labels indicating which frames to sample",
             "required": false,
             "default": null
         }
