@@ -54,10 +54,7 @@
             "type": "eta.core.types.Array",
             "description": "A maximum (width, height) allowed for the video. Dimensions can be -1, in which case no constraint is applied to them",
             "required": false,
-            "default": [
-                -1,
-                1080
-            ]
+            "default": null
         },
         {
             "name": "size",
