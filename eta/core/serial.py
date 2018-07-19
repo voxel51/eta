@@ -436,25 +436,23 @@ class Container(Serializable):
             ele_cls = etau.get_class(d[cls._ELE_CLS_FIELD])
         else:
             # Parse using provided class
-            cls._validate()
             ele_cls = cls._ELE_CLS
 
         return cls(**{
             cls._ELE_ATTR: [ele_cls.from_dict(dd) for dd in d[cls._ELE_ATTR]]
         })
 
-    @classmethod
-    def _validate(cls):
+    def _validate(self):
         '''Validates that a concrete Container subclass definition is valid.'''
-        if cls._ELE_CLS is None:
+        if self._ELE_CLS is None:
             raise ContainerError(
                 "Cannot instantiate a Container for which _ELE_CLS is None")
-        if cls._ELE_ATTR is None:
+        if self._ELE_ATTR is None:
             raise ContainerError(
                 "Cannot instantiate a Container for which _ELE_ATTR is None")
-        if not issubclass(cls._ELE_CLS, Serializable):
+        if not issubclass(self._ELE_CLS, Serializable):
             raise ContainerError(
-                "%s is not Serializable" % cls._ELE_CLS)
+                "%s is not Serializable" % self._ELE_CLS)
 
 
 class ContainerError(Exception):

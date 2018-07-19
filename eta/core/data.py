@@ -251,19 +251,6 @@ class DataRecords(DataContainer):
             [r for (i, r) in enumerate(self.records) if i in indices]
         return newdr
 
-    def _validate(self):
-        '''Validates that a concrete Container subclass definition is valid.'''
-        if self._ELE_CLS is None:
-            raise ContainerError(
-                "Cannot instantiate a Container for which _ELE_CLS is None")
-        if self._ELE_ATTR is None:
-            raise ContainerError(
-                "Cannot instantiate a Container for which _ELE_ATTR is None")
-        if not issubclass(self._ELE_CLS, etas.Serializable):
-            raise ContainerError(
-                "%s is not Serializable" % self._ELE_CLS)
-
-
 
 DEFAULT_DATA_RECORDS_FILENAME = "records.json"
 
