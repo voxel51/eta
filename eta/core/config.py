@@ -25,7 +25,6 @@ import os
 import sys
 
 import eta.core.serial as etas
-from eta.core.serial import Serializable
 import eta.core.utils as etau
 
 
@@ -130,7 +129,7 @@ class ConfigurableError(Exception):
     pass
 
 
-class ConfigBuilder(Serializable):
+class ConfigBuilder(etas.Serializable):
     '''A class for building Config instances programmatically.'''
 
     def __init__(self, cls):
@@ -211,7 +210,7 @@ class ConfigBuilderError(Exception):
     pass
 
 
-class Config(Serializable):
+class Config(etas.Serializable):
     '''Base class for reading JSON configuration files.
 
     Config subclasses should implement constructors that take a JSON dictionary
@@ -440,6 +439,28 @@ class Config(Serializable):
         '''
         return _parse_key(d, key, None, default)[0]
 
+    @staticmethod
+    def parse_mutually_exclusive_fields(fields):
+    '''Parses a mutually exclusive dictionary of pre-parsed fields, which must
+    contain exactly one field with a truthy value.
+
+    Args:
+        fields: a dictionary of pre-parsed fields
+
+    Returns:
+        the (field, value) that was set
+
+    Raises:
+        ConfigError: if zero or more than one truthy value was found
+    '''
+    d = [(k, v) for k, v in iteritems(fields) if v]
+    num_fields = len(d)
+    if num_fields != 1:
+        ConfigError(
+            "Expected exactly one field in the following to be specified, but "
+            "found %d:\n%s" % (num_fields, etas.pretty_str(d)))
+    return d[0]
+
 
 class ConfigContainer(etas.Container):
     '''Abstract base class for containers that store lists of `Config` class
@@ -524,7 +545,7 @@ class ConfigError(Exception):
     pass
 
 
-class EnvConfig(Serializable):
+class EnvConfig(etas.Serializable):
     '''Base class for reading JSON configuration files whose values can be
     specified or overridden via environment variables.
 
