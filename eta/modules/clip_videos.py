@@ -26,8 +26,9 @@ from builtins import *
 import logging
 import sys
 
-from eta.core.config import Config, ConfigError
+from eta.core.config import Config
 import eta.core.events as etae
+import eta.core.image as etai
 import eta.core.module as etam
 import eta.core.video as etav
 
@@ -48,20 +49,56 @@ class ClipConfig(etam.BaseModuleConfig):
         self.data = self.parse_object_array(d, "data", DataConfig)
         self.parameters = self.parse_object(d, "parameters", ParametersConfig)
 
+        self._validate()
+
+    def _validate(self):
+        Config.parse_mutually_exclusive_fields({
+            "event_detection_path": self.data.event_detection_path,
+            "event_series_path": self.data.event_series_path,
+            "frames": self.parameters.frames,
+        })
+
 
 class DataConfig(Config):
     '''Data configuration settings.
 
     Inputs:
         input_path (eta.core.types.Video): The input video
+        event_detection_path (eta.core.types.EventDetection): [None] Per-frame
+            binary labels defining the clips to generate
+        event_series_path (eta.core.types.EventSeries): [None] An EventSeries
+            specifying the clips to generate
 
     Outputs:
-        output_path (eta.core.types.VideoClips): The output video clips
+        output_video_clips_path (eta.core.types.VideoClips): [None] The output
+            video clips
+        output_frames_dir (eta.core.types.ImageSequenceDirectory): [None] A
+            directory in which to write the sampled frames
+        output_frames_path (eta.core.types.ImageSequence): [None] The output
+            sampled frames
     '''
 
     def __init__(self, d):
         self.input_path = self.parse_string(d, "input_path")
-        self.output_path = self.parse_string(d, "output_path")
+        self.event_detection_path = self.parse_string(
+            d, "event_detection_path", default=None)
+        self.event_series_path = self.parse_string(
+            d, "event_series_path", default=None)
+        self.output_video_clips_path = self.parse_string(
+            d, "output_video_clips_path", default=None)
+        self.output_frames_dir = self.parse_string(
+            d, "output_frames_dir", default=None)
+        self.output_frames_path = self.parse_string(
+            d, "output_frames_path", default=None)
+
+        self._validate()
+
+    def _validate(self):
+        Config.parse_mutually_exclusive_fields({
+            "output_video_clips_path": self.output_video_clips_path,
+            "output_frames_dir": self.output_frames_dir,
+            "output_frames_path": self.output_frames_path,
+        })
 
 
 class ParametersConfig(Config):
@@ -70,35 +107,50 @@ class ParametersConfig(Config):
     Parameters:
         frames (eta.core.types.String): [None] A frames string specifying the
             clips to generate
-        events_json_path (eta.core.types.EventSeries): [None] An EventSeries
-            specifying the clips to generate
     '''
 
     def __init__(self, d):
         self.frames = self.parse_string(d, "frames", default=None)
-        self.events_json_path = self.parse_string(
-            d, "events_json_path", default=None)
-
-    def get_frames(self):
-        if self.events_json_path:
-            return etae.EventSeries.from_json(self.events_json_path).to_str()
-        elif self.frames:
-            return self.frames
-        else:
-            raise ConfigError("Expected 'events_json_path' or 'frames'")
 
 
 def _clip_videos(clip_config):
-    parameters = clip_config.parameters
-    for data_config in clip_config.data:
-        logger.info("Generating video clips for '%s'", data_config.input_path)
-        with etav.VideoProcessor(
-            data_config.input_path,
-            frames=parameters.get_frames(),
-            out_vidpath=data_config.output_path,
-        ) as p:
-            for img in p:
-                p.write(img)
+    for data in clip_config.data:
+        frames = _get_frames(data, clip_config.parameters)
+        _clip_video(data, frames)
+
+
+def _get_frames(data, parameters):
+    if data.event_detection_path:
+        # Get frames from per-frame detections
+        detections = etae.EventDetection.from_json(data.event_detection_path)
+        frames = detections.to_series().to_str()
+    elif data.event_series_path:
+        # Get frames from clip series
+        series = etae.EventSeries.from_json(data.event_series_path)
+        frames = series.to_str()
+    else:
+        # Manually specified frames
+        frames = parameters.frames
+
+    return frames
+
+
+def _clip_video(data, frames):
+    logger.info("Generating video clips for '%s'", data.input_path)
+
+    # Collect output paths
+    if data.output_frames_dir:
+        out_images_path = etai.make_image_sequence_patt(data.output_frames_dir)
+    else:
+        out_images_path = data.output_frames_path
+    out_clips_path = data.output_video_clips_path
+
+    # Sample clips
+    with etav.VideoProcessor(
+            data.input_path, frames=frames, out_images_path=out_images_path,
+            out_clips_path=out_clips_path) as p:
+        for img in p:
+            p.write(img)
 
 
 def run(config_path, pipeline_config_path=None):
