@@ -112,6 +112,12 @@ class VideoStreamInfo(Serializable):
         )
 
     @property
+    def aspect_ratio(self):
+        '''The aspect ratio of the video.'''
+        width, height = self.frame_size
+        return width * 1.0 / height
+
+    @property
     def frame_rate(self):
         '''The frame rate.'''
         try:
