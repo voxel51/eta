@@ -441,25 +441,25 @@ class Config(etas.Serializable):
 
     @staticmethod
     def parse_mutually_exclusive_fields(fields):
-    '''Parses a mutually exclusive dictionary of pre-parsed fields, which must
-    contain exactly one field with a truthy value.
+        '''Parses a mutually exclusive dictionary of pre-parsed fields, which
+        must contain exactly one field with a truthy value.
 
-    Args:
-        fields: a dictionary of pre-parsed fields
+        Args:
+            fields: a dictionary of pre-parsed fields
 
-    Returns:
-        the (field, value) that was set
+        Returns:
+            the (field, value) that was set
 
-    Raises:
-        ConfigError: if zero or more than one truthy value was found
-    '''
-    d = [(k, v) for k, v in iteritems(fields) if v]
-    num_fields = len(d)
-    if num_fields != 1:
-        ConfigError(
-            "Expected exactly one field in the following to be specified, but "
-            "found %d:\n%s" % (num_fields, etas.pretty_str(d)))
-    return d[0]
+        Raises:
+            ConfigError: if zero or more than one truthy value was found
+        '''
+        d = [(k, v) for k, v in iteritems(fields) if v]
+        num_fields = len(d)
+        if num_fields != 1:
+            ConfigError(
+                "Expected exactly one field in the following to be specified, "
+                "but found %d:\n%s" % (num_fields, etas.pretty_str(d)))
+        return d[0]
 
 
 class ConfigContainer(etas.Container):
