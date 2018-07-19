@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 '''
-Module that (re)samples videos.
+Module for (re)sampling videos.
 
 Info:
     type: eta.core.types.Module
@@ -30,6 +30,7 @@ import sys
 import eta
 from eta.core.config import Config
 import eta.core.events as etae
+import eta.core.image as etai
 import eta.core.module as etam
 import eta.core.utils as etau
 import eta.core.video as etav
@@ -55,117 +56,85 @@ class SampleConfig(etam.BaseModuleConfig):
 class DataConfig(Config):
     '''Data configuration settings.
 
-    Exactly one output path must be provided. `output_clips_path` is valid only
-    when the `clips_path` parameter is provided.
+    Exactly one output path must be provided.
 
     Inputs:
         input_path (eta.core.types.Video): The input video
 
     Outputs:
-        output_frames_path (eta.core.types.ImageSequence): [None] The output
-            sampled frames
-        output_frames_dir (eta.core.types.ImageSequenceDirectory): [None] A
-            directory in which to write the sampled frames
         output_video_path (eta.core.types.VideoFile): [None] The output sampled
             video
-        output_video_clips_path (eta.core.types.VideoClips): [None] The output
-            video clips
+        output_frames_dir (eta.core.types.ImageSequenceDirectory): [None] A
+            directory in which to write the sampled frames
+        output_frames_path (eta.core.types.ImageSequence): [None] The output
+            sampled frames pattern
     '''
 
     def __init__(self, d):
         self.input_path = self.parse_string(d, "input_path")
-        self.output_frames_path = self.parse_string(
-            d, "output_frames_path", default=None)
-        self.output_frames_dir = self.parse_string(
-            d, "output_frames_dir", default=None)
         self.output_video_path = self.parse_string(
             d, "output_video_path", default=None)
-        self.output_video_clips_path = self.parse_string(
-            d, "output_video_clips_path", default=None)
+        self.output_frames_dir = self.parse_string(
+            d, "output_frames_dir", default=None)
+        self.output_frames_path = self.parse_string(
+            d, "output_frames_path", default=None)
+
+        self._output_field = None
+        self._output_val = None
+        self._parse_outputs()
+
+    @property
+    def output_field(self):
+        return self._output_field
+
+    @property
+    def output_path(self):
+        return self._output_val
+
+    def _parse_outputs(self):
+        field, val = Config.parse_mutually_exclusive_fields({
+            "output_video_path": self.output_video_path,
+            "output_frames_dir": self.output_frames_dir,
+            "output_frames_path": self.output_frames_path,
+        })
+        if field == "output_frames_dir":
+            val = etai.make_image_sequence_patt(val)
+        self._output_field = field
+        self._output_val = val
 
 
 class ParametersConfig(Config):
     '''Parameter configuration settings.
 
-    If `clips_path` is specified, it is used. Otherwise `fps` is used, with the
-    native frame rate of the video being used if `fps` is also absent.
-
     Parameters:
         fps (eta.core.types.Number): [None] The output frame rate
-        clips_path (eta.core.types.EventDetection): [None] Per-frame binary
-            labels indicating which frames to sample
     '''
 
     def __init__(self, d):
         self.fps = self.parse_number(d, "fps", default=None)
-        self.clips_path = self.parse_string(d, "clips_path", default=None)
 
 
 def _sample_videos(sample_config):
-    parameters = sample_config.parameters
+    fps = sample_config.parameters.fps
     for data in sample_config.data:
-        if parameters.clips_path:
-            _sample_video_by_clips(data, parameters.clips_path)
-        else:
-            _sample_video_by_fps(data, parameters.fps)
+        _sample_video_by_fps(data.input_path, data.output_path, fps)
 
 
-def _sample_video_by_fps(data, fps):
-    # Parse output path
-    out_args = _parse_output_path(data, allow_video_clips=False)
-    output_path = list(out_args.values())[0]
-
+def _sample_video(input_path, output_path, fps):
     if fps > 0:
         logger.info(
-            "Sampling video %s at %s fps", data.input_path, fps)
+            "Sampling video %s at %s fps", input_path, fps)
     else:
         logger.info(
-            "Retaining the native frame rate of '%s'", data.input_path)
-        if etav.is_same_video_format(data.input_path, output_path):
+            "Retaining the native frame rate of '%s'", input_path)
+        if etav.is_same_video_format(input_path, output_path):
             logger.info(
                 "Same video format detected, so no computation is required. "
-                "Just sylimking '%s' to '%s'" % (output_path, data.input_path))
-            etau.symlink_file(data.input_path, output_path)
+                "Just sylimking %s to %s" % (output_path, input_path))
+            etau.symlink_file(input_path, output_path)
             return
 
-    etav.FFmpegVideoSampler(fps=fps).run(data.input_path, output_path)
-
-
-def _sample_video_by_clips(data, clips_path):
-    logger.info(
-        "Sampling video %s by clips %s", data.input_path, clips_path)
-
-    detections = etae.EventDetection.from_json(clips_path)
-    frames = detections.to_series().to_str()
-    out_args = _parse_output_path(data, allow_video_clips=True)
-
-    with etav.VideoProcessor(data.input_path, frames=frames, **out_args) as p:
-        for img in p:
-            processor.write(img)
-
-
-def _parse_output_path(data, allow_video_clips=False):
-    nout = 0
-    out_args = {}
-    if data.output_frames_path:
-        nout += 1
-        out_args["out_impath"] = data.output_frames_path
-    if data.output_frames_dir:
-        nout += 1
-        patt = eta.config.default_sequence_idx + eta.config.default_image_ext
-        out_args["out_impath"] = os.path.join(data.output_frames_dir, patt)
-    if data.output_video_path:
-        nout += 1
-        out_args["out_single_vidpath"] = data.output_video_path
-    if data.output_video_clips_path:
-        if not allow_video_clips:
-            raise ValueError("Output 'output_video_clips_path' is not allowed")
-        nout += 1
-        out_args["out_vidpath"] = data.output_clips_path
-    if nout > 1:
-        raise ValueError("Only one output can be set")
-
-    return out_args
+    etav.FFmpegVideoSampler(fps=fps).run(input_path, output_path)
 
 
 def run(config_path, pipeline_config_path=None):
