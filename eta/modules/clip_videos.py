@@ -52,11 +52,12 @@ class ClipConfig(etam.BaseModuleConfig):
         self._validate()
 
     def _validate(self):
-        Config.parse_mutually_exclusive_fields({
-            "event_detection_path": self.data.event_detection_path,
-            "event_series_path": self.data.event_series_path,
-            "frames": self.parameters.frames,
-        })
+        for data in self.data:
+            Config.parse_mutually_exclusive_fields({
+                "event_detection_path": data.event_detection_path,
+                "event_series_path": data.event_series_path,
+                "frames": self.parameters.frames,
+            })
 
 
 class DataConfig(Config):
