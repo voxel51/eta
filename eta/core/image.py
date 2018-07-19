@@ -31,6 +31,7 @@ from subprocess import Popen, PIPE
 import cv2
 import numpy as np
 
+import eta
 import eta.core.utils as etau
 import eta.core.web as etaw
 
@@ -47,6 +48,31 @@ def glob_images(dir_):
     '''Returns an iterator over all supported image files in the directory.'''
     return etau.multiglob(
         *SUPPORTED_IMAGE_FORMATS, root=os.path.join(dir_, "*"))
+
+
+def make_image_sequence_patt(basedir, basename="", patt=None, ext=None):
+    '''Makes an image sequence pattern of the following form:
+
+    <basedir>/<basename>-<patt><ext>
+
+    where the "-" is omitted
+
+    Args:
+        basedir: the base directory
+        basename: an optional base filename. If omitted, the hyphen is also
+            omitted
+        patt: an optional image pattern to use. If omitted, the default pattern
+            `eta.config.default_sequence_idx` is used
+        ext: an optional image extension to use. If omitted, the default image
+            extension `eta.config.default_image_ext`
+
+    Returns:
+        the image sequence pattern
+    '''
+    name = basename + "-" if basename else ""
+    patt = patt or eta.config.default_sequence_idx
+    ext = ext or eta.config.default_image_ext
+    return os.path.join(basedir, name + patt + ext)
 
 
 ###### Image I/O ##############################################################
