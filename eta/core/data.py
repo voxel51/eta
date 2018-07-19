@@ -107,13 +107,14 @@ class DataRecords(DataContainer):
     _ELE_CLS_FIELD = "_RECORDS_CLS"
     _ELE_CLS = None
 
-    def __init__(self, record_cls, **kwargs):
+    def __init__(self, record_cls=no_default, **kwargs):
         '''Instantiate a `DataRecords` instance using the element cls given.
 
         This functionality adds more flexibility than standard eta
         `Containers`, which require the element class to be set statically.
         '''
-        self._ELE_CLS = record_cls
+        if record_cls is not no_default:
+            self._ELE_CLS = record_cls
         super(DataRecords, self).__init__(**kwargs)
 
     def add_dict(self, d, record_cls=None):
