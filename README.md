@@ -123,9 +123,9 @@ python examples/demo_images.py
 # Run a pre-configued video processing pipeline
 python eta/core/pipeline.py examples/demo_video/pipeline.json
 
-# Build and run a video formatting pipeline from a request using
-# the `eta` command-line tool
+# Build and run pipelines from requests using the `eta` command-line tool
 eta build -r examples/demo_video_formatter/request.json --run-now
+eta build -r examples/demo_video_clipper/request.json --run-now
 
 #
 # Example image/video embedding
