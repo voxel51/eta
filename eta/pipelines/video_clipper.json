@@ -1,0 +1,36 @@
+{
+    "info": {
+        "name": "video_clipper",
+        "type": "eta.core.types.Pipeline",
+        "version": "0.1.0",
+        "description": "A pipeline for generating video clips"
+    },
+    "inputs": ["video"],
+    "outputs": ["video_clips"],
+    "modules": [
+        {
+            "name": "resize_videos",
+            "tunable_parameters": ["size", "scale", "max_size"],
+            "set_parameters": {}
+        },
+        {
+            "name": "clip_videos",
+            "tunable_parameters": ["frames"],
+            "set_parameters": {}
+        }
+    ],
+    "connections": [
+        {
+            "source": "INPUT.video",
+            "sink": "resize_videos.input_path"
+        },
+        {
+            "source": "resize_videos.output_path",
+            "sink": "clip_videos.input_path"
+        },
+        {
+            "source": "clip_videos.output_video_clips_path",
+            "sink": "OUTPUT.video_clips"
+        }
+    ]
+}
