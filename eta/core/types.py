@@ -525,6 +525,16 @@ class NpzFileSequence(FileSequence, ConcreteData):
         )
 
 
+class NpzFileDirectory(Directory):
+    '''A directory containing one or more .npz files.
+
+    Examples:
+        /path/to/npz_files
+    '''
+
+    pass
+
+
 class JSONFile(File, ConcreteData):
     '''The base type for JSON files.
 
