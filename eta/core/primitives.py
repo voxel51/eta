@@ -31,7 +31,8 @@ class DenseOpticalFlow(object):
     '''Base class for dense optical flow methods.'''
 
     def process_video(
-            self, input_path, cart_path=None, polar_path=None, vid_path=None):
+            self, input_path, cart_path=None, polar_path=None,
+            video_path=None):
         '''Performs dense optical flow on the given video.
 
         Args:
@@ -42,7 +43,7 @@ class DenseOpticalFlow(object):
             polar_path: an optional path to write the per-frame arrays as .npy
                 files describing the flow fields in polar (magnitude, angle)
                 coordinates
-            vid_path: an optional path to write a video that visualizes the
+            video_path: an optional path to write a video that visualizes the
                 magnitude and angle of the flow fields as the value (V) and
                 hue (H), respectively, of per-frame HSV images
         '''
@@ -54,7 +55,7 @@ class DenseOpticalFlow(object):
         # VideoProcessor ensures that the output video directory exists
 
         self.reset()
-        with etav.VideoProcessor(input_path, out_single_vidpath=vid_path) as p:
+        with etav.VideoProcessor(input_path, out_video_path=video_path) as p:
             for img in p:
                 # Compute optical flow
                 flow_cart = self.process_frame(img)
@@ -63,7 +64,7 @@ class DenseOpticalFlow(object):
                     # Write Cartesian fields
                     np.save(cart_path % p.frame_number, flow_cart)
 
-                if not polar_path and not vid_path:
+                if not polar_path and not video_path:
                     continue
 
                 # Convert to polar coordinates
@@ -73,7 +74,7 @@ class DenseOpticalFlow(object):
                     # Write polar fields
                     np.save(polar_path % p.frame_number, flow_polar)
 
-                if vid_path:
+                if video_path:
                     # Write flow visualization frame
                     p.write(polar_to_img(flow_polar))
 
@@ -201,16 +202,16 @@ class BackgroundSubtractor(object):
     '''Base class for background subtraction methods.'''
 
     def process_video(
-            self, input_path, fgmask_path=None, fgvid_path=None,
-            bgvid_path=None):
+            self, input_path, fgmask_path=None, fgvideo_path=None,
+            bgvideo_path=None):
         '''Performs background subtraction on the given video.
 
         Args:
             input_path: the input video path
             fgmask_path: an optional path to write the per-frame foreground
                 masks (as boolean arrays) in .npy files
-            fgvid_path: an optional path to write the foreground-only video
-            bgvid_path: an optional path to write the background video
+            fgvideo_path: an optional path to write the foreground-only video
+            bgvideo_path: an optional path to write the background video
         '''
         # Ensure output directories exist
         if fgmask_path:
@@ -219,12 +220,12 @@ class BackgroundSubtractor(object):
 
         r = etav.FFmpegVideoReader(input_path)
         try:
-            if fgvid_path:
+            if fgvideo_path:
                 fgw = etav.FFmpegVideoWriter(
-                    fgvid_path, r.frame_rate, r.frame_size)
-            if bgvid_path:
+                    fgvideo_path, r.frame_rate, r.frame_size)
+            if bgvideo_path:
                 bgw = etav.FFmpegVideoWriter(
-                    bgvid_path, r.frame_rate, r.frame_size)
+                    bgvideo_path, r.frame_rate, r.frame_size)
 
             self.reset()
             for img in r:
@@ -235,17 +236,17 @@ class BackgroundSubtractor(object):
                     fgmask_bool = fgmask.astype(np.bool)
                     np.save(fgmask_path % r.frame_number, fgmask_bool)
 
-                if fgvid_path:
+                if fgvideo_path:
                     # Write foreground-only video
                     fgw.write(apply_mask(img, fgmask))
 
-                if bgvid_path:
+                if bgvideo_path:
                     # Write background video
                     bgw.write(bgimg)
         finally:
-            if fgvid_path:
+            if fgvideo_path:
                 fgw.close()
-            if bgvid_path:
+            if bgvideo_path:
                 bgw.close()
 
     def process_frame(self, img):
@@ -399,14 +400,14 @@ class KNNBackgroundSubtractor(BackgroundSubtractor):
 class EdgeDetector(object):
     '''Base class for edge detection methods.'''
 
-    def process_video(self, input_path, masks_path=None, vid_path=None):
+    def process_video(self, input_path, masks_path=None, video_path=None):
         '''Detect edges using self.detector.
 
         Args:
             input_path: the input video path
             masks_path: an optional path to write the per-frame edge masks (as
                 boolean arrays) in .npy files
-            vid_path: an optional path to write the edges video
+            video_path: an optional path to write the edges video
         '''
         # Ensure output directories exist
         if masks_path:
@@ -414,7 +415,7 @@ class EdgeDetector(object):
         # VideoProcessor ensures that the output video directory exists
 
         self.reset()
-        with etav.VideoProcessor(input_path, out_single_vidpath=vid_path) as p:
+        with etav.VideoProcessor(input_path, out_video_path=video_path) as p:
             for img in p:
                 # Compute edges
                 edges = self.process_frame(img)
@@ -424,7 +425,7 @@ class EdgeDetector(object):
                     edges_bool = edges.astype(np.bool)
                     np.save(masks_path % p.frame_number, edges_bool)
 
-                if vid_path:
+                if video_path:
                     # Write edges video
                     p.write(cv2.cvtColor(edges, cv2.COLOR_GRAY2RGB))
 
@@ -480,14 +481,14 @@ class FeaturePointDetector(object):
 
     KEYPOINT_RGB_COLOR = (0, 255, 0)  # RGB
 
-    def process_video(self, input_path, coords_path=None, vid_path=None):
+    def process_video(self, input_path, coords_path=None, video_path=None):
         '''Detect feature points using self.detector.
 
         Args:
             input_path: the input video path
             masks_path: an optional path to write the per-frame feature points
                 as .npy files
-            vid_path: an optional path to write the feature points video
+            video_path: an optional path to write the feature points video
         '''
         # Ensure output directories exist
         if coords_path:
@@ -495,7 +496,7 @@ class FeaturePointDetector(object):
         # VideoProcessor ensures that the output video directory exists
 
         self.reset()
-        with etav.VideoProcessor(input_path, out_single_vidpath=vid_path) as p:
+        with etav.VideoProcessor(input_path, out_video_path=video_path) as p:
             for img in p:
                 # Compute feature points
                 keypoints = self.process_frame(img)
@@ -505,7 +506,7 @@ class FeaturePointDetector(object):
                     pts = _unpack_keypoints(keypoints)
                     np.save(coords_path % p.frame_number, pts)
 
-                if vid_path:
+                if video_path:
                     # Write feature points video
                     # We pass in an RGB image b/c this function is invariant to
                     # channel order
