@@ -107,28 +107,28 @@ class DataRecords(DataContainer):
     _ELE_CLS_FIELD = "_RECORDS_CLS"
     _ELE_CLS = None
 
-    __record_cls = None
+    def __init__(self, record_cls, **kwargs):
+        '''Instantiate a `DataRecords` instance using the element cls given.
 
-    def __init__(self, records=None):
-        '''Initialize the DataRecords container.'''
-        self.records = records or []
-
-    def add(self, record):
-        '''Adds a record.'''
-        self.records.append(record)
+        This functionality adds more flexibility than standard eta
+        `Containers`, which require the element class to be set statically.
+        '''
+        self._ELE_CLS = record_cls
+        super(DataRecords, self).__init__(**kwargs)
 
     def add_dict(self, d, record_cls=None):
-        ''' Adds the contents in d to this container.
+        '''Adds the contents in d to this container.
 
         Returns the new size of the container.
         '''
         rc = record_cls
         if rc is None:
-            rc = self.__record_cls
+            rc = self._ELE_CLS
 
         assert rc is not None, "need record_cls to add DataRecords objects"
 
-        dr = DataRecords(records=[rc.from_dict(dc) for dc in d["records"]])
+        dr = DataRecords(self._ELE_CLS,
+            records=[rc.from_dict(dc) for dc in d["records"]])
         self.records += dr.records
 
         return len(self.records)
@@ -219,7 +219,7 @@ class DataRecords(DataContainer):
         '''
         rc = record_cls
         if rc is None:
-            rc = cls.__record_cls
+            rc = cls._ELE_CLS
 
         assert rc is not None, "need record_cls to load a DataRecords object"
 
@@ -234,12 +234,12 @@ class DataRecords(DataContainer):
     def get_record_cls(cls):
         '''Returns the current set class that will be used to instantiate
         records.'''
-        return cls.__record_cls
+        return cls._ELE_CLS
 
     @classmethod
     def set_record_cls(cls, record_cls):
         '''Sets the class that will be used to instantiate records.'''
-        cls.__record_cls = record_cls
+        cls._ELE_CLS = record_cls
 
     def subset_from_indices(self, indices):
         ''' Create a new DataRecords instance with the same settings as this
@@ -250,6 +250,19 @@ class DataRecords(DataContainer):
         newdr.records = \
             [r for (i, r) in enumerate(self.records) if i in indices]
         return newdr
+
+    def _validate(self):
+        '''Validates that a concrete Container subclass definition is valid.'''
+        if self._ELE_CLS is None:
+            raise ContainerError(
+                "Cannot instantiate a Container for which _ELE_CLS is None")
+        if self._ELE_ATTR is None:
+            raise ContainerError(
+                "Cannot instantiate a Container for which _ELE_ATTR is None")
+        if not issubclass(self._ELE_CLS, etas.Serializable):
+            raise ContainerError(
+                "%s is not Serializable" % self._ELE_CLS)
+
 
 
 DEFAULT_DATA_RECORDS_FILENAME = "records.json"
