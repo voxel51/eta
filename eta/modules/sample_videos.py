@@ -117,7 +117,7 @@ class ParametersConfig(Config):
 def _sample_videos(sample_config):
     fps = sample_config.parameters.fps
     for data in sample_config.data:
-        _sample_video_by_fps(data.input_path, data.output_path, fps)
+        _sample_video(data.input_path, data.output_path, fps)
 
 
 def _sample_video(input_path, output_path, fps):
