@@ -21,6 +21,7 @@ from builtins import *
 
 from eta.core.data import DataContainer
 import eta.core.image as etai
+import eta.core.numutils as etan
 from eta.core.serial import Serializable
 
 
@@ -38,6 +39,10 @@ class BoundingBox(Serializable):
 
     def __str__(self):
         return "%s x %s" % (self.top_left, self.bottom_right)
+
+    def __eq__(self, other):
+        return bool(self.top_left == other.top_left and
+                    self.bottom_right == other.bottom_right)
 
     def coords_in(self, **kwargs):
         '''Returns the coordinates of the bounding box in the specified image.
@@ -184,6 +189,10 @@ class RelativePoint(Serializable):
 
     def __str__(self):
         return "(%.3f, %.3f)" % (self.x, self.y)
+
+    def __eq__(self, other):
+        return bool(etan.is_close(self.x, other.x) and
+                    etan.is_close(self.y, other.y))
 
     def coords_in(self, **kwargs):
         '''Returns the absolute (x, y) coordinates of this point in the
