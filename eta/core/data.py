@@ -107,13 +107,13 @@ class DataRecords(DataContainer):
     _ELE_CLS_FIELD = "_RECORDS_CLS"
     _ELE_CLS = None
 
-    def __init__(self, record_cls=no_default, **kwargs):
+    def __init__(self, record_cls=None, **kwargs):
         '''Instantiate a `DataRecords` instance using the element cls given.
 
         This functionality adds more flexibility than standard eta
         `Containers`, which require the element class to be set statically.
         '''
-        if record_cls is not no_default:
+        if record_cls:
             self._ELE_CLS = record_cls
         super(DataRecords, self).__init__(**kwargs)
 
@@ -126,7 +126,9 @@ class DataRecords(DataContainer):
         if rc is None:
             rc = self._ELE_CLS
 
-        assert rc is not None, "need record_cls to add DataRecords objects"
+        if rc is None:
+            raise DataRecordsError(
+                "Need record_cls to add a DataRecords object")
 
         dr = DataRecords(self._ELE_CLS,
             records=[rc.from_dict(dc) for dc in d["records"]])
@@ -222,7 +224,9 @@ class DataRecords(DataContainer):
         if rc is None:
             rc = cls._ELE_CLS
 
-        assert rc is not None, "need record_cls to load a DataRecords object"
+        if rc is None:
+            raise DataRecordsError(
+                "Need record_cls to load a DataRecords object")
 
         return DataRecords(records=[rc.from_dict(dc) for dc in d["records"]])
 
@@ -251,6 +255,11 @@ class DataRecords(DataContainer):
         newdr.records = \
             [r for (i, r) in enumerate(self.records) if i in indices]
         return newdr
+
+
+class DataRecordsError(Exception):
+    '''Exception raised for invalid DataRecords invocations.'''
+    pass
 
 
 DEFAULT_DATA_RECORDS_FILENAME = "records.json"
