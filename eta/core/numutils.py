@@ -26,7 +26,7 @@ import numpy as np
 def is_close(a, b, rel_tol=1e-09, abs_tol=0):
     '''Determines whether two numbers are nearly equal.
 
-    The maximum of the relative-based and absolute tolerance is used to test
+    The maximum of the relative-based and absolute tolerances is used to test
     equality.
 
     This function is taken from `math.isclose` in Python 3 but is explicitly
