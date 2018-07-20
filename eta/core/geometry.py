@@ -28,8 +28,8 @@ from eta.core.serial import Serializable
 class BoundingBox(Serializable):
     '''A bounding box in an image.
 
-    The bounding box is represented with two RelativePoint instances, one for
-    the top left corner of the box, and the other for the bottom right corner.
+    The bounding box is represented as two RelativePoint instances describing
+    the top-left and bottom-right corners of the box, respectively.
     '''
 
     def __init__(self, top_left, bottom_right):
@@ -137,10 +137,13 @@ class BoundingBox(Serializable):
         return BoundingBox(RelativePoint(tlx, tly), RelativePoint(brx, bry))
 
     def contains_box(self, bbox):
-        '''Determines if this bounding box contains another bounding box.
+        '''Determines if this bounding box contains the given bounding box.
 
         Args:
             bbox: a BoundingBox
+
+        Returns:
+            True/False
         '''
         return self.get_intersection(bbox) == bbox
 
@@ -192,7 +195,8 @@ class RelativePoint(Serializable):
         '''Construct a relative point from (x, y) coordinates.
 
         Args:
-            (x, y): floating point values in [0, 1]
+            x: a number in [0, 1]
+            y: a number in [0, 1]
         '''
         self.x = float(x)
         self.y = float(y)
@@ -214,7 +218,7 @@ class RelativePoint(Serializable):
             **kwargs: a valid argument for etai.to_frame_size()
 
         Returns:
-            (x, y): the absolute x, y coordinates of this point
+            (x, y): the absolute x and y coordinates of this point
         '''
         w, h = etai.to_frame_size(**kwargs)
         return int(w * 1.0 * self.x), int(h * 1.0 * self.y)
