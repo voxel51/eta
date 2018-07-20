@@ -134,6 +134,14 @@ class BoundingBox(Serializable):
 
         return BoundingBox(RelativePoint(tlx, tly), RelativePoint(brx, bry))
 
+    def contains_box(self, bbox):
+        '''Determines if this bounding box contains another bounding box.
+
+        Args:
+            bbox: a BoundingBox
+        '''
+        return bool(self.get_intersection(bbox) == bbox)
+
     def overlap_ratio(self, bbox):
         '''Computes the overlap ratio with the given bounding box, defined as
         the area of the intersection divided by the area of the union of the
