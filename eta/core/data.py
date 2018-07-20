@@ -288,10 +288,10 @@ class BaseDataRecord(etas.Serializable):
 
     def attributes(self):
         '''Returns the list of attributes of the data record that are to be
-        serialized, i.e., all attributes that are not in `excluded()`
+        serialized.
 
-        Note that Serializable.attributes() is called to remove private
-        attributes (those starting with "_").
+        All private attributes (those starting with "_") and attributes in
+        `excluded()` are omitted from this list.
 
         Returns:
             the list of attributes to be serialized
