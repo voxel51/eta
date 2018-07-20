@@ -288,12 +288,16 @@ class BaseDataRecord(etas.Serializable):
 
     def attributes(self):
         '''Returns the list of attributes of the data record that are to be
-        serialized, i.e., all attributes that are not in `excluded()`
+        serialized.
+
+        All private attributes (those starting with "_") and attributes in
+        `excluded()` are omitted from this list.
 
         Returns:
             the list of attributes to be serialized
         '''
-        return [a for a in vars(self) if a not in self.excluded()]
+        attr = super(BaseDataRecord, self).attributes()
+        return [a for a in attr if a not in self.excluded()]
 
     def clean_optional(self):
         '''Deletes any optional attributes from the data record that are not
