@@ -40,9 +40,11 @@ class BoundingBox(Serializable):
     def __str__(self):
         return "%s x %s" % (self.top_left, self.bottom_right)
 
-    def __eq__(self, other):
-        return bool(self.top_left == other.top_left and
-                    self.bottom_right == other.bottom_right)
+    def __eq__(self, bbox):
+        return (
+            self.top_left == bbox.top_left and
+            self.bottom_right == bbox.bottom_right
+        )
 
     def coords_in(self, **kwargs):
         '''Returns the coordinates of the bounding box in the specified image.
@@ -140,7 +142,7 @@ class BoundingBox(Serializable):
         Args:
             bbox: a BoundingBox
         '''
-        return bool(self.get_intersection(bbox) == bbox)
+        return self.get_intersection(bbox) == bbox
 
     def overlap_ratio(self, bbox):
         '''Computes the overlap ratio with the given bounding box, defined as
@@ -198,9 +200,11 @@ class RelativePoint(Serializable):
     def __str__(self):
         return "(%.3f, %.3f)" % (self.x, self.y)
 
-    def __eq__(self, other):
-        return bool(etan.is_close(self.x, other.x) and
-                    etan.is_close(self.y, other.y))
+    def __eq__(self, rel_point):
+        return (
+            etan.is_close(self.x, rel_point.x) and
+            etan.is_close(self.y, rel_point.y)
+        )
 
     def coords_in(self, **kwargs):
         '''Returns the absolute (x, y) coordinates of this point in the
