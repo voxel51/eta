@@ -297,7 +297,7 @@ class BaseDataRecord(etas.Serializable):
 
     def clean_optional(self):
         '''Deletes any optional attributes from the data record that are not
-        set, i.e., those that are `no_default`.s
+        set, i.e., those that are `no_default`.
 
         Note that `None` is a valid value for an attribute.
         '''
