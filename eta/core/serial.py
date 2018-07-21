@@ -312,7 +312,7 @@ class Container(Serializable):
         '''Deletes the elements from the container with the given indices.
 
         Args:
-            inds: a list of indices of the elements to delete_elements
+            inds: a list of indices of the elements to delete
         '''
         for idx in sorted(inds, reverse=True):
             del self.__elements__[idx]
