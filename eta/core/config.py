@@ -522,17 +522,16 @@ class ConfigContainer(etas.Container):
         '''
         return etau.get_class_name(cls._ELE_CLS)
 
-    @classmethod
-    def _validate(cls):
+    def _validate(self):
         '''Validates that a concrete ConfigContainer subclass definition is
         valid.
 
         ConfigContainers must only contain Config subclasses.
         '''
-        super(ConfigContainer, cls)._validate()
-        if not issubclass(cls._ELE_CLS, Config):
+        super(ConfigContainer, self)._validate()
+        if not issubclass(self._ELE_CLS, Config):
             raise ConfigContainerError(
-                "%s is not a Config subclass" % cls._ELE_CLS)
+                "%s is not a Config subclass" % self._ELE_CLS)
 
 
 class ConfigContainerError(Exception):
