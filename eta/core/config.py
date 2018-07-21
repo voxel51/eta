@@ -523,8 +523,7 @@ class ConfigContainer(etas.Container):
         return etau.get_class_name(cls._ELE_CLS)
 
     def _validate(self):
-        '''Validates that a concrete ConfigContainer subclass definition is
-        valid.
+        '''Validates that a ConfigContainer instance is valid.
 
         ConfigContainers must only contain Config subclasses.
         '''
