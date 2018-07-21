@@ -199,10 +199,10 @@ def get_stream_info(inpath):
         "-show_streams",             # get stream info
         "-print_format", "json",     # return in JSON format
     ])
-    out = ffprobe.run(inpath)
+    out = ffprobe.run(inpath, decode=True)
 
     try:
-        info = json.loads(out.decode('utf-8'))
+        info = json.loads(out)
 
         for stream in info["streams"]:
             if stream["codec_type"] == "video":
@@ -1007,7 +1007,7 @@ class FFprobe(object):
         '''
         return " ".join(self._args) if self._args else None
 
-    def run(self, inpath):
+    def run(self, inpath, decode=False):
         '''Run the ffprobe binary with the specified input path.
 
         Args:
@@ -1015,6 +1015,8 @@ class FFprobe(object):
 
         Returns:
             out: the stdout from the ffprobe binary
+            decode: whether to decode the output bytes into utf-8 strings. By
+                default, the raw bytes are returned
 
         Raises:
             ExecutableNotFoundError: if the ffprobe binary cannot be found
@@ -1044,7 +1046,7 @@ class FFprobe(object):
         if self._p.returncode != 0:
             raise etau.ExecutableRuntimeError(self.cmd, err)
 
-        return out
+        return out.decode() if decode else out
 
 
 class FFprobeError(Exception):
