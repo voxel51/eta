@@ -202,7 +202,7 @@ def get_stream_info(inpath):
     out = ffprobe.run(inpath)
 
     try:
-        info = json.loads(out)
+        info = json.loads(out.decode('utf-8'))
 
         for stream in info["streams"]:
             if stream["codec_type"] == "video":
