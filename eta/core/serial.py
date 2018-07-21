@@ -457,7 +457,7 @@ class Container(Serializable):
         })
 
     def _validate(self):
-        '''Validates that a concrete Container subclass definition is valid.'''
+        '''Validates that a Container instance is valid.'''
         if self._ELE_CLS is None:
             raise ContainerError(
                 "Cannot instantiate a Container for which _ELE_CLS is None")
