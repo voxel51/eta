@@ -115,14 +115,12 @@ class ParametersConfig(Config):
 
 
 def _sample_videos(sample_config):
-    # if no fps is provided, then setting to 0 will maintain native fps
-    fps = sample_config.parameters.fps or 0
     for data in sample_config.data:
         _sample_video(data.input_path, data.output_path, fps)
 
 
 def _sample_video(input_path, output_path, fps):
-    if fps > 0:
+    if fps is not None and fps > 0:
         logger.info(
             "Sampling video %s at %s fps", input_path, fps)
     else:
