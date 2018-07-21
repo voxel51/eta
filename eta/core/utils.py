@@ -69,7 +69,7 @@ def has_gpu():
         # No GPU on mac
         return False
     try:
-        return "NVIDIA" in communicate(["lspci"])[1]
+        return b"NVIDIA" in communicate(["lspci"])[1]
     except OSError:
         # couldn't find lspci command...
         return False
