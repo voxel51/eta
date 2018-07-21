@@ -150,7 +150,7 @@ def _process_video(input_path, output_path, parameters):
         if etav.is_same_video_format(input_path, output_path):
             logger.info(
                 "Same video format detected, so no computation is required. "
-                "Just sylimking '%s' to '%s'" % (output_path, input_path))
+                "Just symlinking '%s' to '%s'" % (output_path, input_path))
             etau.symlink_file(input_path, output_path)
             return
 
