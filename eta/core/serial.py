@@ -274,10 +274,13 @@ class Container(Serializable):
         setattr(self, self._ELE_ATTR, elements)
 
     def __getitem__(self, index):
-        return self.__elements__.__getitem__(index)
+        return self.__elements__[index]
 
     def __setitem__(self, index, value):
-        return self.__elements__.__setitem__(index, value)
+        self.__elements__[index] = value
+
+    def __delitem__(self, index):
+        del self.__elements__[index]
 
     def __iter__(self):
         return iter(self.__elements__)
@@ -304,6 +307,15 @@ class Container(Serializable):
             instance: an instance of `_ELE_CLS`
         '''
         self.__elements__.append(instance)
+
+    def delete_inds(self, inds):
+        '''Deletes the elements from the container with the given indices.
+
+        Args:
+            inds: a list of indices of the elements to delete_elements
+        '''
+        for idx in sorted(inds, reverse=True):
+            del self.__elements__[idx]
 
     @property
     def size(self):
