@@ -48,34 +48,58 @@ SUPPORTED_VIDEO_FORMATS = [
 ]
 
 
-def is_supported_video(filepath):
-    '''Determines whether the given file has a supported video type.'''
-    return os.path.splitext(filepath)[1] in SUPPORTED_VIDEO_FORMATS
+def is_supported_video_file(path):
+    '''Determines whether the given file has a supported video type.
 
-
-def is_valid_video(inpath):
-    '''Determines if the given video is valid, i.e., if it can be read by our
-    system.
+    This method does not support videos reprsesented as image sequences (i.e.,
+    it will return False for them).
 
     Args:
-        inpath: path to the video (or collection of frames)
+        path: the path to a video file
+
+    Returns:
+        True/False if the file has a supported video type
+    '''
+    return os.path.splitext(path)[1] in SUPPORTED_VIDEO_FORMATS
+
+
+def is_same_video_file_format(path1, path2):
+    '''Determines whether the video files have the same supported format.
+
+    This method does not support videos reprsesented as image sequences (i.e.,
+    it will return False for them).
+
+    Args:
+        path1: the path to a video file
+        path2: the path to a video file
+    '''
+    return (
+        is_supported_video_file(path1) and
+        os.path.splitext(path1)[1] == os.path.splitext(path2)[1]
+    )
+
+
+def is_valid_video_file(path):
+    '''Determines if the given video file is valid, i.e., it has a supported
+    type and can be read by our system.
+
+    This method does not support videos reprsesented as image sequences (i.e.,
+    it will return False for them).
+
+    Args:
+        path: the path to a video file
 
     Returns:
         True/False if the video is valid
     '''
+    if not is_supported_video_file(path):
+        return False
     try:
-        with FFmpegVideoReader(inpath):
+        with FFmpegVideoReader(path):
             return True
     except etau.ExecutableRuntimeError:
         return False
 
-
-def is_same_video_format(path1, path2):
-    '''Determines whether the videos have the same (supported) format.'''
-    return (
-        is_supported_video(path1) and
-        os.path.splitext(path1)[1] == os.path.splitext(path2)[1]
-    )
 
 
 def glob_videos(dir_):
