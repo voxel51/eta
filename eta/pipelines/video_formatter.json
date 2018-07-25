@@ -6,7 +6,7 @@
         "description": "A pipeline for formatting video files"
     },
     "inputs": ["video"],
-    "outputs": ["sampled_video"],
+    "outputs": ["formatted_video"],
     "modules": [
         {
             "name": "resize_videos",
@@ -15,7 +15,7 @@
         },
         {
             "name": "sample_videos",
-            "tunable_parameters": ["fps"],
+            "tunable_parameters": ["fps", "max_fps"],
             "set_parameters": {}
         }
     ],
@@ -25,12 +25,12 @@
             "sink": "resize_videos.input_path"
         },
         {
-            "source": "resize_videos.output_path",
+            "source": "resize_videos.output_video_path",
             "sink": "sample_videos.input_path"
         },
         {
             "source": "sample_videos.output_video_path",
-            "sink": "OUTPUT.sampled_video"
+            "sink": "OUTPUT.formatted_video"
         }
     ]
 }

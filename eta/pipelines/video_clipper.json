@@ -14,6 +14,11 @@
             "set_parameters": {}
         },
         {
+            "name": "sample_videos",
+            "tunable_parameters": ["fps", "max_fps"],
+            "set_parameters": {}
+        },
+        {
             "name": "clip_videos",
             "tunable_parameters": ["frames"],
             "set_parameters": {}
@@ -25,7 +30,11 @@
             "sink": "resize_videos.input_path"
         },
         {
-            "source": "resize_videos.output_path",
+            "source": "resize_videos.output_video_path",
+            "sink": "sample_videos.input_path"
+        },
+        {
+            "source": "sample_videos.output_video_path",
             "sink": "clip_videos.input_path"
         },
         {
