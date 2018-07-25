@@ -863,7 +863,7 @@ class ZippedDirectory(ZipFile):
     pass
 
 
-class ZippedVideoDirectory(ZippedDirectory):
+class ZippedVideoFileDirectory(ZippedDirectory):
     '''A zipped directory containing encoded video files.
 
     Examples:
