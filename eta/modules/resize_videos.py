@@ -144,7 +144,7 @@ def _resize_videos(resize_config):
         if data.is_zip:
             _process_zip(data.input_zip, data.output_zip, parameters)
         else:
-            _process_video(data.input_path, data.output_field, parameters)
+            _process_video(data.input_path, data.output_path, parameters)
 
 
 def _process_zip(input_zip, output_zip, parameters):
