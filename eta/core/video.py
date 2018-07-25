@@ -51,7 +51,7 @@ SUPPORTED_VIDEO_FORMATS = [
 def is_supported_video_file(path):
     '''Determines whether the given file has a supported video type.
 
-    This method does not support videos reprsesented as image sequences (i.e.,
+    This method does not support videos represented as image sequences (i.e.,
     it will return False for them).
 
     Args:
@@ -60,13 +60,13 @@ def is_supported_video_file(path):
     Returns:
         True/False if the file has a supported video type
     '''
-    return os.path.splitext(path)[1] in SUPPORTED_VIDEO_FORMATS
+    return os.path.splitext(path)[1] in SUPPORTED_VIDEO_FILE_FORMATS
 
 
 def is_same_video_file_format(path1, path2):
     '''Determines whether the video files have the same supported format.
 
-    This method does not support videos reprsesented as image sequences (i.e.,
+    This method does not support videos represented as image sequences (i.e.,
     it will return False for them).
 
     Args:
@@ -83,7 +83,7 @@ def is_valid_video_file(path):
     '''Determines if the given video file is valid, i.e., it has a supported
     type and can be read by our system.
 
-    This method does not support videos reprsesented as image sequences (i.e.,
+    This method does not support videos represented as image sequences (i.e.,
     it will return False for them).
 
     Args:
