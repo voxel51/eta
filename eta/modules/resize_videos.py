@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 '''
-Module that resizes videos.
+A module for resizing videos.
 
 Info:
     type: eta.core.types.Module
@@ -55,30 +55,63 @@ class DataConfig(Config):
     '''Data configuration settings.
 
     Inputs:
-        input_zip (eta.core.types.ZippedVideoDirectory): [None] A zip file
-            containing a directory of input videos
         input_path (eta.core.types.Video): [None] The input video
+        input_zip (eta.core.types.ZippedVideoFileDirectory): [None] A zip file
+            containing a directory of input video files
 
     Outputs:
-        output_zip (eta.core.types.ZippedVideoDirectory): [None] A zip file
-            containing a directory of resized videos
-        output_path (eta.core.types.VideoFile): [None] The output resized video
+        output_video_path (eta.core.types.VideoFile): [None] The output resized
+            video
+        output_frames_dir (eta.core.types.ImageSequenceDirectory): [None] A
+            directory in which to write the resized frames
+        output_frames_path (eta.core.types.ImageSequence): [None] The output
+            resized frames pattern
+        output_zip (eta.core.types.ZippedVideoFileDirectory): [None] A zip file
+            containing a directory of resized video files
     '''
 
     def __init__(self, d):
+        self.input_path = self.parse_string(d, "input_path", default=None)
         self.input_zip = self.parse_string(d, "input_zip", default=None)
+        self.output_video_path = self.parse_string(
+            d, "output_video_path", default=None)
+        self.output_frames_dir = self.parse_string(
+            d, "output_frames_dir", default=None)
+        self.output_frames_path = self.parse_string(
+            d, "output_frames_path", default=None)
         self.output_zip = self.parse_string(d, "output_zip", default=None)
 
-        self.input_path = self.parse_string(d, "input_path", default=None)
-        self.output_path = self.parse_string(d, "output_path", default=None)
+        self._output_field = None
+        self._output_val = None
+        self._parse_outputs()
 
     @property
     def is_zip(self):
         return self.input_zip and self.output_zip
 
     @property
-    def is_path(self):
-        return self.input_path and self.output_path
+    def output_field(self):
+        return self._output_field
+
+    @property
+    def output_path(self):
+        return self._output_val
+
+    def _parse_outputs(self):
+        if self.is_zip:
+            self._output_field = "output_zip"
+            self._output_val = self.output_zip
+            return
+
+        field, val = Config.parse_mutually_exclusive_fields({
+            "output_video_path": self.output_video_path,
+            "output_frames_dir": self.output_frames_dir,
+            "output_frames_path": self.output_frames_path,
+        })
+        if field == "output_frames_dir":
+            val = etai.make_image_sequence_patt(val)
+        self._output_field = field
+        self._output_val = val
 
 
 class ParametersConfig(Config):
@@ -110,10 +143,8 @@ def _resize_videos(resize_config):
     for data in resize_config.data:
         if data.is_zip:
             _process_zip(data.input_zip, data.output_zip, parameters)
-        elif data.is_path:
-            _process_video(data.input_path, data.output_path, parameters)
         else:
-            raise ValueError("Invalid ResizeConfig")
+            _process_video(data.input_path, data.output_field, parameters)
 
 
 def _process_zip(input_zip, output_zip, parameters):
@@ -145,17 +176,16 @@ def _process_video(input_path, output_path, parameters):
         osize = etai.clamp_frame_size(osize, msize)
 
     # Handle no-ops efficiently
-    if osize == isize:
-        logger.info("No resizing requested or necessary")
-        if etav.is_same_video_format(input_path, output_path):
-            logger.info(
-                "Same video format detected, so no computation is required. "
-                "Just symlinking '%s' to '%s'" % (output_path, input_path))
-            etau.symlink_file(input_path, output_path)
-            return
+    same_size = osize == isize
+    if same_size and etav.is_same_video_file_format(input_path, output_path):
+        logger.info(
+            "Same frame size and video format detected, so no computation is "
+            "required. Just symlinking %s to %s", output_path, input_path)
+        etau.symlink_file(input_path, output_path)
+        return
 
     # Resize video
-    logger.info("Resizing video '%s'", input_path)
+    logger.info("Resizing video '%s' to size %s", input_path, str(osize))
     etav.FFmpegVideoResizer(
         size=osize, out_opts=parameters.ffmpeg_out_opts).run(
             input_path, output_path)
