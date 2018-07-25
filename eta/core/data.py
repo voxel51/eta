@@ -19,7 +19,10 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+import os
+
 from eta.core.config import no_default
+import eta.constants as etac
 import eta.core.serial as etas
 import eta.core.utils as etau
 
@@ -94,6 +97,80 @@ class DataContainer(etas.Container):
         in this container.
         '''
         return etau.get_class_name(cls._ELE_CLS)
+
+
+class DataFileSequence(etas.Serializable):
+    '''Class representing a sequence of data files on the disk.
+
+    Implements various `eta.core.types.*Sequence*`
+
+    Examples of representable file sequences:
+        /path/to/video/%05d.png
+        /path/to/objects/%05d.json
+
+    Attributes:
+        sequence (str): The string representing the file sequence.
+        extension (str): The file extension of the sequence.
+        lower_bound (int): Index of smallest file in sequence.
+        upper_bound (int): Index of largest file in sequence.
+    '''
+
+    def __init__(self, sequence):
+        self.sequence = sequence
+        self._extension = os.path.splitext(sequence)[1]
+        self._lower_bound, self._upper_bound = \
+            etau.parse_bounds_from_dir_pattern(self.sequence)
+
+    @property
+    def extension(self):
+        return self._extension
+
+    @property
+    def lower_bound(self):
+        return self._lower_bound
+
+    @property
+    def upper_bound(self):
+        return self._upper_bound
+
+    @property
+    def starts_at_one(self):
+        return self._lower_bound == 1
+
+    @property
+    def starts_at_zero(self):
+        return self._lower_bound == 0
+
+    def check_bounds(self, index):
+        '''Checks if the index is within the bounds for this sequence.
+
+        Returns:
+            True is index is valid.
+        '''
+        if index < self.lower_bound or index > self.upper_bound:
+            return False
+        return True
+
+    def gen_path(self, index):
+        '''Generate and return the path for the file at the index.
+
+        Does error-checking for sequence bounds.
+        '''
+        if not self.check_bounds(index):
+            raise DataFileSequenceError("index out of bounds for sequence.")
+
+        return self.sequence % index
+
+    @classmethod
+    def from_dict(cls, d):
+        return DataFileSequence(d['sequence'])
+
+
+class DataFileSequenceError(Exception):
+    '''Error raised for out of bounds requests when working with
+    `DataFileSequence`s
+    '''
+    pass
 
 
 class DataRecords(DataContainer):
