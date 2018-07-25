@@ -423,38 +423,29 @@ class VideoProcessor(object):
 
         Args:
             inpath: path to the input video. Passed directly to a VideoReader
-
             frames: a string specifying the range(s) of frames to process.
                 Passed directly to a VideoReader
-
             in_use_ffmpeg: whether to use FFmpegVideoReader to read input
                 videos rather than OpenCVVideoReader
-
             out_use_ffmpeg: whether to use FFmpegVideoWriter to write output
                 videos rather than OpenCVVideoWriter
-
             out_images_path: a path like "/path/to/frames/%05d.png" with one
                 placeholder that specifies where to save frames as individual
                 images when the write() method is called. When out_images_path
                 is None or "", no images are written
-
             out_video_path: a path like "/path/to/video.mp4" that specifies
                 where to save a single output video that contains all of the
                 frames passed to the write() method concatenated together,
                 regardless of any potential frame range gaps. When
                 out_video_path is None or "", no video is written
-
             out_clips_path: a path like "/path/to/video/%05d-%05d.mp4" with two
                 placeholders that specifies where to save output video clips
                 for each frame range when the write() method is called. When
                 out_clips_path is None or "", no videos are written
-
             out_fps: a frame rate for the output video, if any. If the input
                 source is a video and fps is None, the same frame rate is used
-
             out_size: the frame size for the output video, if any. If out_size
                 is None, the input frame size is assumed
-
             out_opts: a list of output video options for ffmpeg. Passed
                 directly to FFmpegVideoWriter. Only applicable when
                 out_use_ffmpeg = True
@@ -696,7 +687,6 @@ class FFmpegVideoReader(VideoReader):
                 file like "/path/to/video.mp4" or a directory of frames like
                 "/path/to/frames/%5d.png". This path is passed directly to
                 ffmpeg
-
             frames: one of the following optional quantities specifying a
                 collection of frames to process:
                     - None (all frames)
@@ -917,9 +907,8 @@ class FFmpegVideoWriter(VideoWriter):
         '''Constructs a VideoWriter with ffmpeg backend.
 
         Args:
-            outpath: the output video path, e.g., "/path/to/video.mp4".
-                Existing files are overwritten, and the directory is created
-                if needed
+            outpath: the output video path. Existing files are overwritten,
+                and the directory is created if necessary
             fps: the frame rate
             size: the (width, height) of each frame
             out_opts: A list of output options for ffmpeg. If not specified,
@@ -965,9 +954,8 @@ class OpenCVVideoWriter(VideoWriter):
         '''Constructs a VideoWriter with OpenCV backend.
 
         Args:
-            outpath: the output video path, e.g., "/path/to/video.mp4".
-                Existing files are overwritten, and the directory is created
-                if needed
+            outpath: the output video path. Existing files are overwritten,
+                and the directory is created if necessary
             fps: the frame rate
             size: the (width, height) of each frame
 
@@ -1089,7 +1077,7 @@ class FFmpeg(object):
             global_opts=None,
             in_opts=None,
             out_opts=None,
-    ):
+        ):
         '''Constructs an ffmpeg command, minus the input/output paths.
 
         Args:
@@ -1258,8 +1246,8 @@ class FFmpegVideoSampler(FFmpeg):
     '''Class for sampling videos using ffmpeg.
 
     Example usage:
-        sampler = FFmpegVideoSampler(24)
-        sampler.run("/path/to/video.mp4", "/path/to/frames/%05d.png")
+        sampler = FFmpegVideoSampler(fps=10)
+        sampler.run("/path/to/video.mp4", "/path/to/sampled.mp4")
     '''
 
     DEFAULT_OUT_OPTS = [
