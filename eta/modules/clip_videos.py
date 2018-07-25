@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 '''
-Module that generates clips from a video.
+A module for generating clips from a video.
 
 Info:
     type: eta.core.types.Module

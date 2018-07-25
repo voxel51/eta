@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 '''
-Module that gets stream info for a video.
+A module for getting the stream info for a video.
 
 Info:
     type: eta.core.types.Module

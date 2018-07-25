@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 '''
-Module that embeds videos into VGG-16 feature space.
+A module for embedding videos into the VGG-16 feature space.
 
 Info:
     type: eta.core.types.Module
