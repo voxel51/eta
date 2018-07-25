@@ -3,14 +3,14 @@
         "name": "resize_videos",
         "type": "eta.core.types.Module",
         "version": "0.1.0",
-        "description": "Module that resizes videos",
+        "description": "A module for resizing videos",
         "exe": "resize_videos.py"
     },
     "inputs": [
         {
             "name": "input_zip",
-            "type": "eta.core.types.ZippedVideoDirectory",
-            "description": "A zip file containing a directory of input videos",
+            "type": "eta.core.types.ZippedVideoFileDirectory",
+            "description": "A zip file containing a directory of input video files",
             "required": false
         },
         {
@@ -22,15 +22,27 @@
     ],
     "outputs": [
         {
-            "name": "output_path",
-            "type": "eta.core.types.VideoFile",
-            "description": "The output resized video",
+            "name": "output_frames_dir",
+            "type": "eta.core.types.ImageSequenceDirectory",
+            "description": "A directory in which to write the resized frames",
+            "required": false
+        },
+        {
+            "name": "output_frames_path",
+            "type": "eta.core.types.ImageSequence",
+            "description": "The output resized frames pattern",
             "required": false
         },
         {
             "name": "output_zip",
-            "type": "eta.core.types.ZippedVideoDirectory",
-            "description": "A zip file containing a directory of resized videos",
+            "type": "eta.core.types.ZippedVideoFileDirectory",
+            "description": "A zip file containing a directory of resized video files",
+            "required": false
+        },
+        {
+            "name": "output_video_path",
+            "type": "eta.core.types.VideoFile",
+            "description": "The output resized video",
             "required": false
         }
     ],
