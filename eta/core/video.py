@@ -1213,7 +1213,9 @@ class FFmpegVideoResizer(FFmpeg):
         "-preset", "medium", "-crf", "23", "-an",
     ]
 
-    def __init__(self, size=None, scale=None, scale_str=None, **kwargs):
+    def __init__(
+            self, size=None, scale=None, scale_str=None, out_opts=None,
+            **kwargs):
         '''Constructs a video resizer with ffmpeg backend.
 
         Any one of the `size`, `scale`, and `scale_str` arguments can be
@@ -1227,9 +1229,12 @@ class FFmpegVideoResizer(FFmpeg):
                 (e.g., 0.5 or 2)
             scale_str: a string that directly specifies a valid ffmpeg scale=
                 option
-            **kwargs: optional keyword arguments for FFmpeg()
+            out_opts: a list of output video options for ffmpeg. Passed
+                directly to FFmpeg. If omitted, the DEFAULT_OUT_OPTS are used
+            **kwargs: additional optional keyword arguments for FFmpeg
         '''
-        out_opts = kwargs.pop("out_opts", self.DEFAULT_OUT_OPTS) or []
+        if out_opts is None:
+            out_opts = self.DEFAULT_OUT_OPTS
         scale_opt = self._gen_scale_opt(
             size=size, scale=scale, scale_str=scale_str)
         if scale_opt:
@@ -1257,16 +1262,24 @@ class FFmpegVideoSampler(FFmpeg):
         sampler.run("/path/to/video.mp4", "/path/to/frames/%05d.png")
     '''
 
-    def __init__(self, fps=None, **kwargs):
+    DEFAULT_OUT_OPTS = [
+        "-c:v", "libx264", "-pix_fmt", "yuv420p",
+        "-preset", "medium", "-crf", "23", "-an",
+    ]
+
+    def __init__(self, fps=None, out_opts=None, **kwargs):
         '''Constructs a video sampler with ffmpeg backend.
 
         Args:
             fps: an optional sampling rate. By default, the native frame rate
                 of the video is used
-            **kwargs: optional keyword arguments for FFmpeg()
+            out_opts: a list of output video options for ffmpeg. Passed
+                directly to FFmpeg. If omitted, the DEFAULT_OUT_OPTS are used
+            **kwargs: additional optional keyword arguments for FFmpeg
         '''
-        out_opts = kwargs.pop("out_opts", []) or []
-        if fps > 0:
+        if out_opts is None:
+            out_opts = self.DEFAULT_OUT_OPTS
+        if fps is not None and fps > 0:
             out_opts += ["-vf", "fps={0}".format(fps)]
 
         super(FFmpegVideoSampler, self).__init__(out_opts=out_opts, **kwargs)
