@@ -402,7 +402,7 @@ class VideoFile(Video, File, ConcreteData):
 
     @staticmethod
     def is_valid_path(path):
-        return File.is_valid_path(path) and etav.is_supported_video(path)
+        return File.is_valid_path(path) and etav.is_supported_video_file(path)
 
 
 class ImageSequence(Video, FileSequence, ConcreteData):
@@ -465,7 +465,7 @@ class VideoSequence(FileSequence, ConcreteData):
     def is_valid_path(path):
         return (
             FileSequence.is_valid_path(path) and
-            etav.is_supported_video(path)
+            etav.is_supported_video_file(path)
         )
 
 
@@ -485,7 +485,7 @@ class VideoClips(DualFileSequence, ConcreteData):
     def is_valid_path(path):
         return (
             DualFileSequence.is_valid_path(path) and
-            etav.is_supported_video(path)
+            etav.is_supported_video_file(path)
         )
 
 
