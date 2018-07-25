@@ -27,6 +27,7 @@ import os
 # Directories
 ETA_DIR = os.path.abspath(os.path.dirname(__file__))
 BASE_DIR = os.path.dirname(ETA_DIR)
+EXAMPLES_DIR = os.path.join(BASE_DIR, 'examples')
 
 
 # Paths
