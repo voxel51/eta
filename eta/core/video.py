@@ -1134,7 +1134,7 @@ class FFmpeg(object):
             etau.ensure_path(outpath)
 
         try:
-            logger.info("Excuting '%s'", self.cmd)
+            logger.debug("Excuting '%s'", self.cmd)
             self._p = Popen(self._args, stdin=PIPE, stdout=PIPE, stderr=PIPE)
         except EnvironmentError as e:
             if e.errno == errno.ENOENT:
