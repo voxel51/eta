@@ -17,7 +17,7 @@
             "name": "input_path",
             "type": "eta.core.types.Video",
             "description": "The input video",
-            "required": true
+            "required": false
         }
     ],
     "outputs": [

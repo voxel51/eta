@@ -55,7 +55,7 @@ class DataConfig(Config):
     '''Data configuration settings.
 
     Inputs:
-        input_path (eta.core.types.Video): The input video
+        input_path (eta.core.types.Video): [None] The input video
         input_zip (eta.core.types.ZippedVideoFileDirectory): [None] A zip file
             containing a directory of input video files
 
