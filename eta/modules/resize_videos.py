@@ -29,6 +29,7 @@ import sys
 from eta.core.config import Config
 import eta.core.image as etai
 import eta.core.module as etam
+import eta.core.numutils as etan
 import eta.core.utils as etau
 import eta.core.video as etav
 import eta.core.ziputils as etaz
@@ -183,6 +184,9 @@ def _process_video(input_path, output_path, parameters):
             "required. Just symlinking %s to %s", output_path, input_path)
         etau.symlink_file(input_path, output_path)
         return
+
+    # ffmpeg requires that height/width be even
+    osize = [etan.round_to_even(x) for x in osize]
 
     # Resize video
     logger.info("Resizing video '%s' to size %s", input_path, str(osize))
