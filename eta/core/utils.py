@@ -502,6 +502,47 @@ def parse_dir_pattern(dir_path):
     return patt, indices
 
 
+def parse_bounds_from_dir_pattern(dir_pattern):
+    '''Inspects the files satisfying the dir_pattern and returns the minimum
+    and maximum usable values for indices satisfying that pattern.
+
+    Args:
+        dir_pattern: string for the dir pattern, e.g., '/foo/%05d.json'
+
+    Returns:
+        a tuple containing:
+            - The first permissible value (usually 0 or 1).
+            - The last permissible value ("n" not "n+1")
+    '''
+    def _extract_num(s, prefix):
+        '''Extract the numeric value in a string when we know the preceding
+        string.
+        '''
+        return int(re.match('[0-9]+', s[len(prefix):]).group(0))
+
+    pieces = re.split("(%[0-9]*d)", dir_pattern)
+    if len(pieces) is not 3:
+        raise ValueError(
+            'dir_pattern should have one integer term specifying the range.')
+
+    if re.match('%0+', pieces[1]) is None:
+        # No leading zero here
+        wild = '*'
+    else:
+        wild = '[0-9]'*int(re.search('[0-9]+', pieces[1]).group(0))
+
+    glob_expression = pieces[0] + wild + pieces[2]
+
+    # This glob is a bad idea if the directory is enormous, but the alternative
+    # requires linearly scanning the entire directory, which is bad for the
+    # general case.
+    globbed = sorted(glob.glob(glob_expression))
+
+
+    return (_extract_num(globbed[0], pieces[0]),
+        _extract_num(globbed[-1], pieces[0]))
+
+
 def random_key(n):
     '''Generates an n-lenth random key of lowercase characters and digits.'''
     return "".join(
