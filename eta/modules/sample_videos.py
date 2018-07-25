@@ -119,7 +119,7 @@ class ParametersConfig(Config):
 
     Parameters:
         fps (eta.core.types.Number): [None] The output frame rate
-        max_fps (eta.core.types.Array): [None] The maximum frame rate allowed
+        max_fps (eta.core.types.Number): [None] The maximum frame rate allowed
             for the output video
         ffmpeg_out_opts (eta.core.types.Array): [None] An array of ffmpeg
             output options

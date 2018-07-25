@@ -49,7 +49,7 @@
     "parameters": [
         {
             "name": "max_fps",
-            "type": "eta.core.types.Array",
+            "type": "eta.core.types.Number",
             "description": "The maximum frame rate allowed for the output video",
             "required": false,
             "default": null
