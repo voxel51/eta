@@ -3,7 +3,7 @@
         "name": "embed_vgg16",
         "type": "eta.core.types.Module",
         "version": "0.1.0",
-        "description": "Module that embeds videos into VGG-16 feature space",
+        "description": "A module for embedding videos into the VGG-16 feature space",
         "exe": "embed_vgg16.py"
     },
     "inputs": [
