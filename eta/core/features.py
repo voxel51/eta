@@ -33,6 +33,7 @@ from eta.core.config import Config, Configurable
 from eta.core.numutils import GrowableArray
 import eta.core.utils as etau
 import eta.core.video as etav
+import eta.core.types as etat
 
 
 logger = logging.getLogger(__name__)
@@ -330,9 +331,10 @@ class CanFeaturize(object):
                             # it might be a file sequence.
                             #
                             # Currently the only such sequence we support is
-                            # a video, so we check if data is a valid video.
+                            # a video, so we check if data is a valid video
+                            # path.
                             #
-                            should_featurize = etav.is_valid_video(data)
+                            should_featurize = etat.is_valid_path(data)
 
                 # Perform the actual featurization, if necessary.
                 if should_featurize:
