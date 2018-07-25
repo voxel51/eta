@@ -46,6 +46,11 @@ def is_close(a, b, rel_tol=1e-09, abs_tol=0):
     return abs(a - b) <= max(rel_tol * max(abs(a), abs(b)), abs_tol)
 
 
+def round_to_even(x):
+    '''Rounds to the nearest even number.'''
+    return int(round(x / 2.0) * 2)
+
+
 class Accumulator(object):
     '''Accumulates counts of entries, like a histogram.  Then provides
     functions for extracting properties over that.  Inputs can be anything
