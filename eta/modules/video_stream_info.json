@@ -3,7 +3,7 @@
         "name": "video_stream_info",
         "type": "eta.core.types.Module",
         "version": "0.1.0",
-        "description": "Module that gets stream info for a video",
+        "description": "A module for getting the stream info for a video",
         "exe": "video_stream_info.py"
     },
     "inputs": [

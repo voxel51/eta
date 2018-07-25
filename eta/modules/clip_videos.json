@@ -3,7 +3,7 @@
         "name": "clip_videos",
         "type": "eta.core.types.Module",
         "version": "0.1.0",
-        "description": "Module that generates clips from a video",
+        "description": "A module for generating clips from a video",
         "exe": "clip_videos.py"
     },
     "inputs": [
