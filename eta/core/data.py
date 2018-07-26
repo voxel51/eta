@@ -104,7 +104,7 @@ class DataFileSequence(etas.Serializable):
 
     Implements various `eta.core.types.*Sequence*`.
 
-    This class has the ability to be have immutable bounds, which is the
+    This class has the ability to have immutable bounds, which is the
     default, where bounds mean the lowest and highest indices usable.
     Immutable bounds means that the class will provide error checking on the
     sequence indices based on their bounds at the time the instance was
