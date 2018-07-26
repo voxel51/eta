@@ -163,12 +163,12 @@ class DataFileSequence(etas.Serializable):
 
     @classmethod
     def from_dict(cls, d):
-        return DataFileSequence(d['sequence'])
+        return cls(d["sequence"])
 
 
 class DataFileSequenceError(Exception):
     '''Error raised for out of bounds requests when working with
-    `DataFileSequence`s
+    `DataFileSequence`s.
     '''
     pass
 
