@@ -102,7 +102,16 @@ class DataContainer(etas.Container):
 class DataFileSequence(etas.Serializable):
     '''Class representing a sequence of data files on the disk.
 
-    Implements various `eta.core.types.*Sequence*`
+    Implements various `eta.core.types.*Sequence*`.
+
+    This class has the ability to be have immutable bounds, which is the
+    default, where bounds mean the lowest and highest indices usable.
+    Immutable bounds means that the class will provide error checking on the
+    sequence indices based on their bounds at the time the instance was
+    initialized.  This files themselves during this time can be changed (this
+    class does not enforce immutability on them).  If the instance is created
+    with `immutable_bounds=False` then the user of the class will be able to
+    add files to the end of the sequence in order, but not at random.
 
     Examples of representable file sequences:
         /path/to/video/%05d.png
@@ -115,11 +124,21 @@ class DataFileSequence(etas.Serializable):
         upper_bound (int): Index of largest file in sequence.
     '''
 
-    def __init__(self, sequence):
-        self.sequence = sequence
-        self._extension = os.path.splitext(sequence)[1]
+    def __init__(self, sequence_string, immutable_bounds=True):
+        '''Initialize the DataFileSequence instance using the sequence
+        string.
+
+        Args:
+            sequence_string: The printf-style string to be used for locating
+                the sequence files on disk.  E.g., `/tmp/foo/file%05d.json`
+            immutable_bounds (bool): [True] enforce the lower and upper bound
+                on the indices for the sequence as they exit at initialization
+        '''
+        self.sequence = sequence_string
+        self._extension = os.path.splitext(self.sequence)[1]
         self._lower_bound, self._upper_bound = \
             etau.parse_bounds_from_dir_pattern(self.sequence)
+        self._immutable_bounds = immutable_bounds
 
     @property
     def extension(self):
@@ -129,9 +148,23 @@ class DataFileSequence(etas.Serializable):
     def lower_bound(self):
         return self._lower_bound
 
+    @lower_bound.setter
+    def lower_bound(self, value):
+        if self._immutable_bounds:
+            raise DataFileSequenceError(
+                'Cannot set bounds for a sequence with `immutable_bounds`.')
+        self._lower_bound = value
+
     @property
     def upper_bound(self):
         return self._upper_bound
+
+    @upper_bound.setter
+    def upper_bound(self, value):
+        if self._immutable_bounds:
+            raise DataFileSequenceError(
+                'Cannot set bounds for a sequence with `immutable_bounds`.')
+        self._upper_bound = value
 
     @property
     def starts_at_one(self):
@@ -156,8 +189,25 @@ class DataFileSequence(etas.Serializable):
 
         Does error-checking for sequence bounds.
         '''
-        if not self.check_bounds(index):
-            raise DataFileSequenceError("index out of bounds for sequence.")
+        if self._immutable_bounds:
+            if not self.check_bounds(index):
+                raise DataFileSequenceError("Index out of bounds for sequence.")
+        else:
+            # In the mutable bounds case, enforce the behavior that the user
+            # can add a file to the beginning or the end of the sequence.
+            if index < 0:
+                raise DataFileSequenceError(
+                    "Indices cannot be less than zero.")
+            elif index == self.lower_bound - 1:
+                self._lower_bound = index
+            elif index == self.upper_bound + 1:
+                self._upper_bound = index
+            else:
+                if not self.check_bounds(index):
+                    raise DataFileSequenceError(
+                        "Given index out of bounds for sequence with mutable "
+                        "bounds: permitted to add to the beginning or end of "
+                        "the sequence but not to add arbitrarily to it.")
 
         return self.sequence % index
 
