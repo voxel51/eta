@@ -22,7 +22,6 @@ from builtins import *
 import os
 
 from eta.core.config import no_default
-import eta.constants as etac
 import eta.core.serial as etas
 import eta.core.utils as etau
 
@@ -210,7 +209,8 @@ class DataFileSequence(etas.Serializable):
         '''
         if self._immutable_bounds:
             if not self.check_bounds(index):
-                raise DataFileSequenceError("Index out of bounds for sequence.")
+                raise DataFileSequenceError(
+                    "Index out of bounds for sequence.")
         else:
             # In the mutable bounds case, enforce the behavior that the user
             # can add a file to the beginning or the end of the sequence.
@@ -276,8 +276,10 @@ class DataRecords(DataContainer):
             raise DataRecordsError(
                 "Need record_cls to add a DataRecords object")
 
-        dr = DataRecords(self._ELE_CLS,
-            records=[rc.from_dict(dc) for dc in d["records"]])
+        dr = DataRecords(
+            self._ELE_CLS,
+            records=[rc.from_dict(dc) for dc in d["records"]]
+        )
         self.records += dr.records
 
         return len(self.records)
@@ -326,7 +328,7 @@ class DataRecords(DataContainer):
 
         return sss
 
-    def cull(self, field, values, keep_values = False):
+    def cull(self, field, values, keep_values=False):
         ''' Cull records from our store based on the value in `field`.  If
         `keep_values` is True then the list `values` specifies which records to
         keep; otherwise, it specifies which records to remove (the default).
