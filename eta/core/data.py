@@ -107,7 +107,7 @@ class DataFileSequence(etas.Serializable):
     default, where bounds mean the lowest and highest indices usable.
     Immutable bounds means that the class will provide error checking on the
     sequence indices based on their bounds at the time the instance was
-    initialized.  This files themselves during this time can be changed (this
+    initialized.  The files themselves during this time can be changed (this
     class does not enforce immutability on them).  If the instance is created
     with `immutable_bounds=False` then the user of the class will be able to
     add files to the end of the sequence in order, but not at random.
