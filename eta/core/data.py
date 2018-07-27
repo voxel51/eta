@@ -139,6 +139,25 @@ class DataFileSequence(etas.Serializable):
         self._lower_bound, self._upper_bound = \
             etau.parse_bounds_from_dir_pattern(self.sequence)
         self._immutable_bounds = immutable_bounds
+        self._iter_index = None
+
+    def __iter__(self):
+        '''Implements the iterable interface on the sequence of path names.'''
+        self._iter_index = self._lower_bound - 1
+        return self
+
+    def __next__(self):
+        if self._iter_index is None:
+            raise DataFileSequenceError("next called from outside iterable.")
+
+        self._iter_index += 1
+        if not self.check_bounds(self._iter_index):
+            self._iter_index = None
+            raise StopIteration
+
+        return self.gen_path(self._iter_index)
+
+    next = __next__  # Python 2 compatibility for iteration
 
     @property
     def extension(self):
