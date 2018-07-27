@@ -241,6 +241,22 @@ class DataFileSequence(etas.Serializable):
     def from_dict(cls, d):
         return cls(d["sequence"])
 
+    @classmethod
+    def build_from_dir(cls, dir_path):
+        '''Factory method to build a `DataFileSequence` given a directory
+        path.
+        '''
+        file_pattern, _ = etau.parse_dir_pattern(dir_path)
+        return cls(file_pattern)
+
+    @classmethod
+    def build_from_pattern(cls, pattern):
+        '''Factory method to build a `DataFileSequence given a file pattern.
+
+        Note that this is just the standard way of constructing the class.
+        '''
+        return cls(pattern)
+
 
 class DataFileSequenceError(Exception):
     '''Error raised for out of bounds requests when working with
