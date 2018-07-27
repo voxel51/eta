@@ -472,7 +472,7 @@ def parse_dir_pattern(dir_path):
 
     Returns:
         a tuple containing:
-            - the numeric pattern used in the directory
+            - the numeric pattern used in the directory (the full path)
             - a list (or list of tuples if the pattern contains multiple
                 numbers) describing the numeric indices in the directory
 

@@ -22,7 +22,6 @@ from builtins import *
 import os
 
 from eta.core.config import no_default
-import eta.constants as etac
 import eta.core.serial as etas
 import eta.core.utils as etau
 
@@ -102,7 +101,16 @@ class DataContainer(etas.Container):
 class DataFileSequence(etas.Serializable):
     '''Class representing a sequence of data files on the disk.
 
-    Implements various `eta.core.types.*Sequence*`
+    Implements various `eta.core.types.*Sequence*`.
+
+    This class has the ability to have immutable bounds, which is the
+    default, where bounds mean the lowest and highest indices usable.
+    Immutable bounds means that the class will provide error checking on the
+    sequence indices based on their bounds at the time the instance was
+    initialized.  The files themselves during this time can be changed (this
+    class does not enforce immutability on them).  If the instance is created
+    with `immutable_bounds=False` then the user of the class will be able to
+    add files to the end of the sequence in order, but not at random.
 
     Examples of representable file sequences:
         /path/to/video/%05d.png
@@ -115,11 +123,47 @@ class DataFileSequence(etas.Serializable):
         upper_bound (int): Index of largest file in sequence.
     '''
 
-    def __init__(self, sequence):
-        self.sequence = sequence
-        self._extension = os.path.splitext(sequence)[1]
+    def __init__(self, sequence_string, immutable_bounds=True):
+        '''Initialize the DataFileSequence instance using the sequence
+        string.
+
+        Args:
+            sequence_string: The printf-style string to be used for locating
+                the sequence files on disk.  E.g., `/tmp/foo/file%05d.json`
+            immutable_bounds (bool): [True] enforce the lower and upper bound
+                on the indices for the sequence as they exit at initialization
+        '''
+        self.sequence = sequence_string
+        self._extension = os.path.splitext(self.sequence)[1]
         self._lower_bound, self._upper_bound = \
             etau.parse_bounds_from_dir_pattern(self.sequence)
+        self._immutable_bounds = immutable_bounds
+        self._iter_index = None
+
+    def __getitem__(self, index):
+        '''Implements the get item interface to allow arbitrary access to the
+        paths in the sequence.
+        '''
+        return self.gen_path(index)
+
+    def __iter__(self):
+        '''Implements the iterable interface on the sequence of path names.'''
+        self._iter_index = self._lower_bound - 1
+        return self
+
+    def __next__(self):
+        '''Implements the rest of the iterable interface.'''
+        if self._iter_index is None:
+            raise DataFileSequenceError("next called from outside iterable.")
+
+        self._iter_index += 1
+        if not self.check_bounds(self._iter_index):
+            self._iter_index = None
+            raise StopIteration
+
+        return self.gen_path(self._iter_index)
+
+    next = __next__  # Python 2 compatibility for iteration
 
     @property
     def extension(self):
@@ -129,9 +173,23 @@ class DataFileSequence(etas.Serializable):
     def lower_bound(self):
         return self._lower_bound
 
+    @lower_bound.setter
+    def lower_bound(self, value):
+        if self._immutable_bounds:
+            raise DataFileSequenceError(
+                'Cannot set bounds for a sequence with `immutable_bounds`.')
+        self._lower_bound = value
+
     @property
     def upper_bound(self):
         return self._upper_bound
+
+    @upper_bound.setter
+    def upper_bound(self, value):
+        if self._immutable_bounds:
+            raise DataFileSequenceError(
+                'Cannot set bounds for a sequence with `immutable_bounds`.')
+        self._upper_bound = value
 
     @property
     def starts_at_one(self):
@@ -156,14 +214,48 @@ class DataFileSequence(etas.Serializable):
 
         Does error-checking for sequence bounds.
         '''
-        if not self.check_bounds(index):
-            raise DataFileSequenceError("index out of bounds for sequence.")
+        if self._immutable_bounds:
+            if not self.check_bounds(index):
+                raise DataFileSequenceError(
+                    "Index out of bounds for sequence.")
+        else:
+            # In the mutable bounds case, enforce the behavior that the user
+            # can add a file to the beginning or the end of the sequence.
+            if index < 0:
+                raise DataFileSequenceError(
+                    "Indices cannot be less than zero.")
+            elif index == self.lower_bound - 1:
+                self._lower_bound = index
+            elif index == self.upper_bound + 1:
+                self._upper_bound = index
+            else:
+                if not self.check_bounds(index):
+                    raise DataFileSequenceError(
+                        "Given index out of bounds for sequence with mutable "
+                        "bounds: permitted to add to the beginning or end of "
+                        "the sequence but not to add arbitrarily to it.")
 
         return self.sequence % index
 
     @classmethod
     def from_dict(cls, d):
         return cls(d["sequence"])
+
+    @classmethod
+    def build_from_dir(cls, dir_path):
+        '''Factory method to build a `DataFileSequence` given a directory
+        path.
+        '''
+        file_pattern, _ = etau.parse_dir_pattern(dir_path)
+        return cls(file_pattern)
+
+    @classmethod
+    def build_from_pattern(cls, pattern):
+        '''Factory method to build a `DataFileSequence given a file pattern.
+
+        Note that this is just the standard way of constructing the class.
+        '''
+        return cls(pattern)
 
 
 class DataFileSequenceError(Exception):
@@ -207,8 +299,10 @@ class DataRecords(DataContainer):
             raise DataRecordsError(
                 "Need record_cls to add a DataRecords object")
 
-        dr = DataRecords(self._ELE_CLS,
-            records=[rc.from_dict(dc) for dc in d["records"]])
+        dr = DataRecords(
+            self._ELE_CLS,
+            records=[rc.from_dict(dc) for dc in d["records"]]
+        )
         self.records += dr.records
 
         return len(self.records)
@@ -257,7 +351,7 @@ class DataRecords(DataContainer):
 
         return sss
 
-    def cull(self, field, values, keep_values = False):
+    def cull(self, field, values, keep_values=False):
         ''' Cull records from our store based on the value in `field`.  If
         `keep_values` is True then the list `values` specifies which records to
         keep; otherwise, it specifies which records to remove (the default).
