@@ -538,10 +538,13 @@ def parse_bounds_from_dir_pattern(dir_pattern):
     # general case.
     globbed = sorted(glob.glob(glob_expression))
 
-    return (
-        _extract_num(globbed[0], pieces[0]),
-        _extract_num(globbed[-1], pieces[0])
-    )
+    try:
+        return (
+            _extract_num(globbed[0], pieces[0]),
+            _extract_num(globbed[-1], pieces[0])
+        )
+    except IndexError:
+        return (None, None)
 
 
 def random_key(n):
