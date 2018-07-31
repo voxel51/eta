@@ -317,6 +317,10 @@ class Container(Serializable):
         for idx in sorted(inds, reverse=True):
             del self.__elements__[idx]
 
+    def clear(self):
+        '''Deletes all elements from the container.'''
+        setattr(self, self._ELE_ATTR, [])
+
     @property
     def size(self):
         '''Returns the number of elements in the container.'''
