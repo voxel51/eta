@@ -449,7 +449,7 @@ class DualImageSequence(DualFileSequence, ConcreteData):
         )
 
 
-class VideoSequence(FileSequence, ConcreteData):
+class VideoFileSequence(FileSequence, ConcreteData):
     '''A sequence of encoded video files with one numeric parameter.
 
     Examples:
