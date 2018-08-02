@@ -125,6 +125,10 @@ class DetectedObject(Serializable, HasBoundingBox):
         self.attrs = attrs or ObjectAttributeContainer()
         self._meta = None  # Usable by clients to store temporary metadata
 
+    def get_bounding_box(self):
+        '''Returns the bounding box for the object.'''
+        return self.bounding_box
+
     def add_attribute(self, attr):
         '''Adds an attribute to the object.
 
@@ -182,10 +186,6 @@ class DetectedObject(Serializable, HasBoundingBox):
             index_in_frame=d.get("index_in_frame", None),
             attrs=attrs,
         )
-
-    def get_bounding_box(self):
-        '''Returns the bounding box contained in the instance.'''
-        return self.bounding_box
 
 
 class DetectedObjectContainer(DataContainer):
