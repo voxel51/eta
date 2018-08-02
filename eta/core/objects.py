@@ -137,16 +137,6 @@ class DetectedObject(Serializable, HasBoundingBox):
         '''
         self.attrs.add(attr)
 
-    def extract_from(self, img, force_square=False):
-        '''Extracts the subimage containing this object from the image.
-
-        Args:
-            img: an image
-            force_square: whether to (minimally) manipulate the object bounding
-                box during extraction so that the returned subimage is square
-        '''
-        return self.bounding_box.extract_from(img, force_square=force_square)
-
     def attributes(self):
         '''Returns the list of attributes to serialize.
 
