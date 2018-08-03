@@ -99,13 +99,16 @@ class BuildPipeline(Command):
             help="pipeline name")
         parser.add_argument("-i", "--inputs",
             type=etas.load_json, metavar="'{\"key\": val, ...}'",
-            help="pipeline input(s)")
+            help="pipeline inputs")
         parser.add_argument("-o", "--outputs",
             type=etas.load_json, metavar="'{\"key\": val, ...}'",
-            help="pipeline output(s)")
+            help="pipeline outputs")
         parser.add_argument("-p", "--parameters",
             type=etas.load_json, metavar="'{\"key\": val, ...}'",
-            help="pipeline parameter(s)")
+            help="pipeline parameters")
+        parser.add_argument("-l", "--logging",
+            type=etas.load_json, metavar="'{\"key\": val, ...}'",
+            help="logging config settings")
         parser.add_argument("--run-now",
             action="store_true", help="run the pipeline after building")
         parser.add_argument("--cleanup",
@@ -114,10 +117,13 @@ class BuildPipeline(Command):
 
     @staticmethod
     def run(args):
-        # PipelineBuildRequest dictionary
-        d = args.request or {"inputs": {}, "outputs": {}, "parameters": {}}
-
-        # Set values interactively
+        # Process args
+        d = args.request or {
+            "inputs": {},
+            "outputs": {},
+            "parameters": {},
+            "logging_config": {}
+        }
         if args.name:
             d["pipeline"] = args.name
         if args.inputs:
@@ -126,6 +132,8 @@ class BuildPipeline(Command):
             d["outputs"].update(args.outputs)
         if args.parameters:
             d["parameters"].update(args.parameters)
+        if args.logging:
+            d["logging_config"].update(args.logging)
 
         # Parse pipeline request
         logger.info("Parsing pipeline request")
