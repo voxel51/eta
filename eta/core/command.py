@@ -108,9 +108,9 @@ class BuildPipeline(Command):
             help="pipeline parameter(s)")
         parser.add_argument("--run-now",
             action="store_true", help="run the pipeline after building")
-        parser.add_argument("--dry-run",
-            action="store_true", help="run the pipeline after building and "
-            "delete all files afterwards")
+        parser.add_argument("--cleanup",
+            action="store_true", help="delete all generated files after "
+            "running the pipeline")
 
     @staticmethod
     def run(args):
@@ -134,14 +134,14 @@ class BuildPipeline(Command):
         builder = etab.PipelineBuilder(request)
         builder.build()
 
-        if args.run_now or args.dry_run:
+        if args.run_now:
             # Run pipeline
             logger.info("Running pipeline '%s'", request.pipeline)
             builder.run()
 
-        if args.dry_run:
+        if args.cleanup:
             # Cleanup pipeline files
-            logger.info("Dry run complete; cleaning up")
+            logger.info("Cleaning up pipeline-generated files")
             builder.cleanup()
 
 
