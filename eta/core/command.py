@@ -127,10 +127,12 @@ class BuildPipeline(Command):
         if args.parameters:
             d["parameters"].update(args.parameters)
 
-        # Build pipeline
-        logger.info("Loading pipeline build request")
+        # Parse pipeline request
+        logger.info("Parsing pipeline request")
         request = etab.PipelineBuildRequest.from_dict(d)
-        logger.info("Building pipeline '%s' from request", request.pipeline)
+
+        # Build pipeline
+        logger.info("Building pipeline '%s'", request.pipeline)
         builder = etab.PipelineBuilder(request)
         builder.build()
 
