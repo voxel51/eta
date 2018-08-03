@@ -53,7 +53,8 @@ class PipelineBuildRequestConfig(Config):
         self.outputs = self.parse_dict(d, "outputs", default={})
         self.parameters = self.parse_dict(d, "parameters", default={})
         self.logging_config = self.parse_object(
-            d, "logging_config", etal.LoggingConfig, default=None)
+            d, "logging_config", etal.LoggingConfig,
+            default=etal.LoggingConfig.default())
 
 
 class PipelineBuildRequest(Configurable):
@@ -304,13 +305,8 @@ class PipelineBuilder(object):
                     .set(config_path=self._get_module_config_path(module))
                     .validate())
 
-        # Build logging config
-        if self.request.logging_config is not None:
-            # Use the logging config from the request
-            logging_config = copy.deepcopy(self.request.logging_config)
-        else:
-            # Default logging config
-            logging_config = etal.LoggingConfig.default()
+        # Handle logging
+        logging_config = copy.deepcopy(self.request.logging_config)
         if logging_config.filename:
             # Accept the provided logfile location
             self.pipeline_logfile_path = logging_config.filename
