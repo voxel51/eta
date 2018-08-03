@@ -100,6 +100,9 @@ class BuildPipeline(Command):
         parser.add_argument("-i", "--inputs",
             type=etas.load_json, metavar="'{\"key\": val, ...}'",
             help="pipeline input(s)")
+        parser.add_argument("-o", "--outputs",
+            type=etas.load_json, metavar="'{\"key\": val, ...}'",
+            help="pipeline output(s)")
         parser.add_argument("-p", "--parameters",
             type=etas.load_json, metavar="'{\"key\": val, ...}'",
             help="pipeline parameter(s)")
@@ -112,13 +115,15 @@ class BuildPipeline(Command):
     @staticmethod
     def run(args):
         # PipelineBuildRequest dictionary
-        d = args.request or {"inputs": {}, "parameters": {}}
+        d = args.request or {"inputs": {}, "outputs": {}, "parameters": {}}
 
         # Set values interactively
         if args.name:
             d["pipeline"] = args.name
         if args.inputs:
             d["inputs"].update(args.inputs)
+        if args.outputs:
+            d["outputs"].update(args.outputs)
         if args.parameters:
             d["parameters"].update(args.parameters)
 
