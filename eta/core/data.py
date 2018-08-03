@@ -284,6 +284,7 @@ class DataRecords(DataContainer):
         '''
         if record_cls:
             self._ELE_CLS = record_cls
+        print(self._ELE_CLS)
         super(DataRecords, self).__init__(**kwargs)
 
     def add_dict(self, d, record_cls=None):
@@ -398,11 +399,12 @@ class DataRecords(DataContainer):
         if rc is None:
             raise DataRecordsError(
                 "Need record_cls to load a DataRecords object")
-
-        return DataRecords(records=[rc.from_dict(dc) for dc in d["records"]])
+        return DataRecords(records=[rc.from_dict(dc) for dc in d["records"]],
+            record_cls=record_cls)
 
     @classmethod
     def from_json(cls, json_path, record_cls=None):
+        print(record_cls)
         '''Constructs a DataRecords object from a JSON file.'''
         return cls.from_dict(etas.read_json(json_path), record_cls)
 
