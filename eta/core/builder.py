@@ -20,6 +20,7 @@ from future.utils import iteritems, itervalues
 # pragma pylint: enable=wildcard-import
 
 from collections import defaultdict
+import copy
 import logging
 import os
 import time
@@ -51,6 +52,8 @@ class PipelineBuildRequestConfig(Config):
         self.inputs = self.parse_dict(d, "inputs", default={})
         self.outputs = self.parse_dict(d, "outputs", default={})
         self.parameters = self.parse_dict(d, "parameters", default={})
+        self.logging_config = self.parse_object(
+            d, "logging_config", etal.LoggingConfig, default=None)
 
 
 class PipelineBuildRequest(Configurable):
@@ -91,6 +94,7 @@ class PipelineBuildRequest(Configurable):
         self.inputs = etau.remove_none_values(config.inputs)
         self.outputs = etau.remove_none_values(config.outputs)
         self.parameters = etau.remove_none_values(config.parameters)
+        self.logging_config = config.logging_config
 
         self._validate_inputs()
         self._validate_outputs()
@@ -191,12 +195,9 @@ class PipelineBuilder(object):
             request: a PipelineBuildRequest instance
         '''
         self.request = request
+        self.outputs = self.request.outputs
         self._concrete_data_params = etat.ConcreteDataParams()
         self.reset()
-
-    @property
-    def outputs(self):
-        return self.request.outputs
 
     def reset(self):
         '''Resets the builder so that another pipeline can be built.'''
@@ -292,10 +293,10 @@ class PipelineBuilder(object):
     def _build_pipeline_config(self):
         # Build job configs
         # @todo handle non-py executables
-        job_builders = []
+        jobs = []
         for module in self.request.metadata.execution_order:
             metadata = self.request.metadata.modules[module].metadata
-            job_builders.append(
+            jobs.append(
                 etaj.JobConfig.builder()
                     .set(name=module)
                     .set(working_dir=".")
@@ -304,9 +305,18 @@ class PipelineBuilder(object):
                     .validate())
 
         # Build logging config
-        logging_config_builder = (etal.LoggingConfig.builder()
-            .set(filename=self.pipeline_logfile_path)
-            .validate())
+        if self.request.logging_config is not None:
+            # Use the logging config from the request
+            logging_config = copy.deepcopy(self.request.logging_config)
+        else:
+            # Default logging config
+            logging_config = etal.LoggingConfig.default()
+        if logging_config.filename:
+            # Accept the provided logfile location
+            self.pipeline_logfile_path = logging_config.filename
+        else:
+            # Generate a pipeline log in our automated location
+            logging_config.filename = self.pipeline_logfile_path
 
         # Build pipeline config
         pipeline_config_builder = (etap.PipelineConfig.builder()
@@ -314,8 +324,8 @@ class PipelineBuilder(object):
             .set(working_dir=".")
             .set(status_path=self.pipeline_status_path)
             .set(overwrite=False)
-            .set(jobs=job_builders)
-            .set(logging_config=logging_config_builder)
+            .set(jobs=jobs)
+            .set(logging_config=logging_config)
             .validate())
 
         # Write pipeline config
