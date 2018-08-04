@@ -140,11 +140,11 @@ Each spec has the fields:
 #### Automatic generation of module metadata files
 
 For modules that are built using the ETA library, the `eta` command-line tool
-supports a `metadata` command that can automatically generate the module
-metadata JSON file for a module. The syntax for the command is:
+supports a command that can automatically generate the module metadata JSON
+file for a module. The syntax for the command is:
 
 ```shell
-eta metadata </path/to/eta_module.py>
+eta modules --metadata </path/to/eta_module.py>
 ```
 
 The command generates a module metadata JSON file in the same directory as
