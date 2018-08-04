@@ -14,20 +14,24 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
+from future.utils import iteritems
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
 import argparse
+from collections import defaultdict
 import logging
+import os
 import sys
 
 import eta
 import eta.core.builder as etab
-import eta.core.metadata as etam
+import eta.core.metadata as etame
+import eta.core.models as etamode
+import eta.core.module as etamodu
 import eta.core.pipeline as etap
 import eta.core.serial as etas
-import eta.core.utils as etau
 
 
 logger = logging.getLogger(__name__)
@@ -56,25 +60,7 @@ class Command(object):
         raise NotImplementedError("subclass must implement run()")
 
 
-class RunPipeline(Command):
-    '''Command-line tool for running ETA pipelines.
-
-    Examples:
-        # Run the pipeline defined by a PipelineConfig JSON file
-        eta run '/path/to/pipeline.json'
-    '''
-
-    @staticmethod
-    def setup(parser):
-        parser.add_argument("config", help="path to a PipelineConfig file")
-
-    @staticmethod
-    def run(args):
-        logger.info("Running ETA pipeline '%s'", args.config)
-        etap.run(args.config)
-
-
-class BuildPipeline(Command):
+class BuildCommand(Command):
     '''Command-line tool for building ETA pipelines.
 
     Examples:
@@ -93,27 +79,28 @@ class BuildPipeline(Command):
 
     @staticmethod
     def setup(parser):
-        parser.add_argument("-r", "--request",
-            type=etas.load_json, help="path to a PipelineBuildRequest file")
-        parser.add_argument("-n", "--name",
-            help="pipeline name")
-        parser.add_argument("-i", "--inputs",
-            type=etas.load_json, metavar="'{\"key\": val, ...}'",
-            help="pipeline inputs")
-        parser.add_argument("-o", "--outputs",
-            type=etas.load_json, metavar="'{\"key\": val, ...}'",
-            help="pipeline outputs")
-        parser.add_argument("-p", "--parameters",
-            type=etas.load_json, metavar="'{\"key\": val, ...}'",
-            help="pipeline parameters")
-        parser.add_argument("-l", "--logging",
-            type=etas.load_json, metavar="'{\"key\": val, ...}'",
-            help="logging config settings")
-        parser.add_argument("--run-now",
-            action="store_true", help="run the pipeline after building")
-        parser.add_argument("--cleanup",
-            action="store_true", help="delete all generated files after "
-            "running the pipeline")
+        parser.add_argument(
+            "-r", "--request", type=etas.load_json,
+            help="path to a PipelineBuildRequest file")
+        parser.add_argument("-n", "--name", help="pipeline name")
+        parser.add_argument(
+            "-i", "--inputs", type=etas.load_json,
+            metavar="'{\"key\": val, ...}'", help="pipeline inputs")
+        parser.add_argument(
+            "-o", "--outputs", type=etas.load_json,
+            metavar="'{\"key\": val, ...}'", help="pipeline outputs")
+        parser.add_argument(
+            "-p", "--parameters", type=etas.load_json,
+            metavar="'{\"key\": val, ...}'", help="pipeline parameters")
+        parser.add_argument(
+            "-l", "--logging", type=etas.load_json,
+            metavar="'{\"key\": val, ...}'", help="logging config settings")
+        parser.add_argument(
+            "--run-now", action="store_true",
+            help="run the pipeline after building")
+        parser.add_argument(
+            "--cleanup", action="store_true",
+            help="delete all generated files after running the pipeline")
 
     @staticmethod
     def run(args):
@@ -155,30 +142,186 @@ class BuildPipeline(Command):
             builder.cleanup()
 
 
-class GenerateMetadata(Command):
-    '''Command-line tool for generating metadata files for ETA modules.
+class RunCommand(Command):
+    '''Command-line tool for running ETA pipelines.
 
     Examples:
-        # Generate the metadata file for the given ETA module
-        eta metadata '/path/to/eta_module.py'
+        # Run the pipeline defined by a PipelineConfig JSON file
+        eta run '/path/to/pipeline.json'
     '''
 
     @staticmethod
     def setup(parser):
-        parser.add_argument("module", help="path to an ETA module .py file")
+        parser.add_argument("config", help="path to a PipelineConfig file")
 
     @staticmethod
     def run(args):
-        logger.info("Generating metadata for ETA module '%s'", args.module)
-        etam.generate(args.module)
+        logger.info("Running ETA pipeline '%s'", args.config)
+        etap.run(args.config)
+
+
+class ModelsCommand(Command):
+    '''Command-line tool for working with ETA models.
+
+    Examples:
+        # List all available published models
+        eta models --list
+
+        # Find a model
+        eta models --find <model-name>
+
+        # Download a model
+        eta models --download <model-name>
+
+        # Initialize a new models directory
+        eta models --init <models-dir>
+
+        # Flush the given model
+        eta models --flush <model-name>
+
+        # Flush all old models
+        eta models --flush-old
+
+        # Flush all models
+        eta models --flush-all
+    '''
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "-l", "--list", action="store_true",
+            help="list all published models on the current search path")
+        parser.add_argument(
+            "-f", "--find", help="find the model with the given name")
+        parser.add_argument(
+            "-d", "--download", help="download the model with the given name")
+        parser.add_argument(
+            "-i", "--init", help="initialize the given models directory")
+        parser.add_argument(
+            "--flush", help="flush the model with the given name")
+        parser.add_argument(
+            "--flush-old", action="store_true", help="flush all old models")
+        parser.add_argument(
+            "--flush-all", action="store_true", help="flush all models")
+
+    @staticmethod
+    def run(args):
+        if args.list:
+            models = etamode.find_all_models()
+            logger.info(_render_names_in_dirs_str(models))
+
+        if args.find:
+            model_path = etamode.find_model(args.find)
+            logger.info(model_path)
+
+        if args.download:
+            etamode.download_model(args.download)
+
+        if args.init:
+            etamode.init_models_dir(args.init)
+
+        if args.flush:
+            etamode.flush_model(args.flush)
+
+        if args.flush_old:
+            etamode.flush_old_models()
+
+        if args.flush_all:
+            etamode.flush_all_models()
+
+
+class ModulesCommand(Command):
+    '''Command-line tool for working with ETA modules.
+
+    Examples:
+        # List all available ETA modules
+        eta modules --list
+
+        # Find the metadata file for a module
+        eta modules --find <module-name>
+
+        # Generate the metadata file a module
+        eta modules --metadata '/path/to/eta_module.py'
+    '''
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "-l", "--list", action="store_true",
+            help="list all ETA modules on the current search path")
+        parser.add_argument(
+            "-f", "--find",
+            help="find the metadata file for the module with the given name")
+        parser.add_argument(
+            "-m", "--metadata",
+            help="generate the metadata file for the given ETA module")
+
+    @staticmethod
+    def run(args):
+        if args.list:
+            modules = etamodu.find_all_metadata()
+            logger.info(_render_names_in_dirs_str(modules))
+
+        if args.find:
+            metadata_path = etamodu.find_metadata(args.find)
+            logger.info(metadata_path)
+
+        if args.metadata:
+            logger.info(
+                "Generating metadata for ETA module '%s'", args.metadata)
+            etame.generate(args.metadata)
+
+
+class PipelinesCommand(Command):
+    '''Command-line tool for working with ETA pipelines.
+
+    Examples:
+        # List all available ETA pipelines
+        eta pipelines --list
+
+        # Find the metadata file for a pipeline
+        eta pipelines --find <pipeline-name>
+    '''
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "-l", "--list", action="store_true",
+            help="list all ETA pipelines on the current search path")
+        parser.add_argument(
+            "-f", "--find",
+            help="find the metadata file for the pipeline with the given name")
+
+    @staticmethod
+    def run(args):
+        if args.list:
+            pipelines = etap.find_all_metadata()
+            logger.info(_render_names_in_dirs_str(pipelines))
+
+        if args.find:
+            metadata_path = etap.find_metadata(args.find)
+            logger.info(metadata_path)
+
+
+def _render_names_in_dirs_str(d):
+    chunks = []
+    mdict = _group_by_dir(d)
+    for mdir in sorted(mdict):
+        mstrs = ["  " + mname for mname in sorted(mdict[mdir])]
+        chunks.append("[ %s ]\n" % mdir + "\n".join(mstrs))
+    return "\n\n".join(chunks)
+
+
+def _group_by_dir(d):
+    dd = defaultdict(list)
+    for name, path in iteritems(d):
+        dd[os.path.dirname(path)].append(name)
+    return dd
 
 
 def _register_command(cmd, cls):
-    '''Registers the Commannd subclass `cls` as a command with the name `cmd`
-    in the subparsers.
-    '''
-    parser = subparsers.add_parser(cmd,
-        help=cls.__doc__.splitlines()[0],
+    parser = subparsers.add_parser(
+        cmd, help=cls.__doc__.splitlines()[0],
         description=cls.__doc__.rstrip(),
         formatter_class=argparse.RawTextHelpFormatter)
     parser.set_defaults(run=cls.run)
@@ -187,18 +330,22 @@ def _register_command(cmd, cls):
 
 # Main setup
 parser = argparse.ArgumentParser(description="ETA command-line tool.")
-parser.add_argument("-v", "--version",
-    action="version", version=eta.version, help="show version info")
+parser.add_argument(
+    "-v", "--version", action="version", version=eta.version,
+    help="show version info")
 subparsers = parser.add_subparsers(title="available commands")
 
+
 # Command setup
-_register_command("run", RunPipeline)
-_register_command("build", BuildPipeline)
-_register_command("metadata", GenerateMetadata)
+_register_command("build", BuildCommand)
+_register_command("run", RunCommand)
+_register_command("models", ModelsCommand)
+_register_command("modules", ModulesCommand)
+_register_command("pipelines", PipelinesCommand)
 
 
 def main():
-    '''Execute the ETA tool with the current command-line args.'''
+    '''Executes the `eta` tool with the current command-line args.'''
     if len(sys.argv) == 1:
         parser.print_help()
         sys.exit(0)
