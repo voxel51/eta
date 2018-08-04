@@ -102,6 +102,24 @@ def find_model(name):
     return model.get_path_in_dir(models_dir)
 
 
+def find_all_models(downloaded_only=False):
+    '''Finds all models on the models search path.
+
+    Args:
+        downloaded_only: whether to only include models that are currently
+            downloaded. By default, this is False
+
+    Returns:
+        a dictionary mapping model names (with "@<ver>" strings, if any) to
+            full paths to the model files
+    '''
+    models = _list_models(downloaded_only=downloaded_only)[0]
+    return {
+        name: md[0].get_path_in_dir(md[1])
+        for name, md in iteritems(models)
+    }
+
+
 def is_model_downloaded(name):
     '''Determines whether the given model is downloaded.
 
