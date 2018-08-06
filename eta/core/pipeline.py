@@ -49,8 +49,7 @@ PIPELINE_OUTPUT_NAME = "OUTPUT"
 
 def run(
         pipeline_config_path, pipeline_status=None, mark_as_complete=True,
-        rotate_logs=True,
-    ):
+        rotate_logs=True):
     '''Run the pipeline specified by the PipelineConfig.
 
     Args:
@@ -84,8 +83,7 @@ def run(
     # Run pipeline
     return _run(
         pipeline_config, pipeline_config_path, pipeline_status,
-        mark_as_complete,
-    )
+        mark_as_complete)
 
 
 def _make_pipeline_status(pipeline_config):
@@ -108,8 +106,7 @@ def _make_publish_status_callback(status_path):
 
 def _run(
         pipeline_config, pipeline_config_path, pipeline_status,
-        mark_as_complete,
-    ):
+        mark_as_complete):
     # Starting pipeline
     logger.info("Pipeline %s started", pipeline_config.name)
     pipeline_status.start()
@@ -894,8 +891,7 @@ def _validate_module_connections(modules, connections):
             if num_sources == 0 and node.is_required:
                 raise PipelineMetadataError(
                     "Module '%s' input '%s' is required but has no incoming "
-                    "connection" % (mname, iname)
-                )
+                    "connection" % (mname, iname))
             if num_sources > 1:
                 raise PipelineMetadataError(
                     "Module '%s' input '%s' must have one incoming connection "
