@@ -7,23 +7,23 @@
     },
     "inputs": ["video"],
     "outputs": ["video_clips"],
-    "modules": [
-        {
+    "modules": {
+        "resize_videos": {
             "name": "resize_videos",
             "tunable_parameters": ["size", "scale", "max_size"],
             "set_parameters": {}
         },
-        {
+        "sample_videos": {
             "name": "sample_videos",
             "tunable_parameters": ["fps", "max_fps"],
             "set_parameters": {}
         },
-        {
+        "clip_videos": {
             "name": "clip_videos",
             "tunable_parameters": ["frames"],
             "set_parameters": {}
         }
-    ],
+    },
     "connections": [
         {
             "source": "INPUT.video",

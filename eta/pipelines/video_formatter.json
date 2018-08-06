@@ -7,18 +7,18 @@
     },
     "inputs": ["video"],
     "outputs": ["formatted_video"],
-    "modules": [
-        {
+    "modules": {
+        "resize_videos": {
             "name": "resize_videos",
             "tunable_parameters": ["size", "scale", "max_size"],
             "set_parameters": {}
         },
-        {
+        "sample_videos": {
             "name": "sample_videos",
             "tunable_parameters": ["fps", "max_fps"],
             "set_parameters": {}
         }
-    ],
+    },
     "connections": [
         {
             "source": "INPUT.video",
