@@ -16,7 +16,7 @@
     ],
     "outputs": [
         {
-            "name": "video_stream_info",
+            "name": "stream_info",
             "type": "eta.core.types.VideoStreamInfo",
             "description": "The video stream info",
             "required": true
