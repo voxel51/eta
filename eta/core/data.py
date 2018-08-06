@@ -284,7 +284,6 @@ class DataRecords(DataContainer):
         '''
         if record_cls:
             self._ELE_CLS = record_cls
-        print(self._ELE_CLS)
         super(DataRecords, self).__init__(**kwargs)
 
     def add_dict(self, d, record_cls=None):
@@ -408,11 +407,10 @@ class DataRecords(DataContainer):
         '''Constructs a DataRecords object from a JSON file.'''
         return cls.from_dict(etas.read_json(json_path), record_cls)
 
-    @classmethod
-    def get_record_cls(cls):
+    def get_record_cls(self):
         '''Returns the current set class that will be used to instantiate
         records.'''
-        return cls._ELE_CLS
+        return self._ELE_CLS
 
     @classmethod
     def set_record_cls(cls, record_cls):
@@ -423,8 +421,7 @@ class DataRecords(DataContainer):
         ''' Create a new DataRecords instance with the same settings as this
         one, and populate it with only those entries from arg indices.
         '''
-        newdr = DataRecords()
-        newdr.set_record_cls(self.get_record_cls())
+        newdr = DataRecords(record_cls=self.get_record_cls())
         newdr.records = \
             [r for (i, r) in enumerate(self.records) if i in indices]
         return newdr
