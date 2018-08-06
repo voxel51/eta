@@ -84,8 +84,7 @@ class BlockdiagFile(object):
         '''Exports the file as a BlockdiagGroup.
 
         Args:
-            kwargs: an optional dictionary of key = value attributes to add to
-                the returned group.
+            **kwargs: optional attributes to add to the group
         '''
         group = copy.deepcopy(self._file)
         group.name = GROUP_NAME  # downgrade from top-level to nested group
@@ -105,7 +104,7 @@ class BlockdiagPipeline(BlockdiagFile):
     '''Class representing a pipeline as a blockdiag file.'''
 
     def __init__(self, name):
-        '''Creates a new block diagram pipeline.
+        '''Creates a BlockdiagPipeline instance.
 
         Args:
             name: the name of the pipeline
@@ -125,10 +124,10 @@ class BlockdiagPipeline(BlockdiagFile):
         self.add_element(self._modules)
 
     def add_module(self, name, blockdiag_module):
-        '''Adds the module to the pipeline.
+        '''Adds a module to the pipeline.
 
         Args:
-            name: a unique name for the module
+            name: the name of the module in the pipeline
             blockdiag_module: a BlockdiagModule instance
         '''
         group = blockdiag_module.export(color=MODULE_COLOR)
@@ -140,18 +139,17 @@ class BlockdiagPipeline(BlockdiagFile):
         '''Adds an input to the pipeline.
 
         Args:
-            name (str): the input name
+            name: the input name
         '''
         node = BlockdiagNode(
-            name, shape="cloud", height=NODE_HEIGHT,
-            width=_node_extent(name))
+            name, shape="cloud", height=NODE_HEIGHT, width=_node_extent(name))
         self._inputs.add_element(node)
 
     def add_output(self, name):
         '''Adds an output to the pipeline.
 
         Args:
-            name (str): the output name
+            name: the output name
         '''
         node = BlockdiagNode(
             name, shape="cloud", height=NODE_HEIGHT,
@@ -159,29 +157,27 @@ class BlockdiagPipeline(BlockdiagFile):
         self._outputs.add_element(node)
 
     def add_connection(self, source, sink):
-        '''Adds a connection (directed edge) between the given nodes.
+        '''Adds a connection between the given nodes.
 
         Args:
-            source (PipelineNode): the source of the edge
-            sink (PipelineNode): the sink of the edge
+            source: the source PipelineNode
+            sink: the sink PipelineNode
         '''
-        # Apply name prefixes
         src = source.node
         snk = sink.node
         if source.is_module_input or source.is_module_output:
             src = self._get_prefix(source.module) + src
         if sink.is_module_input or sink.is_module_output:
             snk = self._get_prefix(sink.module) + snk
-
         edge = BlockdiagDirectedEdge(src, snk)
         self._connections.add_element(edge)
 
-    def _get_prefix(self, module_name):
+    def _get_prefix(self, name):
         try:
-            prefix = self._module_prefixes[module_name]
+            prefix = self._module_prefixes[name]
         except KeyError:
             prefix = "%d." % (len(self._module_prefixes) + 1)
-            self._module_prefixes[module_name] = prefix
+            self._module_prefixes[name] = prefix
 
         return prefix
 
@@ -311,8 +307,7 @@ class BlockdiagGroup(BlockdiagContainer):
         Args:
             is_top_level: whether this is the top-level blockdiag group or a
                 nested group
-            **kwargs: an optional dictionary of key = value attributes for
-                the group
+            **kwargs: optional attributes for the group
         '''
         super(BlockdiagGroup, self).__init__()
         self.name = TOP_LEVEL_NAME if is_top_level else GROUP_NAME
@@ -323,7 +318,7 @@ class BlockdiagGroup(BlockdiagContainer):
         '''Adds the given attributes to the group.
 
         Args:
-            kwwargs: a dictionary of key = value attributes
+            **kwargs: the attributes to add to the group
         '''
         for k, v in iteritems(kwargs):
             self.attributes.append(BlockdiagAttribute(k, v))
@@ -380,7 +375,7 @@ class BlockdiagAttribute(BlockdiagElement):
     '''A key = value attribute element.'''
 
     def __init__(self, key, value):
-        '''Creates a new key = value block diagram attribute
+        '''Creates a new block diagram attribute
 
         Args:
             key: the attribute key
@@ -402,7 +397,7 @@ class BlockdiagNode(BlockdiagElement):
         Args:
             name: the name of the node
             *args: optional non-keyword arguments for the node
-            **kwargs: optional key = value attributes for the node
+            **kwargs: optional attributes for the node
         '''
         self.name = name
         self.args = list(args)
