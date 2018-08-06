@@ -196,6 +196,7 @@ def communicate(args, decode=False):
         out: the command's stdout
         err: the command's stderr
     '''
+    logger.debug("Excuting '%s'", " ".join(args))
     p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = p.communicate()
     if decode:
