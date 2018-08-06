@@ -53,20 +53,19 @@ class DataConfig(Config):
         video (eta.core.types.Video): The input video
 
     Outputs:
-        video_stream_info (eta.core.types.VideoStreamInfo): The video stream
-            info
+        stream_info (eta.core.types.VideoStreamInfo): The video stream info
     '''
 
     def __init__(self, d):
         self.video = self.parse_string(d, "video")
-        self.video_stream_info = self.parse_string(d, "video_stream_info")
+        self.stream_info = self.parse_string(d, "stream_info")
 
 
 def _get_stream_info(stream_info_config):
     for data_config in stream_info_config.data:
         logger.info("Reading stream info for %s", data_config.video)
         vsi = etav.VideoStreamInfo.build_for(data_config.video)
-        vsi.write_json(data_config.video_stream_info)
+        vsi.write_json(data_config.stream_info)
 
 
 def run(config_path, pipeline_config_path=None):
