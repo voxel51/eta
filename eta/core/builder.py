@@ -53,8 +53,7 @@ class PipelineBuildRequestConfig(Config):
         self.outputs = self.parse_dict(d, "outputs", default={})
         self.parameters = self.parse_dict(d, "parameters", default={})
         self.logging_config = self.parse_object(
-            d, "logging_config", etal.LoggingConfig,
-            default=etal.LoggingConfig.default())
+            d, "logging_config", etal.LoggingConfig, default=None)
 
 
 class PipelineBuildRequest(Configurable):
@@ -77,6 +76,7 @@ class PipelineBuildRequest(Configurable):
         outputs: a dictionary mapping output names to output paths (if any)
         parameters: a dictionary mapping <module>.<parameter> names to
             parameter values
+        logging_config: the LoggingConfig for the pipeline (if any)
     '''
 
     def __init__(self, config):
@@ -306,13 +306,18 @@ class PipelineBuilder(object):
                     .validate())
 
         # Handle logging
-        logging_config = copy.deepcopy(self.request.logging_config)
-        if logging_config.filename:
-            # Accept the provided logfile location
-            self.pipeline_logfile_path = logging_config.filename
+        if self.request.logging_config is not None:
+            logging_config = copy.deepcopy(self.request.logging_config)
+            if logging_config.filename:
+                # Accept the provided logfile location
+                self.pipeline_logfile_path = logging_config.filename
+            else:
+                # Generate a pipeline log in our automated location
+                logging_config.filename = self.pipeline_logfile_path
         else:
-            # Generate a pipeline log in our automated location
-            logging_config.filename = self.pipeline_logfile_path
+            logging_config = (etal.LoggingConfig.builder()
+                .set(filename=self.pipeline_logfile_path)
+                .validate())
 
         # Build pipeline config
         pipeline_config_builder = (etap.PipelineConfig.builder()
