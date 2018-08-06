@@ -258,7 +258,7 @@ class PipelineMetadataConfig(Config):
         self.info = self.parse_object(d, "info", PipelineInfoConfig)
         self.inputs = self.parse_array(d, "inputs")
         self.outputs = self.parse_array(d, "outputs")
-        self.modules = self.parse_object_array(
+        self.modules = self.parse_object_dict(
             d, "modules", PipelineModuleConfig)
         self.connections = self.parse_object_array(
             d, "connections", PipelineConnectionConfig)
@@ -463,16 +463,17 @@ class PipelineModule(Configurable):
         - the parameter is set by the pipeline
 
     Attributes:
-        name: the name of the module
+        name: the name of the module in the pipeline
         metadata: the ModuleMetadata instance for the module
         parameters: a dictionary mapping <module>.<parameter> strings to
             PipelineParameter instances describing the active parameters
     '''
 
-    def __init__(self, config):
+    def __init__(self, name, config):
         '''Creates a PipelineModule instance.
 
         Args:
+            name: a name for the module
             config: a PipelineModuleConfig instance
 
         Raises:
@@ -481,7 +482,7 @@ class PipelineModule(Configurable):
         '''
         self.validate(config)
 
-        self.name = config.name
+        self.name = name
         self.metadata = etam.load_metadata(config.name)
         self.parameters = {}
 
@@ -502,7 +503,7 @@ class PipelineModule(Configurable):
             if param.is_required and not is_active:
                 raise PipelineMetadataError(
                     "Required parameter '%s' of module '%s' must be set or "
-                    "exposed as tunable" % (pname, self.name))
+                    "exposed as tunable" % (pname, self.metadata.info.name))
 
             # Record active parameter
             if is_active:
@@ -515,21 +516,22 @@ class PipelineModule(Configurable):
         for name in param_names:
             if not self.metadata.has_parameter(name):
                 raise PipelineMetadataError(
-                    "Module '%s' has no parameter '%s'" % (self.name, name))
+                    "Module '%s' has no parameter '%s'" % (
+                        self.metadata.info.name, name))
 
     def _verify_parameter_values(self, param_dict):
         for name, val in iteritems(param_dict):
             if not self.metadata.is_valid_parameter(name, val):
                 raise PipelineMetadataError(
                     "'%s' is an invalid value for parameter '%s' of module "
-                    "'%s'" % (val, name, self.name))
+                    "'%s'" % (val, name, self.metadata.info.name))
 
 
 class PipelineNode(object):
     '''Class representing a node in a pipeline.
 
     Attributes:
-        module: the module name
+        module: the module name, or INPUT or OUTPUT for pipeline endpoints
         node: the node name
     '''
 
@@ -739,7 +741,7 @@ class PipelineMetadata(Configurable, HasBlockDiagram):
     def to_blockdiag(self):
         '''Returns a BlockdiagPipeline representation of this pipeline.'''
         bp = BlockdiagPipeline(self.info.name)
-        for name in self.execution_order:  # iterate in order of execution
+        for name in self.execution_order:
             bp.add_module(name, self.modules[name].metadata.to_blockdiag())
         for n in self.nodes:
             if n.is_pipeline_input:
@@ -762,9 +764,9 @@ class PipelineMetadata(Configurable, HasBlockDiagram):
         self.info = PipelineInfo(config.info)
 
         # Parse modules
-        for module_config in config.modules:
-            module = PipelineModule(module_config)
-            self.modules[module.name] = module
+        for name, module_config in iteritems(config.modules):
+            module = PipelineModule(name, module_config)
+            self.modules[name] = module
             self.parameters.update(module.parameters)
 
         # Parse connections
@@ -993,8 +995,7 @@ def _parse_pipeline_node_str(node_str, inputs, outputs, modules):
         node_str: a string of the form <module>.<node>
         inputs: a list of pipeline inputs
         outputs: a list of pipeline outputs
-        modules: a dictionary mapping module names to PipelineModule
-            instances
+        modules: a dictionary mapping module names to PipelineModule instances
 
     Returns:
         a PipelineNode instance describing the node
@@ -1039,8 +1040,7 @@ def _create_node_connection(source, sink, modules):
     Args:
         source: the source PipelineNode
         sink: the sink PipelineNode
-        modules: a dictionary mapping module names to PipelineModule
-            instances
+        modules: a dictionary mapping module names to PipelineModule instances
 
     Returns:
         a PipelineConnection instance describing the connection
