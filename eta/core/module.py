@@ -608,6 +608,10 @@ class ModuleMetadata(Configurable, HasBlockDiagram):
             self.parameters[p.name] = ModuleParameter(p)
 
     def _verify_uniqueness(self, name):
+        if name == self.info.name:
+            raise ModuleMetadataError(
+                "Module '%s' cannot have a field with the same name" % name)
+
         is_duplicate = (
             name in self.inputs or
             name in self.outputs or
