@@ -6,22 +6,22 @@
         "description": "A pipeline for getting stream info for videos"
     },
     "inputs": ["video"],
-    "outputs": ["video_stream_info"],
-    "modules": [
-        {
+    "outputs": ["stream_info"],
+    "modules": {
+        "video_stream_info": {
             "name": "video_stream_info",
             "tunable_parameters": [],
             "set_parameters": {}
         }
-    ],
+    },
     "connections": [
         {
             "source": "INPUT.video",
             "sink": "video_stream_info.video"
         },
         {
-            "source": "video_stream_info.video_stream_info",
-            "sink": "OUTPUT.video_stream_info"
+            "source": "video_stream_info.stream_info",
+            "sink": "OUTPUT.stream_info"
         }
     ]
 }
