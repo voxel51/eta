@@ -46,11 +46,13 @@ class HasBlockDiagram(object):
         '''Returns a BlockdiagFile representation of the instance.'''
         raise NotImplementedError("subclass must implement to_blockdiag()")
 
-    def render(self, path):
+    def render(self, path, keep_diag_file=False):
         '''Render the block diagram as an SVG image.
 
         Args:
             path: the output path, which should have extension ".svg"
+            keep_diag_file: whether to keep the .diag file (True) or delete it
+                after the SVG is generated (False). The default is False
         '''
         # Parse path
         base, ext = os.path.splitext(path)
@@ -59,14 +61,19 @@ class HasBlockDiagram(object):
         if ext != ".svg":
             logger.warning("Replacing extension of '%s' with '.svg'", path)
 
-        # Generate block diagram
-        logger.info("Generating blockdiag file '%s'", blockdiag_path)
+        # Generate .diag
+        if keep_diag_file:
+            logger.info("Generating blockdiag file '%s'", blockdiag_path)
         self.to_blockdiag().write(blockdiag_path)
 
-        # Render SVG
-        logger.info("Rendering block diagram image '%s'", svg_path)
-        args = [EXECUTABLE, "-Tsvg", "-o", svg_path, blockdiag_path]
-        etau.communicate_or_die(args)
+        try:
+            # Render .svg
+            logger.info("Rendering block diagram image '%s'", svg_path)
+            args = [EXECUTABLE, "-Tsvg", "-o", svg_path, blockdiag_path]
+            etau.communicate_or_die(args)
+        finally:
+            if not keep_diag_file:
+                etau.delete_file(blockdiag_path)
 
 
 class BlockdiagFile(object):
