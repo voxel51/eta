@@ -70,7 +70,7 @@ class PipelineBuildRequest(Configurable):
     that are `None` must be optional in order for the request to be valid.
 
     Attributes:
-        pipeline: the pipeline to run
+        pipeline: the name of the pipeline to run
         metadata: the PipelineMetadata instance for the pipeline
         inputs: a dictionary mapping input names to input paths
         outputs: a dictionary mapping output names to output paths (if any)
@@ -300,7 +300,6 @@ class PipelineBuilder(object):
             jobs.append(
                 etaj.JobConfig.builder()
                     .set(name=module)
-                    .set(working_dir=".")
                     .set(script=etam.find_exe(metadata))
                     .set(config_path=self._get_module_config_path(module))
                     .validate())
@@ -322,7 +321,6 @@ class PipelineBuilder(object):
         # Build pipeline config
         pipeline_config_builder = (etap.PipelineConfig.builder()
             .set(name=self.request.pipeline)
-            .set(working_dir=".")
             .set(status_path=self.pipeline_status_path)
             .set(overwrite=False)
             .set(jobs=jobs)
