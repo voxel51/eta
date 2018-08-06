@@ -127,7 +127,7 @@ class JobConfig(Config):
 
     def __init__(self, d):
         self.name = self.parse_string(d, "name", default="job")
-        self.working_dir = self.parse_string(d, "working_dir", default=".")
+        self.working_dir = self.parse_string(d, "working_dir", default=None)
         self.interpreter = self.parse_string(
             d, "interpreter", default="python")
         self.script = self.parse_string(d, "script", default=None)
