@@ -691,12 +691,14 @@ class WorkingDir(object):
         self._working_dir = working_dir
 
     def __enter__(self):
-        self._orig_dir = os.getcwd()
-        os.chdir(self._working_dir)
+        if self._working_dir:
+            self._orig_dir = os.getcwd()
+            os.chdir(self._working_dir)
         return self
 
     def __exit__(self, *args):
-        os.chdir(self._orig_dir)
+        if self._working_dir:
+            os.chdir(self._orig_dir)
 
 
 class ExecutableNotFoundError(Exception):
