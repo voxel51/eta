@@ -619,8 +619,8 @@ class ModuleMetadata(Configurable, HasBlockDiagram):
         )
         if is_duplicate:
             raise ModuleMetadataError(
-                "Duplicate field '%s' found for module '%s'" % (
-                    name, self.info.name))
+                "Module '%s' cannot have duplicate field '%s'" % (
+                    self.info.name, name))
 
 
 class ModuleMetadataError(Exception):
