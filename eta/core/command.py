@@ -240,7 +240,10 @@ class ModulesCommand(Command):
         # Find the metadata file for a module
         eta modules --find <module-name>
 
-        # Generate the metadata file a module
+        # Generate the block diagram for a module
+        eta modules --diagram <module-name>
+
+        # Generate the metadata file for a module
         eta modules --metadata '/path/to/eta_module.py'
     '''
 
@@ -252,6 +255,10 @@ class ModulesCommand(Command):
         parser.add_argument(
             "-f", "--find",
             help="find the metadata file for the module with the given name")
+        parser.add_argument(
+            "-d", "--diagram",
+            help="generate the block diagram for the module with the given "
+            "name")
         parser.add_argument(
             "-m", "--metadata",
             help="generate the metadata file for the given ETA module")
@@ -265,6 +272,10 @@ class ModulesCommand(Command):
         if args.find:
             metadata_path = etamodu.find_metadata(args.find)
             logger.info(metadata_path)
+
+        if args.diagram:
+            metadata = etamodu.load_metadata(args.diagram)
+            metadata.render("./" + args.diagram + ".svg")
 
         if args.metadata:
             logger.info(
@@ -281,6 +292,9 @@ class PipelinesCommand(Command):
 
         # Find the metadata file for a pipeline
         eta pipelines --find <pipeline-name>
+
+        # Generate the block diagram for a pipeline
+        eta pipelines --diagram <pipeline-name>
     '''
 
     @staticmethod
@@ -291,6 +305,10 @@ class PipelinesCommand(Command):
         parser.add_argument(
             "-f", "--find",
             help="find the metadata file for the pipeline with the given name")
+        parser.add_argument(
+            "-d", "--diagram",
+            help="generate the block diagram for the module with the given "
+            "name")
 
     @staticmethod
     def run(args):
@@ -301,6 +319,10 @@ class PipelinesCommand(Command):
         if args.find:
             metadata_path = etap.find_metadata(args.find)
             logger.info(metadata_path)
+
+        if args.diagram:
+            metadata = etap.load_metadata(args.diagram)
+            metadata.render("./" + args.diagram + ".svg")
 
 
 def _render_names_in_dirs_str(d):
