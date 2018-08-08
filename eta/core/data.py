@@ -19,6 +19,7 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+from collections import defaultdict
 import os
 
 from eta.core.config import no_default
@@ -308,57 +309,44 @@ class DataRecords(DataContainer):
         return len(self.records)
 
     def add_json(self, json_path, record_cls=None):
-        ''' Adds the contents from the records json_path into this
-        container.'''
+        '''Adds the contents from the records json_path into this container.'''
         return self.add_dict(etas.read_json(json_path), record_cls)
 
     def build_keyset(self, field):
-        ''' Builds a list of unique values present across records in `field`.
+        '''Returns a list of unique values of `field` across the records in
+        the container.
         '''
         keys = set()
         for r in self.records:
-            keys.add(getattr(self.records, field))
+            keys.add(getattr(r, field))
         return list(keys)
 
     def build_lookup(self, field):
-        ''' Builds a lookup dictionary, indexed by field, that has entries as
-        lists of indices within this records container based on field.
+        '''Builds a lookup dictionary indexed by `field` whose values are
+        the indices of the records whose `field` attribute is the corresponding
+        key.
         '''
-        lud = {}
-
+        lud = defaultdict(list)
         for i, r in enumerate(self.records):
-            attr = getattr(r, field)
-            if attr in lud:
-                lud[attr].append(i)
-            else:
-                lud[attr] = [i]
-
-        return lud
+            lud[getattr(r, field)].append(i)
+        return dict(lud)
 
     def build_subsets(self, field):
-        ''' Builds a dictionary, indexed by `field`, that has entries as lists
-        of records.  Caution: this creates new dictionary entries based on the
-        individual values of field.
+        '''Builds a dictionary indexed by `field` whose values are the records
+        whose `field` attribute is the corresponding key.
         '''
-        sss = {}
-
+        sss = defaultdict(list)
         for r in self.records:
-            attr = getattr(r, field)
-            if attr in sss:
-                sss[attr].append(r)
-            else:
-                sss[attr] = [r]
-
-        return sss
+            sss[getattr(r, field)].append(r)
+        return dict(sss)
 
     def cull(self, field, values, keep_values=False):
-        ''' Cull records from our store based on the value in `field`.  If
+        '''Cull records from our store based on the value in `field`. If
         `keep_values` is True then the list `values` specifies which records to
         keep; otherwise, it specifies which records to remove (the default).
 
         Returns the number of records after the operation.
         '''
-
         sss = self.build_subsets(field)
 
         if keep_values:
@@ -374,9 +362,7 @@ class DataRecords(DataContainer):
         return len(self.records)
 
     def slice(self, field):
-        ''' For `field`, build a list of the entries in the DataRecords
-        container.
-        '''
+        '''For `field`, build a list of the entries in the container.'''
         sss = []
         for r in self.records:
             sss.append(getattr(r, field))
@@ -385,46 +371,46 @@ class DataRecords(DataContainer):
     @classmethod
     def from_dict(cls, d, record_cls=None):
         '''Constructs the containers from a dictionary.
+
         The record_cls is needed to know what types of records we are talking
-        about.  However, it can be set also by changing the static class
+        about. However, it can be set also by changing the static class
         variable via DataRecords.set_record_cls(record_cls).  This one passed
         to from_dict will override the static class variable.  But, one needs
         to be set.
         '''
-        rc = record_cls
-        if rc is None:
-            rc = cls._ELE_CLS
-
+        rc = record_cls or cls._ELE_CLS
         if rc is None:
             raise DataRecordsError(
                 "Need record_cls to load a DataRecords object")
-        return DataRecords(records=[rc.from_dict(dc) for dc in d["records"]],
-            record_cls=record_cls)
+
+        return DataRecords(
+            record_cls=rc,
+            records=[rc.from_dict(dc) for dc in d["records"]])
 
     @classmethod
     def from_json(cls, json_path, record_cls=None):
-        print(record_cls)
         '''Constructs a DataRecords object from a JSON file.'''
         return cls.from_dict(etas.read_json(json_path), record_cls)
 
-    def get_record_cls(self):
-        '''Returns the current set class that will be used to instantiate
-        records.'''
-        return self._ELE_CLS
+    @classmethod
+    def get_record_cls(cls):
+        '''Returns the current class that will be used by this container to
+        instantiate records.
+        '''
+        return cls._ELE_CLS
 
     @classmethod
     def set_record_cls(cls, record_cls):
-        '''Sets the class that will be used to instantiate records.'''
+        '''Sets the class to use when instantiating records.'''
         cls._ELE_CLS = record_cls
 
     def subset_from_indices(self, indices):
-        ''' Create a new DataRecords instance with the same settings as this
-        one, and populate it with only those entries from arg indices.
+        '''Create a new DataRecords instance containing only the subset of
+        records in this container with the specified indices.
         '''
-        newdr = DataRecords(record_cls=self.get_record_cls())
-        newdr.records = \
-            [r for (i, r) in enumerate(self.records) if i in indices]
-        return newdr
+        return DataRecords(
+            record_cls=self.get_record_cls(),
+            records=[r for i, r in enumerate(self.records) if i in indices])
 
 
 class DataRecordsError(Exception):
@@ -539,8 +525,7 @@ class LabeledVideoRecord(BaseDataRecord):
         self.video_path = video_path
         self.label = label
         self.group = group
-
-        self.clean_optional()
+        super(LabeledVideoRecord, self).__init__()
 
     @classmethod
     def optional(cls):
