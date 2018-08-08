@@ -125,6 +125,10 @@ class DetectedObject(Serializable, HasBoundingBox):
         self.attrs = attrs or ObjectAttributeContainer()
         self._meta = None  # Usable by clients to store temporary metadata
 
+    def get_bounding_box(self):
+        '''Returns the bounding box for the object.'''
+        return self.bounding_box
+
     def add_attribute(self, attr):
         '''Adds an attribute to the object.
 
@@ -132,16 +136,6 @@ class DetectedObject(Serializable, HasBoundingBox):
             attr: an ObjectAttribute instance
         '''
         self.attrs.add(attr)
-
-    def extract_from(self, img, force_square=False):
-        '''Extracts the subimage containing this object from the image.
-
-        Args:
-            img: an image
-            force_square: whether to (minimally) manipulate the object bounding
-                box during extraction so that the returned subimage is square
-        '''
-        return self.bounding_box.extract_from(img, force_square=force_square)
 
     def attributes(self):
         '''Returns the list of attributes to serialize.
@@ -182,10 +176,6 @@ class DetectedObject(Serializable, HasBoundingBox):
             index_in_frame=d.get("index_in_frame", None),
             attrs=attrs,
         )
-
-    def get_bounding_box(self):
-        '''Returns the bounding box contained in the instance.'''
-        return self.bounding_box
 
 
 class DetectedObjectContainer(DataContainer):

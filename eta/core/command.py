@@ -130,17 +130,14 @@ class BuildPipeline(Command):
         builder.build()
 
         if args.run_now or args.dry_run:
-            # Run pipeline now
-            RunPipeline.run(
-                argparse.Namespace(config=builder.pipeline_config_path))
+            # Run pipeline
+            logger.info("Running pipeline '%s'", request.pipeline)
+            builder.run()
 
         if args.dry_run:
             # Cleanup pipeline files
-            logger.info("***** Dry run complete *****")
-            logger.info("Deleting config directory '%s'", builder.config_dir)
-            etau.delete_dir(builder.config_dir)
-            logger.info("Deleting output directory '%s'", builder.output_dir)
-            etau.delete_dir(builder.output_dir)
+            logger.info("Dry run complete; cleaning up")
+            builder.cleanup()
 
 
 class GenerateMetadata(Command):
