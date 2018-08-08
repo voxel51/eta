@@ -260,6 +260,8 @@ class PipelineMetadataConfig(Config):
         self.outputs = self.parse_array(d, "outputs")
         self.modules = self.parse_object_dict(
             d, "modules", PipelineModuleConfig)
+        self.pipelines = self.parse_object_dict(
+            d, "pipelines", NestedPipelineConfig)
         self.connections = self.parse_object_array(
             d, "connections", PipelineConnectionConfig)
 
@@ -276,6 +278,15 @@ class PipelineInfoConfig(Config):
 
 class PipelineModuleConfig(Config):
     '''Pipeline module configuration class.'''
+
+    def __init__(self, d):
+        self.name = self.parse_string(d, "name")
+        self.tunable_parameters = self.parse_array(d, "tunable_parameters")
+        self.set_parameters = self.parse_dict(d, "set_parameters")
+
+
+class NestedPipelineConfig(Config):
+    '''Nested pipeline configuration class.'''
 
     def __init__(self, d):
         self.name = self.parse_string(d, "name")
@@ -634,6 +645,9 @@ class PipelineMetadata(Configurable, HasBlockDiagram):
             is not required
         - every *required* module parameter is either exposed to the end-user
             as tunable or is set by the pipeline
+
+        - @todo insert nested pipeline conditions
+
         - the module graph defined by the pipeline is acyclic
 
     Attributes:
@@ -644,6 +658,8 @@ class PipelineMetadata(Configurable, HasBlockDiagram):
             PipelineParameter instances describing the *active* module
             parameters of the pipeline
         modules: a dictionary mapping module names to PipelineModule instances
+        nested_pipelines: a dictionary mapping pipeline names to NestedPipeline
+            instances
         execution_order: a list of module names defining the order in which the
             modules should be executed
         nodes: a list of PipelineNode instances describing the sources and
@@ -668,6 +684,7 @@ class PipelineMetadata(Configurable, HasBlockDiagram):
         self.outputs = {}
         self.parameters = {}
         self.modules = {}
+        self.nested_pipelines = {}
         self.execution_order = []
         self.nodes = []
         self.connections = []
@@ -685,6 +702,10 @@ class PipelineMetadata(Configurable, HasBlockDiagram):
     def has_module(self, name):
         '''Returns True/False if the pipeline has a module `name`.'''
         return name in self.modules
+
+    def has_nested_pipeline(self, name):
+        '''Returns True/False if the pipeline has a nested pipeline `name`.'''
+        return name in self.nested_pipelines
 
     def has_tunable_parameter(self, param_str):
         '''Returns True/False if this pipeline has tunable parameter
