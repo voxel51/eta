@@ -308,6 +308,14 @@ class Container(Serializable):
         '''
         self.__elements__.append(instance)
 
+    def add_container(self, container):
+        '''Adds the elements in the given container to this container.
+
+        Args:
+            container: a Container instance
+        '''
+        self.__elements__.extend(container.__elements__)
+
     def delete_inds(self, inds):
         '''Deletes the elements from the container with the given indices.
 
