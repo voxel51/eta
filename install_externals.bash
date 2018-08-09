@@ -133,14 +133,17 @@ MSG "Installing Python packages"
 CRITICAL pip install -r requirements.txt
 
 
-# Tensorflow is also a requirement, but it depends on the GPU, so we install
-# that explicitly
+# Tensorflow
 MSG "Installing TensorFlow"
 if [ "${GCARD}" == "ON" ]; then
     CRITICAL pip install --upgrade tensorflow-gpu
 else
     CRITICAL pip install --upgrade tensorflow
 fi
+
+
+# OpenCV
+CRITICAL pip install --upgrade opencv-python
 
 
 # ffmpeg
@@ -177,10 +180,6 @@ else
         fi
     fi
 fi
-
-
-# OpenCV
-CRITICAL pip install --upgrade opencv-python
 
 
 EXIT "INSTALLATION COMPLETE"
