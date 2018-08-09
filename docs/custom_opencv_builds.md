@@ -2,10 +2,13 @@
 
 The ETA codebase supports both OpenCV 2.4+ and OpenCV 3.0+. By default, the
 `install_externals.bash` script installs a pre-built OpenCV package via
-`pip install opencv-python`.
+`pip install opencv-python`. However, one can build a custom OpenCV
+installation if desired.
 
-However, one can build a custom OpenCV installation if desired. For example,
-configure the following environment variables:
+
+## Installing OpenCV
+
+Configure the following environment variables:
 
 ```bash
 # the OpenCV version to install
@@ -22,8 +25,8 @@ GLOBAL_ENV=/usr/local
 EXTDIR=/path/to/eta/external
 ```
 
-and then execute the following bash snippet will download, build, and make a custom OpenCV
-installation:
+and then execute the following bash snippet to download, build, and make a
+custom OpenCV installation:
 
 ```bash
 if [ ! -z "${VIRTUAL_ENV}" ]; then
@@ -96,3 +99,34 @@ else
         sudo make -j8 install
     fi
 fi
+```
+
+
+## Symlinking an OpenCV installation
+
+You can symlink an existing globally-installed OpenCV distribution on your
+machine into a virtual environment. For example:
+
+```shell
+GLOBAL="/usr/local/lib/python2.7/site-packages"
+VIRTUAL="/path/to/virtual/env/lib/python2.7/site-packages"
+ln -s "${GLOBAL}/cv.py" "${VIRTUAL}/cv.py"
+ln -s "${GLOBAL}/cv2.so" "${VIRTUAL}/cv2.so"
+```
+
+
+## Uninstalling OpenCV
+
+Follow these instructions to uninstall OpenCV.
+
+* Navigate to the directory from which `cmake` was run to install OpenCV:
+
+```shell
+cd "${VIRTUAL_ENV}/opencv-${OPENCV_VERSION}/release"
+```
+
+* Run the uninstaller:
+
+```shell
+sudo make uninstall
+```
