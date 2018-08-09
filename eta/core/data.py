@@ -254,28 +254,22 @@ class DataRecords(DataContainer):
 
     _ELE_ATTR = "records"
     _ELE_CLS_FIELD = "_RECORD_CLS"
-    _ELE_CLS = None  # this is modified per-instance by DataRecords
+    _ELE_CLS = None  # this is set per-instance for DataRecords
 
-    def __init__(self, record_cls=None, **kwargs):
+    def __init__(self, record_cls, **kwargs):
         '''Creates a `DataRecords` instance.
 
         Args:
-            record_cls: an optional records class to use for this container
+            record_cls: the records class to use for this container
             records: an optional list of records to add to the container
         '''
-        if record_cls:
-            self._ELE_CLS = record_cls
+        self._ELE_CLS = record_cls
         super(DataRecords, self).__init__(**kwargs)
 
     @property
     def record_cls(self):
         '''Returns the class of records in the container.'''
         return self._ELE_CLS
-
-    @record_cls.setter
-    def record_cls(self, record_cls):
-        '''Sets the record class for the container.'''
-        self._ELE_CLS = record_cls
 
     def add_dict(self, d, record_cls=None):
         '''Adds the records in the dictionary to the container.
