@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
 # Install external dependencies
 #
-# @todo Installing OpenCV 2 in a virtual environment doesn't seem to work. The
-#       cv2.so file can't find the dylibs, even though they exist...
-#
 # Copyright 2017-2018, Voxel51, LLC
 # voxel51.com
 #
@@ -13,15 +10,10 @@
 
 # Show usage information
 usage() {
-    echo "Usage:  bash $0 [-h] [-e dir] [-v ver] [-u] [-bp]
+    echo "Usage:  bash $0 [-h] [-bp]
 
 Getting help:
 -h      Display this help message.
-
-OpenCV options:
--e dir  Install OpenCV in the virtual environment defined in the given
-        directory. By default, OpenCV is installed globally in /usr/local.
--v ver  A specific OpenCV version to install. The default is 3.3.0.
 
 Mac-only options:
 -b      Use brew to install packages (mac only). The default is false.
@@ -32,15 +24,10 @@ Mac-only options:
 
 # Parse flags
 SHOW_HELP=false
-VIRTUAL_ENV=""
-GLOBAL_ENV="/usr/local"
-OPENCV_VERSION="3.3.0"
 USE_MACPORTS=true
 while getopts "he:v:bp" FLAG; do
     case "${FLAG}" in
         h) SHOW_HELP=true ;;
-        e) VIRTUAL_ENV="${OPTARG}" ;;
-        v) OPENCV_VERSION="${OPTARG}" ;;
         b) USE_MACPORTS=false ;;
         p) USE_MACPORTS=true ;;
         *) usage ;;
@@ -193,78 +180,7 @@ fi
 
 
 # OpenCV
-if [ ! -z "${VIRTUAL_ENV}" ]; then
-    # Check for existing installation in virtual environment
-    PKG_CONFIG_PATH="${VIRTUAL_ENV}/lib/pkgconfig"
-else
-    # Check for existing global installation
-    PKG_CONFIG_PATH="${GLOBAL_ENV}/lib/pkgconfig"
-fi
-CURR_VER=$(pkg-config --modversion opencv)
-if [ $? -eq 0 ]; then
-    MSG "OpenCV ${CURR_VER} already installed"
-
-    if [ "${CURR_VER}" != "${OPENCV_VERSION}" ]; then
-        WARN "Found OpenCV ${CURR_VER}, but you requested ${OPENCV_VERSION}"
-        WARN "To uninstall ${OPENCV_VERSION}, navigate to the directory where"
-        WARN "OpenCV was built and run \"sudo make uninstall\""
-    fi
-else
-    MSG "Installing OpenCV ${OPENCV_VERSION}"
-
-    # Download source
-    if [ ! -z "${VIRTUAL_ENV}" ]; then
-        # Write source to virtual environment directory
-        cd "${VIRTUAL_ENV}"
-    else
-        # Write source to eta/externals directory
-        cd "${EXTDIR}"
-    fi
-    URL="https://github.com/opencv/opencv/archive/${OPENCV_VERSION}.zip"
-    MSG "Downloading OpenCV source from ${URL}"
-    CRITICAL wget -nv "${URL}"
-    CRITICAL unzip "${OPENCV_VERSION}.zip"
-    rm -rf "${OPENCV_VERSION}.zip"
-    mkdir "opencv-${OPENCV_VERSION}/release"
-    cd "opencv-${OPENCV_VERSION}/release"
-
-    # Setup build
-    if [ ! -z "${VIRTUAL_ENV}" ]; then
-        # Install in a virtual environment
-        # This function is needed because Python 2/3 have slightly different
-        # naming conventions for these folders...
-        pydir() { ls -d "${1}/python"* | head -1; }
-        PYTHON_EXECUTABLE="${VIRTUAL_ENV}/bin/python"
-        PYTHON_INCLUDE_DIR="$(pydir "${VIRTUAL_ENV}/include")"
-        PYTHON_LIBRARY="$(pydir "${VIRTUAL_ENV}/lib")"
-        PYTHON_PACKAGES_PATH="$(pydir "${VIRTUAL_ENV}/lib")/site-packages"
-
-        CRITICAL cmake \
-            -D CMAKE_BUILD_TYPE=RELEASE \
-            -D CMAKE_INSTALL_PREFIX="${VIRTUAL_ENV}" \
-            -D PYTHON_EXECUTABLE="${PYTHON_EXECUTABLE}" \
-            -D PYTHON_INCLUDE_DIR="${PYTHON_INCLUDE_DIR}" \
-            -D PYTHON_LIBRARY="${PYTHON_LIBRARY}" \
-            -D PYTHON_PACKAGES_PATH="${PYTHON_PACKAGES_PATH}" \
-            -D BUILD_PYTHON_SUPPORT=ON \
-            -D WITH_CUDA="${GCARD}" ..
-
-        CRITICAL make -j8
-        CRITICAL make -j8 install
-    else
-        # Install globally
-        CRITICAL cmake \
-            -D CMAKE_BUILD_TYPE=RELEASE \
-            -D CMAKE_INSTALL_PREFIX="${GLOBAL_ENV}" \
-            -D BUILD_PYTHON_SUPPORT=ON \
-            -D WITH_CUDA="${GCARD}" ..
-
-        CRITICAL make -j8
-        CRITICAL sudo make -j8 install
-    fi
-
-    cd "${CWD}"
-fi
+CRITICAL pip install --upgrade opencv-python
 
 
 EXIT "INSTALLATION COMPLETE"
