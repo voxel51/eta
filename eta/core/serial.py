@@ -19,6 +19,7 @@ from builtins import *
 # pragma pylint: enable=wildcard-import
 
 from collections import OrderedDict
+import copy
 import datetime as dt
 import dill as pickle
 import json
@@ -308,6 +309,14 @@ class Container(Serializable):
         '''
         self.__elements__.append(instance)
 
+    def add_container(self, container):
+        '''Adds the elements in the given container to this container.
+
+        Args:
+            container: a Container instance
+        '''
+        self.__elements__.extend(container.__elements__)
+
     def delete_inds(self, inds):
         '''Deletes the elements from the container with the given indices.
 
@@ -316,6 +325,29 @@ class Container(Serializable):
         '''
         for idx in sorted(inds, reverse=True):
             del self.__elements__[idx]
+
+    def keep_inds(self, inds):
+        '''Keeps only the elements in the container with the given indices.
+
+        Args:
+            inds: a list of indices of the elements to keep
+        '''
+        elements = [e for i, e in enumerate(self.__elements__) if i in inds]
+        setattr(self, self._ELE_ATTR, elements)
+
+    def extract_inds(self, inds):
+        '''Creates a new container having only the elements with the given
+        indices.
+
+        Args:
+            inds: a list of indices of the elements to keep
+
+        Returns:
+            a Container
+        '''
+        container = copy.deepcopy(self)
+        container.keep_inds(inds)
+        return container
 
     def clear(self):
         '''Deletes all elements from the container.'''

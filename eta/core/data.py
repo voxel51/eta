@@ -19,6 +19,7 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+from collections import defaultdict
 import os
 
 from eta.core.config import no_default
@@ -141,29 +142,19 @@ class DataFileSequence(etas.Serializable):
         self._iter_index = None
 
     def __getitem__(self, index):
-        '''Implements the get item interface to allow arbitrary access to the
-        paths in the sequence.
-        '''
         return self.gen_path(index)
 
     def __iter__(self):
-        '''Implements the iterable interface on the sequence of path names.'''
         self._iter_index = self._lower_bound - 1
         return self
 
     def __next__(self):
-        '''Implements the rest of the iterable interface.'''
-        if self._iter_index is None:
-            raise DataFileSequenceError("next called from outside iterable.")
-
         self._iter_index += 1
         if not self.check_bounds(self._iter_index):
             self._iter_index = None
             raise StopIteration
 
         return self.gen_path(self._iter_index)
-
-    next = __next__  # Python 2 compatibility for iteration
 
     @property
     def extension(self):
@@ -177,7 +168,7 @@ class DataFileSequence(etas.Serializable):
     def lower_bound(self, value):
         if self._immutable_bounds:
             raise DataFileSequenceError(
-                'Cannot set bounds for a sequence with `immutable_bounds`.')
+                "Cannot set bounds for a sequence with immutable bounds.")
         self._lower_bound = value
 
     @property
@@ -188,7 +179,7 @@ class DataFileSequence(etas.Serializable):
     def upper_bound(self, value):
         if self._immutable_bounds:
             raise DataFileSequenceError(
-                'Cannot set bounds for a sequence with `immutable_bounds`.')
+                "Cannot set bounds for a sequence with immutable_bounds.")
         self._upper_bound = value
 
     @property
@@ -203,17 +194,14 @@ class DataFileSequence(etas.Serializable):
         '''Checks if the index is within the bounds for this sequence.
 
         Returns:
-            True is index is valid.
+            True is index is valid
         '''
         if index < self.lower_bound or index > self.upper_bound:
             return False
         return True
 
     def gen_path(self, index):
-        '''Generate and return the path for the file at the index.
-
-        Does error-checking for sequence bounds.
-        '''
+        '''Generates and returns the path for the file at the index.'''
         if self._immutable_bounds:
             if not self.check_bounds(index):
                 raise DataFileSequenceError(
@@ -243,189 +231,182 @@ class DataFileSequence(etas.Serializable):
 
     @classmethod
     def build_from_dir(cls, dir_path):
-        '''Factory method to build a `DataFileSequence` given a directory
-        path.
-        '''
-        file_pattern, _ = etau.parse_dir_pattern(dir_path)
-        return cls(file_pattern)
+        '''Build a `DataFileSequence` for the given directory.'''
+        return cls(etau.parse_dir_pattern(dir_path)[0])
 
     @classmethod
     def build_from_pattern(cls, pattern):
-        '''Factory method to build a `DataFileSequence given a file pattern.
-
-        Note that this is just the standard way of constructing the class.
-        '''
+        '''Builds a `DataFileSequence` for the given file pattern.'''
         return cls(pattern)
 
 
 class DataFileSequenceError(Exception):
-    '''Error raised for out of bounds requests when working with
-    `DataFileSequence`s.
-    '''
+    '''Error raised when an invalid DataFileSequence is encountered.'''
     pass
 
 
 class DataRecords(DataContainer):
-    '''Container for data records.
+    '''Container class for data records.
 
     DataRecords is a generic container of records each having a value for
-    a certain set of fields.  A DataRecords is like a NOSQL database.
+    a certain set of fields.
     '''
 
     _ELE_ATTR = "records"
-    _ELE_CLS_FIELD = "_RECORDS_CLS"
-    _ELE_CLS = None
+    _ELE_CLS_FIELD = "_RECORD_CLS"
+    _ELE_CLS = None  # this is set per-instance for DataRecords
 
-    def __init__(self, record_cls=None, **kwargs):
-        '''Instantiate a `DataRecords` instance using the element cls given.
+    def __init__(self, record_cls, **kwargs):
+        '''Creates a `DataRecords` instance.
 
-        This functionality adds more flexibility than standard eta
-        `Containers`, which require the element class to be set statically.
+        Args:
+            record_cls: the records class to use for this container
+            records: an optional list of records to add to the container
         '''
-        if record_cls:
-            self._ELE_CLS = record_cls
+        self._ELE_CLS = record_cls
         super(DataRecords, self).__init__(**kwargs)
 
+    @property
+    def record_cls(self):
+        '''Returns the class of records in the container.'''
+        return self._ELE_CLS
+
     def add_dict(self, d, record_cls=None):
-        '''Adds the contents in d to this container.
+        '''Adds the records in the dictionary to the container.
 
-        Returns the new size of the container.
+        Args:
+            d: a DataRecords dictionary
+            record_cls: an optional records class to use when parsing the
+                records dictionary. If None, the _ELE_CLS class of this
+                instance is used
+
+        Returns:
+            the number of elements in the container
         '''
-        rc = record_cls
-        if rc is None:
-            rc = self._ELE_CLS
-
-        if rc is None:
-            raise DataRecordsError(
-                "Need record_cls to add a DataRecords object")
-
-        dr = DataRecords(
-            self._ELE_CLS,
-            records=[rc.from_dict(dc) for dc in d["records"]]
-        )
-        self.records += dr.records
-
-        return len(self.records)
+        rc = record_cls or self._ELE_CLS
+        self.add_container(self.from_dict(d, record_cls=rc))
+        return len(self)
 
     def add_json(self, json_path, record_cls=None):
-        ''' Adds the contents from the records json_path into this
-        container.'''
-        return self.add_dict(etas.read_json(json_path), record_cls)
+        '''Adds the records in the JSON file to the container.
+
+        Args:
+            json_path: the path to a DataRecords JSON file
+            record_cls: an optional records class to use when parsing the
+                records dictionary. If None, the _ELE_CLS class of this
+                instance is used
+
+        Returns:
+            the number of elements in the container
+        '''
+        rc = record_cls or self._ELE_CLS
+        self.add_container(self.from_json(json_path, record_cls=rc))
+        return len(self)
 
     def build_keyset(self, field):
-        ''' Builds a list of unique values present across records in `field`.
+        '''Returns a list of unique values of `field` across the records in
+        the container.
         '''
         keys = set()
-        for r in self.records:
-            keys.add(getattr(self.records, field))
+        for r in self.__elements__:
+            keys.add(getattr(r, field))
         return list(keys)
 
     def build_lookup(self, field):
-        ''' Builds a lookup dictionary, indexed by field, that has entries as
-        lists of indices within this records container based on field.
+        '''Builds a lookup dictionary indexed by `field` whose values are lists
+        of indices of the records whose `field` attribute matches the
+        corresponding key.
         '''
-        lud = {}
-
-        for i, r in enumerate(self.records):
-            attr = getattr(r, field)
-            if attr in lud:
-                lud[attr].append(i)
-            else:
-                lud[attr] = [i]
-
-        return lud
+        lud = defaultdict(list)
+        for i, r in enumerate(self.__elements__):
+            lud[getattr(r, field)].append(i)
+        return dict(lud)
 
     def build_subsets(self, field):
-        ''' Builds a dictionary, indexed by `field`, that has entries as lists
-        of records.  Caution: this creates new dictionary entries based on the
-        individual values of field.
+        '''Builds a dictionary indexed by `field` whose values are lists of
+        records whose `field` attribute matches the corresponding key.
         '''
-        sss = {}
+        sss = defaultdict(list)
+        for r in self.__elements__:
+            sss[getattr(r, field)].append(r)
+        return dict(sss)
 
-        for r in self.records:
-            attr = getattr(r, field)
-            if attr in sss:
-                sss[attr].append(r)
-            else:
-                sss[attr] = [r]
+    def cull(self, field, keep_values=None, remove_values=None):
+        '''Cull records from the container based on `field`.
 
-        return sss
+        Args:
+            field: the field to process
+            keep_values: an optional list of field values to keep
+            remove_values: an optional list of field values to remove
 
-    def cull(self, field, values, keep_values=False):
-        ''' Cull records from our store based on the value in `field`.  If
-        `keep_values` is True then the list `values` specifies which records to
-        keep; otherwise, it specifies which records to remove (the default).
-
-        Returns the number of records after the operation.
+        Returns:
+            the number of elements in the container
         '''
-
         sss = self.build_subsets(field)
 
-        if keep_values:
-            v_to_use = values
-        else:
-            v_to_use = list(set(sss.keys()) - set(values))
+        # Determine values to keep
+        if remove_values:
+            keep_values = set(sss.keys()) - set(remove_values)
+        if not keep_values:
+            raise DataRecordsError(
+                "Either keep_values or remove_values must be provided")
 
+        # Cull records
         records = []
-        for v in v_to_use:
+        for v in keep_values:
             records += sss[v]
-        self.records = records
+        self.__elements__ = records
 
-        return len(self.records)
+        return len(self)
 
     def slice(self, field):
-        ''' For `field`, build a list of the entries in the DataRecords
+        '''Returns a list of `field` values for the records in the
         container.
         '''
-        sss = []
-        for r in self.records:
-            sss.append(getattr(r, field))
-        return sss
+        return [getattr(r, field) for r in self.__elements__]
+
+    def subset_from_indices(self, indices):
+        '''Creates a new DataRecords instance containing only the subset of
+        records in this container with the specified indices.
+        '''
+        return self.extract_inds(indices)
 
     @classmethod
     def from_dict(cls, d, record_cls=None):
-        '''Constructs the containers from a dictionary.
-        The record_cls is needed to know what types of records we are talking
-        about.  However, it can be set also by changing the static class
-        variable via DataRecords.set_record_cls(record_cls).  This one passed
-        to from_dict will override the static class variable.  But, one needs
-        to be set.
-        '''
-        rc = record_cls
-        if rc is None:
-            rc = cls._ELE_CLS
+        '''Constructs a DataRecords instance from a dictionary.
 
+        Args:
+            d: a DataRecords dictionary
+            record_cls: an optional records class to use when parsing the
+                records dictionary. If not provided, the DataRecord dictionary
+                must define it
+
+        Returns:
+            a DataRecords instance
+        '''
+        rc = record_cls or d.get(cls._ELE_CLS_FIELD, None)
         if rc is None:
             raise DataRecordsError(
-                "Need record_cls to load a DataRecords object")
+                "Need record_cls to parse the DataRecords dictionary")
 
-        return DataRecords(records=[rc.from_dict(dc) for dc in d["records"]])
+        return DataRecords(
+            record_cls=rc,
+            records=[rc.from_dict(r) for r in d[cls._ELE_ATTR]])
 
     @classmethod
     def from_json(cls, json_path, record_cls=None):
-        '''Constructs a DataRecords object from a JSON file.'''
-        return cls.from_dict(etas.read_json(json_path), record_cls)
+        '''Constructs a DataRecords object from a JSON file.
 
-    @classmethod
-    def get_record_cls(cls):
-        '''Returns the current set class that will be used to instantiate
-        records.'''
-        return cls._ELE_CLS
+        Args:
+            json_path: the path to a DataRecords JSON file
+            record_cls: an optional records class to use when parsing the
+                records file. If not provided, the DataRecords JSON file must
+                define it
 
-    @classmethod
-    def set_record_cls(cls, record_cls):
-        '''Sets the class that will be used to instantiate records.'''
-        cls._ELE_CLS = record_cls
-
-    def subset_from_indices(self, indices):
-        ''' Create a new DataRecords instance with the same settings as this
-        one, and populate it with only those entries from arg indices.
+        Returns:
+            a DataRecords instance
         '''
-        newdr = DataRecords()
-        newdr.set_record_cls(self.get_record_cls())
-        newdr.records = \
-            [r for (i, r) in enumerate(self.records) if i in indices]
-        return newdr
+        return cls.from_dict(etas.read_json(json_path), record_cls=record_cls)
 
 
 class DataRecordsError(Exception):
@@ -540,8 +521,7 @@ class LabeledVideoRecord(BaseDataRecord):
         self.video_path = video_path
         self.label = label
         self.group = group
-
-        self.clean_optional()
+        super(LabeledVideoRecord, self).__init__()
 
     @classmethod
     def optional(cls):
