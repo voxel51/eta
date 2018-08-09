@@ -332,7 +332,7 @@ class Container(Serializable):
         Args:
             inds: a list of indices of the elements to keep
         '''
-        elements = [e for i, e in enumerate(self.__elements__) if i in inds]]
+        elements = [e for i, e in enumerate(self.__elements__) if i in inds]
         setattr(self, self._ELE_ATTR, elements)
 
     def extract_inds(self, inds):
@@ -346,7 +346,7 @@ class Container(Serializable):
             a Container
         '''
         container = copy.deepcopy(self)
-        container.cull_inds(inds)
+        container.keep_inds(inds)
         return container
 
     def clear(self):
