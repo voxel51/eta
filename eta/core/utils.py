@@ -279,13 +279,15 @@ def copy_dir(indir, outdir):
     '''
     if os.path.isdir(outdir):
         shutil.rmtree(outdir)
-
     shutil.copytree(indir, outdir)
 
 
 def delete_file(path):
     '''Deletes the file at the given path and recursively deletes any empty
     directories from the resulting directory tree.
+
+    Raises:
+        OSError: if the file did not exist
     '''
     os.remove(path)
     try:
@@ -298,6 +300,9 @@ def delete_file(path):
 def delete_dir(dir_):
     '''Deletes the given directory and recursively deletes any empty
     directories from the resulting directory tree.
+
+    Raises:
+        OSError: if the directory did not exist
     '''
     dir_ = os.path.normpath(dir_)
     shutil.rmtree(dir_)
