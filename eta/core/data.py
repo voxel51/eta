@@ -156,8 +156,6 @@ class DataFileSequence(etas.Serializable):
 
         return self.gen_path(self._iter_index)
 
-    next = __next__  # Python 2 compatibility for iteration
-
     @property
     def extension(self):
         return self._extension
