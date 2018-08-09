@@ -6,25 +6,33 @@ This project is supported by the [NIST Public Safety Innovation Accelerator
 Program](https://www.nist.gov/news-events/news/2017/06/nist-awards-385-million-accelerate-public-safety-communications).
 
 
+## Requirements
+
+The ETA package requires the following external dependencies:
+- [OpenCV](https://opencv.org)
+- [TensorFlow](https://www.tensorflow.org/)
+- [ffmpeg](https://www.ffmpeg.org)
+- [ImageMagick](https://www.imagemagick.org/script/index.php)
+
+ETA is very portable:
+- Installable on Mac or Linux
+- Supports both Python 2.7+ and Python 3.4+
+- Supports OpenCV 2.4+ and OpenCV 3.0+
+- Supports both CPU and GPU Tensorflow installations
+
+
 ## Installation
 
-First, clone the repository
+0. Activate a virtual environment for this installation (optional)
+
+1. Clone the repository:
 
 ```shell
 git clone https://github.com/voxel51/eta
-cd eta/
+cd eta
 ```
 
-The ETA package requires various Python packages, as well as
-[OpenCV](http://opencv.org),
-[ffmpeg](https://www.ffmpeg.org), and
-[ImageMagick](https://www.imagemagick.org/script/index.php).
-
-> ETA supports both Python 2.7 and Python 3.0 or later.
-
-> ETA supports both OpenCV 2.4 or later and OpenCV 3.0 or later.
-
-To install the external dependencies, run the install script
+2. Install external dependenices:
 
 ```shell
 bash install_externals.bash
@@ -33,24 +41,25 @@ bash install_externals.bash
 Depending on your Python environment, you may need to run the script with
 sudo privileges. Note that the install script supports flags that control
 things like (on macOS) whether `port` or `brew` is used to install packages.
+Run `bash install_externals.bash -h` for more information.
 
-Next, if you want to simply install the toolkit and use it, run
+The script inspects your system to see if CUDA is installed, and, if it is,
+TensorFlow is installed with GPU support.
+
+> Note: for GPU installations, `tensorflow-gpu==1.3.0` is installed to
+ensure CUDA 8.0 support.
+
+3. Install the ETA package:
 
 ```shell
+# Install in global (non-editable) mode
 pip install .
-```
+cd ..
+rm -rf eta
 
-Now `import eta` will work from anywhere, and you can delete the directory you
-just cloned.
-
-If you want to install the project in development mode, run
-
-```shell
+# Install in development mode
 pip install -e .
 ```
-
-Now `import eta` will still work from anywhere, and any changes you make in
-your local copy of `eta/` will take effect immediately.
 
 
 ## Setting up your execution environment
