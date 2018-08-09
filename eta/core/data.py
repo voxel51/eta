@@ -403,7 +403,6 @@ class DataRecords(DataContainer):
 
     @classmethod
     def from_json(cls, json_path, record_cls=None):
-        print(record_cls)
         '''Constructs a DataRecords object from a JSON file.'''
         return cls.from_dict(etas.read_json(json_path), record_cls)
 
