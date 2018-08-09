@@ -168,7 +168,7 @@ class DataFileSequence(etas.Serializable):
     def lower_bound(self, value):
         if self._immutable_bounds:
             raise DataFileSequenceError(
-                'Cannot set bounds for a sequence with `immutable_bounds`.')
+                "Cannot set bounds for a sequence with immutable bounds.")
         self._lower_bound = value
 
     @property
@@ -179,7 +179,7 @@ class DataFileSequence(etas.Serializable):
     def upper_bound(self, value):
         if self._immutable_bounds:
             raise DataFileSequenceError(
-                'Cannot set bounds for a sequence with `immutable_bounds`.')
+                "Cannot set bounds for a sequence with immutable_bounds.")
         self._upper_bound = value
 
     @property
@@ -194,17 +194,14 @@ class DataFileSequence(etas.Serializable):
         '''Checks if the index is within the bounds for this sequence.
 
         Returns:
-            True is index is valid.
+            True is index is valid
         '''
         if index < self.lower_bound or index > self.upper_bound:
             return False
         return True
 
     def gen_path(self, index):
-        '''Generate and return the path for the file at the index.
-
-        Does error-checking for sequence bounds.
-        '''
+        '''Generates and returns the path for the file at the index.'''
         if self._immutable_bounds:
             if not self.check_bounds(index):
                 raise DataFileSequenceError(
@@ -234,18 +231,12 @@ class DataFileSequence(etas.Serializable):
 
     @classmethod
     def build_from_dir(cls, dir_path):
-        '''Factory method to build a `DataFileSequence` given a directory
-        path.
-        '''
-        file_pattern, _ = etau.parse_dir_pattern(dir_path)
-        return cls(file_pattern)
+        '''Build a `DataFileSequence` for the given directory.'''
+        return cls(etau.parse_dir_pattern(dir_path)[0])
 
     @classmethod
     def build_from_pattern(cls, pattern):
-        '''Factory method to build a `DataFileSequence given a file pattern.
-
-        Note that this is just the standard way of constructing the class.
-        '''
+        '''Builds a `DataFileSequence` for the given file pattern.'''
         return cls(pattern)
 
 
@@ -293,8 +284,7 @@ class DataRecords(DataContainer):
             d: a DataRecords dictionary
             record_cls: an optional records class to use when parsing the
                 records dictionary. If None, the _ELE_CLS class of this
-                instance is used. If that is also None, _ELE_CLS_FIELD must be
-                set in the dictionary
+                instance is used
 
         Returns:
             the number of elements in the container
@@ -310,8 +300,7 @@ class DataRecords(DataContainer):
             json_path: the path to a DataRecords JSON file
             record_cls: an optional records class to use when parsing the
                 records dictionary. If None, the _ELE_CLS class of this
-                instance is used. If that is also None, _ELE_CLS_FIELD must be
-                set in the JSON file
+                instance is used
 
         Returns:
             the number of elements in the container
