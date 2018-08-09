@@ -27,14 +27,7 @@ The ETA package requires various Python packages, as well as
 To install the external dependencies, run the install script
 
 ```shell
-# See install options
-bash install_externals.bash -h
-
-# Install default OpenCV release (3.3.0)
 bash install_externals.bash
-
-# Install specific OpenCV release
-bash install_externals.bash -v 2.4.13.3
 ```
 
 Depending on your Python environment, you may need to run the script with
