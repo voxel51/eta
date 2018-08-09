@@ -389,14 +389,18 @@ class PipelineParameter(object):
     required by the module but has no value set by the pipeline.
 
     Attributes:
-        module: the module associated with this parameter
-        name: the name of this parameter
+        module: the module associated with the parameter
+        name: the name of the parameter
         param: the ModuleParameter instance of the module parameter
         is_tunable: whether the parameter is tunable
         set_value: the value set by the pipeline, or None if it is not set
+        pipeline: the nested pipeline associated with the parameter, or None
+            if the parameter is not nested
     '''
 
-    def __init__(self, module, name, param, is_tunable, set_value=None):
+    def __init__(
+            self, module, name, param, is_tunable, set_value=None,
+            pipeline=None):
         '''Creates a PipelineParameter instance.
 
         Args:
@@ -405,6 +409,7 @@ class PipelineParameter(object):
             param: the ModuleParameter instance of the module parameter
             is_tunable: whether the parameter is tunable
             set_value: an optional pipeline-set value for the parameter
+            pipeline: the nested pipeline for the parameter, if any
 
         Raise:
             PipelineMetadataError: is the pipeline parameter is invalid.
@@ -414,6 +419,7 @@ class PipelineParameter(object):
         self.param = param
         self.is_tunable = is_tunable
         self.set_value = set_value
+        self.pipeline = pipeline
         self._validate()
 
     @property
@@ -452,7 +458,9 @@ class PipelineParameter(object):
     @property
     def param_str(self):
         '''Returns the pipeline node string describing this parameter.'''
-        return PipelineNode.get_node_str(self.module, self.name)
+        if self.pipeline:
+            return "%s.%s.%s" % (self.pipeline, self.module, self.name)
+        return "%s.%s" % (self.module, self.name)
 
     def is_valid_value(self, val):
         '''Returns True/False if `val` is a valid value for this parameter.'''
