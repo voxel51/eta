@@ -142,21 +142,13 @@ class DataFileSequence(etas.Serializable):
         self._iter_index = None
 
     def __getitem__(self, index):
-        '''Implements the get item interface to allow arbitrary access to the
-        paths in the sequence.
-        '''
         return self.gen_path(index)
 
     def __iter__(self):
-        '''Implements the iterable interface on the sequence of path names.'''
         self._iter_index = self._lower_bound - 1
         return self
 
     def __next__(self):
-        '''Implements the rest of the iterable interface.'''
-        if self._iter_index is None:
-            raise DataFileSequenceError("next called from outside iterable.")
-
         self._iter_index += 1
         if not self.check_bounds(self._iter_index):
             self._iter_index = None
