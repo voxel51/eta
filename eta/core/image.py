@@ -353,6 +353,21 @@ def to_frame_size(frame_size=None, shape=None, img=None):
         raise TypeError("A valid keyword argument must be provided")
 
 
+def aspect_ratio(**kwargs):
+    '''Computes the aspect ratio of the image.
+
+    Args:
+        frame_size: the (width, height) of the image
+        shape: the (height, width, ...) of the image, e.g. from img.shape
+        img: the image itself
+
+    Returns:
+        the aspect ratio of the image
+    '''
+    fs = to_frame_size(**kwargs)
+    return fs[0] / fs[1]
+
+
 def parse_frame_size(frame_size):
     '''Parses the given frame size, ensuring that it is valid.
 
