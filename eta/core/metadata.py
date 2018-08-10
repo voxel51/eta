@@ -38,6 +38,56 @@ import eta.core.module as etam
 logger = logging.getLogger(__name__)
 
 
+def generate(module_py_path):
+    '''Generates the module metadata JSON file for the given ETA module.
+
+    The JSON file is written in the same directory as the input module file.
+
+    Args:
+        module_py_path: the path to the .py file defining an ETA module
+    '''
+    module_dir, module_file = os.path.split(module_py_path)
+    module_name = os.path.splitext(module_file)[0]
+    sys.path.insert(0, module_dir)
+
+    logger.info("Parsing module docstring")
+    module_docstr = _get_module_docstring(module_name)
+    mds = ModuleDocstring(module_docstr)
+
+    logger.info("Parsing module config class docstring")
+    config_docstr = _get_module_config_docstring(module_name)
+    cds = ModuleDocstring(config_docstr)
+
+    data_class = cds.attributes["data"]["type"]
+    if not data_class:
+        raise ModuleMetadataGenerationError(
+            "Failed to find a data config class")
+    logger.info("Parsing data class '%s' docstring", data_class)
+    data_docstr = _get_class_docstring(module_name, data_class)
+    dds = ModuleDocstring(data_docstr)
+
+    parameters_class = cds.attributes["parameters"]["type"]
+    if not parameters_class:
+        logger.info(
+            "Failed to find a parameters config class. Assuming that this "
+            "module has no parameters")
+        pds = ModuleDocstring("")
+    else:
+        logger.info("Parsing parameter class '%s' docstring", parameters_class)
+        params_doctstr = _get_class_docstring(module_name, parameters_class)
+        pds = ModuleDocstring(params_doctstr)
+
+    logger.info("Building module metadata")
+    mmc = _build_module_metadata(module_name, mds, dds, pds)
+
+    logger.info("Validating module metadata")
+    etam.ModuleMetadata(mmc)
+
+    outpath = os.path.join(module_dir, module_name + ".json")
+    logger.info("Writing module metadata to %s", outpath)
+    mmc.write_json(outpath)
+
+
 class ModuleDocstring(object):
     '''Class encapsulating docstrings in ETA modules.
 
@@ -348,53 +398,3 @@ def _build_module_metadata(module_name, mds, dds, pds):
             "Error building the ModuleMetadataConfig:\n" + str(e))
 
     return mmc
-
-
-def generate(module_path):
-    '''Generates the module metadata JSON file for the given ETA module.
-
-    The JSON file is written in the same directory as the input module file.
-
-    Args:
-        module_path: the path to the .py file defining an ETA module
-    '''
-    module_dir, module_file = os.path.split(module_path)
-    module_name = os.path.splitext(module_file)[0]
-    sys.path.insert(0, module_dir)
-
-    logger.info("Parsing module docstring")
-    module_docstr = _get_module_docstring(module_name)
-    mds = ModuleDocstring(module_docstr)
-
-    logger.info("Parsing module config class docstring")
-    config_docstr = _get_module_config_docstring(module_name)
-    cds = ModuleDocstring(config_docstr)
-
-    data_class = cds.attributes["data"]["type"]
-    if not data_class:
-        raise ModuleMetadataGenerationError(
-            "Failed to find a data config class")
-    logger.info("Parsing data class '%s' docstring", data_class)
-    data_docstr = _get_class_docstring(module_name, data_class)
-    dds = ModuleDocstring(data_docstr)
-
-    parameters_class = cds.attributes["parameters"]["type"]
-    if not parameters_class:
-        logger.info(
-            "Failed to find a parameters config class. Assuming that this "
-            "module has no parameters")
-        pds = ModuleDocstring("")
-    else:
-        logger.info("Parsing parameter class '%s' docstring", parameters_class)
-        params_doctstr = _get_class_docstring(module_name, parameters_class)
-        pds = ModuleDocstring(params_doctstr)
-
-    logger.info("Building module metadata")
-    mmc = _build_module_metadata(module_name, mds, dds, pds)
-
-    logger.info("Validating module metadata")
-    etam.ModuleMetadata(mmc)
-
-    outpath = os.path.join(module_dir, module_name + ".json")
-    logger.info("Writing module metadata to %s", outpath)
-    mmc.write_json(outpath)
