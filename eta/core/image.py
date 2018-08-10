@@ -353,6 +353,21 @@ def to_frame_size(frame_size=None, shape=None, img=None):
         raise TypeError("A valid keyword argument must be provided")
 
 
+def aspect_ratio(**kwargs):
+    '''Computes the aspect ratio of the image.
+
+    Args:
+        frame_size: the (width, height) of the image
+        shape: the (height, width, ...) of the image, e.g. from img.shape
+        img: the image itself
+
+    Returns:
+        the aspect ratio of the image
+    '''
+    fs = to_frame_size(**kwargs)
+    return fs[0] / fs[1]
+
+
 def parse_frame_size(frame_size):
     '''Parses the given frame size, ensuring that it is valid.
 
@@ -384,19 +399,19 @@ def infer_missing_dims(frame_size, ref_size):
     Args:
         frame_size: a (width, height) tuple. One or both dimensions can be -1,
             in which case the input aspect ratio is preserved
-        ref_size: the reference (width, height )
+        ref_size: the reference (width, height)
 
     Returns:
         the concrete (width, height) with no negative values
     '''
     width, height = frame_size
-    aspect_ratio = ref_size[0] / ref_size[1]
+    kappa = ref_size[0] / ref_size[1]
     if width < 0:
         if height < 0:
             return ref_size
-        width = int(round(height * aspect_ratio))
+        width = int(round(height * kappa))
     elif height < 0:
-        height = int(round(width / aspect_ratio))
+        height = int(round(width / kappa))
     return width, height
 
 
@@ -558,6 +573,84 @@ class Location(object):
     def is_bottom_left(self):
         '''True if the location is bottom left, otherwise False.'''
         return self._loc in self.BOTTOM_LEFT
+
+
+###### Image Composition ######################################################
+
+
+def best_tiling_shape(n, kappa=1.777, **kwargs):
+    '''Computes the (width, height) of the best tiling of n images in a grid
+    such that the composite image would have roughly the specified aspect
+    ratio.
+
+    The returned tiling always satisfies width * height >= n.
+
+    Args:
+        n: the number of images to tile
+        kappa: the desired aspect ratio of the composite image. By default,
+            this is 1.777
+        **kwargs: a valid keyword argument for to_frame_size(). By default,
+            square images are assumed
+
+    Returns:
+        the (width, height) of the best tiling
+    '''
+    alpha = aspect_ratio(**kwargs) if kwargs else 1.0
+
+    def _cost(w, h):
+        return (alpha * w - kappa * h) ** 2 + (w * h - n) ** 2
+
+    def _best_width_for_height(h):
+        w = np.arange(int(np.ceil(n / h)), n + 1)
+        return w[np.argmin(_cost(w, h))]
+
+    # Caution: this is O(n^2)
+    hh = np.arange(1, n + 1)
+    ww = np.array([_best_width_for_height(h) for h in hh])
+    idx = np.argmin(_cost(ww, hh))
+    return  ww[idx], hh[idx]
+
+
+def tile_images(imgs, width, height, fill_value=0):
+    '''Tiles the images in the given array into a grid of the given width and
+    height (row-wise).
+
+    If fewer than width * height images are provided, the remaining tiles are
+    filled with blank images.
+
+    Args:
+        imgs: a list (or num_images x height x width x num_channels numpy
+            array) of same-size images
+        width: the desired grid width
+        height: the desired grid height
+        fill_value: a value to fill any blank chips in the tiled image
+
+    Returns:
+        the tiled image
+    '''
+    # Parse images
+    imgs = np.asarray(imgs)
+    num_imgs = len(imgs)
+    if num_imgs == 0:
+        raise ValueError("Must have at least one image to tile")
+
+    # Pad with blank images, if necessary
+    num_blanks = width * height - num_imgs
+    if num_blanks < 0:
+        raise ValueError(
+            "Cannot tile %d images in a %d x %d grid" %
+            (num_imgs, width, height))
+    if num_blanks > 0:
+        blank = np.full_like(imgs[0], fill_value)
+        blanks = np.repeat(blank[np.newaxis, ...], num_blanks, axis=0)
+        imgs = np.concatenate((imgs, blanks), axis=0)
+
+    # Tile images
+    rows = [
+        np.concatenate(imgs[(i * width):((i + 1) * width)], axis=1)
+        for i in range(height)
+    ]
+    return np.concatenate(rows, axis=0)
 
 
 ###### Color Conversions ######################################################
