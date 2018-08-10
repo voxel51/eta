@@ -611,6 +611,48 @@ def best_tiling_shape(n, kappa=1.777, **kwargs):
     return  ww[idx], hh[idx]
 
 
+def tile_images(imgs, width, height, fill_value=0):
+    '''Tiles the images in the given array into a grid of the given width and
+    height (row-wise).
+
+    If fewer than width * height images are provided, the remaining tiles are
+    filled with blank images.
+
+    Args:
+        imgs: a list (or num_images x height x width x num_channels numpy
+            array) of same-size images
+        width: the desired grid width
+        height: the desired grid height
+        fill_value: a value to fill any blank chips in the tiled image
+
+    Returns:
+        the tiled image
+    '''
+    # Parse images
+    imgs = np.asarray(imgs)
+    num_imgs = len(imgs)
+    if num_imgs == 0:
+        raise ValueError("Must have at least one image to tile")
+
+    # Pad with blank images, if necessary
+    num_blanks = width * height - num_imgs
+    if num_blanks < 0:
+        raise ValueError(
+            "Cannot tile %d images in a %d x %d grid" %
+            (num_imgs, width, height))
+    if num_blanks > 0:
+        blank = np.full_like(imgs[0], fill_value)
+        blanks = np.repeat(blank[np.newaxis, ...], num_blanks, axis=0)
+        imgs = np.concatenate((imgs, blanks), axis=0)
+
+    # Tile images
+    rows = [
+        np.concatenate(imgs[(i * width):((i + 1) * width)], axis=1)
+        for i in range(height)
+    ]
+    return np.concatenate(rows, axis=0)
+
+
 ###### Color Conversions ######################################################
 
 
