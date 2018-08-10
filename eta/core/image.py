@@ -399,19 +399,19 @@ def infer_missing_dims(frame_size, ref_size):
     Args:
         frame_size: a (width, height) tuple. One or both dimensions can be -1,
             in which case the input aspect ratio is preserved
-        ref_size: the reference (width, height )
+        ref_size: the reference (width, height)
 
     Returns:
         the concrete (width, height) with no negative values
     '''
     width, height = frame_size
-    aspect_ratio = ref_size[0] / ref_size[1]
+    kappa = ref_size[0] / ref_size[1]
     if width < 0:
         if height < 0:
             return ref_size
-        width = int(round(height * aspect_ratio))
+        width = int(round(height * kappa))
     elif height < 0:
-        height = int(round(width / aspect_ratio))
+        height = int(round(width / kappa))
     return width, height
 
 
