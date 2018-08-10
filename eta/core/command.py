@@ -14,7 +14,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
-from future.utils import iteritems
+from future.utils import iteritems, itervalues
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
@@ -245,13 +245,16 @@ class ModulesCommand(Command):
 
         # Generate the metadata file for a module
         eta modules --metadata '/path/to/eta_module.py'
+
+        # Refresh all module metadata files
+        eta modules --refresh-metadata
     '''
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
             "-l", "--list", action="store_true",
-            help="list all ETA modules on the current search path")
+            help="list all ETA modules on the search path")
         parser.add_argument(
             "-f", "--find",
             help="find the metadata file for the module with the given name")
@@ -262,6 +265,9 @@ class ModulesCommand(Command):
         parser.add_argument(
             "-m", "--metadata",
             help="generate the metadata file for the given ETA module")
+        parser.add_argument(
+            "-r", "--refresh-metadata", action="store_true",
+            help="refresh all module metadata files")
 
     @staticmethod
     def run(args):
@@ -281,6 +287,12 @@ class ModulesCommand(Command):
             logger.info(
                 "Generating metadata for ETA module '%s'", args.metadata)
             etame.generate(args.metadata)
+
+        if args.refresh_metadata:
+            for json_path in itervalues(etamodu.find_all_metadata()):
+                py_path = os.path.splitext(json_path)[0] + ".py"
+                logger.info("Generating metadata for ETA module '%s'", py_path)
+                etame.generate(py_path)
 
 
 class PipelinesCommand(Command):
