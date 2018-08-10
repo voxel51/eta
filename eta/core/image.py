@@ -575,6 +575,42 @@ class Location(object):
         return self._loc in self.BOTTOM_LEFT
 
 
+###### Image Composition ######################################################
+
+
+def best_tiling_shape(n, kappa=1.777, **kwargs):
+    '''Computes the (width, height) of the best tiling of n images in a grid
+    such that the composite image would have roughly the specified aspect
+    ratio.
+
+    The returned tiling always satisfies width * height >= n.
+
+    Args:
+        n: the number of images to tile
+        kappa: the desired aspect ratio of the composite image. By default,
+            this is 1.777
+        **kwargs: a valid keyword argument for to_frame_size(). By default,
+            square images are assumed
+
+    Returns:
+        the (width, height) of the best tiling
+    '''
+    alpha = aspect_ratio(**kwargs) if kwargs else 1.0
+
+    def _cost(w, h):
+        return (alpha * w - kappa * h) ** 2 + (w * h - n) ** 2
+
+    def _best_width_for_height(h):
+        w = np.arange(int(np.ceil(n / h)), n + 1)
+        return w[np.argmin(_cost(w, h))]
+
+    # Caution: this is O(n^2)
+    hh = np.arange(1, n + 1)
+    ww = np.array([_best_width_for_height(h) for h in hh])
+    idx = np.argmin(_cost(ww, hh))
+    return  ww[idx], hh[idx]
+
+
 ###### Color Conversions ######################################################
 
 
