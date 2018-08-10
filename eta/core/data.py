@@ -342,20 +342,20 @@ class DataRecords(DataContainer):
         Returns:
             the number of elements in the container
         '''
-        sss = self.build_subsets(field)
+        lud = self.build_lookup(field)
 
         # Determine values to keep
         if remove_values:
-            keep_values = set(sss.keys()) - set(remove_values)
+            keep_values = set(lud.keys()) - set(remove_values)
         if not keep_values:
             raise DataRecordsError(
                 "Either keep_values or remove_values must be provided")
 
         # Cull records
-        records = []
+        inds = []
         for v in keep_values:
-            records += sss[v]
-        self.__elements__ = records
+            inds += lud[v]
+        self.keep_inds(inds)
 
         return len(self)
 
