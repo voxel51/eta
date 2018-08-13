@@ -564,7 +564,7 @@ class VideoFramesFeaturizer(Featurizer):
             X = None
 
         with etav.FFmpegVideoReader(video_path, frames=frames) as vr:
-            for img in p:
+            for img in vr:
                 self.most_recent_frame = vr.frame_number
                 path = self.featurized_frame_path(vr.frame_number)
 
