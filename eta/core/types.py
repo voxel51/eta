@@ -603,7 +603,29 @@ class EventSeries(JSONFile):
     Examples:
         /path/to/event_series.json
     '''
+    pass
 
+
+class FrameLabel(JSONFile):
+    '''A frame label in a video.
+
+    This type is implemented in ETA by the `eta.core.frames.FrameLabel` class.
+
+    Examples:
+        /path/to/frame_label.json
+    '''
+    pass
+
+
+class FrameLabels(JSONFile):
+    '''A list of frame labels in a video.
+
+    This type is implemented in ETA by the
+    `eta.core.frames.FrameLabelContainer` class.
+
+    Examples:
+        /path/to/frame_labels.json
+    '''
     pass
 
 
