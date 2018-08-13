@@ -563,14 +563,14 @@ class VideoFramesFeaturizer(Featurizer):
         if returnX:
             X = None
 
-        with etav.VideoProcessor(video_path, frames) as p:
+        with etav.FFmpegVideoReader(video_path, frames=frames) as vr:
             for img in p:
-                self.most_recent_frame = p.frame_number
-                path = self.featurized_frame_path(p.frame_number)
+                self.most_recent_frame = vr.frame_number
+                path = self.featurized_frame_path(vr.frame_number)
 
                 try:
                     # Try to load the existing feature
-                    v = self.retrieve_featurized_frame(p.frame_number)
+                    v = self.retrieve_featurized_frame(vr.frame_number)
                 except FeaturizedFrameNotFoundError:
                     # Build the per-frame Featurizer, if necessary
                     if not self._frame_featurizer:
