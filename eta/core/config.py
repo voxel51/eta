@@ -80,6 +80,22 @@ class Configurable(object):
         return cls(config_cls.from_dict(d))
 
     @classmethod
+    def from_kwargs(cls, **kwargs):
+        '''Instantiates a Configurable class from keyword arguments defining
+        the attributes of a <cls>Config.
+
+        Args:
+            **kwargs: keyword arguments that define the fields of a
+                <cls>Config dict
+
+        Returns:
+            an instance of cls
+        '''
+        config_cls = Configurable.parse(
+            cls.__name__, module_name=cls.__module__)[1]
+        return cls(config_cls.from_kwargs(**kwargs))
+
+    @classmethod
     def validate(cls, config):
         '''Validates that the given config is an instance of <cls>Config.
 
