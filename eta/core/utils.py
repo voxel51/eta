@@ -503,7 +503,8 @@ def parse_dir_pattern(dir_path):
         return int(l[0]) if len(l) == 1 else tuple(map(int, l))
 
     # Infer indices
-    indices = [_unpack(re.findall(regex, f)) for f in files]
+    file_names = [f.split(".")[0] for f in files]
+    indices = [_unpack(re.findall(regex, f)) for f in file_names]
 
     return patt, indices
 
