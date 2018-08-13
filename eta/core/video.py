@@ -20,6 +20,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
+from future.utils import iteritems
 import six
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
@@ -312,85 +313,116 @@ def get_raw_frame_number(raw_frame_rate, raw_frame_count, fps, sampled_frame):
     return int(raw_frame)
 
 
-def sample_first_frames(inpath, k, size=None):
+def sample_first_frames(arg, k, size=None):
     '''Samples the first k frames in a video.
 
     Args:
-        inpath: path to the input video
+        arg: can be either the path to the input video or an array of frames
+            of size [num_frames, height, width, num_channels]
         k: number of frames to extract
         size: an optional [width, height] to resize the sampled frames. By
             default, the native dimensions of the frames are used
 
     Returns:
-        A numpy array of size [k, height, width]
+        A numpy array of size [k, height, width, num_channels]
     '''
-    imgs = []
-    frames = "1-%d" % k
-    with FFmpegVideoReader(inpath, frames=frames) as vr:
-        for img in vr:
-            if size:
-                img = etai.resize(img, *size)
-            imgs.append(img)
+    # Read frames ...
+    if isinstance(arg, six.string_types):
+        # ... from disk
+        with FFmpegVideoReader(arg, frames="1-%d" % k) as vr:
+            imgs = [img for img in vr]
+    else:
+        # ... from tensor
+        imgs = arg[:k]
+
+    # Resize frames, if necessary
+    if size:
+        imgs = [etai.resize(img, *size) for img in imgs]
+
     return np.array(imgs)
 
 
-def uniformly_sample_frames(inpath, k, size=None):
+def uniformly_sample_frames(arg, k, size=None):
     '''Uniformly samples k frames from the video, always including the first
     and last frames.
 
     Args:
-        inpath: path to the input video
+        arg: can be either the path to the input video or an array of frames
+            of size [num_frames, height, width, num_channels]
         k: the number of frames to extract
         size: an optional [width, height] to resize the sampled frames. By
             default, the native dimensions of the frames are used
 
     Returns:
-        A numpy array of size [k, height, width]
+        A numpy array of size [k, height, width, num_channels]
     '''
-    imgs = []
-    num_frames = get_frame_count(inpath)
-    frames = [int(round(i)) for i in np.linspace(1, num_frames, k)]
-    with FFmpegVideoReader(inpath, frames=frames) as vr:
-        for img in vr:
-            if size:
-                img = etai.resize(img, *size)
-            imgs.append(img)
+    is_video_file = isinstance(arg, six.string_types)
+
+    # Compute 1-based frames
+    num_frames = get_frame_count(arg) if is_video_file else len(arg)
+    frames = [int(round(i)) for i in np.linspace(1, min(num_frames, k), k)]
+
+    # Read frames ...
+    if is_video_file:
+        # ... from disk
+        with FFmpegVideoReader(arg, frames=frames) as vr:
+            imgs = [img for img in vr]
+    else:
+        # ... from tensor
+        imgs = [arg[f - 1] for f in frames]
+
+    # Resize frames, if necessary
+    if size:
+        imgs = [etai.resize(img, *size) for img in imgs]
+
     return np.array(imgs)
 
 
-def sliding_window_sample_frames(inpath, k, stride, size=None):
+def sliding_window_sample_frames(arg, k, stride, size=None):
     '''Samples clips from the video using a sliding window of the given
     length and stride.
 
     Args:
-        inpath: path to the input video
+        arg: can be either the path to the input video or an array of frames
+            of size [num_frames, height, width, num_channels]
         k: the size of each window
         stride: the stride for sliding window
         size: an optional [width, height] to resize the sampled frames. By
             default, the native dimensions of the frames are used
 
     Returns:
-        A numpy array of size [XXXX, k, height, width]
+        A numpy array of size [XXXX, k, height, width, num_channels]
     '''
+    is_video_file = isinstance(arg, six.string_types)
+
     # Determine clip indices
-    num_frames = get_frame_count(inpath)
+    num_frames = get_frame_count(arg) if is_video_file else len(arg)
     delta = np.arange(1, k + 1)
     offsets = np.array(list(range(0, num_frames + 1 - k, stride)))
     clip_inds = offsets[:, np.newaxis] + delta[np.newaxis, :]
+    frames = list(np.unique(clip_inds))
 
-    # Read frames
+    # Read frames ...
     imgs = {}
-    frames = list(np.unique(clip_inds))  # only read the necessary frames
-    with FFmpegVideoReader(inpath, frames=frames) as vr:
-        for img in vr:
-            if size:
-                img = etai.resize(img, *size)
-            imgs[vr.frame_number] = img
+    if is_video_file:
+        # ... from disk
+        with FFmpegVideoReader(arg, frames=frames) as vr:
+            for img in vr:
+                imgs[vr.frame_number] = img
+    else:
+        # ... from tensor
+        for fn in frames:
+            imgs[fn] = arg[fn - 1]
+
+    # Resize frames, if necessary
+    if size:
+        imgs = {fn: etai.resize(img, *size) for fn, img in iteritems(imgs)}
 
     # Generate clips tensor
     clips = []
     for inds in clip_inds:
         clips.append(np.array([imgs[k] for k in inds]))
+
     return np.array(clips)
 
 
