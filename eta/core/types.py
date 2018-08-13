@@ -531,7 +531,6 @@ class NpzFileDirectory(Directory):
     Examples:
         /path/to/npz_files
     '''
-
     pass
 
 
@@ -581,7 +580,6 @@ class VideoStreamInfo(JSONFile):
     Examples:
         /path/to/video-stream-info.json
     '''
-
     pass
 
 
@@ -594,7 +592,6 @@ class EventDetection(JSONFile):
     Examples:
         /path/to/event_detection.json
     '''
-
     pass
 
 
@@ -619,7 +616,6 @@ class DetectedObject(JSONFile):
     Examples:
         /path/to/detected_object.json
     '''
-
     pass
 
 
@@ -632,7 +628,6 @@ class DetectedObjects(JSONFile):
     Examples:
         /path/to/detected_objects.json
     '''
-
     pass
 
 
@@ -781,7 +776,6 @@ class VideoDirectory(Directory):
     Examples:
         /path/to/videos
     '''
-
     pass
 
 
@@ -791,7 +785,6 @@ class ImageSequenceDirectory(Directory):
     Examples:
         /path/to/images
     '''
-
     pass
 
 
@@ -802,7 +795,6 @@ class DualImageSequenceDirectory(Directory):
     Examples:
         /path/to/dual-images
     '''
-
     pass
 
 
@@ -812,7 +804,6 @@ class JSONDirectory(Directory):
     Examples:
         /path/to/jsons
     '''
-
     pass
 
 
@@ -822,7 +813,6 @@ class DetectedObjectsSequenceDirectory(JSONDirectory):
     Examples:
         /path/to/detected_objects
     '''
-
     pass
 
 
@@ -833,7 +823,6 @@ class VideoObjectsFeaturesDirectory(Directory):
     Examples:
         /path/to/features
     '''
-
     pass
 
 
@@ -859,7 +848,6 @@ class ZippedDirectory(ZipFile):
     Examples:
         /path/to/dir.zip
     '''
-
     pass
 
 
@@ -869,7 +857,6 @@ class ZippedVideoFileDirectory(ZippedDirectory):
     Examples:
         /path/to/videos.zip
     '''
-
     pass
 
 
@@ -879,7 +866,6 @@ class ZippedImageSequenceDirectory(ZippedDirectory):
     Examples:
         /path/to/images.zip
     '''
-
     pass
 
 
@@ -890,7 +876,6 @@ class ZippedDualImageSequenceDirectory(ZippedDirectory):
     Examples:
         /path/to/dual-images.zip
     '''
-
     pass
 
 
@@ -900,7 +885,6 @@ class ZippedJSONDirectory(ZippedDirectory):
     Examples:
         /path/to/jsons.zip
     '''
-
     pass
 
 
@@ -911,7 +895,6 @@ class ZippedDetectedObjectsSequenceDirectory(ZippedDirectory):
     Examples:
         /path/to/detected_objects.zip
     '''
-
     pass
 
 
@@ -922,5 +905,4 @@ class ZippedVideoObjectsFeaturesDirectory(ZippedDirectory):
     Examples:
         /path/to/video-object-features.zip
     '''
-
     pass
