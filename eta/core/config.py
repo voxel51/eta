@@ -330,7 +330,41 @@ class Config(etas.Serializable):
                 value was provided and the key was not found in the dictionary
         '''
         val, found = _parse_key(d, key, list, default)
-        return [cls(obj) for obj in val] if found else val
+        if found:
+            val = [
+                (v if isinstance(v, cls) else cls(v))
+                for v in val
+            ]
+        return val
+
+    @staticmethod
+    def parse_object_dict(d, key, cls, default=no_default):
+        '''Parses a dictionary whose values are objects.
+
+        The values in d[key] can be either instances of cls or Config dicts
+        from which to construct instances of cls.
+
+        Args:
+            d: a JSON dictionary
+            key: the key to parse
+            cls: the class of the values of dictionary d[key]
+            default: the default dict of cls instances to return if key is not
+                present
+
+        Returns:
+            a dictionary whose values are cls instances
+
+        Raises:
+            ConfigError: if the field value was the wrong type or no default
+                value was provided and the key was not found in the dictionary
+        '''
+        val, found = _parse_key(d, key, dict, default)
+        if found:
+            val = {
+                k: (v if isinstance(v, cls) else cls(v))
+                for k, v in iteritems(val)
+            }
+        return val
 
     @staticmethod
     def parse_array(d, key, default=no_default):
@@ -339,10 +373,10 @@ class Config(etas.Serializable):
         Args:
             d: a JSON dictionary
             key: the key to parse
-            default: a default value to return if key is not present
+            default: a default list to return if key is not present
 
         Returns:
-            a list (e.g., of strings from the raw JSON dictionary value)
+            a list of raw (untouched) values
 
         Raises:
             ConfigError: if the field value was the wrong type or no default
@@ -357,26 +391,7 @@ class Config(etas.Serializable):
         Args:
             d: a JSON dictionary
             key: the key to parse
-            default: a default list to return if key is not present
-
-        Returns:
-            a list of raw (untouched) values
-
-        Raises:
-            ConfigError: if the field value was the wrong type or no default
-                value was provided and the key was not found in the dictionary
-        '''
-        return _parse_key(d, key, dict, default)[0]
-
-    @staticmethod
-    def parse_object_dict(d, key, cls, default=no_default):
-        '''Parses a dictionary whose values are objects.
-
-        Args:
-            d: a JSON dictionary
-            key: the key to parse
-            cls: the class of the values of dictionary d[key]
-            default: a default value to return if key is not present
+            default: a default dict to return if key is not present
 
         Returns:
             a dictionary
@@ -385,8 +400,7 @@ class Config(etas.Serializable):
             ConfigError: if the field value was the wrong type or no default
                 value was provided and the key was not found in the dictionary
         '''
-        val, found = _parse_key(d, key, dict, default)
-        return {k: cls(v) for k, v in iteritems(val)} if found else val
+        return _parse_key(d, key, dict, default)[0]
 
     @staticmethod
     def parse_string(d, key, default=no_default):
