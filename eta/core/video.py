@@ -928,11 +928,6 @@ class VideoWriterError(Exception):
 class FFmpegVideoWriter(VideoWriter):
     '''Class for writing videos using ffmpeg.'''
 
-    DEFAULT_OUT_OPTS = [
-        "-c:v", "libx264", "-pix_fmt", "yuv420p",
-        "-preset", "medium", "-crf", "23", "-an",
-    ]
-
     def __init__(self, outpath, fps, size, out_opts=None):
         '''Constructs a VideoWriter with ffmpeg backend.
 
@@ -941,13 +936,11 @@ class FFmpegVideoWriter(VideoWriter):
                 and the directory is created if necessary
             fps: the frame rate
             size: the (width, height) of each frame
-            out_opts: A list of output options for ffmpeg. If not specified,
-                the DEFAULT_OUT_OPTS list is used
+            out_opts: an optional list of output options for FFmpeg
         '''
         self.outpath = outpath
         self.fps = fps
         self.size = size
-        self.out_opts = out_opts or self.DEFAULT_OUT_OPTS
 
         self._ffmpeg = FFmpeg(
             in_opts=[
@@ -957,7 +950,7 @@ class FFmpegVideoWriter(VideoWriter):
                 "-pix_fmt", "rgb24",        # pixel format
                 "-r", str(self.fps),        # frame rate
             ],
-            out_opts=self.out_opts,
+            out_opts=out_opts,
         )
         self._ffmpeg.run("-", self.outpath)
 
