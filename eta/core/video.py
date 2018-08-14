@@ -292,9 +292,9 @@ def get_raw_frame_number(raw_frame_rate, raw_frame_count, fps, sampled_frame):
     '''Get the raw frame number corresponding to the given sampled frame
     number.
 
-    This function assumes that the sampling was performed using the command
+    This function assumes that the sampling was performed using the command:
     ```
-    FFmpegVideoSampler(fps).run(raw_video_path, ...)
+    FFmpeg(fps=fps).run(raw_video_path, ...)
     ```
 
     Args:
