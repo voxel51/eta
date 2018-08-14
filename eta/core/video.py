@@ -441,7 +441,7 @@ class VideoProcessor(object):
     def __init__(
             self,
             inpath,
-            frames="*",
+            frames=None,
             in_use_ffmpeg=True,
             out_use_ffmpeg=True,
             out_images_path=None,
@@ -454,8 +454,8 @@ class VideoProcessor(object):
 
         Args:
             inpath: path to the input video. Passed directly to a VideoReader
-            frames: a string specifying the range(s) of frames to process.
-                Passed directly to a VideoReader
+            frames: an optional string specifying the range(s) of frames to
+                process. Passed directly to a VideoReader
             in_use_ffmpeg: whether to use FFmpegVideoReader to read input
                 videos rather than OpenCVVideoReader
             out_use_ffmpeg: whether to use FFmpegVideoWriter to write output
@@ -477,7 +477,7 @@ class VideoProcessor(object):
                 source is a video and fps is None, the same frame rate is used
             out_size: the frame size for the output video, if any. If out_size
                 is None, the input frame size is assumed
-            out_opts: a list of output video options for ffmpeg. Passed
+            out_opts: a list of output video options for FFmpeg. Passed
                 directly to FFmpegVideoWriter. Only applicable when
                 out_use_ffmpeg = True
 
@@ -627,7 +627,6 @@ class VideoReader(object):
             # Frames string
             if frames == "*":
                 frames = "1-%d" % self.total_frame_count
-
             self.frames = frames
             self._ranges = FrameRanges.from_str(frames)
         elif isinstance(frames, list):
@@ -710,18 +709,18 @@ class FFmpegVideoReader(VideoReader):
     This class uses 1-based indexing for all frame operations.
     '''
 
-    def __init__(self, inpath, frames="*"):
+    def __init__(self, inpath, frames=None):
         '''Constructs a new VideoReader with ffmpeg backend.
 
         Args:
             inpath: path to the input video, which can be a standalone video
                 file like "/path/to/video.mp4" or a directory of frames like
-                "/path/to/frames/%5d.png". This path is passed directly to
+                "/path/to/frames/%05d.png". This path is passed directly to
                 ffmpeg
             frames: one of the following optional quantities specifying a
                 collection of frames to process:
-                    - None (all frames)
-                    - "*" (all frames - the default)
+                    - None (all frames - the default)
+                    - "*" (all frames)
                     - a string like "1-3,6,8-10"
                     - a list like [1, 2, 3, 6, 8, 9, 10]
                     - a FrameRange or FrameRanges instance
@@ -813,18 +812,18 @@ class OpenCVVideoReader(VideoReader):
     This class uses 1-based indexing for all frame operations.
     '''
 
-    def __init__(self, inpath, frames="*"):
+    def __init__(self, inpath, frames=None):
         '''Constructs a new VideoReader with OpenCV backend.
 
         Args:
             inpath: path to the input video, which can be a standalone video
                 file like "/path/to/video.mp4" or a directory of frames like
-                "/path/to/frames/%5d.png". This path is passed directly to
+                "/path/to/frames/%05d.png". This path is passed directly to
                 cv2.VideoCapture
             frames: one of the following optional quantities specifying a
                 collection of frames to process:
-                    - None (all frames)
-                    - "*" (all frames - the default)
+                    - None (all frames - the default)
+                    - "*" (all frames)
                     - a string like "1-3,6,8-10"
                     - a list like [1, 2, 3, 6, 8, 9, 10]
                     - a FrameRange or FrameRanges instance
