@@ -4,16 +4,10 @@
     "overwrite": true,
     "jobs": [
         {
-            "name": "resize_videos",
+            "name": "format_videos",
             "working_dir": ".",
-            "script": "eta/modules/resize_videos.py",
-            "config_path": "examples/demo_video/resize_videos.json"
-        },
-        {
-            "name": "sample_videos",
-            "working_dir": ".",
-            "script": "eta/modules/sample_videos.py",
-            "config_path": "examples/demo_video/sample_videos.json"
+            "script": "eta/modules/format_videos.py",
+            "config_path": "examples/demo_video/format_videos.json"
         },
         {
             "name": "clip_videos",
