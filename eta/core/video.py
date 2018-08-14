@@ -1014,21 +1014,14 @@ class FFprobe(object):
 
     DEFAULT_GLOBAL_OPTS = ["-loglevel", "error"]
 
-    def __init__(
-            self,
-            executable="ffprobe",
-            global_opts=None,
-            opts=None,
-    ):
+    def __init__(self, global_opts=None, opts=None):
         '''Constructs an ffprobe command, minus the input path.
 
         Args:
-            executable: the system path to the ffprobe binary
             global_opts: a list of global options for ffprobe. By default,
                 self.DEFAULT_GLOBAL_OPTS is used
             opts: a list of options for ffprobe
         '''
-        self._executable = executable
         self._global_opts = global_opts or self.DEFAULT_GLOBAL_OPTS
         self._opts = opts or []
 
@@ -1059,7 +1052,7 @@ class FFprobe(object):
                 during execution
         '''
         self._args = (
-            [self._executable] +
+            ["ffprobe"] +
             self._global_opts +
             self._opts +
             ["-i", inpath]
@@ -1073,7 +1066,7 @@ class FFprobe(object):
             )
         except EnvironmentError as e:
             if e.errno == errno.ENOENT:
-                raise etau.ExecutableNotFoundError(self._executable)
+                raise etau.ExecutableNotFoundError("ffprobe")
             else:
                 raise
 
