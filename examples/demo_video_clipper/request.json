@@ -4,7 +4,7 @@
         "video": "examples/data/water.mp4"
     },
     "parameters": {
-        "resize_videos.scale": 0.5,
+        "format_videos.scale": 0.5,
         "clip_videos.frames": "1-30,60-90"
     }
 }
