@@ -1,8 +1,8 @@
 {
     "data": [
         {
-            "input_path": "examples/out/water-512w-10fps.mp4",
-            "output_path": "examples/out/water-512w-10fps-%05d-%05d.mp4"
+            "input_path": "examples/out/water-5fps-512w.mp4",
+            "output_video_clips_path": "examples/out/water-5fps-512w-%05d-%05d.mp4"
         }
     ],
     "parameters": {

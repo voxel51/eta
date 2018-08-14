@@ -36,7 +36,7 @@ metadata files of the constituent modules define a template that is populated
 by the pipeline builder for each new piece of input data.
 
 The following JSON gives an example of the metadata file for a simple video
-formatting pipeline:
+formatting pipeline with one module:
 
 ```json
 {
@@ -47,31 +47,24 @@ formatting pipeline:
         "description": "A pipeline for formatting video files"
     },
     "inputs": ["video"],
-    "outputs": ["sampled_frames"],
-    "modules": [
-        {
-            "name": "resize_videos",
-            "tunable_parameters": ["size", "scale"],
-            "set_parameters": {}
-        },
-        {
-            "name": "sample_videos",
-            "tunable_parameters": ["fps"],
+    "outputs": ["formatted_video"],
+    "modules": {
+        "format_videos": {
+            "name": "format_videos",
+            "tunable_parameters": [
+                "fps", "size", "scale", "max_fps", "max_size"
+            ],
             "set_parameters": {}
         }
-    ],
+    },
     "connections": [
         {
             "source": "INPUT.video",
-            "sink": "resize_videos.input_path"
+            "sink": "format_videos.input_path"
         },
         {
-            "source": "resize_videos.output_path",
-            "sink": "sample_videos.input_path"
-        },
-        {
-            "source": "sample_videos.output_path",
-            "sink": "OUTPUT.sampled_frames"
+            "source": "format_videos.output_video_path",
+            "sink": "OUTPUT.formatted_video"
         }
     ]
 }
@@ -228,8 +221,8 @@ video formatting pipeline whose metadata file was given earlier:
         "video": "examples/data/water.mp4"
     },
     "parameters": {
-        "resize_videos.scale": 0.5,
-        "sample_videos.fps": 1
+        "format_videos.scale": 0.5,
+        "format_videos.fps": 1
     }
 }
 ```

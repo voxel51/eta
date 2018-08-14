@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 '''
-A module for resizing videos.
+A module for formatting videos.
 
 Info:
     type: eta.core.types.Module
@@ -38,8 +38,8 @@ import eta.core.ziputils as etaz
 logger = logging.getLogger(__name__)
 
 
-class ResizeConfig(etam.BaseModuleConfig):
-    '''Resize configuration settings.
+class FormatterConfig(etam.BaseModuleConfig):
+    '''Formatter configuration settings.
 
     Attributes:
         data (DataConfig)
@@ -47,7 +47,7 @@ class ResizeConfig(etam.BaseModuleConfig):
     '''
 
     def __init__(self, d):
-        super(ResizeConfig, self).__init__(d)
+        super(FormatterConfig, self).__init__(d)
         self.data = self.parse_object_array(d, "data", DataConfig)
         self.parameters = self.parse_object(d, "parameters", ParametersConfig)
 
@@ -61,14 +61,14 @@ class DataConfig(Config):
             containing a directory of input video files
 
     Outputs:
-        output_video_path (eta.core.types.VideoFile): [None] The output resized
-            video
+        output_video_path (eta.core.types.VideoFile): [None] The formatted
+            video file
         output_frames_dir (eta.core.types.ImageSequenceDirectory): [None] A
-            directory in which to write the resized frames
+            directory of formatted frames
         output_frames_path (eta.core.types.ImageSequence): [None] The output
-            resized frames pattern
+            formatted frames pattern
         output_zip (eta.core.types.ZippedVideoFileDirectory): [None] A zip file
-            containing a directory of resized video files
+            containing a directory of formatted video files
     '''
 
     def __init__(self, d):
@@ -114,11 +114,13 @@ class DataConfig(Config):
         self._output_field = field
         self._output_val = val
 
-
 class ParametersConfig(Config):
     '''Parameter configuration settings.
 
     Parameters:
+        fps (eta.core.types.Number): [None] The output frame rate
+        max_fps (eta.core.types.Number): [None] The maximum frame rate allowed
+            for the output video
         scale (eta.core.types.Number): [None] A numeric scale factor to apply
             to the input resolution
         size (eta.core.types.Array): [None] A desired output (width, height)
@@ -132,6 +134,8 @@ class ParametersConfig(Config):
     '''
 
     def __init__(self, d):
+        self.fps = self.parse_number(d, "fps", default=None)
+        self.max_fps = self.parse_number(d, "max_fps", default=None)
         self.scale = self.parse_number(d, "scale", default=None)
         self.size = self.parse_array(d, "size", default=None)
         self.max_size = self.parse_array(d, "max_size", default=None)
@@ -139,9 +143,9 @@ class ParametersConfig(Config):
             d, "ffmpeg_out_opts", default=None)
 
 
-def _resize_videos(resize_config):
-    parameters = resize_config.parameters
-    for data in resize_config.data:
+def _format_videos(config):
+    parameters = config.parameters
+    for data in config.data:
         if data.is_zip:
             _process_zip(data.input_zip, data.output_zip, parameters)
         else:
@@ -161,8 +165,21 @@ def _process_zip(input_zip, output_zip, parameters):
 
 
 def _process_video(input_path, output_path, parameters):
+    stream_info = etav.VideoStreamInfo.build_for(input_path)
+    ifps = stream_info.frame_rate
+    isize = stream_info.frame_size
+
+    # Compute output frame rate
+    ofps = parameters.fps or -1
+    max_fps = parameters.max_fps or -1
+    if ofps < 0:
+        logger.info("Defaulting to the input frame rate of %s", ifps)
+        ofps = ifps
+    if 0 < max_fps < ofps:
+        logger.info("Capping the frame rate at %s", max_fps)
+        ofps = max_fps
+
     # Compute output frame size
-    isize = etav.get_frame_size(input_path)
     if parameters.scale:
         osize = etai.scale_frame_size(isize, parameters.scale)
     elif parameters.size:
@@ -177,34 +194,45 @@ def _process_video(input_path, output_path, parameters):
         osize = etai.clamp_frame_size(osize, msize)
 
     # Handle no-ops efficiently
+    same_fps = ifps == ofps
     same_size = osize == isize
-    if same_size and etav.is_same_video_file_format(input_path, output_path):
+    same_format = etav.is_same_video_file_format(input_path, output_path)
+    if same_fps and same_size and same_format:
         logger.info(
-            "Same frame size and video format detected, so no computation is "
-            "required. Just symlinking %s to %s", output_path, input_path)
+            "Same frame rate, frame size, and video format detected, so no "
+            "computation is required. Just symlinking %s to %s",
+            output_path, input_path)
         etau.symlink_file(input_path, output_path)
         return
 
     # ffmpeg requires that height/width be even
     osize = [etan.round_to_even(x) for x in osize]
 
-    # Resize video
-    logger.info("Resizing video '%s' to size %s", input_path, str(osize))
-    etav.FFmpegVideoResizer(
-        size=osize, out_opts=parameters.ffmpeg_out_opts).run(
-            input_path, output_path)
+    # Format video
+    logger.info("Formatting video '%s'", input_path)
+    if not same_fps:
+        logger.info("*** resampling at frame rate %s", ofps)
+    else:
+        ofps = None  # omit unused argument
+    if not same_size:
+        logger.info("*** resizing to %s", str(osize))
+    else:
+        osize = None  # omit unused argument
+    ffmpeg = etav.FFmpeg(
+        fps=ofps, size=osize, out_opts=parameters.ffmpeg_out_opts)
+    ffmpeg.run(input_path, output_path)
 
 
 def run(config_path, pipeline_config_path=None):
-    '''Run the resize_videos module.
+    '''Run the format_videos module.
 
     Args:
-        config_path: path to a ResizeConfig file
+        config_path: path to a FormatterConfig file
         pipeline_config_path: optional path to a PipelineConfig file
     '''
-    resize_config = ResizeConfig.from_json(config_path)
-    etam.setup(resize_config, pipeline_config_path=pipeline_config_path)
-    _resize_videos(resize_config)
+    config = FormatterConfig.from_json(config_path)
+    etam.setup(config, pipeline_config_path=pipeline_config_path)
+    _format_videos(config)
 
 
 if __name__ == "__main__":

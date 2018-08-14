@@ -74,7 +74,7 @@ class BuildCommand(Command):
         eta build \\
             -n video_formatter \\
             -i '{"video": "/path/to/video.mp4"}' \\
-            -p '{"resize_videos.scale": 0.5}'
+            -p '{"format_videos.scale": 0.5}'
     '''
 
     @staticmethod

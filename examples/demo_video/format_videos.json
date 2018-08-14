@@ -1,0 +1,16 @@
+{
+    "data": [
+        {
+            "input_path": "examples/data/water.mp4",
+            "output_frames_path": "examples/out/water-5fps-512w/%05d.jpg"
+        },
+        {
+            "input_path": "examples/data/water.mp4",
+            "output_video_path": "examples/out/water-5fps-512w.mp4"
+        }
+    ],
+    "parameters": {
+        "fps": 5.0,
+        "size": [512, -1]
+    }
+}

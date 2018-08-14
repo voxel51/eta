@@ -1,10 +1,10 @@
 {
     "info": {
-        "name": "resize_videos",
+        "name": "format_videos",
         "type": "eta.core.types.Module",
         "version": "0.1.0",
-        "description": "A module for resizing videos",
-        "exe": "resize_videos.py"
+        "description": "A module for formatting videos",
+        "exe": "format_videos.py"
     },
     "inputs": [
         {
@@ -24,25 +24,25 @@
         {
             "name": "output_frames_dir",
             "type": "eta.core.types.ImageSequenceDirectory",
-            "description": "A directory in which to write the resized frames",
+            "description": "A directory of formatted frames",
             "required": false
         },
         {
             "name": "output_frames_path",
             "type": "eta.core.types.ImageSequence",
-            "description": "The output resized frames pattern",
+            "description": "The output formatted frames pattern",
             "required": false
         },
         {
             "name": "output_zip",
             "type": "eta.core.types.ZippedVideoFileDirectory",
-            "description": "A zip file containing a directory of resized video files",
+            "description": "A zip file containing a directory of formatted video files",
             "required": false
         },
         {
             "name": "output_video_path",
             "type": "eta.core.types.VideoFile",
-            "description": "The output resized video",
+            "description": "The formatted video file",
             "required": false
         }
     ],
@@ -51,6 +51,20 @@
             "name": "scale",
             "type": "eta.core.types.Number",
             "description": "A numeric scale factor to apply to the input resolution",
+            "required": false,
+            "default": null
+        },
+        {
+            "name": "max_fps",
+            "type": "eta.core.types.Number",
+            "description": "The maximum frame rate allowed for the output video",
+            "required": false,
+            "default": null
+        },
+        {
+            "name": "fps",
+            "type": "eta.core.types.Number",
+            "description": "The output frame rate",
             "required": false,
             "default": null
         },
