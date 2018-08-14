@@ -8,14 +8,11 @@
     "inputs": ["video"],
     "outputs": ["video_clips"],
     "modules": {
-        "resize_videos": {
-            "name": "resize_videos",
-            "tunable_parameters": ["size", "scale", "max_size"],
-            "set_parameters": {}
-        },
-        "sample_videos": {
-            "name": "sample_videos",
-            "tunable_parameters": ["fps", "max_fps"],
+        "format_videos": {
+            "name": "format_videos",
+            "tunable_parameters": [
+                "fps", "size", "scale", "max_fps", "max_size"
+            ],
             "set_parameters": {}
         },
         "clip_videos": {
@@ -27,14 +24,10 @@
     "connections": [
         {
             "source": "INPUT.video",
-            "sink": "resize_videos.input_path"
+            "sink": "format_videos.input_path"
         },
         {
-            "source": "resize_videos.output_video_path",
-            "sink": "sample_videos.input_path"
-        },
-        {
-            "source": "sample_videos.output_video_path",
+            "source": "format_videos.output_video_path",
             "sink": "clip_videos.input_path"
         },
         {
