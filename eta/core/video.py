@@ -700,7 +700,7 @@ class FFmpegVideoReader(VideoReader):
     '''Class for reading video using ffmpeg.
 
     The input video can be a standalone video file like "/path/to/video.mp4"
-    or a directory of frames like "/path/to/frames/%5d.png". This path is
+    or a directory of frames like "/path/to/frames/%05d.png". This path is
     passed directly to ffmpeg.
 
     A frames string like "1-5,10-15" can optionally be passed to only read
@@ -802,7 +802,7 @@ class OpenCVVideoReader(VideoReader):
     '''Class for reading video using OpenCV.
 
     The input video can be a standalone video file like "/path/to/video.mp4"
-    or a directory of frames like "/path/to/frames/%5d.png". This path is
+    or a directory of frames like "/path/to/frames/%05d.png". This path is
     passed directly to cv2.VideoCapture. So, for example, if you specify a
     directory of frames, the frame numbering must start from 0-3.
 
