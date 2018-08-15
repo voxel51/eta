@@ -620,27 +620,20 @@ def parse_pattern(patt):
     glob_str = re.sub(seq_exp, "*", _glob_escape(patt))
     files = sorted(glob.glob(glob_str))
 
-    def _make_regex(m):
-        seq = m.group()
-        if re.match(r"%0", seq):
-            return "(\\d{%d})" % int(seq[2:-1])         # zero-padding
-        if re.match(r"%\d+", seq):
-            # @todo improve this regex
-            return "([\\d\\s]{%d})" % int(seq[1:-1])    # whitespace-padding
-        return "((?<!0)[1-9]\\d*|0)"                    # tight
+    # Create validation functions
+    seq_patts = re.findall(seq_exp, patt)
+    fcns = [parse_int_sprintf_pattern(sp) for sp in seq_patts]
+    full_exp, num_inds = re.subn(seq_exp, "(\\s*\\d+)", patt)
 
-    # Build exact regex
-    full_exp, num_inds = re.subn(seq_exp, _make_regex, patt)
+    # Extract indices from exactly matching patterns
+    inds = []
+    for f in files:
+        m = re.match(full_exp, f)
+        if m and all(f(p) for f, p in zip(fcns, m.groups())):
+            idx = tuple(map(int, m.groups()))
+            inds.append(idx[0] if num_inds == 1 else idx)
 
-    def _parse_matches():
-        for f in files:
-            m = re.match(full_exp, f)
-            if m:
-                inds = tuple(map(int, m.groups()))
-                yield inds[0] if num_inds == 1 else inds
-
-    # Filter glob matches
-    return list(_parse_matches())
+    return inds
 
 
 def parse_bounds_from_pattern(patt):
