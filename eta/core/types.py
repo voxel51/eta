@@ -88,6 +88,7 @@ class ConcreteDataParams(object):
 
     def __init__(self):
         self._params = {
+            "name": None,
             "idx": eta.config.default_sequence_idx,
             "image_ext": eta.config.default_image_ext,
             "video_ext": eta.config.default_video_ext,
@@ -102,14 +103,27 @@ class ConcreteDataParams(object):
         '''
         return self._params
 
-    def render_for(self, name):
+    def render_for(self, name, hint=None):
         '''Render the type parameters for use with field `name`.
+
+        Args:
+            name: the field name
+            hint: an optional path hint from which to infer custom parameter
+                values (e.g. sequence indices or image/video extensions)
 
         Returns:
             a params dict
         '''
         params = self._params.copy()
         params["name"] = name
+        if hint:
+            hint_idx = etau.parse_sequence_idx_from_pattern(hint)
+            if hint_idx:
+                params["idx"] = hint_idx
+            if etai.is_supported_image(hint):
+                params["image_ext"] = os.path.splitext(hint)[1]
+            if etav.is_supported_video_file(hint):
+                params["video_ext"] = os.path.splitext(hint)[1]
         return params
 
 

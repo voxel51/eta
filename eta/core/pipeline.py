@@ -721,6 +721,18 @@ class PipelineMetadata(Configurable, HasBlockDiagram):
         node_str = PipelineNode.get_input_str(name)
         return _get_sinks_with_source(node_str, self.connections)
 
+    def get_output_source(self, name):
+        '''Gets the source for the given output.
+
+        Args:
+            name: the pipeline output name
+
+        Returns:
+            the PipelineNode instance that the output is connected to
+        '''
+        node_str = PipelineNode.get_output_str(name)
+        return _get_sources_with_sink(node_str, self.connections)[0]
+
     def get_outgoing_connections(self, module):
         '''Gets the outgoing connections for the given module.
 

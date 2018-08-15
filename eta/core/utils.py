@@ -245,32 +245,141 @@ def call(args):
     return subprocess.call(args) == 0
 
 
-def copy_file(inpath, outpath):
-    '''Copies the input file to the output location, which can be a filepath or
-    a directory in which to write the file. The base output directory is
-    created if necessary, and any existing file will be overwritten.
+def copy_file(inpath, outpath, check_ext=False):
+    '''Copies the input file to the output location.
+
+    The output location can be a filepath or a directory in which to write the
+    file. The base output directory is created if necessary, and any existing
+    file will be overwritten.
+
+    Args:
+        inpath: the input path
+        outpath: the output location (file or directory)
+        check_ext: whether to check if the extensions of the input and output
+            paths match. Only applicable if the output path is not a directory
+
+    Raises:
+        OSError: if check_ext is True and the input and output paths have
+            different extensions
     '''
+    if not os.path.isdir(outpath) and check_ext:
+        assert_same_extensions(inpath, outpath)
     ensure_basedir(outpath)
     shutil.copy(inpath, outpath)
 
 
-def symlink_file(filepath, linkpath):
+def symlink_file(filepath, linkpath, check_ext=False):
     '''Creates a symlink at the given location that points to the given file.
+
     The base output directory is created if necessary, and any existing file
     will be overwritten.
+
+    Args:
+        filepath: a file or directory
+        linkpath: the desired symlink path
+        check_ext: whether to check if the extensions (or lack thereof, for
+            directories) of the input and output paths match
+
+    Raises:
+        OSError: if check_ext is True and the input and output paths have
+            different extensions
     '''
+    if check_ext:
+        assert_same_extensions(filepath, linkpath)
     ensure_basedir(linkpath)
     if os.path.exists(linkpath):
         os.remove(linkpath)
     os.symlink(os.path.realpath(filepath), linkpath)
 
 
-def move_file(inpath, outpath):
-    '''Copies the input file to the output location, creating the base output
-    directory if necessary.
+def move_file(inpath, outpath, check_ext=False):
+    '''Copies the input file to the output location.
+
+    The output location can be a filepath or a directory in which to move the
+    file. The base output directory is created if necessary, and any existing
+    file will be overwritten.
+
+    Args:
+        inpath: the input path
+        outpath: the output location (file or directory)
+        check_ext: whether to check if the extensions of the input and output
+            paths match. Only applicable if the output path is not a directory
+
+    Raises:
+        OSError: if check_ext is True and the input and output paths have
+            different extensions
     '''
+    if not os.path.isdir(outpath) and check_ext:
+        assert_same_extensions(inpath, outpath)
     ensure_basedir(outpath)
     shutil.move(inpath, outpath)
+
+
+def copy_sequence(inpatt, outpatt, check_ext=False):
+    '''Copies the input sequence to the output sequence.
+
+    The base output directory is created if necessary, and any existing files
+    will be overwritten.
+
+    Args:
+        inpatt: the input sequence
+        outpatt: the output sequence
+        check_ext: whether to check if the extensions of the input and output
+            sequences match
+
+    Raises:
+        OSError: if check_ext is True and the input and output sequences have
+            different extensions
+    '''
+    if check_ext:
+        assert_same_extensions(inpatt, outpatt)
+    for idx in parse_pattern(inpatt):
+        copy_file(inpatt % idx, outpatt % idx)
+
+
+def symlink_sequence(inpatt, outpatt, check_ext=False):
+    '''Creates symlinks at the given locations that point to the given
+    sequence.
+
+    The base output directory is created if necessary, and any existing files
+    will be overwritten.
+
+    Args:
+        inpatt: the input sequence
+        outpatt: the output sequence
+        check_ext: whether to check if the extensions of the input and output
+            sequences match
+
+    Raises:
+        OSError: if check_ext is True and the input and output sequences have
+            different extensions
+    '''
+    if check_ext:
+        assert_same_extensions(inpatt, outpatt)
+    for idx in parse_pattern(inpatt):
+        symlink_file(inpatt % idx, outpatt % idx)
+
+
+def move_sequence(inpatt, outpatt, check_ext=False):
+    '''Moves the input sequence to the output sequence.
+
+    The base output directory is created if necessary, and any existing files
+    will be overwritten.
+
+    Args:
+        inpatt: the input sequence
+        outpatt: the output sequence
+        check_ext: whether to check if the extensions of the input and output
+            sequences match
+
+    Raises:
+        OSError: if check_ext is True and the input and output sequences have
+            different extensions
+    '''
+    if check_ext:
+        assert_same_extensions(inpatt, outpatt)
+    for idx in parse_pattern(inpatt):
+        move_file(inpatt % idx, outpatt % idx)
 
 
 def copy_dir(indir, outdir):
@@ -370,9 +479,38 @@ def has_extension(filename, *args):
     Args:
         filename: a file name
         *args: extensions like ".txt" or ".json"
+
+    Returns:
+        True/False
     '''
     ext = os.path.splitext(filename)[1]
     return any(ext == a for a in args)
+
+
+def have_same_extesions(*args):
+    '''Determines whether all of the input paths have the same extension.
+
+    Args:
+        *args: filepaths
+
+    Returns:
+        True/False
+    '''
+    exts = [os.path.splitext(path)[1] for path in args]
+    return exts[1:] == exts[:-1]
+
+
+def assert_same_extensions(*args):
+    '''Asserts that all of the input paths have the same extension.
+
+    Args:
+        *args: filepaths
+
+    Raises:
+        OSError: if all input paths did not have the same extension
+    '''
+    if not have_same_extesions(*args):
+        raise OSError("Expected %s to have the same extensions" % str(args))
 
 
 def to_human_bytes_str(num_bytes):
@@ -460,6 +598,62 @@ def list_files(dir_path):
     )
 
 
+def parse_pattern(patt):
+    '''Inspects the files matching the given pattern and returns the numeric
+    indicies of the sequence.
+
+    Args:
+        patt: a pattern with a one or more numeric sequences like
+            "/path/to/frame-%05d.jpg" or `/path/to/clips/%02d-%d.mp4`
+
+    Returns:
+        a list (or list of tuples if the pattern contains multiple sequences)
+            describing the numeric indices of the files matching the pattern.
+            The indices are returned in alphabetical order of their
+            corresponding files
+    '''
+    def _glob_escape(s):
+        return re.sub(r"([\*\?\[])", r"\\\1", s)
+
+    # Use glob to extract approximate matches
+    seq_exp = re.compile(r"(%[0-9]*d)")
+    glob_str = re.sub(seq_exp, "*", _glob_escape(patt))
+    files = sorted(glob.glob(glob_str))
+
+    # Create validation functions
+    seq_patts = re.findall(seq_exp, patt)
+    fcns = [parse_int_sprintf_pattern(sp) for sp in seq_patts]
+    full_exp, num_inds = re.subn(seq_exp, "(\\s*\\d+)", patt)
+
+    # Extract indices from exactly matching patterns
+    inds = []
+    for f in files:
+        m = re.match(full_exp, f)
+        if m and all(f(p) for f, p in zip(fcns, m.groups())):
+            idx = tuple(map(int, m.groups()))
+            inds.append(idx[0] if num_inds == 1 else idx)
+
+    return inds
+
+
+def parse_bounds_from_pattern(patt):
+    '''Inspects the files satisfying the given pattern and returns the minimum
+    and maximum indices satisfying it.
+
+    Args:
+        patt: a pattern with a single numeric sequence like
+            "/path/to/frames/frame-%05d.jpg"
+
+    Returns:
+        a (first, last) tuple describing the first and last indices satisfying
+            the pattern, or (None, None) if no matches were found
+    '''
+    inds = parse_pattern(patt)
+    if not inds or isinstance(inds[0], tuple):
+        return None, None
+    return min(inds), max(inds)
+
+
 def parse_dir_pattern(dir_path):
     '''Inspects the contents of the given directory, returning the numeric
     pattern in use and the associated indexes.
@@ -471,7 +665,7 @@ def parse_dir_pattern(dir_path):
         "frame-00040-object-5.json"
         "frame-00041-object-6.json"
     then the pattern "frame-%05d-object-%d.json" will be inferred along with
-    the associated indices [(40, 5), (41, 6)]
+    the associated indices [(40, 5), (41, 6)].
 
     Args:
         dir_path: the path to the directory to inspect
@@ -480,7 +674,9 @@ def parse_dir_pattern(dir_path):
         a tuple containing:
             - the numeric pattern used in the directory (the full path)
             - a list (or list of tuples if the pattern contains multiple
-                numbers) describing the numeric indices in the directory
+                numbers) describing the numeric indices in the directory. The
+                indices are returned in alphabetical order of their
+                corresponding filenames
 
     Raises:
         OSError: if the directory is empty
@@ -499,59 +695,80 @@ def parse_dir_pattern(dir_path):
     regex = re.compile(r"\d+")
     patt = os.path.join(dir_path, re.sub(regex, _guess_patt, name) + ext)
 
-    def _unpack(l):
-        return int(l[0]) if len(l) == 1 else tuple(map(int, l))
+    # Parse pattern
+    inds = parse_pattern(patt)
 
-    # Infer indices
-    names = [os.path.splitext(os.path.basename(f))[0] for f in files]
-    indices = [_unpack(re.findall(regex, name)) for name in names]
-
-    return patt, indices
+    return patt, inds
 
 
-def parse_bounds_from_dir_pattern(dir_pattern):
-    '''Inspects the files satisfying the given pattern and returns the minimum
-    and maximum usable indices satisfying it.
+def parse_sequence_idx_from_pattern(patt):
+    '''Extracts the (first) numeric sequence index from the given pattern.
 
     Args:
-        dir_pattern: string for the dir pattern, e.g., "/foo/%05d.json"
+        patt: a pattern like "/path/to/frames/frame-%05d.jpg"
 
     Returns:
-        a tuple containing:
-            - The first permissible value (usually 0 or 1)
-            - The last permissible value (inclusive)
+        the numeric sequence string like "%05d", or None if no sequence was
+            found
     '''
-    def _extract_num(s, prefix):
-        '''Extract the numeric value in a string when we know the preceding
-        string.
-        '''
-        return int(re.match("[0-9]+", s[len(prefix):]).group(0))
+    m = re.search("%[0-9]*d", patt)
+    return m.group() if m else None
 
-    pieces = re.split("(%[0-9]*d)", dir_pattern)
-    if len(pieces) != 3:
-        raise ValueError(
-            "dir_pattern should have one integer term specifying the range.")
 
-    if re.match("%0+", pieces[1]) is None:
-        # No leading zero here
-        wild = "*"
-    else:
-        wild = "[0-9]" * int(re.search("[0-9]+", pieces[1]).group(0))
+def parse_int_sprintf_pattern(patt):
+    '''Parses the integer sprintf pattern and returns a function that can
+    detect whether a string matches the pattern.
 
-    glob_expression = pieces[0] + wild + pieces[2]
+    Args:
+        patt: a sprintf pattern like "%05d", "%4d", or "%d"
 
-    # This glob is a bad idea if the directory is enormous, but the alternative
-    # requires linearly scanning the entire directory, which is bad for the
-    # general case.
-    globbed = sorted(glob.glob(glob_expression))
+    Returns:
+        a function that returns True/False whether a given string matches the
+            input numeric pattern
+    '''
+    # zero-padded: e.g., "%05d"
+    zm = re.match(r"%0(\d+)d$", patt)
+    if zm:
+        n = int(zm.group(1))
 
-    try:
-        return (
-            _extract_num(globbed[0], pieces[0]),
-            _extract_num(globbed[-1], pieces[0])
-        )
-    except IndexError:
-        return (None, None)
+        def _is_zero_padded_int_str(s):
+            try:
+                num_digits = len(str(int(s)))
+            except ValueError:
+                return False
+            if num_digits > n:
+                return True
+            return len(s) == n and s[:-num_digits] == "0" * (n - num_digits)
+
+        return _is_zero_padded_int_str
+
+    # whitespace-padded: e.g., "%5d"
+    wm = re.match(r"%(\d+)d$", patt)
+    if wm:
+        n = int(wm.group(1))
+
+        def _is_whitespace_padded_int_str(s):
+            try:
+                num_digits = len(str(int(s)))
+            except ValueError:
+                return False
+            if num_digits > n:
+                return True
+            return len(s) == n and s[:-num_digits] == " " * (n - num_digits)
+
+        return _is_whitespace_padded_int_str
+
+    # tight: "%d"
+    if patt == "%d":
+        def _is_tight_int_str(s):
+            try:
+                return s == str(int(s))
+            except ValueError:
+                return False
+
+        return _is_tight_int_str
+
+    raise ValueError("Unsupported integer sprintf pattern '%s'" % patt)
 
 
 def random_key(n):

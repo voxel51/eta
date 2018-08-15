@@ -263,14 +263,14 @@ class PipelineBuilder(object):
         for oname, opath in iteritems(self.outputs):
             ppath = self.pipeline_outputs[oname]
             if os.path.isfile(ppath):
-                # Output is a file, so copy it
-                etau.copy_file(ppath, opath)
+                # Output is a file
+                etau.copy_file(ppath, opath, check_ext=True)
             elif os.path.isdir(ppath):
-                # Output is a directory, so copy it
+                # Output is a directory
                 etau.copy_dir(ppath, opath)
             else:
-                # Output must be a sequence, so copy the base directory
-                etau.copy_dir(os.path.dirname(ppath), os.path.dirname(opath))
+                # Assume the output is a sequence
+                etau.copy_sequence(ppath, opath, check_ext=True)
 
         return True
 
@@ -348,6 +348,12 @@ class PipelineBuilder(object):
             for sink in pmeta.get_input_sinks(iname):
                 module_inputs[sink.module][sink.node] = ipath
 
+        # Get path hints from published outputs
+        path_hints = {}
+        for poname, popath in iteritems(self.request.outputs):
+            source = pmeta.get_output_source(poname)
+            path_hints[str(source)] = popath
+
         # Propagate module connections
         for module in pmeta.execution_order:
             mmeta = pmeta.modules[module].metadata  # ModuleMetadata
@@ -360,7 +366,7 @@ class PipelineBuilder(object):
                 else:
                     # Set output path
                     onode = mmeta.outputs[oname]
-                    opath = self._get_data_path(module, onode)
+                    opath = self._get_data_path(module, onode, path_hints)
                     module_outputs[module][oname] = opath
 
                 for osink in osinks:
@@ -417,9 +423,10 @@ class PipelineBuilder(object):
     def _get_module_config_path(self, module):
         return os.path.join(self.config_dir, module + MODULE_CONFIG_EXT)
 
-    def _get_data_path(self, module, node):
-        params = self._concrete_data_params.render_for(node.name)
+    def _get_data_path(self, module, node, path_hints):
         basedir = os.path.join(self.output_dir, module)
+        hint = _get_path_hint(module, node.name, path_hints)
+        params = self._concrete_data_params.render_for(node.name, hint=hint)
         return node.type.gen_path(basedir, params)
 
 
@@ -428,6 +435,18 @@ class PipelineBuilderError(Exception):
     PipelineBuilder.
     '''
     pass
+
+
+def _get_path_hint(module, output, path_hints):
+    '''Gets a path hint for the given module output, if possible.
+
+    Args:
+        module: the module name
+        output: the module output name
+        path_hints: a dict mapping PipelineNode strings to paths
+    '''
+    node_str = etap.PipelineNode.get_node_str(module, output)
+    return path_hints.get(node_str, None)
 
 
 def _get_param_value(param, request):
