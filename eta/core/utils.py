@@ -315,6 +315,73 @@ def move_file(inpath, outpath, check_ext=False):
     shutil.move(inpath, outpath)
 
 
+def copy_sequence(inpatt, outpatt, check_ext=False):
+    '''Copies the input sequence to the output sequence.
+
+    The base output directory is created if necessary, and any existing files
+    will be overwritten.
+
+    Args:
+        inpatt: the input sequence
+        outpatt: the output sequence
+        check_ext: whether to check if the extensions of the input and output
+            sequences match
+
+    Raises:
+        OSError: if check_ext is True and the input and output sequences have
+            different extensions
+    '''
+    if check_ext:
+        assert_same_extensions(inpatt, outpatt)
+    for idx in parse_pattern(inpatt):
+        copy_file(inpatt % idx, outpatt % idx)
+
+
+def symlink_sequence(inpatt, outpatt, check_ext=False):
+    '''Creates symlinks at the given locations that point to the given
+    sequence.
+
+    The base output directory is created if necessary, and any existing files
+    will be overwritten.
+
+    Args:
+        inpatt: the input sequence
+        outpatt: the output sequence
+        check_ext: whether to check if the extensions of the input and output
+            sequences match
+
+    Raises:
+        OSError: if check_ext is True and the input and output sequences have
+            different extensions
+    '''
+    if check_ext:
+        assert_same_extensions(inpatt, outpatt)
+    for idx in parse_pattern(inpatt):
+        symlink_file(inpatt % idx, outpatt % idx)
+
+
+def move_sequence(inpatt, outpatt, check_ext=False):
+    '''Moves the input sequence to the output sequence.
+
+    The base output directory is created if necessary, and any existing files
+    will be overwritten.
+
+    Args:
+        inpatt: the input sequence
+        outpatt: the output sequence
+        check_ext: whether to check if the extensions of the input and output
+            sequences match
+
+    Raises:
+        OSError: if check_ext is True and the input and output sequences have
+            different extensions
+    '''
+    if check_ext:
+        assert_same_extensions(inpatt, outpatt)
+    for idx in parse_pattern(inpatt):
+        move_file(inpatt % idx, outpatt % idx)
+
+
 def copy_dir(indir, outdir):
     '''Copies the input directory to the output directory. The base output
     directory is created if necessary, and any existing output directory will
