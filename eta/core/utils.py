@@ -245,30 +245,72 @@ def call(args):
     return subprocess.call(args) == 0
 
 
-def copy_file(inpath, outpath):
-    '''Copies the input file to the output location, which can be a filepath or
-    a directory in which to write the file. The base output directory is
-    created if necessary, and any existing file will be overwritten.
+def copy_file(inpath, outpath, check_ext=False):
+    '''Copies the input file to the output location.
+
+    The output location can be a filepath or a directory in which to write the
+    file. The base output directory is created if necessary, and any existing
+    file will be overwritten.
+
+    Args:
+        inpath: the input path
+        outpath: the output location (file or directory)
+        check_ext: whether to check if the extensions of the input and output
+            paths match. Only applicable if the output path is not a directory
+
+    Raises:
+        OSError: if check_ext is True and the input and output paths have
+            different extensions
     '''
+    if not os.path.isdir(outpath) and check_ext:
+        assert_same_extensions(inpath, outpath)
     ensure_basedir(outpath)
     shutil.copy(inpath, outpath)
 
 
-def symlink_file(filepath, linkpath):
+def symlink_file(filepath, linkpath, check_ext=False):
     '''Creates a symlink at the given location that points to the given file.
+
     The base output directory is created if necessary, and any existing file
     will be overwritten.
+
+    Args:
+        filepath: a file or directory
+        linkpath: the desired symlink path
+        check_ext: whether to check if the extensions (or lack thereof, for
+            directories) of the input and output paths match
+
+    Raises:
+        OSError: if check_ext is True and the input and output paths have
+            different extensions
     '''
+    if check_ext:
+        assert_same_extensions(filepath, linkpath)
     ensure_basedir(linkpath)
     if os.path.exists(linkpath):
         os.remove(linkpath)
     os.symlink(os.path.realpath(filepath), linkpath)
 
 
-def move_file(inpath, outpath):
-    '''Copies the input file to the output location, creating the base output
-    directory if necessary.
+def move_file(inpath, outpath, check_ext=False):
+    '''Copies the input file to the output location.
+
+    The output location can be a filepath or a directory in which to move the
+    file. The base output directory is created if necessary, and any existing
+    file will be overwritten.
+
+    Args:
+        inpath: the input path
+        outpath: the output location (file or directory)
+        check_ext: whether to check if the extensions of the input and output
+            paths match. Only applicable if the output path is not a directory
+
+    Raises:
+        OSError: if check_ext is True and the input and output paths have
+            different extensions
     '''
+    if not os.path.isdir(outpath) and check_ext:
+        assert_same_extensions(inpath, outpath)
     ensure_basedir(outpath)
     shutil.move(inpath, outpath)
 
