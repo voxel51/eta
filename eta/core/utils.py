@@ -479,9 +479,38 @@ def has_extension(filename, *args):
     Args:
         filename: a file name
         *args: extensions like ".txt" or ".json"
+
+    Returns:
+        True/False
     '''
     ext = os.path.splitext(filename)[1]
     return any(ext == a for a in args)
+
+
+def have_same_extesions(*args):
+    '''Determines whether all of the input paths have the same extension.
+
+    Args:
+        *args: filepaths
+
+    Returns:
+        True/False
+    '''
+    exts = [os.path.splitext(path)[1] for path in args]
+    return exts[1:] == exts[:-1]
+
+
+def assert_same_extensions(*args):
+    '''Asserts that all of the input paths have the same extension.
+
+    Args:
+        *args: filepaths
+
+    Raises:
+        OSError: if all input paths did not have the same extension
+    '''
+    if not have_same_extesions(*args):
+        raise OSError("Expected %s to have the same extensions" % str(args))
 
 
 def to_human_bytes_str(num_bytes):
