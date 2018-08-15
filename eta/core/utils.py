@@ -460,6 +460,81 @@ def list_files(dir_path):
     )
 
 
+def parse_pattern(patt):
+    '''Inspects the files matching the given pattern and returns the numeric
+    indicies of the sequence.
+
+    Args:
+        patt: a pattern with a one or more numeric sequences like
+            "/path/to/frame-%05d.jpg" or `/path/to/clips/%02d-%d.mp4`
+
+    Returns:
+        a list (or list of tuples if the pattern contains multiple sequences)
+            describing the numeric indices of the files matching the pattern.
+            The indices are returned in alphabetical order of their
+            corresponding files
+    '''
+    def _glob_escape(s):
+        return re.sub(r"([\*\?\[])", r"\\\1", s)
+
+    # Use glob to extract approximate matches
+    seq_exp = re.compile(r"(%[0-9]*d)")
+    glob_str = re.sub(seq_exp, "*", _glob_escape(patt))
+    files = sorted(glob.glob(glob_str))
+
+    def _make_regex(m):
+        seq = m.group()
+        if seq.startswith("%0"):
+            return "(\\d{%d})" % int(seq[2:-1])     # zero-padded digits
+        return "((?<!0)[1-9]\\d*|0)"                # tight digits
+
+    # Build exact regex
+    full_exp, num_inds = re.subn(seq_exp, _make_regex, patt)
+    full_exp = re.compile("^" + full_exp + "$")
+
+    def _parse_matches():
+        for f in files:
+            m = re.match(full_exp, f)
+            if m:
+                inds = tuple(map(int, m.groups()))
+                yield inds[0] if num_inds == 1 else inds
+
+    # Filter glob matches
+    return list(_parse_matches())
+
+
+def parse_bounds_from_pattern(patt):
+    '''Inspects the files satisfying the given pattern and returns the minimum
+    and maximum indices satisfying it.
+
+    Args:
+        patt: a pattern with a single numeric sequence like
+            "/path/to/frames/frame-%05d.jpg"
+
+    Returns:
+        a (first, last) tuple describing the first and last indices satisfying
+            the pattern, or (None, None) if no matches were found
+    '''
+    inds = parse_pattern(patt)
+    if not inds or isinstance(inds[0], tuple):
+        return None, None
+    return min(inds), max(inds)
+
+
+def parse_sequence_idx_from_pattern(patt):
+    '''Extracts the (first) numeric sequence index from the given pattern.
+
+    Args:
+        patt: a pattern like "/path/to/frames/frame-%05d.jpg"
+
+    Returns:
+        the numeric sequence string like "%05d", or None if no sequence was
+            found
+    '''
+    m = re.search("%[0-9]*d", patt)
+    return m.group() if m else None
+
+
 def parse_dir_pattern(dir_path):
     '''Inspects the contents of the given directory, returning the numeric
     pattern in use and the associated indexes.
@@ -471,7 +546,7 @@ def parse_dir_pattern(dir_path):
         "frame-00040-object-5.json"
         "frame-00041-object-6.json"
     then the pattern "frame-%05d-object-%d.json" will be inferred along with
-    the associated indices [(40, 5), (41, 6)]
+    the associated indices [(40, 5), (41, 6)].
 
     Args:
         dir_path: the path to the directory to inspect
@@ -480,7 +555,9 @@ def parse_dir_pattern(dir_path):
         a tuple containing:
             - the numeric pattern used in the directory (the full path)
             - a list (or list of tuples if the pattern contains multiple
-                numbers) describing the numeric indices in the directory
+                numbers) describing the numeric indices in the directory. The
+                indices are returned in alphabetical order of their
+                corresponding filenames
 
     Raises:
         OSError: if the directory is empty
@@ -499,59 +576,10 @@ def parse_dir_pattern(dir_path):
     regex = re.compile(r"\d+")
     patt = os.path.join(dir_path, re.sub(regex, _guess_patt, name) + ext)
 
-    def _unpack(l):
-        return int(l[0]) if len(l) == 1 else tuple(map(int, l))
+    # Parse pattern
+    inds = parse_pattern(patt)
 
-    # Infer indices
-    names = [os.path.splitext(os.path.basename(f))[0] for f in files]
-    indices = [_unpack(re.findall(regex, name)) for name in names]
-
-    return patt, indices
-
-
-def parse_bounds_from_dir_pattern(dir_pattern):
-    '''Inspects the files satisfying the given pattern and returns the minimum
-    and maximum usable indices satisfying it.
-
-    Args:
-        dir_pattern: string for the dir pattern, e.g., "/foo/%05d.json"
-
-    Returns:
-        a tuple containing:
-            - The first permissible value (usually 0 or 1)
-            - The last permissible value (inclusive)
-    '''
-    def _extract_num(s, prefix):
-        '''Extract the numeric value in a string when we know the preceding
-        string.
-        '''
-        return int(re.match("[0-9]+", s[len(prefix):]).group(0))
-
-    pieces = re.split("(%[0-9]*d)", dir_pattern)
-    if len(pieces) != 3:
-        raise ValueError(
-            "dir_pattern should have one integer term specifying the range.")
-
-    if re.match("%0+", pieces[1]) is None:
-        # No leading zero here
-        wild = "*"
-    else:
-        wild = "[0-9]" * int(re.search("[0-9]+", pieces[1]).group(0))
-
-    glob_expression = pieces[0] + wild + pieces[2]
-
-    # This glob is a bad idea if the directory is enormous, but the alternative
-    # requires linearly scanning the entire directory, which is bad for the
-    # general case.
-    globbed = sorted(glob.glob(glob_expression))
-
-    try:
-        return (
-            _extract_num(globbed[0], pieces[0]),
-            _extract_num(globbed[-1], pieces[0])
-        )
-    except IndexError:
-        return (None, None)
+    return patt, inds
 
 
 def random_key(n):
