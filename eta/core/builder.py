@@ -348,6 +348,12 @@ class PipelineBuilder(object):
             for sink in pmeta.get_input_sinks(iname):
                 module_inputs[sink.module][sink.node] = ipath
 
+        # Parse published outputs
+        output_path_hints = {}
+        for oname, opath in iteritems(self.request.outputs):
+            source = pmeta.get_output_source(oname)
+            output_path_hints[str(source)] = opath
+
         # Propagate module connections
         for module in pmeta.execution_order:
             mmeta = pmeta.modules[module].metadata  # ModuleMetadata
@@ -360,7 +366,8 @@ class PipelineBuilder(object):
                 else:
                     # Set output path
                     onode = mmeta.outputs[oname]
-                    opath = self._get_data_path(module, onode)
+                    hint = _get_path_hint(osinks, output_path_hints)
+                    opath = self._get_data_path(module, onode, hint=hint)
                     module_outputs[module][oname] = opath
 
                 for osink in osinks:
@@ -417,9 +424,9 @@ class PipelineBuilder(object):
     def _get_module_config_path(self, module):
         return os.path.join(self.config_dir, module + MODULE_CONFIG_EXT)
 
-    def _get_data_path(self, module, node):
-        params = self._concrete_data_params.render_for(node.name)
+    def _get_data_path(self, module, node, hint=None):
         basedir = os.path.join(self.output_dir, module)
+        params = self._concrete_data_params.render_for(node.name, hint=hint)
         return node.type.gen_path(basedir, params)
 
 
@@ -428,6 +435,22 @@ class PipelineBuilderError(Exception):
     PipelineBuilder.
     '''
     pass
+
+
+def _get_path_hint(sinks, path_hints):
+    '''Gets a path hint for the module output with the given sinks, if
+    possible.
+
+    Args:
+        sinks: a list of PipelineNode instances describing the sinks of the
+            module output
+        path_hints: a dict mapping PipelineNode strings to paths
+    '''
+    hint = None
+    for node in sinks:
+        if str(node) in path_hints:
+            hint = path_hints[str(node)]
+    return hint
 
 
 def _get_param_value(param, request):
