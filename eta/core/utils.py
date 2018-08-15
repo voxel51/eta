@@ -661,20 +661,6 @@ def parse_bounds_from_pattern(patt):
     return min(inds), max(inds)
 
 
-def parse_sequence_idx_from_pattern(patt):
-    '''Extracts the (first) numeric sequence index from the given pattern.
-
-    Args:
-        patt: a pattern like "/path/to/frames/frame-%05d.jpg"
-
-    Returns:
-        the numeric sequence string like "%05d", or None if no sequence was
-            found
-    '''
-    m = re.search("%[0-9]*d", patt)
-    return m.group() if m else None
-
-
 def parse_dir_pattern(dir_path):
     '''Inspects the contents of the given directory, returning the numeric
     pattern in use and the associated indexes.
@@ -720,6 +706,76 @@ def parse_dir_pattern(dir_path):
     inds = parse_pattern(patt)
 
     return patt, inds
+
+
+def parse_sequence_idx_from_pattern(patt):
+    '''Extracts the (first) numeric sequence index from the given pattern.
+
+    Args:
+        patt: a pattern like "/path/to/frames/frame-%05d.jpg"
+
+    Returns:
+        the numeric sequence string like "%05d", or None if no sequence was
+            found
+    '''
+    m = re.search("%[0-9]*d", patt)
+    return m.group() if m else None
+
+
+def parse_int_sprintf_pattern(patt):
+    '''Parses the integer sprintf pattern and returns a function that can
+    detect whether a string matches the pattern.
+
+    Args:
+        patt: a sprintf pattern like "%05d", "%4d", or "%d"
+
+    Returns:
+        a function that returns True/False whether a given string matches the
+            input numeric pattern
+    '''
+    # zero-padded: e.g., "%05d"
+    zm = re.match(r"%0(\d+)d$", patt)
+    if zm:
+        n = int(zm.group(1))
+
+        def _is_zero_padded_int_str(s):
+            try:
+                num_digits = len(str(int(s)))
+            except ValueError:
+                return False
+            if num_digits > n:
+                return True
+            return len(s) == n and s[:-num_digits] == "0" * (n - num_digits)
+
+        return _is_zero_padded_int_str
+
+    # whitespace-padded: e.g., "%5d"
+    wm = re.match(r"%(\d+)d$", patt)
+    if wm:
+        n = int(wm.group(1))
+
+        def _is_whitespace_padded_int_str(s):
+            try:
+                num_digits = len(str(int(s)))
+            except ValueError:
+                return False
+            if num_digits > n:
+                return True
+            return len(s) == n and s[:-num_digits] == " " * (n - num_digits)
+
+        return _is_whitespace_padded_int_str
+
+    # tight: "%d"
+    if patt == "%d":
+        def _is_tight_int_str(s):
+            try:
+                return s == str(int(s))
+            except ValueError:
+                return False
+
+        return _is_tight_int_str
+
+    raise ValueError("Unsupported integer sprintf pattern '%s'" % patt)
 
 
 def random_key(n):
