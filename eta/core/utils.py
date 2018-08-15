@@ -602,8 +602,6 @@ def parse_pattern(patt):
     '''Inspects the files matching the given pattern and returns the numeric
     indicies of the sequence.
 
-    @todo handle whitespace patterns like "%5d"?
-
     Args:
         patt: a pattern with a one or more numeric sequences like
             "/path/to/frame-%05d.jpg" or `/path/to/clips/%02d-%d.mp4`
@@ -624,13 +622,15 @@ def parse_pattern(patt):
 
     def _make_regex(m):
         seq = m.group()
-        if seq.startswith("%0"):
-            return "(\\d{%d})" % int(seq[2:-1])     # zero-padded digits
-        return "((?<!0)[1-9]\\d*|0)"                # tight digits
+        if re.match(r"%0", seq):
+            return "(\\d{%d})" % int(seq[2:-1])         # zero-padding
+        if re.match(r"%\d+", seq):
+            # @todo improve this regex
+            return "([\\d\\s]{%d})" % int(seq[1:-1])    # whitespace-padding
+        return "((?<!0)[1-9]\\d*|0)"                    # tight
 
     # Build exact regex
     full_exp, num_inds = re.subn(seq_exp, _make_regex, patt)
-    full_exp = re.compile("^" + full_exp + "$")
 
     def _parse_matches():
         for f in files:
