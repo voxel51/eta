@@ -584,7 +584,7 @@ def _find_latest_model(base_name):
     if _model is None:
         raise ModelError("No models found with base name '%s'" % base_name)
     if _model.has_version:
-        logger.info(
+        logger.debug(
             "Found version %s of model '%s'", _model.version, base_name)
 
     return _model, _mdir, manifests[_mdir]

@@ -18,6 +18,7 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+from collections import defaultdict
 import operator
 
 import numpy as np
@@ -52,60 +53,83 @@ def round_to_even(x):
 
 
 class Accumulator(object):
-    '''Accumulates counts of entries, like a histogram.  Then provides
-    functions for extracting properties over that.  Inputs can be anything
-    hashable.
+    '''A histogram-like class that supports counting arbitrary hashable
+    objects.
 
-    For classical histogram needs, the numpy histogram functions are probably
-    better.  This class lets you accumulate entries of any type and is hence
-    slower but more general.
+    Both weighted and unweighted counts are supported.
+
+    For classical histogram needs, `numpy.histogram` and related functions are
+    likely more efficient. This class lets you accumulate entries of any type
+    and is hence slower but more general.
     '''
 
     def __init__(self):
-        '''Initialize the accumulator.'''
-        self.data = {}
+        '''Creates an Accumulator instance.'''
+        self._weights = defaultdict(float)
+        self._counts = defaultdict(int)
 
-    def __str__(self):
-        '''Renders the accumulator.'''
-        return self.data.__str__()
-
-    def add(self, thing):
+    def add(self, thing, weight=1):
         '''Add `thing` to the accumulator.
 
         Args:
             thing: anything hashable
+            weight: an optional weight. By default, this is 1
+        '''
+        self._weights[thing] += weight
+        self._counts[thing] += 1
+
+    def get_count(self, thing):
+        '''Gets the count of `thing`.'''
+        return self._counts[thing]
+
+    def get_weight(self, thing):
+        '''Gets the weight of `thing`.'''
+        return self._weights[thing]
+
+    def get_average_weight(self, thing):
+        '''Gets the average weight of `thing`.'''
+        count = self.get_count(thing)
+        return self.get_weight(thing) / count if count else None
+
+    def argmax(self, weighted=True):
+        '''Returns the `thing` with the highest count/weight.
+
+        Args:
+            weighted: whether to return the entry with the highest weight
+                (True) or count (False). By default, this is True
 
         Returns:
-            Count for entry `thing` after added.
+            the `thing` with the highest count/weight
         '''
-        if thing in self.data:
-            self.data[thing] += 1
-        else:
-            self.data[thing] = 1
-        return self.data[thing]
+        return self.max(weighted=weighted)[0]
 
-    def argmax(self):
-        '''Return the entry with the highest count.'''
-        return self.max()[0]
+    def max(self, weighted=True):
+        '''Returns the tuple of (thing, count/weight) for the `thing` with the
+        highest count/weight.
 
-    def max(self):
-        '''Return a tuple of (entry, count) for the entry with the highest
-        count.
+        Args:
+            weighted: whether to return the entry with the highest weight
+                (True) or count (False). By default, this is True
+
+        Returns:
+            the (thing, count/weight) for the `thing` with the highest
+                count/weight
         '''
-        return max(self.data.items(), key=operator.itemgetter(1))
+        vals = self._weights if weighted else self._counts
+        return max(vals.items(), key=operator.itemgetter(1))
 
 
 class GrowableArray(object):
     '''A class for building a numpy array from streaming data.'''
 
     def __init__(self, rowlen):
-        '''Creates a GrowableArray.
+        '''Creates a GrowableArray instance.
 
         Args:
             rowlen: the desired length of each row
         '''
-        self.data = []
         self.rowlen = rowlen
+        self._data = []
 
     def update(self, row):
         '''Add row to array.'''
@@ -115,11 +139,11 @@ class GrowableArray(object):
                     self.rowlen, len(row)))
 
         for r in row:
-            self.data.append(r)
+            self._data.append(r)
 
     def finalize(self):
         '''Return numpy array.'''
         return np.reshape(
-            self.data,
-            newshape=(len(self.data) // self.rowlen, self.rowlen),
+            self._data,
+            newshape=(len(self._data) // self.rowlen, self.rowlen),
         )
