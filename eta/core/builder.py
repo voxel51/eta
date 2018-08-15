@@ -263,14 +263,14 @@ class PipelineBuilder(object):
         for oname, opath in iteritems(self.outputs):
             ppath = self.pipeline_outputs[oname]
             if os.path.isfile(ppath):
-                # Output is a file, so copy it
-                etau.copy_file(ppath, opath)
+                # Output is a file
+                etau.copy_file(ppath, opath, check_ext=True)
             elif os.path.isdir(ppath):
-                # Output is a directory, so copy it
+                # Output is a directory
                 etau.copy_dir(ppath, opath)
             else:
-                # Output must be a sequence, so copy the base directory
-                etau.copy_dir(os.path.dirname(ppath), os.path.dirname(opath))
+                # Assume the output is a sequence
+                etau.copy_sequence(ppath, opath, check_ext=True)
 
         return True
 
