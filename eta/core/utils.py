@@ -602,6 +602,8 @@ def parse_pattern(patt):
     '''Inspects the files matching the given pattern and returns the numeric
     indicies of the sequence.
 
+    @todo handle whitespace patterns like "%5d"?
+
     Args:
         patt: a pattern with a one or more numeric sequences like
             "/path/to/frame-%05d.jpg" or `/path/to/clips/%02d-%d.mp4`
