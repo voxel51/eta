@@ -100,46 +100,48 @@ class DataContainer(etas.Container):
 
 
 class DataFileSequence(etas.Serializable):
-    '''Class representing a sequence of data files on the disk.
+    '''Class representing a sequence of data files on disk.
 
-    Implements various `eta.core.types.*Sequence*`.
-
-    This class has the ability to have immutable bounds, which is the
-    default, where bounds mean the lowest and highest indices usable.
-    Immutable bounds means that the class will provide error checking on the
-    sequence indices based on their bounds at the time the instance was
-    initialized.  The files themselves during this time can be changed (this
-    class does not enforce immutability on them).  If the instance is created
-    with `immutable_bounds=False` then the user of the class will be able to
-    add files to the end of the sequence in order, but not at random.
+    When a DataFileSequence is created, it must correspond to actual files on
+    disk. However, when `immutable_bounds=False`, the `gen_path()` method can
+    be used to add files to the beginning or end of the sequence.
 
     Examples of representable file sequences:
         /path/to/video/%05d.png
         /path/to/objects/%05d.json
 
     Attributes:
-        sequence (str): The string representing the file sequence.
-        extension (str): The file extension of the sequence.
-        lower_bound (int): Index of smallest file in sequence.
-        upper_bound (int): Index of largest file in sequence.
+        sequence (str): the sequence pattern
+        immutable_bounds (bool): whether the lower and upper bounds of the
+            sequence can be modified
+        extension (str): the file extension of the pattern
+        lower_bound (int): the smallest index in the sequence
+        upper_bound (int): the largest index in the sequence (inclusive)
     '''
 
-    def __init__(self, sequence_string, immutable_bounds=True):
-        '''Initialize the DataFileSequence instance using the sequence
-        string.
+    def __init__(self, sequence, immutable_bounds=True):
+        '''Creates a DataFileSequence instance for the given sequence.
 
         Args:
-            sequence_string: The printf-style string to be used for locating
-                the sequence files on disk.  E.g., `/tmp/foo/file%05d.json`
-            immutable_bounds (bool): [True] enforce the lower and upper bound
-                on the indices for the sequence as they exit at initialization
+            sequence: The printf-style pattern describing the files on disk,
+                e.g., `/path/to/frame-%05d.json`
+            immutable_bounds: whether the lower and upper bounds of the
+                sequence should be immutable. By default, this is True
+
+        Raises:
+            DataFileSequenceError: if the sequence did not match any files on
+                disk
         '''
-        self.sequence = sequence_string
+        self.sequence = sequence
+        self.immutable_bounds = immutable_bounds
         self._extension = os.path.splitext(self.sequence)[1]
-        self._lower_bound, self._upper_bound = \
-            etau.parse_bounds_from_dir_pattern(self.sequence)
-        self._immutable_bounds = immutable_bounds
+        self._lower_bound, self._upper_bound = etau.parse_bounds_from_pattern(
+            self.sequence)
         self._iter_index = None
+
+        if self._lower_bound is None or self._upper_bound is None:
+            raise DataFileSequenceError(
+                "Sequence '%s' did not match any files on disk" % sequence)
 
     def __getitem__(self, index):
         return self.gen_path(index)
@@ -153,7 +155,6 @@ class DataFileSequence(etas.Serializable):
         if not self.check_bounds(self._iter_index):
             self._iter_index = None
             raise StopIteration
-
         return self.gen_path(self._iter_index)
 
     @property
@@ -164,80 +165,85 @@ class DataFileSequence(etas.Serializable):
     def lower_bound(self):
         return self._lower_bound
 
-    @lower_bound.setter
-    def lower_bound(self, value):
-        if self._immutable_bounds:
-            raise DataFileSequenceError(
-                "Cannot set bounds for a sequence with immutable bounds.")
-        self._lower_bound = value
-
     @property
     def upper_bound(self):
         return self._upper_bound
 
+    @lower_bound.setter
+    def lower_bound(self, value):
+        if self.immutable_bounds:
+            raise DataFileSequenceError(
+                "Cannot set bounds of an immutable sequence.")
+        self._lower_bound = min(value, self.upper_bound)
+
     @upper_bound.setter
     def upper_bound(self, value):
-        if self._immutable_bounds:
+        if self.immutable_bounds:
             raise DataFileSequenceError(
-                "Cannot set bounds for a sequence with immutable_bounds.")
-        self._upper_bound = value
-
-    @property
-    def starts_at_one(self):
-        return self._lower_bound == 1
+                "Cannot set bounds of an immutable sequence.")
+        self._upper_bound = max(value, self.lower_bound)
 
     @property
     def starts_at_zero(self):
         return self._lower_bound == 0
 
+    @property
+    def starts_at_one(self):
+        return self._lower_bound == 1
+
     def check_bounds(self, index):
         '''Checks if the index is within the bounds for this sequence.
 
+        Args:
+            index: a sequence index
+
         Returns:
-            True is index is valid
+            True/False
         '''
         if index < self.lower_bound or index > self.upper_bound:
             return False
         return True
 
     def gen_path(self, index):
-        '''Generates and returns the path for the file at the index.'''
-        if self._immutable_bounds:
+        '''Generates the path for the file with the given sequence index.
+
+        If the sequence has mutable bounds, the index can extend the sequence
+        consecutively (i.e., by one index) above or below the current bounds.
+
+        Args:
+            index: a sequence index
+
+        Returns:
+            the generated path for the given index
+        '''
+        if self.immutable_bounds:
             if not self.check_bounds(index):
                 raise DataFileSequenceError(
-                    "Index out of bounds for sequence.")
-        else:
-            # In the mutable bounds case, enforce the behavior that the user
-            # can add a file to the beginning or the end of the sequence.
-            if index < 0:
-                raise DataFileSequenceError(
-                    "Indices cannot be less than zero.")
-            elif index == self.lower_bound - 1:
-                self._lower_bound = index
-            elif index == self.upper_bound + 1:
-                self._upper_bound = index
-            else:
-                if not self.check_bounds(index):
-                    raise DataFileSequenceError(
-                        "Given index out of bounds for sequence with mutable "
-                        "bounds: permitted to add to the beginning or end of "
-                        "the sequence but not to add arbitrarily to it.")
+                    "Index %d out of bounds [%d, %d]" %
+                    (index, self.lower_bound, self.upper_bound))
+        elif index < 0:
+            raise DataFileSequenceError("Indices must be nonnegative")
+        elif index == self.lower_bound - 1:
+            self._lower_bound = index
+        elif index == self.upper_bound + 1:
+            self._upper_bound = index
+        elif not self.check_bounds(index):
+            raise DataFileSequenceError(
+                "Index %d out of bounds [%d, %d]; mutable sequences can be "
+                "extended at most one index above/below." %
+                (index, self.lower_bound, self.upper_bound))
 
         return self.sequence % index
 
     @classmethod
-    def from_dict(cls, d):
-        return cls(d["sequence"])
-
-    @classmethod
-    def build_from_dir(cls, dir_path):
-        '''Build a `DataFileSequence` for the given directory.'''
+    def build_for_dir(cls, dir_path):
+        '''Builds a `DataFileSequence` for the given directory.'''
         return cls(etau.parse_dir_pattern(dir_path)[0])
 
     @classmethod
-    def build_from_pattern(cls, pattern):
-        '''Builds a `DataFileSequence` for the given file pattern.'''
-        return cls(pattern)
+    def from_dict(cls, d):
+        '''Builds a `DataFileSequence` from a JSON dictioanry.'''
+        return cls(d["sequence"], immutable_bounds=d["immutable_bounds"])
 
 
 class DataFileSequenceError(Exception):
