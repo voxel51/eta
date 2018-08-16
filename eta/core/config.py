@@ -386,7 +386,7 @@ class Config(etas.Serializable):
 
     @staticmethod
     def parse_dict(d, key, default=no_default):
-        '''Parses an dictionary attribute.
+        '''Parses a dictionary attribute.
 
         Args:
             d: a JSON dictionary
@@ -597,14 +597,14 @@ class EnvConfig(etas.Serializable):
             key: the key to parse
             env_var: an optional environment variable to load the attribute
                 from rather than using the JSON dictionary
-            default: an optional default value to return if key is not present
+            default: an optional default list to return if key is not present
 
         Returns:
             a list of strings
 
         Raises:
             EnvConfigError: if the environment variable, the dictionary key, or
-                a default value was not provided.
+                a default value was not provided
         '''
         return _parse_env_var_or_key(d, key, list, env_var, str, True, default)
 
@@ -617,14 +617,14 @@ class EnvConfig(etas.Serializable):
             key: the key to parse
             env_var: an optional environment variable to load the attribute
                 from rather than using the JSON dictionary
-            default: an optional default value to return if key is not present
+            default: an optional default string to return if key is not present
 
         Returns:
             a string
 
         Raises:
             EnvConfigError: if the environment variable, the dictionary key, or
-                a default value was not provided.
+                a default value was not provided
         '''
         val = _parse_env_var_or_key(
             d, key, six.string_types, env_var, str, False, default)
@@ -639,14 +639,15 @@ class EnvConfig(etas.Serializable):
             key: the key to parse
             env_var: an optional environment variable to load the attribute
                 from rather than using the JSON dictionary
-            default: an optional default value to return if key is not present
+            default: an optional default numeric value to return if key is not
+                present
 
         Returns:
             a number (e.g. int, float)
 
         Raises:
             EnvConfigError: if the environment variable, the dictionary key, or
-                a default value was not provided.
+                a default value was not provided
         '''
         return _parse_env_var_or_key(
             d, key, numbers.Number, env_var, float, False, default)
@@ -660,14 +661,14 @@ class EnvConfig(etas.Serializable):
             key: the key to parse
             env_var: an optional environment variable to load the attribute
                 from rather than using the JSON dictionary
-            default: a default value to return if key is not present
+            default: a default bool to return if key is not present
 
         Returns:
             True/False
 
         Raises:
             EnvConfigError: if the environment variable, the dictionary key, or
-                a default value was not provided.
+                a default value was not provided
         '''
         env_t = lambda v: str(v).lower() in ("yes", "true", "1")
         return _parse_env_var_or_key(
