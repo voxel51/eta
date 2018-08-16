@@ -673,6 +673,28 @@ class EnvConfig(etas.Serializable):
         return _parse_env_var_or_key(
             d, key, bool, env_var, env_t, False, default)
 
+    @staticmethod
+    def parse_dict(d, key, env_var=None, default=no_default):
+        '''Parses a dictionary attribute.
+
+        Args:
+            d: a JSON dictionary
+            key: the key to parse
+            env_var: an optional environment variable to load the attribute
+                from rather than using the JSON dictionary
+            default: a default dict to return if key is not present
+
+        Returns:
+            a dictionary
+
+        Raises:
+            EnvConfigError: if the environment variable, the dictionary key, or
+                a default value was not provided
+        '''
+        env_t = lambda v: etas.load_json(v)
+        return _parse_env_var_or_key(
+            d, key, dict, env_var, env_t, False, default)
+
     @classmethod
     def from_dict(cls, d):
         '''Constructs an EnvConfig object from a JSON dictionary.
@@ -729,10 +751,10 @@ def _parse_env_var_or_key(d, key, t, env_var, env_t, sep, default):
         # Return value(s) from environment variable
         try:
             return [env_t(vi) for vi in val.split(":")] if sep else env_t(val)
-        except ValueError:
+        except:
             raise EnvConfigError(
                 "Failed to parse environment variable '%s' using %s",
-                env_var, env_t)
+                env_var, str(env_t))
 
     if key in d:
         val = d[key]
