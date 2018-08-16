@@ -101,6 +101,9 @@ class BuildCommand(Command):
         parser.add_argument(
             "--cleanup", action="store_true",
             help="delete all generated files after running the pipeline")
+        parser.add_argument(
+            "--debug", action="store_true",
+            help="set the pipeline logging level to DEBUG")
 
     @staticmethod
     def run(args):
@@ -111,6 +114,7 @@ class BuildCommand(Command):
             "parameters": {},
             "logging_config": {}
         }
+        d = defaultdict(dict, d)
         if args.name:
             d["pipeline"] = args.name
         if args.inputs:
@@ -121,6 +125,9 @@ class BuildCommand(Command):
             d["parameters"].update(args.parameters)
         if args.logging:
             d["logging_config"].update(args.logging)
+        if args.debug:
+            d["logging_config"]["stdout_level"] = "DEBUG"
+            d["logging_config"]["file_level"] = "DEBUG"
 
         # Parse pipeline request
         logger.info("Parsing pipeline request")
