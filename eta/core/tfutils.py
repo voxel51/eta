@@ -45,9 +45,7 @@ def make_tf_session(config_proto=None):
     config = copy.copy(config_proto) if config_proto else tf.ConfigProto()
     # Apply ETA config settings
     _set_proto_fields(config, eta.config.tf_config)
-
-    #return tf.Session(config=config)
-    return config
+    return tf.Session(config=config)
 
 
 def _set_proto_fields(proto, d):
