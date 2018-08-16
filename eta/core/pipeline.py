@@ -65,20 +65,22 @@ def run(
     Returns:
         True/False whether the pipeline completed successfully
     '''
-    # Load config
+    # Load pipeline config
     pipeline_config = PipelineConfig.from_json(pipeline_config_path)
 
-    # Convert to absolute path so jobs can find the pipeline config later
-    # regardless of their working directory
-    pipeline_config_path = os.path.abspath(pipeline_config_path)
-
     # Setup logging
-    lc = pipeline_config.logging_config
-    etal.custom_setup(lc, rotate=rotate_logs)
+    etal.custom_setup(pipeline_config.logging_config, rotate=rotate_logs)
+
+    # Apply config settings
+    eta.set_config_settings(**pipeline_config.eta_config)
 
     # Create a PipelineStatus instance, if necessary
     if not pipeline_status:
         pipeline_status = _make_pipeline_status(pipeline_config)
+
+    # Convert to absolute path so jobs can find the pipeline config later
+    # regardless of their working directory
+    pipeline_config_path = os.path.abspath(pipeline_config_path)
 
     # Run pipeline
     return _run(
@@ -246,6 +248,7 @@ class PipelineConfig(Config):
         self.overwrite = self.parse_bool(d, "overwrite", default=True)
         self.jobs = self.parse_object_array(
             d, "jobs", etaj.JobConfig, default=[])
+        self.eta_config = self.parse_dict(d, "eta_config", default={})
         self.logging_config = self.parse_object(
             d, "logging_config", etal.LoggingConfig,
             default=etal.LoggingConfig.default())
