@@ -48,6 +48,9 @@ class ETAConfig(EnvConfig):
             d, "models_dirs", env_var="ETA_MODELS_DIRS", default=[])
         self.pythonpath_dirs = self.parse_string_array(
             d, "pythonpath_dirs", env_var="ETA_PYTHONPATH_DIRS", default=[])
+        self.environment_vars = self.parse_dict(
+            d, "environment_vars", default={})
+        self.tf_config = self.parse_dict(d, "tf_config", default={})
         self.max_model_versions_to_keep = int(self.parse_number(
             d, "max_model_versions_to_keep",
             env_var="ETA_MAX_MODEL_VERSIONS_TO_KEEP", default=-1))
