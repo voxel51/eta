@@ -93,6 +93,9 @@ class BuildCommand(Command):
             "-p", "--parameters", type=etas.load_json,
             metavar="'{\"key\": val, ...}'", help="pipeline parameters")
         parser.add_argument(
+            "-c", "--config", type=etas.load_json,
+            metavar="'{\"key\": val, ...}'", help="ETA config settings")
+        parser.add_argument(
             "-l", "--logging", type=etas.load_json,
             metavar="'{\"key\": val, ...}'", help="logging config settings")
         parser.add_argument(
@@ -112,6 +115,7 @@ class BuildCommand(Command):
             "inputs": {},
             "outputs": {},
             "parameters": {},
+            "eta_config": {},
             "logging_config": {}
         }
         d = defaultdict(dict, d)
@@ -123,6 +127,8 @@ class BuildCommand(Command):
             d["outputs"].update(args.outputs)
         if args.parameters:
             d["parameters"].update(args.parameters)
+        if args.config:
+            d["eta_config"].update(args.config)
         if args.logging:
             d["logging_config"].update(args.logging)
         if args.debug:

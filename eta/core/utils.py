@@ -184,6 +184,21 @@ def query_yes_no(question, default=None):
             print("Please respond with 'yes' or 'no'")
 
 
+def call(args):
+    '''Runs the command via `subprocess.call`.
+
+    stdout and stderr are streamed live during execution. If you want to
+    capture these streams, use `communicate`.
+
+    Args:
+        args: the command specified as a ["list", "of", "strings"]
+
+    Returns:
+        True/False: if the command executed successfully
+    '''
+    return subprocess.call(args) == 0
+
+
 def communicate(args, decode=False):
     '''Runs the command via subprocess.communicate()
 
@@ -197,7 +212,7 @@ def communicate(args, decode=False):
         out: the command's stdout
         err: the command's stderr
     '''
-    logger.debug("Excuting '%s'", " ".join(args))
+    logger.debug("Executing '%s'", " ".join(args))
     p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = p.communicate()
     if decode:
@@ -232,18 +247,6 @@ def communicate_or_die(args, decode=False):
             raise ExecutableNotFoundError(args[0])
         else:
             raise
-
-
-def call(args):
-    '''Runs the command via subprocess.call()
-
-    Args:
-        args: the command specified as a ["list", "of", "strings"]
-
-    Returns:
-        True/False: if the command executed successfully
-    '''
-    return subprocess.call(args) == 0
 
 
 def copy_file(inpath, outpath, check_ext=False):

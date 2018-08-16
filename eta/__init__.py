@@ -48,6 +48,9 @@ class ETAConfig(EnvConfig):
             d, "models_dirs", env_var="ETA_MODELS_DIRS", default=[])
         self.pythonpath_dirs = self.parse_string_array(
             d, "pythonpath_dirs", env_var="ETA_PYTHONPATH_DIRS", default=[])
+        self.environment_vars = self.parse_dict(
+            d, "environment_vars", default={})
+        self.tf_config = self.parse_dict(d, "tf_config", default={})
         self.max_model_versions_to_keep = int(self.parse_number(
             d, "max_model_versions_to_keep",
             env_var="ETA_MAX_MODEL_VERSIONS_TO_KEEP", default=-1))
@@ -64,11 +67,30 @@ class ETAConfig(EnvConfig):
             d, "default_video_ext", env_var="ETA_DEFAULT_VIDEO_EXT",
             default=".mp4")
 
-        # This field does not support an environment variable syntax because it
-        # contains environment variables itself and the user can just set them
-        # directly if they prefer to configure outside of this config file
-        self.environment_vars = Config.parse_dict(
-            d, "environment_vars", default={})
+
+def set_config_settings(**kwargs):
+    '''Sets the given ETA config settings.
+
+    The settings are validated by constructing an ETAConfig from them before
+    applying them.
+
+    Args:
+        **kwargs: keyword arguments defining valid ETA config fields and values
+
+    Raises:
+        EnvConfigError: if the settings were invalid
+    '''
+    # Validiate settings
+    _config = ETAConfig.from_dict(kwargs)
+
+    # Apply settings
+    for field in kwargs:
+        if not hasattr(config, field):
+            logger.warning("Skipping unknown config setting '%s'", field)
+            continue
+        val = getattr(_config, field)
+        logger.debug("Setting ETA config field %s = %s", field, str(val))
+        setattr(config, field, val)
 
 
 def startup_message():
