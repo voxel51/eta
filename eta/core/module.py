@@ -149,9 +149,11 @@ def find_exe(module_metadata):
     return exe_path
 
 
+#
 # @todo should pass a PipelineConfig instance here, not just the path. The need
-# to use PipelineConfig here is causing a circular import with eta.core.module.
-# This suggests bad design...
+# to use PipelineConfig here is causing a circular import with
+# eta.core.module, which suggests this is a bad design...
+#
 def setup(module_config, pipeline_config_path=None):
     '''Perform module setup.
 
@@ -162,14 +164,20 @@ def setup(module_config, pipeline_config_path=None):
         module_config: a Config instance derived from BaseModuleConfig
         pipeline_config_path: an optional path to a PipelineConfig
     '''
-    # Set/override module config settings
     if pipeline_config_path:
+        # Load pipeline config
         from eta.core.pipeline import PipelineConfig
         pipeline_config = PipelineConfig.from_json(pipeline_config_path)
+
+        # Inherit settings from pipeline
+        module_config.base.eta_config.update(pipeline_config.eta_config)
         module_config.base.logging_config = pipeline_config.logging_config
 
     # Setup logging
     etal.custom_setup(module_config.base.logging_config)
+
+    # Apply config settings
+    eta.set_config_settings(**module_config.base.eta_config)
 
 
 class BaseModuleConfig(Config):
@@ -185,9 +193,9 @@ class BaseModuleConfig(Config):
 
     def __init__(self, d):
         self.base = self.parse_object(
-            d, "base", BaseModuleConfigSettings,
-            default=BaseModuleConfigSettings.default(),
-        )
+            d, "base", BaseModuleConfigSettings, default=None)
+        if self.base is None:
+            self.base = BaseModuleConfigSettings.default()
 
 
 class BaseModuleConfigSettings(Config):
@@ -196,11 +204,14 @@ class BaseModuleConfigSettings(Config):
     All fields defined here should provide default values.
 
     Attributes:
+        eta_config: a dictionary defining custom ETA config settings to apply
+            before running the module
         logging_config: an `eta.core.log.LoggingConfig` instance defining
             the logging configuration settings for the module
     '''
 
     def __init__(self, d):
+        self.eta_config = self.parse_dict(d, "eta_config", default={})
         self.logging_config = self.parse_object(
             d, "logging_config", etal.LoggingConfig,
             default=etal.LoggingConfig.default())
