@@ -115,6 +115,7 @@ def _run(job_config):
     # Run command
     etal.flush()  # must flush because subprocess will append to same logfile
     success = etau.call(args)
+
     return success
 
 
