@@ -30,7 +30,6 @@ from builtins import *
 # pragma pylint: enable=wildcard-import
 
 import logging
-import os
 
 import numpy as np
 import tensorflow as tf
@@ -39,6 +38,7 @@ from eta.core.config import Config
 import eta.core.image as etai
 from eta.core.features import Featurizer
 import eta.core.models as etam
+import eta.core.tfutils as etat
 
 
 logger = logging.getLogger(__name__)
@@ -74,7 +74,7 @@ class VGG16(object):
                 used so you can evaluate any number of images at once
         '''
         self.config = config or VGG16Config.default()
-        self.sess = sess or tf.Session()
+        self.sess = sess or etat.make_tf_session()
         self.imgs = imgs or tf.placeholder(tf.float32, [None, 224, 224, 3])
 
         self._build_conv_layers()
