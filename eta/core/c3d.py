@@ -31,7 +31,7 @@ import tensorflow as tf
 
 from eta.core.config import Config
 from eta.core.features import Featurizer
-from eta.core.tfutils import TensorFlowModelCheckpoint
+import eta.core.tfutils as etat
 import eta.core.video as etav
 
 
@@ -63,7 +63,7 @@ class C3D(object):
             clips: an optional tf.placeholder of size [XXXX, 16, 112, 112, 3]
         '''
         self.config = config or C3DConfig.default()
-        self.sess = sess or tf.Session()
+        self.sess = sess or etat.make_tf_session()
         self.clips = clips or tf.placeholder(
             tf.float32, [None, 16, 112, 112, 3])
 
