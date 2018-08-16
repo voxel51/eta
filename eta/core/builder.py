@@ -52,6 +52,7 @@ class PipelineBuildRequestConfig(Config):
         self.inputs = self.parse_dict(d, "inputs", default={})
         self.outputs = self.parse_dict(d, "outputs", default={})
         self.parameters = self.parse_dict(d, "parameters", default={})
+        self.eta_config = self.parse_dict(d, "eta_config", default={})
         self.logging_config = self.parse_object(
             d, "logging_config", etal.LoggingConfig, default=None)
 
@@ -76,6 +77,8 @@ class PipelineBuildRequest(Configurable):
         outputs: a dictionary mapping output names to output paths (if any)
         parameters: a dictionary mapping <module>.<parameter> names to
             parameter values
+        eta_config: a dictionary of custom ETA config settings for the pipeline
+            (if any)
         logging_config: the LoggingConfig for the pipeline (if any)
     '''
 
@@ -95,6 +98,7 @@ class PipelineBuildRequest(Configurable):
         self.inputs = etau.remove_none_values(config.inputs)
         self.outputs = etau.remove_none_values(config.outputs)
         self.parameters = etau.remove_none_values(config.parameters)
+        self.eta_config = config.eta_config
         self.logging_config = config.logging_config
 
         self._validate_inputs()
@@ -331,6 +335,7 @@ class PipelineBuilder(object):
             .set(status_path=self.pipeline_status_path)
             .set(overwrite=False)
             .set(jobs=jobs)
+            .set(eta_config=self.request.eta_config)
             .set(logging_config=logging_config)
             .validate())
 
