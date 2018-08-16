@@ -37,6 +37,7 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import zipfile
 
 import eta.constants as etac
 
@@ -536,8 +537,7 @@ def _to_human_binary_str(num, suffix):
 
 
 def extract_tar(inpath, outdir=None, delete_tar=False):
-    '''Extracts the .tar, tar.gz, .tgz, .tar.bz, and .tbz files into the same
-    directory and then optionally deletes the tarball.
+    '''Extracts the contents of a .tar, tar.gz, .tgz, .tar.bz, or .tbz file.
 
     Args:
         inpath: the path to the tar or compressed tar file
@@ -562,6 +562,25 @@ def extract_tar(inpath, outdir=None, delete_tar=False):
         tar.extractall(path=outdir)
 
     if delete_tar:
+        delete_file(inpath)
+
+
+def extract_zip(inpath, outdir=None, delete_zip=False):
+    '''Extracts the contents of a .zip file.
+
+    Args:
+        inpath: the path to the zip file
+        outdir: the directory into which to extract the zip contents. By
+            default, the directory containing the zip file is used
+        delete_zip: whether to delete the zip after extraction. By default,
+            this is False
+    '''
+    outdir = outdir or os.path.dirname(inpath) or "."
+
+    with zipfile.ZipFile(inpath, "r") as zfile:
+        zfile.extractall(outdir)
+
+    if delete_zip:
         delete_file(inpath)
 
 
