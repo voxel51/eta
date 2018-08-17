@@ -14,6 +14,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
+from future.utils import iteritems
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
@@ -116,7 +117,7 @@ class Accumulator(object):
                 count/weight
         '''
         vals = self._weights if weighted else self._counts
-        return max(vals.items(), key=operator.itemgetter(1))
+        return max(iteritems(vals), key=operator.itemgetter(1))
 
 
 class GrowableArray(object):
