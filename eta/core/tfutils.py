@@ -42,10 +42,29 @@ def make_tf_session(config_proto=None):
     Returns:
         a tf.Session
     '''
-    config = copy.copy(config_proto) if config_proto else tf.ConfigProto()
-    # Apply ETA config settings
-    _set_proto_fields(config, eta.config.tf_config)
+    config = make_tf_config(config_proto=config_proto)
     return tf.Session(config=config)
+
+
+def make_tf_config(config_proto=None):
+    '''Makes a new tf.ConfigProto that inherits any config settings from the
+    global `eta.config.tf_config`.
+
+    Args:
+        config_proto: an optional tf.ConfigProto from which to initialize the
+            config. By default, tf.ConfigProto() is used
+
+    Returns:
+        a tf.ConfigProto
+    '''
+    config = copy.copy(config_proto) if config_proto else tf.ConfigProto()
+
+    if eta.config.tf_config:
+        logger.debug(
+            "Applying eta.tf_config settings: %s", str(eta.config.tf_config))
+        _set_proto_fields(config, eta.config.tf_config)
+
+    return config
 
 
 def _set_proto_fields(proto, d):
