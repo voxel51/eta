@@ -14,6 +14,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
+from future.utils import iteritems
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
@@ -78,6 +79,20 @@ class Accumulator(object):
         self._weights[thing] += weight
         self._counts[thing] += 1
 
+    def add_all(self, things, weights=None):
+        '''Adds all `thing`s in the iterable to the accumulator.
+
+        Args:
+            things: an iterable of things
+            weights: an optional iteratable of weights
+        '''
+        if weights:
+            for thing, weight in zip(things, weights):
+                self.add(thing, weight=weight)
+        else:
+            for thing in things:
+                self.add(thing)
+
     def get_count(self, thing):
         '''Gets the count of `thing`.'''
         return self._counts[thing]
@@ -116,7 +131,7 @@ class Accumulator(object):
                 count/weight
         '''
         vals = self._weights if weighted else self._counts
-        return max(vals.items(), key=operator.itemgetter(1))
+        return max(iteritems(vals), key=operator.itemgetter(1))
 
 
 class GrowableArray(object):
