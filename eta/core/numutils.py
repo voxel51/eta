@@ -79,6 +79,20 @@ class Accumulator(object):
         self._weights[thing] += weight
         self._counts[thing] += 1
 
+    def add_all(self, things, weights=None):
+        '''Adds all `thing`s in the iterable to the accumulator.
+
+        Args:
+            things: an iterable of things
+            weights: an optional iteratable of weights
+        '''
+        if weights:
+            for thing, weight in zip(things, weights):
+                self.add(thing, weight=weight)
+        else:
+            for thing in things:
+                self.add(thing)
+
     def get_count(self, thing):
         '''Gets the count of `thing`.'''
         return self._counts[thing]
