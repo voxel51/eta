@@ -619,11 +619,6 @@ class PipelineConnection(object):
     def __str__(self):
         return "%s -> %s" % (self.source, self.sink)
 
-    @property
-    def is_module_connection(self):
-        '''Returns True/False if this connection is between module nodes.'''
-        return self.source.is_module_node and self.sink.is_module_node
-
 
 class PipelineMetadata(Configurable, HasBlockDiagram):
     '''Class the encapsulates the architecture of a pipeline.
