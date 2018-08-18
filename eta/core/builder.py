@@ -21,6 +21,7 @@ from future.utils import iteritems, itervalues
 
 from collections import defaultdict
 import copy
+import glob
 import logging
 import os
 import time
@@ -42,6 +43,81 @@ PIPELINE_CONFIG_FILE = "pipeline.json"
 PIPELINE_LOGFILE_FILE = "pipeline.log"
 PIPELINE_STATUS_FILE = "status.json"
 MODULE_CONFIG_EXT = ".json"
+
+
+def find_last_built_pipeline():
+    '''Finds the pipeline config file for the last built pipeline.
+
+    The last built pipeline is the pipeline whose generated configuration
+    directory has the most recent timestamp.
+
+    Returns:
+        the path to the pipline config file for the last built pipeline, or
+            None if no config directories were found
+    '''
+    builds = glob.glob(eta.config.config_dir + "/*/*")
+    if not builds:
+        return None
+
+    config_dir = max(builds, key=lambda b: os.path.basename(b))
+    return os.path.join(config_dir, PIPELINE_CONFIG_FILE)
+
+
+def find_all_built_pipelines():
+    '''Finds the pipeline config files for all built pipelines.
+
+    Returns:
+        a list of paths to pipline config files
+    '''
+    builds = glob.glob(eta.config.config_dir + "/*/*")
+    return [os.path.join(b, PIPELINE_CONFIG_FILE) for b in builds]
+
+
+def cleanup_pipeline(pipeline_config_path):
+    '''Cleans up the given built pipeline.
+
+    This function simply deletes the generated config and output directories
+    for the pipeline, if necessary. Published outputs are not deleted.
+
+    Args:
+        pipeline_config_path: the path to the pipeline config file for a
+            built pipeline
+
+    Raises:
+        OSError: if the pipeline was not a generated pipeline in the ETA config
+            directory
+    '''
+    eta_config_dir = os.path.realpath(eta.config.config_dir)
+    eta_output_dir = os.path.realpath(eta.config.output_dir)
+
+    config_dir = os.path.dirname(os.path.realpath(pipeline_config_path))
+    output_dir = os.path.join(
+        eta_output_dir, config_dir[(len(eta_config_dir) + 1):])
+
+    if not config_dir.startswith(eta_config_dir):
+        raise OSError(
+            "Expected pipeline '%s' to be in the ETA config directory '%s'" %
+            (pipeline_config_path, eta_config_dir))
+
+    logger.info("Cleaning up pipeline '%s'", pipeline_config_path)
+
+    try:
+        etau.delete_dir(config_dir)
+        logger.info("*** deleted config directory '%s'", config_dir)
+    except OSError:
+        pass
+
+    try:
+        etau.delete_dir(output_dir)
+        logger.info("*** deleted output directory '%s'", output_dir)
+    except OSError:
+        pass
+
+
+def cleanup_all_pipelines():
+    '''Cleans up all built pipelines.'''
+    for pipeline_config_path in find_all_built_pipelines():
+        cleanup_pipeline(pipeline_config_path)
 
 
 class PipelineBuildRequestConfig(Config):
