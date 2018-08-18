@@ -182,8 +182,58 @@ class RunCommand(Command):
 
     @staticmethod
     def run(args):
-        logger.info("Running ETA pipeline '%s'", args.config)
-        etap.run(args.config)
+        if args.config:
+            logger.info("Running ETA pipeline '%s'", args.config)
+            etap.run(args.config)
+
+        if args.last:
+            config = etab.find_last_built_pipeline()
+            if config:
+                logger.info("Running ETA pipeline '%s'", config)
+                etap.run(config)
+            else:
+                logger.info("No built pipelines found...")
+
+
+class CleanCommand(Command):
+    '''Command-line tool for cleaning up after ETA pipelines.
+
+    Examples:
+        # Cleanup the pipeline defined by a PipelineConfig JSON file
+        eta clean -c '/path/to/pipeline.json'
+
+        # Cleanup the last built pipeline
+        eta clean --last
+
+        # Cleanup all built pipelines
+        eta clean --all
+    '''
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "-c", "--config", help="path to a PipelineConfig file")
+        parser.add_argument(
+            "-l", "--last", action="store_true",
+            help="cleanup the last built pipeline")
+        parser.add_argument(
+            "-a", "--all", action="store_true",
+            help="cleanup all built pipelines")
+
+    @staticmethod
+    def run(args):
+        if args.config:
+            etab.cleanup_pipeline(args.config)
+
+        if args.last:
+            config = etab.find_last_built_pipeline()
+            if config:
+                etab.cleanup_pipeline(config)
+            else:
+                logger.info("No built pipelines found...")
+
+        if args.all:
+            etab.cleanup_all_pipelines()
 
 
 class ModelsCommand(Command):
@@ -399,6 +449,7 @@ subparsers = parser.add_subparsers(title="available commands")
 # Command setup
 _register_command("build", BuildCommand)
 _register_command("run", RunCommand)
+_register_command("clean", CleanCommand)
 _register_command("models", ModelsCommand)
 _register_command("modules", ModulesCommand)
 _register_command("pipelines", PipelinesCommand)
