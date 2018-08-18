@@ -70,11 +70,13 @@ class BuildCommand(Command):
         # Build pipeline from a PipelineBuildRequest dictionary
         eta build -r '{...}'
 
-        # Build the pipeline request interactively
+        # Build a pipeline request interactively, run it, and cleanup after
         eta build \\
             -n video_formatter \\
-            -i '{"video": "/path/to/video.mp4"}' \\
-            -p '{"format_videos.scale": 0.5}'
+            -i '{"video": "examples/data/water.mp4"}' \\
+            -o '{"formatted_video": "out/water-small.mp4"}' \\
+            -p '{"format_videos.scale": 0.5}' \\
+            --run-now --cleanup
     '''
 
     @staticmethod
@@ -148,6 +150,10 @@ class BuildCommand(Command):
             # Run pipeline
             logger.info("Running pipeline '%s'", request.pipeline)
             builder.run()
+        else:
+            logger.info(
+                "\n***** To run this pipeline *****\neta run -c %s\n",
+                builder.pipeline_config_path)
 
         if args.cleanup:
             # Cleanup pipeline files
@@ -160,12 +166,19 @@ class RunCommand(Command):
 
     Examples:
         # Run the pipeline defined by a PipelineConfig JSON file
-        eta run '/path/to/pipeline.json'
+        eta run -c '/path/to/pipeline.json'
+
+        # Run the last built pipeline
+        eta run --last
     '''
 
     @staticmethod
     def setup(parser):
-        parser.add_argument("config", help="path to a PipelineConfig file")
+        parser.add_argument(
+            "-c", "--config", help="path to a PipelineConfig file")
+        parser.add_argument(
+            "-l", "--last", action="store_true",
+            help="run the last built pipeline")
 
     @staticmethod
     def run(args):
