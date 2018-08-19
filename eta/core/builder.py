@@ -343,8 +343,7 @@ class PipelineBuilder(object):
         self._build_module_configs()
 
     def run(self):
-        '''Runs the built pipeline and publishes any outputs to their
-        specified locations.
+        '''Runs the built pipeline.
 
         Returns:
             True/False whether the pipeline completed successfully
@@ -357,24 +356,7 @@ class PipelineBuilder(object):
                 "You must build the pipeline before running it")
 
         # Run pipeline
-        success = etap.run(self.pipeline_config_path)
-        if not success:
-            return False
-
-        # Publish outputs
-        for oname, opath in iteritems(self.outputs):
-            ppath = self.pipeline_outputs[oname]
-            if os.path.isfile(ppath):
-                # Output is a file
-                etau.copy_file(ppath, opath, check_ext=True)
-            elif os.path.isdir(ppath):
-                # Output is a directory
-                etau.copy_dir(ppath, opath)
-            else:
-                # Assume the output is a sequence
-                etau.copy_sequence(ppath, opath, check_ext=True)
-
-        return True
+        return etap.run(self.pipeline_config_path)
 
     def cleanup(self):
         '''Cleans up the configs and output files generated when the pipeline
