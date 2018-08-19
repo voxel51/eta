@@ -457,32 +457,33 @@ class PipelineBuilder(object):
                     active_inputs[conn.sink.module].add(conn.sink.node)
 
         # Delete inactive inputs
-        for module in self.module_inputs:
-            if module not in active_modules:
-                del self.module_inputs[module]
+        self.module_inputs = {
+            m: i for m, i in iteritems(self.module_inputs)
+            if m in active_modules
+        }
 
         # Delete inactive outputs
-        for module, outputs in self.module_outputs:
-            if module not in active_modules:
-                del self.module_outputs[module]
-            else:
-                mmeta = pmeta.modules[module].metadata
-                for oname in outputs:
-                    if oname not in active_outputs[modle]:
-                        if not mmeta.get_output(oname).is_required:
-                            del self.module_outputs[module][oname]
+        self.module_outputs = {
+            m: o for m, o in iteritems(self.module_outputs)
+            if m in active_modules
+        }
+        for module, outputs in iteritems(self.module_outputs):
+            mmeta = pmeta.modules[module].metadata
+            mactive = active_outputs[module]
+            self.module_outputs[module] = {
+                n: p for n, p in iteritems(outputs)
+                if n in mactive or mmeta.get_output(n).is_required
+            }
 
         # Delete inactive parameters
-        self.module_params = {
-            module: params for module, params in iteritems(self.module_params)
-            if module in active_modules
+        self.module_parameters = {
+            m: p for m, p in iteritems(self.module_parameters)
+            if m in active_modules
         }
 
         # Update execution order
         self.execution_order = [
-            module for module in self.execution_order
-            if module in active_modules
-        ]
+            m for m in self.execution_order if m in active_modules]
 
     def _build_pipeline_config(self):
         # Build job configs
