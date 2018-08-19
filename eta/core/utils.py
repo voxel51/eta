@@ -580,6 +580,18 @@ def extract_tar(inpath, outdir=None, delete_tar=False):
         delete_file(inpath)
 
 
+def make_zip(dir_path, zip_path):
+    '''Makes a .zip file containing the given directory.
+
+    Args:
+        dir_path: the directory to zip
+        zip_path: the path + filename of the .zip file to create
+    '''
+    outpath = os.path.splitext(zip_path)[0]
+    rootdir, basedir = os.path.split(os.path.realpath(dir_path))
+    shutil.make_archive(outpath, "zip", rootdir, basedir)
+
+
 def extract_zip(inpath, outdir=None, delete_zip=False):
     '''Extracts the contents of a .zip file.
 
