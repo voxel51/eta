@@ -58,7 +58,7 @@ def run(
             PipelineStatus object is created that logs its status to the path
             specified in the provided PipelineConfig (if specified)
         mark_as_complete: whether to mark the PipelineStatus as complete when
-            the
+            the pipeline finishes. By default, this is True
         rotate_logs: whether to rotate any existing pipeline log(s) before
             running. By default, this is True
 
