@@ -184,16 +184,22 @@ class RunCommand(Command):
     @staticmethod
     def run(args):
         if args.config:
-            logger.info("Running ETA pipeline '%s'", args.config)
-            etap.run(args.config)
+            _run_pipeline(args.config)
 
         if args.last:
             config = etab.find_last_built_pipeline()
             if config:
-                logger.info("Running ETA pipeline '%s'", config)
-                etap.run(config)
+                _run_pipeline(args.config)
             else:
                 logger.info("No built pipelines found...")
+
+
+def _run_pipeline(config):
+    logger.info("Running ETA pipeline '%s'", config)
+    etap.run(config)
+
+    logger.info(
+        "\n***** To clean this pipeline *****\neta clean -c %s\n", config)
 
 
 class CleanCommand(Command):
