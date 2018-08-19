@@ -32,21 +32,54 @@ import eta.core.utils as etau
 
 
 def load_json(path_or_str):
-    '''Loads JSON from argument.
+    '''Loads JSON from the input argument.
+
+    The input argument can be any of the following:
+        (a) the path to a JSON file on disk
+        (b) a string that can be directly parsed via `json.loads`
+        (c) a string containing a comma-seperated list of key=val values
+            defining a JSON dictionary, where each value must be parsable via
+            `json.loads(val)`
 
     Args:
-        path_or_str: can either be the path to a JSON file or a JSON string
+        path_or_str: the JSON path or string any of the above supported formats
 
     Returns:
-        the JSON dictionary
+        the loaded JSON
+
+    Raises:
+        ValueError: if no JSON could be decoded
     '''
     if os.path.isfile(path_or_str):
+        # Read from disk
         return read_json(path_or_str)
-    return json.loads(path_or_str)
+    try:
+        # Parse from JSON string
+        return json.loads(path_or_str)
+    except ValueError:
+        try:
+            # Try to parse comma-seperated list of key=value pairs
+            d = {}
+            for chunk in path_or_str.split(","):
+                key, value = chunk.split("=")
+                d[key] = json.loads(value)
+            return d
+        except ValueError:
+            raise ValueError("Unable to load JSON from '%s'" % path_or_str)
 
 
 def read_json(path):
-    '''Reads JSON from file.'''
+    '''Reads JSON from file.
+
+    Args:
+        path: the path to the JSON file
+
+    Returns:
+        a dict or list containing the loaded JSON
+
+    Raises:
+        ValueError: if the JSON file was invalid
+    '''
     try:
         with open(path, "rt") as f:
             return json.load(f)

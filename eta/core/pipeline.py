@@ -619,11 +619,6 @@ class PipelineConnection(object):
     def __str__(self):
         return "%s -> %s" % (self.source, self.sink)
 
-    @property
-    def is_module_connection(self):
-        '''Returns True/False if this connection is between module nodes.'''
-        return self.source.is_module_node and self.sink.is_module_node
-
 
 class PipelineMetadata(Configurable, HasBlockDiagram):
     '''Class the encapsulates the architecture of a pipeline.
@@ -735,6 +730,22 @@ class PipelineMetadata(Configurable, HasBlockDiagram):
         '''
         node_str = PipelineNode.get_output_str(name)
         return _get_sources_with_sink(node_str, self.connections)[0]
+
+    def get_incoming_connections(self, module):
+        '''Gets the incoming connections for the given module.
+
+        Args:
+            module: the module name
+
+        Returns:
+            a list of PipelineConnections describing the incoming connections
+                for the given module
+        '''
+        iconns = []
+        for c in self.connections:
+            if c.sink.module == module:
+                iconns.append(c)
+        return iconns
 
     def get_outgoing_connections(self, module):
         '''Gets the outgoing connections for the given module.

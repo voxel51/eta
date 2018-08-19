@@ -67,15 +67,12 @@ class BuildCommand(Command):
         # Build pipeline from a PipelineBuildRequest JSON file
         eta build -r '/path/to/pipeline/request.json'
 
-        # Build pipeline from a PipelineBuildRequest dictionary
-        eta build -r '{...}'
-
         # Build a pipeline request interactively, run it, and cleanup after
         eta build \\
             -n video_formatter \\
-            -i '{"video": "examples/data/water.mp4"}' \\
-            -o '{"formatted_video": "out/water-small.mp4"}' \\
-            -p '{"format_videos.scale": 0.5}' \\
+            -i 'video="examples/data/water.mp4"' \\
+            -o 'formatted_video="water-small.mp4"' \\
+            -p 'format_videos.scale=0.5' \\
             --run-now --cleanup
     '''
 
@@ -87,19 +84,22 @@ class BuildCommand(Command):
         parser.add_argument("-n", "--name", help="pipeline name")
         parser.add_argument(
             "-i", "--inputs", type=etas.load_json,
-            metavar="'{\"key\": val, ...}'", help="pipeline inputs")
+            metavar="'key=val,...'", help="pipeline inputs")
         parser.add_argument(
             "-o", "--outputs", type=etas.load_json,
-            metavar="'{\"key\": val, ...}'", help="pipeline outputs")
+            metavar="'key=val,...'", help="pipeline outputs")
         parser.add_argument(
             "-p", "--parameters", type=etas.load_json,
-            metavar="'{\"key\": val, ...}'", help="pipeline parameters")
+            metavar="'key=val,...'", help="pipeline parameters")
         parser.add_argument(
             "-e", "--eta-config", type=etas.load_json,
-            metavar="'{\"key\": val, ...}'", help="ETA config settings")
+            metavar="'key=val,...'", help="ETA config settings")
         parser.add_argument(
             "-l", "--logging", type=etas.load_json,
-            metavar="'{\"key\": val, ...}'", help="logging config settings")
+            metavar="'key=val,...'", help="logging config settings")
+        parser.add_argument(
+            "-u", "--unoptimized", action="store_true",
+            help="don't optimize the pipeline when building")
         parser.add_argument(
             "--run-now", action="store_true",
             help="run the pipeline after building")
@@ -144,7 +144,8 @@ class BuildCommand(Command):
         # Build pipeline
         logger.info("Building pipeline '%s'", request.pipeline)
         builder = etab.PipelineBuilder(request)
-        builder.build()
+        optimized = not args.unoptimized
+        builder.build(optimized=optimized)
 
         if args.run_now:
             # Run pipeline
@@ -183,16 +184,22 @@ class RunCommand(Command):
     @staticmethod
     def run(args):
         if args.config:
-            logger.info("Running ETA pipeline '%s'", args.config)
-            etap.run(args.config)
+            _run_pipeline(args.config)
 
         if args.last:
             config = etab.find_last_built_pipeline()
             if config:
-                logger.info("Running ETA pipeline '%s'", config)
-                etap.run(config)
+                _run_pipeline(args.config)
             else:
                 logger.info("No built pipelines found...")
+
+
+def _run_pipeline(config):
+    logger.info("Running ETA pipeline '%s'", config)
+    etap.run(config)
+
+    logger.info(
+        "\n***** To clean this pipeline *****\neta clean -c %s\n", config)
 
 
 class CleanCommand(Command):

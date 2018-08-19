@@ -140,7 +140,9 @@ class PipelineBuildRequest(Configurable):
         - a pipeline of the specified name exists
         - all required pipeline inputs are provided and have valid values
         - any output paths specified must refer to valid pipeline output names
-            and the specified paths must be valid paths for each output type
+            and the specified paths must be either (a) valid paths for the
+            associated types, or (b) None, in which case their paths will be
+            automatically populated when the pipeline is built
         - all required pipeline parameters are provided and have valid values
 
     Note that any fields set to `None` are ignored, so any inputs/parameters
@@ -172,7 +174,7 @@ class PipelineBuildRequest(Configurable):
         self.pipeline = config.pipeline
         self.metadata = etap.load_metadata(config.pipeline)
         self.inputs = etau.remove_none_values(config.inputs)
-        self.outputs = etau.remove_none_values(config.outputs)
+        self.outputs = config.outputs
         self.parameters = etau.remove_none_values(config.parameters)
         self.eta_config = config.eta_config
         self.logging_config = config.logging_config
@@ -206,8 +208,10 @@ class PipelineBuildRequest(Configurable):
         for oname, opath in iteritems(self.outputs):
             if not self.metadata.has_output(oname):
                 raise PipelineBuildRequestError(
-                    "Pipeline '%s' has no output '%s'" % (
-                        self.pipeline, oname))
+                    "Pipeline '%s' has no output '%s'" %
+                    (self.pipeline, oname))
+            if not opath:
+                continue
             if not self.metadata.is_valid_output(oname, opath):
                 raise PipelineBuildRequestError(
                     "'%s' is not a valid value for output '%s' of pipeline "
@@ -248,6 +252,7 @@ class PipelineBuilder(object):
 
     Attributes:
         request: the PipelineBuildRequest instance used to build the pipeline
+        optimized: whether the pipeline was optimized during building
         timestamp: the time when the pipeline was built
         config_dir: the directory where the pipeline and module configuration
             files were written and where the pipeline log will be written
@@ -259,14 +264,20 @@ class PipelineBuilder(object):
             will be generated when the pipeline is run
         pipeline_logfile_path: the path to the pipeline logfile that will be
             generated when the pipeline is run
-        pipeline_outputs: a dictionary mapping pipeline outputs to the paths
-            where they will be written when the pipeline is run. These
-            paths are all within `output_dir`, and they are populated for all
-            pipeline outputs regardless of whether the output was included in
-            the `outputs` dictionary of the PipelineBuildRequest
-        outputs: the outputs dictionary from the PipelineBuildRequest, which
-            specifies where to publish certain pipeline outputs after the
-            pipeline is run
+        execution_order: a list of modules defining the order the pipeline
+            modules will be executed
+        module_inputs: a dictionary mapping module names to dictionaries
+            of module input names and their associated paths.
+        module_outputs: a dictionary mapping module names to dictionaries
+            of module output names and their associated paths in `output_dir`
+        module_parameters: a dictionary mapping modules names to dictionaries
+            containing the module parameter names and their associated values
+        pipeline_outputs: a dictionary mapping pipeline outputs to their
+            associated paths. If the pipeline is optimized, this dictionary
+            will contain the same outputs from the PipelineBuildRequest. If
+            the pipeline is not optimized, it will also contain paths in
+            `output_dir` for any pipeline outputs that were not included in the
+            outputs dictionary
     '''
 
     def __init__(self, request):
@@ -276,22 +287,35 @@ class PipelineBuilder(object):
             request: a PipelineBuildRequest instance
         '''
         self.request = request
-        self.outputs = self.request.outputs
         self._concrete_data_params = etat.ConcreteDataParams()
         self.reset()
 
     def reset(self):
         '''Resets the builder so that another pipeline can be built.'''
+        self.optimized = None
         self.timestamp = None
         self.config_dir = None
         self.output_dir = None
         self.pipeline_config_path = None
-        self.pipeline_logfile_path = None
         self.pipeline_status_path = None
+        self.pipeline_logfile_path = None
+        self.execution_order = []
+        self.module_inputs = defaultdict(dict)
+        self.module_outputs = defaultdict(dict)
+        self.module_parameters = defaultdict(dict)
         self.pipeline_outputs = {}
 
-    def build(self):
-        '''Builds the pipeline and writes the associated config files.'''
+    def build(self, optimized=True):
+        '''Builds the pipeline and writes the associated config files.
+
+        Args:
+            optimized: whether to optimize the pipeline by omitting any modules
+                that are not necessary to generate the requested outputs. By
+                default, this is True
+        '''
+        self.reset()
+        self.optimized = optimized
+
         #
         # Using local time could cause non-uniqueness around timezone changes
         # and daylight savings time, but we'll assume that users would rather
@@ -315,14 +339,15 @@ class PipelineBuilder(object):
             self.pipeline_logfile_path = self._make_pipeline_logfile_path()
         if not self.pipeline_status_path:
             self.pipeline_status_path = self._make_pipeline_status_path()
-        self.pipeline_outputs = {}
 
+        self._populate_pipeline_connections()
+        if self.optimized:
+            self._optimize_pipeline()
         self._build_pipeline_config()
         self._build_module_configs()
 
     def run(self):
-        '''Runs the built pipeline and publishes any outputs to their
-        specified locations.
+        '''Runs the built pipeline.
 
         Returns:
             True/False whether the pipeline completed successfully
@@ -335,24 +360,7 @@ class PipelineBuilder(object):
                 "You must build the pipeline before running it")
 
         # Run pipeline
-        success = etap.run(self.pipeline_config_path)
-        if not success:
-            return False
-
-        # Publish outputs
-        for oname, opath in iteritems(self.outputs):
-            ppath = self.pipeline_outputs[oname]
-            if os.path.isfile(ppath):
-                # Output is a file
-                etau.copy_file(ppath, opath, check_ext=True)
-            elif os.path.isdir(ppath):
-                # Output is a directory
-                etau.copy_dir(ppath, opath)
-            else:
-                # Assume the output is a sequence
-                etau.copy_sequence(ppath, opath, check_ext=True)
-
-        return True
+        return etap.run(self.pipeline_config_path)
 
     def cleanup(self):
         '''Cleans up the configs and output files generated when the pipeline
@@ -378,11 +386,108 @@ class PipelineBuilder(object):
         except OSError:
             pass
 
+    def _populate_pipeline_connections(self):
+        # Get PipelineMetadata
+        pmeta = self.request.metadata
+
+        # Distribute pipeline inputs
+        for piname, pipath in iteritems(self.request.inputs):
+            for sink in pmeta.get_input_sinks(piname):
+                self.module_inputs[sink.module][sink.node] = pipath
+
+        # Distribute published outputs
+        for poname, popath in iteritems(self.request.outputs):
+            if popath:
+                source = pmeta.get_output_source(poname)
+                self.module_outputs[source.module][source.node] = popath
+
+        # Propagate module connections
+        for module in pmeta.execution_order:
+            mmeta = pmeta.modules[module].metadata  # ModuleMetadata
+            oconns = pmeta.get_outgoing_connections(module)
+            for oname, osinks in iteritems(oconns):
+                if oname in self.module_outputs[module]:
+                    # This is either a published output or a node with multiple
+                    # outgoing connections; in either case, we already have
+                    # its path
+                    opath = self.module_outputs[module][oname]
+                else:
+                    # Set output path
+                    onode = mmeta.outputs[oname]
+                    opath = self._get_data_path(module, onode)
+                    self.module_outputs[module][oname] = opath
+
+                for osink in osinks:
+                    if osink.is_pipeline_output:
+                        # Set pipeline output
+                        self.pipeline_outputs[osink.node] = opath
+                    else:
+                        # Pass output to connected module input
+                        self.module_inputs[osink.module][osink.node] = opath
+
+        # Populate module parameters
+        for param in itervalues(pmeta.parameters):
+            val = _get_param_value(param, self.request)
+            if val:
+                self.module_parameters[param.module][param.name] = val
+
+        # Set execution order
+        self.execution_order = pmeta.execution_order
+
+    def _optimize_pipeline(self):
+        logger.info("Optimizing pipeline")
+
+        # Get PipelineMetadata
+        pmeta = self.request.metadata
+
+        # Compute active nodes
+        active_modules = set()
+        active_inputs = defaultdict(set)
+        active_outputs = defaultdict(set)
+        queue = [
+            pmeta.get_output_source(oname) for oname in self.request.outputs]
+        while queue:
+            node = queue.pop(0)
+            active_outputs[node.module].add(node.node)
+
+            if node.is_module_output and node.module not in active_modules:
+                active_modules.add(node.module)
+                for conn in pmeta.get_incoming_connections(node.module):
+                    queue.append(conn.source)
+                    active_inputs[conn.sink.module].add(conn.sink.node)
+
+        # Delete inactive inputs
+        for module in list(self.module_inputs.keys()):
+            if module not in active_modules:
+                del self.module_inputs[module]
+
+        # Delete inactive outputs
+        for module in list(self.module_outputs.keys()):
+            if module not in active_modules:
+                del self.module_outputs[module]
+            else:
+                mmeta = pmeta.modules[module].metadata
+                for oname in list(self.module_outputs[module].keys()):
+                    if oname not in active_outputs[module]:
+                        if not mmeta.get_output(oname).is_required:
+                            del self.module_outputs[module][oname]
+
+        # Delete inactive parameters
+        for module in list(self.module_parameters.keys()):
+            if module not in active_modules:
+                del self.module_parameters[module]
+
+        # Update execution order
+        self.execution_order = [
+            module for module in self.execution_order
+            if module in active_modules
+        ]
+
     def _build_pipeline_config(self):
         # Build job configs
         # @todo handle non-py executables
         jobs = []
-        for module in self.request.metadata.execution_order:
+        for module in self.execution_order:
             metadata = self.request.metadata.modules[module].metadata
             jobs.append(
                 etaj.JobConfig.builder()
@@ -406,7 +511,7 @@ class PipelineBuilder(object):
                 .validate())
 
         # Build pipeline config
-        pipeline_config_builder = (etap.PipelineConfig.builder()
+        pipeline_config = (etap.PipelineConfig.builder()
             .set(name=self.request.pipeline)
             .set(status_path=self.pipeline_status_path)
             .set(overwrite=False)
@@ -417,67 +522,22 @@ class PipelineBuilder(object):
 
         # Write pipeline config
         logger.info("Writing pipeline config '%s'", self.pipeline_config_path)
-        pipeline_config_builder.write_json(self.pipeline_config_path)
+        pipeline_config.write_json(self.pipeline_config_path)
 
     def _build_module_configs(self):
-        pmeta = self.request.metadata  # PipelineMetadata
-        module_inputs = defaultdict(dict)
-        module_outputs = defaultdict(dict)
-
-        # Distribute pipeline inputs
-        for iname, ipath in iteritems(self.request.inputs):
-            for sink in pmeta.get_input_sinks(iname):
-                module_inputs[sink.module][sink.node] = ipath
-
-        # Get path hints from published outputs
-        path_hints = {}
-        for poname, popath in iteritems(self.request.outputs):
-            source = pmeta.get_output_source(poname)
-            path_hints[str(source)] = popath
-
-        # Propagate module connections
-        for module in pmeta.execution_order:
-            mmeta = pmeta.modules[module].metadata  # ModuleMetadata
-            oconns = pmeta.get_outgoing_connections(module)
-            for oname, osinks in iteritems(oconns):
-                if oname in module_outputs[module]:
-                    # This output has multiple outgoing connections; we
-                    # already generated its path
-                    opath = module_outputs[module][oname]
-                else:
-                    # Set output path
-                    onode = mmeta.outputs[oname]
-                    opath = self._get_data_path(module, onode, path_hints)
-                    module_outputs[module][oname] = opath
-
-                for osink in osinks:
-                    if osink.is_pipeline_output:
-                        # Set pipeline output
-                        self.pipeline_outputs[osink.node] = opath
-                    else:
-                        # Pass output to connected module input
-                        module_inputs[osink.module][osink.node] = opath
-
-        # Populate module parameters
-        module_params = defaultdict(dict)
-        for param in itervalues(pmeta.parameters):
-            val = _get_param_value(param, self.request)
-            module_params[param.module][param.name] = val
-
-        # Generate module configs
-        for module in pmeta.execution_order:
+        for module in self.execution_order:
             # Build module config
             data = etau.join_dicts(
-                module_inputs[module], module_outputs[module])
-            module_config_builder = (etam.GenericModuleConfig.builder()
+                self.module_inputs[module], self.module_outputs[module])
+            module_config = (etam.GenericModuleConfig.builder()
                 .set(data=[data])
-                .set(parameters=module_params[module])
+                .set(parameters=self.module_parameters[module])
                 .validate())
 
             # Write module config
             module_config_path = self._get_module_config_path(module)
             logger.info("Writing module config '%s'", module_config_path)
-            module_config_builder.write_json(module_config_path)
+            module_config.write_json(module_config_path)
 
     def _get_timestamp_str(self):
         return time.strftime("%Y.%m.%d-%H.%M.%S", self.timestamp)
@@ -504,10 +564,9 @@ class PipelineBuilder(object):
     def _get_module_config_path(self, module):
         return os.path.join(self.config_dir, module + MODULE_CONFIG_EXT)
 
-    def _get_data_path(self, module, node, path_hints):
+    def _get_data_path(self, module, node):
         basedir = os.path.join(self.output_dir, module)
-        hint = _get_path_hint(module, node.name, path_hints)
-        params = self._concrete_data_params.render_for(node.name, hint=hint)
+        params = self._concrete_data_params.render_for(node.name)
         return node.type.gen_path(basedir, params)
 
 
@@ -516,18 +575,6 @@ class PipelineBuilderError(Exception):
     PipelineBuilder.
     '''
     pass
-
-
-def _get_path_hint(module, output, path_hints):
-    '''Gets a path hint for the given module output, if possible.
-
-    Args:
-        module: the module name
-        output: the module output name
-        path_hints: a dict mapping PipelineNode strings to paths
-    '''
-    node_str = etap.PipelineNode.get_node_str(module, output)
-    return path_hints.get(node_str, None)
 
 
 def _get_param_value(param, request):
