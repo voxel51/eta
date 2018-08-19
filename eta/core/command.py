@@ -67,15 +67,12 @@ class BuildCommand(Command):
         # Build pipeline from a PipelineBuildRequest JSON file
         eta build -r '/path/to/pipeline/request.json'
 
-        # Build pipeline from a PipelineBuildRequest dictionary
-        eta build -r '{...}'
-
         # Build a pipeline request interactively, run it, and cleanup after
         eta build \\
             -n video_formatter \\
-            -i '{"video": "examples/data/water.mp4"}' \\
-            -o '{"formatted_video": "out/water-small.mp4"}' \\
-            -p '{"format_videos.scale": 0.5}' \\
+            -i 'video="examples/data/water.mp4"' \\
+            -o 'formatted_video="water-small.mp4"' \\
+            -p 'format_videos.scale=0.5' \\
             --run-now --cleanup
     '''
 
@@ -87,16 +84,16 @@ class BuildCommand(Command):
         parser.add_argument("-n", "--name", help="pipeline name")
         parser.add_argument(
             "-i", "--inputs", type=etas.load_json,
-            metavar="'{\"key\": val, ...}'", help="pipeline inputs")
+            metavar="'key=val,...'", help="pipeline inputs")
         parser.add_argument(
             "-o", "--outputs", type=etas.load_json,
-            metavar="'{\"key\": val, ...}'", help="pipeline outputs")
+            metavar="'key=val,...'", help="pipeline outputs")
         parser.add_argument(
             "-p", "--parameters", type=etas.load_json,
-            metavar="'{\"key\": val, ...}'", help="pipeline parameters")
+            metavar="'key=val,...'", help="pipeline parameters")
         parser.add_argument(
             "-e", "--eta-config", type=etas.load_json,
-            metavar="'{\"key\": val, ...}'", help="ETA config settings")
+            metavar="'key=val,...'", help="ETA config settings")
         parser.add_argument(
             "-l", "--logging", type=etas.load_json,
             metavar="'{\"key\": val, ...}'", help="logging config settings")
