@@ -140,7 +140,9 @@ class PipelineBuildRequest(Configurable):
         - a pipeline of the specified name exists
         - all required pipeline inputs are provided and have valid values
         - any output paths specified must refer to valid pipeline output names
-            and the specified paths must be valid paths for each output type
+            and the specified paths must be either (a) valid paths for the
+            associated types, or (b) None, in which case their paths will be
+            automatically populated when the pipeline is built
         - all required pipeline parameters are provided and have valid values
 
     Note that any fields set to `None` are ignored, so any inputs/parameters
@@ -172,7 +174,7 @@ class PipelineBuildRequest(Configurable):
         self.pipeline = config.pipeline
         self.metadata = etap.load_metadata(config.pipeline)
         self.inputs = etau.remove_none_values(config.inputs)
-        self.outputs = etau.remove_none_values(config.outputs)
+        self.outputs = config.outputs
         self.parameters = etau.remove_none_values(config.parameters)
         self.eta_config = config.eta_config
         self.logging_config = config.logging_config
@@ -206,8 +208,10 @@ class PipelineBuildRequest(Configurable):
         for oname, opath in iteritems(self.outputs):
             if not self.metadata.has_output(oname):
                 raise PipelineBuildRequestError(
-                    "Pipeline '%s' has no output '%s'" % (
-                        self.pipeline, oname))
+                    "Pipeline '%s' has no output '%s'" %
+                    (self.pipeline, oname))
+            if not opath:
+                continue
             if not self.metadata.is_valid_output(oname, opath):
                 raise PipelineBuildRequestError(
                     "'%s' is not a valid value for output '%s' of pipeline "
