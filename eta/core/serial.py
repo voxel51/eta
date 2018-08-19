@@ -46,7 +46,17 @@ def load_json(path_or_str):
 
 
 def read_json(path):
-    '''Reads JSON from file.'''
+    '''Reads JSON from file.
+
+    Args:
+        path: the path to the JSON file
+
+    Returns:
+        a dict or list containing the loaded JSON
+
+    Raises:
+        ValueError: if the JSON file was invalid
+    '''
     try:
         with open(path, "rt") as f:
             return json.load(f)
