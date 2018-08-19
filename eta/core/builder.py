@@ -562,10 +562,9 @@ class PipelineBuilder(object):
     def _get_module_config_path(self, module):
         return os.path.join(self.config_dir, module + MODULE_CONFIG_EXT)
 
-    def _get_data_path(self, module, node, path_hints):
+    def _get_data_path(self, module, node):
         basedir = os.path.join(self.output_dir, module)
-        hint = _get_path_hint(module, node.name, path_hints)
-        params = self._concrete_data_params.render_for(node.name, hint=hint)
+        params = self._concrete_data_params.render_for(node.name)
         return node.type.gen_path(basedir, params)
 
 
@@ -574,18 +573,6 @@ class PipelineBuilderError(Exception):
     PipelineBuilder.
     '''
     pass
-
-
-def _get_path_hint(module, output, path_hints):
-    '''Gets a path hint for the given module output, if possible.
-
-    Args:
-        module: the module name
-        output: the module output name
-        path_hints: a dict mapping PipelineNode strings to paths
-    '''
-    node_str = etap.PipelineNode.get_node_str(module, output)
-    return path_hints.get(node_str, None)
 
 
 def _get_param_value(param, request):
