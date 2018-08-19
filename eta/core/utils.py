@@ -539,6 +539,18 @@ def _to_human_binary_str(num, suffix):
     return "%3.1f %s%s" % (num, unit, suffix)
 
 
+def make_tar(dir_path, tar_path):
+    '''Makes a .tar.gz file containing the given directory.
+
+    Args:
+        dir_path: the directory to tar
+        tar_path: the path + filename of the .tar.gz file to create
+    '''
+    outpath = re.sub(r"\.tar\.gz$", "", tar_path)
+    rootdir, basedir = os.path.split(os.path.realpath(dir_path))
+    shutil.make_archive(outpath, "gztar", rootdir, basedir)
+
+
 def extract_tar(inpath, outdir=None, delete_tar=False):
     '''Extracts the contents of a .tar, tar.gz, .tgz, .tar.bz, or .tbz file.
 
