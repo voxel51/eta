@@ -219,13 +219,13 @@ def get_stream_info(inpath):
     Raises:
         FFprobeError: if no stream info was found
     '''
-    ffprobe = FFprobe(opts=[
-        "-show_streams",             # get stream info
-        "-print_format", "json",     # return in JSON format
-    ])
-    out = ffprobe.run(inpath, decode=True)
-
     try:
+        ffprobe = FFprobe(opts=[
+            "-show_streams",             # get stream info
+            "-print_format", "json",     # return in JSON format
+        ])
+        out = ffprobe.run(inpath, decode=True)
+
         info = json.loads(out)
 
         for stream in info["streams"]:
@@ -236,7 +236,7 @@ def get_stream_info(inpath):
             "No stream found with codec_type = video. Returning the first "
             "stream")
         return info["streams"][0]  # default to the first stream
-    except Exception:
+    except:
         raise FFprobeError("Unable to get stream info for '%s'" % inpath)
 
 
