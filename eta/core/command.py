@@ -96,7 +96,10 @@ class BuildCommand(Command):
             metavar="'key=val,...'", help="ETA config settings")
         parser.add_argument(
             "-l", "--logging", type=etas.load_json,
-            metavar="'{\"key\": val, ...}'", help="logging config settings")
+            metavar="'key=val,...'", help="logging config settings")
+        parser.add_argument(
+            "-u", "--unoptimized", action="store_true",
+            help="don't optimize the pipeline when building")
         parser.add_argument(
             "--run-now", action="store_true",
             help="run the pipeline after building")
@@ -141,7 +144,8 @@ class BuildCommand(Command):
         # Build pipeline
         logger.info("Building pipeline '%s'", request.pipeline)
         builder = etab.PipelineBuilder(request)
-        builder.build()
+        optimized = not args.unoptimized
+        builder.build(optimized=optimized)
 
         if args.run_now:
             # Run pipeline
