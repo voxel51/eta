@@ -457,33 +457,31 @@ class PipelineBuilder(object):
                     active_inputs[conn.sink.module].add(conn.sink.node)
 
         # Delete inactive inputs
-        self.module_inputs = {
-            m: i for m, i in iteritems(self.module_inputs)
-            if m in active_modules
-        }
+        for module in list(self.module_inputs.keys()):
+            if module not in active_modules:
+                del self.module_inputs[module]
 
         # Delete inactive outputs
-        self.module_outputs = {
-            m: o for m, o in iteritems(self.module_outputs)
-            if m in active_modules
-        }
-        for module, outputs in iteritems(self.module_outputs):
-            mmeta = pmeta.modules[module].metadata
-            mactive = active_outputs[module]
-            self.module_outputs[module] = {
-                n: p for n, p in iteritems(outputs)
-                if n in mactive or mmeta.get_output(n).is_required
-            }
+        for module in list(self.module_outputs.keys()):
+            if module not in active_modules:
+                del self.module_outputs[module]
+            else:
+                mmeta = pmeta.modules[module].metadata
+                for oname in list(self.module_outputs[module].keys()):
+                    if oname not in active_outputs[module]:
+                        if not mmeta.get_output(oname).is_required:
+                            del self.module_outputs[module][oname]
 
         # Delete inactive parameters
-        self.module_parameters = {
-            m: p for m, p in iteritems(self.module_parameters)
-            if m in active_modules
-        }
+        for module in list(self.module_parameters.keys()):
+            if module not in active_modules:
+                del self.module_parameters[module]
 
         # Update execution order
         self.execution_order = [
-            m for m in self.execution_order if m in active_modules]
+            module for module in self.execution_order
+            if module in active_modules
+        ]
 
     def _build_pipeline_config(self):
         # Build job configs
