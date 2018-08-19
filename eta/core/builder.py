@@ -299,11 +299,11 @@ class PipelineBuilder(object):
         self.pipeline_config_path = None
         self.pipeline_status_path = None
         self.pipeline_logfile_path = None
+        self.execution_order = []
         self.module_inputs = defaultdict(dict)
         self.module_outputs = defaultdict(dict)
         self.module_parameters = defaultdict(dict)
         self.pipeline_outputs = {}
-        self.execution_order = []
 
     def build(self, optimized=True):
         '''Builds the pipeline and writes the associated config files.
@@ -428,12 +428,15 @@ class PipelineBuilder(object):
         # Populate module parameters
         for param in itervalues(pmeta.parameters):
             val = _get_param_value(param, self.request)
-            self.module_params[param.module][param.name] = val
+            if val:
+                self.module_parameters[param.module][param.name] = val
 
         # Set execution order
         self.execution_order = pmeta.execution_order
 
     def _optimize_pipeline(self):
+        logger.info("Optimizing pipeline")
+
         # Get PipelineMetadata
         pmeta = self.request.metadata
 
@@ -529,7 +532,7 @@ class PipelineBuilder(object):
                 self.module_inputs[module], self.module_outputs[module])
             module_config = (etam.GenericModuleConfig.builder()
                 .set(data=[data])
-                .set(parameters=self.module_params[module])
+                .set(parameters=self.module_parameters[module])
                 .validate())
 
             # Write module config
