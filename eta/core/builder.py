@@ -509,7 +509,7 @@ class PipelineBuilder(object):
                 .validate())
 
         # Build pipeline config
-        pipeline_config_builder = (etap.PipelineConfig.builder()
+        pipeline_config = (etap.PipelineConfig.builder()
             .set(name=self.request.pipeline)
             .set(status_path=self.pipeline_status_path)
             .set(overwrite=False)
@@ -520,7 +520,7 @@ class PipelineBuilder(object):
 
         # Write pipeline config
         logger.info("Writing pipeline config '%s'", self.pipeline_config_path)
-        pipeline_config_builder.write_json(self.pipeline_config_path)
+        pipeline_config.write_json(self.pipeline_config_path)
 
     def _build_module_configs(self):
         for module in self.execution_order:
