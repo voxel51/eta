@@ -27,6 +27,7 @@ import sys
 
 import eta
 import eta.core.builder as etab
+import eta.core.log as etal
 import eta.core.metadata as etame
 import eta.core.models as etamode
 import eta.core.module as etamodu
@@ -134,6 +135,7 @@ class BuildCommand(Command):
         if args.logging:
             d["logging_config"].update(args.logging)
         if args.debug:
+            etal.set_logging_level(logging.DEBUG)
             d["logging_config"]["stdout_level"] = "DEBUG"
             d["logging_config"]["file_level"] = "DEBUG"
 
