@@ -3,6 +3,9 @@
     "inputs": {
         "video": "examples/data/water.mp4"
     },
+    "outputs": {
+        "formatted_video": "examples/out/video-formatted.mp4"
+    },
     "parameters": {
         "format_videos.scale": 0.5,
         "format_videos.fps": 10
