@@ -103,13 +103,13 @@ def cleanup_pipeline(pipeline_config_path):
 
     try:
         etau.delete_dir(config_dir)
-        logger.info("*** deleted config directory '%s'", config_dir)
+        logger.info("*** Deleted config directory '%s'", config_dir)
     except OSError:
         pass
 
     try:
         etau.delete_dir(output_dir)
-        logger.info("*** deleted output directory '%s'", output_dir)
+        logger.info("*** Deleted output directory '%s'", output_dir)
     except OSError:
         pass
 
@@ -456,26 +456,24 @@ class PipelineBuilder(object):
                     queue.append(conn.source)
                     active_inputs[conn.sink.module].add(conn.sink.node)
 
-        # Delete inactive inputs
-        for module in list(self.module_inputs.keys()):
+        # Prune inactive modules
+        for module in self.execution_order:
             if module not in active_modules:
-                del self.module_inputs[module]
+                logger.debug("*** Pruning inactive module '%s'", module)
+                self.module_inputs.pop(module, None)
+                self.module_outputs.pop(module, None)
+                self.module_parameters.pop(module, None)
 
         # Delete inactive outputs
         for module in list(self.module_outputs.keys()):
-            if module not in active_modules:
-                del self.module_outputs[module]
-            else:
-                mmeta = pmeta.modules[module].metadata
-                for oname in list(self.module_outputs[module].keys()):
-                    if oname not in active_outputs[module]:
-                        if not mmeta.get_output(oname).is_required:
-                            del self.module_outputs[module][oname]
-
-        # Delete inactive parameters
-        for module in list(self.module_parameters.keys()):
-            if module not in active_modules:
-                del self.module_parameters[module]
+            mmeta = pmeta.modules[module].metadata
+            for oname in list(self.module_outputs[module].keys()):
+                if oname not in active_outputs[module]:
+                    if not mmeta.get_output(oname).is_required:
+                        logger.debug(
+                            "*** Pruning unnecessary output '%s' from module "
+                            "'%s'", oname, module)
+                        del self.module_outputs[module][oname]
 
         # Update execution order
         self.execution_order = [
@@ -495,6 +493,8 @@ class PipelineBuilder(object):
                     .set(script=etam.find_exe(metadata))
                     .set(config_path=self._get_module_config_path(module))
                     .validate())
+        if not jobs:
+            logger.warning("Pipeline contains no jobs...")
 
         # Handle logging
         if self.request.logging_config is not None:
