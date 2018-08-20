@@ -47,31 +47,6 @@ DEFAULT_DATEFMT = "%Y-%m-%d %H:%M:%S"
 DEFAULT_ENCODING = "utf8"
 
 
-def flush():
-    '''Flushes logging handlers.
-
-    It is only necessary to call this method when multiple processes are
-    writing to a single log file (e.g., when running a pipeline).
-    '''
-    for h in root_logger.handlers:
-        h.flush()
-
-
-def reset():
-    '''Resets logging.
-
-    Performs the following tasks:
-        - removes all existing handlers from the root logger
-        - sets the root logger level to DEBUG (the effective logging level is
-            determined on a per-handler basis)
-        - uses sys.excepthook to route all uncaught exceptions to the root
-            logger
-    '''
-    root_logger.handlers = []
-    root_logger.setLevel(logging.DEBUG)
-    sys.excepthook = _excepthook
-
-
 def basic_setup(level=DEFAULT_BASIC_LEVEL, fmt=DEFAULT_BASIC_FORMAT):
     '''Sets up basic logging to stdout.
 
@@ -131,6 +106,41 @@ def custom_setup(lc, rotate=False):
     eta.startup_message()
     for msg in msgs:
         logger.info(msg)
+
+
+def set_logging_level(level):
+    '''Sets the logging level to the given value.
+
+    Args:
+        level: the logging.<level> to set
+    '''
+    for h in root_logger.handlers:
+        h.setLevel(level)
+
+
+def flush():
+    '''Flushes logging handlers.
+
+    It is only necessary to call this method when multiple processes are
+    writing to a single log file (e.g., when running a pipeline).
+    '''
+    for h in root_logger.handlers:
+        h.flush()
+
+
+def reset():
+    '''Resets logging.
+
+    Performs the following tasks:
+        - removes all existing handlers from the root logger
+        - sets the root logger level to DEBUG (the effective logging level is
+            determined on a per-handler basis)
+        - uses sys.excepthook to route all uncaught exceptions to the root
+            logger
+    '''
+    root_logger.handlers = []
+    root_logger.setLevel(logging.DEBUG)
+    sys.excepthook = _excepthook
 
 
 def _rotate_logs(filename):
