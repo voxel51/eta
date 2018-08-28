@@ -33,6 +33,7 @@ import eta.core.models as etamode
 import eta.core.module as etamodu
 import eta.core.pipeline as etap
 import eta.core.serial as etas
+import eta.core.utils as etau
 
 
 logger = logging.getLogger(__name__)
@@ -155,7 +156,7 @@ class BuildCommand(Command):
             builder.run()
         else:
             logger.info(
-                "\n***** To run this pipeline *****\neta run -c %s\n",
+                "\n***** To run this pipeline *****\neta run %s\n",
                 builder.pipeline_config_path)
 
         if args.cleanup:
@@ -169,7 +170,7 @@ class RunCommand(Command):
 
     Examples:
         # Run the pipeline defined by a PipelineConfig JSON file
-        eta run -c '/path/to/pipeline.json'
+        eta run '/path/to/pipeline.json'
 
         # Run the last built pipeline
         eta run --last
@@ -178,7 +179,7 @@ class RunCommand(Command):
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "-c", "--config", help="path to a PipelineConfig file")
+            "config", nargs="?", help="path to a PipelineConfig file")
         parser.add_argument(
             "-l", "--last", action="store_true",
             help="run the last built pipeline")
@@ -191,7 +192,7 @@ class RunCommand(Command):
         if args.last:
             config = etab.find_last_built_pipeline()
             if config:
-                _run_pipeline(args.config)
+                _run_pipeline(config)
             else:
                 logger.info("No built pipelines found...")
 
@@ -200,8 +201,9 @@ def _run_pipeline(config):
     logger.info("Running ETA pipeline '%s'", config)
     etap.run(config)
 
-    logger.info(
-        "\n***** To clean this pipeline *****\neta clean -c %s\n", config)
+    if etau.is_in_root_dir(config, eta.config.config_dir):
+        logger.info(
+            "\n***** To clean this pipeline *****\neta clean %s\n", config)
 
 
 class CleanCommand(Command):
@@ -209,7 +211,7 @@ class CleanCommand(Command):
 
     Examples:
         # Cleanup the pipeline defined by a PipelineConfig JSON file
-        eta clean -c '/path/to/pipeline.json'
+        eta clean '/path/to/pipeline.json'
 
         # Cleanup the last built pipeline
         eta clean --last
@@ -221,7 +223,7 @@ class CleanCommand(Command):
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "-c", "--config", help="path to a PipelineConfig file")
+            "config", nargs="?", help="path to a PipelineConfig file")
         parser.add_argument(
             "-l", "--last", action="store_true",
             help="cleanup the last built pipeline")
