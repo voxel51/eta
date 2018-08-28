@@ -40,6 +40,7 @@ class C3DConfig(Config):
 
     def __init__(self, d):
         self.model = self.parse_string(d, "model", default="C3D-UCF101")
+        self.num_classes = self.parse_number(d, "num_classes", default="101")
 
 
 class C3D(object):
@@ -202,9 +203,9 @@ class C3D(object):
 
         with tf.name_scope("fc3") as scope:
             weights = _tf_variable_with_weight_decay(
-                "wout", [4096, 101], 0.04, 0.005)
+                "wout", [4096, self.config.num_classes], 0.04, 0.005)
             biases = _tf_variable_with_weight_decay(
-                "bout", [101], 0.04, 0.0)
+                "bout", [self.config.num_classes], 0.04, 0.0)
             self.fc3l = tf.nn.bias_add(tf.matmul(self.fc2, weights), biases)
 
     def _build_output_layer(self):
