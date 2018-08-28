@@ -409,6 +409,19 @@ def move_sequence(inpatt, outpatt, check_ext=False):
         move_file(inpatt % idx, outpatt % idx)
 
 
+def is_in_root_dir(path, rootdir):
+    '''Determines if the given path is a file or subdirectory (any levels deep)
+    within the given root directory.
+
+    Args:
+        path: the input path (relative or absolute)
+        rootdir: the root directory
+    '''
+    path = os.path.abspath(path)
+    rootdir = os.path.abspath(rootdir)
+    return path.startswith(rootdir)
+
+
 def copy_dir(indir, outdir):
     '''Copies the input directory to the output directory. The base output
     directory is created if necessary, and any existing output directory will
