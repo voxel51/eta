@@ -100,7 +100,7 @@ class BuildCommand(Command):
             "-l", "--logging", type=etas.load_json,
             metavar="'key=val,...'", help="logging config settings")
         parser.add_argument(
-            "-u", "--unoptimized", action="store_true",
+            "--unoptimized", action="store_true",
             help="don't optimize the pipeline when building")
         parser.add_argument(
             "--run-now", action="store_true",
