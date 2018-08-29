@@ -44,10 +44,10 @@ class C3DConfig(Config):
 
 
 class C3D(object):
-    '''TensorFlow implementation of the C3D network architecture for the
-    101 classes from UCF101.
+    '''TensorFlow implementation of the C3D network architecture with a
+    variable-sized output layer.
 
-    This implementation is hard-coded to process an tensor of video clips of
+    This implementation is hard-coded to process a tensor of video clips of
     size [XXXX, 16, 112, 112, 3].
     '''
 
@@ -243,7 +243,7 @@ class C3DFeaturizerConfig(C3DConfig):
     '''Configuration settings for a C3DFeaturizer.
 
     Attributes:
-        model: the C3D UCF101 model to use
+        model: the name of the published model to load
         sample_method: the frame sampling method to use. The possible values
             are "first", "uniform", and "sliding_window"
         stride: the stride to use when the sampling method is "sliding_window"
