@@ -40,7 +40,7 @@ class C3DConfig(Config):
 
     def __init__(self, d):
         self.model = self.parse_string(d, "model", default="C3D-UCF101")
-        self.num_classes = self.parse_number(d, "num_classes", default="101")
+        self.num_classes = self.parse_number(d, "num_classes", default=101)
 
 
 class C3D(object):
