@@ -16,6 +16,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
 from future.utils import iteritems
+import six
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
@@ -48,6 +49,28 @@ logger = logging.getLogger(__name__)
 def is_str(val):
     '''Returns True/False whether the given value is a string.'''
     return isinstance(val, six.string_types)
+
+
+def standarize_strs(arg):
+    '''Standardizes any strings in the given object by casting them via
+    `str()`. Dictionaries and lists are processed recursively.
+
+    Args:
+        arg: an object
+
+    Returns:
+        a copy (only if necessary) of the input object with any strings casted
+            via str()
+    '''
+    if isinstance(arg, dict):
+        return {
+            standarize_strs(k): standarize_strs(v) for k, v in iteritems(arg)
+        }
+    elif isinstance(arg, list):
+        return [standarize_strs(e) for e in arg]
+    elif isinstance(arg, six.string_types):
+        return str(arg)
+    return arg
 
 
 def get_isotime():
