@@ -162,3 +162,8 @@ class GrowableArray(object):
             self._data,
             newshape=(len(self._data) // self.rowlen, self.rowlen),
         )
+
+
+class GrowableArrayError(Exception):
+    '''Exception raised when an invalid GrowableArray is encountered.'''
+    pass
