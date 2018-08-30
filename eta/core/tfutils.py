@@ -85,9 +85,12 @@ def _set_proto_fields(proto, d):
             logger.warning(str(e))
 
 
-class TensorFlowModelCheckpoint(etam.PublishedModel):
-    '''Class that can load a published TensorFlow model checkpoint stored as a
-    .model file.
+class TensorFlowModel(etam.PublishedModel):
+    '''Class that can load a published model containing the weights of a
+    TensorFlow model.
+
+    The model file should be the .data file associated with a TensorFlow
+    checkpoint, which can be loaded via `tf.train.Saver.restore`.
     '''
 
     def __init__(self, model_name, sess):
