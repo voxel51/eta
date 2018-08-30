@@ -747,7 +747,7 @@ def _parse_key(d, key, t, default):
 
 
 def _parse_env_var_or_key(d, key, t, env_var, env_t, sep, default):
-    val = os.environ.get(env_var)
+    val = os.environ.get(env_var) if env_var else None
     if val:
         # Return value(s) from environment variable
         try:
