@@ -3,7 +3,15 @@
 An open and extensible computer vision, machine learning and video analytics infrastructure.
 
 This project is supported by the [NIST Public Safety Innovation Accelerator
-Program](https://www.nist.gov/news-events/news/2017/06/nist-awards-385-million-accelerate-public-safety-communications).
+Program](
+https://www.nist.gov/news-events/news/2017/06/nist-awards-385-million-accelerate-public-safety-communications).
+
+
+<img
+    src="https://drive.google.com/uc?id=14ZclqNXJXSct6O0sqcUoxFpzt_CnZuGP"
+    alt="eta-infrastructure.png"
+    width="75%"
+/>
 
 
 ## Requirements
