@@ -131,7 +131,7 @@ bash examples/download_data.bash
 python examples/demo_images.py
 
 # Run a pre-configued video processing pipeline
-python eta/core/pipeline.py examples/demo_video/pipeline.json
+eta run examples/demo_video/pipeline.json
 
 # Build and run pipelines from requests using the `eta` command-line tool
 eta build -r examples/demo_video_formatter/request.json --run-now
