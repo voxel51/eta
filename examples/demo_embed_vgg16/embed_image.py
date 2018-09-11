@@ -41,9 +41,8 @@ logger = logging.getLogger(__name__)
 
 
 def embed_image(impath):
-    '''Embeds the image using VGG16. Uses the default weights specified in the
-    default ETA config. Stores the embedded vector as .npz, using
-    VideoFeaturizer to handle I/O.
+    '''Embeds the image using VGG-16 and stores the embeddeding as an .npz file
+    on disk, using VideoFeaturizer to handle I/O.
 
     Args:
         impath: path to an image to embed
@@ -53,14 +52,14 @@ def embed_image(impath):
     # Invoke the Featurizer using the "with" syntax to automatically handle
     # calling the start() and stop() methods
     with VGG16Featurizer() as vfeaturizer:
-        embedded_vector = vfeaturizer.featurize(img)
+        embedding = vfeaturizer.featurize(img)
 
-    logger.info("Image embedded to vector of length %d", len(embedded_vector))
-    logger.info("%s", embedded_vector)
+    logger.info("Image embedded to vector of length %d", len(embedding))
+    logger.info("%s", embedding)
 
     outpath = _abspath("out/result_embed_image.npz")
     etau.ensure_basedir(outpath)
-    np.savez_compressed(outpath, v=embedded_vector)
+    np.savez_compressed(outpath, v=embedding)
     logger.info("Result saved to '%s'", outpath)
 
 
