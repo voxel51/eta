@@ -29,8 +29,7 @@ import os
 import sys
 
 from eta.core.config import Config
-from eta.core.features import VideoFramesFeaturizer, \
-                              VideoFramesFeaturizerConfig
+import eta.core.features as etaf
 import eta.core.log as etal
 
 
@@ -39,16 +38,17 @@ etal.basic_setup(level=logging.DEBUG)
 
 
 class EmbedVideoConfig(Config):
+    '''Embedding configuration settings.'''
+
     def __init__(self, d):
         self.video_path = self.parse_string(d, "video_path")
         self.video_frames_featurizer = self.parse_object(
-                d, "video_frames_featurizer", VideoFramesFeaturizerConfig)
+            d, "video_frames_featurizer", etaf.VideoFramesFeaturizerConfig)
 
 
 def embed_video(config):
-    '''Embeds each frame of the video using the VGG16-net. Uses the default
-    weights specified in the default ETA config. Stores the embedded vector as
-    .npz, using VideoFeaturizer to handle I/O.
+    '''Embeds each frame of the video using VGG-16 and stores the embeddedings
+    as .npz files on disk, using VideoFeaturizer to handle I/O.
 
     Args:
         config: an EmbedConfig instance
@@ -58,7 +58,7 @@ def embed_video(config):
 
     # Invoke the VideoFramesFeaturizer using the with syntax so that start()
     # and stop() are automatically called
-    with VideoFramesFeaturizer(config.video_frames_featurizer) as vff:
+    with etaf.VideoFramesFeaturizer(config.video_frames_featurizer) as vff:
         # Use a preprocessor on each frame
         vff.frame_preprocessor = _crop
 
@@ -81,10 +81,11 @@ def _abspath(path):
     return os.path.realpath(os.path.join(os.path.dirname(__file__), path))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     if len(sys.argv) == 2:
         config_path = sys.argv[1]
     else:
         config_path = _abspath("embed_video-config.json")
 
-    embed_video(EmbedVideoConfig.from_json(config_path))
+    config = EmbedVideoConfig.from_json(config_path)
+    embed_video(config)

@@ -40,9 +40,8 @@ logger = logging.getLogger(__name__)
 
 
 def embed_image(impath):
-    '''Embeds the image using VGG-16 with the default weights.
-
-    Stores the embedded vector as an .npz file on disk.
+    '''Embeds the image using VGG-16 and stores the embeddeding as an .npz file
+    on disk.
 
     Args:
         impath: path to an image to embed
