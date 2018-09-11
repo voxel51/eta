@@ -125,7 +125,7 @@ To test your installation, run the following commands:
 
 ```shell
 # Download example data
-bash examples/download_data.bash
+python examples/download_data.py
 
 # Perform some image manipulation
 python examples/demo_images.py
