@@ -153,7 +153,7 @@ python embed_video.py
 # Example use of the embed_vgg16 module
 bash embed_vgg16_module.bash
 # Example embedding pipeline
-bash embed_vgg16_pipeline.bash
+eta run embed_vgg16_pipeline-config.json
 ```
 
 ## Using virtual environments
