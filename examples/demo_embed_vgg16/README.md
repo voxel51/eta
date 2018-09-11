@@ -18,7 +18,6 @@ capabilities supported in ETA.
     with the above config
 - `embed_vgg16_pipeine-config.json`: a pipeline config file that defines a
     simple one-step pipeline that runs the `embed_vgg16` ETA module on a video
-- `embed_vgg16_pipeline.bash`: a bash-script to run the above pipeline
 
 
 ## Copyright

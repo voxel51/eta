@@ -1,9 +1,17 @@
 # ETA: Extensible Toolkit for Analytics
 
-An open and extensible video analytics infrastructure.
+An open and extensible computer vision, machine learning and video analytics infrastructure.
 
 This project is supported by the [NIST Public Safety Innovation Accelerator
-Program](https://www.nist.gov/news-events/news/2017/06/nist-awards-385-million-accelerate-public-safety-communications).
+Program](
+https://www.nist.gov/news-events/news/2017/06/nist-awards-385-million-accelerate-public-safety-communications).
+
+
+<img
+    src="https://drive.google.com/uc?id=14ZclqNXJXSct6O0sqcUoxFpzt_CnZuGP"
+    alt="eta-infrastructure.png"
+    width="75%"
+/>
 
 
 ## Requirements
@@ -117,13 +125,13 @@ To test your installation, run the following commands:
 
 ```shell
 # Download example data
-bash examples/download_data.bash
+python examples/download_data.py
 
 # Perform some image manipulation
 python examples/demo_images.py
 
 # Run a pre-configued video processing pipeline
-python eta/core/pipeline.py examples/demo_video/pipeline.json
+eta run examples/demo_video/pipeline.json
 
 # Build and run pipelines from requests using the `eta` command-line tool
 eta build -r examples/demo_video_formatter/request.json --run-now
@@ -145,7 +153,7 @@ python embed_video.py
 # Example use of the embed_vgg16 module
 bash embed_vgg16_module.bash
 # Example embedding pipeline
-bash embed_vgg16_pipeline.bash
+eta run embed_vgg16_pipeline-config.json
 ```
 
 ## Using virtual environments
