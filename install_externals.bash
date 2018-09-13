@@ -134,11 +134,22 @@ CRITICAL pip install -r requirements.txt
 
 
 # Tensorflow
-MSG "Installing TensorFlow"
 if [ "${GCARD}" == "ON" ]; then
-    # Force TensorFlow 1.3 for use with CUDA 8.0
-    CRITICAL pip install --upgrade tensorflow-gpu==1.3
+    #
+    # Supported tensorflow-gpu + CUDA configurations
+    # https://www.tensorflow.org/install/install_sources#tested_source_configurations
+    #
+    cat /usr/local/cuda/version.txt | grep -q "CUDA Version 8"
+    if [ $? -eq 0 ]; then
+        # Found CUDA 8, so we must install an old version
+        MSG "Installing tensorflow-gpu 1.4"
+        CRITICAL pip install --upgrade tensorflow-gpu==1.4
+    else
+        MSG "Installing latest version of tensorflow-gpu"
+        CRITICAL pip install --upgrade tensorflow-gpu
+    fi
 else
+    MSG "Installing latest version of tensorflow"
     CRITICAL pip install --upgrade tensorflow
 fi
 
