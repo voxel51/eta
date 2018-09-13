@@ -25,8 +25,9 @@ The ETA package requires the following external dependencies:
 ETA is very portable:
 - Installable on Mac or Linux
 - Supports both Python 2.7+ and Python 3.4+
-- Supports OpenCV 2.4+ and OpenCV 3.0+
-- Supports both CPU and GPU Tensorflow installations
+- Supports both OpenCV 2.4+ and OpenCV 3.0+
+- Supports both CPU and GPU execution
+- Supports both CUDA 8 and CUDA 9 (for GPU installations)
 
 
 ## Installation
@@ -52,10 +53,9 @@ things like (on macOS) whether `port` or `brew` is used to install packages.
 Run `bash install_externals.bash -h` for more information.
 
 The script inspects your system to see if CUDA is installed, and, if it is,
-TensorFlow is installed with GPU support.
-
-> Note: for GPU installations, `tensorflow-gpu==1.3.0` is installed to
-ensure CUDA 8.0 support.
+TensorFlow is installed with GPU support. In particular, if CUDA 9 is found,
+the latest version of the `tensorflow-gpu` package is installed, and if CUDA 8
+is found, `tensorflow-gpu 1.4` is installed.
 
 3. Install the ETA package:
 
