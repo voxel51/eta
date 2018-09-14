@@ -1,5 +1,5 @@
 blockdiag==1.5.3
-Cython==0.25.2
+Cython==0.28.5
 dill==0.2.7.1
 future==0.16.0
 google-api-python-client==1.6.5
