@@ -34,7 +34,7 @@ def plot(img):
 
 here = os.path.dirname(__file__)
 path1 = os.path.join(here, "data/water.jpg")
-path2 = os.path.join(here, "data/logo.pdf")
+path2 = os.path.join(here, "data/logo.png")
 
 img1 = etai.resize(etai.read(path1), width=1024)
 img2 = etai.rasterize(path2, width=400)
