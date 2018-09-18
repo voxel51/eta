@@ -45,7 +45,7 @@ logger = logging.getLogger(__name__)
 
 
 SUPPORTED_VIDEO_FILE_FORMATS = [
-    ".mp4", ".mpg", ".mpeg", ".avi", ".mov", ".wmv", ".flv", ".mkv"
+    ".mp4", ".mpg", ".mpeg", ".avi", ".mov", ".wmv", ".flv", ".mkv", ".m4v"
 ]
 
 
