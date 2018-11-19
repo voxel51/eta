@@ -14,6 +14,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
+from future.utils import iteritems
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
@@ -553,6 +554,8 @@ def is_serializable(obj):
 def _recurse(v):
     if isinstance(v, list):
         return [_recurse(vi) for vi in v]
+    elif isinstance(v, dict):
+        return OrderedDict((ki, _recurse(vi)) for ki, vi in iteritems(v))
     elif is_serializable(v):
         return v.serialize()
     return v
