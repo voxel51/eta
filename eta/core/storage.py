@@ -46,7 +46,6 @@ import googleapiclient.discovery as gad
 import googleapiclient.http as gah
 import pysftp
 import requests
-import requests_toolbelt as rtb
 
 import eta.core.serial as etas
 import eta.core.utils as etau
@@ -841,16 +840,18 @@ class HTTPStorageClient(StorageClient):
         return filename
 
     def _do_upload(self, file_obj, url, filename, content_type):
+        if not self.set_content_type:
+            # Upload without setting content type
+            res = self._session.put(url, data=file_obj)
+            res.raise_for_status()
+            return
+
         if filename:
-            encoder = rtb.MultipartEncoder({"file": (filename, file_obj)})
+            files = {"file": (filename, file_obj, content_type)}
         else:
-            encoder = rtb.MultipartEncoder({"file": file_obj})
-
-        headers = {}
-        if self.set_content_type:
-            headers["Content-Type"] = content_type or encoder.content_type
-
-        res = self._session.put(url, data=encoder, headers=headers)
+            files = {"file": file_obj}
+        headers = {"Content-Type": content_type}
+        res = self._session.put(url, files=files, headers=headers)
         res.raise_for_status()
 
     def _do_download(self, url, file_obj):
