@@ -326,11 +326,6 @@ class GoogleCloudStorageClient(StorageClient, NeedsGoogleCredentials):
         blob = self._get_blob(cloud_path)
         blob.delete()
 
-    #
-    # @todo using HTTPStorageClient to download a file from Google Cloud via a
-    # signed URL currently includes the content-disposition in the response
-    # body, which messes things up. We need to investigate
-    #
     def generate_signed_url(self, cloud_path, method="GET", hours=24):
         '''Generates a signed URL for accessing the given storage object.
 
