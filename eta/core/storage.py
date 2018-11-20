@@ -337,8 +337,8 @@ class GoogleCloudStorageClient(StorageClient, NeedsGoogleCredentials):
         Anyone with the URL can access the object with the permission until it
         expires.
 
-        The Google Cloud documentation strongly recommends using PUT rather
-        than POST to upload objects, so we follow orders here.
+        Note that the Google Cloud documentation strongly recommends using PUT
+        rather than POST to upload objects.
 
         Args:
             cloud_path: the path to the Google Cloud object
@@ -680,9 +680,8 @@ class HTTPStorageClient(StorageClient):
     Attributes:
         set_content_type: whether to set the `Content-Type` in the request
             header of uploads. The Google Cloud documentation requires that
-            the `Content-Type` be *OMITTED* from the header of PUT requests for
-            uploads to Google Cloud Storage via signed URL, so we set this to
-            False by default
+            the `Content-Type` be *OMITTED* from PUT requests to Google Cloud
+            Storage, so set this attribute to False for use with GCS
         chunk_size: the chunk size (in bytes) that will be used for streaming
             downloads
     '''
