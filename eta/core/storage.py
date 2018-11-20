@@ -723,6 +723,7 @@ class HTTPStorageClient(StorageClient):
                 error
         '''
         filename = filename or os.path.basename(local_path)
+        content_type = content_type or guess_mime_type(filename)
         with open(local_path, "rb") as f:
             self._do_upload(f, url, filename, content_type)
 
