@@ -46,7 +46,6 @@ import googleapiclient.discovery as gad
 import googleapiclient.http as gah
 import pysftp
 import requests
-import requests_toolbelt as rtb
 
 import eta.core.serial as etas
 import eta.core.utils as etau
@@ -327,19 +326,14 @@ class GoogleCloudStorageClient(StorageClient, NeedsGoogleCredentials):
         blob = self._get_blob(cloud_path)
         blob.delete()
 
-    #
-    # @todo using HTTPStorageClient to download a file from Google Cloud via a
-    # signed URL currently includes the content-disposition in the response
-    # body, which messes things up. We need to investigate
-    #
     def generate_signed_url(self, cloud_path, method="GET", hours=24):
         '''Generates a signed URL for accessing the given storage object.
 
         Anyone with the URL can access the object with the permission until it
         expires.
 
-        The Google Cloud documentation strongly recommends using PUT rather
-        than POST to upload objects, so we follow orders here.
+        Note that the Google Cloud documentation strongly recommends using PUT
+        rather than POST to upload objects.
 
         Args:
             cloud_path: the path to the Google Cloud object
@@ -681,9 +675,8 @@ class HTTPStorageClient(StorageClient):
     Attributes:
         set_content_type: whether to set the `Content-Type` in the request
             header of uploads. The Google Cloud documentation requires that
-            the `Content-Type` be *OMITTED* from the header of PUT requests for
-            uploads to Google Cloud Storage via signed URL, so we set this to
-            False by default
+            the `Content-Type` be *OMITTED* from PUT requests to Google Cloud
+            Storage, so set this attribute to False for use with GCS
         chunk_size: the chunk size (in bytes) that will be used for streaming
             downloads
     '''
@@ -697,8 +690,8 @@ class HTTPStorageClient(StorageClient):
         '''Creates an HTTPStorageClient instance.
 
         Args:
-            set_content_type: whether to set the `Content-Type` in the request
-            header of uploads
+            set_content_type: whether to specify the `Content-Type` during
+                upload requests. By default, this is False
             chunk_size: an optional chunk size (in bytes) to use for downloads.
                 By default, `DEFAULT_CHUNK_SIZE` is used
         '''
@@ -714,16 +707,16 @@ class HTTPStorageClient(StorageClient):
             url: the URL to which to PUT the file
             filename: an optional filename to include in the request. By
                 default, the name of the local file is used
-            content_type: the optional content type of the file. By default,
-                the content type is guessed from the filename. Note that the
-                content type is only added to the request header if
-                `set_content_type` is True
+            content_type: an optional content type of the file. By default,
+                the type is guessed from the filename. Note that this is only
+                added to the request when `set_content_type` is True
 
         Raises:
             `requests.exceptions.HTTPError`: if the request resulted in an HTTP
                 error
         '''
         filename = filename or os.path.basename(local_path)
+        content_type = content_type or guess_mime_type(filename)
         with open(local_path, "rb") as f:
             self._do_upload(f, url, filename, content_type)
 
@@ -734,10 +727,8 @@ class HTTPStorageClient(StorageClient):
             bytes_str: the bytes string to upload
             url: the URL to which to PUT the file
             filename: an optional filename to include in the request
-            content_type: the optional content type to include in the
-                `Content-Type` header of the request. Note that the content
-                type is only added to the request header if `set_content_type`
-                is True
+            content_type: an optional content type to include in the request.
+                Note that this is only added when `set_content_type` is True
 
         Raises:
             `requests.exceptions.HTTPError`: if the request resulted in an HTTP
@@ -755,10 +746,8 @@ class HTTPStorageClient(StorageClient):
                 reading
             url: the URL to which to PUT the file
             filename: an optional filename to include in the request
-            content_type: the optional content type to include in the
-                `Content-Type` header of the request. Note that the content
-                type is only added to the request header if `set_content_type`
-                is True
+            content_type: an optional content type to include in the request.
+                Note that this is only added when `set_content_type` is True
 
         Raises:
             `requests.exceptions.HTTPError`: if the request resulted in an HTTP
@@ -841,16 +830,18 @@ class HTTPStorageClient(StorageClient):
         return filename
 
     def _do_upload(self, file_obj, url, filename, content_type):
+        if not self.set_content_type:
+            # Upload without setting content type
+            res = self._session.put(url, data=file_obj)
+            res.raise_for_status()
+            return
+
         if filename:
-            encoder = rtb.MultipartEncoder({"file": (filename, file_obj)})
+            files = {"file": (filename, file_obj, content_type)}
         else:
-            encoder = rtb.MultipartEncoder({"file": file_obj})
-
-        headers = {}
-        if self.set_content_type:
-            headers["Content-Type"] = content_type or encoder.content_type
-
-        res = self._session.put(url, data=encoder, headers=headers)
+            files = {"file": file_obj}
+        headers = {"Content-Type": content_type}
+        res = self._session.put(url, files=files, headers=headers)
         res.raise_for_status()
 
     def _do_download(self, url, file_obj):
