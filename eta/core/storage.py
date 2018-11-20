@@ -696,8 +696,8 @@ class HTTPStorageClient(StorageClient):
         '''Creates an HTTPStorageClient instance.
 
         Args:
-            set_content_type: whether to set the `Content-Type` in the request
-            header of uploads
+            set_content_type: whether to specify the `Content-Type` during
+                upload requests. By default, this is False
             chunk_size: an optional chunk size (in bytes) to use for downloads.
                 By default, `DEFAULT_CHUNK_SIZE` is used
         '''
@@ -713,10 +713,9 @@ class HTTPStorageClient(StorageClient):
             url: the URL to which to PUT the file
             filename: an optional filename to include in the request. By
                 default, the name of the local file is used
-            content_type: the optional content type of the file. By default,
-                the content type is guessed from the filename. Note that the
-                content type is only added to the request header if
-                `set_content_type` is True
+            content_type: an optional content type of the file. By default,
+                the type is guessed from the filename. Note that this is only
+                added to the request when `set_content_type` is True
 
         Raises:
             `requests.exceptions.HTTPError`: if the request resulted in an HTTP
@@ -734,10 +733,8 @@ class HTTPStorageClient(StorageClient):
             bytes_str: the bytes string to upload
             url: the URL to which to PUT the file
             filename: an optional filename to include in the request
-            content_type: the optional content type to include in the
-                `Content-Type` header of the request. Note that the content
-                type is only added to the request header if `set_content_type`
-                is True
+            content_type: an optional content type to include in the request.
+                Note that this is only added when `set_content_type` is True
 
         Raises:
             `requests.exceptions.HTTPError`: if the request resulted in an HTTP
@@ -755,10 +752,8 @@ class HTTPStorageClient(StorageClient):
                 reading
             url: the URL to which to PUT the file
             filename: an optional filename to include in the request
-            content_type: the optional content type to include in the
-                `Content-Type` header of the request. Note that the content
-                type is only added to the request header if `set_content_type`
-                is True
+            content_type: an optional content type to include in the request.
+                Note that this is only added when `set_content_type` is True
 
         Raises:
             `requests.exceptions.HTTPError`: if the request resulted in an HTTP
