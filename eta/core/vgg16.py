@@ -73,9 +73,16 @@ class VGG16(object):
                 use. By default, a placeholder of size [None, 224, 224, 3] is
                 used so you can evaluate any number of images at once
         '''
-        self.config = config or VGG16Config.default()
-        self.sess = sess or etat.make_tf_session()
-        self.imgs = imgs or tf.placeholder(tf.float32, [None, 224, 224, 3])
+        if config is None:
+            config = VGG16Config.default()
+        if sess is None:
+            sess = etat.make_tf_session()
+        if imgs is None:
+            imgs = tf.placeholder(tf.float32, [None, 224, 224, 3])
+
+        self.config = config
+        self.sess = sess
+        self.imgs = imgs
 
         self._build_conv_layers()
         self._build_fc_layers()
