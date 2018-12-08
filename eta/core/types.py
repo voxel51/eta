@@ -243,8 +243,9 @@ class ObjectArray(Array):
 class Data(Type):
     '''The base type for data, which are types that are stored on disk.
 
-    Data types must know how to validate whether a given path is valid path
-    for their type.
+    Data types must know how to:
+        (a) validate whether a given path is valid path for their type
+        (b) return metadata about an instance of data on disk
     '''
 
     @staticmethod
