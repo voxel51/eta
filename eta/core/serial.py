@@ -170,23 +170,49 @@ class Serializable(object):
     def __str__(self):
         return self.to_str()
 
-    def attributes(self, dynamic=False, private=False):
+    def attributes(self):
         '''Returns a list of class attributes to be serialized.
+
+        This method is called internally by `serialize()` to determine the
+        class attributes to serialize.
+
+        Subclasses can override this method, but, by default, all attributes in
+        vars(self) are returned, minus private attributes, i.e., those starting
+        with "_". The order of the attributes in this list is preserved when
+        serializing objects, so a common pattern is for subclasses to override
+        this method if they want their JSON files to be organized in a
+        particular way.
+
+        Returns:
+            a list of class attributes to be serialized
+        '''
+        return [a for a in vars(self) if not a.startswith("_")]
+
+    def custom_attributes(self, dynamic=False, private=False):
+        '''Returns a customizable list of class attributes.
 
         By default, all attributes in vars(self) are returned, minus private
         attributes (those starting with "_").
 
-        The order of the attributes in this list is preserved when serializing
-        objects, so a common pattern is for subclasses to override this method
-        if they want their JSON files to be organized in a particular way.
+        Note that `attributes()`, not this method, is called by `serialize()`
+        when generating a list of attributes to serialize. To use this method
+        to set the attributes to serialize, use the `serialize(attributes=)`
+        syntax.
+
+        Args:
+            dynamic: whether to include dynamic properties, e.g., those defined
+                by getter/setter methods or the `@property` decorator. By
+                default, this is False
+            private: whether to include private properties, i.e., those
+                starting with "_". By default, this is False
+
+        Returns:
+            a list of class attributes
         '''
         if dynamic:
-            # Include dynamic properties
             attrs = [a for a in dir(self) if not callable(getattr(self, a))]
         else:
-            # Attributes only
             attrs = vars(self)
-
         if not private:
             attrs = [a for a in attrs if not a.startswith("_")]
         return attrs
