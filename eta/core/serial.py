@@ -161,8 +161,6 @@ class Serializable(object):
     '''
 
     def __str__(self):
-        '''Returns the string representation of this object as it would be
-        written to JSON.'''
         return self.to_str()
 
     def serialize(self, attributes=None):
