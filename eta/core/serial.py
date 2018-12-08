@@ -163,7 +163,7 @@ class Picklable(object):
 class Serializable(object):
     '''Base class for objects that can be serialized.
 
-    Subclasses must implement from_dict(), which defines how to construct a
+    Subclasses must implement `from_dict()`, which defines how to construct a
     serializable object from a JSON dictionary.
     '''
 
