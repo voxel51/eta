@@ -99,8 +99,6 @@ def write_json(obj, path, pretty_print=True):
             to be human readable; when False, it will be compact with no
             extra spaces or newline characters
     '''
-    if is_serializable(obj):
-        obj = obj.serialize()
     s = json_to_str(obj, pretty_print=pretty_print)
 
     etau.ensure_basedir(path)
