@@ -125,7 +125,6 @@ def _run(
                 overwrite = True
 
             # Run job
-            pipeline_status.add_message("Job %s started" % job_config.name)
             job_config.pipeline_config_path = pipeline_config_path
             ran_last_job, success = etaj.run(
                 job_config, pipeline_status, overwrite=overwrite)
