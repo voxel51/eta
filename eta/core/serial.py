@@ -132,6 +132,13 @@ def pretty_str(obj):
     return pprint.pformat(obj, indent=4, width=79)
 
 
+def is_serializable(obj):
+    '''Returns True if the object is serializable (i.e., implements the
+    Serializable interface) and False otherwise.
+    '''
+    return isinstance(obj, Serializable)
+
+
 class Picklable(object):
     '''Mixin class for objects that can be pickled.'''
 
@@ -163,57 +170,88 @@ class Serializable(object):
     def __str__(self):
         return self.to_str()
 
-    def serialize(self, attributes=None):
-        '''Serializes the object into a dictionary.
-
-        Args:
-            attributes: an optional list of attributes to serialize. By default
-                this list is obtained by calling self.attributes()
-
-        Subclasses can override this method, but, by default, Serializable
-        objects are serialized by:
-            a) calling self.attributes()
-            b) invoking serialize() on serializable values and leaving other
-               values untouched
-            c) applying b) element-wise on list values
-        '''
-        if attributes is None:
-            attributes = self.attributes()
-        return OrderedDict((a, _recurse(getattr(self, a))) for a in attributes)
-
-    def attributes(self):
+    def attributes(self, dynamic=False, private=False):
         '''Returns a list of class attributes to be serialized.
 
-        Subclasses can override this method, but, by default, all attributes
-        in vars(self) are returned, minus private attributes (those starting
-        with "_").
+        By default, all attributes in vars(self) are returned, minus private
+        attributes (those starting with "_").
 
-        In particular, subclasses may choose to override this method if they
-        want their JSON files to be organized in a particular way.
+        The order of the attributes in this list is preserved when serializing
+        objects, so a common pattern is for subclasses to override this method
+        if they want their JSON files to be organized in a particular way.
         '''
-        return [a for a in vars(self) if not a.startswith("_")]
+        if dynamic:
+            # Include dynamic properties
+            attrs = [a for a in dir(self) if not callable(getattr(self, a))]
+        else:
+            # Attributes only
+            attrs = vars(self)
 
-    def to_str(self, pretty_print=True):
-        '''Returns the string representation of this object as it would be
-        written to JSON.
+        if not private:
+            attrs = [a for a in attrs if not a.startswith("_")]
+        return attrs
+
+    def serialize(self, attributes=None, dynamic=False, private=False):
+        '''Serializes the object into a dictionary.
+
+        Serialization is applied recursively to all attributes in the object,
+        including element-wise serialization of lists and dictionary values.
 
         Args:
+            attributes: an optional list of attributes to serialize. By
+                default, the `attributes()` method is used to populate this
+                list
+            dynamic: whether to include dynamic properties, e.g., those defined
+                by getter/setter methods or the `@property` decorator, in the
+                serialized object. This parameter is applied recursively when
+                serializing all nested objects
+            private: whether to include private properties, i.e., those
+                starting with "_", in the serialized object. This parameter is
+                applied recursively when serializing all nested objects
+        '''
+        if attributes is None:
+            attributes = self.attributes(dynamic=dynamic, private=private)
+        return OrderedDict(
+            (a, _recurse(getattr(self, a), dynamic, private))
+            for a in attributes)
+
+    def to_str(self, dynamic=False, private=False, pretty_print=True):
+        '''Returns the string representation of this object.
+
+        Args:
+            dynamic: whether to include dynamic properties, e.g., those defined
+                by getter/setter methods or the `@property` decorator, in the
+                serialized object. This parameter is applied recursively when
+                serializing all nested objects
+            private: whether to include private properties, i.e., those
+                starting with "_", in the serialized object. This parameter is
+                applied recursively when serializing all nested objects
             pretty_print: if True (default), the string will be formatted to be
                 human readable; when False, it will be compact with no extra
                 spaces or newline characters
         '''
-        return json_to_str(self, pretty_print=pretty_print)
+        obj = self.serialize(dynamic=dynamic, private=private)
+        return json_to_str(obj, pretty_print=pretty_print)
 
-    def write_json(self, path, pretty_print=True):
+    def write_json(
+            self, path, dynamic=False, private=False, pretty_print=True):
         '''Serializes the object and writes it to disk.
 
         Args:
             path: the output path
+            dynamic: whether to include dynamic properties, e.g., those defined
+                by getter/setter methods or the `@property` decorator, in the
+                serialized object. This parameter is applied recursively when
+                serializing all nested objects
+            private: whether to include private properties, i.e., those
+                starting with "_", in the serialized object. This parameter is
+                applied recursively when serializing all nested objects
             pretty_print: when True (default), the resulting JSON will be
                 outputted to be human readable; when False, it will be compact
                 with no extra spaces or newline characters
         '''
-        write_json(self.serialize(), path, pretty_print=pretty_print)
+        obj = self.serialize(dynamic=dynamic, private=private)
+        write_json(obj, path, pretty_print=pretty_print)
 
     @classmethod
     def from_dict(cls, d):
@@ -233,6 +271,17 @@ class Serializable(object):
         implement.
         '''
         return cls.from_dict(read_json(path))
+
+
+def _recurse(v, dynamic, private):
+    if isinstance(v, list):
+        return [_recurse(vi, dynamic, private) for vi in v]
+    elif isinstance(v, dict):
+        return OrderedDict(
+            (ki, _recurse(vi, dynamic, private)) for ki, vi in iteritems(v))
+    elif is_serializable(v):
+        return v.serialize(dynamic=dynamic, private=private)
+    return v
 
 
 class Container(Serializable):
@@ -538,23 +587,6 @@ class Container(Serializable):
 class ContainerError(Exception):
     '''Exception raised when an invalid Container is encountered.'''
     pass
-
-
-def is_serializable(obj):
-    '''Returns True if the object is serializable (i.e., implements the
-    Serializable interface) and False otherwise.
-    '''
-    return isinstance(obj, Serializable)
-
-
-def _recurse(v):
-    if isinstance(v, list):
-        return [_recurse(vi) for vi in v]
-    elif isinstance(v, dict):
-        return OrderedDict((ki, _recurse(vi)) for ki, vi in iteritems(v))
-    elif is_serializable(v):
-        return v.serialize()
-    return v
 
 
 class EtaJSONEncoder(json.JSONEncoder):
