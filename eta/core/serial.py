@@ -217,7 +217,7 @@ class Serializable(object):
             attrs = [a for a in attrs if not a.startswith("_")]
         return attrs
 
-    def serialize(self, attributes=None, dynamic=False, private=False):
+    def serialize(self, attributes=None):
         '''Serializes the object into a dictionary.
 
         Serialization is applied recursively to all attributes in the object,
@@ -227,57 +227,31 @@ class Serializable(object):
             attributes: an optional list of attributes to serialize. By
                 default, the `attributes()` method is used to populate this
                 list
-            dynamic: whether to include dynamic properties, e.g., those defined
-                by getter/setter methods or the `@property` decorator, in the
-                serialized object. This parameter is applied recursively when
-                serializing all nested objects
-            private: whether to include private properties, i.e., those
-                starting with "_", in the serialized object. This parameter is
-                applied recursively when serializing all nested objects
         '''
         if attributes is None:
-            attributes = self.attributes(dynamic=dynamic, private=private)
-        return OrderedDict(
-            (a, _recurse(getattr(self, a), dynamic, private))
-            for a in attributes)
+            attributes = self.attributes()
+        return OrderedDict((a, _recurse(getattr(self, a))) for a in attributes)
 
-    def to_str(self, dynamic=False, private=False, pretty_print=True):
-        '''Returns the string representation of this object.
+    def to_str(self, pretty_print=True):
+        '''Returns a string representation of this object.
 
         Args:
-            dynamic: whether to include dynamic properties, e.g., those defined
-                by getter/setter methods or the `@property` decorator, in the
-                serialized object. This parameter is applied recursively when
-                serializing all nested objects
-            private: whether to include private properties, i.e., those
-                starting with "_", in the serialized object. This parameter is
-                applied recursively when serializing all nested objects
             pretty_print: if True (default), the string will be formatted to be
                 human readable; when False, it will be compact with no extra
                 spaces or newline characters
         '''
-        obj = self.serialize(dynamic=dynamic, private=private)
-        return json_to_str(obj, pretty_print=pretty_print)
+        return json_to_str(self.serialize(), pretty_print=pretty_print)
 
-    def write_json(
-            self, path, dynamic=False, private=False, pretty_print=True):
+    def write_json(self, path, pretty_print=True):
         '''Serializes the object and writes it to disk.
 
         Args:
             path: the output path
-            dynamic: whether to include dynamic properties, e.g., those defined
-                by getter/setter methods or the `@property` decorator, in the
-                serialized object. This parameter is applied recursively when
-                serializing all nested objects
-            private: whether to include private properties, i.e., those
-                starting with "_", in the serialized object. This parameter is
-                applied recursively when serializing all nested objects
             pretty_print: when True (default), the resulting JSON will be
                 outputted to be human readable; when False, it will be compact
                 with no extra spaces or newline characters
         '''
-        obj = self.serialize(dynamic=dynamic, private=private)
-        write_json(obj, path, pretty_print=pretty_print)
+        write_json(self.serialize(), path, pretty_print=pretty_print)
 
     @classmethod
     def from_dict(cls, d):
@@ -299,14 +273,14 @@ class Serializable(object):
         return cls.from_dict(read_json(path))
 
 
-def _recurse(v, dynamic, private):
+def _recurse(v):
     if isinstance(v, list):
-        return [_recurse(vi, dynamic, private) for vi in v]
+        return [_recurse(vi) for vi in v]
     elif isinstance(v, dict):
         return OrderedDict(
-            (ki, _recurse(vi, dynamic, private)) for ki, vi in iteritems(v))
+            (ki, _recurse(vi)) for ki, vi in iteritems(v))
     elif is_serializable(v):
-        return v.serialize(dynamic=dynamic, private=private)
+        return v.serialize()
     return v
 
 
