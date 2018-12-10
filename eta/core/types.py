@@ -243,14 +243,22 @@ class ObjectArray(Array):
 class Data(Type):
     '''The base type for data, which are types that are stored on disk.
 
-    Data types must know how to validate whether a given path is valid path
-    for their type.
+    Data types must know how to:
+        (a) validate whether a given path is valid path for their type
+        (b) return metadata about an instance of data on disk
     '''
 
     @staticmethod
     def is_valid_path(path):
         '''Returns True/False if `path` is a valid filepath for this type.'''
         raise NotImplementedError("subclass must implement is_valid_path()")
+
+    @staticmethod
+    def get_metadata(path):
+        '''Returns a dictionary containing metadata about the data at the
+        given path.
+        '''
+        raise NotImplementedError("subclass must implement get_metadata()")
 
 
 class ConcreteData(Data):
@@ -399,6 +407,14 @@ class Video(AbstractData):
             ImageSequence.is_valid_path(path)
         )
 
+    @staticmethod
+    def get_metadata(path):
+        if VideoFile.is_valid_path(path):
+            return VideoFile.get_metadata(path)
+        if ImageSequence.is_valid_path(path):
+            return ImageSequence.get_metadata(path)
+        raise TypeError("Unable to get metadata for '%s'" % path)
+
 
 class VideoFile(Video, File, ConcreteData):
     '''A video represented as a single encoded video file.
@@ -417,6 +433,10 @@ class VideoFile(Video, File, ConcreteData):
     @staticmethod
     def is_valid_path(path):
         return File.is_valid_path(path) and etav.is_supported_video_file(path)
+
+    @staticmethod
+    def get_metadata(path):
+        return etav.VideoStreamInfo.build_for(path)
 
 
 class ImageSequence(Video, FileSequence, ConcreteData):

@@ -267,7 +267,7 @@ class PipelineBuilder(object):
         execution_order: a list of modules defining the order the pipeline
             modules will be executed
         module_inputs: a dictionary mapping module names to dictionaries
-            of module input names and their associated paths.
+            of module input names and their associated paths
         module_outputs: a dictionary mapping module names to dictionaries
             of module output names and their associated paths in `output_dir`
         module_parameters: a dictionary mapping modules names to dictionaries

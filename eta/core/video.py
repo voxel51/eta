@@ -181,6 +181,9 @@ class VideoStreamInfo(Serializable):
         '''
         return self.stream_info[key]
 
+    def attributes(self):
+        return self.custom_attributes(dynamic=True)
+
     @classmethod
     def build_for(cls, inpath):
         '''Builds a VideoStreamInfo object for the given video using

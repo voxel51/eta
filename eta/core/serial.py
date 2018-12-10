@@ -99,8 +99,6 @@ def write_json(obj, path, pretty_print=True):
             to be human readable; when False, it will be compact with no
             extra spaces or newline characters
     '''
-    if is_serializable(obj):
-        obj = obj.serialize()
     s = json_to_str(obj, pretty_print=pretty_print)
 
     etau.ensure_basedir(path)
@@ -134,6 +132,13 @@ def pretty_str(obj):
     return pprint.pformat(obj, indent=4, width=79)
 
 
+def is_serializable(obj):
+    '''Returns True if the object is serializable (i.e., implements the
+    Serializable interface) and False otherwise.
+    '''
+    return isinstance(obj, Serializable)
+
+
 class Picklable(object):
     '''Mixin class for objects that can be pickled.'''
 
@@ -158,55 +163,84 @@ class Picklable(object):
 class Serializable(object):
     '''Base class for objects that can be serialized.
 
-    Subclasses must implement from_dict(), which defines how to construct a
+    Subclasses must implement `from_dict()`, which defines how to construct a
     serializable object from a JSON dictionary.
     '''
 
     def __str__(self):
-        '''Returns the string representation of this object as it would be
-        written to JSON.'''
         return self.to_str()
+
+    def attributes(self):
+        '''Returns a list of class attributes to be serialized.
+
+        This method is called internally by `serialize()` to determine the
+        class attributes to serialize.
+
+        Subclasses can override this method, but, by default, all attributes in
+        vars(self) are returned, minus private attributes, i.e., those starting
+        with "_". The order of the attributes in this list is preserved when
+        serializing objects, so a common pattern is for subclasses to override
+        this method if they want their JSON files to be organized in a
+        particular way.
+
+        Returns:
+            a list of class attributes to be serialized
+        '''
+        return [a for a in vars(self) if not a.startswith("_")]
+
+    def custom_attributes(self, dynamic=False, private=False):
+        '''Returns a customizable list of class attributes.
+
+        By default, all attributes in vars(self) are returned, minus private
+        attributes (those starting with "_").
+
+        Note that `attributes()`, not this method, is called by `serialize()`
+        when generating a list of attributes to serialize. To use this method
+        to set the attributes to serialize, use the `serialize(attributes=)`
+        syntax.
+
+        Args:
+            dynamic: whether to include dynamic properties, e.g., those defined
+                by getter/setter methods or the `@property` decorator. By
+                default, this is False
+            private: whether to include private properties, i.e., those
+                starting with "_". By default, this is False
+
+        Returns:
+            a list of class attributes
+        '''
+        if dynamic:
+            attrs = [a for a in dir(self) if not callable(getattr(self, a))]
+        else:
+            attrs = vars(self)
+        if not private:
+            attrs = [a for a in attrs if not a.startswith("_")]
+        return attrs
 
     def serialize(self, attributes=None):
         '''Serializes the object into a dictionary.
 
-        Args:
-            attributes: an optional list of attributes to serialize. By default
-                this list is obtained by calling self.attributes()
+        Serialization is applied recursively to all attributes in the object,
+        including element-wise serialization of lists and dictionary values.
 
-        Subclasses can override this method, but, by default, Serializable
-        objects are serialized by:
-            a) calling self.attributes()
-            b) invoking serialize() on serializable values and leaving other
-               values untouched
-            c) applying b) element-wise on list values
+        Args:
+            attributes: an optional list of attributes to serialize. By
+                default, the `attributes()` method is used to populate this
+                list
         '''
         if attributes is None:
             attributes = self.attributes()
         return OrderedDict((a, _recurse(getattr(self, a))) for a in attributes)
 
-    def attributes(self):
-        '''Returns a list of class attributes to be serialized.
-
-        Subclasses can override this method, but, by default, all attributes
-        in vars(self) are returned, minus private attributes (those starting
-        with "_").
-
-        In particular, subclasses may choose to override this method if they
-        want their JSON files to be organized in a particular way.
-        '''
-        return [a for a in vars(self) if not a.startswith("_")]
-
     def to_str(self, pretty_print=True):
-        '''Returns the string representation of this object as it would be
-        written to JSON.
+        '''Returns a string representation of this object.
 
         Args:
             pretty_print: if True (default), the string will be formatted to be
                 human readable; when False, it will be compact with no extra
                 spaces or newline characters
         '''
-        return json_to_str(self, pretty_print=pretty_print)
+        return json_to_str(self.serialize(), pretty_print=pretty_print)
 
     def write_json(self, path, pretty_print=True):
         '''Serializes the object and writes it to disk.
@@ -237,6 +271,17 @@ class Serializable(object):
         implement.
         '''
         return cls.from_dict(read_json(path))
+
+
+def _recurse(v):
+    if isinstance(v, list):
+        return [_recurse(vi) for vi in v]
+    elif isinstance(v, dict):
+        return OrderedDict(
+            (ki, _recurse(vi)) for ki, vi in iteritems(v))
+    elif is_serializable(v):
+        return v.serialize()
+    return v
 
 
 class Container(Serializable):
@@ -542,23 +587,6 @@ class Container(Serializable):
 class ContainerError(Exception):
     '''Exception raised when an invalid Container is encountered.'''
     pass
-
-
-def is_serializable(obj):
-    '''Returns True if the object is serializable (i.e., implements the
-    Serializable interface) and False otherwise.
-    '''
-    return isinstance(obj, Serializable)
-
-
-def _recurse(v):
-    if isinstance(v, list):
-        return [_recurse(vi) for vi in v]
-    elif isinstance(v, dict):
-        return OrderedDict((ki, _recurse(vi)) for ki, vi in iteritems(v))
-    elif is_serializable(v):
-        return v.serialize()
-    return v
 
 
 class EtaJSONEncoder(json.JSONEncoder):

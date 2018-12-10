@@ -54,11 +54,13 @@ class PipelineStatus(Serializable):
             that make up the pipeline
     '''
 
-    def __init__(self, name):
+    def __init__(self, name, serialize_jobs=True):
         '''Construct a new PipelineStatus instance.
 
         Args:
             name: the name of the pipeline
+            serialize_jobs: whether to include jobs when serializing this
+                instance
         '''
         self.name = name
         self.state = PipelineState.QUEUED
@@ -68,6 +70,7 @@ class PipelineStatus(Serializable):
         self.messages = []
         self.jobs = []
 
+        self._serialize_jobs = serialize_jobs
         self._publish_callback = None
         self._active_job = None
 
@@ -126,15 +129,17 @@ class PipelineStatus(Serializable):
         self.state = PipelineState.FAILED
 
     def attributes(self):
-        return [
+        attrs = [
             "name", "state", "start_time", "complete_time", "fail_time",
-            "messages", "jobs",
-        ]
+            "messages"]
+        if self._serialize_jobs:
+            attrs.append("jobs")
+        return attrs
 
     @classmethod
     def from_dict(cls, d):
         '''Constructs a PipelineStatus instance from a JSON dictionary.'''
-        pipeline_status = PipelineStatus(d["name"])
+        pipeline_status = cls(d["name"])
         pipeline_status.state = d["state"]
         pipeline_status.start_time = d["start_time"]
         pipeline_status.complete_time = d["complete_time"]
@@ -143,7 +148,7 @@ class PipelineStatus(Serializable):
             StatusMessage.from_dict(_d) for _d in d["messages"]
         ]
         pipeline_status.jobs = [
-            JobStatus.from_dict(_d) for _d in d["jobs"]
+            JobStatus.from_dict(_d) for _d in d.get("jobs", [])
         ]
         return pipeline_status
 
