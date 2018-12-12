@@ -25,7 +25,7 @@ Mac-only options:
 # Parse flags
 SHOW_HELP=false
 USE_MACPORTS=true
-while getopts "he:v:bp" FLAG; do
+while getopts "hbp" FLAG; do
     case "${FLAG}" in
         h) SHOW_HELP=true ;;
         b) USE_MACPORTS=false ;;
