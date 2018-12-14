@@ -48,7 +48,7 @@ def generate(module_py_path):
     '''
     module_dir, module_file = os.path.split(module_py_path)
     module_name = os.path.splitext(module_file)[0]
-    sys.path.insert(0, module_dir)
+    sys.path.insert(1, module_dir)
 
     logger.info("Parsing module docstring")
     module_docstr = _get_module_docstring(module_name)
