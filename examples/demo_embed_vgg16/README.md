@@ -22,7 +22,7 @@ capabilities supported in ETA.
 
 ## Copyright
 
-Copyright 2017-2018, Voxel51, Inc.br>
+Copyright 2017-2018, Voxel51, Inc.<br>
 voxel51.com
 
 Jason Corso, jjc@voxel51.com<br>
