@@ -679,6 +679,29 @@ class HTTPStorageClient(StorageClient):
             Storage, so set this attribute to False for use with GCS
         chunk_size: the chunk size (in bytes) that will be used for streaming
             downloads
+        keep_alive: whether the request session should be kept alive between
+            requests
+
+    Examples:
+        ```
+        # Use client to perform a one-off task
+        client = HTTPStorageClient(...)
+        client.upload(...)
+
+        # Use client to perform a series of tasks without closing and
+        # reopening the request session each time
+        client = HTTPStorageClient(..., keep_alive=True)
+        client.upload(...)
+        client.download(...)
+        ...
+        client.close()  # make sure the session is closed
+
+        # Automatic connection management via context manager
+        with HTTPStorageClient(..., keep_alive=True) as client:
+            client.upload(...)
+            client.download(...)
+            ...
+        ```
     '''
 
     # The default chunk size to use when downloading files.
@@ -686,7 +709,8 @@ class HTTPStorageClient(StorageClient):
     # much memory as a buffer during read/write
     DEFAULT_CHUNK_SIZE = 32 * 1024 * 1024  # in bytes
 
-    def __init__(self, set_content_type=False, chunk_size=None):
+    def __init__(
+            self, set_content_type=False, chunk_size=None, keep_alive=False):
         '''Creates an HTTPStorageClient instance.
 
         Args:
@@ -694,10 +718,26 @@ class HTTPStorageClient(StorageClient):
                 upload requests. By default, this is False
             chunk_size: an optional chunk size (in bytes) to use for downloads.
                 By default, `DEFAULT_CHUNK_SIZE` is used
+            keep_alive: whether to keep the request session alive between
+                requests. By default, this is False
         '''
         self.set_content_type = set_content_type
         self.chunk_size = chunk_size or self.DEFAULT_CHUNK_SIZE
-        self._session = requests.Session()
+        self.keep_alive = keep_alive
+        self._requests = requests.Session() if keep_alive else requests
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.close()
+
+    def close(self):
+        '''Closes the HTTP session. Only needs to be called when
+        `keep_alive=True` is passed to the constructor.
+        '''
+        if self.keep_alive:
+            self._requests.close()
 
     def upload(self, local_path, url, filename=None, content_type=None):
         '''Uploads the file to the given URL via a PUT request.
@@ -808,7 +848,7 @@ class HTTPStorageClient(StorageClient):
         Args:
             url: the URL of the file to DELETE
         '''
-        self._session.delete(url)
+        self._requests.delete(url)
 
     @staticmethod
     def get_filename(url):
@@ -832,7 +872,7 @@ class HTTPStorageClient(StorageClient):
     def _do_upload(self, file_obj, url, filename, content_type):
         if not self.set_content_type:
             # Upload without setting content type
-            res = self._session.put(url, data=file_obj)
+            res = self._requests.put(url, data=file_obj)
             res.raise_for_status()
             return
 
@@ -841,11 +881,11 @@ class HTTPStorageClient(StorageClient):
         else:
             files = {"file": file_obj}
         headers = {"Content-Type": content_type}
-        res = self._session.put(url, files=files, headers=headers)
+        res = self._requests.put(url, files=files, headers=headers)
         res.raise_for_status()
 
     def _do_download(self, url, file_obj):
-        with self._session.get(url, stream=True) as res:
+        with self._requests.get(url, stream=True) as res:
             for chunk in res.iter_content(chunk_size=self.chunk_size):
                 file_obj.write(chunk)
             res.raise_for_status()
