@@ -845,11 +845,10 @@ class HTTPStorageClient(StorageClient):
         res.raise_for_status()
 
     def _do_download(self, url, file_obj):
-        res = self._session.get(url, stream=True)
-        for chunk in res.iter_content(chunk_size=self.chunk_size):
-            file_obj.write(chunk)
-
-        res.raise_for_status()
+        with self._session.get(url, stream=True) as res:
+            for chunk in res.iter_content(chunk_size=self.chunk_size):
+                file_obj.write(chunk)
+            res.raise_for_status()
 
 
 class NeedsSSHCredentials(object):
