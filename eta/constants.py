@@ -3,7 +3,7 @@ ETA package-wide constants.
 
 IMPORTANT: this module should not import any ETA modules!
 
-Copyright 2017-2018, Voxel51, LLC
+Copyright 2017-2018, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com

@@ -4,7 +4,7 @@ ETA core type system.
 More types may be defined in other modules, but they must inherit from the
 base type `eta.core.types.Type` defined here.
 
-Copyright 2018, Voxel51, LLC
+Copyright 2018, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com

@@ -9,7 +9,7 @@ specifically designed to automate the processing of parallel files and
 directories that arise when ETA modules support both both single inputs or zip
 files containing multiple inputs of the same type.
 
-Copyright 2017-2018, Voxel51, LLC
+Copyright 2017-2018, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com

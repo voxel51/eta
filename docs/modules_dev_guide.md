@@ -533,7 +533,7 @@ Info:
     type: {{the type of the module}}
     version: {{the module version}}
 
-Copyright 2017-2018, Voxel51, LLC
+Copyright 2017-2018, Voxel51, Inc.
 voxel51.com
 '''
 #
@@ -696,7 +696,7 @@ Info:
     type: eta.core.types.Module
     version: 0.1.0
 
-Copyright 2017-2018, Voxel51, LLC
+Copyright 2017-2018, Voxel51, Inc.
 voxel51.com
 '''
 import eta.core.module as etam

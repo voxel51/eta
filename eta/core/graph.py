@@ -1,7 +1,7 @@
 '''
 Core infrastructure for graph manipulation.
 
-Copyright 2018, Voxel51, LLC
+Copyright 2018, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com

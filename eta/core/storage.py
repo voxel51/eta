@@ -11,7 +11,7 @@ This module currently provides clients for the following storage resources:
 - Remote servers via SFTP
 - Local disk storage
 
-Copyright 2018, Voxel51, LLC
+Copyright 2018, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com

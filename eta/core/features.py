@@ -1,7 +1,7 @@
 '''
 Core interfaces, data structures, and methods for feature extraction in images.
 
-Copyright 2017-2018, Voxel51, LLC
+Copyright 2017-2018, Voxel51, Inc.
 voxel51.com
 
 Jason Corso, jason@voxel51.com

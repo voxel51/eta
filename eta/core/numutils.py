@@ -1,7 +1,7 @@
 '''
 Core numeric and computational utilities.
 
-Copyright 2017, Voxel51, LLC
+Copyright 2017, Voxel51, Inc.
 voxel51.com
 
 Jason Corso, jjc@voxel51.com

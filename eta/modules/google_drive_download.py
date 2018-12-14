@@ -2,7 +2,7 @@
 '''
 Downloads files from Google Drive.
 
-Copyright 2017-2018, Voxel51, LLC
+Copyright 2017-2018, Voxel51, Inc.
 voxel51.com
 '''
 # pragma pylint: disable=redefined-builtin

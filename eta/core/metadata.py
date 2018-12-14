@@ -2,7 +2,7 @@
 Tools for generating metadata JSON files for ETA modules programmatically from
 source.
 
-Copyright 2018, Voxel51, LLC
+Copyright 2018, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
