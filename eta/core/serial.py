@@ -194,11 +194,6 @@ class Serializable(object):
         By default, all attributes in vars(self) are returned, minus private
         attributes (those starting with "_").
 
-        Note that `attributes()`, not this method, is called by `serialize()`
-        when generating a list of attributes to serialize. To use this method
-        to set the attributes to serialize, use the `serialize(attributes=)`
-        syntax.
-
         Args:
             dynamic: whether to include dynamic properties, e.g., those defined
                 by getter/setter methods or the `@property` decorator. By
