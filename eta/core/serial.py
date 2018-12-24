@@ -547,20 +547,6 @@ class Container(Serializable):
         d[self._ELE_ATTR] = _recurse(self.__elements__, reflective)
         return d
 
-    def write_json(self, path, pretty_print=True, reflective=True):
-        '''Serializes the container and writes it to disk.
-
-        Args:
-            path: the output path
-            pretty_print: when True (default), the resulting JSON will be
-                outputted to be human readable; when False, it will be compact
-                with no extra spaces or newline characters
-            reflective: whether to include the reflective attributes in the
-                JSON representation. By default, this is True
-        '''
-        d = self.serialize(reflective=reflective)
-        write_json(d, path, pretty_print=pretty_print)
-
     @classmethod
     def from_dict(cls, d):
         '''Constructs a Container from a JSON dictionary.
