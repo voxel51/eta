@@ -527,21 +527,15 @@ class Container(Serializable):
                 self.__elements__, reverse=reverse, key=field_none_last))
 
     def attributes(self):
-        '''Returns the list of class attributes that will be serialized by this
-        Container.
-        '''
-        return ["_CLS", self._ELE_CLS_FIELD, self._ELE_ATTR]
+        '''Returns the list of class attributes that will be serialized.'''
+        return [self._ELE_ATTR]
 
-    def serialize(self, reflective=True):
+    def serialize(self, reflective=False):
         '''Serializes the container into a dictionary.
 
-        Containers have a custom serialization implementation that optionally
-        embeds the class name and element class name into the JSON, which
-        enables reflective parsing when reading from disk.
-
         Args:
-            reflective: whether to include the reflective attributes in the
-                JSON representation. By default, this is True
+            reflective: whether to include reflective attributes when
+                serializing the object. By default, this is False
 
         Returns:
             a JSON dictionary representation of the container
@@ -550,7 +544,7 @@ class Container(Serializable):
         if reflective:
             d["_CLS"] = self.get_class_name()
             d[self._ELE_CLS_FIELD] = etau.get_class_name(self._ELE_CLS)
-        d[self._ELE_ATTR] = [o.serialize() for o in self.__elements__]
+        d[self._ELE_ATTR] = _recurse(self.__elements__, reflective)
         return d
 
     def write_json(self, path, pretty_print=True, reflective=True):
