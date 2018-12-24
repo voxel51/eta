@@ -24,7 +24,7 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-import collections
+from collections import OrderedDict
 
 import numpy as np
 
@@ -96,11 +96,20 @@ class EventDetection(Serializable):
         '''Adds a detection to the series.'''
         self.bools.append(bool(b))
 
-    def serialize(self):
-        '''Serializes the EventDetection into a dictionary.'''
-        return collections.OrderedDict(
-            ("%d" % idx, b) for idx, b in enumerate(self.bools, 1)
-        )
+    def serialize(self, reflective=False):
+        '''Serializes the EventDetection into a dictionary.
+
+        Args:
+            reflective: whether to include reflective attributes when
+                serializing the object. By default, this is False
+
+        Returns:
+            a JSON dictionary representation of the object
+        '''
+        d = self._prepare_serial_dict(reflective)
+        for idx, b in enumerate(self.bools, 1):
+            d["%d" % idx] = b
+        return d
 
     def to_series(self):
         '''Converts the EventDetection into an EventSeries.'''
