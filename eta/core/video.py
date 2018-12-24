@@ -1,10 +1,9 @@
 '''
-Core video processing tools.
+Core tools and data structures for working with videos.
 
-ETA uses OpenCV for some of its image-related processing.  OpenCV stores its
-images in BGR format.  ETA stores its images in RGB format.  This module's
-contract is that it expects RGB to be passed to it and RGB to be expected from
-it.  This includes video frames.
+Note that ETA uses OpenCV for some of its image-related processing. OpenCV
+stores its images in BGR format, but ETA stores images exclusively in RGB
+format and expects all images ingested by the library to also be in RGB format.
 
 Copyright 2017-2018, Voxel51, Inc.
 voxel51.com
