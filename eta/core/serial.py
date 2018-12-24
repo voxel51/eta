@@ -290,6 +290,16 @@ class Serializable(object):
         raise NotImplementedError("subclass must implement from_dict()")
 
     @classmethod
+    def from_str(cls, s):
+        '''Constructs a Serializable object from a JSON string.
+
+        Subclasses may override this method, but, by default, this method
+        simply parses the string and calls from_dict(), which subclasses must
+        implement.
+        '''
+        return cls.from_dict(json.loads(s))
+
+    @classmethod
     def from_json(cls, path):
         '''Constructs a Serializable object from a JSON file.
 
