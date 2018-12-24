@@ -139,7 +139,7 @@ class DetectedObjectContainer(DataContainer):
     _ELE_CLS_FIELD = "_OBJ_CLS"
     _ELE_ATTR = "objects"
 
-    def label_set(self):
+    def get_labels(self):
         '''Returns a set containing the labels of the DetectedObjects.'''
         return set(obj.label for obj in self)
 
