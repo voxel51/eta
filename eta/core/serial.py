@@ -361,15 +361,15 @@ class Container(Serializable):
     _ELE_ATTR = None
 
     def __init__(self, **kwargs):
-        '''Constructs a Container subclass.
+        '''Creates a Container instance.
 
         Args:
             <element>: an optional list of elements to store in the Container.
-            The appropriate name of this keyword argument is determined by the
-            `_ELE_ATTR` member of the Container subclass.
+                The appropriate name of this keyword argument is determined by
+                the `_ELE_ATTR` member of the Container subclass
 
         Raises:
-            ContainerError: if there was a problem parsing the input
+            ContainerError: if there was an error while creating the container
         '''
         self._validate()
 
