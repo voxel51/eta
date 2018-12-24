@@ -198,8 +198,19 @@ class ConfigBuilder(etas.Serializable):
         '''
         return self._cls.from_dict(self._serialize())
 
-    def serialize(self):
+    def attributes(self):
+        '''Returns a list of class attributes to be serialized.'''
+        return self._attributes
+
+    def serialize(self, reflective=False):
         '''Serializes the ConfigBuilder into a dictionary.
+
+        Args:
+            reflective: whether to include reflective attributes when
+                serializing the object. By default, this is False
+
+        Returns:
+            a JSON dictionary representation of the object
 
         Raises:
             ConfigBuilderError: if the builder has not been validated
@@ -208,11 +219,10 @@ class ConfigBuilder(etas.Serializable):
             raise ConfigBuilderError(
                 "Must call validate() before serializing a ConfigBuilder")
 
-        return self._serialize()
+        return self._serialize(reflective=reflective)
 
-    def _serialize(self):
-        return super(ConfigBuilder, self).serialize(
-            attributes=self._attributes)
+    def _serialize(self, reflective=False):
+        return super(ConfigBuilder, self).serialize(reflective=reflective)
 
     @classmethod
     def from_json(cls, *args, **kwargs):
