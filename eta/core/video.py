@@ -26,6 +26,7 @@ import six
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+from collections import defaultdict
 import errno
 import json
 import logging
@@ -171,6 +172,113 @@ class FrameAttributeContainer(AttributeContainer):
         for fa in self:
             fam[fa.frame_number].add(fa)
         return fam
+
+
+class LabeledVideoFrame(Serializable):
+    '''Class encapsulating a labeled frame of a video.
+
+    Attributes:
+        attrs: a FrameAttributeContainer describing the attributes of the frame
+        objects: a DetectedObjectContainer describing the detected objects in
+            the frame
+    '''
+
+    def __init__(self, attrs=None, objects=None):
+        '''Constructs a LabeledVideoFrame instance.
+
+        Args:
+            attrs: an optional FrameAttributeContainer of attributes for
+                the frame. By default, an empty FrameAttributeContainer is
+                created
+            objects: an optional DetectedObjectContainer of detected objects
+                for the frame. By default, an empty DetectedObjectContainer is
+                created
+        '''
+        self.attrs = attrs or FrameAttributeContainer()
+        self.objects = objects or DetectedObjectContainer()
+
+    def add_attribute(self, attr):
+        '''Adds the given FrameAttribute to the frame.'''
+        self.attrs.add(attr)
+
+    def add_object(self, obj):
+        '''Adds the given DetectedObject to the frame.'''
+        self.objects.add(obj)
+
+    @classmethod
+    def from_dict(cls, d):
+        '''Constructs a LabeledVideoFrame from a JSON dictionary.'''
+        return cls(
+            attrs=FrameAttributeContainer.from_dict(d["attrs"]),
+            objects=DetectedObjectContainer.from_dict(d["objects"]))
+
+
+class LabeledVideo(Serializable):
+    '''Class encapsulating a labeled video.'''
+
+    def __init__(self, frames=None):
+        '''Constructs a LabeledVideo instance.
+
+        Args:
+            frames: an optional dictionary mapping frame numbers to
+                LabeledVideoFrame instances. By default, an empty dictionary
+                is created
+        '''
+        if frames is None:
+            frames = {}
+        self.frames = {str(k): v for k, v in iteritems(frames)}
+
+    def __getitem__(self, frame_number):
+        return self.get_frame(frame_number)
+
+    def __setitem__(self, frame_number, labeled_video_frame):
+        self.add_frame(frame_number, labeled_video_frame)
+
+    def __delitem__(self, frame_number):
+        self.delete_frame(frame_number)
+
+    def __iter__(self):
+        return iter(self.frames)
+
+    def __len__(self):
+        return len(self.frames)
+
+    def __bool__(self):
+        return bool(self.frames)
+
+    def has_frame(self, frame_number):
+        '''Returns True/False whether this object contains a LabeledVideoFrame
+        for the given frame number.
+        '''
+        return frame_number in self.frames
+
+    def add_frame(self, frame_number, labeled_video_frame):
+        '''Adds the labeled frame to the store.
+
+        Args:
+            frame_number: the frame number
+            labeled_video_frame: a LabeledVideoFrame instance
+        '''
+        self.frames[str(frame_number)] = labeled_video_frame
+
+    def get_frame(self, frame_number):
+        '''Gets the LabeledVideoFrame for the given frame number, or None if
+        the frame has not been labeled.
+        '''
+        return self.frames.get(str(frame_number), None)
+
+    def delete_frame(self, frame_number):
+        '''Deletes the LabeledVideoFrame for the given frame number.'''
+        del self.frames[str(frame_number)]
+
+    @classmethod
+    def from_dict(cls, d):
+        '''Constructs a LabeledVideo from a JSON dictionary.'''
+        return cls(
+            frames={
+                fn: LabeledVideoFrame.from_dict(lvf)
+                for fn, lvf in iteritems(d["frames"])
+            })
 
 
 class VideoStreamInfo(Serializable):
