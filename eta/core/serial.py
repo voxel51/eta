@@ -170,6 +170,11 @@ class Serializable(object):
     def __str__(self):
         return self.to_str()
 
+    @classmethod
+    def get_class_name(cls):
+        '''Returns the fully-qualified class name string of this object.'''
+        return etau.get_class_name(cls)
+
     def attributes(self):
         '''Returns a list of class attributes to be serialized.
 
@@ -408,11 +413,6 @@ class Container(Serializable):
     @property
     def __elements__(self):
         return getattr(self, self._ELE_ATTR)
-
-    @classmethod
-    def get_class_name(cls):
-        '''Returns the fully-qualified class name string of this container.'''
-        return etau.get_class_name(cls)
 
     def add(self, instance):
         '''Adds an element to the container.
