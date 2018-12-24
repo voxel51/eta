@@ -24,8 +24,6 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-from collections import OrderedDict
-
 import numpy as np
 
 from eta.core.config import Config, Configurable
