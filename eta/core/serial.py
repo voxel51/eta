@@ -100,7 +100,6 @@ def write_json(obj, path, pretty_print=True):
             extra spaces or newline characters
     '''
     s = json_to_str(obj, pretty_print=pretty_print)
-
     etau.ensure_basedir(path)
     with open(path, "wt") as f:
         f.write(s)
