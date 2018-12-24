@@ -275,6 +275,18 @@ class Serializable(object):
         Subclasses must implement this method if they intend to support being
         read from disk.
         '''
+        if "_CLS" in d:
+            #
+            # Parse reflectively
+            #
+            # Note that "_CLS" is popped from the dictionary here. This is
+            # crucial because if the subclass does not implement `from_dict`,
+            # this method will be called again and we need to raise a
+            # NotImplementedError next time around!
+            #
+            cls = etau.get_class(d.pop("_CLS"))
+            return cls.from_dict(d)
+
         raise NotImplementedError("subclass must implement from_dict()")
 
     @classmethod
