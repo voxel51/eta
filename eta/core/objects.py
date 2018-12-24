@@ -18,66 +18,20 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-from eta.core.data import DataContainer
+from eta.core.data import DataContainer, Attribute, AttributeContainer
 from eta.core.geometry import BoundingBox, HasBoundingBox
 from eta.core.serial import Serializable
 
 
-class ObjectAttribute(Serializable):
+class ObjectAttribute(Attribute):
     '''An attribute of a detected object.'''
-
-    def __init__(self, category=None, label=None, confidence=None):
-        '''Constructs an ObjectAttribute.
-
-        Args:
-            category: (optional) the attribute category
-            label: (optional) the attribute label
-            confidence: (optional) the confidence of the label, in [0, 1]
-        '''
-        self.category = category
-        self.label = label
-        self.confidence = confidence
-
-    def attributes(self):
-        '''Returns the list of attributes to serialize.
-
-        Optional attributes that were not provided (e.g. are None) are omitted
-        from this list.
-        '''
-        _attrs = []
-        if self.category is not None:
-            _attrs.append("category")
-        if self.label is not None:
-            _attrs.append("label")
-        if self.confidence is not None:
-            _attrs.append("confidence")
-        return _attrs
-
-    @classmethod
-    def from_dict(cls, d):
-        '''Constructs an ObjectAttribute from a JSON dictionary.'''
-        return cls(
-            category=d.get("category", None),
-            label=d.get("label", None),
-            confidence=d.get("confidence", None),
-        )
+    pass
 
 
-class ObjectAttributeContainer(DataContainer):
+class ObjectAttributeContainer(AttributeContainer):
     '''A container for object attributes.'''
 
     _ELE_CLS = ObjectAttribute
-    _ELE_CLS_FIELD = "_ATTR_CLS"
-    # Note: we can't use "attributes" here due to `Serialiable.attributes()`
-    _ELE_ATTR = "attrs"
-
-    def category_set(self):
-        '''Returns the set of attribute categories in the container.'''
-        return set(attr.category for attr in self)
-
-    def label_set(self):
-        '''Returns the set of attribute labels in the container.'''
-        return set(attr.label for attr in self)
 
 
 class DetectedObject(Serializable, HasBoundingBox):
