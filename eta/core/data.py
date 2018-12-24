@@ -23,11 +23,11 @@ from collections import defaultdict
 import os
 
 from eta.core.config import no_default
-import eta.core.serial as etas
+from eta.core.serial import Container, Serializable
 import eta.core.utils as etau
 
 
-class DataContainer(etas.Container):
+class DataContainer(Container):
     '''Abstract base class for containers that store lists of `Serializable`
     data class instances.
 
@@ -99,7 +99,207 @@ class DataContainer(etas.Container):
         return etau.get_class_name(cls._ELE_CLS)
 
 
-class DataFileSequence(etas.Serializable):
+class Attribute(Serializable):
+    '''Class representing an attribute of an entity.
+
+    Attributes have the following concepts:
+        category: the concept described by this attribute (e.g.,
+            `animal`)
+        label: the particular subclass of the category that describes the
+            entity (e.g., `dog`)
+        confidence: a confidence in [0, 1] that label -> category is correct
+    '''
+
+    def __init__(self, category, label, confidence=None):
+        '''Constructs an Attribute instance.
+
+        Args:
+            category: the attribute category
+            label: the attribute label
+            confidence: an optional confidence of the label, in [0, 1]. By
+                default, no confidence is stored
+        '''
+        self.category = category
+        self.label = label
+        self.confidence = confidence
+
+    def attributes(self):
+        '''Returns the list of attributes to serialize.
+
+        Optional attributes that were not provided (i.e., are None) are omitted
+        from this list.
+        '''
+        _attrs = ["category", "label"]
+        if self.confidence is not None:
+            _attrs.append("confidence")
+        return _attrs
+
+    @classmethod
+    def from_dict(cls, d):
+        '''Constructs an Attribute from a JSON dictionary.'''
+        return cls(
+            d["category"], d["label"], confidence=d.get("confidence", None))
+
+
+class AttributeContainer(DataContainer):
+    '''A container for attributes.'''
+
+    _ELE_CLS = Attribute
+    _ELE_CLS_FIELD = "_ATTR_CLS"
+    # Note: we can't use "attributes" here due to `Serialiable.attributes()`
+    _ELE_ATTR = "attrs"
+
+    def __init__(self, schema=None, **kwargs):
+        '''Creates an AttributeContainer instance.
+
+        Args:
+            schema: an optional AttributeContainerSchema to enforce on the
+                attributes in this container. By default, no schema is enforced
+            **kwargs: valid keyword arguments for DataContainer()
+
+        Raises:
+            AttributeContainerSchemaError: if a schema was provided but the
+                attributes added to the container violate it
+        '''
+        super(AttributeContainer, self).__init__(**kwargs)
+        self.__schema__ = None
+        if schema is not None:
+            self.set_schema(schema)
+
+    @property
+    def has_schema(self):
+        '''Returns True/False whether the container has an enforced schema.'''
+        return self.__schema__ is not None
+
+    def get_schema(self):
+        '''Gets the current enforced schema for the container, if any.'''
+        return self.__schema__
+
+    def get_active_schema(self):
+        '''Returns an AttributeContainerSchema describing the active schema of
+        the container, i.e., a schema that describes the current categories and
+        labels of the attributes in the container.
+        '''
+        schema = defaultdict(set)
+        for attr in self:
+            schema[attr.category].add(attr.label)
+        return AttributeContainerSchema(schema=dict(schema))
+
+    def set_schema(self, schema):
+        '''Sets the enforced schema to the given AttributeContainerSchema.'''
+        self.__schema__ = schema
+        if self.has_schema:
+            for attr in self:
+                self._validate_attribute(attr)
+
+    def freeze_schema(self):
+        '''Sets the enforced schema for the container to the current active
+        schema.
+        '''
+        self.set_schema(self.get_active_schema())
+
+    def remove_schema(self):
+        '''Removes the enforced schema from the container.'''
+        self.__schema__ = None
+
+    def add(self, attribute):
+        '''Adds an attribute to the container.
+
+        Args:
+            attribute: an instance of `_ELE_CLS`
+
+        Raises:
+            AttributeContainerSchemaError: if this container has a schema
+                enforced and the given attribute violates it
+        '''
+        if self.has_schema:
+            self._validate_attribute(attribute)
+        super(AttributeContainer, self).add(attribute)
+
+    def add_container(self, container):
+        '''Adds the attributes in the given container to this container.
+
+        Args:
+            container: an AttributeContainer instance
+
+        Raises:
+            AttributeContainerSchemaError: if this container has a schema
+                enforced and an attribute in the given container violates it
+        '''
+        if self.has_schema:
+            for attribute in container:
+                self._validate_attribute(attribute)
+        super(AttributeContainer, self).add_container(container)
+
+    def get_categories(self):
+        '''Returns the set of categories of attributes in the container.'''
+        return set(attr.category for attr in self)
+
+    def get_labels(self):
+        '''Returns the set of labels of attributes in the container.'''
+        return set(attr.label for attr in self)
+
+    def _validate_attribute(self, attribute):
+        if not self.has_schema:
+            return
+        cat = attribute.category
+        lab = attribute.label
+        if not self.__schema__.is_valid_category(cat):
+            raise AttributeContainerSchemaError(
+                "Category '%s' is not allowed by the current schema" % cat)
+        if not self.__schema__.is_valid_label_for_category(lab, cat):
+            raise AttributeContainerSchemaError(
+                "Label '%s' for category '%s' is not allowed by the current "
+                "schema " % (lab, cat))
+
+
+class AttributeContainerSchema(Serializable):
+    '''A schema for an AttributeContainer.'''
+
+    def __init__(self, schema=None):
+        '''Creates an AttributeContainerSchema instance.
+
+        Args:
+            schema: an optional dictionary mapping categories to sets of
+                supported labels for each category. By default, an empty
+                schema is created
+        '''
+        self.schema = schema or {}
+
+    def add_category(self, category, labels):
+        '''Adds the given category to the schema.
+
+        Args:
+            category: the category
+            labels: a list or set of supported labels for the category
+        '''
+        self.schema[category] = set(labels)
+
+    def is_valid_category(self, category):
+        '''Returns True/False if the given category is in the schema.'''
+        return category in self.schema
+
+    def get_valid_categories(self):
+        '''Returns the set of categories in the schema.'''
+        return set(self.schema.keys())
+
+    def is_valid_label_for_category(self, label, category):
+        '''Returns True/False if the label is a valid value for the given
+        category.
+        '''
+        return label in self.schema.get(category, [])
+
+    def get_valid_labels_for_category(self, category):
+        '''Returns the set of labels for the given category in the schema.'''
+        return self.schema[category]
+
+
+class AttributeContainerSchemaError(Exception):
+    '''Error raised when an AttributeContainerSchema is violated.'''
+    pass
+
+
+class DataFileSequence(Serializable):
     '''Class representing a sequence of data files on disk.
 
     When a DataFileSequence is created, it must correspond to actual files on
@@ -423,7 +623,7 @@ class DataRecordsError(Exception):
 DEFAULT_DATA_RECORDS_FILENAME = "records.json"
 
 
-class BaseDataRecord(etas.Serializable):
+class BaseDataRecord(Serializable):
     '''Base class for all data records.
 
     Data records are flexible containers that function as dictionary-like
