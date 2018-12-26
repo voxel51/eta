@@ -438,12 +438,9 @@ class FrameAttribute(Serializable):
         Optional attributes that were not provided (i.e., are None) are omitted
         from this list.
         '''
-        _attrs = ["category", "label"]
-        if self.frame_number is not None:
-            _attrs.append("frame_number")
-        if self.confidence is not None:
-            _attrs.append("confidence")
-        return _attrs
+        _attrs = ["category", "label", "frame_number", "confidence"]
+        # Exclue attributres that are None
+        return [a for a in _attrs if getattr(self, a) is not None]
 
     @classmethod
     def from_dict(cls, d):
