@@ -293,6 +293,33 @@ class AttributeContainerSchema(Serializable):
         '''Returns the set of labels for the given category in the schema.'''
         return self.schema[category]
 
+    def add_attribute(self, attr):
+        '''Incorporates the given Attribute into the schema.'''
+        self.schema[attr.category].add(attr.label)
+
+    def add_attributes(self, attrs):
+        '''Incorporates the given AttributeContainer into the schema.'''
+        for attr in attrs:
+            self.add_attribute(attr)
+
+    def merge_schema(self, schema):
+        '''Merges the given AttributeContainerSchema into this schema.'''
+        for cat in schema.get_valid_categories():
+            self.schema.update(schema.get_valid_categories(cat))
+
+    @classmethod
+    def build_active_schema(cls, attrs):
+        '''Builds an AttributeContainerSchema that describes the active schema
+        of the given AttributeContainer, i.e., a schema that describes the
+        current categories and labels of the attributes in the container.
+        '''
+        return cls().add_attributes(attrs)
+
+    @classmethod
+    def from_dict(cls, d):
+        '''Constructs an AttributeContainerSchema from a JSON dictionary.'''
+        return cls(schema=d.get("schema", None))
+
 
 class AttributeContainerSchemaError(Exception):
     '''Error raised when an AttributeContainerSchema is violated.'''
