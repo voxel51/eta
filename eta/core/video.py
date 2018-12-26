@@ -454,12 +454,6 @@ class VideoFrameLabels(Serializable):
         '''Adds the contents of the DetectedObjectContainer to the frame.'''
         self.objects.add_container(objs)
 
-    def get_active_schema(self):
-        '''Returns a VideoLabelsSchema describing the active schema of
-        the frame.
-        '''
-        return VideoLabelsSchema.build_active_schema_for_frame(self)
-
     @classmethod
     def from_dict(cls, d):
         '''Constructs a VideoFrameLabels from a JSON dictionary.'''
@@ -590,12 +584,6 @@ class VideoLabelsSchema(Serializable):
         self.objects = defaultdict(lambda: AttributeContainerSchema())
         if objects is not None:
             self.objects.update(objects)
-
-    def is_valid_object_class(self, label):
-        '''Returns True/False whether this schema has an object class with the
-        given label.
-        '''
-        return label in self.objects
 
     def add_frame_attribute(self, frame_attr):
         '''Incorporates the given frame attribute into the schema.
