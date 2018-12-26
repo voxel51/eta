@@ -740,6 +740,7 @@ class LabeledVideoRecord(BaseDataRecord):
             from a single video, this attribute can be used to specify the
             parent video
     '''
+
     def __init__(self, video_path, label, group=no_default):
         '''Creates a new LabeledVideoRecord instance.'''
         self.video_path = video_path
