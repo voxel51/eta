@@ -19,13 +19,14 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
-from future.utils import iteritems
+from future.utils import iteritems, itervalues
 import six
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
 from collections import defaultdict
+import dateutil.parser
 import errno
 import json
 import logging
@@ -35,8 +36,9 @@ import threading
 
 import cv2
 import numpy as np
+import scipy.interpolate as spi
 
-from eta.core.data import DataContainer, AttributeContainer
+from eta.core.data import AttributeContainer, AttributeContainerSchema
 import eta.core.image as etai
 from eta.core.objects import DetectedObjectContainer
 from eta.core.serial import Serializable
@@ -108,6 +110,303 @@ def glob_videos(dir_):
     '''Returns an iterator over all supported video files in the directory.'''
     return etau.multiglob(
         *SUPPORTED_VIDEO_FILE_FORMATS, root=os.path.join(dir_, "*"))
+
+
+def frame_number_to_timestamp(frame_number, total_frame_count, duration):
+    '''Converts the given frame number to a timestamp.
+
+    Args:
+        frame_number: the frame number of interest
+        total_frame_count: the total number of frames in the video
+        duration: the length of the video (in seconds)
+
+    Returns:
+        the timestamp (in seconds) of the given frame number in the video
+    '''
+    alpha = (frame_number - 1) / (total_frame_count - 1)
+    return alpha * duration
+
+
+def timestamp_to_frame_number(timestamp, duration, total_frame_count):
+    '''Converts the given timestamp in a video to a frame number.
+
+    Args:
+        timestamp: the timestanp (in seconds) of interest
+        duration: the length of the video (in seconds)
+        total_frame_count: the total number of frames in the video
+
+    Returns:
+        the frame number associated with the given timestamp in the video
+    '''
+    alpha = timestamp / duration
+    return 1 + int(round(alpha * (total_frame_count - 1)))
+
+
+def world_time_to_timestamp(world_time, start_time):
+    '''Converts the given world time to a timestamp in a video.
+
+    Args:
+        world_time: a datetime describing a time of interest
+        start_time: a datetime indicating the start time of the video
+
+    Returns:
+        the corresponding timestamp (in seconds) in the video
+    '''
+    return (world_time - start_time).total_seconds()
+
+
+def world_time_to_frame_number(
+        world_time, start_time, duration, total_frame_count):
+    '''Converts the given world time to a frame number in a video.
+
+    Args:
+        world_time: a datetime describing a time of interest
+        start_time: a datetime indicating the start time of the video
+        duration: the length of the video (in seconds)
+        total_frame_count: the total number of frames in the video
+
+    Returns:
+        the corresponding timestamp (in seconds) in the video
+    '''
+    timestamp = world_time_to_timestamp(world_time, start_time)
+    return timestamp_to_frame_number(timestamp, duration, total_frame_count)
+
+
+class GPSWaypoint(Serializable):
+    '''Class encapsulating a GPS waypoint in a video.
+
+    Attributes:
+        latitude: the latitude, in degrees
+        longitude: the longitude, in degrees
+        frame_number: the associated frame number in the video
+    '''
+
+    def __init__(self, latitude, longitude, frame_number):
+        '''Constructs a GPSWaypoint instance.
+
+        Args:
+            latitude: the latitude, in degrees
+            longitude: the longitude, in degrees
+            frame_number: the associated frame number in the video
+        '''
+        self.latitude = latitude
+        self.longitude = longitude
+        self.frame_number = frame_number
+
+    def attributes(self):
+        return ["latitude", "longitude", "frame_number"]
+
+    @classmethod
+    def from_dict(cls, d):
+        '''Constructs a GPSWaypoint from a JSON dictionary.'''
+        return cls(
+            latitude=d["latitude"],
+            longitude=d["longitude"],
+            frame_number=d["frame_number"],
+        )
+
+
+class VideoMetadata(Serializable):
+    '''Class encapsulating metadata about a video.
+
+    Attributes:
+        uuid: a uuid string for the video
+        start_time: a datetime describing
+        frame_size: the [width, height] of the video frames
+        frame_rate: the frame rate of the video
+        total_frame_count: the total number of frames in the video
+        duration: the duration of the video, in seconds
+        size_bytes: the size of the video file on disk, in bytes
+        encoding_str: the encoding string for the video
+        filepath: the path to the video on disk
+        gps_waypoints: an optional list of GPSWaypoints for the video
+    '''
+
+    def __init__(
+            self, uuid=None, start_time=None, frame_size=None, frame_rate=None,
+            total_frame_count=None, duration=None, size_bytes=None,
+            encoding_str=None, filepath=None, gps_waypoints=None):
+        '''Constructs a VideoMetadata instance.
+
+        Args:
+            uuid: a uuid string for the video
+            start_time: a datetime describing
+            frame_size: the [width, height] of the video frames
+            frame_rate: the frame rate of the video
+            total_frame_count: the total number of frames in the video
+            duration: the duration of the video, in seconds
+            size_bytes: the size of the video file on disk, in bytes
+            encoding_str: the encoding string for the video
+            filepath: the path to the video on disk
+            gps_waypoints: a list of GPSWaypoints
+        '''
+        self.uuid = uuid
+        self.start_time = start_time
+        self.frame_size = frame_size
+        self.frame_rate = frame_rate
+        self.total_frame_count = total_frame_count
+        self.duration = duration
+        self.size_bytes = size_bytes
+        self.encoding_str = encoding_str
+        self.filepath = filepath
+        self.gps_waypoints = gps_waypoints
+
+        self._flat = None
+        self._flon = None
+        self._init_gps()
+
+    @property
+    def has_gps(self):
+        '''Returns True/False if this object has GPS waypoints.'''
+        return self.gps_waypoints is not None
+
+    def add_gps_waypoints(self, waypoints):
+        '''Adds the list of GPSWaypoints to this object.'''
+        if not self.has_gps:
+            self.gps_waypoints = []
+        self.gps_waypoints.extend(waypoints)
+        self._init_gps()
+
+    def get_timestamp(self, frame_number=None, world_time=None):
+        '''Gets the timestamp for the given point in the video.
+
+        Exactly one keyword argument must be supplied.
+
+        Args:
+            frame_number: the frame number of interest
+            world_time: a datetime describing the world time of interest
+
+        Returns:
+            the timestamp (in seconds) in the video
+        '''
+        if world_time is not None:
+            return world_time_to_timestamp(world_time, self.start_time)
+
+        return frame_number_to_timestamp(
+            frame_number, self.total_frame_count, self.duration)
+
+    def get_frame_number(self, timestamp=None, world_time=None):
+        '''Gets the frame number for the given point in the video.
+
+        Exactly one keyword argument must be supplied.
+
+        Args:
+            timestamp: the timestamp (in seconds) of interest
+            world_time: a datetime describing the world time of interest
+
+        Returns:
+            the frame number in the video
+        '''
+        if world_time is not None:
+            return world_time_to_frame_number(
+                world_time, self.start_time, self.duration,
+                self.total_frame_count)
+
+        return timestamp_to_frame_number(
+            timestamp, self.duration, self.total_frame_count)
+
+    def get_gps_location(
+            self, frame_number=None, timestamp=None, world_time=None):
+        '''Gets the GPS location at the given point in the video.
+
+        Exactly one keyword argument must be supplied.
+
+        Nearest neighbors is used to interpolate between waypoints, if
+        necessary.
+
+        Args:
+            frame_number: the frame number of interest
+            timestamp: the number of seconds into the video
+            world_time: a datetime describing the absolute (world) time of
+                interest
+
+        Returns:
+            the (lat, lon) at the given frame in the video, or None if the
+                video has no GPS waypoints
+        '''
+        if not self.has_gps:
+            return None
+        if world_time is not None:
+            timestamp = self.get_timestamp(world_time=world_time)
+        if timestamp is not None:
+            frame_number = self.get_frame_number(timestamp=timestamp)
+        return self._flat(frame_number), self._flon(frame_number)
+
+    def attributes(self):
+        _attrs = [
+            "uuid", "start_time", "frame_size", "frame_rate",
+            "total_frame_count", "duration", "size_bytes", "encoding_str",
+            "filepath", "gps_waypoints"
+        ]
+        # Exclue attributres that are None
+        return [a for a in _attrs if getattr(self, a) is not None]
+
+    @classmethod
+    def build_for(
+            cls, filepath, uuid=None, start_time=None, gps_waypoints=None):
+        '''Builds a VideoMetadata object for the given video.
+
+        Args:
+            filepath: the path to the video on disk
+            uuid: an optional uuid to assign to the video
+            start_time: an optional datetime specifying the start time of the
+                video
+            gps_waypoints: an optional list of GPSWaypoint instances describing
+                the GPS coordinates of the video
+
+        Returns:
+            a VideoMetadata instance
+        '''
+        vsi = VideoStreamInfo.build_for(filepath)
+        return cls(
+            uuid=uuid,
+            start_time=start_time,
+            frame_size=vsi.frame_size,
+            frame_rate=vsi.frame_rate,
+            total_frame_count=vsi.total_frame_count,
+            duration=float(vsi.get_raw_value("duration")),
+            size_bytes=os.path.getsize(filepath),
+            encoding_str=vsi.encoding_str,
+            filepath=filepath,
+            gps_waypoints=gps_waypoints,
+        )
+
+    @classmethod
+    def from_dict(cls, d):
+        '''Constructs a VideoMetadata from a JSON dictionary.'''
+        start_time = d.get(d["start_time"], None)
+        if start_time is not None:
+            start_time = dateutil.parser.parse(start_time)
+
+        gps_waypoints = d.get("gps_waypoints", None)
+        if gps_waypoints is not None:
+            gps_waypoints = [GPSWaypoint.from_dict(g) for g in gps_waypoints]
+
+        return cls(
+            uuid=d.get("uuid", None),
+            start_time=start_time,
+            frame_size=d.get("frame_size", None),
+            frame_rate=d.get("frame_rate", None),
+            total_frame_count=d.get("total_frame_count", None),
+            duration=d.get("duration", None),
+            size_bytes=d.get("size_bytes", None),
+            encoding_str=d.get("encoding_str", None),
+            filepath=d.get("filepath", None),
+            gps_waypoints=gps_waypoints,
+        )
+
+    def _init_gps(self):
+        if not self.has_gps:
+            return
+        frames = [loc.frame_number for loc in self.gps_waypoints]
+        lats = [loc.latitude for loc in self.gps_waypoints]
+        lons = [loc.longitude for loc in self.gps_waypoints]
+        self._flat = self._make_interp(frames, lats)
+        self._flon = self._make_interp(frames, lons)
+
+    def _make_interp(self, x, y):
+        return spi.interp1d(
+            x, y, kind="nearest", bounds_error=False, fill_value="extrapolate")
 
 
 class FrameAttribute(Serializable):
