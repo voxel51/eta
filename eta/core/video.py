@@ -556,15 +556,16 @@ class VideoLabels(Serializable):
                 VideoFrameLabels instances. By default, an empty dictionary
                 is created
         '''
-        if frames is None:
-            frames = {}
-        self.frames = {str(k): v for k, v in iteritems(frames)}
+        self.frames = defaultdict(lambda: VideoFrameLabels())
+        if frames is not None:
+            for k, v in iteritems(frames):
+                self.frames[str(k)] = v
 
     def __getitem__(self, frame_number):
         return self.get_frame(frame_number)
 
-    def __setitem__(self, frame_number, labeled_video_frame):
-        self.add_frame(frame_number, labeled_video_frame)
+    def __setitem__(self, frame_number, labels):
+        self.add_frame(frame_number, labels)
 
     def __delitem__(self, frame_number):
         self.delete_frame(frame_number)
@@ -579,33 +580,28 @@ class VideoLabels(Serializable):
         return bool(self.frames)
 
     def has_frame(self, frame_number):
-        '''Returns True/False whether this object contains a LabeledVideoFrame
+        '''Returns True/False whether this object contains a VideoFrameLabels
         for the given frame number.
         '''
         return frame_number in self.frames
 
-    def add_frame(self, frame_number, labeled_video_frame):
-        '''Adds the labeled frame to the store.
-
-        Args:
-            frame_number: the frame number
-            labeled_video_frame: a LabeledVideoFrame instance
-        '''
-        self.frames[str(frame_number)] = labeled_video_frame
+    def add_frame(self, labels):
+        '''Adds the VideoFrameLabels to the store.'''
+        self.frames[str(labels.frame_number)] = labels
 
     def get_frame(self, frame_number):
-        '''Gets the LabeledVideoFrame for the given frame number, or None if
+        '''Gets the VideoFrameLabels for the given frame number, or None if
         the frame has not been labeled.
         '''
         return self.frames.get(str(frame_number), None)
 
     def delete_frame(self, frame_number):
-        '''Deletes the LabeledVideoFrame for the given frame number.'''
+        '''Deletes the VideoFrameLabels for the given frame number.'''
         del self.frames[str(frame_number)]
 
     @classmethod
     def from_dict(cls, d):
-        '''Constructs a LabeledVideo from a JSON dictionary.'''
+        '''Constructs a VideoLabels from a JSON dictionary.'''
         return cls(
             frames={
                 fn: LabeledVideoFrame.from_dict(lvf)
