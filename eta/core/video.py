@@ -413,66 +413,6 @@ class VideoMetadata(Serializable):
             x, y, kind="nearest", bounds_error=False, fill_value="extrapolate")
 
 
-class FrameAttribute(Serializable):
-    '''Class encapsulating an attribute of a video frame.'''
-
-    def __init__(self, category, label, frame_number=None, confidence=None):
-        '''Constructs a FrameAttribute instance.
-
-        Args:
-            category: the attribute category
-            label: the attribute label
-            frame_number: an optional frame number for the attribute. By
-                default, no frame number is stored
-            confidence: an optional confidence of the label, in [0, 1]. By
-                default, no confidence is stored
-        '''
-        self.category = category
-        self.label = label
-        self.frame_number = frame_number
-        self.confidence = confidence
-
-    def attributes(self):
-        '''Returns the list of attributes to serialize.
-
-        Optional attributes that were not provided (i.e., are None) are omitted
-        from this list.
-        '''
-        _attrs = ["category", "label", "frame_number", "confidence"]
-        # Exclue attributres that are None
-        return [a for a in _attrs if getattr(self, a) is not None]
-
-    @classmethod
-    def from_dict(cls, d):
-        '''Constructs an FrameAttribute from a JSON dictionary.'''
-        return cls(
-            d["category"], d["label"],
-            frame_number=d.get("frame_number", None),
-            confidence=d.get("confidence", None),
-        )
-
-
-class FrameAttributeContainer(AttributeContainer):
-    '''A container for FrameAttributes.'''
-
-    _ELE_CLS = FrameAttribute
-
-    def get_attributes_for_frame(self, frame_number):
-        '''Returns a FrameAttributeContainer containing the attributes for the
-        given frame number.
-        '''
-        return self.get_matches([lambda fa: fa.frame_number == frame_number])
-
-    def get_frames_map(self):
-        '''Returns a dict mapping frame numbers to FrameAttributeContainers
-        containing the attributes for each frame.
-        '''
-        fam = defaultdict(lambda: FrameAttributeContainer())
-        for fa in self:
-            fam[fa.frame_number].add(fa)
-        return fam
-
-
 class VideoFrameLabels(Serializable):
     '''Class encapsulating labels for a frame of a video.
 
