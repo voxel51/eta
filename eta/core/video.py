@@ -471,18 +471,21 @@ class VideoLabels(Serializable):
             instances
     '''
 
-    def __init__(self, frames=None):
+    def __init__(self, frames=None, schema=None):
         '''Constructs a VideoLabels instance.
 
         Args:
             frames: an optional dictionary mapping frame numbers to
                 VideoFrameLabels instances. By default, an empty dictionary
                 is created
+            schema: an optional VideoLabelsSchema to enforce on the object.
+                By default, no schema is enforced
         '''
         self.frames = defaultdict(lambda: VideoFrameLabels())
         if frames is not None:
             for k, v in iteritems(frames):
                 self.frames[str(k)] = v
+        self.schema = schema
 
     def __getitem__(self, frame_number):
         return self.get_frame(frame_number)
@@ -498,6 +501,11 @@ class VideoLabels(Serializable):
 
     def __bool__(self):
         return bool(self.frames)
+
+    @property
+    def has_schema(self):
+        '''Returns True/False whether the container has an enforced schema.'''
+        return self.schema is not None
 
     def has_frame(self, frame_number):
         '''Returns True/False whether this object contains a VideoFrameLabels
@@ -515,55 +523,120 @@ class VideoLabels(Serializable):
         '''Deletes the VideoFrameLabels for the given frame number.'''
         del self.frames[str(frame_number)]
 
-    def add_frame(self, labels):
+    def add_frame(self, frame_labels):
         '''Adds the frame labels to the store.
 
         Args:
-            labels: a VideoFrameLabels instance
+            frame_labels: a VideoFrameLabels instance
         '''
-        self.frames[str(labels.frame_number)] = labels
+        if self.has_schema:
+            self._validate_frame_labels(frame_labels)
+        self.frames[str(frame_labels.frame_number)] = frame_labels
 
-    def add_frame_attribute(self, attr, frame_number):
+    def add_frame_attribute(self, frame_attr, frame_number):
         '''Adds the given frame Attribute to the store.
 
         Args:
-            attr: an Attribute
+            frame_attr: an Attribute
             frame_number: the frame number
         '''
-        self.frames[str(frame_number)].add_frame_attribute(attr)
+        if self.has_schema:
+            self._validate_frame_attribute(frame_attr)
+        self.frames[str(frame_number)].add_frame_attribute(frame_attr)
 
-    def add_frame_attributes(self, attrs, frame_number):
+    def add_frame_attributes(self, frame_attrs, frame_number):
         '''Adds the given frame attributes to the store.
 
         Args:
-            attr: an AttributeContainer
+            frame_attrs: an AttributeContainer
             frame_number: the frame number
         '''
-        self.frames[str(frame_number)].add_frame_attributes(attrs)
+        if self.has_schema:
+            for frame_attr in frame_attrs:
+                self._validate_frame_attribute(frame_attr)
+        self.frames[str(frame_number)].add_frame_attributes(frame_attrs)
 
     def add_detected_object(self, obj):
         '''Adds the DetectedObject to the store.'''
+        if self.has_schema:
+            self._validate_object(obj)
         self.frames[str(obj.frame_number)].add_detected_object(obj)
 
     def add_detected_objects(self, objs):
         '''Adds the DetectedObjectContainer to the store.'''
+        if self.has_schema:
+            for obj in objs:
+                self._validate_object(obj)
         for obj in objs:
             self.frames[str(obj.frame_number)].add_detected_object(obj)
 
+    def get_schema(self):
+        '''Gets the current enforced schema for the video, or None if no schema
+        is enforced.
+        '''
+        return self.schema
+
     def get_active_schema(self):
-        '''Returns a VideoLabelsSchema describing the active schema of
-        the container.
+        '''Returns a VideoLabelsSchema describing the active schema of the
+        video.
         '''
         return VideoLabelsSchema.build_active_schema(self)
+
+    def set_schema(self, schema):
+        '''Sets the enforced schema to the given VideoLabelsSchema.'''
+        self.schema = schema
+        self._validate_schema()
+
+    def freeze_schema(self):
+        '''Sets the enforced schema for the video to the current active
+        schema.
+        '''
+        self.set_schema(self.get_active_schema())
+
+    def remove_schema(self):
+        '''Removes the enforced schema from the video.'''
+        self.schema = None
+
+    def attributes(self):
+        '''Returns the list of class attributes that will be serialized.'''
+        _attrs = ["frames"]
+        if self.has_schema:
+            _attrs.append("schema")
+        return _attrs
+
+    def _validate_frame_labels(self, frame_labels):
+        if self.has_schema:
+            for frame_attr in frame_labels.attrs:
+                self.schema.validate_frame_attribute(frame_attr)
+            for obj in frame_labels.objects:
+                self.schema.validate_object(obj)
+
+    def _validate_frame_attribute(self, frame_attr):
+        if self.has_schema:
+            self.schema.validate_frame_attribute(frame_attr)
+
+    def _validate_object(self, obj):
+        if self.has_schema:
+            self.schema.validate_object(obj)
+
+    def _validate_schema(self):
+        if self.has_schema:
+            for frame_labels in itervalues(self.frames):
+                self._validate_frame_labels(frame_labels)
 
     @classmethod
     def from_dict(cls, d):
         '''Constructs a VideoLabels from a JSON dictionary.'''
+        schema = d.get("schema", None)
+        if schema is not None:
+            schema = VideoLabelsSchema.from_dict(schema)
+
         return cls(
             frames={
                 fn: VideoFrameLabels.from_dict(vfl)
                 for fn, vfl in iteritems(d["frames"])
-            }
+            },
+            schema=schema,
         )
 
 
