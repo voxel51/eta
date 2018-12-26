@@ -351,41 +351,14 @@ class AttributeContainer(DataContainer):
                 attributes added to the container violate it
         '''
         super(AttributeContainer, self).__init__(**kwargs)
-        self.__schema__ = None
+        self.schema = None
         if schema is not None:
             self.set_schema(schema)
 
     @property
     def has_schema(self):
         '''Returns True/False whether the container has an enforced schema.'''
-        return self.__schema__ is not None
-
-    def get_schema(self):
-        '''Gets the current enforced schema for the container, if any.'''
-        return self.__schema__
-
-    def get_active_schema(self):
-        '''Returns an AttributeContainerSchema describing the active schema of
-        the container.
-        '''
-        return AttributeContainerSchema.build_active_schema(self)
-
-    def set_schema(self, schema):
-        '''Sets the enforced schema to the given AttributeContainerSchema.'''
-        self.__schema__ = schema
-        if self.has_schema:
-            for attr in self:
-                self._validate_attribute(attr)
-
-    def freeze_schema(self):
-        '''Sets the enforced schema for the container to the current active
-        schema.
-        '''
-        self.set_schema(self.get_active_schema())
-
-    def remove_schema(self):
-        '''Removes the enforced schema from the container.'''
-        self.__schema__ = None
+        return self.schema is not None
 
     def add(self, attr):
         '''Adds an attribute to the container.
@@ -416,10 +389,57 @@ class AttributeContainer(DataContainer):
                 self._validate_attribute(attr)
         super(AttributeContainer, self).add_container(container)
 
+    def get_schema(self):
+        '''Gets the current enforced schema for the container, or None if
+        no schema is enforced.
+        '''
+        return self.schema
+
+    def get_active_schema(self):
+        '''Returns an AttributeContainerSchema describing the active schema of
+        the container.
+        '''
+        return AttributeContainerSchema.build_active_schema(self)
+
+    def set_schema(self, schema):
+        '''Sets the enforced schema to the given AttributeContainerSchema.'''
+        self.schema = schema
+        self._validate_schema()
+
+    def freeze_schema(self):
+        '''Sets the enforced schema for the container to the current active
+        schema.
+        '''
+        self.set_schema(self.get_active_schema())
+
+    def remove_schema(self):
+        '''Removes the enforced schema from the container.'''
+        self.schema = None
+
+    def attributes(self):
+        '''Returns the list of class attributes that will be serialized.'''
+        _attrs = super(AttributeContainer, self).attributes()
+        if self.has_schema:
+            _attrs.append("schema")
+        return _attrs
+
     def _validate_attribute(self, attr):
-        if not self.has_schema:
-            return
-        self.__schema__.validate_attribute(attr)
+        if self.has_schema:
+            self.schema.validate_attribute(attr)
+
+    def _validate_schema(self):
+        if self.has_schema:
+            for attr in self:
+                self._validate_attribute(attr)
+
+    @classmethod
+    def from_dict(cls, d):
+        '''Constructs an AttributeContainer from a JSON dictionary.'''
+        container = super(AttributeContainer, cls).from_dict(d)
+        schema = d.get("schema", None)
+        if schema is not None:
+            container.set_schema(AttributeContainerSchema.from_dict(schema))
+        return container
 
 
 class AttributeContainerSchema(Serializable):
