@@ -24,12 +24,12 @@ from eta.core.serial import Serializable
 
 
 class ObjectAttribute(Attribute):
-    '''An attribute of a detected object.'''
+    '''An attribute of a DetectedObject.'''
     pass
 
 
 class ObjectAttributeContainer(AttributeContainer):
-    '''A container for object attributes.'''
+    '''A container for ObjectAttributes.'''
 
     _ELE_CLS = ObjectAttribute
 
