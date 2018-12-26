@@ -180,10 +180,7 @@ class AttributeContainer(DataContainer):
         the container, i.e., a schema that describes the current categories and
         labels of the attributes in the container.
         '''
-        schema = defaultdict(set)
-        for attr in self:
-            schema[attr.category].add(attr.label)
-        return AttributeContainerSchema(schema=dict(schema))
+        return AttributeContainerSchema.build_active_schema(self)
 
     def set_schema(self, schema):
         '''Sets the enforced schema to the given AttributeContainerSchema.'''
