@@ -628,9 +628,101 @@ class VideoLabels(Serializable):
         '''Constructs a VideoLabels from a JSON dictionary.'''
         return cls(
             frames={
-                fn: LabeledVideoFrame.from_dict(lvf)
-                for fn, lvf in iteritems(d["frames"])
-            })
+                fn: VideoFrameLabels.from_dict(vfl)
+                for fn, vfl in iteritems(d["frames"])
+            }
+        )
+
+
+class VideoLabelsSchema(Serializable):
+    '''A schema for a VideoLabels instance.'''
+
+    def __init__(self, frames=None, objects=None):
+        '''Creates a VideoLabelsSchema instance.
+
+        Args:
+            frames: an AttributeContainerSchema describing the frame attributes
+                of the video
+            objects: a dictionary mapping object labels to
+                AttributeContainerSchemas describing the object attributes of
+                each object class
+        '''
+        self.frames = frames or AttributeContainerSchema()
+        self.objects = defaultdict(lambda: AttributeContainerSchema())
+        if objects is not None:
+            self.objects.update(objects)
+
+    def is_valid_object_class(self, label):
+        '''Returns True/False whether this schema has an object class with the
+        given label.
+        '''
+        return label in self.objects
+
+    def add_frame_attribute(self, frame_attr):
+        '''Incorporates the given FrameAttribute into the schema.'''
+        self.frames.add_attribute(frame_attr)
+
+    def add_frame_attributes(self, frame_attrs):
+        '''Incorporates the given FrameAttributeContainer into the schema.'''
+        self.frames.add_attributes(frame_attrs)
+
+    def add_object_label(self, label):
+        '''Incorporates the given object label into the schema.'''
+        self.objects[label]  # adds key to defaultdict
+
+    def add_object_attribute(self, label, obj_attr):
+        '''Incorporates the given ObjectAttribute into the schema.'''
+        self.objects[label].add_attribute(obj_attr)
+
+    def add_object_attributes(self, label, obj_attrs):
+        '''Incorporates the given ObjectAttributeContainer into the schema.'''
+        self.objects[label].add_attributes(obj_attrs)
+
+    def merge_schema(self, schema):
+        '''Merges the given VideoLabelsSchema into this schema.'''
+        self.frames.merge_schema(schema.frames)
+        for k, v in iteritems(schema.objects):
+            self.objects[k].merge_schema(v)
+
+    @classmethod
+    def build_active_schema_for_frame(cls, frame_labels):
+        '''Builds a VideoLabelsSchema that describes the active schema of
+        the given VideoFrameLabels.
+        '''
+        schema = cls()
+        schema.add_frame_attributes(frame_labels.attr)
+        for obj in frame_labels.objects:
+            if obj.has_attributes:
+                schema.add_object_attributes(obj.label, obj.attrs)
+            else:
+                schema.add_object_label(obj.label)
+        return schema
+
+    @classmethod
+    def build_active_schema(cls, video_labels):
+        '''Builds a VideoLabelsSchema that describes the active schema of the
+        given VideoLabels.
+        '''
+        schema = cls()
+        for vfl in itervalues(video_labels):
+            schema.merge_schema(vfl.get_active_schema())
+        return schema
+
+    @classmethod
+    def from_dict(cls, d):
+        '''Constructs an AttributeContainerSchema from a JSON dictionary.'''
+        frames = d.get("frames", None)
+        if frames is not None:
+            frames = AttributeContainerSchema.from_dict(frames)
+
+        objects = d.get("objects", None)
+        if objects is not None:
+            objects = {
+                k: AttributeContainerSchema.from_dict(v)
+                for k, v in iteritems(objects)
+            }
+
+        return cls(frames=frames, objects=objects)
 
 
 class VideoStreamInfo(Serializable):
