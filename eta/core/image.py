@@ -1,10 +1,11 @@
 '''
 Core image processing tools.
 
-ETA uses OpenCV for some of its image-related processing.  OpenCV stores its
-images in BGR format.  ETA stores its images in RGB format.  This module's
-contract is that it expects RGB to be passed to it and RGB to be expected from
-it.
+Notes:
+    [image format] ETA stores images exclusively in RGB format. In contrast,
+        OpenCV stores its images in BGR format, so all images that are read or
+        produced outside of this library must be converted to RGB. This
+        conversion can be done via `eta.core.image.bgr_to_rgb()`
 
 Copyright 2017-2018, Voxel51, Inc.
 voxel51.com
