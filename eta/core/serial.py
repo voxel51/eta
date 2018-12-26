@@ -361,7 +361,7 @@ class Container(Serializable):
         '''Creates a Container instance.
 
         Args:
-            <element>: an optional list of elements to store in the Container.
+            <elements>: an optional list of elements to store in the Container.
                 The appropriate name of this keyword argument is determined by
                 the `_ELE_ATTR` member of the Container subclass
 
