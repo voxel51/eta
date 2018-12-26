@@ -76,19 +76,22 @@ class DetectedObject(Serializable, HasBoundingBox):
         self.score = score
         self.frame_number = frame_number
         self.index_in_frame = index_in_frame
-        self.attrs = attrs or ObjectAttributeContainer()
+        self.attrs = attrs
         self._meta = None  # Usable by clients to store temporary metadata
+
+    @property
+    def has_attributes(self):
+        '''Returns True/False if this object has attributes.'''
+        return self.attrs is not None
 
     def get_bounding_box(self):
         '''Returns the bounding box for the object.'''
         return self.bounding_box
 
     def add_attribute(self, attr):
-        '''Adds an attribute to the object.
-
-        Args:
-            attr: an ObjectAttribute instance
-        '''
+        '''Adds the ObjectAttribute to the object.'''
+        if not self.has_attributes:
+            self.attrs = ObjectAttributeContainer()
         self.attrs.add(attr)
 
     def attributes(self):
@@ -97,28 +100,19 @@ class DetectedObject(Serializable, HasBoundingBox):
         Optional attributes that were not provided (e.g. are None) are omitted
         from this list.
         '''
-        _attrs = ["label", "bounding_box"]
-        if self.confidence is not None:
-            _attrs.append("confidence")
-        if self.index is not None:
-            _attrs.append("index")
-        if self.score is not None:
-            _attrs.append("score")
-        if self.frame_number is not None:
-            _attrs.append("frame_number")
-        if self.index_in_frame is not None:
-            _attrs.append("index_in_frame")
-        if self.attrs:
-            _attrs.append("attrs")
-        return _attrs
+        _attrs = [
+            "label", "bounding_box", "confidence", "index", "score",
+            "frame_number", "index_in_frame", "attrs"
+        ]
+        # Exclue attributres that are None
+        return [a for a in _attrs if getattr(self, a) is not None]
 
     @classmethod
     def from_dict(cls, d):
         '''Constructs a DetectedObject from a JSON dictionary.'''
-        if "attrs" in d:
-            attrs = ObjectAttributeContainer.from_dict(d["attrs"])
-        else:
-            attrs = None
+        attrs = d.get("attrs", None)
+        if attrs is not None:
+            attrs = ObjectAttributeContainer.from_dict(attrs)
 
         return cls(
             d["label"],
