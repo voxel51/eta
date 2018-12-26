@@ -473,8 +473,8 @@ class FrameAttributeContainer(AttributeContainer):
         return fam
 
 
-class LabeledVideoFrame(Serializable):
-    '''Class encapsulating a labeled frame of a video.
+class VideoFrameLabels(Serializable):
+    '''Class encapsulating labels for a frame of a video.
 
     Attributes:
         attrs: a FrameAttributeContainer describing the attributes of the frame
@@ -483,7 +483,7 @@ class LabeledVideoFrame(Serializable):
     '''
 
     def __init__(self, attrs=None, objects=None):
-        '''Constructs a LabeledVideoFrame instance.
+        '''Constructs a VideoFrameLabels instance.
 
         Args:
             attrs: an optional FrameAttributeContainer of attributes for
@@ -506,21 +506,26 @@ class LabeledVideoFrame(Serializable):
 
     @classmethod
     def from_dict(cls, d):
-        '''Constructs a LabeledVideoFrame from a JSON dictionary.'''
+        '''Constructs a VideoFrameLabels from a JSON dictionary.'''
         return cls(
             attrs=FrameAttributeContainer.from_dict(d["attrs"]),
             objects=DetectedObjectContainer.from_dict(d["objects"]))
 
 
-class LabeledVideo(Serializable):
-    '''Class encapsulating a labeled video.'''
+class VideoLabels(Serializable):
+    '''Class encapsulating labels for a video.
+
+    Attributes:
+        frames: a dictionary mapping frame number strings to VideoFrameLabels
+            instances
+    '''
 
     def __init__(self, frames=None):
-        '''Constructs a LabeledVideo instance.
+        '''Constructs a VideoLabels instance.
 
         Args:
             frames: an optional dictionary mapping frame numbers to
-                LabeledVideoFrame instances. By default, an empty dictionary
+                VideoFrameLabels instances. By default, an empty dictionary
                 is created
         '''
         if frames is None:
