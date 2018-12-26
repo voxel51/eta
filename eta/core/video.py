@@ -439,11 +439,11 @@ class VideoFrameLabels(Serializable):
         self.objects = objects or DetectedObjectContainer()
 
     def add_frame_attribute(self, attr):
-        '''Adds the FrameAttribute to the frame.'''
+        '''Adds the frame Attribute to the store.'''
         self.attrs.add(attr)
 
     def add_frame_attributes(self, attrs):
-        '''Adds the contents of the FrameAttributeContainer to the frame.'''
+        '''Adds the AttributeContainer of frame attributes to the store.'''
         self.attrs.add_container(attrs)
 
     def add_detected_object(self, obj):
@@ -588,11 +588,19 @@ class VideoLabelsSchema(Serializable):
         return label in self.objects
 
     def add_frame_attribute(self, frame_attr):
-        '''Incorporates the given FrameAttribute into the schema.'''
+        '''Incorporates the given frame attribute into the schema.
+
+        Args:
+            frame_attr: an Attribute
+        '''
         self.frames.add_attribute(frame_attr)
 
     def add_frame_attributes(self, frame_attrs):
-        '''Incorporates the given FrameAttributeContainer into the schema.'''
+        '''Incorporates the given frame attributes into the schema.
+
+        Args:
+            frame_attrs: an AttributeContainer of frame attributes
+        '''
         self.frames.add_attributes(frame_attrs)
 
     def add_object_label(self, label):
@@ -600,11 +608,15 @@ class VideoLabelsSchema(Serializable):
         self.objects[label]  # adds key to defaultdict
 
     def add_object_attribute(self, label, obj_attr):
-        '''Incorporates the given ObjectAttribute into the schema.'''
+        '''Incorporates the Attribute for the object with the given label
+        into the schema.
+        '''
         self.objects[label].add_attribute(obj_attr)
 
     def add_object_attributes(self, label, obj_attrs):
-        '''Incorporates the given ObjectAttributeContainer into the schema.'''
+        '''Incorporates the AttributeContainer for the object with the given
+        label into the schema.
+        '''
         self.objects[label].add_attributes(obj_attrs)
 
     def merge_schema(self, schema):
