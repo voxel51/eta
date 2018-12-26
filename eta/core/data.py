@@ -429,36 +429,22 @@ class AttributeContainerSchema(Serializable):
         '''Creates an AttributeContainerSchema instance.
 
         Args:
-            schema: an optional dictionary mapping categories to sets of
-                supported labels for each category. By default, an empty
-                schema is created
+            schema: a dictionary mapping attribute names to AttributeSchema
+                instances. By default, an empty schema is created
         '''
-        self.schema = defaultdict(set)
-        if schema is not None:
-            for k, v in iteritems(schema):
-                self.schema[k] = set(v)
+        self.schema = schema or {}
 
-    def is_valid_category(self, category):
-        '''Returns True/False if the given category is in the schema.'''
-        return category in self.schema
-
-    def get_valid_categories(self):
-        '''Returns the set of categories in the schema.'''
-        return set(self.schema.keys())
-
-    def is_valid_label_for_category(self, label, category):
-        '''Returns True/False if the label is a valid value for the given
-        category.
-        '''
-        return label in self.schema.get(category, [])
-
-    def get_valid_labels_for_category(self, category):
-        '''Returns the set of labels for the given category in the schema.'''
-        return self.schema[category]
+    def has_attribute(self, name):
+        '''Returns True/False if the schema has an attribute `name`.'''
+        return name in self.schema
 
     def add_attribute(self, attr):
         '''Incorporates the given Attribute into the schema.'''
-        self.schema[attr.category].add(attr.label)
+        name = attr.name
+        if name not in self.schema:
+            schema_cls = attr.get_schema_cls()
+            self.schema[name] = schema_cls(name)
+        self.schema[name].add_attribute(attr)
 
     def add_attributes(self, attrs):
         '''Incorporates the given AttributeContainer into the schema.'''
@@ -466,22 +452,48 @@ class AttributeContainerSchema(Serializable):
             self.add_attribute(attr)
 
     def merge_schema(self, schema):
-        '''Merges the given AttributeContainerSchema into this schema.'''
-        for cat in schema.get_valid_categories():
-            self.schema.update(schema.get_valid_categories(cat))
+        '''Merges the given AttributeContainerSchema into the schema.'''
+        for name, attr_schema in iteritems(schema):
+            if name not in self.schema:
+                self.schema[name] = attr_schema
+            else:
+                self.schema[name].merge_schema(attr_schema)
+
+    def validate_attribute(self, attr):
+        '''Validates that the attribute is compliant with the schema.
+
+        Args:
+            attr: an Attribute
+
+        Raises:
+            AttributeContainerSchemaError: if the attribute violates the
+                schema
+        '''
+        if not self.has_attribute(attr.name):
+            raise AttributeContainerSchemaError(
+                "Attribute '%s' is not allowed by the schema" % attr.name)
+
+        if not self.schema[attr.name].is_valid_value(attr.value):
+            raise AttributeContainerSchemaError(
+                "Value '%s' of attribute '%s' is not allowed by the "
+                "schema " % (attr.value, attr.name))
 
     @classmethod
     def build_active_schema(cls, attrs):
         '''Builds an AttributeContainerSchema that describes the active schema
-        of the given AttributeContainer, i.e., a schema that describes the
-        current categories and labels of the attributes in the container.
+        of the given AttributeContainer.
         '''
         return cls().add_attributes(attrs)
 
     @classmethod
     def from_dict(cls, d):
         '''Constructs an AttributeContainerSchema from a JSON dictionary.'''
-        return cls(schema=d.get("schema", None))
+        schema = d.get("schema", None)
+        if schema is not None:
+            schema = {
+                k: AttributeSchema.from_dict(v) for k, v in iteritems(schema)
+            }
+        return cls(schema=schema)
 
 
 class AttributeContainerSchemaError(Exception):
