@@ -15,6 +15,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
+from future.utils import iteritems
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
@@ -365,8 +366,7 @@ class AttributeContainer(DataContainer):
 
     def get_active_schema(self):
         '''Returns an AttributeContainerSchema describing the active schema of
-        the container, i.e., a schema that describes the current categories and
-        labels of the attributes in the container.
+        the container.
         '''
         return AttributeContainerSchema.build_active_schema(self)
 
@@ -387,19 +387,19 @@ class AttributeContainer(DataContainer):
         '''Removes the enforced schema from the container.'''
         self.__schema__ = None
 
-    def add(self, attribute):
+    def add(self, attr):
         '''Adds an attribute to the container.
 
         Args:
-            attribute: an instance of `_ELE_CLS`
+            attr: an Attribute
 
         Raises:
             AttributeContainerSchemaError: if this container has a schema
                 enforced and the given attribute violates it
         '''
         if self.has_schema:
-            self._validate_attribute(attribute)
-        super(AttributeContainer, self).add(attribute)
+            self._validate_attribute(attr)
+        super(AttributeContainer, self).add(attr)
 
     def add_container(self, container):
         '''Adds the attributes in the given container to this container.
@@ -412,30 +412,14 @@ class AttributeContainer(DataContainer):
                 enforced and an attribute in the given container violates it
         '''
         if self.has_schema:
-            for attribute in container:
-                self._validate_attribute(attribute)
+            for attr in container:
+                self._validate_attribute(attr)
         super(AttributeContainer, self).add_container(container)
 
-    def get_categories(self):
-        '''Returns the set of categories of attributes in the container.'''
-        return set(attr.category for attr in self)
-
-    def get_labels(self):
-        '''Returns the set of labels of attributes in the container.'''
-        return set(attr.label for attr in self)
-
-    def _validate_attribute(self, attribute):
+    def _validate_attribute(self, attr):
         if not self.has_schema:
             return
-        cat = attribute.category
-        lab = attribute.label
-        if not self.__schema__.is_valid_category(cat):
-            raise AttributeContainerSchemaError(
-                "Category '%s' is not allowed by the current schema" % cat)
-        if not self.__schema__.is_valid_label_for_category(lab, cat):
-            raise AttributeContainerSchemaError(
-                "Label '%s' for category '%s' is not allowed by the current "
-                "schema " % (lab, cat))
+        self.__schema__.validate_attribute(attr)
 
 
 class AttributeContainerSchema(Serializable):
