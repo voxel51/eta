@@ -23,17 +23,6 @@ from eta.core.geometry import BoundingBox, HasBoundingBox
 from eta.core.serial import Serializable
 
 
-class ObjectAttribute(Attribute):
-    '''An attribute of a DetectedObject.'''
-    pass
-
-
-class ObjectAttributeContainer(AttributeContainer):
-    '''A container for ObjectAttributes.'''
-
-    _ELE_CLS = ObjectAttribute
-
-
 class DetectedObject(Serializable, HasBoundingBox):
     '''A detected object in an image.
 
@@ -47,7 +36,7 @@ class DetectedObject(Serializable, HasBoundingBox):
             detected
         index_in_frame: (optional) the index of this object in the frame
             where it was detected
-        attrs: (optional) an ObjectAttributeContainer describing additional
+        attrs: (optional) an AttributeContainer describing additional
             attributes of the object
     '''
 
@@ -66,7 +55,7 @@ class DetectedObject(Serializable, HasBoundingBox):
                 detected
             index_in_frame: (optional) the index of this object in the frame
                 where it was detected
-            attrs: (optional) an ObjectAttributeContainer describing additional
+            attrs: (optional) an AttributeContainer describing additional
                 attributes of the object
         '''
         self.label = label
@@ -89,9 +78,9 @@ class DetectedObject(Serializable, HasBoundingBox):
         return self.bounding_box
 
     def add_attribute(self, attr):
-        '''Adds the ObjectAttribute to the object.'''
+        '''Adds the Attribute to the object.'''
         if not self.has_attributes:
-            self.attrs = ObjectAttributeContainer()
+            self.attrs = AttributeContainer()
         self.attrs.add(attr)
 
     def attributes(self):
@@ -112,7 +101,7 @@ class DetectedObject(Serializable, HasBoundingBox):
         '''Constructs a DetectedObject from a JSON dictionary.'''
         attrs = d.get("attrs", None)
         if attrs is not None:
-            attrs = ObjectAttributeContainer.from_dict(attrs)
+            attrs = AttributeContainer.from_dict(attrs)
 
         return cls(
             d["label"],
