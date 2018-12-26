@@ -261,16 +261,10 @@ class AttributeContainerSchema(Serializable):
                 supported labels for each category. By default, an empty
                 schema is created
         '''
-        self.schema = schema or {}
-
-    def add_category(self, category, labels):
-        '''Adds the given category to the schema.
-
-        Args:
-            category: the category
-            labels: a list or set of supported labels for the category
-        '''
-        self.schema[category] = set(labels)
+        self.schema = defaultdict(set)
+        if schema is not None:
+            for k, v in iteritems(schema):
+                self.schema[k] = set(v)
 
     def is_valid_category(self, category):
         '''Returns True/False if the given category is in the schema.'''
