@@ -635,13 +635,43 @@ class VideoLabelsSchema(Serializable):
         for k, v in iteritems(schema.objects):
             self.objects[k].merge_schema(v)
 
+    def validate_frame_attribute(self, frame_attr):
+        '''Validates that the frame attribute is compliant with the schema.
+
+        Args:
+            attr: an Attribute
+
+        Raises:
+            AttributeContainerSchemaError: if the attribute violates the schema
+        '''
+        self.frames.validate_attribute(frame_attr)
+
+    def validate_object(self, obj):
+        '''Validates that the detected object is compliant with the schema.
+
+        Args:
+            obj: a DetectedObject
+
+        Raises:
+            VideoLabelsSchemaError: if the object's label violates the schema
+            AttributeContainerSchemaError: if any attributes of the
+                DetectedObject violate the schema
+        '''
+        if obj.label not in self.objects:
+            raise VideoLabelsSchemaError(
+                "Object label '%s' is not allowed by the schema" % obj.label)
+        if obj.has_attributes:
+            obj_schema = self.objects[obj.label]
+            for obj_attr in obj.attrs:
+                obj_schema.validate_attribute(obj_attr)
+
     @classmethod
     def build_active_schema_for_frame(cls, frame_labels):
         '''Builds a VideoLabelsSchema that describes the active schema of
         the given VideoFrameLabels.
         '''
         schema = cls()
-        schema.add_frame_attributes(frame_labels.attr)
+        schema.add_frame_attributes(frame_labels.attrs)
         for obj in frame_labels.objects:
             if obj.has_attributes:
                 schema.add_object_attributes(obj.label, obj.attrs)
