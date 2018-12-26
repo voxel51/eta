@@ -417,38 +417,26 @@ class VideoFrameLabels(Serializable):
     '''Class encapsulating labels for a frame of a video.
 
     Attributes:
-        attrs: a FrameAttributeContainer describing the attributes of the frame
+        frame_number: the frame number
+        attrs: an AttributeContainer describing the attributes of the frame
         objects: a DetectedObjectContainer describing the detected objects in
             the frame
     '''
 
-    def __init__(self, attrs=None, objects=None):
+    def __init__(self, frame_number, attrs=None, objects=None):
         '''Constructs a VideoFrameLabels instance.
 
         Args:
-            attrs: an optional FrameAttributeContainer of attributes for
-                the frame. By default, an empty FrameAttributeContainer is
-                created
+            frame_number: the frame number of the video
+            attrs: an optional AttributeContainer of attributes for the frame.
+                By default, an empty AttributeContainer is created
             objects: an optional DetectedObjectContainer of detected objects
                 for the frame. By default, an empty DetectedObjectContainer is
                 created
         '''
-        self.attrs = attrs or FrameAttributeContainer()
+        self.frame_number = frame_number
+        self.attrs = attrs or AttributeContainer()
         self.objects = objects or DetectedObjectContainer()
-
-    @property
-    def frame_number(self):
-        '''Gets the frame number described by this object.
-
-        This function infers the frame number by returning the `frame_number`
-        embedded in the first FrameAttribute or DetectedObject in the store.
-        If the store is empty, None is returned
-        '''
-        if self.attrs:
-            return self.attrs[0].frame_number
-        if self.objects:
-            return self.objects[0].frame_number
-        return None
 
     def add_frame_attribute(self, attr):
         '''Adds the FrameAttribute to the frame.'''
@@ -476,7 +464,8 @@ class VideoFrameLabels(Serializable):
     def from_dict(cls, d):
         '''Constructs a VideoFrameLabels from a JSON dictionary.'''
         return cls(
-            attrs=FrameAttributeContainer.from_dict(d["attrs"]),
+            d["frame_number"],
+            attrs=AttributeContainer.from_dict(d["attrs"]),
             objects=DetectedObjectContainer.from_dict(d["objects"]))
 
 
