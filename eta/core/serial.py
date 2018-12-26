@@ -100,7 +100,6 @@ def write_json(obj, path, pretty_print=True):
             extra spaces or newline characters
     '''
     s = json_to_str(obj, pretty_print=pretty_print)
-
     etau.ensure_basedir(path)
     with open(path, "wt") as f:
         f.write(s)
@@ -170,6 +169,11 @@ class Serializable(object):
     def __str__(self):
         return self.to_str()
 
+    @classmethod
+    def get_class_name(cls):
+        '''Returns the fully-qualified class name string of this object.'''
+        return etau.get_class_name(cls)
+
     def attributes(self):
         '''Returns a list of class attributes to be serialized.
 
@@ -194,11 +198,6 @@ class Serializable(object):
         By default, all attributes in vars(self) are returned, minus private
         attributes (those starting with "_").
 
-        Note that `attributes()`, not this method, is called by `serialize()`
-        when generating a list of attributes to serialize. To use this method
-        to set the attributes to serialize, use the `serialize(attributes=)`
-        syntax.
-
         Args:
             dynamic: whether to include dynamic properties, e.g., those defined
                 by getter/setter methods or the `@property` decorator. By
@@ -217,41 +216,56 @@ class Serializable(object):
             attrs = [a for a in attrs if not a.startswith("_")]
         return attrs
 
-    def serialize(self, attributes=None):
+    def serialize(self, reflective=False):
         '''Serializes the object into a dictionary.
 
         Serialization is applied recursively to all attributes in the object,
         including element-wise serialization of lists and dictionary values.
 
         Args:
-            attributes: an optional list of attributes to serialize. By
-                default, the `attributes()` method is used to populate this
-                list
-        '''
-        if attributes is None:
-            attributes = self.attributes()
-        return OrderedDict((a, _recurse(getattr(self, a))) for a in attributes)
+            reflective: whether to include reflective attributes when
+                serializing the object. By default, this is False
 
-    def to_str(self, pretty_print=True):
+        Returns:
+            a JSON dictionary representation of the object
+        '''
+        d = self._prepare_serial_dict(reflective)
+        for a in self.attributes():
+            d[a] = _recurse(getattr(self, a), reflective)
+        return d
+
+    def _prepare_serial_dict(self, reflective):
+        d = OrderedDict()
+        if reflective:
+            d["_CLS"] = self.get_class_name()
+        return d
+
+    def to_str(self, reflective=False, pretty_print=True):
         '''Returns a string representation of this object.
 
         Args:
+            reflective: whether to include reflective attributes when
+                serializing the object. By default, this is False
             pretty_print: if True (default), the string will be formatted to be
                 human readable; when False, it will be compact with no extra
                 spaces or newline characters
         '''
-        return json_to_str(self.serialize(), pretty_print=pretty_print)
+        obj = self.serialize(reflective=reflective)
+        return json_to_str(obj, pretty_print=pretty_print)
 
-    def write_json(self, path, pretty_print=True):
+    def write_json(self, path, reflective=False, pretty_print=True):
         '''Serializes the object and writes it to disk.
 
         Args:
             path: the output path
+            reflective: whether to include reflective attributes when
+                serializing the object. By default, this is False
             pretty_print: when True (default), the resulting JSON will be
                 outputted to be human readable; when False, it will be compact
                 with no extra spaces or newline characters
         '''
-        write_json(self.serialize(), path, pretty_print=pretty_print)
+        obj = self.serialize(reflective=reflective)
+        write_json(obj, path, pretty_print=pretty_print)
 
     @classmethod
     def from_dict(cls, d):
@@ -260,7 +274,29 @@ class Serializable(object):
         Subclasses must implement this method if they intend to support being
         read from disk.
         '''
+        if "_CLS" in d:
+            #
+            # Parse reflectively
+            #
+            # Note that "_CLS" is popped from the dictionary here. This is
+            # crucial because if the subclass does not implement `from_dict`,
+            # this method will be called again and we need to raise a
+            # NotImplementedError next time around!
+            #
+            cls = etau.get_class(d.pop("_CLS"))
+            return cls.from_dict(d)
+
         raise NotImplementedError("subclass must implement from_dict()")
+
+    @classmethod
+    def from_str(cls, s):
+        '''Constructs a Serializable object from a JSON string.
+
+        Subclasses may override this method, but, by default, this method
+        simply parses the string and calls from_dict(), which subclasses must
+        implement.
+        '''
+        return cls.from_dict(json.loads(s))
 
     @classmethod
     def from_json(cls, path):
@@ -273,14 +309,16 @@ class Serializable(object):
         return cls.from_dict(read_json(path))
 
 
-def _recurse(v):
+def _recurse(v, reflective):
+    if isinstance(v, set):
+        v = list(v)  # convert sets to lists
     if isinstance(v, list):
-        return [_recurse(vi) for vi in v]
+        return [_recurse(vi, reflective) for vi in v]
     elif isinstance(v, dict):
         return OrderedDict(
-            (ki, _recurse(vi)) for ki, vi in iteritems(v))
+            (ki, _recurse(vi, reflective)) for ki, vi in iteritems(v))
     elif is_serializable(v):
-        return v.serialize()
+        return v.serialize(reflective=reflective)
     return v
 
 
@@ -327,15 +365,15 @@ class Container(Serializable):
     _ELE_ATTR = None
 
     def __init__(self, **kwargs):
-        '''Constructs a Container subclass.
+        '''Creates a Container instance.
 
         Args:
             <element>: an optional list of elements to store in the Container.
-            The appropriate name of this keyword argument is determined by the
-            `_ELE_ATTR` member of the Container subclass.
+                The appropriate name of this keyword argument is determined by
+                the `_ELE_ATTR` member of the Container subclass
 
         Raises:
-            ContainerError: if there was a problem parsing the input
+            ContainerError: if there was an error while creating the container
         '''
         self._validate()
 
@@ -374,11 +412,6 @@ class Container(Serializable):
     @property
     def __elements__(self):
         return getattr(self, self._ELE_ATTR)
-
-    @classmethod
-    def get_class_name(cls):
-        '''Returns the fully-qualified class name string of this container.'''
-        return etau.get_class_name(cls)
 
     def add(self, instance):
         '''Adds an element to the container.
@@ -493,21 +526,15 @@ class Container(Serializable):
                 self.__elements__, reverse=reverse, key=field_none_last))
 
     def attributes(self):
-        '''Returns the list of class attributes that will be serialized by this
-        Container.
-        '''
-        return ["_CLS", self._ELE_CLS_FIELD, self._ELE_ATTR]
+        '''Returns the list of class attributes that will be serialized.'''
+        return [self._ELE_ATTR]
 
-    def serialize(self, reflective=True):
+    def serialize(self, reflective=False):
         '''Serializes the container into a dictionary.
 
-        Containers have a custom serialization implementation that optionally
-        embeds the class name and element class name into the JSON, which
-        enables reflective parsing when reading from disk.
-
         Args:
-            reflective: whether to include the reflective attributes in the
-                JSON representation. By default, this is True
+            reflective: whether to include reflective attributes when
+                serializing the object. By default, this is False
 
         Returns:
             a JSON dictionary representation of the container
@@ -516,22 +543,8 @@ class Container(Serializable):
         if reflective:
             d["_CLS"] = self.get_class_name()
             d[self._ELE_CLS_FIELD] = etau.get_class_name(self._ELE_CLS)
-        d[self._ELE_ATTR] = [o.serialize() for o in self.__elements__]
+        d[self._ELE_ATTR] = _recurse(self.__elements__, reflective)
         return d
-
-    def write_json(self, path, pretty_print=True, reflective=True):
-        '''Serializes the container and writes it to disk.
-
-        Args:
-            path: the output path
-            pretty_print: when True (default), the resulting JSON will be
-                outputted to be human readable; when False, it will be compact
-                with no extra spaces or newline characters
-            reflective: whether to include the reflective attributes in the
-                JSON representation. By default, this is True
-        '''
-        d = self.serialize(reflective=reflective)
-        write_json(d, path, pretty_print=pretty_print)
 
     @classmethod
     def from_dict(cls, d):
