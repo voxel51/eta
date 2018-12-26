@@ -118,7 +118,7 @@ def json_to_str(obj, pretty_print=True):
         obj = obj.serialize()
     kwargs = {"indent": 4} if pretty_print else {}
     s = json.dumps(
-        obj, separators=(",", ": "), cls=EtaJSONEncoder, ensure_ascii=False,
+        obj, separators=(",", ": "), cls=ETAJSONEncoder, ensure_ascii=False,
         **kwargs
     )
     return str(s)
@@ -609,4 +609,4 @@ class ETAJSONEncoder(json.JSONEncoder):
             return obj.tolist()
         elif isinstance(obj, (dt.datetime, dt.date)):
             return obj.isoformat()
-        return super(EtaJSONEncoder, self).default(obj)
+        return super(ETAJSONEncoder, self).default(obj)
