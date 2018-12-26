@@ -695,6 +695,11 @@ class VideoLabelsSchema(Serializable):
         return cls(frames=frames, objects=objects)
 
 
+class VideoLabelsSchemaError(Exception):
+    '''Error raised when a VideoLabelsSchema is violated.'''
+    pass
+
+
 class VideoStreamInfo(Serializable):
     '''Class encapsulating the stream info for a video.'''
 
