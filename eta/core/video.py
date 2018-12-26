@@ -496,13 +496,41 @@ class VideoFrameLabels(Serializable):
         self.attrs = attrs or FrameAttributeContainer()
         self.objects = objects or DetectedObjectContainer()
 
-    def add_attribute(self, attr):
-        '''Adds the given FrameAttribute to the frame.'''
+    @property
+    def frame_number(self):
+        '''Gets the frame number described by this object.
+
+        This function infers the frame number by returning the `frame_number`
+        embedded in the first FrameAttribute or DetectedObject in the store.
+        If the store is empty, None is returned
+        '''
+        if self.attrs:
+            return self.attrs[0].frame_number
+        if self.objects:
+            return self.objects[0].frame_number
+        return None
+
+    def add_frame_attribute(self, attr):
+        '''Adds the FrameAttribute to the frame.'''
         self.attrs.add(attr)
 
-    def add_object(self, obj):
-        '''Adds the given DetectedObject to the frame.'''
+    def add_frame_attributes(self, attrs):
+        '''Adds the contents of the FrameAttributeContainer to the frame.'''
+        self.attrs.add_container(attrs)
+
+    def add_detected_object(self, obj):
+        '''Adds the DetectedObject to the frame.'''
         self.objects.add(obj)
+
+    def add_detected_objects(self, objs):
+        '''Adds the contents of the DetectedObjectContainer to the frame.'''
+        self.objects.add_container(objs)
+
+    def get_active_schema(self):
+        '''Returns a VideoLabelsSchema describing the active schema of
+        the frame.
+        '''
+        return VideoLabelsSchema.build_active_schema_for_frame(self)
 
     @classmethod
     def from_dict(cls, d):
