@@ -18,7 +18,7 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-from eta.core.data import DataContainer, Attribute, AttributeContainer
+from eta.core.data import DataContainer, AttributeContainer
 from eta.core.geometry import BoundingBox, HasBoundingBox
 from eta.core.serial import Serializable
 
