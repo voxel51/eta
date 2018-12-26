@@ -599,6 +599,30 @@ class VideoLabels(Serializable):
         '''Deletes the VideoFrameLabels for the given frame number.'''
         del self.frames[str(frame_number)]
 
+    def add_frame_attribute(self, attr):
+        '''Adds the FrameAttribute to the store.'''
+        self.frames[str(attr.frame_number)].add_frame_attribute(attr)
+
+    def add_frame_attributes(self, attrs):
+        '''Adds the FrameAttributeContainer to the store.'''
+        for attr in attrs:
+            self.frames[str(attr.frame_number)].add_frame_attribute(attr)
+
+    def add_detected_object(self, obj):
+        '''Adds the DetectedObject to the store.'''
+        self.frames[str(obj.frame_number)].add_detected_object(obj)
+
+    def add_detected_objects(self, objs):
+        '''Adds the DetectedObjectContainer to the store.'''
+        for obj in objs:
+            self.frames[str(obj.frame_number)].add_detected_object(obj)
+
+    def get_active_schema(self):
+        '''Returns a VideoLabelsSchema describing the active schema of
+        the container.
+        '''
+        return VideoLabelsSchema.build_active_schema(self)
+
     @classmethod
     def from_dict(cls, d):
         '''Constructs a VideoLabels from a JSON dictionary.'''
