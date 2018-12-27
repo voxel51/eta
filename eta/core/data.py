@@ -521,7 +521,10 @@ class AttributeContainerSchema(Serializable):
             raise AttributeContainerSchemaError(
                 "Attribute '%s' is not allowed by the schema" % attr.name)
 
-        if not self.schema[attr.name].is_valid_value(attr.value):
+        attr_schema = self.schema[attr.name]
+        attr_schema.validate_type(attr)
+
+        if not attr_schema.is_valid_value(attr.value):
             raise AttributeContainerSchemaError(
                 "Value '%s' of attribute '%s' is not allowed by the "
                 "schema " % (attr.value, attr.name))
