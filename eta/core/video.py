@@ -770,7 +770,7 @@ class VideoLabelsSchema(Serializable):
         given VideoLabels.
         '''
         schema = cls()
-        for frame_labels in itervalues(video_labels):
+        for frame_labels in itervalues(video_labels.frames):
             schema.merge_schema(
                 VideoLabelsSchema.build_active_schema_for_frame(frame_labels))
         return schema
