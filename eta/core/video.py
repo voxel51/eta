@@ -527,7 +527,7 @@ class VideoLabels(Serializable):
         '''Returns True/False whether this object contains a VideoFrameLabels
         for the given frame number.
         '''
-        return frame_number in self.frames
+        return str(frame_number) in self.frames
 
     def get_frame(self, frame_number):
         '''Gets the VideoFrameLabels for the given frame number, or None if
