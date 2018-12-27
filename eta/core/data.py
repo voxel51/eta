@@ -222,6 +222,13 @@ class AttributeSchema(Serializable):
         '''Incorporates the given AttributeSchema into the schema.'''
         raise NotImplementedError("subclass must implement merge_schema()")
 
+    @staticmethod
+    def get_kwargs(d):
+        '''Extracts the relevant keyword arguments for this schema from the
+        JSON dictionary.
+        '''
+        raise NotImplementedError("subclass must implement get_kwargs()")
+
     @classmethod
     def from_dict(cls, d):
         '''Constructs an AttributeSchema from a JSON dictionary.
@@ -267,6 +274,13 @@ class CategoricalAttributeSchema(AttributeSchema):
         '''Merges the given CategoricalAttributeSchema into this schema.'''
         self.categories.update(schema.categories)
 
+    @staticmethod
+    def get_kwargs(d):
+        '''Extracts the relevant keyword arguments for this schema from the
+        JSON dictionary.
+        '''
+        return {"categories": d.get("categories", None)}
+
 
 class NumericAttributeSchema(AttributeSchema):
     '''Class that encapsulates the schema of numeric attributes.'''
@@ -306,6 +320,13 @@ class NumericAttributeSchema(AttributeSchema):
                 max(self.range[1], schema.range[1])
             )
 
+    @staticmethod
+    def get_kwargs(d):
+        '''Extracts the relevant keyword arguments for this schema from the
+        JSON dictionary.
+        '''
+        return {"range": d.get("range", None)}
+
 
 class BooleanAttributeSchema(AttributeSchema):
     '''Class that encapsulates the schema of boolean attributes.'''
@@ -329,6 +350,13 @@ class BooleanAttributeSchema(AttributeSchema):
     def merge_schema(self, schema):
         '''Merges the given BooleanAttributeSchema into this schema.'''
         pass
+
+    @staticmethod
+    def get_kwargs(d):
+        '''Extracts the relevant keyword arguments for this schema from the
+        JSON dictionary.
+        '''
+        return {}
 
 
 class AttributeContainer(DataContainer):
