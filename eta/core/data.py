@@ -193,6 +193,7 @@ class AttributeSchema(Serializable):
         '''
         self.name = name
         self.type = etau.get_class_name(self)[:-6]  # removes "Schema"
+        self._attr_cls = etau.get_class(self.type)
 
     def validate_type(self, attr):
         '''Validates that the attribute is of the correct class.
@@ -204,12 +205,10 @@ class AttributeSchema(Serializable):
             AttributeSchemaError: if the attribute is not of the class expected
                 by the schema
         '''
-        if not isinstance(attr, self.type):
-            actual = attr.__class__.__name__
-            expected = self.type.__name__
+        if not isinstance(attr, self._attr_cls):
             raise AttributeSchemaError(
                 "Expected attribute '%s' to have type '%s'; found '%s'" %
-                (attr.name, expected, actual))
+                (attr.name, self.type, etau.get_class_name(attr)))
 
     def is_valid_value(self, value):
         '''Returns True/False if value is valid for the attribute.'''
