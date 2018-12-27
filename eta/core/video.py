@@ -29,7 +29,7 @@ import six
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 import dateutil.parser
 import errno
 import json
@@ -497,7 +497,7 @@ class VideoLabels(Serializable):
             schema: an optional VideoLabelsSchema to enforce on the object.
                 By default, no schema is enforced
         '''
-        self.frames = {}
+        self.frames = OrderedDict()
         if frames is not None:
             for k, v in iteritems(frames):
                 self.frames[str(k)] = v
@@ -663,17 +663,16 @@ class VideoLabels(Serializable):
     @classmethod
     def from_dict(cls, d):
         '''Constructs a VideoLabels from a JSON dictionary.'''
+        frames = OrderedDict(
+            (fn, VideoFrameLabels.from_dict(vfl))
+            for fn, vfl in iteritems(d["frames"])
+        )
+
         schema = d.get("schema", None)
         if schema is not None:
             schema = VideoLabelsSchema.from_dict(schema)
 
-        return cls(
-            frames={
-                fn: VideoFrameLabels.from_dict(vfl)
-                for fn, vfl in iteritems(d["frames"])
-            },
-            schema=schema,
-        )
+        return cls(frames=frames, schema=schema)
 
 
 class VideoLabelsSchema(Serializable):
