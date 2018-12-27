@@ -236,10 +236,9 @@ class AttributeSchema(Serializable):
         Note that this function reflectively parses the schema type from the
         dictionary, so subclasses do not need to implement this method.
         '''
-        name = d.pop("name")
-        attr_cls = etau.get_class(d.pop("type"))
+        attr_cls = etau.get_class(d["type"])
         schema_cls = attr_cls.get_schema_cls()
-        return schema_cls(name, **d)
+        return schema_cls(d["name"], **schema_cls.get_kwargs(d))
 
 
 class AttributeSchemaError(Exception):
