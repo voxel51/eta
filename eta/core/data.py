@@ -501,7 +501,7 @@ class AttributeContainerSchema(Serializable):
 
     def merge_schema(self, schema):
         '''Merges the given AttributeContainerSchema into the schema.'''
-        for name, attr_schema in iteritems(schema):
+        for name, attr_schema in iteritems(schema.schema):
             if name not in self.schema:
                 self.schema[name] = attr_schema
             else:
