@@ -214,7 +214,6 @@ class VideoMetadata(Serializable):
     '''Class encapsulating metadata about a video.
 
     Attributes:
-        uuid: a uuid string for the video
         start_time: a datetime describing
         frame_size: the [width, height] of the video frames
         frame_rate: the frame rate of the video
@@ -222,18 +221,16 @@ class VideoMetadata(Serializable):
         duration: the duration of the video, in seconds
         size_bytes: the size of the video file on disk, in bytes
         encoding_str: the encoding string for the video
-        filepath: the path to the video on disk
         gps_waypoints: an optional list of GPSWaypoints for the video
     '''
 
     def __init__(
-            self, uuid=None, start_time=None, frame_size=None, frame_rate=None,
+            self, start_time=None, frame_size=None, frame_rate=None,
             total_frame_count=None, duration=None, size_bytes=None,
-            encoding_str=None, filepath=None, gps_waypoints=None):
+            encoding_str=None, gps_waypoints=None):
         '''Constructs a VideoMetadata instance.
 
         Args:
-            uuid: a uuid string for the video
             start_time: a datetime describing
             frame_size: the [width, height] of the video frames
             frame_rate: the frame rate of the video
@@ -241,10 +238,8 @@ class VideoMetadata(Serializable):
             duration: the duration of the video, in seconds
             size_bytes: the size of the video file on disk, in bytes
             encoding_str: the encoding string for the video
-            filepath: the path to the video on disk
             gps_waypoints: a list of GPSWaypoints
         '''
-        self.uuid = uuid
         self.start_time = start_time
         self.frame_size = frame_size
         self.frame_rate = frame_rate
@@ -252,7 +247,6 @@ class VideoMetadata(Serializable):
         self.duration = duration
         self.size_bytes = size_bytes
         self.encoding_str = encoding_str
-        self.filepath = filepath
         self.gps_waypoints = gps_waypoints
 
         self._flat = None
@@ -338,21 +332,19 @@ class VideoMetadata(Serializable):
 
     def attributes(self):
         _attrs = [
-            "uuid", "start_time", "frame_size", "frame_rate",
-            "total_frame_count", "duration", "size_bytes", "encoding_str",
-            "filepath", "gps_waypoints"
+            "start_time", "frame_size", "frame_rate", "total_frame_count",
+            "duration", "size_bytes", "encoding_str", "gps_waypoints"
         ]
         # Exclue attributres that are None
         return [a for a in _attrs if getattr(self, a) is not None]
 
     @classmethod
     def build_for(
-            cls, filepath, uuid=None, start_time=None, gps_waypoints=None):
+            cls, filepath, start_time=None, gps_waypoints=None):
         '''Builds a VideoMetadata object for the given video.
 
         Args:
             filepath: the path to the video on disk
-            uuid: an optional uuid to assign to the video
             start_time: an optional datetime specifying the start time of the
                 video
             gps_waypoints: an optional list of GPSWaypoint instances describing
@@ -363,7 +355,6 @@ class VideoMetadata(Serializable):
         '''
         vsi = VideoStreamInfo.build_for(filepath)
         return cls(
-            uuid=uuid,
             start_time=start_time,
             frame_size=vsi.frame_size,
             frame_rate=vsi.frame_rate,
@@ -371,7 +362,6 @@ class VideoMetadata(Serializable):
             duration=float(vsi.get_raw_value("duration")),
             size_bytes=os.path.getsize(filepath),
             encoding_str=vsi.encoding_str,
-            filepath=filepath,
             gps_waypoints=gps_waypoints,
         )
 
@@ -387,7 +377,6 @@ class VideoMetadata(Serializable):
             gps_waypoints = [GPSWaypoint.from_dict(g) for g in gps_waypoints]
 
         return cls(
-            uuid=d.get("uuid", None),
             start_time=start_time,
             frame_size=d.get("frame_size", None),
             frame_rate=d.get("frame_rate", None),
@@ -395,7 +384,6 @@ class VideoMetadata(Serializable):
             duration=d.get("duration", None),
             size_bytes=d.get("size_bytes", None),
             encoding_str=d.get("encoding_str", None),
-            filepath=d.get("filepath", None),
             gps_waypoints=gps_waypoints,
         )
 
