@@ -438,20 +438,36 @@ class VideoFrameLabels(Serializable):
         self.attrs = attrs or AttributeContainer()
         self.objects = objects or DetectedObjectContainer()
 
-    def add_frame_attribute(self, attr):
-        '''Adds the frame Attribute to the store.'''
-        self.attrs.add(attr)
+    def add_frame_attribute(self, frame_attr):
+        '''Adds the attribute to the frame.
 
-    def add_frame_attributes(self, attrs):
-        '''Adds the AttributeContainer of frame attributes to the store.'''
-        self.attrs.add_container(attrs)
+        Args:
+            frame_attr: an Attribute
+        '''
+        self.attrs.add(frame_attr)
 
-    def add_detected_object(self, obj):
-        '''Adds the DetectedObject to the frame.'''
+    def add_frame_attributes(self, frame_attrs):
+        '''Adds the attributes to the frame.
+
+        Args:
+            frame_attrs: an AttributeContainer
+        '''
+        self.attrs.add_container(frame_attrs)
+
+    def add_object(self, obj):
+        '''Adds the object to the frame.
+
+        Args:
+            obj: a DetectedObject
+        '''
         self.objects.add(obj)
 
-    def add_detected_objects(self, objs):
-        '''Adds the contents of the DetectedObjectContainer to the frame.'''
+    def add_objects(self, objs):
+        '''Adds the objects to the frame.
+
+        Args:
+            objs: a DetectedObjectContainer
+        '''
         self.objects.add_container(objs)
 
     @classmethod
@@ -524,7 +540,7 @@ class VideoLabels(Serializable):
         del self.frames[str(frame_number)]
 
     def add_frame(self, frame_labels):
-        '''Adds the frame labels to the store.
+        '''Adds the frame labels to the video.
 
         Args:
             frame_labels: a VideoFrameLabels instance
@@ -534,7 +550,7 @@ class VideoLabels(Serializable):
         self.frames[str(frame_labels.frame_number)] = frame_labels
 
     def add_frame_attribute(self, frame_attr, frame_number):
-        '''Adds the given frame Attribute to the store.
+        '''Adds the given frame attribute to the video.
 
         Args:
             frame_attr: an Attribute
@@ -545,7 +561,7 @@ class VideoLabels(Serializable):
         self.frames[str(frame_number)].add_frame_attribute(frame_attr)
 
     def add_frame_attributes(self, frame_attrs, frame_number):
-        '''Adds the given frame attributes to the store.
+        '''Adds the given frame attributes to the video.
 
         Args:
             frame_attrs: an AttributeContainer
@@ -556,19 +572,27 @@ class VideoLabels(Serializable):
                 self._validate_frame_attribute(frame_attr)
         self.frames[str(frame_number)].add_frame_attributes(frame_attrs)
 
-    def add_detected_object(self, obj):
-        '''Adds the DetectedObject to the store.'''
+    def add_object(self, obj):
+        '''Adds the object to the video.
+
+        Args:
+            obj: a DetectedObject
+        '''
         if self.has_schema:
             self._validate_object(obj)
-        self.frames[str(obj.frame_number)].add_detected_object(obj)
+        self.frames[str(obj.frame_number)].add_object(obj)
 
-    def add_detected_objects(self, objs):
-        '''Adds the DetectedObjectContainer to the store.'''
+    def add_objects(self, objs):
+        '''Adds the objects to the video.
+
+        Args:
+            objs: a DetectedObjectContainer
+        '''
         if self.has_schema:
             for obj in objs:
                 self._validate_object(obj)
         for obj in objs:
-            self.frames[str(obj.frame_number)].add_detected_object(obj)
+            self.frames[str(obj.frame_number)].add_object(obj)
 
     def get_schema(self):
         '''Gets the current enforced schema for the video, or None if no schema
