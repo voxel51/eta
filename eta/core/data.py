@@ -117,6 +117,7 @@ class Attribute(Serializable):
             confidence: an optional confidence of the value, in [0, 1]. By
                 default, no confidence is stored
         '''
+        self.type = etau.get_class_name(self)
         self.name = name
         self.value = self.parse_value(value)
         self.confidence = confidence
@@ -138,15 +139,16 @@ class Attribute(Serializable):
         Optional attributes that were not provided (i.e., are None) are omitted
         from this list.
         '''
-        _attrs = ["name", "value"]
+        _attrs = ["type", "name", "value"]
         if self.confidence is not None:
-            _attrs.append("value")
+            _attrs.append("confidence")
         return _attrs
 
     @classmethod
     def from_dict(cls, d):
         '''Constructs an Attribute from a JSON dictionary.'''
-        return cls(
+        attr_cls = etau.get_class(d["type"])
+        return attr_cls(
             d["name"], d["value"], confidence=d.get("confidence", None))
 
 
