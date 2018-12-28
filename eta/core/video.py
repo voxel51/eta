@@ -469,6 +469,11 @@ class VideoFrameLabels(Serializable):
 class VideoLabels(Serializable):
     '''Class encapsulating labels for a video.
 
+    Implementation detail: internally, this class converts all frame numbers
+    to strings because they are used as keys in the JSON representation,
+    and JSON object keys _must_ be strings. However, users need not worry about
+    this because all frame numbers are casted to strings as necessary.
+
     Attributes:
         frames: a dictionary mapping frame number strings to VideoFrameLabels
             instances
