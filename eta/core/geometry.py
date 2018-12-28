@@ -284,7 +284,7 @@ class LabeledPointContainer(DataContainer):
     _ELE_CLS = LabeledPoint
     _ELE_ATTR = "points"
 
-    def label_set(self):
+    def get_labels(self):
         '''Returns a set containing the labels of the LabeledPoints.'''
         return set(p.label for p in self.points)
 

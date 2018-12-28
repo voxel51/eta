@@ -1,10 +1,13 @@
 '''
-Core video processing tools.
+Core tools and data structures for working with videos.
 
-ETA uses OpenCV for some of its image-related processing.  OpenCV stores its
-images in BGR format.  ETA stores its images in RGB format.  This module's
-contract is that it expects RGB to be passed to it and RGB to be expected from
-it.  This includes video frames.
+Notes:
+    [frame numbers] ETA uses 1-based indexing for all frame numbers
+
+    [image format] ETA stores images exclusively in RGB format. In contrast,
+        OpenCV stores its images in BGR format, so all images that are read or
+        produced outside of this library must be converted to RGB. This
+        conversion can be done via `eta.core.image.bgr_to_rgb()`
 
 Copyright 2017-2018, Voxel51, Inc.
 voxel51.com
@@ -20,12 +23,14 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
-from future.utils import iteritems
+from future.utils import iteritems, itervalues
 import six
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+from collections import defaultdict, OrderedDict
+import dateutil.parser
 import errno
 import json
 import logging
@@ -35,8 +40,11 @@ import threading
 
 import cv2
 import numpy as np
+import scipy.interpolate as spi
 
+from eta.core.data import AttributeContainer, AttributeContainerSchema
 import eta.core.image as etai
+from eta.core.objects import DetectedObjectContainer
 from eta.core.serial import Serializable
 import eta.core.utils as etau
 
@@ -108,6 +116,755 @@ def glob_videos(dir_):
         *SUPPORTED_VIDEO_FILE_FORMATS, root=os.path.join(dir_, "*"))
 
 
+def frame_number_to_timestamp(frame_number, total_frame_count, duration):
+    '''Converts the given frame number to a timestamp.
+
+    Args:
+        frame_number: the frame number of interest
+        total_frame_count: the total number of frames in the video
+        duration: the length of the video (in seconds)
+
+    Returns:
+        the timestamp (in seconds) of the given frame number in the video
+    '''
+    alpha = (frame_number - 1) / (total_frame_count - 1)
+    return alpha * duration
+
+
+def timestamp_to_frame_number(timestamp, duration, total_frame_count):
+    '''Converts the given timestamp in a video to a frame number.
+
+    Args:
+        timestamp: the timestanp (in seconds) of interest
+        duration: the length of the video (in seconds)
+        total_frame_count: the total number of frames in the video
+
+    Returns:
+        the frame number associated with the given timestamp in the video
+    '''
+    alpha = timestamp / duration
+    return 1 + int(round(alpha * (total_frame_count - 1)))
+
+
+def world_time_to_timestamp(world_time, start_time):
+    '''Converts the given world time to a timestamp in a video.
+
+    Args:
+        world_time: a datetime describing a time of interest
+        start_time: a datetime indicating the start time of the video
+
+    Returns:
+        the corresponding timestamp (in seconds) in the video
+    '''
+    return (world_time - start_time).total_seconds()
+
+
+def world_time_to_frame_number(
+        world_time, start_time, duration, total_frame_count):
+    '''Converts the given world time to a frame number in a video.
+
+    Args:
+        world_time: a datetime describing a time of interest
+        start_time: a datetime indicating the start time of the video
+        duration: the length of the video (in seconds)
+        total_frame_count: the total number of frames in the video
+
+    Returns:
+        the corresponding timestamp (in seconds) in the video
+    '''
+    timestamp = world_time_to_timestamp(world_time, start_time)
+    return timestamp_to_frame_number(timestamp, duration, total_frame_count)
+
+
+class GPSWaypoint(Serializable):
+    '''Class encapsulating a GPS waypoint in a video.
+
+    Attributes:
+        latitude: the latitude, in degrees
+        longitude: the longitude, in degrees
+        frame_number: the associated frame number in the video
+    '''
+
+    def __init__(self, latitude, longitude, frame_number):
+        '''Constructs a GPSWaypoint instance.
+
+        Args:
+            latitude: the latitude, in degrees
+            longitude: the longitude, in degrees
+            frame_number: the associated frame number in the video
+        '''
+        self.latitude = latitude
+        self.longitude = longitude
+        self.frame_number = frame_number
+
+    def attributes(self):
+        return ["latitude", "longitude", "frame_number"]
+
+    @classmethod
+    def from_dict(cls, d):
+        '''Constructs a GPSWaypoint from a JSON dictionary.'''
+        return cls(
+            latitude=d["latitude"],
+            longitude=d["longitude"],
+            frame_number=d["frame_number"],
+        )
+
+
+class VideoMetadata(Serializable):
+    '''Class encapsulating metadata about a video.
+
+    Attributes:
+        start_time: a datetime describing
+        frame_size: the [width, height] of the video frames
+        frame_rate: the frame rate of the video
+        total_frame_count: the total number of frames in the video
+        duration: the duration of the video, in seconds
+        size_bytes: the size of the video file on disk, in bytes
+        encoding_str: the encoding string for the video
+        gps_waypoints: an optional list of GPSWaypoints for the video
+    '''
+
+    def __init__(
+            self, start_time=None, frame_size=None, frame_rate=None,
+            total_frame_count=None, duration=None, size_bytes=None,
+            encoding_str=None, gps_waypoints=None):
+        '''Constructs a VideoMetadata instance.
+
+        Args:
+            start_time: a datetime describing
+            frame_size: the [width, height] of the video frames
+            frame_rate: the frame rate of the video
+            total_frame_count: the total number of frames in the video
+            duration: the duration of the video, in seconds
+            size_bytes: the size of the video file on disk, in bytes
+            encoding_str: the encoding string for the video
+            gps_waypoints: a list of GPSWaypoints
+        '''
+        self.start_time = start_time
+        self.frame_size = frame_size
+        self.frame_rate = frame_rate
+        self.total_frame_count = total_frame_count
+        self.duration = duration
+        self.size_bytes = size_bytes
+        self.encoding_str = encoding_str
+        self.gps_waypoints = gps_waypoints
+
+        self._flat = None
+        self._flon = None
+        self._init_gps()
+
+    @property
+    def has_gps(self):
+        '''Returns True/False if this object has GPS waypoints.'''
+        return self.gps_waypoints is not None
+
+    def add_gps_waypoints(self, waypoints):
+        '''Adds the list of GPSWaypoints to this object.'''
+        if not self.has_gps:
+            self.gps_waypoints = []
+        self.gps_waypoints.extend(waypoints)
+        self._init_gps()
+
+    def get_timestamp(self, frame_number=None, world_time=None):
+        '''Gets the timestamp for the given point in the video.
+
+        Exactly one keyword argument must be supplied.
+
+        Args:
+            frame_number: the frame number of interest
+            world_time: a datetime describing the world time of interest
+
+        Returns:
+            the timestamp (in seconds) in the video
+        '''
+        if world_time is not None:
+            return world_time_to_timestamp(world_time, self.start_time)
+
+        return frame_number_to_timestamp(
+            frame_number, self.total_frame_count, self.duration)
+
+    def get_frame_number(self, timestamp=None, world_time=None):
+        '''Gets the frame number for the given point in the video.
+
+        Exactly one keyword argument must be supplied.
+
+        Args:
+            timestamp: the timestamp (in seconds) of interest
+            world_time: a datetime describing the world time of interest
+
+        Returns:
+            the frame number in the video
+        '''
+        if world_time is not None:
+            return world_time_to_frame_number(
+                world_time, self.start_time, self.duration,
+                self.total_frame_count)
+
+        return timestamp_to_frame_number(
+            timestamp, self.duration, self.total_frame_count)
+
+    def get_gps_location(
+            self, frame_number=None, timestamp=None, world_time=None):
+        '''Gets the GPS location at the given point in the video.
+
+        Exactly one keyword argument must be supplied.
+
+        Nearest neighbors is used to interpolate between waypoints.
+
+        Args:
+            frame_number: the frame number of interest
+            timestamp: the number of seconds into the video
+            world_time: a datetime describing the absolute (world) time of
+                interest
+
+        Returns:
+            the (lat, lon) at the given frame in the video, or None if the
+                video has no GPS waypoints
+        '''
+        if not self.has_gps:
+            return None
+        if world_time is not None:
+            timestamp = self.get_timestamp(world_time=world_time)
+        if timestamp is not None:
+            frame_number = self.get_frame_number(timestamp=timestamp)
+        return self._flat(frame_number), self._flon(frame_number)
+
+    def attributes(self):
+        _attrs = [
+            "start_time", "frame_size", "frame_rate", "total_frame_count",
+            "duration", "size_bytes", "encoding_str", "gps_waypoints"
+        ]
+        # Exclude attributres that are None
+        return [a for a in _attrs if getattr(self, a) is not None]
+
+    @classmethod
+    def build_for(
+            cls, filepath, start_time=None, gps_waypoints=None):
+        '''Builds a VideoMetadata object for the given video.
+
+        Args:
+            filepath: the path to the video on disk
+            start_time: an optional datetime specifying the start time of the
+                video
+            gps_waypoints: an optional list of GPSWaypoint instances describing
+                the GPS coordinates of the video
+
+        Returns:
+            a VideoMetadata instance
+        '''
+        vsi = VideoStreamInfo.build_for(filepath)
+        return cls(
+            start_time=start_time,
+            frame_size=vsi.frame_size,
+            frame_rate=vsi.frame_rate,
+            total_frame_count=vsi.total_frame_count,
+            duration=float(vsi.get_raw_value("duration")),
+            size_bytes=os.path.getsize(filepath),
+            encoding_str=vsi.encoding_str,
+            gps_waypoints=gps_waypoints,
+        )
+
+    @classmethod
+    def from_dict(cls, d):
+        '''Constructs a VideoMetadata from a JSON dictionary.'''
+        start_time = d.get(d["start_time"], None)
+        if start_time is not None:
+            start_time = dateutil.parser.parse(start_time)
+
+        gps_waypoints = d.get("gps_waypoints", None)
+        if gps_waypoints is not None:
+            gps_waypoints = [GPSWaypoint.from_dict(g) for g in gps_waypoints]
+
+        return cls(
+            start_time=start_time,
+            frame_size=d.get("frame_size", None),
+            frame_rate=d.get("frame_rate", None),
+            total_frame_count=d.get("total_frame_count", None),
+            duration=d.get("duration", None),
+            size_bytes=d.get("size_bytes", None),
+            encoding_str=d.get("encoding_str", None),
+            gps_waypoints=gps_waypoints,
+        )
+
+    def _init_gps(self):
+        if not self.has_gps:
+            return
+        frames = [loc.frame_number for loc in self.gps_waypoints]
+        lats = [loc.latitude for loc in self.gps_waypoints]
+        lons = [loc.longitude for loc in self.gps_waypoints]
+        self._flat = self._make_interp(frames, lats)
+        self._flon = self._make_interp(frames, lons)
+
+    def _make_interp(self, x, y):
+        return spi.interp1d(
+            x, y, kind="nearest", bounds_error=False, fill_value="extrapolate")
+
+
+class VideoFrameLabels(Serializable):
+    '''Class encapsulating labels for a frame of a video.
+
+    Attributes:
+        frame_number: the frame number
+        attrs: an AttributeContainer describing the attributes of the frame
+        objects: a DetectedObjectContainer describing the detected objects in
+            the frame
+    '''
+
+    def __init__(self, frame_number, attrs=None, objects=None):
+        '''Constructs a VideoFrameLabels instance.
+
+        Args:
+            frame_number: the frame number of the video
+            attrs: an optional AttributeContainer of attributes for the frame.
+                By default, an empty AttributeContainer is created
+            objects: an optional DetectedObjectContainer of detected objects
+                for the frame. By default, an empty DetectedObjectContainer is
+                created
+        '''
+        self.frame_number = frame_number
+        self.attrs = attrs or AttributeContainer()
+        self.objects = objects or DetectedObjectContainer()
+
+    def add_frame_attribute(self, frame_attr):
+        '''Adds the attribute to the frame.
+
+        Args:
+            frame_attr: an Attribute
+        '''
+        self.attrs.add(frame_attr)
+
+    def add_frame_attributes(self, frame_attrs):
+        '''Adds the attributes to the frame.
+
+        Args:
+            frame_attrs: an AttributeContainer
+        '''
+        self.attrs.add_container(frame_attrs)
+
+    def add_object(self, obj):
+        '''Adds the object to the frame.
+
+        Args:
+            obj: a DetectedObject
+        '''
+        self.objects.add(obj)
+
+    def add_objects(self, objs):
+        '''Adds the objects to the frame.
+
+        Args:
+            objs: a DetectedObjectContainer
+        '''
+        self.objects.add_container(objs)
+
+    @classmethod
+    def from_dict(cls, d):
+        '''Constructs a VideoFrameLabels from a JSON dictionary.'''
+        return cls(
+            d["frame_number"],
+            attrs=AttributeContainer.from_dict(d["attrs"]),
+            objects=DetectedObjectContainer.from_dict(d["objects"]))
+
+
+class VideoLabels(Serializable):
+    '''Class encapsulating labels for a video.
+
+    Implementation detail: internally, this class converts all frame numbers
+    to strings because they are used as keys in the JSON representation,
+    and JSON object keys _must_ be strings. However, users need not worry about
+    this because all frame numbers are casted to strings as necessary.
+
+    Attributes:
+        frames: a dictionary mapping frame number strings to VideoFrameLabels
+            instances
+    '''
+
+    def __init__(self, frames=None, schema=None):
+        '''Constructs a VideoLabels instance.
+
+        Args:
+            frames: an optional dictionary mapping frame numbers to
+                VideoFrameLabels instances. By default, an empty dictionary
+                is created
+            schema: an optional VideoLabelsSchema to enforce on the object.
+                By default, no schema is enforced
+        '''
+        self.frames = OrderedDict()
+        if frames is not None:
+            for k, v in iteritems(frames):
+                self.frames[str(k)] = v
+        self.schema = schema
+
+    def __getitem__(self, frame_number):
+        return self.get_frame(frame_number)
+
+    def __delitem__(self, frame_number):
+        self.delete_frame(frame_number)
+
+    def __iter__(self):
+        return iter(self.frames)
+
+    def __len__(self):
+        return len(self.frames)
+
+    def __bool__(self):
+        return bool(self.frames)
+
+    @property
+    def has_schema(self):
+        '''Returns True/False whether the container has an enforced schema.'''
+        return self.schema is not None
+
+    def has_frame(self, frame_number):
+        '''Returns True/False whether this object contains a VideoFrameLabels
+        for the given frame number.
+        '''
+        return str(frame_number) in self.frames
+
+    def get_frame(self, frame_number):
+        '''Gets the VideoFrameLabels for the given frame number, or None if
+        the frame has not been labeled.
+        '''
+        return self.frames.get(str(frame_number), None)
+
+    def delete_frame(self, frame_number):
+        '''Deletes the VideoFrameLabels for the given frame number.'''
+        del self.frames[str(frame_number)]
+
+    def add_frame(self, frame_labels):
+        '''Adds the frame labels to the video.
+
+        Args:
+            frame_labels: a VideoFrameLabels instance
+        '''
+        if self.has_schema:
+            self._validate_frame_labels(frame_labels)
+        self.frames[str(frame_labels.frame_number)] = frame_labels
+
+    def add_frame_attribute(self, frame_attr, frame_number):
+        '''Adds the given frame attribute to the video.
+
+        Args:
+            frame_attr: an Attribute
+            frame_number: the frame number
+        '''
+        if self.has_schema:
+            self._validate_frame_attribute(frame_attr)
+        self._ensure_frame(frame_number)
+        self.frames[str(frame_number)].add_frame_attribute(frame_attr)
+
+    def add_frame_attributes(self, frame_attrs, frame_number):
+        '''Adds the given frame attributes to the video.
+
+        Args:
+            frame_attrs: an AttributeContainer
+            frame_number: the frame number
+        '''
+        if self.has_schema:
+            for frame_attr in frame_attrs:
+                self._validate_frame_attribute(frame_attr)
+        self._ensure_frame(frame_number)
+        self.frames[str(frame_number)].add_frame_attributes(frame_attrs)
+
+    def add_object(self, obj, frame_number):
+        '''Adds the object to the video.
+
+        Args:
+            obj: a DetectedObject
+            frame_number: the frame number
+        '''
+        if self.has_schema:
+            self._validate_object(obj)
+        self._ensure_frame(frame_number)
+        obj.frame_number = frame_number
+        self.frames[str(frame_number)].add_object(obj)
+
+    def add_objects(self, objs, frame_number):
+        '''Adds the objects to the video.
+
+        Args:
+            objs: a DetectedObjectContainer
+            frame_number: the frame number
+        '''
+        if self.has_schema:
+            for obj in objs:
+                self._validate_object(obj)
+        self._ensure_frame(frame_number)
+        for obj in objs:
+            obj.frame_number = frame_number
+            self.frames[str(frame_number)].add_object(obj)
+
+    def get_schema(self):
+        '''Gets the current enforced schema for the video, or None if no schema
+        is enforced.
+        '''
+        return self.schema
+
+    def get_active_schema(self):
+        '''Returns a VideoLabelsSchema describing the active schema of the
+        video.
+        '''
+        return VideoLabelsSchema.build_active_schema(self)
+
+    def set_schema(self, schema):
+        '''Sets the enforced schema to the given VideoLabelsSchema.'''
+        self.schema = schema
+        self._validate_schema()
+
+    def freeze_schema(self):
+        '''Sets the enforced schema for the video to the current active
+        schema.
+        '''
+        self.set_schema(self.get_active_schema())
+
+    def remove_schema(self):
+        '''Removes the enforced schema from the video.'''
+        self.schema = None
+
+    def attributes(self):
+        '''Returns the list of class attributes that will be serialized.'''
+        _attrs = ["frames"]
+        if self.has_schema:
+            _attrs.append("schema")
+        return _attrs
+
+    def _ensure_frame(self, frame_number):
+        if not self.has_frame(frame_number):
+            self.frames[str(frame_number)] = VideoFrameLabels(frame_number)
+
+    def _validate_frame_labels(self, frame_labels):
+        if self.has_schema:
+            for frame_attr in frame_labels.attrs:
+                self.schema.validate_frame_attribute(frame_attr)
+            for obj in frame_labels.objects:
+                self.schema.validate_object(obj)
+
+    def _validate_frame_attribute(self, frame_attr):
+        if self.has_schema:
+            self.schema.validate_frame_attribute(frame_attr)
+
+    def _validate_object(self, obj):
+        if self.has_schema:
+            self.schema.validate_object(obj)
+
+    def _validate_schema(self):
+        if self.has_schema:
+            for frame_labels in itervalues(self.frames):
+                self._validate_frame_labels(frame_labels)
+
+    @classmethod
+    def from_dict(cls, d):
+        '''Constructs a VideoLabels from a JSON dictionary.'''
+        frames = OrderedDict(
+            (fn, VideoFrameLabels.from_dict(vfl))
+            for fn, vfl in iteritems(d["frames"])
+        )
+
+        schema = d.get("schema", None)
+        if schema is not None:
+            schema = VideoLabelsSchema.from_dict(schema)
+
+        return cls(frames=frames, schema=schema)
+
+
+class VideoLabelsSchema(Serializable):
+    '''A schema for a VideoLabels instance.'''
+
+    def __init__(self, frames=None, objects=None):
+        '''Creates a VideoLabelsSchema instance.
+
+        Args:
+            frames: an AttributeContainerSchema describing the frame attributes
+                of the video
+            objects: a dictionary mapping object labels to
+                AttributeContainerSchemas describing the object attributes of
+                each object class
+        '''
+        self.frames = frames or AttributeContainerSchema()
+        self.objects = defaultdict(lambda: AttributeContainerSchema())
+        if objects is not None:
+            self.objects.update(objects)
+
+    def add_frame_attribute(self, frame_attr):
+        '''Incorporates the given frame attribute into the schema.
+
+        Args:
+            frame_attr: an Attribute
+        '''
+        self.frames.add_attribute(frame_attr)
+
+    def add_frame_attributes(self, frame_attrs):
+        '''Incorporates the given frame attributes into the schema.
+
+        Args:
+            frame_attrs: an AttributeContainer of frame attributes
+        '''
+        self.frames.add_attributes(frame_attrs)
+
+    def add_object_label(self, label):
+        '''Incorporates the given object label into the schema.'''
+        self.objects[label]  # adds key to defaultdict
+
+    def add_object_attribute(self, label, obj_attr):
+        '''Incorporates the Attribute for the object with the given label
+        into the schema.
+        '''
+        self.objects[label].add_attribute(obj_attr)
+
+    def add_object_attributes(self, label, obj_attrs):
+        '''Incorporates the AttributeContainer for the object with the given
+        label into the schema.
+        '''
+        self.objects[label].add_attributes(obj_attrs)
+
+    def merge_schema(self, schema):
+        '''Merges the given VideoLabelsSchema into this schema.'''
+        self.frames.merge_schema(schema.frames)
+        for k, v in iteritems(schema.objects):
+            self.objects[k].merge_schema(v)
+
+    def is_valid_frame_attribute(self, frame_attr):
+        '''Returns True/False if the frame attribute is compliant with the
+        schema.
+        '''
+        try:
+            self.validate_frame_attribute(frame_attr)
+            return True
+        except:
+            return False
+
+    def is_valid_object_label(self, label):
+        '''Returns True/False if the object label is compliant with the
+        schema.
+        '''
+        try:
+            self.validate_object_label(label)
+            return True
+        except:
+            return False
+
+    def is_valid_object_attribute(self, label, obj_attr):
+        '''Returns True/False if the object attribute for the given label is
+        compliant with the schema.
+        '''
+        try:
+            self.validate_object_attribute(label, obj_attr)
+            return True
+        except:
+            return False
+
+    def is_valid_object(self, obj):
+        '''Returns True/False if the frame attribute is compliant with the
+        schema.
+        '''
+        try:
+            self.validate_frame_attribute(frame_attr)
+            return True
+        except:
+            return False
+
+    def validate_frame_attribute(self, frame_attr):
+        '''Validates that the frame attribute is compliant with the schema.
+
+        Args:
+            frame_attr: an Attribute
+
+        Raises:
+            AttributeContainerSchemaError: if the attribute violates the schema
+        '''
+        self.frames.validate_attribute(frame_attr)
+
+    def validate_object_label(self, label):
+        '''Validates that the object label is compliant with the schema.
+
+        Args:
+            label: an object label
+
+        Raises:
+            VideoLabelsSchemaError: if the object label violates the schema
+        '''
+        if label not in self.objects:
+            raise VideoLabelsSchemaError(
+                "Object label '%s' is not allowed by the schema" % label)
+
+    def validate_object_attribute(self, label, obj_attr):
+        '''Validates that the object attribute for the given label is compliant
+        with the schema.
+
+        Args:
+            label: an object label
+            obj_attr: an Attribute
+
+        Raises:
+            AttributeContainerSchemaError: if the object attribute violates
+                the schema
+        '''
+        obj_schema = self.objects[obj.label]
+        obj_schema.validate_attribute(obj_attr)
+
+    def validate_object(self, obj):
+        '''Validates that the detected object is compliant with the schema.
+
+        Args:
+            obj: a DetectedObject
+
+        Raises:
+            VideoLabelsSchemaError: if the object's label violates the schema
+            AttributeContainerSchemaError: if any attributes of the
+                DetectedObject violate the schema
+        '''
+        self.validate_object_label(obj.label)
+        if obj.has_attributes:
+            for obj_attr in obj.attrs:
+                self.validate_object_attribute(obj_attr)
+
+    @classmethod
+    def build_active_schema_for_frame(cls, frame_labels):
+        '''Builds a VideoLabelsSchema that describes the active schema of
+        the given VideoFrameLabels.
+        '''
+        schema = cls()
+        schema.add_frame_attributes(frame_labels.attrs)
+        for obj in frame_labels.objects:
+            if obj.has_attributes:
+                schema.add_object_attributes(obj.label, obj.attrs)
+            else:
+                schema.add_object_label(obj.label)
+        return schema
+
+    @classmethod
+    def build_active_schema(cls, video_labels):
+        '''Builds a VideoLabelsSchema that describes the active schema of the
+        given VideoLabels.
+        '''
+        schema = cls()
+        for frame_labels in itervalues(video_labels.frames):
+            schema.merge_schema(
+                VideoLabelsSchema.build_active_schema_for_frame(frame_labels))
+        return schema
+
+    @classmethod
+    def from_dict(cls, d):
+        '''Constructs an AttributeContainerSchema from a JSON dictionary.'''
+        frames = d.get("frames", None)
+        if frames is not None:
+            frames = AttributeContainerSchema.from_dict(frames)
+
+        objects = d.get("objects", None)
+        if objects is not None:
+            objects = {
+                k: AttributeContainerSchema.from_dict(v)
+                for k, v in iteritems(objects)
+            }
+
+        return cls(frames=frames, objects=objects)
+
+
+class VideoLabelsSchemaError(Exception):
+    '''Error raised when a VideoLabelsSchema is violated.'''
+    pass
+
+
 class VideoStreamInfo(Serializable):
     '''Class encapsulating the stream info for a video.'''
 
@@ -118,7 +875,7 @@ class VideoStreamInfo(Serializable):
         to instantiate this class is via the `build_for` factory method.
 
         Args:
-            stream_info: a stream info dictionary generated by get_stream_info
+            stream_info: a dictionary generated by `get_stream_info()`
         '''
         self.stream_info = stream_info
 
@@ -187,7 +944,7 @@ class VideoStreamInfo(Serializable):
     @classmethod
     def build_for(cls, inpath):
         '''Builds a VideoStreamInfo object for the given video using
-        `ffprobe -show_streams`.
+        `get_stream_info()`.
 
         Args:
             inpath: the path to the input video

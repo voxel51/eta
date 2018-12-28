@@ -114,11 +114,11 @@ def json_to_str(obj, pretty_print=True):
             human readable; when False, it will be compact with no extra spaces
             or newline characters
     '''
-    if is_serializable(obj):
+    if isinstance(obj, Serializable):
         obj = obj.serialize()
     kwargs = {"indent": 4} if pretty_print else {}
     s = json.dumps(
-        obj, separators=(",", ": "), cls=EtaJSONEncoder, ensure_ascii=False,
+        obj, separators=(",", ": "), cls=ETAJSONEncoder, ensure_ascii=False,
         **kwargs
     )
     return str(s)
@@ -129,13 +129,6 @@ def pretty_str(obj):
     string representation of the input object.
     '''
     return pprint.pformat(obj, indent=4, width=79)
-
-
-def is_serializable(obj):
-    '''Returns True if the object is serializable (i.e., implements the
-    Serializable interface) and False otherwise.
-    '''
-    return isinstance(obj, Serializable)
 
 
 class Picklable(object):
@@ -310,15 +303,15 @@ class Serializable(object):
 
 
 def _recurse(v, reflective):
-    if isinstance(v, set):
+    if isinstance(v, Serializable):
+        return v.serialize(reflective=reflective)
+    elif isinstance(v, set):
         v = list(v)  # convert sets to lists
     if isinstance(v, list):
         return [_recurse(vi, reflective) for vi in v]
     elif isinstance(v, dict):
         return OrderedDict(
             (ki, _recurse(vi, reflective)) for ki, vi in iteritems(v))
-    elif is_serializable(v):
-        return v.serialize(reflective=reflective)
     return v
 
 
@@ -368,7 +361,7 @@ class Container(Serializable):
         '''Creates a Container instance.
 
         Args:
-            <element>: an optional list of elements to store in the Container.
+            <elements>: an optional list of elements to store in the Container.
                 The appropriate name of this keyword argument is determined by
                 the `_ELE_ATTR` member of the Container subclass
 
@@ -602,13 +595,13 @@ class ContainerError(Exception):
     pass
 
 
-class EtaJSONEncoder(json.JSONEncoder):
-    '''Extends basic JSONEncoder to handle numpy scalars/arrays and datatime
-    data-types.
-    '''
+class ETAJSONEncoder(json.JSONEncoder):
+    '''Extends basic JSONEncoder to handle ETA conventions and types.'''
 
     def default(self, obj):
-        if isinstance(obj, np.integer):
+        if isinstance(obj, Serializable):
+            return obj.serialize()
+        elif isinstance(obj, np.integer):
             return int(obj)
         elif isinstance(obj, np.floating):
             return float(obj)
@@ -616,4 +609,4 @@ class EtaJSONEncoder(json.JSONEncoder):
             return obj.tolist()
         elif isinstance(obj, (dt.datetime, dt.date)):
             return obj.isoformat()
-        return super(EtaJSONEncoder, self).default(obj)
+        return super(ETAJSONEncoder, self).default(obj)
