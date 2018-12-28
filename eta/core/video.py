@@ -723,16 +723,84 @@ class VideoLabelsSchema(Serializable):
         for k, v in iteritems(schema.objects):
             self.objects[k].merge_schema(v)
 
+    def is_valid_frame_attribute(self, frame_attr):
+        '''Returns True/False if the frame attribute is compliant with the
+        schema.
+        '''
+        try:
+            self.validate_frame_attribute(frame_attr)
+            return True
+        except:
+            return False
+
+    def is_valid_object_label(self, label):
+        '''Returns True/False if the object label is compliant with the
+        schema.
+        '''
+        try:
+            self.validate_object_label(label)
+            return True
+        except:
+            return False
+
+    def is_valid_object_attribute(self, label, obj_attr):
+        '''Returns True/False if the object attribute for the given label is
+        compliant with the schema.
+        '''
+        try:
+            self.validate_object_attribute(label, obj_attr)
+            return True
+        except:
+            return False
+
+    def is_valid_object(self, obj):
+        '''Returns True/False if the frame attribute is compliant with the
+        schema.
+        '''
+        try:
+            self.validate_frame_attribute(frame_attr)
+            return True
+        except:
+            return False
+
     def validate_frame_attribute(self, frame_attr):
         '''Validates that the frame attribute is compliant with the schema.
 
         Args:
-            attr: an Attribute
+            frame_attr: an Attribute
 
         Raises:
             AttributeContainerSchemaError: if the attribute violates the schema
         '''
         self.frames.validate_attribute(frame_attr)
+
+    def validate_object_label(self, label):
+        '''Validates that the object label is compliant with the schema.
+
+        Args:
+            label: an object label
+
+        Raises:
+            VideoLabelsSchemaError: if the object label violates the schema
+        '''
+        if label not in self.objects:
+            raise VideoLabelsSchemaError(
+                "Object label '%s' is not allowed by the schema" % label)
+
+    def validate_object_attribute(self, label, obj_attr):
+        '''Validates that the object attribute for the given label is compliant
+        with the schema.
+
+        Args:
+            label: an object label
+            obj_attr: an Attribute
+
+        Raises:
+            AttributeContainerSchemaError: if the object attribute violates
+                the schema
+        '''
+        obj_schema = self.objects[obj.label]
+        obj_schema.validate_attribute(obj_attr)
 
     def validate_object(self, obj):
         '''Validates that the detected object is compliant with the schema.
