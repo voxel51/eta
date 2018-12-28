@@ -813,13 +813,10 @@ class VideoLabelsSchema(Serializable):
             AttributeContainerSchemaError: if any attributes of the
                 DetectedObject violate the schema
         '''
-        if obj.label not in self.objects:
-            raise VideoLabelsSchemaError(
-                "Object label '%s' is not allowed by the schema" % obj.label)
+        self.validate_object_label(obj.label)
         if obj.has_attributes:
-            obj_schema = self.objects[obj.label]
             for obj_attr in obj.attrs:
-                obj_schema.validate_attribute(obj_attr)
+                self.validate_object_attribute(obj_attr)
 
     @classmethod
     def build_active_schema_for_frame(cls, frame_labels):
