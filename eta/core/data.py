@@ -103,8 +103,8 @@ class DataContainer(Container):
 class Attribute(Serializable):
     '''Base class for attributes.
 
-    This class assumes the convention that attribute class `<Type>Attribute`
-    defines an associated schema class `<Type>AttributeSchema` in the same
+    This class assumes the convention that attribute class `<AttributeClass>`
+    defines an associated schema class `<AttributeClass>Schema` in the same
     module.
     '''
 
