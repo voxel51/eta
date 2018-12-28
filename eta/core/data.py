@@ -363,7 +363,7 @@ class AttributeContainer(DataContainer):
 
     _ELE_CLS = Attribute
     _ELE_CLS_FIELD = "_ATTR_CLS"
-    # Note: we can't use "attributes" here due to `Serialiable.attributes()`
+    # Note: we can't use "attributes" here due to `Serializable.attributes()`
     _ELE_ATTR = "attrs"
 
     def __init__(self, schema=None, **kwargs):

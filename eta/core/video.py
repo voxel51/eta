@@ -309,8 +309,7 @@ class VideoMetadata(Serializable):
 
         Exactly one keyword argument must be supplied.
 
-        Nearest neighbors is used to interpolate between waypoints, if
-        necessary.
+        Nearest neighbors is used to interpolate between waypoints.
 
         Args:
             frame_number: the frame number of interest
@@ -335,7 +334,7 @@ class VideoMetadata(Serializable):
             "start_time", "frame_size", "frame_rate", "total_frame_count",
             "duration", "size_bytes", "encoding_str", "gps_waypoints"
         ]
-        # Exclue attributres that are None
+        # Exclude attributres that are None
         return [a for a in _attrs if getattr(self, a) is not None]
 
     @classmethod
