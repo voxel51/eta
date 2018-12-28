@@ -334,7 +334,7 @@ class VideoMetadata(Serializable):
             "start_time", "frame_size", "frame_rate", "total_frame_count",
             "duration", "size_bytes", "encoding_str", "gps_waypoints"
         ]
-        # Exclude attributres that are None
+        # Exclude attributes that are None
         return [a for a in _attrs if getattr(self, a) is not None]
 
     @classmethod
