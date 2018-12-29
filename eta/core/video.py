@@ -799,7 +799,7 @@ class VideoLabelsSchema(Serializable):
             AttributeContainerSchemaError: if the object attribute violates
                 the schema
         '''
-        obj_schema = self.objects[obj.label]
+        obj_schema = self.objects[label]
         obj_schema.validate_attribute(obj_attr)
 
     def validate_object(self, obj):
