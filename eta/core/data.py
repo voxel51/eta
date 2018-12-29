@@ -195,6 +195,10 @@ class AttributeSchema(Serializable):
         self.type = etau.get_class_name(self)[:-6]  # removes "Schema"
         self._attr_cls = etau.get_class(self.type)
 
+    def get_attribute_class(self):
+        '''Gets the Attribute class associated with this schema.'''
+        return self._attr_cls
+
     def validate_type(self, attr):
         '''Validates that the attribute is of the correct class.
 
@@ -485,6 +489,18 @@ class AttributeContainerSchema(Serializable):
     def has_attribute(self, name):
         '''Returns True/False if the schema has an attribute `name`.'''
         return name in self.schema
+
+    def get_attribute_class(self, name):
+        '''Gets the class of the Attribute with the given name.
+
+        Raises:
+            AttributeContainerSchemaError: if the schema does not have an
+                attribute with the given name
+        '''
+        if not self.has_attribute(name):
+            raise AttributeContainerSchemaError(
+                "Attribute '%s' is not allowed by the schema" % name)
+        return self.schema[name].get_attribute_class()
 
     def add_attribute(self, attr):
         '''Incorporates the given Attribute into the schema.'''
