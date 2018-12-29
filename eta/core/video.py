@@ -367,7 +367,7 @@ class VideoMetadata(Serializable):
     @classmethod
     def from_dict(cls, d):
         '''Constructs a VideoMetadata from a JSON dictionary.'''
-        start_time = d.get(d["start_time"], None)
+        start_time = d.get("start_time", None)
         if start_time is not None:
             start_time = dateutil.parser.parse(start_time)
 
