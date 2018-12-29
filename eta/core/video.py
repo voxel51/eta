@@ -400,6 +400,49 @@ class VideoMetadata(Serializable):
             x, y, kind="nearest", bounds_error=False, fill_value="extrapolate")
 
 
+class VideoSemanticData(Serializable):
+    '''Class encapsulating the semantic information for a video.
+
+    Captures the three canonical types of semantic information about a video
+    and represents them via the standard ETA Container and Attribute
+    mechanisms.
+    1. Video attributes, such as categorical labels describing the entire video
+    (e.g., "fast", "dark", etc.) or natural language sentences describing the
+    video.
+    2. Temporal entities, such as an event or frame-level label from frame t to
+    frame t+d (e.g., an "intersection" of a dash cam) with optional attributes
+    (e.g., "t-junction" or "four-way" intersections).  Full semantic
+    segmentations would be consider temporal entities with the Attribute
+    containing the mask.
+        XXX All Temporal entities support the YYY contract.
+    3. Spatiotemporal entities, such as an object, exist in a definable spatial
+    region that varies over time and potential only exists for a portion of the
+    full temporal extent of the video (e.g., a vehicle detection).
+    Spatiotemporal entities also have attributes to describe them (e.g., the
+    type and color of the vehicle).  While bounding-box-type entities are the
+    most obvious, these entities can be delineated by polygon regions or
+    arbitrary binary masks.  (Note support for all of this may not yet be
+    implemented.)
+        XXX All Spatiotemporal entities support the ZZZ contract.
+
+    Attributes:
+        video_attrs: An AttributeContainer describing the video-level
+            attributes
+
+    '''
+
+    def __init__(self, video_attrs=None):
+        self.video_attrs = video_attrs or AttributeContainer()
+
+    def add_video_attribute(self, video_attr):
+        '''Adds the attribute to the video.
+
+        Args:
+            video_attr: an Attribute
+        '''
+        self.video_attrs.add(video_attr)
+
+
 class VideoFrameLabels(Serializable):
     '''Class encapsulating labels for a frame of a video.
 
