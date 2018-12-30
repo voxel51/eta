@@ -38,12 +38,18 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import uuid
 import zipfile
 
 import eta.constants as etac
 
 
 logger = logging.getLogger(__name__)
+
+
+def make_uuid():
+    '''Generate a unique identifier.'''
+    return str(uuid.uuid4())
 
 
 def is_str(val):
