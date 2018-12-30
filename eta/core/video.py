@@ -400,21 +400,80 @@ class VideoMetadata(Serializable):
             x, y, kind="nearest", bounds_error=False, fill_value="extrapolate")
 
 
+class TemporalLike(object):
+    '''A mixin to establish a contract for temporal entities that can be stored
+    in containers.
+    '''
+
+    def exists_at_frame(frame_number):
+        # XXX
+        raise NotImplementedError("subclass must implement exists_at_frame")
+
+
+class SpatiotemporalLike(TemporalLike):
+    '''A mixin to establish a contract for temporal entities that can be stored
+    in containers.
+    '''
+
+    def overlaps_at_frame(frame_number, bounding_box):
+        # XXX
+        raise NotImplementedError("subclass must implement overlaps_at_frame")
+
+
+class SpatiotemporalEntityContainer(DataContainer):
+    '''A container for instances observing the SpatiotemporalLike contract.'''
+    # XXX maybe move this to data
+
+    _ELE_CLS = SpatiotemporalLike
+    _ELE_CLS_FIELD = "_SPATIOTEMPORALENTITY_CLS"
+    _ELE_ATTR = "entities"
+
+    def __init__(self, schema=None, **kwargs):
+        '''Creates a SpatiotemporalContainer instance.
+
+        Args:
+            **kwargs: valid keyword arguments for DataContainer()
+        '''
+        super(SpatiotemporalEntityContainer, self).__init__(**kwargs)
+        # XXX this constructor may not be needed
+
+
+class TemporalEntityContainer(DataContainer):
+    '''A container for instances observing the TemporalLike contract.'''
+    # XXX maybe move this to data
+
+    _ELE_CLS = TemporalLike
+    _ELE_CLS_FIELD = "_TEMPORALENTITY_CLS"
+    _ELE_ATTR = "entities"
+
+    def __init__(self, schema=None, **kwargs):
+        '''Creates a TemporalContainer instance.
+
+        Args:
+            **kwargs: valid keyword arguments for DataContainer()
+        '''
+        super(TemporalEntityContainer, self).__init__(**kwargs)
+        # XXX this constructor may not be needed
+
+
 class VideoSemanticData(Serializable):
     '''Class encapsulating the semantic information for a video.
 
     Captures the three canonical types of semantic information about a video
     and represents them via the standard ETA Container and Attribute
     mechanisms.
+
     1. Video attributes, such as categorical labels describing the entire video
     (e.g., "fast", "dark", etc.) or natural language sentences describing the
     video.
+
     2. Temporal entities, such as an event or frame-level label from frame t to
     frame t+d (e.g., an "intersection" of a dash cam) with optional attributes
     (e.g., "t-junction" or "four-way" intersections).  Full semantic
     segmentations would be consider temporal entities with the Attribute
     containing the mask.
-        XXX All Temporal entities support the YYY contract.
+        All Temporal entities support the TemporalLike contract.
+
     3. Spatiotemporal entities, such as an object, exist in a definable spatial
     region that varies over time and potential only exists for a portion of the
     full temporal extent of the video (e.g., a vehicle detection).
@@ -423,16 +482,31 @@ class VideoSemanticData(Serializable):
     most obvious, these entities can be delineated by polygon regions or
     arbitrary binary masks.  (Note support for all of this may not yet be
     implemented.)
-        XXX All Spatiotemporal entities support the ZZZ contract.
+        All Spatiotemporal entities support the TemporalLike and
+        SpatiotemporalLike contracts.
 
     Attributes:
         video_attrs: An AttributeContainer describing the video-level
             attributes
-
+        temporals: A TemporalEntityContainer containing temporal entities
+        spatiotemporals: A SpatiotemporalEntityContainer containing
+            spatiotemporal entities
     '''
 
-    def __init__(self, video_attrs=None):
+    def __init__(self, video_attrs=None, temporals=None, spatiotemporals=None):
+        '''Initialize the VideoSemanticData instance.
+
+        Args:
+            video_attrs: optional AttributeContainer of video-level attributes
+            temporals: optional TemporalContainer of TemporalLike instances
+            spatiotemporals: optional SpatiotemporalContainer of
+                SpatiotemporalLike instances
+        '''
         self.video_attrs = video_attrs or AttributeContainer()
+        self.temporals = temporals or TemporalEntityContainer()
+        self.spatiotemporals = (
+            spatiotemporals or SpatiotemporalEntityContainer()
+        )
 
     def add_video_attribute(self, video_attr):
         '''Adds the attribute to the video.
