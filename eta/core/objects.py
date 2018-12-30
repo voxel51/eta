@@ -19,6 +19,7 @@ from builtins import *
 # pragma pylint: enable=wildcard-import
 
 from eta.core.data import DataContainer, AttributeContainer
+from eta.core.data import SpatiotemporalLike
 from eta.core.geometry import BoundingBox, HasBoundingBox
 from eta.core.serial import Serializable
 
@@ -115,7 +116,7 @@ class DetectedObject(Serializable, HasBoundingBox):
         )
 
 
-class DetectedObjectContainer(DataContainer):
+class DetectedObjectContainer(DataContainer, SpatiotemporalLike):
     '''Base class for containers that store lists of `DetectedObject`s.'''
 
     _ELE_CLS = DetectedObject
