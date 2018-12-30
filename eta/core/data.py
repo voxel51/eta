@@ -24,7 +24,7 @@ from collections import defaultdict
 import os
 
 from eta.core.config import no_default
-from eta.core.serial import Container, Serializable
+from eta.core.serial import Container, Serializable, read_json
 import eta.core.utils as etau
 
 
@@ -881,7 +881,7 @@ class DataRecords(DataContainer):
         Returns:
             a DataRecords instance
         '''
-        return cls.from_dict(etas.read_json(json_path), record_cls=record_cls)
+        return cls.from_dict(read_json(json_path), record_cls=record_cls)
 
 
 class DataRecordsError(Exception):
