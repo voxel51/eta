@@ -489,10 +489,7 @@ class VideoLabels(Serializable):
             schema: an optional VideoLabelsSchema to enforce on the object.
                 By default, no schema is enforced
         '''
-        self.frames = OrderedDict()
-        if frames is not None:
-            for k, v in iteritems(frames):
-                self.frames[str(k)] = v
+        self.frames = frames or {}
         self.schema = schema
 
     def __getitem__(self, frame_number):
@@ -519,17 +516,17 @@ class VideoLabels(Serializable):
         '''Returns True/False whether this object contains a VideoFrameLabels
         for the given frame number.
         '''
-        return str(frame_number) in self.frames
+        return frame_number in self.frames
 
     def get_frame(self, frame_number):
         '''Gets the VideoFrameLabels for the given frame number, or None if
         the frame has not been labeled.
         '''
-        return self.frames.get(str(frame_number), None)
+        return self.frames.get(frame_number, None)
 
     def delete_frame(self, frame_number):
         '''Deletes the VideoFrameLabels for the given frame number.'''
-        del self.frames[str(frame_number)]
+        del self.frames[frame_number]
 
     def add_frame(self, frame_labels):
         '''Adds the frame labels to the video.
@@ -539,7 +536,7 @@ class VideoLabels(Serializable):
         '''
         if self.has_schema:
             self._validate_frame_labels(frame_labels)
-        self.frames[str(frame_labels.frame_number)] = frame_labels
+        self.frames[frame_labels.frame_number] = frame_labels
 
     def add_frame_attribute(self, frame_attr, frame_number):
         '''Adds the given frame attribute to the video.
@@ -551,7 +548,7 @@ class VideoLabels(Serializable):
         if self.has_schema:
             self._validate_frame_attribute(frame_attr)
         self._ensure_frame(frame_number)
-        self.frames[str(frame_number)].add_frame_attribute(frame_attr)
+        self.frames[frame_number].add_frame_attribute(frame_attr)
 
     def add_frame_attributes(self, frame_attrs, frame_number):
         '''Adds the given frame attributes to the video.
@@ -577,7 +574,7 @@ class VideoLabels(Serializable):
             self._validate_object(obj)
         self._ensure_frame(frame_number)
         obj.frame_number = frame_number
-        self.frames[str(frame_number)].add_object(obj)
+        self.frames[frame_number].add_object(obj)
 
     def add_objects(self, objs, frame_number):
         '''Adds the objects to the video.
@@ -592,7 +589,7 @@ class VideoLabels(Serializable):
         self._ensure_frame(frame_number)
         for obj in objs:
             obj.frame_number = frame_number
-            self.frames[str(frame_number)].add_object(obj)
+            self.frames[frame_number].add_object(obj)
 
     def get_schema(self):
         '''Gets the current enforced schema for the video, or None if no schema
@@ -630,7 +627,7 @@ class VideoLabels(Serializable):
 
     def _ensure_frame(self, frame_number):
         if not self.has_frame(frame_number):
-            self.frames[str(frame_number)] = VideoFrameLabels(frame_number)
+            self.frames[frame_number] = VideoFrameLabels(frame_number)
 
     def _validate_frame_labels(self, frame_labels):
         if self.has_schema:
