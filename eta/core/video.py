@@ -395,7 +395,8 @@ class VideoMetadata(Serializable):
         self._flat = self._make_interp(frames, lats)
         self._flon = self._make_interp(frames, lons)
 
-    def _make_interp(self, x, y):
+    @staticmethod
+    def _make_interp(x, y):
         return spi.interp1d(
             x, y, kind="nearest", bounds_error=False, fill_value="extrapolate")
 
