@@ -24,7 +24,7 @@ from collections import defaultdict
 import os
 
 from eta.core.config import no_default
-from eta.core.serial import Container, Serializable
+from eta.core.serial import Container, Serializable, IsAMixinForSerializables
 import eta.core.utils as etau
 
 
@@ -550,6 +550,67 @@ class AttributeContainerSchema(Serializable):
 class AttributeContainerSchemaError(Exception):
     '''Error raised when an AttributeContainerSchema is violated.'''
     pass
+
+
+class TemporalLike(IsAMixinForSerializables):
+    '''A mixin to establish a contract for temporal entities that can be stored
+    in containers.
+
+    Note to developer: This is a mixin class that is itself not Serializable,
+    but it can only be implemented on a class that is Serializable.  Hence it
+    inherits frmo the `IsAMixinForSerializables` base.  Note that this is
+    explicitly implemented at this time.
+    '''
+
+    def exists_at_frame(frame_number):
+        # XXX
+        raise NotImplementedError("subclass must implement exists_at_frame")
+
+
+class SpatiotemporalLike(TemporalLike):
+    '''A mixin to establish a contract for temporal entities that can be stored
+    in containers.
+    '''
+
+    def overlaps_at_frame(frame_number, bounding_box):
+        # XXX
+        raise NotImplementedError("subclass must implement overlaps_at_frame")
+
+
+class SpatiotemporalEntityContainer(DataContainer):
+    '''A container for instances observing the SpatiotemporalLike contract.'''
+    # XXX maybe move this to data
+
+    _ELE_CLS = SpatiotemporalLike
+    _ELE_CLS_FIELD = "_SPATIOTEMPORALENTITY_CLS"
+    _ELE_ATTR = "entities"
+
+    def __init__(self, schema=None, **kwargs):
+        '''Creates a SpatiotemporalContainer instance.
+
+        Args:
+            **kwargs: valid keyword arguments for DataContainer()
+        '''
+        super(SpatiotemporalEntityContainer, self).__init__(**kwargs)
+        # XXX this constructor may not be needed
+
+
+class TemporalEntityContainer(DataContainer):
+    '''A container for instances observing the TemporalLike contract.'''
+    # XXX maybe move this to data
+
+    _ELE_CLS = TemporalLike
+    _ELE_CLS_FIELD = "_TEMPORALENTITY_CLS"
+    _ELE_ATTR = "entities"
+
+    def __init__(self, schema=None, **kwargs):
+        '''Creates a TemporalContainer instance.
+
+        Args:
+            **kwargs: valid keyword arguments for DataContainer()
+        '''
+        super(TemporalEntityContainer, self).__init__(**kwargs)
+        # XXX this constructor may not be needed
 
 
 class DataFileSequence(Serializable):
