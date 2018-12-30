@@ -499,7 +499,8 @@ class VideoLabels(Serializable):
         self.delete_frame(frame_number)
 
     def __iter__(self):
-        return iter(self.frames)
+        # Always iterate over the keys in sorted order
+        return iter(sorted(self.frames))
 
     def __len__(self):
         return len(self.frames)
