@@ -315,6 +315,28 @@ def _recurse(v, reflective):
     return v
 
 
+class MixinError(Exception):
+    '''Exception raised when an invalid Mixin chain is encountered.'''
+    pass
+
+
+class IsAMixinForSerializables:
+    '''Implies that the Mixin class inheriting from this base may only be
+    applied to classes that inherit from `Serializable`.
+
+    Note that this requirement is not explicitly enforced at this time in the
+    code itself.  There is a validate function below but this is not explicitly
+    called anywhere at this time.
+    '''
+    @classmethod
+    def validate_mixin_use(cls):
+        '''Checks the use of the mixin to ensure proper inheritance from
+        `Serializable`.
+        '''
+        if not issubclass(cls, Serializable):
+            raise MixinError("Mixin error: %s is not Serializable" % cls)
+
+
 class Container(Serializable):
     '''Abstract base class for flexible containers that store lists of
     `Serializable` elements.
@@ -585,6 +607,8 @@ class Container(Serializable):
         if self._ELE_ATTR is None:
             raise ContainerError(
                 "Cannot instantiate a Container for which _ELE_ATTR is None")
+        if issubclass(self._ELE_CLS, IsAMixinForSerializables):
+            return
         if not issubclass(self._ELE_CLS, Serializable):
             raise ContainerError(
                 "%s is not Serializable" % self._ELE_CLS)
