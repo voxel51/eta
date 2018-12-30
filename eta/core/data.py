@@ -24,7 +24,8 @@ from collections import defaultdict
 import os
 
 from eta.core.config import no_default
-from eta.core.serial import Container, Serializable, IsAMixinForSerializables
+from eta.core.serial import Container, Serializable
+from eta.core.serial import MixinError, IsAMixinForSerializables
 import eta.core.utils as etau
 
 
@@ -558,13 +559,23 @@ class TemporalLike(IsAMixinForSerializables):
 
     Note to developer: This is a mixin class that is itself not Serializable,
     but it can only be implemented on a class that is Serializable.  Hence it
-    inherits frmo the `IsAMixinForSerializables` base.  Note that this is
-    explicitly implemented at this time.
+    inherits from the `IsAMixinForSerializables` base.  This is only enforced
+    by the `validate` member function.  The `TemporalEntityContainer` does
+    enforce this on `add`.
     '''
 
     def exists_at_frame(frame_number):
         # XXX
         raise NotImplementedError("subclass must implement exists_at_frame")
+
+    @classmethod
+    def validate(cls, item):
+        '''Validate that `item` is an instance of TemporalLike and has
+        appropriate inheritance hierarchy.
+        '''
+        if not isinstance(item, TemporalLike):
+            raise MixinError("Mixin error: %s is not TemporalLike" % type(item))
+        item.validate_mixin_use()
 
 
 class SpatiotemporalLike(TemporalLike):
@@ -575,6 +586,16 @@ class SpatiotemporalLike(TemporalLike):
     def overlaps_at_frame(frame_number, bounding_box):
         # XXX
         raise NotImplementedError("subclass must implement overlaps_at_frame")
+
+    @classmethod
+    def validate(cls, item):
+        '''Validate that `item` is an instance of SpatioTemporalLike and has
+        appropriate inheritance hierarchy.
+        '''
+        if not isinstance(item, SpatiotemporalLike):
+            raise MixinError(
+                    "Mixin error: %s is not SpatiotemporalLike" % type(item))
+        item.validate_mixin_use()
 
 
 class SpatiotemporalEntityContainer(DataContainer):
@@ -594,6 +615,11 @@ class SpatiotemporalEntityContainer(DataContainer):
         super(SpatiotemporalEntityContainer, self).__init__(**kwargs)
         # XXX this constructor may not be needed
 
+    def add(self, item):
+        '''Validate and add the item to the container.'''
+        SpatiotemporalLike.validate(item)
+        super(SpatiotemporalEntityContainer, self).add(item)
+
 
 class TemporalEntityContainer(DataContainer):
     '''A container for instances observing the TemporalLike contract.'''
@@ -611,6 +637,11 @@ class TemporalEntityContainer(DataContainer):
         '''
         super(TemporalEntityContainer, self).__init__(**kwargs)
         # XXX this constructor may not be needed
+
+    def add(self, item):
+        '''Validate and add the item to the container.'''
+        TemporalLike.validate(item)
+        super(TemporalEntityContainer, self).add(item)
 
 
 class DataFileSequence(Serializable):
