@@ -334,7 +334,7 @@ class VideoMetadata(Serializable):
             "start_time", "frame_size", "frame_rate", "total_frame_count",
             "duration", "size_bytes", "encoding_str", "gps_waypoints"
         ]
-        # Exclude attributres that are None
+        # Exclude attributes that are None
         return [a for a in _attrs if getattr(self, a) is not None]
 
     @classmethod
@@ -367,7 +367,7 @@ class VideoMetadata(Serializable):
     @classmethod
     def from_dict(cls, d):
         '''Constructs a VideoMetadata from a JSON dictionary.'''
-        start_time = d.get(d["start_time"], None)
+        start_time = d.get("start_time", None)
         if start_time is not None:
             start_time = dateutil.parser.parse(start_time)
 
@@ -685,6 +685,19 @@ class VideoLabelsSchema(Serializable):
         if objects is not None:
             self.objects.update(objects)
 
+    def get_frame_attribute_class(self, frame_attr_name):
+        '''Gets the Attribute class for the frame attribute with the given
+        name.
+        '''
+        return self.frames.get_attribute_class(frame_attr_name)
+
+    def get_object_attribute_class(self, label, obj_attr_name):
+        '''Gets the Attribute class for the attribute of the given name for
+        the object with the given label.
+        '''
+        self.validate_object_label(label)
+        return self.objects[label].get_attribute_class(obj_attr_name)
+
     def add_frame_attribute(self, frame_attr):
         '''Incorporates the given frame attribute into the schema.
 
@@ -799,7 +812,7 @@ class VideoLabelsSchema(Serializable):
             AttributeContainerSchemaError: if the object attribute violates
                 the schema
         '''
-        obj_schema = self.objects[obj.label]
+        obj_schema = self.objects[label]
         obj_schema.validate_attribute(obj_attr)
 
     def validate_object(self, obj):
