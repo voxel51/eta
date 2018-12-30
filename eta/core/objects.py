@@ -94,7 +94,7 @@ class DetectedObject(Serializable, HasBoundingBox):
             "label", "bounding_box", "confidence", "index", "score",
             "frame_number", "index_in_frame", "attrs"
         ]
-        # Exclude attributres that are None
+        # Exclude attributes that are None
         return [a for a in _attrs if getattr(self, a) is not None]
 
     @classmethod

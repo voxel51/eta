@@ -261,7 +261,7 @@ class Serializable(object):
         write_json(obj, path, pretty_print=pretty_print)
 
     @classmethod
-    def from_dict(cls, d):
+    def from_dict(cls, d, *args, **kwargs):
         '''Constructs a Serializable object from a JSON dictionary.
 
         Subclasses must implement this method if they intend to support being
@@ -277,29 +277,29 @@ class Serializable(object):
             # NotImplementedError next time around!
             #
             cls = etau.get_class(d.pop("_CLS"))
-            return cls.from_dict(d)
+            return cls.from_dict(d, *args, **kwargs)
 
         raise NotImplementedError("subclass must implement from_dict()")
 
     @classmethod
-    def from_str(cls, s):
+    def from_str(cls, s, *args, **kwargs):
         '''Constructs a Serializable object from a JSON string.
 
         Subclasses may override this method, but, by default, this method
         simply parses the string and calls from_dict(), which subclasses must
         implement.
         '''
-        return cls.from_dict(json.loads(s))
+        return cls.from_dict(json.loads(s), *args, **kwargs)
 
     @classmethod
-    def from_json(cls, path):
+    def from_json(cls, path, *args, **kwargs):
         '''Constructs a Serializable object from a JSON file.
 
         Subclasses may override this method, but, by default, this method
         simply reads the JSON and calls from_dict(), which subclasses must
         implement.
         '''
-        return cls.from_dict(read_json(path))
+        return cls.from_dict(read_json(path), *args, **kwargs)
 
 
 def _recurse(v, reflective):
