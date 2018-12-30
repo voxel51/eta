@@ -653,7 +653,7 @@ class VideoLabels(Serializable):
     def from_dict(cls, d):
         '''Constructs a VideoLabels from a JSON dictionary.'''
         frames = OrderedDict(
-            (fn, VideoFrameLabels.from_dict(vfl))
+            (int(fn), VideoFrameLabels.from_dict(vfl))
             for fn, vfl in iteritems(d["frames"])
         )
 
