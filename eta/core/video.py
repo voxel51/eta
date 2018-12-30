@@ -459,6 +459,17 @@ class VideoSemanticEntity(Serializable, TemporalLike):
         '''
         self.attrs.add(attr)
 
+    @classmethod
+    def from_dict(cls, d):
+        '''Constructs a VideoSemanticEntity from a JSON dictionary.'''
+        dd = defaultdict(lambda: None, d)
+        return cls(
+            label=dd["label"],
+            frames=dd["frames"],
+            attrs=AttributeContainer.from_dict(dd["attrs"]),
+            confidence=dd["confidence"]
+        )
+
 
 class VideoSemanticData(Serializable):
     '''Class encapsulating the semantic information for a video.
@@ -541,6 +552,20 @@ class VideoSemanticData(Serializable):
         deserialize.
         '''
         return super(VideoSemanticData, self).serialize(reflective=True)
+
+    def as_videolabels(self):
+        '''Interpret this class to a VideoLabels instance and return that.'''
+        pass
+
+    @classmethod
+    def from_dict(cls, d):
+        '''Constructs a VideoSemanticData from a JSON dictionary.'''
+        return cls(
+            video_attrs=d["video_attrs"],
+            temporals=TemporalEntityContainer.from_dict(d["temporals"]),
+            spatiotemporals=
+                SpatiotemporalEntityContainer.from_dict(d["spatiotemporals"])
+        )
 
 
 class VideoFrameLabels(Serializable):

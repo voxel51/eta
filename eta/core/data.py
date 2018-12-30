@@ -620,6 +620,20 @@ class SpatiotemporalEntityContainer(DataContainer):
         SpatiotemporalLike.validate(item)
         super(SpatiotemporalEntityContainer, self).add(item)
 
+    @classmethod
+    def from_dict(cls, d):
+        '''Constructs a SpatiotemporalEntityContainer from a JSON dictionary.
+
+        Overrides the default Container approach because this is a container of
+        with items whose commonality is only a mixin.  This class interprets
+        them correctly.
+        '''
+        container = SpatiotemporalEntityContainer()
+        for di in d[cls._ELE_ATTR]:
+            # Can use Serializable.from_dict here because of forced reflectivity
+            container.add(Serializable.from_dict(di))
+        return container
+
 
 class TemporalEntityContainer(DataContainer):
     '''A container for instances observing the TemporalLike contract.'''
@@ -642,6 +656,20 @@ class TemporalEntityContainer(DataContainer):
         '''Validate and add the item to the container.'''
         TemporalLike.validate(item)
         super(TemporalEntityContainer, self).add(item)
+
+    @classmethod
+    def from_dict(cls, d):
+        '''Constructs a TemporalEntityContainer from a JSON dictionary.
+
+        Overrides the default Container approach because this is a container of
+        with items whose commonality is only a mixin.  This class interprets
+        them correctly.
+        '''
+        container = TemporalEntityContainer()
+        for di in d[cls._ELE_ATTR]:
+            # Can use Serializable.from_dict here because of forced reflectivity
+            container.add(Serializable.from_dict(di))
+        return container
 
 
 class DataFileSequence(Serializable):
