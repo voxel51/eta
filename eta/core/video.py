@@ -403,6 +403,61 @@ class VideoMetadata(Serializable):
             x, y, kind="nearest", bounds_error=False, fill_value="extrapolate")
 
 
+class VideoSemanticEntity(Serializable, TemporalLike):
+    '''Class for base data associated with semantic entities extracted from
+    video.
+
+    The basic entity in video has four things.
+    1.  A label.
+    2.  A frame range.
+    3.  An optional set of attributes.
+    4.  An optional confidence level.
+
+    This class captures all three of these and can be used as a base for such
+    content independent of how the base actually stores any further information
+    about the entity, such as bounding box information.  This implementation
+    assumes there is a single and contiguous time-range in the video in which
+    this entity occurs.
+
+    Noting that this class also implements the TemporalLike mixin contract.
+
+    Attributes:
+        label: The string label descriptor for the entity.
+        frames: A tuple describing the start and stop frames.
+        attrs: (optional) an AttributeContainer describing additional
+            attributes of the object
+        confidence: (optional) A [0, 1] confidence level on the entity.
+    '''
+
+    def __init__(self, label=None, frames=None, attrs=None, confidence=None):
+        self._label = label or "undefined"
+        self._frames = list(frames) or [0, 0]
+        self.attrs = attrs or AttributeContainer()
+        self.confidence = confidence
+
+    @property
+    def label(self):
+        return self._label
+
+    @property
+    def frames(self):
+        return tuple(self._frames)
+
+    def attributes(self):
+        A = ["label", "frames"]
+        if self.attrs is not None:
+            A.append("attrs")
+        if self.confidence is not None:
+            A.append("confidence")
+        return A
+
+    def add_attribute(self, attr):
+        '''Adds the attribute to the entity.
+
+        Args:
+            attr: an Attribute
+        '''
+        self.attrs.add(attr)
 
 
 class VideoSemanticData(Serializable):
@@ -480,6 +535,12 @@ class VideoSemanticData(Serializable):
             temporal: a SpatiotemporalLike instance
         '''
         self.spatiotemporals.add(spatiotemporal)
+
+    def serialize(self, reflective):
+        '''Override reflection to always be true so this class knows how to
+        deserialize.
+        '''
+        return super(VideoSemanticData, self).serialize(reflective=True)
 
 
 class VideoFrameLabels(Serializable):
