@@ -43,6 +43,9 @@ import numpy as np
 import scipy.interpolate as spi
 
 from eta.core.data import AttributeContainer, AttributeContainerSchema
+from eta.core.data import TemporalLike, SpatiotemporalLike
+from eta.core.data import TemporalEntityContainer
+from eta.core.data import SpatiotemporalEntityContainer
 import eta.core.image as etai
 from eta.core.objects import DetectedObjectContainer
 from eta.core.serial import Serializable
@@ -400,60 +403,6 @@ class VideoMetadata(Serializable):
             x, y, kind="nearest", bounds_error=False, fill_value="extrapolate")
 
 
-class TemporalLike(object):
-    '''A mixin to establish a contract for temporal entities that can be stored
-    in containers.
-    '''
-
-    def exists_at_frame(frame_number):
-        # XXX
-        raise NotImplementedError("subclass must implement exists_at_frame")
-
-
-class SpatiotemporalLike(TemporalLike):
-    '''A mixin to establish a contract for temporal entities that can be stored
-    in containers.
-    '''
-
-    def overlaps_at_frame(frame_number, bounding_box):
-        # XXX
-        raise NotImplementedError("subclass must implement overlaps_at_frame")
-
-
-class SpatiotemporalEntityContainer(DataContainer):
-    '''A container for instances observing the SpatiotemporalLike contract.'''
-    # XXX maybe move this to data
-
-    _ELE_CLS = SpatiotemporalLike
-    _ELE_CLS_FIELD = "_SPATIOTEMPORALENTITY_CLS"
-    _ELE_ATTR = "entities"
-
-    def __init__(self, schema=None, **kwargs):
-        '''Creates a SpatiotemporalContainer instance.
-
-        Args:
-            **kwargs: valid keyword arguments for DataContainer()
-        '''
-        super(SpatiotemporalEntityContainer, self).__init__(**kwargs)
-        # XXX this constructor may not be needed
-
-
-class TemporalEntityContainer(DataContainer):
-    '''A container for instances observing the TemporalLike contract.'''
-    # XXX maybe move this to data
-
-    _ELE_CLS = TemporalLike
-    _ELE_CLS_FIELD = "_TEMPORALENTITY_CLS"
-    _ELE_ATTR = "entities"
-
-    def __init__(self, schema=None, **kwargs):
-        '''Creates a TemporalContainer instance.
-
-        Args:
-            **kwargs: valid keyword arguments for DataContainer()
-        '''
-        super(TemporalEntityContainer, self).__init__(**kwargs)
-        # XXX this constructor may not be needed
 
 
 class VideoSemanticData(Serializable):
@@ -509,12 +458,28 @@ class VideoSemanticData(Serializable):
         )
 
     def add_video_attribute(self, video_attr):
-        '''Adds the attribute to the video.
+        '''Adds the video-level attribute to the semantic metadata.
 
         Args:
             video_attr: an Attribute
         '''
         self.video_attrs.add(video_attr)
+
+    def add_temporal(self, temporal):
+        '''Adds the temporal entity to the semantic metadata
+
+        Args:
+            temporal: a TemporalLike instance
+        '''
+        self.temporals.add(temporal)
+
+    def add_spatiotemporal(self, spatiotemporal):
+        '''Adds the spatiotemporal entity to the semantic metadata
+
+        Args:
+            temporal: a SpatiotemporalLike instance
+        '''
+        self.spatiotemporals.add(spatiotemporal)
 
 
 class VideoFrameLabels(Serializable):
