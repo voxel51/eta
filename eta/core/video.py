@@ -766,11 +766,11 @@ class VideoLabelsSchema(Serializable):
             return False
 
     def is_valid_object(self, obj):
-        '''Returns True/False if the frame attribute is compliant with the
+        '''Returns True/False if the DetectedObject is compliant with the
         schema.
         '''
         try:
-            self.validate_frame_attribute(frame_attr)
+            self.validate_object(obj)
             return True
         except:
             return False
@@ -828,7 +828,7 @@ class VideoLabelsSchema(Serializable):
         self.validate_object_label(obj.label)
         if obj.has_attributes:
             for obj_attr in obj.attrs:
-                self.validate_object_attribute(obj_attr)
+                self.validate_object_attribute(obj.label, obj_attr)
 
     @classmethod
     def build_active_schema_for_frame(cls, frame_labels):
