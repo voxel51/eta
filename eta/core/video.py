@@ -684,11 +684,31 @@ class VideoLabelsSchema(Serializable):
         if objects is not None:
             self.objects.update(objects)
 
+    def has_frame_attribute(self, frame_attr_name):
+        '''Returns True/False if the schema has a frame attribute with the
+        given name.
+        '''
+        return self.frames.has_attribute(frame_attr_name)
+
     def get_frame_attribute_class(self, frame_attr_name):
         '''Gets the Attribute class for the frame attribute with the given
         name.
         '''
         return self.frames.get_attribute_class(frame_attr_name)
+
+    def has_object_label(self, label):
+        '''Returns True/False if the schema has an object with the given
+        label.
+        '''
+        return label in self.objects
+
+    def has_object_attribute(self, label, obj_attr_name):
+        '''Returns True/False if the schema has an object attribute of the
+        given name for object with the given label.
+        '''
+        if not self.has_object_label(label):
+            return False
+        return self.objects[label].has_attribute(obj_attr_name)
 
     def get_object_attribute_class(self, label, obj_attr_name):
         '''Gets the Attribute class for the attribute of the given name for
