@@ -43,9 +43,10 @@ import numpy as np
 import scipy.interpolate as spi
 
 from eta.core.data import AttributeContainer, AttributeContainerSchema
-from eta.core.data import TemporalLike, SpatiotemporalLike
+from eta.core.data import TemporalEntityLike, SpatiotemporalEntityLike
 from eta.core.data import TemporalEntityContainer
 from eta.core.data import SpatiotemporalEntityContainer
+from eta.core.geometry import BoundingBox
 import eta.core.image as etai
 from eta.core.objects import DetectedObjectContainer
 from eta.core.serial import Serializable
@@ -403,7 +404,14 @@ class VideoMetadata(Serializable):
             x, y, kind="nearest", bounds_error=False, fill_value="extrapolate")
 
 
-class VideoSemanticEntity(Serializable, TemporalLike):
+class VideoSemanticEntityError(Exception):
+    '''Class to represent error associated with VideoSemanticEntity and
+    sub-classes.
+    '''
+    pass
+
+
+class VideoSemanticEntity(Serializable, TemporalEntityLike):
     '''Class for base data associated with semantic entities extracted from
     video.
 
@@ -419,37 +427,58 @@ class VideoSemanticEntity(Serializable, TemporalLike):
     assumes there is a single and contiguous time-range in the video in which
     this entity occurs.
 
-    Noting that this class also implements the TemporalLike mixin contract.
+    Noting that this class also implements the TemporalEntityLike mixin contract.
 
     Attributes:
         label: The string label descriptor for the entity.
-        frames: A tuple describing the start and stop frames.
+        frames: A list describing the start and stop frames.
+        index: An (optional) index identifying this entity in the video.
         attrs: (optional) an AttributeContainer describing additional
             attributes of the object
         confidence: (optional) A [0, 1] confidence level on the entity.
     '''
 
-    def __init__(self, label=None, frames=None, attrs=None, confidence=None):
-        self._label = label or "undefined"
-        self._frames = list(frames) or [0, 0]
+    def __init__(self, label=None, frames=None,
+                 index=None, attrs=None, confidence=None):
+        self.label = label or "undefined"
+        self.frames = list(frames) or [0, 0]
+        self.index = index
         self.attrs = attrs or AttributeContainer()
         self.confidence = confidence
 
-    @property
-    def label(self):
-        return self._label
+    def get_confidence(self):
+        return self.confidence
 
-    @property
-    def frames(self):
+    def get_label(self):
+        return self.label
+
+    def get_frames(self):
         return tuple(self._frames)
 
+    def get_frames_iterable(self):
+        '''Exposes the frames of the entity as an iterable.'''
+        return range(*self._frames)
+
+    def exists_at_frame(self, f):
+        '''Returns True if this entity exists at the frame.'''
+        if (f >= self.frames[0] and f < self.frames[1]):
+            return True
+        return False
+
     def attributes(self):
+        '''Returns names of instance attributes for serialization.'''
         A = ["label", "frames"]
+        if self.index is not None:
+            A.append("index")
         if self.attrs is not None:
             A.append("attrs")
         if self.confidence is not None:
             A.append("confidence")
         return A
+
+    def get_attributes(self):
+        '''Returns the AttributeContainer for this instance.'''
+        return self.attrs
 
     def add_attribute(self, attr):
         '''Adds the attribute to the entity.
@@ -471,6 +500,100 @@ class VideoSemanticEntity(Serializable, TemporalLike):
         )
 
 
+class VideoObjectEntity(VideoSemanticEntity, SpatiotemporalEntityLike):
+    '''Class to store a single object detection in a video.
+
+    Implementation enforces a contiguous detection.
+
+    Attributes:
+        bounding_boxes: a dict of BoundingBox with frame number as keys
+    '''
+
+    def __init__(self, label=None, frames=None,
+                 index=None, attrs=None, confidence=None,
+                 bounding_boxes=None):
+        super(VideoObjectEntity, self).__init__(
+            label, frames, index, attrs, confidence)
+        self.bounding_boxes = bounding_boxes or defaultdict(lambda: None)
+
+    def get_bounding_box(self, frame):
+        if not self.exists_at_frame(frame):
+            raise VideoSemanticEntityError("frame out of range")
+        return self.bounding_boxes[str(frame)]
+
+    def set_bounding_box(self, frame, bounding_box):
+        if not self.exists_at_frame(frame):
+            raise VideoSemanticEntityError("frame out of range")
+        self.bounding_boxes[str(frame)] = bounding_box
+
+    def attributes(self):
+        A = super(VideoObjectEntity, self).attributes()
+        A.append("bounding_boxes")
+        return A
+
+    @classmethod
+    def from_container(cls, doc):
+        '''Builds a VideoObjectEntity from a DetectedObjectContainer.
+
+        DetectedObjectContainer is a more general class than VideoObjectEntity
+        as it can have multiple different objects with different labels and
+        even objects cooccuring at the same frame.  It is a general container
+        whereas VideoObjectEntity represents a single object.  This builder
+        function does attempt to validate the container and if it fails
+        validations then a VideoObjectEntityError is raised.
+
+        Args:
+            doc: an instance of a DetectedObjectContainer
+        '''
+        label_set = doc.get_labels()
+        if len(label_set) != 1:
+            raise VideoSemanticEntityError(
+                    "more than one label for objects in container.")
+        label = label_set.pop()
+
+        doc.sort_by_frame_number()
+        number_of_frames = len(doc)
+        frame_start = doc[0].frame_number
+        frame_stop = doc[-1].frame_number+1
+        if (frame_start is None or frame_stop is None
+            or frame_stop-frame_start != number_of_frames):
+            raise VideoSemanticEntityError(
+                    "frame range not computable from container.")
+
+        bounding_boxes = defaultdict(lambda: None)
+        for i, f in enumerate(range(frame_start, frame_stop)):
+            bounding_boxes[str(f)] = doc[i].bounding_box
+
+        # Set the other args from the first frame.
+        # This is a loss of information and can introduce an error if there is
+        # complicated use of attributes in the container.
+        confidence = doc[0].confidence
+        index = doc[0].index
+        attrs = doc[0].attrs
+
+        return cls(label=label, frames=[frame_start, frame_stop],
+                   index=index, attrs=attrs, confidence=confidence,
+                   bounding_boxes = bounding_boxes)
+
+    @classmethod
+    def from_dict(cls, d):
+        '''Constructs a VideoObjectEntity from a JSON dictionary.'''
+        dd = defaultdict(lambda: None, d)
+
+        if dd["bounding_boxes"] is None:
+            bb = defaultdict(lambda: None)
+        else:
+            bb = {k: BoundingBox.from_dict(v) for k, v in
+                  dd["bounding_boxes"].items()}
+        return cls(
+            label=dd["label"],
+            frames=dd["frames"],
+            attrs=AttributeContainer.from_dict(dd["attrs"]),
+            confidence=dd["confidence"],
+            bounding_boxes=bb
+        )
+
+
 class VideoSemanticData(Serializable):
     '''Class encapsulating the semantic information for a video.
 
@@ -484,10 +607,10 @@ class VideoSemanticData(Serializable):
 
     2. Temporal entities, such as an event or frame-level label from frame t to
     frame t+d (e.g., an "intersection" of a dash cam) with optional attributes
-    (e.g., "t-junction" or "four-way" intersections).  Full semantic
-    segmentations would be consider temporal entities with the Attribute
-    containing the mask.
-        All Temporal entities support the TemporalLike contract.
+    (e.g., "t-junction" or "four-way" intersections).  Can be continuous or
+    not. Full semantic segmentations would be consider temporal entities with
+    the Attribute containing the mask.
+        All Temporal entities support the TemporalEntityLike contract.
 
     3. Spatiotemporal entities, such as an object, exist in a definable spatial
     region that varies over time and potential only exists for a portion of the
@@ -495,10 +618,10 @@ class VideoSemanticData(Serializable):
     Spatiotemporal entities also have attributes to describe them (e.g., the
     type and color of the vehicle).  While bounding-box-type entities are the
     most obvious, these entities can be delineated by polygon regions or
-    arbitrary binary masks.  (Note support for all of this may not yet be
+    arbitrary binary masks.  (Note support for this generality is not yet
     implemented.)
-        All Spatiotemporal entities support the TemporalLike and
-        SpatiotemporalLike contracts.
+        All Spatiotemporal entities support the TemporalEntityLike and
+        SpatiotemporalEntityLike contracts.
 
     Attributes:
         video_attrs: An AttributeContainer describing the video-level
@@ -513,9 +636,10 @@ class VideoSemanticData(Serializable):
 
         Args:
             video_attrs: optional AttributeContainer of video-level attributes
-            temporals: optional TemporalContainer of TemporalLike instances
-            spatiotemporals: optional SpatiotemporalContainer of
-                SpatiotemporalLike instances
+            temporals: optional TemporalEntityContainer of TemporalEntityLike
+                instances
+            spatiotemporals: optional SpatiotemporalEntityContainer of
+                SpatiotemporalEntityLike instances
         '''
         self.video_attrs = video_attrs or AttributeContainer()
         self.temporals = temporals or TemporalEntityContainer()
@@ -535,7 +659,7 @@ class VideoSemanticData(Serializable):
         '''Adds the temporal entity to the semantic metadata
 
         Args:
-            temporal: a TemporalLike instance
+            temporal: a TemporalEntityLike instance
         '''
         self.temporals.add(temporal)
 
@@ -543,7 +667,7 @@ class VideoSemanticData(Serializable):
         '''Adds the spatiotemporal entity to the semantic metadata
 
         Args:
-            temporal: a SpatiotemporalLike instance
+            spatiotemporal: a SpatiotemporalEntityLike instance
         '''
         self.spatiotemporals.add(spatiotemporal)
 
@@ -554,8 +678,35 @@ class VideoSemanticData(Serializable):
         return super(VideoSemanticData, self).serialize(reflective=True)
 
     def as_videolabels(self):
-        '''Interpret this class to a VideoLabels instance and return that.'''
-        pass
+        '''Interpret this class to a VideoLabels instance and return that.
+
+        Note that this makes a best possible conversion to VideoLabels, but
+        the conversion will result in a loss of information.  VideoLabels has
+        no notion of whole-video attributes, and TemporalEntityLike entities do
+        not have attributes.  Each TemporalEntityLike label is converted into a
+        BooleanAttribute where it is True during the frames in which it exists.
+        '''
+        vl = VideoLabels()
+
+        for t in self.temporals:
+            attr = BooleanAttribute(t.get_label(), "True")
+            for f in t.get_frames_iterable():
+                vl.add_frame_attribute(attr, f)
+
+        for s in self.spatiotemporals:
+            for f in s.get_frames_iterable():
+                do = DetectedObject(
+                        label=s.get_label(),
+                        bounding_box=s.get_bounding_box(f),
+                        confidence=s.get_confidence(),
+                        index=s.get_index,
+                        frame_number=f
+                )
+                for attr in s.get_attributes():
+                    do.add_attributes(attr)
+                vl.add_object(do, f)
+
+        return vl
 
     @classmethod
     def from_dict(cls, d):

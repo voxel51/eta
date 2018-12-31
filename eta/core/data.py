@@ -569,9 +569,12 @@ class AttributeContainerSchemaError(Exception):
     pass
 
 
-class TemporalLike(IsAMixinForSerializables):
+class TemporalEntityLike(IsAMixinForSerializables):
     '''A mixin to establish a contract for temporal entities that can be stored
     in containers.
+
+    The mixin includes the standard expected contract for detected entities in
+    ETA, including a label, an index, a confidence, and Attributes.
 
     Note to developer: This is a mixin class that is itself not Serializable,
     but it can only be implemented on a class that is Serializable.  Hence it
@@ -580,45 +583,88 @@ class TemporalLike(IsAMixinForSerializables):
     enforce this on `add`.
     '''
 
-    def exists_at_frame(frame_number):
-        # XXX
+    def get_attributes(self):
+        raise NotImplementedError("subclass must implement get_attributes")
+
+    def get_confidence(self):
+        raise NotImplementedError("subclass must implement get_confidence")
+
+    def exists_at_frame(self, frame_number):
         raise NotImplementedError("subclass must implement exists_at_frame")
+
+    def get_frames(self):
+        raise NotImplementedError("subclass must implement get_frames")
+
+    def get_frames_iterator(self):
+        raise NotImplementedError("subclass must implement get_frames_iterator")
+
+    def get_index(self):
+        raise NotImplementedError("subclass must implement get_index")
+
+    def get_label(self):
+        raise NotImplementedError("subclass must implement get_label")
 
     @classmethod
     def validate(cls, item):
-        '''Validate that `item` is an instance of TemporalLike and has
+        '''Validate that `item` is an instance of TemporalEntityLike and has
         appropriate inheritance hierarchy.
         '''
-        if not isinstance(item, TemporalLike):
-            raise MixinError("Mixin error: %s is not TemporalLike" % type(item))
+        if not isinstance(item, TemporalEntityLike):
+            raise MixinError(
+                    "Mixin error: %s is not TemporalEntityLike" % type(item))
         item.validate_mixin_use()
 
 
-class SpatiotemporalLike(TemporalLike):
+class SpatiotemporalEntityLike(TemporalEntityLike):
     '''A mixin to establish a contract for temporal entities that can be stored
     in containers.
     '''
 
-    def overlaps_at_frame(frame_number, bounding_box):
-        # XXX
+    def get_bounding_box(self, frame):
+        '''Returns the bounding box of the instance; if this instance is not
+        directly represented as a bounding box, then this will be the bounding
+        box of the convex hull of the object.
+
+        Args:
+            frame: the frame number at which to get the bounding_box
+        '''
         raise NotImplementedError("subclass must implement overlaps_at_frame")
+
+    def get_mask(self, frame, size):
+        '''Given a frame-size (in width, height), return a mask as a numpy
+        array with 0s where the instance is not and 1s where the instance is.
+
+        This method is currently a stub for future.
+
+        Args:
+            frame: the frame number at which to get the mask
+        '''
+        raise NotImplementedError("method is not yet supported")
+
+    def overlaps_at_frame(self, frame_number, bounding_box):
+        '''Returns a Boolean for whether the instance spatially overlaps with
+        the given bounding box (in as little as one pixel).
+        '''
+        raise NotImplementedError("method is not yet supported")
 
     @classmethod
     def validate(cls, item):
-        '''Validate that `item` is an instance of SpatioTemporalLike and has
-        appropriate inheritance hierarchy.
+        '''Validate that `item` is an instance of SpatioTemporalEntityLike and
+        has appropriate inheritance hierarchy.
         '''
-        if not isinstance(item, SpatiotemporalLike):
+        if not isinstance(item, SpatiotemporalEntityLike):
             raise MixinError(
-                    "Mixin error: %s is not SpatiotemporalLike" % type(item))
+                    "Mixin error: %s is not SpatiotemporalEntityLike" %
+                    type(item))
         item.validate_mixin_use()
 
 
 class SpatiotemporalEntityContainer(DataContainer):
-    '''A container for instances observing the SpatiotemporalLike contract.'''
-    # XXX maybe move this to data
+    '''A container for instances observing the SpatiotemporalEntityLike
+    contract.
+    '''
 
-    _ELE_CLS = SpatiotemporalLike
+    _ELE_CLS = SpatiotemporalEntityLike
     _ELE_CLS_FIELD = "_SPATIOTEMPORALENTITY_CLS"
     _ELE_ATTR = "entities"
 
@@ -633,7 +679,7 @@ class SpatiotemporalEntityContainer(DataContainer):
 
     def add(self, item):
         '''Validate and add the item to the container.'''
-        SpatiotemporalLike.validate(item)
+        SpatiotemporalEntityLike.validate(item)
         super(SpatiotemporalEntityContainer, self).add(item)
 
     @classmethod
@@ -652,10 +698,9 @@ class SpatiotemporalEntityContainer(DataContainer):
 
 
 class TemporalEntityContainer(DataContainer):
-    '''A container for instances observing the TemporalLike contract.'''
-    # XXX maybe move this to data
+    '''A container for instances observing the TemporalEntityLike contract.'''
 
-    _ELE_CLS = TemporalLike
+    _ELE_CLS = TemporalEntityLike
     _ELE_CLS_FIELD = "_TEMPORALENTITY_CLS"
     _ELE_ATTR = "entities"
 
@@ -670,7 +715,7 @@ class TemporalEntityContainer(DataContainer):
 
     def add(self, item):
         '''Validate and add the item to the container.'''
-        TemporalLike.validate(item)
+        TemporalEntityLike.validate(item)
         super(TemporalEntityContainer, self).add(item)
 
     @classmethod
