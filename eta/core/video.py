@@ -43,12 +43,13 @@ import numpy as np
 import scipy.interpolate as spi
 
 from eta.core.data import AttributeContainer, AttributeContainerSchema
+from eta.core.data import BooleanAttribute
 from eta.core.data import TemporalEntityLike, SpatiotemporalEntityLike
 from eta.core.data import TemporalEntityContainer
 from eta.core.data import SpatiotemporalEntityContainer
 from eta.core.geometry import BoundingBox
 import eta.core.image as etai
-from eta.core.objects import DetectedObjectContainer
+from eta.core.objects import DetectedObject, DetectedObjectContainer
 from eta.core.serial import Serializable
 import eta.core.utils as etau
 
@@ -453,11 +454,11 @@ class VideoSemanticEntity(Serializable, TemporalEntityLike):
         return self.label
 
     def get_frames(self):
-        return tuple(self._frames)
+        return tuple(self.frames)
 
     def get_frames_iterable(self):
         '''Exposes the frames of the entity as an iterable.'''
-        return range(*self._frames)
+        return range(*self.frames)
 
     def exists_at_frame(self, f):
         '''Returns True if this entity exists at the frame.'''
@@ -703,7 +704,7 @@ class VideoSemanticData(Serializable):
                         frame_number=f
                 )
                 for attr in s.get_attributes():
-                    do.add_attributes(attr)
+                    do.add_attribute(attr)
                 vl.add_object(do, f)
 
         return vl
