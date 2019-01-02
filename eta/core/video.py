@@ -198,6 +198,7 @@ class GPSWaypoint(Serializable):
         self.frame_number = frame_number
 
     def attributes(self):
+        '''Returns the list of class attributes that will be serialized.'''
         return ["latitude", "longitude", "frame_number"]
 
     @classmethod
@@ -330,6 +331,7 @@ class VideoMetadata(Serializable):
         return self._flat(frame_number), self._flon(frame_number)
 
     def attributes(self):
+        '''Returns the list of class attributes that will be serialized.'''
         _attrs = [
             "start_time", "frame_size", "frame_rate", "total_frame_count",
             "duration", "size_bytes", "encoding_str", "gps_waypoints"
@@ -971,6 +973,7 @@ class VideoStreamInfo(Serializable):
         return self.stream_info[key]
 
     def attributes(self):
+        '''Returns the list of class attributes that will be serialized.'''
         return self.custom_attributes(dynamic=True)
 
     @classmethod
