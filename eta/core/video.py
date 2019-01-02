@@ -460,6 +460,11 @@ class VideoFrameLabels(Serializable):
         '''
         self.objects.add_container(objs)
 
+    def merge_frame_labels(self, frame_labels):
+        '''Merges the VideoFrameLabels into the frame.'''
+        self.add_frame_attributes(frame_labels.attrs)
+        self.add_objects(frame_labels.objects)
+
     def attributes(self):
         '''Returns the list of class attributes that will be serialized.'''
         _attrs = ["frame_number"]
