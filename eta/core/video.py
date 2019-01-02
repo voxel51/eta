@@ -460,13 +460,27 @@ class VideoFrameLabels(Serializable):
         '''
         self.objects.add_container(objs)
 
+    def attributes(self):
+        '''Returns the list of class attributes that will be serialized.'''
+        _attrs = ["frame_number"]
+        if self.attrs:
+            _attrs.append("attrs")
+        if self.objects:
+            _attrs.append("objects")
+        return _attrs
+
     @classmethod
     def from_dict(cls, d):
         '''Constructs a VideoFrameLabels from a JSON dictionary.'''
-        return cls(
-            d["frame_number"],
-            attrs=AttributeContainer.from_dict(d["attrs"]),
-            objects=DetectedObjectContainer.from_dict(d["objects"]))
+        attrs = d.get("attrs", None)
+        if attrs is not None:
+            attrs = AttributeContainer.from_dict(attrs)
+
+        objects = d.get("objects", None)
+        if objects is not None:
+            objects = DetectedObjectContainer.from_dict(objects)
+
+        return cls(d["frame_number"], attrs=attrs, objects=objects)
 
 
 class VideoLabels(Serializable):
