@@ -38,6 +38,7 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import timeit
 import zipfile
 
 import eta.constants as etac
@@ -270,6 +271,80 @@ def communicate_or_die(args, decode=False):
             raise ExecutableNotFoundError(args[0])
         else:
             raise
+
+
+class Timer(object):
+    '''Class for timing things that supports the context manager interface.
+
+    Example usage:
+        ```
+        with Timer() as t:
+            # your commands here
+
+        print("Request took %s" % t.elapsed_time_str)
+        ```
+    '''
+
+    def __init__(self):
+        '''Creates a Timer instance.'''
+        self.start_time = None
+        self.stop_time = None
+
+    def __enter__(self):
+        self.start()
+        return self
+
+    def __exit__(self, *args):
+        self.stop()
+
+    @property
+    def elapsed_time(self):
+        '''The number of elapsed seconds.'''
+        return self.stop_time - self.start_time
+
+    @property
+    def elapsed_time_str(self):
+        '''The human-readable elapsed time string.'''
+        return self.get_elapsed_time_str()
+
+    def get_elapsed_time_str(self, decimals=1):
+        '''Gets the elapsed time as a human-readable string.
+
+        Args:
+            decimals: the desired number of decimal points to show in the
+                string. The default is 1
+        '''
+        return to_human_time_str(self.elapsed_time, decimals=decimals)
+
+    def start(self):
+        '''Starts the timer.'''
+        self.start_time = timeit.default_timer()
+
+    def stop(self):
+        '''Stops the timer.'''
+        self.stop_time = timeit.default_timer()
+
+
+def to_human_time_str(num_seconds, decimals=1):
+    '''Converts the given number of seconds to a human-readable time string.
+
+    Args:
+        num_seconds: the number of seconds
+        decimals: the desired number of decimal points to show in the string.
+            The default is 1
+
+    Returns:
+        a human-readable time string like "1.5 minutes" or "20.1 days"
+    '''
+    units = ["ns", "us", "ms", "seconds", "minutes", "hours", "days", "years"]
+    conv = [1000, 1000, 1000, 60, 60, 24, 365, float("inf")]
+
+    num = 1e9 * num_seconds  # start with smallest unit
+    for idx, unit in enumerate(units):
+        if abs(num) < conv[idx]:
+            break
+        num /= conv[idx]
+    return ("%." + str(decimals) + "f %s") % (num, unit)
 
 
 def copy_file(inpath, outpath, check_ext=False):
