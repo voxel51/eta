@@ -551,15 +551,28 @@ class VideoLabels(Serializable):
         '''Deletes the VideoFrameLabels for the given frame number.'''
         del self.frames[frame_number]
 
-    def add_frame(self, frame_labels):
+    def merge_video_labels(self, video_labels):
+        '''Merges the given VideoLabels into this labels.'''
+        for frame_number in video_labels:
+            self.add_frame(video_labels[frame_number], overwrite=False)
+
+    def add_frame(self, frame_labels, overwrite=True):
         '''Adds the frame labels to the video.
 
         Args:
             frame_labels: a VideoFrameLabels instance
+            overwrite: whether to overwrite any existing VideoFrameLabels
+                instance for the frame or merge the new labels. By default,
+                this is True
         '''
         if self.has_schema:
             self._validate_frame_labels(frame_labels)
-        self.frames[frame_labels.frame_number] = frame_labels
+
+        frame_number = frame_labels.frame_number
+        if overwrite or not self.has_frame(frame_number):
+            self.frames[frame_number] = frame_labels
+        else:
+            self.frames[frame_number].merge_frame_labels(frame_labels)
 
     def add_frame_attribute(self, frame_attr, frame_number):
         '''Adds the given frame attribute to the video.
