@@ -542,10 +542,13 @@ class VideoLabels(Serializable):
         return frame_number in self.frames
 
     def get_frame(self, frame_number):
-        '''Gets the VideoFrameLabels for the given frame number, or None if
-        the frame has not been labeled.
+        '''Gets the VideoFrameLabels for the given frame number, or an empty if
+        VideoFrameLabels if the frame has no labels.
         '''
-        return self.frames.get(frame_number, None)
+        try:
+            return self.frames[frame_number]
+        except KeyError:
+            return VideoFrameLabels(frame_number)
 
     def delete_frame(self, frame_number):
         '''Deletes the VideoFrameLabels for the given frame number.'''
