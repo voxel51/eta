@@ -45,10 +45,9 @@ class FeaturizerConfig(Config):
 
     Attributes:
         type: the fully-qualified class name of the Featurizer, e.g.,
-            "eta.core.features.VideoFramesFeaturizer"
+            `eta.core.features.VideoFramesFeaturizer`
         config: an instance of the Config class associated with the specified
-            Featurizer (e.g. an instance of
-            eta.core.features.VideoFramesFeaturizerConfig)
+            Featurizer (e.g., `eta.core.features.VideoFramesFeaturizerConfig`)
     '''
 
     def __init__(self, d):
