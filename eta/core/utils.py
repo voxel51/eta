@@ -328,6 +328,12 @@ class Timer(object):
 def to_human_time_str(num_seconds, decimals=1):
     '''Converts the given number of seconds to a human-readable time string.
 
+    Examples:
+        0.001 => "1ms"
+        60 => "1 minute"
+        65 => "1.1 minutes"
+        60123123 => "1.9 years"
+
     Args:
         num_seconds: the number of seconds
         decimals: the desired number of decimal points to show in the string.
@@ -336,15 +342,30 @@ def to_human_time_str(num_seconds, decimals=1):
     Returns:
         a human-readable time string like "1.5 minutes" or "20.1 days"
     '''
-    units = ["ns", "us", "ms", "seconds", "minutes", "hours", "days", "years"]
-    conv = [1000, 1000, 1000, 60, 60, 24, 365, float("inf")]
-
+    units = [
+        "ns", "us", "ms", " second", " minute", " hour", " day", " week",
+        " month", " year"
+    ]
+    conversions = [1000, 1000, 1000, 60, 60, 24, 7, 52 / 12, 12, float("inf")]
+    pluralizable = [
+        False, False, False, True, True, True, True, True, True, True
+    ]
     num = 1e9 * num_seconds  # start with smallest unit
-    for idx, unit in enumerate(units):
-        if abs(num) < conv[idx]:
+    for idx, conv in enumerate(conversions):
+        if abs(num) < conv:
             break
-        num /= conv[idx]
-    return ("%." + str(decimals) + "f %s") % (num, unit)
+        num /= conv
+
+    # Convert to string with the desired number of decimals, UNLESS those
+    # decimals are zeros, in which case they are removed
+    str_fmt = "%." + str(decimals) + "f"
+    num_only_str = (str_fmt % num).rstrip("0").rstrip(".")
+
+    # Add units
+    num_str = num_only_str + units[idx]
+    if pluralizable[idx] and num_only_str != "1":
+        num_str += "s"  # handle pluralization
+    return num_str
 
 
 def copy_file(inpath, outpath, check_ext=False):
@@ -628,26 +649,79 @@ def assert_same_extensions(*args):
         raise OSError("Expected %s to have the same extensions" % str(args))
 
 
-def to_human_bytes_str(num_bytes):
+def to_human_decimal_str(num, decimals=1):
+    '''Returns a human-readable string represntation of the given decimal
+    (base-10) number.
+
+    Examples:
+        65 => "65"
+        123456 => "123.5K"
+        1e7 => "10M"
+
+    Args:
+        num: a number
+        decimals: the desired number of digits after the decimal point to show.
+            The default is 1
+
+    Returns:
+        a human-readable decimal string
+    '''
+    for unit in ["", "K", "M", "B", "T"]:
+        if abs(num) < 1000:
+            break
+        num /= 1000
+    str_fmt = "%." + str(decimals) + "f"
+    return (str_fmt % num).rstrip("0").rstrip(".") + unit
+
+
+def to_human_bytes_str(num_bytes, decimals=1):
     '''Returns a human-readable string represntation of the given number of
     bytes.
+
+    Examples:
+        123 => "123B"
+        123000 => "120.1KB"
+        1024 ** 4 => "1TB"
+
+    Args:
+        num_bytes: a number of bytes
+        decimals: the desired number of digits after the decimal point to show.
+            The default is 1
+
+    Returns:
+        a human-readable bytes string
     '''
-    return _to_human_binary_str(num_bytes, "B")
+    for unit in ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"]:
+        if abs(num_bytes) < 1024:
+            break
+        num_bytes /= 1024
+    str_fmt = "%." + str(decimals) + "f"
+    return (str_fmt % num_bytes).rstrip("0").rstrip(".") + unit
 
 
-def to_human_bits_str(num_bits):
+def to_human_bits_str(num_bits, decimals=1):
     '''Returns a human-readable string represntation of the given number of
     bits.
+
+    Examples:
+        123 => "123b"
+        123000 => "120.1Kb"
+        1024 ** 4 => "1Tb"
+
+    Args:
+        num_bits: a number of bits
+        decimals: the desired number of digits after the decimal point to show.
+            The default is 1
+
+    Returns:
+        a human-readable bits string
     '''
-    return _to_human_binary_str(num_bits, "b")
-
-
-def _to_human_binary_str(num, suffix):
-    for unit in ["", "K", "M", "G", "T", "P"]:
-        if abs(num) < 1024.0:
+    for unit in ["b", "Kb", "Mb", "Gb", "Tb", "Pb", "Eb", "Zb", "Yb"]:
+        if abs(num_bits) < 1024:
             break
-        num /= 1024.0
-    return "%3.1f %s%s" % (num, unit, suffix)
+        num_bits /= 1024
+    str_fmt = "%." + str(decimals) + "f"
+    return (str_fmt % num_bits).rstrip("0").rstrip(".") + unit
 
 
 def make_tar(dir_path, tar_path):
