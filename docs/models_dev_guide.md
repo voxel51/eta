@@ -61,7 +61,7 @@ The following is an example contents of a `manifest.json` file:
 {
     "models": [
         {
-            "base_name": "VGG-16",
+            "base_name": "vgg16-imagenet",
             "base_filename": "vgg16-imagenet.npz",
             "version": null,
             "description": "VGG-16 model trained on ImageNet. Source: https://github.com/ethereon/caffe-tensorflow",

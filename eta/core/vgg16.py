@@ -48,7 +48,7 @@ class VGG16Config(Config):
     '''Configuration settings for the VGG-16 network.'''
 
     def __init__(self, d):
-        self.model = self.parse_string(d, "model", default="VGG-16")
+        self.model = self.parse_string(d, "model", default="vgg16-imagenet")
 
 
 class VGG16(object):
