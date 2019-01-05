@@ -14,7 +14,7 @@
             "date_created": "2018-06-20 17:35:53"
         },
         {
-            "base_name": "C3D-UCF101",
+            "base_name": "c3d-ucf101",
             "base_filename": "c3d-ucf101.model",
             "version": null,
             "description": "C3D model finely trained on UCF-101. Source: `C3D UCF101 split1` model from https://github.com/hx173149/C3D-tensorflow",

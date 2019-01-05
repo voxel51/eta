@@ -39,7 +39,7 @@ class C3DConfig(Config):
     '''Configuration settings for the C3D network.'''
 
     def __init__(self, d):
-        self.model = self.parse_string(d, "model", default="C3D-UCF101")
+        self.model = self.parse_string(d, "model", default="c3d-ucf101")
 
 
 class C3D(object):
