@@ -620,9 +620,9 @@ def _get_models_search_path():
         if ModelsManifest.dir_has_manifest(mdir):
             mdirs.append(mdir)
         else:
-            logger.warning(
+            logger.debug(
                 "Directory '%s' is on the models search path but has no "
-                "manifest. It will be omitted from the search path", mdir)
+                "manifest; omitting from search path", mdir)
 
     return mdirs
 
