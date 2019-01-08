@@ -689,6 +689,23 @@ class VideoLabels(Serializable):
                 self._validate_frame_labels(frame_labels)
 
     @classmethod
+    def from_detected_objects(cls, objects):
+        '''Builds a VideoLabels instance from a DetectedObjectContainer.
+
+        The DetectedObjects must have their `frame_number` attributes set.
+
+        Args:
+            objects: a DetectedObjectContainer
+
+        Returns:
+            a VideoLabels instance
+        '''
+        labels = cls()
+        for obj in objects:
+            labels.add_object(obj, obj.frame_number)
+        return labels
+
+    @classmethod
     def from_dict(cls, d):
         '''Constructs a VideoLabels from a JSON dictionary.'''
         frames = OrderedDict(
