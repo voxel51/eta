@@ -450,6 +450,9 @@ class VideoSemanticEntity(Serializable, TemporalEntityLike):
     def get_confidence(self):
         return self.confidence
 
+    def get_index(self):
+        return self.index;
+
     def get_label(self):
         return self.label
 
@@ -700,7 +703,7 @@ class VideoSemanticData(Serializable):
                         label=s.get_label(),
                         bounding_box=s.get_bounding_box(f),
                         confidence=s.get_confidence(),
-                        index=s.get_index,
+                        index=s.get_index(),
                         frame_number=f
                 )
                 for attr in s.get_attributes():
