@@ -326,6 +326,26 @@ class GoogleCloudStorageClient(StorageClient, NeedsGoogleCredentials):
         blob = self._get_blob(cloud_path)
         blob.delete()
 
+    def list_files_in_folder(self, cloud_folder, recursive=True):
+        '''Returns a list of the files in the given "folder" in Google Cloud
+        Storage.
+
+        Args:
+            cloud_folder: a string like `gs://<bucket-name>/<folder-path>`
+            recursive: whether to recursively traverse sub-"folders". By
+                default. this is True
+
+        Returns:
+            XXX
+        '''
+        bucket_name, folder_name = self._parse_cloud_storage_path(cloud_folder)
+        bucket = self._client.get_bucket(bucket_name)
+        if folder_name and not folder_name.endswith("/"):
+            folder_name += "/"
+        delimiter = "/" if not recursive else None
+        blobs = bucket.list_blobs(prefix=folder_name, delimiter=delimiter)
+        return [blob.name for blob in blobs if not blob.name.endswith("/")]
+
     def generate_signed_url(self, cloud_path, method="GET", hours=24):
         '''Generates a signed URL for accessing the given storage object.
 
