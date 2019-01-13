@@ -340,11 +340,18 @@ class GoogleCloudStorageClient(StorageClient, NeedsGoogleCredentials):
         '''
         bucket_name, folder_name = self._parse_cloud_storage_path(cloud_folder)
         bucket = self._client.get_bucket(bucket_name)
+
         if folder_name and not folder_name.endswith("/"):
             folder_name += "/"
         delimiter = "/" if not recursive else None
         blobs = bucket.list_blobs(prefix=folder_name, delimiter=delimiter)
-        return [blob.name for blob in blobs if not blob.name.endswith("/")]
+
+        paths = []
+        prefix = "gs://" + bucket_name
+        for blob in blobs:
+            if not blob.name.endswith("/"):
+                paths.append(os.path.join(prefix, blob.name))
+        return paths
 
     def generate_signed_url(self, cloud_path, method="GET", hours=24):
         '''Generates a signed URL for accessing the given storage object.
