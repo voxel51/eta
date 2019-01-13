@@ -370,15 +370,10 @@ class GoogleCloudStorageClient(StorageClient, NeedsGoogleCredentials):
         if not cloud_path.startswith("gs://"):
             raise GoogleCloudStorageClientError(
                 "Cloud storage path '%s' must start with gs://" % cloud_path)
-
-        try:
-            bucket_name, object_name = cloud_path[5:].split("/", 1)
-        except ValueError:
-            raise GoogleCloudStorageClientError(
-                "Cloud storage path '%s' must have form "
-                "gs://<bucket_name>/<object_name>" % cloud_path)
-
-        return bucket_name, object_name
+        chunks = cloud_path[5:].split("/", 1)
+        if len(chunks) != 2:
+            return chunks[0], ""
+        return chunks[0], chunks[1]
 
 
 class GoogleCloudStorageClientError(Exception):
