@@ -295,3 +295,11 @@ etam.delete_model(name)
 
 The above command deletes the model from both local and cloud storage, and it
 deletes the associated entry from the `manifest.json` file.
+
+
+## Copyright
+
+Copyright 2017-2019, Voxel51, Inc.<br>
+voxel51.com
+
+Brian Moore, brian@voxel51.com

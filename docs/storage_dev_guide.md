@@ -192,3 +192,11 @@ with etas.SFTPStorageClient(hostname, username, private_key_path) as client:
 ### References
 
 - https://pysftp.readthedocs.io/en/release_0.2.9
+
+
+## Copyright
+
+Copyright 2017-2019, Voxel51, Inc.<br>
+voxel51.com
+
+Brian Moore, brian@voxel51.com

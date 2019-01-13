@@ -84,3 +84,11 @@ ETA uses an RGB format for images and video frames.  All functions that read/wri
 
 1. When we use OpenCV for IO, we explicitly convert to BGR from RGB, which although trivial can have a performance impact.
 2. If you use OpenCV inside of your code that uses ETA for image and video frame representation, then you need to be careful to convert to BGR before actually invoking the `cv2` functions.  We provide ample conversion routines in the `eta.core.image` module.
+
+
+## Copyright
+
+Copyright 2017-2019, Voxel51, Inc.<br>
+voxel51.com
+
+Brian Moore, brian@voxel51.com

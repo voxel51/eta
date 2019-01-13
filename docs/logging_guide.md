@@ -105,3 +105,11 @@ General logging resources
 Formatter syntax
 
 * https://docs.python.org/3.1/library/logging.html#formatter-objects
+
+
+## Copyright
+
+Copyright 2017-2019, Voxel51, Inc.<br>
+voxel51.com
+
+Brian Moore, brian@voxel51.com

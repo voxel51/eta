@@ -331,3 +331,11 @@ https://drive.google.com/uc?id=1ArnECNoNFm_f9--vxWVtn80RQqDQgtKH)
 Behind the scenes, an intermediate `pipeline_block_diagram.diag` file is
 generated that describes the pipeline in a format understood by the `blockdiag`
 package.
+
+
+## Copyright
+
+Copyright 2017-2019, Voxel51, Inc.<br>
+voxel51.com
+
+Brian Moore, brian@voxel51.com

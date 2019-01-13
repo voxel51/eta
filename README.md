@@ -169,3 +169,11 @@ independently of other packages and Python applications on your machine. See
 ```shell
 pip uninstall eta
 ```
+
+
+## Copyright
+
+Copyright 2017-2019, Voxel51, Inc.<br>
+voxel51.com
+
+Brian Moore, brian@voxel51.com

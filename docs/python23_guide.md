@@ -250,3 +250,11 @@ http://python-future.org/futurize_cheatsheet.html
 http://python-future.org/unicode_literals.html
 
 http://python-future.org/compatible_idioms.html#compatible-idioms
+
+
+## Copyright
+
+Copyright 2017-2019, Voxel51, Inc.<br>
+voxel51.com
+
+Brian Moore, brian@voxel51.com
