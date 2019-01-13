@@ -1,16 +1,20 @@
 
-.DS_Store
-
+*.DS_store
+**/*.DS_store
 *.md5
+**/*.md5
 *.log
+**/*.log
 
-*.pyc
 __pycache__
+*.py[cod]
 
 *.egg-info
-
 .project
 .pydevproject
+
+/eta/models/**/*
+!/eta/models/manifest.json
 
 /config.json
 /configs
@@ -18,11 +22,7 @@ __pycache__
 /docs/*.tex
 /docs/*.html
 /docs/*.pdf
-/external
-/out
-
-/eta/models/**/*
-!/eta/models/manifest.json
-
 /examples/**/data
 /examples/**/out
+/external
+/out
