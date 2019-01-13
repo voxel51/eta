@@ -333,10 +333,10 @@ class GoogleCloudStorageClient(StorageClient, NeedsGoogleCredentials):
         Args:
             cloud_folder: a string like `gs://<bucket-name>/<folder-path>`
             recursive: whether to recursively traverse sub-"folders". By
-                default. this is True
+                default, this is True
 
         Returns:
-            XXX
+            a list of full cloud paths to the files in the folder
         '''
         bucket_name, folder_name = self._parse_cloud_storage_path(cloud_folder)
         bucket = self._client.get_bucket(bucket_name)
