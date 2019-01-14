@@ -593,21 +593,39 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
         mime_type = self.get_file_metadata(file_id).get("mimeType", None)
         return mime_type == "application/vnd.google-apps.folder"
 
-    def create_folder(self, new_folder, parent_folder_id):
-        '''Creates the given folder(s) within the given folder.
+    def create_folder_if_necessary(self, folder_name, parent_folder_id):
+        '''Creates the given folder within the given parent folder, if
+        necessary.
 
         Args:
-            new_folder: a folder name or several/folder/names specifying the
-                new folder(s) to create
-            parent_folder_id: the ID of the existing folder in which to create
-                the new folder(s)
+            folder_name: a `folder` or `a/nested/folder` specifying the folder
+                to create, if necessary
+            parent_folder_id: the ID of the parent folder in which to operate
 
         Returns:
             the ID of the last created folder
         '''
-        for f in new_folder.split("/"):
-            parent_folder_id = self._create_folder(f, parent_folder_id)
-        return parent_folder_id
+        folder_id = parent_folder_id
+        for folder in folder_name.split("/"):
+            folder_id = self._create_folder_if_necessary(folder, folder_id)
+        return folder_id
+
+    def create_folder(self, folder_name, parent_folder_id):
+        '''Creates the given folder within the given parent folder. The folder
+        is assumed not to exist.
+
+        Args:
+            folder_name: a `folder` or `a/nested/folder` specifying the folder
+                to create
+            parent_folder_id: the ID of the parent folder in which to operate
+
+        Returns:
+            the ID of the last created folder
+        '''
+        folder_id = parent_folder_id
+        for folder in folder_name.split("/"):
+            folder_id = self._create_folder(folder, folder_id)
+        return folder_id
 
     def list_files_in_folder(self, folder_id):
         '''Returns a list of the files in the folder with the given ID.
@@ -675,6 +693,18 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
         while not done:
             status, done = downloader.next_chunk()
             logger.info("Progress = %d%%" % int(status.progress() * 100))
+
+    def _create_folder_if_necessary(self, new_folder, parent_folder_id):
+        folder_id = None
+        for f in self.list_files_in_folder(parent_folder_id):
+            if f["name"] == new_folder:
+                folder_id = f["id"]
+                break
+
+        if folder_id is None:
+            folder_id = self._create_folder(new_folder, parent_folder_id)
+
+        return folder_id
 
     def _create_folder(self, new_folder, parent_folder_id):
         body = {
