@@ -446,6 +446,9 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
     def upload(self, local_path, folder_id, filename=None, content_type=None):
         '''Uploads the file to Google Drive.
 
+        Note that `filename` can contain directories like `path/to/filename`.
+        Such directories will be created (if necessary) in Google Drive.
+
         Args:
             local_path: the path to the file to upload
             folder_id: the ID of the Drive folder to upload the file into
@@ -464,6 +467,9 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
     def upload_bytes(self, bytes_str, folder_id, filename, content_type=None):
         '''Uploads the given bytes to Google Drive.
 
+        Note that `filename` can contain directories like `path/to/filename`.
+        Such directories will be created (if necessary) in Google Drive.
+
         Args:
             bytes_str: the bytes string to upload
             folder_id: the ID of the Drive folder to upload the file into
@@ -479,6 +485,9 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
 
     def upload_stream(self, file_obj, folder_id, filename, content_type=None):
         '''Uploads the contents of the given file-like object to Google Drive.
+
+        Note that `filename` can contain directories like `path/to/filename`.
+        Such directories will be created (if necessary) in Google Drive.
 
         Args:
             file_obj: the file-like object to upload, which must be open for
@@ -670,6 +679,12 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
                 return files
 
     def _do_upload(self, file_obj, folder_id, filename, content_type):
+        # Handle any leading directories
+        chunks = filename.rsplit("/", 1)
+        if len(chunks) == 2:
+            folder_id = self.create_folder_if_necessary(chunks[0], folder_id)
+            filename = chunks[1]
+
         mime_type = content_type or guess_mime_type(filename)
         media = gah.MediaIoBaseUpload(
             file_obj, mime_type, chunksize=self.chunk_size, resumable=True)
