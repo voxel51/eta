@@ -6,7 +6,7 @@ google-api-python-client==1.6.5
 google-auth-httplib2==0.0.3
 google-cloud-storage==1.7.0
 Jinja2==2.10
-numpy==1.13.3;python_version<"3"
+numpy==1.14.0;python_version<"3"
 numpy==1.16.0;python_version>="3"
 Pillow==4.2.1
 pycodestyle==2.3.1
