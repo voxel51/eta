@@ -24,7 +24,7 @@ The ETA package requires the following external dependencies:
 
 ETA is very portable:
 - Installable on Mac or Linux
-- Supports both Python 2.7+ and Python 3.4+
+- Supports both Python 2.7.X and Python 3.6.X
 - Supports both OpenCV 2.4+ and OpenCV 3.0+
 - Supports both CPU and GPU execution
 - Supports both CUDA 8 and CUDA 9 (for GPU installations)
