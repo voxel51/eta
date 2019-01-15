@@ -16,7 +16,7 @@
     "pythonpath_dirs": [],
     "environment_vars": {},
     "tf_config": {
-        "gpu_options.per_process_gpu_memory_fraction": 1
+        "gpu_options.per_process_gpu_memory_fraction": 0.95
     },
     "max_model_versions_to_keep": -1,
     "allow_model_downloads": true,
