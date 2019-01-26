@@ -579,7 +579,7 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
             name: the name of the Team Drive
 
         Returns:
-            folder_id: the ID of the root folder in the Team Drive
+            the ID of the root folder in the Team Drive
 
         Raises:
             GoogleDriveStorageClientError: if the Team Drive was not found
@@ -599,7 +599,7 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
             file_id: the ID of a file (or folder)
 
         Returns:
-            A dictionary containing the available metadata about the file,
+            a dictionary containing the available metadata about the file,
                 including at least `name`, `kind`, and `mimeType`
         '''
         return self._service.files().get(
@@ -612,8 +612,8 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
             file_id: the ID of the file (or folder)
 
         Returns:
-            team_drive_id: the ID of the Team Drive, or None if the file does
-                not live in a Team Drive
+            the ID of the Team Drive, or None if the file does not live in a
+                Team Drive
         '''
         return self.get_file_metadata(file_id).get("teamDriveId", None)
 
