@@ -326,6 +326,33 @@ class GoogleCloudStorageClient(StorageClient, NeedsGoogleCredentials):
         blob = self._get_blob(cloud_path)
         blob.delete()
 
+    def get_file_metadata(self, cloud_path):
+        '''Returns metadata about the given file in Google Cloud Storage.
+
+        Args:
+            cloud_path: the path to the Google Cloud object
+
+        Returns:
+            a dictionary containing metadata about the file, including its
+                `name`, `bucket`, `creation_date`, `size`, `mime_type`, and
+                `encoding`
+        '''
+        blob = self._get_blob(cloud_path)
+        #
+        # WARNING:
+        #   If `patch()` isn't called, the blob's properties will not be
+        #   populated
+        #
+        blob.patch()
+        return {
+            "name": blob.name,
+            "bucket": blob.bucket,
+            "creation_date": blob.updated,
+            "size": blob.size,
+            "mime_type": blob.content_type,
+            "encoding": blob.content_encoding
+        }
+
     def list_files_in_folder(self, cloud_folder, recursive=True):
         '''Returns a list of the files in the given "folder" in Google Cloud
         Storage.
