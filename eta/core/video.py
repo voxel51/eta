@@ -1160,6 +1160,44 @@ def get_raw_frame_number(raw_frame_rate, raw_frame_count, fps, sampled_frame):
     return int(raw_frame)
 
 
+def sample_select_frames(video_path, frames, output_patt=None):
+    '''Samples the specified frames of the video.
+
+    This implementation uses ffmpeg, so it is expected to be efficient.
+
+    Args:
+        video_path: the path to a video
+        frames: a sorted list of frame numbers to sample
+        output_patt: an optional output pattern like "/path/to/frames-%d.png"
+            specifying where to write the sampled frames. If omitted, the
+            frames are instead returned in an in-memory list
+
+    Returns:
+        a list of the sampled frames if output_patt is None, and None otherwise
+    '''
+    ext = os.path.splitext(output_patt)[1] if output_patt else ".png"
+
+    with etau.TempDir() as d:
+        # Sample frames to disk temporarily
+        tmp_patt = os.path.join(d, "frame-%d" + ext)
+        ss = "+".join(["eq(n\,%d)" % (f - 1) for f in frames])
+        ffmpeg = FFmpeg(out_opts=["-vf", "select='%s'" % ss, "-vsync", "0"])
+        ffmpeg.run(video_path, tmp_patt)
+
+        if output_patt is not None:
+            # Move frames into place with correct output names
+            for idx, fn in enumerate(frames, 1):
+                etau.move_file(tmp_patt % idx, output_patt % fn)
+            return
+
+        # Read frames into memory
+        imgs = []
+        for idx in range(1, len(frames) + 1):
+            imgs.append(etai.read(tmp_patt % idx))
+
+        return imgs
+
+
 def sample_first_frames(arg, k, size=None):
     '''Samples the first k frames in a video.
 
