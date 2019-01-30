@@ -1160,6 +1160,21 @@ def get_raw_frame_number(raw_frame_rate, raw_frame_count, fps, sampled_frame):
     return int(raw_frame)
 
 
+def extract_clip(video_path, output_path, start_time, duration):
+    '''Extracts the specified clip from the video.
+
+    This implementation uses ffmpeg, so it is expected to be efficient.
+
+    Args:
+        video_path: the path to a video
+        output_path: the path to write the extracted video clip
+        start_time: the start timestamp in "HH:MM:SS.XXX" format
+        duration: the clip duration in "HH:MM:SS.XXX" format
+    '''
+    ffmpeg = FFmpeg(in_opts=["-ss", start_time], out_opts=["-t", duration])
+    ffmpeg.run(video_path, output_path)
+
+
 def sample_select_frames(video_path, frames, output_patt=None):
     '''Samples the specified frames of the video.
 
