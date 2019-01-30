@@ -1987,6 +1987,12 @@ class FFmpeg(object):
         self._args = None
         self._p = None
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.close()
+
     @property
     def cmd(self):
         '''The last executed ffmpeg command string, or None if run() has not
@@ -2064,16 +2070,11 @@ class FFmpeg(object):
         return self._p.stdout.read(num_bytes)
 
     def close(self):
-        '''Closes a streaming ffmpeg program.
-
-        Raises:
-            FFmpegStreamingError: if a streaming mode is not active
-        '''
-        if not (self.is_input_streaming or self.is_output_streaming):
-            raise FFmpegStreamingError("Not currently streaming")
-        self._p.stdin.close()
-        self._p.stdout.close()
-        self._p.wait()
+        '''Closes a streaming ffmpeg program, if necessary.'''
+        if self.is_input_streaming or self.is_output_streaming:
+            self._p.stdin.close()
+            self._p.stdout.close()
+            self._p.wait()
         self._p = None
         self.is_input_streaming = False
         self.is_output_streaming = False
