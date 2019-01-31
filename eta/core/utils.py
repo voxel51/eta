@@ -903,18 +903,21 @@ def parse_dir_pattern(dir_path):
 
     Returns:
         a tuple containing:
-            - the numeric pattern used in the directory (the full path)
+            - the numeric pattern used in the directory (the full path), or
+                None if the directory was empty or non-existent
             - a list (or list of tuples if the pattern contains multiple
                 numbers) describing the numeric indices in the directory. The
                 indices are returned in alphabetical order of their
-                corresponding filenames
-
-    Raises:
-        OSError: if the directory is empty
+                corresponding filenames. If no files were found or the
+                directory was non-existent, an empty list is returned
     '''
-    files = list_files(dir_path)
+    try:
+        files = list_files(dir_path)
+    except OSError:
+        return None, []
+
     if not files:
-        raise OSError("Directory %s contains no files" % dir_path)
+        return None, []
 
     def _guess_patt(m):
         s = m.group()
