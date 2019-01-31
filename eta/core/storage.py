@@ -345,7 +345,7 @@ class GoogleCloudStorageClient(StorageClient, NeedsGoogleCredentials):
         #
         blob.patch()
         return {
-            "name": blob.name,
+            "name": blob.name.rsplit("/", 1)[-1],
             "bucket": blob.bucket,
             "creation_date": blob.updated,
             "size": blob.size,
