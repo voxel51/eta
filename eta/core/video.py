@@ -1160,19 +1160,66 @@ def get_raw_frame_number(raw_frame_rate, raw_frame_count, fps, sampled_frame):
     return int(raw_frame)
 
 
-def extract_clip(video_path, output_path, start_time, duration):
+def extract_clip(
+        video_path, output_path, start_time=None, duration=None, fast=False):
     '''Extracts the specified clip from the video.
 
-    This implementation uses ffmpeg, so it is expected to be efficient.
+    When fast=False, the following ffmpeg command is used:
+    ```
+    # Slow, accurate option
+    ffmpeg -ss <start_time> -i <video_path> -t <duration> <output_path>
+    ```
+
+    When fast is True, the following two-step ffmpeg process is used:
+    ```
+    # Faster, less accurate option
+    ffmpeg -ss <start_time> -i <video_path> -t <duration> -c copy <tmp_path>
+    ffmpeg -i <tmp_path> <output_path>
+    ```
 
     Args:
         video_path: the path to a video
         output_path: the path to write the extracted video clip
-        start_time: the start timestamp in "HH:MM:SS.XXX" format
-        duration: the clip duration in "HH:MM:SS.XXX" format
+        start_time: the start timestamp, which can either be a float value of
+            seconds or a string in "HH:MM:SS.XXX" format. If omitted, the
+            beginning of the video is used
+        duration: the clip duration, which can either be a float value of
+            seconds or a string in "HH:MM:SS.XXX" format. If omitted, the clip
+            extends to the end of the video
+        fast: whether to
     '''
-    ffmpeg = FFmpeg(in_opts=["-ss", start_time], out_opts=["-t", duration])
-    ffmpeg.run(video_path, output_path)
+    in_opts = []
+    if start_time is not None:
+        if not isinstance(start_time, six.string_types):
+            start_time = "%.3f" % start_time
+        in_opts.extend(["-ss", start_time])
+
+    out_opts = []
+    if duration is not None:
+        if not isinstance(duration, six.string_types):
+            duration = "%.3f" % duration
+        out_opts.extend(["-t", duration])
+
+    if not fast:
+        # Extract clip carefully and accurately by decoding every frame
+        ffmpeg = FFmpeg(in_opts=in_opts, out_opts=out_opts)
+        ffmpeg.run(video_path, output_path)
+        return
+
+    with etau.TempDir() as d:
+        tmp_path = os.path.join(d, os.path.basename(output_path))
+
+        # Extract clip as accurately and quickly as possible by only touching
+        # key frames. May lave blank frames in the video
+        out_opts.extend(["-c", "copy"])
+        ffmpeg = FFmpeg(in_opts=in_opts, out_opts=out_opts)
+        ffmpeg.run(video_path, tmp_path)
+
+        # Clean up fast output by re-encoding the extracted clip
+        # Note that this may not exactly correspond to the slow, accurate
+        # implementation above
+        ffmpeg = FFmpeg(in_opts=[], out_opts=[])
+        ffmpeg.run(tmp_path, output_path)
 
 
 def sample_select_frames(video_path, frames, output_patt=None):
