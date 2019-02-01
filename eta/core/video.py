@@ -1640,6 +1640,7 @@ class VideoReader(object):
 
 
 class VideoReaderError(Exception):
+    '''Exception raised when an error occured while reading a video.'''
     pass
 
 
