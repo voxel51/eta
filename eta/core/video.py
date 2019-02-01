@@ -1736,13 +1736,15 @@ class FFmpegVideoReader(VideoReader):
             return False
 
     def _retrieve(self):
+        width, height = self.frame_size
         try:
             vec = np.fromstring(self._raw_frame, dtype="uint8")
-            width, height = self.frame_size
             return vec.reshape((height, width, 3))
         except ValueError:
-            raise VideoReaderError(
-                "Unable to parse frame %d" % self.frame_number)
+            logger.warning(
+                "Unable to parse frame %d of %d; returning all zeros frame "
+                "instead", self.frame_number, self.total_frame_count)
+            return np.zeros((height, width, 3), dtype="uint8")
 
 
 class OpenCVVideoReader(VideoReader):
