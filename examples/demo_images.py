@@ -39,8 +39,8 @@ path2 = os.path.join(here, "data/logo.png")
 img1 = etai.resize(etai.read(path1), width=1024)
 img2 = etai.resize(etai.read(path2), width=400)
 
-x0 = etai.Width("30%").render(img=img1)
-y0 = etai.Height("15%").render(img=img1)
+x0 = etai.Width("30%").render_for(img=img1)
+y0 = etai.Height("15%").render_for(img=img1)
 img3 = etai.overlay(img1, img2, x0=x0, y0=y0)
 
 plot(img3)
