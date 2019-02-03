@@ -762,12 +762,12 @@ def hex_to_bgr(h):
 
 def hex_to_hsv(h):
     '''Converts a "#rrbbgg" string to a (hue, saturation, value) tuple.'''
-    return rgb_to_hsv(hex_to_rgb(h))
+    return rgb_to_hsv(*hex_to_rgb(h))
 
 
 def hex_to_hls(h):
     '''Converts a "#rrbbgg" string to a (hue, lightness, saturation) tuple.'''
-    return rgb_to_hls(hex_to_rgb(h))
+    return rgb_to_hls(*hex_to_rgb(h))
 
 
 def rgb_to_gray(img):
