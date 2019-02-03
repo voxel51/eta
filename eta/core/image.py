@@ -665,11 +665,6 @@ def tile_images(imgs, width, height, fill_value=0):
 #
 
 
-def rgb_to_bgr(r, g, b):
-    '''Converts (red, green, blue) to a (blue, green, red) tuple.'''
-    return (b, g, r)
-
-
 def rgb_to_hsv(r, g, b):
     '''Converts (red, green, blue) to a (hue, saturation, value) tuple.'''
     return colorsys.rgb_to_hsv(r / 255.0, g / 255.0, b / 255.0)
@@ -683,11 +678,6 @@ def rgb_to_hls(r, g, b):
 def rgb_to_hex(r, g, b):
     '''Converts (red, green, blue) to a "#rrbbgg" string.'''
     return "#%02x%02x%02x" % (r, g, b)
-
-
-def bgr_to_rgb(b, g, r):
-    '''Converts (blue, green, red) to a (red, green, blue) tuple.'''
-    return (r, g, b)
 
 
 def bgr_to_hsv(b, g, r):
