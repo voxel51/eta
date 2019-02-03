@@ -28,12 +28,14 @@ import os
 ETA_DIR = os.path.abspath(os.path.dirname(__file__))
 BASE_DIR = os.path.dirname(ETA_DIR)
 EXAMPLES_DIR = os.path.join(BASE_DIR, "examples")
+RESOURCES_DIR = os.path.join(ETA_DIR, "resources")
 
 
 # Paths
-VERSION_JSON_PATH = os.path.join(ETA_DIR, "version.json")
-ASCII_ART_PATH = os.path.join(ETA_DIR, "eta-ascii.txt")
 CONFIG_JSON_PATH = os.path.join(BASE_DIR, "config.json")
+VERSION_JSON_PATH = os.path.join(ETA_DIR, "version.json")
+ASCII_ART_PATH = os.path.join(RESOURCES_DIR, "eta-ascii.txt")
+DEFAULT_FONT_PATH = os.path.join(RESOURCES_DIR, "lato-regular.ttf")
 
 
 # Version
