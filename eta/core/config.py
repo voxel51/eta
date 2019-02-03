@@ -57,6 +57,11 @@ class Configurable(object):
     '''
 
     @classmethod
+    def from_config(cls, config):
+        '''Instantiates a Configurable class from a <cls>Config instance.'''
+        return cls(config)
+
+    @classmethod
     def from_json(cls, json_path):
         '''Instantiates a Configurable class from a <cls>Config JSON file.
 
