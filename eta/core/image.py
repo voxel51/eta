@@ -504,6 +504,7 @@ class Length(object):
 
 
 class LengthError(Exception):
+    '''Error raised when an invalid Length is encountered.'''
     pass
 
 
