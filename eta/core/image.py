@@ -478,7 +478,7 @@ class Length(object):
                 str(length_str)
             )
 
-    def render(self, frame_size=None, shape=None, img=None):
+    def render_for(self, frame_size=None, shape=None, img=None):
         '''Returns the length in pixels for the given frame size/shape/img.
 
         Pass any *one* of the keyword arguments to render the length.
