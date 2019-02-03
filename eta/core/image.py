@@ -25,6 +25,7 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+import colorsys
 import errno
 import os
 from subprocess import Popen, PIPE
@@ -655,27 +656,127 @@ def tile_images(imgs, width, height, fill_value=0):
 
 
 ###### Color Conversions ######################################################
+#
+# R, G, B: ints in [0, 255], [0, 255], [0, 255]
+# B, G, R: ints in [0, 255], [0, 255], [0, 255]
+# H, S, V: floats in [0, 1], [0, 1], [0, 1]
+# H, L, S: floats in [0, 1], [0, 1], [0, 1]
+#
 
 
-def hex_to_rgb(value):
-    '''Converts "#rrbbgg" to a (red, green, blue) tuple.'''
-    value = value.lstrip('#')
-    return tuple(int(value[i:i + 2], 16) for i in (0, 2, 4))
+def rgb_to_bgr(r, g, b):
+    '''Converts (red, green, blue) to a (blue, green, red) tuple.'''
+    return (b, g, r)
 
 
-def hex_to_bgr(value):
-    '''Converts "#rrbbgg" to a (blue, green, red) tuple.'''
-    return hex_to_rgb(value)[::-1]
+def rgb_to_hsv(r, g, b):
+    '''Converts (red, green, blue) to a (hue, saturation, value) tuple.'''
+    return colorsys.rgb_to_hsv(r / 255.0, g / 255.0, b / 255.0)
 
 
-def rgb_to_hex(red, green, blue):
+def rgb_to_hls(r, g, b):
+    '''Converts (red, green, blue) to a (hue, lightness, saturation) tuple.'''
+    return colorsys.rgb_to_hls(r / 255.0, g / 255.0, b / 255.0)
+
+
+def rgb_to_hex(r, g, b):
     '''Converts (red, green, blue) to a "#rrbbgg" string.'''
-    return "#%02x%02x%02x" % (red, green, blue)
+    return "#%02x%02x%02x" % (r, g, b)
 
 
-def bgr_to_hex(blue, green, red):
+def bgr_to_rgb(b, g, r):
+    '''Converts (blue, green, red) to a (red, green, blue) tuple.'''
+    return (r, g, b)
+
+
+def bgr_to_hsv(b, g, r):
+    '''Converts (blue, green, red) to a (hue, saturation, value) tuple.'''
+    return rgb_to_hsv(r, g, b)
+
+
+def bgr_to_hls(b, g, r):
+    '''Converts (blue, green, red) to a (hue, lightness, saturation) tuple.'''
+    return rgb_to_hls(r, g, b)
+
+
+def bgr_to_hex(b, g, r):
     '''Converts (blue, green, red) to a "#rrbbgg" string.'''
-    return rgb_to_hex(red, green, blue)
+    return rgb_to_hex(r, g, b)
+
+
+def hsv_to_rgb(h, s, v):
+    '''Converts a (hue, saturation, value) tuple to a (red, green blue)
+    tuple.
+    '''
+    r, g, b = colorsys.hsv_to_rgb(h, s, v)
+    return (int(255 * r), int(255 * g), int(255 * b))
+
+
+def hsv_to_bgr(h, s, v):
+    '''Converts a (hue, saturation, value) tuple to a (blue, green red)
+    tuple.
+    '''
+    return hsv_to_rgb(h, s, v)[::-1]
+
+
+def hsv_to_hls(h, s, v):
+    '''Converts a (hue, saturation, value) tuple to a
+    (hue, lightness, saturation) tuple.
+    '''
+    return rgb_to_hls(*hsv_to_rgb(h, s, v))
+
+
+def hsv_to_hex(h, s, v):
+    '''Converts a (hue, saturation, value) tuple to a "#rrbbgg" string.'''
+    return rgb_to_hex(*hsv_to_rgb(h, s, v))
+
+
+def hls_to_rgb(h, l, s):
+    '''Converts a (hue, lightness, saturation) tuple to a (red, green blue)
+    tuple.
+    '''
+    r, g, b = colorsys.hls_to_rgb(h, l, s)
+    return (int(255 * r), int(255 * g), int(255 * b))
+
+
+def hls_to_bgr(h, l, s):
+    '''Converts a (hue, lightness, saturation) tuple to a (blue, green red)
+    tuple.
+    '''
+    return hls_to_rgb(h, l, s)[::-1]
+
+
+def hls_to_hsv(h, l, s):
+    '''Converts a (hue, lightness, saturation) tuple to a
+    (hue, saturation, value) tuple.
+    '''
+    return rgb_to_hls(*hls_to_rgb(h, l, s))
+
+
+def hls_to_hex(h, l, s):
+    '''Converts a (hue, lightness, saturation) tuple to a "#rrbbgg" string.'''
+    return rgb_to_hex(*hls_to_rgb(h, l, s))
+
+
+def hex_to_rgb(h):
+    '''Converts a "#rrbbgg" string to a (red, green, blue) tuple.'''
+    h = h.lstrip('#')
+    return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))
+
+
+def hex_to_bgr(h):
+    '''Converts a "#rrbbgg" string to a (blue, green, red) tuple.'''
+    return hex_to_rgb(h)[::-1]
+
+
+def hex_to_hsv(h):
+    '''Converts a "#rrbbgg" string to a (hue, saturation, value) tuple.'''
+    return rgb_to_hsv(hex_to_rgb(h))
+
+
+def hex_to_hls(h):
+    '''Converts a "#rrbbgg" string to a (hue, lightness, saturation) tuple.'''
+    return rgb_to_hls(hex_to_rgb(h))
 
 
 def rgb_to_gray(img):
