@@ -47,8 +47,13 @@ no_default = NoDefault()
 class Configurable(object):
     '''Base class for classes that can be initialized with a Config instance.
 
-    Enforces the convention that configurable class `Foo` has configuration
-    class `FooConfig`, which must be defined in the same module.
+    Configurable subclasses must obey the following rules:
+
+        (a) Configurable class `Foo` has an associated Config class `FooConfig`
+            that is defined in the same module
+
+        (b) Configurable class `Foo` must be initializable via the syntax
+            `Foo(config)`, where config is a `FooConfig` instance
     '''
 
     @classmethod
