@@ -1186,8 +1186,14 @@ def extract_clip(
         duration: the clip duration, which can either be a float value of
             seconds or a string in "HH:MM:SS.XXX" format. If omitted, the clip
             extends to the end of the video
-        fast: whether to
+        fast: whether to use a faster-but-potentially-less-accurate strategy to
+            extract the clip. By default, the slow accurate strategy is used
     '''
+    #
+    # @todo is this accurate? should we use VideoProcessor to ensure that the
+    # frames of the clip will be exactly the same as those encountered via
+    # other clip-based methods in ETA?
+    #
     in_opts = []
     if start_time is not None:
         if not isinstance(start_time, six.string_types):
