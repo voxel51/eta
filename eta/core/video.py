@@ -1430,8 +1430,8 @@ class VideoProcessor(object):
 
         Args:
             inpath: path to the input video. Passed directly to a VideoReader
-            frames: an optional string specifying the range(s) of frames to
-                process. Passed directly to a VideoReader
+            frames: an optional range(s) of frames to process. This argument
+                is passed directly to VideoReader
             in_use_ffmpeg: whether to use FFmpegVideoReader to read input
                 videos rather than OpenCVVideoReader
             out_use_ffmpeg: whether to use FFmpegVideoWriter to write output
