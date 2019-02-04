@@ -1228,10 +1228,11 @@ def extract_clip(
         ffmpeg.run(tmp_path, output_path)
 
 
-def sample_select_frames(video_path, frames, output_patt=None):
+def sample_select_frames(video_path, frames, output_patt=None, fast=False):
     '''Samples the specified frames of the video.
 
-    This implementation uses ffmpeg, so it is expected to be efficient.
+    When `fast=False`, this implementation uses `VideoProcessor`. When
+    `fast=True`, this implementation uses ffmpeg's `-vf select` option.
 
     Args:
         video_path: the path to a video
@@ -1239,10 +1240,32 @@ def sample_select_frames(video_path, frames, output_patt=None):
         output_patt: an optional output pattern like "/path/to/frames-%d.png"
             specifying where to write the sampled frames. If omitted, the
             frames are instead returned in an in-memory list
+        fast: whether to use a faster native ffmpeg method to perform the
+            extraction. While faster, this may be inconsistent with other
+            video processing methods in ETA. By default, this is False
 
     Returns:
         a list of the sampled frames if output_patt is None, and None otherwise
     '''
+    if not fast:
+        if output_patt:
+            # Sample frames to disk via VideoProcessor
+            p = VideoProcessor(
+                video_path, frames=frames, out_images_path=output_patt)
+            with p:
+                for img in p:
+                    p.write(img)
+            return None
+
+        # Sample frames in memory via FFmpegVideoReader
+        with FFmpegVideoReader(video_path, frames=frames) as r:
+            return [img for img in r]
+
+    #
+    # In "fast mode", we use ffmpeg's native  `-vf select` option to sample
+    # the requested frames
+    #
+
     ext = os.path.splitext(output_patt)[1] if output_patt else ".png"
 
     with etau.TempDir() as d:
