@@ -1,0 +1,53 @@
+{
+    "info": {
+        "name": "visualize_labels",
+        "type": "eta.core.types.Module",
+        "version": "0.1.0",
+        "description": "A module for visualizing labeled objects in videos",
+        "exe": "visualize_labels.py"
+    },
+    "inputs": [
+        {
+            "name": "video_labels_path",
+            "type": "eta.core.types.VideoLabels",
+            "description": "A JSON file containing the video labels",
+            "required": false
+        },
+        {
+            "name": "objects_path",
+            "type": "eta.core.types.DetectedObjects",
+            "description": "A JSON file containing the detected objects",
+            "required": false
+        },
+        {
+            "name": "video_path",
+            "type": "eta.core.types.Video",
+            "description": "A video",
+            "required": false
+        }
+    ],
+    "outputs": [
+        {
+            "name": "output_path",
+            "type": "eta.core.types.VideoFile",
+            "description": "The labeled video",
+            "required": true
+        }
+    ],
+    "parameters": [
+        {
+            "name": "add_logo",
+            "type": "eta.core.types.Boolean",
+            "description": "whether to render a logo on the video",
+            "required": false,
+            "default": true
+        },
+        {
+            "name": "logo",
+            "type": "eta.core.types.Object",
+            "description": "a LogoConfig defining a logo to render on the video. If omitted, the default logo is used",
+            "required": false,
+            "default": null
+        }
+    ]
+}
