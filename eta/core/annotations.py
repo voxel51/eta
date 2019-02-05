@@ -29,6 +29,7 @@ from PIL import Image, ImageDraw, ImageFont
 import eta.constants as etac
 from eta.core.config import Config, Configurable
 import eta.core.image as etai
+import eta.core.logo as etal
 import eta.core.video as etav
 
 
@@ -95,6 +96,7 @@ class ManualColormap(Colormap):
         Args:
             config: a ManualColormapConfig instance
         '''
+        self.validate(config)
         self.config = config
 
     @property
@@ -124,6 +126,7 @@ class ShuffledHLSColormap(Colormap):
         Args:
             config: a ShuffledHLSColormapConfig instance
         '''
+        self.validate(config)
         self.config = config
         self._colors = self._generate_colors(self.config.num_colors)
 
@@ -151,22 +154,28 @@ _DEFAULT_ANNOTATION_PAD = (2, 2)
 _DEFAULT_ANNOTATION_LINEWIDTH = 2
 _DEFAULT_COLORMAP = Colormap.load_default()
 _DEFAULT_FONT = ImageFont.truetype(etac.DEFAULT_FONT_PATH, 16)
+_DEFAULT_LOGO = etal.Logo.load_default()
 
 
 def annotate_video(
-        input_path, video_labels, output_path, colormap=None, font=None,
-        alpha=None, text_color=None, pad=None, linewidth=None):
+        input_path, video_labels, output_path, add_logo=True, logo=None,
+        colormap=None, font=None, alpha=None, text_color=None, pad=None,
+        linewidth=None):
     '''Annotates the video with the given video labels.
 
     Args:
         input_path: the path to the video to annotate
-        video_labels: a VideoLabels instance describing the content to
-            annotate
+        video_labels: an `eta.core.video.VideoLabels` instance describing the
+            content to annotate
         output_path: the path to write the output video
-        colormap: an optional Colormap to use. If not provided, the default
-            colormap is used
-        font: an optional ImageFont to use. If not provided, the default font
-            is used
+        add_logo: whether to add a logo to the output video. By default, this
+            is True
+        logo: an `eta.core.logo.Logo` to render on the video. If omitted, the
+            default logo is used
+        colormap: an optional `eta.core.annotations.Colormap` to use. If not
+            provided, the default colormap is used
+        font: an optional `PIL.ImageFont` to use. If not provided, the default
+            font is used
         alpha: an optional transparency to use for the annotation
             boxes/backgrounds
         text_color: an optional text color to use
@@ -174,6 +183,8 @@ def annotate_video(
         linewidth: an optional bounding box linewdith to use
     '''
     # Parse args
+    if add_logo and logo is None:
+        logo = _DEFAULT_LOGO
     if not colormap:
         colormap = _DEFAULT_COLORMAP
     if not font:
@@ -189,28 +200,37 @@ def annotate_video(
 
     # Annotate video
     with etav.VideoProcessor(input_path, out_video_path=output_path) as p:
+        # Render logo for video, if necessary
+        if add_logo:
+            logo.render_for(frame_size=p.output_frame_size)
+
         for img in p:
             logger.debug("Annotating frame %d", p.frame_number)
             frame_labels = video_labels[p.frame_number]
             img_anno = annotate_image(
-                img, frame_labels, colormap=colormap, font=font, alpha=alpha,
+                img, frame_labels, add_logo=add_logo, logo=logo,
+                colormap=colormap, font=font, alpha=alpha,
                 text_color=text_color, pad=pad, linewidth=linewidth)
             p.write(img_anno)
 
 
 def annotate_image(
-        img, frame_labels, colormap=None, font=None, alpha=None,
-        text_color=None, pad=None, linewidth=None):
+        img, frame_labels, add_logo=True, logo=None, colormap=None, font=None,
+        alpha=None, text_color=None, pad=None, linewidth=None):
     '''Annotates the image with the given frame labels.
 
     Args:
         img: the image to annotate
-        frame_labels: a VideoFrameLabels instance describing the content to
-            annotate
-        colormap: an optional Colormap to use. If not provided, the default
-            colormap is used
-        font: an optional ImageFont to use. If not provided, the default font
-            is used
+        frame_labels: an `eta.core.video.VideoFrameLabels` instance describing
+            the content to annotate
+        add_logo: whether to add a logo to the annotated image. By default,
+            this is True
+        logo: an `eta.core.Logo` to render on the annotated image. If omitted,
+            the default logo is used
+        colormap: an optional `eta.core.annotations.Colormap` to use. If not
+            provided, the default colormap is used
+        font: an optional `PIL.ImageFont` to use. If not provided, the default
+            font is used
         alpha: an optional transparency to use for the annotation
             boxes/backgrounds
         text_color: an optional text color to use
@@ -221,6 +241,9 @@ def annotate_image(
         the annotated image
     '''
     # Parse args
+    if add_logo and logo is None:
+        logo = _DEFAULT_LOGO
+        logo.render_for(img=img)
     if not colormap:
         colormap = _DEFAULT_COLORMAP
     if not font:
@@ -241,6 +264,10 @@ def annotate_image(
             img, obj, colormap, font, alpha, text_color, pad, linewidth)
 
     # @todo support frame attributes
+
+    # Add logo
+    if add_logo:
+        img = logo.apply(img)
 
     return img
 
