@@ -100,6 +100,20 @@ def has_gpu():
         return False
 
 
+def fill_eta_pattern(string):
+    '''Fills the {{eta}} patterns, if any, in the given string with the
+    full path to the ETA root directory.
+    '''
+    return string.replace("{{eta}}", etac.ETA_DIR)
+
+
+def fill_resources_pattern(string):
+    '''Fills the {{resources}} patterns, if any, in the given string with the
+    full path to the ETA resources directory.
+    '''
+    return string.replace("{{resources}}", etac.RESOURCES_DIR)
+
+
 def get_class_name(cls_or_obj):
     '''Returns the fully-qualified class name for the given input, which can
     be a class or class instance.
