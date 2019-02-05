@@ -36,6 +36,8 @@ CONFIG_JSON_PATH = os.path.join(BASE_DIR, "config.json")
 VERSION_JSON_PATH = os.path.join(ETA_DIR, "version.json")
 ASCII_ART_PATH = os.path.join(RESOURCES_DIR, "eta-ascii.txt")
 DEFAULT_FONT_PATH = os.path.join(RESOURCES_DIR, "lato-regular.ttf")
+DEFAULT_LOGO_CONFIG_PATH = os.path.join(
+    RESOURCES_DIR, "default-logo-config.json")
 
 
 # Version
