@@ -563,14 +563,14 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
         '''
         self._do_download(file_id, file_obj)
 
-    def delete(self, file_id):
-        '''Deletes the file (or folder) from Google Drive.
+    def delete(self, file_or_folder_id):
+        '''Deletes the file or folder from Google Drive.
 
         Args:
-            file_id: the ID of the file (or folder) to delete
+            file_or_folder_id: the ID of the file or folder to delete
         '''
         self._service.files().delete(
-            fileId=file_id, supportsTeamDrives=True).execute()
+            fileId=file_or_folder_id, supportsTeamDrives=True).execute()
 
     def get_team_drive_id(self, name):
         '''Get the ID of the Team Drive with the given name.
