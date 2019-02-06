@@ -763,6 +763,48 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
                     folder_id)
         return file_ids
 
+    def delete_duplicate_files_in_folder(self, folder_id, skip_failures=False):
+        '''Deletes any duplicate files (files with the same filename) in the
+        given Google Drive folder.
+
+        Args:
+            folder_id: the ID of the Drive folder to process
+            skip_failures: whether to gracefully skip deletion errors. By
+                default, this is False
+
+        Returns:
+            num_deleted: the number of deleted files
+
+        Raises:
+            GoogleDriveStorageClientError if a deletion error occured and
+                failure skipping is turned off
+        '''
+        files = self.list_files_in_folder(folder_id)
+        existing_files = set()
+        num_deleted = 0
+        for f in files:
+            filename = f["name"]
+            if filename not in existing_files:
+                existing_files.add(filename)
+                continue
+
+            # Delete duplicate file
+            try:
+                with etau.Timer() as t:
+                    self.delete(f["id"])
+                    num_deleted += 1
+                logger.info(
+                    "File '%s' deleted from '%s' (%s)", filename, folder_id,
+                    t.elapsed_time_str)
+            except Exception as e:
+                if not skip_failures:
+                    raise GoogleDriveStorageClientError(e)
+                logger.info(
+                    "Failed to delete file '%s' in '%s'; skipping",
+                    filename, folder_id)
+
+        return num_deleted
+
     def _do_upload(self, file_obj, folder_id, filename, content_type):
         # Handle any leading directories
         chunks = filename.rsplit("/", 1)
