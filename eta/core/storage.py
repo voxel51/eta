@@ -834,7 +834,7 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
         done = False
         while not done:
             status, done = downloader.next_chunk()
-            logger.info("Progress = %d%%" % int(status.progress() * 100))
+            logger.info("Progress = %d%%", int(status.progress() * 100))
 
     def _create_folder_if_necessary(self, new_folder, parent_folder_id):
         folder_id = None
