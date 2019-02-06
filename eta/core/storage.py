@@ -705,6 +705,64 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
             if not page_token:
                 return files
 
+    def upload_files_in_folder(
+            self, local_dir, folder_id, skip_failures=False,
+            skip_existing_files=False):
+        '''Uploads the files in the given folder to Google Drive.
+
+        Note that this function uses `eta.core.utils.list_files` to determine
+        which files to upload. This means that subdirectories and hidden files
+        are skipped.
+
+        Args:
+            local_dir: the directory of files to upload
+            folder_id: the ID of the Drive folder to upload the files into
+            skip_failures: whether to gracefully skip upload errors. By
+                default, this is False
+            skip_existing_files: whether to skip files whose names match
+                existing files in the Google Drive folder. By default, this is
+                False
+
+        Returns:
+            a dict mapping filenames to IDs of the uploaded files
+
+        Raises:
+            GoogleDriveStorageClientError if an upload error occured and
+                failure skipping is turned off
+        '''
+        # @todo retry failures? exponential backoff? rate limit requests?
+        files = etau.list_files(local_dir)
+
+        # Skip existing files, if requested
+        if skip_existing_files:
+            existing_files = set(
+                f["name"] for f in self.list_files_in_folder(folder_id))
+            _files = [f for f in files if f not in existing_files]
+            num_skipped = len(files) - len(_files)
+            if num_skipped > 0:
+                logger.info("Skipping %d existing files", num_skipped)
+                files = _files
+
+        num_files = len(files)
+        logger.info("Uploading %d files to '%s'", num_files, folder_id)
+        file_ids = {}
+        for idx, filename in enumerate(files, 1):
+            try:
+                local_path = os.path.join(local_dir, filename)
+                with etau.Timer() as t:
+                    file_id = self.upload(local_path, folder_id)
+                    file_ids[filename] = file_id
+                logger.info(
+                    "File '%s' uploaded to '%s' (%s) (%d/%d)", local_path,
+                    folder_id, t.elapsed_time_str, idx, num_files)
+            except Exception as e:
+                if not skip_failures:
+                    raise GoogleDriveStorageClientError(e)
+                logger.info(
+                    "Failed to upload file '%s' to '%s'; skipping", local_path,
+                    folder_id)
+        return file_ids
+
     def _do_upload(self, file_obj, folder_id, filename, content_type):
         # Handle any leading directories
         chunks = filename.rsplit("/", 1)
