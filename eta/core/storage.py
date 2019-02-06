@@ -763,6 +763,62 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
                     folder_id)
         return file_ids
 
+    def download_files_in_folder(
+            self, folder_id, local_dir, skip_failures=False,
+            skip_existing_files=False):
+        '''Downloads the files in the Google Drive folder to the given local
+        directory.
+
+        Args:
+            folder_id: the ID of the Drive folder to download files from
+            local_dir: the directory to download the files into
+            skip_failures: whether to gracefully skip download errors. By
+                default, this is False
+            skip_existing_files: whether to skip files whose names match
+                existing files in the local directory. By default, this is
+                False
+
+        Returns:
+            a list of filenames of the downloaded files
+
+        Raises:
+            GoogleDriveStorageClientError if a download error occured and
+                failure skipping is turned off
+        '''
+        # @todo retry failures? exponential backoff? rate limit requests?
+        files = self.list_files_in_folder(folder_id)
+
+        # Skip existing files, if requested
+        if skip_existing_files:
+            existing_files = set(etau.list_files(local_dir))
+            _files = [f for f in files if f["name"] not in existing_files]
+            num_skipped = len(files) - len(_files)
+            if num_skipped > 0:
+                logger.info("Skipping %d existing files", num_skipped)
+                files = _files
+
+        num_files = len(files)
+        logger.info("Downloading %d files to '%s'", num_files, local_dir)
+        filenames = []
+        for idx, f in enumerate(files, 1):
+            filename = f["name"]
+            file_id = f["id"]
+            try:
+                local_path = os.path.join(local_dir, filename)
+                with etau.Timer() as t:
+                    self.download(file_id, local_path)
+                    filenames.append(filename)
+                logger.info(
+                    "File '%s' downloaded to '%s' (%s) (%d/%d)", filename,
+                    local_path, t.elapsed_time_str, idx, num_files)
+            except Exception as e:
+                if not skip_failures:
+                    raise GoogleDriveStorageClientError(e)
+                logger.info(
+                    "Failed to download file '%s' to '%s'; skipping", file_id,
+                    local_path)
+        return filenames
+
     def delete_duplicate_files_in_folder(self, folder_id, skip_failures=False):
         '''Deletes any duplicate files (files with the same filename) in the
         given Google Drive folder.
