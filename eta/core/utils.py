@@ -33,7 +33,6 @@ import os
 import random
 import re
 import shutil
-import six
 import string
 import subprocess
 import sys
