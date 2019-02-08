@@ -382,6 +382,34 @@ def to_human_time_str(num_seconds, decimals=1):
     return num_str
 
 
+def read_file(inpath, binary=False):
+    '''Reads the file from disk.
+
+    Args:
+        inpath: the path to the file to read
+        binary: whether to read the file in binary mode. By default, this is
+            False (text mode)
+
+    Returns:
+        the contents of the file as a string
+    '''
+    mode = "rb" if binary else "rt"
+    with open(inpath, mode) as f:
+        return f.read()
+
+
+def write_file(str_or_bytes, outpath):
+    '''Writes the given string/bytes to disk.
+
+    Args:
+        str_or_bytes: the string or bytes to write to disk
+        outpath: the desired output filepath
+    '''
+    ensure_basedir(outpath)
+    with open(outpath, "wb") as f:
+        f.write(str_or_bytes)
+
+
 def copy_file(inpath, outpath, check_ext=False):
     '''Copies the input file to the output location.
 
