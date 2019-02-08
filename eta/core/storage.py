@@ -563,14 +563,14 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
         '''
         self._do_download(file_id, file_obj)
 
-    def delete(self, file_id):
-        '''Deletes the file (or folder) from Google Drive.
+    def delete(self, file_or_folder_id):
+        '''Deletes the file or folder from Google Drive.
 
         Args:
-            file_id: the ID of the file (or folder) to delete
+            file_or_folder_id: the ID of the file or folder to delete
         '''
         self._service.files().delete(
-            fileId=file_id, supportsTeamDrives=True).execute()
+            fileId=file_or_folder_id, supportsTeamDrives=True).execute()
 
     def get_team_drive_id(self, name):
         '''Get the ID of the Team Drive with the given name.
@@ -705,6 +705,162 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
             if not page_token:
                 return files
 
+    def upload_files_in_folder(
+            self, local_dir, folder_id, skip_failures=False,
+            skip_existing_files=False):
+        '''Uploads the files in the given folder to Google Drive.
+
+        Note that this function uses `eta.core.utils.list_files` to determine
+        which files to upload. This means that subdirectories and hidden files
+        are skipped.
+
+        Args:
+            local_dir: the directory of files to upload
+            folder_id: the ID of the Drive folder to upload the files into
+            skip_failures: whether to gracefully skip upload errors. By
+                default, this is False
+            skip_existing_files: whether to skip files whose names match
+                existing files in the Google Drive folder. By default, this is
+                False
+
+        Returns:
+            a dict mapping filenames to IDs of the uploaded files
+
+        Raises:
+            GoogleDriveStorageClientError if an upload error occured and
+                failure skipping is turned off
+        '''
+        # @todo retry failures? exponential backoff? rate limit requests?
+        files = etau.list_files(local_dir)
+
+        # Skip existing files, if requested
+        if skip_existing_files:
+            existing_files = set(
+                f["name"] for f in self.list_files_in_folder(folder_id))
+            _files = [f for f in files if f not in existing_files]
+            num_skipped = len(files) - len(_files)
+            if num_skipped > 0:
+                logger.info("Skipping %d existing files", num_skipped)
+                files = _files
+
+        num_files = len(files)
+        logger.info("Uploading %d files to '%s'", num_files, folder_id)
+        file_ids = {}
+        for idx, filename in enumerate(files, 1):
+            try:
+                local_path = os.path.join(local_dir, filename)
+                with etau.Timer() as t:
+                    file_id = self.upload(local_path, folder_id)
+                    file_ids[filename] = file_id
+                logger.info(
+                    "File '%s' uploaded to '%s' (%s) (%d/%d)", local_path,
+                    folder_id, t.elapsed_time_str, idx, num_files)
+            except Exception as e:
+                if not skip_failures:
+                    raise GoogleDriveStorageClientError(e)
+                logger.info(
+                    "Failed to upload file '%s' to '%s'; skipping", local_path,
+                    folder_id)
+        return file_ids
+
+    def download_files_in_folder(
+            self, folder_id, local_dir, skip_failures=False,
+            skip_existing_files=False):
+        '''Downloads the files in the Google Drive folder to the given local
+        directory.
+
+        Args:
+            folder_id: the ID of the Drive folder to download files from
+            local_dir: the directory to download the files into
+            skip_failures: whether to gracefully skip download errors. By
+                default, this is False
+            skip_existing_files: whether to skip files whose names match
+                existing files in the local directory. By default, this is
+                False
+
+        Returns:
+            a list of filenames of the downloaded files
+
+        Raises:
+            GoogleDriveStorageClientError if a download error occured and
+                failure skipping is turned off
+        '''
+        # @todo retry failures? exponential backoff? rate limit requests?
+        files = self.list_files_in_folder(folder_id)
+
+        # Skip existing files, if requested
+        if skip_existing_files:
+            existing_files = set(etau.list_files(local_dir))
+            _files = [f for f in files if f["name"] not in existing_files]
+            num_skipped = len(files) - len(_files)
+            if num_skipped > 0:
+                logger.info("Skipping %d existing files", num_skipped)
+                files = _files
+
+        num_files = len(files)
+        logger.info("Downloading %d files to '%s'", num_files, local_dir)
+        filenames = []
+        for idx, f in enumerate(files, 1):
+            filename = f["name"]
+            file_id = f["id"]
+            try:
+                local_path = os.path.join(local_dir, filename)
+                with etau.Timer() as t:
+                    self.download(file_id, local_path)
+                    filenames.append(filename)
+                logger.info(
+                    "File '%s' downloaded to '%s' (%s) (%d/%d)", filename,
+                    local_path, t.elapsed_time_str, idx, num_files)
+            except Exception as e:
+                if not skip_failures:
+                    raise GoogleDriveStorageClientError(e)
+                logger.info(
+                    "Failed to download file '%s' to '%s'; skipping", file_id,
+                    local_path)
+        return filenames
+
+    def delete_duplicate_files_in_folder(self, folder_id, skip_failures=False):
+        '''Deletes any duplicate files (files with the same filename) in the
+        given Google Drive folder.
+
+        Args:
+            folder_id: the ID of the Drive folder to process
+            skip_failures: whether to gracefully skip deletion errors. By
+                default, this is False
+
+        Returns:
+            num_deleted: the number of deleted files
+
+        Raises:
+            GoogleDriveStorageClientError if a deletion error occured and
+                failure skipping is turned off
+        '''
+        files = self.list_files_in_folder(folder_id)
+        existing_files = set()
+        num_deleted = 0
+        for f in files:
+            filename = f["name"]
+            if filename not in existing_files:
+                existing_files.add(filename)
+                continue
+
+            # Delete duplicate file
+            try:
+                with etau.Timer() as t:
+                    self.delete(f["id"])
+                    num_deleted += 1
+                logger.info(
+                    "File '%s' deleted from '%s' (%s)", filename, folder_id,
+                    t.elapsed_time_str)
+            except Exception as e:
+                if not skip_failures:
+                    raise GoogleDriveStorageClientError(e)
+                logger.info(
+                    "Failed to delete file '%s' in '%s'; skipping",
+                    filename, folder_id)
+
+        return num_deleted
+
     def _do_upload(self, file_obj, folder_id, filename, content_type):
         # Handle any leading directories
         chunks = filename.rsplit("/", 1)
@@ -734,7 +890,6 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
         done = False
         while not done:
             status, done = downloader.next_chunk()
-            logger.info("Progress = %d%%" % int(status.progress() * 100))
 
     def _create_folder_if_necessary(self, new_folder, parent_folder_id):
         folder_id = None

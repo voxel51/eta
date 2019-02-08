@@ -28,11 +28,11 @@ import hashlib
 import inspect
 import itertools as it
 import logging
+import math
 import os
 import random
 import re
 import shutil
-import six
 import string
 import subprocess
 import sys
@@ -382,6 +382,34 @@ def to_human_time_str(num_seconds, decimals=1):
     return num_str
 
 
+def read_file(inpath, binary=False):
+    '''Reads the file from disk.
+
+    Args:
+        inpath: the path to the file to read
+        binary: whether to read the file in binary mode. By default, this is
+            False (text mode)
+
+    Returns:
+        the contents of the file as a string
+    '''
+    mode = "rb" if binary else "rt"
+    with open(inpath, mode) as f:
+        return f.read()
+
+
+def write_file(str_or_bytes, outpath):
+    '''Writes the given string/bytes to disk.
+
+    Args:
+        str_or_bytes: the string or bytes to write to disk
+        outpath: the desired output filepath
+    '''
+    ensure_basedir(outpath)
+    with open(outpath, "wb") as f:
+        f.write(str_or_bytes)
+
+
 def copy_file(inpath, outpath, check_ext=False):
     '''Copies the input file to the output location.
 
@@ -450,6 +478,41 @@ def move_file(inpath, outpath, check_ext=False):
         assert_same_extensions(inpath, outpath)
     ensure_basedir(outpath)
     shutil.move(inpath, outpath)
+
+
+def partition_files(indir, outdir=None, num_parts=None, dir_size=None):
+    '''Partitions the files in the input directory into the specified number
+    of (equal-sized) subdirectories.
+
+    Exactly one of `num_parts` and `dir_size` must be specified.
+
+    Args:
+        indir: the input directory of files to partition
+        outdir: the output directory in which to create the subdirectories and
+            move the files. By default, the input directory is manipulated
+            in-place
+        num_parts: the number of subdirectories to create. If omitted,
+            `dir_size` must be provided
+        dir_size: the number of files per subdirectory. If omitted,
+            `num_parts` must be provided
+    '''
+    if not outdir:
+        outdir = indir
+
+    files = list_files(indir)
+
+    num_files = len(files)
+    if num_parts:
+        dir_size = int(math.ceil(num_files / num_parts))
+    elif dir_size:
+        num_parts = int(math.ceil(num_files / dir_size))
+
+    part_patt = "part-%%0%dd" % int(math.ceil(math.log10(num_parts)))
+    for idx, f in enumerate(files):
+        inpath = os.path.join(indir, f)
+        chunk = 1 + idx // dir_size
+        outpath = os.path.join(outdir, part_patt % chunk, f)
+        move_file(inpath, outpath)
 
 
 def copy_sequence(inpatt, outpatt, check_ext=False):
