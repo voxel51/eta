@@ -154,10 +154,6 @@ else
 fi
 
 
-# OpenCV
-CRITICAL pip install --upgrade opencv-python
-
-
 # ffmpeg
 INFO command -v ffmpeg
 if [ $? -eq 0 ]; then
