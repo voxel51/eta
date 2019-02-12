@@ -147,16 +147,17 @@ class BoundingBox(Serializable):
         '''
         return self.get_intersection(bbox) == bbox
 
-    def overlap_ratio(self, bbox):
-        '''Computes the overlap ratio with the given bounding box, defined as
-        the area of the intersection divided by the area of the union of the
-        two bounding boxes.
+    def compute_iou(self, bbox):
+        '''Computes the IoU (intersection over union) of the bounding boxes.
+
+        The IoU is defined as the area of the intersection of the boxes divided
+        by the area of their union.
 
         Args:
             bbox: a BoundingBox
 
         Returns:
-            the overlap ratio, in [0, 1]
+            the IoU, in [0, 1]
         '''
         inter_area = self.get_intersection(bbox).area()
         union_area = self.area() + bbox.area() - inter_area
