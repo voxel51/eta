@@ -40,9 +40,9 @@ import threading
 
 import cv2
 import numpy as np
-import scipy.interpolate as spi
 
 from eta.core.data import AttributeContainer, AttributeContainerSchema
+from eta.core.gps import GPSWaypoints
 import eta.core.image as etai
 from eta.core.objects import DetectedObjectContainer
 from eta.core.serial import Serializable
@@ -176,60 +176,26 @@ def world_time_to_frame_number(
     return timestamp_to_frame_number(timestamp, duration, total_frame_count)
 
 
-class GPSWaypoint(Serializable):
-    '''Class encapsulating a GPS waypoint in a video.
-
-    Attributes:
-        latitude: the latitude, in degrees
-        longitude: the longitude, in degrees
-        frame_number: the associated frame number in the video
-    '''
-
-    def __init__(self, latitude, longitude, frame_number):
-        '''Constructs a GPSWaypoint instance.
-
-        Args:
-            latitude: the latitude, in degrees
-            longitude: the longitude, in degrees
-            frame_number: the associated frame number in the video
-        '''
-        self.latitude = latitude
-        self.longitude = longitude
-        self.frame_number = frame_number
-
-    def attributes(self):
-        '''Returns the list of class attributes that will be serialized.'''
-        return ["latitude", "longitude", "frame_number"]
-
-    @classmethod
-    def from_dict(cls, d):
-        '''Constructs a GPSWaypoint from a JSON dictionary.'''
-        return cls(
-            latitude=d["latitude"],
-            longitude=d["longitude"],
-            frame_number=d["frame_number"],
-        )
-
-
 class VideoMetadata(Serializable):
     '''Class encapsulating metadata about a video.
 
     Attributes:
-        start_time: a datetime describing
+        start_time: a datetime describing the start (world) time of the video
         frame_size: the [width, height] of the video frames
         frame_rate: the frame rate of the video
         total_frame_count: the total number of frames in the video
         duration: the duration of the video, in seconds
         size_bytes: the size of the video file on disk, in bytes
         encoding_str: the encoding string for the video
-        gps_waypoints: an optional list of GPSWaypoints for the video
+        gps_waypoints: a GPSWaypoints instance describing the GPS coordinates
+            for the video
     '''
 
     def __init__(
             self, start_time=None, frame_size=None, frame_rate=None,
             total_frame_count=None, duration=None, size_bytes=None,
             encoding_str=None, gps_waypoints=None):
-        '''Constructs a VideoMetadata instance.
+        '''Constructs a VideoMetadata instance. All args are optional.
 
         Args:
             start_time: a datetime describing
@@ -239,7 +205,8 @@ class VideoMetadata(Serializable):
             duration: the duration of the video, in seconds
             size_bytes: the size of the video file on disk, in bytes
             encoding_str: the encoding string for the video
-            gps_waypoints: a list of GPSWaypoints
+            gps_waypoints: a GPSWaypoints instance describing the GPS
+                coordinates for the video
         '''
         self.start_time = start_time
         self.frame_size = frame_size
@@ -250,21 +217,10 @@ class VideoMetadata(Serializable):
         self.encoding_str = encoding_str
         self.gps_waypoints = gps_waypoints
 
-        self._flat = None
-        self._flon = None
-        self._init_gps()
-
     @property
     def has_gps(self):
         '''Returns True/False if this object has GPS waypoints.'''
         return self.gps_waypoints is not None
-
-    def add_gps_waypoints(self, waypoints):
-        '''Adds the list of GPSWaypoints to this object.'''
-        if not self.has_gps:
-            self.gps_waypoints = []
-        self.gps_waypoints.extend(waypoints)
-        self._init_gps()
 
     def get_timestamp(self, frame_number=None, world_time=None):
         '''Gets the timestamp for the given point in the video.
@@ -328,7 +284,7 @@ class VideoMetadata(Serializable):
             timestamp = self.get_timestamp(world_time=world_time)
         if timestamp is not None:
             frame_number = self.get_frame_number(timestamp=timestamp)
-        return self._flat(frame_number), self._flon(frame_number)
+        return self.gps_waypoints.get_location(frame_number)
 
     def attributes(self):
         '''Returns the list of class attributes that will be serialized.'''
@@ -348,8 +304,8 @@ class VideoMetadata(Serializable):
             filepath: the path to the video on disk
             start_time: an optional datetime specifying the start time of the
                 video
-            gps_waypoints: an optional list of GPSWaypoint instances describing
-                the GPS coordinates of the video
+            gps_waypoints: an optional GPSWaypoints instance describing the
+                GPS coordinates of the video
 
         Returns:
             a VideoMetadata instance
@@ -375,7 +331,7 @@ class VideoMetadata(Serializable):
 
         gps_waypoints = d.get("gps_waypoints", None)
         if gps_waypoints is not None:
-            gps_waypoints = [GPSWaypoint.from_dict(g) for g in gps_waypoints]
+            gps_waypoints = etag.GPSWaypoints.from_dict(gps_waypoints)
 
         return cls(
             start_time=start_time,
@@ -387,20 +343,6 @@ class VideoMetadata(Serializable):
             encoding_str=d.get("encoding_str", None),
             gps_waypoints=gps_waypoints,
         )
-
-    def _init_gps(self):
-        if not self.has_gps:
-            return
-        frames = [loc.frame_number for loc in self.gps_waypoints]
-        lats = [loc.latitude for loc in self.gps_waypoints]
-        lons = [loc.longitude for loc in self.gps_waypoints]
-        self._flat = self._make_interp(frames, lats)
-        self._flon = self._make_interp(frames, lons)
-
-    @staticmethod
-    def _make_interp(x, y):
-        return spi.interp1d(
-            x, y, kind="nearest", bounds_error=False, fill_value="extrapolate")
 
 
 class VideoFrameLabels(Serializable):
