@@ -22,8 +22,104 @@ from builtins import *
 import datetime
 import math
 
+import scipy.interpolate as spi
+
+from eta.core.serial import Serializable
+
 
 EARTH_RADIUS_MILES = 3959
+
+
+class GPSWaypoints(Serializable):
+    '''Class encapsulating GPS waypoints for a video.
+
+    Attributes:
+        latitude: the latitude, in degrees
+        longitude: the longitude, in degrees
+        frame_number: the associated frame number in the video
+    '''
+
+    def __init__(self, points=None):
+        '''Creates a GPSWaypoints instance.
+
+        Args:
+            points: a list of GPSWaypoint instances
+        '''
+        self.points = points or []
+        self._flat = None
+        self._flon = None
+        self._init_gps()
+
+    def get_location(self, frame_number):
+        '''Gets the (lat, lon) coordinates at the given frame number in the
+        video.
+
+        Nearest neighbors is used to interpolate between waypoints, if
+        necessary.
+
+        Args:
+            frame_number: the frame number of interest
+
+        Returns:
+            the (lat, lon) at the given frame in the video
+        '''
+        return self._flat(frame_number), self._flon(frame_number)
+
+    def _init_gps(self):
+        frames = [loc.frame_number for loc in self.points]
+        lats = [loc.latitude for loc in self.points]
+        lons = [loc.longitude for loc in self.points]
+        self._flat = self._make_interp(frames, lats)
+        self._flon = self._make_interp(frames, lons)
+
+    @staticmethod
+    def _make_interp(x, y):
+        return spi.interp1d(
+            x, y, kind="nearest", bounds_error=False, fill_value="extrapolate")
+
+    @classmethod
+    def from_dict(cls, d):
+        '''Constructs a GPSWaypoints from a JSON dictionary.'''
+        points = d.get("points", None)
+        if points is not None:
+            points = [GPSWaypoint.from_dict(p) for p in points]
+
+        return cls(points=points)
+
+
+class GPSWaypoint(Serializable):
+    '''Class encapsulating a GPS waypoint in a video.
+
+    Attributes:
+        latitude: the latitude, in degrees
+        longitude: the longitude, in degrees
+        frame_number: the associated frame number in the video
+    '''
+
+    def __init__(self, latitude, longitude, frame_number):
+        '''Constructs a GPSWaypoint instance.
+
+        Args:
+            latitude: the latitude, in degrees
+            longitude: the longitude, in degrees
+            frame_number: the associated frame number in the video
+        '''
+        self.latitude = latitude
+        self.longitude = longitude
+        self.frame_number = frame_number
+
+    def attributes(self):
+        '''Returns the list of class attributes that will be serialized.'''
+        return ["latitude", "longitude", "frame_number"]
+
+    @classmethod
+    def from_dict(cls, d):
+        '''Constructs a GPSWaypoint from a JSON dictionary.'''
+        return cls(
+            latitude=d["latitude"],
+            longitude=d["longitude"],
+            frame_number=d["frame_number"],
+        )
 
 
 def lat_lon_distance(lat1, lon1, lat2, lon2):
