@@ -42,7 +42,7 @@ import cv2
 import numpy as np
 
 from eta.core.data import AttributeContainer, AttributeContainerSchema
-from eta.core.gps import GPSWaypoints
+import eta.core.gps as etag
 import eta.core.image as etai
 from eta.core.objects import DetectedObjectContainer
 from eta.core.serial import Serializable
