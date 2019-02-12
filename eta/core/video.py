@@ -330,8 +330,13 @@ class VideoMetadata(Serializable):
             start_time = dateutil.parser.parse(start_time)
 
         gps_waypoints = d.get("gps_waypoints", None)
-        if gps_waypoints is not None:
+        if isinstance(gps_waypoints, dict):
             gps_waypoints = etag.GPSWaypoints.from_dict(gps_waypoints)
+        elif isinstance(gps_waypoints, list):
+            # this supports a list of GPSWaypoint instances rather than a
+            # serialized GPSWaypoints instance. for backwards compatability
+            points = [etag.GPSWaypoint.from_dict(p) for p in gps_waypoints]
+            gps_waypoints = etag.GPSWaypoints(points=points)
 
         return cls(
             start_time=start_time,
