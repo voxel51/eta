@@ -24,17 +24,20 @@ import math
 
 
 EARTH_RADIUS_MILES = 3959
+EARTH_RADIUS_METERS = 6378000
 
 
-def lat_lon_distance(lat1, lon1, lat2, lon2):
-    '''Computes the distance, in miles, between two points on earth.
+def lat_lon_distance(lat1, lon1, lat2, lon2, in_miles=False):
+    '''Computes the distance between two points on earth.
 
     Args:
         (lat1, lon1): latitudue and longitude of the first point, in degrees
         (lat2, lon2): latitudue and longitude of the second point, in degrees
+        in_miles: whether to return the distance in miles (True) or meters
+            (False). By default, this is False
 
     Returns:
-        the distance (arc length) between the two points, in miles
+        the distance (arc length) between the two points
     '''
     dlat = degrees_to_radians(lat2 - lat1)
     dlon = degrees_to_radians(lon2 - lon1)
@@ -44,7 +47,7 @@ def lat_lon_distance(lat1, lon1, lat2, lon2):
         math.sin(dlon / 2) * math.sin(dlon / 2) *
         math.cos(lat1r) * math.cos(lat2r))
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-    return EARTH_RADIUS_MILES * c
+    return EARTH_RADIUS_MILES * c if in_miles else EARTH_RADIUS_METERS * c
 
 
 def degrees_to_radians(deg):
