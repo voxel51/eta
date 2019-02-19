@@ -19,6 +19,9 @@ that cannot be split
 - Leave two blank lines between top-level definitions, and one blank line
 between class method definitions
 
+- Unlike the official Google style, we use single quotes `'''` for docstrings,
+    and we prefer double quotes `"` for regular strings
+
 - Imports should always be on separate lines at the top of the file, just after
 any module comments and doc strings. Imports should be grouped by type with
 one space between each group, with the groups sorted in order of most generic
