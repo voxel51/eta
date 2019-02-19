@@ -605,6 +605,18 @@ class JSONFileSequence(FileSequence, ConcreteData):
         )
 
 
+class VideoMetadata(JSONFile):
+    '''Metadata about a video.
+
+    This type is implemented in ETA by the `eta.core.video.VideoMetadata`
+    class.
+
+    Examples:
+        /path/to/video-metadata.json
+    '''
+    pass
+
+
 class VideoStreamInfo(JSONFile):
     '''Stream info about a video.
 
