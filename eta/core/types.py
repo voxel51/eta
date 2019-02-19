@@ -436,7 +436,7 @@ class VideoFile(Video, File, ConcreteData):
 
     @staticmethod
     def get_metadata(path):
-        return etav.VideoStreamInfo.build_for(path)
+        return etav.VideoMetadata.build_for(path)
 
 
 class ImageSequence(Video, FileSequence, ConcreteData):
@@ -603,6 +603,18 @@ class JSONFileSequence(FileSequence, ConcreteData):
             FileSequence.is_valid_path(path) and
             etau.has_extension(path, ".json")
         )
+
+
+class VideoMetadata(JSONFile):
+    '''Metadata about a video.
+
+    This type is implemented in ETA by the `eta.core.video.VideoMetadata`
+    class.
+
+    Examples:
+        /path/to/video-metadata.json
+    '''
+    pass
 
 
 class VideoStreamInfo(JSONFile):
