@@ -436,7 +436,7 @@ class VideoFile(Video, File, ConcreteData):
 
     @staticmethod
     def get_metadata(path):
-        return etav.VideoStreamInfo.build_for(path)
+        return etav.VideoMetadata.build_for(path)
 
 
 class ImageSequence(Video, FileSequence, ConcreteData):
