@@ -612,7 +612,7 @@ class VideoMetadata(JSONFile):
     class.
 
     Examples:
-        /path/to/video-metadata.json
+        /path/to/video_metadata.json
     '''
     pass
 
@@ -624,7 +624,7 @@ class VideoStreamInfo(JSONFile):
     class.
 
     Examples:
-        /path/to/video-stream-info.json
+        /path/to/video_stream_info.json
     '''
     pass
 
