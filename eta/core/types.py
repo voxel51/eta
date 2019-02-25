@@ -652,14 +652,74 @@ class EventSeries(JSONFile):
     pass
 
 
-class VideoLabels(JSONFile):
-    '''A description of the labeled contents of a video.
+class Attribute(JSONFile):
+    '''Base class for attributes of entities in images or video.
 
-    This type is implemented in ETA by the `eta.core.video.VideoLabels`
+    This type is implemented in ETA by the `eta.core.data.Attribute` class.
+
+    Examples:
+        /path/to/attribute.json
+    '''
+    pass
+
+
+class CategoricalAttribute(JSONFile):
+    '''A categorical attribute of an entity in an image or video.
+
+    This type is implemented in ETA by the `eta.core.data.CategoricalAttribute`
     class.
 
     Examples:
-        /path/to/video_labels.json
+        /path/to/categorical_attribute.json
+    '''
+    pass
+
+
+class NumericAttribute(JSONFile):
+    '''A numeric attribute of an entity in an image or video.
+
+    This type is implemented in ETA by the `eta.core.data.NumericAttribute`
+    class.
+
+    Examples:
+        /path/to/numeric_attribute.json
+    '''
+    pass
+
+
+class BooleanAttribute(JSONFile):
+    '''A boolean attribute of an entity in an image or video.
+
+    This type is implemented in ETA by the `eta.core.data.BooleanAttribute`
+    class.
+
+    Examples:
+        /path/to/boolean_attribute.json
+    '''
+    pass
+
+
+class Attributes(JSONFile):
+    '''A list of attributes of an entity in an image or video. The list can
+    contain attributes with any subtype of Attribute.
+
+    This type is implemented in ETA by the `eta.core.data.AttributeContainer`
+    class.
+
+    Examples:
+        /path/to/attribute_container.json
+    '''
+    pass
+
+
+class BoundingBox(JSONFile):
+    '''A bounding box of an object in a frame.
+
+    This type is implemented in ETA by the `eta.core.geometry.BoundingBox`
+    class.
+
+    Examples:
+        /path/to/bounding_box.json
     '''
     pass
 
@@ -694,6 +754,18 @@ class DetectedObjectsSequence(JSONFileSequence):
 
     Examples:
         /path/to/detected_objects/%05d.json
+    '''
+    pass
+
+
+class VideoLabels(JSONFile):
+    '''A description of the labeled contents of a video.
+
+    This type is implemented in ETA by the `eta.core.video.VideoLabels`
+    class.
+
+    Examples:
+        /path/to/video_labels.json
     '''
     pass
 
