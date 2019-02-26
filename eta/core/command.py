@@ -160,17 +160,19 @@ class BuildCommand(Command):
                 builder.pipeline_config_path)
 
         if args.cleanup:
-            # Cleanup pipeline files
             logger.info("Cleaning up pipeline-generated files")
             builder.cleanup()
 
 
 class RunCommand(Command):
-    '''Command-line tool for running ETA pipelines.
+    '''Command-line tool for running ETA modules and pipelines.
 
     Examples:
         # Run the pipeline defined by a PipelineConfig JSON file
-        eta run '/path/to/pipeline.json'
+        eta run '/path/to/pipeline-config.json'
+
+        # Run the specified module with the given ModuleConfig JSON file
+        eta run --module <module-name> '/path/to/module-config.json'
 
         # Run the last built pipeline
         eta run --last
@@ -179,13 +181,21 @@ class RunCommand(Command):
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "config", nargs="?", help="path to a PipelineConfig file")
+            "config", nargs="?",
+            help="path to a PipelineConfig or ModuleConfig file")
+        parser.add_argument(
+            "-m", "--module", help="run the module with the given name")
         parser.add_argument(
             "-l", "--last", action="store_true",
             help="run the last built pipeline")
 
     @staticmethod
     def run(args):
+        if args.module:
+            logger.info("Running ETA module '%s'", args.module)
+            etamodu.run(args.module, args.config)
+            return
+
         if args.config:
             _run_pipeline(args.config)
 
