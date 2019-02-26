@@ -34,6 +34,25 @@ import eta.core.types as etat
 import eta.core.utils as etau
 
 
+def run(module_name, module_config_path):
+    '''Runs the specified module with the given ModuleConfig.
+
+    This is a convenience function for running modules programmatically. This
+    function is not used directly by pipelines when running modules, and, as
+    such, it does not support providing a PipelineConfig instance to use.
+
+    Args:
+        module_name: the name of the module
+        module_config_path: path to a ModuleConfig to run
+
+    Returns:
+        True/False whether the module completed successfully
+    '''
+    module_exe = find_exe(module_name)
+    args = ["python", module_exe, module_config_path]
+    return etau.call(args)
+
+
 def load_all_metadata():
     '''Loads all module metadata files.
 
