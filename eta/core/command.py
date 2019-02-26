@@ -114,7 +114,6 @@ class BuildCommand(Command):
 
     @staticmethod
     def run(args):
-        # Process args
         d = args.request or {
             "inputs": {},
             "outputs": {},
@@ -140,7 +139,6 @@ class BuildCommand(Command):
             d["logging_config"]["stdout_level"] = "DEBUG"
             d["logging_config"]["file_level"] = "DEBUG"
 
-        # Parse pipeline request
         logger.info("Parsing pipeline request")
         request = etab.PipelineBuildRequest.from_dict(d)
 
@@ -151,7 +149,6 @@ class BuildCommand(Command):
         builder.build(optimized=optimized)
 
         if args.run_now:
-            # Run pipeline
             logger.info("Running pipeline '%s'", request.pipeline)
             builder.run()
         else:
@@ -221,7 +218,7 @@ class CleanCommand(Command):
 
     Examples:
         # Cleanup the pipeline defined by a PipelineConfig JSON file
-        eta clean '/path/to/pipeline.json'
+        eta clean '/path/to/pipeline-config.json'
 
         # Cleanup the last built pipeline
         eta clean --last
