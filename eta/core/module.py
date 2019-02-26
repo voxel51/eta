@@ -127,10 +127,13 @@ def find_metadata(module_name):
             "Could not find module '%s'" % module_name)
 
 
-def find_exe(module_metadata):
-    '''Finds the executable for the given ModuleMetadata instance.
+def find_exe(module_name=None, module_metadata=None):
+    '''Finds the executable for the given module.
+
+    Exactly one keyword argument must be supplied.
 
     Args:
+        module_name: the name of the module
         module_metadata: the ModuleMetadata instance for the module
 
     Returns:
@@ -139,6 +142,8 @@ def find_exe(module_metadata):
     Raises:
         ModuleMetadataError: if the module executable could not be found
     '''
+    if module_metadata is None:
+        module_metadata = load_metadata(module_name)
     meta_path = find_metadata(module_metadata.info.name)
     exe_path = os.path.join(
         os.path.dirname(meta_path), module_metadata.info.exe)
