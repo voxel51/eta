@@ -1,7 +1,7 @@
 '''
 Core module that defines the functionality of the `eta` command-line tool.
 
-Copyright 2018, Voxel51, Inc.
+Copyright 2018-2019, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
