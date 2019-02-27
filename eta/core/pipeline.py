@@ -49,24 +49,30 @@ PIPELINE_OUTPUT_NAME = "OUTPUT"
 
 def run(
         pipeline_config_path, pipeline_status=None, mark_as_complete=True,
-        rotate_logs=True):
+        rotate_logs=True, force_overwrite=False):
     '''Run the pipeline specified by the PipelineConfig.
 
     Args:
         pipeline_config_path: path to a PipelineConfig file
         pipeline_status: an optional PipelineStatus instance. By default, a
             PipelineStatus object is created that logs its status to the path
-            specified in the provided PipelineConfig (if specified)
+            specified in the provided PipelineConfig
         mark_as_complete: whether to mark the PipelineStatus as complete when
             the pipeline finishes. By default, this is True
         rotate_logs: whether to rotate any existing pipeline log(s) before
             running. By default, this is True
+        force_overwrite: whether to force the pipeline to overwrite any
+            existing outputs by setting the `overwrite` flag of the
+            PipelineConfig. By default, the PipelineConfig's `overwrite` flag
+            is used
 
     Returns:
         True/False whether the pipeline completed successfully
     '''
     # Load pipeline config
     pipeline_config = PipelineConfig.from_json(pipeline_config_path)
+    if force_overwrite:
+        pipeline_config.overwrite = True
 
     # Setup logging
     etal.custom_setup(pipeline_config.logging_config, rotate=rotate_logs)
