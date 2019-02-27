@@ -162,11 +162,14 @@ class BuildCommand(Command):
 
 
 class RunCommand(Command):
-    '''Command-line tool for running ETA modules and pipelines.
+    '''Command-line tool for running ETA pipelines and modules.
 
     Examples:
         # Run the pipeline defined by a PipelineConfig JSON file
         eta run '/path/to/pipeline-config.json'
+
+        # Run the pipeline and force existing module outputs to be overwritten
+        eta run --overwrite '/path/to/pipeline-config.json'
 
         # Run the specified module with the given ModuleConfig JSON file
         eta run --module <module-name> '/path/to/module-config.json'
@@ -181,6 +184,9 @@ class RunCommand(Command):
             "config", nargs="?",
             help="path to a PipelineConfig or ModuleConfig file")
         parser.add_argument(
+            "-o", "--overwrite", action="store_true",
+            help="force overwrite existing module outputs")
+        parser.add_argument(
             "-m", "--module", help="run the module with the given name")
         parser.add_argument(
             "-l", "--last", action="store_true",
@@ -194,19 +200,19 @@ class RunCommand(Command):
             return
 
         if args.config:
-            _run_pipeline(args.config)
+            _run_pipeline(args.config, args.overwrite)
 
         if args.last:
             config = etab.find_last_built_pipeline()
             if config:
-                _run_pipeline(config)
+                _run_pipeline(config, args.overwrite)
             else:
                 logger.info("No built pipelines found...")
 
 
-def _run_pipeline(config):
+def _run_pipeline(config, force_overwrite):
     logger.info("Running ETA pipeline '%s'", config)
-    etap.run(config)
+    etap.run(config, force_overwrite=force_overwrite)
 
     if etau.is_in_root_dir(config, eta.config.config_dir):
         logger.info(
