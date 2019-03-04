@@ -871,3 +871,10 @@ class TfRecord(AbstractData):
     @staticmethod
     def is_valid_path(path):
         return String.is_valid_value(path)
+
+class TfRecordsDirectory(Directory):
+    '''A directory containing a sequence of TfRecord files.
+    Examples:
+        /path/to/tfrecords
+    '''
+    pass
