@@ -605,6 +605,15 @@ class JSONFileSequence(FileSequence, ConcreteData):
         )
 
 
+class DataRecords(JSONFile):
+    '''Type representing eta.core.data.DataRecords
+    
+    Examples:
+        /path/to/records.json
+    '''
+    pass
+
+
 class VideoStreamInfo(JSONFile):
     '''Stream info about a video.
 
@@ -861,6 +870,15 @@ class ZippedVideoObjectsFeaturesDirectory(ZippedDirectory):
 
     Examples:
         /path/to/video-object-features.zip
+    '''
+    pass
+
+
+class DataRecordsDirectory(JSONDirectory):
+    '''A directory containing a sequence of DataRecords JSON files.
+    
+    Examples:
+        /path/to/records_json_files
     '''
     pass
 
