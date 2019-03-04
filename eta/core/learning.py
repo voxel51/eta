@@ -58,11 +58,11 @@ class Classifier(Configurable):
 
         Args:
             arg: the input to classify. Depending on the classifier, this may
-                be an image, video, or embedding
+                be an image, video, or embedding(s)
 
         Returns:
-            attributes: An `eta.core.data.AttributeContainer` describing the
-                predictions for the image
+            an `eta.core.data.AttributeContainer` describing the predictions
+                for the input
         '''
         raise NotImplementedError("subclass must implement predict()")
 
@@ -105,7 +105,7 @@ class ObjectDetector(Configurable):
             img: an image
 
         Returns:
-            objects: An `eta.core.objects.DetectedObjectContainer` describing
-                the detected objects in the image
+            an `eta.core.objects.DetectedObjectContainer` describing the
+                detected objects in the image
         '''
         raise NotImplementedError("subclass must implement detect()")
