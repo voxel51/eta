@@ -863,3 +863,11 @@ class ZippedVideoObjectsFeaturesDirectory(ZippedDirectory):
         /path/to/video-object-features.zip
     '''
     pass
+
+
+class TfRecord(AbstractData):
+    '''The abstract data type describing a file.'''
+
+    @staticmethod
+    def is_valid_path(path):
+        return String.is_valid_value(path)
