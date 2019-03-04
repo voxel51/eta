@@ -57,6 +57,8 @@ TensorFlow is installed with GPU support. In particular, if CUDA 9 is found,
 the latest version of the `tensorflow-gpu` package is installed, and if CUDA 8
 is found, `tensorflow-gpu 1.4` is installed.
 
+For help installing CUDA, see [this guide](docs/cuda_install_guide.md).
+
 3. Install the ETA package:
 
 ```shell
