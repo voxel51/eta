@@ -1,4 +1,4 @@
-# ETA Style Guide
+# ETA Python Style Guide
 
 ETA is implemented in Python, and we require all contributed code to adhere to
 our style. Our priority is *consistency*, so that developers can quickly ingest
