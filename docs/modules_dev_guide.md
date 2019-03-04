@@ -538,7 +538,7 @@ voxel51.com
 '''
 #
 # Inputs in ETA are separated into groups and sorted alphabetically within
-# each group. See `style_guide.md` for more information
+# each group. See `python_style_guide.md` for more information
 #
 # The first block of `__future__` imports allow for cross-version Python
 # support. See `python23_guide.md` for more information
