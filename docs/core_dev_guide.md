@@ -74,16 +74,24 @@ more tips on writing cross-compatible code in ETA.
 ## Style guide
 
 We require all ETA code to adhere to our Python style guide. See
-`style_guide.md` for a description of our style, and see `linting_guide.md`
-for details on our code linting tools.
+`python_style_guide.md` for a description of our style, and see
+`linting_guide.md` for details on our code linting tools.
 
 
-## Image and Video Frame Color Formats
+## Image and video color formats
 
-ETA uses an RGB format for images and video frames.  All functions that read/write images and process images hence expect an RGB format.  This is not always the case: the popular OpenCV library (on which ETA partially relies) uses a BGR format.  This has two impacts:
+ETA uses an RGB format for images and video frames.  All functions that
+read/write images and process images hence expect an RGB format.  This is not
+always the case: the popular OpenCV library (on which ETA partially relies)
+uses a BGR format.  This has two impacts:
 
-1. When we use OpenCV for IO, we explicitly convert to BGR from RGB, which although trivial can have a performance impact.
-2. If you use OpenCV inside of your code that uses ETA for image and video frame representation, then you need to be careful to convert to BGR before actually invoking the `cv2` functions.  We provide ample conversion routines in the `eta.core.image` module.
+- When we use OpenCV for IO, we explicitly convert to BGR from RGB, which
+    although trivial can have a performance impact
+
+- If you use OpenCV inside of your code that uses ETA for image and video
+    frame representation, then you need to be careful to convert to BGR before
+    actually invoking the `cv2` functions.  We provide ample conversion
+    routines in the `eta.core.image` module
 
 
 ## Copyright
