@@ -21,6 +21,8 @@ from future.utils import iteritems
 
 import copy
 import logging
+import os
+import re
 
 import tensorflow as tf
 
@@ -65,6 +67,39 @@ def make_tf_config(config_proto=None):
         _set_proto_fields(config, eta.config.tf_config)
 
     return config
+
+
+def is_valid_tf_record_path(tf_record_path):
+    '''Determines whether the provided tf.Record path is a valid path.
+
+    Valid paths must either end in `.record` or describe a sharded tf.Record
+    like `.record-?????-of-XXXXX`.
+    '''
+    ext = os.path.splitext(tf_record_path)[1]
+    return ext == ".record" or is_sharded_tf_record_path(tf_record_path)
+
+
+def is_sharded_tf_record_path(tf_record_path):
+    '''Determines whether the given path is a sharded tf.Record path like
+    "/path/to/tf.record-????-of-1000".
+    '''
+    ext = os.path.splitext(tf_record_path)[1]
+    return re.match("\.record-\?+-of-\d+", ext) is not None
+
+
+def make_sharded_tf_record_path(base_path, num_shards):
+    '''Makes a sharded tf.Record path with the given number of shards.
+
+    Args:
+        base_path: a path like "/path/to/tf.record"
+        num_shards: the desired number of shards
+
+    Returns:
+        a sharded path like "/path/to/tf.record-????-of-1000"
+    '''
+    num_shards_str = str(num_shards)
+    num_digits = len(num_shards_str)
+    return base_path + "-" + "?" * num_digits + "-of-" + num_shards_str
 
 
 def _set_proto_fields(proto, d):
