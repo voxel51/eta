@@ -1,4 +1,4 @@
-# ETA Style Guide
+# ETA Python Style Guide
 
 ETA is implemented in Python, and we require all contributed code to adhere to
 our style. Our priority is *consistency*, so that developers can quickly ingest
@@ -18,6 +18,11 @@ that cannot be split
 
 - Leave two blank lines between top-level definitions, and one blank line
 between class method definitions
+
+- Unlike the official Google style, we always use single quotes `'''` for
+    docstrings, and we prefer double quotes `"` for regular strings, although
+    it is okay to use the single quote `'` on a string to avoid the need to
+    escape double quotes within the string
 
 - Imports should always be on separate lines at the top of the file, just after
 any module comments and doc strings. Imports should be grouped by type with

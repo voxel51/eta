@@ -490,7 +490,7 @@ class PipelineBuilder(object):
             jobs.append(
                 etaj.JobConfig.builder()
                     .set(name=module)
-                    .set(script=etam.find_exe(metadata))
+                    .set(script=etam.find_exe(module_metadata=metadata))
                     .set(config_path=self._get_module_config_path(module))
                     .validate())
         if not jobs:

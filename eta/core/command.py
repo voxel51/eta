@@ -1,7 +1,7 @@
 '''
 Core module that defines the functionality of the `eta` command-line tool.
 
-Copyright 2018, Voxel51, Inc.
+Copyright 2018-2019, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
@@ -114,7 +114,6 @@ class BuildCommand(Command):
 
     @staticmethod
     def run(args):
-        # Process args
         d = args.request or {
             "inputs": {},
             "outputs": {},
@@ -140,7 +139,6 @@ class BuildCommand(Command):
             d["logging_config"]["stdout_level"] = "DEBUG"
             d["logging_config"]["file_level"] = "DEBUG"
 
-        # Parse pipeline request
         logger.info("Parsing pipeline request")
         request = etab.PipelineBuildRequest.from_dict(d)
 
@@ -151,7 +149,6 @@ class BuildCommand(Command):
         builder.build(optimized=optimized)
 
         if args.run_now:
-            # Run pipeline
             logger.info("Running pipeline '%s'", request.pipeline)
             builder.run()
         else:
@@ -160,17 +157,22 @@ class BuildCommand(Command):
                 builder.pipeline_config_path)
 
         if args.cleanup:
-            # Cleanup pipeline files
             logger.info("Cleaning up pipeline-generated files")
             builder.cleanup()
 
 
 class RunCommand(Command):
-    '''Command-line tool for running ETA pipelines.
+    '''Command-line tool for running ETA pipelines and modules.
 
     Examples:
         # Run the pipeline defined by a PipelineConfig JSON file
-        eta run '/path/to/pipeline.json'
+        eta run '/path/to/pipeline-config.json'
+
+        # Run the pipeline and force existing module outputs to be overwritten
+        eta run --overwrite '/path/to/pipeline-config.json'
+
+        # Run the specified module with the given ModuleConfig JSON file
+        eta run --module <module-name> '/path/to/module-config.json'
 
         # Run the last built pipeline
         eta run --last
@@ -179,27 +181,38 @@ class RunCommand(Command):
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "config", nargs="?", help="path to a PipelineConfig file")
+            "config", nargs="?",
+            help="path to a PipelineConfig or ModuleConfig file")
+        parser.add_argument(
+            "-o", "--overwrite", action="store_true",
+            help="force overwrite existing module outputs")
+        parser.add_argument(
+            "-m", "--module", help="run the module with the given name")
         parser.add_argument(
             "-l", "--last", action="store_true",
             help="run the last built pipeline")
 
     @staticmethod
     def run(args):
+        if args.module:
+            logger.info("Running ETA module '%s'", args.module)
+            etamodu.run(args.module, args.config)
+            return
+
         if args.config:
-            _run_pipeline(args.config)
+            _run_pipeline(args.config, args.overwrite)
 
         if args.last:
             config = etab.find_last_built_pipeline()
             if config:
-                _run_pipeline(config)
+                _run_pipeline(config, args.overwrite)
             else:
                 logger.info("No built pipelines found...")
 
 
-def _run_pipeline(config):
+def _run_pipeline(config, force_overwrite):
     logger.info("Running ETA pipeline '%s'", config)
-    etap.run(config)
+    etap.run(config, force_overwrite=force_overwrite)
 
     if etau.is_in_root_dir(config, eta.config.config_dir):
         logger.info(
@@ -211,7 +224,7 @@ class CleanCommand(Command):
 
     Examples:
         # Cleanup the pipeline defined by a PipelineConfig JSON file
-        eta clean '/path/to/pipeline.json'
+        eta clean '/path/to/pipeline-config.json'
 
         # Cleanup the last built pipeline
         eta clean --last

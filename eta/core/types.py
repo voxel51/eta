@@ -436,7 +436,7 @@ class VideoFile(Video, File, ConcreteData):
 
     @staticmethod
     def get_metadata(path):
-        return etav.VideoStreamInfo.build_for(path)
+        return etav.VideoMetadata.build_for(path)
 
 
 class ImageSequence(Video, FileSequence, ConcreteData):
@@ -606,10 +606,25 @@ class JSONFileSequence(FileSequence, ConcreteData):
 
 
 class DataRecords(JSONFile):
-    '''Type representing eta.core.data.DataRecords
-    
+    '''A container of BaseDataRecords instane each having a certain set of
+    fields.
+
+    This type is implemented in ETA by the `eta.core.data.DataRecords` class.
+
     Examples:
-        /path/to/records.json
+        /path/to/data_records.json
+    '''
+    pass
+
+
+class VideoMetadata(JSONFile):
+    '''Metadata about a video.
+
+    This type is implemented in ETA by the `eta.core.video.VideoMetadata`
+    class.
+
+    Examples:
+        /path/to/video_metadata.json
     '''
     pass
 
@@ -621,7 +636,7 @@ class VideoStreamInfo(JSONFile):
     class.
 
     Examples:
-        /path/to/video-stream-info.json
+        /path/to/video_stream_info.json
     '''
     pass
 
@@ -649,14 +664,74 @@ class EventSeries(JSONFile):
     pass
 
 
-class VideoLabels(JSONFile):
-    '''A description of the labeled contents of a video.
+class Attribute(JSONFile):
+    '''Base class for attributes of entities in images or video.
 
-    This type is implemented in ETA by the `eta.core.video.VideoLabels`
+    This type is implemented in ETA by the `eta.core.data.Attribute` class.
+
+    Examples:
+        /path/to/attribute.json
+    '''
+    pass
+
+
+class CategoricalAttribute(JSONFile):
+    '''A categorical attribute of an entity in an image or video.
+
+    This type is implemented in ETA by the `eta.core.data.CategoricalAttribute`
     class.
 
     Examples:
-        /path/to/video_labels.json
+        /path/to/categorical_attribute.json
+    '''
+    pass
+
+
+class NumericAttribute(JSONFile):
+    '''A numeric attribute of an entity in an image or video.
+
+    This type is implemented in ETA by the `eta.core.data.NumericAttribute`
+    class.
+
+    Examples:
+        /path/to/numeric_attribute.json
+    '''
+    pass
+
+
+class BooleanAttribute(JSONFile):
+    '''A boolean attribute of an entity in an image or video.
+
+    This type is implemented in ETA by the `eta.core.data.BooleanAttribute`
+    class.
+
+    Examples:
+        /path/to/boolean_attribute.json
+    '''
+    pass
+
+
+class Attributes(JSONFile):
+    '''A list of attributes of an entity in an image or video. The list can
+    contain attributes with any subtype of Attribute.
+
+    This type is implemented in ETA by the `eta.core.data.AttributeContainer`
+    class.
+
+    Examples:
+        /path/to/attribute_container.json
+    '''
+    pass
+
+
+class BoundingBox(JSONFile):
+    '''A bounding box of an object in a frame.
+
+    This type is implemented in ETA by the `eta.core.geometry.BoundingBox`
+    class.
+
+    Examples:
+        /path/to/bounding_box.json
     '''
     pass
 
@@ -691,6 +766,18 @@ class DetectedObjectsSequence(JSONFileSequence):
 
     Examples:
         /path/to/detected_objects/%05d.json
+    '''
+    pass
+
+
+class VideoLabels(JSONFile):
+    '''A description of the labeled contents of a video.
+
+    This type is implemented in ETA by the `eta.core.video.VideoLabels`
+    class.
+
+    Examples:
+        /path/to/video_labels.json
     '''
     pass
 
@@ -876,23 +963,36 @@ class ZippedVideoObjectsFeaturesDirectory(ZippedDirectory):
 
 class DataRecordsDirectory(JSONDirectory):
     '''A directory containing a sequence of DataRecords JSON files.
-    
+
     Examples:
-        /path/to/records_json_files
+        /path/to/data_records_jsons
     '''
     pass
 
 
-class TfRecord(AbstractData):
-    '''The abstract data type describing a file.'''
+class TFRecord(File, ConcreteData):
+    '''A tf.Record file. The records may be sharded, in which case the
+    appropriate sharding pattern like `-?????-of-00100` is automatically added
+    to the path.
+
+    Examples:
+        /path/to/tf.record
+        /path/to/tf.record-?????-of-00100
+    '''
+
+    @staticmethod
+    def gen_path(basedir, params):
+        return os.path.join(basedir, "{name}.record").format(**params)
 
     @staticmethod
     def is_valid_path(path):
-        return String.is_valid_value(path)
+        return File.is_valid_path(path) and etau.has_extension(path, ".record")
 
-class TfRecordsDirectory(Directory):
-    '''A directory containing a sequence of TfRecord files.
+
+class TFRecordsDirectory(Directory):
+    '''A directory containing a sequence of tf.Records.
+
     Examples:
-        /path/to/tfrecords
+        /path/to/tf_records
     '''
     pass
