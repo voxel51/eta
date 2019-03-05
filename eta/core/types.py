@@ -27,6 +27,7 @@ import os
 
 import eta
 import eta.core.image as etai
+import eta.core.tfutils as etat
 import eta.core.utils as etau
 import eta.core.video as etav
 
@@ -971,9 +972,7 @@ class DataRecordsDirectory(JSONDirectory):
 
 
 class TFRecord(File, ConcreteData):
-    '''A tf.Record file. The records may be sharded, in which case the
-    appropriate sharding pattern like `-?????-of-00100` is automatically added
-    to the path.
+    '''A tf.Record file, which may be sharded.
 
     Examples:
         /path/to/tf.record
@@ -986,7 +985,7 @@ class TFRecord(File, ConcreteData):
 
     @staticmethod
     def is_valid_path(path):
-        return File.is_valid_path(path) and etau.has_extension(path, ".record")
+        return File.is_valid_path(path) and etat.is_valid_tf_record_path(path)
 
 
 class TFRecordsDirectory(Directory):
