@@ -827,9 +827,31 @@ class DataRecords(DataContainer):
                 "Either keep_values or remove_values must be provided")
 
         # Cull records
-        inds = []
+        inds = set()
         for v in keep_values:
-            inds += lud[v]
+            inds.update(lud[v])
+        self.keep_inds(inds)
+
+        return len(self)
+
+    def cull_with_function(self, field, func=lambda x: x):
+        '''Cull records from the container for which `field` returns
+        something that evaluates to False when passed through func.
+
+        Args:
+            field: the field to process
+            func: the test function
+
+        Returns:
+            the number of elements in the container
+        '''
+        lud = self.build_lookup(field)
+
+        # Cull records
+        inds = set()
+        for v in lud:
+            if func(v):
+                inds.update(lud[v])
         self.keep_inds(inds)
 
         return len(self)
