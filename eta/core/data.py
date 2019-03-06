@@ -834,7 +834,7 @@ class DataRecords(DataContainer):
 
         return len(self)
 
-    def cull_with_function(self, field, func=lambda x: x):
+    def cull_with_function(self, field, func):
         '''Cull records from the container for which `field` returns
         something that evaluates to False when passed through func.
 
