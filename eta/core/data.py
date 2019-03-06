@@ -872,21 +872,6 @@ class DataRecords(DataContainer):
             record_cls=record_cls,
             records=[rc.from_dict(r) for r in d[cls._ELE_ATTR]])
 
-    @classmethod
-    def from_json(cls, json_path, record_cls=None):
-        '''Constructs a DataRecords object from a JSON file.
-
-        Args:
-            json_path: the path to a DataRecords JSON file
-            record_cls: an optional records class to use when parsing the
-                records file. If not provided, the DataRecords JSON file must
-                define it
-
-        Returns:
-            a DataRecords instance
-        '''
-        return cls.from_dict(read_json(json_path), record_cls=record_cls)
-
 
 class DataRecordsError(Exception):
     '''Exception raised for invalid DataRecords invocations.'''
