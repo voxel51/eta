@@ -870,7 +870,7 @@ class DataRecords(DataContainer):
 
         return DataRecords(
             record_cls=record_cls,
-            records=[rc.from_dict(r) for r in d[cls._ELE_ATTR]])
+            records=[record_cls.from_dict(r) for r in d[cls._ELE_ATTR]])
 
 
 class DataRecordsError(Exception):
