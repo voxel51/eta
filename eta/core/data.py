@@ -846,6 +846,29 @@ class DataRecords(DataContainer):
         '''
         return self.extract_inds(indices)
 
+    def attributes(self):
+        '''Returns a list of class attributes to be serialized.'''
+        return [self._ELE_ATTR, self._ELE_CLS_FIELD]
+
+    def serialize(self, reflective=False):
+        '''Serializes the DataRecords into a dictionary.
+
+        Note that the top-level reflective attributes of `DataRecords` are
+        always included in the serialized JSON. This implies that all
+        `DataRecords` can be read via `DataRecords.from_json` without
+        manually specifying their `record_cls`.
+
+        Args:
+            reflective: whether to include reflective attributes when
+                serializing the records in the Container. By default, this is
+                False
+
+        Returns:
+            a JSON dictionary representation of the container
+        '''
+        return super(DataRecords, self).serialize(
+            reflective=reflective, reflective_container=True)
+
     @classmethod
     def from_dict(cls, d, record_cls=None):
         '''Constructs a DataRecords instance from a dictionary.
