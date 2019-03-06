@@ -853,19 +853,23 @@ class DataRecords(DataContainer):
         Args:
             d: a DataRecords dictionary
             record_cls: an optional records class to use when parsing the
-                records dictionary. If not provided, the DataRecord dictionary
-                must define it
+                records dictionary. If not provided, the DataRecords dictionary
+                you are loading must have been written in reflective mode
 
         Returns:
             a DataRecords instance
         '''
-        rc = record_cls or d.get(cls._ELE_CLS_FIELD, None)
-        if rc is None:
-            raise DataRecordsError(
-                "Need record_cls to parse the DataRecords dictionary")
+        if record_cls is None:
+            record_cls_str = d.get(cls._ELE_CLS_FIELD, None)
+            if record_cls_str is None:
+                raise DataRecordsError(
+                    "Your DataRecords does not have its '%s' attribute "
+                    "populated, so you must manually specify the `record_cls` "
+                    "to use when loading it" % cls._ELE_CLS_FIELD)
+            record_cls = etau.get_class(record_cls_str)
 
         return DataRecords(
-            record_cls=rc,
+            record_cls=record_cls,
             records=[rc.from_dict(r) for r in d[cls._ELE_ATTR]])
 
     @classmethod
