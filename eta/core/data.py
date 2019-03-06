@@ -875,35 +875,24 @@ class DataRecords(DataContainer):
         Args:
             d: a DataRecords dictionary
             record_cls: an optional records class to use when parsing the
-                records dictionary. If not provided, the DataRecord dictionary
-                must define it
+                records dictionary. If not provided, the DataRecords dictionary
+                you are loading must have been written in reflective mode
 
         Returns:
             a DataRecords instance
         '''
-        rc = record_cls or d.get(cls._ELE_CLS_FIELD, None)
-        if rc is None:
-            raise DataRecordsError(
-                "Need record_cls to parse the DataRecords dictionary")
+        if record_cls is None:
+            record_cls_str = d.get(cls._ELE_CLS_FIELD, None)
+            if record_cls_str is None:
+                raise DataRecordsError(
+                    "Your DataRecords does not have its '%s' attribute "
+                    "populated, so you must manually specify the `record_cls` "
+                    "to use when loading it" % cls._ELE_CLS_FIELD)
+            record_cls = etau.get_class(record_cls_str)
 
         return DataRecords(
-            record_cls=rc,
-            records=[rc.from_dict(r) for r in d[cls._ELE_ATTR]])
-
-    @classmethod
-    def from_json(cls, json_path, record_cls=None):
-        '''Constructs a DataRecords object from a JSON file.
-
-        Args:
-            json_path: the path to a DataRecords JSON file
-            record_cls: an optional records class to use when parsing the
-                records file. If not provided, the DataRecords JSON file must
-                define it
-
-        Returns:
-            a DataRecords instance
-        '''
-        return cls.from_dict(read_json(json_path), record_cls=record_cls)
+            record_cls=record_cls,
+            records=[record_cls.from_dict(r) for r in d[cls._ELE_ATTR]])
 
 
 class DataRecordsError(Exception):
