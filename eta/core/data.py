@@ -723,8 +723,16 @@ class DataFileSequenceError(Exception):
 class DataRecords(DataContainer):
     '''Container class for data records.
 
-    DataRecords is a generic container of records each having a value for
-    a certain set of fields.
+    `DataRecords` is a generic container of records each having a value for
+    a certain set of fields. When creating `DataRecords` instances, you must
+    provide a `record_cls` that specifies the subclass of `BaseDataRecord`
+    that you plan to store in the container.
+
+    When `DataRecords` instances are serialized, they always populate their
+    reflective `_CLS` and `_RECORD_CLS` attributes. Thus `DataRecords` can be
+    read from disk via `DataRecords.from_json("/path/to/records.json")` and
+    the class of the records in the container will be automatically inferred
+    while loading.
     '''
 
     _ELE_ATTR = "records"
