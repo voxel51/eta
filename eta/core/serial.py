@@ -455,6 +455,10 @@ class Container(Serializable):
         container.keep_inds(inds)
         return container
 
+    def to_list(self):
+        '''Returns a copy of the underlying list of elements.'''
+        return copy.deepcopy(self.__elements__)
+
     def clear(self):
         '''Deletes all elements from the container.'''
         setattr(self, self._ELE_ATTR, [])
