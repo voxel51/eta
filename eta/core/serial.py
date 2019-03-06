@@ -435,8 +435,9 @@ class Container(Serializable):
         '''Keeps only the elements in the container with the given indices.
 
         Args:
-            inds: a list of indices of the elements to keep
+            inds: an iterable of indices of the elements to keep
         '''
+        inds = set(inds)
         elements = [e for i, e in enumerate(self.__elements__) if i in inds]
         setattr(self, self._ELE_ATTR, elements)
 
