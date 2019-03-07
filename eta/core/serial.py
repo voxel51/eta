@@ -153,10 +153,54 @@ class Picklable(object):
 
 
 class Serializable(object):
-    '''Base class for objects that can be serialized.
+    '''Base class for objects that can be serialized in JSON format.
 
     Subclasses must implement `from_dict()`, which defines how to construct a
     serializable object from a JSON dictionary.
+
+    Serializable objects can be easily converted read and written from any of
+    the following formats:
+        - JSON files on disk
+        - JSON dictionaries
+        - JSON strings
+
+    For example, you can do the following with any class `SerializableClass`
+    that is a subclass of `Serializable`:
+
+    ```
+    json_path = "/path/to/data.json"
+
+    obj = SerializableClass(...)
+
+    s = obj.to_str()
+    obj1 = SerializableClass.from_str(s)
+
+    d = obj.serialize()
+    obj2 = SerializableClass.from_dict(d)
+
+    obj.write_json(json_path)
+    obj3 = SerializableClass.from_json(json_path)
+    ```
+
+    Serializable objects can optionally be serialized in "reflective" mode,
+    in which case their class names are embedded in their JSON representations.
+    This allows for reading Serializable JSON instances of arbitrary types
+    polymorphically via the Serializable interface. For example:
+
+    ```
+    json_path = "/path/to/data.json"
+
+    obj = SerializableClass(...)
+
+    s = obj.to_str(reflective=True)
+    obj1 = Serializable.from_str(s)  # returns a SerializableClass
+
+    d = obj.serialize(reflective=True)
+    obj2 = Serializable.from_dict(d)  # returns a SerializableClass
+
+    obj.write_json(json_path, reflective=True)
+    obj3 = Serializable.from_json(json_path)  # returns a SerializableClass
+    ```
     '''
 
     def __str__(self):
