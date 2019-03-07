@@ -27,6 +27,7 @@ import os
 
 import eta
 import eta.core.image as etai
+import eta.core.tfutils as etat
 import eta.core.utils as etau
 import eta.core.video as etav
 
@@ -605,6 +606,18 @@ class JSONFileSequence(FileSequence, ConcreteData):
         )
 
 
+class DataRecords(JSONFile):
+    '''A container of BaseDataRecords instane each having a certain set of
+    fields.
+
+    This type is implemented in ETA by the `eta.core.data.DataRecords` class.
+
+    Examples:
+        /path/to/data_records.json
+    '''
+    pass
+
+
 class VideoMetadata(JSONFile):
     '''Metadata about a video.
 
@@ -945,5 +958,41 @@ class ZippedVideoObjectsFeaturesDirectory(ZippedDirectory):
 
     Examples:
         /path/to/video-object-features.zip
+    '''
+    pass
+
+
+class DataRecordsDirectory(JSONDirectory):
+    '''A directory containing a sequence of DataRecords JSON files.
+
+    Examples:
+        /path/to/data_records_jsons
+    '''
+    pass
+
+
+class TFRecord(File, ConcreteData):
+    '''A tf.Record file, which may be sharded.
+
+    Examples:
+        /path/to/data.record
+        /path/to/data.record-?????-of-XXXXX
+        /path/to/data-?????-of-XXXXX.tfrecord
+    '''
+
+    @staticmethod
+    def gen_path(basedir, params):
+        return os.path.join(basedir, "{name}.record").format(**params)
+
+    @staticmethod
+    def is_valid_path(path):
+        return File.is_valid_path(path) and etat.is_valid_tf_record_path(path)
+
+
+class TFRecordsDirectory(Directory):
+    '''A directory containing a sequence of tf.Records.
+
+    Examples:
+        /path/to/tf_records
     '''
     pass

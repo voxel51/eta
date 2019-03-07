@@ -21,6 +21,8 @@ from future.utils import iteritems
 
 import copy
 import logging
+import os
+import re
 
 import tensorflow as tf
 
@@ -29,6 +31,9 @@ import eta.core.models as etam
 
 
 logger = logging.getLogger(__name__)
+
+
+TF_RECORD_EXTENSIONS = [".record", ".tfrecord"]
 
 
 def make_tf_session(config_proto=None):
@@ -65,6 +70,52 @@ def make_tf_config(config_proto=None):
         _set_proto_fields(config, eta.config.tf_config)
 
     return config
+
+
+def is_valid_tf_record_path(tf_record_path):
+    '''Determines whether the provided tf.Record path is a valid path.
+
+    Valid paths must either end in `.record` or `.tfrecord` or describe
+        a sharded tf.Record.
+    '''
+    ext = os.path.splitext(tf_record_path)[1]
+    return (
+        ext in TF_RECORD_EXTENSIONS or
+        is_sharded_tf_record_path(tf_record_path))
+
+
+def is_sharded_tf_record_path(tf_record_path):
+    '''Determines whether the given path is a sharded tf.Record path like
+    "/path/to/data.record-????-of-XXXXX" or
+    "/path/to/data-?????-of-XXXXX.tfrecord"
+    '''
+    ext_patt = "|".join(re.escape(e) for e in TF_RECORD_EXTENSIONS)
+    shard_patt = "-\?+-of-\d+"
+
+    # /path/to/data.record-????-of-XXXXX
+    if re.search("(%s)%s$" % (ext_patt, shard_patt), tf_record_path):
+        return True
+
+    # /path/to/data-????-of-XXXXX.tfrecord
+    if re.search("%s(%s)$" % (shard_patt, ext_patt), tf_record_path):
+        return True
+
+    return False
+
+
+def make_sharded_tf_record_path(base_path, num_shards):
+    '''Makes a sharded tf.Record path with the given number of shards.
+
+    Args:
+        base_path: a path like "/path/to/tf.record"
+        num_shards: the desired number of shards
+
+    Returns:
+        a sharded path like "/path/to/tf.record-????-of-1000"
+    '''
+    num_shards_str = str(num_shards)
+    num_digits = len(num_shards_str)
+    return base_path + "-" + "?" * num_digits + "-of-" + num_shards_str
 
 
 def _set_proto_fields(proto, d):
