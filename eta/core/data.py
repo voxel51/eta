@@ -730,9 +730,9 @@ class DataRecords(DataContainer):
 
     When `DataRecords` instances are serialized, they can optionally have their
     reflective `_CLS` and `_RECORD_CLS` attributes set by passing
-    `reflective_container=True`. When this is done, `DataRecords` can be
-    read from disk via `DataRecords.from_json("/path/to/records.json")` and
-    the class of the records in the container will be inferred while loading.
+    `reflective=True`. When this is done, `DataRecords` can be read from disk
+    via `DataRecords.from_json("/path/to/records.json")` and the class of the
+    records in the container will be inferred while loading.
     '''
 
     _ELE_ATTR = "records"
@@ -866,8 +866,7 @@ class DataRecords(DataContainer):
             d: a DataRecords dictionary
             record_cls: an optional records class to use when parsing the
                 records dictionary. If not provided, the DataRecords dictionary
-                you are loading must have been serialized with either
-                `reflective=True` or `reflective_container=True`
+                must have been serialized with `reflective=True`
 
         Returns:
             a DataRecords instance
