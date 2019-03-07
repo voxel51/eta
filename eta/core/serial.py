@@ -267,6 +267,14 @@ class Serializable(object):
 
         Subclasses must implement this method if they intend to support being
         read from disk.
+
+        Args:
+            d: a JSON dictionary representation of a Serializable object
+            *args: optional class-specific positional arguments
+            **kwargs: optional class-specific keyword arguments
+
+        Returns:
+            an instance of the Serializable class
         '''
         if "_CLS" in d:
             #
@@ -289,6 +297,14 @@ class Serializable(object):
         Subclasses may override this method, but, by default, this method
         simply parses the string and calls from_dict(), which subclasses must
         implement.
+
+        Args:
+            s: a JSON string representation of a Serializable object
+            *args: optional positional arguments for `self.from_dict()`
+            **kwargs: optional keyword arguments for `self.from_dict()`
+
+        Returns:
+            an instance of the Serializable class
         '''
         return cls.from_dict(json.loads(s), *args, **kwargs)
 
@@ -299,6 +315,14 @@ class Serializable(object):
         Subclasses may override this method, but, by default, this method
         simply reads the JSON and calls from_dict(), which subclasses must
         implement.
+
+        Args:
+            path: the path to the JSON file on disk
+            *args: optional positional arguments for `self.from_dict()`
+            **kwargs: optional keyword arguments for `self.from_dict()`
+
+        Returns:
+            an instance of the Serializable class
         '''
         return cls.from_dict(read_json(path), *args, **kwargs)
 
