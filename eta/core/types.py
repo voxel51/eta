@@ -975,9 +975,9 @@ class TFRecord(File, ConcreteData):
     '''A tf.Record file, which may be sharded.
 
     Examples:
-        /path/to/tf.record
-        /path/to/tf.record-?????-of-00100
-        /path/to/<dataset_name>_<split_name>-?????-of-XXXXX.tfrecord
+        /path/to/data.record
+        /path/to/data.record-?????-of-XXXXX
+        /path/to/data-?????-of-XXXXX.tfrecord
     '''
 
     @staticmethod
