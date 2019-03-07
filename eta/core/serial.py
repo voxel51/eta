@@ -591,25 +591,21 @@ class Container(Serializable):
         '''Returns the list of class attributes that will be serialized.'''
         return [self._ELE_ATTR]
 
-    def serialize(self, reflective=False, reflective_container=False):
+    def serialize(self, reflective=False):
         '''Serializes the container into a dictionary.
 
         Args:
             reflective: whether to include reflective attributes when
-                serializing the object. This applies recursively to all
-                Container elements. By default, this is False
-            reflective_container: whether to include reflective attributes for
-                the top-level Container. This is always True when `reflective`
-                is True, but it can be selectively turned on if desired
+                serializing the object. By default, this is False
 
         Returns:
             a JSON dictionary representation of the container
         '''
         d = OrderedDict()
-        if reflective or reflective_container:
+        if reflective:
             d["_CLS"] = self.get_class_name()
             d[self._ELE_CLS_FIELD] = etau.get_class_name(self._ELE_CLS)
-        d[self._ELE_ATTR] = _recurse(self.__elements__, reflective)
+        d[self._ELE_ATTR] = _recurse(self.__elements__, False)
         return d
 
     @classmethod
