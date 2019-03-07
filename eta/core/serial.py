@@ -233,31 +233,32 @@ class Serializable(object):
             d["_CLS"] = self.get_class_name()
         return d
 
-    def to_str(self, reflective=False, pretty_print=True):
+    def to_str(self, pretty_print=True, **kwargs):
         '''Returns a string representation of this object.
 
         Args:
-            reflective: whether to include reflective attributes when
-                serializing the object. By default, this is False
             pretty_print: if True (default), the string will be formatted to be
                 human readable; when False, it will be compact with no extra
                 spaces or newline characters
+            **kwargs: optional keyword arguments for `self.serialize()`
+
+        Returns:
+            a string representation of the object
         '''
-        obj = self.serialize(reflective=reflective)
+        obj = self.serialize(**kwargs)
         return json_to_str(obj, pretty_print=pretty_print)
 
-    def write_json(self, path, reflective=False, pretty_print=True):
+    def write_json(self, path, pretty_print=True, **kwargs):
         '''Serializes the object and writes it to disk.
 
         Args:
             path: the output path
-            reflective: whether to include reflective attributes when
-                serializing the object. By default, this is False
             pretty_print: when True (default), the resulting JSON will be
                 outputted to be human readable; when False, it will be compact
                 with no extra spaces or newline characters
+            **kwargs: optional keyword arguments for `self.serialize()`
         '''
-        obj = self.serialize(reflective=reflective)
+        obj = self.serialize(**kwargs)
         write_json(obj, path, pretty_print=pretty_print)
 
     @classmethod
