@@ -153,10 +153,54 @@ class Picklable(object):
 
 
 class Serializable(object):
-    '''Base class for objects that can be serialized.
+    '''Base class for objects that can be serialized in JSON format.
 
     Subclasses must implement `from_dict()`, which defines how to construct a
     serializable object from a JSON dictionary.
+
+    Serializable objects can be easily converted read and written from any of
+    the following formats:
+        - JSON files on disk
+        - JSON dictionaries
+        - JSON strings
+
+    For example, you can do the following with any class `SerializableClass`
+    that is a subclass of `Serializable`:
+
+    ```
+    json_path = "/path/to/data.json"
+
+    obj = SerializableClass(...)
+
+    s = obj.to_str()
+    obj1 = SerializableClass.from_str(s)
+
+    d = obj.serialize()
+    obj2 = SerializableClass.from_dict(d)
+
+    obj.write_json(json_path)
+    obj3 = SerializableClass.from_json(json_path)
+    ```
+
+    Serializable objects can optionally be serialized in "reflective" mode,
+    in which case their class names are embedded in their JSON representations.
+    This allows for reading Serializable JSON instances of arbitrary types
+    polymorphically via the Serializable interface. For example:
+
+    ```
+    json_path = "/path/to/data.json"
+
+    obj = SerializableClass(...)
+
+    s = obj.to_str(reflective=True)
+    obj1 = Serializable.from_str(s)  # returns a SerializableClass
+
+    d = obj.serialize(reflective=True)
+    obj2 = Serializable.from_dict(d)  # returns a SerializableClass
+
+    obj.write_json(json_path, reflective=True)
+    obj3 = Serializable.from_json(json_path)  # returns a SerializableClass
+    ```
     '''
 
     def __str__(self):
@@ -233,31 +277,32 @@ class Serializable(object):
             d["_CLS"] = self.get_class_name()
         return d
 
-    def to_str(self, reflective=False, pretty_print=True):
+    def to_str(self, pretty_print=True, **kwargs):
         '''Returns a string representation of this object.
 
         Args:
-            reflective: whether to include reflective attributes when
-                serializing the object. By default, this is False
             pretty_print: if True (default), the string will be formatted to be
                 human readable; when False, it will be compact with no extra
                 spaces or newline characters
+            **kwargs: optional keyword arguments for `self.serialize()`
+
+        Returns:
+            a string representation of the object
         '''
-        obj = self.serialize(reflective=reflective)
+        obj = self.serialize(**kwargs)
         return json_to_str(obj, pretty_print=pretty_print)
 
-    def write_json(self, path, reflective=False, pretty_print=True):
+    def write_json(self, path, pretty_print=True, **kwargs):
         '''Serializes the object and writes it to disk.
 
         Args:
             path: the output path
-            reflective: whether to include reflective attributes when
-                serializing the object. By default, this is False
             pretty_print: when True (default), the resulting JSON will be
                 outputted to be human readable; when False, it will be compact
                 with no extra spaces or newline characters
+            **kwargs: optional keyword arguments for `self.serialize()`
         '''
-        obj = self.serialize(reflective=reflective)
+        obj = self.serialize(**kwargs)
         write_json(obj, path, pretty_print=pretty_print)
 
     @classmethod
@@ -266,6 +311,14 @@ class Serializable(object):
 
         Subclasses must implement this method if they intend to support being
         read from disk.
+
+        Args:
+            d: a JSON dictionary representation of a Serializable object
+            *args: optional class-specific positional arguments
+            **kwargs: optional class-specific keyword arguments
+
+        Returns:
+            an instance of the Serializable class
         '''
         if "_CLS" in d:
             #
@@ -288,6 +341,14 @@ class Serializable(object):
         Subclasses may override this method, but, by default, this method
         simply parses the string and calls from_dict(), which subclasses must
         implement.
+
+        Args:
+            s: a JSON string representation of a Serializable object
+            *args: optional positional arguments for `self.from_dict()`
+            **kwargs: optional keyword arguments for `self.from_dict()`
+
+        Returns:
+            an instance of the Serializable class
         '''
         return cls.from_dict(json.loads(s), *args, **kwargs)
 
@@ -298,6 +359,14 @@ class Serializable(object):
         Subclasses may override this method, but, by default, this method
         simply reads the JSON and calls from_dict(), which subclasses must
         implement.
+
+        Args:
+            path: the path to the JSON file on disk
+            *args: optional positional arguments for `self.from_dict()`
+            **kwargs: optional keyword arguments for `self.from_dict()`
+
+        Returns:
+            an instance of the Serializable class
         '''
         return cls.from_dict(read_json(path), *args, **kwargs)
 
@@ -316,8 +385,8 @@ def _recurse(v, reflective):
 
 
 class Container(Serializable):
-    '''Abstract base class for flexible containers that store lists of
-    `Serializable` elements.
+    '''Abstract base class for flexible containers that store homogeneous lists
+    of elements of a `Serializable` class.
 
     Container subclasses embed their class names and underlying element class
     names in their JSON representations, so they can be read reflectively from
@@ -327,12 +396,12 @@ class Container(Serializable):
 
     This class currently has only two direct subclasses, which bifurcate the
     container implementation into two distinct categories:
-        - `eta.core.data.DataContainer`: base class for containers that store
-            lists of `Serializable` data instances
         - `eta.core.config.ConfigContainer`: base class for containers that
             store lists of `Config` instances
+        - `eta.core.data.DataContainer`: base class for containers that store
+            lists of arbitrary `Serializable` data instances
 
-    See `DataContainer` and `ConfigContainer` for concrete usage examples.
+    See `ConfigContainer` and `DataContainer` for concrete usage examples.
     '''
 
     #
@@ -537,7 +606,7 @@ class Container(Serializable):
         if reflective:
             d["_CLS"] = self.get_class_name()
             d[self._ELE_CLS_FIELD] = etau.get_class_name(self._ELE_CLS)
-        d[self._ELE_ATTR] = _recurse(self.__elements__, reflective)
+        d[self._ELE_ATTR] = _recurse(self.__elements__, False)
         return d
 
     @classmethod

@@ -723,8 +723,16 @@ class DataFileSequenceError(Exception):
 class DataRecords(DataContainer):
     '''Container class for data records.
 
-    DataRecords is a generic container of records each having a value for
-    a certain set of fields.
+    `DataRecords` is a generic container of records each having a value for
+    a certain set of fields. When creating `DataRecords` instances, you must
+    provide a `record_cls` that specifies the subclass of `BaseDataRecord`
+    that you plan to store in the container.
+
+    When `DataRecords` instances are serialized, they can optionally have their
+    reflective `_CLS` and `_RECORD_CLS` attributes set by passing
+    `reflective=True`. When this is done, `DataRecords` can be read from disk
+    via `DataRecords.from_json("/path/to/records.json")` and the class of the
+    records in the container will be inferred while loading.
     '''
 
     _ELE_ATTR = "records"
@@ -868,6 +876,10 @@ class DataRecords(DataContainer):
         '''
         return self.extract_inds(indices)
 
+    def attributes(self):
+        '''Returns a list of class attributes to be serialized.'''
+        return [self._ELE_ATTR]
+
     @classmethod
     def from_dict(cls, d, record_cls=None):
         '''Constructs a DataRecords instance from a dictionary.
@@ -876,7 +888,7 @@ class DataRecords(DataContainer):
             d: a DataRecords dictionary
             record_cls: an optional records class to use when parsing the
                 records dictionary. If not provided, the DataRecords dictionary
-                you are loading must have been written in reflective mode
+                must have been serialized with `reflective=True`
 
         Returns:
             a DataRecords instance
