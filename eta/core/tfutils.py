@@ -72,19 +72,24 @@ def make_tf_config(config_proto=None):
 def is_valid_tf_record_path(tf_record_path):
     '''Determines whether the provided tf.Record path is a valid path.
 
-    Valid paths must either end in `.record` or describe a sharded tf.Record
-    like `.record-?????-of-XXXXX`.
+    Valid paths must either end in `.record` or `.tfrecord` or describe
+        a sharded tf.Record.
     '''
     ext = os.path.splitext(tf_record_path)[1]
-    return ext == ".record" or is_sharded_tf_record_path(tf_record_path)
+    return (ext == ".record"
+            or ext == ".tfrecord"
+            or is_sharded_tf_record_path(tf_record_path)
 
 
 def is_sharded_tf_record_path(tf_record_path):
     '''Determines whether the given path is a sharded tf.Record path like
-    "/path/to/tf.record-????-of-1000".
+    "/path/to/tf.record-????-of-1000" OR
+    "/path/to/<dataset_name>_<split_name>-?????-of-XXXXX.tfrecord".
     '''
     ext = os.path.splitext(tf_record_path)[1]
-    return re.match("\.record-\?+-of-\d+", ext) is not None
+    filename = os.path.basename(tf_record_path)
+    return re.match("\.record-\?+-of-\d+", ext) is not None or re.match(
+            "\w+\w+\d+-of-\d+\.tfrecord", filename) is not None
 
 
 def make_sharded_tf_record_path(base_path, num_shards):

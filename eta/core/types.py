@@ -977,6 +977,7 @@ class TFRecord(File, ConcreteData):
     Examples:
         /path/to/tf.record
         /path/to/tf.record-?????-of-00100
+        /path/to/<dataset_name>_<split_name>-?????-of-XXXXX.tfrecord
     '''
 
     @staticmethod
