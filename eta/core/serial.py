@@ -385,8 +385,8 @@ def _recurse(v, reflective):
 
 
 class Container(Serializable):
-    '''Abstract base class for flexible containers that store lists of
-    `Serializable` elements.
+    '''Abstract base class for flexible containers that store homogeneous lists
+    of elements of a `Serializable` class.
 
     Container subclasses embed their class names and underlying element class
     names in their JSON representations, so they can be read reflectively from
@@ -396,12 +396,12 @@ class Container(Serializable):
 
     This class currently has only two direct subclasses, which bifurcate the
     container implementation into two distinct categories:
-        - `eta.core.data.DataContainer`: base class for containers that store
-            lists of `Serializable` data instances
         - `eta.core.config.ConfigContainer`: base class for containers that
             store lists of `Config` instances
+        - `eta.core.data.DataContainer`: base class for containers that store
+            lists of arbitrary `Serializable` data instances
 
-    See `DataContainer` and `ConfigContainer` for concrete usage examples.
+    See `ConfigContainer` and `DataContainer` for concrete usage examples.
     '''
 
     #
