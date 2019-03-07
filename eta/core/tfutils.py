@@ -33,6 +33,9 @@ import eta.core.models as etam
 logger = logging.getLogger(__name__)
 
 
+TF_RECORD_EXTENSIONS = [".record", ".tfrecord"]
+
+
 def make_tf_session(config_proto=None):
     '''Makes a new tf.Session that inherits any config settings from the global
     `eta.config.tf_config`.
@@ -76,20 +79,28 @@ def is_valid_tf_record_path(tf_record_path):
         a sharded tf.Record.
     '''
     ext = os.path.splitext(tf_record_path)[1]
-    return (ext == ".record"
-            or ext == ".tfrecord"
-            or is_sharded_tf_record_path(tf_record_path)
+    return (
+        ext in TF_RECORD_EXTENSIONS or
+        is_sharded_tf_record_path(tf_record_path))
 
 
 def is_sharded_tf_record_path(tf_record_path):
     '''Determines whether the given path is a sharded tf.Record path like
-    "/path/to/tf.record-????-of-1000" OR
-    "/path/to/<dataset_name>_<split_name>-?????-of-XXXXX.tfrecord".
+    "/path/to/data.record-????-of-XXXXX" or
+    "/path/to/data-?????-of-XXXXX.tfrecord"
     '''
-    ext = os.path.splitext(tf_record_path)[1]
-    filename = os.path.basename(tf_record_path)
-    return re.match("\.record-\?+-of-\d+", ext) is not None or re.match(
-            "\w+\w+\d+-of-\d+\.tfrecord", filename) is not None
+    ext_patt = "|".join(re.escape(e) for e in TF_RECORD_EXTENSIONS)
+    shard_patt = "-\?+-of-\d+"
+
+    # /path/to/data.record-????-of-XXXXX
+    if re.search("(%s)%s$" % (ext_patt, shard_patt), tf_record_path):
+        return True
+
+    # /path/to/data-????-of-XXXXX.tfrecord
+    if re.search("%s(%s)$" % (shard_patt, ext_patt), tf_record_path):
+        return True
+
+    return False
 
 
 def make_sharded_tf_record_path(base_path, num_shards):
