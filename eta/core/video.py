@@ -695,22 +695,46 @@ class VideoLabels(Serializable):
 
 
 class VideoLabelsSchema(Serializable):
-    '''A schema for a VideoLabels instance.'''
+    '''A schema for a VideoLabels instance.
 
-    def __init__(self, frames=None, objects=None):
+    Attributes:
+        attrs: an AttributeContainerSchema describing the video attributes of
+            the video
+        frames: an AttributeContainerSchema describing the frame attributes
+                of the video
+        objects: a dictionary mapping object labels to AttributeContainerSchema
+            instances describing the object attributes of each object class
+    '''
+
+    def __init__(self, attrs=None, frames=None, objects=None):
         '''Creates a VideoLabelsSchema instance.
 
         Args:
+            attrs: an AttributeContainerSchema describing the video attributes
+                of the video
             frames: an AttributeContainerSchema describing the frame attributes
                 of the video
             objects: a dictionary mapping object labels to
-                AttributeContainerSchemas describing the object attributes of
-                each object class
+                AttributeContainerSchema instances describing the object
+                attributes of each object class
         '''
+        self.attrs = attrs or AttributeContainerSchema()
         self.frames = frames or AttributeContainerSchema()
         self.objects = defaultdict(lambda: AttributeContainerSchema())
         if objects is not None:
             self.objects.update(objects)
+
+    def has_video_attribute(self, video_attr_name):
+        '''Returns True/False if the schema has a video attribute with the
+        given name.
+        '''
+        return self.attrs.hass_attribute(video_attr_name)
+
+    def get_video_attribute_class(self, video_attr_name):
+        '''Gets the Attribute class for the video attribute with the given
+        name.
+        '''
+        return self.attrs.get_attribute_class(video_attr_name)
 
     def has_frame_attribute(self, frame_attr_name):
         '''Returns True/False if the schema has a frame attribute with the
@@ -744,6 +768,22 @@ class VideoLabelsSchema(Serializable):
         '''
         self.validate_object_label(label)
         return self.objects[label].get_attribute_class(obj_attr_name)
+
+    def add_video_attribute(self, video_attr):
+        '''Incorporates the given video attribute into the schema.
+
+        Args:
+            video_attr: an Attribute
+        '''
+        self.attrs.add_attribute(video_attr)
+
+    def add_video_attributes(self, video_attrs):
+        '''Incorporates the given video attributes into the schema.
+
+        Args:
+            video_attrs: an AttributeContainer of video attributes
+        '''
+        self.attrs.add_attributes(video_attrs)
 
     def add_frame_attribute(self, frame_attr):
         '''Incorporates the given frame attribute into the schema.
@@ -779,9 +819,20 @@ class VideoLabelsSchema(Serializable):
 
     def merge_schema(self, schema):
         '''Merges the given VideoLabelsSchema into this schema.'''
+        self.attrs.merge_schema(schema.attrs)
         self.frames.merge_schema(schema.frames)
         for k, v in iteritems(schema.objects):
             self.objects[k].merge_schema(v)
+
+    def is_valid_video_attribute(self, video_attr):
+        '''Returns True/False if the video attribute is compliant with the
+        schema.
+        '''
+        try:
+            self.validate_video_attribute(video_attr)
+            return True
+        except:
+            return False
 
     def is_valid_frame_attribute(self, frame_attr):
         '''Returns True/False if the frame attribute is compliant with the
@@ -822,6 +873,17 @@ class VideoLabelsSchema(Serializable):
             return True
         except:
             return False
+
+    def validate_video_attribute(self, video_attr):
+        '''Validates that the video attribute is compliant with the schema.
+
+        Args:
+            video_attr: an Attribute
+
+        Raises:
+            AttributeContainerSchemaError: if the attribute violates the schema
+        '''
+        self.attrs.validate_attribute(video_attr)
 
     def validate_frame_attribute(self, frame_attr):
         '''Validates that the frame attribute is compliant with the schema.
@@ -898,6 +960,7 @@ class VideoLabelsSchema(Serializable):
         given VideoLabels.
         '''
         schema = cls()
+        schema.add_video_attributes(video_labels.attrs)
         for frame_labels in itervalues(video_labels.frames):
             schema.merge_schema(
                 VideoLabelsSchema.build_active_schema_for_frame(frame_labels))
@@ -905,7 +968,11 @@ class VideoLabelsSchema(Serializable):
 
     @classmethod
     def from_dict(cls, d):
-        '''Constructs an AttributeContainerSchema from a JSON dictionary.'''
+        '''Constructs a VideoLabelsSchema from a JSON dictionary.'''
+        attrs = d.get("attrs", None)
+        if attrs is not None:
+            attrs = AttributeContainerSchema.from_dict(attrs)
+
         frames = d.get("frames", None)
         if frames is not None:
             frames = AttributeContainerSchema.from_dict(frames)
@@ -917,7 +984,7 @@ class VideoLabelsSchema(Serializable):
                 for k, v in iteritems(objects)
             }
 
-        return cls(frames=frames, objects=objects)
+        return cls(attrs=attrs, frames=frames, objects=objects)
 
 
 class VideoLabelsSchemaError(Exception):
