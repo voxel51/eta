@@ -1,5 +1,5 @@
 '''
-Core image processing tools.
+Core tools and data structures for working with images.
 
 Notes:
     [image format] ETA stores images exclusively in RGB format. In contrast,
