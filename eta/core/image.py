@@ -105,6 +105,15 @@ class ImageSetLabels(Serializable):
         self.images = images or []
         self.schema = schema
 
+    def __getitem__(self, idx):
+        return self.images[idx]
+
+    def __setitem__(self, idx, image_labels):
+        self.images[idx] = image_labels
+
+    def __delitem__(self, idx):
+        del self.images[idx]
+
     def __iter__(self):
         return iter(self.images)
 
