@@ -522,6 +522,17 @@ class VideoLabels(Serializable):
             self._validate_video_attribute(video_attr)
         self.attrs.add(video_attr)
 
+    def add_video_attributes(self, video_attrs):
+        '''Adds the given video attributes to the video.
+
+        Args:
+            video_attrs: an AttributeContainer
+        '''
+        if self.has_schema:
+            for video_attr in video_attrs:
+                self._validate_video_attribute(video_attr)
+        self.attrs.add_container(video_attrs)
+
     def add_frame(self, frame_labels, overwrite=True):
         '''Adds the frame labels to the video.
 
