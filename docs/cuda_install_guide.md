@@ -10,9 +10,9 @@ For example, the latest version of CUDA available at the time of this writing
 is 10.1, but TensorFlow does not yet support it, so we stick with CUDA 9.0 in
 this document.
 
-> WARNING: this is what worked for me and I have tried to be as general as
-> possible. But if any of the steps does not work for you, please do not come
-> to my house. I do not have food for you.
+> WARNING: This is what worked for me and there could be issues pertraining to
+> a specific system configuration. Nonetheless, I have tried to be as general as
+> possible.
 
 
 ## Overview
@@ -161,6 +161,13 @@ sudo apt-get remove g++-7
 
 sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-6 10
 sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-6 10
+```
+
+In some cases, before setting the alternatives, you might have to install
+`gcc-6` and `g++-6`. It can be done by simply running:
+```
+sudo apt install gcc-6
+sudo apt install g++-6
 ```
 
 ### `cudnn` or `cudart` not found
