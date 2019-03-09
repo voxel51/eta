@@ -240,7 +240,7 @@ class ImageLabels(Serializable):
         self.attrs = attrs or AttributeContainer()
         self.objects = objects or DetectedObjectContainer()
 
-    def add_attribute(self, attr):
+    def add_image_attribute(self, attr):
         '''Adds the attribute to the image.
 
         Args:
@@ -248,7 +248,7 @@ class ImageLabels(Serializable):
         '''
         self.attrs.add(attr)
 
-    def add_attributes(self, attrs):
+    def add_image_attributes(self, attrs):
         '''Adds the attributes to the image.
 
         Args:
@@ -274,7 +274,7 @@ class ImageLabels(Serializable):
 
     def merge_labels(self, image_labels):
         '''Merges the ImageLabels into this object.'''
-        self.add_attributes(image_labels.attrs)
+        self.add_image_attributes(image_labels.attrs)
         self.add_objects(image_labels.objects)
 
     def attributes(self):
