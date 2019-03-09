@@ -11,8 +11,8 @@ is 10.1, but TensorFlow does not yet support it, so we stick with CUDA 9.0 in
 this document.
 
 > WARNING: This is what worked for me and there could be issues pertraining to
-> a specific system configuration. Nonetheless, I have tried to be as general as
-> possible.
+> a specific system configuration. Nonetheless, I have tried to be as general
+> as possible.
 
 
 ## Overview
@@ -165,6 +165,7 @@ sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-6 10
 
 In some cases, before setting the alternatives, you might have to install
 `gcc-6` and `g++-6`. It can be done by simply running:
+
 ```
 sudo apt install gcc-6
 sudo apt install g++-6
