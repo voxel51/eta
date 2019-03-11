@@ -438,22 +438,33 @@ class VideoFrameLabels(Serializable):
 class VideoLabels(Serializable):
     '''Class encapsulating labels for a video.
 
-    Note: when VideoLabels objects are serialized, the keys of the `frames`
+    Note that any falsey fields of this class (except `frames`) will be omitted
+    during serialization.
+
+    Note that when VideoLabels objects are serialized, the keys of the `frames`
     dict will be converted to strings, because all JSON object keys _must_ be
     strings. The `from_dict` method of this class handles converting the keys
     back to integers when VideoLabels instances are loaded.
 
     Attributes:
+        filename: the filename of the video
+        metadata: a VideoMetadata describing metadata about the video
         attrs: an AttributeContainer containing video attributes
         frames: a dictionary mapping frame number strings to VideoFrameLabels
             instances
         schema: a VideoLabelsSchema describing the schema of the video labels
     '''
 
-    def __init__(self, attrs=None, frames=None, schema=None):
+    def __init__(
+            self, filename=None, metadata=None, attrs=None, frames=None,
+            schema=None):
         '''Constructs a VideoLabels instance.
 
         Args:
+            filename: an optional filename for the video. By default, no
+                filename is stored
+            metadata: an optional VideoMetadata instance describing metadata
+                about the video. By default, no metadata is stored
             attrs: an optional AttributeContainer of video attributes. By
                 default, an empty AttributeContainer is created
             frames: an optional dictionary mapping frame numbers to
@@ -462,6 +473,8 @@ class VideoLabels(Serializable):
             schema: an optional VideoLabelsSchema to enforce on the object.
                 By default, no schema is enforced
         '''
+        self.filename = filename
+        self.metadata = metadata
         self.attrs = attrs or AttributeContainer()
         self.frames = frames or {}
         self.schema = schema
@@ -634,6 +647,10 @@ class VideoLabels(Serializable):
     def attributes(self):
         '''Returns the list of class attributes that will be serialized.'''
         _attrs = []
+        if self.filename:
+            _attrs.append("filename")
+        if self.metadata:
+            _attrs.append("metadata")
         if self.has_schema:
             _attrs.append("schema")
         if self.attrs:
@@ -689,6 +706,12 @@ class VideoLabels(Serializable):
     @classmethod
     def from_dict(cls, d):
         '''Constructs a VideoLabels from a JSON dictionary.'''
+        filename = d.get("filename", None)
+
+        metadata = d.get("metadata", None)
+        if metadata is not None:
+            metadata = VideoMetadata.from_dict(metadata)
+
         attrs = d.get("attrs", None)
         if attrs is not None:
             attrs = AttributeContainer.from_dict(attrs)
@@ -702,7 +725,9 @@ class VideoLabels(Serializable):
         if schema is not None:
             schema = VideoLabelsSchema.from_dict(schema)
 
-        return cls(attrs=attrs, frames=frames, schema=schema)
+        return cls(
+            filename=filename, metadata=metadata, attrs=attrs, frames=frames,
+            schema=schema)
 
 
 class VideoLabelsSchema(Serializable):
