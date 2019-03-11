@@ -143,7 +143,6 @@ class ImageSetLabels(Serializable):
         '''
         if self.has_schema:
             self._validate_image_labels(image_labels)
-
         self.images.append(image_labels)
 
     def get_schema(self):
