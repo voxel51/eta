@@ -807,6 +807,18 @@ class VideoLabels(JSONFile):
     pass
 
 
+class VideoSetLabels(JSONFile):
+    '''A description of the labeled contents of a set of videos.
+
+    This type is implemented in ETA by the `eta.core.video.VideoSetLabels`
+    class.
+
+    Examples:
+        /path/to/video_set_labels.json
+    '''
+    pass
+
+
 class Features(FileSequence, ConcreteData):
     '''A sequence of features indexed by one numeric parameter.
 
