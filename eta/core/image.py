@@ -109,6 +109,8 @@ class ImageSetLabels(Serializable):
         return self.images[idx]
 
     def __setitem__(self, idx, image_labels):
+        if self.has_schema:
+            self._validate_image_labels(image_labels)
         self.images[idx] = image_labels
 
     def __delitem__(self, idx):
