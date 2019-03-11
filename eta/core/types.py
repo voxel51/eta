@@ -1032,3 +1032,48 @@ class TFRecordsDirectory(Directory):
         /path/to/tf_records
     '''
     pass
+
+
+class PickleFile(File, ConcreteData):
+    '''A .pkl file.
+
+    Examples:
+        /path/to/data.pkl
+    '''
+
+    @staticmethod
+    def gen_path(basedir, params):
+        return os.path.join(basedir, "{name}.pkl").format(**params)
+
+    @staticmethod
+    def is_valid_path(path):
+        return File.is_valid_path(path) and etau.has_extension(path, ".pkl")
+
+
+class PickleFileSequence(FileSequence, ConcreteData):
+    '''A collection of .pkl files indexed by one numeric parameter.
+
+    Examples:
+        /path/to/data/%05d.pkl
+    '''
+
+    @staticmethod
+    def gen_path(basedir, params):
+        return os.path.join(
+            basedir, "{name}", "{idx}.pkl").format(**params)
+
+    @staticmethod
+    def is_valid_path(path):
+        return (
+            FileSequence.is_valid_path(path) and
+            etau.has_extension(path, ".pkl")
+        )
+
+
+class PickleFileDirectory(Directory):
+    '''A directory containing one or more .pkl files.
+
+    Examples:
+        /path/to/pkl_files
+    '''
+    pass
