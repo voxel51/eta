@@ -683,6 +683,8 @@ class VideoLabels(Serializable):
 
     def _validate_schema(self):
         if self.has_schema:
+            for video_attr in self.attrs:
+                self._validate_video_attribute(video_attr)
             for frame_labels in itervalues(self.frames):
                 self._validate_frame_labels(frame_labels)
 
