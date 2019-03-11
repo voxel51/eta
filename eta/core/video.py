@@ -1099,6 +1099,10 @@ class VideoLabelsSchema(Serializable):
             for obj_attr in obj.attrs:
                 self.validate_object_attribute(obj.label, obj_attr)
 
+    def attributes(self):
+        '''Returns the list of class attributes that will be serialized.'''
+        return ["attrs", "frames", "objects"]
+
     @classmethod
     def build_active_schema_for_frame(cls, frame_labels):
         '''Builds a VideoLabelsSchema that describes the active schema of
