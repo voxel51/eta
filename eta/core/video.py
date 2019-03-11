@@ -559,8 +559,8 @@ class VideoFrameLabels(Serializable):
 class VideoLabels(Serializable):
     '''Class encapsulating labels for a video.
 
-    Note that any falsey fields of this class (except `frames`) will be omitted
-    during serialization.
+    Note that any falsey fields of this class will be omitted during
+    serialization.
 
     Note that when VideoLabels objects are serialized, the keys of the `frames`
     dict will be converted to strings, because all JSON object keys _must_ be
@@ -776,7 +776,8 @@ class VideoLabels(Serializable):
             _attrs.append("schema")
         if self.attrs:
             _attrs.append("attrs")
-        _attrs.append("frames")
+        if self.frames:
+            _attrs.append("frames")
         return _attrs
 
     def _validate_video_attribute(self, video_attr):
@@ -839,10 +840,12 @@ class VideoLabels(Serializable):
         if attrs is not None:
             attrs = AttributeContainer.from_dict(attrs)
 
-        frames = OrderedDict(
-            (int(fn), VideoFrameLabels.from_dict(vfl))
-            for fn, vfl in iteritems(d["frames"])
-        )
+        frames = d.get("frames", None)
+        if frames is not None:
+            frames = OrderedDict(
+                (int(fn), VideoFrameLabels.from_dict(vfl))
+                for fn, vfl in iteritems(frames)
+            )
 
         schema = d.get("schema", None)
         if schema is not None:
