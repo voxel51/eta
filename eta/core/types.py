@@ -771,6 +771,30 @@ class DetectedObjectsSequence(JSONFileSequence):
     pass
 
 
+class ImageLabels(JSONFile):
+    '''A description of the labeled contents of an image.
+
+    This type is implemented in ETA by the `eta.core.image.ImageLabels`
+    class.
+
+    Examples:
+        /path/to/image_labels.json
+    '''
+    pass
+
+
+class ImageSetLabels(JSONFile):
+    '''A description of the labeled contents of a set of images.
+
+    This type is implemented in ETA by the `eta.core.image.ImageSetLabels`
+    class.
+
+    Examples:
+        /path/to/image_set_labels.json
+    '''
+    pass
+
+
 class VideoLabels(JSONFile):
     '''A description of the labeled contents of a video.
 
@@ -779,6 +803,18 @@ class VideoLabels(JSONFile):
 
     Examples:
         /path/to/video_labels.json
+    '''
+    pass
+
+
+class VideoSetLabels(JSONFile):
+    '''A description of the labeled contents of a set of videos.
+
+    This type is implemented in ETA by the `eta.core.video.VideoSetLabels`
+    class.
+
+    Examples:
+        /path/to/video_set_labels.json
     '''
     pass
 

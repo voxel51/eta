@@ -346,8 +346,129 @@ class VideoMetadata(Serializable):
             duration=d.get("duration", None),
             size_bytes=d.get("size_bytes", None),
             encoding_str=d.get("encoding_str", None),
-            gps_waypoints=gps_waypoints,
-        )
+            gps_waypoints=gps_waypoints)
+
+
+class VideoSetLabels(Serializable):
+    '''Class encapsulating labels for a set of videos.
+
+    Attributes:
+        videos: a list of VideoLabels instances
+        schema: a VideoLabelsSchema describing the schema of the video labels
+    '''
+
+    def __init__(self, videos=None, schema=None):
+        '''Constructs a VideoSetLabels instance.
+
+        Args:
+            videos: an optional list of VideoLabels instances. By default, an
+                empty list is created
+            schema: an optional VideoLabelsSchema to enforce on the object.
+                By default, no schema is enforced
+        '''
+        self.videos = videos or []
+        self.schema = schema
+
+    def __getitem__(self, idx):
+        return self.videos[idx]
+
+    def __setitem__(self, idx, video_labels):
+        if self.has_schema:
+            self._validate_video_labels(video_labels)
+        self.videos[idx] = video_labels
+
+    def __delitem__(self, idx):
+        del self.videos[idx]
+
+    def __iter__(self):
+        return iter(self.videos)
+
+    def __len__(self):
+        return len(self.videos)
+
+    def __bool__(self):
+        return bool(self.videos)
+
+    @property
+    def has_schema(self):
+        '''Returns True/False whether the container has an enforced schema.'''
+        return self.schema is not None
+
+    def merge_video_set_labels(self, video_set_labels):
+        '''Merges the given VideoSetLabels into this labels.'''
+        for video_labels in video_set_labels:
+            self.add_video_labels(video_labels)
+
+    def add_video_labels(self, video_labels):
+        '''Adds the VideoLabels to the set.
+
+        Args:
+            video_labels: an VideoLabels instance
+        '''
+        if self.has_schema:
+            self._apply_schema_to_video(video_labels)
+        self.videos.append(video_labels)
+
+    def get_schema(self):
+        '''Gets the current enforced schema for the video set, or None if no
+        schema is enforced.
+        '''
+        return self.schema
+
+    def get_active_schema(self):
+        '''Returns an VideoLabelsSchema describing the active schema of the
+        video set.
+        '''
+        schema = VideoLabelsSchema()
+        for video_labels in self.videos:
+            schema.merge_schema(
+                VideoLabelsSchema.build_active_schema(video_labels))
+        return schema
+
+    def set_schema(self, schema):
+        '''Sets the enforced schema to the given VideoLabelsSchema.'''
+        self.schema = schema
+        self._apply_schema()
+
+    def freeze_schema(self):
+        '''Sets the enforced schema for the video set to the current active
+        schema.
+        '''
+        self.set_schema(self.get_active_schema())
+
+    def remove_schema(self):
+        '''Removes the enforced schema from the video set.'''
+        self.schema = None
+        self._apply_schema()
+
+    def attributes(self):
+        '''Returns the list of class attributes that will be serialized.'''
+        _attrs = []
+        if self.has_schema:
+            _attrs.append("schema")
+        _attrs.append("videos")
+        return _attrs
+
+    def _apply_schema_to_video(self, video_labels):
+        if self.has_schema:
+            video_labels.set_schema(self.get_schema())
+        else:
+            video_labels.remove_schema()
+
+    def _apply_schema(self):
+        for video_labels in self.videos:
+            self._apply_schema_to_video(video_labels)
+
+    @classmethod
+    def from_dict(cls, d):
+        '''Constructs an VideoSetLabels from a JSON dictionary.'''
+        videos = [VideoLabels.from_dict(vl) for vl in d["videos"]]
+
+        schema = d.get("schema", None)
+        if schema is not None:
+            schema = VideoLabelsSchema.from_dict(schema)
+
+        return cls(videos=videos, schema=schema)
 
 
 class VideoFrameLabels(Serializable):
@@ -438,22 +559,33 @@ class VideoFrameLabels(Serializable):
 class VideoLabels(Serializable):
     '''Class encapsulating labels for a video.
 
-    Note: when VideoLabels objects are serialized, the keys of the `frames`
+    Note that any falsey fields of this class will be omitted during
+    serialization.
+
+    Note that when VideoLabels objects are serialized, the keys of the `frames`
     dict will be converted to strings, because all JSON object keys _must_ be
     strings. The `from_dict` method of this class handles converting the keys
     back to integers when VideoLabels instances are loaded.
 
     Attributes:
+        filename: the filename of the video
+        metadata: a VideoMetadata describing metadata about the video
         attrs: an AttributeContainer containing video attributes
         frames: a dictionary mapping frame number strings to VideoFrameLabels
             instances
         schema: a VideoLabelsSchema describing the schema of the video labels
     '''
 
-    def __init__(self, attrs=None, frames=None, schema=None):
+    def __init__(
+            self, filename=None, metadata=None, attrs=None, frames=None,
+            schema=None):
         '''Constructs a VideoLabels instance.
 
         Args:
+            filename: an optional filename for the video. By default, no
+                filename is stored
+            metadata: an optional VideoMetadata instance describing metadata
+                about the video. By default, no metadata is stored
             attrs: an optional AttributeContainer of video attributes. By
                 default, an empty AttributeContainer is created
             frames: an optional dictionary mapping frame numbers to
@@ -462,6 +594,8 @@ class VideoLabels(Serializable):
             schema: an optional VideoLabelsSchema to enforce on the object.
                 By default, no schema is enforced
         '''
+        self.filename = filename
+        self.metadata = metadata
         self.attrs = attrs or AttributeContainer()
         self.frames = frames or {}
         self.schema = schema
@@ -634,11 +768,16 @@ class VideoLabels(Serializable):
     def attributes(self):
         '''Returns the list of class attributes that will be serialized.'''
         _attrs = []
+        if self.filename:
+            _attrs.append("filename")
+        if self.metadata:
+            _attrs.append("metadata")
         if self.has_schema:
             _attrs.append("schema")
         if self.attrs:
             _attrs.append("attrs")
-        _attrs.append("frames")
+        if self.frames:
+            _attrs.append("frames")
         return _attrs
 
     def _validate_video_attribute(self, video_attr):
@@ -666,6 +805,8 @@ class VideoLabels(Serializable):
 
     def _validate_schema(self):
         if self.has_schema:
+            for video_attr in self.attrs:
+                self._validate_video_attribute(video_attr)
             for frame_labels in itervalues(self.frames):
                 self._validate_frame_labels(frame_labels)
 
@@ -689,20 +830,30 @@ class VideoLabels(Serializable):
     @classmethod
     def from_dict(cls, d):
         '''Constructs a VideoLabels from a JSON dictionary.'''
+        filename = d.get("filename", None)
+
+        metadata = d.get("metadata", None)
+        if metadata is not None:
+            metadata = VideoMetadata.from_dict(metadata)
+
         attrs = d.get("attrs", None)
         if attrs is not None:
             attrs = AttributeContainer.from_dict(attrs)
 
-        frames = OrderedDict(
-            (int(fn), VideoFrameLabels.from_dict(vfl))
-            for fn, vfl in iteritems(d["frames"])
-        )
+        frames = d.get("frames", None)
+        if frames is not None:
+            frames = OrderedDict(
+                (int(fn), VideoFrameLabels.from_dict(vfl))
+                for fn, vfl in iteritems(frames)
+            )
 
         schema = d.get("schema", None)
         if schema is not None:
             schema = VideoLabelsSchema.from_dict(schema)
 
-        return cls(attrs=attrs, frames=frames, schema=schema)
+        return cls(
+            filename=filename, metadata=metadata, attrs=attrs, frames=frames,
+            schema=schema)
 
 
 class VideoLabelsSchema(Serializable):
@@ -950,6 +1101,10 @@ class VideoLabelsSchema(Serializable):
         if obj.has_attributes:
             for obj_attr in obj.attrs:
                 self.validate_object_attribute(obj.label, obj_attr)
+
+    def attributes(self):
+        '''Returns the list of class attributes that will be serialized.'''
+        return ["attrs", "frames", "objects"]
 
     @classmethod
     def build_active_schema_for_frame(cls, frame_labels):

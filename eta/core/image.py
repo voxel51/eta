@@ -109,6 +109,8 @@ class ImageSetLabels(Serializable):
         return self.images[idx]
 
     def __setitem__(self, idx, image_labels):
+        if self.has_schema:
+            self._validate_image_labels(image_labels)
         self.images[idx] = image_labels
 
     def __delitem__(self, idx):
@@ -141,7 +143,6 @@ class ImageSetLabels(Serializable):
         '''
         if self.has_schema:
             self._validate_image_labels(image_labels)
-
         self.images.append(image_labels)
 
     def get_schema(self):
@@ -186,9 +187,9 @@ class ImageSetLabels(Serializable):
     def _validate_image_labels(self, image_labels):
         if self.has_schema:
             for image_attr in image_labels.attrs:
-                self.schema.validate_image_attribute(image_attr)
+                self._validate_image_attribute(image_attr)
             for obj in image_labels.objects:
-                self.schema.validate_object(obj)
+                self._validate_object(obj)
 
     def _validate_image_attribute(self, image_attr):
         if self.has_schema:
@@ -494,6 +495,10 @@ class ImageLabelsSchema(Serializable):
         if obj.has_attributes:
             for obj_attr in obj.attrs:
                 self.validate_object_attribute(obj.label, obj_attr)
+
+    def attributes(self):
+        '''Returns the list of class attributes that will be serialized.'''
+        return ["attrs", "objects"]
 
     @classmethod
     def build_active_schema(cls, image_labels):

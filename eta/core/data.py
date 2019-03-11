@@ -976,7 +976,7 @@ class BaseDataRecord(Serializable):
             KeyError: if a required attribute was not found in the input
                 dictionary
         '''
-        kwargs = {k: d[k] for k in cls.required()}                  # required
+        kwargs = {k: d[k] for k in cls.required()}  # required
         kwargs.update({k: d[k] for k in cls.optional() if k in d})  # optional
         return cls(**kwargs)
 
