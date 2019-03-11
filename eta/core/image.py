@@ -188,9 +188,9 @@ class ImageSetLabels(Serializable):
     def _validate_image_labels(self, image_labels):
         if self.has_schema:
             for image_attr in image_labels.attrs:
-                self.schema.validate_image_attribute(image_attr)
+                self._validate_image_attribute(image_attr)
             for obj in image_labels.objects:
-                self.schema.validate_object(obj)
+                self._validate_object(obj)
 
     def _validate_image_attribute(self, image_attr):
         if self.has_schema:
