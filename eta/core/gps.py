@@ -51,6 +51,21 @@ class GPSWaypoints(Serializable):
         self._flon = None
         self._init_gps()
 
+    @property
+    def has_points(self):
+        '''Returns True/False if this object contains any waypoints.'''
+        return bool(self.points)
+
+    def add_point(self, waypoint):
+        '''Adds the GPSWaypoint to this object.'''
+        self.points.append(waypoint)
+        self._init_gps()
+
+    def add_points(self, waypoints):
+        '''Adds the list of the GPSWaypoint instances to this object.'''
+        self.points.extend(waypoints)
+        self._init_gps()
+
     def get_location(self, frame_number):
         '''Gets the (lat, lon) coordinates at the given frame number in the
         video.
@@ -62,11 +77,16 @@ class GPSWaypoints(Serializable):
             frame_number: the frame number of interest
 
         Returns:
-            the (lat, lon) at the given frame in the video
+            the (lat, lon) at the given frame in the video, or (None, None) if
+                no coordinates are available
         '''
+        if not self.has_points:
+            return None, None
         return self._flat(frame_number), self._flon(frame_number)
 
     def _init_gps(self):
+        if not self.has_points:
+            return
         frames = [loc.frame_number for loc in self.points]
         lats = [loc.latitude for loc in self.points]
         lons = [loc.longitude for loc in self.points]
@@ -77,6 +97,10 @@ class GPSWaypoints(Serializable):
     def _make_interp(x, y):
         return spi.interp1d(
             x, y, kind="nearest", bounds_error=False, fill_value="extrapolate")
+
+    def attributes(self):
+        '''Returns the list of class attributes that will be serialized.'''
+        return ["points"] if self.has_points else []
 
     @classmethod
     def from_dict(cls, d):
