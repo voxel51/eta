@@ -1095,7 +1095,7 @@ class TextFile(File, ConcreteData):
         return File.is_valid_path(path) and etau.has_extension(path, ".txt")
 
 
-class HtmlFile(File, ConcreteData):
+class HTMLFile(File, ConcreteData):
     '''A .html file.
 
     Examples:
