@@ -795,6 +795,19 @@ class ImageSetLabels(JSONFile):
     pass
 
 
+class ImageLabelsSchema(JSONFile):
+    '''A description of the schema of possible labels that can be generated for
+    images.
+
+    This type is implemented in ETA by the `eta.core.image.ImageLabelsSchema`
+    class.
+
+    Examples:
+        /path/to/image_labels_schema.json
+    '''
+    pass
+
+
 class VideoLabels(JSONFile):
     '''A description of the labeled contents of a video.
 
