@@ -26,7 +26,7 @@ import os
 import numpy as np
 
 from eta.core.config import no_default
-from eta.core.serial import Container, Serializable, read_json, NpzWriteable
+from eta.core.serial import Container, NpzWriteable, Serializable, read_json
 import eta.core.utils as etau
 
 
@@ -1034,9 +1034,8 @@ class LabeledVideoRecord(BaseDataRecord):
 
 
 class FeatureArray(NpzWriteable):
-    '''Class representing a feature array `X` and labels `y`.
-    '''
+    '''Class representing a feature array `X` and corresponding labels `y`.'''
 
     def __init__(self, X, y):
-        self.X = np.array(X)
-        self.y = np.array(y)
+        self.X = np.asarray(X)
+        self.y = np.asarray(y)

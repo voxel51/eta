@@ -132,33 +132,42 @@ def pretty_str(obj):
 
 
 class NpzWriteable(object):
-    '''Base class for dictionary like objects that contain numpy.array
-    values, so that they can be written to npz files.
+    '''Base class for dictionary-like objects that contain numpy.array values
+    that can be written to disk as .npz files.
     '''
 
+    @staticmethod
+    def is_npz_path(path):
+        '''Returns True/False if the provided path is an .npz file.'''
+        return path.endswith(".npz")
+
+    def attributes(self):
+        '''Returns a list of class attributes that will be included when
+        writing an .npz file.
+        '''
+        return [a for a in vars(self) if not a.startswith("_")]
+
     def write_npz(self, path):
-        '''Saves the instance to disk in an npz.'''
+        '''Writes the instance to disk in .npz format.
+
+        Args:
+            path: the path to write the .npz file
+        '''
         etau.ensure_basedir(path)
         d = {a: getattr(self, a) for a in self.attributes()}
         np.savez_compressed(path, **d)
 
     @classmethod
     def from_npz(cls, path):
-        '''Loads the npz file from disk and returns an
-        NpzWriteable instance.
+        '''Loads the .npz file from disk and returns an NpzWriteable instance.
+
+        Args:
+            path: the path to an .npz file
+
+        Returns:
+            an NpzWriteable instance
         '''
         return cls(**np.load(path))
-
-    @staticmethod
-    def is_npz_path(path):
-        '''Checks the path to see if it has an npz extension.'''
-        return path.endswith(".npz")
-
-    def attributes(self):
-        '''Returns a list of class attributes that can be put
-        in an npz file.
-        '''
-        return [a for a in vars(self) if not a.startswith("_")]
 
 
 class Picklable(object):
