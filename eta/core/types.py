@@ -676,6 +676,19 @@ class Attribute(JSONFile):
     pass
 
 
+class AttributeSchema(JSONFile):
+    '''Base class for classes that describe the values or range of values that
+    a particular attribute can take.
+
+    This type is implemented in ETA by the `eta.core.data.AttributeSchema`
+    class.
+
+    Examples:
+        /path/to/attribute_schema.json
+    '''
+    pass
+
+
 class CategoricalAttribute(JSONFile):
     '''A categorical attribute of an entity in an image or video.
 
@@ -684,6 +697,19 @@ class CategoricalAttribute(JSONFile):
 
     Examples:
         /path/to/categorical_attribute.json
+    '''
+    pass
+
+
+class CategoricalAttributeSchema(JSONFile):
+    '''A schema that defines the set of possible values that a particular
+    `CategoricalAttribute` can take.
+
+    This type is implemented in ETA by the
+    `eta.core.data.CategoricalAttributeSchema` class.
+
+    Examples:
+        /path/to/categorical_attribute_schema.json
     '''
     pass
 
@@ -700,6 +726,19 @@ class NumericAttribute(JSONFile):
     pass
 
 
+class NumericAttributeSchema(JSONFile):
+    '''A schema that defines the range of possible values that a particular
+    `NumericAttribute` can take.
+
+    This type is implemented in ETA by the
+    `eta.core.data.NumericAttributeSchema` class.
+
+    Examples:
+        /path/to/numeric_attribute_schema.json
+    '''
+    pass
+
+
 class BooleanAttribute(JSONFile):
     '''A boolean attribute of an entity in an image or video.
 
@@ -712,15 +751,41 @@ class BooleanAttribute(JSONFile):
     pass
 
 
+class BooleanAttributeSchema(JSONFile):
+    '''A schema that declares that a given attribute is a `BooleanAttribute`
+    and thus must take the values `True` and `False`.
+
+    This type is implemented in ETA by the
+    `eta.core.data.BooleanAttributeSchema` class.
+
+    Examples:
+        /path/to/boolean_attribute_schema.json
+    '''
+    pass
+
+
 class Attributes(JSONFile):
-    '''A list of attributes of an entity in an image or video. The list can
-    contain attributes with any subtype of Attribute.
+    '''A list of `Attribute`s of an entity in an image or video. The list can
+    contain attributes with any subtype of `Attribute`.
 
     This type is implemented in ETA by the `eta.core.data.AttributeContainer`
     class.
 
     Examples:
         /path/to/attribute_container.json
+    '''
+    pass
+
+
+class AttributesSchema(JSONFile):
+    '''A dictionary of `AttributesSchema`s that define the schemas of a
+    collection of `Attribute`s of any type.
+
+    This type is implemented in ETA by the
+    `eta.core.data.AttributeContainerSchema` class.
+
+    Examples:
+        /path/to/attributes_schema.json
     '''
     pass
 
