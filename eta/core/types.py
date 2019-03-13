@@ -820,6 +820,20 @@ class VideoLabels(JSONFile):
     pass
 
 
+class VideoLabelsSchema(JSONFile):
+    '''A description of the schema of possible labels that can be generated for
+    a video.
+
+    This type is implemented in ETA by the `eta.core.video.VideoLabelsSchema`
+    class.
+
+    Examples:
+        /path/to/video_labels_schema.json
+    '''
+    pass
+
+
+
 class VideoSetLabels(JSONFile):
     '''A description of the labeled contents of a set of videos.
 
