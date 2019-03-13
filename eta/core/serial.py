@@ -131,6 +131,36 @@ def pretty_str(obj):
     return pprint.pformat(obj, indent=4, width=79)
 
 
+class NpzWriteable(object):
+    '''Base class for dictionary like objects that contain numpy.array
+    values, so that they can be written to npz files.
+    '''
+
+    def write_npz(self, path):
+        '''Saves the instance to disk in an npz.'''
+        etau.ensure_basedir(path)
+        d = {a: getattr(self, a) for a in self.attributes()}
+        np.savez_compressed(path, **d)
+
+    @classmethod
+    def from_npz(cls, path):
+        '''Loads the npz file from disk and returns an
+        NpzWriteable instance.
+        '''
+        return cls(**np.load(path))
+
+    @staticmethod
+    def is_npz_path(path):
+        '''Checks the path to see if it has an npz extension.'''
+        return path.endswith(".npz")
+
+    def attributes(self):
+        '''Returns a list of class attributes that can be put
+        in an npz file.
+        '''
+        return [a for a in vars(self) if not a.startswith("_")]
+
+
 class Picklable(object):
     '''Mixin class for objects that can be pickled.'''
 
