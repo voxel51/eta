@@ -1077,3 +1077,35 @@ class PickleFileDirectory(Directory):
         /path/to/pkl_files
     '''
     pass
+
+
+class TextFile(File, ConcreteData):
+    '''A .txt file.
+
+    Examples:
+        /path/to/data.txt
+    '''
+
+    @staticmethod
+    def gen_path(basedir, params):
+        return os.path.join(basedir, "{name}.txt").format(**params)
+
+    @staticmethod
+    def is_valid_path(path):
+        return File.is_valid_path(path) and etau.has_extension(path, ".txt")
+
+
+class HTMLFile(File, ConcreteData):
+    '''A .html file.
+
+    Examples:
+        /path/to/data.html
+    '''
+
+    @staticmethod
+    def gen_path(basedir, params):
+        return os.path.join(basedir, "{name}.html").format(**params)
+
+    @staticmethod
+    def is_valid_path(path):
+        return File.is_valid_path(path) and etau.has_extension(path, ".html")
