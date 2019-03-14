@@ -1034,7 +1034,11 @@ class LabeledVideoRecord(BaseDataRecord):
 
 
 class FeatureArray(NpzWriteable):
-    '''Class representing a feature array `X` and corresponding labels `y`.'''
+    '''Class representing a feature array `X` and corresponding labels `y`.
+
+    `X` is an n x d array whose rows contain features
+    `y` is a length-n array of labels
+    '''
 
     def __init__(self, X, y):
         self.X = np.asarray(X)
