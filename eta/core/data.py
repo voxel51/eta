@@ -1033,7 +1033,7 @@ class LabeledVideoRecord(BaseDataRecord):
         return ["video_path", "label"]
 
 
-class FeatureArray(NpzWriteable):
+class LabeledFeatures(NpzWriteable):
     '''Class representing a feature array `X` and corresponding labels `y`.
 
     `X` is an n x d array whose rows contain features
