@@ -706,8 +706,8 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
                 return files
 
     def upload_files_in_folder(
-            self, local_dir, folder_id, skip_failures=True,
-            skip_existing_files=True):
+            self, local_dir, folder_id, skip_failures=False,
+            skip_existing_files=False):
         '''Uploads the files in the given folder to Google Drive.
 
         Note that this function uses `eta.core.utils.list_files` to determine
@@ -718,10 +718,10 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
             local_dir: the directory of files to upload
             folder_id: the ID of the Drive folder to upload the files into
             skip_failures: whether to gracefully skip upload errors. By
-                default, this is True
+                default, this is False
             skip_existing_files: whether to skip files whose names match
                 existing files in the Google Drive folder. By default, this is
-                True
+                False
 
         Returns:
             a dict mapping filenames to IDs of the uploaded files
@@ -764,8 +764,8 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
         return file_ids
 
     def download_files_in_folder(
-            self, folder_id, local_dir, skip_failures=True,
-            skip_existing_files=True):
+            self, folder_id, local_dir, skip_failures=False,
+            skip_existing_files=False):
         '''Downloads the files in the Google Drive folder to the given local
         directory.
 
@@ -773,10 +773,10 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
             folder_id: the ID of the Drive folder to download files from
             local_dir: the directory to download the files into
             skip_failures: whether to gracefully skip download errors. By
-                default, this is True
+                default, this is False
             skip_existing_files: whether to skip files whose names match
                 existing files in the local directory. By default, this is
-                True
+                False
 
         Returns:
             a list of filenames of the downloaded files
@@ -820,14 +820,14 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
                     local_path)
         return filenames
 
-    def delete_duplicate_files_in_folder(self, folder_id, skip_failures=True):
+    def delete_duplicate_files_in_folder(self, folder_id, skip_failures=False):
         '''Deletes any duplicate files (files with the same filename) in the
         given Google Drive folder.
 
         Args:
             folder_id: the ID of the Drive folder to process
             skip_failures: whether to gracefully skip deletion errors. By
-                default, this is True
+                default, this is False
 
         Returns:
             num_deleted: the number of deleted files
