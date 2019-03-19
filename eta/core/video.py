@@ -2014,6 +2014,11 @@ class FFmpegVideoReader(VideoReader):
             return False
 
     def _retrieve(self):
+        # stop when ffmpeg returns empty bits, meaning it has
+        # gone past the end of the video
+        if not self._raw_frame:
+            raise StopIteration
+
         width, height = self.frame_size
         try:
             vec = np.fromstring(self._raw_frame, dtype="uint8")
