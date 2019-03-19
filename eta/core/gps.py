@@ -85,7 +85,7 @@ class GPSWaypoints(Serializable):
         return self._flat(frame_number), self._flon(frame_number)
 
     def _init_gps(self):
-        if not self.has_points:
+        if len(self.points) < 2:
             return
         frames = [loc.frame_number for loc in self.points]
         lats = [loc.latitude for loc in self.points]
