@@ -1609,6 +1609,35 @@ def sliding_window_sample_frames(arg, k, stride, size=None):
     return np.array(clips)
 
 
+def extract_keyframes(video_path, output_patt=None):
+    '''Extracts the keyframes from the video.
+
+    Keyframes are a set of video frames that mark the start of a transition,
+    and are faster to extract than an arbitrary frame.
+
+    Args:
+        video_path: the path to a video
+        output_patt: an optional output pattern like "/path/to/frames-%d.png"
+            specifying where to write the sampled frames. If omitted, the
+            frames are instead returned in an in-memory list
+
+    Returns:
+        a list of the keyframes if output_patt is None, and None otherwise
+    '''
+    if output_patt:
+        # Write frames to disk via VideoProcessor
+        p = VideoProcessor(
+            video_path, out_images_path=output_patt, in_keyframes_only=True)
+        with p:
+            for img in p:
+                p.write(img)
+        return None
+
+    # Load frames into memory via FFmpegVideoReader
+    with FFmpegVideoReader(video_path, keyframes_only=True) as r:
+        return [img for img in r]
+
+
 class VideoProcessor(object):
     '''Class for reading a video and writing a new video frame-by-frame.
 
@@ -1632,7 +1661,8 @@ class VideoProcessor(object):
             out_clips_path=None,
             out_fps=None,
             out_size=None,
-            out_opts=None):
+            out_opts=None,
+            in_keyframes_only=False):
         '''Constructs a new VideoProcessor instance.
 
         Args:
@@ -1663,13 +1693,20 @@ class VideoProcessor(object):
             out_opts: a list of output video options for FFmpeg. Passed
                 directly to FFmpegVideoWriter. Only applicable when
                 out_use_ffmpeg = True
+            in_keyframes_only: whether or not to only extract keyframes.
+                Can only be set to True if in_use_ffmpeg = True
 
         Raises:
             VideoProcessorError: if insufficient options are supplied to
                 construct a VideoWriter
         '''
         if in_use_ffmpeg:
-            self._reader = FFmpegVideoReader(inpath, frames=frames)
+            self._reader = FFmpegVideoReader(
+                inpath, frames=frames, keyframes_only=in_keyframes_only)
+        elif in_keyframes_only:
+            raise VideoProcessorError(
+                "in_keyframes_only can only be set to True if "
+                "in_use_ffmpeg = True")
         else:
             self._reader = OpenCVVideoReader(inpath, frames=frames)
         self._video_clip_writer = None
@@ -1893,7 +1930,7 @@ class FFmpegVideoReader(VideoReader):
     This class uses 1-based indexing for all frame operations.
     '''
 
-    def __init__(self, inpath, frames=None):
+    def __init__(self, inpath, frames=None, keyframes_only=False):
         '''Constructs a new VideoReader with ffmpeg backend.
 
         Args:
@@ -1908,9 +1945,13 @@ class FFmpegVideoReader(VideoReader):
                     - a string like "1-3,6,8-10"
                     - a list like [1, 2, 3, 6, 8, 9, 10]
                     - a FrameRange or FrameRanges instance
+            keyframes_only: whether or not to only extract keyframes
         '''
         self._stream_info = VideoStreamInfo.build_for(inpath)
         self._ffmpeg = FFmpeg(
+            in_opts=[
+                "-skip_frame", "nokey"
+            ] if keyframes_only else None,
             out_opts=[
                 "-f", 'image2pipe',         # pipe frames to stdout
                 "-vcodec", "rawvideo",      # output will be raw video
