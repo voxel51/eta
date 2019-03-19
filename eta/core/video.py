@@ -1950,7 +1950,8 @@ class FFmpegVideoReader(VideoReader):
         self._stream_info = VideoStreamInfo.build_for(inpath)
         self._ffmpeg = FFmpeg(
             in_opts=[
-                "-skip_frame", "nokey"
+                "-skip_frame", "nokey",
+                "-vsync", "0"
             ] if keyframes_only else None,
             out_opts=[
                 "-f", 'image2pipe',         # pipe frames to stdout
