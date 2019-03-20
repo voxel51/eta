@@ -139,11 +139,11 @@ if [ "${GCARD}" == "ON" ]; then
     # Supported tensorflow-gpu + CUDA configurations
     # https://www.tensorflow.org/install/install_sources#tested_source_configurations
     #
-    if [ $(cat /usr/local/cuda/version.txt | grep -c "CUDA Version 8") ]; then
+    if [ $(cat /usr/local/cuda/version.txt | grep -c "CUDA Version 8") -gt 0 ]; then
         # Found CUDA 8, so we must install an old version
         MSG "Installing tensorflow-gpu 1.4"
         CRITICAL pip install --upgrade tensorflow-gpu==1.4
-    elif [ $(cat /usr/local/cuda/version.txt | grep -c "CUDA Version 9") ]; then
+    elif [ $(cat /usr/local/cuda/version.txt | grep -c "CUDA Version 9") -gt 0 ]; then
         # Found CUDA 9, so we must install version 1.12.0
         MSG "Installing tensorflow-gpu 1.12.0"
         CRITICAL pip install --upgrade tensorflow-gpu==1.12.0
