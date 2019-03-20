@@ -1627,7 +1627,7 @@ def extract_keyframes(video_path, output_patt=None):
     if output_patt:
         # Write frames to disk via VideoProcessor
         p = VideoProcessor(
-            video_path, out_images_path=output_patt, in_keyframes_only=True)
+            video_path, keyframes_only=True, out_images_path=output_patt)
         with p:
             for img in p:
                 p.write(img)
@@ -1654,6 +1654,7 @@ class VideoProcessor(object):
             self,
             inpath,
             frames=None,
+            keyframes_only=False,
             in_use_ffmpeg=True,
             out_use_ffmpeg=True,
             out_images_path=None,
@@ -1661,14 +1662,16 @@ class VideoProcessor(object):
             out_clips_path=None,
             out_fps=None,
             out_size=None,
-            out_opts=None,
-            in_keyframes_only=False):
+            out_opts=None):
         '''Constructs a new VideoProcessor instance.
 
         Args:
             inpath: path to the input video. Passed directly to a VideoReader
             frames: an optional range(s) of frames to process. This argument
                 is passed directly to VideoReader
+            keyframes_only: whether to only extract keyframes when reading the
+                video. Can only be set to True when `in_use_ffmpeg=True`. When
+                this is True, `frames` is interpreted as keyframe numbers
             in_use_ffmpeg: whether to use FFmpegVideoReader to read input
                 videos rather than OpenCVVideoReader
             out_use_ffmpeg: whether to use FFmpegVideoWriter to write output
@@ -1693,8 +1696,6 @@ class VideoProcessor(object):
             out_opts: a list of output video options for FFmpeg. Passed
                 directly to FFmpegVideoWriter. Only applicable when
                 out_use_ffmpeg = True
-            in_keyframes_only: whether or not to only extract keyframes.
-                Can only be set to True if in_use_ffmpeg = True
 
         Raises:
             VideoProcessorError: if insufficient options are supplied to
@@ -1702,8 +1703,8 @@ class VideoProcessor(object):
         '''
         if in_use_ffmpeg:
             self._reader = FFmpegVideoReader(
-                inpath, frames=frames, keyframes_only=in_keyframes_only)
-        elif in_keyframes_only:
+                inpath, frames=frames, keyframes_only=keyframes_only)
+        elif keyframes_only:
             raise VideoProcessorError(
                 "in_keyframes_only can only be set to True if "
                 "in_use_ffmpeg = True")
@@ -1945,14 +1946,19 @@ class FFmpegVideoReader(VideoReader):
                     - a string like "1-3,6,8-10"
                     - a list like [1, 2, 3, 6, 8, 9, 10]
                     - a FrameRange or FrameRanges instance
-            keyframes_only: whether or not to only extract keyframes
+            keyframes_only: whether to only read keyframes. By default, this
+                is False. When this is True, `frames` is interpreted as
+                keyframe numbers
         '''
+        # Parse args
+        if keyframes_only:
+            in_opts = ["-skip_frame", "nokey", "-vsync", "0"]
+        else:
+            in_opts = None
+
         self._stream_info = VideoStreamInfo.build_for(inpath)
         self._ffmpeg = FFmpeg(
-            in_opts=[
-                "-skip_frame", "nokey",
-                "-vsync", "0"
-            ] if keyframes_only else None,
+            in_opts=in_opts,
             out_opts=[
                 "-f", 'image2pipe',         # pipe frames to stdout
                 "-vcodec", "rawvideo",      # output will be raw video
