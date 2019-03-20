@@ -1631,7 +1631,7 @@ def extract_keyframes(video_path, output_patt=None):
         with p:
             for img in p:
                 p.write(img)
-        return None
+        return
 
     # Load frames into memory via FFmpegVideoReader
     with FFmpegVideoReader(video_path, keyframes_only=True) as r:
@@ -1706,8 +1706,7 @@ class VideoProcessor(object):
                 inpath, frames=frames, keyframes_only=keyframes_only)
         elif keyframes_only:
             raise VideoProcessorError(
-                "in_keyframes_only can only be set to True if "
-                "in_use_ffmpeg = True")
+                "Must have `in_use_ffmpeg=True` when `keyframes_only=True`")
         else:
             self._reader = OpenCVVideoReader(inpath, frames=frames)
         self._video_clip_writer = None
@@ -2021,8 +2020,8 @@ class FFmpegVideoReader(VideoReader):
             return False
 
     def _retrieve(self):
-        # stop when ffmpeg returns empty bits, meaning it has
-        # gone past the end of the video
+        # Stop when ffmpeg returns empty bits, meaning it has gone past the end
+        # of the video
         if not self._raw_frame:
             raise StopIteration
 
