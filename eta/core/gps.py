@@ -54,7 +54,7 @@ class GPSWaypoints(Serializable):
     @property
     def has_points(self):
         '''Returns True/False if this object contains any waypoints.'''
-        return bool(self.points)
+        return len(self.points) > 1
 
     def add_point(self, waypoint):
         '''Adds the GPSWaypoint to this object.'''
@@ -85,7 +85,7 @@ class GPSWaypoints(Serializable):
         return self._flat(frame_number), self._flon(frame_number)
 
     def _init_gps(self):
-        if len(self.points) < 2:
+        if not self.has_points:
             return
         frames = [loc.frame_number for loc in self.points]
         lats = [loc.latitude for loc in self.points]
