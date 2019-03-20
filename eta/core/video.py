@@ -1609,6 +1609,35 @@ def sliding_window_sample_frames(arg, k, stride, size=None):
     return np.array(clips)
 
 
+def extract_keyframes(video_path, output_patt=None):
+    '''Extracts the keyframes from the video.
+
+    Keyframes are a set of video frames that mark the start of a transition,
+    and are faster to extract than an arbitrary frame.
+
+    Args:
+        video_path: the path to a video
+        output_patt: an optional output pattern like "/path/to/frames-%d.png"
+            specifying where to write the sampled frames. If omitted, the
+            frames are instead returned in an in-memory list
+
+    Returns:
+        a list of the keyframes if output_patt is None, and None otherwise
+    '''
+    if output_patt:
+        # Write frames to disk via VideoProcessor
+        p = VideoProcessor(
+            video_path, keyframes_only=True, out_images_path=output_patt)
+        with p:
+            for img in p:
+                p.write(img)
+        return
+
+    # Load frames into memory via FFmpegVideoReader
+    with FFmpegVideoReader(video_path, keyframes_only=True) as r:
+        return [img for img in r]
+
+
 class VideoProcessor(object):
     '''Class for reading a video and writing a new video frame-by-frame.
 
@@ -1625,6 +1654,7 @@ class VideoProcessor(object):
             self,
             inpath,
             frames=None,
+            keyframes_only=False,
             in_use_ffmpeg=True,
             out_use_ffmpeg=True,
             out_images_path=None,
@@ -1639,6 +1669,9 @@ class VideoProcessor(object):
             inpath: path to the input video. Passed directly to a VideoReader
             frames: an optional range(s) of frames to process. This argument
                 is passed directly to VideoReader
+            keyframes_only: whether to only extract keyframes when reading the
+                video. Can only be set to True when `in_use_ffmpeg=True`. When
+                this is True, `frames` is interpreted as keyframe numbers
             in_use_ffmpeg: whether to use FFmpegVideoReader to read input
                 videos rather than OpenCVVideoReader
             out_use_ffmpeg: whether to use FFmpegVideoWriter to write output
@@ -1669,7 +1702,11 @@ class VideoProcessor(object):
                 construct a VideoWriter
         '''
         if in_use_ffmpeg:
-            self._reader = FFmpegVideoReader(inpath, frames=frames)
+            self._reader = FFmpegVideoReader(
+                inpath, frames=frames, keyframes_only=keyframes_only)
+        elif keyframes_only:
+            raise VideoProcessorError(
+                "Must have `in_use_ffmpeg=True` when `keyframes_only=True`")
         else:
             self._reader = OpenCVVideoReader(inpath, frames=frames)
         self._video_clip_writer = None
@@ -1893,7 +1930,7 @@ class FFmpegVideoReader(VideoReader):
     This class uses 1-based indexing for all frame operations.
     '''
 
-    def __init__(self, inpath, frames=None):
+    def __init__(self, inpath, frames=None, keyframes_only=False):
         '''Constructs a new VideoReader with ffmpeg backend.
 
         Args:
@@ -1908,9 +1945,19 @@ class FFmpegVideoReader(VideoReader):
                     - a string like "1-3,6,8-10"
                     - a list like [1, 2, 3, 6, 8, 9, 10]
                     - a FrameRange or FrameRanges instance
+            keyframes_only: whether to only read keyframes. By default, this
+                is False. When this is True, `frames` is interpreted as
+                keyframe numbers
         '''
+        # Parse args
+        if keyframes_only:
+            in_opts = ["-skip_frame", "nokey", "-vsync", "0"]
+        else:
+            in_opts = None
+
         self._stream_info = VideoStreamInfo.build_for(inpath)
         self._ffmpeg = FFmpeg(
+            in_opts=in_opts,
             out_opts=[
                 "-f", 'image2pipe',         # pipe frames to stdout
                 "-vcodec", "rawvideo",      # output will be raw video
@@ -1973,6 +2020,11 @@ class FFmpegVideoReader(VideoReader):
             return False
 
     def _retrieve(self):
+        # Stop when ffmpeg returns empty bits, meaning it has gone past the end
+        # of the video
+        if not self._raw_frame:
+            raise StopIteration
+
         width, height = self.frame_size
         try:
             vec = np.fromstring(self._raw_frame, dtype="uint8")
