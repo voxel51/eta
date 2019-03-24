@@ -30,6 +30,7 @@ import cv2
 import numpy as np
 
 from eta.core.config import Config, Configurable
+import eta.core.image as etai
 from eta.core.numutils import GrowableArray
 import eta.core.utils as etau
 import eta.core.video as etav
@@ -556,7 +557,7 @@ class VideoFramesFeaturizer(Featurizer):
 
     def _featurize(self, video_path, frames=None, returnX=True):
         frames = frames or self.config.frames
-        logger.debug("Featurizing frames %s" % frames)
+        logger.debug("Featurizing frames %s", frames)
 
         if returnX:
             X = None
