@@ -736,7 +736,7 @@ class VideoLabels(Serializable):
             for frame_attr in frame_attrs:
                 self._validate_frame_attribute(frame_attr)
         self._ensure_frame(frame_number)
-        self.frames[str(frame_number)].add_frame_attributes(frame_attrs)
+        self.frames[frame_number].add_frame_attributes(frame_attrs)
 
     def add_object(self, obj, frame_number):
         '''Adds the object to the video.
