@@ -32,7 +32,6 @@ import numpy as np
 from eta.core.config import Config, Configurable
 from eta.core.numutils import GrowableArray
 import eta.core.utils as etau
-import eta.core.types as etat
 import eta.core.video as etav
 
 
@@ -333,7 +332,7 @@ class CanFeaturize(object):
                             # a video, so we check if data is a valid video
                             # path.
                             #
-                            should_featurize = etat.Video.is_valid_path(data)
+                            should_featurize = etav.is_supported_video(data)
 
                 # Perform the actual featurization, if necessary.
                 if should_featurize:
