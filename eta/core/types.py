@@ -26,7 +26,9 @@ import numbers
 import os
 
 import eta
+import eta.core.features as etaf
 import eta.core.image as etai
+import eta.core.learning as etal
 import eta.core.tfutils as etat
 import eta.core.utils as etau
 import eta.core.video as etav
@@ -236,6 +238,88 @@ class ObjectArray(Array):
             Array.is_valid_value(val) and
             all(Object.is_valid_value(o) for o in val)
         )
+
+
+class Config(Object):
+    '''Base class for objects that are serialized instances of
+    `eta.core.config.Config` classes.
+    '''
+    pass
+
+
+class Featurizer(Config):
+    '''Configuration of an `eta.core.features.Featurizer`.
+
+    This types is implemented in ETA by the
+    `eta.core.features.FeaturizerConfig` class.
+    '''
+
+    @staticmethod
+    def is_valid_value(val):
+        try:
+            etaf.FeaturizerConfig(val)
+            return True
+        except:
+            return False
+
+
+class VideoFramesFeaturizer(Featurizer):
+    '''Configuration for an `eta.core.features.VideoFramesFeaturizer`.
+
+    This type is implemented in ETA by the `eta.core.learning.FeaturizerConfig`
+    class.
+    '''
+    pass
+
+
+class Classifier(Config):
+    '''Configuration for an `eta.core.learning.Classifier`.
+
+    This type is implemented in ETA by the `eta.core.learning.ClassifierConfig`
+    class.
+    '''
+
+    @staticmethod
+    def is_valid_value(val):
+        try:
+            etal.ClassifierConfig(val)
+            return True
+        except:
+            return False
+
+
+class ImageClassifier(Classifier):
+    '''Configuration for an `eta.core.learning.ImageClassifier`.
+
+    This type is implemented in ETA by the `eta.core.learning.ClassifierConfig`
+    class.
+    '''
+    pass
+
+
+class VideoFramesClassifier(Classifier):
+    '''Configuration for an `eta.core.learning.VideoFramesClassifier`.
+
+    This type is implemented in ETA by the `eta.core.learning.ClassifierConfig`
+    class.
+    '''
+    pass
+
+
+class ObjectDetector(Config):
+    '''Configuration for an `eta.core.learning.ObjectDetector`.
+
+    This type is implemented in ETA by the
+    `eta.core.learning.ObjectDetectorConfig` class.
+    '''
+
+    @staticmethod
+    def is_valid_value(val):
+        try:
+            etal.ObjectDetectorConfig(val)
+            return True
+        except:
+            return False
 
 
 ###### Data types #############################################################
