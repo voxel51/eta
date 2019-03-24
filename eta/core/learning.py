@@ -23,13 +23,13 @@ from eta.core.config import Config, Configurable
 
 
 class ClassifierConfig(Config):
-    '''Configuration class that encapsulates the name of a Classifier and
+    '''Configuration class that encapsulates the name of a `Classifier` and
     an instance of its associated Config class.
 
     Attributes:
-        type: the fully-qualified class name of the Classifier
+        type: the fully-qualified class name of the `Classifier`
         config: an instance of the Config class associated with the specified
-            Classifier
+            `Classifier`
     '''
 
     def __init__(self, d):
@@ -48,7 +48,7 @@ class ClassifierConfig(Config):
 
 
 class Classifier(Configurable):
-    '''Base class for all classifiers.
+    '''Interface for classifiers.
 
     Subclasses of Classifier must implement the `predict()` method.
     '''
@@ -68,13 +68,13 @@ class Classifier(Configurable):
 
 
 class ObjectDetectorConfig(Config):
-    '''Configuration class that encapsulates the name of an ObjectDetector and
-    an instance of its associated Config class.
+    '''Configuration class that encapsulates the name of an `ObjectDetector`
+    and an instance of its associated Config class.
 
     Attributes:
-        type: the fully-qualified class name of the ObjectDetector
+        type: the fully-qualified class name of the `ObjectDetector`
         config: an instance of the Config class associated with the specified
-            Detector
+            detector
     '''
 
     def __init__(self, d):
@@ -86,7 +86,7 @@ class ObjectDetectorConfig(Config):
             self.config = config_cls.load_default()
 
     def build(self):
-        '''Factory method that builds the ObjectDetector instance from the
+        '''Factory method that builds the `ObjectDetector` instance from the
         config specified by this class.
         '''
         return self._detector_cls(self.config)
@@ -95,17 +95,26 @@ class ObjectDetectorConfig(Config):
 class ObjectDetector(Configurable):
     '''Base class for all object detectors.
 
-    Subclasses of ObjectDetctor must implement the `detect()` method.
+    Subclasses of `ObjectDetctor` must implement the `detect()` method.
+
+    Subclasses can optionally implement the context manager interface to
+    perform any necessary setup and teardown.
     '''
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        pass
+
     def detect(self, img):
-        '''Performs object detection on the input image.
+        '''Detects objects in the given image.
 
         Args:
             img: an image
 
         Returns:
-            an `eta.core.objects.DetectedObjectContainer` describing the
-                detected objects in the image
+            an `eta.core.objects.DetectedObjectContainer` instance describing
+                the detected objects
         '''
         raise NotImplementedError("subclass must implement detect()")
