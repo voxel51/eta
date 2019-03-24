@@ -175,7 +175,7 @@ class VideoFramesVotingClassifier(VideoFramesClassifier):
         self.config = config
         self.image_classifier = config.image_classifier.build()
 
-        if not issubclass(self.image_classifier, ImageClassifier):
+        if not isinstance(self.image_classifier, ImageClassifier):
             raise ValueError("image_classifier must be a %s", ImageClassifier)
 
     def __enter__(self):
