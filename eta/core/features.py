@@ -1,7 +1,7 @@
 '''
 Core interfaces, data structures, and methods for feature extraction in images.
 
-Copyright 2017-2018, Voxel51, Inc.
+Copyright 2017-2019, Voxel51, Inc.
 voxel51.com
 
 Jason Corso, jason@voxel51.com
@@ -69,8 +69,10 @@ class Featurizer(Configurable):
     '''Base class for all featurizers.
 
     Subclasses of Featurizer must implement the `dim()` and `_featurize()`
-    methods, and if necessary, should also implement the `_start()` and
-    `_stop()` methods.
+    methods.
+
+    If setup/teardown is required, subclasses should also implement the
+    `_start()` and `_stop()` methods.
 
     Subclasses must call the superclass constructor defined by this base class.
 
@@ -188,6 +190,23 @@ class Featurizer(Configurable):
 class CanFeaturize(object):
     '''Mixin class that exposes the ability to featurize data just-in-time via
     a provided Featurizer instance.
+
+    This class allows you to decorate methods that should featurize data if
+    necessary with one of the following strategies:
+        - `@CanFeaturize.featurize_if_needed`: the first function argument will
+            be featurized
+        - `@CanFeaturize.featurize_if_needed(arg_name="foo")`: the arg with the
+            specified name will be featurized
+        - `@CanFeaturize.featurize_if_needed("foo")`: the arg with the
+            specified name will be featurized
+        - `@CanFeaturize.featurize_if_needed(index)`: the arg in the specified
+            position will be featurized
+
+    Arguments are featurized if they are strings that point to a valid file(s)
+    on disk (including videos represented as sequences of frames).
+
+    Alternatively, when `force_featurize=True`, all arguments to the function
+    are automatically featurized.
     '''
 
     def __init__(self, featurizer=None, force_featurize=False):
@@ -227,29 +246,17 @@ class CanFeaturize(object):
         defined).
 
         The argument to featurize can be specified as either the numeric index
-        of the argument to featurize in *args or a named argument.  The code
-        tries to reconcile one of them, ultimately failing if it cannot find
-        one.
-
-        The method we use to tell if the argument needs to be featurized is by
-        checking if it is a string that points to a file on the disk, and if
-        that fails, if it is a string that points to a valid video.
-
-        You can decorate with either just `@CanFeaturize.featurize_if_needed`,
-        in which case
-        or by specifying specific names of arguments to operate on either as
-        `@CanFeaturize.featurize_if_needed(arg_name="foo")`
-        or just
-        `@CanFeaturize.featurize_if_needed("foo")` and this will be a name not
-        an index.
+        of the argument to featurize or a named argument. The code tries to
+        reconcile one of them, ultimately failing if it cannot find one.
 
         Args:
             arg_name ("X"): a string specifying the name of the argument
                 passed to the original function that you want to featurize
+                if necessary
 
             arg_index (0): an int specifying the index of the argument passed
-                to the original function that you want to featurize. If
-                `arg_name` is provided, it takes precedence over `arg_index`
+                to the original function that you want to featurize if
+                necessary
 
         Raises:
             CanFeaturizeError: if featurization failed or was not allowed
@@ -367,7 +374,7 @@ class FeaturizedFrameNotFoundError(OSError):
 
 
 class VideoFramesFeaturizerConfig(Config):
-    '''Specifies the configuration settings for the VideoFeaturizer class.'''
+    '''Configuration settings for a VideoFramesFeaturizer.'''
 
     def __init__(self, d):
         self.backing_path = self.parse_string(
