@@ -631,6 +631,13 @@ class VideoFramesFeaturizer(Featurizer):
                 raise
 
 
+class ORBFeaturizerConfig(Config):
+    '''Configuration settings for an ORBFeaturizer.'''
+
+    def __init__(self, d):
+        self.num_keypoints = self.parse_number(d, "num_keypoints", default=128)
+
+
 class ORBFeaturizer(Featurizer):
     '''ORB (Oriented FAST and rotated BRIEF features) Featurizer.
 
@@ -638,25 +645,39 @@ class ORBFeaturizer(Featurizer):
         http://www.willowgarage.com/sites/default/files/orb_final.pdf
     '''
 
-    def __init__(self, num_keypoints=128):
-        '''Constructs a new ORB Featurizer instance.'''
+    def __init__(self, config=None):
+        '''Creates a new ORBFeaturizer instance.
+
+        Args:
+            config: an optional ORBFeaturizerConfig instance. If omitted, the
+                default ORBFeaturizerConfig is used
+        '''
+        if config is None:
+            config = ORBFeaturizerConfig.default()
+        self.num_keypoints = config.num_keypoints
         super(ORBFeaturizer, self).__init__()
-        self.num_keypoints = num_keypoints
 
         try:
             # OpenCV 3
-            self.orb = cv2.ORB_create(nfeatures=num_keypoints)
+            self._orb = cv2.ORB_create(nfeatures=self.num_keypoints)
         except AttributeError:
             # OpenCV 2
-            self.orb = cv2.ORB(nfeatures=num_keypoints)
+            self._orb = cv2.ORB(nfeatures=self.num_keypoints)
 
     def dim(self):
-        '''Return the dimension of the features.'''
+        '''Returns the dimension of the features.'''
         return 32 * self.num_keypoints
 
     def _featurize(self, img):
         gray = etai.rgb_to_gray(img)
-        return self.orb.detectAndCompute(gray, None)[1].flatten()
+        return self._orb.detectAndCompute(gray, None)[1].flatten()
+
+
+class RandFeaturizerConfig(Config):
+    '''Configuration settings for an RandFeaturizer.'''
+
+    def __init__(self, d):
+        self.dim = self.parse_number(d, "dim", default=1024)
 
 
 class RandFeaturizer(Featurizer):
@@ -664,19 +685,20 @@ class RandFeaturizer(Featurizer):
     entries regardless of the input data.
     '''
 
-    def __init__(self, dim=1024):
-        '''Constructs a RandFeaturizer instance.
+    def __init__(self, config=None):
+        '''Creates a new RandFeaturizer instance.
 
         Args:
-            dim: the desired embedding dimension. The default value is 1024
+            config: an optional RandFeaturizerConfig instance. If omitted, the
+                default RandFeaturizerConfig is used
         '''
-        super(RandFeaturizer, self).__init__(self)
-        self._dim = dim
+        if config is None:
+            config = RandFeaturizerConfig.default()
+        self._dim = config.dim
+        super(RandFeaturizer, self).__init__()
 
     def dim(self):
-        '''Returns the dimension of the features extracted by this
-        Featurizer.
-        '''
+        '''Returns the dimension of the features.'''
         return self._dim
 
     def _featurize(self, _):
