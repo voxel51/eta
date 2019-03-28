@@ -1201,3 +1201,19 @@ class HTMLFile(File, ConcreteData):
     @staticmethod
     def is_valid_path(path):
         return File.is_valid_path(path) and etau.has_extension(path, ".html")
+
+
+class CheckpointFile(File, ConcreteData):
+    '''A .ckpt file.
+
+    Examples:
+        /path/to/model.ckpt
+    '''
+
+    @staticmethod
+    def gen_path(basedir, params):
+        return os.path.join(basedir, "{name}.ckpt").format(**params)
+
+    @staticmethod
+    def is_valid_path(path):
+        return File.is_valid_path(path) and etau.has_extension(path, ".ckpt")
