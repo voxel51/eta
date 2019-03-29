@@ -1,7 +1,7 @@
 '''
 Core interfaces, data structures, and methods for feature extraction in images.
 
-Copyright 2017-2018, Voxel51, Inc.
+Copyright 2017-2019, Voxel51, Inc.
 voxel51.com
 
 Jason Corso, jason@voxel51.com
@@ -30,9 +30,9 @@ import cv2
 import numpy as np
 
 from eta.core.config import Config, Configurable
+import eta.core.image as etai
 from eta.core.numutils import GrowableArray
 import eta.core.utils as etau
-import eta.core.types as etat
 import eta.core.video as etav
 
 
@@ -69,8 +69,10 @@ class Featurizer(Configurable):
     '''Base class for all featurizers.
 
     Subclasses of Featurizer must implement the `dim()` and `_featurize()`
-    methods, and if necessary, should also implement the `_start()` and
-    `_stop()` methods.
+    methods.
+
+    If setup/teardown is required, subclasses should also implement the
+    `_start()` and `_stop()` methods.
 
     Subclasses must call the superclass constructor defined by this base class.
 
@@ -188,6 +190,23 @@ class Featurizer(Configurable):
 class CanFeaturize(object):
     '''Mixin class that exposes the ability to featurize data just-in-time via
     a provided Featurizer instance.
+
+    This class allows you to decorate methods that should featurize data if
+    necessary with one of the following strategies:
+        - `@CanFeaturize.featurize_if_needed`: the first function argument will
+            be featurized
+        - `@CanFeaturize.featurize_if_needed(arg_name="foo")`: the arg with the
+            specified name will be featurized
+        - `@CanFeaturize.featurize_if_needed("foo")`: the arg with the
+            specified name will be featurized
+        - `@CanFeaturize.featurize_if_needed(index)`: the arg in the specified
+            position will be featurized
+
+    Arguments are featurized if they are strings that point to a valid file(s)
+    on disk (including videos represented as sequences of frames).
+
+    Alternatively, when `force_featurize=True`, all arguments to the function
+    are automatically featurized.
     '''
 
     def __init__(self, featurizer=None, force_featurize=False):
@@ -227,29 +246,17 @@ class CanFeaturize(object):
         defined).
 
         The argument to featurize can be specified as either the numeric index
-        of the argument to featurize in *args or a named argument.  The code
-        tries to reconcile one of them, ultimately failing if it cannot find
-        one.
-
-        The method we use to tell if the argument needs to be featurized is by
-        checking if it is a string that points to a file on the disk, and if
-        that fails, if it is a string that points to a valid video.
-
-        You can decorate with either just `@CanFeaturize.featurize_if_needed`,
-        in which case
-        or by specifying specific names of arguments to operate on either as
-        `@CanFeaturize.featurize_if_needed(arg_name="foo")`
-        or just
-        `@CanFeaturize.featurize_if_needed("foo")` and this will be a name not
-        an index.
+        of the argument to featurize or a named argument. The code tries to
+        reconcile one of them, ultimately failing if it cannot find one.
 
         Args:
             arg_name ("X"): a string specifying the name of the argument
                 passed to the original function that you want to featurize
+                if necessary
 
             arg_index (0): an int specifying the index of the argument passed
-                to the original function that you want to featurize. If
-                `arg_name` is provided, it takes precedence over `arg_index`
+                to the original function that you want to featurize if
+                necessary
 
         Raises:
             CanFeaturizeError: if featurization failed or was not allowed
@@ -333,7 +340,7 @@ class CanFeaturize(object):
                             # a video, so we check if data is a valid video
                             # path.
                             #
-                            should_featurize = etat.Video.is_valid_path(data)
+                            should_featurize = etav.is_supported_video(data)
 
                 # Perform the actual featurization, if necessary.
                 if should_featurize:
@@ -367,7 +374,7 @@ class FeaturizedFrameNotFoundError(OSError):
 
 
 class VideoFramesFeaturizerConfig(Config):
-    '''Specifies the configuration settings for the VideoFeaturizer class.'''
+    '''Configuration settings for a VideoFramesFeaturizer.'''
 
     def __init__(self, d):
         self.backing_path = self.parse_string(
@@ -557,7 +564,7 @@ class VideoFramesFeaturizer(Featurizer):
 
     def _featurize(self, video_path, frames=None, returnX=True):
         frames = frames or self.config.frames
-        logger.debug("Featurizing frames %s" % frames)
+        logger.debug("Featurizing frames %s", frames)
 
         if returnX:
             X = None
@@ -631,6 +638,13 @@ class VideoFramesFeaturizer(Featurizer):
                 raise
 
 
+class ORBFeaturizerConfig(Config):
+    '''Configuration settings for an ORBFeaturizer.'''
+
+    def __init__(self, d):
+        self.num_keypoints = self.parse_number(d, "num_keypoints", default=128)
+
+
 class ORBFeaturizer(Featurizer):
     '''ORB (Oriented FAST and rotated BRIEF features) Featurizer.
 
@@ -638,25 +652,39 @@ class ORBFeaturizer(Featurizer):
         http://www.willowgarage.com/sites/default/files/orb_final.pdf
     '''
 
-    def __init__(self, num_keypoints=128):
-        '''Constructs a new ORB Featurizer instance.'''
+    def __init__(self, config=None):
+        '''Creates a new ORBFeaturizer instance.
+
+        Args:
+            config: an optional ORBFeaturizerConfig instance. If omitted, the
+                default ORBFeaturizerConfig is used
+        '''
+        if config is None:
+            config = ORBFeaturizerConfig.default()
+        self.num_keypoints = config.num_keypoints
         super(ORBFeaturizer, self).__init__()
-        self.num_keypoints = num_keypoints
 
         try:
             # OpenCV 3
-            self.orb = cv2.ORB_create(nfeatures=num_keypoints)
+            self._orb = cv2.ORB_create(nfeatures=self.num_keypoints)
         except AttributeError:
             # OpenCV 2
-            self.orb = cv2.ORB(nfeatures=num_keypoints)
+            self._orb = cv2.ORB(nfeatures=self.num_keypoints)
 
     def dim(self):
-        '''Return the dimension of the features.'''
+        '''Returns the dimension of the features.'''
         return 32 * self.num_keypoints
 
     def _featurize(self, img):
         gray = etai.rgb_to_gray(img)
-        return self.orb.detectAndCompute(gray, None)[1].flatten()
+        return self._orb.detectAndCompute(gray, None)[1].flatten()
+
+
+class RandFeaturizerConfig(Config):
+    '''Configuration settings for an RandFeaturizer.'''
+
+    def __init__(self, d):
+        self.dim = self.parse_number(d, "dim", default=1024)
 
 
 class RandFeaturizer(Featurizer):
@@ -664,19 +692,20 @@ class RandFeaturizer(Featurizer):
     entries regardless of the input data.
     '''
 
-    def __init__(self, dim=1024):
-        '''Constructs a RandFeaturizer instance.
+    def __init__(self, config=None):
+        '''Creates a new RandFeaturizer instance.
 
         Args:
-            dim: the desired embedding dimension. The default value is 1024
+            config: an optional RandFeaturizerConfig instance. If omitted, the
+                default RandFeaturizerConfig is used
         '''
-        super(RandFeaturizer, self).__init__(self)
-        self._dim = dim
+        if config is None:
+            config = RandFeaturizerConfig.default()
+        self._dim = config.dim
+        super(RandFeaturizer, self).__init__()
 
     def dim(self):
-        '''Returns the dimension of the features extracted by this
-        Featurizer.
-        '''
+        '''Returns the dimension of the features.'''
         return self._dim
 
     def _featurize(self, _):

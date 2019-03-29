@@ -57,33 +57,61 @@ SUPPORTED_VIDEO_FILE_FORMATS = [
 ]
 
 
-def is_supported_video_file(path):
-    '''Determines whether the given file has a supported video type.
-
-    This method does not support videos represented as image sequences (i.e.,
-    it will return False for them).
+def is_supported_video(path):
+    '''Determines whether the given filepath points to a supported video.
 
     Args:
-        path: the path to a video file
+        path: the path to a video, like `/path/to/video.mp4` or
+            `/path/to/frames-%05d.jpg`
 
     Returns:
-        True/False if the file has a supported video type
+        True/False if the path refers to a supported video type
+    '''
+    return is_supported_video_file(path) or is_supported_image_sequence(path)
+
+
+def is_supported_video_file(path):
+    '''Determines whether the given filepath points to a supported video file
+    type.
+
+    Args:
+        path: the path to a video file, like `/path/to/video.mp4`
+
+    Returns:
+        True/False if the path refers to a supported video file type
     '''
     return os.path.splitext(path)[1] in SUPPORTED_VIDEO_FILE_FORMATS
+
+
+def is_supported_image_sequence(path):
+    '''Determines whether the given filepath points to a supported image
+    sequence type.
+
+    Args:
+        path: the path to an image sequence, like `/path/to/frames-%05d.jpg`
+
+    Returns:
+        True/False if the path refers to a supported video file type
+    '''
+    try:
+        _ = path % 1
+        return etai.is_supported_image(path)
+    except TypeError:
+        return False
 
 
 def is_same_video_file_format(path1, path2):
     '''Determines whether the video files have the same supported format.
 
-    This method does not support videos represented as image sequences (i.e.,
-    it will return False for them).
-
     Args:
-        path1: the path to a video file
-        path2: the path to a video file
+        path1: the path to a video
+        path2: the path to a video
+
+    Returns:
+        True/False
     '''
     return (
-        is_supported_video_file(path1) and
+        is_supported_video(path1) and
         os.path.splitext(path1)[1] == os.path.splitext(path2)[1]
     )
 
@@ -708,7 +736,7 @@ class VideoLabels(Serializable):
             for frame_attr in frame_attrs:
                 self._validate_frame_attribute(frame_attr)
         self._ensure_frame(frame_number)
-        self.frames[str(frame_number)].add_frame_attributes(frame_attrs)
+        self.frames[frame_number].add_frame_attributes(frame_attrs)
 
     def add_object(self, obj, frame_number):
         '''Adds the object to the video.

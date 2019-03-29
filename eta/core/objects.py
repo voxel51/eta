@@ -83,6 +83,12 @@ class DetectedObject(Serializable, HasBoundingBox):
             self.attrs = AttributeContainer()
         self.attrs.add(attr)
 
+    def add_attributes(self, attrs):
+        '''Adds the AttributeContainer of attributes to the object.'''
+        if not self.has_attributes:
+            self.attrs = AttributeContainer()
+        self.attrs.add_container(attrs)
+
     def attributes(self):
         '''Returns the list of attributes to serialize.
 
