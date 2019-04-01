@@ -314,17 +314,16 @@ def _annotate_object(
     cv2.rectangle(overlay, (bgtlx, bgtly), (bgbrx, bgbry), box_color, -1)
 
     # Construct attribute text
-    attr_msg = ""
-    for attr in obj.attrs.attrs:
-        attr_msg += attr.value.capitalize() + " "
+    attr_msg = ", ".join([attr.value for attr in obj.attrs.attrs])
+
+    attr_msg = attr_msg.strip()
     attr_text_size = font.getsize(attr_msg)
 
     # Draw attribute message background
     abgtlx = objtlx - linewidth + 1
     abgbrx = abgtlx + attr_text_size[0] + 2 * pad[0]
-    abgtly = objbry + linewidth - 1
+    abgtly = objtly + 1
     abgbry = abgtly + attr_text_size[1] + 2 * pad[1]
-    cv2.rectangle(overlay, (abgtlx, abgtly), (abgbrx, abgbry), box_color, -1)
 
     # Overlay translucent box
     img_anno = cv2.addWeighted(overlay, alpha, img, 1 - alpha, 0)
