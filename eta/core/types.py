@@ -26,7 +26,9 @@ import numbers
 import os
 
 import eta
+import eta.core.features as etaf
 import eta.core.image as etai
+import eta.core.learning as etal
 import eta.core.tfutils as etat
 import eta.core.utils as etau
 import eta.core.video as etav
@@ -236,6 +238,88 @@ class ObjectArray(Array):
             Array.is_valid_value(val) and
             all(Object.is_valid_value(o) for o in val)
         )
+
+
+class Config(Object):
+    '''Base class for objects that are serialized instances of
+    `eta.core.config.Config` classes.
+    '''
+    pass
+
+
+class Featurizer(Config):
+    '''Configuration of an `eta.core.features.Featurizer`.
+
+    This types is implemented in ETA by the
+    `eta.core.features.FeaturizerConfig` class.
+    '''
+
+    @staticmethod
+    def is_valid_value(val):
+        try:
+            etaf.FeaturizerConfig(val)
+            return True
+        except:
+            return False
+
+
+class VideoFramesFeaturizer(Featurizer):
+    '''Configuration for an `eta.core.features.VideoFramesFeaturizer`.
+
+    This type is implemented in ETA by the `eta.core.learning.FeaturizerConfig`
+    class.
+    '''
+    pass
+
+
+class Classifier(Config):
+    '''Configuration for an `eta.core.learning.Classifier`.
+
+    This type is implemented in ETA by the `eta.core.learning.ClassifierConfig`
+    class.
+    '''
+
+    @staticmethod
+    def is_valid_value(val):
+        try:
+            etal.ClassifierConfig(val)
+            return True
+        except:
+            return False
+
+
+class ImageClassifier(Classifier):
+    '''Configuration for an `eta.core.learning.ImageClassifier`.
+
+    This type is implemented in ETA by the `eta.core.learning.ClassifierConfig`
+    class.
+    '''
+    pass
+
+
+class VideoFramesClassifier(Classifier):
+    '''Configuration for an `eta.core.learning.VideoFramesClassifier`.
+
+    This type is implemented in ETA by the `eta.core.learning.ClassifierConfig`
+    class.
+    '''
+    pass
+
+
+class ObjectDetector(Config):
+    '''Configuration for an `eta.core.learning.ObjectDetector`.
+
+    This type is implemented in ETA by the
+    `eta.core.learning.ObjectDetectorConfig` class.
+    '''
+
+    @staticmethod
+    def is_valid_value(val):
+        try:
+            etal.ObjectDetectorConfig(val)
+            return True
+        except:
+            return False
 
 
 ###### Data types #############################################################
@@ -676,6 +760,19 @@ class Attribute(JSONFile):
     pass
 
 
+class AttributeSchema(JSONFile):
+    '''Base class for classes that describe the values or range of values that
+    a particular attribute can take.
+
+    This type is implemented in ETA by the `eta.core.data.AttributeSchema`
+    class.
+
+    Examples:
+        /path/to/attribute_schema.json
+    '''
+    pass
+
+
 class CategoricalAttribute(JSONFile):
     '''A categorical attribute of an entity in an image or video.
 
@@ -684,6 +781,19 @@ class CategoricalAttribute(JSONFile):
 
     Examples:
         /path/to/categorical_attribute.json
+    '''
+    pass
+
+
+class CategoricalAttributeSchema(JSONFile):
+    '''A schema that defines the set of possible values that a particular
+    `CategoricalAttribute` can take.
+
+    This type is implemented in ETA by the
+    `eta.core.data.CategoricalAttributeSchema` class.
+
+    Examples:
+        /path/to/categorical_attribute_schema.json
     '''
     pass
 
@@ -700,6 +810,19 @@ class NumericAttribute(JSONFile):
     pass
 
 
+class NumericAttributeSchema(JSONFile):
+    '''A schema that defines the range of possible values that a particular
+    `NumericAttribute` can take.
+
+    This type is implemented in ETA by the
+    `eta.core.data.NumericAttributeSchema` class.
+
+    Examples:
+        /path/to/numeric_attribute_schema.json
+    '''
+    pass
+
+
 class BooleanAttribute(JSONFile):
     '''A boolean attribute of an entity in an image or video.
 
@@ -712,15 +835,41 @@ class BooleanAttribute(JSONFile):
     pass
 
 
+class BooleanAttributeSchema(JSONFile):
+    '''A schema that declares that a given attribute is a `BooleanAttribute`
+    and thus must take the values `True` and `False`.
+
+    This type is implemented in ETA by the
+    `eta.core.data.BooleanAttributeSchema` class.
+
+    Examples:
+        /path/to/boolean_attribute_schema.json
+    '''
+    pass
+
+
 class Attributes(JSONFile):
-    '''A list of attributes of an entity in an image or video. The list can
-    contain attributes with any subtype of Attribute.
+    '''A list of `Attribute`s of an entity in an image or video. The list can
+    contain attributes with any subtype of `Attribute`.
 
     This type is implemented in ETA by the `eta.core.data.AttributeContainer`
     class.
 
     Examples:
         /path/to/attribute_container.json
+    '''
+    pass
+
+
+class AttributesSchema(JSONFile):
+    '''A dictionary of `AttributesSchema`s that define the schemas of a
+    collection of `Attribute`s of any type.
+
+    This type is implemented in ETA by the
+    `eta.core.data.AttributeContainerSchema` class.
+
+    Examples:
+        /path/to/attributes_schema.json
     '''
     pass
 
@@ -771,6 +920,43 @@ class DetectedObjectsSequence(JSONFileSequence):
     pass
 
 
+class ImageLabels(JSONFile):
+    '''A description of the labeled contents of an image.
+
+    This type is implemented in ETA by the `eta.core.image.ImageLabels`
+    class.
+
+    Examples:
+        /path/to/image_labels.json
+    '''
+    pass
+
+
+class ImageSetLabels(JSONFile):
+    '''A description of the labeled contents of a set of images.
+
+    This type is implemented in ETA by the `eta.core.image.ImageSetLabels`
+    class.
+
+    Examples:
+        /path/to/image_set_labels.json
+    '''
+    pass
+
+
+class ImageLabelsSchema(JSONFile):
+    '''A description of the schema of possible labels that can be generated for
+    images.
+
+    This type is implemented in ETA by the `eta.core.image.ImageLabelsSchema`
+    class.
+
+    Examples:
+        /path/to/image_labels_schema.json
+    '''
+    pass
+
+
 class VideoLabels(JSONFile):
     '''A description of the labeled contents of a video.
 
@@ -779,6 +965,32 @@ class VideoLabels(JSONFile):
 
     Examples:
         /path/to/video_labels.json
+    '''
+    pass
+
+
+class VideoLabelsSchema(JSONFile):
+    '''A description of the schema of possible labels that can be generated for
+    a video.
+
+    This type is implemented in ETA by the `eta.core.video.VideoLabelsSchema`
+    class.
+
+    Examples:
+        /path/to/video_labels_schema.json
+    '''
+    pass
+
+
+
+class VideoSetLabels(JSONFile):
+    '''A description of the labeled contents of a set of videos.
+
+    This type is implemented in ETA by the `eta.core.video.VideoSetLabels`
+    class.
+
+    Examples:
+        /path/to/video_set_labels.json
     '''
     pass
 
@@ -996,3 +1208,96 @@ class TFRecordsDirectory(Directory):
         /path/to/tf_records
     '''
     pass
+
+
+class PickleFile(File, ConcreteData):
+    '''A .pkl file.
+
+    Examples:
+        /path/to/data.pkl
+    '''
+
+    @staticmethod
+    def gen_path(basedir, params):
+        return os.path.join(basedir, "{name}.pkl").format(**params)
+
+    @staticmethod
+    def is_valid_path(path):
+        return File.is_valid_path(path) and etau.has_extension(path, ".pkl")
+
+
+class PickleFileSequence(FileSequence, ConcreteData):
+    '''A collection of .pkl files indexed by one numeric parameter.
+
+    Examples:
+        /path/to/data/%05d.pkl
+    '''
+
+    @staticmethod
+    def gen_path(basedir, params):
+        return os.path.join(
+            basedir, "{name}", "{idx}.pkl").format(**params)
+
+    @staticmethod
+    def is_valid_path(path):
+        return (
+            FileSequence.is_valid_path(path) and
+            etau.has_extension(path, ".pkl")
+        )
+
+
+class PickleFileDirectory(Directory):
+    '''A directory containing one or more .pkl files.
+
+    Examples:
+        /path/to/pkl_files
+    '''
+    pass
+
+
+class TextFile(File, ConcreteData):
+    '''A .txt file.
+
+    Examples:
+        /path/to/data.txt
+    '''
+
+    @staticmethod
+    def gen_path(basedir, params):
+        return os.path.join(basedir, "{name}.txt").format(**params)
+
+    @staticmethod
+    def is_valid_path(path):
+        return File.is_valid_path(path) and etau.has_extension(path, ".txt")
+
+
+class HTMLFile(File, ConcreteData):
+    '''A .html file.
+
+    Examples:
+        /path/to/data.html
+    '''
+
+    @staticmethod
+    def gen_path(basedir, params):
+        return os.path.join(basedir, "{name}.html").format(**params)
+
+    @staticmethod
+    def is_valid_path(path):
+        return File.is_valid_path(path) and etau.has_extension(path, ".html")
+
+
+class CheckpointFile(File, ConcreteData):
+    '''A .ckpt file.
+
+    Examples:
+        /path/to/model.ckpt
+    '''
+
+    @staticmethod
+    def gen_path(basedir, params):
+        return os.path.join(basedir, "{name}.ckpt").format(**params)
+
+    @staticmethod
+    def is_valid_path(path):
+        return File.is_valid_path(path) and etau.has_extension(path, ".ckpt")

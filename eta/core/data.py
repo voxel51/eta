@@ -23,9 +23,47 @@ from future.utils import iteritems
 from collections import defaultdict
 import os
 
+import numpy as np
+
 from eta.core.config import no_default
-from eta.core.serial import Container, Serializable, read_json
+import eta.core.numutils as etan
+from eta.core.serial import Container, NpzWriteable, Serializable
 import eta.core.utils as etau
+
+
+def majority_vote_categorical_attrs(attrs, confidence_weighted=False):
+    '''Performs majority votes over the given attributes, which are assumed to
+    be `CategoricalAttribute`s.
+
+    A separate vote is performed for attributes of each name.
+
+    If a list of AttributeContainers is provided, all attributes are combined
+    into a single vote.
+
+    Args:
+        attrs: an AttributeContainer or list of AttributeContainers
+        confidence_weighted: whether to weight the vote by confidence. By
+            default, this is False
+
+    Returns:
+        an AttributeContainer containing the voted attributes
+    '''
+    if not isinstance(attrs, list):
+        attrs = [attrs]
+
+    accums = defaultdict(lambda: etan.Accumulator())
+    for _attrs in attrs:
+        for attr in _attrs:
+            accums[attr.name].add(attr.value, weight=attr.confidence or 0.0)
+
+    voted_attrs = AttributeContainer()
+    for name, accum in iteritems(accums):
+        value = accum.argmax(weighted=confidence_weighted)
+        confidence = accum.get_average_weight(value) or None
+        attr = CategoricalAttribute(name, value, confidence=confidence)
+        voted_attrs.add(attr)
+
+    return voted_attrs
 
 
 class DataContainer(Container):
@@ -976,7 +1014,7 @@ class BaseDataRecord(Serializable):
             KeyError: if a required attribute was not found in the input
                 dictionary
         '''
-        kwargs = {k: d[k] for k in cls.required()}                  # required
+        kwargs = {k: d[k] for k in cls.required()}  # required
         kwargs.update({k: d[k] for k in cls.optional() if k in d})  # optional
         return cls(**kwargs)
 
@@ -1029,3 +1067,15 @@ class LabeledVideoRecord(BaseDataRecord):
     @classmethod
     def required(cls):
         return ["video_path", "label"]
+
+
+class LabeledFeatures(NpzWriteable):
+    '''Class representing a feature array `X` and corresponding labels `y`.
+
+    `X` is an n x d array whose rows contain features
+    `y` is a length-n array of labels
+    '''
+
+    def __init__(self, X, y):
+        self.X = np.asarray(X)
+        self.y = np.asarray(y)

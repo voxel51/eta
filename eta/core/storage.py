@@ -790,6 +790,7 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
 
         # Skip existing files, if requested
         if skip_existing_files:
+            etau.ensure_dir(local_dir)
             existing_files = set(etau.list_files(local_dir))
             _files = [f for f in files if f["name"] not in existing_files]
             num_skipped = len(files) - len(_files)

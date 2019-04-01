@@ -57,33 +57,61 @@ SUPPORTED_VIDEO_FILE_FORMATS = [
 ]
 
 
-def is_supported_video_file(path):
-    '''Determines whether the given file has a supported video type.
-
-    This method does not support videos represented as image sequences (i.e.,
-    it will return False for them).
+def is_supported_video(path):
+    '''Determines whether the given filepath points to a supported video.
 
     Args:
-        path: the path to a video file
+        path: the path to a video, like `/path/to/video.mp4` or
+            `/path/to/frames-%05d.jpg`
 
     Returns:
-        True/False if the file has a supported video type
+        True/False if the path refers to a supported video type
+    '''
+    return is_supported_video_file(path) or is_supported_image_sequence(path)
+
+
+def is_supported_video_file(path):
+    '''Determines whether the given filepath points to a supported video file
+    type.
+
+    Args:
+        path: the path to a video file, like `/path/to/video.mp4`
+
+    Returns:
+        True/False if the path refers to a supported video file type
     '''
     return os.path.splitext(path)[1] in SUPPORTED_VIDEO_FILE_FORMATS
+
+
+def is_supported_image_sequence(path):
+    '''Determines whether the given filepath points to a supported image
+    sequence type.
+
+    Args:
+        path: the path to an image sequence, like `/path/to/frames-%05d.jpg`
+
+    Returns:
+        True/False if the path refers to a supported video file type
+    '''
+    try:
+        _ = path % 1
+        return etai.is_supported_image(path)
+    except TypeError:
+        return False
 
 
 def is_same_video_file_format(path1, path2):
     '''Determines whether the video files have the same supported format.
 
-    This method does not support videos represented as image sequences (i.e.,
-    it will return False for them).
-
     Args:
-        path1: the path to a video file
-        path2: the path to a video file
+        path1: the path to a video
+        path2: the path to a video
+
+    Returns:
+        True/False
     '''
     return (
-        is_supported_video_file(path1) and
+        is_supported_video(path1) and
         os.path.splitext(path1)[1] == os.path.splitext(path2)[1]
     )
 
@@ -346,8 +374,129 @@ class VideoMetadata(Serializable):
             duration=d.get("duration", None),
             size_bytes=d.get("size_bytes", None),
             encoding_str=d.get("encoding_str", None),
-            gps_waypoints=gps_waypoints,
-        )
+            gps_waypoints=gps_waypoints)
+
+
+class VideoSetLabels(Serializable):
+    '''Class encapsulating labels for a set of videos.
+
+    Attributes:
+        videos: a list of VideoLabels instances
+        schema: a VideoLabelsSchema describing the schema of the video labels
+    '''
+
+    def __init__(self, videos=None, schema=None):
+        '''Constructs a VideoSetLabels instance.
+
+        Args:
+            videos: an optional list of VideoLabels instances. By default, an
+                empty list is created
+            schema: an optional VideoLabelsSchema to enforce on the object.
+                By default, no schema is enforced
+        '''
+        self.videos = videos or []
+        self.schema = schema
+
+    def __getitem__(self, idx):
+        return self.videos[idx]
+
+    def __setitem__(self, idx, video_labels):
+        if self.has_schema:
+            self._validate_video_labels(video_labels)
+        self.videos[idx] = video_labels
+
+    def __delitem__(self, idx):
+        del self.videos[idx]
+
+    def __iter__(self):
+        return iter(self.videos)
+
+    def __len__(self):
+        return len(self.videos)
+
+    def __bool__(self):
+        return bool(self.videos)
+
+    @property
+    def has_schema(self):
+        '''Returns True/False whether the container has an enforced schema.'''
+        return self.schema is not None
+
+    def merge_video_set_labels(self, video_set_labels):
+        '''Merges the given VideoSetLabels into this labels.'''
+        for video_labels in video_set_labels:
+            self.add_video_labels(video_labels)
+
+    def add_video_labels(self, video_labels):
+        '''Adds the VideoLabels to the set.
+
+        Args:
+            video_labels: an VideoLabels instance
+        '''
+        if self.has_schema:
+            self._apply_schema_to_video(video_labels)
+        self.videos.append(video_labels)
+
+    def get_schema(self):
+        '''Gets the current enforced schema for the video set, or None if no
+        schema is enforced.
+        '''
+        return self.schema
+
+    def get_active_schema(self):
+        '''Returns an VideoLabelsSchema describing the active schema of the
+        video set.
+        '''
+        schema = VideoLabelsSchema()
+        for video_labels in self.videos:
+            schema.merge_schema(
+                VideoLabelsSchema.build_active_schema(video_labels))
+        return schema
+
+    def set_schema(self, schema):
+        '''Sets the enforced schema to the given VideoLabelsSchema.'''
+        self.schema = schema
+        self._apply_schema()
+
+    def freeze_schema(self):
+        '''Sets the enforced schema for the video set to the current active
+        schema.
+        '''
+        self.set_schema(self.get_active_schema())
+
+    def remove_schema(self):
+        '''Removes the enforced schema from the video set.'''
+        self.schema = None
+        self._apply_schema()
+
+    def attributes(self):
+        '''Returns the list of class attributes that will be serialized.'''
+        _attrs = []
+        if self.has_schema:
+            _attrs.append("schema")
+        _attrs.append("videos")
+        return _attrs
+
+    def _apply_schema_to_video(self, video_labels):
+        if self.has_schema:
+            video_labels.set_schema(self.get_schema())
+        else:
+            video_labels.remove_schema()
+
+    def _apply_schema(self):
+        for video_labels in self.videos:
+            self._apply_schema_to_video(video_labels)
+
+    @classmethod
+    def from_dict(cls, d):
+        '''Constructs an VideoSetLabels from a JSON dictionary.'''
+        videos = [VideoLabels.from_dict(vl) for vl in d["videos"]]
+
+        schema = d.get("schema", None)
+        if schema is not None:
+            schema = VideoLabelsSchema.from_dict(schema)
+
+        return cls(videos=videos, schema=schema)
 
 
 class VideoFrameLabels(Serializable):
@@ -438,26 +587,44 @@ class VideoFrameLabels(Serializable):
 class VideoLabels(Serializable):
     '''Class encapsulating labels for a video.
 
-    Note: when VideoLabels objects are serialized, the keys of the `frames`
+    Note that any falsey fields of this class will be omitted during
+    serialization.
+
+    Note that when VideoLabels objects are serialized, the keys of the `frames`
     dict will be converted to strings, because all JSON object keys _must_ be
     strings. The `from_dict` method of this class handles converting the keys
     back to integers when VideoLabels instances are loaded.
 
     Attributes:
+        filename: the filename of the video
+        metadata: a VideoMetadata describing metadata about the video
+        attrs: an AttributeContainer containing video attributes
         frames: a dictionary mapping frame number strings to VideoFrameLabels
             instances
+        schema: a VideoLabelsSchema describing the schema of the video labels
     '''
 
-    def __init__(self, frames=None, schema=None):
+    def __init__(
+            self, filename=None, metadata=None, attrs=None, frames=None,
+            schema=None):
         '''Constructs a VideoLabels instance.
 
         Args:
+            filename: an optional filename for the video. By default, no
+                filename is stored
+            metadata: an optional VideoMetadata instance describing metadata
+                about the video. By default, no metadata is stored
+            attrs: an optional AttributeContainer of video attributes. By
+                default, an empty AttributeContainer is created
             frames: an optional dictionary mapping frame numbers to
                 VideoFrameLabels instances. By default, an empty dictionary
                 is created
             schema: an optional VideoLabelsSchema to enforce on the object.
                 By default, no schema is enforced
         '''
+        self.filename = filename
+        self.metadata = metadata
+        self.attrs = attrs or AttributeContainer()
         self.frames = frames or {}
         self.schema = schema
 
@@ -503,8 +670,30 @@ class VideoLabels(Serializable):
 
     def merge_video_labels(self, video_labels):
         '''Merges the given VideoLabels into this labels.'''
+        self.attrs.add_container(video_labels.attrs)
         for frame_number in video_labels:
             self.add_frame(video_labels[frame_number], overwrite=False)
+
+    def add_video_attribute(self, video_attr):
+        '''Adds the given video attribute to the video.
+
+        Args:
+            video_attr: an Attribute
+        '''
+        if self.has_schema:
+            self._validate_video_attribute(video_attr)
+        self.attrs.add(video_attr)
+
+    def add_video_attributes(self, video_attrs):
+        '''Adds the given video attributes to the video.
+
+        Args:
+            video_attrs: an AttributeContainer
+        '''
+        if self.has_schema:
+            for video_attr in video_attrs:
+                self._validate_video_attribute(video_attr)
+        self.attrs.add_container(video_attrs)
 
     def add_frame(self, frame_labels, overwrite=True):
         '''Adds the frame labels to the video.
@@ -547,7 +736,7 @@ class VideoLabels(Serializable):
             for frame_attr in frame_attrs:
                 self._validate_frame_attribute(frame_attr)
         self._ensure_frame(frame_number)
-        self.frames[str(frame_number)].add_frame_attributes(frame_attrs)
+        self.frames[frame_number].add_frame_attributes(frame_attrs)
 
     def add_object(self, obj, frame_number):
         '''Adds the object to the video.
@@ -606,10 +795,22 @@ class VideoLabels(Serializable):
 
     def attributes(self):
         '''Returns the list of class attributes that will be serialized.'''
-        _attrs = ["frames"]
+        _attrs = []
+        if self.filename:
+            _attrs.append("filename")
+        if self.metadata:
+            _attrs.append("metadata")
         if self.has_schema:
             _attrs.append("schema")
+        if self.attrs:
+            _attrs.append("attrs")
+        if self.frames:
+            _attrs.append("frames")
         return _attrs
+
+    def _validate_video_attribute(self, video_attr):
+        if self.has_schema:
+            self.schema.validate_video_attribute(video_attr)
 
     def _ensure_frame(self, frame_number):
         if not self.has_frame(frame_number):
@@ -632,6 +833,8 @@ class VideoLabels(Serializable):
 
     def _validate_schema(self):
         if self.has_schema:
+            for video_attr in self.attrs:
+                self._validate_video_attribute(video_attr)
             for frame_labels in itervalues(self.frames):
                 self._validate_frame_labels(frame_labels)
 
@@ -655,35 +858,73 @@ class VideoLabels(Serializable):
     @classmethod
     def from_dict(cls, d):
         '''Constructs a VideoLabels from a JSON dictionary.'''
-        frames = OrderedDict(
-            (int(fn), VideoFrameLabels.from_dict(vfl))
-            for fn, vfl in iteritems(d["frames"])
-        )
+        filename = d.get("filename", None)
+
+        metadata = d.get("metadata", None)
+        if metadata is not None:
+            metadata = VideoMetadata.from_dict(metadata)
+
+        attrs = d.get("attrs", None)
+        if attrs is not None:
+            attrs = AttributeContainer.from_dict(attrs)
+
+        frames = d.get("frames", None)
+        if frames is not None:
+            frames = OrderedDict(
+                (int(fn), VideoFrameLabels.from_dict(vfl))
+                for fn, vfl in iteritems(frames)
+            )
 
         schema = d.get("schema", None)
         if schema is not None:
             schema = VideoLabelsSchema.from_dict(schema)
 
-        return cls(frames=frames, schema=schema)
+        return cls(
+            filename=filename, metadata=metadata, attrs=attrs, frames=frames,
+            schema=schema)
 
 
 class VideoLabelsSchema(Serializable):
-    '''A schema for a VideoLabels instance.'''
+    '''A schema for a VideoLabels instance.
 
-    def __init__(self, frames=None, objects=None):
+    Attributes:
+        attrs: an AttributeContainerSchema describing the video attributes of
+            the video
+        frames: an AttributeContainerSchema describing the frame attributes
+                of the video
+        objects: a dictionary mapping object labels to AttributeContainerSchema
+            instances describing the object attributes of each object class
+    '''
+
+    def __init__(self, attrs=None, frames=None, objects=None):
         '''Creates a VideoLabelsSchema instance.
 
         Args:
+            attrs: an AttributeContainerSchema describing the video attributes
+                of the video
             frames: an AttributeContainerSchema describing the frame attributes
                 of the video
             objects: a dictionary mapping object labels to
-                AttributeContainerSchemas describing the object attributes of
-                each object class
+                AttributeContainerSchema instances describing the object
+                attributes of each object class
         '''
+        self.attrs = attrs or AttributeContainerSchema()
         self.frames = frames or AttributeContainerSchema()
         self.objects = defaultdict(lambda: AttributeContainerSchema())
         if objects is not None:
             self.objects.update(objects)
+
+    def has_video_attribute(self, video_attr_name):
+        '''Returns True/False if the schema has a video attribute with the
+        given name.
+        '''
+        return self.attrs.hass_attribute(video_attr_name)
+
+    def get_video_attribute_class(self, video_attr_name):
+        '''Gets the Attribute class for the video attribute with the given
+        name.
+        '''
+        return self.attrs.get_attribute_class(video_attr_name)
 
     def has_frame_attribute(self, frame_attr_name):
         '''Returns True/False if the schema has a frame attribute with the
@@ -717,6 +958,22 @@ class VideoLabelsSchema(Serializable):
         '''
         self.validate_object_label(label)
         return self.objects[label].get_attribute_class(obj_attr_name)
+
+    def add_video_attribute(self, video_attr):
+        '''Incorporates the given video attribute into the schema.
+
+        Args:
+            video_attr: an Attribute
+        '''
+        self.attrs.add_attribute(video_attr)
+
+    def add_video_attributes(self, video_attrs):
+        '''Incorporates the given video attributes into the schema.
+
+        Args:
+            video_attrs: an AttributeContainer of video attributes
+        '''
+        self.attrs.add_attributes(video_attrs)
 
     def add_frame_attribute(self, frame_attr):
         '''Incorporates the given frame attribute into the schema.
@@ -752,9 +1009,20 @@ class VideoLabelsSchema(Serializable):
 
     def merge_schema(self, schema):
         '''Merges the given VideoLabelsSchema into this schema.'''
+        self.attrs.merge_schema(schema.attrs)
         self.frames.merge_schema(schema.frames)
         for k, v in iteritems(schema.objects):
             self.objects[k].merge_schema(v)
+
+    def is_valid_video_attribute(self, video_attr):
+        '''Returns True/False if the video attribute is compliant with the
+        schema.
+        '''
+        try:
+            self.validate_video_attribute(video_attr)
+            return True
+        except:
+            return False
 
     def is_valid_frame_attribute(self, frame_attr):
         '''Returns True/False if the frame attribute is compliant with the
@@ -795,6 +1063,17 @@ class VideoLabelsSchema(Serializable):
             return True
         except:
             return False
+
+    def validate_video_attribute(self, video_attr):
+        '''Validates that the video attribute is compliant with the schema.
+
+        Args:
+            video_attr: an Attribute
+
+        Raises:
+            AttributeContainerSchemaError: if the attribute violates the schema
+        '''
+        self.attrs.validate_attribute(video_attr)
 
     def validate_frame_attribute(self, frame_attr):
         '''Validates that the frame attribute is compliant with the schema.
@@ -851,6 +1130,10 @@ class VideoLabelsSchema(Serializable):
             for obj_attr in obj.attrs:
                 self.validate_object_attribute(obj.label, obj_attr)
 
+    def attributes(self):
+        '''Returns the list of class attributes that will be serialized.'''
+        return ["attrs", "frames", "objects"]
+
     @classmethod
     def build_active_schema_for_frame(cls, frame_labels):
         '''Builds a VideoLabelsSchema that describes the active schema of
@@ -871,6 +1154,7 @@ class VideoLabelsSchema(Serializable):
         given VideoLabels.
         '''
         schema = cls()
+        schema.add_video_attributes(video_labels.attrs)
         for frame_labels in itervalues(video_labels.frames):
             schema.merge_schema(
                 VideoLabelsSchema.build_active_schema_for_frame(frame_labels))
@@ -878,7 +1162,11 @@ class VideoLabelsSchema(Serializable):
 
     @classmethod
     def from_dict(cls, d):
-        '''Constructs an AttributeContainerSchema from a JSON dictionary.'''
+        '''Constructs a VideoLabelsSchema from a JSON dictionary.'''
+        attrs = d.get("attrs", None)
+        if attrs is not None:
+            attrs = AttributeContainerSchema.from_dict(attrs)
+
         frames = d.get("frames", None)
         if frames is not None:
             frames = AttributeContainerSchema.from_dict(frames)
@@ -890,7 +1178,7 @@ class VideoLabelsSchema(Serializable):
                 for k, v in iteritems(objects)
             }
 
-        return cls(frames=frames, objects=objects)
+        return cls(attrs=attrs, frames=frames, objects=objects)
 
 
 class VideoLabelsSchemaError(Exception):
@@ -1349,6 +1637,35 @@ def sliding_window_sample_frames(arg, k, stride, size=None):
     return np.array(clips)
 
 
+def extract_keyframes(video_path, output_patt=None):
+    '''Extracts the keyframes from the video.
+
+    Keyframes are a set of video frames that mark the start of a transition,
+    and are faster to extract than an arbitrary frame.
+
+    Args:
+        video_path: the path to a video
+        output_patt: an optional output pattern like "/path/to/frames-%d.png"
+            specifying where to write the sampled frames. If omitted, the
+            frames are instead returned in an in-memory list
+
+    Returns:
+        a list of the keyframes if output_patt is None, and None otherwise
+    '''
+    if output_patt:
+        # Write frames to disk via VideoProcessor
+        p = VideoProcessor(
+            video_path, keyframes_only=True, out_images_path=output_patt)
+        with p:
+            for img in p:
+                p.write(img)
+        return
+
+    # Load frames into memory via FFmpegVideoReader
+    with FFmpegVideoReader(video_path, keyframes_only=True) as r:
+        return [img for img in r]
+
+
 class VideoProcessor(object):
     '''Class for reading a video and writing a new video frame-by-frame.
 
@@ -1365,6 +1682,7 @@ class VideoProcessor(object):
             self,
             inpath,
             frames=None,
+            keyframes_only=False,
             in_use_ffmpeg=True,
             out_use_ffmpeg=True,
             out_images_path=None,
@@ -1379,6 +1697,9 @@ class VideoProcessor(object):
             inpath: path to the input video. Passed directly to a VideoReader
             frames: an optional range(s) of frames to process. This argument
                 is passed directly to VideoReader
+            keyframes_only: whether to only extract keyframes when reading the
+                video. Can only be set to True when `in_use_ffmpeg=True`. When
+                this is True, `frames` is interpreted as keyframe numbers
             in_use_ffmpeg: whether to use FFmpegVideoReader to read input
                 videos rather than OpenCVVideoReader
             out_use_ffmpeg: whether to use FFmpegVideoWriter to write output
@@ -1409,7 +1730,11 @@ class VideoProcessor(object):
                 construct a VideoWriter
         '''
         if in_use_ffmpeg:
-            self._reader = FFmpegVideoReader(inpath, frames=frames)
+            self._reader = FFmpegVideoReader(
+                inpath, frames=frames, keyframes_only=keyframes_only)
+        elif keyframes_only:
+            raise VideoProcessorError(
+                "Must have `in_use_ffmpeg=True` when `keyframes_only=True`")
         else:
             self._reader = OpenCVVideoReader(inpath, frames=frames)
         self._video_clip_writer = None
@@ -1633,7 +1958,7 @@ class FFmpegVideoReader(VideoReader):
     This class uses 1-based indexing for all frame operations.
     '''
 
-    def __init__(self, inpath, frames=None):
+    def __init__(self, inpath, frames=None, keyframes_only=False):
         '''Constructs a new VideoReader with ffmpeg backend.
 
         Args:
@@ -1648,9 +1973,19 @@ class FFmpegVideoReader(VideoReader):
                     - a string like "1-3,6,8-10"
                     - a list like [1, 2, 3, 6, 8, 9, 10]
                     - a FrameRange or FrameRanges instance
+            keyframes_only: whether to only read keyframes. By default, this
+                is False. When this is True, `frames` is interpreted as
+                keyframe numbers
         '''
+        # Parse args
+        if keyframes_only:
+            in_opts = ["-skip_frame", "nokey", "-vsync", "0"]
+        else:
+            in_opts = None
+
         self._stream_info = VideoStreamInfo.build_for(inpath)
         self._ffmpeg = FFmpeg(
+            in_opts=in_opts,
             out_opts=[
                 "-f", 'image2pipe',         # pipe frames to stdout
                 "-vcodec", "rawvideo",      # output will be raw video
@@ -1713,6 +2048,11 @@ class FFmpegVideoReader(VideoReader):
             return False
 
     def _retrieve(self):
+        # Stop when ffmpeg returns empty bits, meaning it has gone past the end
+        # of the video
+        if not self._raw_frame:
+            raise StopIteration
+
         width, height = self.frame_size
         try:
             vec = np.fromstring(self._raw_frame, dtype="uint8")

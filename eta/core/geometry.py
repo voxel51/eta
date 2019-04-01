@@ -20,7 +20,6 @@ from builtins import *
 # pragma pylint: enable=wildcard-import
 
 from eta.core.data import DataContainer
-import eta.core.image as etai
 import eta.core.numutils as etan
 from eta.core.serial import Serializable
 
@@ -46,18 +45,24 @@ class BoundingBox(Serializable):
             self.bottom_right == bbox.bottom_right
         )
 
-    def coords_in(self, **kwargs):
+    def coords_in(self, frame_size=None, shape=None, img=None):
         '''Returns the coordinates of the bounding box in the specified image.
 
+        Pass *one* keyword argument to this function.
+
         Args:
-            **kwargs: a valid argument for etai.to_frame_size()
+            frame_size: the (width, height) of the image
+            shape: the (height, width, ...) of the image, e.g. from img.shape
+            img: the image itself
 
         Returns:
             box: a (top-left-x, top-left-y, width, height) tuple describing the
                 bounding box
         '''
-        tl = self.top_left.coords_in(**kwargs)
-        br = self.bottom_right.coords_in(**kwargs)
+        tl = self.top_left.coords_in(
+            frame_size=frame_size, shape=shape, img=img)
+        br = self.bottom_right.coords_in(
+            frame_size=frame_size, shape=shape, img=img)
         return tl[0], tl[1], br[0] - tl[0], br[1] - tl[1]
 
     def extract_from(self, img, force_square=False):
@@ -211,17 +216,21 @@ class RelativePoint(Serializable):
             etan.is_close(self.y, rel_point.y)
         )
 
-    def coords_in(self, **kwargs):
+    def coords_in(self, frame_size=None, shape=None, img=None):
         '''Returns the absolute (x, y) coordinates of this point in the
         specified image.
 
+        Pass *one* keyword argument to this function.
+
         Args:
-            **kwargs: a valid argument for etai.to_frame_size()
+            frame_size: the (width, height) of the image
+            shape: the (height, width, ...) of the image, e.g. from img.shape
+            img: the image itself
 
         Returns:
             (x, y): the absolute x and y coordinates of this point
         '''
-        w, h = etai.to_frame_size(**kwargs)
+        w, h = _to_frame_size(frame_size=frame_size, shape=shape, img=img)
         return int(w * 1.0 * self.x), int(h * 1.0 * self.y)
 
     @staticmethod
@@ -230,13 +239,20 @@ class RelativePoint(Serializable):
         return max(0, min(x, 1)), max(0, min(y, 1))
 
     @classmethod
-    def from_abs(cls, x, y, **kwargs):
+    def from_abs(cls, x, y, frame_size=None, shape=None, img=None):
         '''Constructs a RelativePoint from absolute (x, y) pixel coordinates.
 
+        Pass *one* keyword argument to this function.
+
         Args:
-            **kwargs: a valid argument for etai.to_frame_size()
+            frame_size: the (width, height) of the image
+            shape: the (height, width, ...) of the image, e.g. from img.shape
+            img: the image itself
+
+        Returns:
+            a RelativePoint instance
         '''
-        w, h = etai.to_frame_size(**kwargs)
+        w, h = _to_frame_size(frame_size=frame_size, shape=shape, img=img)
         x /= 1.0 * w
         y /= 1.0 * h
         return cls(x, y)
@@ -288,6 +304,17 @@ class LabeledPointContainer(DataContainer):
     def get_labels(self):
         '''Returns a set containing the labels of the LabeledPoints.'''
         return set(p.label for p in self.points)
+
+
+def _to_frame_size(frame_size=None, shape=None, img=None):
+    if img is not None:
+        shape = img.shape
+    if shape is not None:
+        return shape[1], shape[0]
+    elif frame_size is not None:
+        return tuple(frame_size)
+    else:
+        raise TypeError("A valid keyword argument must be provided")
 
 
 def _make_square(x, y, w, h):

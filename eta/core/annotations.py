@@ -1,6 +1,10 @@
 '''
 Core utilities for rendering annotations on media.
 
+@todo support for rendering video-level attributes
+@todo support for rendering frame-level attributes
+@todo support for rendering object-level attributes
+
 Copyright 2019, Voxel51, Inc.
 voxel51.com
 
@@ -204,6 +208,8 @@ def annotate_video(
         if add_logo:
             logo.render_for(frame_size=p.output_frame_size)
 
+        # @todo support video-level attributes here
+
         for img in p:
             logger.debug("Annotating frame %d", p.frame_number)
             frame_labels = video_labels[p.frame_number]
@@ -263,7 +269,7 @@ def annotate_image(
         img = _annotate_object(
             img, obj, colormap, font, alpha, text_color, pad, linewidth)
 
-    # @todo support frame attributes
+    # @todo support frame attributes here
 
     # Add logo
     if add_logo:
@@ -282,6 +288,8 @@ def _annotate_object(
     else:
         index = 0
         msg = label
+
+    # @todo support object attributes here
 
     # Get box color
     color_index = label.__hash__() + index
