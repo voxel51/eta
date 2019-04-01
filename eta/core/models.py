@@ -927,8 +927,13 @@ class PickledModel(PublishedModel):
     '''Class that can load a published model stored as a .pkl file.'''
 
     def _load(self):
-        with open(self.model_path, "rb") as f:
-            return pickle.load(f)
+        try:
+            with open(self.model_path, "rb") as f:
+                return pickle.load(f)
+        except UnicodeDecodeError as e:
+            import pickle as _pickle
+            with open(self.model_path, 'rb') as f:
+                return _pickle.load(f, encoding='latin1')
 
 
 class NpzModelWeights(PublishedModel, dict):
