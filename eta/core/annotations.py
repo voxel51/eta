@@ -295,8 +295,8 @@ def _annotate_object(
 
     # Draw bounding box
     objtlx, objtly = obj.bounding_box.top_left.coords_in(img=img)
-    objbr = obj.bounding_box.bottom_right.coords_in(img=img)
-    cv2.rectangle(overlay, (objtlx, objtly), objbr, box_color, linewidth)
+    objbrx, objbry = obj.bounding_box.bottom_right.coords_in(img=img)
+    cv2.rectangle(overlay, (objtlx, objtly), (objbrx, objbry), box_color, linewidth)
 
     # Draw message background
     bgtlx = objtlx - linewidth + 1
@@ -305,14 +305,30 @@ def _annotate_object(
     bgtly = bgbry - text_size[1] - 2 * pad[1]
     cv2.rectangle(overlay, (bgtlx, bgtly), (bgbrx, bgbry), box_color, -1)
 
+    # Construct attribute text
+    attr_msg = ""
+    for attr in obj.attrs.attrs:
+        attr_msg += attr.value+" "
+    attr_text_size = font.getsize(msg)
+
+    # Draw attribute message background
+    abgtlx = objtlx - linewidth + 1
+    abgbrx = abgtlx + attr_text_size[0] + 2 * pad[0]
+    abgtly = objbry + linewidth - 1
+    abgbry = abgtly + attr_text_size[1] + 2 * pad[1]
+    cv2.rectangle(overlay, (abgtlx, abgtly), (abgbrx, abgbry), box_color, -1)
+
     # Overlay translucent box
     img_anno = cv2.addWeighted(overlay, alpha, img, 1 - alpha, 0)
 
-    # Draw message
+    # Draw messages
     img_pil = Image.fromarray(img_anno)
     draw = ImageDraw.Draw(img_pil)
     txttlx = bgtlx + pad[0]
     txttly = bgtly + pad[1] - 1
     draw.text((txttlx, txttly), msg, font=font, fill=text_color)
+    atxttlx = abgtlx + pad[0]
+    atxttly = abgtly + pad[1] - 1
+    draw.text((atxttlx, atxttly), attr_msg, font=font, fill=text_color)
 
     return np.asarray(img_pil)

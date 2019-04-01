@@ -928,7 +928,12 @@ class PickledModel(PublishedModel):
 
     def _load(self):
         with open(self.model_path, "rb") as f:
-            return pickle.load(f)
+            try:
+                return pickle.load(f)
+            except UnicodeDecodeError:
+                model = pickle.Unpickler(f, encoding="latin1").load()
+                return model
+                
 
 
 class NpzModelWeights(PublishedModel, dict):
