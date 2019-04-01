@@ -316,8 +316,8 @@ def _annotate_object(
     # Construct attribute text
     attr_msg = ""
     for attr in obj.attrs.attrs:
-        attr_msg += attr.value+" "
-    attr_text_size = font.getsize(msg)
+        attr_msg += attr.value.capitalize() + " "
+    attr_text_size = font.getsize(attr_msg)
 
     # Draw attribute message background
     abgtlx = objtlx - linewidth + 1
