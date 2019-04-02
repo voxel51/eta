@@ -459,6 +459,14 @@ class AttributeContainer(DataContainer):
                 self._validate_attribute(attr)
         super(AttributeContainer, self).add_container(container)
 
+    def sort_by_name(self, reverse=False):
+        '''Sorts the attributes in the container by name.
+
+        Args:
+            reverse: whether to sort in descending order. The default is False
+        '''
+        self.sort_by("name", reverse=reverse)
+
     def get_schema(self):
         '''Gets the current enforced schema for the container, or None if
         no schema is enforced.
