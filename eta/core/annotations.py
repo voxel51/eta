@@ -162,7 +162,7 @@ _DEFAULT_LOGO = etal.Logo.load_default()
 def annotate_video(
         input_path, video_labels, output_path, add_logo=True, logo=None,
         colormap=None, font=None, alpha=None, text_color=None, pad=None,
-        linewidth=None):
+        linewidth=None, attrs_bg_color=None, attrs_gap=None):
     '''Annotates the video with the given labels.
 
     Args:
@@ -183,6 +183,10 @@ def annotate_video(
         text_color: an optional text color to use
         pad: an optional (padx, pady) to use to pad the annotation text
         linewidth: an optional bounding box linewdith to use
+        attrs_bg_color: an optional background color to use for the frame
+            attributes box
+        attrs_gap: the relative gap (w.r.t. the image width) to leave between
+            the frame attributes box and the upper left corner of the image
     '''
     # Parse args
     if add_logo and logo is None:
@@ -199,6 +203,10 @@ def annotate_video(
         pad = _DEFAULT_ANNOTATION_PAD
     if linewidth is None:
         linewidth = _DEFAULT_ANNOTATION_LINEWIDTH
+    if attrs_bg_color is None:
+        attrs_bg_color = _DEFAULT_FRAME_ANNOTATION_BACKGROUND_COLOR
+    if attrs_gap is None:
+        attrs_gap = _DEFAULT_FRAME_ANNOTATION_GAP
 
     # Annotate video
     with etav.VideoProcessor(input_path, out_video_path=output_path) as p:
@@ -221,7 +229,8 @@ def annotate_video(
                 img, frame_labels, video_attrs=video_attrs,
                 add_logo=add_logo, logo=logo, colormap=colormap, font=font,
                 alpha=alpha, text_color=text_color, pad=pad,
-                linewidth=linewidth)
+                linewidth=linewidth, attrs_bg_color=attrs_bg_color,
+                attrs_gap=attrs_gap)
             p.write(img_anno)
 
 
@@ -250,10 +259,9 @@ def annotate_video_frame(img, frame_labels, video_attrs=None, add_logo=True,
         pad: an optional (padx, pady) to use to pad the annotation text
         linewidth: an optional bounding box linewdith to use
         attrs_bg_color: an optional background color to use for the frame
-            attributes box. If omitted, the default background color is used
+            attributes box
         attrs_gap: the relative gap (w.r.t. the image width) to leave between
-            the frame attributes box and the upper left corner of the image. If
-            omitted, the default gap is used
+            the frame attributes box and the upper left corner of the image
 
     Returns:
         the annotated image
@@ -321,12 +329,12 @@ def _annotate_image(
         text_color = _DEFAULT_ANNOTATION_TEXT_COLOR
     if pad is None:
         pad = _DEFAULT_ANNOTATION_PAD
+    if linewidth is None:
+        linewidth = _DEFAULT_ANNOTATION_LINEWIDTH
     if attrs_bg_color is None:
         attrs_bg_color = _DEFAULT_FRAME_ANNOTATION_BACKGROUND_COLOR
     if attrs_gap is None:
         attrs_gap = _DEFAULT_FRAME_ANNOTATION_GAP
-    if linewidth is None:
-        linewidth = _DEFAULT_ANNOTATION_LINEWIDTH
 
     # Render objects, if necessary
     logger.debug("Rendering %d objects", len(labels.objects))
