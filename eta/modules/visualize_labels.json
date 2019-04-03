@@ -36,16 +36,9 @@
     ],
     "parameters": [
         {
-            "name": "add_logo",
-            "type": "eta.core.types.Boolean",
-            "description": "whether to render a logo on the video",
-            "required": false,
-            "default": true
-        },
-        {
-            "name": "logo",
+            "name": "annotation_config",
             "type": "eta.core.types.Object",
-            "description": "a LogoConfig defining a logo to render on the video. If omitted, the default logo is used",
+            "description": "an eta.core.annotations.AnnotationConfig describing how to render the annotations on the video. If omitted, the default settings are used",
             "required": false,
             "default": null
         }
