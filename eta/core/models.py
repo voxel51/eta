@@ -994,6 +994,10 @@ class ModelManager(Configurable, Serializable):
         raise NotImplementedError(
             "subclass must implement _download_model()")
 
+    def attributes(self):
+        '''Returns a list of attributes to be serialized.'''
+        return ["type", "config"]
+
     @classmethod
     def from_dict(cls, d):
         '''Builds the ModelManager subclass from a JSON dictionary.'''
