@@ -144,10 +144,11 @@ def read_pickle(path):
     Returns:
         the loaded instance
     '''
-    with open(path, "rb") as f:
-        try:
+    try:
+        with open(path, "rb") as f:
             return pickle.load(f)
-        except UnicodeDecodeError:
+    except UnicodeDecodeError:
+        with open(path, "rb") as f:
             # https://stackoverflow.com/q/28218466
             return _pickle.load(f, encoding="latin1")
 
