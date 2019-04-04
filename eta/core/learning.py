@@ -203,6 +203,53 @@ class VideoFramesVotingClassifier(VideoFramesClassifier):
             confidence_weighted=self.config.confidence_weighted_vote)
 
 
+class VideoClassifier(Classifier):
+    '''Base class for all classifiers that operate on entire videos.
+
+    `VideoClassifier`s may output single or multiple (video-level) labels per
+    video.
+
+    Subclasses of `VideoClassifier` must implement the `predict()` method.
+
+    Subclasses can optionally implement the context manager interface to
+    perform any necessary setup and teardown, e.g., operating a `Featurizer`
+    that featurizes the frames of the input video.
+    '''
+
+    def predict(self, video_path):
+        '''Peforms prediction on the given video.
+
+        Args:
+            video_path: the path to the video
+
+        Returns:
+            an `eta.core.data.AttributeContainer` instance containing the
+                predictions
+        '''
+        raise NotImplementedError("subclasses must implement predict()")
+
+
+class VideoModel(object):
+    '''Base class for generic models that process entire videos and perform
+    arbitrary predictions and detections.
+
+    `VideoModel` is useful when implementing a highly customized model that
+    does not fit any of the concrete classifier/detector interfaces.
+    '''
+
+    def process(self, video_path):
+        '''Generates labels for the given video.
+
+        Args:
+            video_path: the path to the video
+
+        Returns:
+            an `eta.core.video.VideoLabels` instance containing the labels
+                generated for the given video
+        '''
+        raise NotImplementedError("subclasses must implement process()")
+
+
 class ObjectDetectorConfig(Config):
     '''Configuration class that encapsulates the name of an `ObjectDetector`
     and an instance of its associated Config class.
