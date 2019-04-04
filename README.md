@@ -6,7 +6,6 @@ This project is supported by the [NIST Public Safety Innovation Accelerator
 Program](
 https://www.nist.gov/news-events/news/2017/06/nist-awards-385-million-accelerate-public-safety-communications).
 
-
 <img
     src="https://drive.google.com/uc?id=14ZclqNXJXSct6O0sqcUoxFpzt_CnZuGP"
     alt="eta-infrastructure.png"
@@ -57,16 +56,9 @@ TensorFlow is installed with GPU support. In particular, if CUDA 9 is found,
 the latest version of the `tensorflow-gpu` package is installed, and if CUDA 8
 is found, `tensorflow-gpu 1.4` is installed.
 
-For help installing CUDA, see [this guide](docs/cuda_install_guide.md).
-
 3. Install the ETA package:
 
 ```shell
-# Install in global (non-editable) mode
-pip install .
-cd ..
-rm -rf eta
-
 # Install in development mode
 pip install -e .
 ```
@@ -79,24 +71,20 @@ file to configure various package-level constants. Many advanced ETA features
 such as pipeline building, model management, etc. require a properly configured
 environment to function.
 
-To setup your environment, copy the example configuration file
+To setup your environment, create a copy the example configuration file
 
 ```shell
 cp config-example.json config.json
 ```
 
-and then edit your config file to provide the paths to the relevant
-directories in your installation. If you do not require a customized
-installation, the example configuration file contains the pattern `{{eta}}`
-that you can perform a quick find-and-replace on to populate the config:
+If desired, you can edit your config file to customize the various paths,
+change default constants, add environment variables, customize your default
+`PYTHONPATH`, and so on. You can also add additional paths to the
+`module_dirs`, `pipeline_dirs`, and `models_dirs` sections to expose custom
+modules, pipelines, and models to your system.
 
-```shell
-# on a mac
-sed -i '' -e "s|{{eta}}|$(pwd)|g" config.json
-
-# on most linux distributions
-sed -i -e "s|{{eta}}|$(pwd)|g" config.json
-```
+> When the config file is loaded, any `{{eta}}` patterns in directory paths
+> are replaced with the absolute path to the ETA repository on your machine.
 
 The default config includes the `eta/modules`, `eta/pipelines`, and
 `eta/models` directories on your module, pipeline, and models search paths,
