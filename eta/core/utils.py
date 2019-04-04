@@ -104,7 +104,7 @@ def fill_eta_pattern(string):
     '''Fills the {{eta}} patterns, if any, in the given string with the
     full path to the ETA root directory.
     '''
-    return string.replace("{{eta}}", etac.ETA_DIR)
+    return string.replace("{{eta}}", etac.BASE_DIR)
 
 
 def fill_resources_pattern(string):

@@ -36,7 +36,7 @@ class ETAConfig(EnvConfig):
     '''Sytem-wide ETA configuration settings.
 
     When an ETAConfig is loaded, any `{{eta}}` patterns are replaced with
-    `eta.constants.ETA_DIR`.
+    `eta.constants.BASE_DIR`.
     '''
 
     def __init__(self, d):
