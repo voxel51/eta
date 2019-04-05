@@ -1,0 +1,39 @@
+{
+    "info": {
+        "name": "apply_video_model",
+        "type": "eta.core.types.Module",
+        "version": "0.1.0",
+        "description": "A module that applies an eta.core.learning.VideoModel on a video",
+        "exe": "apply_video_model.py"
+    },
+    "inputs": [
+        {
+            "name": "video_path",
+            "type": "eta.core.types.Video",
+            "description": "the input video",
+            "required": true
+        },
+        {
+            "name": "input_labels_path",
+            "type": "eta.core.types.VideoLabels",
+            "description": "an optional input VideoLabels file to which to add the predictions",
+            "required": false
+        }
+    ],
+    "outputs": [
+        {
+            "name": "output_labels_path",
+            "type": "eta.core.types.VideoLabels",
+            "description": "a VideoLabels file containing the predictions",
+            "required": true
+        }
+    ],
+    "parameters": [
+        {
+            "name": "model",
+            "type": "eta.core.types.VideoModel",
+            "description": "an eta.core.learning.VideoModelConfig describing the eta.core.learning.VideoModel to use",
+            "required": true
+        }
+    ]
+}
