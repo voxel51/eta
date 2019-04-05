@@ -702,11 +702,18 @@ def resize(img, width=None, height=None, *args, **kwargs):
 
 
 def central_crop(img, h, w):
-    '''Crops the central part of an image and outputs an image of shape (h, w)
-    Works for both 2D and 3D images.
+    '''Crops the central part of an image of required size. Works for both
+    2D and 3D images.
+
+    Args:
+        img: input image
+        (h, w): required output height and width
+
+    Returns:
+        A cropped portion of the image of height `h` and width `w`.
     '''
     bounding = (h, w)
-    start = tuple(map(lambda a, da: a//2-da//2, img.shape, bounding))
+    start = tuple(map(lambda a, da: a // 2 - da // 2, img.shape, bounding))
     end = tuple(map(operator.add, start, bounding))
     slices = tuple(map(slice, start, end))
     return img[slices]
