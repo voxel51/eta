@@ -30,13 +30,17 @@ from builtins import *
 # pragma pylint: enable=wildcard-import
 
 import logging
+import os
 
 import numpy as np
 import tensorflow as tf
 
+import eta.constants as etac
 from eta.core.config import Config
+import eta.core.data as etad
 import eta.core.image as etai
 from eta.core.features import Featurizer
+import eta.core.learning as etal
 import eta.core.models as etam
 import eta.core.tfutils as etat
 
@@ -49,6 +53,11 @@ class VGG16Config(Config):
 
     def __init__(self, d):
         self.model = self.parse_string(d, "model", default="vgg16-imagenet")
+        self.labels_map = self.parse_string(d, "labels_map", default=None)
+
+        if self.labels_map is None:
+            self.labels_map = os.path.join(
+                etac.RESOURCES_DIR, "vgg16-imagenet-labels.txt")
 
 
 class VGG16(object):
@@ -84,6 +93,8 @@ class VGG16(object):
         self.sess = sess
         self.imgs = imgs
 
+        self._labels_map = None
+
         self._build_conv_layers()
         self._build_fc_layers()
         self._build_output_layer()
@@ -95,6 +106,30 @@ class VGG16(object):
 
     def __exit__(self, *args):
         self.close()
+
+    @staticmethod
+    def preprocess_image(img):
+        '''Pre-processes the image for evaluation by converting it to a
+        224 x 224 RGB image.
+
+        Args:
+            img: an image
+
+        Returns:
+            224 x 224 RGB image
+        '''
+        if etai.is_gray(img):
+            img = etai.gray_to_rgb(img)
+        elif etai.has_alpha(img):
+            img = img[:, :, :3]
+
+        return etai.resize(img, 224, 224)
+
+    def get_label(self, idx):
+        '''Gets the label for the given output index of the model.'''
+        if self._labels_map is None:
+            self._labels_map = etal.load_labels_map(self.config.labels_map)
+        return self._labels_map[idx]
 
     def evaluate(self, imgs, layer=None):
         '''Feed-forward evaluation through the network.
@@ -494,10 +529,75 @@ class VGG16Featurizer(Featurizer):
         Returns:
             the feature vector, a 1D array of length 4096
         '''
-        if etai.is_gray(img):
-            img = etai.gray_to_rgb(img)
-        elif etai.has_alpha(img):
-            img = img[:, :, :3]
-
-        imgs = [etai.resize(img, 224, 224)]
+        imgs = [VGG16.preprocess_image(img)]
         return self.vgg16.evaluate(imgs, layer=self.vgg16.fc2l)[0]
+
+
+class VGG16ClassifierConfig(Config):
+    '''Configuration class for loading an `eta.core.vgg16.VGG16` network for
+    use as an image classifier.
+
+    Attributes:
+        config: a VGG16Config specifying the VGG16 model to use
+        attr_name: the name of the attribute that the classifier predicts
+    '''
+
+    def __init__(self, d):
+        self.config = self.parse_object(d, "config", VGG16Config, default=None)
+        self.attr_name = self.parse_string(d, "attr_name", default="imagenet")
+        if self.config is None:
+            self.config = VGG16Config.default()
+
+
+class VGG16Classifier(etal.ImageClassifier):
+    '''Interface for evaluating an `eta.core.vgg16.VGG16` classifiers.'''
+
+    def __init__(self, config):
+        '''Creates a VGG16Classifier instance.
+
+        Args:
+            config: a VGG16ClassifierConfig instance
+        '''
+        self.config = config
+        self._vgg16 = VGG16(config=config.config)
+
+    def predict(self, img):
+        '''Peforms prediction on the given image.
+
+        Args:
+            img: the image to classify
+
+        Returns:
+            an `eta.core.data.AttributeContainer` instance containing the
+                predictions
+        '''
+        imgs = [VGG16.preprocess_image(img)]
+        probs = self._vgg16.evaluate(imgs)[0]
+        return self._process_probs(probs)
+
+    def predict_all(self, imgs):
+        '''Performs prediction on the given tensor of images.
+
+        Args:
+            imgs: a list (or d x ny x nx x 3 tensor) of images to classify
+
+        Returns:
+            a list of `eta.core.data.AttributeContainer` instances describing
+                the predictions for each image
+        '''
+        imgs = [VGG16.preprocess_image(img) for img in imgs]
+        all_probs = self._vgg16.evaluate(imgs)
+        return [self._process_probs(probs) for probs in all_probs]
+
+    def _process_probs(self, probs):
+        idx = np.argmax(probs)
+        label = self._vgg16.get_label(idx + 1)  # 1-based indexing
+        confidence = probs[idx]
+        return self._package_attr(label, confidence)
+
+    def _package_attr(self, label, confidence):
+        attrs = etad.AttributeContainer()
+        attr = etad.CategoricalAttribute(
+            self.config.attr_name, label, confidence=confidence)
+        attrs.add(attr)
+        return attrs
