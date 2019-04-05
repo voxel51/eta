@@ -2,7 +2,7 @@
 '''
 Core learning infrastructure.
 
-Copyright 2019, Voxel51, Inc.
+Copyright 2017-2019, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
@@ -161,7 +161,8 @@ class VideoFramesClassifier(Classifier):
     `VideoFramesClassifier`s may output single or multiple labels per video
     clip.
 
-    Subclasses of `VideoFramesClassifier` must implement the `predict()` method.
+    Subclasses of `VideoFramesClassifier` must implement the `predict()`
+    method.
 
     Subclasses can optionally implement the context manager interface to
     perform any necessary setup and teardown, e.g., operating a `Featurizer`
