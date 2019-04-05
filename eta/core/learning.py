@@ -267,27 +267,6 @@ class VideoClassifier(Classifier):
         raise NotImplementedError("subclasses must implement predict()")
 
 
-class VideoModel(object):
-    '''Base class for generic models that process entire videos and perform
-    arbitrary predictions and detections.
-
-    `VideoModel` is useful when implementing a highly customized model that
-    does not fit any of the concrete classifier/detector interfaces.
-    '''
-
-    def process(self, video_path):
-        '''Generates labels for the given video.
-
-        Args:
-            video_path: the path to the video
-
-        Returns:
-            an `eta.core.video.VideoLabels` instance containing the labels
-                generated for the given video
-        '''
-        raise NotImplementedError("subclasses must implement process()")
-
-
 class ObjectDetectorConfig(Config):
     '''Configuration class that encapsulates the name of an `ObjectDetector`
     and an instance of its associated Config class.
@@ -339,3 +318,49 @@ class ObjectDetector(Configurable):
                 the detected objects
         '''
         raise NotImplementedError("subclass must implement detect()")
+
+
+class VideoModelConfig(Config):
+    '''Configuration class that encapsulates the name of a `VideoModel` and
+    an instance of its associated Config class.
+
+    Attributes:
+        type: the fully-qualified class name of the `VideoModel`
+        config: an instance of the Config class associated with the specified
+            `VideoModel`
+    '''
+
+    def __init__(self, d):
+        self.type = self.parse_string(d, "type")
+        self._video_model_cls, config_cls = Configurable.parse(self.type)
+        self.config = self.parse_object(d, "config", config_cls, default=None)
+        if not self.config:
+            # Try to load the default config for the model
+            self.config = config_cls.load_default()
+
+    def build(self):
+        '''Factory method that builds the VideoModel instance from the
+        config specified by this class.
+        '''
+        return self._video_model_cls(self.config)
+
+
+class VideoModel(Configurable):
+    '''Base class for generic models that process entire videos and perform
+    arbitrary predictions and detections.
+
+    `VideoModel` is useful when implementing a highly customized model that
+    does not fit any of the concrete classifier/detector interfaces.
+    '''
+
+    def process(self, video_path):
+        '''Generates labels for the given video.
+
+        Args:
+            video_path: the path to the video
+
+        Returns:
+            an `eta.core.video.VideoLabels` instance containing the labels
+                generated for the given video
+        '''
+        raise NotImplementedError("subclasses must implement process()")
