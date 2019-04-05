@@ -701,6 +701,24 @@ def resize(img, width=None, height=None, *args, **kwargs):
     return cv2.resize(img, (width, height), *args, **kwargs)
 
 
+def central_crop(img, h, w):
+    '''Crops the central part of an image of required size. Works for both
+    2D and 3D images.
+
+    Args:
+        img: input image
+        (h, w): required output height and width
+
+    Returns:
+        A cropped portion of the image of height `h` and width `w`.
+    '''
+    bounding = (h, w)
+    start = tuple(map(lambda a, da: a // 2 - da // 2, img.shape, bounding))
+    end = tuple(map(operator.add, start, bounding))
+    slices = tuple(map(slice, start, end))
+    return img[slices]
+
+
 def to_double(img):
     '''Converts img to a double precision image with values in [0, 1].'''
     return img.astype(np.float) / np.iinfo(img.dtype).max
