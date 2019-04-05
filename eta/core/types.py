@@ -4,7 +4,7 @@ ETA core type system.
 More types may be defined in other modules, but they must inherit from the
 base type `eta.core.types.Type` defined here.
 
-Copyright 2018, Voxel51, Inc.
+Copyright 2017-2019, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
@@ -306,6 +306,15 @@ class VideoFramesClassifier(Classifier):
     pass
 
 
+class VideoClassifier(Classifier):
+    '''Configuration for an `eta.core.learning.VideoClassifier`.
+
+    This type is implemented in ETA by the `eta.core.learning.VideoClassifier`
+    class.
+    '''
+    pass
+
+
 class ObjectDetector(Config):
     '''Configuration for an `eta.core.learning.ObjectDetector`.
 
@@ -317,6 +326,22 @@ class ObjectDetector(Config):
     def is_valid_value(val):
         try:
             etal.ObjectDetectorConfig(val)
+            return True
+        except:
+            return False
+
+
+class VideoModel(Config):
+    '''Configuration for an `eta.core.learning.VideoModel`.
+
+    This type is implemented in ETA by the
+    `eta.core.learning.VideoModelConfig` class.
+    '''
+
+    @staticmethod
+    def is_valid_value(val):
+        try:
+            etal.VideoModelConfig(val)
             return True
         except:
             return False
