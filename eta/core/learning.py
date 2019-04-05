@@ -23,6 +23,43 @@ from eta.core.config import Config, Configurable
 import eta.core.data as etad
 
 
+def load_labels_map(labels_map_path):
+    '''Loads the labels map from the given path.
+
+    Args:
+        labels_map_path: the path to a labels map file
+
+    Returns:
+        a dictionary mapping indexes to label strings
+    '''
+    labels_map = {}
+    with open(labels_map_path, "rb") as f:
+        for line in f:
+            idx, label = line.split(":")
+            labels_map[int(idx)] = label.strip()
+    return labels_map
+
+
+def write_labels_map(labels_map, outpath):
+    '''Writes the labels map to disk.
+
+    Labels maps are written to disk in the following plain text format:
+    ```
+    1:label1
+    2:label2
+    3:label3
+    ...
+    ```
+
+    Args:
+        labels_map: the labels map dictionary
+        outpath: the output path
+    '''
+    with open(outpath, "w") as f:
+        for idx in sorted(labels_map):
+            f.write("%s:%s\n" % (idx, labels_map[idx]))
+
+
 class ClassifierConfig(Config):
     '''Configuration class that encapsulates the name of a `Classifier` and
     an instance of its associated Config class.
