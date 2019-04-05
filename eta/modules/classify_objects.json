@@ -1,0 +1,74 @@
+{
+    "info": {
+        "name": "classify_objects",
+        "type": "eta.core.types.Module",
+        "version": "0.1.0",
+        "description": "A module that uses an eta.core.learning.ImageClassifier to classify the\ndetected objects in a video",
+        "exe": "classify_objects.py"
+    },
+    "inputs": [
+        {
+            "name": "video_path",
+            "type": "eta.core.types.Video",
+            "description": "the input video",
+            "required": true
+        },
+        {
+            "name": "input_labels_path",
+            "type": "eta.core.types.VideoLabels",
+            "description": "a VideoLabels file containing detected objects",
+            "required": true
+        }
+    ],
+    "outputs": [
+        {
+            "name": "output_labels_path",
+            "type": "eta.core.types.VideoLabels",
+            "description": "a VideoLabels file containing the predictions",
+            "required": true
+        }
+    ],
+    "parameters": [
+        {
+            "name": "min_height_pixels",
+            "type": "eta.core.types.Number",
+            "description": "a minimum height, in pixels, for a bounding box to be classified",
+            "required": false,
+            "default": null
+        },
+        {
+            "name": "confidence_threshold",
+            "type": "eta.core.types.Number",
+            "description": "the minimum confidence required for a label to be saved",
+            "required": false,
+            "default": null
+        },
+        {
+            "name": "labels",
+            "type": "eta.core.types.Array",
+            "description": "an optional list of object labels to classify. By default, all objects are classified",
+            "required": false,
+            "default": null
+        },
+        {
+            "name": "force_square",
+            "type": "eta.core.types.Boolean",
+            "description": "whether to minimally manipulate the object bounding boxes into squares before extraction",
+            "required": false,
+            "default": false
+        },
+        {
+            "name": "bb_padding",
+            "type": "eta.core.types.Number",
+            "description": "the padding to apply to each dimension of the bounding box before classification",
+            "required": false,
+            "default": null
+        },
+        {
+            "name": "classifier",
+            "type": "eta.core.types.ImageClassifier",
+            "description": "an eta.core.learning.ClassifierConfig JSON describing the eta.core.learning.ImageClassifier to use",
+            "required": true
+        }
+    ]
+}
