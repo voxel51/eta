@@ -41,7 +41,7 @@ def load_json(path_or_str):
         (b) a string that can be directly parsed via `json.loads`
         (c) a string containing a comma-seperated list of key=val values
             defining a JSON dictionary, where each value must be parsable via
-            `json.loads(str(val))`
+            `json.loads(val)`
 
     Args:
         path_or_str: the JSON path or string any of the above supported formats
@@ -52,22 +52,31 @@ def load_json(path_or_str):
     Raises:
         ValueError: if no JSON could be decoded
     '''
-    if os.path.isfile(path_or_str):
-        # Read from disk
-        return read_json(path_or_str)
     try:
         # Parse from JSON string
-        return json.loads(str(path_or_str))
+        return _load_json(path_or_str)
     except ValueError:
+        if os.path.isfile(path_or_str):
+            # Read from disk
+            return read_json(path_or_str)
+
         try:
             # Try to parse comma-seperated list of key=value pairs
             d = {}
             for chunk in path_or_str.split(","):
                 key, value = chunk.split("=")
-                d[key] = json.loads(str(value))
+                d[key] = _load_json(value)
             return d
         except ValueError:
             raise ValueError("Unable to load JSON from '%s'" % path_or_str)
+
+
+def _load_json(str_or_bytes):
+    try:
+        return json.loads(str_or_bytes)
+    except TypeError:
+        # Must be a Python version for which json.loads() cannot handle bytes
+        return json.loads(str_or_bytes.decode("utf-8"))
 
 
 def read_json(path):
@@ -363,7 +372,7 @@ class Serializable(object):
         Returns:
             an instance of the Serializable class
         '''
-        return cls.from_dict(json.loads(str(s)), *args, **kwargs)
+        return cls.from_dict(_load_json(s), *args, **kwargs)
 
     @classmethod
     def from_json(cls, path, *args, **kwargs):

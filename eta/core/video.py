@@ -45,7 +45,7 @@ from eta.core.data import AttributeContainer, AttributeContainerSchema
 import eta.core.gps as etag
 import eta.core.image as etai
 from eta.core.objects import DetectedObjectContainer
-from eta.core.serial import Serializable
+from eta.core.serial import load_json, Serializable
 import eta.core.utils as etau
 
 
@@ -1308,7 +1308,7 @@ def get_stream_info(inpath):
         ])
         out = ffprobe.run(inpath, decode=True)
 
-        info = json.loads(str(out))
+        info = load_json(out)
 
         for stream in info["streams"]:
             if stream["codec_type"] == "video":
