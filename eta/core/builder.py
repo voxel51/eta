@@ -428,7 +428,9 @@ class PipelineBuilder(object):
         # Populate module parameters
         for param in itervalues(pmeta.parameters):
             val = _get_param_value(param, self.request)
-            if val:
+            # We specifically omit any parameters that are set to `None` so
+            # that the module's default parameter will be used
+            if val is not None:
                 self.module_parameters[param.module][param.name] = val
 
         # Set execution order

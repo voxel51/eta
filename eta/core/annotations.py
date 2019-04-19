@@ -411,9 +411,10 @@ def _annotate_object(img, obj, annotation_config):
     draw = ImageDraw.Draw(img_pil)
 
     # Draw label
-    txttlx = bgtlx + pad + _DX
-    txttly = bgtly + pad - 1
-    draw.text((txttlx, txttly), label_str, font=font, fill=text_color)
+    if label_str:
+        txttlx = bgtlx + pad + _DX
+        txttly = bgtly + pad - 1
+        draw.text((txttlx, txttly), label_str, font=font, fill=text_color)
 
     # Add attributes, if necessary
     if obj.has_attributes:
@@ -422,9 +423,11 @@ def _annotate_object(img, obj, annotation_config):
         attrs_str = ", ".join([_render_attr_value(a) for a in obj.attrs])
 
         # Draw attributes
-        atxttlx = objtlx + linewidth + pad
-        atxttly = objtly - 1 + pad
-        draw.text((atxttlx, atxttly), attrs_str, font=font, fill=text_color)
+        if attrs_str:
+            atxttlx = objtlx + linewidth + pad
+            atxttly = objtly - 1 + pad
+            draw.text(
+                (atxttlx, atxttly), attrs_str, font=font, fill=text_color)
 
     return np.asarray(img_pil)
 

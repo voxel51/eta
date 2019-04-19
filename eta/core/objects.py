@@ -71,7 +71,7 @@ class DetectedObject(Serializable, HasBoundingBox):
     @property
     def has_attributes(self):
         '''Returns True/False if this object has attributes.'''
-        return self.attrs is not None
+        return bool(self.attrs)
 
     def get_bounding_box(self):
         '''Returns the bounding box for the object.'''
