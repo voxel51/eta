@@ -30,6 +30,7 @@ from collections import defaultdict
 import colorsys
 import errno
 import os
+import operator
 from subprocess import Popen, PIPE
 
 import cv2

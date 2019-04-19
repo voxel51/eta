@@ -688,7 +688,7 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
         # Build file list
         files = []
         page_token = None
-        query = "'%s' in parents" % folder_id
+        query = "'%s' in parents and trashed=false" % folder_id
         while True:
             # Get the next page of files
             response = self._service.files().list(
