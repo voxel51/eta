@@ -765,7 +765,7 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
 
     def download_files_in_folder(
             self, folder_id, local_dir, skip_failures=False,
-            skip_existing_files=False):
+            skip_existing_files=False, recursive=True):
         '''Downloads the files in the Google Drive folder to the given local
         directory.
 
@@ -805,13 +805,21 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
             filename = f["name"]
             file_id = f["id"]
             try:
-                local_path = os.path.join(local_dir, filename)
-                with etau.Timer() as t:
-                    self.download(file_id, local_path)
-                    filenames.append(filename)
-                logger.info(
-                    "File '%s' downloaded to '%s' (%s) (%d/%d)", filename,
-                    local_path, t.elapsed_time_str, idx, num_files)
+                if recursive and self.is_folder(file_id):
+                    self.download_files_in_folder(
+                        file_id,
+                        os.path.join(local_dir, filename),
+                        skip_failures=skip_failures,
+                        skip_existing_files=skip_existing_files,
+                        recursive=True)
+                else:
+                    local_path = os.path.join(local_dir, filename)
+                    with etau.Timer() as t:
+                        self.download(file_id, local_path)
+                        filenames.append(filename)
+                    logger.info(
+                        "File '%s' downloaded to '%s' (%s) (%d/%d)", filename,
+                        local_path, t.elapsed_time_str, idx, num_files)
             except Exception as e:
                 if not skip_failures:
                     raise GoogleDriveStorageClientError(e)
