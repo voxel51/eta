@@ -214,6 +214,7 @@ class VideoMetadata(Serializable):
         total_frame_count: the total number of frames in the video
         duration: the duration of the video, in seconds
         size_bytes: the size of the video file on disk, in bytes
+        mime_type: the MIME type of the video
         encoding_str: the encoding string for the video
         gps_waypoints: a GPSWaypoints instance describing the GPS coordinates
             for the video
@@ -222,7 +223,7 @@ class VideoMetadata(Serializable):
     def __init__(
             self, start_time=None, frame_size=None, frame_rate=None,
             total_frame_count=None, duration=None, size_bytes=None,
-            encoding_str=None, gps_waypoints=None):
+            mime_type=None, encoding_str=None, gps_waypoints=None):
         '''Constructs a VideoMetadata instance. All args are optional.
 
         Args:
@@ -232,6 +233,7 @@ class VideoMetadata(Serializable):
             total_frame_count: the total number of frames in the video
             duration: the duration of the video, in seconds
             size_bytes: the size of the video file on disk, in bytes
+            mime_type: the MIME type of the video
             encoding_str: the encoding string for the video
             gps_waypoints: a GPSWaypoints instance describing the GPS
                 coordinates for the video
@@ -242,6 +244,7 @@ class VideoMetadata(Serializable):
         self.total_frame_count = total_frame_count
         self.duration = duration
         self.size_bytes = size_bytes
+        self.mime_type = mime_type
         self.encoding_str = encoding_str
         self.gps_waypoints = gps_waypoints
 
@@ -318,7 +321,8 @@ class VideoMetadata(Serializable):
         '''Returns the list of class attributes that will be serialized.'''
         _attrs = [
             "start_time", "frame_size", "frame_rate", "total_frame_count",
-            "duration", "size_bytes", "encoding_str", "gps_waypoints"
+            "duration", "size_bytes", "mime_type", "encoding_str",
+            "gps_waypoints"
         ]
         # Exclude attributes that are None
         return [a for a in _attrs if getattr(self, a) is not None]
@@ -346,6 +350,7 @@ class VideoMetadata(Serializable):
             total_frame_count=vsi.total_frame_count,
             duration=float(vsi.get_raw_value("duration")),
             size_bytes=os.path.getsize(filepath),
+            mime_type=etau.guess_mime_type(filepath),
             encoding_str=vsi.encoding_str,
             gps_waypoints=gps_waypoints,
         )
@@ -373,6 +378,7 @@ class VideoMetadata(Serializable):
             total_frame_count=d.get("total_frame_count", None),
             duration=d.get("duration", None),
             size_bytes=d.get("size_bytes", None),
+            mime_type=d.get("mime_type", None),
             encoding_str=d.get("encoding_str", None),
             gps_waypoints=gps_waypoints)
 

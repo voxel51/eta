@@ -29,6 +29,7 @@ import inspect
 import itertools as it
 import logging
 import math
+import mimetypes
 import os
 import random
 import re
@@ -380,6 +381,19 @@ def to_human_time_str(num_seconds, decimals=1):
     if pluralizable[idx] and num_only_str != "1":
         num_str += "s"  # handle pluralization
     return num_str
+
+
+def guess_mime_type(filepath):
+    '''Guess the MIME type for the given file path. If no reasonable guess can
+    be determined, `application/octet-stream` is returned.
+
+    Args:
+        filepath: path to the file
+
+    Returns:
+        the MIME type string
+    '''
+    return mimetypes.guess_type(filepath)[0] or "application/octet-stream"
 
 
 def read_file(inpath, binary=False):

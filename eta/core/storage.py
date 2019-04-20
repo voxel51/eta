@@ -11,7 +11,7 @@ This module currently provides clients for the following storage resources:
 - Remote servers via SFTP
 - Local disk storage
 
-Copyright 2018, Voxel51, Inc.
+Copyright 2018-2019, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
@@ -32,7 +32,6 @@ import six
 import datetime
 import io
 import logging
-import mimetypes
 import os
 import re
 try:
@@ -57,13 +56,6 @@ logger = logging.getLogger(__name__)
 # Suppress non-critical logging from third-party libraries
 logging.getLogger("googleapiclient").setLevel(logging.ERROR)
 logging.getLogger("paramiko").setLevel(logging.ERROR)
-
-
-def guess_mime_type(filepath):
-    '''Guess the MIME type for the given file path. If no reasonable guess can
-    be determined, `DEFAULT_MIME_TYPE` is returned.
-    '''
-    return mimetypes.guess_type(filepath)[0] or "application/octet-stream"
 
 
 class StorageClient(object):
@@ -246,7 +238,7 @@ class GoogleCloudStorageClient(StorageClient, NeedsGoogleCredentials):
             content_type: the optional type of the content being uploaded. If
                 no value is provided, it is guessed from the filename
         '''
-        content_type = content_type or guess_mime_type(local_path)
+        content_type = content_type or etau.guess_mime_type(local_path)
         blob = self._get_blob(cloud_path)
         blob.upload_from_filename(local_path, content_type=content_type)
 
@@ -869,7 +861,7 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
             folder_id = self.create_folder_if_necessary(chunks[0], folder_id)
             filename = chunks[1]
 
-        mime_type = content_type or guess_mime_type(filename)
+        mime_type = content_type or etau.guess_mime_type(filename)
         media = gah.MediaIoBaseUpload(
             file_obj, mime_type, chunksize=self.chunk_size, resumable=True)
         body = {
@@ -1006,7 +998,7 @@ class HTTPStorageClient(StorageClient):
                 error
         '''
         filename = filename or os.path.basename(local_path)
-        content_type = content_type or guess_mime_type(filename)
+        content_type = content_type or etau.guess_mime_type(filename)
         with open(local_path, "rb") as f:
             self._do_upload(f, url, filename, content_type)
 
