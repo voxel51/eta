@@ -221,16 +221,19 @@ class ImageLabels(Serializable):
 
     Attributes:
         filename: the filename of the image
+        metadata: an ImageMetadata describing metadata about the image
         attrs: an AttributeContainer describing the attributes of the image
         objects: a DetectedObjectContainer describing the detected objects in
             the image
     '''
 
-    def __init__(self, filename=None, attrs=None, objects=None):
+    def __init__(self, filename=None, metadata=None, attrs=None, objects=None):
         '''Constructs an ImageLabels instance.
 
         Args:
             filename: an optional filename of the image
+            metadata: an optional ImageMetadata instance describing metadata
+                about the image. By default, no metadata is stored
             attrs: an optional AttributeContainer of attributes for the image.
                 By default, an empty AttributeContainer is created
             objects: an optional DetectedObjectContainer of detected objects
@@ -238,6 +241,7 @@ class ImageLabels(Serializable):
                 created
         '''
         self.filename = filename
+        self.metadata = metadata
         self.attrs = attrs or AttributeContainer()
         self.objects = objects or DetectedObjectContainer()
 
@@ -283,6 +287,8 @@ class ImageLabels(Serializable):
         _attrs = []
         if self.filename:
             _attrs.append("filename")
+        if self.metadata:
+            _attrs.append("metadata")
         if self.attrs:
             _attrs.append("attrs")
         if self.objects:
@@ -294,6 +300,10 @@ class ImageLabels(Serializable):
         '''Constructs a ImageLabels from a JSON dictionary.'''
         filename = d.get("filename", None)
 
+        metadata = d.get("metadata", None)
+        if metadata is not None:
+            metadata = ImageMetadata.from_dict(metadata)
+
         attrs = d.get("attrs", None)
         if attrs is not None:
             attrs = AttributeContainer.from_dict(attrs)
@@ -302,7 +312,8 @@ class ImageLabels(Serializable):
         if objects is not None:
             objects = DetectedObjectContainer.from_dict(objects)
 
-        return cls(filename=filename, attrs=attrs, objects=objects)
+        return cls(
+            filename=filename, metadata=metadata, attrs=attrs, objects=objects)
 
 
 class ImageLabelsSchema(Serializable):
