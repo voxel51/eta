@@ -4,7 +4,7 @@ Core module infrastructure.
 See `docs/modules_dev_guide.md` for detailed information about the design and
 usage of ETA modules.
 
-Copyright 2017-2018, Voxel51, Inc.
+Copyright 2017-2019, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
@@ -24,6 +24,7 @@ from future.utils import iteritems
 
 from collections import OrderedDict
 from glob import glob
+import logging
 import os
 
 import eta
@@ -32,6 +33,9 @@ from eta.core.diagram import HasBlockDiagram, BlockdiagModule
 import eta.core.log as etal
 import eta.core.types as etat
 import eta.core.utils as etau
+
+
+logger = logging.getLogger(__name__)
 
 
 def run(module_name, module_config_path):
@@ -107,19 +111,17 @@ def find_all_metadata():
     Returns:
         a dictionary mapping module names to (absolute paths to) module
             metadata filenames
-
-    Raises:
-        ModuleMetadataError: if the module names are not unique
     '''
     d = {}
     mdirs = etau.make_search_path(eta.config.module_dirs)
     for mdir in mdirs:
         for path in glob(os.path.join(mdir, "*.json")):
             name = os.path.splitext(os.path.basename(path))[0]
-            if name in d:
-                raise ModuleMetadataError(
-                    "Found two '%s' modules. Names must be unique." % name)
-            d[name] = path
+            if name not in d:
+                d[name] = path
+            else:
+                logger.debug(
+                    "Module '%s' already exists; ignoring %s", name, path)
 
     return d
 
