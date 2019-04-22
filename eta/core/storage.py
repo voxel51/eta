@@ -777,6 +777,8 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
             skip_existing_files: whether to skip files whose names match
                 existing files in the local directory. By default, this is
                 False
+            recursive: whether to recursively traverse sub-"folders". By
+                default, this is True
 
         Returns:
             a list of filenames of the downloaded files
@@ -804,8 +806,10 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
         for idx, f in enumerate(files, 1):
             filename = f["name"]
             file_id = f["id"]
+            file_type = f["mimeType"]
             try:
-                if recursive and self.is_folder(file_id):
+                if (recursive and
+                    file_type=="application/vnd.google-apps.folder"):
                     self.download_files_in_folder(
                         file_id,
                         os.path.join(local_dir, filename),
