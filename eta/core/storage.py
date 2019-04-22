@@ -809,7 +809,7 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
             file_type = f["mimeType"]
             try:
                 if (recursive and
-                    file_type=="application/vnd.google-apps.folder"):
+                    file_type == "application/vnd.google-apps.folder"):
                     self.download_files_in_folder(
                         file_id,
                         os.path.join(local_dir, filename),
