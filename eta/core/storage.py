@@ -798,10 +798,9 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
         for idx, f in enumerate(files, 1):
             filename = f["name"]
             file_id = f["id"]
-            file_type = f["mimeType"]
             try:
                 if (recursive and
-                    file_type == "application/vnd.google-apps.folder"):
+                        f["mimeType"] == "application/vnd.google-apps.folder"):
                     self.download_files_in_folder(
                         file_id,
                         os.path.join(local_dir, filename),
