@@ -662,8 +662,8 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
             folder_id: the ID of a folder
 
         Returns:
-            A list of dicts containing the `id` and `name` of the files in the
-                folder
+            A list of dicts containing the `id`, `name`, and `mimeType` of the
+                files in the folder
         '''
         team_drive_id = self.get_root_team_drive_id(folder_id)
         if team_drive_id:
