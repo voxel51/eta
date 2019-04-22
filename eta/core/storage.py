@@ -693,7 +693,7 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
             # Get the next page of files
             response = self._service.files().list(
                 q=query,
-                fields="files(id, name),nextPageToken",
+                fields="files(id, name, mimeType),nextPageToken",
                 pageSize=256,
                 pageToken=page_token,
                 **params
