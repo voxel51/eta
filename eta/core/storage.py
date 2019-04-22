@@ -662,8 +662,8 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
             folder_id: the ID of a folder
 
         Returns:
-            A list of dicts containing the `id` and `name` of the files in the
-                folder
+            A list of dicts containing the `id`, `name`, and `mimeType` of the
+                files in the folder
         '''
         team_drive_id = self.get_root_team_drive_id(folder_id)
         if team_drive_id:
@@ -680,12 +680,12 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
         # Build file list
         files = []
         page_token = None
-        query = "'%s' in parents" % folder_id
+        query = "'%s' in parents and trashed=false" % folder_id
         while True:
             # Get the next page of files
             response = self._service.files().list(
                 q=query,
-                fields="files(id, name),nextPageToken",
+                fields="files(id, name, mimeType),nextPageToken",
                 pageSize=256,
                 pageToken=page_token,
                 **params
@@ -757,7 +757,7 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
 
     def download_files_in_folder(
             self, folder_id, local_dir, skip_failures=False,
-            skip_existing_files=False):
+            skip_existing_files=False, recursive=True):
         '''Downloads the files in the Google Drive folder to the given local
         directory.
 
@@ -769,6 +769,8 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
             skip_existing_files: whether to skip files whose names match
                 existing files in the local directory. By default, this is
                 False
+            recursive: whether to recursively traverse sub-"folders". By
+                default, this is True
 
         Returns:
             a list of filenames of the downloaded files
@@ -797,13 +799,22 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
             filename = f["name"]
             file_id = f["id"]
             try:
-                local_path = os.path.join(local_dir, filename)
-                with etau.Timer() as t:
-                    self.download(file_id, local_path)
-                    filenames.append(filename)
-                logger.info(
-                    "File '%s' downloaded to '%s' (%s) (%d/%d)", filename,
-                    local_path, t.elapsed_time_str, idx, num_files)
+                if (recursive and
+                        f["mimeType"] == "application/vnd.google-apps.folder"):
+                    self.download_files_in_folder(
+                        file_id,
+                        os.path.join(local_dir, filename),
+                        skip_failures=skip_failures,
+                        skip_existing_files=skip_existing_files,
+                        recursive=True)
+                else:
+                    local_path = os.path.join(local_dir, filename)
+                    with etau.Timer() as t:
+                        self.download(file_id, local_path)
+                        filenames.append(filename)
+                    logger.info(
+                        "File '%s' downloaded to '%s' (%s) (%d/%d)", filename,
+                        local_path, t.elapsed_time_str, idx, num_files)
             except Exception as e:
                 if not skip_failures:
                     raise GoogleDriveStorageClientError(e)
