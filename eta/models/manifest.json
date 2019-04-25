@@ -1,19 +1,6 @@
 {
     "models": [
         {
-            "base_name": "vgg16-imagenet",
-            "base_filename": "vgg16-imagenet.npz",
-            "version": null,
-            "description": "VGG-16 model trained on ImageNet. Source: https://github.com/ethereon/caffe-tensorflow",
-            "manager": {
-                "config": {
-                    "google_drive_id": "0B_-5gc091ngGMzBFMVJ0RE9HNmc"
-                },
-                "type": "eta.core.models.ETAModelManager"
-            },
-            "date_created": "2018-06-20 17:35:53"
-        },
-        {
             "base_name": "c3d-ucf101",
             "base_filename": "c3d-ucf101.model",
             "version": null,
@@ -25,6 +12,149 @@
                 "type": "eta.core.models.ETAModelManager"
             },
             "date_created": "2018-06-27 17:00:45"
+        },
+        {
+            "base_name": "faster-rcnn-inception-resnet-atrous-v2-coco",
+            "base_filename": "faster-rcnn-inception-resnet-atrous-v2-coco.pb",
+            "version": null,
+            "description": "A Faster-RCNN Atrous Inception Resnet object detector trained on COCO",
+            "manager": {
+                "type": "eta.core.models.ETAModelManager",
+                "config": {
+                    "google_drive_id": "1tbDgXKYWBKazY6U6whRHhR4OsxZS9LOP"
+                }
+            },
+            "date_created": "2018-12-23 14:37:38"
+        },
+        {
+            "base_name": "faster-rcnn-inception-v2-coco",
+            "base_filename": "faster-rcnn-inception-v2-coco.pb",
+            "version": null,
+            "description": "A Faster-RCNN object detector with Inception-v2 backbone trained on COCO",
+            "manager": {
+                "type": "eta.core.models.ETAModelManager",
+                "config": {
+                    "google_drive_id": "1l1pNy5eH0DzvlMST8mCFXTYODHZBsPls"
+                }
+            },
+            "date_created": "2019-04-11 13:30:53"
+        },
+        {
+            "base_name": "faster-rcnn-resnet50-coco",
+            "base_filename": "faster-rcnn-resnet50-coco.pb",
+            "version": null,
+            "description": "A Faster-RCNN object detector with ResNet50 backbone trained on COCO",
+            "manager": {
+                "type": "eta.core.models.ETAModelManager",
+                "config": {
+                    "google_drive_id": "1N7SZcZwedztcSxXKFQiXDIhjpibAtnJx"
+                }
+            },
+            "date_created": "2019-04-11 13:30:53"
+        },
+        {
+            "base_name": "faster-rcnn-resnet50-lowproposals-coco",
+            "base_filename": "faster-rcnn-resnet50-lowproposals-coco.pb",
+            "version": null,
+            "description": "A Faster-RCNN low-proposal object detector with ResNet50 backbone trained on COCO",
+            "manager": {
+                "type": "eta.core.models.ETAModelManager",
+                "config": {
+                    "google_drive_id": "1VJghRs4W7i_F6GAzoFwAzuMs_wm1g8vT"
+                }
+            },
+            "date_created": "2019-04-11 12:56:53"
+        },
+        {
+            "base_name": "faster-rcnn-resnet101-coco",
+            "base_filename": "faster-rcnn-resnet101-coco.pb",
+            "version": null,
+            "description": "A Faster-RCNN Resnet object detector trained on COCO",
+            "manager": {
+                "type": "eta.core.models.ETAModelManager",
+                "config": {
+                    "google_drive_id": "18OOcBY45JYWwHdWyBRUaoe2H0DF4G8Gw"
+                }
+            },
+            "date_created": "2018-12-23 14:37:42"
+        },
+        {
+            "base_name": "rfcn-resnet101-coco",
+            "base_filename": "rfcn-resnet101-coco.pb",
+            "version": null,
+            "description": "A R-FCN Resnet object detector trained on COCO",
+            "manager": {
+                "type": "eta.core.models.ETAModelManager",
+                "config": {
+                    "google_drive_id": "15BMAAo0cGBINTsM-KL9ZrwSHnkZlFtNc"
+                }
+            },
+            "date_created": "2018-12-23 14:37:47"
+        },
+        {
+            "base_name": "ssd-inception-v2-coco",
+            "base_filename": "ssd-inception-v2-coco.pb",
+            "version": null,
+            "description": "An inception Single Shot Detector trained on COCO",
+            "manager": {
+                "type": "eta.core.models.ETAModelManager",
+                "config": {
+                    "google_drive_id": "1Vt_fuMhEdWxI2XBWLEtNLTJhG00rid4R"
+                }
+            },
+            "date_created": "2018-12-23 14:34:09"
+        },
+        {
+            "base_name": "ssd-resnet50-v1-fpn-coco",
+            "base_filename": "ssd-resnet50-v1-fpn-coco.pb",
+            "version": null,
+            "description": "A FPN Single Shot Detector with ResNet50 backbone trained on COCO",
+            "manager": {
+                "type": "eta.core.models.ETAModelManager",
+                "config": {
+                    "google_drive_id": "1ZvVQTuDIexyfntq8ajBVp5aSndHW6wQk"
+                }
+            },
+            "date_created": "2019-04-11 12:01:29"
+        },
+        {
+            "base_name": "ssd-mobilenet-v1-coco",
+            "base_filename": "ssd-mobilenet-v1-coco.pb",
+            "version": null,
+            "description": "A mobilenet Single Shot Detector trained on COCO",
+            "manager": {
+                "type": "eta.core.models.ETAModelManager",
+                "config": {
+                    "google_drive_id": "1X6i1Q2hBfDZ6D4ROoJn1Xbwu0vMqvgQs"
+                }
+            },
+            "date_created": "2018-12-23 14:34:05"
+        },
+        {
+            "base_name": "ssd-mobilenet-v1-fpn-coco",
+            "base_filename": "ssd-mobilenet-v1-fpn-coco.pb",
+            "version": null,
+            "description": "A FPN Single Shot Detector with MobileNet-v1 backbone trained on COCO",
+            "manager": {
+                "type": "eta.core.models.ETAModelManager",
+                "config": {
+                    "google_drive_id": "1pC9WX7Ol2cy4ERAcLQ-a2Dd04d91vJxj"
+                }
+            },
+            "date_created": "2019-04-11 12:25:44"
+        },
+        {
+            "base_name": "vgg16-imagenet",
+            "base_filename": "vgg16-imagenet.npz",
+            "version": null,
+            "description": "VGG-16 model trained on ImageNet. Source: https://github.com/ethereon/caffe-tensorflow",
+            "manager": {
+                "config": {
+                    "google_drive_id": "0B_-5gc091ngGMzBFMVJ0RE9HNmc"
+                },
+                "type": "eta.core.models.ETAModelManager"
+            },
+            "date_created": "2018-06-20 17:35:53"
         }
     ]
 }
