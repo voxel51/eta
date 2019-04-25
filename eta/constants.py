@@ -29,6 +29,7 @@ ETA_DIR = os.path.abspath(os.path.dirname(__file__))
 BASE_DIR = os.path.dirname(ETA_DIR)
 EXAMPLES_DIR = os.path.join(BASE_DIR, "examples")
 RESOURCES_DIR = os.path.join(ETA_DIR, "resources")
+TF_MODELS_DIR = os.path.join(BASE_DIR, "tensorflow/models")
 
 
 # Paths
