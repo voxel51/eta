@@ -1,7 +1,7 @@
 '''
 Core utilities for rendering annotations on media.
 
-Copyright 2018-2019, Voxel51, Inc.
+Copyright 2017-2019, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
@@ -43,6 +43,14 @@ class AnnotationConfig(Config):
     Attributes:
         colormap_config: the `eta.core.annotations.ColormapConfig` to use to
             render the annotation boxes
+        show_object_confidences: whether to show object label confidences, if
+            available
+        show_object_attr_confidences: whether to show object attribute
+            confidences, if available
+        show_frame_attr_confidences: whether to show frame/video attribute
+            confidences, if available
+        show_all_confidences: whether to show all confidences, if available.
+            If set to `True`, the other confidence-rendering flags are ignored
         font_path: the path to the `PIL.ImageFont` to use
         font_size: the font size to use
         linewidth: the linewidth, in pixels, of the object bounding boxes
@@ -65,6 +73,16 @@ class AnnotationConfig(Config):
     def __init__(self, d):
         self.colormap_config = self.parse_object(
             d, "colormap_config", ColormapConfig, default=None)
+
+        self.show_object_confidences = self.parse_bool(
+            d, "show_object_confidences", default=False)
+        self.show_object_attr_confidences = self.parse_bool(
+            d, "show_object_attr_confidences", default=False)
+        self.show_frame_attr_confidences = self.parse_bool(
+            d, "show_frame_attr_confidences", default=False)
+        self.show_all_confidences = self.parse_bool(
+            d, "show_all_confidences", default=False)
+
         self.font_path = self.parse_string(
             d, "font_path", default=etac.DEFAULT_FONT_PATH)
         self.font_size = self.parse_number(d, "font_size", default=16)
@@ -81,6 +99,7 @@ class AnnotationConfig(Config):
             d, "attrs_text_pad_pixels", default=5)
         self.attrs_text_line_spacing_pixels = self.parse_number(
             d, "attrs_text_line_spacing_pixels", default=1)
+
         self.add_logo = self.parse_bool(d, "add_logo", default=True)
         self.logo_config = self.parse_object(
             d, "logo_config", etal.LogoConfig, default=None)
@@ -317,12 +336,23 @@ def _annotate_image(img, labels, more_attrs, annotation_config):
         img = _annotate_object(img, obj, annotation_config)
 
     # Render frame attributes, if necessary
+    show_frame_attr_confidences = (
+        annotation_config.show_frame_attr_confidences or
+        annotation_config.show_all_confidences)
     if more_attrs is not None:
-        attr_strs = [_render_attr_name_value(a) for a in more_attrs]
+        attr_strs = [
+            _render_attr_name_value(
+                a, show_confidence=show_frame_attr_confidences)
+            for a in more_attrs
+        ]
     else:
         attr_strs = []
     labels.attrs.sort_by_name()
-    attr_strs.extend([_render_attr_name_value(a) for a in labels.attrs])
+    attr_strs.extend([
+        _render_attr_name_value(
+            a, show_confidence=show_frame_attr_confidences)
+        for a in labels.attrs
+    ])
     if attr_strs:
         logger.debug("Rendering %d frame attributes", len(attr_strs))
         img = _annotate_attrs(img, attr_strs, annotation_config)
@@ -374,6 +404,12 @@ def _annotate_attrs(img, attr_strs, annotation_config):
 
 def _annotate_object(img, obj, annotation_config):
     # Parse config
+    show_object_confidences = (
+        annotation_config.show_object_confidences or
+        annotation_config.show_all_confidences)
+    show_object_attr_confidences = (
+        annotation_config.show_object_attr_confidences or
+        annotation_config.show_all_confidences)
     colormap = annotation_config.colormap
     font = annotation_config.font
     alpha = annotation_config.alpha
@@ -382,11 +418,11 @@ def _annotate_object(img, obj, annotation_config):
     text_color = tuple(_parse_hex_color(annotation_config.text_color))
 
     # Construct label string
-    label_str = _render_object_label(obj)
+    label_str, label_hash = _render_object_label(
+        obj, show_confidence=show_object_confidences)
 
     # Get box color
-    color_index = label_str.__hash__()
-    box_color = _parse_hex_color(colormap.get_color(color_index))
+    box_color = _parse_hex_color(colormap.get_color(label_hash))
 
     overlay = img.copy()
     label_text_size = font.getsize(label_str)  # width, height
@@ -420,7 +456,10 @@ def _annotate_object(img, obj, annotation_config):
     if obj.has_attributes:
         # Alphabetize attributes by name
         obj.attrs.sort_by_name()
-        attrs_str = ", ".join([_render_attr_value(a) for a in obj.attrs])
+        attrs_str = ", ".join([
+            _render_attr_value(a, show_confidence=show_object_attr_confidences)
+            for a in obj.attrs
+        ])
 
         # Draw attributes
         if attrs_str:
@@ -451,21 +490,39 @@ def _compute_max_text_size(font, text_strs):
     return width, height
 
 
-def _render_attr_value(attr):
-    return _clean(attr.value)
+def _render_attr_value(attr, show_confidence=True):
+    attr_str = _clean(attr.value)
+    if show_confidence and attr.confidence is not None:
+        attr_str += " (%.2f)" % attr.confidence
+    return attr_str
 
 
-def _render_attr_name_value(attr):
+def _render_attr_name_value(attr, show_confidence=True):
     name = _clean(attr.name)
     value = _clean(attr.value)
-    return "%s: %s" % (name, value)
+    attr_str = "%s: %s" % (name, value)
+    if show_confidence and attr.confidence is not None:
+        attr_str += " (%.2f)" % attr.confidence
+    return attr_str
 
 
-def _render_object_label(obj):
+def _render_object_label(obj, show_confidence=True):
     label_str = _clean(obj.label).upper()
-    if obj.index is None:
-        return label_str
-    return "%s     %d" % (label_str, obj.index)
+
+    add_confidence = show_confidence and obj.confidence is not None
+    if add_confidence:
+        label_str += " (%.2f)"
+
+    if obj.index is not None:
+        label_str += "     %d" % obj.index
+
+    # Compute hash before rendering confidence so it doesn't affect coloring
+    label_hash = label_str.__hash__()
+
+    if add_confidence:
+        label_str = label_str % obj.confidence
+
+    return label_str, label_hash
 
 
 def _clean(s):
