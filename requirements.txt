@@ -1,4 +1,5 @@
 blockdiag==1.5.3
+contextlib2==0.5.5
 Cython==0.28.5
 dill==0.2.7.1
 future==0.16.0
@@ -6,10 +7,11 @@ google-api-python-client==1.6.5
 google-auth-httplib2==0.0.3
 google-cloud-storage==1.7.0
 Jinja2==2.10.1
-numpy==1.14.0;python_version<"3"
-numpy==1.16.0;python_version>="3"
+lxml==4.3.0
+numpy==1.16.0
 opencv-python==4.0.0.21
 Pillow==4.2.1
+protobuf==3.6.1
 pycodestyle==2.3.1
 pylint==1.7.4
 pysftp==0.2.9
