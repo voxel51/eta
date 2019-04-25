@@ -1,0 +1,60 @@
+{
+    "info": {
+        "name": "object_detector",
+        "type": "eta.core.types.Pipeline",
+        "version": "0.1",
+        "description": "A pipeline for detecting objects in videos"
+    },
+    "inputs": ["video"],
+    "outputs": ["labels", "annotated_video"],
+    "modules": {
+        "format_videos": {
+            "name": "format_videos",
+            "tunable_parameters": ["fps", "size"],
+            "set_parameters": {
+                "max_fps": 30,
+                "max_size": [-1, 1080]
+            }
+        },
+        "detect_objects": {
+            "name": "detect_objects",
+            "tunable_parameters": ["detector", "objects"],
+            "set_parameters": {
+                "detector": {
+                    "type": "eta.detectors.tfmodels.TFModelsDetector"
+                }
+            }
+        },
+        "visualize_labels": {
+            "name": "visualize_labels",
+            "tunable_parameters": ["annotation_config"],
+            "set_parameters": {}
+        }
+    },
+    "connections": [
+        {
+            "source": "INPUT.video",
+            "sink": "format_videos.input_path"
+        },
+        {
+            "source": "format_videos.output_video_path",
+            "sink": "detect_objects.video_path"
+        },
+        {
+            "source": "detect_objects.output_labels_path",
+            "sink": "OUTPUT.labels"
+        },
+        {
+            "source": "format_videos.output_video_path",
+            "sink": "visualize_labels.video_path"
+        },
+        {
+            "source": "detect_objects.output_labels_path",
+            "sink": "visualize_labels.video_labels_path"
+        },
+        {
+            "source": "visualize_labels.output_path",
+            "sink": "OUTPUT.annotated_video"
+        }
+    ]
+}
