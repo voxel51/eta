@@ -128,19 +128,9 @@ CRITICAL pip install --upgrade pip
 CRITICAL pip install --upgrade virtualenv
 
 
-# Install python requirements
+# Install requirements
 MSG "Installing Python packages"
 CRITICAL pip install -r requirements.txt
-
-
-# Get submodules
-MSG "Initializing submodules"
-CRITICAL git submodule init
-CRITICAL git submodule update
-
-
-MSG "Installing ETA package in editable mode"
-CRITICAL pip install -e .
 
 
 # Tensorflow
@@ -239,6 +229,16 @@ CRITICAL protoc research/object_detection/protos/*.proto \
     --python_out=research
 MSG "You must have '$(pwd)/research' in 'pythonpath_dirs' in your ETA config"
 MSG "You must have '$(pwd)/research/slim' in 'pythonpath_dirs' in your ETA config"
+
+
+# Get submodules
+MSG "Initializing submodules"
+CRITICAL git submodule init
+CRITICAL git submodule update
+
+
+MSG "Installing ETA package in editable mode"
+CRITICAL pip install -e .
 
 
 EXIT "INSTALLATION COMPLETE"
