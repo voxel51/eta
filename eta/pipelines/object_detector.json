@@ -19,11 +19,7 @@
         "detect_objects": {
             "name": "detect_objects",
             "tunable_parameters": ["detector", "objects"],
-            "set_parameters": {
-                "detector": {
-                    "type": "eta.detectors.tfmodels.TFModelsDetector"
-                }
-            }
+            "set_parameters": {}
         },
         "visualize_labels": {
             "name": "visualize_labels",
