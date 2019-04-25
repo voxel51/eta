@@ -213,7 +213,7 @@ class C3D(object):
     def _load_model(self, model):
         init = tf.global_variables_initializer()
         self.sess.run(init)
-        etat.TensorFlowModelCheckpoint(model, self.sess).load()
+        etat.TFModelCheckpoint(model, self.sess).load()
 
 
 def _tf_variable_with_weight_decay(name, shape, stddev, decay):
