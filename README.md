@@ -20,6 +20,7 @@ The ETA package requires the following external dependencies:
 - [TensorFlow](https://www.tensorflow.org/)
 - [ffmpeg](https://www.ffmpeg.org)
 - [ImageMagick](https://www.imagemagick.org/script/index.php)
+- [tensorflow/models](https://github.com/tensorflow/models)
 
 ETA is very portable:
 - Installable on Mac or Linux
@@ -31,7 +32,8 @@ ETA is very portable:
 
 ## Installation
 
-0. Activate a virtual environment for this installation (optional)
+0. Activate a [virtual environment](docs/virtualenv_guide.md) (optional but
+highly recommended)
 
 1. Clone the repository:
 
@@ -40,28 +42,24 @@ git clone https://github.com/voxel51/eta
 cd eta
 ```
 
-2. Install external dependenices:
+2. Run the install script:
 
 ```shell
-bash install_externals.bash
+bash install.bash
 ```
 
 Depending on your Python environment, you may need to run the script with
 sudo privileges. Note that the install script supports flags that control
 things like (on macOS) whether `port` or `brew` is used to install packages.
-Run `bash install_externals.bash -h` for more information.
+Run `bash install.bash -h` for more information.
 
 The script inspects your system to see if CUDA is installed, and, if it is,
 TensorFlow is installed with GPU support. In particular, if CUDA 9 is found,
 the latest version of the `tensorflow-gpu` package is installed, and if CUDA 8
 is found, `tensorflow-gpu 1.4` is installed.
 
-3. Install the ETA package:
-
-```shell
-# Install in development mode
-pip install -e .
-```
+Note that ETA is installed in editable via `pip install -e .`, so don't delete
+the directory after installation!
 
 
 ## Setting up your execution environment
@@ -145,13 +143,6 @@ bash embed_vgg16_module.bash
 # Example embedding pipeline
 eta run embed_vgg16_pipeline-config.json
 ```
-
-## Using virtual environments
-
-You can use [virtual environments](https://virtualenv.pypa.io/en/stable) to
-maintain a separate Python working environment for ETA that operates
-independently of other packages and Python applications on your machine. See
-`docs/virtualenv_guide.md` for more details and setup instructions.
 
 
 ## Uninstallation
