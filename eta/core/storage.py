@@ -221,7 +221,12 @@ class GoogleCloudStorageClient(StorageClient, NeedsGoogleCredentials):
     `cloud_path` should have form "gs://<bucket>/<path/to/object>".
     '''
 
-    def __init__(self, credentials=None, chunk_size=150):
+    # The default chunk size to use when uploading and downloading files.
+    # Note that this gives the GCS API the right to use up to this much memory
+    # as a buffer during read/write
+    DEFAULT_CHUNK_SIZE = 256 * 1024 * 1024  # in bytes
+
+    def __init__(self, credentials=None, chunk_size=None):
         '''Creates a GoogleCloudStorageClient instance.
 
         Args:
@@ -229,9 +234,8 @@ class GoogleCloudStorageClient(StorageClient, NeedsGoogleCredentials):
                 credentials are provided, the `GOOGLE_APPLICATION_CREDENTIALS`
                 environment variable must be set to point to a valid service
                 account JSON file
-
-            chunk_size: default size of a chunk of data when iterating over
-                        large files (in MB)
+            chunk_size: an optional chunk size (in bytes) to use for uploads
+                and downloads. By default, `DEFAULT_CHUNK_SIZE` is used
         '''
         if credentials:
             self._client = gcs.Client(
@@ -239,8 +243,7 @@ class GoogleCloudStorageClient(StorageClient, NeedsGoogleCredentials):
         else:
             # Uses credentials from GOOGLE_APPLICATION_CREDENTIALS
             self._client = gcs.Client()
-
-        self.chunk_size = chunk_size * 1048576
+        self.chunk_size = chunk_size or self.DEFAULT_CHUNK_SIZE
 
     def upload(self, local_path, cloud_path, content_type=None):
         '''Uploads the file to Google Cloud Storage.
