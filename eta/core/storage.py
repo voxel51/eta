@@ -221,7 +221,7 @@ class GoogleCloudStorageClient(StorageClient, NeedsGoogleCredentials):
     `cloud_path` should have form "gs://<bucket>/<path/to/object>".
     '''
 
-    def __init__(self, credentials=None):
+    def __init__(self, credentials=None, chunk_size=150):
         '''Creates a GoogleCloudStorageClient instance.
 
         Args:
@@ -229,6 +229,9 @@ class GoogleCloudStorageClient(StorageClient, NeedsGoogleCredentials):
                 credentials are provided, the `GOOGLE_APPLICATION_CREDENTIALS`
                 environment variable must be set to point to a valid service
                 account JSON file
+
+            chunk_size: default size of a chunk of data when iterating over
+                        large files (in MB)
         '''
         if credentials:
             self._client = gcs.Client(
@@ -236,6 +239,8 @@ class GoogleCloudStorageClient(StorageClient, NeedsGoogleCredentials):
         else:
             # Uses credentials from GOOGLE_APPLICATION_CREDENTIALS
             self._client = gcs.Client()
+
+        self.chunk_size = chunk_size * 1048576
 
     def upload(self, local_path, cloud_path, content_type=None):
         '''Uploads the file to Google Cloud Storage.
@@ -404,7 +409,7 @@ class GoogleCloudStorageClient(StorageClient, NeedsGoogleCredentials):
     def _get_blob(self, cloud_path):
         bucket_name, object_name = self._parse_cloud_storage_path(cloud_path)
         bucket = self._client.get_bucket(bucket_name)
-        return bucket.blob(object_name)
+        return bucket.blob(object_name, chunk_size=self.chunk_size)
 
     @staticmethod
     def _parse_cloud_storage_path(cloud_path):
