@@ -1,6 +1,7 @@
 # ETA: Extensible Toolkit for Analytics
 
-An open and extensible computer vision, machine learning and video analytics infrastructure.
+An open and extensible computer vision, machine learning and video analytics
+infrastructure.
 
 This project is supported by the [NIST Public Safety Innovation Accelerator
 Program](
@@ -81,8 +82,9 @@ change default constants, add environment variables, customize your default
 `module_dirs`, `pipeline_dirs`, and `models_dirs` sections to expose custom
 modules, pipelines, and models to your system.
 
-> When the config file is loaded, any `{{eta}}` patterns in directory paths
-> are replaced with the absolute path to the ETA repository on your machine.
+Note that, when the config file is loaded, any `{{eta}}` patterns in directory
+paths are replaced with the absolute path to the ETA repository on your
+machine.
 
 The default config includes the `eta/modules`, `eta/pipelines`, and
 `eta/models` directories on your module, pipeline, and models search paths,
