@@ -128,10 +128,22 @@ eta build -r examples/demo_video_formatter/request.json --run-now
 eta build -r examples/demo_video_clipper/request.json --run-now
 
 #
+# Run an object detection pipeline and visualize the results
+#
+# Note: A 120MB Faster R-CNN ResNet-50 model will be downloaded from the web
+#   and stored in `eta/models` the first time you run this
+#
+cd examples/demo_object_detector
+eta build -r detect-people.json --run-now
+eta build -r detect-vehicles.json --run-now
+open out/people-annotated.mp4
+open out/vehicles-annotated.mp4
+
+#
 # Example image/video embedding
 #
-# NOTE: A 550MB VGG16 weights file will be downloaded from the web and stored
-#       in eta/models/ the first time you run one of these!
+# Note: A 550MB VGG-16 weights file will be downloaded from the web and stored
+#   in `eta/models` the first time you run this
 #
 cd examples/demo_embed_vgg16
 # Example image embedding
