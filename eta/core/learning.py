@@ -95,8 +95,8 @@ class ModelConfig(Config):
     def _validate_type(self, base_cls):
         if not issubclass(self._model_cls, base_cls):
             raise ConfigError(
-                "Expected type '%s' to be a subclass of '%s'" % (self.type,
-                etau.get_class_name(base_cls)))
+                "Expected type '%s' to be a subclass of '%s'" % (
+                    self.type, etau.get_class_name(base_cls)))
 
 
 class Model(Configurable):
