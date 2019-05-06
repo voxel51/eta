@@ -497,6 +497,12 @@ class VGG16Featurizer(Featurizer):
     '''Featurizer that embeds images into the VGG-16 feature space.'''
 
     def __init__(self, config=None):
+        '''Creates a VGG16Featurizer instance.
+
+        Args:
+            config: an optional VGG16FeaturizerConfig instance. If omitted,
+                the default VGG16FeaturizerConfig is used
+        '''
         super(VGG16Featurizer, self).__init__()
         self.config = config or VGG16FeaturizerConfig.default()
         self.validate(self.config)
