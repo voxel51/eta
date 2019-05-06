@@ -17,7 +17,7 @@ eta build -r detect-classify-cats.json --run-now
 ```
 
 To visualize the results, open the images in `out/cats-annotated` in your
-favorite image viewer:
+image viewer of choice.
 
 
 ## Copyright

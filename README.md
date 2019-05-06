@@ -136,8 +136,8 @@ eta build -r examples/demo_video_clipper/request.json --run-now
 cd examples/demo_object_detector
 eta build -r detect-people.json --run-now
 eta build -r detect-vehicles.json --run-now
-open out/people-annotated.mp4
-open out/vehicles-annotated.mp4
+# view out/people-annotated.mp4
+# view out/vehicles-annotated.mp4
 
 #
 # Run an image detection + classification pipeline and visualize the results
@@ -147,7 +147,7 @@ open out/vehicles-annotated.mp4
 #
 cd examples/demo_cats
 eta build -r detect-classify-cats.json --run-now
-# view the contents of out/cats
+# view the images in out/cats
 
 #
 # Example image/video embedding

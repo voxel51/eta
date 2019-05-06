@@ -18,15 +18,8 @@ eta build -r detect-people.json --run-now
 eta build -r detect-vehicles.json --run-now
 ```
 
-To visualize the detections, run:
-
-```
-# visualize people
-open out/people-annotated.mp4
-
-# visualize vehicles
-open out/vehicles-annotated.mp4
-```
+To visualize the results, view `out/people-annotated.mp4` and
+`out/vehicles-annotated.mp4` in your video player of choice.
 
 
 ## Copyright
