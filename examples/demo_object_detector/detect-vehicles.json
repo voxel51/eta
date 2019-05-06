@@ -8,10 +8,10 @@
         "annotated_video": "out/vehicles-annotated.mp4"
     },
     "parameters": {
-        "detect_objects.detector": {
-            "type": "eta.detectors.tfmodels.TFModelsDetector"
+        "apply_object_detector.detector": {
+            "type": "eta.detectors.TFModelsDetector"
         },
-        "detect_objects.objects": [
+        "apply_object_detector.objects": [
             {
                 "labels": ["car", "truck", "bus"],
                 "threshold": null

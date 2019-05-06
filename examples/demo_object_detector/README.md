@@ -1,7 +1,7 @@
 # Object Detector Demo
 
 This demo shows how to run an object detection pipeline that uses a
-pre-trained `eta.detectors.tfmodels.TFModelsDetector` model to detect objects
+pre-trained `eta.detectors.TFModelsDetector` model to detect objects
 in the [COCO dataset](http://cocodataset.org).
 
 
