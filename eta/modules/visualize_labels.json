@@ -3,7 +3,7 @@
         "name": "visualize_labels",
         "type": "eta.core.types.Module",
         "version": "0.1.0",
-        "description": "A module for visualizing labeled objects in videos",
+        "description": "A module for visualizing labeled videos",
         "exe": "visualize_labels.py"
     },
     "inputs": [
@@ -23,7 +23,7 @@
             "name": "video_path",
             "type": "eta.core.types.Video",
             "description": "A video",
-            "required": false
+            "required": true
         }
     ],
     "outputs": [

@@ -1,5 +1,5 @@
 '''
-A module for visualizing labeled objects in videos.
+A module for visualizing labeled videos.
 
 Info:
     type: eta.core.types.Module
@@ -53,7 +53,7 @@ class DataConfig(Config):
     '''Data configuration settings.
 
     Inputs:
-        video_path (eta.core.types.Video): [None] A video
+        video_path (eta.core.types.Video): A video
         video_labels_path (eta.core.types.VideoLabels): [None] A JSON file
             containing the video labels
         objects_path (eta.core.types.DetectedObjects): [None] A JSON file
