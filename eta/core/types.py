@@ -604,6 +604,15 @@ class ImageFile(Image, File, ConcreteData):
         return File.is_valid_path(path) and etai.is_supported_image(path)
 
 
+class ImageFileDirectory(Directory):
+    '''A directory containing one or more images.
+
+    Examples:
+        /path/to/images
+    '''
+    pass
+
+
 class Video(AbstractData):
     '''The abstract data type representing a single video.
 
@@ -733,6 +742,15 @@ class VideoClips(DualFileSequence, ConcreteData):
             DualFileSequence.is_valid_path(path) and
             etav.is_supported_video_file(path)
         )
+
+
+class VideoFileDirectory(Directory):
+    '''A directory containing one or more video files.
+
+    Examples:
+        /path/to/videos
+    '''
+    pass
 
 
 class NpzFile(File, ConcreteData):
