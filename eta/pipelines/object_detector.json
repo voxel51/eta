@@ -16,8 +16,8 @@
                 "max_size": [-1, 1080]
             }
         },
-        "detect_objects": {
-            "name": "detect_objects",
+        "apply_object_detector": {
+            "name": "apply_object_detector",
             "tunable_parameters": ["detector", "objects"],
             "set_parameters": {}
         },
@@ -34,10 +34,10 @@
         },
         {
             "source": "format_videos.output_video_path",
-            "sink": "detect_objects.video_path"
+            "sink": "apply_object_detector.video_path"
         },
         {
-            "source": "detect_objects.output_labels_path",
+            "source": "apply_object_detector.output_labels_path",
             "sink": "OUTPUT.labels"
         },
         {
@@ -45,7 +45,7 @@
             "sink": "visualize_labels.video_path"
         },
         {
-            "source": "detect_objects.output_labels_path",
+            "source": "apply_object_detector.output_labels_path",
             "sink": "visualize_labels.video_labels_path"
         },
         {
