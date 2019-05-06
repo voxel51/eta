@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 '''
-A module that classifies frames in a video using a sliding window strategy.
+A module that uses an `eta.core.learning.VideoFramesClassifier` to classify the
+frames of a video using a sliding window strategy.
 
 Info:
     type: eta.core.types.Module
@@ -38,7 +39,7 @@ import eta.core.video as etav
 logger = logging.getLogger(__name__)
 
 
-class ClassifyFrameWindowsConfig(etam.BaseModuleConfig):
+class ApplyVideoFramesClassifierConfig(etam.BaseModuleConfig):
     '''Module configuration settings.
 
     Attributes:
@@ -47,7 +48,7 @@ class ClassifyFrameWindowsConfig(etam.BaseModuleConfig):
     '''
 
     def __init__(self, d):
-        super(ClassifyFrameWindowsConfig, self).__init__(d)
+        super(ApplyVideoFramesClassifierConfig, self).__init__(d)
         self.data = self.parse_object_array(d, "data", DataConfig)
         self.parameters = self.parse_object(d, "parameters", ParametersConfig)
 
@@ -77,7 +78,7 @@ class ParametersConfig(Config):
 
     Parameters:
         classifier (eta.core.types.VideoFramesClassifier): an
-            `eta.core.learning.ClassifierConfig` describing the
+            `eta.core.learning.VideoFramesClassifierConfig` describing the
             `eta.core.learning.VideoFramesClassifier` to use
         window_size (eta.core.types.Number): the size of the sliding window in
             which to perform classification
@@ -90,7 +91,7 @@ class ParametersConfig(Config):
 
     def __init__(self, d):
         self.classifier = self.parse_object(
-            d, "classifier", etal.ClassifierConfig)
+            d, "classifier", etal.VideoFramesClassifierConfig)
         self.window_size = self.parse_number(d, "window_size")
         self.stride = self.parse_number(d, "stride")
         self.confidence_threshold = self.parse_number(
@@ -114,13 +115,10 @@ def _build_attribute_filter(threshold):
     return filter_fcn
 
 
-def _classify_frame_windows(config):
+def _apply_video_frames_classifier(config):
     # Build classifier
     classifier = config.parameters.classifier.build()
     logger.info("Loaded classifier %s", type(classifier))
-    if not isinstance(classifier, etal.VideoFramesClassifier):
-        raise ValueError(
-            "Classifier must be a %s" % etal.VideoFramesClassifier)
 
     # Process videos
     with classifier:
@@ -192,15 +190,15 @@ def _classify_windows(classifier, video_reader, labels, parameters):
 
 
 def run(config_path, pipeline_config_path=None):
-    '''Run the classify_frame_windows module.
+    '''Run the apply_video_frames_classifier module.
 
     Args:
-        config_path: path to a ClassifyFrameWindowsConfig file
+        config_path: path to a ApplyVideoFramesClassifierConfig file
         pipeline_config_path: optional path to a PipelineConfig file
     '''
-    config = ClassifyFrameWindowsConfig.from_json(config_path)
+    config = ApplyVideoFramesClassifierConfig.from_json(config_path)
     etam.setup(config, pipeline_config_path=pipeline_config_path)
-    _classify_frame_windows(config)
+    _apply_video_frames_classifier(config)
 
 
 if __name__ == "__main__":

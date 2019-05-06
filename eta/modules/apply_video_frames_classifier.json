@@ -1,10 +1,10 @@
 {
     "info": {
-        "name": "classify_frame_windows",
+        "name": "apply_video_frames_classifier",
         "type": "eta.core.types.Module",
         "version": "0.1.0",
-        "description": "A module that classifies frames in a video using a sliding window strategy",
-        "exe": "classify_frame_windows.py"
+        "description": "A module that uses an eta.core.learning.VideoFramesClassifier to classify the\nframes of a video using a sliding window strategy",
+        "exe": "apply_video_frames_classifier.py"
     },
     "inputs": [
         {
@@ -51,7 +51,7 @@
         {
             "name": "classifier",
             "type": "eta.core.types.VideoFramesClassifier",
-            "description": "an eta.core.learning.ClassifierConfig describing the eta.core.learning.VideoFramesClassifier to use",
+            "description": "an eta.core.learning.VideoFramesClassifierConfig describing the eta.core.learning.VideoFramesClassifier to use",
             "required": true
         },
         {
