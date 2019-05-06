@@ -34,9 +34,9 @@ from eta.core.objects import DetectedObject, DetectedObjectContainer
 import eta.core.serial as etas
 import eta.core.utils as etau
 
-sys.path.insert(
-    1, os.path.join(etac.TF_MODELS_DIR, "research/object_detection"))
-import utils.label_map_util as gool
+sys.path.append(
+    os.path.join(etac.TF_MODELS_DIR, "research/object_detection/utils"))
+import label_map_util as gool
 
 
 # Default TFModelsDetectorConfig
