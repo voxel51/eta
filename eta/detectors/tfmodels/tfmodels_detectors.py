@@ -47,14 +47,15 @@ DEFAULT_CONFIG = os.path.join(
 class TFModelsDetectorConfig(Config):
     '''TFModelsDetector configuration settings.
 
-    Note that `labels_path` may contain the pattern `{{eta}}`, which will
-    be replaced with the `/path/to/eta` when the config is loaded.
+    Note that `labels_path` is passed through
+    `eta.core.utils.fill_config_patterns` at load time, so it can contain
+    patterns to be resolved.
     '''
 
     def __init__(self, d):
         self.model_name = self.parse_string(d, "model_name")
-        _labels_path = self.parse_string(d, "labels_path")
-        self.labels_path = etau.fill_eta_pattern(_labels_path)
+        self.labels_path = etau.fill_config_patterns(
+            self.parse_string(d, "labels_path"))
 
     @classmethod
     def load_default(cls):

@@ -34,9 +34,9 @@ class LogoConfig(Config):
     If a vector image is provided, it is always used. If the vector image
     fails to render or if none is provided, the raster image is used.
 
-    Note that `vector_path` and `raster_path` may contain the pattern
-    `{{resources}}`, which will be dynamically replaced with the path to the
-    ETA resources directory when the config is loaded.
+    Note that `vector_path` and `raster_path` are passed through
+    `eta.core.utils.fill_config_patterns` at load time, so they can contain
+    patterns to be resolved.
 
     Attributes:
         vector_path: path to a vector image
@@ -56,13 +56,13 @@ class LogoConfig(Config):
     def __init__(self, d):
         _vector_path = self.parse_string(d, "vector_path", default=None)
         if _vector_path:
-            self.vector_path = etau.fill_resources_pattern(_vector_path)
+            self.vector_path = etau.fill_config_patterns(_vector_path)
         else:
             self.vector_path = _vector_path
 
         _raster_path = self.parse_string(d, "raster_path", default=None)
         if _raster_path:
-            self.raster_path = etau.fill_resources_pattern(_raster_path)
+            self.raster_path = etau.fill_config_patterns(_raster_path)
         else:
             self.raster_path = _raster_path
 
