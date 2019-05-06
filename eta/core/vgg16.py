@@ -36,8 +36,7 @@ import numpy as np
 import tensorflow as tf
 
 import eta.constants as etac
-from eta.core.config import Config
-import eta.core.data as etad
+from eta.core.config import Config, Configurable
 import eta.core.image as etai
 from eta.core.features import Featurizer
 import eta.core.learning as etal
@@ -60,7 +59,7 @@ class VGG16Config(Config):
                 etac.RESOURCES_DIR, "vgg16-imagenet-labels.txt")
 
 
-class VGG16(object):
+class VGG16(Configurable):
     '''TensorFlow implementation of the VGG-16 network architecture for the
     1000 classes from ImageNet.
 
@@ -69,7 +68,7 @@ class VGG16(object):
     '''
 
     def __init__(self, config=None, sess=None, imgs=None):
-        '''Builds a new VGG-16 network.
+        '''Creates a VGG16 instance.
 
         Args:
             config: an optional VGG16Config instance. If omitted, the default
