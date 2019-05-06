@@ -140,10 +140,17 @@ open out/people-annotated.mp4
 open out/vehicles-annotated.mp4
 
 #
-# Example image/video embedding
+# Run an image detection + classification pipeline and visualize the results
 #
 # Note: A 550MB VGG-16 weights file will be downloaded from the web and stored
 #   in `eta/models` the first time you run this
+#
+cd examples/demo_cats
+eta build -r detect-classify-cats.json --run-now
+# view the contents of out/cats
+
+#
+# Example image/video embedding
 #
 cd examples/demo_embed_vgg16
 # Example image embedding
