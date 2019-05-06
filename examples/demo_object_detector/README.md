@@ -1,14 +1,13 @@
 # Object Detector Demo
 
-This demo shows how to run an object detection pipeline that uses a
-pre-trained `eta.detectors.TFModelsDetector` model to detect objects
-in the [COCO dataset](http://cocodataset.org).
+This demo runs an object detection pipeline that uses a pre-trained
+`eta.detectors.TFModelsDetector` model to detect vehicles and peoples in
+videos.
 
 
 ## Instructions
 
-To run an `object_detector` pipeline using the default `TFModelsDetector`,
-simply run one of the following commands:
+To run the `object_detector` pipeline, simply execute the following commands:
 
 ```
 # detect people

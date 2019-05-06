@@ -1,18 +1,17 @@
-# Cat Detection + Classification Demo
+# Cat Detection and Classification Demo
 
-This demo shows how to run an object detection and classification pipeline that
-uses a pre-trained `eta.detectors.TFModelsDetector` model to detect cats
-in a directory of images and also uses a pre-trained
+This demo runs an object detection and classification pipeline that uses a
+pre-trained `eta.detectors.TFModelsDetector` model to detect cats in a
+directory of images and then uses a pre-trained
 `eta.classifiers.VGG16Classifier` to predict the breed of cat from the entire
 image.
 
 
 ## Instructions
 
-To run an `detect_and_classify_images` pipeline, simply execute the following:
+To run the `detect_and_classify_images` pipeline, simply execute the following:
 
 ```
-# detect cats
 eta build -r detect-classify-cats.json --run-now
 ```
 
