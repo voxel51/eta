@@ -1,10 +1,10 @@
 {
     "info": {
-        "name": "classify_video",
+        "name": "apply_video_classifier",
         "type": "eta.core.types.Module",
         "version": "0.1.0",
         "description": "A module that uses an eta.core.learning.VideoClassifier to classify a video",
-        "exe": "classify_video.py"
+        "exe": "apply_video_classifier.py"
     },
     "inputs": [
         {
@@ -39,7 +39,7 @@
         {
             "name": "classifier",
             "type": "eta.core.types.VideoClassifier",
-            "description": "an eta.core.learning.ClassifierConfig describing the eta.core.learning.VideoClassifier to use",
+            "description": "an eta.core.learning.VideoClassifierConfig describing the eta.core.learning.VideoClassifier to use",
             "required": true
         }
     ]
