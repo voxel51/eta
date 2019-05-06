@@ -6,3 +6,6 @@ voxel51.com
 
 Brian Moore, brian@voxel51.com
 '''
+
+# Import all detectors into the `eta.detectors` namespace
+from tfmodels.tfmodels_detectors import TFModelsDetector, TFModelsDetectorConfig

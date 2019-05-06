@@ -101,14 +101,14 @@ class TFModelsDetector(ObjectDetector):
         return tf_graph
 
     def detect(self, img):
-        '''Performs object detection on the input image.
+        '''Performs detection on the input image.
 
         Args:
             img: an image
 
         Returns:
-            objects: A DetectedObjectContainer describing the detected objects
-                in the image
+            objects: An `eta.core.objects.DetectedObjectContainer` describing
+                the detections
         '''
         img_exp = np.expand_dims(img, axis=0)
         image_tensor = self._tf_graph.get_tensor_by_name("image_tensor:0")
