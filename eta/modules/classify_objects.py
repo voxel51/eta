@@ -74,7 +74,7 @@ class ParametersConfig(Config):
 
     Parameters:
         classifier (eta.core.types.ImageClassifier): an
-            `eta.core.learning.ClassifierConfig` JSON describing the
+            `eta.core.learning.ImageClassifierConfig` JSON describing the
             `eta.core.learning.ImageClassifier` to use
         labels (eta.core.types.Array): [None] an optional list of object
             labels to classify. By default, all objects are classified
@@ -90,7 +90,7 @@ class ParametersConfig(Config):
 
     def __init__(self, d):
         self.classifier = self.parse_object(
-            d, "classifier", etal.ClassifierConfig)
+            d, "classifier", etal.ImageClassifierConfig)
         self.labels = self.parse_array(d, "labels", default=None)
         self.bb_padding = self.parse_number(d, "bb_padding", default=None)
         self.force_square = self.parse_bool(d, "force_square", default=False)
@@ -131,8 +131,6 @@ def _classify_objects(config):
     # Build classifier
     classifier = config.parameters.classifier.build()
     logger.info("Loaded classifier %s", type(classifier))
-    if not isinstance(classifier, etal.ImageClassifier):
-        raise ValueError("Classifier must be a %s" % etal.ImageClassifier)
 
     # Process videos
     with classifier:

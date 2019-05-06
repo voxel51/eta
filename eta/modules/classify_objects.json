@@ -67,7 +67,7 @@
         {
             "name": "classifier",
             "type": "eta.core.types.ImageClassifier",
-            "description": "an eta.core.learning.ClassifierConfig JSON describing the eta.core.learning.ImageClassifier to use",
+            "description": "an eta.core.learning.ImageClassifierConfig JSON describing the eta.core.learning.ImageClassifier to use",
             "required": true
         }
     ]
