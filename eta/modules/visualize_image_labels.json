@@ -49,7 +49,7 @@
     "parameters": [
         {
             "name": "annotation_config",
-            "type": "eta.core.types.Object",
+            "type": "eta.core.types.Config",
             "description": "an eta.core.annotations.AnnotationConfig describing how to render the annotations on the images. If omitted, the default settings are used",
             "required": false,
             "default": null

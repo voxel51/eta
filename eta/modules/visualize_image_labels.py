@@ -107,7 +107,7 @@ class ParametersConfig(Config):
     '''Parameter configuration settings.
 
     Parameters:
-        annotation_config (eta.core.types.Object): [None] an
+        annotation_config (eta.core.types.Config): [None] an
             `eta.core.annotations.AnnotationConfig` describing how to render
             the annotations on the images. If omitted, the default settings are
             used
