@@ -55,6 +55,7 @@ class ETAConfig(EnvConfig):
         self.environment_vars = self.parse_dict(
             d, "environment_vars", default={})
         self.tf_config = self.parse_dict(d, "tf_config", default={})
+        self.patterns = self.parse_dict(d, "patterns", default={})
         self.max_model_versions_to_keep = int(self.parse_number(
             d, "max_model_versions_to_keep",
             env_var="ETA_MAX_MODEL_VERSIONS_TO_KEEP", default=-1))
@@ -70,19 +71,41 @@ class ETAConfig(EnvConfig):
         self.default_video_ext = self.parse_string(
             d, "default_video_ext", env_var="ETA_DEFAULT_VIDEO_EXT",
             default=".mp4")
-        self._fill_eta_patterns()
 
-    def _fill_eta_patterns(self):
-        self.config_dir = etau.fill_eta_pattern(self.config_dir)
-        self.output_dir = etau.fill_eta_pattern(self.output_dir)
+        self._parse_patterns()
+        self._fill_patterns()
+
+    def _parse_patterns(self):
+        #
+        # Add default patterns to dict
+        #
+        if "{{eta}}" in self.patterns:
+            logger.warning("Overwriting existing {{eta}} pattern")
+        self.patterns["{{eta}}"] = etac.BASE_DIR
+
+        if "{{resources}}" in self.patterns:
+            logger.warning("Overwriting existing {{resources}} pattern")
+        self.patterns["{{resources}}"] = etac.RESOURCES_DIR
+
+        #
+        # Resolve user-provided patterns by replacing any patterns and
+        # converting to realpaths, if necessary
+        #
+        for patt in self.patterns:
+            self.patterns[patt] = os.path.realpath(
+                etau.fill_patterns(self.patterns[patt], self.patterns))
+
+    def _fill_patterns(self):
+        self.config_dir = etau.fill_patterns(self.config_dir, self.patterns)
+        self.output_dir = etau.fill_patterns(self.output_dir, self.patterns)
         self.module_dirs = [
-            etau.fill_eta_pattern(m) for m in self.module_dirs]
+            etau.fill_patterns(m, self.patterns) for m in self.module_dirs]
         self.pipeline_dirs = [
-            etau.fill_eta_pattern(p) for p in self.pipeline_dirs]
+            etau.fill_patterns(p, self.patterns) for p in self.pipeline_dirs]
         self.models_dirs = [
-            etau.fill_eta_pattern(m) for m in self.models_dirs]
+            etau.fill_patterns(m, self.patterns) for m in self.models_dirs]
         self.pythonpath_dirs = [
-            etau.fill_eta_pattern(m) for m in self.pythonpath_dirs]
+            etau.fill_patterns(m, self.patterns) for m in self.pythonpath_dirs]
 
 
 def set_config_settings(**kwargs):
