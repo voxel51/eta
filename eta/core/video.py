@@ -34,6 +34,7 @@ import dateutil.parser
 import errno
 import json
 import logging
+import numbers
 import os
 from subprocess import Popen, PIPE
 import threading
@@ -386,6 +387,11 @@ class VideoMetadata(Serializable):
 class VideoSetLabels(Serializable):
     '''Class encapsulating labels for a set of videos.
 
+    VideoSetLabels support item indexing either by list index or filename.
+    When using filename-based indexing, VideoSetLabels instances behave like
+    defaultdicts: new VideoLabels instances are automatically created if a
+    non-existent filename is accessed.
+
     Attributes:
         videos: a list of VideoLabels instances
         schema: a VideoLabelsSchema describing the schema of the video labels
@@ -402,17 +408,32 @@ class VideoSetLabels(Serializable):
         '''
         self.videos = videos or []
         self.schema = schema
+        self._filename_map = {}
+        self._build_filename_map()
 
-    def __getitem__(self, idx):
-        return self.videos[idx]
+    def __getitem__(self, idx_or_filename):
+        if not isinstance(idx_or_filename, numbers.Integral):
+            return self.get_video_labels_for_filename(idx_or_filename)
+        return self.videos[idx_or_filename]
 
-    def __setitem__(self, idx, video_labels):
+    def __setitem__(self, idx_or_filename, video_labels):
+        if not isinstance(idx_or_filename, numbers.Integral):
+            video_labels.filename = idx_or_filename
+            if not self.has_video_labels_for_filename(idx_or_filename):
+                self.add_video_labels(video_labels)
+                return
+
         if self.has_schema:
-            self._validate_video_labels(video_labels)
-        self.videos[idx] = video_labels
+            self._apply_schema_to_video(video_labels)
 
-    def __delitem__(self, idx):
+        idx = self._to_idx(idx_or_filename)
+        self.videos[idx] = video_labels
+        self._filename_map[video_labels.filename] = idx
+
+    def __delitem__(self, idx_or_filename):
+        idx = self._to_idx(idx_or_filename)
         del self.videos[idx]
+        self._build_filename_map()
 
     def __iter__(self):
         return iter(self.videos)
@@ -442,6 +463,32 @@ class VideoSetLabels(Serializable):
         if self.has_schema:
             self._apply_schema_to_video(video_labels)
         self.videos.append(video_labels)
+        self._filename_map[video_labels.filename] = len(self.videos) - 1
+
+    def has_video_labels_for_filename(self, filename):
+        '''Returns True/False whether the set contains labels for a video
+        with the given filename.
+        '''
+        return filename in self._filename_map
+
+    def get_video_labels_for_filename(self, filename):
+        '''Gets the VideoLabels for the given filename.
+
+        If the filename does not exist, an empty VideoLabels is added to the
+        set and returned.
+
+        Args:
+            filename: the filename of the video
+
+        Returns:
+            the VideoLabels for the video with the given filename
+        '''
+        if not self.has_video_labels_for_filename(filename):
+            video_labels = VideoLabels(filename=filename)
+            self.add_video_labels(video_labels)
+
+        idx = self._filename_map[filename]
+        return self.videos[idx]
 
     def get_schema(self):
         '''Gets the current enforced schema for the video set, or None if no
@@ -492,6 +539,17 @@ class VideoSetLabels(Serializable):
     def _apply_schema(self):
         for video_labels in self.videos:
             self._apply_schema_to_video(video_labels)
+
+    def _to_idx(self, idx_or_filename):
+        if isinstance(idx_or_filename, numbers.Integral):
+            return idx_or_filename
+        return self._filename_map[idx_or_filename]
+
+    def _build_filename_map(self):
+        self._filename_map = {
+            video_labels.filename: idx
+            for idx, video_labels in enumerate(self.videos)
+        }
 
     @classmethod
     def from_dict(cls, d):
@@ -563,7 +621,11 @@ class VideoFrameLabels(Serializable):
         self.objects.add_container(objs)
 
     def merge_frame_labels(self, frame_labels):
-        '''Merges the VideoFrameLabels into the frame.'''
+        '''Merges the labels into the frame.
+
+        Args:
+            frame_labels: a VideoFrameLabels
+        '''
         self.add_frame_attributes(frame_labels.attrs)
         self.add_objects(frame_labels.objects)
 
@@ -575,6 +637,19 @@ class VideoFrameLabels(Serializable):
         if self.objects:
             _attrs.append("objects")
         return _attrs
+
+    @classmethod
+    def from_image_labels(cls, image_labels, frame_number):
+        '''Constructs a VideoFrameLabels from an ImageLabels.
+
+        Args:
+            image_labels: an ImageLabels instance
+            frame_number: the frame number
+
+        Returns:
+            a VideoFrameLabels instance
+        '''
+        return cls(frame_number, image_labels.attrs, image_labels.objects)
 
     @classmethod
     def from_dict(cls, d):
