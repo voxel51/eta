@@ -1,0 +1,57 @@
+{
+    "info": {
+        "name": "detect_and_classify_images",
+        "type": "eta.core.types.Pipeline",
+        "version": "0.1",
+        "description": "A pipeline for classifying and detecting objects in images"
+    },
+    "inputs": ["images_dir"],
+    "outputs": ["image_set_labels", "annotated_images_dir"],
+    "modules": {
+        "apply_object_detector": {
+            "name": "apply_object_detector",
+            "tunable_parameters": ["detector", "objects"],
+            "set_parameters": {}
+        },
+        "apply_image_classifier": {
+            "name": "apply_image_classifier",
+            "tunable_parameters": ["classifier", "confidence_threshold"],
+            "set_parameters": {}
+        },
+        "visualize_image_labels": {
+            "name": "visualize_image_labels",
+            "tunable_parameters": ["annotation_config"],
+            "set_parameters": {}
+        }
+    },
+    "connections": [
+        {
+            "source": "INPUT.images_dir",
+            "sink": "apply_object_detector.images_dir"
+        },
+        {
+            "source": "INPUT.images_dir",
+            "sink": "apply_image_classifier.images_dir"
+        },
+        {
+            "source": "INPUT.images_dir",
+            "sink": "visualize_image_labels.images_dir"
+        },
+        {
+            "source": "apply_object_detector.output_image_set_labels_path",
+            "sink": "apply_image_classifier.input_image_set_labels_path"
+        },
+        {
+            "source": "apply_image_classifier.output_image_set_labels_path",
+            "sink": "visualize_image_labels.image_set_labels_path"
+        },
+        {
+            "source": "apply_image_classifier.output_image_set_labels_path",
+            "sink": "OUTPUT.image_set_labels"
+        },
+        {
+            "source": "visualize_image_labels.output_dir",
+            "sink": "OUTPUT.annotated_images_dir"
+        }
+    ]
+}
