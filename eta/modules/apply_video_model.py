@@ -86,8 +86,6 @@ def _apply_video_model(config):
     # Build model
     model = config.parameters.model.build()
     logger.info("Loaded model %s", type(model))
-    if not isinstance(model, etal.VideoModel):
-        raise ValueError("Model must be a %s" % etal.VideoModel)
 
     # Process videos
     with model:
@@ -105,7 +103,8 @@ def _process_video(data, model):
         labels = etav.VideoLabels()
 
     logger.info("Applying model to video '%s'", data.video_path)
-    labels.merge_video_labels(model.process(data.video_path))
+    new_labels = model.process(data.video_path)
+    labels.merge_video_labels(new_labels)
 
     logger.info("Writing labels to '%s'", data.output_labels_path)
     labels.write_json(data.output_labels_path)
