@@ -2103,17 +2103,23 @@ class FFmpegVideoReader(VideoReader):
     def read(self):
         '''Reads the next frame.
 
+        If any problem is encountered while reading the frame, a warning is
+        logged and a StopIteration is raised. This means that FFmpegVideoReader
+        will gracefully fail when malformed videos are encountered.
+
         Returns:
             img: the next frame
 
         Raises:
-            StopIteration: if there are no more frames to process
-            VideoReaderError: if unable to load the next frame from file
+            StopIteration: if there are no more frames to process or the next
+                frame could not be read or parsed for any reason
         '''
         for _ in range(max(0, self.frame_number), next(self._ranges)):
             if not self._grab():
-                raise VideoReaderError(
-                    "Failed to grab frame %d" % self.frame_number)
+                logger.warning(
+                    "Failed to grab frame %d. Raising StopIteration now",
+                    self.frame_number)
+                raise StopIteration
         return self._retrieve()
 
     def close(self):
@@ -2125,24 +2131,32 @@ class FFmpegVideoReader(VideoReader):
             width, height = self.frame_size
             self._raw_frame = self._ffmpeg.read(width * height * 3)
             return True
-        except Exception:
+        except Exception as e:
+            logger.warning(e, exc_info=True)
+            self._raw_frame = None
             return False
 
     def _retrieve(self):
-        # Stop when ffmpeg returns empty bits, meaning it has gone past the end
-        # of the video
+        # Stop when ffmpeg returns empty bits. This can happen when the end of
+        # the video is reached
         if not self._raw_frame:
+            logger.warning(
+                "Found empty frame %d. Raising StopIteration now",
+                self.frame_number)
             raise StopIteration
 
         width, height = self.frame_size
         try:
             vec = np.fromstring(self._raw_frame, dtype="uint8")
             return vec.reshape((height, width, 3))
-        except ValueError:
+        except ValueError as e:
+            # Possible alternative: return all zeros matrix instead
+            # return np.zeros((height, width, 3), dtype="uint8")
+            logger.warning(e, exc_info=True)
             logger.warning(
-                "Unable to parse frame %d of %d; returning all zeros frame "
-                "instead", self.frame_number, self.total_frame_count)
-            return np.zeros((height, width, 3), dtype="uint8")
+                "Unable to parse frame %d; Raising StopIteration now",
+                self.frame_number)
+            raise StopIteration
 
 
 class OpenCVVideoReader(VideoReader):
@@ -2234,22 +2248,46 @@ class OpenCVVideoReader(VideoReader):
     def read(self):
         '''Reads the next frame.
 
+        If any problem is encountered while reading the frame, a warning is
+        logged and a StopIteration is raised. This means that OpenCVVideoReader
+        will gracefully fail when malformed videos are encountered.
+
         Returns:
             img: the next frame
 
         Raises:
-            StopIteration: if there are no more frames to process
-            VideoReaderError: if unable to load the next frame from file
+            StopIteration: if there are no more frames to process or the next
+                frame could not be read or parsed for any reason
         '''
         for idx in range(max(0, self.frame_number), next(self._ranges)):
-            if not self._cap.grab():
-                raise VideoReaderError(
-                    "Failed to grab frame %d" % (idx + 1))
-        return etai.bgr_to_rgb(self._cap.retrieve()[1])
+            if not self._grab():
+                logger.warning(
+                    "Failed to grab frame %d. Raising StopIteration now",
+                    self.frame_number)
+                raise StopIteration
+        return self._retrieve()
 
     def close(self):
         '''Closes the video reader.'''
         self._cap.release()
+
+    def _grab(self):
+        try:
+            return self._cap.grab()
+        except Exception as e:
+            logger.warning(e, exc_info=True)
+            return False
+
+    def _retrieve(self):
+        try:
+            img_bgr = self._cap.retrieve()[1]
+            return etai.bgr_to_rgb(img_bgr)
+        except Exception as e:
+            logger.warning(e, exc_info=True)
+            logger.warning(
+                "Unable to parse frame %d; Raising StopIteration now",
+                self.frame_number)
+            raise StopIteration
 
 
 class VideoWriter(object):
