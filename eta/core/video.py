@@ -2173,22 +2173,46 @@ class OpenCVVideoReader(VideoReader):
     def read(self):
         '''Reads the next frame.
 
+        If any problem is encountered while reading the frame, a warning is
+        logged and a StopIteration is raised. This means that OpenCVVideoReader
+        will gracefully fail when malformed videos are encountered.
+
         Returns:
             img: the next frame
 
         Raises:
-            StopIteration: if there are no more frames to process
-            VideoReaderError: if unable to load the next frame from file
+            StopIteration: if there are no more frames to process or the next
+                frame could not be read or parsed for any reason
         '''
         for idx in range(max(0, self.frame_number), next(self._ranges)):
-            if not self._cap.grab():
-                raise VideoReaderError(
-                    "Failed to grab frame %d" % (idx + 1))
-        return etai.bgr_to_rgb(self._cap.retrieve()[1])
+            if not self._grab():
+                logger.warning(
+                    "Failed to grab frame %d. Raising StopIteration now",
+                    self.frame_number)
+                raise StopIteration
+        return self._retrieve()
 
     def close(self):
         '''Closes the video reader.'''
         self._cap.release()
+
+    def _grab(self):
+        try:
+            return self._cap.grab()
+        except Exception as e:
+            logger.warning(e, exc_info=True)
+            return False
+
+    def _retrieve(self):
+        try:
+            img_bgr = self._cap.retrieve()[1]
+            return etai.bgr_to_rgb(img_bgr)
+        except Exception as e:
+            logger.warning(e, exc_info=True)
+            logger.warning(
+                "Unable to parse frame %d; Raising StopIteration now",
+                self.frame_number)
+            raise StopIteration
 
 
 class VideoWriter(object):
