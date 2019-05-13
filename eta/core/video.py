@@ -2037,8 +2037,10 @@ class FFmpegVideoReader(VideoReader):
         '''
         for _ in range(max(0, self.frame_number), next(self._ranges)):
             if not self._grab():
-                raise VideoReaderError(
-                    "Failed to grab frame %d" % self.frame_number)
+                logger.warning(
+                    "Failed to grab frame %d. Stopping read of video." %
+                    self.frame_number)
+                raise StopIteration
         return self._retrieve()
 
     def close(self):
