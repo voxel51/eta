@@ -1869,30 +1869,57 @@ class VideoProcessorError(Exception):
     pass
 
 
+def process_frames_descriptor(frames, total_frame_count=None):
+    '''Takes a variety of descriptors of frame ranges, and returns the
+    corresponding standardized string and FrameRange or FrameRanges
+    object.
+
+    Args:
+        frames: one of the following quantities specifying a collection
+            of frames to process:
+                - None (all frames)
+                - "*" (all frames)
+                - a string like "1-3,6,8-10"
+                - a list like [1, 2, 3, 6, 8, 9, 10]
+                - a FrameRange or FrameRanges instance
+        total_frame_count: optional total number of frames in video
+
+    Returns:
+        frames_str: a string like "1-3,6,8-10"
+        frame_ranges: a FrameRange or FrameRanges
+    '''
+    if frames is None and total_frame_count is not None:
+        frames = "1-%d" % total_frame_count
+        ranges = FrameRanges.from_str(frames)
+    elif isinstance(frames, six.string_types):
+        # Frames string
+        if frames == "*" and total_frame_count is not None:
+            frames = "1-%d" % total_frame_count
+        elif frames == "*":
+            raise ValueError(
+                "Invalid frames %s without total count" % frames)
+        ranges = FrameRanges.from_str(frames)
+    elif isinstance(frames, list):
+        # Frames list
+        ranges = FrameRanges.from_list(frames)
+        frames = ranges.to_str()
+    elif isinstance(frames, (FrameRange, FrameRanges)):
+        # FrameRange or FrameRanges
+        ranges = frames
+        frames = frames.to_str()
+    else:
+        raise ValueError("Invalid frames %s" % frames)
+
+    return frames, ranges
+
+
 class VideoReader(object):
     '''Base class for reading videos.'''
 
     def __init__(self, inpath, frames):
         self.inpath = inpath
-        if frames is None:
-            self.frames = "1-%d" % self.total_frame_count
-            self._ranges = FrameRanges.from_str(self.frames)
-        elif isinstance(frames, six.string_types):
-            # Frames string
-            if frames == "*":
-                frames = "1-%d" % self.total_frame_count
-            self.frames = frames
-            self._ranges = FrameRanges.from_str(frames)
-        elif isinstance(frames, list):
-            # Frames list
-            self._ranges = FrameRanges.from_list(frames)
-            self.frames = self._ranges.to_str()
-        elif isinstance(frames, (FrameRange, FrameRanges)):
-            # FrameRange or FrameRanges
-            self._ranges = frames
-            self.frames = frames.to_str()
-        else:
-            raise VideoReaderError("Invalid frames %s" % frames)
+        self.frames, self._ranges = process_frames_descriptor(
+            frames, total_frame_count=self.total_frame_count)
 
     def __enter__(self):
         return self

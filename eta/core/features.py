@@ -21,6 +21,7 @@ import six
 # pragma pylint: enable=wildcard-import
 
 import errno
+import itertools
 import logging
 import os
 import shutil
@@ -535,11 +536,12 @@ class VideoFramesFeaturizer(Featurizer):
 
         return np.load(p)["v"]
 
-    def featurize(self, video_path, frames=None, returnX=True):
+    def featurize(self, video_path_or_image_patt, frames=None, returnX=True):
         '''Featurizes the frames of the input video.
 
         Attributes:
-            video_path: the input video path
+            video_path_or_image_patt: the input video path or image path
+                pattern in which frame numbers are indexed by integers
             frames: an optional frames string to specify the frames of the
                 video to featurize. By default, the value provided in the
                 VideoFramesFeaturizerConfig is used
@@ -552,55 +554,69 @@ class VideoFramesFeaturizer(Featurizer):
         if not frames:
             frames = self.config.frames
 
-        self._backing_manager(video_path)
+        try:
+            backing_path_base = video_path_or_image_patt % 0
+        except TypeError:
+            backing_path_base = video_path_or_image_patt
+
+        self._backing_manager(backing_path_base)
         self.start(warn_on_restart=False, keep_alive=False)
-        v = self._featurize(video_path, frames, returnX)
+        v = self._featurize(video_path_or_image_patt, frames, returnX)
         if self._keep_alive is False:
             self.stop()
 
-        self._backing_manager(video_path, False)
+        self._backing_manager(backing_path_base, False)
 
         return v
 
-    def _featurize(self, video_path, frames=None, returnX=True):
+    def _featurize(self, video_path_or_image_patt, frames=None, returnX=True):
         frames = frames or self.config.frames
         logger.debug("Featurizing frames %s", frames)
 
         if returnX:
             X = None
 
-        with etav.FFmpegVideoReader(video_path, frames=frames) as vr:
-            for img in vr:
-                self.most_recent_frame = vr.frame_number
-                path = self.featurized_frame_path(vr.frame_number)
+        try:
+            _ = video_path_or_image_patt % 0
+            # Is an image path pattern
+            iter_frames = self._iter_image_frames(
+                video_path_or_image_patt, frames)
+        except TypeError:
+            # Is a video path
+            iter_frames = self._iter_video_frames(
+                video_path_or_image_patt, frames)
 
-                try:
-                    # Try to load the existing feature
-                    v = self.retrieve_featurized_frame(vr.frame_number)
-                except FeaturizedFrameNotFoundError:
-                    # Build the per-frame Featurizer, if necessary
-                    if not self._frame_featurizer:
-                        self._frame_featurizer = \
-                            self.config.frame_featurizer.build()
-                        self._frame_featurizer.start()
+        for frame_number, img in iter_frames:
+            self.most_recent_frame = frame_number
+            path = self.featurized_frame_path(frame_number)
 
-                    if self._frame_preprocessor is not None:
-                        # Pre-process and then featurize the frame
-                        _img = self._frame_preprocessor(img)
-                        v = self._frame_featurizer.featurize(_img)
-                    else:
-                        # Featurize the frame
-                        v = self._frame_featurizer.featurize(img)
+            try:
+                # Try to load the existing feature
+                v = self.retrieve_featurized_frame(frame_number)
+            except FeaturizedFrameNotFoundError:
+                # Build the per-frame Featurizer, if necessary
+                if not self._frame_featurizer:
+                    self._frame_featurizer = \
+                        self.config.frame_featurizer.build()
+                    self._frame_featurizer.start()
 
-                    # Write the feature to disk
-                    np.savez_compressed(path, v=v)
+                if self._frame_preprocessor is not None:
+                    # Pre-process and then featurize the frame
+                    _img = self._frame_preprocessor(img)
+                    v = self._frame_featurizer.featurize(_img)
+                else:
+                    # Featurize the frame
+                    v = self._frame_featurizer.featurize(img)
 
-                if returnX:
-                    if X is None:
-                        # Lazily build the GrowableArray now that we know the
-                        # dimension of the features
-                        X = GrowableArray(len(v))
-                    X.update(v)
+                # Write the feature to disk
+                np.savez_compressed(path, v=v)
+
+            if returnX:
+                if X is None:
+                    # Lazily build the GrowableArray now that we know the
+                    # dimension of the features
+                    X = GrowableArray(len(v))
+                X.update(v)
 
         if self._frame_featurizer and not self._keep_alive:
             # Stop the frame featurizer
@@ -608,6 +624,25 @@ class VideoFramesFeaturizer(Featurizer):
             self._frame_featurizer = None
 
         return X.finalize() if returnX else None
+
+    def _iter_image_frames(self, image_patt, frames):
+        for frame_number in itertools.count(1):
+            image_path = image_patt % frame_number
+            if not os.path.exists(image_path):
+                total_frame_count = frame_number - 1
+                break
+
+        _, ranges = etav.process_frames_descriptor(
+            frames, total_frame_count=total_frame_count)
+
+        for frame_number in ranges:
+            image_path = image_patt % frame_number
+            yield frame_number, etai.read(image_path)
+
+    def _iter_video_frames(self, video_path, frames):
+        with etav.FFmpegVideoReader(video_path, frames=frames) as vr:
+            for img in vr:
+                yield vr.frame_number, img
 
     def featurized_frame_path(self, frame_number):
         '''Returns the backing path for the given frame number.'''
