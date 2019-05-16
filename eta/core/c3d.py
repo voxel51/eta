@@ -308,7 +308,8 @@ class C3DFeaturizer(Featurizer):
         size = (112, 112)
 
         if sample_method == "first":
-            clips = [etav.sample_first_frames(video_path, 16, size=size)]
+            clips = [etav.sample_first_frames(
+                video_path, 16, stride=stride, size=size)]
         elif sample_method == "uniform":
             clips = [etav.uniformly_sample_frames(video_path, 16, size=size)]
         elif sample_method == "sliding_window":
