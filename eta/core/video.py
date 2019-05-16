@@ -1605,13 +1605,15 @@ def sample_select_frames(video_path, frames, output_patt=None, fast=False):
         return imgs
 
 
-def sample_first_frames(arg, k, size=None):
+def sample_first_frames(arg, k, stride=1, size=None):
     '''Samples the first k frames in a video.
 
     Args:
         arg: can be either the path to the input video or an array of frames
             of size [num_frames, height, width, num_channels]
         k: number of frames to extract
+        stride: number of frames to be skipped in between. By default, a
+            contiguous array of frames in extracted
         size: an optional [width, height] to resize the sampled frames. By
             default, the native dimensions of the frames are used
 
@@ -1621,11 +1623,12 @@ def sample_first_frames(arg, k, size=None):
     # Read frames ...
     if isinstance(arg, six.string_types):
         # ... from disk
-        with FFmpegVideoReader(arg, frames="1-%d" % k) as vr:
+        with FFmpegVideoReader(
+            arg, frames=[i for i in range(1, stride * k + 1, stride)]) as vr:
             imgs = [img for img in vr]
     else:
         # ... from tensor
-        imgs = arg[:k]
+        imgs = arg[:(k * stride):stride]
 
     # Resize frames, if necessary
     if size:

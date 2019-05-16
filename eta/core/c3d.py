@@ -245,7 +245,10 @@ class C3DFeaturizerConfig(C3DConfig):
         model: the C3D UCF101 model to use
         sample_method: the frame sampling method to use. The possible values
             are "first", "uniform", and "sliding_window"
-        stride: the stride to use when the sampling method is "sliding_window"
+        stride: the stride to use. When the sampling method is
+            "sliding_window", this refers to the stride of the window. When the
+            sampling method is "first", this refers to the stride between
+            frames to sample
     '''
 
     def __init__(self, d):
@@ -308,7 +311,8 @@ class C3DFeaturizer(Featurizer):
         size = (112, 112)
 
         if sample_method == "first":
-            clips = [etav.sample_first_frames(video_path, 16, size=size)]
+            clips = [etav.sample_first_frames(
+                video_path, 16, stride=stride, size=size)]
         elif sample_method == "uniform":
             clips = [etav.uniformly_sample_frames(video_path, 16, size=size)]
         elif sample_method == "sliding_window":
