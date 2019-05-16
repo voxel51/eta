@@ -1328,52 +1328,40 @@ def get_stream_info(inpath):
         raise FFprobeError("Unable to get stream info for '%s'" % inpath)
 
 
-def get_encoding_str(inpath, use_ffmpeg=True):
+def get_encoding_str(inpath):
     '''Get the encoding string of the input video.
 
     Args:
         inpath: video path
-        use_ffmpeg: whether to use ffmpeg (True) or OpenCV (False)
     '''
-    r = FFmpegVideoReader(inpath) if use_ffmpeg else OpenCVVideoReader(inpath)
-    with r:
-        return r.encoding_str
+    return VideoMetadata.build_for(inpath).encoding_str
 
 
-def get_frame_rate(inpath, use_ffmpeg=True):
+def get_frame_rate(inpath):
     '''Get the frame rate of the input video.
 
     Args:
         inpath: video path
-        use_ffmpeg: whether to use ffmpeg (True) or OpenCV (False)
     '''
-    r = FFmpegVideoReader(inpath) if use_ffmpeg else OpenCVVideoReader(inpath)
-    with r:
-        return r.frame_rate
+    return VideoMetadata.build_for(inpath).frame_rate
 
 
-def get_frame_size(inpath, use_ffmpeg=True):
+def get_frame_size(inpath):
     '''Get the frame (width, height) of the input video.
 
     Args:
         inpath: video path
-        use_ffmpeg: whether to use ffmpeg (True) or OpenCV (False)
     '''
-    r = FFmpegVideoReader(inpath) if use_ffmpeg else OpenCVVideoReader(inpath)
-    with r:
-        return r.frame_size
+    return VideoMetadata.build_for(inpath).frame_size
 
 
-def get_frame_count(inpath, use_ffmpeg=True):
+def get_frame_count(inpath):
     '''Get the number of frames in the input video.
 
     Args:
         inpath: video path
-        use_ffmpeg: whether to use ffmpeg (True) or OpenCV (False)
     '''
-    r = FFmpegVideoReader(inpath) if use_ffmpeg else OpenCVVideoReader(inpath)
-    with r:
-        return r.total_frame_count
+    return VideoMetadata.build_for(inpath).total_frame_count
 
 
 def get_raw_frame_number(raw_frame_rate, raw_frame_count, fps, sampled_frame):
