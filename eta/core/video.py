@@ -1423,13 +1423,13 @@ def extract_clip(
     # frames of the clip will be exactly the same as those encountered via
     # other clip-based methods in ETA?
     #
-    in_opts = ["-vsync", "0"]
+    in_opts = []
     if start_time is not None:
         if not isinstance(start_time, six.string_types):
             start_time = "%.3f" % start_time
         in_opts.extend(["-ss", start_time])
 
-    out_opts = []
+    out_opts = ["-vsync", "0"]
     if duration is not None:
         if not isinstance(duration, six.string_types):
             duration = "%.3f" % duration
@@ -1453,7 +1453,7 @@ def extract_clip(
         # Clean up fast output by re-encoding the extracted clip
         # Note that this may not exactly correspond to the slow, accurate
         # implementation above
-        ffmpeg = FFmpeg(in_opts=["-vsync", "0"], out_opts=[])
+        ffmpeg = FFmpeg(in_opts=[], out_opts=["-vsync", "0"])
         ffmpeg.run(tmp_path, output_path)
 
 
@@ -1501,9 +1501,7 @@ def sample_select_frames(video_path, frames, output_patt=None, fast=False):
         # Sample frames to disk temporarily
         tmp_patt = os.path.join(d, "frame-%d" + ext)
         ss = "+".join(["eq(n\,%d)" % (f - 1) for f in frames])
-        ffmpeg = FFmpeg(
-            in_opts=["-vsync", "0"],
-            out_opts=["-vf", "select='%s'" % ss, "-vsync", "0"])
+        ffmpeg = FFmpeg(out_opts=["-vf", "select='%s'" % ss, "-vsync", "0"])
         ffmpeg.run(video_path, tmp_patt)
 
         if output_patt is not None:
@@ -1977,12 +1975,13 @@ class FFmpegVideoReader(VideoReader):
         if keyframes_only:
             in_opts = ["-skip_frame", "nokey", "-vsync", "0"]
         else:
-            in_opts = ["-vsync", "0"]
+            in_opts = None
 
         self._stream_info = VideoStreamInfo.build_for(inpath)
         self._ffmpeg = FFmpeg(
             in_opts=in_opts,
             out_opts=[
+                "-vsync", "0",              # never omit frames
                 "-f", 'image2pipe',         # pipe frames to stdout
                 "-vcodec", "rawvideo",      # output will be raw video
                 "-pix_fmt", "rgb24",        # pixel format
@@ -2403,7 +2402,9 @@ class FFmpeg(object):
 
     DEFAULT_VIDEO_OUT_OPTS = [
         "-c:v", "libx264", "-preset", "medium", "-crf", "23",
-        "-pix_fmt", "yuv420p", "-an"]
+        "-pix_fmt", "yuv420p", "-vsync", "0", "-an"]
+
+    DEFAULT_IMAGES_OUT_OPTS = ["-vsync", "0"]
 
     def __init__(
             self,
@@ -2428,7 +2429,8 @@ class FFmpeg(object):
             in_opts: an optional list of input options for ffmpeg
             out_opts: an optional list of output options for ffmpeg. By
                 default, self.DEFAULT_VIDEO_OUT_OPTS is used when the output
-                path is a video file
+                path is a video file and self.DEFAULT_IMAGES_OUT_OPTS is used
+                when the output path is an image sequence
         '''
         self.is_input_streaming = False
         self.is_output_streaming = False
@@ -2472,10 +2474,13 @@ class FFmpeg(object):
         self.is_input_streaming = (inpath == "-")
         self.is_output_streaming = (outpath == "-")
 
-        if self._out_opts is None and is_supported_video_file(outpath):
-            out_opts = self.DEFAULT_VIDEO_OUT_OPTS
+        if self._out_opts is None:
+            if is_supported_video_file(outpath):
+                out_opts = self.DEFAULT_VIDEO_OUT_OPTS
+            else:
+                out_opts = self.DEFAULT_IMAGES_OUT_OPTS
         else:
-            out_opts = self._out_opts or []
+            out_opts = self._out_opts
 
         self._args = (
             ["ffmpeg"] +
