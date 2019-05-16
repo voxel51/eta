@@ -32,7 +32,6 @@ import six
 from collections import defaultdict, OrderedDict
 import dateutil.parser
 import errno
-import json
 import logging
 import os
 from subprocess import Popen, PIPE
@@ -2176,7 +2175,7 @@ class OpenCVVideoReader(VideoReader):
             StopIteration: if there are no more frames to process or the next
                 frame could not be read or parsed for any reason
         '''
-        for idx in range(max(0, self.frame_number), next(self._ranges)):
+        for _ in range(max(0, self.frame_number), next(self._ranges)):
             if not self._grab():
                 logger.warning(
                     "Failed to grab frame %d. Raising StopIteration now",
