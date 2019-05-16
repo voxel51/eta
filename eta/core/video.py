@@ -1423,7 +1423,7 @@ def extract_clip(
     # frames of the clip will be exactly the same as those encountered via
     # other clip-based methods in ETA?
     #
-    in_opts = []
+    in_opts = ["-vsync", "0"]
     if start_time is not None:
         if not isinstance(start_time, six.string_types):
             start_time = "%.3f" % start_time
@@ -1453,7 +1453,7 @@ def extract_clip(
         # Clean up fast output by re-encoding the extracted clip
         # Note that this may not exactly correspond to the slow, accurate
         # implementation above
-        ffmpeg = FFmpeg(in_opts=[], out_opts=["-vsync", "0"])
+        ffmpeg = FFmpeg(out_opts=["-vsync", "0"])
         ffmpeg.run(tmp_path, output_path)
 
 
@@ -2403,6 +2403,8 @@ class FFmpeg(object):
 
     DEFAULT_GLOBAL_OPTS = ["-loglevel", "error"]
 
+    DEFAULT_IN_OPTS = ["-vsync", "0"]
+
     DEFAULT_VIDEO_OUT_OPTS = [
         "-c:v", "libx264", "-preset", "medium", "-crf", "23",
         "-pix_fmt", "yuv420p", "-vsync", "0", "-an"]
@@ -2429,7 +2431,8 @@ class FFmpeg(object):
                 video (e.g., 0.5 or 2)
             global_opts: an optional list of global options for ffmpeg. By
                 default, self.DEFAULT_GLOBAL_OPTS is used
-            in_opts: an optional list of input options for ffmpeg
+            in_opts: an optional list of input options for ffmpeg, By default,
+                self.DEFAULT_IN_OPTS is used
             out_opts: an optional list of output options for ffmpeg. By
                 default, self.DEFAULT_VIDEO_OUT_OPTS is used when the output
                 path is a video file and self.DEFAULT_IMAGES_OUT_OPTS is used
@@ -2440,7 +2443,7 @@ class FFmpeg(object):
 
         self._filter_opts = self._gen_filter_opts(fps, size, scale)
         self._global_opts = global_opts or self.DEFAULT_GLOBAL_OPTS
-        self._in_opts = in_opts or []
+        self._in_opts = in_opts
         self._out_opts = out_opts
         self._args = None
         self._p = None
@@ -2477,6 +2480,11 @@ class FFmpeg(object):
         self.is_input_streaming = (inpath == "-")
         self.is_output_streaming = (outpath == "-")
 
+        if self._in_opts is None:
+            in_opts = self.DEFAULT_IN_OPTS
+        else:
+            in_opts = self._in_opts
+
         if self._out_opts is None:
             if is_supported_video_file(outpath):
                 out_opts = self.DEFAULT_VIDEO_OUT_OPTS
@@ -2488,7 +2496,7 @@ class FFmpeg(object):
         self._args = (
             ["ffmpeg"] +
             self._global_opts +
-            self._in_opts + ["-i", inpath] +
+            in_opts + ["-i", inpath] +
             self._filter_opts + out_opts + [outpath]
         )
 
