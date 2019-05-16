@@ -1423,7 +1423,7 @@ def extract_clip(
     # frames of the clip will be exactly the same as those encountered via
     # other clip-based methods in ETA?
     #
-    in_opts = []
+    in_opts = ["-vsync", "0"]
     if start_time is not None:
         if not isinstance(start_time, six.string_types):
             start_time = "%.3f" % start_time
@@ -1453,7 +1453,7 @@ def extract_clip(
         # Clean up fast output by re-encoding the extracted clip
         # Note that this may not exactly correspond to the slow, accurate
         # implementation above
-        ffmpeg = FFmpeg(in_opts=[], out_opts=[])
+        ffmpeg = FFmpeg(in_opts=["-vsync", "0"], out_opts=[])
         ffmpeg.run(tmp_path, output_path)
 
 
@@ -1501,7 +1501,9 @@ def sample_select_frames(video_path, frames, output_patt=None, fast=False):
         # Sample frames to disk temporarily
         tmp_patt = os.path.join(d, "frame-%d" + ext)
         ss = "+".join(["eq(n\,%d)" % (f - 1) for f in frames])
-        ffmpeg = FFmpeg(out_opts=["-vf", "select='%s'" % ss, "-vsync", "0"])
+        ffmpeg = FFmpeg(
+            in_opts=["-vsync", "0"],
+            out_opts=["-vf", "select='%s'" % ss, "-vsync", "0"])
         ffmpeg.run(video_path, tmp_patt)
 
         if output_patt is not None:
@@ -1975,7 +1977,7 @@ class FFmpegVideoReader(VideoReader):
         if keyframes_only:
             in_opts = ["-skip_frame", "nokey", "-vsync", "0"]
         else:
-            in_opts = None
+            in_opts = ["-vsync", "0"]
 
         self._stream_info = VideoStreamInfo.build_for(inpath)
         self._ffmpeg = FFmpeg(
