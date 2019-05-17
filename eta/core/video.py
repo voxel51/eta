@@ -32,7 +32,6 @@ import six
 from collections import defaultdict, OrderedDict
 import dateutil.parser
 import errno
-import json
 import logging
 import numbers
 import os
@@ -1403,52 +1402,40 @@ def get_stream_info(inpath):
         raise FFprobeError("Unable to get stream info for '%s'" % inpath)
 
 
-def get_encoding_str(inpath, use_ffmpeg=True):
+def get_encoding_str(inpath):
     '''Get the encoding string of the input video.
 
     Args:
         inpath: video path
-        use_ffmpeg: whether to use ffmpeg (True) or OpenCV (False)
     '''
-    r = FFmpegVideoReader(inpath) if use_ffmpeg else OpenCVVideoReader(inpath)
-    with r:
-        return r.encoding_str
+    return VideoMetadata.build_for(inpath).encoding_str
 
 
-def get_frame_rate(inpath, use_ffmpeg=True):
+def get_frame_rate(inpath):
     '''Get the frame rate of the input video.
 
     Args:
         inpath: video path
-        use_ffmpeg: whether to use ffmpeg (True) or OpenCV (False)
     '''
-    r = FFmpegVideoReader(inpath) if use_ffmpeg else OpenCVVideoReader(inpath)
-    with r:
-        return r.frame_rate
+    return VideoMetadata.build_for(inpath).frame_rate
 
 
-def get_frame_size(inpath, use_ffmpeg=True):
+def get_frame_size(inpath):
     '''Get the frame (width, height) of the input video.
 
     Args:
         inpath: video path
-        use_ffmpeg: whether to use ffmpeg (True) or OpenCV (False)
     '''
-    r = FFmpegVideoReader(inpath) if use_ffmpeg else OpenCVVideoReader(inpath)
-    with r:
-        return r.frame_size
+    return VideoMetadata.build_for(inpath).frame_size
 
 
-def get_frame_count(inpath, use_ffmpeg=True):
+def get_frame_count(inpath):
     '''Get the number of frames in the input video.
 
     Args:
         inpath: video path
-        use_ffmpeg: whether to use ffmpeg (True) or OpenCV (False)
     '''
-    r = FFmpegVideoReader(inpath) if use_ffmpeg else OpenCVVideoReader(inpath)
-    with r:
-        return r.total_frame_count
+    return VideoMetadata.build_for(inpath).total_frame_count
 
 
 def get_raw_frame_number(raw_frame_rate, raw_frame_count, fps, sampled_frame):
@@ -1510,13 +1497,13 @@ def extract_clip(
     # frames of the clip will be exactly the same as those encountered via
     # other clip-based methods in ETA?
     #
-    in_opts = []
+    in_opts = ["-vsync", "0"]
     if start_time is not None:
         if not isinstance(start_time, six.string_types):
             start_time = "%.3f" % start_time
         in_opts.extend(["-ss", start_time])
 
-    out_opts = []
+    out_opts = ["-vsync", "0"]
     if duration is not None:
         if not isinstance(duration, six.string_types):
             duration = "%.3f" % duration
@@ -1540,7 +1527,7 @@ def extract_clip(
         # Clean up fast output by re-encoding the extracted clip
         # Note that this may not exactly correspond to the slow, accurate
         # implementation above
-        ffmpeg = FFmpeg(in_opts=[], out_opts=[])
+        ffmpeg = FFmpeg(out_opts=["-vsync", "0"])
         ffmpeg.run(tmp_path, output_path)
 
 
@@ -2071,6 +2058,7 @@ class FFmpegVideoReader(VideoReader):
         self._ffmpeg = FFmpeg(
             in_opts=in_opts,
             out_opts=[
+                "-vsync", "0",              # never omit frames
                 "-f", 'image2pipe',         # pipe frames to stdout
                 "-vcodec", "rawvideo",      # output will be raw video
                 "-pix_fmt", "rgb24",        # pixel format
@@ -2262,7 +2250,7 @@ class OpenCVVideoReader(VideoReader):
             StopIteration: if there are no more frames to process or the next
                 frame could not be read or parsed for any reason
         '''
-        for idx in range(max(0, self.frame_number), next(self._ranges)):
+        for _ in range(max(0, self.frame_number), next(self._ranges)):
             if not self._grab():
                 logger.warning(
                     "Failed to grab frame %d. Raising StopIteration now",
@@ -2489,9 +2477,13 @@ class FFmpeg(object):
 
     DEFAULT_GLOBAL_OPTS = ["-loglevel", "error"]
 
+    DEFAULT_IN_OPTS = ["-vsync", "0"]
+
     DEFAULT_VIDEO_OUT_OPTS = [
         "-c:v", "libx264", "-preset", "medium", "-crf", "23",
-        "-pix_fmt", "yuv420p", "-an"]
+        "-pix_fmt", "yuv420p", "-vsync", "0", "-an"]
+
+    DEFAULT_IMAGES_OUT_OPTS = ["-vsync", "0"]
 
     def __init__(
             self,
@@ -2513,17 +2505,19 @@ class FFmpeg(object):
                 video (e.g., 0.5 or 2)
             global_opts: an optional list of global options for ffmpeg. By
                 default, self.DEFAULT_GLOBAL_OPTS is used
-            in_opts: an optional list of input options for ffmpeg
+            in_opts: an optional list of input options for ffmpeg, By default,
+                self.DEFAULT_IN_OPTS is used
             out_opts: an optional list of output options for ffmpeg. By
                 default, self.DEFAULT_VIDEO_OUT_OPTS is used when the output
-                path is a video file
+                path is a video file and self.DEFAULT_IMAGES_OUT_OPTS is used
+                when the output path is an image sequence
         '''
         self.is_input_streaming = False
         self.is_output_streaming = False
 
         self._filter_opts = self._gen_filter_opts(fps, size, scale)
         self._global_opts = global_opts or self.DEFAULT_GLOBAL_OPTS
-        self._in_opts = in_opts or []
+        self._in_opts = in_opts
         self._out_opts = out_opts
         self._args = None
         self._p = None
@@ -2560,15 +2554,23 @@ class FFmpeg(object):
         self.is_input_streaming = (inpath == "-")
         self.is_output_streaming = (outpath == "-")
 
-        if self._out_opts is None and is_supported_video_file(outpath):
-            out_opts = self.DEFAULT_VIDEO_OUT_OPTS
+        if self._in_opts is None:
+            in_opts = self.DEFAULT_IN_OPTS
         else:
-            out_opts = self._out_opts or []
+            in_opts = self._in_opts
+
+        if self._out_opts is None:
+            if is_supported_video_file(outpath):
+                out_opts = self.DEFAULT_VIDEO_OUT_OPTS
+            else:
+                out_opts = self.DEFAULT_IMAGES_OUT_OPTS
+        else:
+            out_opts = self._out_opts
 
         self._args = (
             ["ffmpeg"] +
             self._global_opts +
-            self._in_opts + ["-i", inpath] +
+            in_opts + ["-i", inpath] +
             self._filter_opts + out_opts + [outpath]
         )
 
