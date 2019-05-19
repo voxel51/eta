@@ -192,6 +192,11 @@ else
     fi
 fi
 
+# Get submodules
+MSG "Initializing submodules"
+CRITICAL git submodule init
+CRITICAL git submodule update
+
 #
 # tensorflow/models
 #
@@ -231,13 +236,7 @@ MSG "You must have '$(pwd)/research' in 'pythonpath_dirs' in your ETA config"
 MSG "You must have '$(pwd)/research/slim' in 'pythonpath_dirs' in your ETA config"
 
 
-# Get submodules
-MSG "Initializing submodules"
-CRITICAL git submodule init
-CRITICAL git submodule update
-
-
-MSG "Installing ETA package in editable mode"
+MSG "Installing ETA"
 CRITICAL pip install -e .
 
 
