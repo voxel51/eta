@@ -6,17 +6,17 @@
         {
             "name": "format_videos",
             "working_dir": ".",
-            "script": "eta/modules/format_videos.py",
-            "config_path": "examples/demo_video/format_videos.json"
+            "script": "../eta/modules/format_videos.py",
+            "config_path": "demo_video/format_videos.json"
         },
         {
             "name": "clip_videos",
             "working_dir": ".",
-            "script": "eta/modules/clip_videos.py",
-            "config_path": "examples/demo_video/clip_videos.json"
+            "script": "../eta/modules/clip_videos.py",
+            "config_path": "demo_video/clip_videos.json"
         }
     ],
     "logging_config": {
-        "filename": "examples/demo_video/pipeline.log"
+        "filename": "demo_video/pipeline.log"
     }
 }
