@@ -111,59 +111,7 @@ eta --help
 
 ## Testing your installation
 
-To test your installation, run the following commands:
-
-```shell
-# Download example data
-python examples/download_data.py
-
-# Perform some image manipulation
-python examples/demo_images.py
-
-# Run a pre-configued video processing pipeline
-eta run examples/demo_video/pipeline.json
-
-# Build and run pipelines from requests using the `eta` command-line tool
-eta build -r examples/demo_video_formatter/request.json --run-now
-eta build -r examples/demo_video_clipper/request.json --run-now
-
-#
-# Run an object detection pipeline and visualize the results
-#
-# Note: A 120MB Faster R-CNN ResNet-50 model will be downloaded from the web
-#   and stored in `eta/models` the first time you run this
-#
-cd examples/demo_object_detector
-eta build -r detect-people.json --run-now
-eta build -r detect-vehicles.json --run-now
-# view out/people-annotated.mp4
-# view out/vehicles-annotated.mp4
-
-#
-# Run an image detection + classification pipeline and visualize the results
-#
-# Note: A 550MB VGG-16 weights file will be downloaded from the web and stored
-#   in `eta/models` the first time you run this
-#
-cd examples/demo_cats
-eta build -r detect-classify-cats.json --run-now
-# view the images in out/cats
-
-#
-# Example image/video embedding
-#
-cd examples/demo_embed_vgg16
-# Example image embedding
-python embed_image.py
-# Another example image embedding
-python embed_image_direct.py
-# Example video embedding
-python embed_video.py
-# Example use of the embed_vgg16 module
-bash embed_vgg16_module.bash
-# Example embedding pipeline
-eta run embed_vgg16_pipeline-config.json
-```
+To test your installation, run some of [these examples](examples/README.md).
 
 
 ## Uninstallation
