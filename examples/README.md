@@ -34,6 +34,47 @@ eta build -r demo_video_clipper/request.json --run-now
 ```
 
 
+## Image detection and classification
+
+The following code runs a pipeline that performs image detection and
+classification to detect cats in a directory of images.
+
+See [this README](demo_cats/README.md) for more information.
+
+Note that a 550MB VGG-16 weights file will be downloaded from the web and
+stored in `eta/models` the first time you run this code (if you have not
+already run an example that uses VGG-16).
+
+```shell
+cd demo_cats
+eta build -r detect-classify-cats.json --run-now
+cd ..
+```
+
+View the images in the `out/cats-annotated` directory to inspect the output of
+the pipeline.
+
+
+## Object detection
+
+The following code runs an object detection pipeline on video.
+
+See [this README](demo_object_detector/README.md) for more information.
+
+Note that a 120MB Faster R-CNN ResNet-50 model will be downloaded from the web
+and stored in `eta/models` the first time you run this.
+
+```shell
+cd demo_object_detector
+eta build -r detect-people.json --run-now
+eta build -r detect-vehicles.json --run-now
+cd ..
+```
+
+Open the `out/people-annotated.mp4` and `out/vehicles-annotated.mp4` in your
+video player to inspect the output of the pipelines.
+
+
 ## Embeddings
 
 Examples of image/video embedding:
@@ -63,50 +104,9 @@ cd ..
 ```
 
 
-## Object detection
-
-The following code runs an object detection pipeline.
-
-See [the README](demo_object_detector/README.md) for more information.
-
-Note that a 120MB Faster R-CNN ResNet-50 model will be downloaded from the web
-and stored in `eta/models` the first time you run this.
-
-```shell
-cd demo_object_detector
-eta build -r detect-people.json --run-now
-eta build -r detect-vehicles.json --run-now
-cd ..
-```
-
-Open the `out/people-annotated.mp4` and `out/vehicles-annotated.mp4` in your
-video player to inspect the output of the pipelines.
-
-
-## Image detection and classification
-
-The following code runs a pipeline that performs image detection and
-classification to detect cats in a directory of images.
-
-See [the README](demo_cats/README.md) for more information.
-
-Note that a 550MB VGG-16 weights file will be downloaded from the web and
-stored in `eta/models` the first time you run this code (if you have not
-already run an example that uses VGG-16).
-
-```shell
-cd demo_cats
-eta build -r detect-classify-cats.json --run-now
-cd ..
-```
-
-View the images in the `demo_cats/out/cats` directory to inspect the output of
-the pipeline.
-
-
 ## Cleanup
 
-To cleanup the outputs of the examples, run:
+To cleanup the example outputs, run:
 
 ```shell
 bash clean.bash
