@@ -2,7 +2,7 @@
 '''
 ETA image manipulation demo.
 
-Copyright 2017, Voxel51, Inc.
+Copyright 2017-2019, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
@@ -33,8 +33,8 @@ def plot(img):
 
 
 here = os.path.dirname(__file__)
-path1 = os.path.join(here, "data/water.jpg")
-path2 = os.path.join(here, "data/logo.png")
+path1 = os.path.join(here, "../data/water.jpg")
+path2 = os.path.join(here, "../data/logo.png")
 
 img1 = etai.resize(etai.read(path1), width=1024)
 img2 = etai.resize(etai.read(path2), width=400)
