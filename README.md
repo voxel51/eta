@@ -62,8 +62,7 @@ is found, `tensorflow-gpu 1.4` is installed.
 Note that ETA is installed in editable via `pip install -e .`, so don't delete
 the directory after installation!
 
-
-## Setting up your execution environment
+### Setting up your execution environment
 
 When the root `eta` package is imported, it tries to read the `eta/config.json`
 file to configure various package-level constants. Many advanced ETA features
@@ -112,6 +111,39 @@ eta --help
 ## Testing your installation
 
 To test your installation, run some of [these examples](examples/README.md).
+
+
+## Organization
+
+The ETA package is organized as described below. For more information about the
+design and function of the various ETA components, read the documentation in
+the [docs folder](https://github.com/voxel51/eta/tree/develop/docs).
+
+- `eta/classifiers/`: interfaces for common classifiers
+
+- `eta/core/`: the core ETA library, which includes utilities for working
+with images, videos, embeddings, etc.
+
+- `eta/detectors/`: interfaces for common detectors
+
+- `eta/models/`: library of ML models. The `manifest.json` file in this
+folder enumerates the models, which are downloaded to this folder as needed.
+See the [Models Developer's Guide](https://github.com/voxel51/eta/blob/develop/docs/models_dev_guide.md)
+for more information about ETA's model registry.
+
+- `eta/modules/`: library of video processing/analytics modules. See the
+[Module Developer's Guide](https://github.com/voxel51/eta/blob/develop/docs/modules_dev_guide.md)
+for more information about ETA modules.
+
+- `eta/pipelines/`: library of video processing/analytics pipelines. See the
+[Pipeline Developer's Guide](https://github.com/voxel51/eta/blob/develop/docs/pipelines_dev_guide.md)
+for more information about ETA pipelines.
+
+- `eta/resources/`: resources such as media, templates, etc.
+
+In addition, ETA makes use of the following external dependencies:
+
+- `tensorflow/`: Third-party TensorFlow repositories that ETA builds upon
 
 
 ## Uninstallation
