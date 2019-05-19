@@ -128,15 +128,15 @@ with images, videos, embeddings, etc.
 
 - `eta/models/`: library of ML models. The `manifest.json` file in this
 folder enumerates the models, which are downloaded to this folder as needed.
-See the [Models Developer's Guide](https://github.com/voxel51/eta/blob/develop/docs/models_dev_guide.md)
+See the [Models developer's guide](https://github.com/voxel51/eta/blob/develop/docs/models_dev_guide.md)
 for more information about ETA's model registry.
 
 - `eta/modules/`: library of video processing/analytics modules. See the
-[Module Developer's Guide](https://github.com/voxel51/eta/blob/develop/docs/modules_dev_guide.md)
+[Module developer's guide](https://github.com/voxel51/eta/blob/develop/docs/modules_dev_guide.md)
 for more information about ETA modules.
 
 - `eta/pipelines/`: library of video processing/analytics pipelines. See the
-[Pipeline Developer's Guide](https://github.com/voxel51/eta/blob/develop/docs/pipelines_dev_guide.md)
+[Pipeline developer's guide](https://github.com/voxel51/eta/blob/develop/docs/pipelines_dev_guide.md)
 for more information about ETA pipelines.
 
 - `eta/resources/`: resources such as media, templates, etc.
