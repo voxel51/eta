@@ -81,12 +81,15 @@ class LogoConfig(Config):
 class Logo(Configurable):
     '''Class for rendering a vector/raster logo onto an image.'''
 
-    def __init__(self, config):
+    def __init__(self, config=None):
         '''Constructs a Logo instance.
 
         Args:
-            config: a LogoConfig instance
+            config: an LogoConfig instance. If omitted, the default LogoConfig
+                is used
         '''
+        if config is None:
+            config = LogoConfig.load_default()
         self.validate(config)
         self.config = config
         self._width = etai.Width(self.config.width)
