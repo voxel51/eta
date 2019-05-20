@@ -1,5 +1,5 @@
 '''
-Package declaration.
+Detectors package declaration.
 
 Copyright 2017-2019, Voxel51, Inc.
 voxel51.com
