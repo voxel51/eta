@@ -33,7 +33,7 @@ def load_labels_map(labels_map_path):
         a dictionary mapping indexes to label strings
     '''
     labels_map = {}
-    with open(labels_map_path, "rb") as f:
+    with open(labels_map_path, "r") as f:
         for line in f:
             idx, label = line.split(":")
             labels_map[int(idx)] = label.strip()
