@@ -152,8 +152,8 @@ if [ "${GCARD}" == "ON" ]; then
         CRITICAL pip install --upgrade tensorflow-gpu
     fi
 else
-    MSG "Installing tensorflow 1.4.0"
-    CRITICAL pip install --upgrade tensorflow==1.4.0
+    MSG "Installing tensorflow 1.12.0"
+    CRITICAL pip install --upgrade tensorflow==1.12.0
 fi
 
 
