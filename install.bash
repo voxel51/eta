@@ -234,6 +234,7 @@ CRITICAL protoc research/object_detection/protos/*.proto \
     --python_out=research
 MSG "You must have '$(pwd)/research' in 'pythonpath_dirs' in your ETA config"
 MSG "You must have '$(pwd)/research/slim' in 'pythonpath_dirs' in your ETA config"
+cd ../..
 
 
 MSG "Installing ETA"
