@@ -443,6 +443,10 @@ class VideoSetLabels(Serializable):
     def __bool__(self):
         return bool(self.videos)
 
+    def get_filenames(self):
+        '''Returns the set of filenames of VideoLabels in this instance.'''
+        return set(self._filename_map)
+
     @property
     def has_schema(self):
         '''Returns True/False whether the container has an enforced schema.'''

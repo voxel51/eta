@@ -147,6 +147,10 @@ class ImageSetLabels(Serializable):
     def __bool__(self):
         return bool(self.images)
 
+    def get_filenames(self):
+        '''Returns the set of filenames of ImageLabels in this instance.'''
+        return set(self._filename_map)
+
     @property
     def has_schema(self):
         '''Returns True/False whether this instance has an enforced schema.'''
