@@ -80,11 +80,9 @@ def google_cloud_api_retry(func):
     @retry(retry_on_exception=is_500_or_503,
            stop_max_attempt_number=stop_max_attempt_number,
            wait_exponential_multiplier=1000, wait_exponential_max=1 * 1000)
-
     @retry(retry_on_exception=is_429,
            stop_max_attempt_number=stop_max_attempt_number,
            wait_fixed=30 * 1000)
-
     def wrapper(*args, **kwargs):
         return func(*args, **kwargs)
 
