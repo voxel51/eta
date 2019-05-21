@@ -60,7 +60,7 @@ logging.getLogger("googleapiclient").setLevel(logging.ERROR)
 logging.getLogger("paramiko").setLevel(logging.ERROR)
 
 
-def google_api_retry(func):
+def google_cloud_api_retry(func):
     '''Decorator for handling retry of Google API errors.
 
     Follows recommendations from:
@@ -268,7 +268,7 @@ class GoogleCloudStorageClient(StorageClient, NeedsGoogleCredentials):
             self._client = gcs.Client()
         self.chunk_size = chunk_size or self.DEFAULT_CHUNK_SIZE
 
-    @google_api_retry
+    @google_cloud_api_retry
     def upload(self, local_path, cloud_path, content_type=None):
         '''Uploads the file to Google Cloud Storage.
 
@@ -282,7 +282,7 @@ class GoogleCloudStorageClient(StorageClient, NeedsGoogleCredentials):
         blob = self._get_blob(cloud_path)
         blob.upload_from_filename(local_path, content_type=content_type)
 
-    @google_api_retry
+    @google_cloud_api_retry
     def upload_bytes(self, bytes_str, cloud_path, content_type=None):
         '''Uploads the given bytes to Google Cloud Storage.
 
@@ -297,7 +297,7 @@ class GoogleCloudStorageClient(StorageClient, NeedsGoogleCredentials):
         blob = self._get_blob(cloud_path)
         blob.upload_from_string(bytes_str, content_type=content_type)
 
-    @google_api_retry
+    @google_cloud_api_retry
     def upload_stream(self, file_obj, cloud_path, content_type=None):
         '''Uploads the contents of the given file-like object to Google Cloud
         Storage.
@@ -314,7 +314,7 @@ class GoogleCloudStorageClient(StorageClient, NeedsGoogleCredentials):
         blob = self._get_blob(cloud_path)
         blob.upload_from_file(file_obj, content_type=content_type)
 
-    @google_api_retry
+    @google_cloud_api_retry
     def download(self, cloud_path, local_path):
         '''Downloads the file from Google Cloud Storage.
 
@@ -326,7 +326,7 @@ class GoogleCloudStorageClient(StorageClient, NeedsGoogleCredentials):
         etau.ensure_basedir(local_path)
         blob.download_to_filename(local_path)
 
-    @google_api_retry
+    @google_cloud_api_retry
     def download_bytes(self, cloud_path):
         '''Downloads the file from Google Cloud Storage and returns the bytes
         string.
@@ -341,7 +341,7 @@ class GoogleCloudStorageClient(StorageClient, NeedsGoogleCredentials):
         blob = self._get_blob(cloud_path)
         return blob.download_as_string()
 
-    @google_api_retry
+    @google_cloud_api_retry
     def download_stream(self, cloud_path, file_obj):
         '''Downloads the file from Google Cloud Storage to the given file-like
         object.
@@ -354,7 +354,7 @@ class GoogleCloudStorageClient(StorageClient, NeedsGoogleCredentials):
         blob = self._get_blob(cloud_path)
         blob.download_to_file(file_obj)
 
-    @google_api_retry
+    @google_cloud_api_retry
     def delete(self, cloud_path):
         '''Deletes the given file from Google Cloud Storage.
 
@@ -364,7 +364,7 @@ class GoogleCloudStorageClient(StorageClient, NeedsGoogleCredentials):
         blob = self._get_blob(cloud_path)
         blob.delete()
 
-    @google_api_retry
+    @google_cloud_api_retry
     def get_file_metadata(self, cloud_path):
         '''Returns metadata about the given file in Google Cloud Storage.
 
@@ -392,7 +392,7 @@ class GoogleCloudStorageClient(StorageClient, NeedsGoogleCredentials):
             "encoding": blob.content_encoding
         }
 
-    @google_api_retry
+    @google_cloud_api_retry
     def list_files_in_folder(self, cloud_folder, recursive=True):
         '''Returns a list of the files in the given "folder" in Google Cloud
         Storage.
@@ -420,7 +420,7 @@ class GoogleCloudStorageClient(StorageClient, NeedsGoogleCredentials):
                 paths.append(os.path.join(prefix, blob.name))
         return paths
 
-    @google_api_retry
+    @google_cloud_api_retry
     def generate_signed_url(self, cloud_path, method="GET", hours=24):
         '''Generates a signed URL for accessing the given storage object.
 
@@ -511,7 +511,6 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
 
         self.chunk_size = chunk_size or self.DEFAULT_CHUNK_SIZE
 
-    @google_api_retry
     def upload(self, local_path, folder_id, filename=None, content_type=None):
         '''Uploads the file to Google Drive.
 
@@ -533,7 +532,6 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
         with open(local_path, "rb") as f:
             return self._do_upload(f, folder_id, name, content_type)
 
-    @google_api_retry
     def upload_bytes(self, bytes_str, folder_id, filename, content_type=None):
         '''Uploads the given bytes to Google Drive.
 
@@ -553,7 +551,6 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
         with io.BytesIO(_to_bytes(bytes_str)) as f:
             return self._do_upload(f, folder_id, filename, content_type)
 
-    @google_api_retry
     def upload_stream(self, file_obj, folder_id, filename, content_type=None):
         '''Uploads the contents of the given file-like object to Google Drive.
 
@@ -573,7 +570,6 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
         '''
         return self._do_upload(file_obj, folder_id, filename, content_type)
 
-    @google_api_retry
     def download(self, file_id, local_path):
         '''Downloads the file from Google Drive.
 
@@ -585,7 +581,6 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
         with open(local_path, "wb") as f:
             self._do_download(file_id, f)
 
-    @google_api_retry
     def download_bytes(self, file_id):
         '''Downloads a file from Google Drive and returns the bytes.
 
@@ -599,7 +594,6 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
             self._do_download(file_id, f)
             return f.getvalue()
 
-    @google_api_retry
     def download_stream(self, file_id, file_obj):
         '''Downloads the file from Google Drive to the given file-like object.
 
@@ -610,7 +604,6 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
         '''
         self._do_download(file_id, file_obj)
 
-    @google_api_retry
     def delete(self, file_or_folder_id):
         '''Deletes the file or folder from Google Drive.
 
@@ -620,7 +613,6 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
         self._service.files().delete(
             fileId=file_or_folder_id, supportsTeamDrives=True).execute()
 
-    @google_api_retry
     def get_team_drive_id(self, name):
         '''Get the ID of the Team Drive with the given name.
 
@@ -641,7 +633,6 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
 
         raise GoogleDriveStorageClientError("Team Drive '%s' not found" % name)
 
-    @google_api_retry
     def get_file_metadata(self, file_id):
         '''Gets metadata about the file with the given ID.
 
@@ -655,7 +646,6 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
         return self._service.files().get(
             fileId=file_id, supportsTeamDrives=True).execute()
 
-    @google_api_retry
     def get_root_team_drive_id(self, file_id):
         '''Returns the ID of the root Team Drive in which this file lives.
 
@@ -668,7 +658,6 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
         '''
         return self.get_file_metadata(file_id).get("teamDriveId", None)
 
-    @google_api_retry
     def is_folder(self, file_id):
         '''Determines whether the file with the given ID is a folder.
 
@@ -681,7 +670,6 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
         mime_type = self.get_file_metadata(file_id).get("mimeType", None)
         return mime_type == "application/vnd.google-apps.folder"
 
-    @google_api_retry
     def create_folder_if_necessary(self, folder_name, parent_folder_id):
         '''Creates the given folder within the given parent folder, if
         necessary.
@@ -699,7 +687,6 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
             folder_id = self._create_folder_if_necessary(folder, folder_id)
         return folder_id
 
-    @google_api_retry
     def create_folder(self, folder_name, parent_folder_id):
         '''Creates the given folder within the given parent folder. The folder
         is assumed not to exist.
@@ -717,7 +704,6 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
             folder_id = self._create_folder(folder, folder_id)
         return folder_id
 
-    @google_api_retry
     def list_files_in_folder(self, folder_id):
         '''Returns a list of the files in the folder with the given ID.
 
@@ -760,7 +746,6 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
             if not page_token:
                 return files
 
-    @google_api_retry
     def upload_files_in_folder(
             self, local_dir, folder_id, skip_failures=False,
             skip_existing_files=False):
@@ -819,7 +804,6 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
                     folder_id)
         return file_ids
 
-    @google_api_retry
     def download_files_in_folder(
             self, folder_id, local_dir, skip_failures=False,
             skip_existing_files=False, recursive=True):
@@ -888,7 +872,6 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
                     local_path)
         return filenames
 
-    @google_api_retry
     def delete_duplicate_files_in_folder(self, folder_id, skip_failures=False):
         '''Deletes any duplicate files (files with the same filename) in the
         given Google Drive folder.
