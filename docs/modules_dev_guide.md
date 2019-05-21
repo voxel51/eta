@@ -1,4 +1,4 @@
-# ETA Module Developer's Guide
+# Module Developer's Guide
 
 This document describes best practices for contributing modules to ETA. See
 `core_dev_guide.md` for instructions on contributing to the core ETA

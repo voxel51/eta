@@ -1,6 +1,10 @@
 # ETA Virtual Environment Guide
 
-This document describes how to install ETA in virtual environments.
+This document describes how to install ETA in a
+[virtual environment](https://virtualenv.pypa.io/en/stable). Using a virtual
+environment is highly recommended because it allows you to maintain a separate
+Python working environment for ETA that operates independently of other
+packages and Python applications on your machine.
 
 
 ## Creating virtual environments
@@ -11,7 +15,11 @@ Follow these instructions to create Python 2 and Python 3 virtual environments.
 https://www.python.org/downloads
 
 ```shell
-# Mac only
+# Linux
+sudo apt-get install python2.7
+sudo apt-get install python3.6
+
+# Mac
 brew install python
 brew install python3
 ```
@@ -33,15 +41,13 @@ ENV_DIR="/path/to/env"
 cd "${ENV_DIR}"
 ```
 
-* Make a Python 2 environment, modifying the python executable path as needed:
+* Make a virtual environment, modifying the python executable path as needed:
 
 ```shell
+# example for Python 2.X
 virtualenv -p /usr/local/bin/python2 eta2
-```
 
-* Make a Python 3 environment, modifying the python executable path as needed:
-
-```shell
+# example for Python 3.X
 virtualenv -p /usr/local/bin/python3 eta3
 ```
 
@@ -66,24 +72,22 @@ exit() {
 
 ## Installing ETA in a virtual environment
 
-Follow these instructions to install ETA in a virtual environment.
-
-* View details of your default Python setup:
-
-```shell
-which python
-which pip
-pip freeze
-```
-
-* Activate the virtual environment. For example, to activate the `eta2`
+To install ETA in a virtual environment, simply activate the virtual
 environment:
 
 ```shell
-eta2
+# Example of activating the Python 3.X environment created above
+eta3
 ```
 
-* View details of your virtual environment:
+and then run the ETA install script from the ETA root directory:
+
+```shell
+bash install.bash
+```
+
+To verify that your ETA installation is independent of your global Python
+environment, view the details of your virtual setup:
 
 ```shell
 which python
@@ -91,31 +95,14 @@ which pip
 pip freeze
 ```
 
-* Proceed with standard ETA installation:
+then deactivate the virtual environment
 
 ```shell
-cd /path/to/eta  # modify this
-
-# Install external dependencies
-bash install_externals.bash
-
-# Install ETA
-pip install -e .
-```
-
-* See what packages were installed in your virtual environment:
-
-```shell
-pip freeze
-```
-
-* Deactivate the virtual environment:
-
-```shell
+# Example of deactivating an environment created in the previous section
 exit
 ```
 
-* Verify that your default python setup hasn't changed:
+and compare to the details of your global setup:
 
 ```shell
 which python

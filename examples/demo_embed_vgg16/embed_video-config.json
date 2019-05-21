@@ -1,9 +1,4 @@
 {
-    "_comment": [
-        "Sets up a simple vgg16 video featurizer. ",
-        "This does not setup a specific VGG16, so the",
-        "ETA default config will be used."
-    ],
     "video_path": "../data/water-20frames/%05d.png",
     "video_frames_featurizer": {
         "backing_path": "out/eta-backing",

@@ -42,6 +42,7 @@ import tempfile
 import timeit
 import zipfile
 
+import eta
 import eta.constants as etac
 
 
@@ -101,18 +102,32 @@ def has_gpu():
         return False
 
 
-def fill_eta_pattern(string):
-    '''Fills the {{eta}} patterns, if any, in the given string with the
-    full path to the ETA root directory.
+def fill_patterns(string, patterns):
+    '''Fills the patterns, if any, in the given string.
+
+    Args:
+        string: a string
+        patterns: a dictionary of key -> replace pairs
+
+    Returns:
+        a copy of string with any patterns replaced
     '''
-    return string.replace("{{eta}}", etac.BASE_DIR)
+    for patt, val in iteritems(patterns):
+        string = string.replace(patt, val)
+    return string
 
 
-def fill_resources_pattern(string):
-    '''Fills the {{resources}} patterns, if any, in the given string with the
-    full path to the ETA resources directory.
+def fill_config_patterns(string):
+    '''Fills the patterns from ``eta.config.patterns``, if any, in the given
+    string.
+
+    Args:
+        string: a string
+
+    Returns:
+        a copy of string with any patterns replaced
     '''
-    return string.replace("{{resources}}", etac.RESOURCES_DIR)
+    return fill_patterns(string, eta.config.patterns)
 
 
 def get_class_name(cls_or_obj):

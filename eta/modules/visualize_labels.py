@@ -1,11 +1,11 @@
 '''
-A module for visualizing labeled objects in videos.
+A module for visualizing labeled videos.
 
 Info:
     type: eta.core.types.Module
     version: 0.1.0
 
-Copyright 2018-2019, Voxel51, Inc.
+Copyright 2017-2019, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
@@ -53,7 +53,7 @@ class DataConfig(Config):
     '''Data configuration settings.
 
     Inputs:
-        video_path (eta.core.types.Video): [None] A video
+        video_path (eta.core.types.Video): A video
         video_labels_path (eta.core.types.VideoLabels): [None] A JSON file
             containing the video labels
         objects_path (eta.core.types.DetectedObjects): [None] A JSON file
@@ -75,7 +75,7 @@ class ParametersConfig(Config):
     '''Parameter configuration settings.
 
     Parameters:
-        annotation_config (eta.core.types.Object): [None] an
+        annotation_config (eta.core.types.Config): [None] an
             `eta.core.annotations.AnnotationConfig` describing how to render
             the annotations on the video. If omitted, the default settings are
             used

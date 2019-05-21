@@ -1,0 +1,58 @@
+{
+    "info": {
+        "name": "visualize_image_labels",
+        "type": "eta.core.types.Module",
+        "version": "0.1.0",
+        "description": "A module for visualizing labeled images",
+        "exe": "visualize_image_labels.py"
+    },
+    "inputs": [
+        {
+            "name": "images_dir",
+            "type": "eta.core.types.ImageFileDirectory",
+            "description": "A directory of images",
+            "required": false
+        },
+        {
+            "name": "image_path",
+            "type": "eta.core.types.Image",
+            "description": "An image",
+            "required": false
+        },
+        {
+            "name": "image_labels_path",
+            "type": "eta.core.types.ImageLabels",
+            "description": "A JSON file containing the labels for the image specified by image_path",
+            "required": false
+        },
+        {
+            "name": "image_set_labels_path",
+            "type": "eta.core.types.ImageSetLabels",
+            "description": "A JSON file containing the labels for each image in the directory specified by images_dir",
+            "required": false
+        }
+    ],
+    "outputs": [
+        {
+            "name": "output_path",
+            "type": "eta.core.types.ImageFile",
+            "description": "The labeled version of the image specified by image_path",
+            "required": false
+        },
+        {
+            "name": "output_dir",
+            "type": "eta.core.types.ImageFileDirectory",
+            "description": "The labeled versions of the images specified by images_dir",
+            "required": false
+        }
+    ],
+    "parameters": [
+        {
+            "name": "annotation_config",
+            "type": "eta.core.types.Config",
+            "description": "an eta.core.annotations.AnnotationConfig describing how to render the annotations on the images. If omitted, the default settings are used",
+            "required": false,
+            "default": null
+        }
+    ]
+}
