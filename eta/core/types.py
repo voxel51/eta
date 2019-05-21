@@ -957,6 +957,15 @@ class ImageLabelsSchema(JSONFile):
     pass
 
 
+class ImageLabelsThresholds(JSONFile):
+    '''A description of thresholds that can be generated for images.
+
+    Examples:
+        /path/to/image_labels_thresholds.json
+    '''
+    pass
+
+
 class VideoLabels(JSONFile):
     '''A description of the labeled contents of a video.
 
@@ -978,6 +987,16 @@ class VideoLabelsSchema(JSONFile):
 
     Examples:
         /path/to/video_labels_schema.json
+    '''
+    pass
+
+
+
+class VideoLabelsThresholds(JSONFile):
+    '''A description of thresholds that can be generated for videos.
+
+    Examples:
+        /path/to/video_labels_thresholds.json
     '''
     pass
 

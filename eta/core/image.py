@@ -30,6 +30,7 @@ from collections import defaultdict
 import colorsys
 import errno
 import os
+import operator
 from subprocess import Popen, PIPE
 
 import cv2
@@ -221,16 +222,19 @@ class ImageLabels(Serializable):
 
     Attributes:
         filename: the filename of the image
+        metadata: an ImageMetadata describing metadata about the image
         attrs: an AttributeContainer describing the attributes of the image
         objects: a DetectedObjectContainer describing the detected objects in
             the image
     '''
 
-    def __init__(self, filename=None, attrs=None, objects=None):
+    def __init__(self, filename=None, metadata=None, attrs=None, objects=None):
         '''Constructs an ImageLabels instance.
 
         Args:
             filename: an optional filename of the image
+            metadata: an optional ImageMetadata instance describing metadata
+                about the image. By default, no metadata is stored
             attrs: an optional AttributeContainer of attributes for the image.
                 By default, an empty AttributeContainer is created
             objects: an optional DetectedObjectContainer of detected objects
@@ -238,6 +242,7 @@ class ImageLabels(Serializable):
                 created
         '''
         self.filename = filename
+        self.metadata = metadata
         self.attrs = attrs or AttributeContainer()
         self.objects = objects or DetectedObjectContainer()
 
@@ -283,6 +288,8 @@ class ImageLabels(Serializable):
         _attrs = []
         if self.filename:
             _attrs.append("filename")
+        if self.metadata:
+            _attrs.append("metadata")
         if self.attrs:
             _attrs.append("attrs")
         if self.objects:
@@ -294,6 +301,10 @@ class ImageLabels(Serializable):
         '''Constructs a ImageLabels from a JSON dictionary.'''
         filename = d.get("filename", None)
 
+        metadata = d.get("metadata", None)
+        if metadata is not None:
+            metadata = ImageMetadata.from_dict(metadata)
+
         attrs = d.get("attrs", None)
         if attrs is not None:
             attrs = AttributeContainer.from_dict(attrs)
@@ -302,7 +313,8 @@ class ImageLabels(Serializable):
         if objects is not None:
             objects = DetectedObjectContainer.from_dict(objects)
 
-        return cls(filename=filename, attrs=attrs, objects=objects)
+        return cls(
+            filename=filename, metadata=metadata, attrs=attrs, objects=objects)
 
 
 class ImageLabelsSchema(Serializable):
@@ -594,6 +606,66 @@ def write(img, path):
     cv2.imwrite(path, _exchange_rb(img))
 
 
+class ImageMetadata(Serializable):
+    '''Class encapsulating metadata about an image.
+
+    Attributes:
+        frame_size: the [width, height] of the image
+        num_channels: the number of channels in the image
+        size_bytes: the size of the image file on disk, in bytes
+        mime_type: the MIME type of the image
+    '''
+
+    def __init__(
+            self, frame_size=None, num_channels=None, size_bytes=None,
+            mime_type=None):
+        '''Constructs an ImageMetadata instance. All args are optional.
+
+        Args:
+            frame_size: the [width, height] of the image
+            num_channels: the number of channels in the image
+            size_bytes: the size of the image file on disk, in bytes
+            mime_type: the MIME type of the image
+        '''
+        self.frame_size = frame_size
+        self.num_channels = num_channels
+        self.size_bytes = size_bytes
+        self.mime_type = mime_type
+
+    def attributes(self):
+        '''Returns the list of class attributes that will be serialized.'''
+        _attrs = ["frame_size", "num_channels", "size_bytes", "mime_type"]
+        # Exclude attributes that are None
+        return [a for a in _attrs if getattr(self, a) is not None]
+
+    @classmethod
+    def build_for(cls, filepath):
+        '''Builds an ImageMetadata object for the given image.
+
+        Args:
+            filepath: the path to the image on disk
+
+        Returns:
+            an ImageMetadata instance
+        '''
+        img = read(filepath)
+        return cls(
+            frame_size=to_frame_size(img=img),
+            num_channels=img.shape[2],
+            size_bytes=os.path.getsize(filepath),
+            mime_type=etau.guess_mime_type(filepath),
+        )
+
+    @classmethod
+    def from_dict(cls, d):
+        '''Constructs an ImageMetadata from a JSON dictionary.'''
+        return cls(
+            frame_size=d.get("frame_size", None),
+            num_channels=d.get("num_channels", None),
+            size_bytes=d.get("size_bytes", None),
+            mime_type=d.get("mime_type", None))
+
+
 ###### Image Manipulation #####################################################
 
 
@@ -699,6 +771,24 @@ def resize(img, width=None, height=None, *args, **kwargs):
     if width is None:
         width = int(round(img.shape[1] * (height * 1.0 / img.shape[0])))
     return cv2.resize(img, (width, height), *args, **kwargs)
+
+
+def central_crop(img, h, w):
+    '''Crops the central part of an image of required size. Works for both
+    2D and 3D images.
+
+    Args:
+        img: input image
+        (h, w): required output height and width
+
+    Returns:
+        A cropped portion of the image of height `h` and width `w`.
+    '''
+    bounding = (h, w)
+    start = tuple(map(lambda a, da: a // 2 - da // 2, img.shape, bounding))
+    end = tuple(map(operator.add, start, bounding))
+    slices = tuple(map(slice, start, end))
+    return img[slices]
 
 
 def to_double(img):

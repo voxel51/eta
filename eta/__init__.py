@@ -1,7 +1,7 @@
 '''
 ETA package initialization.
 
-Copyright 2017-2018, Voxel51, Inc.
+Copyright 2017-2019, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
@@ -33,7 +33,11 @@ logger = logging.getLogger(__name__)
 
 
 class ETAConfig(EnvConfig):
-    '''Sytem-wide ETA configuration settings.'''
+    '''Sytem-wide ETA configuration settings.
+
+    When an ETAConfig is loaded, any `{{eta}}` patterns are replaced with
+    `eta.constants.BASE_DIR`.
+    '''
 
     def __init__(self, d):
         self.config_dir = self.parse_string(
@@ -66,6 +70,19 @@ class ETAConfig(EnvConfig):
         self.default_video_ext = self.parse_string(
             d, "default_video_ext", env_var="ETA_DEFAULT_VIDEO_EXT",
             default=".mp4")
+        self._fill_eta_patterns()
+
+    def _fill_eta_patterns(self):
+        self.config_dir = etau.fill_eta_pattern(self.config_dir)
+        self.output_dir = etau.fill_eta_pattern(self.output_dir)
+        self.module_dirs = [
+            etau.fill_eta_pattern(m) for m in self.module_dirs]
+        self.pipeline_dirs = [
+            etau.fill_eta_pattern(p) for p in self.pipeline_dirs]
+        self.models_dirs = [
+            etau.fill_eta_pattern(m) for m in self.models_dirs]
+        self.pythonpath_dirs = [
+            etau.fill_eta_pattern(m) for m in self.pythonpath_dirs]
 
 
 def set_config_settings(**kwargs):

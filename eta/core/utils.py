@@ -1,11 +1,11 @@
 '''
 Core system and file I/O utilities.
 
-Copyright 2017-2018, Voxel51, Inc.
+Copyright 2017-2019, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
-Jason Corso, jjc@voxel51.com
+Jason Corso, jason@voxel51.com
 '''
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
@@ -29,6 +29,7 @@ import inspect
 import itertools as it
 import logging
 import math
+import mimetypes
 import os
 import random
 import re
@@ -104,7 +105,7 @@ def fill_eta_pattern(string):
     '''Fills the {{eta}} patterns, if any, in the given string with the
     full path to the ETA root directory.
     '''
-    return string.replace("{{eta}}", etac.ETA_DIR)
+    return string.replace("{{eta}}", etac.BASE_DIR)
 
 
 def fill_resources_pattern(string):
@@ -380,6 +381,19 @@ def to_human_time_str(num_seconds, decimals=1):
     if pluralizable[idx] and num_only_str != "1":
         num_str += "s"  # handle pluralization
     return num_str
+
+
+def guess_mime_type(filepath):
+    '''Guess the MIME type for the given file path. If no reasonable guess can
+    be determined, `application/octet-stream` is returned.
+
+    Args:
+        filepath: path to the file
+
+    Returns:
+        the MIME type string
+    '''
+    return mimetypes.guess_type(filepath)[0] or "application/octet-stream"
 
 
 def read_file(inpath, binary=False):

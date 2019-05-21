@@ -32,7 +32,6 @@ import six
 from collections import defaultdict, OrderedDict
 import dateutil.parser
 import errno
-import json
 import logging
 import os
 from subprocess import Popen, PIPE
@@ -45,7 +44,7 @@ from eta.core.data import AttributeContainer, AttributeContainerSchema
 import eta.core.gps as etag
 import eta.core.image as etai
 from eta.core.objects import DetectedObjectContainer
-from eta.core.serial import Serializable
+from eta.core.serial import load_json, Serializable
 import eta.core.utils as etau
 
 
@@ -214,6 +213,7 @@ class VideoMetadata(Serializable):
         total_frame_count: the total number of frames in the video
         duration: the duration of the video, in seconds
         size_bytes: the size of the video file on disk, in bytes
+        mime_type: the MIME type of the video
         encoding_str: the encoding string for the video
         gps_waypoints: a GPSWaypoints instance describing the GPS coordinates
             for the video
@@ -222,7 +222,7 @@ class VideoMetadata(Serializable):
     def __init__(
             self, start_time=None, frame_size=None, frame_rate=None,
             total_frame_count=None, duration=None, size_bytes=None,
-            encoding_str=None, gps_waypoints=None):
+            mime_type=None, encoding_str=None, gps_waypoints=None):
         '''Constructs a VideoMetadata instance. All args are optional.
 
         Args:
@@ -232,6 +232,7 @@ class VideoMetadata(Serializable):
             total_frame_count: the total number of frames in the video
             duration: the duration of the video, in seconds
             size_bytes: the size of the video file on disk, in bytes
+            mime_type: the MIME type of the video
             encoding_str: the encoding string for the video
             gps_waypoints: a GPSWaypoints instance describing the GPS
                 coordinates for the video
@@ -242,6 +243,7 @@ class VideoMetadata(Serializable):
         self.total_frame_count = total_frame_count
         self.duration = duration
         self.size_bytes = size_bytes
+        self.mime_type = mime_type
         self.encoding_str = encoding_str
         self.gps_waypoints = gps_waypoints
 
@@ -318,7 +320,8 @@ class VideoMetadata(Serializable):
         '''Returns the list of class attributes that will be serialized.'''
         _attrs = [
             "start_time", "frame_size", "frame_rate", "total_frame_count",
-            "duration", "size_bytes", "encoding_str", "gps_waypoints"
+            "duration", "size_bytes", "mime_type", "encoding_str",
+            "gps_waypoints"
         ]
         # Exclude attributes that are None
         return [a for a in _attrs if getattr(self, a) is not None]
@@ -346,6 +349,7 @@ class VideoMetadata(Serializable):
             total_frame_count=vsi.total_frame_count,
             duration=float(vsi.get_raw_value("duration")),
             size_bytes=os.path.getsize(filepath),
+            mime_type=etau.guess_mime_type(filepath),
             encoding_str=vsi.encoding_str,
             gps_waypoints=gps_waypoints,
         )
@@ -373,6 +377,7 @@ class VideoMetadata(Serializable):
             total_frame_count=d.get("total_frame_count", None),
             duration=d.get("duration", None),
             size_bytes=d.get("size_bytes", None),
+            mime_type=d.get("mime_type", None),
             encoding_str=d.get("encoding_str", None),
             gps_waypoints=gps_waypoints)
 
@@ -1308,7 +1313,7 @@ def get_stream_info(inpath):
         ])
         out = ffprobe.run(inpath, decode=True)
 
-        info = json.loads(out)
+        info = load_json(out)
 
         for stream in info["streams"]:
             if stream["codec_type"] == "video":
@@ -1322,52 +1327,40 @@ def get_stream_info(inpath):
         raise FFprobeError("Unable to get stream info for '%s'" % inpath)
 
 
-def get_encoding_str(inpath, use_ffmpeg=True):
+def get_encoding_str(inpath):
     '''Get the encoding string of the input video.
 
     Args:
         inpath: video path
-        use_ffmpeg: whether to use ffmpeg (True) or OpenCV (False)
     '''
-    r = FFmpegVideoReader(inpath) if use_ffmpeg else OpenCVVideoReader(inpath)
-    with r:
-        return r.encoding_str
+    return VideoMetadata.build_for(inpath).encoding_str
 
 
-def get_frame_rate(inpath, use_ffmpeg=True):
+def get_frame_rate(inpath):
     '''Get the frame rate of the input video.
 
     Args:
         inpath: video path
-        use_ffmpeg: whether to use ffmpeg (True) or OpenCV (False)
     '''
-    r = FFmpegVideoReader(inpath) if use_ffmpeg else OpenCVVideoReader(inpath)
-    with r:
-        return r.frame_rate
+    return VideoMetadata.build_for(inpath).frame_rate
 
 
-def get_frame_size(inpath, use_ffmpeg=True):
+def get_frame_size(inpath):
     '''Get the frame (width, height) of the input video.
 
     Args:
         inpath: video path
-        use_ffmpeg: whether to use ffmpeg (True) or OpenCV (False)
     '''
-    r = FFmpegVideoReader(inpath) if use_ffmpeg else OpenCVVideoReader(inpath)
-    with r:
-        return r.frame_size
+    return VideoMetadata.build_for(inpath).frame_size
 
 
-def get_frame_count(inpath, use_ffmpeg=True):
+def get_frame_count(inpath):
     '''Get the number of frames in the input video.
 
     Args:
         inpath: video path
-        use_ffmpeg: whether to use ffmpeg (True) or OpenCV (False)
     '''
-    r = FFmpegVideoReader(inpath) if use_ffmpeg else OpenCVVideoReader(inpath)
-    with r:
-        return r.total_frame_count
+    return VideoMetadata.build_for(inpath).total_frame_count
 
 
 def get_raw_frame_number(raw_frame_rate, raw_frame_count, fps, sampled_frame):
@@ -1429,13 +1422,13 @@ def extract_clip(
     # frames of the clip will be exactly the same as those encountered via
     # other clip-based methods in ETA?
     #
-    in_opts = []
+    in_opts = ["-vsync", "0"]
     if start_time is not None:
         if not isinstance(start_time, six.string_types):
             start_time = "%.3f" % start_time
         in_opts.extend(["-ss", start_time])
 
-    out_opts = []
+    out_opts = ["-vsync", "0"]
     if duration is not None:
         if not isinstance(duration, six.string_types):
             duration = "%.3f" % duration
@@ -1459,7 +1452,7 @@ def extract_clip(
         # Clean up fast output by re-encoding the extracted clip
         # Note that this may not exactly correspond to the slow, accurate
         # implementation above
-        ffmpeg = FFmpeg(in_opts=[], out_opts=[])
+        ffmpeg = FFmpeg(out_opts=["-vsync", "0"])
         ffmpeg.run(tmp_path, output_path)
 
 
@@ -1524,13 +1517,15 @@ def sample_select_frames(video_path, frames, output_patt=None, fast=False):
         return imgs
 
 
-def sample_first_frames(arg, k, size=None):
+def sample_first_frames(arg, k, stride=1, size=None):
     '''Samples the first k frames in a video.
 
     Args:
         arg: can be either the path to the input video or an array of frames
             of size [num_frames, height, width, num_channels]
         k: number of frames to extract
+        stride: number of frames to be skipped in between. By default, a
+            contiguous array of frames in extracted
         size: an optional [width, height] to resize the sampled frames. By
             default, the native dimensions of the frames are used
 
@@ -1540,11 +1535,12 @@ def sample_first_frames(arg, k, size=None):
     # Read frames ...
     if isinstance(arg, six.string_types):
         # ... from disk
-        with FFmpegVideoReader(arg, frames="1-%d" % k) as vr:
+        with FFmpegVideoReader(
+            arg, frames=[i for i in range(1, stride * k + 1, stride)]) as vr:
             imgs = [img for img in vr]
     else:
         # ... from tensor
-        imgs = arg[:k]
+        imgs = arg[:(k * stride):stride]
 
     # Resize frames, if necessary
     if size:
@@ -1987,6 +1983,7 @@ class FFmpegVideoReader(VideoReader):
         self._ffmpeg = FFmpeg(
             in_opts=in_opts,
             out_opts=[
+                "-vsync", "0",              # never omit frames
                 "-f", 'image2pipe',         # pipe frames to stdout
                 "-vcodec", "rawvideo",      # output will be raw video
                 "-pix_fmt", "rgb24",        # pixel format
@@ -2022,17 +2019,23 @@ class FFmpegVideoReader(VideoReader):
     def read(self):
         '''Reads the next frame.
 
+        If any problem is encountered while reading the frame, a warning is
+        logged and a StopIteration is raised. This means that FFmpegVideoReader
+        will gracefully fail when malformed videos are encountered.
+
         Returns:
             img: the next frame
 
         Raises:
-            StopIteration: if there are no more frames to process
-            VideoReaderError: if unable to load the next frame from file
+            StopIteration: if there are no more frames to process or the next
+                frame could not be read or parsed for any reason
         '''
         for _ in range(max(0, self.frame_number), next(self._ranges)):
             if not self._grab():
-                raise VideoReaderError(
-                    "Failed to grab frame %d" % self.frame_number)
+                logger.warning(
+                    "Failed to grab frame %d. Raising StopIteration now",
+                    self.frame_number)
+                raise StopIteration
         return self._retrieve()
 
     def close(self):
@@ -2044,24 +2047,32 @@ class FFmpegVideoReader(VideoReader):
             width, height = self.frame_size
             self._raw_frame = self._ffmpeg.read(width * height * 3)
             return True
-        except Exception:
+        except Exception as e:
+            logger.warning(e, exc_info=True)
+            self._raw_frame = None
             return False
 
     def _retrieve(self):
-        # Stop when ffmpeg returns empty bits, meaning it has gone past the end
-        # of the video
+        # Stop when ffmpeg returns empty bits. This can happen when the end of
+        # the video is reached
         if not self._raw_frame:
+            logger.warning(
+                "Found empty frame %d. Raising StopIteration now",
+                self.frame_number)
             raise StopIteration
 
         width, height = self.frame_size
         try:
             vec = np.fromstring(self._raw_frame, dtype="uint8")
             return vec.reshape((height, width, 3))
-        except ValueError:
+        except ValueError as e:
+            # Possible alternative: return all zeros matrix instead
+            # return np.zeros((height, width, 3), dtype="uint8")
+            logger.warning(e, exc_info=True)
             logger.warning(
-                "Unable to parse frame %d of %d; returning all zeros frame "
-                "instead", self.frame_number, self.total_frame_count)
-            return np.zeros((height, width, 3), dtype="uint8")
+                "Unable to parse frame %d; Raising StopIteration now",
+                self.frame_number)
+            raise StopIteration
 
 
 class OpenCVVideoReader(VideoReader):
@@ -2153,22 +2164,46 @@ class OpenCVVideoReader(VideoReader):
     def read(self):
         '''Reads the next frame.
 
+        If any problem is encountered while reading the frame, a warning is
+        logged and a StopIteration is raised. This means that OpenCVVideoReader
+        will gracefully fail when malformed videos are encountered.
+
         Returns:
             img: the next frame
 
         Raises:
-            StopIteration: if there are no more frames to process
-            VideoReaderError: if unable to load the next frame from file
+            StopIteration: if there are no more frames to process or the next
+                frame could not be read or parsed for any reason
         '''
-        for idx in range(max(0, self.frame_number), next(self._ranges)):
-            if not self._cap.grab():
-                raise VideoReaderError(
-                    "Failed to grab frame %d" % (idx + 1))
-        return etai.bgr_to_rgb(self._cap.retrieve()[1])
+        for _ in range(max(0, self.frame_number), next(self._ranges)):
+            if not self._grab():
+                logger.warning(
+                    "Failed to grab frame %d. Raising StopIteration now",
+                    self.frame_number)
+                raise StopIteration
+        return self._retrieve()
 
     def close(self):
         '''Closes the video reader.'''
         self._cap.release()
+
+    def _grab(self):
+        try:
+            return self._cap.grab()
+        except Exception as e:
+            logger.warning(e, exc_info=True)
+            return False
+
+    def _retrieve(self):
+        try:
+            img_bgr = self._cap.retrieve()[1]
+            return etai.bgr_to_rgb(img_bgr)
+        except Exception as e:
+            logger.warning(e, exc_info=True)
+            logger.warning(
+                "Unable to parse frame %d; Raising StopIteration now",
+                self.frame_number)
+            raise StopIteration
 
 
 class VideoWriter(object):
@@ -2367,9 +2402,13 @@ class FFmpeg(object):
 
     DEFAULT_GLOBAL_OPTS = ["-loglevel", "error"]
 
+    DEFAULT_IN_OPTS = ["-vsync", "0"]
+
     DEFAULT_VIDEO_OUT_OPTS = [
         "-c:v", "libx264", "-preset", "medium", "-crf", "23",
-        "-pix_fmt", "yuv420p", "-an"]
+        "-pix_fmt", "yuv420p", "-vsync", "0", "-an"]
+
+    DEFAULT_IMAGES_OUT_OPTS = ["-vsync", "0"]
 
     def __init__(
             self,
@@ -2391,17 +2430,19 @@ class FFmpeg(object):
                 video (e.g., 0.5 or 2)
             global_opts: an optional list of global options for ffmpeg. By
                 default, self.DEFAULT_GLOBAL_OPTS is used
-            in_opts: an optional list of input options for ffmpeg
+            in_opts: an optional list of input options for ffmpeg, By default,
+                self.DEFAULT_IN_OPTS is used
             out_opts: an optional list of output options for ffmpeg. By
                 default, self.DEFAULT_VIDEO_OUT_OPTS is used when the output
-                path is a video file
+                path is a video file and self.DEFAULT_IMAGES_OUT_OPTS is used
+                when the output path is an image sequence
         '''
         self.is_input_streaming = False
         self.is_output_streaming = False
 
         self._filter_opts = self._gen_filter_opts(fps, size, scale)
         self._global_opts = global_opts or self.DEFAULT_GLOBAL_OPTS
-        self._in_opts = in_opts or []
+        self._in_opts = in_opts
         self._out_opts = out_opts
         self._args = None
         self._p = None
@@ -2438,15 +2479,23 @@ class FFmpeg(object):
         self.is_input_streaming = (inpath == "-")
         self.is_output_streaming = (outpath == "-")
 
-        if self._out_opts is None and is_supported_video_file(outpath):
-            out_opts = self.DEFAULT_VIDEO_OUT_OPTS
+        if self._in_opts is None:
+            in_opts = self.DEFAULT_IN_OPTS
         else:
-            out_opts = self._out_opts or []
+            in_opts = self._in_opts
+
+        if self._out_opts is None:
+            if is_supported_video_file(outpath):
+                out_opts = self.DEFAULT_VIDEO_OUT_OPTS
+            else:
+                out_opts = self.DEFAULT_IMAGES_OUT_OPTS
+        else:
+            out_opts = self._out_opts
 
         self._args = (
             ["ffmpeg"] +
             self._global_opts +
-            self._in_opts + ["-i", inpath] +
+            in_opts + ["-i", inpath] +
             self._filter_opts + out_opts + [outpath]
         )
 

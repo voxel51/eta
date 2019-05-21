@@ -71,7 +71,7 @@ class DetectedObject(Serializable, HasBoundingBox):
     @property
     def has_attributes(self):
         '''Returns True/False if this object has attributes.'''
-        return self.attrs is not None
+        return bool(self.attrs)
 
     def get_bounding_box(self):
         '''Returns the bounding box for the object.'''
@@ -140,7 +140,7 @@ class DetectedObjectContainer(DataContainer):
         Args:
             reverse: whether to sort in descending order. The default is False
         '''
-        return self._sort_by_attr("confidence", reverse=reverse)
+        self.sort_by("confidence", reverse=reverse)
 
     def sort_by_index(self, reverse=False):
         '''Sorts the object list by index.
@@ -150,7 +150,7 @@ class DetectedObjectContainer(DataContainer):
         Args:
             reverse: whether to sort in descending order. The default is False
         '''
-        return self._sort_by_attr("index", reverse=reverse)
+        self.sort_by("index", reverse=reverse)
 
     def sort_by_score(self, reverse=False):
         '''Sorts the object list by score.
@@ -160,7 +160,7 @@ class DetectedObjectContainer(DataContainer):
         Args:
             reverse: whether to sort in descending order. The default is False
         '''
-        return self._sort_by_attr("score", reverse=reverse)
+        self.sort_by("score", reverse=reverse)
 
     def sort_by_frame_number(self, reverse=False):
         '''Sorts the object list by frame number
@@ -170,7 +170,7 @@ class DetectedObjectContainer(DataContainer):
         Args:
             reverse: whether to sort in descending order. The default is False
         '''
-        return self._sort_by_attr("frame_number", reverse=reverse)
+        self.sort_by("frame_number", reverse=reverse)
 
 
 class ObjectCount(Serializable):

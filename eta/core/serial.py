@@ -1,7 +1,7 @@
 '''
 Core data structures for working with data that can be read/written to disk.
 
-Copyright 2017-2018, Voxel51, Inc.
+Copyright 2017-2019, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
@@ -25,6 +25,7 @@ import datetime as dt
 import dill as pickle
 import json
 import os
+import pickle as _pickle
 import pprint
 
 import numpy as np
@@ -51,22 +52,31 @@ def load_json(path_or_str):
     Raises:
         ValueError: if no JSON could be decoded
     '''
-    if os.path.isfile(path_or_str):
-        # Read from disk
-        return read_json(path_or_str)
     try:
         # Parse from JSON string
-        return json.loads(path_or_str)
+        return _load_json(path_or_str)
     except ValueError:
+        if os.path.isfile(path_or_str):
+            # Read from disk
+            return read_json(path_or_str)
+
         try:
             # Try to parse comma-seperated list of key=value pairs
             d = {}
             for chunk in path_or_str.split(","):
                 key, value = chunk.split("=")
-                d[key] = json.loads(value)
+                d[key] = _load_json(value)
             return d
         except ValueError:
             raise ValueError("Unable to load JSON from '%s'" % path_or_str)
+
+
+def _load_json(str_or_bytes):
+    try:
+        return json.loads(str_or_bytes)
+    except TypeError:
+        # Must be a Python version for which json.loads() cannot handle bytes
+        return json.loads(str_or_bytes.decode("utf-8"))
 
 
 def read_json(path):
@@ -131,64 +141,37 @@ def pretty_str(obj):
     return pprint.pformat(obj, indent=4, width=79)
 
 
-class NpzWriteable(object):
-    '''Base class for dictionary-like objects that contain numpy.array values
-    that can be written to disk as .npz files.
+def read_pickle(path):
+    '''Loads the object from the given .pkl file.
+
+    This function attempts to gracefully load a python 2 pickle in python 3
+    (if a unicode error is encountered) by assuming "latin1" encoding.
+
+    Args:
+        path: the path to the .pkl file
+
+    Returns:
+        the loaded instance
     '''
-
-    @staticmethod
-    def is_npz_path(path):
-        '''Returns True/False if the provided path is an .npz file.'''
-        return path.endswith(".npz")
-
-    def attributes(self):
-        '''Returns a list of class attributes that will be included when
-        writing an .npz file.
-        '''
-        return [a for a in vars(self) if not a.startswith("_")]
-
-    def write_npz(self, path):
-        '''Writes the instance to disk in .npz format.
-
-        Args:
-            path: the path to write the .npz file
-        '''
-        etau.ensure_basedir(path)
-        d = {a: getattr(self, a) for a in self.attributes()}
-        np.savez_compressed(path, **d)
-
-    @classmethod
-    def from_npz(cls, path):
-        '''Loads the .npz file from disk and returns an NpzWriteable instance.
-
-        Args:
-            path: the path to an .npz file
-
-        Returns:
-            an NpzWriteable instance
-        '''
-        return cls(**np.load(path))
-
-
-class Picklable(object):
-    '''Mixin class for objects that can be pickled.'''
-
-    def pickle(self, path):
-        '''Saves the instance to disk in a pickle. '''
-        etau.ensure_basedir(path)
-        with open(path, "wb") as f:
-            pickle.dump(self, f)
-
-    @classmethod
-    def from_pickle(cls, path):
-        '''Loads the pickle from disk and returns the instance.'''
+    try:
         with open(path, "rb") as f:
             return pickle.load(f)
+    except UnicodeDecodeError:
+        with open(path, "rb") as f:
+            # https://stackoverflow.com/q/28218466
+            return _pickle.load(f, encoding="latin1")
 
-    @staticmethod
-    def is_pickle_path(path):
-        '''Checks the path to see if it has a pickle extension.'''
-        return path.endswith(".pkl")
+
+def write_pickle(obj, path):
+    '''Writes the object to disk at the given path as a .pkl file.
+
+    Args:
+        obj: the pickable object
+        path: the path to write the .pkl file
+    '''
+    etau.ensure_basedir(path)
+    with open(path, "wb") as f:
+        pickle.dump(obj, f)
 
 
 class Serializable(object):
@@ -389,7 +372,7 @@ class Serializable(object):
         Returns:
             an instance of the Serializable class
         '''
-        return cls.from_dict(json.loads(s), *args, **kwargs)
+        return cls.from_dict(_load_json(s), *args, **kwargs)
 
     @classmethod
     def from_json(cls, path, *args, **kwargs):
@@ -610,7 +593,7 @@ class Container(Serializable):
                 lambda o: match(f(o) for f in filters), self.__elements__))
         })
 
-    def _sort_by_attr(self, attr, reverse=False):
+    def sort_by(self, attr, reverse=False):
         '''Sorts the elements in the container by the given attribute.
 
         Elements whose attribute is None are always put at the end of the list.
@@ -702,6 +685,74 @@ class Container(Serializable):
 class ContainerError(Exception):
     '''Exception raised when an invalid Container is encountered.'''
     pass
+
+
+class Picklable(object):
+    '''Mixin class for objects that can be pickled.'''
+
+    def pickle(self, path):
+        '''Saves the instance to disk in as a .pkl file.
+
+        Args:
+            path: the path to write the .pkl file
+        '''
+        write_pickle(self, path)
+
+    @classmethod
+    def from_pickle(cls, path):
+        '''Loads the object from the given .pkl file.
+
+        Args:
+            path: the path to the .pkl file
+
+        Returns:
+            the loaded instance
+        '''
+        return read_pickle(path)
+
+    @staticmethod
+    def is_pickle_path(path):
+        '''Checks the path to see if it has a pickle (.pkl) extension.'''
+        return path.endswith(".pkl")
+
+
+class NpzWriteable(object):
+    '''Base class for dictionary-like objects that contain numpy.array values
+    that can be written to disk as .npz files.
+    '''
+
+    @staticmethod
+    def is_npz_path(path):
+        '''Returns True/False if the provided path is an .npz file.'''
+        return path.endswith(".npz")
+
+    def attributes(self):
+        '''Returns a list of class attributes that will be included when
+        writing an .npz file.
+        '''
+        return [a for a in vars(self) if not a.startswith("_")]
+
+    def write_npz(self, path):
+        '''Writes the instance to disk in .npz format.
+
+        Args:
+            path: the path to write the .npz file
+        '''
+        etau.ensure_basedir(path)
+        d = {a: getattr(self, a) for a in self.attributes()}
+        np.savez_compressed(path, **d)
+
+    @classmethod
+    def from_npz(cls, path):
+        '''Loads the .npz file from disk and returns an NpzWriteable instance.
+
+        Args:
+            path: the path to an .npz file
+
+        Returns:
+            an NpzWriteable instance
+        '''
+        return cls(**np.load(path))
 
 
 class ETAJSONEncoder(json.JSONEncoder):

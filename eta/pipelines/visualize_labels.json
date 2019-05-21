@@ -17,7 +17,7 @@
         },
         "visualize_labels": {
             "name": "visualize_labels",
-            "tunable_parameters": ["add_logo", "logo"],
+            "tunable_parameters": ["annotation_config"],
             "set_parameters": {}
         }
     },

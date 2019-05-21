@@ -4,7 +4,7 @@ Core infrastructure for managing models across local and remote storage.
 See `docs/models_dev_guide.md` for detailed information about the design of
 the ETA model management system.
 
-Copyright 2018, Voxel51, Inc.
+Copyright 2018-2019, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
@@ -23,7 +23,6 @@ from future.utils import iteritems, itervalues
 # pragma pylint: enable=wildcard-import
 
 from collections import defaultdict
-import dill as pickle
 from distutils.version import LooseVersion
 import logging
 import os
@@ -33,7 +32,7 @@ import numpy as np
 import eta
 import eta.constants as etac
 from eta.core.config import Config, Configurable
-from eta.core.serial import Serializable
+from eta.core.serial import read_pickle, Serializable
 import eta.core.utils as etau
 import eta.core.web as etaw
 
@@ -927,8 +926,7 @@ class PickledModel(PublishedModel):
     '''Class that can load a published model stored as a .pkl file.'''
 
     def _load(self):
-        with open(self.model_path, "rb") as f:
-            return pickle.load(f)
+        return read_pickle(self.model_path)
 
 
 class NpzModelWeights(PublishedModel, dict):
@@ -995,6 +993,10 @@ class ModelManager(Configurable, Serializable):
     def _download_model(self, model_path):
         raise NotImplementedError(
             "subclass must implement _download_model()")
+
+    def attributes(self):
+        '''Returns a list of attributes to be serialized.'''
+        return ["type", "config"]
 
     @classmethod
     def from_dict(cls, d):

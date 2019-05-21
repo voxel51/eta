@@ -23,12 +23,10 @@ from builtins import *
 # pragma pylint: enable=wildcard-import
 
 import logging
-import os
 import sys
 
 import eta.core.annotations as etaa
 from eta.core.config import Config
-from eta.core.logo import Logo, LogoConfig
 import eta.core.module as etam
 import eta.core.objects as etao
 import eta.core.video as etav
@@ -77,30 +75,24 @@ class ParametersConfig(Config):
     '''Parameter configuration settings.
 
     Parameters:
-        add_logo (eta.core.types.Boolean): [True] whether to render a logo on
-            the video
-        logo (eta.core.types.Object): [None] a LogoConfig defining a logo to
-            render on the video. If omitted, the default logo is used
+        annotation_config (eta.core.types.Object): [None] an
+            `eta.core.annotations.AnnotationConfig` describing how to render
+            the annotations on the video. If omitted, the default settings are
+            used
     '''
 
     def __init__(self, d):
-        self.add_logo = self.parse_bool(d, "add_logo", default=True)
-        self.logo = self.parse_object(d, "logo", LogoConfig, default=None)
+        self.annotation_config = self.parse_object(
+            d, "annotation_config", etaa.AnnotationConfig, default=None)
 
 
 def _visualize_labels(config):
-    # Parse logo
-    add_logo = config.parameters.add_logo
-    if add_logo and config.parameters.logo is not None:
-        logo = Logo.from_config(config.parameters.logo)
-    else:
-        logo = None
-
+    annotation_config = config.parameters.annotation_config
     for data in config.data:
-        _process_video(data, add_logo, logo)
+        _process_video(data, annotation_config)
 
 
-def _process_video(data, add_logo, logo):
+def _process_video(data, annotation_config):
     # Load labels
     if data.video_labels_path:
         labels = etav.VideoLabels.from_json(data.video_labels_path)
@@ -113,8 +105,8 @@ def _process_video(data, add_logo, logo):
 
     # Annotate video
     etaa.annotate_video(
-        data.video_path, labels, data.output_path, add_logo=add_logo,
-        logo=logo)
+        data.video_path, labels, data.output_path,
+        annotation_config=annotation_config)
 
 
 def run(config_path, pipeline_config_path=None):

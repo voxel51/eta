@@ -11,7 +11,7 @@ This module currently provides clients for the following storage resources:
 - Remote servers via SFTP
 - Local disk storage
 
-Copyright 2018, Voxel51, Inc.
+Copyright 2018-2019, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
@@ -32,7 +32,6 @@ import six
 import datetime
 import io
 import logging
-import mimetypes
 import os
 import re
 try:
@@ -85,13 +84,6 @@ def google_cloud_api_retry(func):
     def wrapper(*args, **kwargs):
         return func(*args, **kwargs)
     return wrapper
-
-
-def guess_mime_type(filepath):
-    '''Guess the MIME type for the given file path. If no reasonable guess can
-    be determined, `DEFAULT_MIME_TYPE` is returned.
-    '''
-    return mimetypes.guess_type(filepath)[0] or "application/octet-stream"
 
 
 class StorageClient(object):
@@ -249,7 +241,12 @@ class GoogleCloudStorageClient(StorageClient, NeedsGoogleCredentials):
     `cloud_path` should have form "gs://<bucket>/<path/to/object>".
     '''
 
-    def __init__(self, credentials=None):
+    # The default chunk size to use when uploading and downloading files.
+    # Note that this gives the GCS API the right to use up to this much memory
+    # as a buffer during read/write
+    DEFAULT_CHUNK_SIZE = 256 * 1024 * 1024  # in bytes
+
+    def __init__(self, credentials=None, chunk_size=None):
         '''Creates a GoogleCloudStorageClient instance.
 
         Args:
@@ -257,6 +254,8 @@ class GoogleCloudStorageClient(StorageClient, NeedsGoogleCredentials):
                 credentials are provided, the `GOOGLE_APPLICATION_CREDENTIALS`
                 environment variable must be set to point to a valid service
                 account JSON file
+            chunk_size: an optional chunk size (in bytes) to use for uploads
+                and downloads. By default, `DEFAULT_CHUNK_SIZE` is used
         '''
         if credentials:
             self._client = gcs.Client(
@@ -264,6 +263,7 @@ class GoogleCloudStorageClient(StorageClient, NeedsGoogleCredentials):
         else:
             # Uses credentials from GOOGLE_APPLICATION_CREDENTIALS
             self._client = gcs.Client()
+        self.chunk_size = chunk_size or self.DEFAULT_CHUNK_SIZE
 
     @google_cloud_api_retry
     def upload(self, local_path, cloud_path, content_type=None):
@@ -275,7 +275,7 @@ class GoogleCloudStorageClient(StorageClient, NeedsGoogleCredentials):
             content_type: the optional type of the content being uploaded. If
                 no value is provided, it is guessed from the filename
         '''
-        content_type = content_type or guess_mime_type(local_path)
+        content_type = content_type or etau.guess_mime_type(local_path)
         blob = self._get_blob(cloud_path)
         blob.upload_from_filename(local_path, content_type=content_type)
 
@@ -442,7 +442,7 @@ class GoogleCloudStorageClient(StorageClient, NeedsGoogleCredentials):
     def _get_blob(self, cloud_path):
         bucket_name, object_name = self._parse_cloud_storage_path(cloud_path)
         bucket = self._client.get_bucket(bucket_name)
-        return bucket.blob(object_name)
+        return bucket.blob(object_name, chunk_size=self.chunk_size)
 
     @staticmethod
     def _parse_cloud_storage_path(cloud_path):
@@ -708,8 +708,8 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
             folder_id: the ID of a folder
 
         Returns:
-            A list of dicts containing the `id` and `name` of the files in the
-                folder
+            A list of dicts containing the `id`, `name`, and `mimeType` of the
+                files in the folder
         '''
         team_drive_id = self.get_root_team_drive_id(folder_id)
         if team_drive_id:
@@ -726,12 +726,12 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
         # Build file list
         files = []
         page_token = None
-        query = "'%s' in parents" % folder_id
+        query = "'%s' in parents and trashed=false" % folder_id
         while True:
             # Get the next page of files
             response = self._service.files().list(
                 q=query,
-                fields="files(id, name),nextPageToken",
+                fields="files(id, name, mimeType),nextPageToken",
                 pageSize=256,
                 pageToken=page_token,
                 **params
@@ -803,7 +803,7 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
 
     def download_files_in_folder(
             self, folder_id, local_dir, skip_failures=False,
-            skip_existing_files=False):
+            skip_existing_files=False, recursive=True):
         '''Downloads the files in the Google Drive folder to the given local
         directory.
 
@@ -815,6 +815,8 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
             skip_existing_files: whether to skip files whose names match
                 existing files in the local directory. By default, this is
                 False
+            recursive: whether to recursively traverse sub-"folders". By
+                default, this is True
 
         Returns:
             a list of filenames of the downloaded files
@@ -843,13 +845,22 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
             filename = f["name"]
             file_id = f["id"]
             try:
-                local_path = os.path.join(local_dir, filename)
-                with etau.Timer() as t:
-                    self.download(file_id, local_path)
-                    filenames.append(filename)
-                logger.info(
-                    "File '%s' downloaded to '%s' (%s) (%d/%d)", filename,
-                    local_path, t.elapsed_time_str, idx, num_files)
+                if (recursive and
+                        f["mimeType"] == "application/vnd.google-apps.folder"):
+                    self.download_files_in_folder(
+                        file_id,
+                        os.path.join(local_dir, filename),
+                        skip_failures=skip_failures,
+                        skip_existing_files=skip_existing_files,
+                        recursive=True)
+                else:
+                    local_path = os.path.join(local_dir, filename)
+                    with etau.Timer() as t:
+                        self.download(file_id, local_path)
+                        filenames.append(filename)
+                    logger.info(
+                        "File '%s' downloaded to '%s' (%s) (%d/%d)", filename,
+                        local_path, t.elapsed_time_str, idx, num_files)
             except Exception as e:
                 if not skip_failures:
                     raise GoogleDriveStorageClientError(e)
@@ -907,7 +918,7 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
             folder_id = self.create_folder_if_necessary(chunks[0], folder_id)
             filename = chunks[1]
 
-        mime_type = content_type or guess_mime_type(filename)
+        mime_type = content_type or etau.guess_mime_type(filename)
         media = gah.MediaIoBaseUpload(
             file_obj, mime_type, chunksize=self.chunk_size, resumable=True)
         body = {
@@ -1044,7 +1055,7 @@ class HTTPStorageClient(StorageClient):
                 error
         '''
         filename = filename or os.path.basename(local_path)
-        content_type = content_type or guess_mime_type(filename)
+        content_type = content_type or etau.guess_mime_type(filename)
         with open(local_path, "rb") as f:
             self._do_upload(f, url, filename, content_type)
 

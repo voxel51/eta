@@ -33,6 +33,7 @@ class PipelineState(object):
 
     READY = "READY"
     QUEUED = "QUEUED"
+    SCHEDULED = "SCHEDULED"
     RUNNING = "RUNNING"
     FAILED = "FAILED"
     COMPLETE = "COMPLETE"
@@ -63,7 +64,7 @@ class PipelineStatus(Serializable):
                 instance
         '''
         self.name = name
-        self.state = PipelineState.QUEUED
+        self.state = PipelineState.READY
         self.start_time = None
         self.complete_time = None
         self.fail_time = None
@@ -158,6 +159,7 @@ class JobState(object):
 
     READY = "READY"
     QUEUED = "QUEUED"
+    SCHEDULED = "SCHEDULED"
     SKIPPED = "SKIPPED"
     RUNNING = "RUNNING"
     FAILED = "FAILED"
@@ -184,7 +186,7 @@ class JobStatus(Serializable):
             name: the name of the job
         '''
         self.name = name
-        self.state = JobState.QUEUED
+        self.state = JobState.READY
         self.start_time = None
         self.complete_time = None
         self.fail_time = None
