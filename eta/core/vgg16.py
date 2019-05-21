@@ -14,8 +14,8 @@ https://gist.github.com/ksimonyan/211839e770f7b538e2d8#file-readme-md
 Copyright 2017-2019, Voxel51, Inc.
 voxel51.com
 
-Jason Corso, jason@voxel51.com
 Brian Moore, brian@voxel51.com
+Jason Corso, jason@voxel51.com
 '''
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
@@ -30,13 +30,16 @@ from builtins import *
 # pragma pylint: enable=wildcard-import
 
 import logging
+import os
 
 import numpy as np
 import tensorflow as tf
 
-from eta.core.config import Config
+import eta.constants as etac
+from eta.core.config import Config, Configurable
 import eta.core.image as etai
 from eta.core.features import Featurizer
+import eta.core.learning as etal
 import eta.core.models as etam
 import eta.core.tfutils as etat
 
@@ -49,9 +52,14 @@ class VGG16Config(Config):
 
     def __init__(self, d):
         self.model = self.parse_string(d, "model", default="vgg16-imagenet")
+        self.labels_map = self.parse_string(d, "labels_map", default=None)
+
+        if self.labels_map is None:
+            self.labels_map = os.path.join(
+                etac.RESOURCES_DIR, "vgg16-imagenet-labels.txt")
 
 
-class VGG16(object):
+class VGG16(Configurable):
     '''TensorFlow implementation of the VGG-16 network architecture for the
     1000 classes from ImageNet.
 
@@ -60,7 +68,7 @@ class VGG16(object):
     '''
 
     def __init__(self, config=None, sess=None, imgs=None):
-        '''Builds a new VGG-16 network.
+        '''Creates a VGG16 instance.
 
         Args:
             config: an optional VGG16Config instance. If omitted, the default
@@ -84,6 +92,8 @@ class VGG16(object):
         self.sess = sess
         self.imgs = imgs
 
+        self._labels_map = None
+
         self._build_conv_layers()
         self._build_fc_layers()
         self._build_output_layer()
@@ -95,6 +105,30 @@ class VGG16(object):
 
     def __exit__(self, *args):
         self.close()
+
+    @staticmethod
+    def preprocess_image(img):
+        '''Pre-processes the image for evaluation by converting it to a
+        224 x 224 RGB image.
+
+        Args:
+            img: an image
+
+        Returns:
+            224 x 224 RGB image
+        '''
+        if etai.is_gray(img):
+            img = etai.gray_to_rgb(img)
+        elif etai.has_alpha(img):
+            img = img[:, :, :3]
+
+        return etai.resize(img, 224, 224)
+
+    def get_label(self, idx):
+        '''Gets the label for the given output index of the model.'''
+        if self._labels_map is None:
+            self._labels_map = etal.load_labels_map(self.config.labels_map)
+        return self._labels_map[idx]
 
     def evaluate(self, imgs, layer=None):
         '''Feed-forward evaluation through the network.
@@ -463,6 +497,12 @@ class VGG16Featurizer(Featurizer):
     '''Featurizer that embeds images into the VGG-16 feature space.'''
 
     def __init__(self, config=None):
+        '''Creates a VGG16Featurizer instance.
+
+        Args:
+            config: an optional VGG16FeaturizerConfig instance. If omitted,
+                the default VGG16FeaturizerConfig is used
+        '''
         super(VGG16Featurizer, self).__init__()
         self.config = config or VGG16FeaturizerConfig.default()
         self.validate(self.config)
@@ -494,10 +534,5 @@ class VGG16Featurizer(Featurizer):
         Returns:
             the feature vector, a 1D array of length 4096
         '''
-        if etai.is_gray(img):
-            img = etai.gray_to_rgb(img)
-        elif etai.has_alpha(img):
-            img = img[:, :, :3]
-
-        imgs = [etai.resize(img, 224, 224)]
+        imgs = [VGG16.preprocess_image(img)]
         return self.vgg16.evaluate(imgs, layer=self.vgg16.fc2l)[0]

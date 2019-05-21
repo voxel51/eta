@@ -8,7 +8,7 @@ C3D implementation in TensorFlow:
 https://github.com/hx173149/C3D-tensorflow
 Hou Xin, 2016
 
-Copyright 2018, Voxel51, Inc.
+Copyright 2017-2019, Voxel51, Inc.
 voxel51.com
 
 Yixin Jin, yixin@voxel51.com
@@ -213,7 +213,7 @@ class C3D(object):
     def _load_model(self, model):
         init = tf.global_variables_initializer()
         self.sess.run(init)
-        etat.TensorFlowModelCheckpoint(model, self.sess).load()
+        etat.TFModelCheckpoint(model, self.sess).load()
 
 
 def _tf_variable_with_weight_decay(name, shape, stddev, decay):

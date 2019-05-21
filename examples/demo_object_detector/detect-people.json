@@ -1,0 +1,24 @@
+{
+    "pipeline": "object_detector",
+    "inputs": {
+        "video": "../data/road.mp4"
+    },
+    "outputs": {
+        "labels": "out/people-labels.json",
+        "annotated_video": "out/people-annotated.mp4"
+    },
+    "parameters": {
+        "apply_object_detector.detector": {
+            "type": "eta.detectors.TFModelsDetector"
+        },
+        "apply_object_detector.objects": [
+            {
+                "labels": ["person"],
+                "threshold": null
+            }
+        ],
+        "visualize_labels.annotation_config": {
+            "show_all_confidences": true
+        }
+    }
+}

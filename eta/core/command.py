@@ -149,8 +149,7 @@ class BuildCommand(Command):
         builder.build(optimized=optimized)
 
         if args.run_now:
-            logger.info("Running pipeline '%s'", request.pipeline)
-            builder.run()
+            _run_pipeline(builder.pipeline_config_path)
         else:
             logger.info(
                 "\n***** To run this pipeline *****\neta run %s\n",
@@ -199,21 +198,20 @@ class RunCommand(Command):
             etamodu.run(args.module, args.config)
             return
 
-        if args.config:
-            _run_pipeline(args.config, args.overwrite)
-
         if args.last:
-            config = etab.find_last_built_pipeline()
-            if config:
-                _run_pipeline(config, args.overwrite)
-            else:
+            args.config = etab.find_last_built_pipeline()
+            if not args.config:
                 logger.info("No built pipelines found...")
+                return
+
+        _run_pipeline(args.config, force_overwrite=args.overwrite)
 
 
-def _run_pipeline(config, force_overwrite):
+def _run_pipeline(config, force_overwrite=False):
     logger.info("Running ETA pipeline '%s'", config)
     etap.run(config, force_overwrite=force_overwrite)
 
+    logger.info("\n***** To re-run this pipeline *****\neta run %s\n", config)
     if etau.is_in_root_dir(config, eta.config.config_dir):
         logger.info(
             "\n***** To clean this pipeline *****\neta clean %s\n", config)
