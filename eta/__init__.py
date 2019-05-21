@@ -83,9 +83,9 @@ class ETAConfig(EnvConfig):
             logger.warning("Overwriting existing {{eta}} pattern")
         self.patterns["{{eta}}"] = etac.BASE_DIR
 
-        if "{{resources}}" in self.patterns:
-            logger.warning("Overwriting existing {{resources}} pattern")
-        self.patterns["{{resources}}"] = etac.RESOURCES_DIR
+        if "{{eta-resources}}" in self.patterns:
+            logger.warning("Overwriting existing {{eta-resources}} pattern")
+        self.patterns["{{eta-resources}}"] = etac.RESOURCES_DIR
 
         #
         # Resolve user-provided patterns by replacing any patterns and
