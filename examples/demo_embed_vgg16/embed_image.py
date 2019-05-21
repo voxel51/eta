@@ -7,10 +7,10 @@ infrastructure, which is the preferred approach for ETA modules since they
 maintain the on-disk backing store for the class which is used to communicate
 between modules.
 
-Copyright 2017-2018, Voxel51, Inc.
+Copyright 2017-2019, Voxel51, Inc.
 voxel51.com
 
-Jason Corso, jjc@voxel51.com
+Jason Corso, jason@voxel51.com
 Brian Moore, brian@voxel51.com
 '''
 # pragma pylint: disable=redefined-builtin

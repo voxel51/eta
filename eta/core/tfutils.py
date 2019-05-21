@@ -1,7 +1,7 @@
 '''
 Core utilities for working with TensorFlow models.
 
-Copyright 2018, Voxel51, Inc.
+Copyright 2017-2019, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
@@ -136,13 +136,13 @@ def _set_proto_fields(proto, d):
             logger.warning(str(e))
 
 
-class TensorFlowModelCheckpoint(etam.PublishedModel):
+class TFModelCheckpoint(etam.PublishedModel):
     '''Class that can load a published TensorFlow model checkpoint stored as a
     .model file.
     '''
 
     def __init__(self, model_name, sess):
-        '''Initializes a TensorFlowModelCheckpoint instance.
+        '''Initializes a TFModelCheckpoint instance.
 
         Args:
             model_name: the model to load
@@ -151,7 +151,7 @@ class TensorFlowModelCheckpoint(etam.PublishedModel):
         Raises:
             ModelError: if the model was not found
         '''
-        super(TensorFlowModelCheckpoint, self).__init__(model_name)
+        super(TFModelCheckpoint, self).__init__(model_name)
         self._sess = sess
 
     def _load(self):

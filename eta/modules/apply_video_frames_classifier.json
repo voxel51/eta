@@ -1,0 +1,65 @@
+{
+    "info": {
+        "name": "apply_video_frames_classifier",
+        "type": "eta.core.types.Module",
+        "version": "0.1.0",
+        "description": "A module that uses an eta.core.learning.VideoFramesClassifier to classify the\nframes of a video using a sliding window strategy",
+        "exe": "apply_video_frames_classifier.py"
+    },
+    "inputs": [
+        {
+            "name": "video_path",
+            "type": "eta.core.types.Video",
+            "description": "the input video",
+            "required": true
+        },
+        {
+            "name": "input_labels_path",
+            "type": "eta.core.types.VideoLabels",
+            "description": "an optional input VideoLabels file to which to add the predictions",
+            "required": false
+        }
+    ],
+    "outputs": [
+        {
+            "name": "output_labels_path",
+            "type": "eta.core.types.VideoLabels",
+            "description": "a VideoLabels file containing the predictions",
+            "required": true
+        }
+    ],
+    "parameters": [
+        {
+            "name": "stride",
+            "type": "eta.core.types.Number",
+            "description": "the stride of the sliding window",
+            "required": true
+        },
+        {
+            "name": "window_size",
+            "type": "eta.core.types.Number",
+            "description": "the size of the sliding window in which to perform classification",
+            "required": true
+        },
+        {
+            "name": "confidence_threshold",
+            "type": "eta.core.types.Number",
+            "description": "a confidence threshold to use when assigning labels",
+            "required": false,
+            "default": null
+        },
+        {
+            "name": "classifier",
+            "type": "eta.core.types.VideoFramesClassifier",
+            "description": "an eta.core.learning.VideoFramesClassifierConfig describing the eta.core.learning.VideoFramesClassifier to use",
+            "required": true
+        },
+        {
+            "name": "confidence_weighted_vote",
+            "type": "eta.core.types.Boolean",
+            "description": "whether to weight any per-frame-attribute votes by confidence",
+            "required": false,
+            "default": false
+        }
+    ]
+}

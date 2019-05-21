@@ -1,4 +1,4 @@
-# ETA Pipeline Developer's Guide
+# Pipeline Developer's Guide
 
 This document describes how to add new analytics pipelines to ETA. See
 `modules_dev_guide.md` for more information about adding new modules to ETA,

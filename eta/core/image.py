@@ -29,6 +29,7 @@ from future.utils import iteritems
 from collections import defaultdict
 import colorsys
 import errno
+import numbers
 import os
 import operator
 from subprocess import Popen, PIPE
@@ -89,6 +90,11 @@ def make_image_sequence_patt(basedir, basename="", patt=None, ext=None):
 class ImageSetLabels(Serializable):
     '''Class encapsulating labels for a set of images.
 
+    ImageSetLabels support item indexing either by list index or filename.
+    When using filename-based indexing, ImageSetLabels instances behave like
+    defaultdicts: new ImageLabels instances are automatically created if a
+    non-existent filename is accessed.
+
     Attributes:
         images: a list of ImageLabels instances
         schema: an ImageLabelsSchema describing the schema of the image labels
@@ -105,17 +111,32 @@ class ImageSetLabels(Serializable):
         '''
         self.images = images or []
         self.schema = schema
+        self._filename_map = {}
+        self._build_filename_map()
 
-    def __getitem__(self, idx):
-        return self.images[idx]
+    def __getitem__(self, idx_or_filename):
+        if not isinstance(idx_or_filename, numbers.Integral):
+            return self.get_image_labels_for_filename(idx_or_filename)
+        return self.images[idx_or_filename]
 
-    def __setitem__(self, idx, image_labels):
+    def __setitem__(self, idx_or_filename, image_labels):
+        if not isinstance(idx_or_filename, numbers.Integral):
+            image_labels.filename = idx_or_filename
+            if not self.has_image_labels_for_filename(idx_or_filename):
+                self.add_image_labels(image_labels)
+                return
+
         if self.has_schema:
             self._validate_image_labels(image_labels)
-        self.images[idx] = image_labels
 
-    def __delitem__(self, idx):
+        idx = self._to_idx(idx_or_filename)
+        self.images[idx] = image_labels
+        self._filename_map[image_labels.filename] = idx
+
+    def __delitem__(self, idx_or_filename):
+        idx = self._to_idx(idx_or_filename)
         del self.images[idx]
+        self._build_filename_map()
 
     def __iter__(self):
         return iter(self.images)
@@ -126,9 +147,13 @@ class ImageSetLabels(Serializable):
     def __bool__(self):
         return bool(self.images)
 
+    def get_filenames(self):
+        '''Returns the set of filenames of ImageLabels in this instance.'''
+        return set(self._filename_map)
+
     @property
     def has_schema(self):
-        '''Returns True/False whether the container has an enforced schema.'''
+        '''Returns True/False whether this instance has an enforced schema.'''
         return self.schema is not None
 
     def merge_image_set_labels(self, image_set_labels):
@@ -145,6 +170,32 @@ class ImageSetLabels(Serializable):
         if self.has_schema:
             self._validate_image_labels(image_labels)
         self.images.append(image_labels)
+        self._filename_map[image_labels.filename] = len(self.images) - 1
+
+    def has_image_labels_for_filename(self, filename):
+        '''Returns True/False whether the set contains labels for an image
+        with the given filename.
+        '''
+        return filename in self._filename_map
+
+    def get_image_labels_for_filename(self, filename):
+        '''Gets the ImageLabels for the given filename.
+
+        If the filename does not exist, an empty ImageLabels is added to the
+        set and returned.
+
+        Args:
+            filename: the filename of the image
+
+        Returns:
+            the ImageLabels for the image with the given filename
+        '''
+        if not self.has_image_labels_for_filename(filename):
+            image_labels = ImageLabels(filename=filename)
+            self.add_image_labels(image_labels)
+
+        idx = self._filename_map[filename]
+        return self.images[idx]
 
     def get_schema(self):
         '''Gets the current enforced schema for the image set, or None if no
@@ -204,6 +255,17 @@ class ImageSetLabels(Serializable):
         if self.has_schema:
             for image_labels in self.images:
                 self._validate_image_labels(image_labels)
+
+    def _to_idx(self, idx_or_filename):
+        if isinstance(idx_or_filename, numbers.Integral):
+            return idx_or_filename
+        return self._filename_map[idx_or_filename]
+
+    def _build_filename_map(self):
+        self._filename_map = {
+            image_labels.filename: idx
+            for idx, image_labels in enumerate(self.images)
+        }
 
     @classmethod
     def from_dict(cls, d):

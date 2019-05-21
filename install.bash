@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Install external dependencies
+# Installs ETA and its dependencies
 #
-# Copyright 2017-2018, Voxel51, Inc.
+# Copyright 2017-2019, Voxel51, Inc.
 # voxel51.com
 #
 # Brian Moore, brian@voxel51.com
@@ -128,7 +128,7 @@ CRITICAL pip install --upgrade pip
 CRITICAL pip install --upgrade virtualenv
 
 
-# Install python requirements
+# Install requirements
 MSG "Installing Python packages"
 CRITICAL pip install -r requirements.txt
 
@@ -142,18 +142,18 @@ if [ "${GCARD}" == "ON" ]; then
     if [ $(cat /usr/local/cuda/version.txt | grep -c "CUDA Version 8") -gt 0 ]; then
         # Found CUDA 8, so we must install an old version
         MSG "Installing tensorflow-gpu 1.4"
-        CRITICAL pip install --upgrade tensorflow-gpu==1.4
+        CRITICAL pip install --upgrade tensorflow-gpu==1.4.0
     elif [ $(cat /usr/local/cuda/version.txt | grep -c "CUDA Version 9") -gt 0 ]; then
         # Found CUDA 9, so we must install version 1.12.0
         MSG "Installing tensorflow-gpu 1.12.0"
         CRITICAL pip install --upgrade tensorflow-gpu==1.12.0
     else
-        MSG "Installing latest version of tensorflow-gpu"
+        MSG "Installing latest tensorflow-gpu"
         CRITICAL pip install --upgrade tensorflow-gpu
     fi
 else
-    MSG "Installing latest version of tensorflow"
-    CRITICAL pip install --upgrade tensorflow
+    MSG "Installing tensorflow 1.12.0"
+    CRITICAL pip install --upgrade tensorflow==1.12.0
 fi
 
 
@@ -191,6 +191,54 @@ else
         fi
     fi
 fi
+
+# Get submodules
+MSG "Initializing submodules"
+CRITICAL git submodule init
+CRITICAL git submodule update
+
+#
+# tensorflow/models
+#
+# This requires compiling protocol buffers, which, in turn requires a suitable
+# version of `protoc` to be installed on your machine. ETA's `requirements.txt`
+# file attempted to install `protoc`, but, if that didn't work, then the code
+# below will try to install it another way.
+#
+# NOTE: If you don't have proctoc>=3.6.1, you may get errors when the `protoc`
+# command below runs. To manually install a recent protoc version, follow these
+# instructions:
+# https://gist.github.com/sofyanhadia/37787e5ed098c97919b8c593f0ec44d8
+#
+# As of this writing, we recommend installing protoc==3.6.1. Prebuilt binary:
+# https://github.com/google/protobuf/releases/download/v3.6.1/protoc-3.6.1-linux-x86_64.zip
+#
+MSG "Installing tensorflow/models"
+cd tensorflow/models
+INFO command -v protoc
+if [ $? -eq 0 ]; then
+    MSG "protoc already installed"
+else
+    MSG "Installing protoc"
+    if [ "${OS}" == "Darwin" ]; then
+        # Mac
+        CRITICAL brew install protobuf
+     else
+        # Linux
+        CRITICAL sudo apt-get install -y protobuf-compiler
+    fi
+fi
+MSG "Compiling protocol buffers"
+CRITICAL protoc research/object_detection/protos/*.proto \
+    --proto_path=research \
+    --python_out=research
+MSG "You must have '$(pwd)/research' in 'pythonpath_dirs' in your ETA config"
+MSG "You must have '$(pwd)/research/slim' in 'pythonpath_dirs' in your ETA config"
+cd ../..
+
+
+MSG "Installing ETA"
+CRITICAL pip install -e .
 
 
 EXIT "INSTALLATION COMPLETE"

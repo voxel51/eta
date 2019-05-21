@@ -1,4 +1,4 @@
-# Remote Storage Developer's Guide
+# Storage Developer's Guide
 
 This document describes best practices for accessing remote storage resources
 in ETA. The functionality is implemented in the `eta.core.storage` module.

@@ -1,6 +1,7 @@
 # ETA: Extensible Toolkit for Analytics
 
-An open and extensible computer vision, machine learning and video analytics infrastructure.
+An open and extensible computer vision, machine learning and video analytics
+infrastructure.
 
 This project is supported by the [NIST Public Safety Innovation Accelerator
 Program](
@@ -20,6 +21,7 @@ The ETA package requires the following external dependencies:
 - [TensorFlow](https://www.tensorflow.org/)
 - [ffmpeg](https://www.ffmpeg.org)
 - [ImageMagick](https://www.imagemagick.org/script/index.php)
+- [tensorflow/models](https://github.com/tensorflow/models)
 
 ETA is very portable:
 - Installable on Mac or Linux
@@ -31,7 +33,8 @@ ETA is very portable:
 
 ## Installation
 
-0. Activate a virtual environment for this installation (optional)
+0. Activate a [virtual environment](docs/virtualenv_guide.md) (optional but
+highly recommended)
 
 1. Clone the repository:
 
@@ -40,31 +43,26 @@ git clone https://github.com/voxel51/eta
 cd eta
 ```
 
-2. Install external dependenices:
+2. Run the install script:
 
 ```shell
-bash install_externals.bash
+bash install.bash
 ```
 
 Depending on your Python environment, you may need to run the script with
 sudo privileges. Note that the install script supports flags that control
 things like (on macOS) whether `port` or `brew` is used to install packages.
-Run `bash install_externals.bash -h` for more information.
+Run `bash install.bash -h` for more information.
 
 The script inspects your system to see if CUDA is installed, and, if it is,
 TensorFlow is installed with GPU support. In particular, if CUDA 9 is found,
 the latest version of the `tensorflow-gpu` package is installed, and if CUDA 8
 is found, `tensorflow-gpu 1.4` is installed.
 
-3. Install the ETA package:
+Note that ETA is installed in editable via `pip install -e .`, so don't delete
+the directory after installation!
 
-```shell
-# Install in development mode
-pip install -e .
-```
-
-
-## Setting up your execution environment
+### Setting up your execution environment
 
 When the root `eta` package is imported, it tries to read the `eta/config.json`
 file to configure various package-level constants. Many advanced ETA features
@@ -83,8 +81,9 @@ change default constants, add environment variables, customize your default
 `module_dirs`, `pipeline_dirs`, and `models_dirs` sections to expose custom
 modules, pipelines, and models to your system.
 
-> When the config file is loaded, any `{{eta}}` patterns in directory paths
-> are replaced with the absolute path to the ETA repository on your machine.
+Note that, when the config file is loaded, any `{{eta}}` patterns in directory
+paths are replaced with the absolute path to the ETA repository on your
+machine.
 
 The default config includes the `eta/modules`, `eta/pipelines`, and
 `eta/models` directories on your module, pipeline, and models search paths,
@@ -111,47 +110,40 @@ eta --help
 
 ## Testing your installation
 
-To test your installation, run the following commands:
+To test your installation, run some of [these examples](examples/README.md).
 
-```shell
-# Download example data
-python examples/download_data.py
 
-# Perform some image manipulation
-python examples/demo_images.py
+## Organization
 
-# Run a pre-configued video processing pipeline
-eta run examples/demo_video/pipeline.json
+The ETA package is organized as described below. For more information about the
+design and function of the various ETA components, read the documentation in
+the [docs folder](https://github.com/voxel51/eta/tree/develop/docs).
 
-# Build and run pipelines from requests using the `eta` command-line tool
-eta build -r examples/demo_video_formatter/request.json --run-now
-eta build -r examples/demo_video_clipper/request.json --run-now
+- `eta/classifiers/`: interfaces for common classifiers
 
-#
-# Example image/video embedding
-#
-# NOTE: A 550MB VGG16 weights file will be downloaded from the web and stored
-#       in eta/models/ the first time you run one of these!
-#
-cd examples/demo_embed_vgg16
-# Example image embedding
-python embed_image.py
-# Another example image embedding
-python embed_image_direct.py
-# Example video embedding
-python embed_video.py
-# Example use of the embed_vgg16 module
-bash embed_vgg16_module.bash
-# Example embedding pipeline
-eta run embed_vgg16_pipeline-config.json
-```
+- `eta/core/`: the core ETA library, which includes utilities for working
+with images, videos, embeddings, etc.
 
-## Using virtual environments
+- `eta/detectors/`: interfaces for common detectors
 
-You can use [virtual environments](https://virtualenv.pypa.io/en/stable) to
-maintain a separate Python working environment for ETA that operates
-independently of other packages and Python applications on your machine. See
-`docs/virtualenv_guide.md` for more details and setup instructions.
+- `eta/models/`: library of ML models. The `manifest.json` file in this
+folder enumerates the models, which are downloaded to this folder as needed.
+See the [Models developer's guide](https://github.com/voxel51/eta/blob/develop/docs/models_dev_guide.md)
+for more information about ETA's model registry.
+
+- `eta/modules/`: library of video processing/analytics modules. See the
+[Module developer's guide](https://github.com/voxel51/eta/blob/develop/docs/modules_dev_guide.md)
+for more information about ETA modules.
+
+- `eta/pipelines/`: library of video processing/analytics pipelines. See the
+[Pipeline developer's guide](https://github.com/voxel51/eta/blob/develop/docs/pipelines_dev_guide.md)
+for more information about ETA pipelines.
+
+- `eta/resources/`: resources such as media, templates, etc.
+
+In addition, ETA makes use of the following external dependencies:
+
+- `tensorflow/`: Third-party TensorFlow repositories that ETA builds upon
 
 
 ## Uninstallation

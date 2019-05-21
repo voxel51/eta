@@ -2,7 +2,7 @@
 '''
 Core learning infrastructure.
 
-Copyright 2019, Voxel51, Inc.
+Copyright 2017-2019, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
@@ -19,11 +19,185 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-from eta.core.config import Config, Configurable
-import eta.core.data as etad
+from eta.core.config import Config, ConfigError, Configurable
+import eta.core.utils as etau
 
 
-class ClassifierConfig(Config):
+def load_labels_map(labels_map_path):
+    '''Loads the labels map from the given path.
+
+    Args:
+        labels_map_path: the path to a labels map file
+
+    Returns:
+        a dictionary mapping indexes to label strings
+    '''
+    labels_map = {}
+    with open(labels_map_path, "r") as f:
+        for line in f:
+            idx, label = line.split(":")
+            labels_map[int(idx)] = label.strip()
+    return labels_map
+
+
+def write_labels_map(labels_map, outpath):
+    '''Writes the labels map to disk.
+
+    Labels maps are written to disk in the following plain text format:
+    ```
+    1:label1
+    2:label2
+    3:label3
+    ...
+    ```
+
+    Args:
+        labels_map: the labels map dictionary
+        outpath: the output path
+    '''
+    with open(outpath, "w") as f:
+        for idx in sorted(labels_map):
+            f.write("%s:%s\n" % (idx, labels_map[idx]))
+
+
+class ModelConfig(Config):
+    '''Base configuration class that encapsulates the name of a `Model`
+    subclass and an instance of its associated Config class.
+
+    Attributes:
+        type: the fully-qualified class name of the `Model` subclass
+        config: an instance of the Config class associated with the specified
+            `Model` subclass
+    '''
+
+    def __init__(self, d):
+        self.type = self.parse_string(d, "type")
+        self._model_cls, self._config_cls = Configurable.parse(self.type)
+        self.config = self.parse_object(
+            d, "config", self._config_cls, default=None)
+        if not self.config:
+            self.config = self._load_default_config()
+
+    def build(self):
+        '''Factory method that builds the Model instance from the config
+        specified by this class.
+        '''
+        return self._model_cls(self.config)
+
+    def _load_default_config(self):
+        try:
+            # Try to load the default config from disk
+            return self._config_cls.load_default()
+        except NotImplementedError:
+            # Try default() instead
+            return self._config_cls.default()
+
+    def _validate_type(self, base_cls):
+        if not issubclass(self._model_cls, base_cls):
+            raise ConfigError(
+                "Expected type '%s' to be a subclass of '%s'" % (
+                    self.type, etau.get_class_name(base_cls)))
+
+
+class Model(Configurable):
+    '''Abstract base class for all models.
+
+    This class declares the following two conventions:
+
+        (a) Models are `Configurable`. This means that their constructors must
+            take a single `config` argument that is an instance of
+            `<ModelClass>Config`
+
+        (b) Models implement the context manager interface. This means that
+        models can optionally use context to perform any necessary setup and
+        teardown, and so any code that builds a model should use the `with`
+        syntax
+    '''
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        pass
+
+
+class ImageModelConfig(ModelConfig):
+    '''Base configuration class that encapsulates the name of an `ImageModel`
+    subclass and an instance of its associated Config class.
+
+    Attributes:
+        type: the fully-qualified class name of the `ImageModel` subclass
+        config: an instance of the Config class associated with the specified
+            `ImageModel` subclass
+    '''
+
+    def __init__(self, d):
+        super(ImageModelConfig, self).__init__(d)
+        self._validate_type(ImageModel)
+
+
+class ImageModel(Model):
+    '''Interface for generic models that process images and perform arbitrary
+    predictions and detections.
+
+    Subclasses of `ImageModel` must implement the `process()` method.
+
+    `ImageModel` is useful when implementing a highly customized model that
+    does not fit any of the concrete classifier/detector interfaces.
+    '''
+
+    def process(self, img):
+        '''Generates labels for the given image.
+
+        Args:
+            img: the image to process
+
+        Returns:
+            an `eta.core.image.ImageLabels` instance containing the labels
+                generated for the given image
+        '''
+        raise NotImplementedError("subclasses must implement process()")
+
+
+class VideoModelConfig(ModelConfig):
+    '''Base configuration class that encapsulates the name of an `VideoModel`
+    subclass and an instance of its associated Config class.
+
+    Attributes:
+        type: the fully-qualified class name of the `VideoModel` subclass
+        config: an instance of the Config class associated with the specified
+            `VideoModel` subclass
+    '''
+
+    def __init__(self, d):
+        super(VideoModelConfig, self).__init__(d)
+        self._validate_type(VideoModel)
+
+
+class VideoModel(Model):
+    '''Interface for generic models that process entire videos and perform
+    arbitrary predictions and detections.
+
+    Subclasses of `VideoModel` must implement the `process()` method.
+
+    `VideoModel` is useful when implementing a highly customized model that
+    does not fit any of the concrete classifier/detector interfaces.
+    '''
+
+    def process(self, video_path):
+        '''Generates labels for the given video.
+
+        Args:
+            video_path: the path to the video
+
+        Returns:
+            an `eta.core.video.VideoLabels` instance containing the labels
+                generated for the given video
+        '''
+        raise NotImplementedError("subclasses must implement process()")
+
+
+class ClassifierConfig(ModelConfig):
     '''Configuration class that encapsulates the name of a `Classifier` and
     an instance of its associated Config class.
 
@@ -34,21 +208,11 @@ class ClassifierConfig(Config):
     '''
 
     def __init__(self, d):
-        self.type = self.parse_string(d, "type")
-        self._classifier_cls, config_cls = Configurable.parse(self.type)
-        self.config = self.parse_object(d, "config", config_cls, default=None)
-        if not self.config:
-            # Try to load the default config for the classifier
-            self.config = config_cls.load_default()
-
-    def build(self):
-        '''Factory method that builds the Classifier instance from the
-        config specified by this class.
-        '''
-        return self._classifier_cls(self.config)
+        super(ClassifierConfig, self).__init__(d)
+        self._validate_type(Classifier)
 
 
-class Classifier(Configurable):
+class Classifier(Model):
     '''Interface for classifiers.
 
     Subclasses of `Classifier` must implement the `predict()` method.
@@ -56,12 +220,6 @@ class Classifier(Configurable):
     Subclasses can optionally implement the context manager interface to
     perform any necessary setup and teardown.
     '''
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *args):
-        pass
 
     def predict(self, arg):
         '''Peforms prediction on the given argument.
@@ -75,8 +233,23 @@ class Classifier(Configurable):
         raise NotImplementedError("subclasses must implement predict()")
 
 
+class ImageClassifierConfig(ClassifierConfig):
+    '''Configuration class that encapsulates the name of an `ImageClassifier`
+    and an instance of its associated Config class.
+
+    Attributes:
+        type: the fully-qualified class name of the `ImageClassifier`
+        config: an instance of the Config class associated with the specified
+            `ImageClassifier`
+    '''
+
+    def __init__(self, d):
+        super(ImageClassifierConfig, self).__init__(d)
+        self._validate_type(ImageClassifier)
+
+
 class ImageClassifier(Classifier):
-    '''Base class for all classifiers that operate on single images.
+    '''Base class for classifiers that operate on single images.
 
     `ImageClassifier`s may output single or multiple labels per image.
 
@@ -117,14 +290,30 @@ class ImageClassifier(Classifier):
         return [self.predict(img) for img in imgs]
 
 
+class VideoFramesClassifierConfig(ClassifierConfig):
+    '''Configuration class that encapsulates the name of a
+    `VideoFramesClassifier` and an instance of its associated Config class.
+
+    Attributes:
+        type: the fully-qualified class name of the `VideoFramesClassifier`
+        config: an instance of the Config class associated with the specified
+            `VideoFramesClassifier`
+    '''
+
+    def __init__(self, d):
+        super(VideoFramesClassifierConfig, self).__init__(d)
+        self._validate_type(VideoFramesClassifier)
+
+
 class VideoFramesClassifier(Classifier):
-    '''Base class for all classifiers that operate directly on videos
-    represented as tensors of images.
+    '''Base class for classifiers that operate directly on videos represented
+    as tensors of images.
 
     `VideoFramesClassifier`s may output single or multiple labels per video
     clip.
 
-    Subclasses of `VideoFramesClassifier` must implement the `predict()` method.
+    Subclasses of `VideoFramesClassifier` must implement the `predict()`
+    method.
 
     Subclasses can optionally implement the context manager interface to
     perform any necessary setup and teardown, e.g., operating a `Featurizer`
@@ -146,102 +335,112 @@ class VideoFramesClassifier(Classifier):
         raise NotImplementedError("subclasses must implement predict()")
 
 
-class VideoFramesVotingClassifierConfig(Config):
-    '''Configuration settings for a VideoFramesVotingClassifier.'''
-
-    def __init__(self, d):
-        self.image_classifier = self.parse_object(
-            d, "image_classifier", ClassifierConfig)
-        self.confidence_weighted_vote = self.parse_bool(
-            d, "confidence_weighted_vote", default=False)
-
-
-class VideoFramesVotingClassifier(VideoFramesClassifier):
-    '''A video frames classifier that uses an `ImageClassifier` to classify
-    each image and then votes on each attribute to determine the predictions
-    for the video.
-
-    Note that all attributes are combined into a single vote. Thus, even if the
-    `ImageClassifier` is a multilabel classifier, each prediction will contain
-    the single most prevelant label.
-    '''
-
-    def __init__(self, config):
-        '''Creates a VideoFramesVotingClassifier instance.
-
-        Args:
-            config: a VideoFramesVotingClassifierConfig instance
-        '''
-        self.config = config
-        self.image_classifier = config.image_classifier.build()
-
-        if not isinstance(self.image_classifier, ImageClassifier):
-            raise ValueError("image_classifier must be a %s", ImageClassifier)
-
-    def __enter__(self):
-        self.image_classifier.__enter__()
-        return self
-
-    def __exit__(self, *args):
-        self.image_classifier.__exit__(*args)
-
-    def predict(self, imgs):
-        '''Peforms prediction on the given video represented as a tensor of
-        images.
-
-        Args:
-            imgs: a list (or d x ny x nx x 3 tensor) of images defining the
-                video to classify
-
-        Returns:
-            an `eta.core.data.AttributeContainer` instance describing
-                the predictions for the input
-        '''
-        frame_attrs = self.image_classifier.predict_all(imgs)
-        return etad.majority_vote_categorical_attrs(
-            frame_attrs,
-            confidence_weighted=self.config.confidence_weighted_vote)
-
-
-class ObjectDetectorConfig(Config):
-    '''Configuration class that encapsulates the name of an `ObjectDetector`
+class VideoClassifierConfig(ClassifierConfig):
+    '''Configuration class that encapsulates the name of a `VideoClassifier`
     and an instance of its associated Config class.
 
     Attributes:
-        type: the fully-qualified class name of the `ObjectDetector`
+        type: the fully-qualified class name of the `VideoClassifier`
         config: an instance of the Config class associated with the specified
-            detector
+            `VideoClassifier`
     '''
 
     def __init__(self, d):
-        self.type = self.parse_string(d, "type")
-        self._detector_cls, config_cls = Configurable.parse(self.type)
-        self.config = self.parse_object(d, "config", config_cls, default=None)
-        if not self.config:
-            # Try to load the default config for the detector
-            self.config = config_cls.load_default()
+        super(VideoClassifierConfig, self).__init__(d)
+        self._validate_type(VideoClassifier)
 
-    def build(self):
-        '''Factory method that builds the `ObjectDetector` instance from the
-        config specified by this class.
+
+class VideoClassifier(Classifier):
+    '''Base class for classifiers that operate on entire videos.
+
+    `VideoClassifier`s may output single or multiple (video-level) labels per
+    video.
+
+    Subclasses of `VideoClassifier` must implement the `predict()` method.
+
+    Subclasses can optionally implement the context manager interface to
+    perform any necessary setup and teardown, e.g., operating a `Featurizer`
+    that featurizes the frames of the input video.
+    '''
+
+    def predict(self, video_path):
+        '''Peforms prediction on the given video.
+
+        Args:
+            video_path: the path to the video
+
+        Returns:
+            an `eta.core.data.AttributeContainer` instance containing the
+                predictions
         '''
-        return self._detector_cls(self.config)
+        raise NotImplementedError("subclasses must implement predict()")
 
 
-class ObjectDetector(Configurable):
-    '''Base class for all object detectors.
+class DetectorConfig(ModelConfig):
+    '''Configuration class that encapsulates the name of a `Detector` and
+    an instance of its associated Config class.
 
-    Subclasses of `ObjectDetctor` must implement the `detect()` method.
+    Attributes:
+        type: the fully-qualified class name of the `Detector`
+        config: an instance of the Config class associated with the specified
+            `Detector`
+    '''
+
+    def __init__(self, d):
+        super(DetectorConfig, self).__init__(d)
+        self._validate_type(Detector)
+
+
+class Detector(Model):
+    '''Interface for detectors.
+
+    Subclasses of `Detector` must implement the `detect()` method.
 
     Subclasses can optionally implement the context manager interface to
     perform any necessary setup and teardown.
     '''
 
-    def __enter__(self):
-        return self
+    def detect(self, arg):
+        '''Peforms detection on the given argument.
 
-    def __exit__(self, *args):
-        pass
+        Args:
+            arg: the data to detect
+
+        Returns:
+            an `eta.core.objects.DetectedObjectContainer` describing the
+                detections
+        '''
+        raise NotImplementedError("subclasses must implement detect()")
+
+
+class ObjectDetectorConfig(DetectorConfig):
+    '''Configuration class that encapsulates the name of a `ObjectDetector` and
+    an instance of its associated Config class.
+
+    Attributes:
+        type: the fully-qualified class name of the `ObjectDetector`
+        config: an instance of the Config class associated with the specified
+            `ObjectDetector`
+    '''
+
+    def __init__(self, d):
+        super(ObjectDetectorConfig, self).__init__(d)
+        self._validate_type(ObjectDetector)
+
+
+class ObjectDetector(Detector):
+    '''Base class for detectors that operate on single images.
+
+    `ObjectDetector`s may output single or multiple detections per image.
+
+    Subclasses of `ObjectDetector` must implement the `detect()` method, and
+    they can optionally provide custom (efficient) implementations of the
+    `detect_all()` method.
+
+    Subclasses can optionally implement the context manager interface to
+    perform any necessary setup and teardown, e.g., operating a `Featurizer`
+    that featurizes the input images.
+    '''
 
     def detect(self, img):
         '''Detects objects in the given image.
@@ -251,6 +450,106 @@ class ObjectDetector(Configurable):
 
         Returns:
             an `eta.core.objects.DetectedObjectContainer` instance describing
-                the detected objects
+                the detections
         '''
         raise NotImplementedError("subclass must implement detect()")
+
+    def detect_all(self, imgs):
+        '''Performs detection on the given tensor of images.
+
+        Subclasses can override this method to increase efficiency, but, by
+        default, this method simply iterates over the images and detects each.
+
+        Args:
+            imgs: a list (or d x ny x nx x 3 tensor) of images to detect
+
+        Returns:
+            a list of `eta.core.objects.DetectedObjectContainer` instances
+                describing the detections for each image
+        '''
+        return [self.detect(img) for img in imgs]
+
+
+class VideoFramesObjectDetectorConfig(DetectorConfig):
+    '''Configuration class that encapsulates the name of a
+    `VideoFramesObjectDetector` and an instance of its associated Config class.
+
+    Attributes:
+        type: the fully-qualified class name of the `VideoFramesObjectDetector`
+        config: an instance of the Config class associated with the specified
+            `VideoFramesObjectDetector`
+    '''
+
+    def __init__(self, d):
+        super(VideoFramesObjectDetectorConfig, self).__init__(d)
+        self._validate_type(VideoFramesObjectDetector)
+
+
+class VideoFramesObjectDetector(Detector):
+    '''Base class for detectors that operate directly on videos
+    represented as tensors of images.
+
+    `VideoFramesObjectDetector`s may output single or multiple detections per
+    video clip.
+
+    Subclasses of `VideoFramesObjectDetector` must implement the `detect()`
+    method.
+
+    Subclasses can optionally implement the context manager interface to
+    perform any necessary setup and teardown, e.g., operating a `Featurizer`
+    that featurizes the input frames.
+    '''
+
+    def detect(self, imgs):
+        '''Peforms detection on the given video represented as a tensor of
+        images.
+
+        Args:
+            imgs: a list (or d x ny x nx x 3 tensor) of images defining the
+                video to detect
+
+        Returns:
+            an `eta.core.objects.DetectedObjectContainer` instance describing
+                the detections for the clip
+        '''
+        raise NotImplementedError("subclasses must implement detect()")
+
+
+class VideoObjectDetectorConfig(DetectorConfig):
+    '''Configuration class that encapsulates the name of a
+    `VideoObjectDetector` and an instance of its associated Config class.
+
+    Attributes:
+        type: the fully-qualified class name of the `VideoObjectDetector`
+        config: an instance of the Config class associated with the specified
+            `VideoObjectDetector`
+    '''
+
+    def __init__(self, d):
+        super(VideoObjectDetectorConfig, self).__init__(d)
+        self._validate_type(VideoObjectDetector)
+
+
+class VideoObjectDetector(Detector):
+    '''Base class for detectors that operate on entire videos.
+
+    `VideoObjectDetector`s may output one or more detections per video.
+
+    Subclasses of `VideoObjectDetector` must implement the `detect()` method.
+
+    Subclasses can optionally implement the context manager interface to
+    perform any necessary setup and teardown, e.g., operating a `Featurizer`
+    that featurizes the frames of the input video.
+    '''
+
+    def detect(self, video_path):
+        '''Peforms detection on the given video.
+
+        Args:
+            video_path: the path to the video
+
+        Returns:
+            an `eta.core.objects.DetectedObjectContainer` instance describing
+                the detections for the video
+        '''
+        raise NotImplementedError("subclasses must implement detect()")

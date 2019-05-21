@@ -4,7 +4,7 @@ ETA core type system.
 More types may be defined in other modules, but they must inherit from the
 base type `eta.core.types.Type` defined here.
 
-Copyright 2018, Voxel51, Inc.
+Copyright 2017-2019, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
@@ -272,7 +272,55 @@ class VideoFramesFeaturizer(Featurizer):
     pass
 
 
-class Classifier(Config):
+class Model(Config):
+    '''Configuration for an `eta.core.learning.Model`.
+
+    This type is implemented in ETA by the `eta.core.learning.ModelConfig`
+    class.
+    '''
+
+    @staticmethod
+    def is_valid_value(val):
+        try:
+            etal.ModelConfig(val)
+            return True
+        except:
+            return False
+
+
+class ImageModel(Model):
+    '''Configuration for an `eta.core.learning.ImageModel`.
+
+    This type is implemented in ETA by the `eta.core.learning.ImageModelConfig`
+    class.
+    '''
+
+    @staticmethod
+    def is_valid_value(val):
+        try:
+            etal.ImageModelConfig(val)
+            return True
+        except:
+            return False
+
+
+class VideoModel(Model):
+    '''Configuration for an `eta.core.learning.VideoModel`.
+
+    This type is implemented in ETA by the `eta.core.learning.VideoModelConfig`
+    class.
+    '''
+
+    @staticmethod
+    def is_valid_value(val):
+        try:
+            etal.VideoModelConfig(val)
+            return True
+        except:
+            return False
+
+
+class Classifier(Model):
     '''Configuration for an `eta.core.learning.Classifier`.
 
     This type is implemented in ETA by the `eta.core.learning.ClassifierConfig`
@@ -291,22 +339,69 @@ class Classifier(Config):
 class ImageClassifier(Classifier):
     '''Configuration for an `eta.core.learning.ImageClassifier`.
 
-    This type is implemented in ETA by the `eta.core.learning.ClassifierConfig`
-    class.
+    This type is implemented in ETA by the
+    `eta.core.learning.ImageClassifierConfig` class.
     '''
-    pass
+
+    @staticmethod
+    def is_valid_value(val):
+        try:
+            etal.ImageClassifierConfig(val)
+            return True
+        except:
+            return False
+
 
 
 class VideoFramesClassifier(Classifier):
     '''Configuration for an `eta.core.learning.VideoFramesClassifier`.
 
-    This type is implemented in ETA by the `eta.core.learning.ClassifierConfig`
+    This type is implemented in ETA by the
+    `eta.core.learning.VideoFramesClassifierConfig` class.
+    '''
+
+    @staticmethod
+    def is_valid_value(val):
+        try:
+            etal.VideoFramesClassifierConfig(val)
+            return True
+        except:
+            return False
+
+
+class VideoClassifier(Classifier):
+    '''Configuration for an `eta.core.learning.VideoClassifier`.
+
+    This type is implemented in ETA by the
+    `eta.core.learning.VideoClassifierConfig` class.
+    '''
+
+    @staticmethod
+    def is_valid_value(val):
+        try:
+            etal.VideoClassifierConfig(val)
+            return True
+        except:
+            return False
+
+
+class Detector(Model):
+    '''Configuration for an `eta.core.learning.Detector`.
+
+    This type is implemented in ETA by the `eta.core.learning.DetectorConfig`
     class.
     '''
-    pass
+
+    @staticmethod
+    def is_valid_value(val):
+        try:
+            etal.DetectorConfig(val)
+            return True
+        except:
+            return False
 
 
-class ObjectDetector(Config):
+class ObjectDetector(Detector):
     '''Configuration for an `eta.core.learning.ObjectDetector`.
 
     This type is implemented in ETA by the
@@ -317,6 +412,38 @@ class ObjectDetector(Config):
     def is_valid_value(val):
         try:
             etal.ObjectDetectorConfig(val)
+            return True
+        except:
+            return False
+
+
+class VideoFramesObjectDetector(Detector):
+    '''Configuration for an `eta.core.learning.VideoFramesObjectDetector`.
+
+    This type is implemented in ETA by the
+    `eta.core.learning.VideoFramesObjectDetectorConfig` class.
+    '''
+
+    @staticmethod
+    def is_valid_value(val):
+        try:
+            etal.VideoFramesObjectDetectorConfig(val)
+            return True
+        except:
+            return False
+
+
+class VideoObjectDetector(Detector):
+    '''Configuration for an `eta.core.learning.VideoObjectDetector`.
+
+    This type is implemented in ETA by the
+    `eta.core.learning.VideoObjectDetectorConfig` class.
+    '''
+
+    @staticmethod
+    def is_valid_value(val):
+        try:
+            etal.VideoObjectDetectorConfig(val)
             return True
         except:
             return False
@@ -477,6 +604,15 @@ class ImageFile(Image, File, ConcreteData):
         return File.is_valid_path(path) and etai.is_supported_image(path)
 
 
+class ImageFileDirectory(Directory):
+    '''A directory containing one or more images.
+
+    Examples:
+        /path/to/images
+    '''
+    pass
+
+
 class Video(AbstractData):
     '''The abstract data type representing a single video.
 
@@ -606,6 +742,15 @@ class VideoClips(DualFileSequence, ConcreteData):
             DualFileSequence.is_valid_path(path) and
             etav.is_supported_video_file(path)
         )
+
+
+class VideoFileDirectory(Directory):
+    '''A directory containing one or more video files.
+
+    Examples:
+        /path/to/videos
+    '''
+    pass
 
 
 class NpzFile(File, ConcreteData):
