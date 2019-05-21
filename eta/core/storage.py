@@ -39,14 +39,14 @@ try:
 except ImportError:
     import urlparse  # Python 2
 
+import google.api_core.exceptions as gae
 import google.cloud.storage as gcs
 import google.oauth2.service_account as gos
-import google.api_core.exceptions as gae
 import googleapiclient.discovery as gad
 import googleapiclient.http as gah
 import pysftp
-import requests
 from retrying import retry
+import requests
 
 import eta.core.serial as etas
 import eta.core.utils as etau
@@ -62,7 +62,8 @@ logging.getLogger("paramiko").setLevel(logging.ERROR)
 
 def google_cloud_api_retry(func):
     '''Decorator for handling retry of Google API errors.
-    Following recommendations from:
+
+    Follows recommendations from:
         https://cloud.google.com/apis/design/errors#error_retries
     '''
 
@@ -73,16 +74,20 @@ def google_cloud_api_retry(func):
     def is_429(exception):
         return isinstance(exception, gae.TooManyRequests)
 
-    STOP_MAX_ATTEMPT_NUMBER = 10
+    stop_max_attempt_number = 10
+    # wait times below are in milliseconds
 
     @retry(retry_on_exception=is_500_or_503,
-           stop_max_attempt_number=STOP_MAX_ATTEMPT_NUMBER,
-           wait_exponential_multiplier=1000, wait_exponential_max=10*1000)
+           stop_max_attempt_number=stop_max_attempt_number,
+           wait_exponential_multiplier=1000, wait_exponential_max=1 * 1000)
+
     @retry(retry_on_exception=is_429,
-           stop_max_attempt_number=STOP_MAX_ATTEMPT_NUMBER,
-           wait_fixed=30*1000)
+           stop_max_attempt_number=stop_max_attempt_number,
+           wait_fixed=30 * 1000)
+
     def wrapper(*args, **kwargs):
         return func(*args, **kwargs)
+
     return wrapper
 
 
