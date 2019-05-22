@@ -1,9 +1,8 @@
 # Custom OpenCV builds
 
-The ETA codebase supports both OpenCV 2.4+ and OpenCV 3.0+. By default, the
-`install_externals.bash` script installs a pre-built OpenCV package via
-`pip install opencv-python`. However, one can build a custom OpenCV
-installation if desired.
+The ETA codebase supports both OpenCV 2.4+ and OpenCV 3.0+. By default, ETA
+installs a pre-built OpenCV package via `pip install opencv-python-headless`.
+However, one can build a custom OpenCV installation if desired.
 
 
 ## Installing OpenCV
