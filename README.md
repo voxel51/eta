@@ -62,6 +62,20 @@ is found, `tensorflow-gpu 1.4` is installed.
 Note that ETA is installed in editable via `pip install -e .`, so don't delete
 the directory after installation!
 
+### Lite installation
+
+Some ETA users are only interested in using the core ETA library defined in
+the `eta.core` package. In such cases, you can perform a lite installation
+using the `-l` flag of the install script:
+
+```shell
+bash install.bash -l
+```
+
+Lite installation omits submodules and other large dependencies that are not
+required in order for the core library to function.
+
+
 ### Setting up your execution environment
 
 When the root `eta` package is imported, it tries to read the `eta/config.json`
@@ -122,7 +136,7 @@ the [docs folder](https://github.com/voxel51/eta/tree/develop/docs).
 - `eta/classifiers/`: interfaces for common classifiers
 
 - `eta/core/`: the core ETA library, which includes utilities for working
-with images, videos, embeddings, etc.
+with images, videos, embeddings, and much more.
 
 - `eta/detectors/`: interfaces for common detectors
 
