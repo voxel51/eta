@@ -24,9 +24,11 @@ import logging
 import os
 import re
 
+import numpy as np
 import tensorflow as tf
 
 import eta
+import eta.core.image as etai
 import eta.core.models as etam
 
 
@@ -36,19 +38,98 @@ logger = logging.getLogger(__name__)
 TF_RECORD_EXTENSIONS = [".record", ".tfrecord"]
 
 
-def make_tf_session(config_proto=None):
+class TFModelCheckpoint(etam.PublishedModel):
+    '''Class that can load a published TensorFlow model checkpoint stored as a
+    .model file.
+    '''
+
+    def __init__(self, model_name, sess):
+        '''Initializes a TFModelCheckpoint instance.
+
+        Args:
+            model_name: the model to load
+            sess: the tf.Session in which to load the checkpoint
+
+        Raises:
+            ModelError: if the model was not found
+        '''
+        super(TFModelCheckpoint, self).__init__(model_name)
+        self._sess = sess
+
+    def _load(self):
+        saver = tf.train.Saver()
+        saver.restore(self._sess, self.model_path)
+
+
+class UsesTFSession(object):
+    '''Base class for classes that use one or more `tf.Session`s.
+
+    It is highly recommended that all classes that use `tf.Session` inherit
+    from this class to ensure that:
+
+        - all sessions have the settings from `eta.config.tf_config` applied
+            to them
+
+        - all sessions are appropriately closed
+
+    To use this base class, simply call `make_tf_session()` when you need to
+    create a new session, and then either use the context manager interface or
+    call the `close()` method to automatically clean up any sessions your
+    instance was using.
+    '''
+
+    def __init__(self):
+        self._sess_list = []
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.close()
+
+    def make_tf_session(self, config_proto=None, graph=None):
+        '''Makes a new tf.Session that inherits any config settings from the
+        global `eta.config.tf_config`.
+
+        A reference to the session is stored internally so that it can be
+        closed when `close()` is called.
+
+        Args:
+            config_proto: an optional tf.ConfigProto from which to initialize
+                the session config. By default, tf.ConfigProto() is used
+            graph: an optional tf.Graph to launch. If omitted, the default
+                graph is used
+
+        Returns:
+            the tf.Session
+        '''
+        sess = make_tf_session(config_proto=config_proto, graph=graph)
+        self._sess_list.append(sess)
+        return sess
+
+    def close(self):
+        '''Closes any TensorFlow session(s) in use by this instance.'''
+        for sess in self._sess_list:
+            if sess:
+                sess.close()
+        self._sess_list = []
+
+
+def make_tf_session(config_proto=None, graph=None):
     '''Makes a new tf.Session that inherits any config settings from the global
     `eta.config.tf_config`.
 
     Args:
         config_proto: an optional tf.ConfigProto from which to initialize the
             session config. By default, tf.ConfigProto() is used
+        graph: an optional tf.Graph to launch. If omitted, the default graph
+            is used
 
     Returns:
-        a tf.Session
+        the tf.Session
     '''
     config = make_tf_config(config_proto=config_proto)
-    return tf.Session(config=config)
+    return tf.Session(config=config, graph=graph)
 
 
 def make_tf_config(config_proto=None):
@@ -118,6 +199,69 @@ def make_sharded_tf_record_path(base_path, num_shards):
     return base_path + "-" + "?" * num_digits + "-of-" + num_shards_str
 
 
+def inception_preprocessing_numpy(imgs, height, width):
+    '''Performs Inception-style preprocessing of images using numpy.
+
+    Specifically, the images are resized and then scaled to [-1, 1].
+
+    Args:
+        imgs: a list of images (grayscale, RGB, or RGBA)
+        height: desired image height after preprocessing
+        width: desired image width after preprocessing
+
+    Returns:
+        a list of preprocessed images
+    '''
+    imgs_out = []
+    for img in imgs:
+        if etai.is_gray(img):
+            img = etai.gray_to_rgb(img)
+        elif etai.has_alpha(img):
+            img = img[:, :, :3]
+
+        img = etai.resize(img, height, width)
+        img = 2.0 * (etai.to_double(img) - 0.5)
+        imgs_out.append(img)
+
+    return imgs_out
+
+
+def vgg_preprocessing_numpy(imgs, height, width):
+    '''Performs VGG-style preprocessing of images using numpy.
+
+    Specifically, the images are resized (aspect-preserving) to the desired
+    size and then centered by the standard ImageNet mean vector.
+
+    Args:
+        imgs: a list of images (grayscale, RGB, or RGBA)
+        height: desired image height after preprocessing
+        width: desired image width after preprocessing
+
+    Returns:
+        a list of preprocessed images
+    '''
+    imagenet_mean = np.array([123.68, 116.779, 103.939]).reshape(1, 1, 3)
+
+    imgs_out = []
+    for img in imgs:
+        if etai.is_gray(img):
+            img = etai.gray_to_rgb(img)
+        elif etai.has_alpha(img):
+            img = img[:, :, :3]
+
+        # Aspect preserving resize
+        if img.shape[0] < img.shape[1]:
+            img = etai.resize(img, height=256)
+        else:
+            img = etai.resize(img, width=256)
+
+        img = etai.central_crop(img, height, width)
+        img = img.astype(np.float) - imagenet_mean
+        imgs_out.append(img)
+
+    return imgs_out
+
+
 def _set_proto_fields(proto, d):
     def _split_field(field):
         chunks = field.split(".", 1)
@@ -134,26 +278,3 @@ def _set_proto_fields(proto, d):
                 setattr(proto, field, val)
         except AttributeError as e:
             logger.warning(str(e))
-
-
-class TFModelCheckpoint(etam.PublishedModel):
-    '''Class that can load a published TensorFlow model checkpoint stored as a
-    .model file.
-    '''
-
-    def __init__(self, model_name, sess):
-        '''Initializes a TFModelCheckpoint instance.
-
-        Args:
-            model_name: the model to load
-            sess: the tf.Session in which to load the checkpoint
-
-        Raises:
-            ModelError: if the model was not found
-        '''
-        super(TFModelCheckpoint, self).__init__(model_name)
-        self._sess = sess
-
-    def _load(self):
-        saver = tf.train.Saver()
-        saver.restore(self._sess, self.model_path)
