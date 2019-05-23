@@ -26,6 +26,18 @@ import eta.core.utils as etau
 def load_labels_map(labels_map_path):
     '''Loads the labels map from the given path.
 
+    The labels mmap must be in the following plain text format:
+
+    ```
+    1:label1
+    2:label2
+    3:label3
+    ...
+    ```
+
+    The indexes are irrelevant to this function, they can be in any order and
+    can start from zero, one, or another number.
+
     Args:
         labels_map_path: the path to a labels map file
 
@@ -44,12 +56,17 @@ def write_labels_map(labels_map, outpath):
     '''Writes the labels map to disk.
 
     Labels maps are written to disk in the following plain text format:
+
     ```
     1:label1
     2:label2
     3:label3
     ...
     ```
+
+    The indexes are irrelevant to this function, they can be in any order and
+    can start from zero, one, or another number. They are, however, written
+    to disk in sorted (increasing) order.
 
     Args:
         labels_map: the labels map dictionary
