@@ -45,7 +45,20 @@ import eta.core.utils as etau
 import eta.core.web as etaw
 
 
-SUPPORTED_IMAGE_FORMATS = [".png", ".jpg", ".jpeg", ".gif", ".tiff", ".bmp"]
+#
+# The file extensions of supported video files
+#
+# In practice, any image that `cv2.imread` can read will be supported.
+# Nonetheless, we enumerate this list here so that the ETA type system can
+# verify the extension of an image provided to a pipeline at build time.
+#
+# This list was taken from
+# https://docs.opencv.org/2.4/modules/highgui/doc/reading_and_writing_images_and_video.html?highlight=imread#imread
+#
+SUPPORTED_IMAGE_FORMATS = {
+    ".bmp", ".dib", ".jp2", ".jpe", ".jpeg", ".jpg", ".pbm", ".pgm", ".png",
+    ".ppm", ".ras", ".sr", ".tif", ".tiff"
+}
 
 
 def is_supported_image(filepath):
