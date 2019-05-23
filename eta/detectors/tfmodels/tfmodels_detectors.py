@@ -1,5 +1,5 @@
 '''
-Interface to the TensorFlow Models object detection library available at
+Interface to the TF models object detection library available at
 https://github.com/tensorflow/models/tree/master/research/object_detection.
 
 Copyright 2017-2019, Voxel51, Inc.
@@ -147,6 +147,9 @@ def _to_detected_object(box, score, class_id, label_map):
         score (float): confidence score
         class_id (int): predicted class ID
         label_map (dict): mapping from class IDs to names
+
+    Returns:
+        a DetectedObject describing the detection
     '''
     return DetectedObject(
         label_map[class_id]["name"],
