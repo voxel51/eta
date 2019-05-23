@@ -41,7 +41,7 @@ import eta.core.image as etai
 from eta.core.features import Featurizer
 import eta.core.learning as etal
 import eta.core.models as etam
-import eta.core.tfutils as etat
+from eta.core.tfutils import UsesTFSession
 
 
 logger = logging.getLogger(__name__)
@@ -59,12 +59,18 @@ class VGG16Config(Config):
                 etac.RESOURCES_DIR, "vgg16-imagenet-labels.txt")
 
 
-class VGG16(Configurable):
+class VGG16(Configurable, UsesTFSession):
     '''TensorFlow implementation of the VGG-16 network architecture for the
     1000 classes from ImageNet.
 
     This implementation is hard-coded to process a tensor of images of size
     [XXXX, 224, 224, 3].
+
+    This class uses `eta.core.tfutils.UsesTFSession` to create TF sessions, so
+    it automatically applies settings in your `eta.config.tf_config`.
+
+    Instances of this class must either use the context manager interface or
+    manually call `close()` when finished to release memory.
     '''
 
     def __init__(self, config=None, sess=None, imgs=None):
@@ -81,10 +87,12 @@ class VGG16(Configurable):
                 use. By default, a placeholder of size [None, 224, 224, 3] is
                 used so you can evaluate any number of images at once
         '''
+        UsesTFSession.__init__(self)
+
         if config is None:
             config = VGG16Config.default()
         if sess is None:
-            sess = etat.make_tf_session()
+            sess = self.make_tf_session()
         if imgs is None:
             imgs = tf.placeholder(tf.float32, [None, 224, 224, 3])
 
@@ -99,12 +107,6 @@ class VGG16(Configurable):
         self._build_output_layer()
 
         self._load_model(self.config.model)
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *args):
-        self.close()
 
     @staticmethod
     def preprocess_image(img):
@@ -148,16 +150,6 @@ class VGG16(Configurable):
             layer = self.probs
 
         return self.sess.run(layer, feed_dict={self.imgs: imgs})
-
-    def close(self):
-        '''Closes the TensorFlow session used by this instance, if necessary.
-
-        Users who did not pass their own tf.Session to the constructor **must**
-        call this method to free up the network.
-        '''
-        if self.sess:
-            self.sess.close()
-            self.sess = None
 
     def _build_conv_layers(self):
         self.parameters = []
