@@ -147,7 +147,7 @@
             "base_name": "ssd-mobilenet-v1-coco",
             "base_filename": "ssd-mobilenet-v1-coco.pb",
             "version": null,
-            "description": "A mobilenet Single Shot Detector trained on COCO",
+            "description": "A Single Shot Detector with MobileNet-v1 backbone trained on COCO",
             "manager": {
                 "type": "eta.core.models.ETAModelManager",
                 "config": {
@@ -173,7 +173,7 @@
             "base_name": "vgg16-imagenet",
             "base_filename": "vgg16-imagenet.npz",
             "version": null,
-            "description": "VGG-16 model trained on ImageNet. Source: https://github.com/ethereon/caffe-tensorflow",
+            "description": "A VGG-16 model trained on ImageNet",
             "manager": {
                 "config": {
                     "google_drive_id": "0B_-5gc091ngGMzBFMVJ0RE9HNmc"
