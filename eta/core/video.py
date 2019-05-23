@@ -52,9 +52,21 @@ import eta.core.utils as etau
 logger = logging.getLogger(__name__)
 
 
-SUPPORTED_VIDEO_FILE_FORMATS = [
-    ".mp4", ".mpg", ".mpeg", ".avi", ".mov", ".wmv", ".flv", ".mkv", ".m4v"
-]
+#
+# The file extensions of supported video files
+#
+# In practice, any video that ffmpeg can read will be supported. Nonetheless,
+# we enumerate this list here so that the ETA type system can verify the
+# extension of a video provided to a pipeline at build time.
+#
+# This list was taken from https://en.wikipedia.org/wiki/Video_file_format
+#
+SUPPORTED_VIDEO_FILE_FORMATS = {
+    ".3g2", ".3gp", ".M2TS", ".MTS", ".amv", ".avi", ".f4a", ".f4b", ".f4p",
+    ".f4v", ".flv", ".m2v", ".m4p", ".m4v", ".mkv", ".mov", ".mp2", ".mp4",
+    ".mpe", ".mpeg", ".mpg", ".mpv", ".nsv", ".ogg", ".ogv", ".qt", ".rm",
+    ".rmvb", ".svi", ".vob", ".webm", ".wmv", ".yuv"
+}
 
 
 def is_supported_video(path):
