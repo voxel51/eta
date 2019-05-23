@@ -5,6 +5,7 @@ Copyright 2017-2019, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
+Yash Bhalgat, yash@voxel51.com
 '''
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
@@ -146,8 +147,9 @@ def make_tf_config(config_proto=None):
     config = copy.copy(config_proto) if config_proto else tf.ConfigProto()
 
     if eta.config.tf_config:
-        logger.debug(
-            "Applying eta.tf_config settings: %s", str(eta.config.tf_config))
+        logger.info(
+            "Applying `tf_config` settings from ETA config: %s",
+            str(eta.config.tf_config))
         _set_proto_fields(config, eta.config.tf_config)
 
     return config
