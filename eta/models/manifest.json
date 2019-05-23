@@ -79,6 +79,32 @@
             "date_created": "2018-12-23 14:37:42"
         },
         {
+            "base_name": "mobilenet-v2-imagenet",
+            "base_filename": "mobilenet-v2-imagenet.pb",
+            "version": null,
+            "description": "A MobileNet v2 classifier trained on ImageNet",
+            "manager": {
+                "type": "eta.core.models.ETAModelManager",
+                "config": {
+                    "google_drive_id": "1cey7kmMTnDQG0zcdHauC291fann-Xthz"
+                }
+            },
+            "date_created": "2018-05-23 11:43:51"
+        },
+        {
+            "base_name": "resnet-v2-50-imagenet",
+            "base_filename": "resnet-v2-50-imagenet.pb",
+            "version": null,
+            "description": "A ResNet50 v2 classifier trained on ImageNet",
+            "manager": {
+                "type": "eta.core.models.ETAModelManager",
+                "config": {
+                    "google_drive_id": "1cWT55Pp9wl2zR0Om8y-g8QVskYEthQfi"
+                }
+            },
+            "date_created": "2018-05-23 12:19:17"
+        },
+        {
             "base_name": "rfcn-resnet101-coco",
             "base_filename": "rfcn-resnet101-coco.pb",
             "version": null,
