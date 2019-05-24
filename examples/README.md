@@ -34,23 +34,6 @@ eta build -r demo_video_clipper/request.json --run-now
 ```
 
 
-## Image detection and classification
-
-The following code runs a pipeline that performs image detection and
-classification to detect cats in a directory of images.
-
-See [this README](demo_cats/README.md) for more information.
-
-```shell
-cd demo_cats
-eta build -r detect-classify-cats.json --run-now
-cd ..
-```
-
-View the images in the `demo_cats/out/cats-annotated` directory to inspect the
-output of the pipeline.
-
-
 ## Image classification
 
 The following code runs a pipeline that performs image classification on
@@ -88,12 +71,26 @@ Open the `demo_object_detector/out/people-annotated.mp4` and
 inspect the output of the pipelines.
 
 
+## Image detection and classification
+
+The following code runs a pipeline that performs image detection and
+classification to detect cats in a directory of images.
+
+See [this README](demo_cats/README.md) for more information.
+
+```shell
+cd demo_cats
+eta build -r detect-classify-cats.json --run-now
+cd ..
+```
+
+View the images in the `demo_cats/out/cats-annotated` directory to inspect the
+output of the pipeline.
+
+
 ## Embeddings
 
 Examples of image/video embedding:
-
-Note that a 550MB VGG-16 weights file will be downloaded from the web and
-stored in `eta/models` the first time you run this code.
 
 ```shell
 cd demo_embed_vgg16
