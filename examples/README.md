@@ -41,10 +41,6 @@ classification to detect cats in a directory of images.
 
 See [this README](demo_cats/README.md) for more information.
 
-Note that a 550MB VGG-16 weights file will be downloaded from the web and
-stored in `eta/models` the first time you run this code (if you have not
-already run an example that uses VGG-16).
-
 ```shell
 cd demo_cats
 eta build -r detect-classify-cats.json --run-now
@@ -79,9 +75,6 @@ directory to inspect the output of the pipeline.
 The following code runs an object detection pipeline on video.
 
 See [this README](demo_object_detector/README.md) for more information.
-
-Note that a 120MB Faster R-CNN ResNet-50 model will be downloaded from the web
-and stored in `eta/models` the first time you run this.
 
 ```shell
 cd demo_object_detector
