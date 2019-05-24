@@ -1,15 +1,15 @@
 # Image Classification Demo
 
-This demo runs an image classification pipeline that uses a pre-trained
-`eta.classifiers.TFSlimClassifier` model to predict labels from the ImageNet
-dataset for a directory of images.
+This demo runs an image classification pipeline that uses various pre-trained
+classifiers to predict labels from the ImageNet dataset for a directory of
+images.
 
 
 ## Instructions
 
 To run the `image_classifier` pipeline, simply execute one of the following:
 
-```
+```shell
 # eta.classifiers.TFSlimClassifier
 eta build -r classify-images-inception-resnet-v2.json --run-now
 eta build -r classify-images-inception-v4.json --run-now
