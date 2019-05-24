@@ -17,13 +17,13 @@ python download_data.py
 Perform some image manipulation:
 
 ```shell
-python demo_images/demo_images.py
+python demo_image_manipulation/demo_images.py
 ```
 
 Run a pre-configued video processing pipeline:
 
 ```shell
-eta run demo_video/pipeline.json
+eta run demo_video_pipeline/pipeline.json
 ```
 
 Build and run pipelines from requests:
@@ -71,8 +71,9 @@ eta build -r detect-vehicles.json --run-now
 cd ..
 ```
 
-Open the `out/people-annotated.mp4` and `out/vehicles-annotated.mp4` in your
-video player to inspect the output of the pipelines.
+Open the `demo_object_detector/out/people-annotated.mp4` and
+`demo_object_detector/out/vehicles-annotated.mp4` in your video player to
+inspect the output of the pipelines.
 
 
 ## Embeddings
