@@ -121,14 +121,14 @@ class Model(Configurable):
 
     This class declares the following two conventions:
 
-        (a) Models are `Configurable`. This means that their constructors must
-            take a single `config` argument that is an instance of
+        (a) `Model`s are `Configurable`. This means that their constructors
+            must take a single `config` argument that is an instance of
             `<ModelClass>Config`
 
         (b) Models implement the context manager interface. This means that
-        models can optionally use context to perform any necessary setup and
-        teardown, and so any code that builds a model should use the `with`
-        syntax
+            models can optionally use context to perform any necessary setup
+            and teardown, and so any code that builds a model should use the
+            `with` syntax
     '''
 
     def __enter__(self):
