@@ -3,7 +3,7 @@
 This demo runs an object detection and classification pipeline that uses a
 pre-trained `eta.detectors.TFModelsDetector` model to detect cats in a
 directory of images and then uses a pre-trained
-`eta.classifiers.VGG16Classifier` to predict the breed of cat from the entire
+`eta.classifiers.TFSlimClassifier` to predict the breed of cat from the entire
 image.
 
 
