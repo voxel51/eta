@@ -62,6 +62,9 @@ class TFSlimClassifierConfig(Config):
         network_name: the name of the network architecture from
             `tf.slim.nets.nets_factory`
         labels_path: the path to the labels map for the classifier
+        preprocessing_fcn: the fully-qualified name of a pre-processing
+            function to use. If omitted, the default pre-processing for the
+            specified network architecture is used
         input_name: the name of the graph node to use as input. If omitted,
             the name "input" is used
         output_name: the name of the graph node to use as output. If omitted,
@@ -74,6 +77,8 @@ class TFSlimClassifierConfig(Config):
         self.network_name = self.parse_string(d, "network_name")
         self.labels_path = etau.fill_config_patterns(
             self.parse_string(d, "labels_path"))
+        self.preprocessing_fcn = self.parse_string(
+            d, "preprocessing_fcn", default=None)
         self.input_name = self.parse_string(d, "input_name", default="input")
         self.output_name = self.parse_string(d, "output_name", default=None)
 
@@ -103,7 +108,7 @@ class TFSlimClassifier(etal.ImageClassifier, etat.UsesTFSession):
         "inception_resnet_v2": "InceptionResnetV2/Logits/Predictions",
     }
 
-    # Networks for which we provide preprocessing implemented in numpy
+    # Networks for which we provide pre-processing implemented in numpy
     _PREPROC_NUMPY_FUNCTIONS = {
         "resnet_v1_50": etat.vgg_preprocessing_numpy,
         "resnet_v2_50": etat.inception_preprocessing_numpy,
@@ -156,10 +161,11 @@ class TFSlimClassifier(etal.ImageClassifier, etat.UsesTFSession):
         self._output_op = self._graph.get_operation_by_name(
             "prefix/" + self.output_name)
 
-        # Setup preprocessing
+        # Setup pre-processing
         self._preprocessing_fcn = None
         self._preprocessing_sess = None
-        self.preprocessing_fcn = self._make_preprocessing_fcn(network_name)
+        self.preprocessing_fcn = self._make_preprocessing_fcn(
+            network_name, self.config.preprocessing_fcn)
 
     def __enter__(self):
         return self
@@ -177,7 +183,7 @@ class TFSlimClassifier(etal.ImageClassifier, etat.UsesTFSession):
             an `eta.core.data.AttributeContainer` instance containing the
                 predictions
         '''
-        # Perform preprocessing
+        # Perform pre-processing
         network_inputs = self.preprocessing_fcn([img])
 
         probs = self._sess.run(
@@ -201,20 +207,29 @@ class TFSlimClassifier(etal.ImageClassifier, etat.UsesTFSession):
                 tf.import_graph_def(graph_def, name="prefix")
         return graph
 
-    def _make_preprocessing_fcn(self, network_name):
-        # Use numpy-based preprocessing if supported
+    def _make_preprocessing_fcn(self, network_name, preprocessing_fcn):
+        # Use user-specified pre-processing, if provided
+        if preprocessing_fcn:
+            logger.info(
+                "Using user-provided pre-processing function '%s'",
+                preprocessing_fcn)
+            preproc_fcn_user = etau.get_function(preprocessing_fcn)
+            return lambda imgs: preproc_fcn_user(
+                imgs, self.img_size, self.img_size)
+
+        # Use numpy-based pre-processing if supported
         preproc_fcn_np = TFSlimClassifier._PREPROC_NUMPY_FUNCTIONS.get(
             network_name, None)
         if preproc_fcn_np is not None:
             logger.info(
-                "Found numpy-based preprocessing implementation for network "
+                "Found numpy-based pre-processing implementation for network "
                 "'%s'", network_name)
             return lambda imgs: preproc_fcn_np(
                 imgs, self.img_size, self.img_size)
 
-        # Fallback to TF-slim preprocessing
+        # Fallback to TF-slim pre-processing
         logger.info(
-            "Using TF-based preprocessing from preprocessing_factory for "
+            "Using TF-based pre-processing from pre-processing_factory for "
             "network '%s'", network_name)
         self._preprocessing_fcn = preprocessing_factory.get_preprocessing(
             network_name, is_training=False)
