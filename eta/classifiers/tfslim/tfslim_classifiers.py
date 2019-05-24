@@ -98,7 +98,7 @@ class TFSlimClassifier(etal.ImageClassifier, etat.UsesTFSession):
     _DEFAULT_OUTPUT_OPS_MAP = {
         "resnet_v1_50": "resnet_v1_50/predictions/Reshape_1",
         "resnet_v2_50": "resnet_v2_50/predictions/Reshape_1",
-        "mobilenet_v2": "MobilenetV2/Predictions/Reshape_1"
+        "mobilenet_v2": "MobilenetV2/Predictions/Reshape_1",
         "inception_v4": "InceptionV4/Logits/Predictions",
         "inception_resnet_v2": "InceptionResnetV2/Logits/Predictions",
     }
