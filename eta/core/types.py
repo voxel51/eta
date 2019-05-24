@@ -22,6 +22,7 @@ import six
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+import logging
 import numbers
 import os
 
@@ -32,6 +33,9 @@ import eta.core.learning as etal
 import eta.core.tfutils as etat
 import eta.core.utils as etau
 import eta.core.video as etav
+
+
+logger = logging.getLogger(__name__)
 
 
 ###### Utilities ##############################################################
@@ -259,7 +263,9 @@ class Featurizer(Config):
         try:
             etaf.FeaturizerConfig(val)
             return True
-        except:
+        except Exception as e:
+            logger.error("An error occured while parsing the Featurizer value")
+            logger.error(e, exc_info=True)
             return False
 
 
@@ -284,7 +290,9 @@ class Model(Config):
         try:
             etal.ModelConfig(val)
             return True
-        except:
+        except Exception as e:
+            logger.error("An error occured while parsing the Model value")
+            logger.error(e, exc_info=True)
             return False
 
 
@@ -300,7 +308,9 @@ class ImageModel(Model):
         try:
             etal.ImageModelConfig(val)
             return True
-        except:
+        except Exception as e:
+            logger.error("An error occured while parsing the ImageModel value")
+            logger.error(e, exc_info=True)
             return False
 
 
@@ -316,7 +326,9 @@ class VideoModel(Model):
         try:
             etal.VideoModelConfig(val)
             return True
-        except:
+        except Exception as e:
+            logger.error("An error occured while parsing the VideoModel value")
+            logger.error(e, exc_info=True)
             return False
 
 
@@ -332,7 +344,9 @@ class Classifier(Model):
         try:
             etal.ClassifierConfig(val)
             return True
-        except:
+        except Exception as e:
+            logger.error("An error occured while parsing the Classifier value")
+            logger.error(e, exc_info=True)
             return False
 
 
@@ -348,7 +362,10 @@ class ImageClassifier(Classifier):
         try:
             etal.ImageClassifierConfig(val)
             return True
-        except:
+        except Exception as e:
+            logger.error(
+                "An error occured while parsing the ImageClassifier value")
+            logger.error(e, exc_info=True)
             return False
 
 
@@ -365,7 +382,11 @@ class VideoFramesClassifier(Classifier):
         try:
             etal.VideoFramesClassifierConfig(val)
             return True
-        except:
+        except Exception as e:
+            logger.error(
+                "An error occured while parsing the VideoFramesClassifier "
+                "value")
+            logger.error(e, exc_info=True)
             return False
 
 
@@ -381,7 +402,10 @@ class VideoClassifier(Classifier):
         try:
             etal.VideoClassifierConfig(val)
             return True
-        except:
+        except Exception as e:
+            logger.error(
+                "An error occured while parsing the VideoClassifier value")
+            logger.error(e, exc_info=True)
             return False
 
 
@@ -397,7 +421,9 @@ class Detector(Model):
         try:
             etal.DetectorConfig(val)
             return True
-        except:
+        except Exception as e:
+            logger.error("An error occured while parsing the Detector value")
+            logger.error(e, exc_info=True)
             return False
 
 
@@ -413,7 +439,10 @@ class ObjectDetector(Detector):
         try:
             etal.ObjectDetectorConfig(val)
             return True
-        except:
+        except Exception as e:
+            logger.error(
+                "An error occured while parsing the ObjectDetector value")
+            logger.error(e, exc_info=True)
             return False
 
 
@@ -429,7 +458,11 @@ class VideoFramesObjectDetector(Detector):
         try:
             etal.VideoFramesObjectDetectorConfig(val)
             return True
-        except:
+        except Exception as e:
+            logger.error(
+                "An error occured while parsing the VideoFramesObjectDetector "
+                "value")
+            logger.error(e, exc_info=True)
             return False
 
 
@@ -445,7 +478,10 @@ class VideoObjectDetector(Detector):
         try:
             etal.VideoObjectDetectorConfig(val)
             return True
-        except:
+        except Exception as e:
+            logger.error(
+                "An error occured while parsing the VideoObjectDetector value")
+            logger.error(e, exc_info=True)
             return False
 
 
