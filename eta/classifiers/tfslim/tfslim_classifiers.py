@@ -57,8 +57,8 @@ class TFSlimClassifierConfig(Config):
     patterns to be resolved.
 
     Attributes:
-        model_name: the name of the published model to load
         attr_name: the name of the attribute that the classifier predicts
+        model_name: the name of the published model to load
         network_name: the name of the network architecture from
             `tf.slim.nets.nets_factory`
         labels_path: the path to the labels map for the classifier
@@ -69,8 +69,8 @@ class TFSlimClassifierConfig(Config):
     '''
 
     def __init__(self, d):
-        self.model_name = self.parse_string(d, "model_name")
         self.attr_name = self.parse_string(d, "attr_name")
+        self.model_name = self.parse_string(d, "model_name")
         self.network_name = self.parse_string(d, "network_name")
         self.labels_path = etau.fill_config_patterns(
             self.parse_string(d, "labels_path"))
