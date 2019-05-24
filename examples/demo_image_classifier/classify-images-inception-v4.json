@@ -1,0 +1,27 @@
+{
+    "pipeline": "image_classifier",
+    "inputs": {
+        "images_dir": "../data/imagenet-test"
+    },
+    "outputs": {
+        "image_set_labels": "out/labels-inception-v4.json",
+        "annotated_images_dir": "out/images-inception-v4"
+    },
+    "parameters": {
+        "apply_image_classifier.classifier": {
+            "type": "eta.classifiers.TFSlimClassifier",
+            "config": {
+                "attr_name": "label",
+                "model_name": "inception-v4-imagenet",
+                "network_name": "inception_v4",
+                "labels_path": "{{eta-resources}}/tfslim-imagenet-labels.txt"
+            }
+        },
+        "apply_image_classifier.confidence_threshold": null,
+        "visualize_image_labels.annotation_config": {
+            "show_all_confidences": true,
+            "font_size": 12,
+            "linewidth": 1
+        }
+    }
+}

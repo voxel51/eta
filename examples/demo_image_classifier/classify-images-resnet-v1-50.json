@@ -1,0 +1,27 @@
+{
+    "pipeline": "image_classifier",
+    "inputs": {
+        "images_dir": "../data/imagenet-test"
+    },
+    "outputs": {
+        "image_set_labels": "out/labels-resnet-v1-50.json",
+        "annotated_images_dir": "out/images-resnet-v1-50"
+    },
+    "parameters": {
+        "apply_image_classifier.classifier": {
+            "type": "eta.classifiers.TFSlimClassifier",
+            "config": {
+                "attr_name": "label",
+                "model_name": "resnet-v1-50-imagenet",
+                "network_name": "resnet_v1_50",
+                "labels_path": "{{eta-resources}}/tfslim-imagenet-labels-no-background.txt"
+            }
+        },
+        "apply_image_classifier.confidence_threshold": null,
+        "visualize_image_labels.annotation_config": {
+            "show_all_confidences": true,
+            "font_size": 12,
+            "linewidth": 1
+        }
+    }
+}
