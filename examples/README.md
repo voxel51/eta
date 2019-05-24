@@ -51,8 +51,27 @@ eta build -r detect-classify-cats.json --run-now
 cd ..
 ```
 
-View the images in the `out/cats-annotated` directory to inspect the output of
-the pipeline.
+View the images in the `demo_cats/out/cats-annotated` directory to inspect the
+output of the pipeline.
+
+
+## Image classification
+
+The following code runs a pipeline that performs image classification on
+a directory of images.
+
+See [this README](demo_image_classifier/README.md) for more information,
+including instructions for running a variety of network architectures besides
+MobileNet v2.
+
+```shell
+cd demo_image_classifier
+eta build -r classify-images-mobilenet-v2.json --run-now
+cd ..
+```
+
+View the images in the `demo_image_classifier/out/images-mobilenet-v2`
+directory to inspect the output of the pipeline.
 
 
 ## Object detection
