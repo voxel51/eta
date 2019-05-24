@@ -79,6 +79,24 @@ def list_models_in_directory(models_dir, downloaded_only=False):
     ])
 
 
+def get_model(name):
+    '''Gets the Model instance for the given model, which must appear in a
+    ModelsManifest in one of the `eta.config.models_dirs` directories.
+
+    Args:
+        name: the name of the model, which can have "@<ver>" appended to refer
+            to a specific version of the model. If no version is specified, the
+            latest version of the model is assumed
+
+    Returns:
+        the Model instance for the specified model
+
+    Raises:
+        ModelError: if the model could not be found
+    '''
+    return _find_model(name)[0]
+
+
 def find_model(name):
     '''Finds the given model, which must appear in a ModelsManifest in one of
     the `eta.config.models_dirs` directories.
