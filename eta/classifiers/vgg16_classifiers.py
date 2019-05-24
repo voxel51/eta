@@ -31,14 +31,14 @@ class VGG16ClassifierConfig(Config):
     '''VGG16Classifier configuration settings.
 
     Attributes:
+        attr_name: the name of the attribute that the classifier predicts
         config: an `eta.core.vgg16.VGG16Config` specifying the VGG-16 model to
             use
-        attr_name: the name of the attribute that the classifier predicts
     '''
 
     def __init__(self, d):
-        self.config = self.parse_object(d, "config", VGG16Config, default=None)
         self.attr_name = self.parse_string(d, "attr_name", default="imagenet")
+        self.config = self.parse_object(d, "config", VGG16Config, default=None)
         if self.config is None:
             self.config = VGG16Config.default()
 
