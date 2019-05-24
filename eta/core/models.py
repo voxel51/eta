@@ -32,6 +32,7 @@ import numpy as np
 import eta
 import eta.constants as etac
 from eta.core.config import Config, Configurable
+import eta.core.learning as etal
 from eta.core.serial import read_pickle, Serializable
 import eta.core.utils as etau
 import eta.core.web as etaw
@@ -779,12 +780,16 @@ class Model(Serializable):
             location of the models_dir
         version: the version of the model (if any)
         description: a description of the model (if any)
+        default_deployment_config_dict: a dictionary representation of an
+            `eta.core.learning.ModelConfig` describing the recommended settings
+            for deploying the model
         date_created: the date that the model was created (if any)
     '''
 
     def __init__(
             self, base_name, base_filename, manager, version=None,
-            description=None, date_created=None):
+            description=None, default_deployment_config_dict=None,
+            date_created=None):
         '''Creates a Model instance.
 
         Args:
@@ -793,20 +798,18 @@ class Model(Serializable):
             manager: the ModelManager for the model
             version: (optional) the model version
             description: (optional) a description of the model
+            default_deployment_config_dict: (optional) a dictionary
+                representation of an `eta.core.learning.ModelConfig` describing
+                the recommended settings for deploying the model
             date_created: (optional) the date that the model was created
         '''
         self.base_name = base_name
         self.base_filename = base_filename
         self.manager = manager
         self.version = version or None
-        self.description = description or None
-        self.date_created = date_created or None
-
-    def attributes(self):
-        # We do this so we can set the order the fields appear in the JSON
-        return [
-            "base_name", "base_filename", "version", "description", "manager",
-            "date_created"]
+        self.description = description
+        self.default_deployment_config_dict = default_deployment_config_dict
+        self.date_created = date_created
 
     @property
     def name(self):
@@ -848,6 +851,18 @@ class Model(Serializable):
         '''
         return os.path.isfile(self.get_path_in_dir(models_dir))
 
+    def build_default_deployment_model(self):
+        '''Builds the default deployment `eta.core.learning.Model` for the
+        model.
+
+        Returns:
+            the `eta.core.learning.Model` instance defined by the model's
+                default deployment dict
+        '''
+        model_config = etal.ModelConfig.from_dict(
+            self.default_deployment_config_dict)
+        return model_config.build()
+
     @staticmethod
     def parse_name(name):
         '''Parses the model name, returning the base name and the version,
@@ -876,13 +891,24 @@ class Model(Serializable):
         '''Determines whether the given model name has a version string.'''
         return bool(Model.parse_name(name)[1])
 
+    def attributes(self):
+        '''Returns a list of class attributes to be serialized.'''
+        return [
+            "base_name", "base_filename", "version", "description", "manager",
+            "default_deployment_config_dict", "date_created"]
+
     @classmethod
     def from_dict(cls, d):
         '''Constructs a Model from a JSON dictionary.'''
         return cls(
-            d["base_name"], d["base_filename"],
-            ModelManager.from_dict(d["manager"]), d.get("version", None),
-            d.get("description", None), d.get("date_created", None))
+            d["base_name"],
+            d["base_filename"],
+            ModelManager.from_dict(d["manager"]),
+            version=d.get("version", None),
+            description=d.get("description", None),
+            default_deployment_config_dict=d.get(
+                "default_deployment_config_dict", None),
+            date_created=d.get("date_created", None))
 
 
 class PublishedModel(object):
