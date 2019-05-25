@@ -21,7 +21,6 @@ from builtins import *
 # pragma pylint: enable=wildcard-import
 
 import logging
-import os
 import sys
 
 import numpy as np
@@ -43,12 +42,7 @@ from nets import nets_factory
 logger = logging.getLogger(__name__)
 
 
-# The default TFSlimClassifierConfig
-DEFAULT_CONFIG = os.path.join(
-    os.path.realpath(os.path.dirname(__file__)), "default-config.json")
-
-
-class TFSlimClassifierConfig(Config):
+class TFSlimClassifierConfig(Config, etal.HasDefaultDeploymentModelConfig):
     '''Configuration class for loading a TensorFlow classifier whose network
     architecture is defined in `tf.slim.nets`.
 
@@ -56,9 +50,13 @@ class TFSlimClassifierConfig(Config):
     `eta.core.utils.fill_config_patterns` at load time, so it can contain
     patterns to be resolved.
 
+    Note that this class implements the `HasDefaultDeploymentModelConfig`
+    mixin, so any omitted fields present in the default deployment config for
+    the model will be automatically populated.
+
     Attributes:
-        attr_name: the name of the attribute that the classifier predicts
         model_name: the name of the published model to load
+        attr_name: the name of the attribute that the classifier predicts
         network_name: the name of the network architecture from
             `tf.slim.nets.nets_factory`
         labels_path: the path to the labels map for the classifier
@@ -72,8 +70,12 @@ class TFSlimClassifierConfig(Config):
     '''
 
     def __init__(self, d):
-        self.attr_name = self.parse_string(d, "attr_name")
         self.model_name = self.parse_string(d, "model_name")
+
+        # Loads any default deployment parameters
+        d = self.load_default_deployment_params(d, self.model_name)
+
+        self.attr_name = self.parse_string(d, "attr_name")
         self.network_name = self.parse_string(d, "network_name")
         self.labels_path = etau.fill_config_patterns(
             self.parse_string(d, "labels_path"))
@@ -81,11 +83,6 @@ class TFSlimClassifierConfig(Config):
             d, "preprocessing_fcn", default=None)
         self.input_name = self.parse_string(d, "input_name", default="input")
         self.output_name = self.parse_string(d, "output_name", default=None)
-
-    @classmethod
-    def load_default(cls):
-        '''Loads the default TFSlimClassifierConfig.'''
-        return cls.from_json(DEFAULT_CONFIG)
 
 
 class TFSlimClassifier(etal.ImageClassifier, etat.UsesTFSession):
@@ -121,10 +118,9 @@ class TFSlimClassifier(etal.ImageClassifier, etat.UsesTFSession):
         '''Creates a TFSlimClassifier instance.
 
         Args:
-            config: an optional TFSlimClassifierConfig instance. If omitted,
-                the default TFSlimClassifierConfig will be used
+            config: a TFSlimClassifierConfig instance
         '''
-        self.config = config or TFSlimClassifierConfig.load_default()
+        self.config = config
         etat.UsesTFSession.__init__(self)
 
         # Downloads the model if necessary
