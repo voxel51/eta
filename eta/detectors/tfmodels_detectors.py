@@ -28,7 +28,7 @@ import tensorflow as tf
 import eta.constants as etac
 from eta.core.config import Config
 from eta.core.geometry import BoundingBox, RelativePoint
-from eta.core.learning import ObjectDetector
+from eta.core.learning import ObjectDetector, HasDefaultDeploymentModelConfig
 import eta.core.models as etam
 from eta.core.objects import DetectedObject, DetectedObjectContainer
 import eta.core.serial as etas
@@ -39,28 +39,30 @@ sys.path.append(os.path.join(etac.TF_OBJECT_DETECTION_DIR, "utils"))
 import label_map_util as gool
 
 
-# The default TFModelsDetectorConfig
-DEFAULT_CONFIG = os.path.join(
-    os.path.realpath(os.path.dirname(__file__)), "default-config.json")
-
-
-class TFModelsDetectorConfig(Config):
+class TFModelsDetectorConfig(Config, HasDefaultDeploymentModelConfig):
     '''TFModelsDetector configuration settings.
 
     Note that `labels_path` is passed through
     `eta.core.utils.fill_config_patterns` at load time, so it can contain
     patterns to be resolved.
+
+    Note that this class implements the `HasDefaultDeploymentModelConfig`
+    mixin, so any omitted fields present in the default deployment config for
+    the model will be automatically populated.
+
+    Attributes:
+        model_name: the name of the published model to load
+        labels_path: the path to the labels map for the model
     '''
 
     def __init__(self, d):
         self.model_name = self.parse_string(d, "model_name")
+
+        # Loads any default deployment parameters
+        d = self.load_default_deployment_params(d, self.model_name)
+
         self.labels_path = etau.fill_config_patterns(
             self.parse_string(d, "labels_path"))
-
-    @classmethod
-    def load_default(cls):
-        '''Loads the default TFModelsDetectorConfig.'''
-        return cls.from_json(DEFAULT_CONFIG)
 
 
 class TFModelsDetector(ObjectDetector, UsesTFSession):
@@ -74,15 +76,13 @@ class TFModelsDetector(ObjectDetector, UsesTFSession):
     manually call `close()` when finished to release memory.
     '''
 
-
-    def __init__(self, config=None):
-        '''Constructs a TFModelsDetector instance.
+    def __init__(self, config):
+        '''Creates a TFModelsDetector instance.
 
         Args:
-            config: an optional TFModelsDetectorConfig instance. If omitted,
-                the default TFModelsDetectorConfig will be used
+            config: a TFModelsDetectorConfig instance
         '''
-        self.config = config or TFModelsDetectorConfig.load_default()
+        self.config = config
         UsesTFSession.__init__(self)
 
         # Only downloads the model if necessary
