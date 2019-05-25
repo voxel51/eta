@@ -137,8 +137,8 @@
                 "type": "eta.classifiers.TFSlimClassifier",
                 "config": {
                     "attr_name": "imagenet",
-                    "model_name": "inception-resnet-v4-imagenet",
-                    "network_name": "inception_resnet_v4",
+                    "model_name": "inception-v4-imagenet",
+                    "network_name": "inception_v4",
                     "labels_path": "{{eta-resources}}/tfslim-imagenet-labels.txt"
                 }
             },
