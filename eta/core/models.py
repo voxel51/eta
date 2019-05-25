@@ -32,7 +32,6 @@ import numpy as np
 import eta
 import eta.constants as etac
 from eta.core.config import Config, Configurable
-import eta.core.learning as etal
 from eta.core.serial import read_pickle, Serializable
 import eta.core.utils as etau
 import eta.core.web as etaw
@@ -868,18 +867,6 @@ class Model(Serializable):
         directory.
         '''
         return os.path.isfile(self.get_path_in_dir(models_dir))
-
-    def build_default_deployment_model(self):
-        '''Builds the default deployment `eta.core.learning.Model` for the
-        model.
-
-        Returns:
-            the `eta.core.learning.Model` instance defined by the model's
-                default deployment dict
-        '''
-        model_config = etal.ModelConfig.from_dict(
-            self.default_deployment_config_dict)
-        return model_config.build()
 
     @staticmethod
     def parse_name(name):
