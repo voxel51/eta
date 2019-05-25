@@ -11,11 +11,11 @@ To run the `image_classifier` pipeline, simply execute one of the following:
 
 ```shell
 # eta.classifiers.TFSlimClassifier
-eta build -r classify-images-inception-resnet-v2.json --run-now
-eta build -r classify-images-inception-v4.json --run-now
-eta build -r classify-images-mobilenet-v2.json --run-now
-eta build -r classify-images-resnet-v1-50.json --run-now
-eta build -r classify-images-resnet-v2-50.json --run-now
+eta build -r classify-images-tfslim-template.json --patterns {{model}}=mobilenet-v2-imagenet --run-now
+eta build -r classify-images-tfslim-template.json --patterns {{model}}=resnet-v1-50-imagenet --run-now
+eta build -r classify-images-tfslim-template.json --patterns {{model}}=resnet-v2-50-imagenet --run-now
+eta build -r classify-images-tfslim-template.json --patterns {{model}}=inception-resnet-v2-imagenet --run-now
+eta build -r classify-images-tfslim-template.json --patterns {{model}}=inception-v4-imagenet --run-now
 
 # eta.classifiers.VGG16Classifier
 eta build -r classify-images-vgg16.json --run-now
