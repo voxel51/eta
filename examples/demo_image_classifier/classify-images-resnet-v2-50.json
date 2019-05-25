@@ -11,10 +11,8 @@
         "apply_image_classifier.classifier": {
             "type": "eta.classifiers.TFSlimClassifier",
             "config": {
-                "attr_name": "label",
                 "model_name": "resnet-v2-50-imagenet",
-                "network_name": "resnet_v2_50",
-                "labels_path": "{{eta-resources}}/tfslim-imagenet-labels.txt"
+                "attr_name": "label"
             }
         },
         "apply_image_classifier.confidence_threshold": null,

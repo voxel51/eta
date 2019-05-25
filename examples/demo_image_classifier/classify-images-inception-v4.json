@@ -11,10 +11,8 @@
         "apply_image_classifier.classifier": {
             "type": "eta.classifiers.TFSlimClassifier",
             "config": {
-                "attr_name": "label",
                 "model_name": "inception-v4-imagenet",
-                "network_name": "inception_v4",
-                "labels_path": "{{eta-resources}}/tfslim-imagenet-labels.txt"
+                "attr_name": "label"
             }
         },
         "apply_image_classifier.confidence_threshold": null,

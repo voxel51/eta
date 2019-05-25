@@ -9,7 +9,10 @@
     },
     "parameters": {
         "apply_object_detector.detector": {
-            "type": "eta.detectors.TFModelsDetector"
+            "type": "eta.detectors.TFModelsDetector",
+            "config": {
+                "model_name": "faster-rcnn-resnet50-coco"
+            }
         },
         "apply_object_detector.objects": [
             {
@@ -20,10 +23,8 @@
         "apply_image_classifier.classifier": {
             "type": "eta.classifiers.TFSlimClassifier",
             "config": {
-                "attr_name": "label",
                 "model_name": "mobilenet-v2-imagenet",
-                "network_name": "mobilenet_v2",
-                "labels_path": "{{eta-resources}}/tfslim-imagenet-labels.txt"
+                "attr_name": "label"
             }
         },
         "apply_image_classifier.confidence_threshold": null,
