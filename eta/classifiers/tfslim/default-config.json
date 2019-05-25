@@ -1,6 +1,0 @@
-{
-    "model_name": "mobilenet-v2-imagenet",
-    "network_name": "mobilenet_v2",
-    "attr_name": "imagenet",
-    "labels_path": "{{eta-resources}}/tfslim-imagenet-labels.txt"
-}
