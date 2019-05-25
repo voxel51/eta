@@ -39,8 +39,6 @@ class VGG16ClassifierConfig(Config):
     def __init__(self, d):
         self.attr_name = self.parse_string(d, "attr_name", default="imagenet")
         self.config = self.parse_object(d, "config", VGG16Config, default=None)
-        if self.config is None:
-            self.config = VGG16Config.default()
 
 
 class VGG16Classifier(etal.ImageClassifier):
@@ -58,7 +56,7 @@ class VGG16Classifier(etal.ImageClassifier):
             config: an optional VGG16ClassifierConfig instance. If omitted, the
                 default VGG16ClassifierConfig is used
         '''
-        self.config = config
+        self.config = config or VGG16ClassifierConfig.default()
         self._vgg16 = VGG16(config=config.config)
 
     def __enter__(self):
