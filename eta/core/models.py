@@ -283,7 +283,7 @@ def init_models_dir(new_models_dir):
     '''
     if ModelsManifest.dir_has_manifest(new_models_dir):
         raise ModelError(
-            "Directory '%s' already has a models manifest", new_models_dir)
+            "Directory '%s' already has a models manifest" % new_models_dir)
 
     logger.info("Initializing new models directory '%s'", new_models_dir)
     manifest = ModelsManifest()
@@ -777,7 +777,7 @@ class ModelsManifest(Serializable):
         '''Loads the ModelsManifest from the given models directory.'''
         if not cls.dir_has_manifest(models_dir):
             raise ModelError(
-                "Directory '%s' has no models manifest", models_dir)
+                "Directory '%s' has no models manifest" % models_dir)
 
         return cls.from_json(cls.make_manifest_path(models_dir))
 
