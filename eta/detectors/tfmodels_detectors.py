@@ -28,7 +28,7 @@ import tensorflow as tf
 import eta.constants as etac
 from eta.core.config import Config
 from eta.core.geometry import BoundingBox, RelativePoint
-from eta.core.learning import ObjectDetector, HasDefaultDeploymentModelConfig
+from eta.core.learning import ObjectDetector, HasDefaultDeploymentConfig
 import eta.core.models as etam
 from eta.core.objects import DetectedObject, DetectedObjectContainer
 import eta.core.serial as etas
@@ -39,16 +39,16 @@ sys.path.append(os.path.join(etac.TF_OBJECT_DETECTION_DIR, "utils"))
 import label_map_util as gool
 
 
-class TFModelsDetectorConfig(Config, HasDefaultDeploymentModelConfig):
+class TFModelsDetectorConfig(Config, HasDefaultDeploymentConfig):
     '''TFModelsDetector configuration settings.
 
     Note that `labels_path` is passed through
     `eta.core.utils.fill_config_patterns` at load time, so it can contain
     patterns to be resolved.
 
-    Note that this class implements the `HasDefaultDeploymentModelConfig`
-    mixin, so any omitted fields present in the default deployment config for
-    the model will be automatically populated.
+    Note that this class implements the `HasDefaultDeploymentConfig` mixin, so
+    any omitted fields present in the default deployment config for the model
+    will be automatically populated.
 
     Attributes:
         model_name: the name of the published model to load

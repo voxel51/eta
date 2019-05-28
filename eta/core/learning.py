@@ -100,9 +100,9 @@ def load_default_deployment_model(model_name):
     return config.build()
 
 
-class HasDefaultDeploymentModelConfig(object):
+class HasDefaultDeploymentConfig(object):
     '''Mixin class for `eta.core.learning.ModelConfig`s who support loading
-    default deployment model configs for their model name fields.
+    default deployment configs for their model name fields.
 
     This class allows `ModelConfig` definitions that have published models
     with default deployments to automatically load any settings from the

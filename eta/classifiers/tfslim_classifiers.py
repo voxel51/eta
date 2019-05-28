@@ -42,7 +42,7 @@ from nets import nets_factory
 logger = logging.getLogger(__name__)
 
 
-class TFSlimClassifierConfig(Config, etal.HasDefaultDeploymentModelConfig):
+class TFSlimClassifierConfig(Config, etal.HasDefaultDeploymentConfig):
     '''Configuration class for loading a TensorFlow classifier whose network
     architecture is defined in `tf.slim.nets`.
 
@@ -50,9 +50,9 @@ class TFSlimClassifierConfig(Config, etal.HasDefaultDeploymentModelConfig):
     `eta.core.utils.fill_config_patterns` at load time, so it can contain
     patterns to be resolved.
 
-    Note that this class implements the `HasDefaultDeploymentModelConfig`
-    mixin, so any omitted fields present in the default deployment config for
-    the model will be automatically populated.
+    Note that this class implements the `HasDefaultDeploymentConfig` mixin, so
+    any omitted fields present in the default deployment config for the model
+    will be automatically populated.
 
     Attributes:
         model_name: the name of the published model to load
