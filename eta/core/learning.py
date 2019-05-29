@@ -160,7 +160,7 @@ class HasDefaultDeploymentConfig(object):
         dd = deploy_config_dict["config"]
         dd.update(d)
         logger.info(
-            "Applied %d settings from default deployment config",
+            "Applied %d setting(s) from default deployment config",
             len(dd) - len(d))
 
         return dd
