@@ -757,16 +757,19 @@ def create(width, height, background=None):
     '''Creates a blank image and optionally fills it with a color.
 
     Args:
-        width (int): width of the image to create in pixels
-        height (int): height of the image to create in pixels
-        background (string): hex RGB (eg, "#ffffff")
+        width: the width of the image, in pixels
+        height: the height of the image, in pixels
+        background: hex RGB (e.g., "#ffffff")
+
+    Returns:
+        the image
     '''
-    image = np.zeros((height, width, 3), dtype=np.uint8)
+    img = np.zeros((height, width, 3), dtype=np.uint8)
 
     if background:
-        image[:] = hex_to_rgb(background)
+        img[:] = hex_to_rgb(background)
 
-    return image
+    return img
 
 
 def overlay(im1, im2, x0=0, y0=0):
@@ -819,8 +822,14 @@ def overlay(im1, im2, x0=0, y0=0):
 
 
 def rasterize(vector_path, width):
-    '''Renders a vector image as a raster image with the given width,
-    in pixels.
+    '''Renders a vector image as a raster image with the given pixel width.
+
+    Args:
+        vector_path: the path to the vector image
+        width: the desired image width
+
+    Returns:
+        a uint8 numpy array containing the rasterized image
     '''
     with etau.TempDir() as d:
         try:
@@ -847,8 +856,20 @@ def rasterize(vector_path, width):
 
 
 def resize(img, width=None, height=None, *args, **kwargs):
-    '''Resizes the given image to the given width and height. At most one
-    dimension can be None, in which case the aspect-preserving value is used.
+    '''Resizes the given image to the given width and height.
+
+    At most one dimension can be None, in which case the aspect-preserving
+    value is used.
+
+    Args:
+        img: input image
+        width: the desired image width
+        height: the desired image height
+        *args: valid positional arguments for `cv2.resize()`
+        **kwargs: valid keyword arguments for `cv2.resize()`
+
+    Returns:
+        the resized image
     '''
     if height is None:
         height = int(round(img.shape[0] * (width * 1.0 / img.shape[1])))
@@ -876,7 +897,14 @@ def central_crop(img, h, w):
 
 
 def to_double(img):
-    '''Converts img to a double precision image with values in [0, 1].'''
+    '''Converts img to a double precision image with values in [0, 1].
+
+    Args:
+        img: input image
+
+    Returns:
+        a copy of the image in double precision format
+    '''
     return img.astype(np.float) / np.iinfo(img.dtype).max
 
 
