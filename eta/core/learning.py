@@ -82,9 +82,28 @@ def write_labels_map(labels_map, outpath):
             f.write("%s:%s\n" % (idx, labels_map[idx]))
 
 
+def has_default_deployment_model(model_name):
+    '''Determines whether the model with the given name has a default
+    deployment.
+
+    The model must be findable via `eta.core.models.get_model(model_name)`.
+
+    Args:
+        model_name: the name of the model, which can have "@<ver>" appended to
+            refer to a specific version of the model. If no version is
+            specified, the latest version of the model is assumed
+
+    Returns:
+        True/False whether the model has a default deployment
+    '''
+    model = etam.get_model(model_name)
+    return model.default_deployment_config_dict is not None
+
+
 def load_default_deployment_model(model_name):
-    '''Loads the default deployment for the published model with the given
-    name, which must be findable via `eta.core.models.get_model(model_name)`.
+    '''Loads the default deployment for the model with the given name.
+
+    The model must be findable via `eta.core.models.get_model(model_name)`.
 
     Args:
         model_name: the name of the model, which can have "@<ver>" appended to
