@@ -626,47 +626,56 @@ class ImageLabelsSchemaError(Exception):
 ###### Image I/O ##############################################################
 
 
-def decode(b, flag=cv2.IMREAD_UNCHANGED):
+def decode(b, flag=cv2.IMREAD_COLOR):
     '''Decodes an image from raw bytes.
 
+    By default, images are decoded with the `cv2.IMREAD_COLOR` option, so any
+    alpha channels are discarded.
+
     Args:
-        bytes: the raw bytes of an image (e.g. from read() or from a web
-            download)
-        flag: an optional OpenCV image format flag. By default, the image is
-            returned in its native format (color, grayscale, transparent, ...)
+        bytes: the raw bytes of an image, e.g., from read() or from a web
+            download
+        flag: an optional OpenCV image format flag. The default is
+            `cv2.IMREAD_COLOR`
 
     Returns:
-        A uint8 numpy array containing the image
+        a uint8 numpy array containing the RGB image
     '''
     vec = np.asarray(bytearray(b), dtype=np.uint8)
     return _exchange_rb(cv2.imdecode(vec, flag))
 
 
-def download(url, flag=cv2.IMREAD_UNCHANGED):
+def download(url, flag=cv2.IMREAD_COLOR):
     '''Downloads an image from a URL.
+
+    By default, images are loaded with the `cv2.IMREAD_COLOR` option, so any
+    alpha channels are discarded.
 
     Args:
         url: the URL of the image
-        flag: an optional OpenCV image format flag. By default, the image is
-            returned in its raw format
+        flag: an optional OpenCV image format flag. The default is
+            `cv2.IMREAD_COLOR`
 
     Returns:
-        A uint8 numpy array containing the image
+        a uint8 numpy array containing the RGB image
     '''
     return decode(etaw.download_file(url), flag=flag)
 
 
-def read(path, flag=cv2.IMREAD_UNCHANGED):
+def read(path, flag=cv2.IMREAD_COLOR):
     '''Reads image from path.
+
+    By default, images are read with the `cv2.IMREAD_COLOR` option, so any
+    alpha channels are discarded.
 
     Args:
         path: the path to the image on disk
-        flag: an optional OpenCV image format flag. By default, the image is
-            returned in its native format (color, grayscale, transparent, ...)
+        flag: an optional OpenCV image format flag. The default is
+            `cv2.IMREAD_COLOR`
 
     Returns:
-        A uint8 numpy array containing the image
-        '''
+        a uint8 numpy array containing the RGB image
+    '''
     return _exchange_rb(cv2.imread(path, flag))
 
 
