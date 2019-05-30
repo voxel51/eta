@@ -640,7 +640,7 @@ def decode(b, include_alpha=False, flag=None):
             flag takes precedence over `include_alpha`
 
     Returns:
-        a uint8 numpy array containing the RGB image
+        a uint8 numpy array containing the image
     '''
     flag = _get_opencv_imread_flag(flag, include_alpha)
     vec = np.asarray(bytearray(b), dtype=np.uint8)
@@ -660,7 +660,7 @@ def download(url, include_alpha=False, flag=None):
             flag takes precedence over `include_alpha`
 
     Returns:
-        a uint8 numpy array containing the RGB image
+        a uint8 numpy array containing the image
     '''
     bytes = etaw.download_file(url)
     return decode(bytes, include_alpha=include_alpha, flag=flag)
@@ -679,7 +679,7 @@ def read(path, include_alpha=False, flag=None):
             flag takes precedence over `include_alpha`
 
     Returns:
-        a uint8 numpy array containing the RGB image
+        a uint8 numpy array containing the image
     '''
     flag = _get_opencv_imread_flag(flag, include_alpha)
     return _exchange_rb(cv2.imread(path, flag))
@@ -746,7 +746,7 @@ class ImageMetadata(Serializable):
         Returns:
             an ImageMetadata instance
         '''
-        img = read(filepath)
+        img = read(filepath, include_alpha=True)
         return cls(
             frame_size=to_frame_size(img=img),
             num_channels=img.shape[2],
@@ -834,12 +834,18 @@ def overlay(im1, im2, x0=0, y0=0):
     return im1
 
 
-def rasterize(vector_path, width):
+def rasterize(vector_path, width, include_alpha=True, flag=None):
     '''Renders a vector image as a raster image with the given pixel width.
+
+    By default, the image is returned with an alpha channel, if possible.
 
     Args:
         vector_path: the path to the vector image
         width: the desired image width
+        include_alpha: whether to include the alpha channel of the image, if
+            present, in the returned array. By default, this is True
+        flag: an optional OpenCV image format flag to use. If provided, this
+            flag takes precedence over `include_alpha`
 
     Returns:
         a uint8 numpy array containing the rasterized image
@@ -851,7 +857,7 @@ def rasterize(vector_path, width):
                 in_opts=["-density", "1200", "-trim"],
                 out_opts=["-resize", str(width)],
             ).run(vector_path, png_path)
-            return read(png_path)
+            return read(png_path, include_alpha=include_alpha, flag=flag)
         except Exception:
             # Fail gracefully
             return None
@@ -862,7 +868,7 @@ def rasterize(vector_path, width):
     #         in_opts=["-density", "1200", "-trim"],
     #         out_opts=["-resize", str(width)],
     #     ).run(vector_path, "png:-")
-    #     return read(out)
+    #     return read(out, include_alpha=include_alpha, flag=flag)
     # except Exception:
     #     # Fail gracefully
     #     return None
