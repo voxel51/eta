@@ -626,56 +626,62 @@ class ImageLabelsSchemaError(Exception):
 ###### Image I/O ##############################################################
 
 
-def decode(b, flag=cv2.IMREAD_COLOR):
+def decode(b, include_alpha=False, flag=None):
     '''Decodes an image from raw bytes.
 
-    By default, images are decoded with the `cv2.IMREAD_COLOR` option, so any
-    alpha channels are discarded.
+    By default, images are returned as color images with no alpha channel.
 
     Args:
         bytes: the raw bytes of an image, e.g., from read() or from a web
             download
-        flag: an optional OpenCV image format flag. The default is
-            `cv2.IMREAD_COLOR`
+        include_alpha: whether to include the alpha channel of the image, if
+            present, in the returned array. By default, this is False
+        flag: an optional OpenCV image format flag to use. If provided, this
+            flag takes precedence over `include_alpha`
 
     Returns:
         a uint8 numpy array containing the RGB image
     '''
+    flag = _get_opencv_imread_flag(flag, include_alpha)
     vec = np.asarray(bytearray(b), dtype=np.uint8)
     return _exchange_rb(cv2.imdecode(vec, flag))
 
 
-def download(url, flag=cv2.IMREAD_COLOR):
+def download(url, include_alpha=False, flag=None):
     '''Downloads an image from a URL.
 
-    By default, images are loaded with the `cv2.IMREAD_COLOR` option, so any
-    alpha channels are discarded.
+    By default, images are returned as color images with no alpha channel.
 
     Args:
         url: the URL of the image
-        flag: an optional OpenCV image format flag. The default is
-            `cv2.IMREAD_COLOR`
+        include_alpha: whether to include the alpha channel of the image, if
+            present, in the returned array. By default, this is False
+        flag: an optional OpenCV image format flag to use. If provided, this
+            flag takes precedence over `include_alpha`
 
     Returns:
         a uint8 numpy array containing the RGB image
     '''
-    return decode(etaw.download_file(url), flag=flag)
+    bytes = etaw.download_file(url)
+    return decode(bytes, include_alpha=include_alpha, flag=flag)
 
 
-def read(path, flag=cv2.IMREAD_COLOR):
+def read(path, include_alpha=False, flag=None):
     '''Reads image from path.
 
-    By default, images are read with the `cv2.IMREAD_COLOR` option, so any
-    alpha channels are discarded.
+    By default, images are returned as color images with no alpha channel.
 
     Args:
         path: the path to the image on disk
-        flag: an optional OpenCV image format flag. The default is
-            `cv2.IMREAD_COLOR`
+        include_alpha: whether to include the alpha channel of the image, if
+            present, in the returned array. By default, this is False
+        flag: an optional OpenCV image format flag to use. If provided, this
+            flag takes precedence over `include_alpha`
 
     Returns:
         a uint8 numpy array containing the RGB image
     '''
+    flag = _get_opencv_imread_flag(flag, include_alpha)
     return _exchange_rb(cv2.imread(path, flag))
 
 
@@ -688,6 +694,14 @@ def write(img, path):
     '''
     etau.ensure_basedir(path)
     cv2.imwrite(path, _exchange_rb(img))
+
+
+def _get_opencv_imread_flag(flag, include_alpha):
+    if flag is not None:
+        return flag
+    if include_alpha:
+        return cv2.IMREAD_UNCHANGED
+    return cv2.IMREAD_COLOR
 
 
 class ImageMetadata(Serializable):
