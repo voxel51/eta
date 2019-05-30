@@ -1,5 +1,5 @@
 '''
-Core interfaces, data structures, and methods for feature extraction in images.
+Core interfaces, data structures, and methods for feature extraction.
 
 Copyright 2017-2019, Voxel51, Inc.
 voxel51.com
