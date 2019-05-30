@@ -283,11 +283,11 @@ class C3DFeaturizer(Featurizer):
             self.c3d = None
 
     def _featurize(self, imgs_or_video_path):
-        '''Featurizes the input video using C3D.
+        '''Featurizes the input.
 
         The frames are resized to 112 x 112 internally, if necessary.
 
-        Attributes:
+        Args:
             imgs_or_video_path: can be either the path to the input video or a
                 frame array of size [num_frames, height, width, num_channels]
 
