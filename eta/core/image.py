@@ -789,8 +789,6 @@ def create(width, height, background=None):
 def overlay(im1, im2, x0=0, y0=0):
     '''Overlays im2 onto im1 at the specified coordinates.
 
-    *** Caution: im1 will be modified in-place if possible. ***
-
     Args:
         im1: a non-transparent image
         im2: a possibly-transparent image
@@ -799,7 +797,7 @@ def overlay(im1, im2, x0=0, y0=0):
             outside of im1, in which case some (even all) of im2 may be omitted
 
     Returns:
-        the overlaid image
+        a copy of im1 with im2 overlaid
     '''
     h1, w1 = im1.shape[:2]
     h2, w2 = im2.shape[:2]
@@ -830,6 +828,7 @@ def overlay(im1, im2, x0=0, y0=0):
         im1 = np.uint8(255 * im1)
     else:
         # Insert opaque image
+        im1 = np.copy(im1)
         im1[y1, x1, :] = im2[y2, x2, :]
 
     return im1
