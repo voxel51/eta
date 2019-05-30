@@ -1667,18 +1667,18 @@ def uniformly_sample_frames(imgs_or_video_path, k, size=None):
     Returns:
         a numpy array of size [k, height, width, num_channels]
     '''
-    is_video_file = isinstance(imgs_or_video_path, six.string_types)
-    if is_video_file:
+    is_video = isinstance(imgs_or_video_path, six.string_types)
+    if is_video:
         video_path = imgs_or_video_path
     else:
         imgs = imgs_or_video_path
 
     # Compute 1-based frames
-    num_frames = get_frame_count(video_path) if is_video_file else len(imgs)
+    num_frames = get_frame_count(video_path) if is_video else len(imgs)
     frames = [int(round(i)) for i in np.linspace(1, min(num_frames, k), k)]
 
     # Read frames ...
-    if is_video_file:
+    if is_video:
         # ... from disk
         with FFmpegVideoReader(video_path, frames=frames) as vr:
             imgs_out = [img for img in vr]
@@ -1711,14 +1711,14 @@ def sliding_window_sample_frames(imgs_or_video_path, k, stride, size=None):
     Returns:
         a numpy array of size [XXXX, k, height, width, num_channels]
     '''
-    is_video_file = isinstance(imgs_or_video_path, six.string_types)
-    if is_video_file:
+    is_video = isinstance(imgs_or_video_path, six.string_types)
+    if is_video:
         video_path = imgs_or_video_path
     else:
         imgs = imgs_or_video_path
 
     # Determine clip indices
-    num_frames = get_frame_count(video_path) if is_video_file else len(imgs)
+    num_frames = get_frame_count(video_path) if is_video else len(imgs)
     if k <= num_frames:
         delta = np.arange(1, k + 1)
         offsets = np.array(list(range(0, num_frames + 1 - k, stride)))
@@ -1732,7 +1732,7 @@ def sliding_window_sample_frames(imgs_or_video_path, k, stride, size=None):
     # Read frames ...
     imgs_dict = {}
     frames = list(np.unique(clip_inds))
-    if is_video_file:
+    if is_video:
         # ... from disk
         with FFmpegVideoReader(video_path, frames=frames) as vr:
             for img in vr:
