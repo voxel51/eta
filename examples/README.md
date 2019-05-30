@@ -45,7 +45,7 @@ MobileNet v2.
 
 ```shell
 cd demo_image_classifier
-eta build -r classify-images-mobilenet-v2.json --run-now
+eta build -r classify-images-tfslim-template.json --patterns {{model}}=mobilenet-v2-imagenet --run-now
 cd ..
 ```
 
