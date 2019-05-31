@@ -40,29 +40,46 @@ logger = logging.getLogger(__name__)
 
 
 class FeaturizerConfig(Config):
-    '''Configuration class that encapsulates the name of a Featurizer and an
+    '''Configuration class that encapsulates the name of a `Featurizer` and an
     instance of its associated Config class.
 
     Attributes:
         type: the fully-qualified class name of the Featurizer, e.g.,
-            `eta.core.features.VideoFramesFeaturizer`
+            `eta.core.vgg16.VGG16Featurizer`
         config: an instance of the Config class associated with the specified
-            Featurizer (e.g., `eta.core.features.VideoFramesFeaturizerConfig`)
+            Featurizer, e.g., `eta.core.vgg16.VGG16FeaturizerConfig`
     '''
 
     def __init__(self, d):
         self.type = self.parse_string(d, "type")
-        self._featurizer_cls, config_cls = Configurable.parse(self.type)
-        self.config = self.parse_object(d, "config", config_cls, default=None)
+        self._featurizer_cls, self._config_cls = Configurable.parse(self.type)
+        self.config = self.parse_object(
+            d, "config", self._config_cls, default=None)
         if not self.config:
-            # Try to load the default config for the featurizer
-            self.config = config_cls.default()
+            self.config = self._load_default_config()
 
     def build(self):
         '''Factory method that builds the Featurizer instance from the config
         specified by this class.
+
+        Returns:
+            a Featurizer instance
         '''
         return self._featurizer_cls(self.config)
+
+    def _load_default_config(self):
+        try:
+            # Try to load the default config from disk
+            return self._config_cls.load_default()
+        except NotImplementedError:
+            # Try default() instead
+            return self._config_cls.default()
+
+    def _validate_type(self, base_cls):
+        if not issubclass(self._featurizer_cls, base_cls):
+            raise ConfigError(
+                "Expected type '%s' to be a subclass of '%s'" % (
+                    self.type, etau.get_class_name(base_cls)))
 
 
 class Featurizer(Configurable):
