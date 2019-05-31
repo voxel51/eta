@@ -563,6 +563,7 @@ class FeaturizedFrameNotFoundError(OSError):
     pass
 
 
+# @todo rename this
 class VideoFramesFeaturizerConfig(Config):
     '''Configuration settings for a VideoFramesFeaturizer.'''
 
@@ -580,6 +581,7 @@ class VideoFramesFeaturizerConfig(Config):
         self.frames = self.parse_string(d, "frames", default="*")
 
 
+# @todo rename this
 class VideoFramesFeaturizer(Featurizer):
     '''Class that encapsulates featurizing the frames of a video.
 
@@ -615,10 +617,6 @@ class VideoFramesFeaturizer(Featurizer):
 
         "manual"
             the provided `backing_path` is used verbatim
-
-    @todo Refactor the backing managers into standalone Configurable classes
-
-    @todo: Generalize to allow non npz-able features
     '''
 
     def __init__(self, config):
