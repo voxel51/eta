@@ -187,6 +187,9 @@ class ModelConfig(Config):
     def build(self):
         '''Factory method that builds the Model instance from the config
         specified by this class.
+
+        Returns:
+            a Model instance
         '''
         return self._model_cls(self.config)
 
