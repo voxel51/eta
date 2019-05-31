@@ -38,7 +38,7 @@ import tensorflow as tf
 import eta.constants as etac
 from eta.core.config import Config, Configurable
 import eta.core.image as etai
-from eta.core.features import Featurizer
+from eta.core.features import ImageFeaturizer
 import eta.core.learning as etal
 import eta.core.models as etam
 from eta.core.tfutils import UsesTFSession
@@ -48,10 +48,16 @@ logger = logging.getLogger(__name__)
 
 
 class VGG16Config(Config):
-    '''Configuration settings for the VGG-16 network.'''
+    '''Configuration settings for the VGG-16 network.
+
+    Attributes:
+        model_name: the name of the VGG-16 model to load
+        labels_map: path to the labels map to load
+    '''
 
     def __init__(self, d):
-        self.model = self.parse_string(d, "model", default="vgg16-imagenet")
+        self.model_name = self.parse_string(
+            d, "model_name", default="vgg16-imagenet")
         self.labels_map = self.parse_string(d, "labels_map", default=None)
 
         if self.labels_map is None:
@@ -106,7 +112,7 @@ class VGG16(Configurable, UsesTFSession):
         self._build_fc_layers()
         self._build_output_layer()
 
-        self._load_model(self.config.model)
+        self._load_model(self.config.model_name)
 
     @staticmethod
     def preprocess_image(img):
@@ -474,18 +480,23 @@ class VGG16(Configurable, UsesTFSession):
     def _build_output_layer(self):
         self.probs = tf.nn.softmax(self.fc3)
 
-    def _load_model(self, model):
-        weights = etam.NpzModelWeights(model).load()
+    def _load_model(self, model_name):
+        weights = etam.NpzModelWeights(model_name).load()
         for i, k in enumerate(sorted(weights)):
             self.sess.run(self.parameters[i].assign(weights[k]))
 
 
 class VGG16FeaturizerConfig(VGG16Config):
-    '''Configuration settings for a VGG16Featurizer.'''
+    '''Configuration settings for a VGG16Featurizer.
+
+    Attributes:
+        model_name: the name of the VGG-16 model to load
+        labels_map: path to the labels map to load
+    '''
     pass
 
 
-class VGG16Featurizer(Featurizer):
+class VGG16Featurizer(ImageFeaturizer):
     '''Featurizer that embeds images into the VGG-16 feature space.'''
 
     def __init__(self, config=None):
