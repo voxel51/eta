@@ -99,7 +99,7 @@ class Featurizer(Configurable):
 
     ```
     with <My>Featurizer(...) as f:
-        f.featurize(data)
+        v = f.featurize(data)
     ```
     '''
 
@@ -119,24 +119,24 @@ class Featurizer(Configurable):
         '''Returns the dimension of the features extracted by this
         Featurizer.
         '''
-        raise NotImplementedError("subclass must implement dim().")
+        raise NotImplementedError("subclass must implement dim()")
 
     def start(self, warn_on_restart=True, keep_alive=True):
         '''Start method that handles any necessary setup to prepare the
         Featurizer for use.
 
         This method can be explicitly called by users. If it is not called
-        manually, it will be called each time `featurize` is called.
+        manually, it will be called each time `featurize()` is called.
 
         Args:
-            warn_on_restart: whether to generate a warning if `start` is
+            warn_on_restart: whether to generate a warning if `start()` is
                 called when the Featurizer is already started. The default
                 value is True
             keep_alive: whether to keep the Featurizer alive (i.e. not to call
-                `stop`) after a each `featurize` call
+                `stop()`) after a each `featurize()` call
         '''
         if warn_on_restart and self._is_started:
-            logger.warning("Featurizer.start() called when already started.")
+            logger.warning("Featurizer.start() called when already started")
 
         if self._is_started:
             return
@@ -146,9 +146,11 @@ class Featurizer(Configurable):
         self._start()
 
     def _start(self):
-        '''The backend implementation that is called when the public `start`
-        method is called. Subclasses that require startup configuration should
-        override this method.
+        '''The backend implementation that is called when the public `start()`
+        method is called.
+
+        Subclasses that require startup configuration should implement this
+        method.
         '''
         pass
 
@@ -157,9 +159,9 @@ class Featurizer(Configurable):
         is complete.
 
         This method can be explicitly called by users, and, in fact, it must
-        be called by users who called `start` themselves. If `start` was not
-        called manually or `keep_alive` was set to False, then this method will
-        be invoked at the end of each call to `featurize`.
+        be called by users who called `start()` themselves. If `start()` was
+        not called manually or `keep_alive` was set to False, then this method
+        will be invoked at the end of each call to `featurize()`.
         '''
         if not self._is_started:
             return
@@ -169,9 +171,11 @@ class Featurizer(Configurable):
         self._keep_alive = False
 
     def _stop(self):
-        '''The backend implementation that is called when the public `stop`
-        method is called. Subclasses that require cleanup after featurization
-        should override this method.
+        '''The backend implementation that is called when the public `stop()`
+        method is called.
+
+        Subclasses that require cleanup after featurization should implement
+        this method.
         '''
         pass
 
@@ -185,11 +189,11 @@ class Featurizer(Configurable):
             the feature vector
         '''
         self.start(warn_on_restart=False, keep_alive=False)
-        fv = self._featurize(data)
+        v = self._featurize(data)
         if self._keep_alive is False:
             self.stop()
 
-        return fv
+        return v
 
     def _featurize(self, data):
         '''The backend implementation of the feature extraction routine.
