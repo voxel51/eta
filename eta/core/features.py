@@ -29,7 +29,7 @@ import tempfile
 import cv2
 import numpy as np
 
-from eta.core.config import Config, Configurable
+from eta.core.config import Config, Configurable, ConfigError
 import eta.core.image as etai
 from eta.core.numutils import GrowableArray
 import eta.core.utils as etau
@@ -180,6 +180,101 @@ class Featurizer(Configurable):
 
         Args:
             data: the data to featurize
+
+        Returns:
+            the feature vector
+        '''
+        raise NotImplementedError("subclass must implement _featurize()")
+
+
+class ImageFeaturizerConfig(FeaturizerConfig):
+    '''Base configuration class that encapsulates the name of an
+    `ImageFeaturizer` subclass and an instance of its associated Config class.
+
+    Attributes:
+        type: the fully-qualified class name of the `ImageFeaturizer` subclass
+        config: an instance of the Config class associated with the specified
+            `ImageFeaturizer` subclass
+    '''
+
+    def __init__(self, d):
+        super(ImageFeaturizerConfig, self).__init__(d)
+        self._validate_type(ImageFeaturizer)
+
+
+class ImageFeaturizer(Featurizer):
+    '''Interface for featurizers that operate on images.'''
+
+    def _featurize(self, img):
+        '''Featurizes the given image.
+
+        Args:
+            img: the image to featurize
+
+        Returns:
+            the feature vector
+        '''
+        raise NotImplementedError("subclass must implement _featurize()")
+
+
+class VideoFramesFeaturizerConfig(FeaturizerConfig):
+    '''Base configuration class that encapsulates the name of an
+    `VideoFramesFeaturizer` subclass and an instance of its associated Config
+    class.
+
+    Attributes:
+        type: the fully-qualified class name of the `VideoFramesFeaturizer`
+            subclass
+        config: an instance of the Config class associated with the specified
+            `VideoFramesFeaturizer` subclass
+    '''
+
+    def __init__(self, d):
+        super(VideoFramesFeaturizerConfig, self).__init__(d)
+        self._validate_type(VideoFramesFeaturizer)
+
+
+class VideoFramesFeaturizer(Featurizer):
+    '''Interface for featurizers that operate on videos represented as
+    tensors of images.
+    '''
+
+    def _featurize(self, imgs):
+        '''Featurizes the given video represented as a tensor of images.
+
+        Args:
+            imgs: a list (or d x ny x nx x 3 tensor) of images defining the
+                video to featurize
+
+        Returns:
+            the feature vector
+        '''
+        raise NotImplementedError("subclass must implement _featurize()")
+
+
+class VideoFeaturizerConfig(FeaturizerConfig):
+    '''Base configuration class that encapsulates the name of an
+    `VideoFeaturizer` subclass and an instance of its associated Config class.
+
+    Attributes:
+        type: the fully-qualified class name of the `VideoFeaturizer` subclass
+        config: an instance of the Config class associated with the specified
+            `VideoFeaturizer` subclass
+    '''
+
+    def __init__(self, d):
+        super(VideoFeaturizerConfig, self).__init__(d)
+        self._validate_type(VideoFeaturizer)
+
+
+class VideoFeaturizer(Featurizer):
+    '''Base class for featurizers that operate on entire videos.'''
+
+    def _featurize(self, video_path):
+        '''Featurizes the given video.
+
+        Args:
+            video_path: the path to the video
 
         Returns:
             the feature vector
@@ -366,6 +461,80 @@ class CanFeaturize(object):
 class CanFeaturizeError(Exception):
     '''Exception raised when an invalid usage of CanFeaturize is found.'''
     pass
+
+
+class ORBFeaturizerConfig(Config):
+    '''Configuration settings for an ORBFeaturizer.'''
+
+    def __init__(self, d):
+        self.num_keypoints = self.parse_number(d, "num_keypoints", default=128)
+
+
+class ORBFeaturizer(ImageFeaturizer):
+    '''ORB (Oriented FAST and rotated BRIEF features) Featurizer.
+
+    Reference:
+        http://www.willowgarage.com/sites/default/files/orb_final.pdf
+    '''
+
+    def __init__(self, config=None):
+        '''Creates a new ORBFeaturizer instance.
+
+        Args:
+            config: an optional ORBFeaturizerConfig instance. If omitted, the
+                default ORBFeaturizerConfig is used
+        '''
+        if config is None:
+            config = ORBFeaturizerConfig.default()
+        self.num_keypoints = config.num_keypoints
+        super(ORBFeaturizer, self).__init__()
+
+        try:
+            # OpenCV 3
+            self._orb = cv2.ORB_create(nfeatures=self.num_keypoints)
+        except AttributeError:
+            # OpenCV 2
+            self._orb = cv2.ORB(nfeatures=self.num_keypoints)
+
+    def dim(self):
+        '''Returns the dimension of the features.'''
+        return 32 * self.num_keypoints
+
+    def _featurize(self, img):
+        gray = etai.rgb_to_gray(img)
+        return self._orb.detectAndCompute(gray, None)[1].flatten()
+
+
+class RandFeaturizerConfig(Config):
+    '''Configuration settings for a RandFeaturizer.'''
+
+    def __init__(self, d):
+        self.dim = self.parse_number(d, "dim", default=1024)
+
+
+class RandFeaturizer(ImageFeaturizer):
+    '''Featurizer that returns a feature vector with uniformly random entries
+    regardless of the input data.
+    '''
+
+    def __init__(self, config=None):
+        '''Creates a new RandFeaturizer instance.
+
+        Args:
+            config: an optional RandFeaturizerConfig instance. If omitted, the
+                default RandFeaturizerConfig is used
+        '''
+        if config is None:
+            config = RandFeaturizerConfig.default()
+        self._dim = config.dim
+        super(RandFeaturizer, self).__init__()
+
+    def dim(self):
+        '''Returns the dimension of the features.'''
+        return self._dim
+
+    def _featurize(self, _):
+        return np.random.rand(self._dim)
 
 
 class FeaturizedFrameNotFoundError(OSError):
@@ -636,77 +805,3 @@ class VideoFramesFeaturizer(Featurizer):
         except OSError as e:
             if e.errno != errno.EEXIST:
                 raise
-
-
-class ORBFeaturizerConfig(Config):
-    '''Configuration settings for an ORBFeaturizer.'''
-
-    def __init__(self, d):
-        self.num_keypoints = self.parse_number(d, "num_keypoints", default=128)
-
-
-class ORBFeaturizer(Featurizer):
-    '''ORB (Oriented FAST and rotated BRIEF features) Featurizer.
-
-    Reference:
-        http://www.willowgarage.com/sites/default/files/orb_final.pdf
-    '''
-
-    def __init__(self, config=None):
-        '''Creates a new ORBFeaturizer instance.
-
-        Args:
-            config: an optional ORBFeaturizerConfig instance. If omitted, the
-                default ORBFeaturizerConfig is used
-        '''
-        if config is None:
-            config = ORBFeaturizerConfig.default()
-        self.num_keypoints = config.num_keypoints
-        super(ORBFeaturizer, self).__init__()
-
-        try:
-            # OpenCV 3
-            self._orb = cv2.ORB_create(nfeatures=self.num_keypoints)
-        except AttributeError:
-            # OpenCV 2
-            self._orb = cv2.ORB(nfeatures=self.num_keypoints)
-
-    def dim(self):
-        '''Returns the dimension of the features.'''
-        return 32 * self.num_keypoints
-
-    def _featurize(self, img):
-        gray = etai.rgb_to_gray(img)
-        return self._orb.detectAndCompute(gray, None)[1].flatten()
-
-
-class RandFeaturizerConfig(Config):
-    '''Configuration settings for an RandFeaturizer.'''
-
-    def __init__(self, d):
-        self.dim = self.parse_number(d, "dim", default=1024)
-
-
-class RandFeaturizer(Featurizer):
-    '''Random Featurizer that returns a feature vector with uniformly random
-    entries regardless of the input data.
-    '''
-
-    def __init__(self, config=None):
-        '''Creates a new RandFeaturizer instance.
-
-        Args:
-            config: an optional RandFeaturizerConfig instance. If omitted, the
-                default RandFeaturizerConfig is used
-        '''
-        if config is None:
-            config = RandFeaturizerConfig.default()
-        self._dim = config.dim
-        super(RandFeaturizer, self).__init__()
-
-    def dim(self):
-        '''Returns the dimension of the features.'''
-        return self._dim
-
-    def _featurize(self, _):
-        return np.random.rand(self._dim)
