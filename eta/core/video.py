@@ -447,6 +447,16 @@ class VideoSetLabels(Serializable):
         '''Returns the set of filenames of VideoLabels in this instance.'''
         return set(self._filename_map)
 
+    def sort_by_filename(self, reverse=False):
+        '''Sorts the VideoLabels in this instance by filename.
+
+        Args:
+            reverse: whether to sort in reverse order. By default, this is
+                False
+        '''
+        self.videos = sorted(
+            self.videos, key=lambda l: l.filename or "", reverse=reverse)
+
     @property
     def has_schema(self):
         '''Returns True/False whether the container has an enforced schema.'''

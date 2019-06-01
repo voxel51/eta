@@ -151,6 +151,16 @@ class ImageSetLabels(Serializable):
         '''Returns the set of filenames of ImageLabels in this instance.'''
         return set(self._filename_map)
 
+    def sort_by_filename(self, reverse=False):
+        '''Sorts the ImageLabels in this instance by filename.
+
+        Args:
+            reverse: whether to sort in reverse order. By default, this is
+                False
+        '''
+        self.images = sorted(
+            self.images, key=lambda l: l.filename or "", reverse=reverse)
+
     @property
     def has_schema(self):
         '''Returns True/False whether this instance has an enforced schema.'''
