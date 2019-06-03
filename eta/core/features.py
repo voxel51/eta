@@ -20,10 +20,8 @@ import six
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-import errno
 import logging
 import os
-import shutil
 import tempfile
 
 import cv2
@@ -31,7 +29,6 @@ import numpy as np
 
 from eta.core.config import Config, Configurable, ConfigError
 import eta.core.image as etai
-from eta.core.numutils import GrowableArray
 import eta.core.utils as etau
 import eta.core.video as etav
 
@@ -558,93 +555,246 @@ class RandFeaturizer(ImageFeaturizer):
         return np.random.rand(self._dim)
 
 
-class FeaturizedFrameNotFoundError(OSError):
-    '''Exception raised when a featurized frame is not found on disk.'''
-    pass
+class BackingManagerConfig(Config):
+    '''Base configuration class that encapsulates the name of a
+    `BackingManager` subclass and an instance of its associated Config class.
 
-
-# @todo rename this
-class VideoFramesFeaturizerConfig(Config):
-    '''Configuration settings for a VideoFramesFeaturizer.'''
+    Attributes:
+        type: the fully-qualified class name of the `BackingManager` subclass
+        config: an instance of the Config class associated with the specified
+            `BackingManager` subclass
+    '''
 
     def __init__(self, d):
-        self.backing_path = self.parse_string(
-            d, "backing_path", default="/tmp")
-        self.backing_manager = self.parse_string(
-            d, "backing_manager", default="random")
-        self.backing_manager_remove_random = self.parse_bool(
-            d, "backing_manager_remove_random", default=True)
-        self.backing_manager_path_replace = self.parse_array(
-            d, "backing_manager_path_replace", default=[])
-        self.frame_featurizer = self.parse_object(
-            d, "frame_featurizer", FeaturizerConfig)
-        self.frames = self.parse_string(d, "frames", default="*")
+        self.type = self.parse_string(d, "type")
+        self._backing_manager_cls, self._config_cls = Configurable.parse(
+            self.type)
+        self.config = self.parse_object(
+            d, "config", self._config_cls, default=None)
+        if not self.config:
+            self.config = self._load_default_config()
+
+    @classmethod
+    def default(cls):
+        '''Loads the default BackingManager.
+
+        Returns:
+            a BackingManager instance
+        '''
+        return cls({"type": "eta.core.features.RandomBackingManager"})
+
+    def build(self):
+        '''Factory method that builds the BackingManager instance from the
+        config specified by this class.
+
+        Returns:
+            a BackingManager instance
+        '''
+        return self._backing_manager_cls(self.config)
+
+    def _load_default_config(self):
+        try:
+            # Try to load the default config from disk
+            return self._config_cls.load_default()
+        except NotImplementedError:
+            # Try default() instead
+            return self._config_cls.default()
 
 
-# @todo rename this
-class VideoFramesFeaturizer(Featurizer):
-    '''Class that encapsulates featurizing the frames of a video.
+class BackingManager(Configurable):
+    '''Abstract base class for all backing managers.'''
 
-    A VideoFramesFeaturizer is a meta-Featurizer that uses the Featurizer
-    specified by `frame_featurizer` internally to featurize the frames.
+    @property
+    def backing_dir(self):
+        '''Returns the current backing directory.'''
+        raise NotImplementedError("subclasses must implement `backing_dir`")
 
-    Featurized frames are stored on disk as compressed pickle files indexed by
-    frame number. The location of the files on disk is controlled by the
-    `backing_path` attribute. By default, the backing path is `/tmp`.
+    def set_video_path(self, video_path):
+        '''Sets the video path and ensures that the backing directory for the
+        video exists.
 
-    This class also allows a `frame_preprocessor` function to be installed
-    that preprocesses each input frame before featurizing it. By default, no
-    preprocessing is performed.
+        Args:
+            video_path: the video path
+        '''
+        self._set_video_path(video_path)
+        logger.info("Using backing directory '%s'", self.backing_dir)
+        etau.ensure_dir(self.backing_dir)
 
-    **WARNING** if you use the same backing path for multiple videos your
-    features will be invalid (features on disk are not overwritten, they are
-    simply skipped).
+    def _set_video_path(self, video_path):
+        '''Internal implementation of setting the video path.
 
-    To automate the management of the the backing path, this class supports an
-    optional `backing_manager` field that has the following options:
+        Subclasses can implement this method if necessary
 
-        "random" (default)
-            a new random subdirectory of `backing_path` is generated each time
-            `featurize` is called. This guarantees that features will not
-            collide with existing features on disk. Note that the randomly
-            created backing directory is removed after each featurization,
-            unless config field `backing_manager_remove_random` is set to False
+        Args:
+            video_path: the video path
+        '''
+        pass
 
-        "replace"
-            the field `backing_manager_path_replace` is used to replace
-            substrings in the filename of each video featurized, which will
-            *hopefully* yield a new, unique output path
+    def flush(self):
+        '''Deletes the backing directory.'''
+        etau.delete_dir(self.backing_dir)
 
-        "manual"
-            the provided `backing_path` is used verbatim
+
+class RandomBackingManagerConfig(Config):
+    '''Configuration settings for a RandomBackingManager.
+
+    Attributes:
+        basedir: the base directory in which to store features
+    '''
+
+    def __init__(self, d):
+        self.basedir = self.parse_string(d, "basedir", default="/tmp")
+
+
+class RandomBackingManager(BackingManager):
+    '''Backing manager that stores features in random subdirectories of the
+    given base directory.
     '''
 
     def __init__(self, config):
-        '''Creates a new VideoFramesFeaturizer and initializes the backing
-        storage.
+        '''Creates the RandomBackingManager instance.
 
         Args:
-            config: a VideoFramesFeaturizerConfig instance
+            config: a RandomBackingManagerConfig instance.
         '''
         self.validate(config)
         self.config = config
-        self.most_recent_frame = -1
+        self._backing_dir = None
 
-        super(VideoFramesFeaturizer, self).__init__()
+    @property
+    def backing_dir(self):
+        return self._backing_dir
 
-        self._frame_string = "%08d.npz"
+    def _set_video_path(self, video_path):
+        self._backing_dir = tempfile.mkdtemp(
+            dir=self.config.basedir, prefix="eta.backing.")
+
+
+class ManualBackingManagerConfig(Config):
+    '''Configuration settings for a RandomBackingManager.
+
+    Attributes:
+        basedir: the base directory in which to store features
+    '''
+
+    def __init__(self, d):
+        self.basedir = self.parse_string(
+            d, "basedir", default="/tmp/eta.backing")
+
+
+class ManualBackingManager(BackingManager):
+    '''Backing manager that stores features directly in the base directory.'''
+
+    def __init__(self, config):
+        '''Creates the RandomBackingManager instance.
+
+        Args:
+            config: a RandomBackingManagerConfig instance.
+        '''
+        self.validate(config)
+        self.config = config
+
+    @property
+    def backing_dir(self):
+        return self.config.basedir
+
+
+class PatternBackingManagerConfig(Config):
+    '''Configuration settings for a PatternBackingManager.
+
+    Attributes:
+        path_replacers: an array of (find, replace) strings to apply to the
+            video path
+    '''
+
+    def __init__(self, d):
+        self.path_replacers = self.parse_array(d, "path_replacers")
+
+
+class PatternBackingManager(BackingManager):
+    '''Backing manager that uses a list of (find, replace) strings to generate
+    a (hopefully unique) backing directory for each video path.
+    '''
+
+    def __init__(self, config):
+        '''Creates the PatternBackingManager instance.
+
+        Args:
+            config: a PatternBackingManagerConfig instance.
+        '''
+        self.validate(config)
+        self.config = config
+        self._backing_dir = None
+
+    @property
+    def backing_dir(self):
+        return self._backing_dir
+
+    def _set_video_path(self, video_path):
+        self._backing_dir = etau.replace_strings(
+            video_path, self.config.path_replacers)
+
+
+class CachingVideoFeaturizerConfig(Config):
+    '''Configuration settings for a CachingVideoFeaturizer.
+
+    Attributes:
+        frame_featurizer: an ImageFeaturizerConfig specifying the Featurizer
+            to use to embed the video frames
+        backing_manager: a BackingManagerConfig specifying the backing manager
+            to use
+        delete_backing_directory: whether to delete the backing directory
+            when the featurizer is stopped
+    '''
+
+    def __init__(self, d):
+        self.frame_featurizer = self.parse_object(
+            d, "frame_featurizer", ImageFeaturizerConfig)
+        self.backing_manager = self.parse_object(
+            d, "backing_manager", BackingManagerConfig, default=None)
+        if self.backing_manager is None:
+            self.backing_manager = BackingManagerConfig.default()
+        self.delete_backing_directory = self.parse_bool(
+            d, "delete_backing_directory", default=True)
+
+
+class CachingVideoFeaturizer(Featurizer):
+    '''Meta-featurizer that uses an ImageFeaturizer to maintain a cache of the
+    feature vectors for the frames of a video.
+
+    Featurized frames are stored on disk as compressed pickle files indexed by
+    frame number. The location of the files on disk is controlled by the
+    `backing_manager`. By default, a `RandomBackingManager` is used that writes
+    features to a randomly generated subdirectory of `/tmp`.
+
+    This class also allows a `frame_preprocessor` function to be set that
+    preprocesses each input frame before featurizing it. By default, no
+    preprocessing is performed.
+    '''
+
+    def __init__(self, config):
+        '''Creates a CachingVideoFeaturizer instance.
+
+        Args:
+            config: a CachingVideoFeaturizerConfig instance
+        '''
+        self.validate(config)
+        self.config = config
+        super(CachingVideoFeaturizer, self).__init__()
+
+        self._frame_featurizer = self.config.frame_featurizer.build()
+        self._backing_manager = self.config.backing_manager.build()
         self._frame_preprocessor = None
-        self._frame_featurizer = None
-        self._backing_path = None
+        self._frame_string = "%08d.npz"
 
-        backing_managers = {
-            "random": self._backing_manager_random,
-            "replace": self._backing_manager_replace,
-            "manual": self._backing_manager_manual,
-        }
-        self._backing_manager = backing_managers[self.config.backing_manager]
-        self.update_backing_path(self.config.backing_path)
-        self._backing_manager_random_last_tempdir = None
+    def dim(self):
+        '''Returns the dimension of the underlying frame Featurizer.'''
+        return self._frame_featurizer.dim()
+
+    @property
+    def backing_dir(self):
+        '''Returns the current backing directory.'''
+        return self._backing_manager.backing_dir
 
     @property
     def frame_preprocessor(self):
@@ -652,175 +802,143 @@ class VideoFramesFeaturizer(Featurizer):
         return self._frame_preprocessor
 
     @frame_preprocessor.setter
-    def frame_preprocessor(self, fp):
-        self._frame_preprocessor = fp
+    def frame_preprocessor(self, fcn):
+        self._frame_preprocessor = fcn
 
     @frame_preprocessor.deleter
     def frame_preprocessor(self):
         self._frame_preprocessor = None
 
-    def _backing_manager_random(self, video_path, is_featurize_start=True):
-        '''Backing manager that generates a new unique subdirectory of
-        `backing_path` for each video processed.
-        '''
-        if is_featurize_start:
-            td = tempfile.mkdtemp(
-                dir=self.config.backing_path, prefix="eta.backing.")
-            self.update_backing_path(td)
-            self._backing_manager_random_last_tempdir = td
-            return
+    def _start(self):
+        self._frame_featurizer.start()
 
-        if self.config.backing_manager_remove_random:
-            shutil.rmtree(self._backing_manager_random_last_tempdir)
-        self.update_backing_path(self.config.backing_path)
+    def _stop(self):
+        self._frame_featurizer.stop()
+        if self.config.delete_backing_directory:
+            logger.info(
+                "Deleting backing directory '%s'",
+                self.config.delete_backing_directory)
+            self._backing_manager.flush()
 
-    def _backing_manager_replace(self, video_path, is_featurize_start=True):
-        '''Backing manager that generates a (hopefully) unique backing
-        directory for each video processed by peforming a find-and-replace
-        string operation on the video path.
-        '''
-        if is_featurize_start:
-            rp = etau.replace_strings(
-                video_path, self.config.backing_manager_path_replace)
-            self._backing_manager_random_last_tempdir = rp
-            self.update_backing_path(rp)
-            return
-
-        self.update_backing_path(self.config.backing_path)
-
-    def _backing_manager_manual(self, video_path, is_featurize_start=True):
-        '''Backing manager that simply uses the provided `backing_path`.'''
-        pass
-
-    def dim(self):
-        '''Returns the dimension of the underlying frame Featurizer.'''
-        if not self._frame_featurizer:
-            self._frame_featurizer = self.config.frame_featurizer.build()
-            d = self._frame_featurizer.dim()
-            self._frame_featurizer = None
-        else:
-            d = self._frame_featurizer.dim()
-
-        return d
-
-    def is_featurized(self, frame_number):
-        '''Checks the backing store to determine whether or not the frame
-        number is already featurized and stored to disk.
-        '''
-        return os.path.isfile(self.featurized_frame_path(frame_number))
-
-    def retrieve_featurized_frame(self, frame_number):
-        '''The frame_number here is rendered into a string for the filepath.
-        So, if it is not available as part of the video, then it will be an
-        error.
-
-        No checking is explicitly done here. Careful about starting from
-        0 or 1.
-        '''
-        p = self.featurized_frame_path(frame_number)
-        if not os.path.isfile(p):
-            raise FeaturizedFrameNotFoundError("Feature %d not found", p)
-
-        return np.load(p)["v"]
-
-    def featurize(self, video_path, frames=None, returnX=True):
+    def featurize(self, video_path, frames=None):
         '''Featurizes the frames of the input video.
 
         Attributes:
             video_path: the input video path
             frames: an optional frames string to specify the frames of the
-                video to featurize. By default, the value provided in the
-                VideoFramesFeaturizerConfig is used
-            returnX: whether to return the frames matrix
-
-        Returns:
-            If returnX is True, a (# frames) x (# dims) array is returned
-                whose rows contain the computed features
+                video to featurize. By default, all frames are featurized
         '''
-        if not frames:
-            frames = self.config.frames
-
-        self._backing_manager(video_path)
         self.start(warn_on_restart=False, keep_alive=False)
-        v = self._featurize(video_path, frames, returnX)
+        self._featurize(video_path, frames)
         if self._keep_alive is False:
             self.stop()
 
-        self._backing_manager(video_path, False)
-
-        return v
-
-    def _featurize(self, video_path, frames=None, returnX=True):
-        frames = frames or self.config.frames
-        logger.debug("Featurizing frames %s", frames)
-
-        if returnX:
-            X = None
-
+    def _featurize(self, video_path, frames):
+        self._backing_manager.set_video_path(video_path)
         with etav.FFmpegVideoReader(video_path, frames=frames) as vr:
             for img in vr:
-                self.most_recent_frame = vr.frame_number
-                path = self.featurized_frame_path(vr.frame_number)
+                if self._frame_preprocessor is not None:
+                    _img = self._frame_preprocessor(img)
+                else:
+                    _img = img
 
-                try:
-                    # Try to load the existing feature
-                    v = self.retrieve_featurized_frame(vr.frame_number)
-                except FeaturizedFrameNotFoundError:
-                    # Build the per-frame Featurizer, if necessary
-                    if not self._frame_featurizer:
-                        self._frame_featurizer = \
-                            self.config.frame_featurizer.build()
-                        self._frame_featurizer.start()
+                v = self._frame_featurizer.featurize(_img)
+                path = self.get_featurized_frame_path(vr.frame_number)
+                self._write_feature(v, path)
 
-                    if self._frame_preprocessor is not None:
-                        # Pre-process and then featurize the frame
-                        _img = self._frame_preprocessor(img)
-                        v = self._frame_featurizer.featurize(_img)
-                    else:
-                        # Featurize the frame
-                        v = self._frame_featurizer.featurize(img)
+    def is_featurized(self, frame_number):
+        '''Returns True/False if the given frame has been featurized.
 
-                    # Write the feature to disk
-                    np.savez_compressed(path, v=v)
+        Args:
+            frame_number: the frame number
 
-                if returnX:
-                    if X is None:
-                        # Lazily build the GrowableArray now that we know the
-                        # dimension of the features
-                        X = GrowableArray(len(v))
-                    X.update(v)
-
-        if self._frame_featurizer and not self._keep_alive:
-            # Stop the frame featurizer
-            self._frame_featurizer.stop()
-            self._frame_featurizer = None
-
-        return X.finalize() if returnX else None
-
-    def featurized_frame_path(self, frame_number):
-        '''Returns the backing path for the given frame number.'''
-        return os.path.join(
-            self._backing_path, self._frame_string % frame_number)
-
-    def flush_backing(self):
-        '''Deletes all existing feautres on disk in the current backing path.
-        The backing directory itself is not deleted.
+        Returns:
+            True/False
         '''
-        files = [
-            f for f in os.listdir(self._backing_path) if f.endswith(".npz")]
-        for f in files:
-            os.remove(os.path.join(self._backing_path, f))
+        path = self.get_featurized_frame_path(frame_number)
+        return os.path.isfile(path)
 
-    def _stop(self):
-        if self._frame_featurizer:
-            self._frame_featurizer.stop()
-            self._frame_featurizer = None
+    def get_featurized_frame_path(self, frame_number):
+        '''Returns the feature path on disk for the given frame number.
 
-    def update_backing_path(self, backing_path):
-        '''Update the backing path and create the directory tree, if needed.'''
-        self._backing_path = backing_path
+        The actual file may or may not exist.
+
+        Args:
+            frame_number: the frame number
+
+        Returns:
+            the path to the feature vector on disk
+        '''
+        return os.path.join(
+            self.backing_dir, self._frame_string % frame_number)
+
+    def load_feature_for_frame(self, frame_number):
+        '''Loads the feature for the given frame.
+
+        Args:
+            frame_number: the frame number
+
+        Returns:
+            the feature vector
+
+        Raises:
+            FeaturizedFrameNotFoundError: if the feature vector was not found
+            on disk
+        '''
+        path = self.get_featurized_frame_path(frame_number)
+        return self._read_feature(path)
+
+    def load_features_for_frames(self, frame_range):
+        '''Loads the features for the given range of frames.
+
+        Args:
+            frame_range: a (start, stop) tuple definining the range of frames
+                to load (inclusive)
+
+        Returns:
+            an n x d array of features, where n = stop - start + 1
+
+        Raises:
+            FeaturizedFrameNotFoundError: if any of the feature vectors were
+            not found on disk
+        '''
+        X = []
+        for frame_number in range(frame_range[0], frame_range[1] + 1):
+            X.append(self.load_feature_for_frame(frame_number))
+        return np.array(X)
+
+    def load_all_features(self):
+        '''Loads all features for the last featurized video.
+
+        Use this method with caution; the return matrix may have many rows!
+
+        Returns:
+            an n x d array of features, where n = # of frames that were
+                featurized
+
+        Raises:
+            FeaturizedFrameNotFoundError: if any of the feature vectors were
+            not found on disk
+        '''
+        X = []
+        filenames = etau.list_files(self.backing_dir)
+        for path in [os.path.join(self.backing_dir, f) for f in filenames]:
+            X.append(self._read_feature(path))
+        return np.array(X)
+
+    @staticmethod
+    def _write_feature(v, path):
+        np.savez_compressed(path, v=v)
+
+    @staticmethod
+    def _read_feature(path):
         try:
-            os.makedirs(self._backing_path)
-        except OSError as e:
-            if e.errno != errno.EEXIST:
-                raise
+            return np.load(path)["v"]
+        except OSError:
+            raise FeaturizedFrameNotFoundError(
+                "Feature vector not found at '%s'" % path)
+
+
+class FeaturizedFrameNotFoundError(Exception):
+    '''Exception raised when a featurized frame is not found on disk.'''
+    pass
