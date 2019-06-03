@@ -635,6 +635,35 @@ class BackingManager(Configurable):
         etau.delete_dir(self.backing_dir)
 
 
+class ManualBackingManagerConfig(Config):
+    '''Configuration settings for a RandomBackingManager.
+
+    Attributes:
+        basedir: the base directory in which to store features
+    '''
+
+    def __init__(self, d):
+        self.basedir = self.parse_string(
+            d, "basedir", default="/tmp/eta.backing")
+
+
+class ManualBackingManager(BackingManager):
+    '''Backing manager that stores features directly in the base directory.'''
+
+    def __init__(self, config):
+        '''Creates the RandomBackingManager instance.
+
+        Args:
+            config: a RandomBackingManagerConfig instance.
+        '''
+        self.validate(config)
+        self.config = config
+
+    @property
+    def backing_dir(self):
+        return self.config.basedir
+
+
 class RandomBackingManagerConfig(Config):
     '''Configuration settings for a RandomBackingManager.
 
@@ -668,35 +697,6 @@ class RandomBackingManager(BackingManager):
     def _set_video_path(self, video_path):
         self._backing_dir = tempfile.mkdtemp(
             dir=self.config.basedir, prefix="eta.backing.")
-
-
-class ManualBackingManagerConfig(Config):
-    '''Configuration settings for a RandomBackingManager.
-
-    Attributes:
-        basedir: the base directory in which to store features
-    '''
-
-    def __init__(self, d):
-        self.basedir = self.parse_string(
-            d, "basedir", default="/tmp/eta.backing")
-
-
-class ManualBackingManager(BackingManager):
-    '''Backing manager that stores features directly in the base directory.'''
-
-    def __init__(self, config):
-        '''Creates the RandomBackingManager instance.
-
-        Args:
-            config: a RandomBackingManagerConfig instance.
-        '''
-        self.validate(config)
-        self.config = config
-
-    @property
-    def backing_dir(self):
-        return self.config.basedir
 
 
 class PatternBackingManagerConfig(Config):
