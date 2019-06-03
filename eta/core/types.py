@@ -327,9 +327,8 @@ class VideoFeaturizer(Featurizer):
             return False
 
 
-# @todo rename this
-class VideoFramesFeaturizer(Featurizer):
-    '''Configuration for an `eta.core.features.VideoFramesFeaturizer`.'''
+class CachingVideoFeaturizer(Featurizer):
+    '''Configuration for an `eta.core.features.CachingVideoFeaturizer`.'''
     pass
 
 
