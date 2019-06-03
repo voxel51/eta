@@ -63,20 +63,20 @@ class TFModelCheckpoint(etam.PublishedModel):
 
 
 class UsesTFSession(object):
-    '''Base class for classes that use one or more `tf.Session`s.
+    '''Mixin for classes that use one or more `tf.Session`s.
 
-    It is highly recommended that all classes that use `tf.Session` inherit
-    from this class to ensure that:
+    It is highly recommended that all classes that use `tf.Session` use this
+    mixin to ensure that:
 
         - all sessions have the settings from `eta.config.tf_config` applied
             to them
 
         - all sessions are appropriately closed
 
-    To use this base class, simply call `make_tf_session()` when you need to
-    create a new session, and then either use the context manager interface or
-    call the `close()` method to automatically clean up any sessions your
-    instance was using.
+    To use this mixin, simply call `make_tf_session()` when you need to create
+    a new session, and then either use the context manager interface or call
+    the `close()` method to automatically clean up any sessions your instance
+    was using.
     '''
 
     def __init__(self):
