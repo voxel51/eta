@@ -46,7 +46,7 @@ import eta.core.web as etaw
 
 
 #
-# The file extensions of supported video files
+# The file extensions of supported image files
 #
 # In practice, any image that `cv2.imread` can read will be supported.
 # Nonetheless, we enumerate this list here so that the ETA type system can
