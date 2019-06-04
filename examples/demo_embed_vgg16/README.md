@@ -10,8 +10,8 @@ capabilities supported in ETA.
     VGG-16 feature space using a `VGG16Featurizer`
 - `embed_image_direct.py`: another example showing how to manually embed an
     image into the VGG-16 feature space using the `VGG16` class itself
-- `embed_video.py`: an example of using `VGG16Featurizer` to embed each frame
-    of a video
+- `embed_video.py`: an example of using `CachingVideoFeaturizer` to embed each
+    frame of a video via `VGG16Featurizer`
 - `embed_vgg16_module-config.json`: an example module config file to execute
     the `embed_vgg16` ETA module
 - `embed_vgg16_module.bash`: a bash script to run the `embed_vgg16` module

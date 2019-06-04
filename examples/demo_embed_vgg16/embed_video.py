@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 '''
 Example of embedding the frames of a video in the VGG-16 feature space using
-`VideoFramesFeaturizer`.
+`CachingVideoFeaturizer`.
 
-Also shows the use of the `VGG16Featurizer.frame_preprocessor` functionality
-to embed a cropped version of each frame.
+Also shows the use of the `frame_preprocessor` functionality to embed a
+cropped version of each frame.
 
 Copyright 2017-2019, Voxel51, Inc.
 voxel51.com
@@ -42,13 +42,13 @@ class EmbedVideoConfig(Config):
 
     def __init__(self, d):
         self.video_path = self.parse_string(d, "video_path")
-        self.video_frames_featurizer = self.parse_object(
-            d, "video_frames_featurizer", etaf.VideoFramesFeaturizerConfig)
+        self.caching_video_featurizer = self.parse_object(
+            d, "caching_video_featurizer", etaf.CachingVideoFeaturizerConfig)
 
 
 def embed_video(config):
-    '''Embeds each frame of the video using VGG-16 and stores the embeddedings
-    as .npz files on disk, using VideoFeaturizer to handle I/O.
+    '''Embeds each frame of the video using VGG-16 and stores the embeddings
+    on disk using `eta.core.features.CachingVideoFeaturizer`
 
     Args:
         config: an EmbedConfig instance
@@ -56,25 +56,27 @@ def embed_video(config):
     def _crop(img):
         return img[10:100, 10:100, :]
 
-    # Invoke the VideoFramesFeaturizer using the with syntax so that start()
-    # and stop() are automatically called
-    with etaf.VideoFramesFeaturizer(config.video_frames_featurizer) as vff:
+    # Build the featurizer
+    cvf = etaf.CachingVideoFeaturizer(config.caching_video_featurizer)
+
+    #
+    # Invoke the featurizer using the `with` syntax so that `start()` and
+    # `stop()` are automatically called
+    #
+    with cvf:
         # Use a preprocessor on each frame
-        vff.frame_preprocessor = _crop
+        cvf.frame_preprocessor = _crop
 
-        # This call is not needed in general. We do it here to force
-        # refeaturization of the frames for demonstration purposes
-        vff.flush_backing()
+        logger.info("Featurizing frames 1-6")
+        cvf.featurize(config.video_path, frames="1-6")
 
-        # Featurize frames 1-6
-        vff.featurize(config.video_path, frames="1-6")
+        logger.info("Loading feature for frame 1")
+        logger.info(cvf.load_feature_for_frame(1))
 
-        # Featurize frames 4-9. Since frames 4-6 have already been featurized,
-        # they are skipped this time around
-        vff.featurize(config.video_path, frames="4-9")
+        logger.info("Loading feature for frames 2-6")
+        logger.info(cvf.load_features_for_frames((2, 6)))
 
-    logger.info(
-        "Features stored in '%s'", config.video_frames_featurizer.backing_path)
+    logger.info("Inspect '%s' to see features on disk", cvf.backing_dir)
 
 
 def _abspath(path):

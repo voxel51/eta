@@ -101,7 +101,7 @@ python embed_image_direct.py
 # Image embedding using `eta.core.vgg16.VGG16Featurizer`
 python embed_image.py
 
-# Video embedding using `eta.core.features.VideoFramesFeaturizer`
+# Video embedding using `eta.core.features.CachingVideoFeaturizer`
 python embed_video.py
 
 # Video embedding using the `embed_vgg16` module
