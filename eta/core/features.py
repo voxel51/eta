@@ -696,6 +696,7 @@ class RandomBackingManager(BackingManager):
         return self._backing_dir
 
     def _set_video_path(self, video_path):
+        etau.ensure_dir(self.config.basedir)
         self._backing_dir = tempfile.mkdtemp(
             dir=self.config.basedir, prefix="eta.backing.")
 
