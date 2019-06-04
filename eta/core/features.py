@@ -937,7 +937,7 @@ class CachingVideoFeaturizer(Featurizer):
     def _read_feature(path):
         try:
             return np.load(path)["v"]
-        except OSError:
+        except (IOError, OSError):
             raise FeaturizedFrameNotFoundError(
                 "Feature vector not found at '%s'" % path)
 
