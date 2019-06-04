@@ -530,7 +530,7 @@ class RandFeaturizerConfig(Config):
         self.dim = self.parse_number(d, "dim", default=1024)
 
 
-class RandFeaturizer(ImageFeaturizer):
+class RandFeaturizer(ImageFeaturizer, VideoFramesFeaturizer, VideoFeaturizer):
     '''Featurizer that returns a feature vector with uniformly random entries
     regardless of the input data.
     '''
