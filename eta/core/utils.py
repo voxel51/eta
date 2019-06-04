@@ -130,6 +130,30 @@ def fill_config_patterns(string):
     return fill_patterns(string, eta.config.patterns)
 
 
+def parse_kvps(kvps_str):
+    '''Parses the comma-separated list of `key=value` pairs from the given
+    string.
+
+    Args:
+        kvps_str: a string of the form `"key1=val1,key2=val2,..."
+
+    Returns:
+        a dict of key-value pair strings
+
+    Raises:
+        ValueError: if the string was invalid
+    '''
+    kvps = {}
+    if kvps_str:
+        try:
+            for pair in kvps_str.split(","):
+                k, v = pair.strip().split("=")
+                kvps[k.strip()] = v.strip()
+        except ValueError:
+            raise ValueError("Invalid key-value pair string '%s'", kvps_str)
+    return kvps
+
+
 def get_class_name(cls_or_obj):
     '''Returns the fully-qualified class name for the given input, which can
     be a class or class instance.

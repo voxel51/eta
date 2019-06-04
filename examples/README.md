@@ -17,13 +17,13 @@ python download_data.py
 Perform some image manipulation:
 
 ```shell
-python demo_images/demo_images.py
+python demo_image_manipulation/demo_images.py
 ```
 
 Run a pre-configued video processing pipeline:
 
 ```shell
-eta run demo_video/pipeline.json
+eta run demo_video_pipeline/pipeline.json
 ```
 
 Build and run pipelines from requests:
@@ -34,25 +34,23 @@ eta build -r demo_video_clipper/request.json --run-now
 ```
 
 
-## Image detection and classification
+## Image classification
 
-The following code runs a pipeline that performs image detection and
-classification to detect cats in a directory of images.
+The following code runs a pipeline that performs image classification on
+a directory of images.
 
-See [this README](demo_cats/README.md) for more information.
-
-Note that a 550MB VGG-16 weights file will be downloaded from the web and
-stored in `eta/models` the first time you run this code (if you have not
-already run an example that uses VGG-16).
+See [this README](demo_image_classifier/README.md) for more information,
+including instructions for running a variety of network architectures besides
+MobileNet v2.
 
 ```shell
-cd demo_cats
-eta build -r detect-classify-cats.json --run-now
+cd demo_image_classifier
+eta build -r classify-images-tfslim-template.json --patterns {{model}}=mobilenet-v2-imagenet --run-now
 cd ..
 ```
 
-View the images in the `out/cats-annotated` directory to inspect the output of
-the pipeline.
+View the images in the `demo_image_classifier/out/images-mobilenet-v2`
+directory to inspect the output of the pipeline.
 
 
 ## Object detection
@@ -61,9 +59,6 @@ The following code runs an object detection pipeline on video.
 
 See [this README](demo_object_detector/README.md) for more information.
 
-Note that a 120MB Faster R-CNN ResNet-50 model will be downloaded from the web
-and stored in `eta/models` the first time you run this.
-
 ```shell
 cd demo_object_detector
 eta build -r detect-people.json --run-now
@@ -71,16 +66,31 @@ eta build -r detect-vehicles.json --run-now
 cd ..
 ```
 
-Open the `out/people-annotated.mp4` and `out/vehicles-annotated.mp4` in your
-video player to inspect the output of the pipelines.
+Open the `demo_object_detector/out/people-annotated.mp4` and
+`demo_object_detector/out/vehicles-annotated.mp4` in your video player to
+inspect the output of the pipelines.
+
+
+## Image detection and classification
+
+The following code runs a pipeline that performs image detection and
+classification to detect cats in a directory of images.
+
+See [this README](demo_cats/README.md) for more information.
+
+```shell
+cd demo_cats
+eta build -r detect-classify-cats.json --run-now
+cd ..
+```
+
+View the images in the `demo_cats/out/cats-annotated` directory to inspect the
+output of the pipeline.
 
 
 ## Embeddings
 
 Examples of image/video embedding:
-
-Note that a 550MB VGG-16 weights file will be downloaded from the web and
-stored in `eta/models` the first time you run this code.
 
 ```shell
 cd demo_embed_vgg16

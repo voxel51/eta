@@ -31,21 +31,22 @@ class VGG16ClassifierConfig(Config):
     '''VGG16Classifier configuration settings.
 
     Attributes:
+        attr_name: the name of the attribute that the classifier predicts
         config: an `eta.core.vgg16.VGG16Config` specifying the VGG-16 model to
             use
-        attr_name: the name of the attribute that the classifier predicts
     '''
 
     def __init__(self, d):
-        self.config = self.parse_object(d, "config", VGG16Config, default=None)
         self.attr_name = self.parse_string(d, "attr_name", default="imagenet")
-        if self.config is None:
-            self.config = VGG16Config.default()
+        self.config = self.parse_object(d, "config", VGG16Config, default=None)
 
 
 class VGG16Classifier(etal.ImageClassifier):
     '''Classifier interface for evaluating an `eta.core.vgg16.VGG16` instance
     on images.
+
+    Instances of this class must either use the context manager interface or
+    manually call `close()` when finished to release memory.
     '''
 
     def __init__(self, config=None):
@@ -55,8 +56,19 @@ class VGG16Classifier(etal.ImageClassifier):
             config: an optional VGG16ClassifierConfig instance. If omitted, the
                 default VGG16ClassifierConfig is used
         '''
-        self.config = config
+        self.config = config or VGG16ClassifierConfig.default()
         self._vgg16 = VGG16(config=config.config)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.close()
+
+    def close(self):
+        '''Closes the session and releases any memory.'''
+        self._vgg16.close()
+        self._vgg16 = None
 
     def predict(self, img):
         '''Peforms prediction on the given image.

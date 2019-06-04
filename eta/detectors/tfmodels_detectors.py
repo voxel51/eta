@@ -1,5 +1,5 @@
 '''
-Interface to the TensorFlow Models object detection library available at
+Interface to the TF models object detection library available at
 https://github.com/tensorflow/models/tree/master/research/object_detection.
 
 Copyright 2017-2019, Voxel51, Inc.
@@ -28,61 +28,69 @@ import tensorflow as tf
 import eta.constants as etac
 from eta.core.config import Config
 from eta.core.geometry import BoundingBox, RelativePoint
-from eta.core.learning import ObjectDetector
+from eta.core.learning import ObjectDetector, HasDefaultDeploymentConfig
 import eta.core.models as etam
 from eta.core.objects import DetectedObject, DetectedObjectContainer
 import eta.core.serial as etas
+from eta.core.tfutils import UsesTFSession
 import eta.core.utils as etau
 
 sys.path.append(os.path.join(etac.TF_OBJECT_DETECTION_DIR, "utils"))
 import label_map_util as gool
 
 
-# The default TFModelsDetectorConfig
-DEFAULT_CONFIG = os.path.join(
-    os.path.realpath(os.path.dirname(__file__)), "default-config.json")
-
-
-class TFModelsDetectorConfig(Config):
+class TFModelsDetectorConfig(Config, HasDefaultDeploymentConfig):
     '''TFModelsDetector configuration settings.
 
     Note that `labels_path` is passed through
     `eta.core.utils.fill_config_patterns` at load time, so it can contain
     patterns to be resolved.
+
+    Note that this class implements the `HasDefaultDeploymentConfig` mixin, so
+    any omitted fields present in the default deployment config for the model
+    will be automatically populated.
+
+    Attributes:
+        model_name: the name of the published model to load
+        labels_path: the path to the labels map for the model
     '''
 
     def __init__(self, d):
         self.model_name = self.parse_string(d, "model_name")
+
+        # Loads any default deployment parameters
+        d = self.load_default_deployment_params(d, self.model_name)
+
         self.labels_path = etau.fill_config_patterns(
             self.parse_string(d, "labels_path"))
 
-    @classmethod
-    def load_default(cls):
-        '''Loads the default TFModelsDetectorConfig.'''
-        return cls.from_json(DEFAULT_CONFIG)
 
-
-class TFModelsDetector(ObjectDetector):
-    '''Interface to the `tensorflow/models` object detection library.
-
+class TFModelsDetector(ObjectDetector, UsesTFSession):
+    '''Interface to the TF-Models object detection library at
     https://github.com/tensorflow/models/tree/master/research/object_detection.
+
+    This class uses `eta.core.tfutils.UsesTFSession` to create TF sessions, so
+    it automatically applies settings in your `eta.config.tf_config`.
+
+    Instances of this class must either use the context manager interface or
+    manually call `close()` when finished to release memory.
     '''
 
-    def __init__(self, config=None):
-        '''Constructs a TFModelsDetector instance.
+    def __init__(self, config):
+        '''Creates a TFModelsDetector instance.
 
         Args:
-            config: an optional TFModelsDetectorConfig instance. If absent, the
-                default TFModelsDetectorConfig will be used
+            config: a TFModelsDetectorConfig instance
         '''
-        self.config = config or TFModelsDetectorConfig.load_default()
+        self.config = config
+        UsesTFSession.__init__(self)
 
         # Only downloads the model if necessary
         model_path = etam.download_model(self.config.model_name)
 
         # Load model
         self._tf_graph = self._build_graph(model_path)
-        self._sess = tf.Session(graph=self._tf_graph)
+        self._sess = self.make_tf_session(graph=self._tf_graph)
 
         # Load labels
         label_map = gool.load_labelmap(self.config.labels_path)
@@ -90,15 +98,11 @@ class TFModelsDetector(ObjectDetector):
             label_map, max_num_classes=90, use_display_name=True)
         self._category_index = gool.create_category_index(categories)
 
-    @staticmethod
-    def _build_graph(model_path):
-        tf_graph = tf.Graph()
-        with tf_graph.as_default():
-            graph_def = tf.GraphDef()
-            with tf.gfile.GFile(model_path, "rb") as f:
-                graph_def.ParseFromString(f.read())
-                tf.import_graph_def(graph_def, name="")
-        return tf_graph
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.close()
 
     def detect(self, img):
         '''Performs detection on the input image.
@@ -124,6 +128,16 @@ class TFModelsDetector(ObjectDetector):
         ]
         return DetectedObjectContainer(objects=objects)
 
+    @staticmethod
+    def _build_graph(model_path):
+        tf_graph = tf.Graph()
+        with tf_graph.as_default():
+            graph_def = tf.GraphDef()
+            with tf.gfile.GFile(model_path, "rb") as f:
+                graph_def.ParseFromString(f.read())
+                tf.import_graph_def(graph_def, name="")
+        return tf_graph
+
 
 def _to_detected_object(box, score, class_id, label_map):
     '''Converts a tensorflow/models prediction dictionary to a DetectedObject.
@@ -133,6 +147,9 @@ def _to_detected_object(box, score, class_id, label_map):
         score (float): confidence score
         class_id (int): predicted class ID
         label_map (dict): mapping from class IDs to names
+
+    Returns:
+        a DetectedObject describing the detection
     '''
     return DetectedObject(
         label_map[class_id]["name"],

@@ -8,7 +8,7 @@ google-auth-httplib2==0.0.3
 google-cloud-storage==1.7.0
 Jinja2==2.10.1
 lxml==4.3.0
-numpy==1.16.0
+numpy==1.16.3
 opencv-python-headless==4.1.0.25
 Pillow==4.2.1
 protobuf==3.6.1
@@ -19,7 +19,7 @@ pysftp==0.2.9
 python-dateutil==2.6.1
 requests==2.21.0
 requests-toolbelt==0.8.0
-scikit-learn==0.19.0
+scikit-learn==0.19.2
 scipy==0.19.1
 setuptools==36.5.0
 simplejson==3.8.1

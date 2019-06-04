@@ -10,10 +10,14 @@
 
 # Show usage information
 usage() {
-    echo "Usage:  bash $0 [-h] [-bp]
+    echo "Usage:  bash $0 [-h] [-l] [-bp]
 
 Getting help:
 -h      Display this help message.
+
+Custom installations:
+-l      Perform a lite install, which omits submodules and other items not
+        required to use the core library. The default is a full install.
 
 Mac-only options:
 -b      Use brew to install packages (mac only). The default is false.
@@ -24,10 +28,12 @@ Mac-only options:
 
 # Parse flags
 SHOW_HELP=false
+LITE_INSTALL=false
 USE_MACPORTS=true
-while getopts "hbp" FLAG; do
+while getopts "hlbp" FLAG; do
     case "${FLAG}" in
         h) SHOW_HELP=true ;;
+        l) LITE_INSTALL=true ;;
         b) USE_MACPORTS=false ;;
         p) USE_MACPORTS=true ;;
         *) usage ;;
@@ -82,12 +88,20 @@ EXIT () {
 CRITICAL () {
     INFO "$@"
     if [ $? -ne 0 ]; then
-        EXIT "INSTALLATION FAILED"
+        if [[ ${LITE_INSTALL} = true ]]; then
+            EXIT "LITE INSTALLATION FAILED"
+        else
+            EXIT "INSTALLATION FAILED"
+        fi
     fi
 }
 
 
-MSG "INSTALLATION STARTED"
+if [[ ${LITE_INSTALL} = true ]]; then
+    MSG "LITE INSTALLATION STARTED"
+else
+    MSG "INSTALLATION STARTED"
+fi
 
 
 # GPU flag
@@ -128,12 +142,11 @@ CRITICAL pip install --upgrade pip
 CRITICAL pip install --upgrade virtualenv
 
 
-# Install requirements
 MSG "Installing Python packages"
 CRITICAL pip install -r requirements.txt
 
 
-# Tensorflow
+# Install Tensorflow
 if [ "${GCARD}" == "ON" ]; then
     #
     # Supported tensorflow-gpu + CUDA configurations
@@ -157,7 +170,11 @@ else
 fi
 
 
-# ffmpeg
+MSG "Installing ETA"
+CRITICAL pip install -e .
+
+
+# Install ffmpeg
 INFO command -v ffmpeg
 if [ $? -eq 0 ]; then
     MSG "ffmpeg already installed"
@@ -175,7 +192,7 @@ else
 fi
 
 
-# imagemagick
+# Install imagemagick
 INFO command -v convert
 if [ $? -eq 0 ]; then
     MSG "imagemagick already installed"
@@ -192,13 +209,20 @@ else
     fi
 fi
 
-# Get submodules
+
+# Handle lite installation
+if [[ ${LITE_INSTALL} = true ]]; then
+    EXIT "LITE INSTALLATION COMPLETE"
+fi
+
+
+# Initialize submodules
 MSG "Initializing submodules"
 CRITICAL git submodule init
 CRITICAL git submodule update
 
 #
-# tensorflow/models
+# Install tensorflow/models
 #
 # This requires compiling protocol buffers, which, in turn requires a suitable
 # version of `protoc` to be installed on your machine. ETA's `requirements.txt`
@@ -235,10 +259,6 @@ CRITICAL protoc research/object_detection/protos/*.proto \
 MSG "You must have '$(pwd)/research' in 'pythonpath_dirs' in your ETA config"
 MSG "You must have '$(pwd)/research/slim' in 'pythonpath_dirs' in your ETA config"
 cd ../..
-
-
-MSG "Installing ETA"
-CRITICAL pip install -e .
 
 
 EXIT "INSTALLATION COMPLETE"

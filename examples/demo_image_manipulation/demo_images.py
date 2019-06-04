@@ -37,7 +37,7 @@ path1 = os.path.join(here, "../data/water.jpg")
 path2 = os.path.join(here, "../data/logo.png")
 
 img1 = etai.resize(etai.read(path1), width=1024)
-img2 = etai.resize(etai.read(path2), width=400)
+img2 = etai.resize(etai.read(path2, include_alpha=True), width=400)
 
 x0 = etai.Width("30%").render_for(img=img1)
 y0 = etai.Height("15%").render_for(img=img1)

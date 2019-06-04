@@ -78,6 +78,24 @@ def list_models_in_directory(models_dir, downloaded_only=False):
     ])
 
 
+def get_model(name):
+    '''Gets the Model instance for the given model, which must appear in a
+    ModelsManifest in one of the `eta.config.models_dirs` directories.
+
+    Args:
+        name: the name of the model, which can have "@<ver>" appended to refer
+            to a specific version of the model. If no version is specified, the
+            latest version of the model is assumed
+
+    Returns:
+        the Model instance for the specified model
+
+    Raises:
+        ModelError: if the model could not be found
+    '''
+    return _find_model(name)[0]
+
+
 def find_model(name):
     '''Finds the given model, which must appear in a ModelsManifest in one of
     the `eta.config.models_dirs` directories.
@@ -265,7 +283,7 @@ def init_models_dir(new_models_dir):
     '''
     if ModelsManifest.dir_has_manifest(new_models_dir):
         raise ModelError(
-            "Directory '%s' already has a models manifest", new_models_dir)
+            "Directory '%s' already has a models manifest" % new_models_dir)
 
     logger.info("Initializing new models directory '%s'", new_models_dir)
     manifest = ModelsManifest()
@@ -759,7 +777,7 @@ class ModelsManifest(Serializable):
         '''Loads the ModelsManifest from the given models directory.'''
         if not cls.dir_has_manifest(models_dir):
             raise ModelError(
-                "Directory '%s' has no models manifest", models_dir)
+                "Directory '%s' has no models manifest" % models_dir)
 
         return cls.from_json(cls.make_manifest_path(models_dir))
 
@@ -779,12 +797,16 @@ class Model(Serializable):
             location of the models_dir
         version: the version of the model (if any)
         description: a description of the model (if any)
+        default_deployment_config_dict: a dictionary representation of an
+            `eta.core.learning.ModelConfig` describing the recommended settings
+            for deploying the model
         date_created: the date that the model was created (if any)
     '''
 
     def __init__(
             self, base_name, base_filename, manager, version=None,
-            description=None, date_created=None):
+            description=None, default_deployment_config_dict=None,
+            date_created=None):
         '''Creates a Model instance.
 
         Args:
@@ -793,20 +815,18 @@ class Model(Serializable):
             manager: the ModelManager for the model
             version: (optional) the model version
             description: (optional) a description of the model
+            default_deployment_config_dict: (optional) a dictionary
+                representation of an `eta.core.learning.ModelConfig` describing
+                the recommended settings for deploying the model
             date_created: (optional) the date that the model was created
         '''
         self.base_name = base_name
         self.base_filename = base_filename
         self.manager = manager
         self.version = version or None
-        self.description = description or None
-        self.date_created = date_created or None
-
-    def attributes(self):
-        # We do this so we can set the order the fields appear in the JSON
-        return [
-            "base_name", "base_filename", "version", "description", "manager",
-            "date_created"]
+        self.description = description
+        self.default_deployment_config_dict = default_deployment_config_dict
+        self.date_created = date_created
 
     @property
     def name(self):
@@ -876,13 +896,24 @@ class Model(Serializable):
         '''Determines whether the given model name has a version string.'''
         return bool(Model.parse_name(name)[1])
 
+    def attributes(self):
+        '''Returns a list of class attributes to be serialized.'''
+        return [
+            "base_name", "base_filename", "version", "description", "manager",
+            "default_deployment_config_dict", "date_created"]
+
     @classmethod
     def from_dict(cls, d):
         '''Constructs a Model from a JSON dictionary.'''
         return cls(
-            d["base_name"], d["base_filename"],
-            ModelManager.from_dict(d["manager"]), d.get("version", None),
-            d.get("description", None), d.get("date_created", None))
+            d["base_name"],
+            d["base_filename"],
+            ModelManager.from_dict(d["manager"]),
+            version=d.get("version", None),
+            description=d.get("description", None),
+            default_deployment_config_dict=d.get(
+                "default_deployment_config_dict", None),
+            date_created=d.get("date_created", None))
 
 
 class PublishedModel(object):

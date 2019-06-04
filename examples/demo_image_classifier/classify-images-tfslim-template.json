@@ -1,0 +1,25 @@
+{
+    "pipeline": "image_classifier",
+    "inputs": {
+        "images_dir": "../data/imagenet-test"
+    },
+    "outputs": {
+        "image_set_labels": "out/labels-{{model}}.json",
+        "annotated_images_dir": "out/images-{{model}}"
+    },
+    "parameters": {
+        "apply_image_classifier.classifier": {
+            "type": "eta.classifiers.TFSlimClassifier",
+            "config": {
+                "model_name": "{{model}}",
+                "attr_name": "label"
+            }
+        },
+        "apply_image_classifier.confidence_threshold": null,
+        "visualize_image_labels.annotation_config": {
+            "show_all_confidences": true,
+            "font_size": 12,
+            "linewidth": 1
+        }
+    }
+}

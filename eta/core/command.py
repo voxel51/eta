@@ -80,10 +80,10 @@ class BuildCommand(Command):
 
     @staticmethod
     def setup(parser):
+        parser.add_argument("-n", "--name", help="pipeline name")
         parser.add_argument(
             "-r", "--request", type=etas.load_json,
             help="path to a PipelineBuildRequest file")
-        parser.add_argument("-n", "--name", help="pipeline name")
         parser.add_argument(
             "-i", "--inputs", type=etas.load_json,
             metavar="'key=val,...'", help="pipeline inputs")
@@ -100,6 +100,9 @@ class BuildCommand(Command):
             "-l", "--logging", type=etas.load_json,
             metavar="'key=val,...'", help="logging config settings")
         parser.add_argument(
+            "--patterns", type=etau.parse_kvps, metavar="'key=val,...'",
+            help="patterns to replace in the build request")
+        parser.add_argument(
             "--unoptimized", action="store_true",
             help="don't optimize the pipeline when building")
         parser.add_argument(
@@ -114,6 +117,7 @@ class BuildCommand(Command):
 
     @staticmethod
     def run(args):
+        # Load pipeline request
         d = args.request or {
             "inputs": {},
             "outputs": {},
@@ -138,6 +142,11 @@ class BuildCommand(Command):
             etal.set_logging_level(logging.DEBUG)
             d["logging_config"]["stdout_level"] = "DEBUG"
             d["logging_config"]["file_level"] = "DEBUG"
+
+        # Replace any patterns
+        if args.patterns:
+            d = etas.load_json(
+                etau.fill_patterns(etas.json_to_str(d), args.patterns))
 
         logger.info("Parsing pipeline request")
         request = etab.PipelineBuildRequest.from_dict(d)

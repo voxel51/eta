@@ -45,7 +45,20 @@ import eta.core.utils as etau
 import eta.core.web as etaw
 
 
-SUPPORTED_IMAGE_FORMATS = [".png", ".jpg", ".jpeg", ".gif", ".tiff", ".bmp"]
+#
+# The file extensions of supported image files
+#
+# In practice, any image that `cv2.imread` can read will be supported.
+# Nonetheless, we enumerate this list here so that the ETA type system can
+# verify the extension of an image provided to a pipeline at build time.
+#
+# This list was taken from
+# https://docs.opencv.org/2.4/modules/highgui/doc/reading_and_writing_images_and_video.html?highlight=imread#imread
+#
+SUPPORTED_IMAGE_FORMATS = {
+    ".bmp", ".dib", ".jp2", ".jpe", ".jpeg", ".jpg", ".pbm", ".pgm", ".png",
+    ".ppm", ".ras", ".sr", ".tif", ".tiff"
+}
 
 
 def is_supported_image(filepath):
@@ -623,47 +636,62 @@ class ImageLabelsSchemaError(Exception):
 ###### Image I/O ##############################################################
 
 
-def decode(b, flag=cv2.IMREAD_UNCHANGED):
+def decode(b, include_alpha=False, flag=None):
     '''Decodes an image from raw bytes.
 
+    By default, images are returned as color images with no alpha channel.
+
     Args:
-        bytes: the raw bytes of an image (e.g. from read() or from a web
-            download)
-        flag: an optional OpenCV image format flag. By default, the image is
-            returned in its native format (color, grayscale, transparent, ...)
+        bytes: the raw bytes of an image, e.g., from read() or from a web
+            download
+        include_alpha: whether to include the alpha channel of the image, if
+            present, in the returned array. By default, this is False
+        flag: an optional OpenCV image format flag to use. If provided, this
+            flag takes precedence over `include_alpha`
 
     Returns:
-        A uint8 numpy array containing the image
+        a uint8 numpy array containing the image
     '''
+    flag = _get_opencv_imread_flag(flag, include_alpha)
     vec = np.asarray(bytearray(b), dtype=np.uint8)
     return _exchange_rb(cv2.imdecode(vec, flag))
 
 
-def download(url, flag=cv2.IMREAD_UNCHANGED):
+def download(url, include_alpha=False, flag=None):
     '''Downloads an image from a URL.
+
+    By default, images are returned as color images with no alpha channel.
 
     Args:
         url: the URL of the image
-        flag: an optional OpenCV image format flag. By default, the image is
-            returned in its raw format
+        include_alpha: whether to include the alpha channel of the image, if
+            present, in the returned array. By default, this is False
+        flag: an optional OpenCV image format flag to use. If provided, this
+            flag takes precedence over `include_alpha`
 
     Returns:
-        A uint8 numpy array containing the image
+        a uint8 numpy array containing the image
     '''
-    return decode(etaw.download_file(url), flag=flag)
+    bytes = etaw.download_file(url)
+    return decode(bytes, include_alpha=include_alpha, flag=flag)
 
 
-def read(path, flag=cv2.IMREAD_UNCHANGED):
+def read(path, include_alpha=False, flag=None):
     '''Reads image from path.
+
+    By default, images are returned as color images with no alpha channel.
 
     Args:
         path: the path to the image on disk
-        flag: an optional OpenCV image format flag. By default, the image is
-            returned in its native format (color, grayscale, transparent, ...)
+        include_alpha: whether to include the alpha channel of the image, if
+            present, in the returned array. By default, this is False
+        flag: an optional OpenCV image format flag to use. If provided, this
+            flag takes precedence over `include_alpha`
 
     Returns:
-        A uint8 numpy array containing the image
-        '''
+        a uint8 numpy array containing the image
+    '''
+    flag = _get_opencv_imread_flag(flag, include_alpha)
     return _exchange_rb(cv2.imread(path, flag))
 
 
@@ -676,6 +704,14 @@ def write(img, path):
     '''
     etau.ensure_basedir(path)
     cv2.imwrite(path, _exchange_rb(img))
+
+
+def _get_opencv_imread_flag(flag, include_alpha):
+    if flag is not None:
+        return flag
+    if include_alpha:
+        return cv2.IMREAD_UNCHANGED
+    return cv2.IMREAD_COLOR
 
 
 class ImageMetadata(Serializable):
@@ -720,7 +756,7 @@ class ImageMetadata(Serializable):
         Returns:
             an ImageMetadata instance
         '''
-        img = read(filepath)
+        img = read(filepath, include_alpha=True)
         return cls(
             frame_size=to_frame_size(img=img),
             num_channels=img.shape[2],
@@ -745,22 +781,23 @@ def create(width, height, background=None):
     '''Creates a blank image and optionally fills it with a color.
 
     Args:
-        width (int): width of the image to create in pixels
-        height (int): height of the image to create in pixels
-        background (string): hex RGB (eg, "#ffffff")
+        width: the width of the image, in pixels
+        height: the height of the image, in pixels
+        background: hex RGB (e.g., "#ffffff")
+
+    Returns:
+        the image
     '''
-    image = np.zeros((height, width, 3), dtype=np.uint8)
+    img = np.zeros((height, width, 3), dtype=np.uint8)
 
     if background:
-        image[:] = hex_to_rgb(background)
+        img[:] = hex_to_rgb(background)
 
-    return image
+    return img
 
 
 def overlay(im1, im2, x0=0, y0=0):
     '''Overlays im2 onto im1 at the specified coordinates.
-
-    *** Caution: im1 will be modified in-place if possible. ***
 
     Args:
         im1: a non-transparent image
@@ -770,7 +807,7 @@ def overlay(im1, im2, x0=0, y0=0):
             outside of im1, in which case some (even all) of im2 may be omitted
 
     Returns:
-        the overlaid image
+        a copy of im1 with im2 overlaid
     '''
     h1, w1 = im1.shape[:2]
     h2, w2 = im2.shape[:2]
@@ -801,14 +838,27 @@ def overlay(im1, im2, x0=0, y0=0):
         im1 = np.uint8(255 * im1)
     else:
         # Insert opaque image
+        im1 = np.copy(im1)
         im1[y1, x1, :] = im2[y2, x2, :]
 
     return im1
 
 
-def rasterize(vector_path, width):
-    '''Renders a vector image as a raster image with the given width,
-    in pixels.
+def rasterize(vector_path, width, include_alpha=True, flag=None):
+    '''Renders a vector image as a raster image with the given pixel width.
+
+    By default, the image is returned with an alpha channel, if possible.
+
+    Args:
+        vector_path: the path to the vector image
+        width: the desired image width
+        include_alpha: whether to include the alpha channel of the image, if
+            present, in the returned array. By default, this is True
+        flag: an optional OpenCV image format flag to use. If provided, this
+            flag takes precedence over `include_alpha`
+
+    Returns:
+        a uint8 numpy array containing the rasterized image
     '''
     with etau.TempDir() as d:
         try:
@@ -817,7 +867,7 @@ def rasterize(vector_path, width):
                 in_opts=["-density", "1200", "-trim"],
                 out_opts=["-resize", str(width)],
             ).run(vector_path, png_path)
-            return read(png_path)
+            return read(png_path, include_alpha=include_alpha, flag=flag)
         except Exception:
             # Fail gracefully
             return None
@@ -828,15 +878,27 @@ def rasterize(vector_path, width):
     #         in_opts=["-density", "1200", "-trim"],
     #         out_opts=["-resize", str(width)],
     #     ).run(vector_path, "png:-")
-    #     return read(out)
+    #     return read(out, include_alpha=include_alpha, flag=flag)
     # except Exception:
     #     # Fail gracefully
     #     return None
 
 
 def resize(img, width=None, height=None, *args, **kwargs):
-    '''Resizes the given image to the given width and height. At most one
-    dimension can be None, in which case the aspect-preserving value is used.
+    '''Resizes the given image to the given width and height.
+
+    At most one dimension can be None, in which case the aspect-preserving
+    value is used.
+
+    Args:
+        img: input image
+        width: the desired image width
+        height: the desired image height
+        *args: valid positional arguments for `cv2.resize()`
+        **kwargs: valid keyword arguments for `cv2.resize()`
+
+    Returns:
+        the resized image
     '''
     if height is None:
         height = int(round(img.shape[0] * (width * 1.0 / img.shape[1])))
@@ -864,7 +926,14 @@ def central_crop(img, h, w):
 
 
 def to_double(img):
-    '''Converts img to a double precision image with values in [0, 1].'''
+    '''Converts img to a double precision image with values in [0, 1].
+
+    Args:
+        img: input image
+
+    Returns:
+        a copy of the image in double precision format
+    '''
     return img.astype(np.float) / np.iinfo(img.dtype).max
 
 

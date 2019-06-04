@@ -1,6 +1,5 @@
-#!/usr/bin/env python
 '''
-Core learning infrastructure.
+Core infrastructure for deploying ML models.
 
 Copyright 2017-2019, Voxel51, Inc.
 voxel51.com
@@ -19,12 +18,30 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+import logging
+
 from eta.core.config import Config, ConfigError, Configurable
+import eta.core.models as etam
 import eta.core.utils as etau
+
+
+logger = logging.getLogger(__name__)
 
 
 def load_labels_map(labels_map_path):
     '''Loads the labels map from the given path.
+
+    The labels mmap must be in the following plain text format:
+
+    ```
+    1:label1
+    2:label2
+    3:label3
+    ...
+    ```
+
+    The indexes are irrelevant to this function, they can be in any order and
+    can start from zero, one, or another number.
 
     Args:
         labels_map_path: the path to a labels map file
@@ -44,12 +61,17 @@ def write_labels_map(labels_map, outpath):
     '''Writes the labels map to disk.
 
     Labels maps are written to disk in the following plain text format:
+
     ```
     1:label1
     2:label2
     3:label3
     ...
     ```
+
+    The indexes are irrelevant to this function, they can be in any order and
+    can start from zero, one, or another number. They are, however, written
+    to disk in sorted (increasing) order.
 
     Args:
         labels_map: the labels map dictionary
@@ -58,6 +80,90 @@ def write_labels_map(labels_map, outpath):
     with open(outpath, "w") as f:
         for idx in sorted(labels_map):
             f.write("%s:%s\n" % (idx, labels_map[idx]))
+
+
+def has_default_deployment_model(model_name):
+    '''Determines whether the model with the given name has a default
+    deployment.
+
+    The model must be findable via `eta.core.models.get_model(model_name)`.
+
+    Args:
+        model_name: the name of the model, which can have "@<ver>" appended to
+            refer to a specific version of the model. If no version is
+            specified, the latest version of the model is assumed
+
+    Returns:
+        True/False whether the model has a default deployment
+    '''
+    model = etam.get_model(model_name)
+    return model.default_deployment_config_dict is not None
+
+
+def load_default_deployment_model(model_name):
+    '''Loads the default deployment for the model with the given name.
+
+    The model must be findable via `eta.core.models.get_model(model_name)`.
+
+    Args:
+        model_name: the name of the model, which can have "@<ver>" appended to
+            refer to a specific version of the model. If no version is
+            specified, the latest version of the model is assumed
+
+    Returns:
+        the loaded `Model` instance described by the default deployment for the
+            specified model
+    '''
+    model = etam.get_model(model_name)
+    config = ModelConfig.from_dict(model.default_deployment_config_dict)
+    return config.build()
+
+
+class HasDefaultDeploymentConfig(object):
+    '''Mixin class for `eta.core.learning.ModelConfig`s who support loading
+    default deployment configs for their model name fields.
+
+    This class allows `ModelConfig` definitions that have published models
+    with default deployments to automatically load any settings from the
+    default deployment and add them to model configs at runtime.
+
+    This is helpful to avoid, for example, specifying redundant parameters such
+    as label map paths in every pipeline that uses a particular model.
+    '''
+
+    @staticmethod
+    def load_default_deployment_params(d, model_name):
+        '''Loads the default deployment ModelConfig dictionary for the model
+        with the given name and populates any missing fields in `d` with its
+        values.
+
+        Args:
+            d: a ModelConfig dictionary
+            model_name: the name of the model whose default deployment config
+                dictionary to load
+
+        Returns:
+            a copy of `d` with any missing fields populated from the default
+                deployment dictionary for the model
+        '''
+        model = etam.get_model(model_name)
+        deploy_config_dict = model.default_deployment_config_dict
+        if deploy_config_dict is None:
+            logger.info(
+                "Model '%s' has no default deployment config; returning the "
+                "input dict", model_name)
+            return d
+        else:
+            logger.info(
+                "Loaded default deployment config for model '%s'", model_name)
+
+        dd = deploy_config_dict["config"]
+        dd.update(d)
+        logger.info(
+            "Applied %d setting(s) from default deployment config",
+            len(dd) - len(d))
+
+        return dd
 
 
 class ModelConfig(Config):
@@ -104,14 +210,14 @@ class Model(Configurable):
 
     This class declares the following two conventions:
 
-        (a) Models are `Configurable`. This means that their constructors must
-            take a single `config` argument that is an instance of
+        (a) `Model`s are `Configurable`. This means that their constructors
+            must take a single `config` argument that is an instance of
             `<ModelClass>Config`
 
         (b) Models implement the context manager interface. This means that
-        models can optionally use context to perform any necessary setup and
-        teardown, and so any code that builds a model should use the `with`
-        syntax
+            models can optionally use context to perform any necessary setup
+            and teardown, and so any code that builds a model should use the
+            `with` syntax
     '''
 
     def __enter__(self):

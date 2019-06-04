@@ -9,7 +9,10 @@
     },
     "parameters": {
         "apply_object_detector.detector": {
-            "type": "eta.detectors.TFModelsDetector"
+            "type": "eta.detectors.TFModelsDetector",
+            "config": {
+                "model_name": "ssd-resnet50-v1-fpn-coco"
+            }
         },
         "apply_object_detector.objects": [
             {
@@ -18,9 +21,10 @@
             }
         ],
         "apply_image_classifier.classifier": {
-            "type": "eta.classifiers.VGG16Classifier",
+            "type": "eta.classifiers.TFSlimClassifier",
             "config": {
-                "attr_name": "animal"
+                "model_name": "mobilenet-v2-imagenet",
+                "attr_name": "label"
             }
         },
         "apply_image_classifier.confidence_threshold": null,

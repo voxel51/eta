@@ -9,7 +9,10 @@
     },
     "parameters": {
         "apply_object_detector.detector": {
-            "type": "eta.detectors.TFModelsDetector"
+            "type": "eta.detectors.TFModelsDetector",
+            "config": {
+                "model_name": "faster-rcnn-resnet50-coco"
+            }
         },
         "apply_object_detector.objects": [
             {

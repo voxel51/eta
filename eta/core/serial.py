@@ -691,7 +691,7 @@ class Picklable(object):
     '''Mixin class for objects that can be pickled.'''
 
     def pickle(self, path):
-        '''Saves the instance to disk in as a .pkl file.
+        '''Saves the instance to disk as a .pkl file.
 
         Args:
             path: the path to write the .pkl file

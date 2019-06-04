@@ -1,0 +1,24 @@
+{
+    "pipeline": "image_classifier",
+    "inputs": {
+        "images_dir": "../data/imagenet-test"
+    },
+    "outputs": {
+        "image_set_labels": "out/labels-vgg16-imagenet.json",
+        "annotated_images_dir": "out/images-vgg16-imagenet"
+    },
+    "parameters": {
+        "apply_image_classifier.classifier": {
+            "type": "eta.classifiers.VGG16Classifier",
+            "config": {
+                "attr_name": "label"
+            }
+        },
+        "apply_image_classifier.confidence_threshold": null,
+        "visualize_image_labels.annotation_config": {
+            "show_all_confidences": true,
+            "font_size": 12,
+            "linewidth": 1
+        }
+    }
+}

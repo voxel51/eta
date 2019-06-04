@@ -128,7 +128,7 @@ class Logo(Configurable):
 
         # Render raster image, if necessary
         if self._logo is None and self.config.raster_path:
-            raw_logo = etai.read(self.config.raster_path)
+            raw_logo = etai.read(self.config.raster_path, include_alpha=True)
             self._logo = etai.resize(raw_logo, width=w)
 
     def apply(self, img):

@@ -282,18 +282,19 @@ class C3DFeaturizer(Featurizer):
             self.c3d.close()
             self.c3d = None
 
-    def _featurize(self, video_path):
-        '''Featurizes the input video using C3D.
+    def _featurize(self, imgs_or_video_path):
+        '''Featurizes the input.
 
         The frames are resized to 112 x 112 internally, if necessary.
 
-        Attributes:
-            video_path: the input video path
+        Args:
+            imgs_or_video_path: can be either the path to the input video or a
+                frame array of size [num_frames, height, width, num_channels]
 
         Returns:
             the feature vector, a 1D array of length 4096
         '''
-        clips = self._sample_clips(video_path)
+        clips = self._sample_clips(imgs_or_video_path)
 
         features = self.c3d.evaluate(clips, layer=self.c3d.fc2l)
         if self.config.sample_method == "sliding_window":
@@ -305,19 +306,21 @@ class C3DFeaturizer(Featurizer):
 
         return features
 
-    def _sample_clips(self, video_path):
+    def _sample_clips(self, imgs_or_video_path):
         sample_method = self.config.sample_method
         stride = self.config.stride
         size = (112, 112)
 
         if sample_method == "first":
             clips = [etav.sample_first_frames(
-                video_path, 16, stride=stride, size=size)]
+                imgs_or_video_path, 16, stride=stride, size=size)]
         elif sample_method == "uniform":
-            clips = [etav.uniformly_sample_frames(video_path, 16, size=size)]
+            clips = [
+                etav.uniformly_sample_frames(imgs_or_video_path, 16, size=size)
+            ]
         elif sample_method == "sliding_window":
             clips = etav.sliding_window_sample_frames(
-                video_path, 16, stride, size=size)
+                imgs_or_video_path, 16, stride, size=size)
         else:
             raise ValueError("Invalid sample_method '%s'" % sample_method)
 

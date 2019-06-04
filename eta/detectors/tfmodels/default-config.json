@@ -1,4 +1,0 @@
-{
-    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_label_map.pbtxt",
-    "model_name": "faster-rcnn-resnet50-coco"
-}
