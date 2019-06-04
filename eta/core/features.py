@@ -640,12 +640,12 @@ class ManualBackingManagerConfig(Config):
     '''Configuration settings for a RandomBackingManager.
 
     Attributes:
-        basedir: the base directory in which to store features
+        backing_dir: the backing directory in which to store features
     '''
 
     def __init__(self, d):
-        self.basedir = self.parse_string(
-            d, "basedir", default="/tmp/eta.backing")
+        self.backing_dir = self.parse_string(
+            d, "backing_dir", default="/tmp/eta.backing")
 
 
 class ManualBackingManager(BackingManager):
@@ -662,7 +662,7 @@ class ManualBackingManager(BackingManager):
 
     @property
     def backing_dir(self):
-        return self.config.basedir
+        return self.config.backing_dir
 
 
 class RandomBackingManagerConfig(Config):
