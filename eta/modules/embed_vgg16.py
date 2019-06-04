@@ -9,8 +9,8 @@ Info:
 Copyright 2017-2019, Voxel51, Inc.
 voxel51.com
 
-Jason Corso, jason@voxel51.com
 Brian Moore, brian@voxel51.com
+Jason Corso, jason@voxel51.com
 '''
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
@@ -27,12 +27,10 @@ from builtins import *
 import logging
 import sys
 
-import tensorflow as tf
-
 from eta.core.config import Config
 import eta.core.features as etaf
 import eta.core.module as etam
-import eta.core.serial as etas
+import eta.core.utils as etau
 import eta.core.vgg16 as etav
 
 
@@ -40,10 +38,7 @@ logger = logging.getLogger(__name__)
 
 
 class EmbedVGG16Config(etam.BaseModuleConfig):
-    '''VGG-16 embedding configuration settings.
-
-    This is basically the VGG16FeaturizerConfig except that it allows for an
-    array of videos to be processed/featurized.
+    '''Module configuration settings.
 
     Attributes:
         data (DataConfig)
@@ -60,31 +55,33 @@ class DataConfig(Config):
     '''Data configuration settings.
 
     Inputs:
-        video_path (eta.core.types.Video): The input video
+        video_path (eta.core.types.Video): the input video
 
     Outputs:
-        backing_path (eta.core.types.Directory): The directory in which to
-            write the embeddings
+        backing_dir (eta.core.types.Directory): the directory to write the
+            embeddings
     '''
 
     def __init__(self, d):
         self.video_path = self.parse_string(d, "video_path")
-        self.backing_path = self.parse_string(d, "backing_path")
+        self.backing_dir = self.parse_string(d, "backing_dir")
 
 
 class ParametersConfig(Config):
     '''Parameter configuration settings.
 
     Parameters:
-        crop_box (eta.core.types.Object): [None] A region of interest of
-            each frame to extract before embedding
+        vgg16 (eta.core.types.Config): [None] an optional VGG16FeaturizerConfig
+            describing the VGG16Featurizer to use
+        crop_box (eta.core.types.Config): [None] an optional region of interest
+            to extract from each frame before embedding
     '''
 
     def __init__(self, d):
         self.vgg16 = self.parse_object(
-                d, "vgg16", etav.VGG16Config, default=None)
+            d, "vgg16", etav.VGG16FeaturizerConfig, default=None)
         self.crop_box = self.parse_object(
-                d, "crop_box", RectangleConfig, default=None)
+            d, "crop_box", RectangleConfig, default=None)
 
 
 class Point2Config(Config):
@@ -103,51 +100,37 @@ class RectangleConfig(Config):
         self.bottom_right = self.parse_object(d, "bottom_right", Point2Config)
 
 
-def _featurize_driver(config, d):
-    '''For each of the featurizers in the config, creates a VGG16Featurizer and
-    processes the video.
+def _embed_vgg16(config):
+    # Build featurizer
+    frame_featurizer = (etaf.ImageFeaturizerConfig.builder()
+        .set(type=etau.get_class_name(etav.VGG16Featurizer))
+        .set(config=config.parameters.vgg16)
+        .validate())
+    backing_manager = (etaf.BackingManagerConfig.builder()
+        .set(type=etau.get_class_name(etaf.ManualBackingManager))
+        .set(config=etaf.ManualBackingManagerConfig.default())
+        .validate())
+    cvfc = (etaf.CachingVideoFeaturizerConfig.builder()
+        .set(frame_featurizer=frame_featurizer)
+        .set(backing_manager=backing_manager)
+        .set(delete_backing_directory=False)
+        .build())
+    cvf = etaf.CachingVideoFeaturizer(cvfc)
 
-    @todo Note that I need to manually create the configs for the featurizer as
-    I loop through the set of them from this config. This is probably not the
-    cleanest way of doing it, but alas, it is doing it... A better way?
+    # Set crop box, if provided
+    if config.parameters.crop_box is not None:
+        cvf.frame_preprocessor = _crop(config.parameters.crop_box)
 
-    @todo This creates a whole new VGG net for each video, which is not
-    necessary. This could somehow reuse the vgg network instance for each
-    featurizer.
-    '''
-    parameters = config.parameters
-    for data in config.data:
-        # Needed to avoid running out of memory.
-        # The proper fix is reuse the vgg-net across featurizers, but this
-        # works and keeps the VGG16Featurizer easy to understand.
-        tf.reset_default_graph()
+    with cvf:
+        for data in config.data:
+            # Manually set backing directory for each video
+            cvf._backing_manager.config.backing_dir = data.backing_dir
 
-        vffcd_ = {"type": "eta.core.vgg16.VGG16Featurizer"}
-        if parameters.vgg16 is None:
-            vffcd_["config"] = {}
-        else:
-            vffcd_["config"] = parameters.vgg16
-
-        vffcd = {
-            "backing_path": data.backing_path,
-            "frame_featurizer": vffcd_,
-        }
-
-        vffc = etaf.VideoFramesFeaturizerConfig(vffcd)
-        vf = etaf.VideoFramesFeaturizer(vffc)
-        if parameters.crop_box is not None:
-            vf.frame_preprocessor = _crop(parameters.crop_box)
-
-        # @todo should frames be a part of the config?
-        vf.featurize(data.video_path)
+            logger.info("Featurizing video '%s'", data.video_path)
+            cvf.featurize(data.video_path)
 
 
 def _crop(crop_box):
-    '''This is a curried function to allow for a crop to be parameterized
-    without making it into a complex class or what have you and still sent to
-    the VideoFeaturizer as a hook.
-    '''
-
     def crop_image(img):
         tl = crop_box.top_left
         br = crop_box.bottom_right
@@ -157,7 +140,6 @@ def _crop(crop_box):
             int(tl.y * ys):int(br.y * ys),
             int(tl.x * xs):int(br.x * xs),
         ]
-
     return crop_image
 
 
@@ -169,11 +151,10 @@ def run(config_path, pipeline_config_path=None):
             both an EmbedVGG16Config and a VGG16FeaturizerConfig
         pipeline_config_path: optional path to a PipelineConfig file
     '''
-    d = etas.read_json(config_path)
-    embed_vgg16_config = EmbedVGG16Config(d)
-    etam.setup(embed_vgg16_config, pipeline_config_path=pipeline_config_path)
-    _featurize_driver(embed_vgg16_config, d)
+    config = EmbedVGG16Config.from_json(config_path)
+    etam.setup(config, pipeline_config_path=pipeline_config_path)
+    _embed_vgg16(config)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     run(*sys.argv[1:])
