@@ -2006,7 +2006,7 @@ class VideoReader(object):
                 frames = "1-%d" % self.total_frame_count
             self.frames = frames
             self._ranges = FrameRanges.from_str(frames)
-        elif isinstance(frames, list):
+        elif isinstance(frames, (list, tuple)):
             # Frames list
             self._ranges = FrameRanges.from_list(frames)
             self.frames = self._ranges.to_str()
@@ -2830,7 +2830,7 @@ class FrameRanges(object):
             FrameRangesError: if the frames string is invalid
         '''
         ranges = []
-        for r in frames_str.split(','):
+        for r in frames_str.split(","):
             if r:
                 fr = FrameRange.from_str(r)
                 ranges.append((fr.first, fr.last))
@@ -2918,7 +2918,7 @@ class FrameRange(object):
             FrameRangeError: if the frame range string is invalid
         '''
         try:
-            v = list(map(int, frames_str.split('-')))
+            v = list(map(int, frames_str.split("-")))
             return cls(v[0], v[-1])
         except ValueError:
             raise FrameRangeError(
