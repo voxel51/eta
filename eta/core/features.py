@@ -632,6 +632,7 @@ class BackingManager(Configurable):
 
     def flush(self):
         '''Deletes the backing directory.'''
+        logger.info("Deleting backing directory '%s'", self.backing_dir)
         etau.delete_dir(self.backing_dir)
 
 
@@ -783,7 +784,11 @@ class CachingVideoFeaturizer(Featurizer):
         super(CachingVideoFeaturizer, self).__init__()
 
         self._frame_featurizer = self.config.frame_featurizer.build()
+        logger.info("Loaded featurizer %s", type(self._frame_featurizer))
+
         self._backing_manager = self.config.backing_manager.build()
+        logger.info("Loaded backing manager %s", type(self._backing_manager))
+
         self._frame_preprocessor = None
         self._frame_string = "%08d.npz"
 
@@ -815,9 +820,6 @@ class CachingVideoFeaturizer(Featurizer):
     def _stop(self):
         self._frame_featurizer.stop()
         if self.config.delete_backing_directory:
-            logger.info(
-                "Deleting backing directory '%s'",
-                self.config.delete_backing_directory)
             self._backing_manager.flush()
 
     def featurize(self, video_path, frames=None):
