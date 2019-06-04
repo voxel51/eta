@@ -327,11 +327,6 @@ class VideoFeaturizer(Featurizer):
             return False
 
 
-class CachingVideoFeaturizer(Featurizer):
-    '''Configuration for an `eta.core.features.CachingVideoFeaturizer`.'''
-    pass
-
-
 class Model(Config):
     '''Configuration for an `eta.core.learning.Model`.
 
