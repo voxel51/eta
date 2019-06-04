@@ -30,11 +30,9 @@ import sys
 
 from eta.core.config import Config
 import eta.core.features as etaf
-import eta.core.log as etal
 
 
 logger = logging.getLogger(__name__)
-etal.basic_setup(level=logging.DEBUG)
 
 
 class EmbedVideoConfig(Config):
