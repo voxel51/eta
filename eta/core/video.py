@@ -360,7 +360,7 @@ class VideoMetadata(Serializable):
             frame_size=vsi.frame_size,
             frame_rate=vsi.frame_rate,
             total_frame_count=vsi.total_frame_count,
-            duration=float(vsi.get_raw_value("duration")),
+            duration=vsi.duration,
             size_bytes=os.path.getsize(filepath),
             mime_type=etau.guess_mime_type(filepath),
             encoding_str=vsi.encoding_str,
@@ -1308,26 +1308,45 @@ class VideoStreamInfo(Serializable):
 
     @property
     def encoding_str(self):
-        '''Return the video encoding string.'''
-        return str(self.stream_info["codec_tag_string"])
+        '''Return the video encoding string, or "" if it code not be found.'''
+        _encoding_str = str(self.stream_info.get("codec_tag_string", ""))
+        if _encoding_str is None:
+            logger.warning("Unable to determine encoding string")
+        return _encoding_str
 
     @property
     def frame_size(self):
-        '''The (width, height) of each frame.'''
-        return (
-            int(self.stream_info["width"]),
-            int(self.stream_info["height"]),
-        )
+        '''The (width, height) of each frame.
+
+        Raises a VideoStreamInfoError if the frame size could not be
+        determined.
+        '''
+        try:
+            return (
+                int(self.stream_info["width"]),
+                int(self.stream_info["height"]),
+            )
+        except KeyError:
+            raise VideoStreamInfoError(
+                "Unable to determine frame size of the video")
 
     @property
     def aspect_ratio(self):
-        '''The aspect ratio of the video.'''
+        '''The aspect ratio of the video.
+
+        Raises a VideoStreamInfoError if the frame size could not be
+        determined.
+        '''
         width, height = self.frame_size
         return width * 1.0 / height
 
     @property
     def frame_rate(self):
-        '''The frame rate.'''
+        '''The frame rate of the video.
+
+        Raises a VideoStreamInfoError if the frame rate could not be
+        determined.
+        '''
         try:
             try:
                 num, denom = self.stream_info["avg_frame_rate"].split("/")
@@ -1337,19 +1356,35 @@ class VideoStreamInfo(Serializable):
                 return float(num) / float(denom)
         except (KeyError, ValueError):
             raise VideoStreamInfoError(
-                "Unable to determine frame rate from stream info")
+                "Unable to determine frame rate of the video")
 
     @property
     def total_frame_count(self):
-        '''The total number of frames in the video, or 0 if it could not be
+        '''The total number of frames in the video, or -1 if it could not be
         determined.
         '''
         try:
             # this fails for directories of frames
             return int(self.stream_info["nb_frames"])
         except KeyError:
-            # this seems to work for directories of frames
-            return int(self.stream_info.get("duration_ts", 0))
+            try:
+                # this seems to work for directories of frames
+                return int(self.stream_info["duration_ts"])
+            except KeyError:
+                logger.warning(
+                    "Unable to determine total frame count; returning -1")
+                return -1
+
+    @property
+    def duration(self):
+        '''The duration of the video, in seconds, or -1 if it could not be
+        determined.
+        '''
+        try:
+            return float(self.stream_info["duration"])
+        except KeyError:
+            logger.warning("Unable to determine duration; returning -1")
+            return -1
 
     def get_raw_value(self, key):
         '''Gets a value from the raw stream info dictionary.
@@ -1433,8 +1468,11 @@ def get_encoding_str(inpath):
 
     Args:
         inpath: video path
+
+    Returns:
+        the encoding string
     '''
-    return VideoMetadata.build_for(inpath).encoding_str
+    return VideoStreamInfo.build_for(inpath).encoding_str
 
 
 def get_frame_rate(inpath):
@@ -1442,8 +1480,11 @@ def get_frame_rate(inpath):
 
     Args:
         inpath: video path
+
+    Returns:
+        the frame rate
     '''
-    return VideoMetadata.build_for(inpath).frame_rate
+    return VideoStreamInfo.build_for(inpath).frame_rate
 
 
 def get_frame_size(inpath):
@@ -1451,8 +1492,11 @@ def get_frame_size(inpath):
 
     Args:
         inpath: video path
+
+    Returns:
+        the (width, height) of the video frames
     '''
-    return VideoMetadata.build_for(inpath).frame_size
+    return VideoStreamInfo.build_for(inpath).frame_size
 
 
 def get_frame_count(inpath):
@@ -1460,8 +1504,24 @@ def get_frame_count(inpath):
 
     Args:
         inpath: video path
+
+    Returns:
+        the frame count, or -1 if it could not be determined
     '''
-    return VideoMetadata.build_for(inpath).total_frame_count
+    return VideoStreamInfo.build_for(inpath).total_frame_count
+
+
+def get_duration(inpath):
+    '''Gets the duration of the video, in seconds.
+
+    Args:
+        inpath: video path
+
+    Returns:
+        the duration of the video, in seconds, or -1 if it could not be
+            determined
+    '''
+    return VideoStreamInfo.build_for(inpath).duration
 
 
 def get_raw_frame_number(raw_frame_rate, raw_frame_count, fps, sampled_frame):
