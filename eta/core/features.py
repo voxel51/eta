@@ -769,9 +769,19 @@ class CachingVideoFeaturizer(Featurizer):
     `backing_manager`. By default, a `RandomBackingManager` is used that writes
     features to a randomly generated subdirectory of `/tmp`.
 
-    This class also allows a `frame_preprocessor` function to be set that
-    preprocesses each input frame before featurizing it. By default, no
-    preprocessing is performed.
+    This class provides a `frame_preprocessor` property that allows a
+    preprocessing function to be applied to each frame before featurizing it.
+    By default, no preprocessing is performed.
+
+    This class implements the iterator interface, which allows you to iterate
+    over the featurized frames of a video using the following syntax:
+
+    ```
+    with CachingVideoFeaturizer(...) as f:
+        f.featurize(video_path)
+        for v in f:
+            # use feature vector, v
+    ```
     '''
 
     def __init__(self, config):
@@ -792,6 +802,23 @@ class CachingVideoFeaturizer(Featurizer):
 
         self._frame_preprocessor = None
         self._frame_string = "%08d.npz"
+
+        self._iter_frame = None
+        self._iter_paths = None
+
+    def __iter__(self):
+        self._iter_frame = -1
+        self._iter_paths = self.get_feature_paths()
+        return self
+
+    def __next__(self):
+        self._iter_frame += 1
+        try:
+            return self._read_feature(self._iter_paths[self._iter_frame])
+        except IndexError:
+            self._iter_frame = None
+            self._iter_paths = None
+            raise StopIteration
 
     def dim(self):
         '''Returns the dimension of the underlying frame Featurizer.'''
@@ -861,6 +888,10 @@ class CachingVideoFeaturizer(Featurizer):
         path = self.get_featurized_frame_path(frame_number)
         return os.path.isfile(path)
 
+    def get_feature_paths(self):
+        '''Returns a list of absolute paths to the features on disk.'''
+        return etau.list_files(self.backing_dir, abs_paths=True)
+
     def get_featurized_frame_path(self, frame_number):
         '''Returns the feature path on disk for the given frame number.
 
@@ -924,8 +955,7 @@ class CachingVideoFeaturizer(Featurizer):
             not found on disk
         '''
         X = []
-        filenames = etau.list_files(self.backing_dir)
-        for path in [os.path.join(self.backing_dir, f) for f in filenames]:
+        for path in self.get_feature_paths():
             X.append(self._read_feature(path))
         return np.array(X)
 
