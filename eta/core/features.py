@@ -745,6 +745,7 @@ class CachingVideoFeaturizerConfig(Config):
             to use to embed the video frames
         backing_manager: a BackingManagerConfig specifying the backing manager
             to use
+        frames: a string specifying the specific frames to featurize
         delete_backing_directory: whether to delete the backing directory
             when the featurizer is stopped
     '''
@@ -756,6 +757,7 @@ class CachingVideoFeaturizerConfig(Config):
             d, "backing_manager", BackingManagerConfig, default=None)
         if self.backing_manager is None:
             self.backing_manager = BackingManagerConfig.default()
+        self.frames = self.parse_string(d, "frames", default=None)
         self.delete_backing_directory = self.parse_bool(
             d, "delete_backing_directory", default=True)
 
@@ -888,6 +890,9 @@ class CachingVideoFeaturizer(Featurizer):
             self.stop()
 
     def _featurize(self, video_path, frames):
+        if frames is None:
+            frames = self.config.frames
+
         self._backing_manager.set_video_path(video_path)
         with etav.FFmpegVideoReader(video_path, frames=frames) as vr:
             for img in vr:
