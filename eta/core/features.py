@@ -767,7 +767,8 @@ class CachingVideoFeaturizer(Featurizer):
     Featurized frames are stored on disk as compressed pickle files indexed by
     frame number. The location of the files on disk is controlled by the
     `backing_manager`. By default, a `RandomBackingManager` is used that writes
-    features to a randomly generated subdirectory of `/tmp`.
+    features to a randomly generated subdirectory of `/tmp`. Alternatively,
+    you can manually set the backing directory using `set_backing_dir()`.
 
     This class provides a `frame_preprocessor` property that allows a
     preprocessing function to be applied to each frame before featurizing it.
@@ -799,6 +800,7 @@ class CachingVideoFeaturizer(Featurizer):
 
         self._backing_manager = self.config.backing_manager.build()
         logger.info("Loaded backing manager %s", type(self._backing_manager))
+        self._manual_backing_dir = None
 
         self._frame_preprocessor = None
         self._frame_string = "%08d.npz"
@@ -826,8 +828,30 @@ class CachingVideoFeaturizer(Featurizer):
 
     @property
     def backing_dir(self):
-        '''Returns the current backing directory.'''
+        '''The current backing directory.
+
+        If a manual backing directory was set via `set_manual_backing_dir`, it
+        will be returned here.
+        '''
+        if self._manual_backing_dir is not None:
+            return self._manual_backing_dir
         return self._backing_manager.backing_dir
+
+    def set_manual_backing_dir(self, manual_backing_dir):
+        '''Manually sets the backing directory.
+
+        If a manual backing directory is set, it will take precedence over the
+        backing manager's directory. To remove this manual setting, call
+        `clear_manual_backing_dir()`.
+
+        Args:
+            manual_backing_dir: the manual backing directory to use
+        '''
+        self._manual_backing_dir = manual_backing_dir
+
+    def clear_manual_backing_dir(self):
+        '''Clears the manual backing directory, if necessary.'''
+        self._manual_backing_dir = None
 
     @property
     def frame_preprocessor(self):
