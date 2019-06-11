@@ -756,10 +756,10 @@ class ImageMetadata(Serializable):
         Returns:
             an ImageMetadata instance
         '''
-        img = read(filepath, include_alpha=True)
+        img = read(filepath)
         return cls(
             frame_size=to_frame_size(img=img),
-            num_channels=img.shape[2],
+            num_channels=img.shape[2] if len(img.shape) > 2 else 1,
             size_bytes=os.path.getsize(filepath),
             mime_type=etau.guess_mime_type(filepath),
         )
