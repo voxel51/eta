@@ -11,8 +11,8 @@ Hou Xin, 2016
 Copyright 2017-2019, Voxel51, Inc.
 voxel51.com
 
-Yixin Jin, yixin@voxel51.com
 Brian Moore, brian@voxel51.com
+Yixin Jin, yixin@voxel51.com
 '''
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
@@ -30,16 +30,21 @@ import numpy as np
 import tensorflow as tf
 
 from eta.core.config import Config
-from eta.core.features import Featurizer
+from eta.core.features import VideoFramesFeaturizer, VideoFeaturizer
 import eta.core.tfutils as etat
 import eta.core.video as etav
 
 
 class C3DConfig(Config):
-    '''Configuration settings for the C3D network.'''
+    '''Configuration settings for the C3D network.
+
+    Attributes:
+        model_name: the name of the C3D UCF101 model to load
+    '''
 
     def __init__(self, d):
-        self.model = self.parse_string(d, "model", default="c3d-ucf101")
+        self.model_name = self.parse_string(
+            d, "model_name", default="c3d-ucf101")
 
 
 class C3D(object):
@@ -51,7 +56,7 @@ class C3D(object):
     '''
 
     def __init__(self, config=None, sess=None, clips=None):
-        '''Builds a new C3D network
+        '''Creates a C3D instance.
 
         Args:
             config: an optional C3DConfig instance. If omitted, the default
@@ -74,7 +79,7 @@ class C3D(object):
             self._build_fc_layers()
             self._build_output_layer()
 
-        self._load_model(self.config.model)
+        self._load_model(self.config.model_name)
 
     def __enter__(self):
         return self
@@ -210,10 +215,10 @@ class C3D(object):
     def _build_output_layer(self):
         self.probs = tf.nn.softmax(self.fc3l)
 
-    def _load_model(self, model):
+    def _load_model(self, model_name):
         init = tf.global_variables_initializer()
         self.sess.run(init)
-        etat.TFModelCheckpoint(model, self.sess).load()
+        etat.TFModelCheckpoint(model_name, self.sess).load()
 
 
 def _tf_variable_with_weight_decay(name, shape, stddev, decay):
@@ -242,7 +247,7 @@ class C3DFeaturizerConfig(C3DConfig):
     '''Configuration settings for a C3DFeaturizer.
 
     Attributes:
-        model: the C3D UCF101 model to use
+        model_name: the name of the C3D UCF101 model to load
         sample_method: the frame sampling method to use. The possible values
             are "first", "uniform", and "sliding_window"
         stride: the stride to use. When the sampling method is
@@ -258,10 +263,16 @@ class C3DFeaturizerConfig(C3DConfig):
         self.stride = self.parse_number(d, "stride", default=8)
 
 
-class C3DFeaturizer(Featurizer):
+class C3DFeaturizer(VideoFramesFeaturizer, VideoFeaturizer):
     '''Featurizer that embeds videos into the C3D feature space.'''
 
     def __init__(self, config=None):
+        '''Creates a C3DFeaturizer instance.
+
+        Args:
+            config: an optional C3DFeaturizerConfig instance. If omitted, the
+                default C3DFeaturizerConfig is used
+        '''
         super(C3DFeaturizer, self).__init__()
         self.config = config or C3DFeaturizerConfig.default()
         self.validate(self.config)

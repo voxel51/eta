@@ -10,23 +10,30 @@
         {
             "name": "video_path",
             "type": "eta.core.types.Video",
-            "description": "The input video",
+            "description": "the input video",
             "required": true
         }
     ],
     "outputs": [
         {
-            "name": "backing_path",
+            "name": "backing_dir",
             "type": "eta.core.types.Directory",
-            "description": "The directory in which to write the embeddings",
+            "description": "the directory to write the embeddings",
             "required": true
         }
     ],
     "parameters": [
         {
+            "name": "vgg16",
+            "type": "eta.core.types.Config",
+            "description": "an optional VGG16FeaturizerConfig describing the VGG16Featurizer to use",
+            "required": false,
+            "default": null
+        },
+        {
             "name": "crop_box",
-            "type": "eta.core.types.Object",
-            "description": "A region of interest of each frame to extract before embedding",
+            "type": "eta.core.types.Config",
+            "description": "an optional region of interest to extract from each frame before embedding",
             "required": false,
             "default": null
         }

@@ -269,13 +269,62 @@ class Featurizer(Config):
             return False
 
 
-class VideoFramesFeaturizer(Featurizer):
-    '''Configuration for an `eta.core.features.VideoFramesFeaturizer`.
+class ImageFeaturizer(Featurizer):
+    '''Configuration of an `eta.core.features.ImageFeaturizer`.
 
-    This type is implemented in ETA by the `eta.core.learning.FeaturizerConfig`
-    class.
+    This types is implemented in ETA by the
+    `eta.core.features.ImageFeaturizerConfig` class.
     '''
-    pass
+
+    @staticmethod
+    def is_valid_value(val):
+        try:
+            etaf.ImageFeaturizerConfig(val)
+            return True
+        except Exception as e:
+            logger.error(
+                "An error occured while parsing the ImageFeaturizer value")
+            logger.error(e, exc_info=True)
+            return False
+
+
+class VideoFramesFeaturizer(Featurizer):
+    '''Configuration of an `eta.core.features.VideoFramesFeaturizer`.
+
+    This types is implemented in ETA by the
+    `eta.core.features.VideoFramesFeaturizerConfig` class.
+    '''
+
+    @staticmethod
+    def is_valid_value(val):
+        try:
+            etaf.VideoFramesFeaturizerConfig(val)
+            return True
+        except Exception as e:
+            logger.error(
+                "An error occured while parsing the VideoFramesFeaturizer "
+                "value")
+            logger.error(e, exc_info=True)
+            return False
+
+
+class VideoFeaturizer(Featurizer):
+    '''Configuration of an `eta.core.features.VideoFeaturizer`.
+
+    This types is implemented in ETA by the
+    `eta.core.features.VideoFeaturizerConfig` class.
+    '''
+
+    @staticmethod
+    def is_valid_value(val):
+        try:
+            etaf.VideoFeaturizerConfig(val)
+            return True
+        except Exception as e:
+            logger.error(
+                "An error occured while parsing the VideoFeaturizer value")
+            logger.error(e, exc_info=True)
+            return False
 
 
 class Model(Config):

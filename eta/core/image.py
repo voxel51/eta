@@ -382,8 +382,25 @@ class ImageLabels(Serializable):
         return _attrs
 
     @classmethod
+    def from_video_frame_labels(
+            cls, video_frame_labels, filename=None, metadata=None):
+        '''Constructs an ImageLabels from a VideoFrameLabels.
+
+        Args:
+            video_frame_labels: a VideoFrameLabels instance
+            filename: an optional filename for the image
+            metadata: an optional ImageMetadata instance for the image
+
+        Returns:
+            a VideoFrameLabels instance
+        '''
+        return cls(
+            filename=filename, metadata=metadata,
+            attrs=video_frame_labels.attrs, objects=video_frame_labels.objects)
+
+    @classmethod
     def from_dict(cls, d):
-        '''Constructs a ImageLabels from a JSON dictionary.'''
+        '''Constructs an ImageLabels from a JSON dictionary.'''
         filename = d.get("filename", None)
 
         metadata = d.get("metadata", None)

@@ -943,20 +943,29 @@ def multiglob(*patterns, **kwargs):
         glob.iglob(root + pattern) for pattern in patterns)
 
 
-def list_files(dir_path):
+def list_files(dir_path, abs_paths=False):
     '''Lists the files in the given directory, sorted alphabetically and
     excluding directories and hidden files.
 
     Args:
         dir_path: the path to the directory to list
+        abs_paths: whether to return the absolute paths to the files. By
+            default, this is False
 
     Returns:
-        a sorted list of the non-hidden files in the directory
+        a sorted list of the non-hidden filenames (or filepaths) in the
+            directory
     '''
-    return sorted(
+    files = sorted(
         f for f in os.listdir(dir_path)
         if os.path.isfile(os.path.join(dir_path, f)) and not f.startswith(".")
     )
+
+    if abs_paths:
+        basedir = os.path.abspath(os.path.realpath(dir_path))
+        files = [os.path.join(basedir, f) for f in files]
+
+    return files
 
 
 def parse_pattern(patt):
