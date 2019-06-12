@@ -759,7 +759,7 @@ class ImageMetadata(Serializable):
         img = read(filepath, include_alpha=True)
         return cls(
             frame_size=to_frame_size(img=img),
-            num_channels=img.shape[2],
+            num_channels=img.shape[2] if len(img.shape) > 2 else 1,
             size_bytes=os.path.getsize(filepath),
             mime_type=etau.guess_mime_type(filepath),
         )
