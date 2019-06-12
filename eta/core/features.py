@@ -918,8 +918,14 @@ class CachingVideoFeaturizer(Featurizer):
         return os.path.isfile(path)
 
     def get_feature_paths(self):
-        '''Returns a list of absolute paths to the features on disk.'''
-        return etau.list_files(self.backing_dir, abs_paths=True)
+        '''Returns a list of absolute paths to the features on disk.
+
+        Returns:
+            a list of absolute paths to .npz files
+        '''
+        return [
+            p for p in etau.list_files(self.backing_dir, abs_paths=True)
+            if p.endswith(".npz")]
 
     def get_featurized_frame_path(self, frame_number):
         '''Returns the feature path on disk for the given frame number.
