@@ -766,11 +766,11 @@ class CachingVideoFeaturizer(Featurizer):
     '''Meta-featurizer that uses an ImageFeaturizer to maintain a cache of the
     feature vectors for the frames of a video.
 
-    Featurized frames are stored on disk as compressed pickle files indexed by
-    frame number. The location of the files on disk is controlled by the
-    `backing_manager`. By default, a `RandomBackingManager` is used that writes
-    features to a randomly generated subdirectory of `/tmp`. Alternatively,
-    you can manually set the backing directory with `set_manual_backing_dir()`.
+    Featurized frames are stored on disk as .npz files indexed by frame number.
+    The location of the files on disk is controlled by the `backing_manager`.
+    By default, a `RandomBackingManager` is used that writes features to a
+    randomly generated subdirectory of `/tmp`. Alternatively, you can manually
+    set the backing directory with `set_manual_backing_dir()`.
 
     This class provides a `frame_preprocessor` property that allows a
     preprocessing function to be applied to each frame before featurizing it.
