@@ -637,7 +637,7 @@ class BackingManager(Configurable):
 
 
 class ManualBackingManagerConfig(Config):
-    '''Configuration settings for a RandomBackingManager.
+    '''Configuration settings for a ManualBackingManager.
 
     Attributes:
         backing_dir: the backing directory in which to store features
@@ -652,10 +652,10 @@ class ManualBackingManager(BackingManager):
     '''Backing manager that stores features directly in the base directory.'''
 
     def __init__(self, config):
-        '''Creates the RandomBackingManager instance.
+        '''Creates the ManualBackingManager instance.
 
         Args:
-            config: a RandomBackingManagerConfig instance.
+            config: a ManualBackingManager instance.
         '''
         self.validate(config)
         self.config = config
