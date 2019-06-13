@@ -1364,16 +1364,32 @@ class VideoStreamInfo(Serializable):
         determined.
         '''
         try:
-            # this fails for directories of frames
+            # try `nb_frames`
             return int(self.stream_info["nb_frames"])
         except KeyError:
-            try:
-                # this seems to work for directories of frames
-                return int(self.stream_info["duration_ts"])
-            except KeyError:
-                logger.warning(
-                    "Unable to determine total frame count; returning -1")
-                return -1
+            pass
+
+        try:
+            # try `duration` x `frame rate`
+            return int(self.duration * self.frame_rate)
+        except VideoStreamInfoError:
+            pass
+
+        try:
+            #
+            # Fallback to `duration_ts` as a last resort. This will not be
+            # accurate for videos with `time_base` != 1, but the assumption is
+            # that one of the preceeding methods will have already worked for
+            # videos. This is here as a last resort for sequences of images,
+            # where `duration_ts` seems to directly contain the number of
+            # frames.
+            #
+            return int(self.stream_info["duration_ts"])
+        except KeyError:
+            pass
+
+        logger.warning("Unable to determine total frame count; returning -1")
+        return -1
 
     @property
     def duration(self):
@@ -1381,10 +1397,21 @@ class VideoStreamInfo(Serializable):
         determined.
         '''
         try:
+            # try `duration`
             return float(self.stream_info["duration"])
         except KeyError:
-            logger.warning("Unable to determine duration; returning -1")
-            return -1
+            pass
+
+        try:
+            # try `duration_ts` x `time_base`
+            duration_ts = float(self.stream_info["duration_ts"])
+            num, denom = self.stream_info["time_base"].split("/")
+            return duration_ts * float(num) / float(denom)
+        except KeyError:
+            pass
+
+        logger.warning("Unable to determine duration; returning -1")
+        return -1
 
     def get_raw_value(self, key):
         '''Gets a value from the raw stream info dictionary.
