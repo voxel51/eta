@@ -167,7 +167,10 @@ def frame_number_to_timestamp(frame_number, total_frame_count, duration):
     Returns:
         the timestamp (in seconds) of the given frame number in the video
     '''
-    alpha = (frame_number - 1) / (total_frame_count - 1)
+    if total_frame_count == 1:
+        alpha = 0
+    else:
+        alpha = (frame_number - 1) / (total_frame_count - 1)
     return alpha * duration
 
 
