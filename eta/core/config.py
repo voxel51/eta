@@ -308,8 +308,8 @@ class Config(etas.Serializable):
     def parse_object(d, key, cls, default=no_default):
         '''Parses an object attribute.
 
-        The value of d[key] can be either an instance of cls or a Config dict
-        from which to construct an instance of cls.
+        The value of d[key] can be either an instance of cls or a serialized
+        dict from an instance of cls.
 
         Args:
             d: a JSON dictionary
@@ -333,8 +333,8 @@ class Config(etas.Serializable):
     def parse_object_array(d, key, cls, default=no_default):
         '''Parses an array of objects.
 
-        The values in d[key] can be either instances of cls or Config dicts
-        from which to construct instances of cls.
+        The values in d[key] can be either instances of cls or serialized
+        dicts from instances of cls.
 
         Args:
             d: a JSON dictionary
@@ -361,8 +361,8 @@ class Config(etas.Serializable):
     def parse_object_dict(d, key, cls, default=no_default):
         '''Parses a dictionary whose values are objects.
 
-        The values in d[key] can be either instances of cls or Config dicts
-        from which to construct instances of cls.
+        The values in d[key] can be either instances of cls or serialized
+        dicts from instances of cls.
 
         Args:
             d: a JSON dictionary
