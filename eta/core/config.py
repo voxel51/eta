@@ -308,8 +308,8 @@ class Config(etas.Serializable):
     def parse_object(d, key, cls, default=no_default):
         '''Parses an object attribute.
 
-        The value of d[key] can be either an instance of cls or a Config dict
-        from which to construct an instance of cls.
+        The value of d[key] can be either an instance of cls or a serialized
+        dict from an instance of cls.
 
         Args:
             d: a JSON dictionary
@@ -326,15 +326,15 @@ class Config(etas.Serializable):
         '''
         val, found = _parse_key(d, key, (dict, cls), default)
         if found and not isinstance(val, cls):
-            val = cls(val)
+            val = cls.from_dict(val)
         return val
 
     @staticmethod
     def parse_object_array(d, key, cls, default=no_default):
         '''Parses an array of objects.
 
-        The values in d[key] can be either instances of cls or Config dicts
-        from which to construct instances of cls.
+        The values in d[key] can be either instances of cls or serialized
+        dicts from instances of cls.
 
         Args:
             d: a JSON dictionary
@@ -352,7 +352,7 @@ class Config(etas.Serializable):
         val, found = _parse_key(d, key, list, default)
         if found:
             val = [
-                (v if isinstance(v, cls) else cls(v))
+                (v if isinstance(v, cls) else cls.from_dict(v))
                 for v in val
             ]
         return val
@@ -361,8 +361,8 @@ class Config(etas.Serializable):
     def parse_object_dict(d, key, cls, default=no_default):
         '''Parses a dictionary whose values are objects.
 
-        The values in d[key] can be either instances of cls or Config dicts
-        from which to construct instances of cls.
+        The values in d[key] can be either instances of cls or serialized
+        dicts from instances of cls.
 
         Args:
             d: a JSON dictionary
@@ -381,7 +381,7 @@ class Config(etas.Serializable):
         val, found = _parse_key(d, key, dict, default)
         if found:
             val = {
-                k: (v if isinstance(v, cls) else cls(v))
+                k: (v if isinstance(v, cls) else cls.from_dict(v))
                 for k, v in iteritems(val)
             }
         return val
