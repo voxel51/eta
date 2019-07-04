@@ -326,7 +326,7 @@ class Config(etas.Serializable):
         '''
         val, found = _parse_key(d, key, (dict, cls), default)
         if found and not isinstance(val, cls):
-            val = cls(val)
+            val = cls.from_dict(val)
         return val
 
     @staticmethod
@@ -352,7 +352,7 @@ class Config(etas.Serializable):
         val, found = _parse_key(d, key, list, default)
         if found:
             val = [
-                (v if isinstance(v, cls) else cls(v))
+                (v if isinstance(v, cls) else cls.from_dict(v))
                 for v in val
             ]
         return val
@@ -381,7 +381,7 @@ class Config(etas.Serializable):
         val, found = _parse_key(d, key, dict, default)
         if found:
             val = {
-                k: (v if isinstance(v, cls) else cls(v))
+                k: (v if isinstance(v, cls) else cls.from_dict(v))
                 for k, v in iteritems(val)
             }
         return val
