@@ -28,7 +28,6 @@ import random
 
 import numpy as np
 
-from eta.core.config import no_default
 from eta.core.data import BaseDataRecord
 import eta.core.data as etad
 import eta.core.image as etai
@@ -282,12 +281,15 @@ class LabeledDataset(object):
 
         return self
 
-    def add_file(self, data_path, labels_path, move_files=no_default):
+    def add_file(self, data_path, labels_path, move_files=False):
         '''Adds a single data file and its labels file to this dataset.
 
         Args:
             data_path: path to data file to be added
             labels_path: path to corresponding labels file to be added
+            move_files: whether to move the files from their original
+                location into the dataset directory. If False, files
+                are copied into the dataset directory.
 
         Returns:
             self
