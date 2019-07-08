@@ -244,7 +244,8 @@ def _compute_stride_from_total_frames(total_frames, num_desired):
         total_frames / stride for stride in stride_int_guesses]
     differences = [
         np.abs(actual - num_desired) for actual in actual_num_images]
-    return min(zip(stride_int_guesses, differences), key=lambda t: t[1])[0]
+    return int(min(
+        zip(stride_int_guesses, differences), key=lambda t: t[1])[0])
 
 
 def _iter_filtered_video_frames(video_dataset, frame_filter, stride):
