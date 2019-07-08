@@ -235,6 +235,9 @@ def _compute_stride(video_dataset, num_images, frame_filter):
 
 
 def _compute_stride_from_total_frames(total_frames, num_desired):
+    if num_desired == 1:
+        return total_frames
+
     stride_guess = (total_frames - 1) / (num_desired - 1)
     stride_int_guesses = [np.floor(stride_guess), np.ceil(stride_guess)]
     actual_num_images = [
