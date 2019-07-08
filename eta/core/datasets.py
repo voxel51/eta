@@ -203,34 +203,19 @@ def sample_videos_to_images(
     image_dataset = LabeledImageDataset.create_empty_dataset(
         image_dataset_path, description=description)
 
-    filtered_frame_index = -1
-    for video_reader, video_path, video_labels in zip(
-            video_dataset.iter_data(), video_dataset.iter_data_paths(),
-            video_dataset.iter_labels()):
-        video_filename = os.path.basename(video_path)
-        video_name = os.path.splitext(video_filename)[0]
-        with video_reader:
-            for frame_img in video_reader:
-                frame_num = video_reader.frame_number
-                base_filename = "%s-%d" % (video_name, frame_num)
-                image_filename = "%s%s" % (base_filename, image_extension)
-                labels_filename = "%s.json" % base_filename
+    frame_iterator = _iter_filtered_video_frames(
+        video_dataset, frame_filter, stride)
+    for frame_img, frame_labels, base_filename in frame_iterator:
+        image_filename = "%s%s" % (base_filename, image_extension)
+        labels_filename = "%s.json" % base_filename
 
-                frame_labels = video_labels[frame_num]
-                if not frame_filter(frame_labels):
-                    continue
-                filtered_frame_index += 1
-
-                if filtered_frame_index % stride:
-                    continue
-
-                image_labels = etai.ImageLabels(
-                    filename=image_filename,
-                    attrs=frame_labels.attrs,
-                    objects=frame_labels.objects)
-                image_dataset.add_data(
-                    frame_img, image_labels, image_filename,
-                    labels_filename)
+        image_labels = etai.ImageLabels(
+            filename=image_filename,
+            attrs=frame_labels.attrs,
+            objects=frame_labels.objects)
+        image_dataset.add_data(
+            frame_img, image_labels, image_filename,
+            labels_filename)
 
     image_dataset.write_manifest(image_dataset_path)
 
@@ -257,6 +242,29 @@ def _compute_stride_from_total_frames(total_frames, num_desired):
     differences = [
         np.abs(actual - num_desired) for actual in actual_num_images]
     return min(zip(stride_int_guesses, differences), key=lambda t: t[1])[0]
+
+
+def _iter_filtered_video_frames(video_dataset, frame_filter, stride):
+    filtered_frame_index = -1
+    for video_reader, video_path, video_labels in zip(
+            video_dataset.iter_data(), video_dataset.iter_data_paths(),
+            video_dataset.iter_labels()):
+        video_filename = os.path.basename(video_path)
+        video_name = os.path.splitext(video_filename)[0]
+        with video_reader:
+            for frame_img in video_reader:
+                frame_num = video_reader.frame_number
+                base_filename = "%s-%d" % (video_name, frame_num)
+
+                frame_labels = video_labels[frame_num]
+                if not frame_filter(frame_labels):
+                    continue
+                filtered_frame_index += 1
+
+                if filtered_frame_index % stride:
+                    continue
+
+                yield frame_img, frame_labels, base_filename
 
 
 class LabeledDataset(object):
