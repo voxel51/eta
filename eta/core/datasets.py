@@ -21,7 +21,6 @@ import six
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-import itertools
 import logging
 import os
 import random
@@ -157,6 +156,120 @@ def _split_in_order(records_list, split_fractions):
     return records_list
 
 
+def sample_videos_to_images(
+        video_dataset, image_dataset_path, stride=None, num_images=None,
+        frame_filter=lambda labels: True, image_extension=".jpg",
+        description=None):
+    '''Creates a `LabeledImageDataset` by extracting frames and their
+    corresponding labels from a `LabeledVideoDataset`.
+
+    Args:
+        video_dataset: a `LabeledVideoDataset` instance from which to
+            extract frames as images
+        image_dataset_path: the path to the `manifest.json` file for
+            the image dataset that will be written. The containing
+            directory must either not exist or be empty
+        stride: optional frequency with which to sample frames from
+            videos
+        num_images: optional total number of frames to sample from
+            videos. Only one of `stride` and `num_images` can be
+            specified at the same time.
+        frame_filter: function that takes an
+            `eta.core.video.VideoFrameLabels` instance as input and
+            returns False if the frame should not be included in the
+            sample
+        image_extension: optional extension for image files in new
+            dataset (defaults to ".jpg")
+        description: optional description for the manifest of the
+            new image dataset
+
+    Returns:
+        image_dataset: `LabeledImageDataset` instance that points to
+            the new image dataset
+    '''
+    if stride is None and num_images is None:
+        stride = 1
+
+    if stride is not None and num_images is not None:
+        raise ValueError(
+            "Only one of `stride` and `num_images` can be "
+            "specified, but got stride = %s, num_images = %s" %
+            (stride, num_images))
+
+    if num_images is not None:
+        stride = _compute_stride(video_dataset, num_images, frame_filter)
+
+    image_dataset = LabeledImageDataset.create_empty_dataset(
+        image_dataset_path, description=description)
+
+    frame_iterator = _iter_filtered_video_frames(
+        video_dataset, frame_filter, stride)
+    for frame_img, frame_labels, base_filename in frame_iterator:
+        image_filename = "%s%s" % (base_filename, image_extension)
+        labels_filename = "%s.json" % base_filename
+
+        image_labels = etai.ImageLabels(
+            filename=image_filename,
+            attrs=frame_labels.attrs,
+            objects=frame_labels.objects)
+        image_dataset.add_data(
+            frame_img, image_labels, image_filename,
+            labels_filename)
+
+    image_dataset.write_manifest(image_dataset_path)
+
+    return image_dataset
+
+
+def _compute_stride(video_dataset, num_images, frame_filter):
+    total_frames_retained = 0
+    for video_labels in video_dataset.iter_labels():
+        for frame_number in video_labels:
+            frame_labels = video_labels[frame_number]
+            if frame_filter(frame_labels):
+                total_frames_retained += 1
+
+    return _compute_stride_from_total_frames(
+        total_frames_retained, num_images)
+
+
+def _compute_stride_from_total_frames(total_frames, num_desired):
+    if num_desired == 1:
+        return total_frames
+
+    stride_guess = (total_frames - 1) / (num_desired - 1)
+    stride_int_guesses = [np.floor(stride_guess), np.ceil(stride_guess)]
+    actual_num_images = [
+        total_frames / stride for stride in stride_int_guesses]
+    differences = [
+        np.abs(actual - num_desired) for actual in actual_num_images]
+    return int(min(
+        zip(stride_int_guesses, differences), key=lambda t: t[1])[0])
+
+
+def _iter_filtered_video_frames(video_dataset, frame_filter, stride):
+    filtered_frame_index = -1
+    for video_reader, video_path, video_labels in zip(
+            video_dataset.iter_data(), video_dataset.iter_data_paths(),
+            video_dataset.iter_labels()):
+        video_filename = os.path.basename(video_path)
+        video_name = os.path.splitext(video_filename)[0]
+        with video_reader:
+            for frame_img in video_reader:
+                frame_num = video_reader.frame_number
+                base_filename = "%s-%d" % (video_name, frame_num)
+
+                frame_labels = video_labels[frame_num]
+                if not frame_filter(frame_labels):
+                    continue
+                filtered_frame_index += 1
+
+                if filtered_frame_index % stride:
+                    continue
+
+                yield frame_img, frame_labels, base_filename
+
+
 class LabeledDataset(object):
     '''Base class for labeled datasets.'''
 
@@ -286,12 +399,15 @@ class LabeledDataset(object):
 
         return self
 
-    def add_file(self, data_path, labels_path):
+    def add_file(self, data_path, labels_path, move_files=False):
         '''Adds a single data file and its labels file to this dataset.
 
         Args:
             data_path: path to data file to be added
             labels_path: path to corresponding labels file to be added
+            move_files: whether to move the files from their original
+                location into the dataset directory. If False, files
+                are copied into the dataset directory.
 
         Returns:
             self
@@ -299,9 +415,15 @@ class LabeledDataset(object):
         data_subdir = os.path.join(self.data_dir, "data")
         labels_subdir = os.path.join(self.data_dir, "labels")
         if os.path.dirname(data_path) != data_subdir:
-            etau.copy_file(data_path, data_subdir)
+            if move_files:
+                etau.move_file(data_path, data_subdir)
+            else:
+                etau.copy_file(data_path, data_subdir)
         if os.path.dirname(labels_path) != labels_subdir:
-            etau.copy_file(labels_path, labels_subdir)
+            if move_files:
+                etau.move_file(labels_path, labels_subdir)
+            else:
+                etau.copy_file(labels_path, labels_subdir)
         self.dataset_index.append(
             LabeledDataRecord(
                 os.path.join("data", os.path.basename(data_path)),
@@ -689,57 +811,6 @@ class LabeledVideoDataset(LabeledDataset):
     Labeled video datasets are referenced in code by their `dataset_path`,
     which points to the `manifest.json` file for the dataset.
     '''
-
-    def to_image_set(self, image_dataset_path, stride=1,
-                     image_extension=".jpg", description=None):
-        '''Writes the data to a `LabeledImageDataset` by extracting frames
-        and their corresponding labels.
-
-        @todo add logging between reading of full individual videos
-
-        Args:
-            image_dataset_path: the path to the `manifest.json` file for
-                the image dataset that will be written. The containing
-                directory must either not exist or be empty
-            stride: optional frequency with which to sample frames from
-                videos
-            image_extension: optional extension for image files in new
-                dataset (defaults to ".jpg")
-            description: optional description for the manifest of the
-                new image dataset
-
-        Returns:
-            image_dataset: `LabeledImageDataset` instance that points to
-                the new image dataset
-        '''
-        image_dataset = LabeledImageDataset.create_empty_dataset(
-            image_dataset_path, description=description)
-
-        for video_reader, video_path, video_labels in zip(
-                self.iter_data(), self.iter_data_paths(),
-                self.iter_labels()):
-            video_filename = os.path.basename(video_path)
-            video_name = os.path.splitext(video_filename)[0]
-            with video_reader:
-                for frame_img in itertools.islice(
-                        video_reader, 0, None, stride):
-                    frame_num = video_reader.frame_number
-                    base_filename = "%s-%d" % (video_name, frame_num)
-                    image_filename = "%s%s" % (base_filename, image_extension)
-                    labels_filename = "%s.json" % base_filename
-
-                    frame_labels = video_labels[frame_num]
-                    image_labels = etai.ImageLabels(
-                        filename=image_filename,
-                        attrs=frame_labels.attrs,
-                        objects=frame_labels.objects)
-                    image_dataset.add_data(
-                        frame_img, image_labels, image_filename,
-                        labels_filename)
-
-        image_dataset.write_manifest(image_dataset_path)
-
-        return image_dataset
 
     @classmethod
     def validate_dataset(cls, dataset_path):
