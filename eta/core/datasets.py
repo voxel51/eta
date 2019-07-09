@@ -278,13 +278,18 @@ class LabeledDataset(object):
 
         Args:
             dataset_path: the path to the `manifest.json` file for the dataset
+
+        Raises:
+            LabeledDatasetError: if the class reading the dataset is not a
+                subclass of the dataset class recorded in the manifest
         '''
         self.dataset_index = LabeledDatasetIndex.from_json(dataset_path)
         if not isinstance(self, etau.get_class(self.dataset_index.type)):
             raise LabeledDatasetError(
-                "Tried to read dataset of type '%s', but manifest is of "
-                "type '%s'" % (
-                    etau.get_class_name(self), self.dataset_index.type))
+                "Tried to read dataset of type '%s', from location '%s', "
+                "but manifest is of type '%s'" % (
+                    etau.get_class_name(self), dataset_path,
+                    self.dataset_index.type))
         self.data_dir = os.path.dirname(dataset_path)
 
     def __iter__(self):
@@ -646,8 +651,8 @@ class LabeledDataset(object):
 
         return dataset
 
-    @staticmethod
-    def is_valid_dataset(dataset_path):
+    @classmethod
+    def is_valid_dataset(cls, dataset_path):
         '''Determines whether the data at the given path is a valid
         LabeledDataset.
 
@@ -657,8 +662,27 @@ class LabeledDataset(object):
         Returns:
             True/False
         '''
+        try:
+            cls.validate_dataset(dataset_path)
+        except LabeledDatasetError:
+            return False
+
+        return True
+
+    @classmethod
+    def validate_dataset(cls, dataset_path):
+        '''Determines whether the data at the given path is a valid
+        LabeledDataset.
+
+        Args:
+            dataset_path: the path to the `manifest.json` file for the dataset
+
+        Raises:
+            LabeledDatasetError: if the dataset at `dataset_path` is not a
+                valid LabeledDataset
+        '''
         raise NotImplementedError(
-            "subclasses must implement is_valid_dataset()")
+            "subclasses must implement validate_dataset()")
 
     def _read_data(self, path):
         '''Reads data from a data file at the given path.
@@ -788,8 +812,8 @@ class LabeledVideoDataset(LabeledDataset):
     which points to the `manifest.json` file for the dataset.
     '''
 
-    @staticmethod
-    def is_valid_dataset(dataset_path):
+    @classmethod
+    def validate_dataset(cls, dataset_path):
         '''Determines whether the data at the given path is a valid
         LabeledVideoDataset.
 
@@ -799,32 +823,25 @@ class LabeledVideoDataset(LabeledDataset):
         Args:
             dataset_path: the path to the `manifest.json` file for the dataset
 
-        Returns:
-            True/False
+        Raises:
+            LabeledDatasetError: if the dataset at `dataset_path` is not a
+                valid LabeledVideoDataset
         '''
-        try:
-            video_dataset = LabeledVideoDataset(dataset_path)
-        except LabeledDatasetError as e:
-            logger.info(e)
-            return False
+        video_dataset = cls(dataset_path)
 
         for video_path in video_dataset.iter_data_paths():
             if not etav.is_supported_video_file(video_path):
-                logger.info("Unsupported video format: %s", video_path)
-                return False
+                raise LabeledDatasetError(
+                    "Unsupported video format: %s" % video_path)
             if not os.path.isfile(video_path):
-                logger.info("File not found: %s", video_path)
-                return False
+                raise LabeledDatasetError("File not found: %s" % video_path)
 
         for labels_path in video_dataset.iter_labels_paths():
             if not os.path.splitext(labels_path)[1] == ".json":
-                logger.info("Unsupported labels format: %s", labels_path)
-                return False
+                raise LabeledDatasetError(
+                    "Unsupported labels format: %s" % labels_path)
             if not os.path.isfile(labels_path):
-                logger.info("File not found: %s", labels_path)
-                return False
-
-        return True
+                raise LabeledDatasetError("File not found: %s" % labels_path)
 
     def _read_data(self, path):
         return etav.FFmpegVideoReader(path)
@@ -865,8 +882,8 @@ class LabeledImageDataset(LabeledDataset):
     which points to the `manifest.json` file for the dataset.
     '''
 
-    @staticmethod
-    def is_valid_dataset(dataset_path):
+    @classmethod
+    def validate_dataset(cls, dataset_path):
         '''Determines whether the data at the given path is a valid
         LabeledImageDataset.
 
@@ -876,32 +893,25 @@ class LabeledImageDataset(LabeledDataset):
         Args:
             dataset_path: the path to the `manifest.json` file for the dataset
 
-        Returns:
-            True/False
+        Raises:
+            LabeledDatasetError: if the dataset at `dataset_path` is not a
+                valid LabeledImageDataset
         '''
-        try:
-            image_dataset = LabeledImageDataset(dataset_path)
-        except LabeledDatasetError as e:
-            logger.info(e)
-            return False
+        image_dataset = cls(dataset_path)
 
         for img_path in image_dataset.iter_data_paths():
             if not etai.is_supported_image(img_path):
-                logger.info("Unsupported image format: %s", img_path)
-                return False
+                raise LabeledDatasetError(
+                    "Unsupported image format: %s" % img_path)
             if not os.path.isfile(img_path):
-                logger.info("File not found: %s", img_path)
-                return False
+                raise LabeledDatasetError("File not found: %s" % img_path)
 
         for labels_path in image_dataset.iter_labels_paths():
             if not os.path.splitext(labels_path)[1] == ".json":
-                logger.info("Unsupported labels format: %s", labels_path)
-                return False
+                raise LabeledDatasetError(
+                    "Unsupported labels format: %s" % labels_path)
             if not os.path.isfile(labels_path):
-                logger.info("File not found: %s", labels_path)
-                return False
-
-        return True
+                raise LabeledDatasetError("File not found: %s" % labels_path)
 
     def _read_data(self, path):
         return etai.read(path)
