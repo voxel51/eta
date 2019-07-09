@@ -281,12 +281,15 @@ class LabeledDataset(object):
 
         return self
 
-    def add_file(self, data_path, labels_path):
+    def add_file(self, data_path, labels_path, move_files=False):
         '''Adds a single data file and its labels file to this dataset.
 
         Args:
             data_path: path to data file to be added
             labels_path: path to corresponding labels file to be added
+            move_files: whether to move the files from their original
+                location into the dataset directory. If False, files
+                are copied into the dataset directory.
 
         Returns:
             self
@@ -294,9 +297,15 @@ class LabeledDataset(object):
         data_subdir = os.path.join(self.data_dir, "data")
         labels_subdir = os.path.join(self.data_dir, "labels")
         if os.path.dirname(data_path) != data_subdir:
-            etau.copy_file(data_path, data_subdir)
+            if move_files:
+                etau.move_file(data_path, data_subdir)
+            else:
+                etau.copy_file(data_path, data_subdir)
         if os.path.dirname(labels_path) != labels_subdir:
-            etau.copy_file(labels_path, labels_subdir)
+            if move_files:
+                etau.move_file(labels_path, labels_subdir)
+            else:
+                etau.copy_file(labels_path, labels_subdir)
         self.dataset_index.append(
             LabeledDataRecord(
                 os.path.join("data", os.path.basename(data_path)),
