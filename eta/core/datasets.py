@@ -1040,52 +1040,52 @@ class LazyTransformableDataset(object):
         return self.entries
 
 
-class LazyLabeledDataEntry(object):
-    '''
-    This class is responsible for tracking all of the metadata transform operations
-    and should a file be required, it will load it from the provided resource
-    and keep this in memory-cached so future calls for this resource will use the object
-     in memory!
+class LazyLabeledDataRecord(BaseDataRecord):
+    '''This class is responsible for tracking all of the metadata about a data
+    record required for dataset operations on a LazyTransformableDataset.
     '''
 
-    def __init__(self, data_path, label_path):
-        self.label_path = label_path
+    def __init__(self, data_path, labels_path):
         self.data_path = data_path
-
-        self.label_obj = None
+        self.labels_path = labels_path
         self.labels_cls = None
+        self.labels_obj = None
 
     def get_labels(self):
-        if self.label_obj:
-            return self.label_obj
-        #@TODO - load me and store labels
-        raise NotImplementedError()
+        if self.labels_obj:
+            return self.labels_obj
+        validated_path = self.validate_path(self.labels_path)
+        return self.labels_cls.from_json(validated_path)
+
+    def validate_path(self, path):
+        return path
 
 
+class LazyLabeledVideoRecord(LazyLabeledDataRecord):
+    '''LazyLabeledDataRecord for video.'''
 
-class LazyLabeledVideoEntry(LazyLabeledDataEntry):
-    '''
-    This class is responsible for tracking all of the metadata transform operations
-    and should a file be required, it will load it from the provided resource
-    and keep this in memory-cached so future calls for this resource will use the object
-     in memory!
-    '''
-
-    def __init__(self, data_path, label_path, duration, start_frame, end_frame, total_frame_count):
-        super(LazyLabeledVideoEntry, self).__init__(data_path, label_path)
-        self.start = etav.frame_number_to_timestamp(start_frame, total_frame_count, duration)
-        self.end = etav.frame_number_to_timestamp(end_frame, total_frame_count, duration)
+    def __init__(self, video_path, labels_path, start_frame=None,
+                 end_frame=None, duration=None, total_frame_count=None):
+        super(LazyLabeledVideoRecord, self).__init__(video_path, labels_path)
         self.start_frame = start_frame
         self.end_frame = end_frame
-        self.total_frames = total_frame_count
+        self.duration = duration
+        self.total_frame_count = total_frame_count
+        self.start = etav.frame_number_to_timestamp(self.start_frame,
+                                                    self.total_frame_count,
+                                                    self.duration)
+        self.end = etav.frame_number_to_timestamp(self.end_frame,
+                                                  self.total_frame_count,
+                                                  self.duration)
+        self.labels_cls = etav.VideoLabels
 
 
-    def get_labels(self):
-        if self.label_obj:
-            return self.label_obj
-        #@TODO - Handle file reading from ANY SOURCE!!! (path may not be local)
-        return etav.VideoLabels.from_json(self.label_path)
+class LazyLabeledImageRecord(LazyLabeledDataRecord):
+    '''LazyLabeledDataRecord for images.'''
 
+    def __init__(self, image_path, labels_path):
+        super(LazyLabeledImageRecord, self).__init__(image_path, labels_path)
+        self.labels_cls = etai.ImageLabels
 
 
 class LabeledDatasetBuilder(object):
@@ -1163,6 +1163,3 @@ class LabeledVideoDatasetBuilder(LabeledDatasetBuilder):
 #     builder = LabeledVideoDatasetBuilder(prep_dataset)
 #     builder.sample(10).balance("balance").filter(etav.VideoLabelsSchema()).clip_and_stride(1, 2, 3)
 #     dataset = builder.build()
-
-
-
