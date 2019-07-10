@@ -1018,14 +1018,11 @@ class LabeledDatasetError(Exception):
     pass
 
 
-
 ################################################################################
 
 
-class LazyTransformableDataset(object):
-    '''
-    A simple collection of LazyLabeledDataEntry objects
-    '''
+class LazyLabeledDataset(object):
+    '''A simple collection of LazyLabeledDataEntry objects.'''
 
     def __init__(self):
         self.entries = []
@@ -1042,7 +1039,7 @@ class LazyTransformableDataset(object):
 
 class LazyLabeledDataRecord(BaseDataRecord):
     '''This class is responsible for tracking all of the metadata about a data
-    record required for dataset operations on a LazyTransformableDataset.
+    record required for dataset operations on a LazyLabeledDataset.
     '''
 
     def __init__(self, data_path, labels_path):
@@ -1058,6 +1055,14 @@ class LazyLabeledDataRecord(BaseDataRecord):
         return self.labels_cls.from_json(validated_path)
 
     def validate_path(self, path):
+        '''To be overwritten in subclasses if required by the storage model.
+
+        Args:
+            path (str)
+
+        Returns
+            (str) the validated path
+        '''
         return path
 
 
