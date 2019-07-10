@@ -1022,7 +1022,7 @@ class LabeledDatasetError(Exception):
 
 
 class LazyLabeledDataset(object):
-    '''A simple collection of LazyLabeledDataEntry objects.'''
+    '''A simple collection of LazyLabeledDataRecord objects.'''
 
     def __init__(self):
         self.entries = []
@@ -1035,6 +1035,18 @@ class LazyLabeledDataset(object):
 
     def get_entries(self):
         return self.entries
+
+
+class LazyLabeledImageDataset(LazyLabeledDataset):
+    '''LazyLabeledDataset for images.'''
+    def __init__(self, schema=etai.ImageLabelsSchema()):
+        super(LazyLabeledImageDataset, self).__init__()
+
+
+class LazyLabeledVideoDataset(LazyLabeledDataset):
+    '''LazyLabeledDataset for videos.'''
+    def __init__(self, schema=etav.VideoLabelsSchema()):
+        super(LazyLabeledVideoDataset, self).__init__()
 
 
 class LazyLabeledDataRecord(BaseDataRecord):
@@ -1066,6 +1078,14 @@ class LazyLabeledDataRecord(BaseDataRecord):
         return path
 
 
+class LazyLabeledImageRecord(LazyLabeledDataRecord):
+    '''LazyLabeledDataRecord for images.'''
+
+    def __init__(self, image_path, labels_path):
+        super(LazyLabeledImageRecord, self).__init__(image_path, labels_path)
+        self.labels_cls = etai.ImageLabels
+
+
 class LazyLabeledVideoRecord(LazyLabeledDataRecord):
     '''LazyLabeledDataRecord for video.'''
 
@@ -1085,21 +1105,13 @@ class LazyLabeledVideoRecord(LazyLabeledDataRecord):
         self.labels_cls = etav.VideoLabels
 
 
-class LazyLabeledImageRecord(LazyLabeledDataRecord):
-    '''LazyLabeledDataRecord for images.'''
-
-    def __init__(self, image_path, labels_path):
-        super(LazyLabeledImageRecord, self).__init__(image_path, labels_path)
-        self.labels_cls = etai.ImageLabels
-
-
 class LabeledDatasetBuilder(object):
     '''
     This object builds a LabeledDataset with optional transformations such as
     sampling, filtering by schema, and balance.
     '''
 
-    def __init__(self, index=LazyTransformableDataset()):
+    def __init__(self, index=LazyLabeledDataset()):
         self.index = index
         self.schema = None
         self.balance_attr = None
