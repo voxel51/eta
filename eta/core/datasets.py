@@ -1018,7 +1018,6 @@ class LabeledDatasetError(Exception):
     pass
 
 
-
 ################################################################################
 
 
@@ -1058,9 +1057,8 @@ class LazyLabeledDataEntry(object):
     def get_labels(self):
         if self.label_obj:
             return self.label_obj
-        #@TODO - load me and store labels
+        # @TODO - load me and store labels
         raise NotImplementedError()
-
 
 
 class LazyLabeledVideoEntry(LazyLabeledDataEntry):
@@ -1071,21 +1069,96 @@ class LazyLabeledVideoEntry(LazyLabeledDataEntry):
      in memory!
     '''
 
-    def __init__(self, data_path, label_path, duration, start_frame, end_frame, total_frame_count):
+    def __init__(self, data_path, label_path, duration, start_frame, end_frame,
+                 total_frame_count):
         super(LazyLabeledVideoEntry, self).__init__(data_path, label_path)
-        self.start = etav.frame_number_to_timestamp(start_frame, total_frame_count, duration)
-        self.end = etav.frame_number_to_timestamp(end_frame, total_frame_count, duration)
+        self.start = etav.frame_number_to_timestamp(start_frame,
+                                                    total_frame_count, duration)
+        self.end = etav.frame_number_to_timestamp(end_frame, total_frame_count,
+                                                  duration)
         self.start_frame = start_frame
         self.end_frame = end_frame
         self.total_frames = total_frame_count
 
-
     def get_labels(self):
         if self.label_obj:
             return self.label_obj
-        #@TODO - Handle file reading from ANY SOURCE!!! (path may not be local)
+        # @TODO - Handle file reading from ANY SOURCE!!! (path may not be local)
         return etav.VideoLabels.from_json(self.label_path)
 
+
+class DatasetTransformer(object):
+    '''
+    Object responsible for transforming TransformableDatasets
+    Basically, strategy pattern
+    '''
+
+    def transform(self, input):
+        ''' Transform a TransformableDataset
+        Args:
+            input (LazyTransformableDataset): the input dataset
+
+        Returns:
+        '''
+        return input
+
+
+class Sampler(DatasetTransformer):
+    '''
+    Randomly sample the number of entries in the dataset to some number k
+    '''
+
+    def __init__(self, k):
+        super(Sampler, self).__init__()
+        self.k = k
+
+    def transform(self, input):
+        input.set_entries(random.sample(input.get_entries(), self.k))
+        return input
+
+
+class Balancer(DatasetTransformer):
+    '''
+    Balance the number of entries in the dataset by values in some categorical
+    Attribute, as provided on construction.
+    '''
+
+    def __init__(self, attribute):
+        super(Balancer, self).__init__()
+        self.attr = attribute
+
+    def transform(self, input):
+        # @TODO implement Balancing!!
+        return input
+
+
+class Filter(DatasetTransformer):
+    '''
+    Filter all labels in the dataset by the provided schema
+    '''
+
+    def __init__(self, schema):
+        super(Filter, self).__init__()
+        self.schema = schema
+
+    def transform(self, input):
+        # @TODO implement filterin!!
+        return input
+
+
+class Clipper(DatasetTransformer):
+    '''
+    Clip longer videos into shorter ones, and sample at some stride step
+    '''
+
+    def __init__(self, clip_len, stride, min_clip_len):
+        self.clip_len = clip_len
+        self.stride = stride
+        self.min_clip_len = min_clip_len
+
+    def transform(self, input):
+        # @TODO impl me! - Also might want to throw error if data is not video..
+        return input
 
 
 class LabeledDatasetBuilder(object):
@@ -1094,75 +1167,14 @@ class LabeledDatasetBuilder(object):
     sampling, filtering by schema, and balance.
     '''
 
-    def __init__(self, index=LazyTransformableDataset()):
-        self.index = index
-        self.schema = None
-        self.balance_attr = None
-        self.sample_rate = None
+    def __init__(self, dataset=LazyTransformableDataset()):
+        self.dataset = dataset
+        self.transformers = []
 
-
-    def sample(self, k):
-        self.sample_rate = k
-        return self
-
-    def filter(self, schema):
-        self.schema = schema
-        return self
-
-    def balance(self, attribute):
-        self.balance_attr = attribute
-        return self
-
-    def _balance(self):
-        #@TODO
-        if self.balance_attr:
-            return
-
-    def _filter(self):
-        #@TODO
-        if self.schema:
-            return
-
-    def _sample(self):
-        self.index.set_entries(
-            random.sample(self.index.get_entries(), self.sample_rate))
+    def add_transform(self, transform):
+        self.transformers.append(transform)
 
     def build(self):
-        #@TODO these might return stuff?
-        self._sample()
-        self._filter()
-        self._balance()
-
-        #@TODO build me!
+        for transformer in self.transformers:
+            self.dataset = transformer.transform(self.dataset)
         return LabeledDataset(None)
-
-
-class LabeledVideoDatasetBuilder(LabeledDatasetBuilder):
-    '''
-    Subclass that adds additional build options like clip-and-striding videos
-    '''
-
-    def __init__(self, index):
-        super(LabeledVideoDatasetBuilder, self).__init__(index)
-
-    def clip_and_stride(self, clip_len, stride, min_clip_len):
-        #@TODO impl me!
-        return self
-
-    #@TODO build function handle inheritance/polymorphism stuff
-
-
-
-# if __name__ == '__main__':
-#     #@TODO exmaple usage
-#     prep_dataset = LazyTransformableDataset()
-#     for clip in clips:
-#         entry = LazyLabeledVideoEntry(clip["video_url"], clip["labels"], clip["duration"]....)
-#         prep_dataset.add_entry(entry)
-#
-#     builder = LabeledVideoDatasetBuilder(prep_dataset)
-#     builder.sample(10).balance("balance").filter(etav.VideoLabelsSchema()).clip_and_stride(1, 2, 3)
-#     dataset = builder.build()
-
-
-
