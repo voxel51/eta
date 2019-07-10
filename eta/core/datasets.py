@@ -194,6 +194,7 @@ def sample_videos_to_images(
 
     if num_images is not None:
         stride = _compute_stride(video_dataset, num_images, frame_filter)
+        logger.info("Sampling video frames with stride %d", stride)
 
     image_dataset = LabeledImageDataset.create_empty_dataset(
         image_dataset_path, description=description)
@@ -246,6 +247,9 @@ def _compute_stride(video_dataset, num_images, frame_filter):
             frame_labels = video_labels[frame_number]
             if frame_filter(frame_labels):
                 total_frames_retained += 1
+
+    logger.info("Found %d total frames after applying the filter",
+                total_frames_retained)
 
     # Handle corner cases
     if total_frames_retained < 2:
