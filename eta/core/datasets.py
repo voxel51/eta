@@ -212,6 +212,12 @@ def sample_videos_to_images(
             frame_img, image_labels, image_filename,
             labels_filename)
 
+    if not image_dataset:
+        logger.info(
+            "All frames were filtered out in sample_videos_to_images(). "
+            "Writing an empty image dataset to '%s'.",
+            image_dataset_path)
+
     image_dataset.write_manifest(image_dataset_path)
 
     return image_dataset
@@ -244,7 +250,7 @@ def _compute_stride(video_dataset, num_images, frame_filter):
     # Handle corner cases
     if total_frames_retained < 2:
         return 1
-    elif num_images < 2:
+    if num_images < 2:
         return total_frames_retained
 
     return _compute_stride_from_total_frames(
