@@ -190,11 +190,7 @@ def sample_videos_to_images(
     if stride is None and num_images is None:
         stride = 1
 
-    if stride is not None and num_images is not None:
-        raise ValueError(
-            "Only one of `stride` and `num_images` can be "
-            "specified, but got stride = %s, num_images = %s" %
-            (stride, num_images))
+    _validate_stride_and_num_images(stride, num_images)
 
     if num_images is not None:
         stride = _compute_stride(video_dataset, num_images, frame_filter)
@@ -221,6 +217,22 @@ def sample_videos_to_images(
     return image_dataset
 
 
+def _validate_stride_and_num_images(stride, num_images):
+    if stride is not None and num_images is not None:
+        raise ValueError(
+            "Only one of `stride` and `num_images` can be "
+            "specified, but got stride = %s, num_images = %s" %
+            (stride, num_images))
+
+    if stride is not None and stride < 1:
+        raise ValueError(
+            "stride must be >= 1, but got %d" % stride)
+
+    if num_images is not None and num_images < 1:
+        raise ValueError(
+            "num_images must be >= 1, but got %d" % num_images)
+
+
 def _compute_stride(video_dataset, num_images, frame_filter):
     total_frames_retained = 0
     for video_labels in video_dataset.iter_labels():
@@ -228,6 +240,12 @@ def _compute_stride(video_dataset, num_images, frame_filter):
             frame_labels = video_labels[frame_number]
             if frame_filter(frame_labels):
                 total_frames_retained += 1
+
+    # Handle corner cases
+    if total_frames_retained < 2:
+        return 1
+    elif num_images < 2:
+        return total_frames_retained
 
     return _compute_stride_from_total_frames(
         total_frames_retained, num_images)
@@ -238,6 +256,7 @@ def _compute_stride_from_total_frames(total_frames, num_desired):
         return total_frames
 
     stride_guess = (total_frames - 1) / (num_desired - 1)
+    stride_guess = max(stride_guess, 1)
     stride_int_guesses = [np.floor(stride_guess), np.ceil(stride_guess)]
     actual_num_images = [
         total_frames / stride for stride in stride_int_guesses]
