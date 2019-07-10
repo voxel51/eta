@@ -1023,6 +1023,9 @@ class LabeledDatasetError(Exception):
 
 
 class LazyTransformableDataset(object):
+    '''
+    A simple collection of LazyLabeledDataEntry objects
+    '''
 
     def __init__(self):
         self.entries = []
@@ -1086,6 +1089,10 @@ class LazyLabeledVideoEntry(LazyLabeledDataEntry):
 
 
 class LabeledDatasetBuilder(object):
+    '''
+    This object builds a LabeledDataset with optional transformations such as
+    sampling, filtering by schema, and balance.
+    '''
 
     def __init__(self, index=LazyTransformableDataset()):
         self.index = index
@@ -1131,6 +1138,9 @@ class LabeledDatasetBuilder(object):
 
 
 class LabeledVideoDatasetBuilder(LabeledDatasetBuilder):
+    '''
+    Subclass that adds additional build options like clip-and-striding videos
+    '''
 
     def __init__(self, index):
         super(LabeledVideoDatasetBuilder, self).__init__(index)
@@ -1143,16 +1153,16 @@ class LabeledVideoDatasetBuilder(LabeledDatasetBuilder):
 
 
 
-if __name__ == '__main__':
-    #@TODO exmaple usage
-    prep_dataset = LazyTransformableDataset()
-    for clip in clips:
-        entry = LazyLabeledVideoEntry(clip["video_url"], clip["labels"], clip["duration"]....)
-        prep_dataset.add_entry(entry)
-
-    builder = LabeledVideoDatasetBuilder(prep_dataset)
-    builder.sample(10).balance("fuck you").filter(etav.VideoLabelsSchema()).clip_and_stride(1, 2, 3)
-    dataset = builder.build()
+# if __name__ == '__main__':
+#     #@TODO exmaple usage
+#     prep_dataset = LazyTransformableDataset()
+#     for clip in clips:
+#         entry = LazyLabeledVideoEntry(clip["video_url"], clip["labels"], clip["duration"]....)
+#         prep_dataset.add_entry(entry)
+#
+#     builder = LabeledVideoDatasetBuilder(prep_dataset)
+#     builder.sample(10).balance("balance").filter(etav.VideoLabelsSchema()).clip_and_stride(1, 2, 3)
+#     dataset = builder.build()
 
 
 
