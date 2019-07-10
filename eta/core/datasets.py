@@ -1016,3 +1016,158 @@ class LabeledDataRecord(BaseDataRecord):
 class LabeledDatasetError(Exception):
     '''Exception raised when there is an error reading a LabeledDataset'''
     pass
+
+
+
+################################################################################
+
+
+class LazyProtoLabeledDataset(object):
+
+    def __init__(self):
+        self.entries = []
+
+    def add_entry(self, entry):
+        self.entries.append(entry)
+
+    def set_entries(self, entries):
+        self.entries = entries
+
+    def get_entries(self):
+        return self.entries
+
+class LazyLabeledVideoEntry(object):
+    '''
+    This class is responsible for tracking all of the metadata transform operations
+    and should a file be required, it will load it from the provided resource
+    and keep this in memory-cached so future calls for this resource will use the object
+     in memory!
+    '''
+
+    def __init__(self, video_path, label_path, duration, start_frame, end_frame, total_frame_count):
+        self.start = etav.frame_number_to_timestamp(start_frame, total_frame_count, duration)
+        self.end = etav.frame_number_to_timestamp(end_frame, total_frame_count, duration)
+        self.start_frame = start_frame
+        self.end_frame = end_frame
+        self.total_frames = total_frame_count
+        self.label_path = label_path
+        self.video_path = video_path
+
+        self.label_obj = None
+
+
+class LabeledDatasetBuilder(object):
+
+    def __init__(self, index=LazyProtoLabeledDataset()):
+        self.index = index
+        self.schema = None
+        self.balance_attr = None
+        self.sample_rate = None
+
+
+    def sample(self, k):
+        self.sample_rate = k
+        return self
+
+    def filter(self, schema):
+        self.schema = schema
+        return self
+
+    def balance(self, attribute):
+        self.balance_attr = attribute
+        return self
+
+    def build(self):
+        self.index.set_entries(random.sample(self.index.get_entries(), self.sample_rate))
+
+
+        if self.balance_attr:
+            for record in self.index.get_entries():
+                import eta.core.video as etav
+                label = etav.VideoLabels.from_json(record.labels)
+                label.
+        for record in self.index.get_entries():
+            record = LabeledDataRecord()
+            if self.schema:
+                record.labels.apply_schema(self.schema)
+            if self.balance_attr:
+                pass
+
+        return LabeledDataset(None)
+
+
+class LabeledVideoDatasetBuilder(LabeledDatasetBuilder):
+
+    def __init__(self, index):
+        super(LabeledVideoDatasetBuilder, self).__init__(index)
+
+    def clip_and_stride(self, clip_len, stride, min_clip_len):
+
+        return self
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+if __name__ == '__main__':
+    prep_dataset = LazyProtoLabeledDataset()
+    for clip in clips:
+        entry = LazyLabeledVideoEntry(clip["video_url"], clip["labels"], clip["duration"]....)
+        prep_dataset.add_entry(entry)
+
+    builder = LabeledVideoDatasetBuilder(prep_dataset)
+    builder.sample(10).balance("fuck you").filter(etav.VideoLabelsSchema()).clip_and_stride(1, 2, 3)
+    dataset = builder.build()
+
+
+# class DatasetTransformer(object):
+#     pass
+#
+#
+# class DatasetBalancer(DatasetTransformer):
+#     pass
+#
+#
+# class PipelineConfig(object):
+#
+#     def __init__(self):
+#         self.pipeline = []
+#
+#     def add_transform(self, tranform):
+#         self.pipeline.append(tranform)
+#
+#     def build_pipeline(self):
+#         return DatasetTransformPipeline(self.pipeline)
+#
+#
+# class DatasetTransformPipeline(object):
+#
+#     def __init__(self, transforms):
+#         self.transforms = transforms
+#
+#     def _create_transform_intermediate(self, labeled_dataset):
+#         return None
+#
+#     def run_transform(self, labeled_dataset):
+#         # shit happens
+#         transform_intermedia = self._create_transform_intermediate(
+#             labeled_dataset)
+#         for transform in self.transforms:
+#             transform_intermedia = transform(transform_intermedia)
+#
+#         return transform_intermedia.finalize()
+
+
+
+
+
+
