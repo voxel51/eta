@@ -840,6 +840,12 @@ class LabeledDataset(object):
         etau.ensure_dir(labels_subdir)
 
     def builder(self):
+        '''Creates a LabeledDatasetBuilder instance for this dataset for
+        transformations to be run.
+
+        Returns:
+            LabeledDatasetBuilder
+        '''
         builder = self._BUILDER_CLS()
         for paths in self.iter_paths():
             builder.add_record(builder.record_cls(*paths))
