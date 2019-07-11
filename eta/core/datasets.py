@@ -277,21 +277,21 @@ class LabeledDatasetBuilder(object):
     '''
 
     def __init__(self, schema=None):
-        self.transformers = []
+        self._transformers = []
         self._dataset = None
 
     def add_record(self, record):
         self._dataset.add(record)
 
     def add_transform(self, transform):
-        self.transformers.append(transform)
+        self._transformers.append(transform)
 
     @property
     def record_cls(self):
         return self._dataset.record_cls
 
     def build(self):
-        for transformer in self.transformers:
+        for transformer in self._transformers:
             transformer.transform(self._dataset)
         return LabeledDataset(None)
 
