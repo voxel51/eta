@@ -1193,7 +1193,7 @@ class LabeledDatasetBuilder(object):
 
     def __init__(self):
         self.transformers = []
-        self._dataset = None
+        self._dataset = BuilderDataset(schema=schema)
 
     def add_record(self, record):
         self.dataset.add(record)
@@ -1211,11 +1211,9 @@ class LabeledImageDatasetBuilder(LabeledDatasetBuilder):
     '''LabeledDatasetBuilder for images.'''
     def __init__(self, schema=etai.ImageLabelsSchema()):
         super(LabeledImageDatasetBuilder, self).__init__()
-        self._dataset = BuilderDataset(schema=schema)
 
 
 class LabeledVideoDatasetBuilder(LabeledDatasetBuilder):
     '''LabeledDatasetBuilder for videos.'''
     def __init__(self, schema=etav.VideoLabelsSchema()):
         super(LabeledVideoDatasetBuilder, self).__init__(schema)
-        self._dataset = BuilderDataset(schema=schema)
