@@ -1018,9 +1018,9 @@ class LabeledDatasetError(Exception):
     pass
 
 
-class BuilderRecord(BaseDataRecord):
+class BuilderDataRecord(BaseDataRecord):
     '''This class is responsible for tracking all of the metadata about a data
-    record required for dataset operations on a LazyLabeledDataset.
+    record required for dataset operations on a BuilderDataset.
     '''
 
     def __init__(self, data_path, labels_path):
@@ -1050,20 +1050,20 @@ class BuilderRecord(BaseDataRecord):
         return path
 
 
-class ImageBuilderRecord(BuilderRecord):
-    '''LazyLabeledDataRecord for images.'''
+class BuilderImageRecord(BuilderDataRecord):
+    '''BuilderDataRecord for images.'''
 
     def __init__(self, image_path, labels_path):
-        super(LazyLabeledImageRecord, self).__init__(image_path, labels_path)
+        super(BuilderImageRecord, self).__init__(image_path, labels_path)
         self.labels_cls = etai.ImageLabels
 
 
-class VideoBuilderRecord(BuilderRecord):
+class BuilderVideoRecord(BuilderDataRecord):
     '''BuilderDataRecord for video.'''
 
     def __init__(self, video_path, labels_path, start_frame=None,
                  end_frame=None, duration=None, total_frame_count=None):
-        super(LazyLabeledVideoRecord, self).__init__(video_path, labels_path)
+        super(BuilderVideoRecord, self).__init__(video_path, labels_path)
         self.start_frame = start_frame
         self.end_frame = end_frame
         self.duration = duration
@@ -1163,11 +1163,11 @@ class SchemaFilter(DatasetTransformer):
         return segment
 
     def transform(self, src):
-        for entry in src.get_entries():
-            labels = entry.get_labels()
-            labels = self._extract_video_labels(entry.start_frame,
-                                                entry.end_frame, labels)
-            entry.set_labels(labels)
+        for record in src.get_entries():
+            labels = record.get_labels()
+            labels = self._extract_video_labels(record.start_frame,
+                                                record.end_frame, labels)
+            record.set_labels(labels)
 
 
 class Clipper(DatasetTransformer):
@@ -1195,8 +1195,8 @@ class LabeledDatasetBuilder(object):
         self.transformers = []
         self._dataset = None
 
-    def add_record(self, entry):
-        self.dataset.add(entry)
+    def add_record(self, record):
+        self.dataset.add(record)
 
     def add_transform(self, transform):
         self.transformers.append(transform)
