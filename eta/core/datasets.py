@@ -1083,11 +1083,23 @@ class BuilderDataset(object):
     '''
 
     def __init__(self, schema=None):
-        self.records = []
-        self.schema = schema
+        self._records = []
+        self._schema = schema
 
-    def add(self, record):
-        self.records.append(record)
+    def add_record(self, record):
+        self._records.append(record)
+
+    def get_records(self):
+        return self._records
+
+    def set_records(self, records):
+        self._records = records
+
+    def get_schema(self):
+        return self._schema
+
+    def set_schema(self, schema):
+        self._schema = schema
 
 
 class DatasetTransformer(object):
@@ -1110,7 +1122,7 @@ class DatasetTransformer(object):
 
 class Sampler(DatasetTransformer):
     '''
-    Randomly sample the number of entries in the dataset to some number k
+    Randomly sample the number of records in the dataset to some number k
     '''
 
     def __init__(self, k):
@@ -1118,12 +1130,12 @@ class Sampler(DatasetTransformer):
         self.k = k
 
     def transform(self, src):
-        src.set_entries(random.sample(src.get_entries(), self.k))
+        src.set_records(random.sample(src.get_records(), self.k))
 
 
 class Balancer(DatasetTransformer):
     '''
-    Balance the number of entries in the dataset by values in some categorical
+    Balance the number of records in the dataset by values in some categorical
     Attribute, as provided on construction.
     '''
 
@@ -1163,7 +1175,7 @@ class SchemaFilter(DatasetTransformer):
         return segment
 
     def transform(self, src):
-        for record in src.get_entries():
+        for record in src.get_records():
             labels = record.get_labels()
             labels = self._extract_video_labels(record.start_frame,
                                                 record.end_frame, labels)
@@ -1196,7 +1208,7 @@ class LabeledDatasetBuilder(object):
         self._dataset = BuilderDataset(schema=schema)
 
     def add_record(self, record):
-        self._dataset.add(record)
+        self._dataset.add_record(record)
 
     def add_transform(self, transform):
         self.transformers.append(transform)
