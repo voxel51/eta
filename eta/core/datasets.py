@@ -1191,12 +1191,12 @@ class LabeledDatasetBuilder(object):
     sampling, filtering by schema, and balance.
     '''
 
-    def __init__(self):
+    def __init__(self, schema=None):
         self.transformers = []
         self._dataset = BuilderDataset(schema=schema)
 
     def add_record(self, record):
-        self.dataset.add(record)
+        self._dataset.add(record)
 
     def add_transform(self, transform):
         self.transformers.append(transform)
