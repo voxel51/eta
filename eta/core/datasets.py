@@ -1035,6 +1035,9 @@ class LazyLabeledDataRecord(BaseDataRecord):
         validated_path = self.validate_path(self.labels_path)
         return self.labels_cls.from_json(validated_path)
 
+    def set_labels(self, labels):
+        self.labels_obj = labels
+
     def validate_path(self, path):
         '''To be overwritten in subclasses if required by the storage model.
 
@@ -1080,18 +1083,16 @@ class DatasetTransformer(object):
     Basically, strategy pattern
     '''
 
-    def __init__(self, index=LazyLabeledDataset()):
-        self.index = index
-        self.schema = None
-        self.balance_attr = None
-        self.sample_rate = None
+    def __init__(self):
+        raise NotImplementedError("implementation required")
 
-    def transform(self, input):
+    def transform(self, src):
         ''' Transform a TransformableDataset
+
         Args:
-            input (LabeledDatasetBuilder): the input dataset builder
+            src (LabeledDatasetBuilder): the dataset builder
         '''
-        return input
+        raise NotImplementedError("implementation required")
 
 
 class Sampler(DatasetTransformer):
@@ -1103,8 +1104,8 @@ class Sampler(DatasetTransformer):
         super(Sampler, self).__init__()
         self.k = k
 
-    def transform(self, input):
-        input.set_entries(random.sample(input.get_entries(), self.k))
+    def transform(self, src):
+        src.set_entries(random.sample(src.get_entries(), self.k))
 
 
 class Balancer(DatasetTransformer):
@@ -1117,21 +1118,43 @@ class Balancer(DatasetTransformer):
         super(Balancer, self).__init__()
         self.attr = attribute
 
-    def transform(self, input):
+    def transform(self, src):
         # @TODO implement Balancing!!
+        pass
 
 
-class Filter(DatasetTransformer):
+class SchemaFilter(DatasetTransformer):
     '''
     Filter all labels in the dataset by the provided schema
     '''
 
     def __init__(self, schema):
-        super(Filter, self).__init__()
+        super(SchemaFilter, self).__init__()
         self.schema = schema
 
-    def transform(self, input):
-        # @TODO implement filterin!!
+    def _extract_video_labels(self, start_frame, end_frame, labels):
+        segment = etav.VideoLabels(schema=self.schema, filename=labels.filename)
+        for frame_id in range(start_frame, end_frame):
+            frame = labels[frame_id]
+            frame.frame_number = frame.frame_number - start_frame + 1
+            for obj in frame.objects:
+                try:
+                    segment.add_object(obj, frame.frame_number)
+                except etad.AttributeContainerSchemaError as err:
+                    logger.warn(err)
+            for attr in frame.attrs:
+                try:
+                    segment.add_frame_attribute(attr, frame.frame_number)
+                except etad.AttributeContainerSchemaError as err:
+                    logger.warn(err)
+        return segment
+
+    def transform(self, src):
+        for entry in src.get_entries():
+            labels = entry.get_labels()
+            labels = self._extract_video_labels(entry.start_frame,
+                                                entry.end_frame, labels)
+            entry.set_labels(labels)
 
 
 class Clipper(DatasetTransformer):
@@ -1144,8 +1167,9 @@ class Clipper(DatasetTransformer):
         self.stride = stride
         self.min_clip_len = min_clip_len
 
-    def transform(self, input):
-        # @TODO impl me! - Also might want to throw error if data is not video..
+    def transform(self, src):
+        # @TODO impl me! - Also might want to throw error if data is not video.
+        pass
 
 
 class LabeledDatasetBuilder(object):
