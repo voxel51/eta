@@ -1018,7 +1018,6 @@ class LabeledDatasetError(Exception):
     pass
 
 
-################################################################################
 class LazyLabeledDataRecord(BaseDataRecord):
     '''This class is responsible for tracking all of the metadata about a data
     record required for dataset operations on a LazyLabeledDataset.
