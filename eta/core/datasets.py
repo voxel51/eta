@@ -1036,6 +1036,9 @@ class LazyLabeledDataset(object):
     def get_entries(self):
         return self.entries
 
+    def make_dataset(self, path=None):
+        return LabeledDataset(None)
+
 
 class LazyLabeledImageDataset(LazyLabeledDataset):
     '''LazyLabeledDataset for images.'''
@@ -1201,4 +1204,4 @@ class LabeledDatasetBuilder(object):
     def build(self):
         for transformer in self.transformers:
             self.dataset = transformer.transform(self.dataset)
-        return LabeledDataset(None)
+        return self.dataset.make_dataset()
