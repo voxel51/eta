@@ -391,7 +391,7 @@ class LabeledDataset(object):
     def write_manifest(self, filename, description=None):
         '''Writes the manifest to a new file inside the base dataset directory.
 
-        manifest.json is stored in the following format on disk
+        Manifest is stored on disk in the following format
 
         ```
         manifest.json
