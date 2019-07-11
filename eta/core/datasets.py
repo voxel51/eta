@@ -1207,7 +1207,7 @@ class LabeledImageDatasetBuilder(LabeledDatasetBuilder):
         super(LabeledImageDatasetBuilder, self).__init__()
 
 
-class LabeledVideoDataset(LabeledDatasetBuilder):
+class LabeledVideoDatasetBuilder(LabeledDatasetBuilder):
     '''LabeledDatasetBuilder for videos.'''
     def __init__(self, schema=etav.VideoLabelsSchema()):
         super(LabeledVideoDatasetBuilder, self).__init__(schema)
