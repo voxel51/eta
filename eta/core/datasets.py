@@ -1076,7 +1076,7 @@ class LazyLabeledDataRecord(BaseDataRecord):
             path (str)
 
         Returns
-            (str) the validated path
+            str: the validated path
         '''
         return path
 
@@ -1123,9 +1123,10 @@ class DatasetTransformer(object):
     def transform(self, input):
         ''' Transform a TransformableDataset
         Args:
-            input (LazyLabeledDataset): the input dataset
+            input (LazyLabeledDataset): the input lazy dataset
 
         Returns:
+            LazyLabeledDataset: the transformed lazy dataset
         '''
         return input
 
