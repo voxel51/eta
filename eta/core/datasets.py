@@ -1108,6 +1108,12 @@ class BuilderDataRecord(BaseDataRecord):
         self.labels_cls = None
         self.labels_obj = None
 
+    def _write_labels(dir_path, filename, data_ext, pretty_print=False):
+        labels_path = os.path.join(dir_path, filename + ".json")
+        labels = self.get_labels()
+        labels.filename = filename + data_ext
+        labels.write_json(labels_path, pretty_print=pretty_print)
+
     def get_labels(self):
         if self.labels_obj:
             return self.labels_obj
@@ -1152,14 +1158,11 @@ class BuilderImageRecord(BuilderDataRecord):
         self.labels_cls = etai.ImageLabels
 
     def build(self, dir_path, filename, pretty_print=False):
-        data_filename = filename + os.path.splitext(self.data_path)[1]
-        data_path = os.path.join(dir_path, data_filename)
-        etau.copy_file(self.data_path, data_path)
+        data_ext = os.path.splitext(self.data_path)[1]
+        self._write_labels(dir_path, filename, data_ext, pretty_print)
 
-        labels_path = os.path.join(dir_path, filename + ".json")
-        labels = self.get_labels()
-        labels.filename = data_filename
-        labels.write_json(labels_path, pretty_print=False)
+        data_path = os.path.join(dir_path, filename + dataset_ext)
+        etau.copy_file(self.data_path, data_path)
         return self.data_path, self.labels_path
 
 
@@ -1198,24 +1201,22 @@ class BuilderVideoRecord(BuilderDataRecord):
         return self._metadata
 
     def build(self, dir_path, filename, pretty_print=False):
+        data_ext = os.path.splitext(self.data_path)[1]
+        data_filename = filename + data_ext
+        self._write_labels(dir_path, filename, data_ext, pretty_print)
+
         if self.start_frame == 1 and self.end_frame == self.total_frame_count:
-            data_filename = filename + os.path.splitext(self.data_path)[1]
             data_path = os.path.join(dir_path, data_filename)
             etau.copy_file(self.data_path, data_path)
         else:
+            duration = self.end - self.start
             extract_args = (
                 self.data_path,
                 data_path,
                 self.start,
-                self.duration
+                duration
             )
             etav.extract_clip(*extract_args)
-
-        labels_path = os.path.join(dir_path, filename + ".json")
-        labels = self.get_labels()
-        labels.filename = data_filename
-        labels.write_json(labels_path, pretty_print=False)
-
         return data_path, labels_path
 
     @classmethod
