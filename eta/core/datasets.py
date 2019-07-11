@@ -290,24 +290,36 @@ class LabeledDatasetBuilder(object):
     def record_cls(self):
         return self._dataset.record_cls
 
-    def build(self):
+    def build(self, path, description=None):
         for transformer in self._transformers:
             transformer.transform(self._dataset)
-        return LabeledDataset(None)
+
+        dataset = self._DATASET_CLS.create_empty_dataset(path, description)
+
+        with etau.TempDir() as dir_path:
+            for idx, record in enumerate(self._dataset):
+                result = record.build(dir_path, str(idx))
+                dataset.add_file(*result, move_files=True)
+
+        return dataset
 
 
 class LabeledImageDatasetBuilder(LabeledDatasetBuilder):
     '''LabeledDatasetBuilder for images.'''
+
     def __init__(self, schema=etai.ImageLabelsSchema()):
         super(LabeledImageDatasetBuilder, self).__init__()
         self._dataset = BuilderImageDataset(schema=schema)
+        self._DATASET_CLS = LabeledImageDataset
 
 
 class LabeledVideoDatasetBuilder(LabeledDatasetBuilder):
     '''LabeledDatasetBuilder for videos.'''
+
     def __init__(self, schema=etav.VideoLabelsSchema()):
         super(LabeledVideoDatasetBuilder, self).__init__(schema)
         self._dataset = BuilderVideoDataset(schema=schema)
+        self._DATASET_CLS = LabeledVideoDataset
 
 
 class LabeledDataset(object):
@@ -1113,6 +1125,9 @@ class BuilderDataRecord(BaseDataRecord):
     def labels_path(self):
         return self.validate_path(self._labels_path)
 
+    def build(self, dir_path):
+        raise NotImplementedError("implementation required")
+
     def validate_path(self, path):
         '''To be overwritten in subclasses if required by the storage model.
 
@@ -1136,6 +1151,17 @@ class BuilderImageRecord(BuilderDataRecord):
         super(BuilderImageRecord, self).__init__(image_path, labels_path)
         self.labels_cls = etai.ImageLabels
 
+    def build(self, dir_path, filename, pretty_print=False):
+        data_filename = filename + os.path.splitext(self.data_path)[1]
+        data_path = os.path.join(dir_path, data_filename)
+        etau.copy_file(self.data_path, data_path)
+
+        labels_path = os.path.join(dir_path, filename + ".json")
+        labels = self.get_labels()
+        labels.filename = data_filename
+        labels.write_json(labels_path, pretty_print=False)
+        return self.data_path, self.labels_path
+
 
 class BuilderVideoRecord(BuilderDataRecord):
     '''BuilderDataRecord for video.'''
@@ -1145,8 +1171,9 @@ class BuilderVideoRecord(BuilderDataRecord):
                  total_frame_count=None):
         super(BuilderVideoRecord, self).__init__(video_path, labels_path)
         self.start_frame = start_frame
+        self._metadata = None
         if None in [end_frame, duration, total_frame_count]:
-            self._set_video_metadata()
+            self._init_from_video_metadata()
         else:
             self.end_frame = end_frame
             self.duration = duration
@@ -1159,11 +1186,37 @@ class BuilderVideoRecord(BuilderDataRecord):
                                                   self.duration)
         self.labels_cls = etav.VideoLabels
 
-    def _set_video_metadata(self):
-        video_metadata = etav.VideoMetadata.build_for(self.data_path)
-        self.total_frame_count = video_metadata.total_frame_count
-        self.duration = video_metadata.duration
-        self.end_frame = video_metadata.total_frame_count
+    def _init_from_video_metadata(self):
+        self.total_frame_count = self.metadata.total_frame_count
+        self.duration = self.metadata.duration
+        self.end_frame = self.metadata.total_frame_count
+
+    @property
+    def metadata(self):
+        if not self._metadata:
+            self._metadata = etav.VideoMetadata.build_for(self.data_path)
+        return self._metadata
+
+    def build(self, dir_path, filename, pretty_print=False):
+        if self.start_frame == 1 and self.end_frame == self.total_frame_count:
+            data_filename = filename + os.path.splitext(self.data_path)[1]
+            data_path = os.path.join(dir_path, data_filename)
+            etau.copy_file(self.data_path, data_path)
+        else:
+            extract_args = (
+                self.data_path,
+                data_path,
+                self.start,
+                self.duration
+            )
+            etav.extract_clip(*extract_args)
+
+        labels_path = os.path.join(dir_path, filename + ".json")
+        labels = self.get_labels()
+        labels.filename = data_filename
+        labels.write_json(labels_path, pretty_print=False)
+
+        return data_path, labels_path
 
     @classmethod
     def optional(cls):
