@@ -7,6 +7,7 @@ voxel51.com
 Matthew Lightman, matthew@voxel51.com
 Brian Moore, brian@voxel51.com
 Jason Corso, jason@voxel51.com
+Ravali Pinnaka, ravali@voxel51.com
 '''
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
@@ -389,6 +390,24 @@ class LabeledDataset(object):
 
     def write_manifest(self, filename, description=None):
         '''Writes the manifest to a new file inside the base dataset directory.
+
+        manifest.json is stored in the following format on disk
+
+        ```
+        manifest.json
+        {
+            "description": "",
+            "type": "eta.core.datasets.LabeledDataset",
+            ...
+            "index": [
+            {
+                "data": "data/video1.mp4",
+                "labels": "labels/video1.json"
+            },
+                ...
+            ]
+        }
+        ```
 
         This can be used after the dataset index has been manipulated to save
         a new view of the data in a different manifest file.
