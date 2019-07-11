@@ -270,6 +270,46 @@ def _iter_filtered_video_frames(video_dataset, frame_filter, stride):
                 yield frame_img, frame_labels, base_filename
 
 
+class LabeledDatasetBuilder(object):
+    '''
+    This object builds a LabeledDataset with optional transformations such as
+    sampling, filtering by schema, and balance.
+    '''
+
+    def __init__(self, schema=None):
+        self._transformers = []
+        self._dataset = None
+
+    def add_record(self, record):
+        self._dataset.add(record)
+
+    def add_transform(self, transform):
+        self._transformers.append(transform)
+
+    @property
+    def record_cls(self):
+        return self._dataset.record_cls
+
+    def build(self):
+        for transformer in self._transformers:
+            transformer.transform(self._dataset)
+        return LabeledDataset(None)
+
+
+class LabeledImageDatasetBuilder(LabeledDatasetBuilder):
+    '''LabeledDatasetBuilder for images.'''
+    def __init__(self, schema=etai.ImageLabelsSchema()):
+        super(LabeledImageDatasetBuilder, self).__init__()
+        self._dataset = BuilderImageDataset(schema=schema)
+
+
+class LabeledVideoDatasetBuilder(LabeledDatasetBuilder):
+    '''LabeledDatasetBuilder for videos.'''
+    def __init__(self, schema=etav.VideoLabelsSchema()):
+        super(LabeledVideoDatasetBuilder, self).__init__(schema)
+        self._dataset = BuilderVideoDataset(schema=schema)
+
+
 class LabeledDataset(object):
     '''Base class for labeled datasets.'''
 
@@ -337,13 +377,24 @@ class LabeledDataset(object):
             yield self._read_labels(labels_path)
 
     def iter_labels_paths(self):
-        '''Iterates over the paths lables files in the dataset.
+        '''Iterates over the paths labels files in the dataset.
 
         Returns:
             iterator: iterator over paths to labels files
         '''
         for record in self.dataset_index:
             yield os.path.join(self.data_dir, record.labels)
+
+    def iter_paths(self):
+        '''Iterates over the data and labels paths tuple in the dataset.
+
+        Returns:
+            iterator: iterator over paths to labels files
+        '''
+        for record in self.dataset_index:
+            data_path = os.path.join(self.data_dir, record.data)
+            labels_path = os.path.join(self.data_dir, record.labels)
+            yield (data_path, labels_path)
 
     def set_description(self, description):
         '''Set the description string of this dataset.
@@ -788,6 +839,18 @@ class LabeledDataset(object):
         etau.ensure_dir(data_subdir)
         etau.ensure_dir(labels_subdir)
 
+    def builder(self):
+        '''Creates a LabeledDatasetBuilder instance for this dataset for
+        transformations to be run.
+
+        Returns:
+            LabeledDatasetBuilder
+        '''
+        builder = self._BUILDER_CLS()
+        for paths in self.iter_paths():
+            builder.add_record(builder.record_cls(*paths))
+        return builder
+
 
 class LabeledVideoDataset(LabeledDataset):
     '''Core class for interacting with a labeled dataset of videos.
@@ -811,6 +874,8 @@ class LabeledVideoDataset(LabeledDataset):
     Labeled video datasets are referenced in code by their `dataset_path`,
     which points to the `manifest.json` file for the dataset.
     '''
+
+    _BUILDER_CLS = LabeledVideoDatasetBuilder
 
     @classmethod
     def validate_dataset(cls, dataset_path):
@@ -881,6 +946,8 @@ class LabeledImageDataset(LabeledDataset):
     Labeled image datasets are referenced in code by their `dataset_path`,
     which points to the `manifest.json` file for the dataset.
     '''
+
+    _BUILDER_CLS = LabeledImageDatasetBuilder
 
     @classmethod
     def validate_dataset(cls, dataset_path):
@@ -1024,8 +1091,8 @@ class BuilderDataRecord(BaseDataRecord):
     '''
 
     def __init__(self, data_path, labels_path):
-        self.data_path = data_path
-        self.labels_path = labels_path
+        self._data_path = data_path
+        self._labels_path = labels_path
         self.labels_cls = None
         self.labels_obj = None
 
@@ -1038,6 +1105,14 @@ class BuilderDataRecord(BaseDataRecord):
     def set_labels(self, labels):
         self.labels_obj = labels
 
+    @property
+    def data_path(self):
+        return self.validate_path(self._data_path)
+
+    @property
+    def labels_path(self):
+        return self.validate_path(self._labels_path)
+
     def validate_path(self, path):
         '''To be overwritten in subclasses if required by the storage model.
 
@@ -1048,6 +1123,10 @@ class BuilderDataRecord(BaseDataRecord):
             str: the validated path
         '''
         return path
+
+    @classmethod
+    def required(cls):
+        return ["data_path", "labels_path"]
 
 
 class BuilderImageRecord(BuilderDataRecord):
@@ -1061,13 +1140,17 @@ class BuilderImageRecord(BuilderDataRecord):
 class BuilderVideoRecord(BuilderDataRecord):
     '''BuilderDataRecord for video.'''
 
-    def __init__(self, video_path, labels_path, start_frame=None,
-                 end_frame=None, duration=None, total_frame_count=None):
+    def __init__(self, video_path, labels_path, start_frame=1,
+                 end_frame=None, duration=None,
+                 total_frame_count=None):
         super(BuilderVideoRecord, self).__init__(video_path, labels_path)
         self.start_frame = start_frame
-        self.end_frame = end_frame
-        self.duration = duration
-        self.total_frame_count = total_frame_count
+        if None in [end_frame, duration, total_frame_count]:
+            self._set_video_metadata()
+        else:
+            self.end_frame = end_frame
+            self.duration = duration
+            self.total_frame_count = total_frame_count
         self.start = etav.frame_number_to_timestamp(self.start_frame,
                                                     self.total_frame_count,
                                                     self.duration)
@@ -1076,30 +1159,52 @@ class BuilderVideoRecord(BuilderDataRecord):
                                                   self.duration)
         self.labels_cls = etav.VideoLabels
 
+    def _set_video_metadata(self):
+        video_metadata = etav.VideoMetadata.build_for(self.data_path)
+        self.total_frame_count = video_metadata.total_frame_count
+        self.duration = video_metadata.duration
+        self.end_frame = video_metadata.total_frame_count
 
-class BuilderDataset(object):
+    @classmethod
+    def optional(cls):
+        attrs = super(BuilderVideoRecord, cls).optional()
+        attrs += [
+            "start_frame",
+            "end_frame",
+            "duration",
+            "total_frame_count"
+        ]
+        return attrs
+
+
+class BuilderDataset(etad.DataRecords):
     '''A BuilderDataset is managed by a LabeledDatasetBuilder.
     DatasetTransformers operate on BuilderDatasets.
     '''
 
-    def __init__(self, schema=None):
-        self._records = []
-        self._schema = schema
-
-    def add_record(self, record):
-        self._records.append(record)
-
-    def get_records(self):
-        return self._records
-
-    def set_records(self, records):
-        self._records = records
+    def __init__(self, record_cls, schema=None):
+        super(BuilderDataset, self).__init__(record_cls)
+        self.schema = schema
 
     def get_schema(self):
-        return self._schema
+        return self.schema
 
     def set_schema(self, schema):
-        self._schema = schema
+        self.schema = schema
+
+
+class BuilderImageDataset(BuilderDataset):
+    '''A BuilderDataset for images.'''
+
+    def __init__(self, schema=None):
+        super(BuilderImageDataset, self).__init__(BuilderImageRecord, schema)
+
+
+class BuilderVideoDataset(BuilderDataset):
+    '''A BuilderDataset for videos.'''
+
+    def __init__(self, schema=None):
+        super(BuilderVideoDataset, self).__init__(BuilderVideoRecord, schema)
 
 
 class DatasetTransformer(object):
@@ -1195,37 +1300,3 @@ class Clipper(DatasetTransformer):
     def transform(self, src):
         # @TODO impl me! - Also might want to throw error if data is not video.
         pass
-
-
-class LabeledDatasetBuilder(object):
-    '''
-    This object builds a LabeledDataset with optional transformations such as
-    sampling, filtering by schema, and balance.
-    '''
-
-    def __init__(self, schema=None):
-        self.transformers = []
-        self._dataset = BuilderDataset(schema=schema)
-
-    def add_record(self, record):
-        self._dataset.add_record(record)
-
-    def add_transform(self, transform):
-        self.transformers.append(transform)
-
-    def build(self):
-        for transformer in self.transformers:
-            transformer.transform(self._dataset)
-        return LabeledDataset(None)
-
-
-class LabeledImageDatasetBuilder(LabeledDatasetBuilder):
-    '''LabeledDatasetBuilder for images.'''
-    def __init__(self, schema=etai.ImageLabelsSchema()):
-        super(LabeledImageDatasetBuilder, self).__init__()
-
-
-class LabeledVideoDatasetBuilder(LabeledDatasetBuilder):
-    '''LabeledDatasetBuilder for videos.'''
-    def __init__(self, schema=etav.VideoLabelsSchema()):
-        super(LabeledVideoDatasetBuilder, self).__init__(schema)
