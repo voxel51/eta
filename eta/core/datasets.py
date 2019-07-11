@@ -1018,7 +1018,7 @@ class LabeledDatasetError(Exception):
     pass
 
 
-class LazyLabeledDataRecord(BaseDataRecord):
+class BuilderRecord(BaseDataRecord):
     '''This class is responsible for tracking all of the metadata about a data
     record required for dataset operations on a LazyLabeledDataset.
     '''
@@ -1050,7 +1050,7 @@ class LazyLabeledDataRecord(BaseDataRecord):
         return path
 
 
-class LazyLabeledImageRecord(LazyLabeledDataRecord):
+class ImageBuilderRecord(BuilderRecord):
     '''LazyLabeledDataRecord for images.'''
 
     def __init__(self, image_path, labels_path):
@@ -1058,8 +1058,8 @@ class LazyLabeledImageRecord(LazyLabeledDataRecord):
         self.labels_cls = etai.ImageLabels
 
 
-class LazyLabeledVideoRecord(LazyLabeledDataRecord):
-    '''LazyLabeledDataRecord for video.'''
+class VideoBuilderRecord(BuilderRecord):
+    '''BuilderDataRecord for video.'''
 
     def __init__(self, video_path, labels_path, start_frame=None,
                  end_frame=None, duration=None, total_frame_count=None):
@@ -1075,6 +1075,19 @@ class LazyLabeledVideoRecord(LazyLabeledDataRecord):
                                                   self.total_frame_count,
                                                   self.duration)
         self.labels_cls = etav.VideoLabels
+
+
+class BuilderDataset(object):
+    '''A BuilderDataset is managed by a LabeledDatasetBuilder.
+    DatasetTransformers operate on BuilderDatasets.
+    '''
+
+    def __init__(self, schema=None):
+        self.records = []
+        self.schema = schema
+
+    def add(self, record):
+        self.records.append(record)
 
 
 class DatasetTransformer(object):
@@ -1178,26 +1191,19 @@ class LabeledDatasetBuilder(object):
     sampling, filtering by schema, and balance.
     '''
 
-    def __init__(self, schema=None):
+    def __init__(self):
         self.transformers = []
-        self.entries = []
-        self.schema = schema
+        self._dataset = None
 
-    def add_entry(self, entry):
-        self.entries.append(entry)
-
-    def set_entries(self, entries):
-        self.entries = entries
-
-    def get_entries(self):
-        return self.entries
+    def add_record(self, entry):
+        self.dataset.add(entry)
 
     def add_transform(self, transform):
         self.transformers.append(transform)
 
     def build(self):
         for transformer in self.transformers:
-            transformer.transform(self)
+            transformer.transform(self._dataset)
         return LabeledDataset(None)
 
 
@@ -1205,9 +1211,11 @@ class LabeledImageDatasetBuilder(LabeledDatasetBuilder):
     '''LabeledDatasetBuilder for images.'''
     def __init__(self, schema=etai.ImageLabelsSchema()):
         super(LabeledImageDatasetBuilder, self).__init__()
+        self._dataset = BuilderDataset(schema=schema)
 
 
 class LabeledVideoDatasetBuilder(LabeledDatasetBuilder):
     '''LabeledDatasetBuilder for videos.'''
     def __init__(self, schema=etav.VideoLabelsSchema()):
         super(LabeledVideoDatasetBuilder, self).__init__(schema)
+        self._dataset = BuilderDataset(schema=schema)
