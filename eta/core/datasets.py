@@ -1018,43 +1018,9 @@ class LabeledDatasetError(Exception):
     pass
 
 
-################################################################################
-
-
-class LazyLabeledDataset(object):
-    '''A simple collection of LazyLabeledDataRecord objects.'''
-
-    def __init__(self):
-        self.entries = []
-
-    def add_entry(self, entry):
-        self.entries.append(entry)
-
-    def set_entries(self, entries):
-        self.entries = entries
-
-    def get_entries(self):
-        return self.entries
-
-    def make_dataset(self, path=None):
-        return LabeledDataset(None)
-
-
-class LazyLabeledImageDataset(LazyLabeledDataset):
-    '''LazyLabeledDataset for images.'''
-    def __init__(self, schema=etai.ImageLabelsSchema()):
-        super(LazyLabeledImageDataset, self).__init__()
-
-
-class LazyLabeledVideoDataset(LazyLabeledDataset):
-    '''LazyLabeledDataset for videos.'''
-    def __init__(self, schema=etav.VideoLabelsSchema()):
-        super(LazyLabeledVideoDataset, self).__init__()
-
-
-class LazyLabeledDataRecord(BaseDataRecord):
+class BuilderDataRecord(BaseDataRecord):
     '''This class is responsible for tracking all of the metadata about a data
-    record required for dataset operations on a LazyLabeledDataset.
+    record required for dataset operations on a BuilderDataset.
     '''
 
     def __init__(self, data_path, labels_path):
@@ -1084,20 +1050,20 @@ class LazyLabeledDataRecord(BaseDataRecord):
         return path
 
 
-class LazyLabeledImageRecord(LazyLabeledDataRecord):
-    '''LazyLabeledDataRecord for images.'''
+class BuilderImageRecord(BuilderDataRecord):
+    '''BuilderDataRecord for images.'''
 
     def __init__(self, image_path, labels_path):
-        super(LazyLabeledImageRecord, self).__init__(image_path, labels_path)
+        super(BuilderImageRecord, self).__init__(image_path, labels_path)
         self.labels_cls = etai.ImageLabels
 
 
-class LazyLabeledVideoRecord(LazyLabeledDataRecord):
-    '''LazyLabeledDataRecord for video.'''
+class BuilderVideoRecord(BuilderDataRecord):
+    '''BuilderDataRecord for video.'''
 
     def __init__(self, video_path, labels_path, start_frame=None,
                  end_frame=None, duration=None, total_frame_count=None):
-        super(LazyLabeledVideoRecord, self).__init__(video_path, labels_path)
+        super(BuilderVideoRecord, self).__init__(video_path, labels_path)
         self.start_frame = start_frame
         self.end_frame = end_frame
         self.duration = duration
@@ -1111,32 +1077,52 @@ class LazyLabeledVideoRecord(LazyLabeledDataRecord):
         self.labels_cls = etav.VideoLabels
 
 
+class BuilderDataset(object):
+    '''A BuilderDataset is managed by a LabeledDatasetBuilder.
+    DatasetTransformers operate on BuilderDatasets.
+    '''
+
+    def __init__(self, schema=None):
+        self._records = []
+        self._schema = schema
+
+    def add_record(self, record):
+        self._records.append(record)
+
+    def get_records(self):
+        return self._records
+
+    def set_records(self, records):
+        self._records = records
+
+    def get_schema(self):
+        return self._schema
+
+    def set_schema(self, schema):
+        self._schema = schema
+
+
 class DatasetTransformer(object):
     '''
     Object responsible for transforming TransformableDatasets
     Basically, strategy pattern
     '''
 
-    def __init__(self, index=LazyLabeledDataset()):
-        self.index = index
-        self.schema = None
-        self.balance_attr = None
-        self.sample_rate = None
+    def __init__(self):
+        raise NotImplementedError("implementation required")
 
     def transform(self, src):
         ''' Transform a TransformableDataset
-        Args:
-            src (LazyLabeledDataset): the input lazy dataset
 
-        Returns:
-            LazyLabeledDataset: the transformed lazy dataset
+        Args:
+            src (LabeledDatasetBuilder): the dataset builder
         '''
-        return src
+        raise NotImplementedError("implementation required")
 
 
 class Sampler(DatasetTransformer):
     '''
-    Randomly sample the number of entries in the dataset to some number k
+    Randomly sample the number of records in the dataset to some number k
     '''
 
     def __init__(self, k):
@@ -1144,13 +1130,12 @@ class Sampler(DatasetTransformer):
         self.k = k
 
     def transform(self, src):
-        src.set_entries(random.sample(src.get_entries(), self.k))
-        return input
+        src.set_records(random.sample(src.get_records(), self.k))
 
 
 class Balancer(DatasetTransformer):
     '''
-    Balance the number of entries in the dataset by values in some categorical
+    Balance the number of records in the dataset by values in some categorical
     Attribute, as provided on construction.
     '''
 
@@ -1160,7 +1145,7 @@ class Balancer(DatasetTransformer):
 
     def transform(self, src):
         # @TODO implement Balancing!!
-        return src
+        pass
 
 
 class SchemaFilter(DatasetTransformer):
@@ -1190,12 +1175,11 @@ class SchemaFilter(DatasetTransformer):
         return segment
 
     def transform(self, src):
-        for entry in src.get_entries():
-            labels = entry.get_labels()
-            labels = self._extract_video_labels(entry.start_frame,
-                                                entry.end_frame, labels)
-            entry.set_labels(labels)
-        return src
+        for record in src.get_records():
+            labels = record.get_labels()
+            labels = self._extract_video_labels(record.start_frame,
+                                                record.end_frame, labels)
+            record.set_labels(labels)
 
 
 class Clipper(DatasetTransformer):
@@ -1209,8 +1193,8 @@ class Clipper(DatasetTransformer):
         self.min_clip_len = min_clip_len
 
     def transform(self, src):
-        # @TODO impl me! - Also might want to throw error if data is not video..
-        return src
+        # @TODO impl me! - Also might want to throw error if data is not video.
+        pass
 
 
 class LabeledDatasetBuilder(object):
@@ -1219,14 +1203,29 @@ class LabeledDatasetBuilder(object):
     sampling, filtering by schema, and balance.
     '''
 
-    def __init__(self, dataset=LazyLabeledVideoDataset()):
-        self.dataset = dataset
+    def __init__(self, schema=None):
         self.transformers = []
+        self._dataset = BuilderDataset(schema=schema)
+
+    def add_record(self, record):
+        self._dataset.add_record(record)
 
     def add_transform(self, transform):
         self.transformers.append(transform)
 
     def build(self):
         for transformer in self.transformers:
-            self.dataset = transformer.transform(self.dataset)
-        return self.dataset.make_dataset()
+            transformer.transform(self._dataset)
+        return LabeledDataset(None)
+
+
+class LabeledImageDatasetBuilder(LabeledDatasetBuilder):
+    '''LabeledDatasetBuilder for images.'''
+    def __init__(self, schema=etai.ImageLabelsSchema()):
+        super(LabeledImageDatasetBuilder, self).__init__()
+
+
+class LabeledVideoDatasetBuilder(LabeledDatasetBuilder):
+    '''LabeledDatasetBuilder for videos.'''
+    def __init__(self, schema=etav.VideoLabelsSchema()):
+        super(LabeledVideoDatasetBuilder, self).__init__(schema)
