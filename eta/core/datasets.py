@@ -1135,13 +1135,13 @@ class Balancer(DatasetTransformer):
         return src
 
 
-class Filter(DatasetTransformer):
+class SchemaFilter(DatasetTransformer):
     '''
     Filter all labels in the dataset by the provided schema
     '''
 
     def __init__(self, schema):
-        super(Filter, self).__init__()
+        super(SchemaFilter, self).__init__()
         self.schema = schema
 
     def _extract_video_labels(self, start_frame, end_frame, labels):
@@ -1162,7 +1162,7 @@ class Filter(DatasetTransformer):
         return segment
 
     def transform(self, src):
-        for entry in src:
+        for entry in src.get_entries():
             labels = entry.get_labels()
             labels = self._extract_video_labels(entry.start_frame,
                                                 entry.end_frame, labels)
