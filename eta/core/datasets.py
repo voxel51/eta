@@ -1019,39 +1019,6 @@ class LabeledDatasetError(Exception):
 
 
 ################################################################################
-
-
-class LazyLabeledDataset(object):
-    '''A simple collection of LazyLabeledDataRecord objects.'''
-
-    def __init__(self):
-        self.entries = []
-
-    def add_entry(self, entry):
-        self.entries.append(entry)
-
-    def set_entries(self, entries):
-        self.entries = entries
-
-    def get_entries(self):
-        return self.entries
-
-    def make_dataset(self, path=None):
-        return LabeledDataset(None)
-
-
-class LazyLabeledImageDataset(LazyLabeledDataset):
-    '''LazyLabeledDataset for images.'''
-    def __init__(self, schema=etai.ImageLabelsSchema()):
-        super(LazyLabeledImageDataset, self).__init__()
-
-
-class LazyLabeledVideoDataset(LazyLabeledDataset):
-    '''LazyLabeledDataset for videos.'''
-    def __init__(self, schema=etav.VideoLabelsSchema()):
-        super(LazyLabeledVideoDataset, self).__init__()
-
-
 class LazyLabeledDataRecord(BaseDataRecord):
     '''This class is responsible for tracking all of the metadata about a data
     record required for dataset operations on a LazyLabeledDataset.
@@ -1123,10 +1090,7 @@ class DatasetTransformer(object):
     def transform(self, input):
         ''' Transform a TransformableDataset
         Args:
-            input (LazyLabeledDataset): the input lazy dataset
-
-        Returns:
-            LazyLabeledDataset: the transformed lazy dataset
+            input (LabeledDatasetBuilder): the input dataset builder
         '''
         return input
 
@@ -1142,7 +1106,6 @@ class Sampler(DatasetTransformer):
 
     def transform(self, input):
         input.set_entries(random.sample(input.get_entries(), self.k))
-        return input
 
 
 class Balancer(DatasetTransformer):
@@ -1157,7 +1120,6 @@ class Balancer(DatasetTransformer):
 
     def transform(self, input):
         # @TODO implement Balancing!!
-        return input
 
 
 class Filter(DatasetTransformer):
@@ -1171,7 +1133,6 @@ class Filter(DatasetTransformer):
 
     def transform(self, input):
         # @TODO implement filterin!!
-        return input
 
 
 class Clipper(DatasetTransformer):
@@ -1186,7 +1147,6 @@ class Clipper(DatasetTransformer):
 
     def transform(self, input):
         # @TODO impl me! - Also might want to throw error if data is not video..
-        return input
 
 
 class LabeledDatasetBuilder(object):
@@ -1195,14 +1155,36 @@ class LabeledDatasetBuilder(object):
     sampling, filtering by schema, and balance.
     '''
 
-    def __init__(self, dataset=LazyLabeledVideoDataset()):
-        self.dataset = dataset
+    def __init__(self, schema=None):
         self.transformers = []
+        self.entries = []
+        self.schema = schema
+
+    def add_entry(self, entry):
+        self.entries.append(entry)
+
+    def set_entries(self, entries):
+        self.entries = entries
+
+    def get_entries(self):
+        return self.entries
 
     def add_transform(self, transform):
         self.transformers.append(transform)
 
     def build(self):
         for transformer in self.transformers:
-            self.dataset = transformer.transform(self.dataset)
-        return self.dataset.make_dataset()
+            transformer.transform(self)
+        return LabeledDataset(None)
+
+
+class LabeledImageDatasetBuilder(LabeledDatasetBuilder):
+    '''LabeledDatasetBuilder for images.'''
+    def __init__(self, schema=etai.ImageLabelsSchema()):
+        super(LabeledImageDatasetBuilder, self).__init__()
+
+
+class LabeledVideoDataset(LabeledDatasetBuilder):
+    '''LabeledDatasetBuilder for videos.'''
+    def __init__(self, schema=etav.VideoLabelsSchema()):
+        super(LabeledVideoDatasetBuilder, self).__init__(schema)
