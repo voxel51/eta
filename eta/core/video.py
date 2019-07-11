@@ -891,6 +891,22 @@ class VideoLabels(Serializable):
         self.schema = schema
         self._validate_schema()
 
+    def set_schema_and_filter(self, schema):
+        ''' Sets the schema and actively filters out labels that are not
+        compliant with the provided schema.  This destructively modifies this
+        instance.
+
+        Args:
+            schema (VideoLabelsSchema): schema to set on this labels object
+
+        Raises:
+            AttributeContainerSchemaError: if schema filtering failed to filter
+            all labels into compliance
+        '''
+        self.schema = schema
+        self._filter_by_schema()
+        self._validate_schema()
+
     def freeze_schema(self):
         '''Sets the enforced schema for the video to the current active
         schema.
@@ -945,6 +961,47 @@ class VideoLabels(Serializable):
                 self._validate_video_attribute(video_attr)
             for frame_labels in itervalues(self.frames):
                 self._validate_frame_labels(frame_labels)
+
+    def _filter_by_schema(self):
+        if self.has_schema:
+            self._filter_video_attributes()
+            for frame_key, frame_labels in iteritems(self.frames):
+                self.frames[frame_key] = self._filter_frame_labels(frame_labels)
+
+    def _filter_video_attributes(self):
+        attr_container = AttributeContainer()
+        for attr in self.attrs:
+            if self.schema.has_video_attribute(attr.name):
+                attr_container.add(attr)
+        self.attrs = attr_container
+
+    def _filter_frame_labels(self, frame_labels):
+        attr_container = AttributeContainer()
+        for attr in frame_labels.attrs:
+            if self.schema.has_frame_attribute(attr.name):
+                attr_container.add(attr)
+        frame_labels.attrs = attr_container
+        frame_labels.objects = self._filter_objects(frame_labels.objects)
+        return frame_labels
+
+    def _filter_objects(self, objects):
+        objects_filtered = DetectedObjectContainer()
+        for obj in objects:
+            if self._filter_object(obj):
+                if obj.has_attributes:
+                    attr_container = AttributeContainer()
+                    for attr in obj.attrs:
+                        if self._filter_object_attr(obj, attr):
+                            attr_container.add(attr)
+                    obj.attrs = attr_container
+                objects_filtered.add(obj)
+        return objects_filtered
+
+    def _filter_object(self, obj):
+        return obj.label in self.schema.objects
+
+    def _filter_object_attr(self, obj, attr):
+        return self.schema.objects[obj.label].has_attribute(attr.name)
 
     @classmethod
     def from_detected_objects(cls, objects):
@@ -1026,7 +1083,7 @@ class VideoLabelsSchema(Serializable):
         '''Returns True/False if the schema has a video attribute with the
         given name.
         '''
-        return self.attrs.hass_attribute(video_attr_name)
+        return self.attrs.has_attribute(video_attr_name)
 
     def get_video_attribute_class(self, video_attr_name):
         '''Gets the Attribute class for the video attribute with the given

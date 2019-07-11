@@ -38,7 +38,8 @@ import cv2
 import numpy as np
 
 import eta
-from eta.core.data import AttributeContainer, AttributeContainerSchema
+from eta.core.data import AttributeContainer, AttributeContainerSchema, \
+    AttributeContainerSchemaError
 from eta.core.objects import DetectedObjectContainer
 from eta.core.serial import Serializable
 import eta.core.utils as etau
@@ -313,7 +314,8 @@ class ImageLabels(Serializable):
             the image
     '''
 
-    def __init__(self, filename=None, metadata=None, attrs=None, objects=None):
+    def __init__(self, filename=None, metadata=None, attrs=None, objects=None,
+                 schema=None):
         '''Constructs an ImageLabels instance.
 
         Args:
@@ -325,11 +327,13 @@ class ImageLabels(Serializable):
             objects: an optional DetectedObjectContainer of detected objects
                 for the image. By default, an empty DetectedObjectContainer is
                 created
+            schema: an optional ImageLabelsSchema
         '''
         self.filename = filename
         self.metadata = metadata
         self.attrs = attrs or AttributeContainer()
         self.objects = objects or DetectedObjectContainer()
+        self.schema = schema
 
     def add_image_attribute(self, attr):
         '''Adds the attribute to the image.
@@ -367,6 +371,51 @@ class ImageLabels(Serializable):
         '''Merges the ImageLabels into this object.'''
         self.add_image_attributes(image_labels.attrs)
         self.add_objects(image_labels.objects)
+
+    @property
+    def has_schema(self):
+        '''Returns True/False whether the container has a schema.'''
+        return self.schema is not None
+
+    def set_schema_and_filter(self, schema):
+        ''' Filters this label object by the provided schema
+        Args:
+            schema (ImageLabelsSchema): schema to set and filter by
+        '''
+        self.schema = schema
+        self._filter_by_schema()
+
+    def _filter_by_schema(self):
+        if self.has_schema:
+            self._filter_image_attributes()
+            self._filter_objects()
+
+    def _filter_image_attributes(self):
+        attr_container = AttributeContainer()
+        for attr in self.attrs:
+            if self.schema.has_image_attribute(attr.name):
+                attr_container.add(attr)
+        self.attrs = attr_container
+
+    def _filter_objects(self):
+        objects = DetectedObjectContainer()
+        for obj in self.objects:
+            if self._filter_object(obj):
+                objects.add(obj)
+        self.objects = objects
+        for obj in self.objects:
+            if obj.has_attributes:
+                obj_attr_container = AttributeContainer()
+                for attr in obj.attrs:
+                    if self._filter_object_attr(obj, attr):
+                        obj_attr_container.add(attr)
+                obj.attrs = obj_attr_container
+
+    def _filter_object(self, obj):
+        return obj.label in self.schema.objects
+
+    def _filter_object_attr(self, obj, attr):
+        return self.schema.objects[obj.label].has_attribute(attr.name)
 
     def attributes(self):
         '''Returns the list of class attributes that will be serialized.'''
@@ -522,7 +571,7 @@ class ImageLabelsSchema(Serializable):
         try:
             self.validate_image_attribute(image_attr)
             return True
-        except:
+        except AttributeContainerSchemaError:
             return False
 
     def is_valid_object_label(self, label):
@@ -532,7 +581,7 @@ class ImageLabelsSchema(Serializable):
         try:
             self.validate_object_label(label)
             return True
-        except:
+        except AttributeContainerSchemaError:
             return False
 
     def is_valid_object_attribute(self, label, obj_attr):
@@ -542,7 +591,7 @@ class ImageLabelsSchema(Serializable):
         try:
             self.validate_object_attribute(label, obj_attr)
             return True
-        except:
+        except AttributeContainerSchemaError:
             return False
 
     def is_valid_object(self, obj):
@@ -552,7 +601,7 @@ class ImageLabelsSchema(Serializable):
         try:
             self.validate_object(obj)
             return True
-        except:
+        except AttributeContainerSchemaError:
             return False
 
     def validate_image_attribute(self, image_attr):
