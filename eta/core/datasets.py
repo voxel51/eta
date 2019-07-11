@@ -1021,10 +1021,8 @@ class LabeledDatasetError(Exception):
 ################################################################################
 
 
-class LazyTransformableDataset(object):
-    '''
-    A simple collection of LazyLabeledDataEntry objects
-    '''
+class LazyLabeledDataset(object):
+    '''A simple collection of LazyLabeledDataRecord objects.'''
 
     def __init__(self):
         self.entries = []
@@ -1038,53 +1036,76 @@ class LazyTransformableDataset(object):
     def get_entries(self):
         return self.entries
 
+    def make_dataset(self, path=None):
+        return LabeledDataset(None)
 
-class LazyLabeledDataEntry(object):
-    '''
-    This class is responsible for tracking all of the metadata transform operations
-    and should a file be required, it will load it from the provided resource
-    and keep this in memory-cached so future calls for this resource will use the object
-     in memory!
+
+class LazyLabeledImageDataset(LazyLabeledDataset):
+    '''LazyLabeledDataset for images.'''
+    def __init__(self, schema=etai.ImageLabelsSchema()):
+        super(LazyLabeledImageDataset, self).__init__()
+
+
+class LazyLabeledVideoDataset(LazyLabeledDataset):
+    '''LazyLabeledDataset for videos.'''
+    def __init__(self, schema=etav.VideoLabelsSchema()):
+        super(LazyLabeledVideoDataset, self).__init__()
+
+
+class LazyLabeledDataRecord(BaseDataRecord):
+    '''This class is responsible for tracking all of the metadata about a data
+    record required for dataset operations on a LazyLabeledDataset.
     '''
 
-    def __init__(self, data_path, label_path):
-        self.label_path = label_path
+    def __init__(self, data_path, labels_path):
         self.data_path = data_path
-
-        self.label_obj = None
+        self.labels_path = labels_path
         self.labels_cls = None
+        self.labels_obj = None
 
     def get_labels(self):
-        if self.label_obj:
-            return self.label_obj
-        # @TODO - load me and store labels
-        raise NotImplementedError()
+        if self.labels_obj:
+            return self.labels_obj
+        validated_path = self.validate_path(self.labels_path)
+        return self.labels_cls.from_json(validated_path)
+
+    def validate_path(self, path):
+        '''To be overwritten in subclasses if required by the storage model.
+
+        Args:
+            path (str)
+
+        Returns
+            str: the validated path
+        '''
+        return path
 
 
-class LazyLabeledVideoEntry(LazyLabeledDataEntry):
-    '''
-    This class is responsible for tracking all of the metadata transform operations
-    and should a file be required, it will load it from the provided resource
-    and keep this in memory-cached so future calls for this resource will use the object
-     in memory!
-    '''
+class LazyLabeledImageRecord(LazyLabeledDataRecord):
+    '''LazyLabeledDataRecord for images.'''
 
-    def __init__(self, data_path, label_path, duration, start_frame, end_frame,
-                 total_frame_count):
-        super(LazyLabeledVideoEntry, self).__init__(data_path, label_path)
-        self.start = etav.frame_number_to_timestamp(start_frame,
-                                                    total_frame_count, duration)
-        self.end = etav.frame_number_to_timestamp(end_frame, total_frame_count,
-                                                  duration)
+    def __init__(self, image_path, labels_path):
+        super(LazyLabeledImageRecord, self).__init__(image_path, labels_path)
+        self.labels_cls = etai.ImageLabels
+
+
+class LazyLabeledVideoRecord(LazyLabeledDataRecord):
+    '''LazyLabeledDataRecord for video.'''
+
+    def __init__(self, video_path, labels_path, start_frame=None,
+                 end_frame=None, duration=None, total_frame_count=None):
+        super(LazyLabeledVideoRecord, self).__init__(video_path, labels_path)
         self.start_frame = start_frame
         self.end_frame = end_frame
-        self.total_frames = total_frame_count
-
-    def get_labels(self):
-        if self.label_obj:
-            return self.label_obj
-        # @TODO - Handle file reading from ANY SOURCE!!! (path may not be local)
-        return etav.VideoLabels.from_json(self.label_path)
+        self.duration = duration
+        self.total_frame_count = total_frame_count
+        self.start = etav.frame_number_to_timestamp(self.start_frame,
+                                                    self.total_frame_count,
+                                                    self.duration)
+        self.end = etav.frame_number_to_timestamp(self.end_frame,
+                                                  self.total_frame_count,
+                                                  self.duration)
+        self.labels_cls = etav.VideoLabels
 
 
 class DatasetTransformer(object):
@@ -1093,12 +1114,19 @@ class DatasetTransformer(object):
     Basically, strategy pattern
     '''
 
+    def __init__(self, index=LazyLabeledDataset()):
+        self.index = index
+        self.schema = None
+        self.balance_attr = None
+        self.sample_rate = None
+
     def transform(self, input):
         ''' Transform a TransformableDataset
         Args:
-            input (LazyTransformableDataset): the input dataset
+            input (LazyLabeledDataset): the input lazy dataset
 
         Returns:
+            LazyLabeledDataset: the transformed lazy dataset
         '''
         return input
 
@@ -1167,7 +1195,7 @@ class LabeledDatasetBuilder(object):
     sampling, filtering by schema, and balance.
     '''
 
-    def __init__(self, dataset=LazyTransformableDataset()):
+    def __init__(self, dataset=LazyLabeledVideoDataset()):
         self.dataset = dataset
         self.transformers = []
 
@@ -1177,4 +1205,4 @@ class LabeledDatasetBuilder(object):
     def build(self):
         for transformer in self.transformers:
             self.dataset = transformer.transform(self.dataset)
-        return LabeledDataset(None)
+        return self.dataset.make_dataset()
