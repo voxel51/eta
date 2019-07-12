@@ -7,6 +7,7 @@ voxel51.com
 Matthew Lightman, matthew@voxel51.com
 Brian Moore, brian@voxel51.com
 Jason Corso, jason@voxel51.com
+Ravali Pinnaka, ravali@voxel51.com
 '''
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
@@ -300,7 +301,21 @@ def _iter_filtered_video_frames(video_dataset, frame_filter, stride):
 
 
 class LabeledDataset(object):
-    '''Base class for labeled datasets.'''
+    '''Base class for labeled datasets.
+
+    Labeled datasets are stored on disk in the following format:
+
+    ```
+    /path/to/dataset/
+        manifest.json
+        data/
+            image1.png (or) video1.mp4
+            ...
+        labels/
+            image1.json (or) video1.json
+            ...
+    ```
+    '''
 
     def __init__(self, dataset_path):
         '''Creates a LabeledDataset instance.
@@ -957,6 +972,24 @@ class LabeledImageDataset(LabeledDataset):
 
 class LabeledDatasetIndex(Serializable):
     '''A class that encapsulates the manifest of a `LabeledDataset`.
+
+    Manifest is stored on disk in the following format:
+
+    ```
+        manifest.json
+        {
+            "description": "",
+            "type": "eta.core.datasets.LabeledDataset",
+            ...
+            "index": [
+            {
+                "data": "data/video1.mp4",
+                "labels": "labels/video1.json"
+            },
+                ...
+            ]
+        }
+    ```
 
     Attributes:
         type: the fully qualified class name of the `LabeledDataset` subclass
