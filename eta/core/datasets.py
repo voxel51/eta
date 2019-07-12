@@ -1190,6 +1190,17 @@ class BuilderVideoRecord(BuilderDataRecord):
                                                   self.duration)
         self.labels_cls = etav.VideoLabels
 
+    def _extract_video_labels(self):
+        start_frame, end_frame = (self.start_frame, self.end_frame)
+        segment = etav.VideoLabels()
+        labels = self.get_labels()
+        for frame_id in range(start_frame, end_frame):
+            frame = labels[frame_id]
+            frame.frame_number = frame.frame_number - start_frame + 1
+            segment.add_objects(frame.objects, frame.frame_number)
+            segment.add_frame_attributes(frame.attrs, frame.frame_number)
+        self.set_labels(segment)
+
     def _init_from_video_metadata(self):
         metadata = etav.VideoMetadata.build_for(self.data_path)
         self.total_frame_count = metadata.total_frame_count
@@ -1197,6 +1208,7 @@ class BuilderVideoRecord(BuilderDataRecord):
         self.end_frame = metadata.total_frame_count
 
     def build(self, dir_path, filename, pretty_print=False):
+        self._extract_video_labels()
         args = (dir_path, filename, pretty_print)
         data_path, labels_path = super(BuilderVideoRecord, self).build(*args)
 
