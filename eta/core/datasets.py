@@ -279,7 +279,7 @@ class LabeledDatasetBuilder(object):
     _DATASET_CLS_FIELD = None
     _BUILDER_DATASET_CLS_FIELD = None
 
-    def __init__(self, builder_dataset_cls):
+    def __init__(self):
         self._transformers = []
         self._dataset = etau.get_class(self._BUILDER_DATASET_CLS_FIELD)()
 
@@ -1110,8 +1110,7 @@ class BuilderDataRecord(BaseDataRecord):
     def get_labels(self):
         if self.labels_obj:
             return self.labels_obj
-        validated_path = self.validate_path(self.labels_path)
-        return self.labels_cls.from_json(validated_path)
+        return self.labels_cls.from_json(self.labels_path)
 
     def set_labels(self, labels):
         self.labels_obj = labels
@@ -1159,28 +1158,22 @@ class BuilderImageRecord(BuilderDataRecord):
 class BuilderVideoRecord(BuilderDataRecord):
     '''BuilderDataRecord for video.'''
 
-    def __init__(self, video_path, labels_path, start_frame=1,
-                 end_frame=None, duration=None,
+    def __init__(self,video_path, labels_path, clip_start_frame=1,
+                 clip_end_frame=None, duration=None,
                  total_frame_count=None):
         super(BuilderVideoRecord, self).__init__(video_path, labels_path)
-        self.start_frame = start_frame
+        self.clip_start_frame = clip_start_frame
         self._metadata = None
-        if None in [end_frame, duration, total_frame_count]:
+        if None in [clip_end_frame, duration, total_frame_count]:
             self._init_from_video_metadata()
         else:
-            self.end_frame = end_frame
+            self.clip_end_frame = clip_end_frame
             self.duration = duration
             self.total_frame_count = total_frame_count
-        self.start = etav.frame_number_to_timestamp(self.start_frame,
-                                                    self.total_frame_count,
-                                                    self.duration)
-        self.end = etav.frame_number_to_timestamp(self.end_frame,
-                                                  self.total_frame_count,
-                                                  self.duration)
         self.labels_cls = etav.VideoLabels
 
     def _extract_video_labels(self):
-        start_frame, end_frame = (self.start_frame, self.end_frame)
+        start_frame, end_frame = (self.clip_start_frame, self.clip_end_frame)
         segment = etav.VideoLabels()
         labels = self.get_labels()
         for frame_id in range(start_frame, end_frame):
@@ -1194,17 +1187,24 @@ class BuilderVideoRecord(BuilderDataRecord):
         metadata = etav.VideoMetadata.build_for(self.data_path)
         self.total_frame_count = metadata.total_frame_count
         self.duration = metadata.duration
-        self.end_frame = metadata.total_frame_count
+        self.clip_end_frame = metadata.total_frame_count
 
     def build(self, dir_path, filename, pretty_print=False):
         self._extract_video_labels()
         args = (dir_path, filename, pretty_print)
         data_path, labels_path = super(BuilderVideoRecord, self).build(*args)
+        start_frame, end_frame = (self.clip_start_frame, self.clip_end_frame)
+        start = etav.frame_number_to_timestamp(self.clip_start_frame,
+                                               self.total_frame_count,
+                                               self.duration)
+        end = etav.frame_number_to_timestamp(self.clip_end_frame,
+                                             self.total_frame_count,
+                                             self.duration)
 
-        if self.start_frame == 1 and self.end_frame == self.total_frame_count:
+        if start_frame == 1 and end_frame == self.total_frame_count:
             etau.copy_file(self.data_path, data_path)
         else:
-            duration = self.end - self.start
+            duration = end - start
             extract_args = (
                 self.data_path,
                 data_path,
