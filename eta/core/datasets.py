@@ -1310,8 +1310,8 @@ class Balancer(DatasetTransformer):
 
     def transform(self, src):
         # @TODO implement Balancing!!
-        old_records = dataset.records
-        dataset.clear()
+        old_records = src.records
+        src.clear()
         pass
 
 
@@ -1342,7 +1342,7 @@ class SchemaFilter(DatasetTransformer):
         return segment
 
     def transform(self, src):
-        for record in src.get_records():
+        for record in src:
             labels = record.get_labels()
             labels = self._extract_video_labels(record.start_frame,
                                                 record.end_frame, labels)
@@ -1359,11 +1359,11 @@ class Clipper(DatasetTransformer):
         self.stride = stride
         self.min_clip_len = min_clip_len
 
-    def transform(self, dataset):
-        if not isinstance(records, BuilderVideoDataset):
+    def transform(self, src):
+        if not isinstance(src, BuilderVideoDataset):
             raise DatasetTransformerError()
-        old_records = dataset.records
-        dataset.clear()
+        old_records = src.records
+        src.clear()
         # @TODO impl me! - Also might want to throw error if data is not video.
 
 
