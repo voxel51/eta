@@ -276,9 +276,12 @@ class LabeledDatasetBuilder(object):
     sampling, filtering by schema, and balance.
     '''
 
-    def __init__(self, schema=None):
+    _DATASET_CLS_FIELD = None
+    _BUILDER_DATASET_CLS_FIELD = None
+
+    def __init__(self, builder_dataset_cls):
         self._transformers = []
-        self._dataset = None
+        self._dataset = etau.get_class(self._BUILDER_DATASET_CLS_FIELD)()
 
     def add_record(self, record):
         self._dataset.add(record)
@@ -294,7 +297,8 @@ class LabeledDatasetBuilder(object):
         for transformer in self._transformers:
             transformer.transform(self._dataset)
 
-        dataset = self._DATASET_CLS.create_empty_dataset(path, description)
+        dataset_cls = etau.get_class(self._DATASET_CLS_FIELD)
+        dataset = dataset_cls.create_empty_dataset(path, description)
 
         with etau.TempDir() as dir_path:
             for idx, record in enumerate(self._dataset):
@@ -307,19 +311,15 @@ class LabeledDatasetBuilder(object):
 class LabeledImageDatasetBuilder(LabeledDatasetBuilder):
     '''LabeledDatasetBuilder for images.'''
 
-    def __init__(self, schema=etai.ImageLabelsSchema()):
-        super(LabeledImageDatasetBuilder, self).__init__()
-        self._dataset = BuilderImageDataset(schema=schema)
-        self._DATASET_CLS = LabeledImageDataset
+    _DATASET_CLS_FIELD = "eta.core.datasets.LabeledImageDataset"
+    _BUILDER_DATASET_CLS_FIELD = "eta.core.datasets.BuilderImageDataset"
 
 
 class LabeledVideoDatasetBuilder(LabeledDatasetBuilder):
     '''LabeledDatasetBuilder for videos.'''
 
-    def __init__(self, schema=etav.VideoLabelsSchema()):
-        super(LabeledVideoDatasetBuilder, self).__init__(schema)
-        self._dataset = BuilderVideoDataset(schema=schema)
-        self._DATASET_CLS = LabeledVideoDataset
+    _DATASET_CLS_FIELD = "eta.core.datasets.LabeledVideoDataset"
+    _BUILDER_DATASET_CLS_FIELD = "eta.core.datasets.BuilderVideoDataset"
 
 
 class LabeledDataset(object):
@@ -1118,11 +1118,11 @@ class BuilderDataRecord(BaseDataRecord):
 
     @property
     def data_path(self):
-        return self.validate_path(self._data_path)
+        return self._data_path
 
     @property
     def labels_path(self):
-        return self.validate_path(self._labels_path)
+        return self._labels_path
 
     def build(self, dir_path, filename, pretty_print=False):
         labels_path = os.path.join(dir_path, filename + ".json")
@@ -1135,17 +1135,6 @@ class BuilderDataRecord(BaseDataRecord):
         labels.write_json(labels_path, pretty_print=pretty_print)
 
         return data_path, labels_path
-
-    def validate_path(self, path):
-        '''To be overwritten in subclasses if required by the storage model.
-
-        Args:
-            path (str)
-
-        Returns
-            str: the validated path
-        '''
-        return path
 
     @classmethod
     def required(cls):
@@ -1256,8 +1245,8 @@ class BuilderDataset(etad.DataRecords):
 class BuilderImageDataset(BuilderDataset):
     '''A BuilderDataset for images.'''
 
-    def __init__(self, schema=None):
-        super(BuilderImageDataset, self).__init__(BuilderImageRecord, schema)
+    def __init__(self, record_cls=BuilderImageRecord, schema=None):
+        super(BuilderImageDataset, self).__init__(record_cls, schema)
 
 
 class BuilderVideoDataset(BuilderDataset):
