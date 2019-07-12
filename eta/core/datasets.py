@@ -391,24 +391,6 @@ class LabeledDataset(object):
     def write_manifest(self, filename, description=None):
         '''Writes the manifest to a new file inside the base dataset directory.
 
-        Manifest is stored on disk in the following format
-
-        ```
-        manifest.json
-        {
-            "description": "",
-            "type": "eta.core.datasets.LabeledDataset",
-            ...
-            "index": [
-            {
-                "data": "data/video1.mp4",
-                "labels": "labels/video1.json"
-            },
-                ...
-            ]
-        }
-        ```
-
         This can be used after the dataset index has been manipulated to save
         a new view of the data in a different manifest file.
 
@@ -976,6 +958,24 @@ class LabeledImageDataset(LabeledDataset):
 
 class LabeledDatasetIndex(Serializable):
     '''A class that encapsulates the manifest of a `LabeledDataset`.
+
+    Manifest is stored on disk in the following format
+
+    ```
+        manifest.json
+        {
+            "description": "",
+            "type": "eta.core.datasets.LabeledDataset",
+            ...
+            "index": [
+            {
+                "data": "data/video1.mp4",
+                "labels": "labels/video1.json"
+            },
+                ...
+            ]
+        }
+    ```
 
     Attributes:
         type: the fully qualified class name of the `LabeledDataset` subclass
