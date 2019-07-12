@@ -1229,6 +1229,9 @@ class BuilderVideoRecord(BuilderDataRecord):
 class BuilderDataset(etad.DataRecords):
     '''A BuilderDataset is managed by a LabeledDatasetBuilder.
     DatasetTransformers operate on BuilderDatasets.
+
+    Inheritance chain:
+        etad.DataRecords <- etad.DataContainer <- eta.serial.Container
     '''
 
     def __init__(self, record_cls, schema=None):
