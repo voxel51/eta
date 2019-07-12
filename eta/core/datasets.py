@@ -1310,6 +1310,8 @@ class Balancer(DatasetTransformer):
 
     def transform(self, src):
         # @TODO implement Balancing!!
+        old_records = dataset.records
+        dataset.clear()
         pass
 
 
@@ -1357,6 +1359,14 @@ class Clipper(DatasetTransformer):
         self.stride = stride
         self.min_clip_len = min_clip_len
 
-    def transform(self, src):
+    def transform(self, dataset):
+        if not isinstance(records, BuilderVideoDataset):
+            raise DatasetTransformerError()
+        old_records = dataset.records
+        dataset.clear()
         # @TODO impl me! - Also might want to throw error if data is not video.
-        pass
+
+
+class DatasetTransformerError(Exception):
+    '''Exception raised when there is an error in a DatasetTransformer'''
+    pass
