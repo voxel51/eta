@@ -301,7 +301,21 @@ def _iter_filtered_video_frames(video_dataset, frame_filter, stride):
 
 
 class LabeledDataset(object):
-    '''Base class for labeled datasets.'''
+    '''Base class for labeled datasets.
+
+    Labeled datasets are stored on disk in the following format:
+
+    ```
+    /path/to/dataset/
+        manifest.json
+        data/
+            image1.png (or) video1.mp4
+            ...
+        labels/
+            image1.json (or) video1.json
+            ...
+    ```
+    '''
 
     def __init__(self, dataset_path):
         '''Creates a LabeledDataset instance.
@@ -959,7 +973,7 @@ class LabeledImageDataset(LabeledDataset):
 class LabeledDatasetIndex(Serializable):
     '''A class that encapsulates the manifest of a `LabeledDataset`.
 
-    Manifest is stored on disk in the following format
+    Manifest is stored on disk in the following format:
 
     ```
         manifest.json
