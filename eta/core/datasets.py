@@ -1358,5 +1358,5 @@ class Clipper(DatasetTransformer):
         self.min_clip_len = min_clip_len
 
     def transform(self, src):
-        # @TODO implement Clipping!!
+        # @TODO impl me! - Also might want to throw error if data is not video.
         pass
