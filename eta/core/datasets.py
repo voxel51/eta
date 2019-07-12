@@ -1265,14 +1265,11 @@ class DatasetTransformer(object):
     Basically, strategy pattern
     '''
 
-    def __init__(self):
-        raise NotImplementedError("implementation required")
-
     def transform(self, src):
         ''' Transform a TransformableDataset
 
         Args:
-            src (LabeledDatasetBuilder): the dataset builder
+            src (BuilderDataset): the dataset builder
         '''
         raise NotImplementedError("implementation required")
 
@@ -1287,7 +1284,11 @@ class Sampler(DatasetTransformer):
         self.k = k
 
     def transform(self, src):
-        src.set_records(random.sample(src.get_records(), self.k))
+        try:
+            return src.extract_inds(random.sample(range(len(src)), self.k))
+        except ValueError as err:
+            raise DatasetTransformerError(err.message)
+        return src
 
 
 class Balancer(DatasetTransformer):
