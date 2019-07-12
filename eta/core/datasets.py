@@ -403,9 +403,8 @@ class LabeledDataset(object):
         Returns:
             iterator: iterator over paths to labels files
         '''
-        for record in self.dataset_index:
-            data_path = os.path.join(self.data_dir, record.data)
-            labels_path = os.path.join(self.data_dir, record.labels)
+        paths = zip(self.iter_data_paths(), self.iter_labels_paths())
+        for data_path, labels_path in paths:
             yield (data_path, labels_path)
 
     def set_description(self, description):
@@ -1347,5 +1346,5 @@ class Clipper(DatasetTransformer):
         self.min_clip_len = min_clip_len
 
     def transform(self, src):
-        # @TODO impl me! - Also might want to throw error if data is not video.
+        # @TODO implement Clipping!!
         pass
