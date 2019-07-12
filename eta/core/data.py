@@ -510,9 +510,11 @@ class AttributeContainer(DataContainer):
         return _attrs
 
     def _filter_by_schema(self):
-        self.attrs = [attr for attr in self.attrs if
-                      self.schema.has_attribute(attr.name) and
-                      self.schema.schema[attr.name].is_valid_value(attr.value)]
+        def filter_func(attr):
+            return self.schema.has_attribute(attr.name) and self.schema.schema[
+                attr.name].is_valid_value(attr.value)
+
+        self.attrs = self.get_matches([filter_func])
 
     def _validate_attribute(self, attr):
         if self.has_schema:
