@@ -479,9 +479,17 @@ class AttributeContainer(DataContainer):
         '''
         return AttributeContainerSchema.build_active_schema(self)
 
-    def set_schema(self, schema):
-        '''Sets the enforced schema to the given AttributeContainerSchema.'''
+    def set_schema(self, schema, filter_by_schema=False):
+        '''Sets the enforced schema to the given AttributeContainerSchema.
+
+        Args:
+            schema (AttributeContainerSchema): schema to set
+            filter_by_schema (bool): true will run filtering with the provided
+                                     schema.
+        '''
         self.schema = schema
+        if filter_by_schema and self.has_schema:
+            self._filter_by_schema()
         self._validate_schema()
 
     def freeze_schema(self):
@@ -500,6 +508,11 @@ class AttributeContainer(DataContainer):
         if self.has_schema:
             _attrs.append("schema")
         return _attrs
+
+    def _filter_by_schema(self):
+        self.attrs = [attr for attr in self.attrs if
+                      self.schema.has_attribute(attr.name) and
+                      self.schema.schema[attr.name].is_valid_value(attr.value)]
 
     def _validate_attribute(self, attr):
         if self.has_schema:

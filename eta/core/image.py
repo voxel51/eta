@@ -372,50 +372,33 @@ class ImageLabels(Serializable):
         self.add_image_attributes(image_labels.attrs)
         self.add_objects(image_labels.objects)
 
-    @property
-    def has_schema(self):
-        '''Returns True/False whether the container has a schema.'''
-        return self.schema is not None
-
-    def set_schema_and_filter(self, schema):
+    def filter_by_schema(self, schema):
         ''' Filters this label object by the provided schema
         Args:
-            schema (ImageLabelsSchema): schema to set and filter by
+            schema (ImageLabelsSchema): schema to filter by
         '''
-        self.schema = schema
-        self._filter_by_schema()
+        self._filter_by_schema(schema)
 
-    def _filter_by_schema(self):
-        if self.has_schema:
-            self._filter_image_attributes()
-            self._filter_objects()
+    def _filter_by_schema(self, schema):
+        self._filter_image_attributes(schema)
+        self._filter_objects(schema)
 
-    def _filter_image_attributes(self):
-        attr_container = AttributeContainer()
-        for attr in self.attrs:
-            if self.schema.has_image_attribute(attr.name):
-                attr_container.add(attr)
-        self.attrs = attr_container
+    def _filter_image_attributes(self, schema):
+        self.attrs.set_schema(schema.attrs, filter_by_schema=True)
 
-    def _filter_objects(self):
+    def _filter_objects(self, schema):
         objects = DetectedObjectContainer()
         for obj in self.objects:
-            if self._filter_object(obj):
+            if self._filter_object(schema, obj):
                 objects.add(obj)
         self.objects = objects
         for obj in self.objects:
             if obj.has_attributes:
-                obj_attr_container = AttributeContainer()
-                for attr in obj.attrs:
-                    if self._filter_object_attr(obj, attr):
-                        obj_attr_container.add(attr)
-                obj.attrs = obj_attr_container
+                obj.attrs.set_schema(schema.objects[obj.label],
+                                     filter_by_schema=True)
 
-    def _filter_object(self, obj):
-        return obj.label in self.schema.objects
-
-    def _filter_object_attr(self, obj, attr):
-        return self.schema.objects[obj.label].has_attribute(attr.name)
+    def _filter_object(self, schema, obj):
+        return obj.label in schema.objects
 
     def attributes(self):
         '''Returns the list of class attributes that will be serialized.'''
