@@ -1108,12 +1108,6 @@ class BuilderDataRecord(BaseDataRecord):
         self.labels_cls = None
         self.labels_obj = None
 
-    def _write_labels(dir_path, filename, data_ext, pretty_print=False):
-        labels_path = os.path.join(dir_path, filename + ".json")
-        labels = self.get_labels()
-        labels.filename = filename + data_ext
-        labels.write_json(labels_path, pretty_print=pretty_print)
-
     def get_labels(self):
         if self.labels_obj:
             return self.labels_obj
@@ -1131,8 +1125,17 @@ class BuilderDataRecord(BaseDataRecord):
     def labels_path(self):
         return self.validate_path(self._labels_path)
 
-    def build(self, dir_path):
-        raise NotImplementedError("implementation required")
+    def build(self, dir_path, filename, pretty_print=False):
+        labels_path = os.path.join(dir_path, filename + ".json")
+        labels = self.get_labels()
+
+        data_ext = os.path.splitext(self.data_path)[1]
+        data_path = os.path.join(dir_path, filename + data_ext)
+
+        labels.filename = filename + data_ext
+        labels.write_json(labels_path, pretty_print=pretty_print)
+
+        return data_path, labels_path
 
     def validate_path(self, path):
         '''To be overwritten in subclasses if required by the storage model.
@@ -1158,10 +1161,9 @@ class BuilderImageRecord(BuilderDataRecord):
         self.labels_cls = etai.ImageLabels
 
     def build(self, dir_path, filename, pretty_print=False):
-        data_ext = os.path.splitext(self.data_path)[1]
-        self._write_labels(dir_path, filename, data_ext, pretty_print)
+        args = (dir_path, filename, pretty_print)
+        data_path, labels_path = super(BuilderImageRecord, self).build(*args)
 
-        data_path = os.path.join(dir_path, filename + dataset_ext)
         etau.copy_file(self.data_path, data_path)
         return self.data_path, self.labels_path
 
@@ -1201,12 +1203,10 @@ class BuilderVideoRecord(BuilderDataRecord):
         return self._metadata
 
     def build(self, dir_path, filename, pretty_print=False):
-        data_ext = os.path.splitext(self.data_path)[1]
-        data_filename = filename + data_ext
-        self._write_labels(dir_path, filename, data_ext, pretty_print)
+        args = (dir_path, filename, pretty_print)
+        data_path, labels_path = super(BuilderVideoRecord, self).build(*args)
 
         if self.start_frame == 1 and self.end_frame == self.total_frame_count:
-            data_path = os.path.join(dir_path, data_filename)
             etau.copy_file(self.data_path, data_path)
         else:
             duration = self.end - self.start
