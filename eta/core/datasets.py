@@ -1192,15 +1192,10 @@ class BuilderVideoRecord(BuilderDataRecord):
         self.labels_cls = etav.VideoLabels
 
     def _init_from_video_metadata(self):
-        self.total_frame_count = self.metadata.total_frame_count
-        self.duration = self.metadata.duration
-        self.end_frame = self.metadata.total_frame_count
-
-    @property
-    def metadata(self):
-        if not self._metadata:
-            self._metadata = etav.VideoMetadata.build_for(self.data_path)
-        return self._metadata
+        metadata = etav.VideoMetadata.build_for(self.data_path)
+        self.total_frame_count = metadata.total_frame_count
+        self.duration = metadata.duration
+        self.end_frame = metadata.total_frame_count
 
     def build(self, dir_path, filename, pretty_print=False):
         args = (dir_path, filename, pretty_print)
