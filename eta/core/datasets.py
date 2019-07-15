@@ -304,7 +304,7 @@ class LabeledDatasetBuilder(object):
             for idx, record in enumerate(self._dataset):
                 result = record.build(dir_path, str(idx))
                 dataset.add_file(*result, move_files=True)
-
+        dataset.update_manifest()
         return dataset
 
 
@@ -342,6 +342,7 @@ class LabeledDataset(object):
                 "but manifest is of type '%s'" % (
                     etau.get_class_name(self), dataset_path,
                     self.dataset_index.type))
+        self.dataset_path = dataset_path
         self.data_dir = os.path.dirname(dataset_path)
 
     def __iter__(self):
@@ -437,6 +438,12 @@ class LabeledDataset(object):
 
         out_path = os.path.join(self.data_dir, filename)
         self.dataset_index.write_json(out_path)
+
+    def update_manifest(self):
+        '''Overwrites existing manifest file of this dataset with any updates
+        to the index.
+        '''
+        self.dataset_index.write_json(self.dataset_path)
 
     def sample(self, k):
         '''Randomly downsamples the dataset to k elements.
@@ -1265,14 +1272,11 @@ class DatasetTransformer(object):
     Basically, strategy pattern
     '''
 
-    def __init__(self):
-        raise NotImplementedError("implementation required")
-
     def transform(self, src):
         ''' Transform a TransformableDataset
 
         Args:
-            src (LabeledDatasetBuilder): the dataset builder
+            src (BuilderDataset): the dataset builder
         '''
         raise NotImplementedError("implementation required")
 
@@ -1283,11 +1287,13 @@ class Sampler(DatasetTransformer):
     '''
 
     def __init__(self, k):
-        super(Sampler, self).__init__()
         self.k = k
 
     def transform(self, src):
-        src.set_records(random.sample(src.get_records(), self.k))
+        try:
+            src.records = random.sample(src.records, self.k)
+        except ValueError as err:
+            raise DatasetTransformerError(err.message)
 
 
 class Balancer(DatasetTransformer):
@@ -1297,7 +1303,6 @@ class Balancer(DatasetTransformer):
     '''
 
     def __init__(self, attribute):
-        super(Balancer, self).__init__()
         self.attr = attribute
 
     def transform(self, src):
@@ -1313,7 +1318,6 @@ class SchemaFilter(DatasetTransformer):
     '''
 
     def __init__(self, schema):
-        super(SchemaFilter, self).__init__()
         self.schema = schema
 
     def _extract_video_labels(self, start_frame, end_frame, labels):
