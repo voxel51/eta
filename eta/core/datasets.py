@@ -1287,7 +1287,6 @@ class Sampler(DatasetTransformer):
     '''
 
     def __init__(self, k):
-        super(Sampler, self).__init__()
         self.k = k
 
     def transform(self, src):
@@ -1304,7 +1303,6 @@ class Balancer(DatasetTransformer):
     '''
 
     def __init__(self, attribute):
-        super(Balancer, self).__init__()
         self.attr = attribute
 
     def transform(self, src):
@@ -1320,7 +1318,6 @@ class SchemaFilter(DatasetTransformer):
     '''
 
     def __init__(self, schema):
-        super(SchemaFilter, self).__init__()
         self.schema = schema
 
     def _extract_video_labels(self, start_frame, end_frame, labels):
