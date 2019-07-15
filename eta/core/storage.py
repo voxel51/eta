@@ -615,13 +615,13 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
             fileId=file_or_folder_id, supportsTeamDrives=True).execute()
 
     def delete_all_files_in_folder(self, folder_id):
-        '''Deletes all the files in the Google Drive folder and retains the 
+        '''Deletes all the files in the Google Drive folder and retains the
         original folder.
 
         Args:
-            folder_id: the ID of the Google Drive folder from which the files 
+            folder_id: the ID of the Google Drive folder from which the files
                 are to be deleted
-        
+
         Returns:
             an empty folder with no files
         '''
@@ -632,13 +632,28 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
                 with etau.Timer() as t:
                     self.delete(f["id"])
                     logger.info(
-                    "File '%s' deleted from '%s' (%s)", filename, folder_id,
-                    t.elapsed_time_str)
+                        "File '%s' deleted from '%s' (%s)", filename, folder_id,
+                        t.elapsed_time_str)
             except Exception as e:
                 if not skip_failures:
                     raise GoogleDriveStorageClientError(e)
 
         logger.info("All files deleted in %s", folder_id)
+
+    def get_count_of_files_in_folder(self, folder_id):
+        '''Returns count of number of files in the Google Drive folder
+
+        Args:
+            folder_id: the ID of the Google Drive folder to be processed
+
+        Returns:
+            num_files : the number of files in folder
+        '''
+        files = self.list_files_in_folder(folder_id)
+        num_files = 0
+        for f in files:
+            num_files += 1
+        return num_files
 
     def get_team_drive_id(self, name):
         '''Get the ID of the Team Drive with the given name.
