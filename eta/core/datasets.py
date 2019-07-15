@@ -1195,6 +1195,7 @@ class BuilderVideoRecord(BuilderDataRecord):
         self.total_frame_count = metadata.total_frame_count
         self.duration = metadata.duration
         self.clip_end_frame = metadata.total_frame_count
+        self.frame_rate = metadata.frame_rate
 
     def build(self, dir_path, filename, pretty_print=False):
         self._extract_video_labels()
@@ -1348,9 +1349,17 @@ class SchemaFilter(DatasetTransformer):
 class Clipper(DatasetTransformer):
     '''
     Clip longer videos into shorter ones, and sample at some stride step
+
     '''
 
     def __init__(self, clip_len, stride, min_clip_len):
+        '''Creates a Clipper instance.
+
+        Args:
+            clip_len: number of frames per clip
+            stride: gap between clips in frames
+            min_clip_len: minimum number of frames allowed
+        '''
         self.clip_len = clip_len
         self.stride = stride
         self.min_clip_len = min_clip_len
@@ -1360,7 +1369,19 @@ class Clipper(DatasetTransformer):
             raise DatasetTransformerError()
         old_records = src.records
         src.clear()
-        # @TODO impl me! - Also might want to throw error if data is not video.
+        for record in old_records:
+            start_frame = record.clip_start_frame
+            while start_frame <= record.clip_end_frame:
+                end_frame = start_frame + self.clip_len - 1
+                if end_frame > record.clip_end_frame:
+                    end_frame = record.clip_end_frame
+                    clip_duration = int(end_frame - start_frame + 1)
+                    if clip_duration < int(self.min_clip_len):
+                        print('bad')
+                        break
+                print(str(start_frame) + ' ' + str(end_frame))
+                start_frame += self.clip_len
+                start_frame += self.stride
 
 
 class DatasetTransformerError(Exception):
