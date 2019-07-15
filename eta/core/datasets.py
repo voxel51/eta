@@ -22,6 +22,7 @@ import six
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+import copy
 import logging
 import os
 import random
@@ -37,6 +38,9 @@ import eta.core.video as etav
 
 
 logger = logging.getLogger(__name__)
+
+
+# General split methods
 
 
 def odds_and_evens(iterable):
@@ -146,6 +150,17 @@ def _split_in_order(item_list, split_fractions):
         sample_lists.append(item_list[begin:end])
 
     return sample_lists
+
+
+SPLIT_FUNCTIONS = {
+    "odds_and_evens": odds_and_evens,
+    "random_exact": random_split_exact,
+    "random_approx": random_split_approx,
+    "in_order": split_in_order
+}
+
+
+# Functions involving LabeledDatasets
 
 
 def sample_videos_to_images(
@@ -289,6 +304,9 @@ def _iter_filtered_video_frames(video_dataset, frame_filter, stride):
                     continue
 
                 yield frame_img, frame_labels, base_filename
+
+
+# Core LabeledDataset infrastructure
 
 
 class LabeledDataset(object):
@@ -451,6 +469,41 @@ class LabeledDataset(object):
         self.dataset_index.shuffle()
 
         return self
+
+    def split(self, split_fractions=None, descriptions=None,
+              split_method="random_exact"):
+        '''Splits the dataset into multiple datasets containing disjoint
+        subsets of the original dataset.
+
+        Args:
+            split_fractions: an optional list of split fractions, which
+                should sum to 1, that specifies how to split the dataset.
+                By default, [0.5, 0.5] is used.
+            descriptions: an optional list of descriptions for the output
+                datasets. The list should be the same length as
+                `split_fractions`. If not specified, the description of
+                the original dataset is used for all of the output
+                datasets.
+            split_method: string describing the method with which to split
+                the data
+
+        Returns:
+            dataset_list: list of `LabeledDataset`s of the same length as
+                `split_fractions`
+        '''
+        dataset_indices = self.dataset_index.split(
+            split_fractions=split_fractions,
+            descriptions=descriptions,
+            split_method=split_method)
+
+        dataset_copy = copy.deepcopy(self)
+        dataset_list = []
+        for dataset_index in dataset_indices:
+            dataset_copy.dataset_index = dataset_index
+            dataset_copy._build_index_map()
+            dataset_list.append(copy.deepcopy(dataset_copy))
+
+        return dataset_list
 
     def add_file(self, data_path, labels_path, move_files=False,
                  error_on_duplicates=False):
@@ -1131,6 +1184,49 @@ class LabeledDatasetIndex(Serializable):
         '''Randomly shuffles the index.
         '''
         random.shuffle(self.index)
+
+    def split(self, split_fractions=None, descriptions=None,
+              split_method="random_exact"):
+        '''Splits the `LabeledDatasetIndex` into multiple
+        `LabeledDatasetIndex` instances, containing disjoint subsets of
+        the original index.
+
+        Args:
+            split_fractions: an optional list of split fractions, which
+                should sum to 1, that specifies how to split the index.
+                By default, [0.5, 0.5] is used.
+            descriptions: an optional list of descriptions for the output
+                indices. The list should be the same length as
+                `split_fractions`. If not specified, the description of
+                the original index is used for all of the output
+                indices.
+            split_method: string describing the method with which to split
+                the index
+
+        Returns:
+            dataset_indices: list of `LabeledDatasetIndex` instances of
+                the same length as `split_fractions`
+        '''
+        if split_fractions is None:
+            split_fractions = [0.5, 0.5]
+
+        if descriptions is None:
+            descriptions = [self.description for _ in split_fractions]
+
+        if len(descriptions) != len(split_fractions):
+            raise ValueError(
+                "split_fractions and descriptions lists should be the "
+                "same length, but got len(split_fractions) = %d, "
+                "len(descriptions) = %d", (
+                    len(split_fractions), len(descriptions)))
+
+        split_func = SPLIT_FUNCTIONS[split_method]
+        split_indices = split_func(self.index, split_fractions)
+
+        return [
+            LabeledDatasetIndex(self.type, split_index, description)
+            for split_index, description in zip(
+                    split_indices, descriptions)]
 
     @classmethod
     def from_dict(cls, d):
