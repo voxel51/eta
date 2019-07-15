@@ -1304,14 +1304,80 @@ class Balancer(DatasetTransformer):
     Attribute, as provided on construction.
     '''
 
-    def __init__(self, attribute):
-        self.attr = attribute
+    def __init__(self, attribute_name, object_label=None):
+        '''
+
+        Args:
+            attribute_name (String): the name of the attribute to balance by
+            object_label (String): the name of the object label that the
+                attribute_name must be nested under. If this is None, it is
+                assumed that the attributes are Image/Frame level attrs.
+        '''
+        self.attr_name = attribute_name
+        self.object_label = object_label
 
     def transform(self, src):
-        # @TODO implement Balancing!!
+        '''
+
+        Args:
+            src (BuilderDataset): the dataset builder
+
+        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+        categorical_attribute = image_labels.attrs[0]
+        categorical_attribute.name
+        categorical_attribute.value
+
+        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+        detected_object = image_labels.objects[0]
+        detected_object.label
+        categorical_attribute = detected_object.attrs[0]
+        categorical_attribute.name
+        categorical_attribute.value
+
+        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        '''
         old_records = src.records
         src.clear()
-        pass
+
+        # STEP 1: Get attribute value(s) for every record
+        helper_list = []
+
+        for i, record in enumerate(old_records):
+            labels = record.get_labels()
+            if self.object_label:
+                helper = (i, [])
+                for detected_object in labels.objects:
+                    if detected_object.label != self.object_label:
+                        continue
+                    for attr in detected_object.attrs:
+                        if attr.name == self.attr_name:
+                            helper[1].append(attr.value)
+                            break
+                if len(helper[1]):
+                    helper_list.append(helper)
+
+            else:
+                for attr in labels.attrs:
+                    if attr.name == self.attr_name:
+                        helper_list.append((i, [attr.value]))
+                        break
+
+        # STEP 2: balance the records
+        # @TODO CONTINUE HERE
+        counts = {}
+        for idx, attr_values in helper_list:
+            for attr_value in attr_values:
+                if attr_value not in counts:
+                    counts[attr_value] = 1
+                else:
+                    counts[attr_value] += 1
+
+        for key, value in counts.items():
+            print('{} - {}'.format(key, value))
+
+        # src.add(old_records[0])
 
 
 class SchemaFilter(DatasetTransformer):
