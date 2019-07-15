@@ -293,7 +293,7 @@ class LabeledDatasetBuilder(object):
     def record_cls(self):
         return self._dataset.record_cls
 
-    def build(self, path, description=None):
+    def build(self, path, description=None, pretty_print=False):
         for transformer in self._transformers:
             transformer.transform(self._dataset)
 
@@ -302,7 +302,8 @@ class LabeledDatasetBuilder(object):
 
         with etau.TempDir() as dir_path:
             for idx, record in enumerate(self._dataset):
-                result = record.build(dir_path, str(idx))
+                result = record.build(dir_path, str(idx),
+                                      pretty_print=pretty_print)
                 dataset.add_file(*result, move_files=True)
         dataset.update_manifest()
         return dataset
