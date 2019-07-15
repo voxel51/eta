@@ -304,7 +304,7 @@ class LabeledDatasetBuilder(object):
             for idx, record in enumerate(self._dataset):
                 result = record.build(dir_path, str(idx))
                 dataset.add_file(*result, move_files=True)
-        dataset.write_manifest(path)
+        dataset.update_manifest()
         return dataset
 
 
@@ -342,6 +342,7 @@ class LabeledDataset(object):
                 "but manifest is of type '%s'" % (
                     etau.get_class_name(self), dataset_path,
                     self.dataset_index.type))
+        self.dataset_path = dataset_path
         self.data_dir = os.path.dirname(dataset_path)
 
     def __iter__(self):
@@ -437,6 +438,12 @@ class LabeledDataset(object):
 
         out_path = os.path.join(self.data_dir, filename)
         self.dataset_index.write_json(out_path)
+
+    def update_manifest(self):
+        '''Overwrites existing manifest file of this dataset with any updates
+        to the index.
+        '''
+        self.dataset_index.write_json(self.dataset_path)
 
     def sample(self, k):
         '''Randomly downsamples the dataset to k elements.
