@@ -1110,7 +1110,8 @@ class BuilderDataRecord(BaseDataRecord):
     def get_labels(self):
         if self.labels_obj is not None:
             return self.labels_obj
-        return self.labels_cls.from_json(self.labels_path)
+        self.labels_obj = self.labels_cls.from_json(self.labels_path)
+        return self.labels_obj
 
     def set_labels(self, labels):
         self.labels_obj = labels
