@@ -1208,7 +1208,7 @@ class BuilderVideoRecord(BuilderDataRecord):
             extract_args = (
                 self.data_path,
                 data_path,
-                self.start,
+                start,
                 duration
             )
             etav.extract_clip(*extract_args)
