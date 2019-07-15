@@ -315,7 +315,22 @@ class LabeledDataset(object):
             image1.json (or) video1.json
             ...
     ```
+
+    Class invariants:
+    - `self.dataset_index` contains paths to data and labels files that exist
+        on disk (assuming this is the case for the manifest.json file that is
+        read initially)
+    - each data file appears only once is `self.dataset_index`
+
+    Attributes:
+        dataset_index: a `LabeledDatasetIndex` containing the paths of data
+            and labels files in the dataset
+        data_dir: the top level directory for the dataset, which would contain
+            manifest.json files
     '''
+
+    _DATA_SUBDIR = "data"
+    _LABELS_SUBDIR = "labels"
 
     def __init__(self, dataset_path):
         '''Creates a LabeledDataset instance.
@@ -335,6 +350,8 @@ class LabeledDataset(object):
                     etau.get_class_name(self), dataset_path,
                     self.dataset_index.type))
         self.data_dir = os.path.dirname(dataset_path)
+
+        self._build_index_map()
 
     def __iter__(self):
         '''Iterates over the samples in the dataset.
@@ -430,6 +447,7 @@ class LabeledDataset(object):
             self
         '''
         self.dataset_index.sample(k)
+        self._build_index_map()
 
         return self
 
@@ -443,7 +461,8 @@ class LabeledDataset(object):
 
         return self
 
-    def add_file(self, data_path, labels_path, move_files=False):
+    def add_file(self, data_path, labels_path, move_files=False,
+                 error_on_duplicates=False):
         '''Adds a single data file and its labels file to this dataset.
 
         Args:
@@ -452,12 +471,25 @@ class LabeledDataset(object):
             move_files: whether to move the files from their original
                 location into the dataset directory. If False, files
                 are copied into the dataset directory.
+            error_on_duplicates: whether to raise an error if the file
+                at `data_path` has the same filename as an existing
+                data file in the dataset. If this is set to `False`, the
+                previous mapping of the data filename to a labels file
+                will be deleted.
 
         Returns:
             self
+
+        Raises:
+            ValueError: if the filename of `data_path` is the same as a
+                data file already present in the dataset and
+                `error_on_duplicates` is True
         '''
-        data_subdir = os.path.join(self.data_dir, "data")
-        labels_subdir = os.path.join(self.data_dir, "labels")
+        if error_on_duplicates:
+            self._validate_new_data_file(data_path)
+
+        data_subdir = os.path.join(self.data_dir, self._DATA_SUBDIR)
+        labels_subdir = os.path.join(self.data_dir, self._LABELS_SUBDIR)
         if os.path.dirname(data_path) != data_subdir:
             if move_files:
                 etau.move_file(data_path, data_subdir)
@@ -468,16 +500,25 @@ class LabeledDataset(object):
                 etau.move_file(labels_path, labels_subdir)
             else:
                 etau.copy_file(labels_path, labels_subdir)
+
+        new_data_file = os.path.basename(data_path)
+        new_labels_file = os.path.basename(labels_path)
+        # First remove any other records with the same data filename
+        self.dataset_index.cull_with_function(
+            lambda record: os.path.basename(record.data) != new_data_file)
         self.dataset_index.append(
             LabeledDataRecord(
-                os.path.join("data", os.path.basename(data_path)),
-                os.path.join("labels", os.path.basename(labels_path))
+                os.path.join(self._DATA_SUBDIR, new_data_file),
+                os.path.join(self._LABELS_SUBDIR, new_labels_file)
             )
         )
 
+        self._data_to_labels_map[new_data_file] = new_labels_file
+
         return self
 
-    def add_data(self, data, labels, data_filename, labels_filename):
+    def add_data(self, data, labels, data_filename, labels_filename,
+                 error_on_duplicates=False):
         '''Creates and adds a single data file and its labels file to this
         dataset, using the input python data structure.
 
@@ -488,21 +529,35 @@ class LabeledDataset(object):
                 self._write_labels()
             data_filename: filename for the data in the dataset
             labels_filename: filename for the labels in the dataset
+            error_on_duplicates: whether to raise an error if a data file
+                with the name `data_filename` already exists in the dataset.
+                If this is set to `False`, the previous mapping of
+                `data_filename` to a labels file will be deleted.
 
         Returns:
             self
         '''
-        data_path = os.path.join(self.data_dir, "data", data_filename)
-        labels_path = os.path.join(self.data_dir, "labels", labels_filename)
+        if error_on_duplicates:
+            self._validate_new_data_file(data_filename)
+
+        data_path = os.path.join(
+            self.data_dir, self._DATA_SUBDIR, data_filename)
+        labels_path = os.path.join(
+            self.data_dir, self._LABELS_SUBDIR, labels_filename)
         self._write_data(data, data_path)
         self._write_labels(labels, labels_path)
 
+        # First remove any other records with the same data filename
+        self.dataset_index.cull_with_function(
+            lambda record: os.path.basename(record.data) != data_filename)
         self.dataset_index.append(
             LabeledDataRecord(
-                os.path.join("data", data_filename),
-                os.path.join("labels", labels_filename)
+                os.path.join(self._DATA_SUBDIR, data_filename),
+                os.path.join(self._LABELS_SUBDIR, labels_filename)
             )
         )
+
+        self._data_to_labels_map[data_filename] = labels_filename
 
         return self
 
@@ -524,8 +579,8 @@ class LabeledDataset(object):
         self._ensure_empty_dataset_dir(dataset_path)
 
         new_data_dir = os.path.dirname(dataset_path)
-        new_data_subdir = os.path.join(new_data_dir, "data")
-        new_labels_subdir = os.path.join(new_data_dir, "labels")
+        new_data_subdir = os.path.join(new_data_dir, self._DATA_SUBDIR)
+        new_labels_subdir = os.path.join(new_data_dir, self._LABELS_SUBDIR)
 
         for data_path, labels_path in zip(
                 self.iter_data_paths(), self.iter_labels_paths()):
@@ -728,6 +783,42 @@ class LabeledDataset(object):
         raise NotImplementedError(
             "subclasses must implement validate_dataset()")
 
+    def _build_index_map(self):
+        '''Build data --> labels mapping, to ensure this mapping is unique,
+        and remains unique.
+
+        We do allow the same labels file to map to multiple data files. This
+        may be desirable if many data files have the exact same labels.
+
+        Raises:
+            LabeledDatasetError: if the mapping is not unique
+        '''
+        self._data_to_labels_map = {}
+        for record in self.dataset_index:
+            data_file = os.path.basename(record.data)
+            labels_file = os.path.basename(record.labels)
+            if data_file in self._data_to_labels_map:
+                raise LabeledDatasetError(
+                    "Data file '%s' maps to multiple labels files" %
+                    data_file)
+            self._data_to_labels_map[data_file] = labels_file
+
+    def _validate_new_file(self, data_path):
+        '''Checks whether a data file would be a duplicate of an existing
+        data file in the dataset.
+
+        Args:
+            data_path: path to or filename of the new data file
+
+        Raises:
+            ValueError: if the filename of `data_path` is the same as a
+                data file already present in the dataset
+        '''
+        data_file = os.path.basename(data_path)
+        if data_file in self._data_to_labels_map:
+            raise ValueError(
+                "Data file '%s' already present in dataset" % data_file)
+
     def _read_data(self, path):
         '''Reads data from a data file at the given path.
 
@@ -827,8 +918,8 @@ class LabeledDataset(object):
                 "Found the following files in directory '%s': %s" %
                 (data_dir, existing_files))
 
-        data_subdir = os.path.join(data_dir, "data")
-        labels_subdir = os.path.join(data_dir, "labels")
+        data_subdir = os.path.join(data_dir, self._DATA_SUBDIR)
+        labels_subdir = os.path.join(data_dir, self._LABELS_SUBDIR)
         etau.ensure_dir(data_subdir)
         etau.ensure_dir(labels_subdir)
 
@@ -1025,6 +1116,17 @@ class LabeledDatasetIndex(Serializable):
             labeled_data_record: a `LabeledDataRecord` instance
         '''
         self.index.append(labeled_data_record)
+
+    def cull_with_function(self, func):
+        '''Removes `LabeledDataRecord`s from the index using the provided
+        function.
+
+        Args:
+            func: a function that takes in a `LabeledDataRecord` and
+                returns a boolean. Only records for which the function
+                evaluates to True will be retained in `self.index`.
+        '''
+        self.index = [record for record in self.index if func(record)]
 
     def sample(self, k):
         '''Randomly downsamples the index to k elements.
