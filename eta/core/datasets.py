@@ -304,7 +304,7 @@ class LabeledDatasetBuilder(object):
             for idx, record in enumerate(self._dataset):
                 result = record.build(dir_path, str(idx))
                 dataset.add_file(*result, move_files=True)
-
+        dataset.write_manifest(path)
         return dataset
 
 
@@ -1285,10 +1285,9 @@ class Sampler(DatasetTransformer):
 
     def transform(self, src):
         try:
-            return src.extract_inds(random.sample(range(len(src)), self.k))
+            src.records = random.sample(src.records, self.k)
         except ValueError as err:
             raise DatasetTransformerError(err.message)
-        return src
 
 
 class Balancer(DatasetTransformer):
