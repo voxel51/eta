@@ -39,122 +39,113 @@ import eta.core.video as etav
 logger = logging.getLogger(__name__)
 
 
-def odds_and_evens(data_records):
-    '''Splits a DataRecords into two DataRecords, one from odd indexed records
-    and the other from even indexed records.
+def odds_and_evens(iterable):
+    '''Splits items into two sample lists, one from odd indexed items and the
+    other from even indexed items.
 
     Args:
-        data_records: a DataRecords instance
+        iterable: any finite iterable
 
     Returns:
-        a list of two DataRecords
+        sample_lists: a list of two lists. Each sub-list contains items from
+            the original iterable.
     '''
-    record_cls = data_records.record_cls
-    records_list = [etad.DataRecords(record_cls), etad.DataRecords(record_cls)]
-    for idx, record in enumerate(data_records):
-        records_list[idx % 2].add(record)
+    sample_lists = [[], []]
+    for idx, item in enumerate(iterable):
+        sample_lists[idx % 2].append(item)
 
-    return records_list
+    return sample_lists
 
 
-def random_split_exact(data_records, split_fractions=None):
-    '''Randomly splits a DataRecords into multiple DataRecords according to the
-    given split fractions.
+def random_split_exact(iterable, split_fractions=None):
+    '''Randomly splits items into multiple sample lists according to the given
+    split fractions.
 
-    The number of records in each sample will be given exactly by the specified
-    fractions.
+    The number of items in each sample list will be given exactly by the
+    specified fractions.
 
     Args:
-        data_records: a DataRecords instance
+        iterable: any finite iterable
         split_fractions: an optional list of split fractions, which should sum
             to 1. By default, [0.5, 0.5] is used
 
     Returns:
-        a list of DataRecords of same length as `split_fractions`
+        sample_lists: a list of lists, of the same length as `split_fractions`.
+            Each sub-list contains items from the original iterable.
     '''
     if split_fractions is None:
         split_fractions = [0.5, 0.5]
 
-    shuffled = list(data_records)
+    shuffled = list(iterable)
     random.shuffle(shuffled)
 
-    record_cls = data_records.record_cls
-
-    sample_lists = _split_in_order(shuffled, split_fractions)
-
-    return [
-        etad.DataRecords(record_cls, records=samp_list)
-        for samp_list in sample_lists]
+    return _split_in_order(shuffled, split_fractions)
 
 
-def random_split_approx(data_records, split_fractions=None):
-    '''Randomly splits a DataRecords into multiple DataRecords according to the
-    given split fractions.
+def random_split_approx(iterable, split_fractions=None):
+    '''Randomly splits items into multiple sample lists according to the given
+    split fractions.
 
-    Each record is assigned to a sample with probability equal to the
+    Each item is assigned to a sample list with probability equal to the
     corresponding split fraction.
 
     Args:
-        data_records: a DataRecords instance
+        iterable: any finite iterable
         split_fractions: an optional list of split fractions, which should sum
             to 1. By default, [0.5, 0.5] is used
 
     Returns:
-        a list of DataRecords of same length as `split_fractions`
+        sample_lists: a list of lists, of the same length as `split_fractions`.
+            Each sub-list contains items from the original iterable.
     '''
     if split_fractions is None:
         split_fractions = [0.5, 0.5]
 
-    record_cls = data_records.record_cls
-    records_list = [etad.DataRecords(record_cls) for _ in split_fractions]
+    sample_lists = [[] for _ in split_fractions]
 
     cum_frac = np.cumsum(split_fractions)
-    for record in data_records:
+    for item in iterable:
         idx = np.searchsorted(cum_frac, random.random())
-        if idx < len(records_list):
-            records_list[idx].add(record)
+        if idx < len(sample_lists):
+            sample_lists[idx].append(record)
 
-    return records_list
+    return sample_lists
 
 
-def split_in_order(data_records, split_fractions=None):
-    '''Splits a DataRecords into multiple DataRecords according to the
-    given split fractions.
+def split_in_order(iterable, split_fractions=None):
+    '''Splits items into multiple sample lists according to the given split
+    fractions.
 
-    The records are partitioned into samples in order according to their
-    position in the input sample. This is not recommended unless your records
+    The items are partitioned into samples in order according to their
+    position in the input sample. This is not recommended unless your items
     are already randomly ordered.
 
     Args:
-        data_records: a DataRecords instance
+        iterable: any finite iterable
         split_fractions: an optional list of split fractions, which should sum
             to 1. By default, [0.5, 0.5] is used
 
     Returns:
-        a list of DataRecords of same length as `split_fractions`
+        sample_lists: a list of lists, of the same length as `split_fractions`.
+            Each sub-list contains items from the original iterable.
     '''
     if split_fractions is None:
         split_fractions = [0.5, 0.5]
 
-    records_lists = _split_in_order(list(data_records), split_fractions)
-
-    record_cls = data_records.record_cls
-    return [
-        etad.DataRecords(record_cls, records=records)
-        for records in records_lists]
+    return _split_in_order(list(iterable), split_fractions)
 
 
-def _split_in_order(records_list, split_fractions):
-    n = len(records_list)
+def _split_in_order(item_list, split_fractions):
+    n = len(item_list)
     cum_frac = np.cumsum(split_fractions)
     cum_size = [int(np.round(frac * n)) for frac in cum_frac]
     sample_bounds = [0] + cum_size
 
-    records_list = []
+    sample_lists = []
     for begin, end in zip(sample_bounds, sample_bounds[1:]):
-        records_list.append(records_list[begin:end])
+        sample_lists.append(item_list[begin:end])
 
-    return records_list
+    return sample_lists
 
 
 def sample_videos_to_images(
