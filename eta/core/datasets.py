@@ -1160,7 +1160,7 @@ class BuilderImageRecord(BuilderDataRecord):
         data_path, labels_path = super(BuilderImageRecord, self).build(*args)
 
         etau.copy_file(self.data_path, data_path)
-        return self.data_path, self.labels_path
+        return data_path, labels_path
 
 
 class BuilderVideoRecord(BuilderDataRecord):
