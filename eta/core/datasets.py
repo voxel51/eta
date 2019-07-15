@@ -1115,9 +1115,10 @@ class BuilderDataRecord(BaseDataRecord):
         self.labels_obj = None
 
     def get_labels(self):
-        if self.labels_obj:
+        if self.labels_obj is not None:
             return self.labels_obj
-        return self.labels_cls.from_json(self.labels_path)
+        self.labels_obj = self.labels_cls.from_json(self.labels_path)
+        return self.labels_obj
 
     def set_labels(self, labels):
         self.labels_obj = labels
@@ -1165,7 +1166,7 @@ class BuilderImageRecord(BuilderDataRecord):
 class BuilderVideoRecord(BuilderDataRecord):
     '''BuilderDataRecord for video.'''
 
-    def __init__(self,video_path, labels_path, clip_start_frame=1,
+    def __init__(self, video_path, labels_path, clip_start_frame=1,
                  clip_end_frame=None, duration=None,
                  total_frame_count=None):
         super(BuilderVideoRecord, self).__init__(video_path, labels_path)
