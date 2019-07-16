@@ -1377,7 +1377,6 @@ class Clipper(DatasetTransformer):
                     end_frame = record.clip_end_frame
                     clip_duration = int(end_frame - start_frame + 1)
                     if clip_duration < int(self.min_clip_len):
-                        print('bad')
                         break
                 print(str(start_frame) + ' ' + str(end_frame))
                 start_frame += self.clip_len
