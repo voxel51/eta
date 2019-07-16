@@ -1112,17 +1112,17 @@ class BuilderDataRecord(BaseDataRecord):
     def __init__(self, data_path, labels_path):
         self._data_path = data_path
         self._labels_path = labels_path
-        self.labels_cls = None
-        self.labels_obj = None
+        self._labels_cls = None
+        self._labels_obj = None
 
     def get_labels(self):
-        if self.labels_obj is not None:
-            return self.labels_obj
-        self.labels_obj = self.labels_cls.from_json(self.labels_path)
-        return self.labels_obj
+        if self._labels_obj is not None:
+            return self._labels_obj
+        self._labels_obj = self._labels_cls.from_json(self._labels_path)
+        return self._labels_obj
 
     def set_labels(self, labels):
-        self.labels_obj = labels
+        self._labels_obj = labels
 
     @property
     def data_path(self):
@@ -1141,12 +1141,22 @@ class BuilderDataRecord(BaseDataRecord):
 
         labels.filename = filename + data_ext
         labels.write_json(labels_path, pretty_print=pretty_print)
-
         return data_path, labels_path
 
     @classmethod
     def required(cls):
         return ["data_path", "labels_path"]
+
+    def copy_params(self):
+        args = (self._data_path, self._labels_path)
+        kwargs = {
+            attr: getattr(self, attr) for attr in self.optional()
+        }
+        return args, kwargs
+
+    def copy(self):
+        args, kwargs = self.copy_params()
+        return self.__class__(*args, **kwargs)
 
 
 class BuilderImageRecord(BuilderDataRecord):
@@ -1154,7 +1164,7 @@ class BuilderImageRecord(BuilderDataRecord):
 
     def __init__(self, image_path, labels_path):
         super(BuilderImageRecord, self).__init__(image_path, labels_path)
-        self.labels_cls = etai.ImageLabels
+        self._labels_cls = etai.ImageLabels
 
     def build(self, dir_path, filename, pretty_print=False):
         args = (dir_path, filename, pretty_print)
@@ -1167,10 +1177,10 @@ class BuilderImageRecord(BuilderDataRecord):
 class BuilderVideoRecord(BuilderDataRecord):
     '''BuilderDataRecord for video.'''
 
-    def __init__(self, video_path, labels_path, clip_start_frame=1,
+    def __init__(self, data_path, labels_path, clip_start_frame=1,
                  clip_end_frame=None, duration=None,
                  total_frame_count=None):
-        super(BuilderVideoRecord, self).__init__(video_path, labels_path)
+        super(BuilderVideoRecord, self).__init__(data_path, labels_path)
         self.clip_start_frame = clip_start_frame
         self._metadata = None
         if None in [clip_end_frame, duration, total_frame_count]:
@@ -1179,7 +1189,7 @@ class BuilderVideoRecord(BuilderDataRecord):
             self.clip_end_frame = clip_end_frame
             self.duration = duration
             self.total_frame_count = total_frame_count
-        self.labels_cls = etav.VideoLabels
+        self._labels_cls = etav.VideoLabels
 
     def _extract_video_labels(self):
         start_frame, end_frame = (self.clip_start_frame, self.clip_end_frame)
@@ -1227,8 +1237,8 @@ class BuilderVideoRecord(BuilderDataRecord):
     def optional(cls):
         attrs = super(BuilderVideoRecord, cls).optional()
         attrs += [
-            "start_frame",
-            "end_frame",
+            "clip_start_frame",
+            "clip_end_frame",
             "duration",
             "total_frame_count"
         ]
@@ -1264,8 +1274,8 @@ class BuilderImageDataset(BuilderDataset):
 class BuilderVideoDataset(BuilderDataset):
     '''A BuilderDataset for videos.'''
 
-    def __init__(self, schema=None):
-        super(BuilderVideoDataset, self).__init__(BuilderVideoRecord, schema)
+    def __init__(self, record_cls=BuilderVideoRecord, schema=None):
+        super(BuilderVideoDataset, self).__init__(record_cls, schema)
 
 
 class DatasetTransformer(object):
