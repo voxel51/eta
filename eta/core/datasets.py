@@ -300,59 +300,6 @@ def _iter_filtered_video_frames(video_dataset, frame_filter, stride):
                 yield frame_img, frame_labels, base_filename
 
 
-class LabeledDatasetBuilder(object):
-    '''
-    This object builds a LabeledDataset with optional transformations such as
-    sampling, filtering by schema, and balance.
-    '''
-
-    _DATASET_CLS_FIELD = None
-    _BUILDER_DATASET_CLS_FIELD = None
-
-    def __init__(self):
-        self._transformers = []
-        self._dataset = etau.get_class(self._BUILDER_DATASET_CLS_FIELD)()
-
-    def add_record(self, record):
-        self._dataset.add(record)
-
-    def add_transform(self, transform):
-        self._transformers.append(transform)
-
-    @property
-    def record_cls(self):
-        return self._dataset.record_cls
-
-    def build(self, path, description=None, pretty_print=False):
-        for transformer in self._transformers:
-            transformer.transform(self._dataset)
-
-        dataset_cls = etau.get_class(self._DATASET_CLS_FIELD)
-        dataset = dataset_cls.create_empty_dataset(path, description)
-
-        with etau.TempDir() as dir_path:
-            for idx, record in enumerate(self._dataset):
-                result = record.build(dir_path, str(idx),
-                                      pretty_print=pretty_print)
-                dataset.add_file(*result, move_files=True)
-        dataset.update_manifest()
-        return dataset
-
-
-class LabeledImageDatasetBuilder(LabeledDatasetBuilder):
-    '''LabeledDatasetBuilder for images.'''
-
-    _DATASET_CLS_FIELD = "eta.core.datasets.LabeledImageDataset"
-    _BUILDER_DATASET_CLS_FIELD = "eta.core.datasets.BuilderImageDataset"
-
-
-class LabeledVideoDatasetBuilder(LabeledDatasetBuilder):
-    '''LabeledDatasetBuilder for videos.'''
-
-    _DATASET_CLS_FIELD = "eta.core.datasets.LabeledVideoDataset"
-    _BUILDER_DATASET_CLS_FIELD = "eta.core.datasets.BuilderVideoDataset"
-
-
 class LabeledDataset(object):
     '''Base class for labeled datasets.
 
@@ -1166,6 +1113,59 @@ class LabeledDatasetError(Exception):
     pass
 
 
+class LabeledDatasetBuilder(object):
+    '''
+    This object builds a LabeledDataset with optional transformations such as
+    sampling, filtering by schema, and balance.
+    '''
+
+    _DATASET_CLS_FIELD = None
+    _BUILDER_DATASET_CLS_FIELD = None
+
+    def __init__(self):
+        self._transformers = []
+        self._dataset = etau.get_class(self._BUILDER_DATASET_CLS_FIELD)()
+
+    def add_record(self, record):
+        self._dataset.add(record)
+
+    def add_transform(self, transform):
+        self._transformers.append(transform)
+
+    @property
+    def record_cls(self):
+        return self._dataset.record_cls
+
+    def build(self, path, description=None, pretty_print=False):
+        for transformer in self._transformers:
+            transformer.transform(self._dataset)
+
+        dataset_cls = etau.get_class(self._DATASET_CLS_FIELD)
+        dataset = dataset_cls.create_empty_dataset(path, description)
+
+        with etau.TempDir() as dir_path:
+            for idx, record in enumerate(self._dataset):
+                result = record.build(dir_path, str(idx),
+                                      pretty_print=pretty_print)
+                dataset.add_file(*result, move_files=True)
+        dataset.update_manifest()
+        return dataset
+
+
+class LabeledImageDatasetBuilder(LabeledDatasetBuilder):
+    '''LabeledDatasetBuilder for images.'''
+
+    _DATASET_CLS_FIELD = "eta.core.datasets.LabeledImageDataset"
+    _BUILDER_DATASET_CLS_FIELD = "eta.core.datasets.BuilderImageDataset"
+
+
+class LabeledVideoDatasetBuilder(LabeledDatasetBuilder):
+    '''LabeledDatasetBuilder for videos.'''
+
+    _DATASET_CLS_FIELD = "eta.core.datasets.LabeledVideoDataset"
+    _BUILDER_DATASET_CLS_FIELD = "eta.core.datasets.BuilderVideoDataset"
+
+
 class BuilderDataRecord(BaseDataRecord):
     '''This class is responsible for tracking all of the metadata about a data
     record required for dataset operations on a BuilderDataset.
@@ -1218,7 +1218,9 @@ class BuilderDataRecord(BaseDataRecord):
 
     def copy(self):
         args, kwargs = self.copy_params()
-        return self.__class__(*args, **kwargs)
+        copy = self.__class__(*args, **kwargs)
+        copy.set_labels(self.get_labels())
+        return copy
 
 
 class BuilderImageRecord(BuilderDataRecord):
@@ -1390,28 +1392,10 @@ class SchemaFilter(DatasetTransformer):
     def __init__(self, schema):
         self.schema = schema
 
-    def _extract_video_labels(self, start_frame, end_frame, labels):
-        segment = etav.VideoLabels(schema=self.schema, filename=labels.filename)
-        for frame_id in range(start_frame, end_frame):
-            frame = labels[frame_id]
-            frame.frame_number = frame.frame_number - start_frame + 1
-            for obj in frame.objects:
-                try:
-                    segment.add_object(obj, frame.frame_number)
-                except etad.AttributeContainerSchemaError as err:
-                    logger.warn(err)
-            for attr in frame.attrs:
-                try:
-                    segment.add_frame_attribute(attr, frame.frame_number)
-                except etad.AttributeContainerSchemaError as err:
-                    logger.warn(err)
-        return segment
-
     def transform(self, src):
         for record in src:
             labels = record.get_labels()
-            labels = self._extract_video_labels(record.start_frame,
-                                                record.end_frame, labels)
+            labels.filter_by_schema(self.schema)
             record.set_labels(labels)
 
 
