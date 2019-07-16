@@ -1273,8 +1273,8 @@ class BuilderImageDataset(BuilderDataset):
 class BuilderVideoDataset(BuilderDataset):
     '''A BuilderDataset for videos.'''
 
-    def __init__(self, schema=None):
-        super(BuilderVideoDataset, self).__init__(BuilderVideoRecord, schema)
+    def __init__(self, record_cls=BuilderVideoRecord, schema=None):
+        super(BuilderVideoDataset, self).__init__(record_cls, schema)
 
 
 class DatasetTransformer(object):
