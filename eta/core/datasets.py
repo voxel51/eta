@@ -1338,10 +1338,33 @@ class Balancer(DatasetTransformer):
 
         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         '''
+
         old_records = src.records
         src.clear()
 
         # STEP 1: Get attribute value(s) for every record
+        helper_list = self._to_helper_list(old_records)
+
+        # STEP 2: balance the records
+        counts, to_remove = self._get_counts_and_to_remove(helper_list)
+
+        for x in counts:
+            print(x)
+        print('~~~~~~~~~~~~~~~~~~')
+        for x in to_remove:
+            print(x)
+
+        # def entropy(pk):
+        #     import numpy as np
+        #     pk = np.array(pk)
+        #     pk = pk / np.sum(pk)
+        #     S = -np.sum(pk * np.log(pk + 1e-9), axis=0)
+        #     return S / -np.log(1 / pk.shape[0])
+        # print(entropy(counts.values()))
+
+        # src.add(old_records[0])
+
+    def _to_helper_list(self, old_records):
         helper_list = []
 
         for i, record in enumerate(old_records):
@@ -1364,8 +1387,9 @@ class Balancer(DatasetTransformer):
                         helper_list.append((i, [attr.value]))
                         break
 
-        # STEP 2: balance the records
-        # @TODO CONTINUE HERE
+        return helper_list
+
+    def _get_counts_and_to_remove(self, helper_list, median_point=0.25):
         counts = {}
         for idx, attr_values in helper_list:
             for attr_value in attr_values:
@@ -1374,10 +1398,16 @@ class Balancer(DatasetTransformer):
                 else:
                     counts[attr_value] += 1
 
-        for key, value in counts.items():
-            print('{} - {}'.format(key, value))
+        counts = list(counts.items())
+        counts.sort(key=lambda x: x[1])
 
-        # src.add(old_records[0])
+        target_count = counts[int(len(counts) * median_point)][1]
+
+        to_remove = [(k, v - target_count) for k, v in counts]
+        # @TODO leave the negatives in? (comment this line out)
+        to_remove = [(k, max(v, 0)) for k, v in to_remove]
+
+        return counts, to_remove
 
 
 class SchemaFilter(DatasetTransformer):
