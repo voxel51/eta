@@ -1347,25 +1347,11 @@ class Balancer(DatasetTransformer):
 
     def transform(self, src):
         '''
+        Modify the BuilderDataset records by removing records until the
+        target attribute is ~roughly~ balanced for each value.
 
         Args:
             src (BuilderDataset): the dataset builder
-
-        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-        categorical_attribute = image_labels.attrs[0]
-        categorical_attribute.name
-        categorical_attribute.value
-
-        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-        detected_object = image_labels.objects[0]
-        detected_object.label
-        categorical_attribute = detected_object.attrs[0]
-        categorical_attribute.name
-        categorical_attribute.value
-
-        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         '''
 
         # STEP 1: Get attribute value(s) for every record
