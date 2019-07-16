@@ -856,7 +856,7 @@ class LabeledDataset(object):
         Returns:
             LabeledDatasetBuilder
         '''
-        builder = self._BUILDER_CLS()
+        builder = etau.get_class(self._BUILDER_CLS_FIELD)()
         for paths in self.iter_paths():
             builder.add_record(builder.record_cls(*paths))
         return builder
@@ -885,7 +885,7 @@ class LabeledVideoDataset(LabeledDataset):
     which points to the `manifest.json` file for the dataset.
     '''
 
-    _BUILDER_CLS = LabeledVideoDatasetBuilder
+    _BUILDER_CLS_FIELD = "eta.core.datasets.LabeledVideoDatasetBuilder"
 
     @classmethod
     def validate_dataset(cls, dataset_path):
@@ -957,7 +957,7 @@ class LabeledImageDataset(LabeledDataset):
     which points to the `manifest.json` file for the dataset.
     '''
 
-    _BUILDER_CLS = LabeledImageDatasetBuilder
+    _BUILDER_CLS_FIELD = "eta.core.datasets.LabeledImageDatasetBuilder"
 
     @classmethod
     def validate_dataset(cls, dataset_path):
@@ -1180,7 +1180,7 @@ class BuilderDataRecord(BaseDataRecord):
     def get_labels(self):
         if self._labels_obj is not None:
             return self._labels_obj
-        self._labels_obj = self._labels_cls.from_json(self._labels_path)
+        self._labels_obj = self._labels_cls.from_json(self.labels_path)
         return self._labels_obj
 
     def set_labels(self, labels):
@@ -1257,7 +1257,7 @@ class BuilderVideoRecord(BuilderDataRecord):
 
     def _extract_video_labels(self):
         start_frame, end_frame = (self.clip_start_frame, self.clip_end_frame)
-        segment = etav.VideoLabels()
+        segment = self._labels_cls()
         labels = self.get_labels()
         self.set_labels(segment)
         if not labels:
