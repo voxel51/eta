@@ -96,6 +96,9 @@ def round_robin_split(iterable, split_fractions=None):
         if curr_sample_size >= sample_sizes[current_sample_idx]:
             sample_full[current_sample_idx] = True
 
+        if all(sample_full):
+            break
+
         current_sample_idx = _find_next_available_idx(
             current_sample_idx, sample_full)
 
