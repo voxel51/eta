@@ -513,6 +513,21 @@ class Container(Serializable):
         '''
         self.__elements__.extend(container.__elements__)
 
+    def filter_elements(self, filters, match=any):
+        '''Removes elements that don't match the given filters from the
+        container.
+
+        Args:
+            filters: a list of functions that accept elements and return
+                True/False
+            match: a function (usually `any` or `all`) that accepts an iterable
+                and returns True/False. Used to aggregate the outputs of each
+                filter to decide whether a match has occurred. The default is
+                `any`
+        '''
+        elements = self._filter_elements(filters, match)
+        setattr(self, self._ELE_ATTR, elements)
+
     def delete_inds(self, inds):
         '''Deletes the elements from the container with the given indices.
 
@@ -587,11 +602,8 @@ class Container(Serializable):
             a copy of the container containing only the elements that match
                 the filters
         '''
-        return self.__class__(**{
-            self._ELE_ATTR:
-            list(filter(
-                lambda o: match(f(o) for f in filters), self.__elements__))
-        })
+        elements = self._filter_elements(filters, match)
+        return self.__class__(**{self._ELE_ATTR: elements})
 
     def sort_by(self, attr, reverse=False):
         '''Sorts the elements in the container by the given attribute.
@@ -628,7 +640,7 @@ class Container(Serializable):
         if reflective:
             d["_CLS"] = self.get_class_name()
             d[self._ELE_CLS_FIELD] = etau.get_class_name(self._ELE_CLS)
-        d[self._ELE_ATTR] = _recurse(self.__elements__, False)
+        d.update(super(Container, self).serialize(reflective=False))
         return d
 
     @classmethod
@@ -668,6 +680,10 @@ class Container(Serializable):
         return cls(**{
             cls._ELE_ATTR: [ele_cls.from_dict(dd) for dd in d[cls._ELE_ATTR]]
         })
+
+    def _filter_elements(self, filters, match):
+        return list(
+            filter(lambda o: match(f(o) for f in filters), self.__elements__))
 
     def _validate(self):
         '''Validates that a Container instance is valid.'''
