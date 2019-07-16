@@ -10,6 +10,7 @@ Jason Corso, jason@voxel51.com
 Ben Kane, ben@voxel51.com
 Kevin Qi, kevin@voxel51.com
 Tyler Ganter, tyler@voxel51.com
+Ravali Pinnaka, ravali@voxel51.com
 '''
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
@@ -193,14 +194,11 @@ def sample_videos_to_images(
     if stride is None and num_images is None:
         stride = 1
 
-    if stride is not None and num_images is not None:
-        raise ValueError(
-            "Only one of `stride` and `num_images` can be "
-            "specified, but got stride = %s, num_images = %s" %
-            (stride, num_images))
+    _validate_stride_and_num_images(stride, num_images)
 
     if num_images is not None:
         stride = _compute_stride(video_dataset, num_images, frame_filter)
+        logger.info("Sampling video frames with stride %d", stride)
 
     image_dataset = LabeledImageDataset.create_empty_dataset(
         image_dataset_path, description=description)
@@ -219,9 +217,31 @@ def sample_videos_to_images(
             frame_img, image_labels, image_filename,
             labels_filename)
 
+    if not image_dataset:
+        logger.info(
+            "All frames were filtered out in sample_videos_to_images(). "
+            "Writing an empty image dataset to '%s'.",
+            image_dataset_path)
+
     image_dataset.write_manifest(image_dataset_path)
 
     return image_dataset
+
+
+def _validate_stride_and_num_images(stride, num_images):
+    if stride is not None and num_images is not None:
+        raise ValueError(
+            "Only one of `stride` and `num_images` can be "
+            "specified, but got stride = %s, num_images = %s" %
+            (stride, num_images))
+
+    if stride is not None and stride < 1:
+        raise ValueError(
+            "stride must be >= 1, but got %d" % stride)
+
+    if num_images is not None and num_images < 1:
+        raise ValueError(
+            "num_images must be >= 1, but got %d" % num_images)
 
 
 def _compute_stride(video_dataset, num_images, frame_filter):
@@ -232,6 +252,15 @@ def _compute_stride(video_dataset, num_images, frame_filter):
             if frame_filter(frame_labels):
                 total_frames_retained += 1
 
+    logger.info("Found %d total frames after applying the filter",
+                total_frames_retained)
+
+    # Handle corner cases
+    if total_frames_retained < 2:
+        return 1
+    if num_images < 2:
+        return total_frames_retained
+
     return _compute_stride_from_total_frames(
         total_frames_retained, num_images)
 
@@ -241,6 +270,7 @@ def _compute_stride_from_total_frames(total_frames, num_desired):
         return total_frames
 
     stride_guess = (total_frames - 1) / (num_desired - 1)
+    stride_guess = max(stride_guess, 1)
     stride_int_guesses = [np.floor(stride_guess), np.ceil(stride_guess)]
     actual_num_images = [
         total_frames / stride for stride in stride_int_guesses]
@@ -273,61 +303,22 @@ def _iter_filtered_video_frames(video_dataset, frame_filter, stride):
                 yield frame_img, frame_labels, base_filename
 
 
-class LabeledDatasetBuilder(object):
-    '''
-    This object builds a LabeledDataset with optional transformations such as
-    sampling, filtering by schema, and balance.
-    '''
-
-    _DATASET_CLS_FIELD = None
-    _BUILDER_DATASET_CLS_FIELD = None
-
-    def __init__(self):
-        self._transformers = []
-        self._dataset = etau.get_class(self._BUILDER_DATASET_CLS_FIELD)()
-
-    def add_record(self, record):
-        self._dataset.add(record)
-
-    def add_transform(self, transform):
-        self._transformers.append(transform)
-
-    @property
-    def record_cls(self):
-        return self._dataset.record_cls
-
-    def build(self, path, description=None, pretty_print=False):
-        for transformer in self._transformers:
-            transformer.transform(self._dataset)
-
-        dataset_cls = etau.get_class(self._DATASET_CLS_FIELD)
-        dataset = dataset_cls.create_empty_dataset(path, description)
-
-        with etau.TempDir() as dir_path:
-            for idx, record in enumerate(self._dataset):
-                result = record.build(dir_path, str(idx),
-                                      pretty_print=pretty_print)
-                dataset.add_file(*result, move_files=True)
-        dataset.update_manifest()
-        return dataset
-
-
-class LabeledImageDatasetBuilder(LabeledDatasetBuilder):
-    '''LabeledDatasetBuilder for images.'''
-
-    _DATASET_CLS_FIELD = "eta.core.datasets.LabeledImageDataset"
-    _BUILDER_DATASET_CLS_FIELD = "eta.core.datasets.BuilderImageDataset"
-
-
-class LabeledVideoDatasetBuilder(LabeledDatasetBuilder):
-    '''LabeledDatasetBuilder for videos.'''
-
-    _DATASET_CLS_FIELD = "eta.core.datasets.LabeledVideoDataset"
-    _BUILDER_DATASET_CLS_FIELD = "eta.core.datasets.BuilderVideoDataset"
-
-
 class LabeledDataset(object):
-    '''Base class for labeled datasets.'''
+    '''Base class for labeled datasets.
+
+    Labeled datasets are stored on disk in the following format:
+
+    ```
+    /path/to/dataset/
+        manifest.json
+        data/
+            image1.png (or) video1.mp4
+            ...
+        labels/
+            image1.json (or) video1.json
+            ...
+    ```
+    '''
 
     def __init__(self, dataset_path):
         '''Creates a LabeledDataset instance.
@@ -1018,6 +1009,24 @@ class LabeledImageDataset(LabeledDataset):
 class LabeledDatasetIndex(Serializable):
     '''A class that encapsulates the manifest of a `LabeledDataset`.
 
+    Manifest is stored on disk in the following format:
+
+    ```
+        manifest.json
+        {
+            "description": "",
+            "type": "eta.core.datasets.LabeledDataset",
+            ...
+            "index": [
+            {
+                "data": "data/video1.mp4",
+                "labels": "labels/video1.json"
+            },
+                ...
+            ]
+        }
+    ```
+
     Attributes:
         type: the fully qualified class name of the `LabeledDataset` subclass
             that encapsulates the dataset
@@ -1107,6 +1116,59 @@ class LabeledDatasetError(Exception):
     pass
 
 
+class LabeledDatasetBuilder(object):
+    '''
+    This object builds a LabeledDataset with optional transformations such as
+    sampling, filtering by schema, and balance.
+    '''
+
+    _DATASET_CLS_FIELD = None
+    _BUILDER_DATASET_CLS_FIELD = None
+
+    def __init__(self):
+        self._transformers = []
+        self._dataset = etau.get_class(self._BUILDER_DATASET_CLS_FIELD)()
+
+    def add_record(self, record):
+        self._dataset.add(record)
+
+    def add_transform(self, transform):
+        self._transformers.append(transform)
+
+    @property
+    def record_cls(self):
+        return self._dataset.record_cls
+
+    def build(self, path, description=None, pretty_print=False):
+        for transformer in self._transformers:
+            transformer.transform(self._dataset)
+
+        dataset_cls = etau.get_class(self._DATASET_CLS_FIELD)
+        dataset = dataset_cls.create_empty_dataset(path, description)
+
+        with etau.TempDir() as dir_path:
+            for idx, record in enumerate(self._dataset):
+                result = record.build(dir_path, str(idx),
+                                      pretty_print=pretty_print)
+                dataset.add_file(*result, move_files=True)
+        dataset.update_manifest()
+        return dataset
+
+
+class LabeledImageDatasetBuilder(LabeledDatasetBuilder):
+    '''LabeledDatasetBuilder for images.'''
+
+    _DATASET_CLS_FIELD = "eta.core.datasets.LabeledImageDataset"
+    _BUILDER_DATASET_CLS_FIELD = "eta.core.datasets.BuilderImageDataset"
+
+
+class LabeledVideoDatasetBuilder(LabeledDatasetBuilder):
+    '''LabeledDatasetBuilder for videos.'''
+
+    _DATASET_CLS_FIELD = "eta.core.datasets.LabeledVideoDataset"
+    _BUILDER_DATASET_CLS_FIELD = "eta.core.datasets.BuilderVideoDataset"
+
+
 class BuilderDataRecord(BaseDataRecord):
     '''This class is responsible for tracking all of the metadata about a data
     record required for dataset operations on a BuilderDataset.
@@ -1115,17 +1177,17 @@ class BuilderDataRecord(BaseDataRecord):
     def __init__(self, data_path, labels_path):
         self._data_path = data_path
         self._labels_path = labels_path
-        self.labels_cls = None
-        self.labels_obj = None
+        self._labels_cls = None
+        self._labels_obj = None
 
     def get_labels(self):
-        if self.labels_obj is not None:
-            return self.labels_obj
-        self.labels_obj = self.labels_cls.from_json(self.labels_path)
-        return self.labels_obj
+        if self._labels_obj is not None:
+            return self._labels_obj
+        self._labels_obj = self._labels_cls.from_json(self._labels_path)
+        return self._labels_obj
 
     def set_labels(self, labels):
-        self.labels_obj = labels
+        self._labels_obj = labels
 
     @property
     def data_path(self):
@@ -1144,12 +1206,24 @@ class BuilderDataRecord(BaseDataRecord):
 
         labels.filename = filename + data_ext
         labels.write_json(labels_path, pretty_print=pretty_print)
-
         return data_path, labels_path
 
     @classmethod
     def required(cls):
         return ["data_path", "labels_path"]
+
+    def copy_params(self):
+        args = (self._data_path, self._labels_path)
+        kwargs = {
+            attr: getattr(self, attr) for attr in self.optional()
+        }
+        return args, kwargs
+
+    def copy(self):
+        args, kwargs = self.copy_params()
+        copy = self.__class__(*args, **kwargs)
+        copy.set_labels(self.get_labels())
+        return copy
 
 
 class BuilderImageRecord(BuilderDataRecord):
@@ -1157,7 +1231,7 @@ class BuilderImageRecord(BuilderDataRecord):
 
     def __init__(self, image_path, labels_path):
         super(BuilderImageRecord, self).__init__(image_path, labels_path)
-        self.labels_cls = etai.ImageLabels
+        self._labels_cls = etai.ImageLabels
 
     def build(self, dir_path, filename, pretty_print=False):
         args = (dir_path, filename, pretty_print)
@@ -1170,10 +1244,10 @@ class BuilderImageRecord(BuilderDataRecord):
 class BuilderVideoRecord(BuilderDataRecord):
     '''BuilderDataRecord for video.'''
 
-    def __init__(self, video_path, labels_path, clip_start_frame=1,
+    def __init__(self, data_path, labels_path, clip_start_frame=1,
                  clip_end_frame=None, duration=None,
                  total_frame_count=None):
-        super(BuilderVideoRecord, self).__init__(video_path, labels_path)
+        super(BuilderVideoRecord, self).__init__(data_path, labels_path)
         self.clip_start_frame = clip_start_frame
         self._metadata = None
         if None in [clip_end_frame, duration, total_frame_count]:
@@ -1182,18 +1256,22 @@ class BuilderVideoRecord(BuilderDataRecord):
             self.clip_end_frame = clip_end_frame
             self.duration = duration
             self.total_frame_count = total_frame_count
-        self.labels_cls = etav.VideoLabels
+        self._labels_cls = etav.VideoLabels
 
     def _extract_video_labels(self):
         start_frame, end_frame = (self.clip_start_frame, self.clip_end_frame)
         segment = etav.VideoLabels()
         labels = self.get_labels()
+        self.set_labels(segment)
+        if not labels:
+            return
         for frame_id in range(start_frame, end_frame):
             frame = labels[frame_id]
-            frame.frame_number = frame.frame_number - start_frame + 1
-            segment.add_objects(frame.objects, frame.frame_number)
-            segment.add_frame_attributes(frame.attrs, frame.frame_number)
-        self.set_labels(segment)
+            frame_number = frame.frame_number - start_frame + 1
+            if frame.objects:
+                segment.add_objects(frame.objects, frame_number)
+            if frame.attrs:
+                segment.add_frame_attributes(frame.attrs, frame_number)
 
     def _init_from_video_metadata(self):
         metadata = etav.VideoMetadata.build_for(self.data_path)
@@ -1206,34 +1284,26 @@ class BuilderVideoRecord(BuilderDataRecord):
         args = (dir_path, filename, pretty_print)
         data_path, labels_path = super(BuilderVideoRecord, self).build(*args)
         start_frame, end_frame = (self.clip_start_frame, self.clip_end_frame)
-        start = etav.frame_number_to_timestamp(self.clip_start_frame,
-                                               self.total_frame_count,
-                                               self.duration)
-        end = etav.frame_number_to_timestamp(self.clip_end_frame,
-                                             self.total_frame_count,
-                                             self.duration)
-
         if start_frame == 1 and end_frame == self.total_frame_count:
             etau.copy_file(self.data_path, data_path)
         else:
-            duration = end - start
-            extract_args = (
+            args = (
                 self.data_path,
-                data_path,
-                start,
-                duration
+                etav.FrameRanges([(start_frame, end_frame)])
             )
-            etav.extract_clip(*extract_args)
+            with etav.VideoProcessor(*args, out_video_path=data_path) as p:
+                for img in p:
+                    p.write(img)
         return data_path, labels_path
 
     @classmethod
     def optional(cls):
         attrs = super(BuilderVideoRecord, cls).optional()
         attrs += [
-            "start_frame",
-            "end_frame",
+            "clip_start_frame",
+            "clip_end_frame",
             "duration",
-            "total_frame_count"
+            "total_frame_count",
         ]
         return attrs
 
@@ -1267,8 +1337,8 @@ class BuilderImageDataset(BuilderDataset):
 class BuilderVideoDataset(BuilderDataset):
     '''A BuilderDataset for videos.'''
 
-    def __init__(self, schema=None):
-        super(BuilderVideoDataset, self).__init__(BuilderVideoRecord, schema)
+    def __init__(self, record_cls=BuilderVideoRecord, schema=None):
+        super(BuilderVideoDataset, self).__init__(record_cls, schema)
 
 
 class DatasetTransformer(object):
@@ -1600,37 +1670,27 @@ class SchemaFilter(DatasetTransformer):
     def __init__(self, schema):
         self.schema = schema
 
-    def _extract_video_labels(self, start_frame, end_frame, labels):
-        segment = etav.VideoLabels(schema=self.schema, filename=labels.filename)
-        for frame_id in range(start_frame, end_frame):
-            frame = labels[frame_id]
-            frame.frame_number = frame.frame_number - start_frame + 1
-            for obj in frame.objects:
-                try:
-                    segment.add_object(obj, frame.frame_number)
-                except etad.AttributeContainerSchemaError as err:
-                    logger.warn(err)
-            for attr in frame.attrs:
-                try:
-                    segment.add_frame_attribute(attr, frame.frame_number)
-                except etad.AttributeContainerSchemaError as err:
-                    logger.warn(err)
-        return segment
-
     def transform(self, src):
         for record in src:
             labels = record.get_labels()
-            labels = self._extract_video_labels(record.start_frame,
-                                                record.end_frame, labels)
+            labels.filter_by_schema(self.schema)
             record.set_labels(labels)
 
 
 class Clipper(DatasetTransformer):
     '''
     Clip longer videos into shorter ones, and sample at some stride step
+
     '''
 
     def __init__(self, clip_len, stride, min_clip_len):
+        '''Creates a Clipper instance.
+
+        Args:
+            clip_len: number of frames per clip
+            stride: gap between clips in frames
+            min_clip_len: minimum number of frames allowed
+        '''
         self.clip_len = clip_len
         self.stride = stride
         self.min_clip_len = min_clip_len
@@ -1640,7 +1700,40 @@ class Clipper(DatasetTransformer):
             raise DatasetTransformerError()
         old_records = src.records
         src.clear()
-        # @TODO impl me! - Also might want to throw error if data is not video.
+        for record in old_records:
+            start_frame = record.clip_start_frame
+            while start_frame <= record.clip_end_frame:
+                end_frame = start_frame + self.clip_len - 1
+                if end_frame > record.clip_end_frame:
+                    end_frame = record.clip_end_frame
+                    clip_duration = int(end_frame - start_frame + 1)
+                    if clip_duration < int(self.min_clip_len):
+                        break
+                self._add_clipping(start_frame, end_frame, record, src.records)
+                start_frame += self.stride
+
+    def _add_clipping(self, start_frame, end_frame, old_record, records):
+        new_record = old_record.copy()
+        new_record.clip_start_frame = start_frame
+        new_record.clip_end_frame = end_frame
+        records.append(new_record)
+
+
+class EmptyLabels(DatasetTransformer):
+    '''Assign empty labels to all records.'''
+
+    def __init__(self):
+        pass
+
+    def transform(self, src):
+        if not src:
+            return
+
+        labels_cls_name = etau.get_class_name(src[0].get_labels())
+        labels_cls = etau.get_class(labels_cls_name)
+
+        for record in src:
+            record.set_labels(labels_cls())
 
 
 class DatasetTransformerError(Exception):

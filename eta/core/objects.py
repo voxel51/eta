@@ -172,6 +172,19 @@ class DetectedObjectContainer(DataContainer):
         '''
         self.sort_by("frame_number", reverse=reverse)
 
+    def filter_by_schema(self, schema):
+        '''Filters the objects/attributes from this container that are not
+        compliant with the given schema.
+
+        Args:
+            schema: an ImageLabelsSchema or VideoLabelsSchema
+        '''
+        filter_func = lambda obj: obj.label in schema.objects
+        self.filter_elements([filter_func])
+        for obj in self:
+            if obj.has_attributes:
+                obj.attrs.filter_by_schema(schema.objects[obj.label])
+
 
 class ObjectCount(Serializable):
     '''The number of instances of an object found in an image.'''
