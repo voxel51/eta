@@ -7,6 +7,9 @@ voxel51.com
 Matthew Lightman, matthew@voxel51.com
 Brian Moore, brian@voxel51.com
 Jason Corso, jason@voxel51.com
+Ben Kane, ben@voxel51.com
+Kevin Qi, kevin@voxel51.com
+Tyler Ganter, tyler@voxel51.com
 '''
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
@@ -1300,21 +1303,47 @@ class Sampler(DatasetTransformer):
 
 class Balancer(DatasetTransformer):
     '''
-    Balance the number of records in the dataset by values in some categorical
-    Attribute, as provided on construction.
+    Balance the the dataset's values of a categorical attribute by removing
+    records.
+
+    For example:
+        Given a dataset with 10 green cars, 20 blue cars and 15 red cars,
+        remove records with blue and red cars until there are the same number
+        of each color.
+
+        In this example 'color' is the `attribute_name` and 'car' is the
+        `object_label`.
     '''
 
-    def __init__(self, attribute_name, object_label=None):
+    def __init__(self, attribute_name, object_label=None,
+                 median_point=0.25, negative_power=5.0):
         '''
 
         Args:
-            attribute_name (String): the name of the attribute to balance by
-            object_label (String): the name of the object label that the
+            attribute_name (str): the name of the attribute to balance by
+            object_label (str): the name of the object label that the
                 attribute_name must be nested under. If this is None, it is
                 assumed that the attributes are Image/Frame level attrs.
+            median_point (float): value between [0, 1] to specify what the
+                target count per attribute value will be.
+                0.5 - will result in the true median
+                0   - the minimum value
+                It is recommended to set this somewhere between [0, 0.5]. The
+                smaller this value is, the closer all values can be balanced,
+                at the risk that if some values have particularly low number of
+                samples, they dataset will be excessively trimmed.
+            negative_power (float): value between [1, ~LARGE~] that weights the
+                negative values (where the count of a value is less that the
+                target) when computing the score for a set of indices to remove.
+                1 - will weight them the same as positive values
+                2 - will square the values
+                ...
+                Check Balancer._solution_score for more details.
         '''
         self.attr_name = attribute_name
         self.object_label = object_label
+        self.median_point = median_point
+        self.negative_power = negative_power
 
     def transform(self, src):
         '''
@@ -1339,29 +1368,48 @@ class Balancer(DatasetTransformer):
         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         '''
 
-        old_records = src.records
-        src.clear()
-
         # STEP 1: Get attribute value(s) for every record
-        helper_list = self._to_helper_list(old_records)
+        helper_list = self._to_helper_list(src.records)
 
-        # STEP 2: balance the records
+        # STEP 2: determine target number to remove of each attribute value
         target_remove = self._get_target_remove(helper_list)
 
+        # STEP 3: find the records to keep
         keep_idxs = self._get_keep_idxs(target_remove, helper_list)
 
-        # STEP 3: modify the src
+        # STEP 4: modify the list of records
+        old_records = src.records
+        src.clear()
         for ki in keep_idxs:
             src.add(old_records[helper_list[ki][0]])
 
-    def _to_helper_list(self, old_records):
+    def _to_helper_list(self, records):
+        '''
+
+        records: list of BuilderDataRecord's
+        return: a list of tuples with two entries:
+
+                [
+                    (record_id, list_of_values),
+                    (record_id, list_of_values),
+                    (record_id, list_of_values),
+                    ...
+                ]
+
+            record_id: integer ID of the corresponding old_record
+            list_of_values: list of attribute values for the attribute to be
+                            balanced, one per unique object, if using objects.
+                            For example: ['red', 'red', 'green'] would imply
+                            three objects with the 'color' attribute in this
+                            record.
+        '''
         helper_list = []
 
-        if not len(old_records):
+        if not len(records):
             return helper_list
 
-        elif type(old_records[0]) == BuilderImageRecord:
-            for i, record in enumerate(old_records):
+        elif type(records[0]) == BuilderImageRecord:
+            for i, record in enumerate(records):
                 labels = record.get_labels()
                 if self.object_label:
                     helper = (i, [])
@@ -1381,8 +1429,8 @@ class Balancer(DatasetTransformer):
                             helper_list.append((i, [attr.value]))
                             break
 
-        elif type(old_records[0]) == BuilderVideoRecord:
-            for i, record in enumerate(old_records):
+        elif type(records[0]) == BuilderVideoRecord:
+            for i, record in enumerate(records):
                 labels = record.get_labels()
                 if self.object_label:
                     NO_ID = 'NO_ID'
@@ -1431,11 +1479,19 @@ class Balancer(DatasetTransformer):
 
         else:
             raise DatasetTransformerError(
-                'Unknown record type: {}'.format(type(old_records[0])))
+                'Unknown record type: {}'.format(type(records[0])))
 
         return helper_list
 
-    def _get_target_remove(self, helper_list, median_point=0.25):
+    def _get_target_remove(self, helper_list):
+        '''
+
+        helper_list: return value from Balancer._to_helper_list(...)
+        return: a dictionary with:
+            keys: the values of the attribute to balance
+            values: the target count to remove of this attribute value
+        '''
+        # compute counts for each attribute value
         counts = {}
         for idx, attr_values in helper_list:
             for attr_value in attr_values:
@@ -1444,26 +1500,34 @@ class Balancer(DatasetTransformer):
                 else:
                     counts[attr_value] += 1
 
+        # sort by count
         counts_list = list(counts.items())
         counts_list.sort(key=lambda x: x[1])
 
-        target_count = counts_list[int(len(counts_list) * median_point)][1]
+        # integer target value
+        target_count = counts_list[int(len(counts_list) * self.median_point)][1]
 
         target_remove = [(k, v - target_count) for k, v in counts_list]
         # @TODO leave the negatives in? (comment this line out)
         # target_remove = [(k, max(v, 0)) for k, v in target_remove]
         target_remove = dict(target_remove)
 
-        # for x in counts_list:
-        #     print(x)
-
         return target_remove
 
     def _get_keep_idxs(self, target_remove, helper_list):
+        '''
+        Algorithm fun! This function chooses the set of records to keep (and
+        remove).
+
+        There's still plenty of potential for testing and improvement here.
+
+        target_remove: dictionary returned from Balancer._get_target_remove
+        helper_list: return value of Balancer._to_helper_list
+        return: a list of integer indices to keep
+        '''
         keep_idxs = list(range(len(helper_list)))
         remove_idxs = []
         score = self._get_score(target_remove, helper_list, remove_idxs)
-        # print('{} : {}'.format(score, v))
 
         # # ALGO1 - random
         # import random
@@ -1503,13 +1567,17 @@ class Balancer(DatasetTransformer):
             score = best_score
             remove_idxs.append(keep_idxs.pop(best_i))
 
-        # print(remove_idxs)
-        # score = self._get_score(target_remove, helper_list, remove_idxs)
-        # print(score)
-
         return keep_idxs
 
     def _get_score(self, target_remove, helper_list, remove_idxs):
+        '''
+
+        target_remove: dictionary returned from Balancer._get_target_remove
+        helper_list: return value of Balancer._to_helper_list
+        remove_idxs: a list of integer indices to remove
+
+        return: the score for the given remove_idxs
+        '''
         temp = target_remove.copy()
         for idx in remove_idxs:
             for value in helper_list[idx][1]:
@@ -1518,12 +1586,23 @@ class Balancer(DatasetTransformer):
         # v = list(temp.values())
         # v.sort()
         # print(v)
-        # return self._solution_score(temp.values()), v
 
         return self._solution_score(temp.values())
 
-    def _solution_score(self, vector, negative_power=5.0):
-        vector2 = [abs(x)**(1 + (negative_power - 1) * int(x<0))
+    def _solution_score(self, vector):
+        '''
+        Compute the score for a vector (smaller is better). This is a custom
+        scoring function that sorta computes the L1 norm for positive values
+        and the L<X> norm for negative values where <X> is self.negative_power.
+
+        Larger self.negative_power puts more weight on not reducing the count
+        of any attribute values that are already below the target.
+
+        vector: Vector_Of_Counts - Target_Count
+        return: (float) a score value, (which is only meaningful in a relative
+                        sense). Smaller -> Better!
+        '''
+        vector2 = [abs(x)**(1 + (self.negative_power - 1) * int(x<0))
                    for x in vector]
         return sum(vector2)
 
