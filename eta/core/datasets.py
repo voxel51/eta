@@ -42,20 +42,59 @@ logger = logging.getLogger(__name__)
 # General split methods
 
 
-def odds_and_evens(iterable):
-    '''Splits items into two sample lists, one from odd indexed items and the
-    other from even indexed items.
+def round_robin_split(iterable, split_fractions=None):
+    '''Traverses the iterable in order and assigns items to samples in order,
+    until a given sample has reached its desired size.
+
+    If a random split is required, this function is not recommended unless your
+    items are already randomly ordered.
 
     Args:
         iterable: any finite iterable
+        split_fractions: an optional list of split fractions, which should sum
+            to 1. By default, [0.5, 0.5] is used
 
     Returns:
-        sample_lists: a list of two lists. Each sub-list contains items from
-            the original iterable.
+        sample_lists: a list of lists, of the same length as `split_fractions`.
+            Each sub-list contains items from the original iterable.
     '''
-    sample_lists = [[], []]
-    for idx, item in enumerate(iterable):
-        sample_lists[idx % 2].append(item)
+    split_fractions = _validate_split_fractions(split_fractions)
+
+    # Initial estimate of size of each sample
+    item_list = list(iterable)
+    n = len(item_list)
+    sample_sizes = [int(frac * n) for frac in split_fractions]
+
+    if n == 0:
+        return [[] for _ in sample_sizes]
+
+    # Calculate exact size of each sample, making sure the sum of the
+    # samples sizes is equal to `n`
+    remainder = n - sum(sample_sizes)
+    num_to_add = int(remainder / len(sample_sizes))
+    for idx, _ in enumerate(sample_sizes):
+        sample_sizes[idx] += num_to_add
+    remainder = n - sum(sample_sizes)
+    for idx, _ in enumerate(sample_sizes):
+        if idx < remainder:
+            sample_sizes[idx] += 1
+
+    assert sum(sample_sizes) == n, (sum(sample_sizes), n)
+
+    # Iterate over items and add them to the appropriate sample
+    sample_lists = [[] for _ in sample_sizes]
+    sample_full = [sample_size == 0 for sample_size in sample_sizes]
+    current_sample_idx = min(
+        idx for idx, sample_size in enumerate(sample_sizes)
+        if sample_size > 0)
+    for item in item_list:
+        sample_lists[current_sample_idx].append(item)
+        curr_sample_size = len(sample_lists[current_sample_idx])
+        if curr_sample_size >= sample_sizes[current_sample_idx]:
+            sample_full[current_sample_idx] = True
+
+        current_sample_idx = _find_next_available_idx(
+            current_sample_idx, sample_full)
 
     return sample_lists
 
@@ -76,8 +115,7 @@ def random_split_exact(iterable, split_fractions=None):
         sample_lists: a list of lists, of the same length as `split_fractions`.
             Each sub-list contains items from the original iterable.
     '''
-    if split_fractions is None:
-        split_fractions = [0.5, 0.5]
+    split_fractions = _validate_split_fractions(split_fractions)
 
     shuffled = list(iterable)
     random.shuffle(shuffled)
@@ -101,8 +139,7 @@ def random_split_approx(iterable, split_fractions=None):
         sample_lists: a list of lists, of the same length as `split_fractions`.
             Each sub-list contains items from the original iterable.
     '''
-    if split_fractions is None:
-        split_fractions = [0.5, 0.5]
+    split_fractions = _validate_split_fractions(split_fractions)
 
     sample_lists = [[] for _ in split_fractions]
 
@@ -120,8 +157,8 @@ def split_in_order(iterable, split_fractions=None):
     fractions.
 
     The items are partitioned into samples in order according to their
-    position in the input sample. This is not recommended unless your items
-    are already randomly ordered.
+    position in the input sample. If a random split is required, this function
+    is not recommended unless your items are already randomly ordered.
 
     Args:
         iterable: any finite iterable
@@ -132,8 +169,7 @@ def split_in_order(iterable, split_fractions=None):
         sample_lists: a list of lists, of the same length as `split_fractions`.
             Each sub-list contains items from the original iterable.
     '''
-    if split_fractions is None:
-        split_fractions = [0.5, 0.5]
+    split_fractions = _validate_split_fractions(split_fractions)
 
     return _split_in_order(list(iterable), split_fractions)
 
@@ -151,8 +187,38 @@ def _split_in_order(item_list, split_fractions):
     return sample_lists
 
 
+def _validate_split_fractions(split_fractions):
+    if split_fractions is None:
+        split_fractions = [0.5, 0.5]
+
+    negative = [frac for frac in split_fractions if frac < 0]
+    if negative:
+        raise ValueError(
+            "Split fractions must be non-negative, but got the following "
+            "negative values: %s" % str(negative))
+
+    if sum(split_fractions) != 1:
+        raise ValueError(
+            "Split fractions must add up to 1, but got sum(%s) = %f" %
+            (split_fractions, sum(split_fractions)))
+
+    return split_fractions
+
+
+def _find_next_available_idx(idx, unavailable_indicators):
+    for next_idx in range(idx + 1, len(unavailable_indicators)):
+        if not unavailable_indicators[next_idx]:
+            return next_idx
+
+    for next_idx in range(idx + 1):
+        if not unavailable_indicators[next_idx]:
+            return next_idx
+
+    return None
+
+
 SPLIT_FUNCTIONS = {
-    "odds_and_evens": odds_and_evens,
+    "round_robin": round_robin_split,
     "random_exact": random_split_exact,
     "random_approx": random_split_approx,
     "in_order": split_in_order
