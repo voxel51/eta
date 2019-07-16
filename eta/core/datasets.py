@@ -1241,7 +1241,7 @@ class BuilderVideoRecord(BuilderDataRecord):
             "clip_start_frame",
             "clip_end_frame",
             "duration",
-            "total_frame_count"
+            "total_frame_count",
         ]
         return attrs
 
@@ -1390,9 +1390,18 @@ class Clipper(DatasetTransformer):
                     clip_duration = int(end_frame - start_frame + 1)
                     if clip_duration < int(self.min_clip_len):
                         break
-                print(str(start_frame) + ' ' + str(end_frame))
+                self.add_clipping(start_frame, end_frame, record, src.records)
                 start_frame += self.clip_len
                 start_frame += self.stride
+
+    def add_clipping(self, start_frame, end_frame, old_record, records):
+        frame_rate = old_record.frame_rate
+        new_record = old_record.copy()
+        new_record.start_frame = start_frame
+        new_record.clip_end_frame = end_frame
+        new_record.total_frame_count = end_frame - start_frame + 1
+        new_record.duration = round((end_frame - start_frame) / frame_rate, 3)
+        records.append(new_record)
 
 
 class DatasetTransformerError(Exception):
