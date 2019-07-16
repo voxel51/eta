@@ -1387,7 +1387,11 @@ class Balancer(DatasetTransformer):
                 if self.object_label:
                     NO_ID = 'NO_ID'
                     helper_dict = {}
-                    for frame in labels.frames.values():
+                    for frame_no, frame in labels.frames.items():
+                        if (frame_no < record.clip_start_frame
+                            or frame_no >= record.clip_end_frame):
+                            continue
+
                         for detected_object in frame.objects:
                             if detected_object.label != self.object_label:
                                 continue
