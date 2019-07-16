@@ -30,7 +30,6 @@ import random
 import numpy as np
 
 from eta.core.data import BaseDataRecord
-import eta.core.data as etad
 import eta.core.image as etai
 from eta.core.serial import Serializable
 import eta.core.utils as etau
@@ -111,7 +110,7 @@ def random_split_approx(iterable, split_fractions=None):
     for item in iterable:
         idx = np.searchsorted(cum_frac, random.random())
         if idx < len(sample_lists):
-            sample_lists[idx].append(record)
+            sample_lists[idx].append(item)
 
     return sample_lists
 
@@ -847,7 +846,7 @@ class LabeledDataset(object):
                     data_file)
             self._data_to_labels_map[data_file] = labels_file
 
-    def _validate_new_file(self, data_path):
+    def _validate_new_data_file(self, data_path):
         '''Checks whether a data file would be a duplicate of an existing
         data file in the dataset.
 
@@ -950,8 +949,8 @@ class LabeledDataset(object):
 
         return data_filenames_to_merge
 
-    @staticmethod
-    def _ensure_empty_dataset_dir(dataset_path):
+    @classmethod
+    def _ensure_empty_dataset_dir(cls, dataset_path):
         etau.ensure_basedir(dataset_path)
         data_dir = os.path.dirname(dataset_path)
 
@@ -962,8 +961,8 @@ class LabeledDataset(object):
                 "Found the following files in directory '%s': %s" %
                 (data_dir, existing_files))
 
-        data_subdir = os.path.join(data_dir, self._DATA_SUBDIR)
-        labels_subdir = os.path.join(data_dir, self._LABELS_SUBDIR)
+        data_subdir = os.path.join(data_dir, cls._DATA_SUBDIR)
+        labels_subdir = os.path.join(data_dir, cls._LABELS_SUBDIR)
         etau.ensure_dir(data_subdir)
         etau.ensure_dir(labels_subdir)
 
@@ -1217,8 +1216,8 @@ class LabeledDatasetIndex(Serializable):
             raise ValueError(
                 "split_fractions and descriptions lists should be the "
                 "same length, but got len(split_fractions) = %d, "
-                "len(descriptions) = %d", (
-                    len(split_fractions), len(descriptions)))
+                "len(descriptions) = %d" %
+                (len(split_fractions), len(descriptions)))
 
         split_func = SPLIT_FUNCTIONS[split_method]
         split_indices = split_func(self.index, split_fractions)
