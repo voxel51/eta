@@ -640,7 +640,7 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
                     "Failed to delete file '%s' from '%s' (%s)", filename,
                     folder_id, t.elapsed_time_str)
 
-        if not len(self.list_files_in_folder(folder_id)):
+        if not self.count_files_in_folder(folder_id):
             logger.info("All files deleted in %s", folder_id)
 
     def count_files_in_folder(self, folder_id):
