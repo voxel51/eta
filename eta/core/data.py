@@ -252,6 +252,42 @@ class AttributeSchema(Serializable):
                 "Expected attribute '%s' to have type '%s'; found '%s'" %
                 (attr.name, self.type, etau.get_class_name(attr)))
 
+    def validate_attribute(self, attr):
+        '''Validates that the attribute is compliant with the schema.
+
+        Args:
+            attr: an Attribute
+
+        Raises:
+            AttributeSchemaError: if the attribute is not compliant with the
+                schema
+        '''
+        if attr.name != self.name:
+            raise AttributeSchemaError(
+                "Expected name '%s'; found '%s'" % (self.name, attr.name))
+
+        self.validate_type(attr)
+
+        if not self.is_valid_value(attr.value):
+            raise AttributeSchemaError(
+                "Value '%s' of attribute '%s' is not allowed by the "
+                "schema " % (attr.value, attr.name))
+
+    def is_valid_attribute(self, attr):
+        '''Returns True/False if the attribute is compliant with the schema.
+
+        Args:
+            attr: an Attribute
+
+        Returns:
+            True/False
+        '''
+        try:
+            self.validate_attribute(attr)
+            return True
+        except AttributeSchemaError:
+            return False
+
     def is_valid_value(self, value):
         '''Returns True/False if value is valid for the attribute.'''
         raise NotImplementedError("subclass must implement is_valid_value()")
@@ -467,6 +503,16 @@ class AttributeContainer(DataContainer):
         '''
         self.sort_by("name", reverse=reverse)
 
+    def filter_by_schema(self, schema):
+        '''Removes attributes from this container that are not compliant with
+        the given schema.
+
+        Args:
+            schema: an AttributeContainerSchema
+        '''
+        filter_func = lambda attr: schema.is_valid_attribute(attr)
+        self.filter_elements([filter_func])
+
     def get_schema(self):
         '''Gets the current enforced schema for the container, or None if
         no schema is enforced.
@@ -483,14 +529,23 @@ class AttributeContainer(DataContainer):
         '''Sets the enforced schema to the given AttributeContainerSchema.
 
         Args:
-            schema (AttributeContainerSchema): schema to set
-            filter_by_schema (bool): true will run filtering with the provided
-                                     schema.
+            schema: the AttributeContainerSchema to use
+            filter_by_schema: whether to filter any invalid values from the
+                container after changing the schema. By default, this is False
+
+        Raises:
+            AttributeContainerSchemaError: if `filter_by_schema` was False and
+                the container contains values that are not compliant with the
+                schema
         '''
         self.schema = schema
-        if filter_by_schema and self.has_schema:
-            self._filter_by_schema()
-        self._validate_schema()
+        if not self.has_schema:
+            return
+
+        if filter_by_schema:
+            self.filter_by_schema(self.schema)
+        else:
+            self._validate_schema()
 
     def freeze_schema(self):
         '''Sets the enforced schema for the container to the current active
@@ -504,17 +559,11 @@ class AttributeContainer(DataContainer):
 
     def attributes(self):
         '''Returns the list of class attributes that will be serialized.'''
-        _attrs = super(AttributeContainer, self).attributes()
+        _attrs = []
         if self.has_schema:
             _attrs.append("schema")
+        _attrs += super(AttributeContainer, self).attributes()
         return _attrs
-
-    def _filter_by_schema(self):
-        def filter_func(attr):
-            return self.schema.has_attribute(attr.name) and self.schema.schema[
-                attr.name].is_valid_value(attr.value)
-
-        self.attrs = self.get_matches([filter_func])
 
     def _validate_attribute(self, attr):
         if self.has_schema:
@@ -598,20 +647,32 @@ class AttributeContainerSchema(Serializable):
             raise AttributeContainerSchemaError(
                 "Attribute '%s' is not allowed by the schema" % attr.name)
 
-        attr_schema = self.schema[attr.name]
-        attr_schema.validate_type(attr)
+        try:
+            self.schema[attr.name].validate_attribute(attr)
+        except AttributeSchemaError as e:
+            raise AttributeContainerSchemaError(e)
 
-        if not attr_schema.is_valid_value(attr.value):
-            raise AttributeContainerSchemaError(
-                "Value '%s' of attribute '%s' is not allowed by the "
-                "schema " % (attr.value, attr.name))
+    def is_valid_attribute(self, attr):
+        '''Returns True/False if the Attribute is compliant with the schema.'''
+        return (
+            self.has_attribute(attr.name) and
+            self.schema[attr.name].is_valid_attribute(attr))
 
     @classmethod
     def build_active_schema(cls, attrs):
         '''Builds an AttributeContainerSchema that describes the active schema
-        of the given AttributeContainer.
+        of the given attributes.
+
+        Args:
+            attrs: an AttributeContainer
+
+        Returns:
+            an AttributeContainerSchema describing the active schema of the
+                attributes
         '''
-        return cls().add_attributes(attrs)
+        schema = cls()
+        schema.add_attributes(attrs)
+        return schema
 
     @classmethod
     def from_dict(cls, d):
