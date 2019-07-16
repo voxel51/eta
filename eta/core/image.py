@@ -38,7 +38,8 @@ import cv2
 import numpy as np
 
 import eta
-from eta.core.data import AttributeContainer, AttributeContainerSchema
+from eta.core.data import AttributeContainer, AttributeContainerSchema, \
+    AttributeContainerSchemaError
 from eta.core.objects import DetectedObjectContainer
 from eta.core.serial import Serializable
 import eta.core.utils as etau
@@ -236,10 +237,38 @@ class ImageSetLabels(Serializable):
                 ImageLabelsSchema.build_active_schema(image_labels))
         return schema
 
-    def set_schema(self, schema):
-        '''Sets the enforced schema to the given ImageLabelsSchema.'''
+    def set_schema(self, schema, filter_by_schema=False):
+        '''Sets the enforced schema to the given ImageLabelsSchema.
+
+        Args:
+            schema: the ImageLabelsSchema to use
+            filter_by_schema: whether to filter any invalid objects/attributes
+                from this object after changing the schema. By default, this is
+                False
+
+        Raises:
+            ImageLabelsSchemaError: if `filter_by_schema` was False and this
+                object contains attributes/objects that are not compliant with
+                the schema
+        '''
         self.schema = schema
-        self._validate_schema()
+        if not self.has_schema:
+            return
+
+        if filter_by_schema:
+            self.filter_by_schema(self.schema)
+        else:
+            self._validate_schema()
+
+    def filter_by_schema(self, schema):
+        '''Removes objects/attributes from the ImageLabels in this object that
+        are not compliant with the given schema.
+
+        Args:
+            schema: an ImageLabelsSchema
+        '''
+        for image_labels in self.images:
+            image_labels.filter_by_schema(schema)
 
     def freeze_schema(self):
         '''Sets the enforced schema for the image set to the current active
@@ -367,6 +396,16 @@ class ImageLabels(Serializable):
         '''Merges the ImageLabels into this object.'''
         self.add_image_attributes(image_labels.attrs)
         self.add_objects(image_labels.objects)
+
+    def filter_by_schema(self, schema):
+        '''Removes objects/attributes from this object that are not compliant
+        with the given schema.
+
+        Args:
+            schema: an ImageLabelsSchema
+        '''
+        self.attrs.filter_by_schema(schema.attrs)
+        self.objects.filter_by_schema(schema)
 
     def attributes(self):
         '''Returns the list of class attributes that will be serialized.'''
@@ -522,7 +561,7 @@ class ImageLabelsSchema(Serializable):
         try:
             self.validate_image_attribute(image_attr)
             return True
-        except:
+        except AttributeContainerSchemaError:
             return False
 
     def is_valid_object_label(self, label):
@@ -532,7 +571,7 @@ class ImageLabelsSchema(Serializable):
         try:
             self.validate_object_label(label)
             return True
-        except:
+        except AttributeContainerSchemaError:
             return False
 
     def is_valid_object_attribute(self, label, obj_attr):
@@ -542,7 +581,7 @@ class ImageLabelsSchema(Serializable):
         try:
             self.validate_object_attribute(label, obj_attr)
             return True
-        except:
+        except AttributeContainerSchemaError:
             return False
 
     def is_valid_object(self, obj):
@@ -552,7 +591,7 @@ class ImageLabelsSchema(Serializable):
         try:
             self.validate_object(obj)
             return True
-        except:
+        except AttributeContainerSchemaError:
             return False
 
     def validate_image_attribute(self, image_attr):
