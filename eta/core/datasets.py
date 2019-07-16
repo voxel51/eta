@@ -1207,7 +1207,6 @@ class BuilderVideoRecord(BuilderDataRecord):
         self.total_frame_count = metadata.total_frame_count
         self.duration = metadata.duration
         self.clip_end_frame = metadata.total_frame_count
-        self.frame_rate = metadata.frame_rate
 
     def build(self, dir_path, filename, pretty_print=False):
         self._extract_video_labels()
@@ -1390,17 +1389,14 @@ class Clipper(DatasetTransformer):
                     clip_duration = int(end_frame - start_frame + 1)
                     if clip_duration < int(self.min_clip_len):
                         break
-                self.add_clipping(start_frame, end_frame, record, src.records)
+                self._add_clipping(start_frame, end_frame, record, src.records)
                 start_frame += self.clip_len
                 start_frame += self.stride
 
-    def add_clipping(self, start_frame, end_frame, old_record, records):
-        frame_rate = old_record.frame_rate
+    def _add_clipping(self, start_frame, end_frame, old_record, records):
         new_record = old_record.copy()
-        new_record.start_frame = start_frame
+        new_record.clip_start_frame = start_frame
         new_record.clip_end_frame = end_frame
-        new_record.total_frame_count = end_frame - start_frame + 1
-        new_record.duration = round((end_frame - start_frame) / frame_rate, 3)
         records.append(new_record)
 
 
