@@ -62,8 +62,11 @@ def round_robin_split(iterable, split_fractions=None):
 
     # Initial estimate of size of each sample
     item_list = list(iterable)
-    n = len(item_list)
-    sample_sizes = [int(frac * n) for frac in split_fractions]
+    sample_sizes = [int(frac * len(item_list)) for frac in split_fractions]
+
+    # `n` is the total number of items that will be divided into samples.
+    # `n` may be less than len(item_list) if sum(split_fractions) < 1.
+    n = int(np.round(len(item_list) * sum(split_fractions)))
 
     if n == 0:
         return [[] for _ in sample_sizes]
@@ -197,9 +200,9 @@ def _validate_split_fractions(split_fractions):
             "Split fractions must be non-negative, but got the following "
             "negative values: %s" % str(negative))
 
-    if sum(split_fractions) != 1:
+    if sum(split_fractions) > 1.0:
         raise ValueError(
-            "Split fractions must add up to 1, but got sum(%s) = %f" %
+            "Sum of split fractions must be <= 1.0, but got sum(%s) = %f" %
             (split_fractions, sum(split_fractions)))
 
     return split_fractions
