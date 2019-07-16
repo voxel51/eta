@@ -237,10 +237,38 @@ class ImageSetLabels(Serializable):
                 ImageLabelsSchema.build_active_schema(image_labels))
         return schema
 
-    def set_schema(self, schema):
-        '''Sets the enforced schema to the given ImageLabelsSchema.'''
+    def set_schema(self, schema, filter_by_schema=False):
+        '''Sets the enforced schema to the given ImageLabelsSchema.
+
+        Args:
+            schema: the ImageLabelsSchema to use
+            filter_by_schema: whether to filter any invalid objects/attributes
+                from this object after changing the schema. By default, this is
+                False
+
+        Raises:
+            ImageLabelsSchemaError: if `filter_by_schema` was False and this
+                object contains attributes/objects that are not compliant with
+                the schema
+        '''
         self.schema = schema
-        self._validate_schema()
+        if not self.has_schema:
+            return
+
+        if filter_by_schema:
+            self.filter_by_schema(self.schema)
+        else:
+            self._validate_schema()
+
+    def filter_by_schema(self, schema):
+        '''Removes objects/attributes from the ImageLabels in this object that
+        are not compliant with the given schema.
+
+        Args:
+            schema: an ImageLabelsSchema
+        '''
+        for image_labels in self.images:
+            image_labels.filter_by_schema(schema)
 
     def freeze_schema(self):
         '''Sets the enforced schema for the image set to the current active
@@ -314,8 +342,7 @@ class ImageLabels(Serializable):
             the image
     '''
 
-    def __init__(self, filename=None, metadata=None, attrs=None, objects=None,
-                 schema=None):
+    def __init__(self, filename=None, metadata=None, attrs=None, objects=None):
         '''Constructs an ImageLabels instance.
 
         Args:
@@ -327,13 +354,11 @@ class ImageLabels(Serializable):
             objects: an optional DetectedObjectContainer of detected objects
                 for the image. By default, an empty DetectedObjectContainer is
                 created
-            schema: an optional ImageLabelsSchema
         '''
         self.filename = filename
         self.metadata = metadata
         self.attrs = attrs or AttributeContainer()
         self.objects = objects or DetectedObjectContainer()
-        self.schema = schema
 
     def add_image_attribute(self, attr):
         '''Adds the attribute to the image.
@@ -373,32 +398,14 @@ class ImageLabels(Serializable):
         self.add_objects(image_labels.objects)
 
     def filter_by_schema(self, schema):
-        ''' Filters this label object by the provided schema
+        '''Removes objects/attributes from this object that are not compliant
+        with the given schema.
+
         Args:
-            schema (ImageLabelsSchema): schema to filter by
+            schema: an ImageLabelsSchema
         '''
-        self._filter_by_schema(schema)
-
-    def _filter_by_schema(self, schema):
-        self._filter_image_attributes(schema)
-        self._filter_objects(schema)
-
-    def _filter_image_attributes(self, schema):
-        self.attrs.set_schema(schema.attrs, filter_by_schema=True)
-
-    def _filter_objects(self, schema):
-        objects = DetectedObjectContainer()
-        for obj in self.objects:
-            if self._filter_object(schema, obj):
-                objects.add(obj)
-        self.objects = objects
-        for obj in self.objects:
-            if obj.has_attributes:
-                obj.attrs.set_schema(schema.objects[obj.label],
-                                     filter_by_schema=True)
-
-    def _filter_object(self, schema, obj):
-        return obj.label in schema.objects
+        self.attrs.filter_by_schema(schema.attrs)
+        self.objects.filter_by_schema(schema)
 
     def attributes(self):
         '''Returns the list of class attributes that will be serialized.'''
