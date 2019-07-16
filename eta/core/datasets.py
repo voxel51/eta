@@ -1195,12 +1195,16 @@ class BuilderVideoRecord(BuilderDataRecord):
         start_frame, end_frame = (self.clip_start_frame, self.clip_end_frame)
         segment = etav.VideoLabels()
         labels = self.get_labels()
+        self.set_labels(segment)
+        if not labels:
+            return
         for frame_id in range(start_frame, end_frame):
             frame = labels[frame_id]
-            frame.frame_number = frame.frame_number - start_frame + 1
-            segment.add_objects(frame.objects, frame.frame_number)
-            segment.add_frame_attributes(frame.attrs, frame.frame_number)
-        self.set_labels(segment)
+            frame_number = frame.frame_number - start_frame + 1
+            if frame.objects:
+                segment.add_objects(frame.objects, frame_number)
+            if frame.attrs:
+                segment.add_frame_attributes(frame.attrs, frame_number)
 
     def _init_from_video_metadata(self):
         metadata = etav.VideoMetadata.build_for(self.data_path)
@@ -1213,24 +1217,16 @@ class BuilderVideoRecord(BuilderDataRecord):
         args = (dir_path, filename, pretty_print)
         data_path, labels_path = super(BuilderVideoRecord, self).build(*args)
         start_frame, end_frame = (self.clip_start_frame, self.clip_end_frame)
-        start = etav.frame_number_to_timestamp(self.clip_start_frame,
-                                               self.total_frame_count,
-                                               self.duration)
-        end = etav.frame_number_to_timestamp(self.clip_end_frame,
-                                             self.total_frame_count,
-                                             self.duration)
-
         if start_frame == 1 and end_frame == self.total_frame_count:
             etau.copy_file(self.data_path, data_path)
         else:
-            duration = end - start
-            extract_args = (
+            args = (
                 self.data_path,
-                data_path,
-                start,
-                duration
+                etav.FrameRanges([(start_frame, end_frame)])
             )
-            etav.extract_clip(*extract_args)
+            with etav.VideoProcessor(*args, out_video_path=data_path) as p:
+                for img in p:
+                    p.write(img)
         return data_path, labels_path
 
     @classmethod
@@ -1373,6 +1369,23 @@ class Clipper(DatasetTransformer):
         old_records = src.records
         src.clear()
         # @TODO impl me! - Also might want to throw error if data is not video.
+
+
+class EmptyLabels(DatasetTransformer):
+    '''Assign empty labels to all records.'''
+
+    def __init__(self):
+        pass
+
+    def transform(self, src):
+        if not src:
+            return
+
+        labels_cls_name = etau.get_class_name(src[0].get_labels())
+        labels_cls = etau.get_class(labels_cls_name)
+
+        for record in src:
+            record.set_labels(labels_cls())
 
 
 class DatasetTransformerError(Exception):
