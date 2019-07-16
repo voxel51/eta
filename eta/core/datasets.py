@@ -1346,22 +1346,60 @@ class Balancer(DatasetTransformer):
         helper_list = self._to_helper_list(old_records)
 
         # STEP 2: balance the records
-        counts, to_remove = self._get_counts_and_to_remove(helper_list)
+        counts, target_remove = self._get_counts_and_target_remove(helper_list)
 
-        for x in counts:
-            print(x)
-        print('~~~~~~~~~~~~~~~~~~')
-        for x in to_remove:
-            print(x)
+        # for x in counts.items():
+        #     print(x)
+        # print('~~~~~~~~~~~~~~~~~~~~~~')
 
-        # def entropy(pk):
-        #     import numpy as np
-        #     pk = np.array(pk)
-        #     pk = pk / np.sum(pk)
-        #     S = -np.sum(pk * np.log(pk + 1e-9), axis=0)
-        #     return S / -np.log(1 / pk.shape[0])
-        # print(entropy(counts.values()))
+        keep_idxs = list(range(len(helper_list)))
+        remove_idxs = []
+        score, v = self._get_score(target_remove, helper_list, remove_idxs)
+        print('{} : {}'.format(score, v))
 
+        # ALGO1 - random
+        # import random
+        # random.seed(1)
+        # for _ in range(10000):
+        #     i = random.randrange(len(keep_idxs))
+        #     idx = keep_idxs[i]
+        #     score2, v = self._get_score(
+        #         target_remove,
+        #         helper_list,
+        #         remove_idxs + [idx]
+        #     )
+        #     if score2 < score:
+        #         score = score2
+        #         remove_idxs.append(keep_idxs.pop(i))
+
+        # ALGO2 - greedy
+        while len(keep_idxs) > 0:
+            best_i = 0
+            best_score, v = self._get_score(
+                target_remove,
+                helper_list,
+                remove_idxs + [keep_idxs[best_i]]
+            )
+            for i in range(1, len(keep_idxs)):
+                cur_score, v = self._get_score(
+                    target_remove,
+                    helper_list,
+                    remove_idxs + [keep_idxs[i]]
+                )
+                if cur_score < best_score:
+                    best_score = cur_score
+                    best_i = i
+
+            if best_score >= score:
+                break
+            score = best_score
+            remove_idxs.append(keep_idxs.pop(best_i))
+
+        print(remove_idxs)
+        score, v = self._get_score(target_remove, helper_list, remove_idxs)
+        print('{} : {}'.format(score, v))
+
+        # @TODO STEP 3: modify the src
         # src.add(old_records[0])
 
     def _to_helper_list(self, old_records):
@@ -1389,7 +1427,7 @@ class Balancer(DatasetTransformer):
 
         return helper_list
 
-    def _get_counts_and_to_remove(self, helper_list, median_point=0.25):
+    def _get_counts_and_target_remove(self, helper_list, median_point=0.25):
         counts = {}
         for idx, attr_values in helper_list:
             for attr_value in attr_values:
@@ -1398,17 +1436,33 @@ class Balancer(DatasetTransformer):
                 else:
                     counts[attr_value] += 1
 
-        counts = list(counts.items())
-        counts.sort(key=lambda x: x[1])
+        counts_list = list(counts.items())
+        counts_list.sort(key=lambda x: x[1])
 
-        target_count = counts[int(len(counts) * median_point)][1]
+        target_count = counts_list[int(len(counts_list) * median_point)][1]
 
-        to_remove = [(k, v - target_count) for k, v in counts]
+        target_remove = [(k, v - target_count) for k, v in counts_list]
         # @TODO leave the negatives in? (comment this line out)
-        to_remove = [(k, max(v, 0)) for k, v in to_remove]
+        # target_remove = [(k, max(v, 0)) for k, v in target_remove]
+        target_remove = dict(target_remove)
 
-        return counts, to_remove
+        return counts, target_remove
 
+    def _get_score(self, target_remove, helper_list, remove_idxs):
+        temp = target_remove.copy()
+        for idx in remove_idxs:
+            for value in helper_list[idx][1]:
+                temp[value] = temp[value] - 1
+
+        v = list(temp.values())
+        v.sort()
+
+        return self.solution_score(temp.values()), v
+
+    def solution_score(self, vector, negative_power=5.0):
+        vector2 = [abs(x)**(1 + (negative_power - 1) * int(x<0))
+                   for x in vector]
+        return sum(vector2)
 
 class SchemaFilter(DatasetTransformer):
     '''
