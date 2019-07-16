@@ -1216,24 +1216,16 @@ class BuilderVideoRecord(BuilderDataRecord):
         args = (dir_path, filename, pretty_print)
         data_path, labels_path = super(BuilderVideoRecord, self).build(*args)
         start_frame, end_frame = (self.clip_start_frame, self.clip_end_frame)
-        start = etav.frame_number_to_timestamp(self.clip_start_frame,
-                                               self.total_frame_count,
-                                               self.duration)
-        end = etav.frame_number_to_timestamp(self.clip_end_frame,
-                                             self.total_frame_count,
-                                             self.duration)
-
         if start_frame == 1 and end_frame == self.total_frame_count:
             etau.copy_file(self.data_path, data_path)
         else:
-            duration = end - start
-            extract_args = (
+            args = (
                 self.data_path,
-                data_path,
-                start,
-                duration
+                etav.FrameRanges([(start_frame, end_frame)])
             )
-            etav.extract_clip(*extract_args)
+            with etav.VideoProcessor(*args, out_video_path=data_path) as p:
+                for img in p:
+                    p.write(img)
         return data_path, labels_path
 
     @classmethod
