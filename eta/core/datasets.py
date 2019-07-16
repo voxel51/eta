@@ -1346,61 +1346,13 @@ class Balancer(DatasetTransformer):
         helper_list = self._to_helper_list(old_records)
 
         # STEP 2: balance the records
-        counts, target_remove = self._get_counts_and_target_remove(helper_list)
+        target_remove = self._get_target_remove(helper_list)
 
-        # for x in counts.items():
-        #     print(x)
-        # print('~~~~~~~~~~~~~~~~~~~~~~')
+        keep_idxs = self._get_keep_idxs(target_remove, helper_list)
 
-        keep_idxs = list(range(len(helper_list)))
-        remove_idxs = []
-        score, v = self._get_score(target_remove, helper_list, remove_idxs)
-        print('{} : {}'.format(score, v))
-
-        # ALGO1 - random
-        # import random
-        # random.seed(1)
-        # for _ in range(10000):
-        #     i = random.randrange(len(keep_idxs))
-        #     idx = keep_idxs[i]
-        #     score2, v = self._get_score(
-        #         target_remove,
-        #         helper_list,
-        #         remove_idxs + [idx]
-        #     )
-        #     if score2 < score:
-        #         score = score2
-        #         remove_idxs.append(keep_idxs.pop(i))
-
-        # ALGO2 - greedy
-        while len(keep_idxs) > 0:
-            best_i = 0
-            best_score, v = self._get_score(
-                target_remove,
-                helper_list,
-                remove_idxs + [keep_idxs[best_i]]
-            )
-            for i in range(1, len(keep_idxs)):
-                cur_score, v = self._get_score(
-                    target_remove,
-                    helper_list,
-                    remove_idxs + [keep_idxs[i]]
-                )
-                if cur_score < best_score:
-                    best_score = cur_score
-                    best_i = i
-
-            if best_score >= score:
-                break
-            score = best_score
-            remove_idxs.append(keep_idxs.pop(best_i))
-
-        print(remove_idxs)
-        score, v = self._get_score(target_remove, helper_list, remove_idxs)
-        print('{} : {}'.format(score, v))
-
-        # @TODO STEP 3: modify the src
-        # src.add(old_records[0])
+        # STEP 3: modify the src
+        for ki in keep_idxs:
+            src.add(old_records[helper_list[ki][0]])
 
     def _to_helper_list(self, old_records):
         helper_list = []
@@ -1427,7 +1379,7 @@ class Balancer(DatasetTransformer):
 
         return helper_list
 
-    def _get_counts_and_target_remove(self, helper_list, median_point=0.25):
+    def _get_target_remove(self, helper_list, median_point=0.25):
         counts = {}
         for idx, attr_values in helper_list:
             for attr_value in attr_values:
@@ -1446,7 +1398,60 @@ class Balancer(DatasetTransformer):
         # target_remove = [(k, max(v, 0)) for k, v in target_remove]
         target_remove = dict(target_remove)
 
-        return counts, target_remove
+        # for x in counts_list:
+        #     print(x)
+
+        return target_remove
+
+    def _get_keep_idxs(self, target_remove, helper_list):
+        keep_idxs = list(range(len(helper_list)))
+        remove_idxs = []
+        score = self._get_score(target_remove, helper_list, remove_idxs)
+        # print('{} : {}'.format(score, v))
+
+        # # ALGO1 - random
+        # import random
+        # random.seed(1)
+        # for _ in range(10000):
+        #     i = random.randrange(len(keep_idxs))
+        #     idx = keep_idxs[i]
+        #     score2 = self._get_score(
+        #         target_remove,
+        #         helper_list,
+        #         remove_idxs + [idx]
+        #     )
+        #     if score2 < score:
+        #         score = score2
+        #         remove_idxs.append(keep_idxs.pop(i))
+
+        # ALGO2 - greedy
+        while len(keep_idxs) > 0:
+            best_i = 0
+            best_score = self._get_score(
+                target_remove,
+                helper_list,
+                remove_idxs + [keep_idxs[best_i]]
+            )
+            for i in range(1, len(keep_idxs)):
+                cur_score = self._get_score(
+                    target_remove,
+                    helper_list,
+                    remove_idxs + [keep_idxs[i]]
+                )
+                if cur_score < best_score:
+                    best_score = cur_score
+                    best_i = i
+
+            if best_score >= score:
+                break
+            score = best_score
+            remove_idxs.append(keep_idxs.pop(best_i))
+
+        # print(remove_idxs)
+        # score = self._get_score(target_remove, helper_list, remove_idxs)
+        # print(score)
+
+        return keep_idxs
 
     def _get_score(self, target_remove, helper_list, remove_idxs):
         temp = target_remove.copy()
@@ -1454,12 +1459,14 @@ class Balancer(DatasetTransformer):
             for value in helper_list[idx][1]:
                 temp[value] = temp[value] - 1
 
-        v = list(temp.values())
-        v.sort()
+        # v = list(temp.values())
+        # v.sort()
+        # print(v)
+        # return self._solution_score(temp.values()), v
 
-        return self.solution_score(temp.values()), v
+        return self._solution_score(temp.values())
 
-    def solution_score(self, vector, negative_power=5.0):
+    def _solution_score(self, vector, negative_power=5.0):
         vector2 = [abs(x)**(1 + (negative_power - 1) * int(x<0))
                    for x in vector]
         return sum(vector2)
