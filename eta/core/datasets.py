@@ -1390,7 +1390,6 @@ class Clipper(DatasetTransformer):
                     if clip_duration < int(self.min_clip_len):
                         break
                 self._add_clipping(start_frame, end_frame, record, src.records)
-                start_frame += self.clip_len
                 start_frame += self.stride
 
     def _add_clipping(self, start_frame, end_frame, old_record, records):
