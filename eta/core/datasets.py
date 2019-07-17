@@ -28,6 +28,7 @@ import six
 import logging
 import os
 import random
+from collections import Counter, defaultdict
 
 import numpy as np
 
@@ -1546,7 +1547,7 @@ class Balancer(DatasetTransformer):
         for i, record in enumerate(records):
             labels = record.get_labels()
             NO_ID = 'NO_ID'
-            helper_dict = {}
+            helper_dict = defaultdict(set)
 
             for frame_no, frame in labels.frames.items():
                 if (frame_no < record.clip_start_frame
@@ -1565,10 +1566,7 @@ class Balancer(DatasetTransformer):
                                 else NO_ID
                             )
 
-                            if obj_idx in helper_dict:
-                                helper_dict[obj_idx].add(attr.value)
-                            else:
-                                helper_dict[obj_idx] = set([attr.value])
+                            helper_dict[obj_idx].add(attr.value)
 
                             break
 
@@ -1595,27 +1593,20 @@ class Balancer(DatasetTransformer):
                 keys: the values of the attribute to balance
                 values: the target count to remove of this attribute value
         '''
-        # compute counts for each attribute value
-        counts = {}
+        counts = Counter()
         for idx, attr_values in helper_list:
-            for attr_value in attr_values:
-                if attr_value not in counts:
-                    counts[attr_value] = 1
-                else:
-                    counts[attr_value] += 1
+            counts.update(attr_values)
 
-        # sort by count
-        counts_list = list(counts.items())
-        counts_list.sort(key=lambda x: x[1])
+        # sort ascending by count
+        counts_list = counts.most_common()[::-1]
 
         # integer target value
         target_quantile_idx = int(len(counts_list) * self.target_quantile)
         target_count = counts_list[target_quantile_idx][1]
 
-        target_remove = [(k, v - target_count) for k, v in counts_list]
+        target_remove = {k: v - target_count for k, v in counts_list}
         # @TODO leave the negatives in? (comment this line out)
-        # target_remove = [(k, max(v, 0)) for k, v in target_remove]
-        target_remove = dict(target_remove)
+        # target_remove = {k: max(v, 0) for k, v in target_remove.items()}
 
         return target_remove
 
