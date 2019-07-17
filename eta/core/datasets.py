@@ -1704,9 +1704,11 @@ class Balancer(DatasetTransformer):
             (float) a score value, (which is only meaningful in a relative
                     sense). Smaller -> Better!
         '''
-        vector2 = [abs(x)**(1 + (self.negative_power - 1) * int(x<0))
-                   for x in vector]
-        return sum(vector2)
+        vector = np.array(vector)
+        v_pos = np.maximum(vector, 0)
+        v_neg = np.abs(np.minimum(vector, 0))
+        vector2 = v_pos + (v_neg ** self.negative_power)
+        return np.sum(vector2)
 
 
 class SchemaFilter(DatasetTransformer):
