@@ -22,6 +22,7 @@ import six
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+import copy
 import logging
 import os
 import random
@@ -1270,22 +1271,6 @@ class BuilderDataRecord(BaseDataRecord):
         labels.write_json(labels_path, pretty_print=pretty_print)
         return data_path, labels_path
 
-    @classmethod
-    def required(cls):
-        return ["data_path", "labels_path"]
-
-    def copy_params(self):
-        '''Generate parameters to create a copy of the record
-
-        Returns:
-            tuple (args, kwargs)
-        '''
-        args = (self._data_path, self._labels_path)
-        kwargs = {
-            attr: getattr(self, attr) for attr in self.optional()
-        }
-        return args, kwargs
-
     def copy(self):
         '''Safely copy a record. Only copy should be used when creating new
         records in DatasetTransformers.
@@ -1293,12 +1278,7 @@ class BuilderDataRecord(BaseDataRecord):
         Returns:
             BuilderImageRecord or BuilderVideoRecord
         '''
-        args, kwargs = self.copy_params()
-        copy = self.__class__(*args, **kwargs)
-        labels = self.get_labels()
-        labels_copy = labels.from_dict(labels.serialize())
-        copy.set_labels(labels_copy)
-        return copy
+        return copy.deepcopy(self)
 
 
 class BuilderImageRecord(BuilderDataRecord):
@@ -1409,17 +1389,6 @@ class BuilderVideoRecord(BuilderDataRecord):
                 for img in p:
                     p.write(img)
         return data_path, labels_path
-
-    @classmethod
-    def optional(cls):
-        attrs = super(BuilderVideoRecord, cls).optional()
-        attrs += [
-            "clip_start_frame",
-            "clip_end_frame",
-            "duration",
-            "total_frame_count",
-        ]
-        return attrs
 
 
 class BuilderDataset(etad.DataRecords):
