@@ -1600,9 +1600,8 @@ class Balancer(DatasetTransformer):
         # sort ascending by count
         counts_list = counts.most_common()[::-1]
 
-        # integer target value
-        target_quantile_idx = int(len(counts_list) * self.target_quantile)
-        target_count = counts_list[target_quantile_idx][1]
+        count_vals = [v for k, v in counts_list]
+        target_count = int(np.quantile(count_vals, self.target_quantile))
 
         target_remove = {k: v - target_count for k, v in counts_list}
         # @TODO leave the negatives in? (comment this line out)
@@ -1704,7 +1703,6 @@ class Balancer(DatasetTransformer):
             (float) a score value, (which is only meaningful in a relative
                     sense). Smaller -> Better!
         '''
-        vector = np.array(vector)
         v_pos = np.maximum(vector, 0)
         v_neg = np.abs(np.minimum(vector, 0))
         vector2 = v_pos + (v_neg ** self.negative_power)
