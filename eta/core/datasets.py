@@ -1114,29 +1114,60 @@ class LabeledDatasetError(Exception):
 
 
 class LabeledDatasetBuilder(object):
-    '''
-    This object builds a LabeledDataset with optional transformations such as
-    sampling, filtering by schema, and balance.
+    '''This object builds a LabeledDataset with with transformations applied,
+    e.g. Sampler, Balancer.
+
+    Transformations are run in the order they are added.
     '''
 
     _DATASET_CLS_FIELD = None
     _BUILDER_DATASET_CLS_FIELD = None
 
     def __init__(self):
+        '''Initialize the LabeledDatasetBuilder.'''
         self._transformers = []
         self._dataset = etau.get_class(self._BUILDER_DATASET_CLS_FIELD)()
 
     def add_record(self, record):
+        '''Add a record. LabeledImageDatasetBuilders take BuilderImageRecords
+        and LabeledVideoDatasetBuilders take BuilderVideoRecords.
+
+        Args:
+            record (BuilderImageRecord or BuilderVideoRecord)
+
+        Returns:
+            None
+        '''
         self._dataset.add(record)
 
     def add_transform(self, transform):
+        '''Add a DatasetTransformer.
+
+        Args:
+            transform (DatasetTransformer)
+
+        Returns:
+            None
+        '''
         self._transformers.append(transform)
 
     @property
     def record_cls(self):
+        '''Record class getter.'''
         return self._dataset.record_cls
 
     def build(self, path, description=None, pretty_print=False):
+        '''Build the new LabeledDataset after all records and transformations
+        have been added.
+
+        Args:
+            path (str): path to write the new dataset (manifest.json)
+            description (str): optional dataset description
+            pretty_print (Boolean): pretty print flag for json labels
+
+        Returns:
+            LabeledDataset
+        '''
         for transformer in self._transformers:
             transformer.transform(self._dataset)
 
@@ -1172,29 +1203,63 @@ class BuilderDataRecord(BaseDataRecord):
     '''
 
     def __init__(self, data_path, labels_path):
+        '''Initialize the BuilderDataRecord. The label and data paths cannot and
+        should not be modified after initializion.
+
+        Args:
+            data_path (str): path to data file
+            labels_path (str): path to labels json
+        '''
         self._data_path = data_path
         self._labels_path = labels_path
         self._labels_cls = None
         self._labels_obj = None
 
     def get_labels(self):
+        '''Labels getter.
+
+        Returns:
+            ImageLabels or VideoLabels
+        '''
         if self._labels_obj is not None:
             return self._labels_obj
         self._labels_obj = self._labels_cls.from_json(self.labels_path)
         return self._labels_obj
 
     def set_labels(self, labels):
+        '''Labels setter.
+
+        Args:
+            labels (ImageLabels or VideoLabels)
+
+        Returns:
+            None
+        '''
         self._labels_obj = labels
 
     @property
     def data_path(self):
+        '''Data path getter.'''
         return self._data_path
 
     @property
     def labels_path(self):
+        '''Labels path getter.'''
         return self._labels_path
 
     def build(self, dir_path, filename, pretty_print=False):
+        '''Write the transformed labels and data files to dir_path. The
+        subclasses BuilderVideoRecord and BuilderDataRecord are responsible for
+        writing the data file.
+
+        Args:
+            dir_path (str): path to write the files
+            filename (str): filename prefix that data and labels share
+            pretty_print (Boolean): pretty_print json flag for labels
+
+        Returns:
+            tuple (data_path, labels_path): the paths to the written files
+        '''
         labels_path = os.path.join(dir_path, filename + ".json")
         labels = self.get_labels()
 
@@ -1210,6 +1275,11 @@ class BuilderDataRecord(BaseDataRecord):
         return ["data_path", "labels_path"]
 
     def copy_params(self):
+        '''Generate parameters to create a copy of the record
+
+        Returns:
+            tuple (args, kwargs)
+        '''
         args = (self._data_path, self._labels_path)
         kwargs = {
             attr: getattr(self, attr) for attr in self.optional()
@@ -1217,6 +1287,12 @@ class BuilderDataRecord(BaseDataRecord):
         return args, kwargs
 
     def copy(self):
+        '''Safely copy a record. Only copy should be used when creating new
+        records in DatasetTransformers.
+
+        Returns:
+            BuilderImageRecord or BuilderVideoRecord
+        '''
         args, kwargs = self.copy_params()
         copy = self.__class__(*args, **kwargs)
         labels = self.get_labels()
@@ -1229,10 +1305,26 @@ class BuilderImageRecord(BuilderDataRecord):
     '''BuilderDataRecord for images.'''
 
     def __init__(self, image_path, labels_path):
+        '''Initialize a BuilderVideoRecord with the data_path and labels_path.
+
+        Args:
+            data_path (str): path to video
+            labels_path (str): path to labels
+        '''
         super(BuilderImageRecord, self).__init__(image_path, labels_path)
         self._labels_cls = etai.ImageLabels
 
     def build(self, dir_path, filename, pretty_print=False):
+        '''Build the BuilderImageRecord.
+
+        Args:
+            dir_path (str): path to write the files
+            filename (str): filename prefix that data and labels share
+            pretty_print (Boolean): pretty_print json flag for labels
+
+        Returns:
+            tuple (data_path, labels_path): the paths to the written files
+        '''
         args = (dir_path, filename, pretty_print)
         data_path, labels_path = super(BuilderImageRecord, self).build(*args)
 
@@ -1246,6 +1338,19 @@ class BuilderVideoRecord(BuilderDataRecord):
     def __init__(self, data_path, labels_path, clip_start_frame=1,
                  clip_end_frame=None, duration=None,
                  total_frame_count=None):
+        '''Initialize a BuilderVideoRecord with data_path, labels_path, and
+        optional metadata about video. Without the optional arguments their
+        values will be loaded from the video metadata and the start and end
+        frames will default to covering the entire video.
+
+        Args:
+            data_path (str): path to video
+            labels_path (str): path to labels
+            clip_start_frame (int): start frame of the clip
+            clip_end_frame (int): end frame of the clip
+            duration (float): duration (seconds) of the VIDEO (NOT THE CLIP)
+            total_frame_count (int): frame count of the VIDEO (NOT THE CLIP)
+        '''
         super(BuilderVideoRecord, self).__init__(data_path, labels_path)
         self.clip_start_frame = clip_start_frame
         self._metadata = None
@@ -1279,6 +1384,16 @@ class BuilderVideoRecord(BuilderDataRecord):
         self.clip_end_frame = metadata.total_frame_count
 
     def build(self, dir_path, filename, pretty_print=False):
+        '''Build the BuilderVideoRecord.
+
+        Args:
+            dir_path (str): path to write the files
+            filename (str): filename prefix that data and labels share
+            pretty_print (Boolean): pretty_print json flag for labels
+
+        Returns:
+            tuple (data_path, labels_path): the paths to the written files
+        '''
         self._extract_video_labels()
         args = (dir_path, filename, pretty_print)
         data_path, labels_path = super(BuilderVideoRecord, self).build(*args)
@@ -1310,60 +1425,65 @@ class BuilderVideoRecord(BuilderDataRecord):
 class BuilderDataset(etad.DataRecords):
     '''A BuilderDataset is managed by a LabeledDatasetBuilder.
     DatasetTransformers operate on BuilderDatasets.
-
-    Inheritance chain:
-        etad.DataRecords <- etad.DataContainer <- eta.serial.Container
     '''
 
-    def __init__(self, record_cls, schema=None):
+    def __init__(self, record_cls):
         super(BuilderDataset, self).__init__(record_cls)
-        self.schema = schema
-
-    def get_schema(self):
-        return self.schema
-
-    def set_schema(self, schema):
-        self.schema = schema
 
 
 class BuilderImageDataset(BuilderDataset):
     '''A BuilderDataset for images.'''
 
-    def __init__(self, record_cls=BuilderImageRecord, schema=None):
-        super(BuilderImageDataset, self).__init__(record_cls, schema)
+    def __init__(self, record_cls=BuilderImageRecord):
+        super(BuilderImageDataset, self).__init__(record_cls)
 
 
 class BuilderVideoDataset(BuilderDataset):
     '''A BuilderDataset for videos.'''
 
-    def __init__(self, record_cls=BuilderVideoRecord, schema=None):
-        super(BuilderVideoDataset, self).__init__(record_cls, schema)
+    def __init__(self, record_cls=BuilderVideoRecord):
+        super(BuilderVideoDataset, self).__init__(record_cls)
 
 
 class DatasetTransformer(object):
-    '''
-    Object responsible for transforming TransformableDatasets
-    Basically, strategy pattern
+    '''Classes that subclass DatasetTransformer operate on BuilderDatasets
+    (BuilderImageDataset or BuilderVideoDataset). Only transform() will be
+    called outside the instances of a DatasetTransformer.
     '''
 
     def transform(self, src):
         ''' Transform a TransformableDataset
 
         Args:
-            src (BuilderDataset): the dataset builder
+            src (BuilderImageDataset or BuilderVideoDataset)
+
+        Returns:
+            None
         '''
         raise NotImplementedError("implementation required")
 
 
 class Sampler(DatasetTransformer):
-    '''
-    Randomly sample the number of records in the dataset to some number k
+    '''Randomly sample the number of records in the dataset to some number k.
     '''
 
     def __init__(self, k):
+        '''Initialize the Samples with k; the number of samples to take.
+
+        Args:
+            k (int)
+        '''
         self.k = k
 
     def transform(self, src):
+        '''Sample from the existing records.
+
+        Args:
+            src (BuilderImageDataset or BuilderVideoDataset
+
+        Returns:
+            None
+        '''
         try:
             src.records = random.sample(src.records, self.k)
         except ValueError as err:
@@ -1387,14 +1507,28 @@ class Balancer(DatasetTransformer):
 
 
 class SchemaFilter(DatasetTransformer):
-    '''
-    Filter all labels in the dataset by the provided schema
+    '''Filter all labels in the dataset by the provided schema. If the schema is
+    None, no filtering is done.
     '''
 
     def __init__(self, schema):
+        '''Initialize the SchemaFilter with a schema.
+
+        Args:
+            schema (VideoLabelsSchema orImageLabelsSchema)
+        '''
         self.schema = schema
 
     def transform(self, src):
+        '''Filter all records in src. If the schema is None, no filtering is
+        done.
+
+        Args:
+            src (BuilderImageDataset or BuilderVideoDataset)
+
+        Returns:
+            None
+        '''
         if self.schema is None:
             return
         for record in src:
@@ -1404,24 +1538,31 @@ class SchemaFilter(DatasetTransformer):
 
 
 class Clipper(DatasetTransformer):
-    '''
-    Clip longer videos into shorter ones, and sample at some stride step
+    '''Clip longer videos into shorter ones, and sample at some stride step.'''
 
-    '''
-
-    def __init__(self, clip_len, stride, min_clip_len):
-        '''Creates a Clipper instance.
+    def __init__(self, clip_len, stride_len, min_clip_len):
+        '''Creates a Clipper instance. min_clip_len determines whether
+        remainders are included or not.
 
         Args:
             clip_len: number of frames per clip
-            stride: gap between clips in frames
+            stride_len: stride (step size)
             min_clip_len: minimum number of frames allowed
         '''
         self.clip_len = clip_len
-        self.stride = stride
+        self.stride_len = stride_len
         self.min_clip_len = min_clip_len
 
     def transform(self, src):
+        '''Create the new record list made of clipped records from the old
+        records list.
+
+        Args:
+            src (BuilderVideoDataset)
+
+        Returns:
+            None
+        '''
         if not isinstance(src, BuilderVideoDataset):
             raise DatasetTransformerError()
         old_records = src.records
@@ -1436,7 +1577,7 @@ class Clipper(DatasetTransformer):
                     if clip_duration < int(self.min_clip_len):
                         break
                 self._add_clipping(start_frame, end_frame, record, src.records)
-                start_frame += self.stride
+                start_frame += self.stride_len
 
     def _add_clipping(self, start_frame, end_frame, old_record, records):
         new_record = old_record.copy()
@@ -1448,18 +1589,20 @@ class Clipper(DatasetTransformer):
 class EmptyLabels(DatasetTransformer):
     '''Assign empty labels to all records.'''
 
-    def __init__(self):
-        pass
-
     def transform(self, src):
+        '''Assign empty labels to all records.
+
+        Args:
+            src (BuilderDataRecord)
+
+        Returns:
+            None
+        '''
         if not src:
             return
 
-        labels_cls_name = etau.get_class_name(src[0].get_labels())
-        labels_cls = etau.get_class(labels_cls_name)
-
         for record in src:
-            record.set_labels(labels_cls())
+            record.set_labels(src.record_cls())
 
 
 class DatasetTransformerError(Exception):
