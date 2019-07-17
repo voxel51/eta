@@ -1163,7 +1163,7 @@ class LabeledDatasetBuilder(object):
         Args:
             path (str): path to write the new dataset (manifest.json)
             description (str): optional dataset description
-            pretty_print (Boolean): pretty print flag for json labels
+            pretty_print (bool): pretty print flag for json labels
 
         Returns:
             LabeledDataset
@@ -1255,7 +1255,7 @@ class BuilderDataRecord(BaseDataRecord):
         Args:
             dir_path (str): path to write the files
             filename (str): filename prefix that data and labels share
-            pretty_print (Boolean): pretty_print json flag for labels
+            pretty_print (bool): pretty_print json flag for labels
 
         Returns:
             tuple (data_path, labels_path): the paths to the written files
@@ -1320,7 +1320,7 @@ class BuilderImageRecord(BuilderDataRecord):
         Args:
             dir_path (str): path to write the files
             filename (str): filename prefix that data and labels share
-            pretty_print (Boolean): pretty_print json flag for labels
+            pretty_print (bool): pretty_print json flag for labels
 
         Returns:
             tuple (data_path, labels_path): the paths to the written files
@@ -1389,7 +1389,7 @@ class BuilderVideoRecord(BuilderDataRecord):
         Args:
             dir_path (str): path to write the files
             filename (str): filename prefix that data and labels share
-            pretty_print (Boolean): pretty_print json flag for labels
+            pretty_print (bool): pretty_print json flag for labels
 
         Returns:
             tuple (data_path, labels_path): the paths to the written files
