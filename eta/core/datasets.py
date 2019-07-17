@@ -1428,6 +1428,8 @@ class Balancer(DatasetTransformer):
 
         # STEP 1: Get attribute value(s) for every record
         helper_list = self._to_helper_list(src.records)
+        if not len(helper_list):
+            return
 
         # STEP 2: determine target number to remove of each attribute value
         target_remove = self._get_target_remove(helper_list)
@@ -1461,83 +1463,123 @@ class Balancer(DatasetTransformer):
                             three objects with the 'color' attribute in this
                             record.
         '''
-        helper_list = []
 
         if not len(records):
-            return helper_list
+            return []
 
         elif type(records[0]) == BuilderImageRecord:
-            for i, record in enumerate(records):
-                labels = record.get_labels()
-                if self.object_label:
-                    helper = (i, [])
-                    for detected_object in labels.objects:
-                        if detected_object.label != self.object_label:
-                            continue
-                        for attr in detected_object.attrs:
-                            if attr.name == self.attr_name:
-                                helper[1].append(attr.value)
-                                break
-                    if len(helper[1]):
-                        helper_list.append(helper)
-
-                else:
-                    for attr in labels.attrs:
-                        if attr.name == self.attr_name:
-                            helper_list.append((i, [attr.value]))
-                            break
+            if self.object_label:
+                return self._to_helper_list_image_objects(records)
+            else:
+                return self._to_helper_list_image(records)
 
         elif type(records[0]) == BuilderVideoRecord:
-            for i, record in enumerate(records):
-                labels = record.get_labels()
-                if self.object_label:
-                    NO_ID = 'NO_ID'
-                    helper_dict = {}
-                    for frame_no, frame in labels.frames.items():
-                        if (frame_no < record.clip_start_frame
-                            or frame_no >= record.clip_end_frame):
-                            continue
+            if self.object_label:
+                return self._to_helper_list_video_objects(records)
+            else:
+                return self._to_helper_list_video(records)
 
-                        for detected_object in frame.objects:
-                            if detected_object.label != self.object_label:
-                                continue
-                            for attr in detected_object.attrs:
-                                if attr.name == self.attr_name:
-                                    obj_idx = (
-                                        detected_object.index
-                                        if detected_object.index is not None
-                                        else NO_ID
-                                    )
-                                    if obj_idx in helper_dict:
-                                        helper_dict[obj_idx].add(attr.value)
-                                    else:
-                                        helper_dict[obj_idx] = set([attr.value])
-                                    break
+        raise DatasetTransformerError(
+            "Unknown record type: {}".format(type(records[0])))
 
-                    # At this point, the keys of helper dict are unique
-                    # object indices for objects of type self.object_label.
-                    # The values are unique attribute values for self.attr_name.
+    def _to_helper_list_image(self, records):
+        '''Balancer._to_helper_list for image attributes'''
+        helper_list = []
 
-                    if len(helper_dict):
-                        helper = (i, [])
-                        for s in helper_dict.values():
-                            helper[1].extend(list(s))
-                        helper_list.append(helper)
+        for i, record in enumerate(records):
+            labels = record.get_labels()
 
-                else:
-                    helper = (i, set())
-                    for frame in labels.frames.values():
-                        for attr in frame.attrs:
-                            if attr.name == self.attr_name:
-                                helper[1].add(attr.value)
-                                break
-                    if len(helper[1]):
-                        helper = (helper[0], list(helper[1]))
-                        helper_list.append(helper)
+            for attr in labels.attrs:
+                if attr.name == self.attr_name:
+                    helper_list.append((i, [attr.value]))
+                    break
 
-        else:
-            raise DatasetTransformerError(
-                'Unknown record type: {}'.format(type(records[0])))
+        return helper_list
+
+    def _to_helper_list_image_objects(self, records):
+        '''Balancer._to_helper_list for object attributes in images'''
+        helper_list = []
+
+        for i, record in enumerate(records):
+            labels = record.get_labels()
+            helper = (i, [])
+
+            for detected_object in labels.objects:
+                if detected_object.label != self.object_label:
+                    continue
+
+                for attr in detected_object.attrs:
+                    if attr.name == self.attr_name:
+                        helper[1].append(attr.value)
+                        break
+
+            if len(helper[1]):
+                helper_list.append(helper)
+
+        return helper_list
+
+    def _to_helper_list_video(self, records):
+        '''Balancer._to_helper_list for video attributes'''
+        helper_list = []
+
+        for i, record in enumerate(records):
+            labels = record.get_labels()
+            helper = (i, set())
+
+            for frame in labels.frames.values():
+                for attr in frame.attrs:
+                    if attr.name == self.attr_name:
+                        helper[1].add(attr.value)
+                        break
+
+            if len(helper[1]):
+                helper = (helper[0], list(helper[1]))
+                helper_list.append(helper)
+
+        return helper_list
+
+    def _to_helper_list_video_objects(self, records):
+        '''Balancer._to_helper_list for object attributes in videos'''
+        helper_list = []
+
+        for i, record in enumerate(records):
+            labels = record.get_labels()
+            NO_ID = 'NO_ID'
+            helper_dict = {}
+
+            for frame_no, frame in labels.frames.items():
+                if (frame_no < record.clip_start_frame
+                        or frame_no >= record.clip_end_frame):
+                    continue
+
+                for detected_object in frame.objects:
+                    if detected_object.label != self.object_label:
+                        continue
+
+                    for attr in detected_object.attrs:
+                        if attr.name == self.attr_name:
+                            obj_idx = (
+                                detected_object.index
+                                if detected_object.index is not None
+                                else NO_ID
+                            )
+
+                            if obj_idx in helper_dict:
+                                helper_dict[obj_idx].add(attr.value)
+                            else:
+                                helper_dict[obj_idx] = set([attr.value])
+
+                            break
+
+            # At this point, the keys of helper dict are unique
+            # object indices for objects of type self.object_label.
+            # The values are unique attribute values for self.attr_name.
+
+            if len(helper_dict):
+                helper = (i, [])
+                for s in helper_dict.values():
+                    helper[1].extend(list(s))
+                helper_list.append(helper)
 
         return helper_list
 
@@ -1663,6 +1705,7 @@ class Balancer(DatasetTransformer):
         vector2 = [abs(x)**(1 + (self.negative_power - 1) * int(x<0))
                    for x in vector]
         return sum(vector2)
+
 
 class SchemaFilter(DatasetTransformer):
     '''
