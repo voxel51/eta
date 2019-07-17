@@ -1264,7 +1264,7 @@ class BuilderVideoRecord(BuilderDataRecord):
         self.set_labels(segment)
         if not labels:
             return
-        for frame_id in range(start_frame, end_frame):
+        for frame_id in range(start_frame, end_frame + 1):
             frame = labels[frame_id]
             frame_number = frame.frame_number - start_frame + 1
             if frame.objects:
@@ -1395,6 +1395,8 @@ class SchemaFilter(DatasetTransformer):
         self.schema = schema
 
     def transform(self, src):
+        if self.schema is None:
+            return
         for record in src:
             labels = record.get_labels()
             labels.filter_by_schema(self.schema)
