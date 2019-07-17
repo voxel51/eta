@@ -1219,7 +1219,9 @@ class BuilderDataRecord(BaseDataRecord):
     def copy(self):
         args, kwargs = self.copy_params()
         copy = self.__class__(*args, **kwargs)
-        copy.set_labels(self.get_labels())
+        labels = self.get_labels()
+        labels_copy = labels.from_dict(labels.serialize())
+        copy.set_labels(labels_copy)
         return copy
 
 
