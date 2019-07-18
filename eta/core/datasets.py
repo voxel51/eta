@@ -1388,7 +1388,7 @@ class Balancer(DatasetTransformer):
     '''
 
     def __init__(self, attribute_name, object_label=None,
-                 target_quantile=0.25, negative_power=5.0):
+                 target_quantile=0.25, negative_power=5):
         '''Creates a Balancer instance.
 
         Args:
@@ -1424,23 +1424,63 @@ class Balancer(DatasetTransformer):
         Args:
             src (BuilderDataset): the dataset builder
         '''
-
         # STEP 1: Get attribute value(s) for every record
-        helper_list = self._to_helper_list(src.records)
-        if not len(helper_list):
+        occurance_matrix, attribute_values, record_idxs = \
+            self._get_occurrence_matrix(src.records)
+        if not attribute_values:
             return
 
         # STEP 2: determine target number to remove of each attribute value
-        target_remove = self._get_target_remove(helper_list)
+        counts = np.sum(occurance_matrix, axis=1).astype(np.dtype('int'))
+        target_count = self._get_target_count(counts)
 
         # STEP 3: find the records to keep
-        keep_idxs = self._get_keep_idxs(target_remove, helper_list)
+        keep_idxs = self._get_keep_idxs(occurance_matrix, counts, target_count)
 
         # STEP 4: modify the list of records
         old_records = src.records
         src.clear()
         for ki in keep_idxs:
-            src.add(old_records[helper_list[ki][0]])
+            src.add(old_records[record_idxs[ki]])
+
+    def _get_occurrence_matrix(self, records):
+        '''Compute occurrence of each attribute value for each class
+
+        Args:
+            records: list of BuilderDataRecord's
+
+        Returns:
+            A - NxM occurrence matrix, counting the number of instances of each
+                attribute value in a record, where:
+                    N - length of `values`
+                    M - number of records that contain the attribute to balance
+            values - list of N strings; one for each unique attribute value
+            record_idxs - a list of M integers; each being the index into
+                          `records` for the corresponding column in A
+
+            A[i, j] = the number of instances of values[i] in
+                      records[record_idxs[j]]
+        '''
+        helper_list = self._to_helper_list(records)
+        record_idxs = [idx for (idx, attr_values) in helper_list]
+
+        A = np.zeros((0, len(helper_list)), dtype=np.dtype('uint32'))
+        values = []
+        for j, (_, attr_values) in enumerate(helper_list):
+            for attr_value in attr_values:
+                try:
+                    i = values.index(attr_value)
+                    A[i, j] += 1
+                except ValueError:
+                    values.append(attr_value)
+                    A = np.vstack([
+                        A,
+                        np.zeros(len(helper_list), dtype=np.dtype('uint32'))
+                    ])
+                    i = values.index(attr_value)
+                    A[i, j] += 1
+
+        return A, values, record_idxs
 
     def _to_helper_list(self, records):
         '''Recompile the records to a list of counts of each attribute value.
@@ -1582,111 +1622,115 @@ class Balancer(DatasetTransformer):
 
         return helper_list
 
-    def _get_target_remove(self, helper_list):
-        '''Get the target number attributes to remove for each attribute value.
+    def _get_target_count(self, counts):
+        '''Compute the target count that we would like to balance each value to.
 
         Args:
-            helper_list: return value from Balancer._to_helper_list(...)
+            A: the occurance matrix computed in Balancer._get_occurrence_matrix
 
-        Returns:
-            a dictionary with:
-                keys: the values of the attribute to balance
-                values: the target count to remove of this attribute value
+        Returns: Integer target value
         '''
-        counts = Counter()
-        for idx, attr_values in helper_list:
-            counts.update(attr_values)
+        return int(np.quantile(np.sort(counts), self.target_quantile))
 
-        # sort ascending by count
-        counts_list = counts.most_common()[::-1]
-
-        count_vals = [v for k, v in counts_list]
-        target_count = int(np.quantile(count_vals, self.target_quantile))
-
-        target_remove = {k: v - target_count for k, v in counts_list}
-        # @TODO leave the negatives in? (comment this line out)
-        # target_remove = {k: max(v, 0) for k, v in target_remove.items()}
-
-        return target_remove
-
-    def _get_keep_idxs(self, target_remove, helper_list):
+    def _get_keep_idxs(self, A, counts, target_count):
         '''Algorithm fun! This function chooses the set of records to keep (and
         remove).
 
         There's still plenty of potential for testing and improvement here.
 
+
+        This problem can be posed as:
+            minimize:
+                ||np.dot(A, x) - b||
+            subject to:
+                x[i] is an element of [0, 1]
+
+        and different algorithms may be substituted in.
+
         Args:
-            target_remove: dictionary returned from Balancer._get_target_remove
-            helper_list: return value of Balancer._to_helper_list
+            A: the occurrence matrix computed in Balancer._get_occurrence_matrix
+            counts: (vector) the original counts for each value
+            target_count: (int) the target value
 
         Returns:
             a list of integer indices to keep
         '''
-        keep_idxs = list(range(len(helper_list)))
-        remove_idxs = []
-        score = self._get_score(target_remove, helper_list, remove_idxs)
+        b = counts - target_count
 
-        # # ALGO1 - random
-        # import random
-        # random.seed(1)
-        # for _ in range(10000):
-        #     i = random.randrange(len(keep_idxs))
-        #     idx = keep_idxs[i]
-        #     score2 = self._get_score(
-        #         target_remove,
-        #         helper_list,
-        #         remove_idxs + [idx]
-        #     )
-        #     if score2 < score:
-        #         score = score2
-        #         remove_idxs.append(keep_idxs.pop(i))
+        # x = self._random(A, b)
+        x = self._greedy(A, b)
 
-        # ALGO2 - greedy
-        while len(keep_idxs) > 0:
-            best_i = 0
-            best_score = self._get_score(
-                target_remove,
-                helper_list,
-                remove_idxs + [keep_idxs[best_i]]
-            )
-            for i in range(1, len(keep_idxs)):
-                cur_score = self._get_score(
-                    target_remove,
-                    helper_list,
-                    remove_idxs + [keep_idxs[i]]
-                )
-                if cur_score < best_score:
-                    best_score = cur_score
-                    best_i = i
+        # print(counts)
+        # print(target_count)
+        # print('~~~~~~~~~~~')
+        # print(self._solution_score(b - np.dot(A, x)))
+        # print('~~~~~~~~~~~')
+        # print(b - np.dot(A, x))
+        # print(counts - np.dot(A, x))
 
-            if best_score >= score:
-                break
-            score = best_score
-            remove_idxs.append(keep_idxs.pop(best_i))
+        return np.where(x==0)[0]
 
-        return keep_idxs
-
-    def _get_score(self, target_remove, helper_list, remove_idxs):
-        '''Compute the performance 'score' for a given set of indices to remove.
+    def _random(self, A, b):
+        '''A random search algorithm for finding the indices to omit.
 
         Args:
-            target_remove: dictionary returned from Balancer._get_target_remove
-            helper_list: return value of Balancer._to_helper_list
-            remove_idxs: a list of integer indices to remove
+            A: the occurrence matrix
+            b: the target vector to match
 
         Returns:
-            the score for the given remove_idxs
+            x: the solution vector
         '''
-        temp = target_remove.copy()
-        for idx in remove_idxs:
-            for value in helper_list[idx][1]:
-                temp[value] = temp[value] - 1
+        best_x = np.zeros(A.shape[1], dtype=np.dtype('int'))
+        best_score = self._solution_score(b - np.dot(A, best_x))
 
-        # v = list(temp.values())
-        # v.sort()
-        # print(v)
+        import random
+        random.seed(1)
+        for _ in range(10000):
+            i = random.choice(np.where(best_x == 0)[0])
+            cur_x = best_x.copy()
+            cur_x[i] = 1
+            cur_score = self._solution_score(b - np.dot(A, cur_x))
+            if cur_score < best_score:
+                best_score = cur_score
+                best_x = cur_x
 
-        return self._solution_score(temp.values())
+        return best_x
+
+    def _greedy(self, A, b):
+        '''A greedy search algorithm for finding the indices to omit.
+
+        Args:
+            A: the occurrence matrix
+            b: the target vector to match
+
+        Returns:
+            x: the solution vector
+        '''
+        best_x = np.zeros(A.shape[1], dtype=np.dtype('int'))
+        best_score = self._solution_score(b - np.dot(A, best_x))
+
+        while True:
+            w = np.where(best_x == 0)[0]
+            if not len(w):
+                break
+
+            x_matrix = np.zeros((len(best_x), len(w)), dtype=np.dtype('int'))
+            for idx, val in enumerate(w):
+                x_matrix[:, idx] = best_x
+                x_matrix[val, idx] = 1
+            Y = np.expand_dims(b, axis=1) - np.dot(A, x_matrix)
+
+            cur_scores = self._solution_score(Y.T)
+
+            i = np.argmin(cur_scores)
+
+            if cur_scores[i] < best_score:
+                best_score = cur_scores[i]
+                best_x = x_matrix[:, i]
+            else:
+                break
+
+        return best_x
 
     def _solution_score(self, vector):
         '''Compute the score for a vector (smaller is better). This is a custom
@@ -1706,7 +1750,10 @@ class Balancer(DatasetTransformer):
         v_pos = np.maximum(vector, 0)
         v_neg = np.abs(np.minimum(vector, 0))
         vector2 = v_pos + (v_neg ** self.negative_power)
-        return np.sum(vector2)
+        try:
+            return np.sum(vector2, axis=1)
+        except np.AxisError:
+            return np.sum(vector2)
 
 
 class SchemaFilter(DatasetTransformer):
