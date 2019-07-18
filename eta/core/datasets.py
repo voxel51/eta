@@ -7,6 +7,9 @@ voxel51.com
 Matthew Lightman, matthew@voxel51.com
 Brian Moore, brian@voxel51.com
 Jason Corso, jason@voxel51.com
+Ben Kane, ben@voxel51.com
+Kevin Qi, kevin@voxel51.com
+Tyler Ganter, tyler@voxel51.com
 Ravali Pinnaka, ravali@voxel51.com
 '''
 # pragma pylint: disable=redefined-builtin
@@ -26,6 +29,7 @@ import copy
 import logging
 import os
 import random
+from collections import Counter, defaultdict
 
 import numpy as np
 
@@ -1460,19 +1464,338 @@ class Sampler(DatasetTransformer):
 
 
 class Balancer(DatasetTransformer):
-    '''
-    Balance the number of records in the dataset by values in some categorical
-    Attribute, as provided on construction.
+    '''Balance the the dataset's values of a categorical attribute by removing
+    records.
+
+    For example:
+        Given a dataset with 10 green cars, 20 blue cars and 15 red cars,
+        remove records with blue and red cars until there are the same number
+        of each color.
+
+        In this example 'color' is the `attribute_name` and 'car' is the
+        `object_label`.
     '''
 
-    def __init__(self, attribute):
-        self.attr = attribute
+    def __init__(self, attribute_name, object_label=None,
+                 target_quantile=0.25, negative_power=5.0):
+        '''Creates a Balancer instance.
+
+        Args:
+            attribute_name (str): the name of the attribute to balance by
+            object_label (str): the name of the object label that the
+                attribute_name must be nested under. If this is None, it is
+                assumed that the attributes are Image/Frame level attrs.
+            target_quantile (float): value between [0, 1] to specify what the
+                target count per attribute value will be.
+                0.5 - will result in the true median
+                0   - the minimum value
+                It is recommended to set this somewhere between [0, 0.5]. The
+                smaller this value is, the closer all values can be balanced,
+                at the risk that if some values have particularly low number of
+                samples, they dataset will be excessively trimmed.
+            negative_power (float): value between [1, ~LARGE~] that weights the
+                negative values (where the count of a value is less than the
+                target) when computing the score for a set of indices to remove.
+                1 - will weight them the same as positive values
+                2 - will square the values
+                ...
+                Check Balancer._solution_score for more details.
+        '''
+        self.attr_name = attribute_name
+        self.object_label = object_label
+        self.target_quantile = target_quantile
+        self.negative_power = negative_power
 
     def transform(self, src):
-        # @TODO implement Balancing!!
+        '''Modify the BuilderDataset records by removing records until the
+        target attribute is ~roughly~ balanced for each value.
+
+        Args:
+            src (BuilderDataset): the dataset builder
+        '''
+
+        # STEP 1: Get attribute value(s) for every record
+        helper_list = self._to_helper_list(src.records)
+        if not len(helper_list):
+            return
+
+        # STEP 2: determine target number to remove of each attribute value
+        target_remove = self._get_target_remove(helper_list)
+
+        # STEP 3: find the records to keep
+        keep_idxs = self._get_keep_idxs(target_remove, helper_list)
+
+        # STEP 4: modify the list of records
         old_records = src.records
         src.clear()
-        pass
+        for ki in keep_idxs:
+            src.add(old_records[helper_list[ki][0]])
+
+    def _to_helper_list(self, records):
+        '''Recompile the records to a list of counts of each attribute value.
+
+        Args:
+            records: list of BuilderDataRecord's
+
+        Returns:
+            a list of tuples with two entries:
+
+                [
+                    (record_id, list_of_values),
+                    (record_id, list_of_values),
+                    (record_id, list_of_values),
+                    ...
+                ]
+
+            record_id: integer ID of the corresponding old_record
+            list_of_values: list of attribute values for the attribute to be
+                            balanced, one per unique object, if using objects.
+                            For example: ['red', 'red', 'green'] would imply
+                            three objects with the 'color' attribute in this
+                            record.
+        '''
+
+        if not len(records):
+            return []
+
+        elif isinstance(records[0], BuilderImageRecord):
+            if self.object_label:
+                return self._to_helper_list_image_objects(records)
+            else:
+                return self._to_helper_list_image(records)
+
+        elif isinstance(records[0], BuilderVideoRecord):
+            if self.object_label:
+                return self._to_helper_list_video_objects(records)
+            else:
+                return self._to_helper_list_video(records)
+
+        raise DatasetTransformerError(
+            "Unknown record type: {}".format(type(records[0])))
+
+    def _to_helper_list_image(self, records):
+        '''Balancer._to_helper_list for image attributes'''
+        helper_list = []
+
+        for i, record in enumerate(records):
+            labels = record.get_labels()
+
+            for attr in labels.attrs:
+                if attr.name == self.attr_name:
+                    helper_list.append((i, [attr.value]))
+                    break
+
+        return helper_list
+
+    def _to_helper_list_image_objects(self, records):
+        '''Balancer._to_helper_list for object attributes in images'''
+        helper_list = []
+
+        for i, record in enumerate(records):
+            labels = record.get_labels()
+            helper = (i, [])
+
+            for detected_object in labels.objects:
+                if detected_object.label != self.object_label:
+                    continue
+
+                for attr in detected_object.attrs:
+                    if attr.name == self.attr_name:
+                        helper[1].append(attr.value)
+                        break
+
+            if len(helper[1]):
+                helper_list.append(helper)
+
+        return helper_list
+
+    def _to_helper_list_video(self, records):
+        '''Balancer._to_helper_list for video attributes'''
+        helper_list = []
+
+        for i, record in enumerate(records):
+            labels = record.get_labels()
+            helper = (i, set())
+
+            for frame in labels.frames.values():
+                for attr in frame.attrs:
+                    if attr.name == self.attr_name:
+                        helper[1].add(attr.value)
+                        break
+
+            if len(helper[1]):
+                helper = (helper[0], list(helper[1]))
+                helper_list.append(helper)
+
+        return helper_list
+
+    def _to_helper_list_video_objects(self, records):
+        '''Balancer._to_helper_list for object attributes in videos'''
+        helper_list = []
+
+        for i, record in enumerate(records):
+            labels = record.get_labels()
+            NO_ID = 'NO_ID'
+            helper_dict = defaultdict(set)
+
+            for frame_no, frame in labels.frames.items():
+                if (frame_no < record.clip_start_frame
+                        or frame_no >= record.clip_end_frame):
+                    continue
+
+                for detected_object in frame.objects:
+                    if detected_object.label != self.object_label:
+                        continue
+
+                    for attr in detected_object.attrs:
+                        if attr.name == self.attr_name:
+                            obj_idx = (
+                                detected_object.index
+                                if detected_object.index is not None
+                                else NO_ID
+                            )
+
+                            helper_dict[obj_idx].add(attr.value)
+
+                            break
+
+            # At this point, the keys of helper dict are unique
+            # object indices for objects of type self.object_label.
+            # The values are unique attribute values for self.attr_name.
+
+            if len(helper_dict):
+                helper = (i, [])
+                for s in helper_dict.values():
+                    helper[1].extend(s)
+                helper_list.append(helper)
+
+        return helper_list
+
+    def _get_target_remove(self, helper_list):
+        '''Get the target number attributes to remove for each attribute value.
+
+        Args:
+            helper_list: return value from Balancer._to_helper_list(...)
+
+        Returns:
+            a dictionary with:
+                keys: the values of the attribute to balance
+                values: the target count to remove of this attribute value
+        '''
+        counts = Counter()
+        for idx, attr_values in helper_list:
+            counts.update(attr_values)
+
+        # sort ascending by count
+        counts_list = counts.most_common()[::-1]
+
+        count_vals = [v for k, v in counts_list]
+        target_count = int(np.quantile(count_vals, self.target_quantile))
+
+        target_remove = {k: v - target_count for k, v in counts_list}
+        # @TODO leave the negatives in? (comment this line out)
+        # target_remove = {k: max(v, 0) for k, v in target_remove.items()}
+
+        return target_remove
+
+    def _get_keep_idxs(self, target_remove, helper_list):
+        '''Algorithm fun! This function chooses the set of records to keep (and
+        remove).
+
+        There's still plenty of potential for testing and improvement here.
+
+        Args:
+            target_remove: dictionary returned from Balancer._get_target_remove
+            helper_list: return value of Balancer._to_helper_list
+
+        Returns:
+            a list of integer indices to keep
+        '''
+        keep_idxs = list(range(len(helper_list)))
+        remove_idxs = []
+        score = self._get_score(target_remove, helper_list, remove_idxs)
+
+        # # ALGO1 - random
+        # import random
+        # random.seed(1)
+        # for _ in range(10000):
+        #     i = random.randrange(len(keep_idxs))
+        #     idx = keep_idxs[i]
+        #     score2 = self._get_score(
+        #         target_remove,
+        #         helper_list,
+        #         remove_idxs + [idx]
+        #     )
+        #     if score2 < score:
+        #         score = score2
+        #         remove_idxs.append(keep_idxs.pop(i))
+
+        # ALGO2 - greedy
+        while len(keep_idxs) > 0:
+            best_i = 0
+            best_score = self._get_score(
+                target_remove,
+                helper_list,
+                remove_idxs + [keep_idxs[best_i]]
+            )
+            for i in range(1, len(keep_idxs)):
+                cur_score = self._get_score(
+                    target_remove,
+                    helper_list,
+                    remove_idxs + [keep_idxs[i]]
+                )
+                if cur_score < best_score:
+                    best_score = cur_score
+                    best_i = i
+
+            if best_score >= score:
+                break
+            score = best_score
+            remove_idxs.append(keep_idxs.pop(best_i))
+
+        return keep_idxs
+
+    def _get_score(self, target_remove, helper_list, remove_idxs):
+        '''Compute the performance 'score' for a given set of indices to remove.
+
+        Args:
+            target_remove: dictionary returned from Balancer._get_target_remove
+            helper_list: return value of Balancer._to_helper_list
+            remove_idxs: a list of integer indices to remove
+
+        Returns:
+            the score for the given remove_idxs
+        '''
+        temp = target_remove.copy()
+        for idx in remove_idxs:
+            for value in helper_list[idx][1]:
+                temp[value] = temp[value] - 1
+
+        # v = list(temp.values())
+        # v.sort()
+        # print(v)
+
+        return self._solution_score(temp.values())
+
+    def _solution_score(self, vector):
+        '''Compute the score for a vector (smaller is better). This is a custom
+        scoring function that sorta computes the L1 norm for positive values
+        and the L<X> norm for negative values where <X> is self.negative_power.
+
+        Larger self.negative_power puts more weight on not reducing the count
+        of any attribute values that are already below the target.
+
+        Args:
+            vector: Vector_Of_Counts - Target_Count
+
+        Returns:
+            (float) a score value, (which is only meaningful in a relative
+                    sense). Smaller -> Better!
+        '''
+        v_pos = np.maximum(vector, 0)
+        v_neg = np.abs(np.minimum(vector, 0))
+        vector2 = v_pos + (v_neg ** self.negative_power)
+        return np.sum(vector2)
 
 
 class SchemaFilter(DatasetTransformer):
