@@ -1893,8 +1893,10 @@ class EmptyLabels(DatasetTransformer):
         if not src:
             return
 
+        labels_cls = src.records[0].get_labels().__class__
+
         for record in src:
-            record.set_labels(src.record_cls())
+            record.set_labels(labels_cls())
 
 
 class DatasetTransformerError(Exception):
