@@ -1837,9 +1837,10 @@ class Clipper(DatasetTransformer):
         remainders are included or not.
 
         Args:
-            clip_len: number of frames per clip
-            stride_len: stride (step size)
-            min_clip_len: minimum number of frames allowed
+            clip_len (int): number of frames per clip, must be > 0
+            stride_len (int): stride (step size), must be > 0
+            min_clip_len (int): minimum number of frames allowed, must be > 0
+                                and greater than clip_len
         '''
         self.clip_len = int(clip_len)
         self.stride_len = int(stride_len)
