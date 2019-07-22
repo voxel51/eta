@@ -1388,7 +1388,7 @@ class Balancer(DatasetTransformer):
     '''
 
     def __init__(self, attribute_name, object_label=None,
-                 target_quantile=0.25, negative_power=5):
+                 target_quantile=0.25, negative_power=5, target_count=None):
         '''Creates a Balancer instance.
 
         Args:
@@ -1411,11 +1411,14 @@ class Balancer(DatasetTransformer):
                 2 - will square the values
                 ...
                 Check Balancer._solution_score for more details.
+            target_count (int): override target count for each attribute value.
+                If this is provided, target_quantile is ignored.
         '''
         self.attr_name = attribute_name
         self.object_label = object_label
         self.target_quantile = target_quantile
         self.negative_power = negative_power
+        self.target_count = target_count
 
     def transform(self, src):
         '''Modify the BuilderDataset records by removing records until the
@@ -1630,6 +1633,8 @@ class Balancer(DatasetTransformer):
 
         Returns: Integer target value
         '''
+        if self.target_count:
+            return self.target_count
         return int(np.quantile(np.sort(counts), self.target_quantile))
 
     def _get_keep_idxs(self, A, counts, target_count):
@@ -1660,13 +1665,14 @@ class Balancer(DatasetTransformer):
         # x = self._random(A, b)
         x = self._greedy(A, b)
 
-        # print(counts)
-        # print(target_count)
+        # print('counts: {}'.format(counts))
+        # print('target_count: {}'.format(target_count))
+        # print('b: {}'.format(b))
+        # print('dot(A,x): {}'.format(np.dot(A, x)))
+        # print('b - dot(A,x): {}'.format(b - np.dot(A, x)))
+        # print('output counts: {}'.format(counts - np.dot(A, x)))
         # print('~~~~~~~~~~~')
         # print(self._solution_score(b - np.dot(A, x)))
-        # print('~~~~~~~~~~~')
-        # print(b - np.dot(A, x))
-        # print(counts - np.dot(A, x))
 
         return np.where(x==0)[0]
 
