@@ -1355,11 +1355,11 @@ class BuilderVideoRecord(BuilderDataRecord):
             return
         for frame_id in range(start_frame, end_frame + 1):
             frame = labels[frame_id]
-            frame_number = frame.frame_number - start_frame + 1
+            frame.frame_number = frame.frame_number - start_frame + 1
             if frame.objects:
-                segment.add_objects(frame.objects, frame_number)
+                segment.add_objects(frame.objects, frame.frame_number)
             if frame.attrs:
-                segment.add_frame_attributes(frame.attrs, frame_number)
+                segment.add_frame_attributes(frame.attrs, frame.frame_number)
 
     def _init_from_video_metadata(self):
         metadata = etav.VideoMetadata.build_for(self.data_path)
