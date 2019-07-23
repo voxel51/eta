@@ -1837,13 +1837,19 @@ class Clipper(DatasetTransformer):
         remainders are included or not.
 
         Args:
-            clip_len: number of frames per clip
-            stride_len: stride (step size)
-            min_clip_len: minimum number of frames allowed
+            clip_len (int): number of frames per clip, must be > 0
+            stride_len (int): stride (step size), must be > 0
+            min_clip_len (int): minimum number of frames allowed, must be > 0
+                                and greater than clip_len
         '''
-        self.clip_len = clip_len
-        self.stride_len = stride_len
-        self.min_clip_len = min_clip_len
+        self.clip_len = int(clip_len)
+        self.stride_len = int(stride_len)
+        self.min_clip_len = int(min_clip_len)
+        bad_args = self.clip_len < 1 or self.stride_len < 1
+        bad_args = bad_args or self.min_clip_len < 1
+        bad_args = bad_args or self.min_clip_len > self.clip_len
+        if bad_args:
+            raise DatasetTransformerError("Bad args provided to Clipper")
 
     def transform(self, src):
         '''Create the new record list made of clipped records from the old
@@ -1856,7 +1862,8 @@ class Clipper(DatasetTransformer):
             None
         '''
         if not isinstance(src, BuilderVideoDataset):
-            raise DatasetTransformerError()
+            raise DatasetTransformerError(
+                "Clipper transform can only operate on BuilderVideoDatasets")
         old_records = src.records
         src.clear()
         for record in old_records:
@@ -1866,7 +1873,7 @@ class Clipper(DatasetTransformer):
                 if end_frame > record.clip_end_frame:
                     end_frame = record.clip_end_frame
                     clip_duration = int(end_frame - start_frame + 1)
-                    if clip_duration < int(self.min_clip_len):
+                    if clip_duration < self.min_clip_len:
                         break
                 self._add_clipping(start_frame, end_frame, record, src.records)
                 start_frame += self.stride_len
