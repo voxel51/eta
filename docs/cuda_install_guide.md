@@ -6,10 +6,6 @@ It is highly recommended that you look at [this article](
 https://www.tensorflow.org/install/source#tested_source_configurations), which
 tells you which version of CUDA is compatible with each version of TensorFlow.
 
-For example, the latest version of CUDA available at the time of this writing
-is 10.1, but TensorFlow does not yet support it, so we stick with CUDA 9.0 in
-this document.
-
 > WARNING: This is what worked for me and there could be issues pertraining to
 > a specific system configuration. Nonetheless, I have tried to be as general
 > as possible.
@@ -45,8 +41,8 @@ nvidia-smi
 ## Installing CUDA
 
 Get the latest CUDA runfile from the NVIDIA website that is compatible with the
-version of TensorFlow you wish to use. As mentioned above, the latest CUDA
-version available at the time of writing is 10.1, but we must stick with 9.0.
+version of TensorFlow you wish to use. As mentioned above, this guide is for
+CUDA 9.0, which is compatible with TensorFlow 1.12.
 
 Download the run file directly from the command line with
 
