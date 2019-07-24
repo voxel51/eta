@@ -33,7 +33,7 @@ from collections import Counter, defaultdict
 
 import numpy as np
 
-from eta.core.data import BaseDataRecord
+from eta.core.data import BaseDataRecord, DataRecords
 import eta.core.image as etai
 from eta.core.serial import Serializable
 import eta.core.utils as etau
@@ -1654,7 +1654,7 @@ class BuilderVideoRecord(BuilderDataRecord):
         return data_path, labels_path
 
 
-class BuilderDataset(etad.DataRecords):
+class BuilderDataset(DataRecords):
     '''A BuilderDataset is managed by a LabeledDatasetBuilder.
     DatasetTransformers operate on BuilderDatasets.
     '''
