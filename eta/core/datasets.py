@@ -34,7 +34,6 @@ from collections import Counter, defaultdict
 import numpy as np
 
 from eta.core.data import BaseDataRecord
-import eta.core.data as etad
 import eta.core.image as etai
 from eta.core.serial import Serializable
 import eta.core.utils as etau
@@ -44,122 +43,199 @@ import eta.core.video as etav
 logger = logging.getLogger(__name__)
 
 
-def odds_and_evens(data_records):
-    '''Splits a DataRecords into two DataRecords, one from odd indexed records
-    and the other from even indexed records.
+# General split methods
+
+
+def round_robin_split(iterable, split_fractions=None):
+    '''Traverses the iterable in order and assigns items to samples in order,
+    until a given sample has reached its desired size.
+
+    If a random split is required, this function is not recommended unless your
+    items are already randomly ordered.
 
     Args:
-        data_records: a DataRecords instance
-
-    Returns:
-        a list of two DataRecords
-    '''
-    record_cls = data_records.record_cls
-    records_list = [etad.DataRecords(record_cls), etad.DataRecords(record_cls)]
-    for idx, record in enumerate(data_records):
-        records_list[idx % 2].add(record)
-
-    return records_list
-
-
-def random_split_exact(data_records, split_fractions=None):
-    '''Randomly splits a DataRecords into multiple DataRecords according to the
-    given split fractions.
-
-    The number of records in each sample will be given exactly by the specified
-    fractions.
-
-    Args:
-        data_records: a DataRecords instance
+        iterable: any finite iterable
         split_fractions: an optional list of split fractions, which should sum
             to 1. By default, [0.5, 0.5] is used
 
     Returns:
-        a list of DataRecords of same length as `split_fractions`
+        sample_lists: a list of lists, of the same length as `split_fractions`.
+            Each sub-list contains items from the original iterable.
     '''
-    if split_fractions is None:
-        split_fractions = [0.5, 0.5]
+    split_fractions = _validate_split_fractions(split_fractions)
 
-    shuffled = list(data_records)
+    # Initial estimate of size of each sample
+    item_list = list(iterable)
+    sample_sizes = [int(frac * len(item_list)) for frac in split_fractions]
+
+    # `n` is the total number of items that will be divided into samples.
+    # `n` may be less than len(item_list) if sum(split_fractions) < 1.
+    n = int(np.round(len(item_list) * sum(split_fractions)))
+
+    if n == 0:
+        return [[] for _ in sample_sizes]
+
+    # Calculate exact size of each sample, making sure the sum of the
+    # samples sizes is equal to `n`
+    remainder = n - sum(sample_sizes)
+    num_to_add = int(remainder / len(sample_sizes))
+    for idx, _ in enumerate(sample_sizes):
+        sample_sizes[idx] += num_to_add
+    remainder = n - sum(sample_sizes)
+    for idx, _ in enumerate(sample_sizes):
+        if idx < remainder:
+            sample_sizes[idx] += 1
+
+    assert sum(sample_sizes) == n, (sum(sample_sizes), n)
+
+    # Iterate over items and add them to the appropriate sample
+    sample_lists = [[] for _ in sample_sizes]
+    sample_full = [sample_size == 0 for sample_size in sample_sizes]
+    current_sample_idx = min(
+        idx for idx, sample_size in enumerate(sample_sizes)
+        if sample_size > 0)
+    for item in item_list:
+        sample_lists[current_sample_idx].append(item)
+        curr_sample_size = len(sample_lists[current_sample_idx])
+        if curr_sample_size >= sample_sizes[current_sample_idx]:
+            sample_full[current_sample_idx] = True
+
+        if all(sample_full):
+            break
+
+        current_sample_idx = _find_next_available_idx(
+            current_sample_idx, sample_full)
+
+    return sample_lists
+
+
+def random_split_exact(iterable, split_fractions=None):
+    '''Randomly splits items into multiple sample lists according to the given
+    split fractions.
+
+    The number of items in each sample list will be given exactly by the
+    specified fractions.
+
+    Args:
+        iterable: any finite iterable
+        split_fractions: an optional list of split fractions, which should sum
+            to 1. By default, [0.5, 0.5] is used
+
+    Returns:
+        sample_lists: a list of lists, of the same length as `split_fractions`.
+            Each sub-list contains items from the original iterable.
+    '''
+    split_fractions = _validate_split_fractions(split_fractions)
+
+    shuffled = list(iterable)
     random.shuffle(shuffled)
 
-    record_cls = data_records.record_cls
-
-    sample_lists = _split_in_order(shuffled, split_fractions)
-
-    return [
-        etad.DataRecords(record_cls, records=samp_list)
-        for samp_list in sample_lists]
+    return _split_in_order(shuffled, split_fractions)
 
 
-def random_split_approx(data_records, split_fractions=None):
-    '''Randomly splits a DataRecords into multiple DataRecords according to the
-    given split fractions.
+def random_split_approx(iterable, split_fractions=None):
+    '''Randomly splits items into multiple sample lists according to the given
+    split fractions.
 
-    Each record is assigned to a sample with probability equal to the
+    Each item is assigned to a sample list with probability equal to the
     corresponding split fraction.
 
     Args:
-        data_records: a DataRecords instance
+        iterable: any finite iterable
         split_fractions: an optional list of split fractions, which should sum
             to 1. By default, [0.5, 0.5] is used
 
     Returns:
-        a list of DataRecords of same length as `split_fractions`
+        sample_lists: a list of lists, of the same length as `split_fractions`.
+            Each sub-list contains items from the original iterable.
     '''
-    if split_fractions is None:
-        split_fractions = [0.5, 0.5]
+    split_fractions = _validate_split_fractions(split_fractions)
 
-    record_cls = data_records.record_cls
-    records_list = [etad.DataRecords(record_cls) for _ in split_fractions]
+    sample_lists = [[] for _ in split_fractions]
 
     cum_frac = np.cumsum(split_fractions)
-    for record in data_records:
+    for item in iterable:
         idx = np.searchsorted(cum_frac, random.random())
-        if idx < len(records_list):
-            records_list[idx].add(record)
+        if idx < len(sample_lists):
+            sample_lists[idx].append(item)
 
-    return records_list
+    return sample_lists
 
 
-def split_in_order(data_records, split_fractions=None):
-    '''Splits a DataRecords into multiple DataRecords according to the
-    given split fractions.
+def split_in_order(iterable, split_fractions=None):
+    '''Splits items into multiple sample lists according to the given split
+    fractions.
 
-    The records are partitioned into samples in order according to their
-    position in the input sample. This is not recommended unless your records
-    are already randomly ordered.
+    The items are partitioned into samples in order according to their
+    position in the input sample. If a random split is required, this function
+    is not recommended unless your items are already randomly ordered.
 
     Args:
-        data_records: a DataRecords instance
+        iterable: any finite iterable
         split_fractions: an optional list of split fractions, which should sum
             to 1. By default, [0.5, 0.5] is used
 
     Returns:
-        a list of DataRecords of same length as `split_fractions`
+        sample_lists: a list of lists, of the same length as `split_fractions`.
+            Each sub-list contains items from the original iterable.
     '''
-    if split_fractions is None:
-        split_fractions = [0.5, 0.5]
+    split_fractions = _validate_split_fractions(split_fractions)
 
-    records_lists = _split_in_order(list(data_records), split_fractions)
-
-    record_cls = data_records.record_cls
-    return [
-        etad.DataRecords(record_cls, records=records)
-        for records in records_lists]
+    return _split_in_order(list(iterable), split_fractions)
 
 
-def _split_in_order(records_list, split_fractions):
-    n = len(records_list)
+def _split_in_order(item_list, split_fractions):
+    n = len(item_list)
     cum_frac = np.cumsum(split_fractions)
     cum_size = [int(np.round(frac * n)) for frac in cum_frac]
     sample_bounds = [0] + cum_size
 
-    records_list = []
+    sample_lists = []
     for begin, end in zip(sample_bounds, sample_bounds[1:]):
-        records_list.append(records_list[begin:end])
+        sample_lists.append(item_list[begin:end])
 
-    return records_list
+    return sample_lists
+
+
+def _validate_split_fractions(split_fractions):
+    if split_fractions is None:
+        split_fractions = [0.5, 0.5]
+
+    negative = [frac for frac in split_fractions if frac < 0]
+    if negative:
+        raise ValueError(
+            "Split fractions must be non-negative, but got the following "
+            "negative values: %s" % str(negative))
+
+    if sum(split_fractions) > 1.0:
+        raise ValueError(
+            "Sum of split fractions must be <= 1.0, but got sum(%s) = %f" %
+            (split_fractions, sum(split_fractions)))
+
+    return split_fractions
+
+
+def _find_next_available_idx(idx, unavailable_indicators):
+    for next_idx in range(idx + 1, len(unavailable_indicators)):
+        if not unavailable_indicators[next_idx]:
+            return next_idx
+
+    for next_idx in range(idx + 1):
+        if not unavailable_indicators[next_idx]:
+            return next_idx
+
+    return None
+
+
+SPLIT_FUNCTIONS = {
+    "round_robin": round_robin_split,
+    "random_exact": random_split_exact,
+    "random_approx": random_split_approx,
+    "in_order": split_in_order
+}
+
+
+# Functions involving LabeledDatasets
 
 
 def sample_videos_to_images(
@@ -305,6 +381,9 @@ def _iter_filtered_video_frames(video_dataset, frame_filter, stride):
                 yield frame_img, frame_labels, base_filename
 
 
+# Core LabeledDataset infrastructure
+
+
 class LabeledDataset(object):
     '''Base class for labeled datasets.
 
@@ -320,7 +399,22 @@ class LabeledDataset(object):
             image1.json (or) video1.json
             ...
     ```
+
+    Class invariants:
+    - `self.dataset_index` contains paths to data and labels files that exist
+        on disk (assuming this is the case for the manifest.json file that is
+        read initially)
+    - each data file appears only once is `self.dataset_index`
+
+    Attributes:
+        dataset_index: a `LabeledDatasetIndex` containing the paths of data
+            and labels files in the dataset
+        data_dir: the top level directory for the dataset, which would contain
+            manifest.json files
     '''
+
+    _DATA_SUBDIR = "data"
+    _LABELS_SUBDIR = "labels"
 
     def __init__(self, dataset_path):
         '''Creates a LabeledDataset instance.
@@ -341,6 +435,8 @@ class LabeledDataset(object):
                     self.dataset_index.type))
         self.dataset_path = dataset_path
         self.data_dir = os.path.dirname(dataset_path)
+
+        self._build_index_map()
 
     def __iter__(self):
         '''Iterates over the samples in the dataset.
@@ -452,6 +548,7 @@ class LabeledDataset(object):
             self
         '''
         self.dataset_index.sample(k)
+        self._build_index_map()
 
         return self
 
@@ -465,7 +562,43 @@ class LabeledDataset(object):
 
         return self
 
-    def add_file(self, data_path, labels_path, move_files=False):
+    def split(self, split_fractions=None, descriptions=None,
+              split_method="random_exact"):
+        '''Splits the dataset into multiple datasets containing disjoint
+        subsets of the original dataset.
+
+        Args:
+            split_fractions: an optional list of split fractions, which
+                should sum to 1, that specifies how to split the dataset.
+                By default, [0.5, 0.5] is used.
+            descriptions: an optional list of descriptions for the output
+                datasets. The list should be the same length as
+                `split_fractions`. If not specified, the description of
+                the original dataset is used for all of the output
+                datasets.
+            split_method: string describing the method with which to split
+                the data
+
+        Returns:
+            dataset_list: list of `LabeledDataset`s of the same length as
+                `split_fractions`
+        '''
+        dataset_indices = self.dataset_index.split(
+            split_fractions=split_fractions,
+            descriptions=descriptions,
+            split_method=split_method)
+
+        dataset_copy = copy.deepcopy(self)
+        dataset_list = []
+        for dataset_index in dataset_indices:
+            dataset_copy.dataset_index = dataset_index
+            dataset_copy._build_index_map()
+            dataset_list.append(copy.deepcopy(dataset_copy))
+
+        return dataset_list
+
+    def add_file(self, data_path, labels_path, move_files=False,
+                 error_on_duplicates=False):
         '''Adds a single data file and its labels file to this dataset.
 
         Args:
@@ -474,12 +607,25 @@ class LabeledDataset(object):
             move_files: whether to move the files from their original
                 location into the dataset directory. If False, files
                 are copied into the dataset directory.
+            error_on_duplicates: whether to raise an error if the file
+                at `data_path` has the same filename as an existing
+                data file in the dataset. If this is set to `False`, the
+                previous mapping of the data filename to a labels file
+                will be deleted.
 
         Returns:
             self
+
+        Raises:
+            ValueError: if the filename of `data_path` is the same as a
+                data file already present in the dataset and
+                `error_on_duplicates` is True
         '''
-        data_subdir = os.path.join(self.data_dir, "data")
-        labels_subdir = os.path.join(self.data_dir, "labels")
+        if error_on_duplicates:
+            self._validate_new_data_file(data_path)
+
+        data_subdir = os.path.join(self.data_dir, self._DATA_SUBDIR)
+        labels_subdir = os.path.join(self.data_dir, self._LABELS_SUBDIR)
         if os.path.dirname(data_path) != data_subdir:
             if move_files:
                 etau.move_file(data_path, data_subdir)
@@ -490,16 +636,25 @@ class LabeledDataset(object):
                 etau.move_file(labels_path, labels_subdir)
             else:
                 etau.copy_file(labels_path, labels_subdir)
+
+        new_data_file = os.path.basename(data_path)
+        new_labels_file = os.path.basename(labels_path)
+        # First remove any other records with the same data filename
+        self.dataset_index.cull_with_function(
+            lambda record: os.path.basename(record.data) != new_data_file)
         self.dataset_index.append(
             LabeledDataRecord(
-                os.path.join("data", os.path.basename(data_path)),
-                os.path.join("labels", os.path.basename(labels_path))
+                os.path.join(self._DATA_SUBDIR, new_data_file),
+                os.path.join(self._LABELS_SUBDIR, new_labels_file)
             )
         )
 
+        self._data_to_labels_map[new_data_file] = new_labels_file
+
         return self
 
-    def add_data(self, data, labels, data_filename, labels_filename):
+    def add_data(self, data, labels, data_filename, labels_filename,
+                 error_on_duplicates=False):
         '''Creates and adds a single data file and its labels file to this
         dataset, using the input python data structure.
 
@@ -510,21 +665,35 @@ class LabeledDataset(object):
                 self._write_labels()
             data_filename: filename for the data in the dataset
             labels_filename: filename for the labels in the dataset
+            error_on_duplicates: whether to raise an error if a data file
+                with the name `data_filename` already exists in the dataset.
+                If this is set to `False`, the previous mapping of
+                `data_filename` to a labels file will be deleted.
 
         Returns:
             self
         '''
-        data_path = os.path.join(self.data_dir, "data", data_filename)
-        labels_path = os.path.join(self.data_dir, "labels", labels_filename)
+        if error_on_duplicates:
+            self._validate_new_data_file(data_filename)
+
+        data_path = os.path.join(
+            self.data_dir, self._DATA_SUBDIR, data_filename)
+        labels_path = os.path.join(
+            self.data_dir, self._LABELS_SUBDIR, labels_filename)
         self._write_data(data, data_path)
         self._write_labels(labels, labels_path)
 
+        # First remove any other records with the same data filename
+        self.dataset_index.cull_with_function(
+            lambda record: os.path.basename(record.data) != data_filename)
         self.dataset_index.append(
             LabeledDataRecord(
-                os.path.join("data", data_filename),
-                os.path.join("labels", labels_filename)
+                os.path.join(self._DATA_SUBDIR, data_filename),
+                os.path.join(self._LABELS_SUBDIR, labels_filename)
             )
         )
+
+        self._data_to_labels_map[data_filename] = labels_filename
 
         return self
 
@@ -546,8 +715,8 @@ class LabeledDataset(object):
         self._ensure_empty_dataset_dir(dataset_path)
 
         new_data_dir = os.path.dirname(dataset_path)
-        new_data_subdir = os.path.join(new_data_dir, "data")
-        new_labels_subdir = os.path.join(new_data_dir, "labels")
+        new_data_subdir = os.path.join(new_data_dir, self._DATA_SUBDIR)
+        new_labels_subdir = os.path.join(new_data_dir, self._LABELS_SUBDIR)
 
         for data_path, labels_path in zip(
                 self.iter_data_paths(), self.iter_labels_paths()):
@@ -750,6 +919,42 @@ class LabeledDataset(object):
         raise NotImplementedError(
             "subclasses must implement validate_dataset()")
 
+    def _build_index_map(self):
+        '''Build data --> labels mapping, to ensure this mapping is unique,
+        and remains unique.
+
+        We do allow the same labels file to map to multiple data files. This
+        may be desirable if many data files have the exact same labels.
+
+        Raises:
+            LabeledDatasetError: if the mapping is not unique
+        '''
+        self._data_to_labels_map = {}
+        for record in self.dataset_index:
+            data_file = os.path.basename(record.data)
+            labels_file = os.path.basename(record.labels)
+            if data_file in self._data_to_labels_map:
+                raise LabeledDatasetError(
+                    "Data file '%s' maps to multiple labels files" %
+                    data_file)
+            self._data_to_labels_map[data_file] = labels_file
+
+    def _validate_new_data_file(self, data_path):
+        '''Checks whether a data file would be a duplicate of an existing
+        data file in the dataset.
+
+        Args:
+            data_path: path to or filename of the new data file
+
+        Raises:
+            ValueError: if the filename of `data_path` is the same as a
+                data file already present in the dataset
+        '''
+        data_file = os.path.basename(data_path)
+        if data_file in self._data_to_labels_map:
+            raise ValueError(
+                "Data file '%s' already present in dataset" % data_file)
+
     def _read_data(self, path):
         '''Reads data from a data file at the given path.
 
@@ -837,8 +1042,8 @@ class LabeledDataset(object):
 
         return data_filenames_to_merge
 
-    @staticmethod
-    def _ensure_empty_dataset_dir(dataset_path):
+    @classmethod
+    def _ensure_empty_dataset_dir(cls, dataset_path):
         etau.ensure_basedir(dataset_path)
         data_dir = os.path.dirname(dataset_path)
 
@@ -849,8 +1054,8 @@ class LabeledDataset(object):
                 "Found the following files in directory '%s': %s" %
                 (data_dir, existing_files))
 
-        data_subdir = os.path.join(data_dir, "data")
-        labels_subdir = os.path.join(data_dir, "labels")
+        data_subdir = os.path.join(data_dir, cls._DATA_SUBDIR)
+        labels_subdir = os.path.join(data_dir, cls._LABELS_SUBDIR)
         etau.ensure_dir(data_subdir)
         etau.ensure_dir(labels_subdir)
 
@@ -1064,6 +1269,17 @@ class LabeledDatasetIndex(Serializable):
         '''
         self.index.append(labeled_data_record)
 
+    def cull_with_function(self, func):
+        '''Removes `LabeledDataRecord`s from the index using the provided
+        function.
+
+        Args:
+            func: a function that takes in a `LabeledDataRecord` and
+                returns a boolean. Only records for which the function
+                evaluates to True will be retained in `self.index`.
+        '''
+        self.index = [record for record in self.index if func(record)]
+
     def sample(self, k):
         '''Randomly downsamples the index to k elements.
 
@@ -1076,6 +1292,49 @@ class LabeledDatasetIndex(Serializable):
         '''Randomly shuffles the index.
         '''
         random.shuffle(self.index)
+
+    def split(self, split_fractions=None, descriptions=None,
+              split_method="random_exact"):
+        '''Splits the `LabeledDatasetIndex` into multiple
+        `LabeledDatasetIndex` instances, containing disjoint subsets of
+        the original index.
+
+        Args:
+            split_fractions: an optional list of split fractions, which
+                should sum to 1, that specifies how to split the index.
+                By default, [0.5, 0.5] is used.
+            descriptions: an optional list of descriptions for the output
+                indices. The list should be the same length as
+                `split_fractions`. If not specified, the description of
+                the original index is used for all of the output
+                indices.
+            split_method: string describing the method with which to split
+                the index
+
+        Returns:
+            dataset_indices: list of `LabeledDatasetIndex` instances of
+                the same length as `split_fractions`
+        '''
+        if split_fractions is None:
+            split_fractions = [0.5, 0.5]
+
+        if descriptions is None:
+            descriptions = [self.description for _ in split_fractions]
+
+        if len(descriptions) != len(split_fractions):
+            raise ValueError(
+                "split_fractions and descriptions lists should be the "
+                "same length, but got len(split_fractions) = %d, "
+                "len(descriptions) = %d" %
+                (len(split_fractions), len(descriptions)))
+
+        split_func = SPLIT_FUNCTIONS[split_method]
+        split_indices = split_func(self.index, split_fractions)
+
+        return [
+            LabeledDatasetIndex(self.type, split_index, description)
+            for split_index, description in zip(
+                    split_indices, descriptions)]
 
     @classmethod
     def from_dict(cls, d):

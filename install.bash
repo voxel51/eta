@@ -160,6 +160,10 @@ if [ "${GCARD}" == "ON" ]; then
         # Found CUDA 9, so we must install version 1.12.0
         MSG "Installing tensorflow-gpu 1.12.0"
         CRITICAL pip install --upgrade tensorflow-gpu==1.12.0
+    elif [ $(cat /usr/local/cuda/version.txt | grep -c "CUDA Version 10") -gt 0 ]; then
+        # Found CUDA 10, so we must install version 1.14.0
+        MSG "Installing tensorflow-gpu 1.14.0"
+        CRITICAL pip install --upgrade tensorflow-gpu==1.14.0
     else
         MSG "Installing latest tensorflow-gpu"
         CRITICAL pip install --upgrade tensorflow-gpu

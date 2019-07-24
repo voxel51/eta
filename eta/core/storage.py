@@ -15,6 +15,7 @@ Copyright 2018-2019, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
+Ravali Pinnaka, ravali@voxel51.com
 '''
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
@@ -612,6 +613,46 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
         '''
         self._service.files().delete(
             fileId=file_or_folder_id, supportsTeamDrives=True).execute()
+
+    def delete_all_files_in_folder(self, folder_id, skip_failures=False):
+        '''Deletes all the files in the Google Drive folder and retains the
+        original folder.
+
+        Args:
+            folder_id: the ID of the Google Drive folder from which the files
+                are to be deleted
+            skip_failures: whether to gracefully skip delete errors. By
+                default, this is False
+        '''
+        files = self.list_files_in_folder(folder_id)
+        for f in files:
+            filename = f["name"]
+            try:
+                with etau.Timer() as t:
+                    self.delete(f["id"])
+                    logger.info(
+                        "File '%s' deleted from '%s' (%s)", filename,
+                        folder_id, t.elapsed_time_str)
+            except Exception as e:
+                if not skip_failures:
+                    raise GoogleDriveStorageClientError(e)
+                logger.info(
+                    "Failed to delete file '%s' from '%s' (%s)", filename,
+                    folder_id, t.elapsed_time_str)
+
+        if not self.count_files_in_folder(folder_id):
+            logger.info("All files deleted in %s", folder_id)
+
+    def count_files_in_folder(self, folder_id):
+        '''Returns count of number of files in the Google Drive folder
+
+        Args:
+            folder_id: the ID of the Google Drive folder to be processed
+
+        Returns:
+            the count of files in folder
+        '''
+        return len(self.list_files_in_folder(folder_id))
 
     def get_team_drive_id(self, name):
         '''Get the ID of the Team Drive with the given name.
