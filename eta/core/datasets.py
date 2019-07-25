@@ -1465,7 +1465,7 @@ class Balancer(DatasetTransformer):
                       records[record_idxs[j]]
         '''
         helper_list = self._to_helper_list(records)
-        record_idxs = [idx for (idx, attr_values) in helper_list]
+        record_idxs = [idx for idx, _ in helper_list]
 
         A = np.zeros((0, len(helper_list)), dtype=np.dtype('uint32'))
         values = []
@@ -1635,7 +1635,7 @@ class Balancer(DatasetTransformer):
         '''
         if self.target_count:
             return self.target_count
-        return int(np.quantile(np.sort(counts), self.target_quantile))
+        return int(np.quantile(counts, self.target_quantile))
 
     def _get_keep_idxs(self, A, counts, target_count):
         '''Algorithm fun! This function chooses the set of records to keep (and
@@ -1662,17 +1662,7 @@ class Balancer(DatasetTransformer):
         '''
         b = counts - target_count
 
-        # x = self._random(A, b)
         x = self._greedy(A, b)
-
-        # print('counts: {}'.format(counts))
-        # print('target_count: {}'.format(target_count))
-        # print('b: {}'.format(b))
-        # print('dot(A,x): {}'.format(np.dot(A, x)))
-        # print('b - dot(A,x): {}'.format(b - np.dot(A, x)))
-        # print('output counts: {}'.format(counts - np.dot(A, x)))
-        # print('~~~~~~~~~~~')
-        # print(self._solution_score(b - np.dot(A, x)))
 
         return np.where(x==0)[0]
 
@@ -1684,7 +1674,7 @@ class Balancer(DatasetTransformer):
             b: the target vector to match
 
         Returns:
-            x: the solution vector
+            x: the solution vector. x[j]=1 -> omit the j'th record
         '''
         best_x = np.zeros(A.shape[1], dtype=np.dtype('int'))
         best_score = self._solution_score(b - np.dot(A, best_x))
@@ -1710,7 +1700,7 @@ class Balancer(DatasetTransformer):
             b: the target vector to match
 
         Returns:
-            x: the solution vector
+            x: the solution vector. x[j]=1 -> omit the j'th record
         '''
         best_x = np.zeros(A.shape[1], dtype=np.dtype('int'))
         best_score = self._solution_score(b - np.dot(A, best_x))
