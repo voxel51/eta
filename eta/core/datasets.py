@@ -1428,17 +1428,17 @@ class Balancer(DatasetTransformer):
             src (BuilderDataset): the dataset builder
         '''
         # STEP 1: Get attribute value(s) for every record
-        occurance_matrix, attribute_values, record_idxs = \
+        occurrence_matrix, attribute_values, record_idxs = \
             self._get_occurrence_matrix(src.records)
         if not attribute_values:
             return
 
         # STEP 2: determine target number to remove of each attribute value
-        counts = np.sum(occurance_matrix, axis=1).astype(np.dtype('int'))
+        counts = np.sum(occurrence_matrix, axis=1).astype(np.dtype('int'))
         target_count = self._get_target_count(counts)
 
         # STEP 3: find the records to keep
-        keep_idxs = self._get_keep_idxs(occurance_matrix, counts, target_count)
+        keep_idxs = self._get_keep_idxs(occurrence_matrix, counts, target_count)
 
         # STEP 4: modify the list of records
         old_records = src.records
@@ -1629,7 +1629,7 @@ class Balancer(DatasetTransformer):
         '''Compute the target count that we would like to balance each value to.
 
         Args:
-            A: the occurance matrix computed in Balancer._get_occurrence_matrix
+            A: the occurrence matrix computed in Balancer._get_occurrence_matrix
 
         Returns: Integer target value
         '''
