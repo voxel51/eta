@@ -41,7 +41,7 @@ import eta
 from eta.core.data import AttributeContainer, AttributeContainerSchema, \
     AttributeContainerSchemaError
 from eta.core.objects import DetectedObjectContainer
-from eta.core.serial import Serializable
+from eta.core.serial import Serializable, DirectoryContainer
 import eta.core.utils as etau
 import eta.core.web as etaw
 
@@ -319,17 +319,6 @@ class ImageSetLabels(Serializable):
             for idx, image_labels in enumerate(self.images)
         }
 
-    @classmethod
-    def from_dict(cls, d):
-        '''Constructs an ImageSetLabels from a JSON dictionary.'''
-        images = [ImageLabels.from_dict(il) for il in d["images"]]
-
-        schema = d.get("schema", None)
-        if schema is not None:
-            schema = ImageLabelsSchema.from_dict(schema)
-
-        return cls(images=images, schema=schema)
-
 
 class ImageLabels(Serializable):
     '''Class encapsulating labels for an image.
@@ -456,6 +445,38 @@ class ImageLabels(Serializable):
 
         return cls(
             filename=filename, metadata=metadata, attrs=attrs, objects=objects)
+
+
+class ImageSetLabelsDirectory(DirectoryContainer):
+
+    _ELE_CLS = ImageLabels
+
+    _ELE_CLS_FIELD = "LABELS_CLS"
+
+    _ELE_DIR_ATTR = "labels_dir"
+
+    _ELE_MAP_ATTR = "labels_map"
+
+
+class BigImageSetLabels(ImageSetLabels):
+
+    def __init__(self, images=None, schema=None, labels_dir=None):
+        if labels_dir is not None:
+            images = ImageSetLabelsDirectory(labels_dir=labels_dir)
+        if not isinstance(images, ImageSetLabelsDirectory):
+            raise ValueError("bad")
+        super(BigImageSetLabels, self).__init__(images=images, schema=schema)
+
+    @classmethod
+    def from_dict(cls, d):
+        '''Constructs a  BigVideoSetLabels from a JSON dictionary.'''
+        images = ImageSetLabelsDirectory.from_dict(d["images"])
+
+        schema = d.get("schema", None)
+        if schema is not None:
+            schema = ImageLabelsSchema.from_dict(schema)
+
+        return cls(images=images, schema=schema)
 
 
 class ImageLabelsSchema(Serializable):

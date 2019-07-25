@@ -45,7 +45,7 @@ from eta.core.data import AttributeContainer, AttributeContainerSchema
 import eta.core.gps as etag
 import eta.core.image as etai
 from eta.core.objects import DetectedObjectContainer
-from eta.core.serial import load_json, Serializable
+from eta.core.serial import load_json, Serializable, DirectoryContainer
 import eta.core.utils as etau
 
 
@@ -1054,6 +1054,38 @@ class VideoLabels(Serializable):
         return cls(
             filename=filename, metadata=metadata, attrs=attrs, frames=frames,
             schema=schema)
+
+
+class VideoSetLabelsDirectory(DirectoryContainer):
+
+    _ELE_CLS = VideoLabels
+
+    _ELE_CLS_FIELD = "LABELS_CLS"
+
+    _ELE_DIR_ATTR = "labels_dir"
+
+    _ELE_MAP_ATTR = "labels_map"
+
+
+class BigVideoSetLabels(VideoSetLabels):
+
+    def __init__(self, videos=None, schema=None, labels_dir=None):
+        if labels_dir is not None:
+            videos = VideoSetLabelsDirectory(labels_dir=labels_dir)
+        if not isinstance(videos, VideoSetLabelsDirectory):
+            raise ValueError("bad")
+        super(BigVideoSetLabels, self).__init__(videos=videos, schema=schema)
+
+    @classmethod
+    def from_dict(cls, d):
+        '''Constructs a  BigVideoSetLabels from a JSON dictionary.'''
+        videos = VideoSetLabelsDirectory.from_dict(d["videos"])
+
+        schema = d.get("schema", None)
+        if schema is not None:
+            schema = VideoLabelsSchema.from_dict(schema)
+
+        return cls(videos=videos, schema=schema)
 
 
 class VideoLabelsSchema(Serializable):

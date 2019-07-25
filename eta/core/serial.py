@@ -27,6 +27,7 @@ import json
 import os
 import pickle as _pickle
 import pprint
+import uuid
 
 import numpy as np
 
@@ -405,6 +406,213 @@ def _recurse(v, reflective):
             (ki, _recurse(vi, reflective)) for ki, vi in iteritems(v))
     return v
 
+
+class DirectoryContainer(Serializable):
+    '''Container like object that represents a list serializable objects in a
+    directory on disk.
+
+    USE WITH CARE.
+    '''
+
+    _ELE_CLS = None
+
+    _ELE_CLS_FIELD = None
+
+    _ELE_DIR_ATTR = None
+
+    _ELE_MAP_ATTR = None
+
+    def __init__(self, **kwargs):
+        if self._ELE_DIR_ATTR not in kwargs:
+            raise ContainerError("bad")
+        setattr(self, self._ELE_DIR_ATTR, kwargs[self._ELE_DIR_ATTR])
+
+        setattr(
+            self,
+            self._ELE_MAP_ATTR,
+            kwargs.get(
+                self._ELE_MAP_ATTR,
+                list(etau.multiglob(".json", root=self._ele_dir+"/**/*"))
+            )
+        )
+
+    def __iter__(self):
+        return (self._load_ele(path) for path in self._paths)
+
+    def __getitem__(self, idx):
+        return self._load_ele(self._ele_path(idx))
+
+    def __setitem__(self, idx, ele):
+        ele.write_json(self._ele_path(idx))
+
+    def __delitem__(self, idx):
+        etau.delete_file(self._ele_path(idx))
+        del self._ele_map[idx]
+
+    def __len__(self):
+        return len(self._ele_map)
+
+    def __bool__(self):
+        return bool(self._ele_map)
+
+    def add(self, ele):
+        self.append(ele)
+
+    def add_container(self, container):
+        for ele in container:
+            self.add(ele)
+
+    def append(self, ele):
+        self[len(self)] = ele
+
+    def attributes(self):
+        return [self._ELE_DIR_ATTR, self._ELE_MAP_ATTR]
+
+    def filter_elements(self, filters, match=any):
+        self._filter_elements(filters, match)
+
+    def delete_inds(self, inds):
+        for idx in sorted(inds, reverse=True):
+            del self[idx]
+
+    def keep_inds(self, inds):
+        inds = set(inds)
+        for idx, path in self._files():
+            if idx not in inds:
+                del self[idx]
+
+    def extract_inds(self, new_ele_dir, inds):
+        inds = set(inds)
+        container = copy.deepcopy(self)
+        setattr(container, self._ELE_DIR_ATTR, new_ele_dir)
+        for idx, ele in self:
+            if idx in inds:
+                container.add(ele)
+        return container
+
+    def clear(self):
+        etau.delete_dir(self._ele_dir)
+        setattr(self, self._ELE_MAP_ATTR, [])
+
+    @property
+    def size(self):
+        return len(self)
+
+    def count_matches(self, filters, match=any):
+        return len(self._filter_elements(filters, match=match))
+
+    def get_matches(self, new_ele_dir, filters, match=any):
+        inds = self._filter_elements(filters, match)
+        container = copy.deepcopy(self)
+        setattr(container, self._ELE_DIR_ATTR, new_ele_dir)
+        for idx in inds:
+            container.add(self[idx])
+        return container
+
+    def sort_by(self, attr, reverse=False):
+        def field_none_last(uuid_str:
+            ele = self[idx]
+            val = getattr(ele, attr)
+            return ((val is None) ^ reverse, val)  # always puts None last
+
+        setattr(
+            self, self._ELE_MAP_ATTR, sorted(
+                self._ele_map, reverse=reverse, key=field_none_last))
+
+    def serialize(self, reflective=False):
+        d = OrderedDict()
+        if reflective:
+            d["_CLS"] = self.get_class_name()
+            d[self._ELE_CLS_FIELD] = etau.get_class_name(self._ELE_CLS)
+        d.update(super(DirectoryContainer, self).serialize(reflective=False))
+        return d
+
+    @property
+    def _paths(self):
+        return (self._ele_path(idx) for idx in range(0, len(self._ele_map)))
+
+    @property
+    def _ele_dir(self):
+        return getattr(self, self._ELE_DIR_ATTR)
+
+    def _ele_subdir_pattern(self, idx):
+        return os.path.join(*list(self._ele_filename(idx)[:5]))
+
+    @property
+    def _ele_map(self):
+        return getattr(self, self._ELE_MAP_ATTR)
+
+    def _ele_filename(self, idx):
+        if idx > len(self):
+            raise ContainerError("out of bounds")
+        elif idx == len(self):
+            self._ele_map.append(str(uuid.uuid4()))
+        return "%s.json" % self._ele_map[idx]
+
+    def _ele_path(self, idx):
+        return os.path.join(
+            self._ele_dir,
+            self._ele_subdir_pattern(idx),
+            self._ele_filename(idx)
+        )
+
+    def _load_ele(self, path):
+        return self._ELE_CLS.from_json(path)
+
+    def _filter_elements(self, filters, match):
+        return list(filter(
+            lambda o: match(f(self[o]) for f in filters), self._ele_map))
+
+    def _validate(self):
+        '''Validates that a Container instance is valid.'''
+        if self._ELE_CLS is None:
+            raise ContainerError(
+                "Cannot instantiate a Container for which _ELE_CLS is None")
+        if self._ELE_DIR_ATTR is None:
+            raise ContainerError(
+                "Cannot instantiate a Container for which _ELE_ATTR is None")
+        if self._ELE_MAP_ATTR is None:
+            raise ContainerError(
+                "Cannot instantiate a Container for which _ELE_ATTR is None")
+        if not issubclass(self._ELE_CLS, Serializable):
+            raise ContainerError(
+                "%s is not Serializable" % self._ELE_CLS)
+
+    @classmethod
+    def from_dict(cls, d):
+        '''Constructs a Container from a JSON dictionary.
+
+        If the dictionary has the `"_CLS"` and `cls._ELE_CLS_FIELD`
+        keys, they are used to infer the Container class and underlying element
+        classes, respectively, and this method can be invoked on any
+        `Container` subclass that has the same `_ELE_CLS_FIELD` setting.
+
+        Otherwise, this method must be called on the same concrete `Container`
+        subclass from which the JSON was generated.
+        '''
+        if cls._ELE_CLS_FIELD is None:
+            raise ContainerError(
+                "%s is an abstract container and cannot be used to load a "
+                "JSON dictionary. Please use a Container subclass that "
+                "defines its `_ELE_CLS_FIELD` member" % cls)
+
+        if "_CLS" in d:
+            if cls._ELE_CLS_FIELD not in d:
+                raise ContainerError(
+                    "Cannot use %s to reflectively load this container "
+                    "because the expected field '%s' was not found in the "
+                    "JSON dictionary" % (cls, cls._ELE_CLS_FIELD))
+
+            # Parse reflectively
+            cls = etau.get_class(d["_CLS"])
+            ele_cls = etau.get_class(d[cls._ELE_CLS_FIELD])
+        else:
+            # Validates the cls settings
+            cls()
+            # Parse using provided class
+            ele_cls = cls._ELE_CLS
+
+        return cls(**d)
 
 class Container(Serializable):
     '''Abstract base class for flexible containers that store homogeneous lists
