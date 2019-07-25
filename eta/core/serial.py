@@ -712,7 +712,7 @@ class Container(Serializable):
 
 
 class DirectoryContainer(Container):
-    '''Container class that represents a list serializable objects in a
+    '''Container that represents a list of serializable objects in a
     directory on disk. Any accessing of an element in the list causes a READ
     from disk and updating any elements in the list REQUIRES setting the item
     explicitly (and causes a WRITE to disk).
@@ -720,8 +720,9 @@ class DirectoryContainer(Container):
     This class cannot be instantiated directly.
 
     A list of uuids is managed by the DirectoryContainer in _ELE_ATTR to keep
-    order and find elements in the directory. This list a part of serialization.
-    The data directory location is also serialized in _ELE_DIR_ATTR.
+    order and find elements in the directory. This list a part of
+    serialization. The data directory location is also serialized in
+    _ELE_DIR_ATTR.
 
     USE WITH CARE.
 
