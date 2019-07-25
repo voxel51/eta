@@ -28,6 +28,7 @@ from future.utils import iteritems
 
 from collections import defaultdict
 import colorsys
+import copy
 import errno
 import numbers
 import os
@@ -453,9 +454,9 @@ class ImageSetLabelsDirectory(DirectoryContainer):
 
     _ELE_CLS_FIELD = "LABELS_CLS"
 
-    _ELE_DIR_ATTR = "labels_dir"
+    _ELE_ATTR = "labels_map"
 
-    _ELE_MAP_ATTR = "labels_map"
+    _ELE_DIR_ATTR = "labels_dir"
 
 
 class BigImageSetLabels(ImageSetLabels):
@@ -477,6 +478,11 @@ class BigImageSetLabels(ImageSetLabels):
             schema = ImageLabelsSchema.from_dict(schema)
 
         return cls(images=images, schema=schema)
+
+    def copy(self, new_images_dir):
+        new_set = copy.deepcopy(self)
+        new_set.images = self.images.copy(new_images_dir)
+        return new_set
 
 
 class ImageLabelsSchema(Serializable):
