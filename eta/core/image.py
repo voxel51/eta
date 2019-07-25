@@ -449,6 +449,12 @@ class ImageLabels(Serializable):
 
 
 class ImageSetLabelsDirectory(DirectoryContainer):
+    '''ImageSetLabelsDirectory is a DirectoryContainer that represents a list
+    of ImageLabels on disk.
+
+    SEE eta.core.serial.DirectoryContainer for more information and pleas
+    USE WITH CARE.
+    '''
 
     _ELE_CLS = ImageLabels
 
@@ -460,12 +466,25 @@ class ImageSetLabelsDirectory(DirectoryContainer):
 
 
 class BigImageSetLabels(ImageSetLabels):
+    '''BigImageSetLabels uses an ImageSetLabelsDirectory to iterate over
+    ImageLabels on disk.
+
+    SEE eta.core.serial.DirectoryContainer for more information and pleas
+    USE WITH CARE.
+    '''
 
     def __init__(self, images=None, schema=None, labels_dir=None):
+        '''Either images (a ImageSetLabelsDirectoy instance)
+        or labels_dir must be provided.
+
+        Args:
+            videos (ImageSetLabelsDirectory)
+            images (ImageLabelsSchema
+            labels_str (str): directory path representing a
+                ImageSetLabelsDirectory
+        '''
         if labels_dir is not None:
             images = ImageSetLabelsDirectory(labels_dir=labels_dir)
-        if not isinstance(images, ImageSetLabelsDirectory):
-            raise ValueError("bad")
         super(BigImageSetLabels, self).__init__(images=images, schema=schema)
 
     @classmethod
@@ -480,6 +499,14 @@ class BigImageSetLabels(ImageSetLabels):
         return cls(images=images, schema=schema)
 
     def copy(self, new_images_dir):
+        '''Copy the instance deeply.
+
+        Args:
+            new_images_dir (str): directory path to store the copy's data
+
+        Returns:
+            BigImageSetLabels
+        '''
         new_set = copy.deepcopy(self)
         new_set.images = self.images.copy(new_images_dir)
         return new_set

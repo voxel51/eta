@@ -1057,6 +1057,12 @@ class VideoLabels(Serializable):
 
 
 class VideoSetLabelsDirectory(DirectoryContainer):
+    '''VideoSetLabelsDirectory is a DirectoryContainer that represents a list
+    of VideoLabels on disk.
+
+    SEE eta.core.serial.DirectoryContainer for more information and pleas
+    USE WITH CARE.
+    '''
 
     _ELE_CLS = VideoLabels
 
@@ -1068,12 +1074,25 @@ class VideoSetLabelsDirectory(DirectoryContainer):
 
 
 class BigVideoSetLabels(VideoSetLabels):
+    '''BigVideoSetLabels uses a VideoSetLabelsDirectory to iterate over
+    VideoLabels on disk.
+
+    SEE eta.core.serial.DirectoryContainer for more information and pleas
+    USE WITH CARE.
+    '''
 
     def __init__(self, videos=None, schema=None, labels_dir=None):
+        '''Either videos (a VideoSetLabelsDirectoy instance)
+        or labels_dir must be provided.
+
+        Args:
+            videos (VideoSetLabelsDirectory)
+            schema (VideoLabelsSchema
+            labels_str (str): directory path representing a
+                VideoSetLabelsDirectory
+        '''
         if labels_dir is not None:
             videos = VideoSetLabelsDirectory(labels_dir=labels_dir)
-        if not isinstance(videos, VideoSetLabelsDirectory):
-            raise ValueError("bad")
         super(BigVideoSetLabels, self).__init__(videos=videos, schema=schema)
 
     @classmethod
@@ -1086,6 +1105,19 @@ class BigVideoSetLabels(VideoSetLabels):
             schema = VideoLabelsSchema.from_dict(schema)
 
         return cls(videos=videos, schema=schema)
+
+    def copy(self, new_videos_dir):
+        '''Copy the instance deeply.
+
+        Args:
+            new_images_dir (str): directory path to store the copy's data
+
+        Returns:
+            BigVideoSetLabels
+        '''
+        new_set = copy.deepcopy(self)
+        new_set.videos = self.videos.copy(new_videos_dir)
+        return new_set
 
 
 class VideoLabelsSchema(Serializable):
