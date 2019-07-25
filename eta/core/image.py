@@ -452,7 +452,7 @@ class ImageSetLabelsDirectory(DirectoryContainer):
     '''ImageSetLabelsDirectory is a DirectoryContainer that represents a list
     of ImageLabels on disk.
 
-    SEE eta.core.serial.DirectoryContainer for more information and pleas
+    See eta.core.serial.DirectoryContainer for more information and please
     USE WITH CARE.
     '''
 
@@ -469,7 +469,7 @@ class BigImageSetLabels(ImageSetLabels):
     '''BigImageSetLabels uses an ImageSetLabelsDirectory to iterate over
     ImageLabels on disk.
 
-    SEE eta.core.serial.DirectoryContainer for more information and pleas
+    See eta.core.serial.DirectoryContainer for more information and please
     USE WITH CARE.
     '''
 

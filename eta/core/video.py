@@ -1060,7 +1060,7 @@ class VideoSetLabelsDirectory(DirectoryContainer):
     '''VideoSetLabelsDirectory is a DirectoryContainer that represents a list
     of VideoLabels on disk.
 
-    SEE eta.core.serial.DirectoryContainer for more information and pleas
+    See eta.core.serial.DirectoryContainer for more information and please
     USE WITH CARE.
     '''
 
@@ -1077,7 +1077,7 @@ class BigVideoSetLabels(VideoSetLabels):
     '''BigVideoSetLabels uses a VideoSetLabelsDirectory to iterate over
     VideoLabels on disk.
 
-    SEE eta.core.serial.DirectoryContainer for more information and pleas
+    See eta.core.serial.DirectoryContainer for more information and please
     USE WITH CARE.
     '''
 
