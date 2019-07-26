@@ -497,9 +497,7 @@ class LabeledDataset(object):
         Returns:
             iterator: iterator over paths to labels files
         '''
-        paths = zip(self.iter_data_paths(), self.iter_labels_paths())
-        for data_path, labels_path in paths:
-            yield (data_path, labels_path)
+        return zip(self.iter_data_paths(), self.iter_labels_paths())
 
     def set_description(self, description):
         '''Set the description string of this dataset.
