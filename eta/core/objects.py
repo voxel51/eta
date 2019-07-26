@@ -18,9 +18,9 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-from eta.core.data import DataContainer, AttributeContainer
+from eta.core.data import AttributeContainer
 from eta.core.geometry import BoundingBox, HasBoundingBox
-from eta.core.serial import Serializable
+from eta.core.serial import Container, Serializable
 
 
 class DetectedObject(Serializable, HasBoundingBox):
@@ -115,7 +115,7 @@ class DetectedObject(Serializable, HasBoundingBox):
         )
 
 
-class DetectedObjectContainer(DataContainer):
+class DetectedObjectContainer(Container):
     '''Base class for containers that store lists of `DetectedObject`s.'''
 
     _ELE_CLS = DetectedObject
@@ -193,7 +193,7 @@ class ObjectCount(Serializable):
         return ObjectCount(d["label"], d["count"])
 
 
-class ObjectCounts(DataContainer):
+class ObjectCounts(Container):
     '''Container for counting objects in an image.'''
 
     _ELE_CLS = ObjectCount
