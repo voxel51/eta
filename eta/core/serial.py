@@ -820,7 +820,9 @@ class BigContainer(Container):
             BigContainer
         '''
         etau.ensure_empty_dir(new_backing_dir)
-        container = self.__class__(**{self._ELE_DIR_ATTR: new_backing_dir})
+        container = copy.deepcopy(self)
+        container.__elements__ = []
+        container._backing_dir = new_backing_dir
         container.add_container(self)
         return container
 
@@ -873,7 +875,6 @@ class BigContainer(Container):
             BigContainer
         '''
         etau.ensure_emptydir(new_backing_dir)
-        inds = set(inds)
         container = copy.deepcopy(self)
         container._backing_dir = new_backing_dir
         container.__elements__ = []
@@ -881,7 +882,7 @@ class BigContainer(Container):
         for idx in inds:
             uuid = uuid4()
             container.__elements__.append(uuid)
-            etau.move_file(
+            etau.copy_file(
                 self._ele_path(idx),
                 container._ele_path_by_uuid(uuid)
             )
@@ -963,23 +964,6 @@ class BigContainer(Container):
         '''Returns the list of class attributes that will be serialized.'''
         attrs = super(BigContainer, self).attributes()
         return ["backing_dir"] + attrs
-
-    def to_container(self):
-        '''Create an instance of the associated Container class from this
-        BigContainer instance.
-
-        Returns:
-            Container
-        '''
-        name = etau.get_class_name(self)
-        name = cls_name.split(".")
-        name[-1] = cls[-1].lstrip("Big")
-        name = ".".join(cls)
-        cls = etau.get_class(name)
-        container = cls()
-        for ele in self:
-            container.add(ele)
-        return container
 
     def write_zip(cls, self, zip_path, delete_dir=False):
         '''Write to a .zip (Zip64) file.
