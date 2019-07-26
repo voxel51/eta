@@ -302,7 +302,15 @@ class LabeledPointContainer(Container):
 
     def get_labels(self):
         '''Returns a set containing the labels of the LabeledPoints.'''
-        return set(p.label for p in self.points)
+        return set(p.label for p in self)
+
+
+class LabeledPointSet(Set):
+    '''Set for points in an image that each have an associated label.'''
+
+    _ELE_CLS = LabeledPoint
+    _ELE_ATTR = "points"
+    _ELE_KEY_ATTR = "label"
 
 
 def _to_frame_size(frame_size=None, shape=None, img=None):
