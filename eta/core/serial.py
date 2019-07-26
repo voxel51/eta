@@ -718,7 +718,7 @@ class BigContainer(Container):
     A list of uuids is managed by the BigContainer in _ELE_ATTR to keep
     order and find elements in the directory. This list is a part of
     serialization. The backing directory path is also serialized in
-    _ELE_DIR_ATTR.
+    `backing_dir`.
 
     Usage:
         element = cls._ELE_CLS()
@@ -757,17 +757,16 @@ class BigContainer(Container):
 
         if "backing_dir" not in kwargs:
             raise ContainerError(
-                "Missing keyword argument %s is required"
-                % (self._ELE_DIR_ATTR))
+                "Missing keyword argument backing_dir is required")
 
-        self._backing_dir, kwargs["backing_dir"])
+        self._backing_dir = kwargs["backing_dir"]
 
         setattr(
             self,
             self._ELE_ATTR,
             [
                 os.path.basename(os.path.splitext(e)[0])
-                for e in etau.list_files(self._ele_dir)
+                for e in etau.list_files(self.backing_dir)
             ]
         )
 
@@ -786,9 +785,15 @@ class BigContainer(Container):
 
     @property
     def backing_dir(self):
+        '''Getter for _backing_dir'''
         return self._backing_dir
 
     def add(self, ele):
+        '''Add (append) an element
+
+        Args:
+            ele: an element of `cls._ELE_CLS` to append
+        '''
         self.__elements__.append(uuid4())
         self[len(self)-1] = ele
 
@@ -808,20 +813,17 @@ class BigContainer(Container):
             for ele in container:
                 self.add(ele)
 
-    def copy(self, new_ele_dir):
+    def copy(self, new_backing_dir):
         '''Copy this container deeply.
 
         Args:
-            new_ele_dir (str): path the store the copy's elements
+            new_backing_dir (str): path the store the copy's elements
 
         Returns:
             BigContainer
         '''
-        try:
-            etau.delete_dir(new_ele_dir)
-        except OSError:
-            pass
-        container = self.__class__(**{self._ELE_DIR_ATTR: new_ele_dir})
+        etau.ensure_empty_dir(new_backing_dir)
+        container = self.__class__(**{self._ELE_DIR_ATTR: new_backing_dir})
         container.add_container(self)
         return container
 
@@ -860,37 +862,48 @@ class BigContainer(Container):
         Args:
             inds: an iterable of indices of the elements to keep
         '''
-        inds = set(inds)
-        for idx, path in self._files():
-            if idx not in inds:
-                del self[idx]
+        self.delete_inds(list(set(self.__elements__) - set(inds)))
 
-    def extract_inds(self, new_ele_dir, inds):
+    def extract_inds(self, new_backing_dir, inds):
         '''Creates a new container having only the elements with the given
         indices.
 
         Args:
+            new_backing_dir: the backind_dir of the new container
             inds: a list of indices of the elements to keep
 
         Returns:
             BigContainer
         '''
-        etau.ensure_emptydir(new_ele_dir)
+        etau.ensure_emptydir(new_backing_dir)
         inds = set(inds)
         container = copy.deepcopy(self)
-        container._backing_dir = new_ele_dir
+        container._backing_dir = new_backing_dir
 
-        # @todo these can be copied as files
-        # should adding by path be a public method?
-        for idx, ele in enumerate(self):
-            if idx in inds:
-                container.add(ele)
+        for idx in inds:
+            container.__elements__.append(self.__elements[idx])
+            etau.move_file(self._ele_path(idx), container._ele_path(idx))
+
         return container
 
     def clear(self):
         '''Deletes all elements from the container.'''
         super(BigContainer, self).clear()
-        etau.delete_dir(self._ele_dir)
+        etau.delete_dir(self.backing_dir)
+        etau.ensure_dir(self.backing_dir)
+
+    def move(self, new_backing_dir):
+        '''Move the backing_dir
+
+        Args:
+            new_backing_dir: the new backing_dir path
+        '''
+        etau.ensure_(new_backing_dir)
+        for path in self._paths:
+            new_path = os.path.join(new_backing_dir, os.path.basename(path))
+            etau.move_file(path, new_path)
+        self._backing_dir = new_backing_dir
+
 
     def count_matches(self, filters, match=any):
         '''Counts the number of elements in the container that match the
@@ -909,7 +922,7 @@ class BigContainer(Container):
         '''
         return len(self._filter_elements(filters, match=match))
 
-    def get_matches(self, new_ele_dir, filters, match=any):
+    def get_matches(self, new_backing_dir, filters, match=any):
         '''Gets elements matching the given filters.
 
         Args:
@@ -925,11 +938,7 @@ class BigContainer(Container):
                 the filters
         '''
         inds = self._filter_elements(filters, match)
-        container = copy.deepcopy(self)
-        setattr(container, self._ELE_DIR_ATTR, new_ele_dir)
-        for idx in inds:
-            container.add(self[idx])
-        return container
+        return self.extract_inds(new_backing_dir, inds)
 
     def sort_by(self, attr, reverse=False):
         '''Sorts the elements in the container by the given attribute.
@@ -947,22 +956,21 @@ class BigContainer(Container):
 
         setattr(
             self, self._ELE_ATTR, sorted(
-                self._elements__, reverse=reverse, key=field_none_last))
+                self.__elements__, reverse=reverse, key=field_none_last))
 
     def attributes(self):
         '''Returns the list of class attributes that will be serialized.'''
         attrs = super(BigContainer, self).attributes()
-        return [self._ELE_DIR_ATTR] + attrs
+        return ["backing_dir"] + attrs
 
     @classmethod
     def from_dict(cls, d):
         '''Constructs a BigContainer from a JSON dictionary.
 
-        `cls._ELE_DIR_ATTR` must be provided. `cls._ELE_ATTR` will be generated
-        via a call etau.multiglob() if not provided.
+        `backing_dir` must be provided.
 
-        If the `cls._ELE_ATTR` uuid list is not provided, the order of the
-        elements is random.
+        If the `cls._ELE_ATTR` uuid list is not provided, no order is
+        guaranteed.
 
         Args:
             d (dict)
@@ -973,18 +981,10 @@ class BigContainer(Container):
 
     def _filter_elements(self, filters, match):
         def run_filters(uuid):
-            # load each element only once
-            ele = self._load_ele_by_uuid(uuid)
+            ele = self._load_ele_by_uuid(uuid) # load ele once
             return match(f(ele) for f in filters)
 
         return list(filter(run_filters, self.__elements__))
-
-    def _validate(self):
-        super(BigContainer, self)._validate()
-        if self._ELE_DIR_ATTR is None:
-            raise ContainerError(
-                "Cannot instantiate a BigContainer for which "
-                "_ELE_DIR_ATTR is None")
 
     @property
     def _paths(self):
@@ -992,20 +992,16 @@ class BigContainer(Container):
             self._ele_path(idx) for idx in range(0, len(self.__elements__))
         )
 
-    @property
-    def _ele_dir(self):
-        return getattr(self, self._ELE_DIR_ATTR)
-
     def _ele_filename(self, idx):
         if idx >= len(self):
             raise ContainerError("Index %d out of bounds" % idx)
         return "%s.json" % self.__elements__[idx]
 
     def _ele_path(self, idx):
-        return os.path.join(self._ele_dir, self._ele_filename(idx))
+        return os.path.join(self.backing_dir, self._ele_filename(idx))
 
     def _ele_path_by_uuid(self, uuid):
-        return os.path.join(self._ele_dir, "%s.json" % uuid)
+        return os.path.join(self.backing_dir, "%s.json" % uuid)
 
     def _load_ele(self, path):
         return self._ELE_CLS.from_json(path)
