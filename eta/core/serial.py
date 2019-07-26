@@ -710,8 +710,8 @@ class Container(Serializable):
 class BigContainer(Container):
     '''Container that represents a list of serializable objects in a
     directory on disk. Any accessing of an element in the list causes a READ
-    from disk and updating any elements in the list REQUIRES setting the element
-    explicitly (and causes a WRITE to disk).
+    from disk and updating any elements in the list REQUIRES setting the
+    element explicitly (and causes a WRITE to disk).
 
     This class cannot be instantiated directly.
 
@@ -737,18 +737,15 @@ class BigContainer(Container):
     def __init__(self, **kwargs):
         '''Creates a BigContainer instance.
 
-        NOTE: The <elements> uuid list is generated dynamically from the path if
-        it is not provided.
-
         Args:
             <elements_dir>: the directory path to store the data. This argument
                 is required. The appropriate name of this keyword argument is
                 determined by the `_ELE_DIR_ATTR` member of the
                 BigContainer subclass
-            <elements>: an optional list of element uuids. globbing is done when
-                this is not provided. The appropriate name of this keyword
-                argument is determined by the `_ELE_ATTR` member of the
-                BigContainer subclass
+            <elements>: an optional list of element uuids. The list is
+                generated from eta.core.utils.list_files() when not provided.
+                The appropriate name of this keyword argument is determined by
+                the `_ELE_ATTR` member of the BigContainer subclass
 
         Raises:
             ContainerError: if there was an error while creating the container
@@ -879,10 +876,15 @@ class BigContainer(Container):
         inds = set(inds)
         container = copy.deepcopy(self)
         container._backing_dir = new_backing_dir
+        container.__elements__ = []
 
         for idx in inds:
-            container.__elements__.append(self.__elements[idx])
-            etau.move_file(self._ele_path(idx), container._ele_path(idx))
+            uuid = uuid4()
+            container.__elements__.append(uuid)
+            etau.move_file(
+                self._ele_path(idx),
+                container._ele_path_by_uuid(uuid)
+            )
 
         return container
 
@@ -903,7 +905,6 @@ class BigContainer(Container):
             new_path = os.path.join(new_backing_dir, os.path.basename(path))
             etau.move_file(path, new_path)
         self._backing_dir = new_backing_dir
-
 
     def count_matches(self, filters, match=any):
         '''Counts the number of elements in the container that match the
@@ -963,6 +964,91 @@ class BigContainer(Container):
         attrs = super(BigContainer, self).attributes()
         return ["backing_dir"] + attrs
 
+    def write_zip(cls, self, zip_path, delete_dir=False):
+        '''Write to a .zip (Zip64) file.
+
+        The filename of the zip (without extenstion) defines the root directory
+        inside the archive.
+
+        <root>/
+            index.json
+            <elements>/
+                <uuid>.json
+
+
+        Args:
+            zip_path: the path to write the zip to (including extension)
+            delete_dir: flag to delete backing_dir. deleting the backing_dir
+                is more efficient.
+        '''
+        zip_path_
+        name = os.path.splitext(os.path.basename(zip_path))[0]
+        with etau.TempDir() as d:
+            rootdir = os.path.join(d, name)
+            ele_dir = os.path.join(rootdir, self._ELE_ATTR)
+            if delete_dir:
+                self.move(ele_dir)
+                container = self
+            else:
+                container = self.copy(ele_dir)
+            container.write_json(os.path.join(rootdir, "index.json"))
+            etau.make_zip64(os.path.join(d, name), zip_path)
+
+    @classmethod
+    def from_zip(cls, backing_dir, zip_path, delete_zip=False):
+        '''Load from a zip created by the corresponding `write_zip` method.
+
+        Args:
+            backing_dir: path to an empty or non-existent directory for the
+                container to use
+            zip_path: path of the zip to load from
+            delete_zip: optional flag to delete the zip or not
+
+        Returns:
+            BigContainer
+        '''
+        name = os.path.splitext(os.path.basename(zip_path))[0]
+        with etau.TempDir() as d:
+            rootdir = os.path.join(d, name)
+            etau.extract_zip(zip_path, d, delete_zip=delete_zip)
+            container = cls.from_json(os.path.join(rootdir, "index.json"))
+            container._backing_dir = os.path.join(rootdir, cls._ELE_ATTR)
+            container.move(backing_dir)
+
+        return container
+
+    @classmethod
+    def from_paths(cls, backing_dir, paths):
+        '''Load from a list of file paths.
+
+        Args:
+            backing_dir: path to an empty or non-existent directory for the
+                container to use
+            paths: an iter of paths
+
+        Returns:
+            BigContainer
+        '''
+        container = cls._empty(backing_dir)
+        for path in paths:
+            container._add_by_path(path)
+        return container
+
+    @classmethod
+    def from_dir(cls, backing_dir, source_dir):
+        '''Load from an unstructured directory of `cls._ELE_CLS` json files,
+        recursively.
+
+        Args:
+            backing_dir: path to an empty or non-existent directory for the
+                container to use
+            source_dir: path to the source directory to parse
+
+        Returns:
+            BigContainer
+        '''
+        return cls._from_paths(etau.multiglob("**.json", source_dir))
+
     @classmethod
     def from_dict(cls, d):
         '''Constructs a BigContainer from a JSON dictionary.
@@ -981,7 +1067,7 @@ class BigContainer(Container):
 
     def _filter_elements(self, filters, match):
         def run_filters(uuid):
-            ele = self._load_ele_by_uuid(uuid) # load ele once
+            ele = self._load_ele_by_uuid(uuid)  # load ele once
             return match(f(ele) for f in filters)
 
         return list(filter(run_filters, self.__elements__))
@@ -1008,6 +1094,16 @@ class BigContainer(Container):
 
     def _load_ele_by_uuid(self, uuid):
         return self._ELE_CLS.from_json(self._ele_path_by_uuid(uuid))
+
+    def _add_by_path(self, path):
+        uuid = uuid4()
+        self.__elements__.append(uuid)
+        etau.copy_file(path, self._ele_path_by_uuid(uuid))
+
+    @classmethod
+    def _empty(cls, backing_dir):
+        etau.ensure_empty_dir(backing_dir)
+        return cls(**{"backing_dir": backing_dir})
 
 
 class ContainerError(Exception):

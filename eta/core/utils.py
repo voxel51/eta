@@ -40,7 +40,7 @@ import sys
 import tarfile
 import tempfile
 import timeit
-import zipfile
+import zipfile as zf
 
 import eta
 import eta.constants as etac
@@ -916,6 +916,22 @@ def make_zip(dir_path, zip_path):
     shutil.make_archive(outpath, "zip", rootdir, basedir)
 
 
+def make_zip64(dir_path, zip_path):
+    '''Makes a .zip file containing the given directory in Zip64 format.
+
+    Args:
+        dir_path: the directory to zip
+        zip_path: the path + filename of the .zip file to create
+    '''
+    rootdir, basedir = os.path.split(os.path.realpath(dir_path))
+    with zf.ZipFile(zip_path, "w", zf.ZIP_DEFLATED, allowZip64=True) as f:
+        for root, _, filenames in os.walk(dir_path):
+            for name in filenames:
+                outpath = os.path.join(root, name)
+                inpath = os.path.join(os.path.relpath(root, rootdir), name)
+                f.write(outpath, inpath)
+
+
 def extract_zip(inpath, outdir=None, delete_zip=False):
     '''Extracts the contents of a .zip file.
 
@@ -928,7 +944,7 @@ def extract_zip(inpath, outdir=None, delete_zip=False):
     '''
     outdir = outdir or os.path.dirname(inpath) or "."
 
-    with zipfile.ZipFile(inpath, "r") as zfile:
+    with zf.ZipFile(inpath, "r") as zfile:
         zfile.extractall(outdir)
 
     if delete_zip:
