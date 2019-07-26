@@ -1042,9 +1042,9 @@ class Container(Serializable):
             val = getattr(ele, attr)
             return ((val is None) ^ reverse, val)  # always puts None last
 
-        setattr(
-            self, self._ELE_ATTR, sorted(
-                self.__elements__, reverse=reverse, key=field_none_last))
+        elements = sorted(
+            self.__elements__, reverse=reverse, key=field_none_last)
+        setattr(self, self._ELE_ATTR, elements)
 
     def attributes(self):
         '''Returns the list of class attributes that will be serialized.'''
