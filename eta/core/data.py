@@ -364,7 +364,7 @@ class BooleanAttributeSchema(AttributeSchema):
         return {}
 
 
-class AttributeContainer(DataContainer):
+class AttributeContainer(Container):
     '''A container for attributes.'''
 
     _ELE_CLS = Attribute
@@ -378,7 +378,7 @@ class AttributeContainer(DataContainer):
         Args:
             schema: an optional AttributeContainerSchema to enforce on the
                 attributes in this container. By default, no schema is enforced
-            **kwargs: valid keyword arguments for DataContainer()
+            **kwargs: valid keyword arguments for Container()
 
         Raises:
             AttributeContainerSchemaError: if a schema was provided but the
@@ -770,7 +770,7 @@ class DataFileSequenceError(Exception):
     pass
 
 
-class DataRecords(DataContainer):
+class DataRecords(Container):
     '''Container class for data records.
 
     `DataRecords` is a generic container of records each having a value for
@@ -785,9 +785,9 @@ class DataRecords(DataContainer):
     records in the container will be inferred while loading.
     '''
 
-    _ELE_ATTR = "records"
-    _ELE_CLS_FIELD = "_RECORD_CLS"
     _ELE_CLS = None  # this is set per-instance for DataRecords
+    _ELE_CLS_FIELD = "_RECORD_CLS"
+    _ELE_ATTR = "records"
 
     def __init__(self, record_cls, **kwargs):
         '''Creates a `DataRecords` instance.
