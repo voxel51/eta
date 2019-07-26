@@ -863,7 +863,8 @@ class Container(Serializable):
                     "Container %s expects elements of type %s but found "
                     "%s" % (self.__class__, self._ELE_CLS, e.__class__))
 
-        setattr(self, self._ELE_ATTR, elements)
+        self.clear()
+        self.add_iterable(elements)
 
     def __getitem__(self, index):
         return self.__elements__[index]
@@ -887,6 +888,35 @@ class Container(Serializable):
     def __elements__(self):
         return getattr(self, self._ELE_ATTR)
 
+    @classmethod
+    def get_element_class(cls):
+        '''Gets the class of elements stored in this container.'''
+        return cls._ELE_CLS
+
+    @classmethod
+    def get_element_class_name(cls):
+        '''Returns the fully-qualified class name string of the element
+        instances in this container.
+        '''
+        return etau.get_class_name(cls._ELE_CLS)
+
+    @property
+    def size(self):
+        '''Returns the number of elements in the container.'''
+        return len(self.__elements__)
+
+    def clear(self):
+        '''Deletes all elements from the container.'''
+        setattr(self, self._ELE_ATTR, [])
+
+    def copy(self):
+        '''Returns a deep copy of the container.
+
+        Returns:
+            a Container
+        '''
+        return copy.deepcopy(self)
+
     def add(self, instance):
         '''Adds an element to the container.
 
@@ -902,6 +932,18 @@ class Container(Serializable):
             container: a Container instance
         '''
         self.__elements__.extend(container.__elements__)
+
+    def add_iterable(self, elements):
+        '''Adds the elements in the given iterable to the container.
+
+        Args:
+            elements: an iterable of `_ELE_CLS` objects
+        '''
+        if isinstance(elements, list):
+            self.__elements__.extend(elements)
+        else:
+            for element in elements:
+                self.add(element)
 
     def filter_elements(self, filters, match=any):
         '''Removes elements that don't match the given filters from the
@@ -947,18 +989,10 @@ class Container(Serializable):
         Returns:
             a Container
         '''
-        container = copy.deepcopy(self)
+        # @todo only copy the elements we are going to keep
+        container = self.copy()
         container.keep_inds(inds)
         return container
-
-    def clear(self):
-        '''Deletes all elements from the container.'''
-        setattr(self, self._ELE_ATTR, [])
-
-    @property
-    def size(self):
-        '''Returns the number of elements in the container.'''
-        return len(self.__elements__)
 
     def count_matches(self, filters, match=any):
         '''Counts the number of elements in the container that match the
