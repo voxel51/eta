@@ -1068,7 +1068,7 @@ class BigVideoSetLabelsContainer(BigContainer):
 
     _ELE_CLS_FIELD = "LABELS_CLS"
 
-    _ELE_MAP_ATTR = "labels_map"
+    _ELE_ATTR = "labels"
 
 
 class BigVideoSetLabels(VideoSetLabels):
@@ -1079,7 +1079,7 @@ class BigVideoSetLabels(VideoSetLabels):
     USE WITH CARE.
     '''
 
-    def __init__(self, videos=None, schema=None, labels_dir=None):
+    def __init__(self, videos=None, schema=None, labels=None):
         '''Either videos (a BigVideoSetLabelsContainer instance)
         or labels_dir must be provided.
 
@@ -1089,8 +1089,8 @@ class BigVideoSetLabels(VideoSetLabels):
             labels_str (str): directory path representing a
                 BigVideoSetLabelsContainer
         '''
-        if labels_dir is not None:
-            videos = BigVideoSetLabelsContainer(labels_dir=labels_dir)
+        if labels is not None:
+            videos = BigVideoSetLabelsContainer(backing_dir=labels)
         super(BigVideoSetLabels, self).__init__(videos=videos, schema=schema)
 
     @classmethod

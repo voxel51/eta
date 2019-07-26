@@ -325,11 +325,11 @@ class ImageSetLabels(Serializable):
         '''Constructs an ImageSetLabels from a JSON dictionary.'''
         images = [ImageLabels.from_dict(il) for il in d["images"]]
 
-         schema = d.get("schema", None)
+        schema = d.get("schema", None)
         if schema is not None:
-            schema = ImageLabelsSchema.from_dict(schema)
+             schema = ImageLabelsSchema.from_dict(schema)
 
-         return cls(images=images, schema=schema)
+        return cls(images=images, schema=schema)
 
 
 class ImageLabels(Serializable):

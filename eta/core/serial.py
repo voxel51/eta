@@ -758,6 +758,8 @@ class BigContainer(Container):
 
         self._backing_dir = kwargs["backing_dir"]
 
+        etau.ensure_dir(self.backing_dir)
+
         setattr(
             self,
             self._ELE_ATTR,
@@ -1047,7 +1049,8 @@ class BigContainer(Container):
         Returns:
             BigContainer
         '''
-        return cls._from_paths(etau.multiglob("**.json", source_dir))
+        return cls.from_paths(
+            backing_dir, etau.multiglob(".json", source_dir+"/**"))
 
     @classmethod
     def from_dict(cls, d):
