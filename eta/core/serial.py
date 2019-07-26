@@ -702,10 +702,6 @@ class Container(Serializable):
             # Parse reflectively
             cls = etau.get_class(d["_CLS"])
 
-        else:
-            # Validates the cls settings
-            cls()
-
 
 class BigContainer(Container):
     '''Container that represents a list of serializable objects in a
@@ -759,14 +755,16 @@ class BigContainer(Container):
         self._backing_dir = kwargs["backing_dir"]
 
         etau.ensure_dir(self.backing_dir)
-
         setattr(
             self,
             self._ELE_ATTR,
-            [
-                os.path.basename(os.path.splitext(e)[0])
-                for e in etau.list_files(self.backing_dir)
-            ]
+            kwargs.get(
+                self._ELE_ATTR,
+                [
+                    os.path.basename(os.path.splitext(e)[0])
+                    for e in etau.list_files(self.backing_dir)
+                ]
+            )
         )
 
     def __iter__(self):
@@ -793,7 +791,7 @@ class BigContainer(Container):
         Args:
             ele: an element of `cls._ELE_CLS` to append
         '''
-        self.__elements__.append(uuid4())
+        self.__elements__.append(str(uuid4()))
         self[len(self)-1] = ele
 
     def add_container(self, container):
@@ -803,11 +801,9 @@ class BigContainer(Container):
         Args:
             container (Container): the container to add
         '''
-        if issubclass(BigContainer, container):
+        if issubclass(container.__class__, BigContainer):
             for path in container._paths:
-                uuid = uuid4()
-                etau.copy_file(path, self._ele_path_by_uuid(uuid))
-                self.__elements__.append(uuid)
+                self._add_by_path(path)
         else:
             for ele in container:
                 self.add(ele)
@@ -823,7 +819,7 @@ class BigContainer(Container):
         '''
         etau.ensure_empty_dir(new_backing_dir)
         container = copy.deepcopy(self)
-        container.__elements__ = []
+        setattr(container, container._ELE_ATTR, [])
         container._backing_dir = new_backing_dir
         container.add_container(self)
         return container
@@ -879,10 +875,10 @@ class BigContainer(Container):
         etau.ensure_emptydir(new_backing_dir)
         container = copy.deepcopy(self)
         container._backing_dir = new_backing_dir
-        container.__elements__ = []
+        setattr(container, container._ELE_ATTR, [])
 
         for idx in inds:
-            uuid = uuid4()
+            uuid = str(uuid4())
             container.__elements__.append(uuid)
             etau.copy_file(
                 self._ele_path(idx),
@@ -903,7 +899,7 @@ class BigContainer(Container):
         Args:
             new_backing_dir: the new backing_dir path
         '''
-        etau.ensure_(new_backing_dir)
+        etau.ensure_empty_dir(new_backing_dir)
         for path in self._paths:
             new_path = os.path.join(new_backing_dir, os.path.basename(path))
             etau.move_file(path, new_path)
@@ -967,7 +963,7 @@ class BigContainer(Container):
         attrs = super(BigContainer, self).attributes()
         return ["backing_dir"] + attrs
 
-    def write_zip(cls, self, zip_path, delete_dir=False):
+    def write_zip(self, zip_path, delete_dir=False):
         '''Write to a .zip (Zip64) file.
 
         The filename of the zip (without extenstion) defines the root directory
@@ -993,7 +989,10 @@ class BigContainer(Container):
                 container = self
             else:
                 container = self.copy(ele_dir)
+            cur_backing_dir = container.backing_dir
+            container._backing_dir = self._ELE_ATTR
             container.write_json(os.path.join(rootdir, "index.json"))
+            container._backing_dir = cur_backing_dir
             etau.make_zip64(os.path.join(d, name), zip_path)
 
     @classmethod
@@ -1014,8 +1013,10 @@ class BigContainer(Container):
             rootdir = os.path.join(d, name)
             etau.extract_zip(zip_path, d, delete_zip=delete_zip)
             container = cls.from_json(os.path.join(rootdir, "index.json"))
+            print(container.__elements__)
             container._backing_dir = os.path.join(rootdir, cls._ELE_ATTR)
             container.move(backing_dir)
+        print(container.backing_dir)
 
         return container
 
@@ -1099,7 +1100,7 @@ class BigContainer(Container):
         return self._ELE_CLS.from_json(self._ele_path_by_uuid(uuid))
 
     def _add_by_path(self, path):
-        uuid = uuid4()
+        uuid = str(uuid4())
         self.__elements__.append(uuid)
         etau.copy_file(path, self._ele_path_by_uuid(uuid))
 

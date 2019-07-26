@@ -470,7 +470,7 @@ class BigImageSetLabelsContainer(BigContainer):
 
     _ELE_CLS_FIELD = "LABELS_CLS"
 
-    _ELE_ATTR = "labels_map"
+    _ELE_ATTR = "labels"
 
 
 class BigImageSetLabels(ImageSetLabels):
@@ -491,7 +491,7 @@ class BigImageSetLabels(ImageSetLabels):
                 BigImageSetLabelsContainer
         '''
         if labels_dir is not None:
-            images = BigImageSetLabelsContainer(labels_dir=labels_dir)
+            images = BigImageSetLabelsContainer(backing_dir=labels_dir)
         super(BigImageSetLabels, self).__init__(images=images, schema=schema)
 
     @classmethod

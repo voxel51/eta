@@ -1076,10 +1076,9 @@ class BigVideoSetLabels(VideoSetLabels):
     VideoLabels on disk.
 
     See eta.core.serial.BigContainer for more information and please
-    USE WITH CARE.
     '''
 
-    def __init__(self, videos=None, schema=None, labels=None):
+    def __init__(self, videos=None, schema=None, labels_dir=None):
         '''Either videos (a BigVideoSetLabelsContainer instance)
         or labels_dir must be provided.
 
@@ -1090,7 +1089,7 @@ class BigVideoSetLabels(VideoSetLabels):
                 BigVideoSetLabelsContainer
         '''
         if labels is not None:
-            videos = BigVideoSetLabelsContainer(backing_dir=labels)
+            videos = BigVideoSetLabelsContainer(backing_dir=labels_dir)
         super(BigVideoSetLabels, self).__init__(videos=videos, schema=schema)
 
     @classmethod
