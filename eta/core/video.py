@@ -30,6 +30,7 @@ import six
 # pragma pylint: enable=wildcard-import
 
 from collections import defaultdict, OrderedDict
+import copy
 import dateutil.parser
 import errno
 import logging
@@ -45,7 +46,7 @@ from eta.core.data import AttributeContainer, AttributeContainerSchema
 import eta.core.gps as etag
 import eta.core.image as etai
 from eta.core.objects import DetectedObjectContainer
-from eta.core.serial import load_json, Serializable, DirectoryContainer
+from eta.core.serial import load_json, Serializable, BigContainer
 import eta.core.utils as etau
 
 
@@ -1056,19 +1057,16 @@ class VideoLabels(Serializable):
             schema=schema)
 
 
-class VideoSetLabelsDirectory(DirectoryContainer):
-    '''VideoSetLabelsDirectory is a DirectoryContainer that represents a list
+class BigVideoSetLabelsContainer(BigContainer):
+    '''VideoSetLabelsDirectory is a BigContainer that represents a list
     of VideoLabels on disk.
 
-    See eta.core.serial.DirectoryContainer for more information and please
-    USE WITH CARE.
+    See eta.core.serial.BigContainer for more information and please
     '''
 
     _ELE_CLS = VideoLabels
 
     _ELE_CLS_FIELD = "LABELS_CLS"
-
-    _ELE_DIR_ATTR = "labels_dir"
 
     _ELE_MAP_ATTR = "labels_map"
 
@@ -1077,28 +1075,28 @@ class BigVideoSetLabels(VideoSetLabels):
     '''BigVideoSetLabels uses a VideoSetLabelsDirectory to iterate over
     VideoLabels on disk.
 
-    See eta.core.serial.DirectoryContainer for more information and please
+    See eta.core.serial.BigContainer for more information and please
     USE WITH CARE.
     '''
 
     def __init__(self, videos=None, schema=None, labels_dir=None):
-        '''Either videos (a VideoSetLabelsDirectoy instance)
+        '''Either videos (a BigVideoSetLabelsContainer instance)
         or labels_dir must be provided.
 
         Args:
-            videos (VideoSetLabelsDirectory)
-            schema (VideoLabelsSchema
+            videos (BigVideoSetLabelsContainer)
+            schema (VideoLabelsSchema)
             labels_str (str): directory path representing a
-                VideoSetLabelsDirectory
+                BigVideoSetLabelsContainer
         '''
         if labels_dir is not None:
-            videos = VideoSetLabelsDirectory(labels_dir=labels_dir)
+            videos = BigVideoSetLabelsContainer(labels_dir=labels_dir)
         super(BigVideoSetLabels, self).__init__(videos=videos, schema=schema)
 
     @classmethod
     def from_dict(cls, d):
         '''Constructs a  BigVideoSetLabels from a JSON dictionary.'''
-        videos = VideoSetLabelsDirectory.from_dict(d["videos"])
+        videos = BigVideoSetLabelsContainer.from_dict(d["videos"])
 
         schema = d.get("schema", None)
         if schema is not None:

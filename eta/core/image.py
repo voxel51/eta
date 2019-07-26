@@ -42,7 +42,7 @@ import eta
 from eta.core.data import AttributeContainer, AttributeContainerSchema, \
     AttributeContainerSchemaError
 from eta.core.objects import DetectedObjectContainer
-from eta.core.serial import Serializable, DirectoryContainer
+from eta.core.serial import Serializable, BigContainer
 import eta.core.utils as etau
 import eta.core.web as etaw
 
@@ -320,6 +320,17 @@ class ImageSetLabels(Serializable):
             for idx, image_labels in enumerate(self.images)
         }
 
+    @classmethod
+    def from_dict(cls, d):
+        '''Constructs an ImageSetLabels from a JSON dictionary.'''
+        images = [ImageLabels.from_dict(il) for il in d["images"]]
+
+         schema = d.get("schema", None)
+        if schema is not None:
+            schema = ImageLabelsSchema.from_dict(schema)
+
+         return cls(images=images, schema=schema)
+
 
 class ImageLabels(Serializable):
     '''Class encapsulating labels for an image.
@@ -448,12 +459,11 @@ class ImageLabels(Serializable):
             filename=filename, metadata=metadata, attrs=attrs, objects=objects)
 
 
-class ImageSetLabelsDirectory(DirectoryContainer):
-    '''ImageSetLabelsDirectory is a DirectoryContainer that represents a list
+class BigImageSetLabelsContainer(BigContainer):
+    '''BigImageSetLabelsContainer is a BigContainer that represents a list
     of ImageLabels on disk.
 
-    See eta.core.serial.DirectoryContainer for more information and please
-    USE WITH CARE.
+    See eta.core.serial.BigContainer for more information and please
     '''
 
     _ELE_CLS = ImageLabels
@@ -464,31 +474,30 @@ class ImageSetLabelsDirectory(DirectoryContainer):
 
 
 class BigImageSetLabels(ImageSetLabels):
-    '''BigImageSetLabels uses an ImageSetLabelsDirectory to iterate over
+    '''BigImageSetLabels uses an BigImageSetLabelsContainer to iterate over
     ImageLabels on disk.
 
-    See eta.core.serial.DirectoryContainer for more information and please
-    USE WITH CARE.
+    See eta.core.serial.BigContainer for more information and please
     '''
 
     def __init__(self, images=None, schema=None, labels_dir=None):
-        '''Either images (a ImageSetLabelsDirectoy instance)
+        '''Either images (a BigImageSetLabelsContainer instance)
         or labels_dir must be provided.
 
         Args:
-            videos (ImageSetLabelsDirectory)
-            images (ImageLabelsSchema
+            images (BigImageSetLabelsContainer)
+            schema (ImageLabelsSchema)
             labels_str (str): directory path representing a
-                ImageSetLabelsDirectory
+                BigImageSetLabelsContainer
         '''
         if labels_dir is not None:
-            images = ImageSetLabelsDirectory(labels_dir=labels_dir)
+            images = BigImageSetLabelsContainer(labels_dir=labels_dir)
         super(BigImageSetLabels, self).__init__(images=images, schema=schema)
 
     @classmethod
     def from_dict(cls, d):
-        '''Constructs a  BigVideoSetLabels from a JSON dictionary.'''
-        images = ImageSetLabelsDirectory.from_dict(d["images"])
+        '''Constructs a  BigImageSetLabels from a JSON dictionary.'''
+        images = BigImageSetLabelsContainer.from_dict(d["images"])
 
         schema = d.get("schema", None)
         if schema is not None:
