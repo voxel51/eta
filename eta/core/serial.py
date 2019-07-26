@@ -964,6 +964,23 @@ class BigContainer(Container):
         attrs = super(BigContainer, self).attributes()
         return ["backing_dir"] + attrs
 
+    def to_container(self):
+        '''Create an instance of the associated Container class from this
+        BigContainer instance.
+
+        Returns:
+            Container
+        '''
+        name = etau.get_class_name(self)
+        name = cls_name.split(".")
+        name[-1] = cls[-1].lstrip("Big")
+        name = ".".join(cls)
+        cls = etau.get_class(name)
+        container = cls()
+        for ele in self:
+            container.add(ele)
+        return container
+
     def write_zip(cls, self, zip_path, delete_dir=False):
         '''Write to a .zip (Zip64) file.
 
@@ -981,7 +998,6 @@ class BigContainer(Container):
             delete_dir: flag to delete backing_dir. deleting the backing_dir
                 is more efficient.
         '''
-        zip_path_
         name = os.path.splitext(os.path.basename(zip_path))[0]
         with etau.TempDir() as d:
             rootdir = os.path.join(d, name)
