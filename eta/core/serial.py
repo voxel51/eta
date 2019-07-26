@@ -14,7 +14,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
-from future.utils import iteritems
+from future.utils import iteritems, itervalues
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
@@ -27,6 +27,7 @@ import json
 import os
 import pickle as _pickle
 import pprint
+from uuid import uuid4
 
 import numpy as np
 
@@ -404,6 +405,383 @@ def _recurse(v, reflective):
         return OrderedDict(
             (ki, _recurse(vi, reflective)) for ki, vi in iteritems(v))
     return v
+
+
+class Set(Serializable):
+    '''Abstract base class for flexible sets that store homogeneous elements
+    of a `Serializable` class and provides O(1) lookup of elements by a
+    subclass-configurable element attribute.
+
+    This class cannot be instantiated directly. Instead a subclass should
+    be created for each type of element to be stored. Subclasses MUST set the
+    following members:
+        -  `_ELE_CLS`: the class of the element stored in the set
+        -  `_ELE_KEY_ATTR`: the name of the element attribute to use to perform
+            element lookups
+
+    In addition, sublasses MAY override the following members:
+        - `_ELE_CLS_FIELD`: the name of the private attribute that will store
+            the class of the elements in the set
+        - `_ELE_ATTR`: the name of the attribute that will store the elements
+            in the set
+
+    Set subclasses can optionally embed their class names and underlying
+    element class names in their JSON representations, so they can be read
+    reflectively from disk.
+
+    Examples:
+        ```
+        from eta.core.serial import Set
+        from eta.core.geometry import LabeledPointSet
+
+        points = LabeledPointSet()
+        points.write_json("points.json", reflective=True)
+
+        points2 = Set.from_json("points.json")
+        print(points2.__class__)  # LabeledPointSet, not Set!
+        ```
+    '''
+
+    #
+    # The class of the element stored in the set
+    #
+    # Subclasses MUST set this field
+    #
+    _ELE_CLS = None
+
+    #
+    # The name of the element attribute that will be used when looking up
+    # elements by key in the set
+    #
+    # Subclasses MUST set this field
+    #
+    _ELE_KEY_ATTR = None
+
+    #
+    # The name of the private attribute that will store the class of the
+    # elements in the set
+    #
+    # Subclasses MAY set this field
+    #
+    _ELE_CLS_FIELD = "_ELEMENT_CLS"
+
+    #
+    # The name of the attribute that will store the elements in the set
+    #
+    # Subclasses MAY set this field
+    #
+    _ELE_ATTR = "elements"
+
+    def __init__(self, **kwargs):
+        '''Creates a Set instance.
+
+        Args:
+            <elements>: an optional iterable of elements to store in the Set.
+                The appropriate name of this keyword argument is determined by
+                the `_ELE_ATTR` member of the Set subclass
+
+        Raises:
+            SetError: if there was an error while creating the set
+        '''
+        self._validate()
+
+        if kwargs and self._ELE_ATTR not in kwargs:
+            raise SetError(
+                "Expected elements to be provided in keyword argument '%s'; "
+                "found keys %s" % (self._ELE_ATTR, list(kwargs.keys())))
+        elements = kwargs.get(self._ELE_ATTR, [])
+
+        for e in elements:
+            if not isinstance(e, self._ELE_CLS):
+                raise SetError(
+                    "Set %s expects elements of type %s but found "
+                    "%s" % (self.__class__, self._ELE_CLS, e.__class__))
+
+        self.clear()
+        self.add_iterable(elements)
+
+    def __getitem__(self, key):
+        return self.__elements__[key]
+
+    def __setitem__(self, key, value):
+        self.__elements__[key] = value
+
+    def __delitem__(self, key):
+        del self.__elements__[key]
+
+    def __iter__(self):
+        return itervalues(self.__elements__)
+
+    def __len__(self):
+        return len(self.__elements__)
+
+    def __bool__(self):
+        return self.size > 0
+
+    @property
+    def __elements__(self):
+        return getattr(self, self._ELE_ATTR)
+
+    @classmethod
+    def get_element_class(cls):
+        '''Gets the class of elements stored in this set.'''
+        return cls._ELE_CLS
+
+    @classmethod
+    def get_element_class_name(cls):
+        '''Returns the fully-qualified class name string of the element
+        instances in this set.
+        '''
+        return etau.get_class_name(cls._ELE_CLS)
+
+    @classmethod
+    def get_key(self, element):
+        '''Gets the key for the given element, i.e., its `_ELE_KEY_ATTR` field.
+
+        Args:
+            element: an instance of `_ELE_CLS`
+
+        Returns:
+            the key for the element
+        '''
+        return getattr(element, self._ELE_KEY_ATTR)
+
+    @property
+    def size(self):
+        '''Returns the number of elements in the set.'''
+        return len(self.__elements__)
+
+    def clear(self):
+        '''Deletes all elements from the set.'''
+        setattr(self, self._ELE_ATTR, OrderedDict())
+
+    def copy(self):
+        '''Returns a deep copy of the set.
+
+        Returns:
+            a Set
+        '''
+        return copy.deepcopy(self)
+
+    def add(self, element):
+        '''Adds an element to the container.
+
+        Args:
+            element: an instance of `_ELE_CLS`
+        '''
+        key = self.get_key(element) or str(uuid4())
+        self.__elements__[key] = element
+
+    def add_set(self, set_):
+        '''Adds the elements in the given set to this set.
+
+        Args:
+            set_: a Set
+        '''
+        self.__elements__.update(set_.__elements__)
+
+    def add_iterable(self, elements):
+        '''Adds the elements in the given iterable to the set.
+
+        Args:
+            elements: an iterable of `_ELE_CLS` objects
+        '''
+        for element in elements:
+            self.add(element)
+
+    def filter_elements(self, filters, match=any):
+        '''Removes elements that don't match the given filters from the set.
+
+        Args:
+            filters: a list of functions that accept elements and return
+                True/False
+            match: a function (usually `any` or `all`) that accepts an iterable
+                and returns True/False. Used to aggregate the outputs of each
+                filter to decide whether a match has occurred. The default is
+                `any`
+        '''
+        elements = self._filter_elements(filters, match)
+        setattr(self, self._ELE_ATTR, elements)
+
+    def delete_keys(self, keys):
+        '''Deletes the elements from the set with the given keys.
+
+        Args:
+            keys: an iterable of keys of the elements to delete
+        '''
+        for key in keys:
+            del self.__elements__[key]
+
+    def keep_keys(self, keys):
+        '''Keeps only the elements in the set with the given keys.
+
+        Args:
+            keys: an iterable of keys of the elements to keep
+        '''
+        keys = set(keys)
+        elements = OrderedDict([
+            (k, v) for (k, v) in iteritems(self.__elements__) if k in keys])
+        setattr(self, self._ELE_ATTR, elements)
+
+    def extract_keys(self, keys):
+        '''Creates a new set having only the elements with the given keys.
+
+        Args:
+            keys: an iterable of keys of the elements to keep
+
+        Returns:
+            a Set
+        '''
+        # @todo avoid copying entire set
+        set_ = self.copy()
+        set_.keep_keys(keys)
+        return set_
+
+    def count_matches(self, filters, match=any):
+        '''Counts the number of elements in the set that match the given
+        filters.
+
+        Args:
+            filters: a list of functions that accept instances of class
+                `_ELE_CLS`and return True/False
+            match: a function (usually `any` or `all`) that accepts an iterable
+                and returns True/False. Used to aggregate the outputs of each
+                filter to decide whether a match has occurred. The default is
+                `any`
+
+        Returns:
+            the number of elements in the set that match the filters
+        '''
+        return self.get_matches(filters, match=match).size
+
+    def get_matches(self, filters, match=any):
+        '''Gets elements matching the given filters.
+
+        Args:
+            filters: a list of functions that accept elements and return
+                True/False
+            match: a function (usually `any` or `all`) that accepts an iterable
+                and returns True/False. Used to aggregate the outputs of each
+                filter to decide whether a match has occurred. The default is
+                `any`
+
+        Returns:
+            a copy of the set containing only the elements that match the
+                filters
+        '''
+        # @todo avoid copying entire set
+        new_set = self.copy()
+        new_set.filter_elements(filters, match=match)
+        return new_set
+
+    def sort_by(self, attr, reverse=False):
+        '''Sorts the elements in the set by the given attribute.
+
+        Elements whose attribute is None are always put at the end of the set.
+
+        Args:
+            attr: the element attribute to sort by
+            reverse: whether to sort in descending order. The default is False
+        '''
+        def field_none_last(key_ele_pair):
+            val = getattr(key_ele_pair[1], attr)
+            return ((val is None) ^ reverse, val)  # always puts None last
+
+        elements = OrderedDict(
+            sorted(
+                iteritems(self.__elements__),
+                reverse=reverse, key=field_none_last))
+        setattr(self, self._ELE_ATTR, elements)
+
+    def attributes(self):
+        '''Returns the list of class attributes that will be serialized.'''
+        return [self._ELE_ATTR]
+
+    def serialize(self, reflective=False):
+        '''Serializes the set into a dictionary.
+
+        Args:
+            reflective: whether to include reflective attributes when
+                serializing the object. By default, this is False
+
+        Returns:
+            a JSON dictionary representation of the set
+        '''
+        d = OrderedDict()
+        if reflective:
+            d["_CLS"] = self.get_class_name()
+            d[self._ELE_CLS_FIELD] = etau.get_class_name(self._ELE_CLS)
+
+        #
+        # Note that we serialize the dictionary into a list; the keys are
+        # re-generated during de-serialization
+        #
+        elements_list = list(itervalues(self.__elements__))
+        d[self._ELE_ATTR] = _recurse(elements_list, reflective)
+
+        return d
+
+    @classmethod
+    def from_dict(cls, d):
+        '''Constructs a Set from a JSON dictionary.
+
+        If the dictionary has the `"_CLS"` and `cls._ELE_CLS_FIELD`
+        keys, they are used to infer the Set class and underlying element
+        classes, respectively, and this method can be invoked on any
+        `Set` subclass that has the same `_ELE_CLS_FIELD` setting.
+
+        Otherwise, this method must be called on the same concrete `Set`
+        subclass from which the JSON was generated.
+        '''
+        if cls._ELE_CLS_FIELD is None:
+            raise SetError(
+                "%s is an abstract set and cannot be used to load a "
+                "JSON dictionary. Please use a Set subclass that "
+                "defines its `_ELE_CLS_FIELD` member" % cls)
+
+        if "_CLS" in d:
+            if cls._ELE_CLS_FIELD not in d:
+                raise SetError(
+                    "Cannot use %s to reflectively load this set because the "
+                    "expected field '%s' was not found in the JSON "
+                    "dictionary" % (cls, cls._ELE_CLS_FIELD))
+
+            # Parse reflectively
+            cls = etau.get_class(d["_CLS"])
+            ele_cls = etau.get_class(d[cls._ELE_CLS_FIELD])
+        else:
+            # Validates the cls settings
+            cls()
+            # Parse using provided class
+            ele_cls = cls._ELE_CLS
+
+        elements = [ele_cls.from_dict(dd) for dd in d[cls._ELE_ATTR]]
+        return cls(**{cls._ELE_ATTR: elements})
+
+    def _filter_elements(self, filters, match):
+        return OrderedDict([
+            (k, v) for (k, v) in iteritems(self.__elements__)
+            if match(f(v) for f in filters)])
+
+    def _validate(self):
+        '''Validates that a Set instance is valid.'''
+        if self._ELE_CLS is None:
+            raise SetError(
+                "Cannot instantiate a Set for which _ELE_CLS is None")
+        if self._ELE_ATTR is None:
+            raise SetError(
+                "Cannot instantiate a Set for which _ELE_ATTR is None")
+        if not issubclass(self._ELE_CLS, Serializable):
+            raise SetError(
+                "%s is not Serializable" % self._ELE_CLS)
+        if self._ELE_KEY_ATTR is None:
+            raise SetError(
+                "Cannot instantiate a Set for which _ELE_KEY_ATTR is None")
+
+
+class SetError(Exception):
+    '''Exception raised when an invalid Set is encountered.'''
+    pass
 
 
 class Container(Serializable):
