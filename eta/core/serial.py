@@ -27,7 +27,7 @@ import json
 import os
 import pickle as _pickle
 import pprint
-import uuid
+from uuid import uuid4
 
 import numpy as np
 
@@ -423,13 +423,12 @@ class Container(Serializable):
             store lists of `Config` instances
         - `eta.core.data.DataContainer`: base class for containers that store
             lists of arbitrary `Serializable` data instances
-        - `eta.core.serial.DirectoryContainer`: base class for containers that
-          store `Serializable` data of one type in a directory structure. The
-          only benefit of this class is that the data is not held in memory. It
-          should be used sparingly.
+        - `eta.core.serial.BigContainer`: base class for containers that
+            store their elements individually serialized on disk rather than
+            storing them in-memory
 
     See `ConfigContainer` and `DataContainer` for concrete usage examples.
-    `DirectoryContainer` is an abstract class. See
+    `BigContainer` is an abstract class. See
     `eta.core.image.ImageSetLabelsDirectory` for it's concrete usage.
     '''
 
@@ -519,9 +518,6 @@ class Container(Serializable):
             container: a Container instance
         '''
         self.__elements__.extend(container.__elements__)
-
-    def copy(self):
-        return copy.deepcopy(self)
 
     def filter_elements(self, filters, match=any):
         '''Removes elements that don't match the given filters from the
@@ -711,24 +707,22 @@ class Container(Serializable):
             cls()
 
 
-class DirectoryContainer(Container):
+class BigContainer(Container):
     '''Container that represents a list of serializable objects in a
     directory on disk. Any accessing of an element in the list causes a READ
-    from disk and updating any elements in the list REQUIRES setting the item
+    from disk and updating any elements in the list REQUIRES setting the element
     explicitly (and causes a WRITE to disk).
 
     This class cannot be instantiated directly.
 
-    A list of uuids is managed by the DirectoryContainer in _ELE_ATTR to keep
-    order and find elements in the directory. This list a part of
-    serialization. The data directory location is also serialized in
+    A list of uuids is managed by the BigContainer in _ELE_ATTR to keep
+    order and find elements in the directory. This list is a part of
+    serialization. The backing directory path is also serialized in
     _ELE_DIR_ATTR.
-
-    USE WITH CARE.
 
     Usage:
         element = cls._ELE_CLS()
-        c = DirectoryContainerSubclass.from_json("...")
+        c = BigContainerSubclass.from_json("...")
 
         # All getters cause an IMMEDIATE READ from disk for each element
         element = c[0]
@@ -740,15 +734,8 @@ class DirectoryContainer(Container):
         c.add(element)
     '''
 
-    #
-    # The name of the attribute that will store the path to the json data files
-    #
-    # Subclasses MUST set this field
-    #
-    _ELE_DIR_ATTR = None
-
     def __init__(self, **kwargs):
-        '''Creates a DirectoryContainer instance.
+        '''Creates a BigContainer instance.
 
         NOTE: The <elements> uuid list is generated dynamically from the path if
         it is not provided.
@@ -757,35 +744,31 @@ class DirectoryContainer(Container):
             <elements_dir>: the directory path to store the data. This argument
                 is required. The appropriate name of this keyword argument is
                 determined by the `_ELE_DIR_ATTR` member of the
-                DirectoryContainer subclass
+                BigContainer subclass
             <elements>: an optional list of element uuids. globbing is done when
                 this is not provided. The appropriate name of this keyword
                 argument is determined by the `_ELE_ATTR` member of the
-                DirectoryContainer subclass
+                BigContainer subclass
 
         Raises:
             ContainerError: if there was an error while creating the container
         '''
         self._validate()
 
-        if self._ELE_DIR_ATTR not in kwargs:
+        if "backing_dir" not in kwargs:
             raise ContainerError(
                 "Missing keyword argument %s is required"
                 % (self._ELE_DIR_ATTR))
 
-        setattr(self, self._ELE_DIR_ATTR, kwargs[self._ELE_DIR_ATTR])
+        self._backing_dir, kwargs["backing_dir"])
 
         setattr(
             self,
             self._ELE_ATTR,
-            kwargs.get(
-                self._ELE_ATTR,
-                [
-                    os.path.splitext(os.path.basename(i))[0]
-                    for i in etau.multiglob(".json",
-                                            root=self._ele_dir+"/**/*")
-                ]
-            )
+            [
+                os.path.basename(os.path.splitext(e)[0])
+                for e in etau.list_files(self._ele_dir)
+            ]
         )
 
     def __iter__(self):
@@ -799,20 +782,31 @@ class DirectoryContainer(Container):
 
     def __delitem__(self, idx):
         etau.delete_file(self._ele_path(idx))
-        super(DirectoryContainer, self).__delitem__(idx)
+        super(BigContainer, self).__delitem__(idx)
+
+    @property
+    def backing_dir(self):
+        return self._backing_dir
 
     def add(self, ele):
-        self.append(ele)
+        self.__elements__.append(uuid4())
+        self[len(self)-1] = ele
 
     def add_container(self, container):
         '''Add a another containers elements to this one. Takes any valid
-        Container subclass (Not just DirectoryContainer subclasses).
+        Container subclass (Not just BigContainer subclasses).
 
         Args:
             container (Container): the container to add
         '''
-        for ele in container:
-            self.add(ele)
+        if issubclass(BigContainer, container):
+            for path in container._paths:
+                uuid = uuid4()
+                etau.copy_file(path, self._ele_path_by_uuid(uuid))
+                self.__elements__.append(uuid)
+        else:
+            for ele in container:
+                self.add(ele)
 
     def copy(self, new_ele_dir):
         '''Copy this container deeply.
@@ -821,7 +815,7 @@ class DirectoryContainer(Container):
             new_ele_dir (str): path the store the copy's elements
 
         Returns:
-            DirectoryContainer
+            BigContainer
         '''
         try:
             etau.delete_dir(new_ele_dir)
@@ -830,10 +824,6 @@ class DirectoryContainer(Container):
         container = self.__class__(**{self._ELE_DIR_ATTR: new_ele_dir})
         container.add_container(self)
         return container
-
-    def append(self, ele):
-        '''Append an element.'''
-        self[len(self)] = ele
 
     def filter_elements(self, filters, match=any):
         '''Removes elements that don't match the given filters from the
@@ -847,7 +837,13 @@ class DirectoryContainer(Container):
                 filter to decide whether a match has occurred. The default is
                 `any`
         '''
-        self._filter_elements(filters, match)
+        new_ele_set = set(self._filter_elements(filters, match))
+        inds = [
+            idx
+            for idx, uuid in enumerate(self.__elements__)
+            if uuid not in new_ele_set
+        ]
+        self.delete_inds(inds)
 
     def delete_inds(self, inds):
         '''Deletes the elements from the container with the given indices.
@@ -877,20 +873,24 @@ class DirectoryContainer(Container):
             inds: a list of indices of the elements to keep
 
         Returns:
-            DirectoryContainer
+            BigContainer
         '''
+        etau.ensure_emptydir(new_ele_dir)
         inds = set(inds)
         container = copy.deepcopy(self)
-        setattr(container, self._ELE_DIR_ATTR, new_ele_dir)
-        for idx, ele in self:
+        container._backing_dir = new_ele_dir
+
+        # @todo these can be copied as files
+        # should adding by path be a public method?
+        for idx, ele in enumerate(self):
             if idx in inds:
                 container.add(ele)
         return container
 
     def clear(self):
         '''Deletes all elements from the container.'''
-        super(DirectoryContainer, self).clear()
-        etau.delete_dir(self.__elements_dir__)
+        super(BigContainer, self).clear()
+        etau.delete_dir(self._ele_dir)
 
     def count_matches(self, filters, match=any):
         '''Counts the number of elements in the container that match the
@@ -911,10 +911,6 @@ class DirectoryContainer(Container):
 
     def get_matches(self, new_ele_dir, filters, match=any):
         '''Gets elements matching the given filters.
-
-        USE WITH CAUTION: The function deletes non-matches from the container
-        and then from disk. Make a copy with self.copy(new_ele_dir) to use this
-        safely.
 
         Args:
             filters: a list of functions that accept elements and return
@@ -944,8 +940,8 @@ class DirectoryContainer(Container):
             attr: the element attribute to sort by
             reverse: whether to sort in descending order. The default is False
         '''
-        def field_none_last(_uuid):
-            ele = self._load_ele_by__uuid(_uuid)
+        def field_none_last(uuid):
+            ele = self._load_ele_by_uuid(uuid)
             val = getattr(ele, attr)
             return ((val is None) ^ reverse, val)  # always puts None last
 
@@ -955,12 +951,12 @@ class DirectoryContainer(Container):
 
     def attributes(self):
         '''Returns the list of class attributes that will be serialized.'''
-        attrs = super(DirectoryContainer, self).attributes()
-        return attrs + [self._ELE_DIR_ATTR]
+        attrs = super(BigContainer, self).attributes()
+        return [self._ELE_DIR_ATTR] + attrs
 
     @classmethod
     def from_dict(cls, d):
-        '''Constructs a DirectoryContainer from a JSON dictionary.
+        '''Constructs a BigContainer from a JSON dictionary.
 
         `cls._ELE_DIR_ATTR` must be provided. `cls._ELE_ATTR` will be generated
         via a call etau.multiglob() if not provided.
@@ -976,14 +972,18 @@ class DirectoryContainer(Container):
         return cls(**d)
 
     def _filter_elements(self, filters, match):
-        return list(filter(
-            lambda o: match(f(self[o]) for f in filters), self.__elements__))
+        def run_filters(uuid):
+            # load each element only once
+            ele = self._load_ele_by_uuid(uuid)
+            return match(f(ele) for f in filters)
+
+        return list(filter(run_filters, self.__elements__))
 
     def _validate(self):
-        super(DirectoryContainer, self)._validate()
+        super(BigContainer, self)._validate()
         if self._ELE_DIR_ATTR is None:
             raise ContainerError(
-                "Cannot instantiate a DirectoryContainer for which "
+                "Cannot instantiate a BigContainer for which "
                 "_ELE_DIR_ATTR is None")
 
     @property
@@ -996,34 +996,22 @@ class DirectoryContainer(Container):
     def _ele_dir(self):
         return getattr(self, self._ELE_DIR_ATTR)
 
-    def _ele_subdir_pattern(self, idx):
-        return os.path.join(*list(self._ele_filename(idx)[:5]))
-
     def _ele_filename(self, idx):
-        if idx > len(self):
+        if idx >= len(self):
             raise ContainerError("Index %d out of bounds" % idx)
-        elif idx == len(self):
-            self.__elements__.append(str(uuid.uuid4()))
         return "%s.json" % self.__elements__[idx]
 
     def _ele_path(self, idx):
-        return os.path.join(
-            self._ele_dir,
-            self._ele_subdir_pattern(idx),
-            self._ele_filename(idx)
-        )
+        return os.path.join(self._ele_dir, self._ele_filename(idx))
 
-    def _ele_path_by__uuid(self, _uuid):
-        return os.path.join(
-            self._ele_dir,
-            os.path.join(*list(_uuid[:5])),
-            "%s.json" % _uuid)
+    def _ele_path_by_uuid(self, uuid):
+        return os.path.join(self._ele_dir, "%s.json" % uuid)
 
     def _load_ele(self, path):
         return self._ELE_CLS.from_json(path)
 
-    def _load_ele_by__uuid(self, _uuid):
-        return self._ELE_CLS.from_json(self._ele_path_by__uuid(_uuid))
+    def _load_ele_by_uuid(self, uuid):
+        return self._ELE_CLS.from_json(self._ele_path_by_uuid(uuid))
 
 
 class ContainerError(Exception):

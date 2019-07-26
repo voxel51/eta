@@ -715,6 +715,15 @@ def make_search_path(dirs):
 
     return search_dirs
 
+def ensure_empty_dir(dirnam):
+    '''Ensures that the given directory either does not exist or is empty (does
+    not include hidden file (dot files).
+
+    If the directory does not exist, it is created.
+    '''
+    if list_files(dirname):
+        raise ValueError("%s not empty" % dirname)
+    ensure_dir(dirname)
 
 def ensure_path(path):
     '''Ensures that the given path is ready for writing by deleting any

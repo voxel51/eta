@@ -462,8 +462,6 @@ class ImageSetLabelsDirectory(DirectoryContainer):
 
     _ELE_ATTR = "labels_map"
 
-    _ELE_DIR_ATTR = "labels_dir"
-
 
 class BigImageSetLabels(ImageSetLabels):
     '''BigImageSetLabels uses an ImageSetLabelsDirectory to iterate over
