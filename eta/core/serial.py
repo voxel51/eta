@@ -788,20 +788,32 @@ class Container(Serializable):
     '''Abstract base class for flexible containers that store homogeneous lists
     of elements of a `Serializable` class.
 
-    Container subclasses embed their class names and underlying element class
-    names in their JSON representations, so they can be read reflectively from
-    disk.
+    This class cannot be instantiated directly. Instead a subclass should
+    be created for each type of element to be stored. Subclasses MUST set the
+    following members:
+        -  `_ELE_CLS`: the class of the element stored in the container
 
-    This class cannot be instantiated directly.
+    In addition, sublasses MAY override the following members:
+        - `_ELE_CLS_FIELD`: the name of the private attribute that will store
+            the class of the elements in the container
+        - `_ELE_ATTR`: the name of the attribute that will store the elements
+            in the container
 
-    This class currently has only two direct subclasses, which bifurcate the
-    container implementation into two distinct categories:
-        - `eta.core.config.ConfigContainer`: base class for containers that
-            store lists of `Config` instances
-        - `eta.core.data.DataContainer`: base class for containers that store
-            lists of arbitrary `Serializable` data instances
+    Container subclasses can optionally embed their class names and underlying
+    element class names in their JSON representations, so they can be read
+    reflectively from disk.
 
-    See `ConfigContainer` and `DataContainer` for concrete usage examples.
+    Examples:
+        ```
+        from eta.core.serial import Container
+        from eta.core.geometry import LabeledPointContainer
+
+        points = LabeledPointContainer()
+        points.write_json("points.json", reflective=True)
+
+        points2 = Container.from_json("points.json")
+        print(points2.__class__)  # LabeledPointContainer, not Container!
+        ```
     '''
 
     #
@@ -815,24 +827,24 @@ class Container(Serializable):
     # The name of the private attribute that will store the class of the
     # elements in the container
     #
-    # Subclasses MUST set this field
+    # Subclasses MAY set this field
     #
-    _ELE_CLS_FIELD = None
+    _ELE_CLS_FIELD = "_ELEMENT_CLS"
 
     #
     # The name of the attribute that will store the elements in the container
     #
-    # Subclasses MUST set this field
+    # Subclasses MAY set this field
     #
-    _ELE_ATTR = None
+    _ELE_ATTR = "elements"
 
     def __init__(self, **kwargs):
         '''Creates a Container instance.
 
         Args:
-            <elements>: an optional list of elements to store in the Container.
-                The appropriate name of this keyword argument is determined by
-                the `_ELE_ATTR` member of the Container subclass
+            <elements>: an optional iterable of elements to store in the
+                Container. The appropriate name of this keyword argument is
+                determined by the `_ELE_ATTR` member of the Container subclass
 
         Raises:
             ContainerError: if there was an error while creating the container
