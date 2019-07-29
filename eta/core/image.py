@@ -28,8 +28,8 @@ from future.utils import iteritems
 
 from collections import defaultdict
 import colorsys
+import copy
 import errno
-import numbers
 import os
 import operator
 from subprocess import Popen, PIPE
@@ -541,6 +541,18 @@ class ImageSetLabels(Serializable):
         '''Returns True/False whether this instance has an enforced schema.'''
         return self.schema is not None
 
+    def clear(self):
+        '''Deletes all ImageLabels from the set.'''
+        self.images.clear()
+
+    def copy(self):
+        '''Returns a deep copy of the ImageSetLabels.
+
+        Returns:
+            an ImageSetLabels
+        '''
+        return copy.deepcopy(self)
+
     def add_image_labels(self, image_labels):
         '''Adds the ImageLabels to the set.
 
@@ -555,6 +567,14 @@ class ImageSetLabels(Serializable):
         '''Merges the given ImageSetLabels into this labels.'''
         for image_labels in image_set_labels:
             self.add_image_labels(image_labels)
+
+    def get_filenames(self):
+        '''Returns the set of filenames of ImageLabels in the set.
+
+        Returns:
+            the set of filenames
+        '''
+        return set(il.filename for il in self if il.filename)
 
     def get_schema(self):
         '''Gets the current enforced schema for the image set, or None if no
@@ -614,6 +634,85 @@ class ImageSetLabels(Serializable):
     def remove_schema(self):
         '''Removes the enforced schema from the image set.'''
         self.schema = None
+
+    def filter_image_labels(self, filters, match=any):
+        '''Removes ImageLabels that don't match the given filters from the set.
+
+        Args:
+            filters: a list of functions that accept ImageLabels and return
+                True/False
+            match: a function (usually `any` or `all`) that accepts an iterable
+                and returns True/False. Used to aggregate the outputs of each
+                filter to decide whether a match has occurred. The default is
+                `any`
+        '''
+        self.images.filter_elements(filters, match=match)
+
+    def delete_image_labels(self, filenames):
+        '''Deletes ImageLabels from the set with the given filenames.
+
+        Args:
+            filenames: an iterable of filenames to delete
+        '''
+        self.images.delete_keys(filenames)
+
+    def keep_image_labels(self, filenames):
+        '''Keeps only the ImageLabels in the set with the given filenames.
+
+        Args:
+            filenames: an iterable of filenames to keep
+        '''
+        self.images.keep_keys(filenames)
+
+    def extract_image_labels(self, filenames):
+        '''Creates a new ImageSetLabels having only the ImageLabels with the
+        given filenames.
+
+        Args:
+            filenames: an iterable of filenames to keep
+
+        Returns:
+            an ImageSetLabels
+        '''
+        image_set_labels = self.copy()
+        image_set_labels.keep_image_labels(filenames)
+        return image_set_labels
+
+    def count_matches(self, filters, match=any):
+        '''Counts the number of ImageLabels in the set that match the given
+        filters.
+
+        Args:
+            filters: a list of functions that accept ImageLabels and return
+                True/False
+            match: a function (usually `any` or `all`) that accepts an iterable
+                and returns True/False. Used to aggregate the outputs of each
+                filter to decide whether a match has occurred. The default is
+                `any`
+
+        Returns:
+            the number of ImageLabels in the set that match the filters
+        '''
+        return self.images.count_matches(filters, match=match)
+
+    def get_matches(self, filters, match=any):
+        '''Gets ImageLabels matching the given filters.
+
+        Args:
+            filters: a list of functions that accept elements and return
+                True/False
+            match: a function (usually `any` or `all`) that accepts an iterable
+                and returns True/False. Used to aggregate the outputs of each
+                filter to decide whether a match has occurred. The default is
+                `any`
+
+        Returns:
+            a copy of the ImageSetLabels containing only the ImageLabels that
+                match the filters
+        '''
+        image_set_labels = self.copy()
+        image_set_labels.filter_image_labels(filters, match=match)
+        return image_set_labels
 
     def sort_by_filename(self, reverse=False):
         '''Sorts the ImageLabels in this instance by filename.

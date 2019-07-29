@@ -30,10 +30,10 @@ import six
 # pragma pylint: enable=wildcard-import
 
 from collections import defaultdict, OrderedDict
+import copy
 import dateutil.parser
 import errno
 import logging
-import numbers
 import os
 from subprocess import Popen, PIPE
 import threading
@@ -1221,6 +1221,18 @@ class VideoSetLabels(Serializable):
         '''Returns True/False whether the container has an enforced schema.'''
         return self.schema is not None
 
+    def clear(self):
+        '''Deletes all VideoLabels from the set.'''
+        self.videos.clear()
+
+    def copy(self):
+        '''Returns a deep copy of the VideoSetLabels.
+
+        Returns:
+            an VideoSetLabels
+        '''
+        return copy.deepcopy(self)
+
     def add_video_labels(self, video_labels):
         '''Adds the VideoLabels to the set.
 
@@ -1235,6 +1247,14 @@ class VideoSetLabels(Serializable):
         '''Merges the given VideoSetLabels into this labels.'''
         for video_labels in video_set_labels:
             self.add_video_labels(video_labels)
+
+    def get_filenames(self):
+        '''Returns the set of filenames of VideoLabels in the set.
+
+        Returns:
+            the set of filenames
+        '''
+        return set(vl.filename for vl in self if vl.filename)
 
     def get_schema(self):
         '''Gets the current enforced schema for the video set, or None if no
@@ -1293,6 +1313,85 @@ class VideoSetLabels(Serializable):
         '''Removes the enforced schema from the video set.'''
         self.schema = None
         self._apply_schema()
+
+    def filter_video_labels(self, filters, match=any):
+        '''Removes VideoLabels that don't match the given filters from the set.
+
+        Args:
+            filters: a list of functions that accept VideoLabels and return
+                True/False
+            match: a function (usually `any` or `all`) that accepts an iterable
+                and returns True/False. Used to aggregate the outputs of each
+                filter to decide whether a match has occurred. The default is
+                `any`
+        '''
+        self.videos.filter_elements(filters, match=match)
+
+    def delete_video_labels(self, filenames):
+        '''Deletes VideoLabels from the set with the given filenames.
+
+        Args:
+            filenames: an iterable of filenames to delete
+        '''
+        self.videos.delete_keys(filenames)
+
+    def keep_video_labels(self, filenames):
+        '''Keeps only the VideoLabels in the set with the given filenames.
+
+        Args:
+            filenames: an iterable of filenames to keep
+        '''
+        self.videos.keep_keys(filenames)
+
+    def extract_video_labels(self, filenames):
+        '''Creates a new VideoSetLabels having only the VideoLabels with the
+        given filenames.
+
+        Args:
+            filenames: an iterable of filenames to keep
+
+        Returns:
+            an VideoSetLabels
+        '''
+        video_set_labels = self.copy()
+        video_set_labels.keep_video_labels(filenames)
+        return video_set_labels
+
+    def count_matches(self, filters, match=any):
+        '''Counts the number of VideoLabels in the set that match the given
+        filters.
+
+        Args:
+            filters: a list of functions that accept VideoLabels and return
+                True/False
+            match: a function (usually `any` or `all`) that accepts an iterable
+                and returns True/False. Used to aggregate the outputs of each
+                filter to decide whether a match has occurred. The default is
+                `any`
+
+        Returns:
+            the number of VideoLabels in the set that match the filters
+        '''
+        return self.videos.count_matches(filters, match=match)
+
+    def get_matches(self, filters, match=any):
+        '''Gets VideoLabels matching the given filters.
+
+        Args:
+            filters: a list of functions that accept elements and return
+                True/False
+            match: a function (usually `any` or `all`) that accepts an iterable
+                and returns True/False. Used to aggregate the outputs of each
+                filter to decide whether a match has occurred. The default is
+                `any`
+
+        Returns:
+            a copy of the VideoSetLabels containing only the VideoLabels that
+                match the filters
+        '''
+        video_set_labels = self.copy()
+        video_set_labels.filter_video_labels(filters, match=match)
+        return video_set_labels
 
     def sort_by_filename(self, reverse=False):
         '''Sorts the VideoLabels in this instance by filename.
