@@ -785,13 +785,22 @@ class BigContainer(Container):
         return self._backing_dir
 
     def add(self, ele):
-        '''Add (append) an element
+        '''Add (append) an element.
 
         Args:
             ele: an element of `cls._ELE_CLS` to append
         '''
         self.__elements__.append(str(uuid4()))
         self[len(self)-1] = ele
+
+    def add_iterable(self, elements):
+        '''Adds the elements in the given iterable to the container.
+
+        Args:
+            elements: an iterable of `_ELE_CLS` objects
+        '''
+        for element in elements:
+            self.add(element)
 
     def add_container(self, container):
         '''Add a another containers elements to this one. Takes any valid
