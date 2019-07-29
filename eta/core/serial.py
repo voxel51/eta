@@ -722,7 +722,7 @@ class Set(Serializable):
         # re-generated during de-serialization
         #
         elements_list = list(itervalues(self.__elements__))
-        d[self._ELE_ATTR] = _recurse(elements_list, reflective)
+        d[self._ELE_ATTR] = _recurse(elements_list, False)
 
         return d
 
