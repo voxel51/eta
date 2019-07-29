@@ -637,10 +637,8 @@ class Set(Serializable):
         Returns:
             a Set
         '''
-        elements = copy.deepcopy(self._get_elements(keys))
-        # We do this to avoid converting `elements` to a list and back
-        new_set = self.__class__()
-        setattr(new_set, self._ELE_ATTR, elements)
+        new_set = self.copy()
+        new_set.keep_keys(keys)
         return new_set
 
     def count_matches(self, filters, match=any):
@@ -676,9 +674,8 @@ class Set(Serializable):
             a copy of the set containing only the elements that match the
                 filters
         '''
-        elements = copy.deepcopy(self._filter_elements(filters, match))
-        new_set = self.__class__()
-        setattr(new_set, self._ELE_ATTR, elements)
+        new_set = self.copy()
+        new_set.filter_elements(filters, match=match)
         return new_set
 
     def sort_by(self, attr, reverse=False):
@@ -999,8 +996,9 @@ class Container(Serializable):
         Returns:
             a Container
         '''
-        elements = copy.deepcopy(self._get_elements(inds))
-        return self.__class__(**{self._ELE_ATTR: elements})
+        new_container = self.copy()
+        new_container.keep_inds(inds)
+        return new_container
 
     def count_matches(self, filters, match=any):
         '''Counts the number of elements in the container that match the
@@ -1035,8 +1033,9 @@ class Container(Serializable):
             a copy of the container containing only the elements that match
                 the filters
         '''
-        elements = copy.deepcopy(self._filter_elements(filters, match))
-        return self.__class__(**{self._ELE_ATTR: elements})
+        new_container = self.copy()
+        new_container.filter_elements(filters, match=match)
+        return new_container
 
     def sort_by(self, attr, reverse=False):
         '''Sorts the elements in the container by the given attribute.
