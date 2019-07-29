@@ -720,9 +720,8 @@ class BigContainer(Container):
         element = cls._ELE_CLS()
         c = BigContainerSubclass.from_json("...")
 
-        # All getters cause an IMMEDIATE READ from disk for each element
+        # Getters cause an IMMEDIATE READ from disk for each element
         element = c[0]
-        in_memory_list = [e for e in c] # NOT recommended
 
         # The setters cause an IMMEDIATE WRITE to disk
         c[0] = element
@@ -1013,10 +1012,8 @@ class BigContainer(Container):
             rootdir = os.path.join(d, name)
             etau.extract_zip(zip_path, d, delete_zip=delete_zip)
             container = cls.from_json(os.path.join(rootdir, "index.json"))
-            print(container.__elements__)
             container._backing_dir = os.path.join(rootdir, cls._ELE_ATTR)
             container.move(backing_dir)
-        print(container.backing_dir)
 
         return container
 
