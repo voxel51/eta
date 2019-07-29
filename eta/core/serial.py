@@ -15,6 +15,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
 from future.utils import iteritems, itervalues
+import six
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
@@ -24,6 +25,8 @@ import copy
 import datetime as dt
 import dill as pickle
 import json
+import logging
+import numbers
 import os
 import pickle as _pickle
 import pprint
@@ -32,6 +35,9 @@ from uuid import uuid4
 import numpy as np
 
 import eta.core.utils as etau
+
+
+logger = logging.getLogger(__name__)
 
 
 def load_json(path_or_str):
@@ -763,6 +769,10 @@ class Set(Serializable):
         return cls(**{cls._ELE_ATTR: elements})
 
     def _get_elements(self, keys):
+        if isinstance(keys, six.string_types):
+            logger.debug("Wrapping single filename as a list")
+            keys = [keys]
+
         return OrderedDict(
             (k, v) for k, v in iteritems(self.__elements__) if k in set(keys))
 
@@ -1114,6 +1124,10 @@ class Container(Serializable):
         })
 
     def _get_elements(self, inds):
+        if isinstance(inds, numbers.Integral):
+            logger.debug("Wrapping single index as a list")
+            inds = [inds]
+
         return [e for i, e in enumerate(self.__elements__) if i in set(inds)]
 
     def _filter_elements(self, filters, match):
