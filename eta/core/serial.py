@@ -893,7 +893,7 @@ class Container(Serializable):
         return len(self.__elements__)
 
     def __bool__(self):
-        return self.size > 0
+        return bool(self.__elements__)
 
     @property
     def __elements__(self):
@@ -914,7 +914,7 @@ class Container(Serializable):
     @property
     def size(self):
         '''Returns the number of elements in the container.'''
-        return len(self.__elements__)
+        return len(self)
 
     def clear(self):
         '''Deletes all elements from the container.'''
