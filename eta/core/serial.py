@@ -544,7 +544,7 @@ class Set(Serializable):
         return etau.get_class_name(cls._ELE_CLS)
 
     @classmethod
-    def get_key(self, element):
+    def get_key(cls, element):
         '''Gets the key for the given element, i.e., its `_ELE_KEY_ATTR` field.
 
         Args:
@@ -553,7 +553,7 @@ class Set(Serializable):
         Returns:
             the key for the element
         '''
-        return getattr(element, self._ELE_KEY_ATTR)
+        return getattr(element, cls._ELE_KEY_ATTR)
 
     @property
     def size(self):
