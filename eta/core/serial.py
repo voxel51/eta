@@ -1424,7 +1424,7 @@ class BigContainer(Container):
         attrs = super(BigContainer, self).attributes()
         return ["backing_dir"] + attrs
 
-    def write_zip(self, zip_path, delete_dir=False):
+    def to_zip(self, zip_path, delete_dir=False):
         '''Write to a .zip (Zip64) file.
 
         The filename of the zip (without extenstion) defines the root directory
@@ -1460,7 +1460,7 @@ class BigContainer(Container):
 
     @classmethod
     def from_zip(cls, backing_dir, zip_path, delete_zip=False):
-        '''Load from a zip created by the corresponding `write_zip` method.
+        '''Load from a zip created by the corresponding `to_zip` method.
 
         Args:
             backing_dir: path to an empty or non-existent directory for the
