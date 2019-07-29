@@ -989,6 +989,8 @@ class BigContainer(Container):
                 is more efficient.
         '''
         name = os.path.splitext(os.path.basename(zip_path))[0]
+        # @todo using a ZipFile context directly would not require a TempDir
+        # (Only a tempfile for the serialized index).
         with etau.TempDir() as d:
             rootdir = os.path.join(d, name)
             ele_dir = os.path.join(rootdir, self._ELE_ATTR)
