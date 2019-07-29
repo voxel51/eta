@@ -509,6 +509,9 @@ class Set(Serializable):
     def __delitem__(self, key):
         del self.__elements__[key]
 
+    def __contains__(self, key):
+        return key in self.__elements__
+
     def __iter__(self):
         return itervalues(self.__elements__)
 
