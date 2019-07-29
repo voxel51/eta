@@ -563,7 +563,7 @@ class Container(Serializable):
         Returns:
             a Container
         '''
-        container = self.copy()
+        container = copy.deepcopy(self)
         container.keep_inds(inds)
         return container
 
