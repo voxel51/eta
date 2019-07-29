@@ -555,11 +555,6 @@ class Set(Serializable):
         '''
         return getattr(element, cls._ELE_KEY_ATTR)
 
-    @property
-    def size(self):
-        '''Returns the number of elements in the set.'''
-        return len(self)
-
     def clear(self):
         '''Deletes all elements from the set.'''
         setattr(self, self._ELE_ATTR, OrderedDict())
@@ -917,11 +912,6 @@ class Container(Serializable):
         instances in this container.
         '''
         return etau.get_class_name(cls._ELE_CLS)
-
-    @property
-    def size(self):
-        '''Returns the number of elements in the container.'''
-        return len(self)
 
     def clear(self):
         '''Deletes all elements from the container.'''
