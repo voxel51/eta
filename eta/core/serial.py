@@ -566,6 +566,10 @@ class Set(Serializable):
         '''
         return copy.deepcopy(self)
 
+    def get_keys(self):
+        '''Returns the set of keys for the elements of the set.'''
+        return set(self.__elements__)
+
     def add(self, element):
         '''Adds an element to the container.
 
@@ -621,9 +625,7 @@ class Set(Serializable):
         Args:
             keys: an iterable of keys of the elements to keep
         '''
-        keys = set(keys)
-        elements = OrderedDict([
-            (k, v) for (k, v) in iteritems(self.__elements__) if k in keys])
+        elements = self._get_elements(keys)
         setattr(self, self._ELE_ATTR, elements)
 
     def extract_keys(self, keys):
@@ -635,10 +637,11 @@ class Set(Serializable):
         Returns:
             a Set
         '''
-        # @todo avoid copying entire set
-        set_ = self.copy()
-        set_.keep_keys(keys)
-        return set_
+        elements = copy.deepcopy(self._get_elements(keys))
+        # We do this to avoid converting `elements` to a list and back
+        new_set = self.__class__()
+        setattr(new_set, self._ELE_ATTR, elements)
+        return new_set
 
     def count_matches(self, filters, match=any):
         '''Counts the number of elements in the set that match the given
@@ -655,7 +658,8 @@ class Set(Serializable):
         Returns:
             the number of elements in the set that match the filters
         '''
-        return self.get_matches(filters, match=match).size
+        elements = self._filter_elements(filters, match)
+        return len(elements)
 
     def get_matches(self, filters, match=any):
         '''Gets elements matching the given filters.
@@ -672,9 +676,9 @@ class Set(Serializable):
             a copy of the set containing only the elements that match the
                 filters
         '''
-        # @todo avoid copying entire set
-        new_set = self.copy()
-        new_set.filter_elements(filters, match=match)
+        elements = copy.deepcopy(self._filter_elements(filters, match))
+        new_set = self.__class__()
+        setattr(new_set, self._ELE_ATTR, elements)
         return new_set
 
     def sort_by(self, attr, reverse=False):
@@ -761,10 +765,14 @@ class Set(Serializable):
         elements = [ele_cls.from_dict(dd) for dd in d[cls._ELE_ATTR]]
         return cls(**{cls._ELE_ATTR: elements})
 
+    def _get_elements(self, keys):
+        return OrderedDict(
+            (k, v) for k, v in iteritems(self.__elements__) if k in set(keys))
+
     def _filter_elements(self, filters, match):
-        return OrderedDict([
-            (k, v) for (k, v) in iteritems(self.__elements__)
-            if match(f(v) for f in filters)])
+        return OrderedDict(
+            (k, v) for k, v in iteritems(self.__elements__)
+            if match(f(v) for f in filters))
 
     def _validate(self):
         '''Validates that a Set instance is valid.'''
