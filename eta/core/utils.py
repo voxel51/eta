@@ -909,6 +909,10 @@ def extract_tar(inpath, outdir=None, delete_tar=False):
 def make_zip(dir_path, zip_path):
     '''Makes a .zip file containing the given directory.
 
+    Use `make_zip64` for python 2 compatibility when making large archives.
+    `shutil.make_archive` does not offer Zip64 in python 2, and is therefore
+    limited to 4GiB archives with less than 65,536 entries.
+
     Args:
         dir_path: the directory to zip
         zip_path: the path + filename of the .zip file to create
