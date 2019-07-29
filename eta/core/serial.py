@@ -1238,17 +1238,17 @@ class BigContainer(Container):
 
     @property
     def backing_dir(self):
-        '''Getter for _backing_dir'''
+        '''The backing directory for this BigContainer.'''
         return self._backing_dir
 
-    def add(self, ele):
-        '''Add (append) an element.
+    def add(self, element):
+        '''Adds an element to the container.
 
         Args:
-            ele: an element of `cls._ELE_CLS` to append
+            element: an instance of `_ELE_CLS`
         '''
         self.__elements__.append(str(uuid4()))
-        self[len(self)-1] = ele
+        self[len(self)-1] = element
 
     def add_iterable(self, elements):
         '''Adds the elements in the given iterable to the container.
@@ -1260,11 +1260,10 @@ class BigContainer(Container):
             self.add(element)
 
     def add_container(self, container):
-        '''Add a another containers elements to this one. Takes any valid
-        Container subclass (Not just BigContainer subclasses).
+        '''Adds the given container's elements to the container.
 
         Args:
-            container (Container): the container to add
+            container: a Container to add
         '''
         if issubclass(container.__class__, BigContainer):
             for path in container._paths:
@@ -1274,13 +1273,14 @@ class BigContainer(Container):
                 self.add(ele)
 
     def copy(self, new_backing_dir):
-        '''Copy this container deeply.
+        '''Creates a deep copy of this container backed by the given directory.
 
         Args:
-            new_backing_dir (str): path the store the copy's elements
+            new_backing_dir: the backing directory to use for the new
+                BigContainer
 
         Returns:
-            BigContainer
+            a BigContainer
         '''
         etau.ensure_empty_dir(new_backing_dir)
         container = copy.deepcopy(self)
@@ -1303,10 +1303,8 @@ class BigContainer(Container):
         '''
         new_ele_set = set(self._filter_elements(filters, match))
         inds = [
-            idx
-            for idx, uuid in enumerate(self.__elements__)
-            if uuid not in new_ele_set
-        ]
+            idx for idx, uuid in enumerate(self.__elements__)
+            if uuid not in new_ele_set]
         self.delete_inds(inds)
 
     def delete_inds(self, inds):
@@ -1522,16 +1520,16 @@ class BigContainer(Container):
     def from_dict(cls, d):
         '''Constructs a BigContainer from a JSON dictionary.
 
-        `backing_dir` must be provided.
-
         If the `cls._ELE_ATTR` uuid list is not provided, no order is
         guaranteed.
 
         Args:
-            d (dict)
+            d: a JSON dictionary representation of a BigContainer object
+
+        Returns:
+            an instance of the BigContainer class
         '''
         cls._validate_cls(d)
-
         return cls(**d)
 
     def _filter_elements(self, filters, match):
