@@ -489,7 +489,7 @@ class Set(Serializable):
         Raises:
             SetError: if there was an error while creating the set
         '''
-        self._validate()
+        self._validate_cls()
 
         if kwargs and self._ELE_ATTR not in kwargs:
             raise SetError(
@@ -744,29 +744,8 @@ class Set(Serializable):
         Returns:
             an instance of the Set class
         '''
-        if cls._ELE_CLS_FIELD is None:
-            raise SetError(
-                "%s is an abstract set and cannot be used to load a "
-                "JSON dictionary. Please use a Set subclass that "
-                "defines its `_ELE_CLS_FIELD` member" % cls)
-
-        if "_CLS" in d:
-            if cls._ELE_CLS_FIELD not in d:
-                raise SetError(
-                    "Cannot use %s to reflectively load this set because the "
-                    "expected field '%s' was not found in the JSON "
-                    "dictionary" % (cls, cls._ELE_CLS_FIELD))
-
-            # Parse reflectively
-            cls = etau.get_class(d["_CLS"])
-            ele_cls = etau.get_class(d[cls._ELE_CLS_FIELD])
-        else:
-            # Validates the cls settings
-            cls()
-            # Parse using provided class
-            ele_cls = cls._ELE_CLS
-
-        elements = [ele_cls.from_dict(dd) for dd in d[cls._ELE_ATTR]]
+        cls = cls._validate_dict(d)
+        elements = [cls._ELE_CLS.from_dict(dd) for dd in d[cls._ELE_ATTR]]
         return cls(**{cls._ELE_ATTR: elements})
 
     def _get_elements(self, keys):
@@ -782,20 +761,40 @@ class Set(Serializable):
             (k, v) for k, v in iteritems(self.__elements__)
             if match(f(v) for f in filters))
 
-    def _validate(self):
+    @classmethod
+    def _validate_cls(cls):
         '''Validates that a Set instance is valid.'''
-        if self._ELE_CLS is None:
+        if cls._ELE_CLS is None:
             raise SetError(
                 "Cannot instantiate a Set for which _ELE_CLS is None")
-        if self._ELE_ATTR is None:
+        if cls._ELE_ATTR is None:
             raise SetError(
                 "Cannot instantiate a Set for which _ELE_ATTR is None")
-        if not issubclass(self._ELE_CLS, Serializable):
+        if not issubclass(cls._ELE_CLS, Serializable):
             raise SetError(
-                "%s is not Serializable" % self._ELE_CLS)
-        if self._ELE_KEY_ATTR is None:
+                "%s is not Serializable" % cls._ELE_CLS)
+        if cls._ELE_KEY_ATTR is None:
             raise SetError(
                 "Cannot instantiate a Set for which _ELE_KEY_ATTR is None")
+
+    @classmethod
+    def _validate_dict(cls, d):
+        if cls._ELE_CLS_FIELD is None:
+            raise SetError(
+                "%s is an abstract set and cannot be used to load a "
+                "JSON dictionary. Please use a Set subclass that "
+                "defines its `_ELE_CLS_FIELD` member" % cls)
+
+        if "_CLS" not in d:
+            return cls
+
+        if cls._ELE_CLS_FIELD not in d:
+            raise SetError(
+                "Cannot use %s to reflectively load this set because the "
+                "expected field '%s' was not found in the JSON "
+                "dictionary" % (cls, cls._ELE_CLS_FIELD))
+
+        return etau.get_class(d["_CLS"])
 
 
 class SetError(Exception):
@@ -868,7 +867,7 @@ class Container(Serializable):
         Raises:
             ContainerError: if there was an error while creating the container
         '''
-        self._validate()
+        self._validate_cls()
 
         if kwargs and self._ELE_ATTR not in kwargs:
             raise ContainerError(
@@ -1099,12 +1098,9 @@ class Container(Serializable):
         Returns:
             an instance of the Container class
         '''
-        cls._validate_cls(d)
-        ele_cls = cls._ELE_CLS
-
-        return cls(**{
-            cls._ELE_ATTR: [ele_cls.from_dict(dd) for dd in d[cls._ELE_ATTR]]
-        })
+        cls = cls._validate_dict(d)
+        elements = [cls._ELE_CLS.from_dict(dd) for dd in d[cls._ELE_ATTR]]
+        return cls(**{cls._ELE_ATTR: elements})
 
     def _get_elements(self, inds):
         if isinstance(inds, numbers.Integral):
@@ -1117,35 +1113,37 @@ class Container(Serializable):
         return list(
             filter(lambda o: match(f(o) for f in filters), self.__elements__))
 
-    def _validate(self):
+    @classmethod
+    def _validate_cls(cls):
         '''Validates that a Container instance is valid.'''
-        if self._ELE_CLS is None:
+        if cls._ELE_CLS is None:
             raise ContainerError(
                 "Cannot instantiate a Container for which _ELE_CLS is None")
-        if self._ELE_ATTR is None:
+        if cls._ELE_ATTR is None:
             raise ContainerError(
                 "Cannot instantiate a Container for which _ELE_ATTR is None")
-        if not issubclass(self._ELE_CLS, Serializable):
+        if not issubclass(cls._ELE_CLS, Serializable):
             raise ContainerError(
-                "%s is not Serializable" % self._ELE_CLS)
+                "%s is not Serializable" % cls._ELE_CLS)
 
     @classmethod
-    def _validate_cls(cls, d):
+    def _validate_dict(cls, d):
         if cls._ELE_CLS_FIELD is None:
             raise ContainerError(
                 "%s is an abstract container and cannot be used to load a "
                 "JSON dictionary. Please use a Container subclass that "
                 "defines its `_ELE_CLS_FIELD` member" % cls)
 
-        if "_CLS" in d:
-            if cls._ELE_CLS_FIELD not in d:
-                raise ContainerError(
-                    "Cannot use %s to reflectively load this container "
-                    "because the expected field '%s' was not found in the "
-                    "JSON dictionary" % (cls, cls._ELE_CLS_FIELD))
+        if "_CLS" not in d:
+            return cls
 
-            # Parse reflectively
-            cls = etau.get_class(d["_CLS"])
+        if cls._ELE_CLS_FIELD not in d:
+            raise ContainerError(
+                "Cannot use %s to reflectively load this container "
+                "because the expected field '%s' was not found in the "
+                "JSON dictionary" % (cls, cls._ELE_CLS_FIELD))
+
+        return etau.get_class(d["_CLS"])
 
 
 class BigContainer(Container):
@@ -1206,7 +1204,7 @@ class BigContainer(Container):
         Raises:
             ContainerError: if there was an error while creating the container
         '''
-        self._validate()
+        self._validate_cls()
 
         self._backing_dir = backing_dir
         etau.ensure_dir(self.backing_dir)
@@ -1529,7 +1527,7 @@ class BigContainer(Container):
         Returns:
             an instance of the BigContainer class
         '''
-        cls._validate_cls(d)
+        cls = cls._validate_dict(d)
         return cls(**d)
 
     def _filter_elements(self, filters, match):
