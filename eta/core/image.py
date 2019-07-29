@@ -485,6 +485,9 @@ class ImageSetLabels(Serializable):
         schema: an ImageLabelsSchema describing the schema of the image labels
     '''
 
+    # The Set class used internally to store ImageLabels
+    _SET_CLS = _ImageLabelsSet
+
     def __init__(self, images=None, schema=None):
         '''Constructs an ImageSetLabels instance.
 
@@ -495,7 +498,7 @@ class ImageSetLabels(Serializable):
                 By default, no schema is enforced
         '''
         self.schema = schema
-        self.images = _ImageLabelsSet()
+        self.images = self._SET_CLS()
         if images is not None:
             self.images.add_iterable(images)
 
