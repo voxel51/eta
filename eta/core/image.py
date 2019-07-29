@@ -510,6 +510,8 @@ class ImageSetLabels(Serializable):
         return self.images[filename]
 
     def __setitem__(self, filename, image_labels):
+        image_labels.filename = filename
+
         if not filename in self:
             self.add_image_labels(image_labels)
             return
@@ -629,8 +631,7 @@ class ImageSetLabels(Serializable):
         _attrs = []
         if self.has_schema:
             _attrs.append("schema")
-        if self.images:
-            _attrs.append("images")
+        _attrs.append("images")
         return _attrs
 
     def serialize(self, reflective=False):
@@ -649,7 +650,7 @@ class ImageSetLabels(Serializable):
         # the ImageLabels directly as a list
         #
         if "images" in d:
-            d["images"] = d["images"]["images"]
+            d["images"] = d["images"].get("images", [])
         return d
 
     def _validate_image_labels(self, image_labels):
