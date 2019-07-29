@@ -986,8 +986,7 @@ class Container(Serializable):
         Args:
             inds: an iterable of indices of the elements to keep
         '''
-        inds = set(inds)
-        elements = [e for i, e in enumerate(self.__elements__) if i in inds]
+        elements = self._get_elements(inds)
         setattr(self, self._ELE_ATTR, elements)
 
     def extract_inds(self, inds):
@@ -1000,10 +999,8 @@ class Container(Serializable):
         Returns:
             a Container
         '''
-        # @todo only copy the elements we are going to keep
-        container = self.copy()
-        container.keep_inds(inds)
-        return container
+        elements = copy.deepcopy(self._get_elements(inds))
+        return self.__class__(**{self._ELE_ATTR: elements})
 
     def count_matches(self, filters, match=any):
         '''Counts the number of elements in the container that match the
@@ -1020,7 +1017,8 @@ class Container(Serializable):
         Returns:
             the number of elements in the container that match the filters
         '''
-        return self.get_matches(filters, match=match).size
+        elements = self._filter_elements(filters, match)
+        return len(elements)
 
     def get_matches(self, filters, match=any):
         '''Gets elements matching the given filters.
@@ -1037,7 +1035,7 @@ class Container(Serializable):
             a copy of the container containing only the elements that match
                 the filters
         '''
-        elements = self._filter_elements(filters, match)
+        elements = copy.deepcopy(self._filter_elements(filters, match))
         return self.__class__(**{self._ELE_ATTR: elements})
 
     def sort_by(self, attr, reverse=False):
@@ -1115,6 +1113,9 @@ class Container(Serializable):
         return cls(**{
             cls._ELE_ATTR: [ele_cls.from_dict(dd) for dd in d[cls._ELE_ATTR]]
         })
+
+    def _get_elements(self, inds):
+        return [e for i, e in enumerate(self.__elements__) if i in set(inds)]
 
     def _filter_elements(self, filters, match):
         return list(
