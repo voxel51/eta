@@ -19,9 +19,8 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-from eta.core.data import DataContainer
 import eta.core.numutils as etan
-from eta.core.serial import Serializable
+from eta.core.serial import Container, Serializable, Set
 
 
 class BoundingBox(Serializable):
@@ -295,7 +294,7 @@ class LabeledPoint(Serializable):
         )
 
 
-class LabeledPointContainer(DataContainer):
+class LabeledPointContainer(Container):
     '''Container for points in an image that each have an associated label.'''
 
     _ELE_CLS = LabeledPoint
@@ -303,7 +302,15 @@ class LabeledPointContainer(DataContainer):
 
     def get_labels(self):
         '''Returns a set containing the labels of the LabeledPoints.'''
-        return set(p.label for p in self.points)
+        return set(p.label for p in self)
+
+
+class LabeledPointSet(Set):
+    '''Set for points in an image that each have an associated label.'''
+
+    _ELE_CLS = LabeledPoint
+    _ELE_ATTR = "points"
+    _ELE_KEY_ATTR = "label"
 
 
 def _to_frame_size(frame_size=None, shape=None, img=None):
