@@ -1149,41 +1149,57 @@ class Container(Serializable):
 
 
 class BigContainer(Container):
-    '''Container that represents a list of serializable objects in a
-    directory on disk. Any accessing of an element in the list causes a READ
-    from disk and updating any elements in the list REQUIRES setting the
-    element explicitly (and causes a WRITE to disk).
+    '''Container that stores a (potentially huge) list of `Serializable`
+    objects. The elements are stored on disk in a backing directory; accessing
+    any element in the list causes an immediate READ from disk, and
+    adding/setting an element causes an immediate WRITE to disk.
 
-    This class cannot be instantiated directly.
+    BigContainers store a `backing_dir` attribute that specifies the path on
+    disk to the serialized elements. The container also maintains a list of
+    uuids in its `_ELE_ATTR` field to locate elements on disk. This list is
+    included in lieu of the actual elements when serializing BigContainer
+    instances.
 
-    A list of uuids is managed by the BigContainer in _ELE_ATTR to keep
-    order and find elements in the directory. This list is a part of
-    serialization. The backing directory path is also serialized in
-    `backing_dir`.
+    To read/write archives of BigContainer that also include their elements,
+    use the `to_zip()` and `from_zip()` methods, respectively.
 
-    Usage:
-        element = cls._ELE_CLS()
-        c = BigContainerSubclass.from_json("...")
+    This class cannot be instantiated directly. Instead a subclass should
+    be created for each type of element to be stored. Subclasses MUST set the
+    following members:
+        -  `_ELE_CLS`: the class of the element stored in the container
 
-        # Getters cause an IMMEDIATE READ from disk for each element
-        element = c[0]
+    In addition, sublasses MAY override the following members:
+        - `_ELE_CLS_FIELD`: the name of the private attribute that will store
+            the class of the elements in the container
+        - `_ELE_ATTR`: the name of the attribute that will store the elements
+            in the container
 
-        # The setters cause an IMMEDIATE WRITE to disk
-        c[0] = element
-        c.append(element)
-        c.add(element)
+    Examples:
+        ```
+        import eta.core.geometry as etag
+
+        point = etag.LabeledPoint("origin", etag.RelativePoint(0, 0))
+        points = etag.BigLabeledPointContainer("/tmp/BigLabeledPointContainer")
+
+        # Immediately writes the LabeledPoint to disk
+        points.add(point)
+
+        # Reads the LabeledPoint from disk
+        print(points[0])
+
+        # Only the index of the BigContainer is serialized
+        print(points)
+        ```
     '''
 
-    def __init__(self, **kwargs):
+    def __init__(self, backing_dir, **kwargs):
         '''Creates a BigContainer instance.
 
         Args:
-            <elements_dir>: the directory path to store the data. This argument
-                is required. The appropriate name of this keyword argument is
-                determined by the `_ELE_DIR_ATTR` member of the
-                BigContainer subclass
-            <elements>: an optional list of element uuids. The list is
-                generated from eta.core.utils.list_files() when not provided.
+            backing_dir: the backing directory in which the elements are
+                stored
+            <elements>: an optional list of element uuids. If not provided,
+                the list is generated from `eta.core.utils.list_files()`.
                 The appropriate name of this keyword argument is determined by
                 the `_ELE_ATTR` member of the BigContainer subclass
 
@@ -1192,13 +1208,9 @@ class BigContainer(Container):
         '''
         self._validate()
 
-        if "backing_dir" not in kwargs:
-            raise ContainerError(
-                "Missing keyword argument backing_dir is required")
-
-        self._backing_dir = kwargs["backing_dir"]
-
+        self._backing_dir = backing_dir
         etau.ensure_dir(self.backing_dir)
+
         setattr(
             self,
             self._ELE_ATTR,
