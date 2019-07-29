@@ -737,6 +737,12 @@ class Set(Serializable):
 
         Otherwise, this method must be called on the same concrete `Set`
         subclass from which the JSON was generated.
+
+        Args:
+            d: a JSON dictionary representation of a Set object
+
+        Returns:
+            an instance of the Set class
         '''
         if cls._ELE_CLS_FIELD is None:
             raise SetError(
@@ -1086,6 +1092,12 @@ class Container(Serializable):
 
         Otherwise, this method must be called on the same concrete `Container`
         subclass from which the JSON was generated.
+
+        Args:
+            d: a JSON dictionary representation of a Container object
+
+        Returns:
+            an instance of the Container class
         '''
         cls._validate_cls(d)
         ele_cls = cls._ELE_CLS
