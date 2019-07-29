@@ -66,78 +66,6 @@ def majority_vote_categorical_attrs(attrs, confidence_weighted=False):
     return voted_attrs
 
 
-class DataContainer(Container):
-    '''Abstract base class for containers that store lists of `Serializable`
-    data class instances.
-
-    This class cannot be instantiated directly. Instead a subclass should
-    be created for each type of data to be stored. Subclasses MUST set the
-    following members:
-        -  `_ELE_CLS`: the class of the element stored in the container
-
-    In addition, sublasses MAY override the following members:
-        - `_ELE_CLS_FIELD`: the name of the private attribute that will store
-            the class of the elements in the container
-        - `_ELE_ATTR`: the name of the attribute that will store the elements
-            in the container
-
-    DataContainer subclasses embed their class names and underlying data
-    instance class names in their JSON representations, so they can be read
-    reflectively from disk.
-
-    Examples:
-        ```
-        from eta.core.data import DataContainer
-        from eta.core.geometry import LabeledPointContainer
-
-        tags = LabeledPointContainer(...)
-        tags.write_json("tags.json")
-
-        tags2 = DataContainer.from_json("tags.json")
-        print(tags2.__class__)  # LabeledPointContainer, not DataContainer
-        ```
-
-    Attributes:
-        <data>: a list of data instances. The field name <data> is specified by
-            the `_ELE_ATTR` member of the DataContainer subclass, and the class
-            of the data instances is specified by the `_ELE_CLS` member
-    '''
-
-    #
-    # The class of the data stored in the container
-    #
-    # Subclasses MUST set this field
-    #
-    _ELE_CLS = None
-
-    #
-    # The name of the private attribute that will store the class of the
-    # data in the container
-    #
-    # Subclasses MAY override this field
-    #
-    _ELE_CLS_FIELD = "_DATA_CLS"
-
-    #
-    # The name of the attribute that will store the data in the container
-    #
-    # Subclasses MAY override this field
-    #
-    _ELE_ATTR = "data"
-
-    @classmethod
-    def get_data_class(cls):
-        '''Gets the class of data stored in this container.'''
-        return cls._ELE_CLS
-
-    @classmethod
-    def get_data_class_name(cls):
-        '''Returns the fully-qualified class name string of the data instances
-        in this container.
-        '''
-        return etau.get_class_name(cls._ELE_CLS)
-
-
 class Attribute(Serializable):
     '''Base class for attributes.
 
@@ -436,7 +364,7 @@ class BooleanAttributeSchema(AttributeSchema):
         return {}
 
 
-class AttributeContainer(DataContainer):
+class AttributeContainer(Container):
     '''A container for attributes.'''
 
     _ELE_CLS = Attribute
@@ -450,7 +378,7 @@ class AttributeContainer(DataContainer):
         Args:
             schema: an optional AttributeContainerSchema to enforce on the
                 attributes in this container. By default, no schema is enforced
-            **kwargs: valid keyword arguments for DataContainer()
+            **kwargs: valid keyword arguments for Container()
 
         Raises:
             AttributeContainerSchemaError: if a schema was provided but the
@@ -842,7 +770,7 @@ class DataFileSequenceError(Exception):
     pass
 
 
-class DataRecords(DataContainer):
+class DataRecords(Container):
     '''Container class for data records.
 
     `DataRecords` is a generic container of records each having a value for
@@ -857,9 +785,9 @@ class DataRecords(DataContainer):
     records in the container will be inferred while loading.
     '''
 
-    _ELE_ATTR = "records"
-    _ELE_CLS_FIELD = "_RECORD_CLS"
     _ELE_CLS = None  # this is set per-instance for DataRecords
+    _ELE_CLS_FIELD = "_RECORD_CLS"
+    _ELE_ATTR = "records"
 
     def __init__(self, record_cls, **kwargs):
         '''Creates a `DataRecords` instance.

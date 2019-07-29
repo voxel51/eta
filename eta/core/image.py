@@ -28,8 +28,8 @@ from future.utils import iteritems
 
 from collections import defaultdict
 import colorsys
+import copy
 import errno
-import numbers
 import os
 import operator
 from subprocess import Popen, PIPE
@@ -41,7 +41,7 @@ import eta
 from eta.core.data import AttributeContainer, AttributeContainerSchema, \
     AttributeContainerSchemaError
 from eta.core.objects import DetectedObjectContainer
-from eta.core.serial import Serializable
+from eta.core.serial import Serializable, Set
 import eta.core.utils as etau
 import eta.core.web as etaw
 
@@ -99,236 +99,6 @@ def make_image_sequence_patt(basedir, basename="", patt=None, ext=None):
 
 
 ###### Image Labels ###########################################################
-
-
-class ImageSetLabels(Serializable):
-    '''Class encapsulating labels for a set of images.
-
-    ImageSetLabels support item indexing either by list index or filename.
-    When using filename-based indexing, ImageSetLabels instances behave like
-    defaultdicts: new ImageLabels instances are automatically created if a
-    non-existent filename is accessed.
-
-    Attributes:
-        images: a list of ImageLabels instances
-        schema: an ImageLabelsSchema describing the schema of the image labels
-    '''
-
-    def __init__(self, images=None, schema=None):
-        '''Constructs an ImageSetLabels instance.
-
-        Args:
-            images: an optional list of ImageLabels instances. By default, an
-                empty list is created
-            schema: an optional ImageLabelsSchema to enforce on the object.
-                By default, no schema is enforced
-        '''
-        self.images = images or []
-        self.schema = schema
-        self._filename_map = {}
-        self._build_filename_map()
-
-    def __getitem__(self, idx_or_filename):
-        if not isinstance(idx_or_filename, numbers.Integral):
-            return self.get_image_labels_for_filename(idx_or_filename)
-        return self.images[idx_or_filename]
-
-    def __setitem__(self, idx_or_filename, image_labels):
-        if not isinstance(idx_or_filename, numbers.Integral):
-            image_labels.filename = idx_or_filename
-            if not self.has_image_labels_for_filename(idx_or_filename):
-                self.add_image_labels(image_labels)
-                return
-
-        if self.has_schema:
-            self._validate_image_labels(image_labels)
-
-        idx = self._to_idx(idx_or_filename)
-        self.images[idx] = image_labels
-        self._filename_map[image_labels.filename] = idx
-
-    def __delitem__(self, idx_or_filename):
-        idx = self._to_idx(idx_or_filename)
-        del self.images[idx]
-        self._build_filename_map()
-
-    def __iter__(self):
-        return iter(self.images)
-
-    def __len__(self):
-        return len(self.images)
-
-    def __bool__(self):
-        return bool(self.images)
-
-    def get_filenames(self):
-        '''Returns the set of filenames of ImageLabels in this instance.'''
-        return set(self._filename_map)
-
-    def sort_by_filename(self, reverse=False):
-        '''Sorts the ImageLabels in this instance by filename.
-
-        Args:
-            reverse: whether to sort in reverse order. By default, this is
-                False
-        '''
-        self.images = sorted(
-            self.images, key=lambda l: l.filename or "", reverse=reverse)
-
-    @property
-    def has_schema(self):
-        '''Returns True/False whether this instance has an enforced schema.'''
-        return self.schema is not None
-
-    def merge_image_set_labels(self, image_set_labels):
-        '''Merges the given ImageSetLabels into this labels.'''
-        for image_labels in image_set_labels:
-            self.add_image_labels(image_labels)
-
-    def add_image_labels(self, image_labels):
-        '''Adds the ImageLabels to the set.
-
-        Args:
-            image_labels: an ImageLabels instance
-        '''
-        if self.has_schema:
-            self._validate_image_labels(image_labels)
-        self.images.append(image_labels)
-        self._filename_map[image_labels.filename] = len(self.images) - 1
-
-    def has_image_labels_for_filename(self, filename):
-        '''Returns True/False whether the set contains labels for an image
-        with the given filename.
-        '''
-        return filename in self._filename_map
-
-    def get_image_labels_for_filename(self, filename):
-        '''Gets the ImageLabels for the given filename.
-
-        If the filename does not exist, an empty ImageLabels is added to the
-        set and returned.
-
-        Args:
-            filename: the filename of the image
-
-        Returns:
-            the ImageLabels for the image with the given filename
-        '''
-        if not self.has_image_labels_for_filename(filename):
-            image_labels = ImageLabels(filename=filename)
-            self.add_image_labels(image_labels)
-
-        idx = self._filename_map[filename]
-        return self.images[idx]
-
-    def get_schema(self):
-        '''Gets the current enforced schema for the image set, or None if no
-        schema is enforced.
-        '''
-        return self.schema
-
-    def get_active_schema(self):
-        '''Returns an ImageLabelsSchema describing the active schema of the
-        image set.
-        '''
-        schema = ImageLabelsSchema()
-        for image_labels in self.images:
-            schema.merge_schema(
-                ImageLabelsSchema.build_active_schema(image_labels))
-        return schema
-
-    def set_schema(self, schema, filter_by_schema=False):
-        '''Sets the enforced schema to the given ImageLabelsSchema.
-
-        Args:
-            schema: the ImageLabelsSchema to use
-            filter_by_schema: whether to filter any invalid objects/attributes
-                from this object after changing the schema. By default, this is
-                False
-
-        Raises:
-            ImageLabelsSchemaError: if `filter_by_schema` was False and this
-                object contains attributes/objects that are not compliant with
-                the schema
-        '''
-        self.schema = schema
-        if not self.has_schema:
-            return
-
-        if filter_by_schema:
-            self.filter_by_schema(self.schema)
-        else:
-            self._validate_schema()
-
-    def filter_by_schema(self, schema):
-        '''Removes objects/attributes from the ImageLabels in this object that
-        are not compliant with the given schema.
-
-        Args:
-            schema: an ImageLabelsSchema
-        '''
-        for image_labels in self.images:
-            image_labels.filter_by_schema(schema)
-
-    def freeze_schema(self):
-        '''Sets the enforced schema for the image set to the current active
-        schema.
-        '''
-        self.set_schema(self.get_active_schema())
-
-    def remove_schema(self):
-        '''Removes the enforced schema from the image set.'''
-        self.schema = None
-
-    def attributes(self):
-        '''Returns the list of class attributes that will be serialized.'''
-        _attrs = []
-        if self.has_schema:
-            _attrs.append("schema")
-        _attrs.append("images")
-        return _attrs
-
-    def _validate_image_labels(self, image_labels):
-        if self.has_schema:
-            for image_attr in image_labels.attrs:
-                self._validate_image_attribute(image_attr)
-            for obj in image_labels.objects:
-                self._validate_object(obj)
-
-    def _validate_image_attribute(self, image_attr):
-        if self.has_schema:
-            self.schema.validate_image_attribute(image_attr)
-
-    def _validate_object(self, obj):
-        if self.has_schema:
-            self.schema.validate_object(obj)
-
-    def _validate_schema(self):
-        if self.has_schema:
-            for image_labels in self.images:
-                self._validate_image_labels(image_labels)
-
-    def _to_idx(self, idx_or_filename):
-        if isinstance(idx_or_filename, numbers.Integral):
-            return idx_or_filename
-        return self._filename_map[idx_or_filename]
-
-    def _build_filename_map(self):
-        self._filename_map = {
-            image_labels.filename: idx
-            for idx, image_labels in enumerate(self.images)
-        }
-
-    @classmethod
-    def from_dict(cls, d):
-        '''Constructs an ImageSetLabels from a JSON dictionary.'''
-        images = [ImageLabels.from_dict(il) for il in d["images"]]
-
-        schema = d.get("schema", None)
-        if schema is not None:
-            schema = ImageLabelsSchema.from_dict(schema)
-
-        return cls(images=images, schema=schema)
 
 
 class ImageLabels(Serializable):
@@ -687,6 +457,333 @@ class ImageLabelsSchema(Serializable):
 class ImageLabelsSchemaError(Exception):
     '''Error raised when a ImageLabelsSchema is violated.'''
     pass
+
+
+class _ImageLabelsSet(Set):
+    '''Internal set type used by ImageSetLabels to store labels.'''
+
+    _ELE_CLS = ImageLabels
+    _ELE_KEY_ATTR = "filename"
+    _ELE_CLS_FIELD = "_LABELS_CLS"
+    _ELE_ATTR = "images"
+
+
+class ImageSetLabels(Serializable):
+    '''Class encapsulating labels for a set of images.
+
+    ImageSetLabels support item indexing by the `filename` of the ImageLabels
+    instances in the set.
+
+    ImageSetLabels instances behave like defaultdicts: new ImageLabels
+    instances are automatically created if a non-existent filename is accessed.
+
+    ImageLabels without filenames may be added to the set, but they cannot be
+    accessed by `filename`-based lookup.
+
+    Attributes:
+        images: a list of ImageLabels instances
+        schema: an ImageLabelsSchema describing the schema of the image labels
+    '''
+
+    # The Set class used internally to store ImageLabels
+    _SET_CLS = _ImageLabelsSet
+
+    def __init__(self, images=None, schema=None):
+        '''Constructs an ImageSetLabels instance.
+
+        Args:
+            images: an optional list of ImageLabels instances. By default, an
+                empty list is created
+            schema: an optional ImageLabelsSchema to enforce on the object.
+                By default, no schema is enforced
+        '''
+        self.schema = schema
+        self.images = self._SET_CLS()
+        if images is not None:
+            self.images.add_iterable(images)
+
+    def __getitem__(self, filename):
+        if not filename in self:
+            image_labels = ImageLabels(filename=filename)
+            self.add_image_labels(image_labels)
+
+        return self.images[filename]
+
+    def __setitem__(self, filename, image_labels):
+        image_labels.filename = filename
+
+        if not filename in self:
+            self.add_image_labels(image_labels)
+            return
+
+        if self.has_schema:
+            self._validate_image_labels(image_labels)
+
+        self.images[filename] = image_labels
+
+    def __delitem__(self, filename):
+        del self.images[filename]
+
+    def __contains__(self, filename):
+        return filename in self.images
+
+    def __iter__(self):
+        return iter(self.images)
+
+    def __len__(self):
+        return len(self.images)
+
+    def __bool__(self):
+        return bool(self.images)
+
+    @property
+    def has_schema(self):
+        '''Returns True/False whether this instance has an enforced schema.'''
+        return self.schema is not None
+
+    def clear(self):
+        '''Deletes all ImageLabels from the set.'''
+        self.images.clear()
+
+    def copy(self):
+        '''Returns a deep copy of the ImageSetLabels.
+
+        Returns:
+            an ImageSetLabels
+        '''
+        return copy.deepcopy(self)
+
+    def add_image_labels(self, image_labels):
+        '''Adds the ImageLabels to the set.
+
+        Args:
+            image_labels: an ImageLabels instance
+        '''
+        if self.has_schema:
+            self._validate_image_labels(image_labels)
+        self.images.add(image_labels)
+
+    def merge_image_set_labels(self, image_set_labels):
+        '''Merges the given ImageSetLabels into this labels.'''
+        for image_labels in image_set_labels:
+            self.add_image_labels(image_labels)
+
+    def get_filenames(self):
+        '''Returns the set of filenames of ImageLabels in the set.
+
+        Returns:
+            the set of filenames
+        '''
+        return set(il.filename for il in self if il.filename)
+
+    def get_schema(self):
+        '''Gets the current enforced schema for the image set, or None if no
+        schema is enforced.
+        '''
+        return self.schema
+
+    def get_active_schema(self):
+        '''Returns an ImageLabelsSchema describing the active schema of the
+        image set.
+        '''
+        schema = ImageLabelsSchema()
+        for image_labels in self.images:
+            schema.merge_schema(
+                ImageLabelsSchema.build_active_schema(image_labels))
+        return schema
+
+    def set_schema(self, schema, filter_by_schema=False):
+        '''Sets the enforced schema to the given ImageLabelsSchema.
+
+        Args:
+            schema: the ImageLabelsSchema to use
+            filter_by_schema: whether to filter any invalid objects/attributes
+                from this object after changing the schema. By default, this is
+                False
+
+        Raises:
+            ImageLabelsSchemaError: if `filter_by_schema` was False and this
+                object contains attributes/objects that are not compliant with
+                the schema
+        '''
+        self.schema = schema
+        if not self.has_schema:
+            return
+
+        if filter_by_schema:
+            self.filter_by_schema(self.schema)
+        else:
+            self._validate_schema()
+
+    def filter_by_schema(self, schema):
+        '''Removes objects/attributes from the ImageLabels in this object that
+        are not compliant with the given schema.
+
+        Args:
+            schema: an ImageLabelsSchema
+        '''
+        for image_labels in self.images:
+            image_labels.filter_by_schema(schema)
+
+    def freeze_schema(self):
+        '''Sets the enforced schema for the image set to the current active
+        schema.
+        '''
+        self.set_schema(self.get_active_schema())
+
+    def remove_schema(self):
+        '''Removes the enforced schema from the image set.'''
+        self.schema = None
+
+    def filter_image_labels(self, filters, match=any):
+        '''Removes ImageLabels that don't match the given filters from the set.
+
+        Args:
+            filters: a list of functions that accept ImageLabels and return
+                True/False
+            match: a function (usually `any` or `all`) that accepts an iterable
+                and returns True/False. Used to aggregate the outputs of each
+                filter to decide whether a match has occurred. The default is
+                `any`
+        '''
+        self.images.filter_elements(filters, match=match)
+
+    def delete_image_labels(self, filenames):
+        '''Deletes ImageLabels from the set with the given filenames.
+
+        Args:
+            filenames: an iterable of filenames to delete
+        '''
+        self.images.delete_keys(filenames)
+
+    def keep_image_labels(self, filenames):
+        '''Keeps only the ImageLabels in the set with the given filenames.
+
+        Args:
+            filenames: an iterable of filenames to keep
+        '''
+        self.images.keep_keys(filenames)
+
+    def extract_image_labels(self, filenames):
+        '''Creates a new ImageSetLabels having only the ImageLabels with the
+        given filenames.
+
+        Args:
+            filenames: an iterable of filenames to keep
+
+        Returns:
+            an ImageSetLabels
+        '''
+        image_set_labels = self.copy()
+        image_set_labels.keep_image_labels(filenames)
+        return image_set_labels
+
+    def count_matches(self, filters, match=any):
+        '''Counts the number of ImageLabels in the set that match the given
+        filters.
+
+        Args:
+            filters: a list of functions that accept ImageLabels and return
+                True/False
+            match: a function (usually `any` or `all`) that accepts an iterable
+                and returns True/False. Used to aggregate the outputs of each
+                filter to decide whether a match has occurred. The default is
+                `any`
+
+        Returns:
+            the number of ImageLabels in the set that match the filters
+        '''
+        return self.images.count_matches(filters, match=match)
+
+    def get_matches(self, filters, match=any):
+        '''Gets ImageLabels matching the given filters.
+
+        Args:
+            filters: a list of functions that accept elements and return
+                True/False
+            match: a function (usually `any` or `all`) that accepts an iterable
+                and returns True/False. Used to aggregate the outputs of each
+                filter to decide whether a match has occurred. The default is
+                `any`
+
+        Returns:
+            a copy of the ImageSetLabels containing only the ImageLabels that
+                match the filters
+        '''
+        image_set_labels = self.copy()
+        image_set_labels.filter_image_labels(filters, match=match)
+        return image_set_labels
+
+    def sort_by_filename(self, reverse=False):
+        '''Sorts the ImageLabels in this instance by filename.
+
+        ImageLabels without filenames are always put at the end of the set.
+
+        Args:
+            reverse: whether to sort in reverse order. By default, this is
+                False
+        '''
+        self.images.sort_by("filename", reverse=reverse)
+
+    def attributes(self):
+        '''Returns the list of class attributes that will be serialized.'''
+        _attrs = []
+        if self.has_schema:
+            _attrs.append("schema")
+        _attrs.append("images")
+        return _attrs
+
+    def serialize(self, reflective=False):
+        '''Serializes the ImageSetLabels into a dictionary.
+
+        Args:
+            reflective: whether to include reflective attributes when
+                serializing the set. By default, this is False
+
+        Returns:
+            a JSON dictionary representation of the ImageSetLabels
+        '''
+        d = super(ImageSetLabels, self).serialize(reflective=reflective)
+        #
+        # Here we remove the extra "images" namespace, which effectively stores
+        # the ImageLabels directly as a list
+        #
+        if "images" in d:
+            d["images"] = d["images"].get("images", [])
+        return d
+
+    def _validate_image_labels(self, image_labels):
+        if self.has_schema:
+            for image_attr in image_labels.attrs:
+                self._validate_image_attribute(image_attr)
+            for obj in image_labels.objects:
+                self._validate_object(obj)
+
+    def _validate_image_attribute(self, image_attr):
+        if self.has_schema:
+            self.schema.validate_image_attribute(image_attr)
+
+    def _validate_object(self, obj):
+        if self.has_schema:
+            self.schema.validate_object(obj)
+
+    def _validate_schema(self):
+        if self.has_schema:
+            for image_labels in self.images:
+                self._validate_image_labels(image_labels)
+
+    @classmethod
+    def from_dict(cls, d):
+        '''Constructs an ImageSetLabels from a JSON dictionary.'''
+        images = d.get("images", None)
+        if images is not None:
+            images = [ImageLabels.from_dict(il) for il in images]
+
+        schema = d.get("schema", None)
+        if schema is not None:
+            schema = ImageLabelsSchema.from_dict(schema)
+
+        return cls(images=images, schema=schema)
 
 
 ###### Image I/O ##############################################################
