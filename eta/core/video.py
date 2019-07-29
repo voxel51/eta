@@ -30,7 +30,6 @@ import six
 # pragma pylint: enable=wildcard-import
 
 from collections import defaultdict, OrderedDict
-import copy
 import dateutil.parser
 import errno
 import logging
@@ -46,7 +45,7 @@ from eta.core.data import AttributeContainer, AttributeContainerSchema
 import eta.core.gps as etag
 import eta.core.image as etai
 from eta.core.objects import DetectedObjectContainer
-from eta.core.serial import load_json, Serializable, BigContainer
+from eta.core.serial import load_json, Serializable
 import eta.core.utils as etau
 
 
@@ -1055,66 +1054,6 @@ class VideoLabels(Serializable):
         return cls(
             filename=filename, metadata=metadata, attrs=attrs, frames=frames,
             schema=schema)
-
-
-class BigVideoSetLabelsContainer(BigContainer):
-    '''VideoSetLabelsDirectory is a BigContainer that represents a list
-    of VideoLabels on disk.
-
-    See eta.core.serial.BigContainer for more information and please
-    '''
-
-    _ELE_CLS = VideoLabels
-
-    _ELE_CLS_FIELD = "LABELS_CLS"
-
-    _ELE_ATTR = "labels"
-
-
-class BigVideoSetLabels(VideoSetLabels):
-    '''BigVideoSetLabels uses a VideoSetLabelsDirectory to iterate over
-    VideoLabels on disk.
-
-    See eta.core.serial.BigContainer for more information and please
-    '''
-
-    def __init__(self, videos=None, schema=None, labels_dir=None):
-        '''Either videos (a BigVideoSetLabelsContainer instance)
-        or labels_dir must be provided.
-
-        Args:
-            videos (BigVideoSetLabelsContainer)
-            schema (VideoLabelsSchema)
-            labels_str (str): directory path representing a
-                BigVideoSetLabelsContainer
-        '''
-        if labels is not None:
-            videos = BigVideoSetLabelsContainer(backing_dir=labels_dir)
-        super(BigVideoSetLabels, self).__init__(videos=videos, schema=schema)
-
-    @classmethod
-    def from_dict(cls, d):
-        '''Constructs a  BigVideoSetLabels from a JSON dictionary.'''
-        videos = BigVideoSetLabelsContainer.from_dict(d["videos"])
-
-        schema = d.get("schema", None)
-        if schema is not None:
-            schema = VideoLabelsSchema.from_dict(schema)
-
-        return cls(videos=videos, schema=schema)
-
-    def copy(self, new_videos_dir):
-        '''Copy the instance deeply.
-
-        Args:
-            new_images_dir (str): directory path to store the copy's data
-
-        Returns:
-            BigVideoSetLabels
-        '''
-        new_set = copy.deepcopy(self)
-        new_set.videos = self.videos.copy(new_videos_dir)
-        return new_set
 
 
 class VideoLabelsSchema(Serializable):

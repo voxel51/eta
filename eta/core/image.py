@@ -28,7 +28,6 @@ from future.utils import iteritems
 
 from collections import defaultdict
 import colorsys
-import copy
 import errno
 import numbers
 import os
@@ -42,7 +41,7 @@ import eta
 from eta.core.data import AttributeContainer, AttributeContainerSchema, \
     AttributeContainerSchemaError
 from eta.core.objects import DetectedObjectContainer
-from eta.core.serial import Serializable, BigContainer
+from eta.core.serial import Serializable
 import eta.core.utils as etau
 import eta.core.web as etaw
 
@@ -327,7 +326,7 @@ class ImageSetLabels(Serializable):
 
         schema = d.get("schema", None)
         if schema is not None:
-             schema = ImageLabelsSchema.from_dict(schema)
+            schema = ImageLabelsSchema.from_dict(schema)
 
         return cls(images=images, schema=schema)
 
@@ -457,66 +456,6 @@ class ImageLabels(Serializable):
 
         return cls(
             filename=filename, metadata=metadata, attrs=attrs, objects=objects)
-
-
-class BigImageSetLabelsContainer(BigContainer):
-    '''BigImageSetLabelsContainer is a BigContainer that represents a list
-    of ImageLabels on disk.
-
-    See eta.core.serial.BigContainer for more information and please
-    '''
-
-    _ELE_CLS = ImageLabels
-
-    _ELE_CLS_FIELD = "LABELS_CLS"
-
-    _ELE_ATTR = "labels"
-
-
-class BigImageSetLabels(ImageSetLabels):
-    '''BigImageSetLabels uses an BigImageSetLabelsContainer to iterate over
-    ImageLabels on disk.
-
-    See eta.core.serial.BigContainer for more information and please
-    '''
-
-    def __init__(self, images=None, schema=None, labels_dir=None):
-        '''Either images (a BigImageSetLabelsContainer instance)
-        or labels_dir must be provided.
-
-        Args:
-            images (BigImageSetLabelsContainer)
-            schema (ImageLabelsSchema)
-            labels_str (str): directory path representing a
-                BigImageSetLabelsContainer
-        '''
-        if labels_dir is not None:
-            images = BigImageSetLabelsContainer(backing_dir=labels_dir)
-        super(BigImageSetLabels, self).__init__(images=images, schema=schema)
-
-    @classmethod
-    def from_dict(cls, d):
-        '''Constructs a  BigImageSetLabels from a JSON dictionary.'''
-        images = BigImageSetLabelsContainer.from_dict(d["images"])
-
-        schema = d.get("schema", None)
-        if schema is not None:
-            schema = ImageLabelsSchema.from_dict(schema)
-
-        return cls(images=images, schema=schema)
-
-    def copy(self, new_images_dir):
-        '''Copy the instance deeply.
-
-        Args:
-            new_images_dir (str): directory path to store the copy's data
-
-        Returns:
-            BigImageSetLabels
-        '''
-        new_set = copy.deepcopy(self)
-        new_set.images = self.images.copy(new_images_dir)
-        return new_set
 
 
 class ImageLabelsSchema(Serializable):
