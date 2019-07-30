@@ -3,6 +3,7 @@ contextlib2==0.5.5
 Cython==0.28.5
 dill==0.2.7.1
 future==0.16.0
+glob2==0.6
 google-api-python-client==1.6.5
 google-auth-httplib2==0.0.3
 google-cloud-storage==1.7.0
