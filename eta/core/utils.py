@@ -511,7 +511,7 @@ def symlink_file(filepath, linkpath, check_ext=False):
 
 
 def move_file(inpath, outpath, check_ext=False):
-    '''Copies the input file to the output location.
+    '''Moves the input file to the output location.
 
     The output location can be a filepath or a directory in which to move the
     file. The base output directory is created if necessary, and any existing
@@ -531,6 +531,22 @@ def move_file(inpath, outpath, check_ext=False):
         assert_same_extensions(inpath, outpath)
     ensure_basedir(outpath)
     shutil.move(inpath, outpath)
+
+
+def move_dir(indir, outdir):
+    '''Moves the input directory to the given output location.
+
+    The base output directory is created, if necessary. Any existing directory
+    will be deleted.
+
+    Args:
+        indir: the input directory
+        outdir: the output directory to create
+    '''
+    if os.path.isdir(outdir):
+        delete_dir(outdir)
+    ensure_basedir(outdir)
+    shutil.move(indir, outdir)
 
 
 def partition_files(indir, outdir=None, num_parts=None, dir_size=None):
@@ -649,9 +665,14 @@ def is_in_root_dir(path, rootdir):
 
 
 def copy_dir(indir, outdir):
-    '''Copies the input directory to the output directory. The base output
-    directory is created if necessary, and any existing output directory will
-    be deleted.
+    '''Copies the input directory to the output directory.
+
+    The base output directory is created if necessary, and any existing output
+    directory will be deleted.
+
+    Args:
+        indir: the input directory
+        outdir: the output directory
     '''
     if os.path.isdir(outdir):
         shutil.rmtree(outdir)
@@ -661,6 +682,9 @@ def copy_dir(indir, outdir):
 def delete_file(path):
     '''Deletes the file at the given path and recursively deletes any empty
     directories from the resulting directory tree.
+
+    Args:
+        path: the filepath
 
     Raises:
         OSError: if the file did not exist
@@ -676,6 +700,9 @@ def delete_file(path):
 def delete_dir(dir_):
     '''Deletes the given directory and recursively deletes any empty
     directories from the resulting directory tree.
+
+    Args:
+        dir_: the directory path
 
     Raises:
         OSError: if the directory did not exist
@@ -716,20 +743,32 @@ def make_search_path(dirs):
     return search_dirs
 
 
-def ensure_empty_dir(dirname):
-    '''Ensures that the given directory either does not exist or is empty (does
-    not include hidden file (dot files).
+def ensure_empty_dir(dirname, cleanup=False):
+    '''Ensures that the given directory exists and is empty.
 
-    If the directory does not exist, it is created.
+    Args:
+        dirname: the directory path
+        cleanup: whether to delete any existing directory contents. By default,
+            this is False
+
+    Raises:
+        ValueError: if the directory is not empty and `cleanup` is False
     '''
+    if os.path.isdir(dirname):
+        if cleanup:
+            delete_dir(dirname)
+        elif os.listdir(dirname):
+            raise ValueError("%s not empty" % dirname)
+
     ensure_dir(dirname)
-    if list_files(dirname):
-        raise ValueError("%s not empty" % dirname)
 
 
 def ensure_path(path):
     '''Ensures that the given path is ready for writing by deleting any
     existing file and ensuring that the base directory exists.
+
+    Args:
+        path: the filepath
     '''
     if os.path.isfile(path):
         logger.debug("Deleting '%s'", path)
