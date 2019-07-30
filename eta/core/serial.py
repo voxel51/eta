@@ -1353,7 +1353,7 @@ class BigContainer(Container):
             inds: a list of indices of the elements to keep
 
         Returns:
-            BigContainer
+            a BigContainer
         '''
         etau.ensure_empty_dir(new_backing_dir)
         container = copy.deepcopy(self)
@@ -1529,8 +1529,8 @@ class BigContainer(Container):
         Returns:
             a BigContainer
         '''
-        return cls.from_paths(
-            backing_dir, etau.multiglob(".json", source_dir + "/**"))
+        paths = etau.multiglob(".json", root=source_dir + "/**/*")
+        return cls.from_paths(backing_dir, paths)
 
     @classmethod
     def from_dict(cls, d):
