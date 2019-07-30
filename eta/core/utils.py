@@ -24,6 +24,7 @@ import six
 import datetime
 import errno
 import glob
+import glob2
 import hashlib
 import inspect
 import itertools as it
@@ -912,14 +913,23 @@ def to_human_bits_str(num_bits, decimals=1):
     return (str_fmt % num_bits).rstrip("0").rstrip(".") + unit
 
 
-_ARCHIVE_FORMATS = {
-    ".zip": "zip",
-    ".tar": "tar",
-    ".tar.gz": "gztar",
-    ".tgz": "gztar",
-    ".tar.bz": "bztar",
-    ".tbz": "bztar"
-}
+def _get_archive_format(archive_path):
+    basepath, ext = os.path.splitext(archive_path)
+    if basepath.endswith(".tar"):
+        # Handle .tar.gz and .tar.bz
+        basepath, ext2 = os.path.splitext(basepath)
+        ext = ext2 + ext
+
+    if ext == ".zip":
+        return basepath, "zip"
+    if ext == ".tar":
+        return basepath, "tar"
+    if ext in (".tar.gz", ".tgz"):
+        return basepath, "gztar"
+    if ext in (".tar.bz", ".tbz"):
+        return basepath, "bztar"
+
+    raise ValueError("Unsupported archive format '%s'" % archive_path)
 
 
 def make_archive(dir_path, archive_path):
@@ -932,12 +942,11 @@ def make_archive(dir_path, archive_path):
         dir_path: the directory to archive
         archive_path: the path + filename of the archive to create
     '''
-    outpath, ext = os.path.splitext(archive_path)
-    if ext == ".zip" and eta.is_python2():
+    outpath, format = _get_archive_format(archive_path)
+    if format == "zip" and eta.is_python2():
         make_zip64(dir_path, archive_path)
         return
 
-    format = _ARCHIVE_FORMATS[ext]
     rootdir, basedir = os.path.split(os.path.realpath(dir_path))
     shutil.make_archive(outpath, format, rootdir, basedir)
 
@@ -973,12 +982,13 @@ def make_zip64(dir_path, zip_path):
 
     Args:
         dir_path: the directory to zip
-        zip_path: the path + filename of the zip file to create
+        zip_path: the path with extension of the zip file to create
     '''
     dir_path = os.path.realpath(dir_path)
+    rootdir = os.path.dirname(dir_path)
     with zf.ZipFile(zip_path, "w", zf.ZIP_DEFLATED, allowZip64=True) as f:
         for root, _, filenames in os.walk(dir_path):
-            base = os.path.relpath(root, dir_path)
+            base = os.path.relpath(root, rootdir)
             for name in filenames:
                 src_path = os.path.join(root, name)
                 dest_path = os.path.join(base, name)
@@ -1020,8 +1030,8 @@ def extract_zip(zip_path, outdir=None, delete_zip=False):
     '''
     outdir = outdir or os.path.dirname(zip_path) or "."
 
-    with zf.ZipFile(zip_path, "r") as zfile:
-        zfile.extractall(outdir)
+    with zf.ZipFile(zip_path, "r", allowZip64=True) as f:
+        f.extractall(outdir)
 
     if delete_zip:
         delete_file(zip_path)
@@ -1051,8 +1061,8 @@ def extract_tar(tar_path, outdir=None, delete_tar=False):
             ".tar.bz, or .tbz in order to extract it" % tar_path)
 
     outdir = outdir or os.path.dirname(tar_path) or "."
-    with tarfile.open(tar_path, fmt) as tar:
-        tar.extractall(path=outdir)
+    with tarfile.open(tar_path, fmt) as f:
+        f.extractall(path=outdir)
 
     if delete_tar:
         delete_file(tar_path)
