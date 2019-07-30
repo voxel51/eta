@@ -1462,6 +1462,7 @@ class BigContainer(Container):
             container._backing_dir = full_backing_dir
             etau.make_archive(rootdir, archive_path)
 
+    @classmethod
     def from_archive(cls, archive_path, backing_dir, delete_archive=False):
         '''Loads a BigContainer from an archive created by `to_archive()`.
 
