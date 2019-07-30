@@ -21,8 +21,10 @@ from builtins import *
 import logging
 
 from eta.core.config import Config, ConfigError, Configurable
+import eta.core.image as etai
 import eta.core.models as etam
 import eta.core.utils as etau
+import eta.core.video as etav
 
 
 logger = logging.getLogger(__name__)
@@ -357,7 +359,7 @@ class ImageClassifierConfig(ClassifierConfig):
         self._validate_type(ImageClassifier)
 
 
-class ImageClassifier(Classifier):
+class ImageClassifier(Classifier, ImageModel):
     '''Base class for classifiers that operate on single images.
 
     `ImageClassifier`s may output single or multiple labels per image.
@@ -370,6 +372,11 @@ class ImageClassifier(Classifier):
     perform any necessary setup and teardown, e.g., operating a `Featurizer`
     that featurizes the input images.
     '''
+
+    def process(self, img):
+        labels = etai.ImageLabels()
+        labels.add_image_attributes(self.predict(img))
+        return labels
 
     def predict(self, img):
         '''Peforms prediction on the given image.
@@ -459,7 +466,7 @@ class VideoClassifierConfig(ClassifierConfig):
         self._validate_type(VideoClassifier)
 
 
-class VideoClassifier(Classifier):
+class VideoClassifier(Classifier, VideoModel):
     '''Base class for classifiers that operate on entire videos.
 
     `VideoClassifier`s may output single or multiple (video-level) labels per
@@ -471,6 +478,11 @@ class VideoClassifier(Classifier):
     perform any necessary setup and teardown, e.g., operating a `Featurizer`
     that featurizes the frames of the input video.
     '''
+
+    def process(self, img):
+        labels = etai.VideoLabels()
+        labels.add_video_attributes(self.predict(img))
+        return labels
 
     def predict(self, video_path):
         '''Peforms prediction on the given video.
@@ -537,7 +549,7 @@ class ObjectDetectorConfig(DetectorConfig):
         self._validate_type(ObjectDetector)
 
 
-class ObjectDetector(Detector):
+class ObjectDetector(Detector, ImageModel):
     '''Base class for detectors that operate on single images.
 
     `ObjectDetector`s may output single or multiple detections per image.
@@ -550,6 +562,11 @@ class ObjectDetector(Detector):
     perform any necessary setup and teardown, e.g., operating a `Featurizer`
     that featurizes the input images.
     '''
+
+    def process(self, img):
+        labels = etai.ImageLabels()
+        labels.add_objects(self.detect(img))
+        return labels
 
     def detect(self, img):
         '''Detects objects in the given image.
