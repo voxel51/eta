@@ -413,6 +413,50 @@ def _recurse(v, reflective):
     return v
 
 
+class BigSet(Set):
+
+    def __init__
+
+    def __getitem__
+
+    def __setitem__
+
+    def __delitem__
+
+    def __iter__
+
+    def clear
+
+    def copy
+
+    def add
+
+    def add_set
+
+    def filter_elements
+
+    def delete_keys
+
+    def keep_keys
+
+    def extract_keys
+
+    def count_matches
+
+    def get_matches
+
+    def sort_by
+
+    def attributes
+
+    def from_dict
+
+    def _get_elements
+
+    def _filter_elements
+
+
+
 class Set(Serializable):
     '''Abstract base class for flexible sets that store homogeneous elements
     of a `Serializable` class and provides O(1) lookup of elements by a
