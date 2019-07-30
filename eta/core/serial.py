@@ -1112,7 +1112,7 @@ class Container(Serializable):
         return list(
             filter(lambda o: match(f(o) for f in filters), self.__elements__))
 
-    def _validate(cls):
+    def _validate(self):
         '''Validates that a Container instance is valid.'''
         if self._ELE_CLS is None:
             raise ContainerError(
