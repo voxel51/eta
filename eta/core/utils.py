@@ -1069,20 +1069,32 @@ def extract_tar(tar_path, outdir=None, delete_tar=False):
 
 
 def multiglob(*patterns, **kwargs):
-    ''' Returns an iterable for globbing over multiple patterns.
+    '''Returns an iterable over the glob mathces for multiple patterns.
+
+    Note that if a given file matches multiple patterns that you provided, it
+    will appear multiple times in the output iterable.
+
+    Examples:
+        Find all .py or .pyc files in a directory
+        ```py
+        multiglob(".py", ".pyc", root="/path/to/dir/*")
+        ```
+
+        Find all JSON files recursively in a given directory:
+        ```py
+        multiglob(".json", root="/path/to/dir/**/*")
+        ```
 
     Args:
-        patterns is the set of patterns to search for
-        kwargs["root"] allows for a `root` path to be specified once and
-            applied to all patterns
+        *patterns: the patterns to search for
+        root: an optional root path to be applied to all patterns. This root is
+            directly prepended to each pattern; `os.path.join` is NOT used
 
-    Note that this does not us os.path.join if a root=FOO is provided. So, if
-    you want to just search by extensions, you can use root="path/*" and
-    provide only extensions in the patterns.
+    Returns:
+        an iteratable over the glob matches
     '''
     root = kwargs.get("root", "")
-    return it.chain.from_iterable(
-        glob.iglob(root + pattern) for pattern in patterns)
+    return it.chain.from_iterable(glob2.iglob(root + p) for p in patterns)
 
 
 def list_files(dir_path, abs_paths=False):
