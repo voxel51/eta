@@ -26,6 +26,7 @@ import cv2
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
+import eta
 import eta.constants as etac
 from eta.core.config import Config, Configurable
 import eta.core.image as etai
@@ -471,14 +472,13 @@ def _annotate_object(img, obj, annotation_config):
     return np.asarray(img_pil)
 
 
-_IS_PYTHON_2 = (sys.version_info[0] == 2)
 _DEFAULT_ANNOTATION_CONFIG = AnnotationConfig.default()
 _DX = 2  # extra horizontal space needed for text width to be more "correct"
 
 
 def _parse_hex_color(h):
     rgb = etai.hex_to_rgb(h)
-    if _IS_PYTHON_2:
+    if eta.is_python2():
         # OpenCV hates `future` types, so we do this funny cast
         rgb = np.array(rgb)
     return rgb

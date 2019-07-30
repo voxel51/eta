@@ -20,7 +20,7 @@ from builtins import *
 # pragma pylint: enable=wildcard-import
 
 import eta.core.numutils as etan
-from eta.core.serial import Container, Serializable, Set
+from eta.core.serial import BigContainer, Container, Serializable, Set
 
 
 class BoundingBox(Serializable):
@@ -303,6 +303,15 @@ class LabeledPointContainer(Container):
     def get_labels(self):
         '''Returns a set containing the labels of the LabeledPoints.'''
         return set(p.label for p in self)
+
+
+class BigLabeledPointContainer(BigContainer, LabeledPointContainer):
+    '''Big container for points in an image that each have an associated label.
+
+    As a BigContainer, each LabeledPoint is stored individually on disk.
+    '''
+
+    pass
 
 
 class LabeledPointSet(Set):
