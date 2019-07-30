@@ -489,7 +489,7 @@ class Set(Serializable):
         Raises:
             SetError: if there was an error while creating the set
         '''
-        self._validate_cls()
+        self._validate()
 
         if kwargs and self._ELE_ATTR not in kwargs:
             raise SetError(
@@ -761,19 +761,18 @@ class Set(Serializable):
             (k, v) for k, v in iteritems(self.__elements__)
             if match(f(v) for f in filters))
 
-    @classmethod
-    def _validate_cls(cls):
+    def _validate(self):
         '''Validates that a Set instance is valid.'''
-        if cls._ELE_CLS is None:
+        if self._ELE_CLS is None:
             raise SetError(
                 "Cannot instantiate a Set for which _ELE_CLS is None")
-        if cls._ELE_ATTR is None:
+        if self._ELE_ATTR is None:
             raise SetError(
                 "Cannot instantiate a Set for which _ELE_ATTR is None")
-        if not issubclass(cls._ELE_CLS, Serializable):
+        if not issubclass(self._ELE_CLS, Serializable):
             raise SetError(
-                "%s is not Serializable" % cls._ELE_CLS)
-        if cls._ELE_KEY_ATTR is None:
+                "%s is not Serializable" % self._ELE_CLS)
+        if self._ELE_KEY_ATTR is None:
             raise SetError(
                 "Cannot instantiate a Set for which _ELE_KEY_ATTR is None")
 
@@ -867,7 +866,7 @@ class Container(Serializable):
         Raises:
             ContainerError: if there was an error while creating the container
         '''
-        self._validate_cls()
+        self._validate()
 
         if kwargs and self._ELE_ATTR not in kwargs:
             raise ContainerError(
@@ -1113,18 +1112,17 @@ class Container(Serializable):
         return list(
             filter(lambda o: match(f(o) for f in filters), self.__elements__))
 
-    @classmethod
-    def _validate_cls(cls):
+    def _validate(cls):
         '''Validates that a Container instance is valid.'''
-        if cls._ELE_CLS is None:
+        if self._ELE_CLS is None:
             raise ContainerError(
                 "Cannot instantiate a Container for which _ELE_CLS is None")
-        if cls._ELE_ATTR is None:
+        if self._ELE_ATTR is None:
             raise ContainerError(
                 "Cannot instantiate a Container for which _ELE_ATTR is None")
-        if not issubclass(cls._ELE_CLS, Serializable):
+        if not issubclass(self._ELE_CLS, Serializable):
             raise ContainerError(
-                "%s is not Serializable" % cls._ELE_CLS)
+                "%s is not Serializable" % self._ELE_CLS)
 
     @classmethod
     def _validate_dict(cls, d):
@@ -1204,7 +1202,7 @@ class BigContainer(Container):
         Raises:
             ContainerError: if there was an error while creating the container
         '''
-        self._validate_cls()
+        self._validate()
 
         self._backing_dir = None
         self._set_backing_dir(backing_dir)
