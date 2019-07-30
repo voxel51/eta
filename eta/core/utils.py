@@ -1114,6 +1114,29 @@ def parse_pattern(patt):
             The indices are returned in alphabetical order of their
             corresponding files
     '''
+    # Extract indices from exactly matching patterns
+    inds = []
+    for _, match, num_inds in _iter_pattern_matches(patt):
+        idx = tuple(map(int, match.groups()))
+        inds.append(idx[0] if num_inds == 1 else idx)
+
+    return inds
+
+
+def get_pattern_matches(patt):
+    '''Returns a list of file paths matching the given pattern.
+
+    Args:
+        patt: a pattern with a one or more numeric sequences like
+            "/path/to/frame-%05d.jpg" or `/path/to/clips/%02d-%d.mp4`
+
+    Returns:
+        a list of file paths that match the pattern `patt`
+    '''
+    return [file_path for file_path, _, _ in _iter_pattern_matches(patt)]
+
+
+def _iter_pattern_matches(patt):
     def _glob_escape(s):
         return re.sub(r"([\*\?\[])", r"\\\1", s)
 
@@ -1127,15 +1150,11 @@ def parse_pattern(patt):
     fcns = [parse_int_sprintf_pattern(sp) for sp in seq_patts]
     full_exp, num_inds = re.subn(seq_exp, "(\\s*\\d+)", patt)
 
-    # Extract indices from exactly matching patterns
-    inds = []
+    # Iterate over exactly matching patterns and files
     for f in files:
         m = re.match(full_exp, f)
         if m and all(f(p) for f, p in zip(fcns, m.groups())):
-            idx = tuple(map(int, m.groups()))
-            inds.append(idx[0] if num_inds == 1 else idx)
-
-    return inds
+            yield f, m, num_inds
 
 
 def parse_bounds_from_pattern(patt):
