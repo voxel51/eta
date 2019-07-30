@@ -1360,7 +1360,7 @@ class BigContainer(Container):
         container._set_backing_dir(new_backing_dir)
         container.clear()
         for idx in inds:
-            self._add_by_path(self._ele_path(idx))
+            container._add_by_path(self._ele_path(idx))
 
         return container
 
