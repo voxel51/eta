@@ -519,7 +519,7 @@ class Set(Serializable):
         return key in self.__elements__
 
     def __iter__(self):
-        return itervalues(self.__elements__)
+        return iter(itervalues(self.__elements__))
 
     def __len__(self):
         return len(self.__elements__)
