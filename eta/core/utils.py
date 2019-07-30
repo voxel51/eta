@@ -24,6 +24,7 @@ import six
 import datetime
 import errno
 import glob
+import glob2
 import hashlib
 import inspect
 import itertools as it
@@ -40,7 +41,7 @@ import sys
 import tarfile
 import tempfile
 import timeit
-import zipfile
+import zipfile as zf
 
 import eta
 import eta.constants as etac
@@ -511,7 +512,7 @@ def symlink_file(filepath, linkpath, check_ext=False):
 
 
 def move_file(inpath, outpath, check_ext=False):
-    '''Copies the input file to the output location.
+    '''Moves the input file to the output location.
 
     The output location can be a filepath or a directory in which to move the
     file. The base output directory is created if necessary, and any existing
@@ -531,6 +532,22 @@ def move_file(inpath, outpath, check_ext=False):
         assert_same_extensions(inpath, outpath)
     ensure_basedir(outpath)
     shutil.move(inpath, outpath)
+
+
+def move_dir(indir, outdir):
+    '''Moves the input directory to the given output location.
+
+    The base output directory is created, if necessary. Any existing directory
+    will be deleted.
+
+    Args:
+        indir: the input directory
+        outdir: the output directory to create
+    '''
+    if os.path.isdir(outdir):
+        delete_dir(outdir)
+    ensure_basedir(outdir)
+    shutil.move(indir, outdir)
 
 
 def partition_files(indir, outdir=None, num_parts=None, dir_size=None):
@@ -649,9 +666,14 @@ def is_in_root_dir(path, rootdir):
 
 
 def copy_dir(indir, outdir):
-    '''Copies the input directory to the output directory. The base output
-    directory is created if necessary, and any existing output directory will
-    be deleted.
+    '''Copies the input directory to the output directory.
+
+    The base output directory is created if necessary, and any existing output
+    directory will be deleted.
+
+    Args:
+        indir: the input directory
+        outdir: the output directory
     '''
     if os.path.isdir(outdir):
         shutil.rmtree(outdir)
@@ -661,6 +683,9 @@ def copy_dir(indir, outdir):
 def delete_file(path):
     '''Deletes the file at the given path and recursively deletes any empty
     directories from the resulting directory tree.
+
+    Args:
+        path: the filepath
 
     Raises:
         OSError: if the file did not exist
@@ -676,6 +701,9 @@ def delete_file(path):
 def delete_dir(dir_):
     '''Deletes the given directory and recursively deletes any empty
     directories from the resulting directory tree.
+
+    Args:
+        dir_: the directory path
 
     Raises:
         OSError: if the directory did not exist
@@ -716,9 +744,32 @@ def make_search_path(dirs):
     return search_dirs
 
 
+def ensure_empty_dir(dirname, cleanup=False):
+    '''Ensures that the given directory exists and is empty.
+
+    Args:
+        dirname: the directory path
+        cleanup: whether to delete any existing directory contents. By default,
+            this is False
+
+    Raises:
+        ValueError: if the directory is not empty and `cleanup` is False
+    '''
+    if os.path.isdir(dirname):
+        if cleanup:
+            delete_dir(dirname)
+        elif os.listdir(dirname):
+            raise ValueError("%s not empty" % dirname)
+
+    ensure_dir(dirname)
+
+
 def ensure_path(path):
     '''Ensures that the given path is ready for writing by deleting any
     existing file and ensuring that the base directory exists.
+
+    Args:
+        path: the filepath
     '''
     if os.path.isfile(path):
         logger.debug("Deleting '%s'", path)
@@ -728,12 +779,20 @@ def ensure_path(path):
 
 
 def ensure_basedir(path):
-    '''Makes the base directory of the given path, if necessary.'''
+    '''Makes the base directory of the given path, if necessary.
+
+    Args:
+        path: the filepath
+    '''
     ensure_dir(os.path.dirname(path))
 
 
 def ensure_dir(dirname):
-    '''Makes the given directory, if necessary.'''
+    '''Makes the given directory, if necessary.
+
+    Args:
+        dirname: the directory path
+    '''
     if dirname and not os.path.isdir(dirname):
         logger.debug("Making directory '%s'", dirname)
         os.makedirs(dirname)
@@ -854,93 +913,188 @@ def to_human_bits_str(num_bits, decimals=1):
     return (str_fmt % num_bits).rstrip("0").rstrip(".") + unit
 
 
+def _get_archive_format(archive_path):
+    basepath, ext = os.path.splitext(archive_path)
+    if basepath.endswith(".tar"):
+        # Handle .tar.gz and .tar.bz
+        basepath, ext2 = os.path.splitext(basepath)
+        ext = ext2 + ext
+
+    if ext == ".zip":
+        return basepath, "zip"
+    if ext == ".tar":
+        return basepath, "tar"
+    if ext in (".tar.gz", ".tgz"):
+        return basepath, "gztar"
+    if ext in (".tar.bz", ".tbz"):
+        return basepath, "bztar"
+
+    raise ValueError("Unsupported archive format '%s'" % archive_path)
+
+
+def make_archive(dir_path, archive_path):
+    '''Makes an archive containing the given directory.
+
+    Supported formats include `.zip`, `.tar`, `.tar.gz`, `.tgz`, `.tar.bz`,
+    and `.tbz`.
+
+    Args:
+        dir_path: the directory to archive
+        archive_path: the path + filename of the archive to create
+    '''
+    outpath, format = _get_archive_format(archive_path)
+    if format == "zip" and eta.is_python2():
+        make_zip64(dir_path, archive_path)
+        return
+
+    rootdir, basedir = os.path.split(os.path.realpath(dir_path))
+    shutil.make_archive(outpath, format, rootdir, basedir)
+
+
 def make_tar(dir_path, tar_path):
-    '''Makes a .tar.gz file containing the given directory.
+    '''Makes a tarfile containing the given directory.
+
+    Supported formats include `.tar`, `.tar.gz`, `.tgz`, `.tar.bz`, and `.tbz`.
 
     Args:
         dir_path: the directory to tar
         tar_path: the path + filename of the .tar.gz file to create
     '''
-    outpath = re.sub(r"\.tar\.gz$", "", tar_path)
-    rootdir, basedir = os.path.split(os.path.realpath(dir_path))
-    shutil.make_archive(outpath, "gztar", rootdir, basedir)
-
-
-def extract_tar(inpath, outdir=None, delete_tar=False):
-    '''Extracts the contents of a .tar, tar.gz, .tgz, .tar.bz, or .tbz file.
-
-    Args:
-        inpath: the path to the tar or compressed tar file
-        outdir: the directory into which to extract the archive contents. By
-            default, the directory containing the tar file is used
-        delete_tar: whether to delete the tar archive after extraction. By
-            default, this is False
-    '''
-    if inpath.endswith("tar"):
-        fmt = "r:"
-    elif inpath.endswith("tar.gz") or inpath.endswith("tgz"):
-        fmt = "r:gz"
-    elif inpath.endswith("tar.bz") or inpath.endswith("tbz"):
-        fmt = "r:bz2"
-    else:
-        raise ValueError(
-            "Expected file '%s' to have extension .tar, .tar.gz, .tgz,"
-            ".tar.bz, or .tbz in order to extract it" % inpath)
-
-    outdir = outdir or os.path.dirname(inpath) or "."
-    with tarfile.open(inpath, fmt) as tar:
-        tar.extractall(path=outdir)
-
-    if delete_tar:
-        delete_file(inpath)
+    make_archive(dir_path, tar_path)
 
 
 def make_zip(dir_path, zip_path):
-    '''Makes a .zip file containing the given directory.
+    '''Makes a zipfile containing the given directory.
+
+    Python 2 users must use `make_zip64` when making large zip files.
+    `shutil.make_archive` does not offer Zip64 in Python 2, and is therefore
+    limited to 4GiB archives with less than 65,536 entries.
 
     Args:
         dir_path: the directory to zip
-        zip_path: the path + filename of the .zip file to create
+        zip_path: the path + filename of the zip file to create
     '''
-    outpath = os.path.splitext(zip_path)[0]
-    rootdir, basedir = os.path.split(os.path.realpath(dir_path))
-    shutil.make_archive(outpath, "zip", rootdir, basedir)
+    make_archive(dir_path, zip_path)
 
 
-def extract_zip(inpath, outdir=None, delete_zip=False):
+def make_zip64(dir_path, zip_path):
+    '''Makes a zip file containing the given directory in Zip64 format.
+
+    Args:
+        dir_path: the directory to zip
+        zip_path: the path with extension of the zip file to create
+    '''
+    dir_path = os.path.realpath(dir_path)
+    rootdir = os.path.dirname(dir_path)
+    with zf.ZipFile(zip_path, "w", zf.ZIP_DEFLATED, allowZip64=True) as f:
+        for root, _, filenames in os.walk(dir_path):
+            base = os.path.relpath(root, rootdir)
+            for name in filenames:
+                src_path = os.path.join(root, name)
+                dest_path = os.path.join(base, name)
+                f.write(src_path, dest_path)
+
+
+def extract_archive(archive_path, outdir=None, delete_archive=False):
+    '''Extracts the contents of an archive.
+
+    Supported formats include `.zip`, `.tar`, `.tar.gz`, `.tgz`, `.tar.bz`,
+    and `.tbz`.
+
+    Args:
+        archive_path: the path to the archive file
+        outdir: the directory into which to extract the archive contents. By
+            default, the directory containing the archive is used
+        delete_archive: whether to delete the archive after extraction. By
+            default, this is False
+    '''
+    #
+    # One could use `shutil.unpack_archive` in Python 3...
+    # https://docs.python.org/3/library/shutil.html#shutil.unpack_archive
+    #
+    if archive_path.endswith(".zip"):
+        extract_zip(archive_path, outdir=outdir, delete_zip=delete_archive)
+    else:
+        extract_tar(archive_path, outdir=outdir, delete_tar=delete_archive)
+
+
+def extract_zip(zip_path, outdir=None, delete_zip=False):
     '''Extracts the contents of a .zip file.
 
     Args:
-        inpath: the path to the zip file
+        zip_path: the path to the zip file
         outdir: the directory into which to extract the zip contents. By
             default, the directory containing the zip file is used
         delete_zip: whether to delete the zip after extraction. By default,
             this is False
     '''
-    outdir = outdir or os.path.dirname(inpath) or "."
+    outdir = outdir or os.path.dirname(zip_path) or "."
 
-    with zipfile.ZipFile(inpath, "r") as zfile:
-        zfile.extractall(outdir)
+    with zf.ZipFile(zip_path, "r", allowZip64=True) as f:
+        f.extractall(outdir)
 
     if delete_zip:
-        delete_file(inpath)
+        delete_file(zip_path)
+
+
+def extract_tar(tar_path, outdir=None, delete_tar=False):
+    '''Extracts the contents of a tarfile.
+
+    Supported formats include `.tar`, `.tar.gz`, `.tgz`, `.tar.bz`, and `.tbz`.
+
+    Args:
+        tar_path: the path to the tarfile
+        outdir: the directory into which to extract the archive contents. By
+            default, the directory containing the tar file is used
+        delete_tar: whether to delete the tar archive after extraction. By
+            default, this is False
+    '''
+    if tar_path.endswith(".tar"):
+        fmt = "r:"
+    elif tar_path.endswith(".tar.gz") or tar_path.endswith(".tgz"):
+        fmt = "r:gz"
+    elif tar_path.endswith(".tar.bz") or tar_path.endswith(".tbz"):
+        fmt = "r:bz2"
+    else:
+        raise ValueError(
+            "Expected file '%s' to have extension .tar, .tar.gz, .tgz,"
+            ".tar.bz, or .tbz in order to extract it" % tar_path)
+
+    outdir = outdir or os.path.dirname(tar_path) or "."
+    with tarfile.open(tar_path, fmt) as f:
+        f.extractall(path=outdir)
+
+    if delete_tar:
+        delete_file(tar_path)
 
 
 def multiglob(*patterns, **kwargs):
-    ''' Returns an iterable for globbing over multiple patterns.
+    '''Returns an iterable over the glob mathces for multiple patterns.
+
+    Note that if a given file matches multiple patterns that you provided, it
+    will appear multiple times in the output iterable.
+
+    Examples:
+        Find all .py or .pyc files in a directory
+        ```py
+        multiglob(".py", ".pyc", root="/path/to/dir/*")
+        ```
+
+        Find all JSON files recursively in a given directory:
+        ```py
+        multiglob(".json", root="/path/to/dir/**/*")
+        ```
 
     Args:
-        patterns is the set of patterns to search for
-        kwargs["root"] allows for a `root` path to be specified once and
-            applied to all patterns
+        *patterns: the patterns to search for
+        root: an optional root path to be applied to all patterns. This root is
+            directly prepended to each pattern; `os.path.join` is NOT used
 
-    Note that this does not us os.path.join if a root=FOO is provided. So, if
-    you want to just search by extensions, you can use root="path/*" and
-    provide only extensions in the patterns.
+    Returns:
+        an iteratable over the glob matches
     '''
     root = kwargs.get("root", "")
-    return it.chain.from_iterable(
-        glob.iglob(root + pattern) for pattern in patterns)
+    return it.chain.from_iterable(glob2.iglob(root + p) for p in patterns)
 
 
 def list_files(dir_path, abs_paths=False):
@@ -982,6 +1136,29 @@ def parse_pattern(patt):
             The indices are returned in alphabetical order of their
             corresponding files
     '''
+    # Extract indices from exactly matching patterns
+    inds = []
+    for _, match, num_inds in _iter_pattern_matches(patt):
+        idx = tuple(map(int, match.groups()))
+        inds.append(idx[0] if num_inds == 1 else idx)
+
+    return inds
+
+
+def get_pattern_matches(patt):
+    '''Returns a list of file paths matching the given pattern.
+
+    Args:
+        patt: a pattern with a one or more numeric sequences like
+            "/path/to/frame-%05d.jpg" or `/path/to/clips/%02d-%d.mp4`
+
+    Returns:
+        a list of file paths that match the pattern `patt`
+    '''
+    return [file_path for file_path, _, _ in _iter_pattern_matches(patt)]
+
+
+def _iter_pattern_matches(patt):
     def _glob_escape(s):
         return re.sub(r"([\*\?\[])", r"\\\1", s)
 
@@ -995,15 +1172,11 @@ def parse_pattern(patt):
     fcns = [parse_int_sprintf_pattern(sp) for sp in seq_patts]
     full_exp, num_inds = re.subn(seq_exp, "(\\s*\\d+)", patt)
 
-    # Extract indices from exactly matching patterns
-    inds = []
+    # Iterate over exactly matching patterns and files
     for f in files:
         m = re.match(full_exp, f)
         if m and all(f(p) for f, p in zip(fcns, m.groups())):
-            idx = tuple(map(int, m.groups()))
-            inds.append(idx[0] if num_inds == 1 else idx)
-
-    return inds
+            yield f, m, num_inds
 
 
 def parse_bounds_from_pattern(patt):

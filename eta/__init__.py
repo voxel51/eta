@@ -140,6 +140,16 @@ def startup_message():
     logger.info("Revision %s", etau.get_eta_rev())
 
 
+def is_python2():
+    '''Returns True/False whether the Python version running is 2.X.'''
+    return sys.version_info[0] == 2
+
+
+def is_python3():
+    '''Returns True/False whether the Python version running is 3.X.'''
+    return sys.version_info[0] == 3
+
+
 # Version string
 version = "%s %s, %s" % (etac.NAME, etac.VERSION, etac.AUTHOR)
 

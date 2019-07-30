@@ -14,7 +14,8 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
-from future.utils import iteritems
+from future.utils import iteritems, itervalues
+import six
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
@@ -24,13 +25,19 @@ import copy
 import datetime as dt
 import dill as pickle
 import json
+import logging
+import numbers
 import os
 import pickle as _pickle
 import pprint
+from uuid import uuid4
 
 import numpy as np
 
 import eta.core.utils as etau
+
+
+logger = logging.getLogger(__name__)
 
 
 def load_json(path_or_str):
@@ -406,24 +413,425 @@ def _recurse(v, reflective):
     return v
 
 
+class Set(Serializable):
+    '''Abstract base class for flexible sets that store homogeneous elements
+    of a `Serializable` class and provides O(1) lookup of elements by a
+    subclass-configurable element attribute.
+
+    This class cannot be instantiated directly. Instead a subclass should
+    be created for each type of element to be stored. Subclasses MUST set the
+    following members:
+        -  `_ELE_CLS`: the class of the element stored in the set
+        -  `_ELE_KEY_ATTR`: the name of the element attribute to use to perform
+            element lookups
+
+    In addition, sublasses MAY override the following members:
+        - `_ELE_CLS_FIELD`: the name of the private attribute that will store
+            the class of the elements in the set
+        - `_ELE_ATTR`: the name of the attribute that will store the elements
+            in the set
+
+    Set subclasses can optionally embed their class names and underlying
+    element class names in their JSON representations, so they can be read
+    reflectively from disk.
+
+    Examples:
+        ```
+        from eta.core.serial import Set
+        from eta.core.geometry import LabeledPointSet
+
+        points = LabeledPointSet()
+        points.write_json("points.json", reflective=True)
+
+        points2 = Set.from_json("points.json")
+        print(points2.__class__)  # LabeledPointSet, not Set!
+        ```
+    '''
+
+    #
+    # The class of the element stored in the set
+    #
+    # Subclasses MUST set this field
+    #
+    _ELE_CLS = None
+
+    #
+    # The name of the element attribute that will be used when looking up
+    # elements by key in the set
+    #
+    # Subclasses MUST set this field
+    #
+    _ELE_KEY_ATTR = None
+
+    #
+    # The name of the private attribute that will store the class of the
+    # elements in the set
+    #
+    # Subclasses MAY set this field
+    #
+    _ELE_CLS_FIELD = "_ELEMENT_CLS"
+
+    #
+    # The name of the attribute that will store the elements in the set
+    #
+    # Subclasses MAY set this field
+    #
+    _ELE_ATTR = "elements"
+
+    def __init__(self, **kwargs):
+        '''Creates a Set instance.
+
+        Args:
+            <elements>: an optional iterable of elements to store in the Set.
+                The appropriate name of this keyword argument is determined by
+                the `_ELE_ATTR` member of the Set subclass
+
+        Raises:
+            SetError: if there was an error while creating the set
+        '''
+        self._validate_cls()
+
+        if kwargs and self._ELE_ATTR not in kwargs:
+            raise SetError(
+                "Expected elements to be provided in keyword argument '%s'; "
+                "found keys %s" % (self._ELE_ATTR, list(kwargs.keys())))
+        elements = kwargs.get(self._ELE_ATTR, [])
+
+        for e in elements:
+            if not isinstance(e, self._ELE_CLS):
+                raise SetError(
+                    "Set %s expects elements of type %s but found "
+                    "%s" % (self.__class__, self._ELE_CLS, e.__class__))
+
+        self.clear()
+        self.add_iterable(elements)
+
+    def __getitem__(self, key):
+        return self.__elements__[key]
+
+    def __setitem__(self, key, element):
+        self.__elements__[key] = element
+
+    def __delitem__(self, key):
+        del self.__elements__[key]
+
+    def __contains__(self, key):
+        return key in self.__elements__
+
+    def __iter__(self):
+        return iter(itervalues(self.__elements__))
+
+    def __len__(self):
+        return len(self.__elements__)
+
+    def __bool__(self):
+        return bool(self.__elements__)
+
+    @property
+    def __elements__(self):
+        return getattr(self, self._ELE_ATTR)
+
+    @classmethod
+    def get_element_class(cls):
+        '''Gets the class of elements stored in this set.'''
+        return cls._ELE_CLS
+
+    @classmethod
+    def get_element_class_name(cls):
+        '''Returns the fully-qualified class name string of the element
+        instances in this set.
+        '''
+        return etau.get_class_name(cls._ELE_CLS)
+
+    @classmethod
+    def get_key(cls, element):
+        '''Gets the key for the given element, i.e., its `_ELE_KEY_ATTR` field.
+
+        Args:
+            element: an instance of `_ELE_CLS`
+
+        Returns:
+            the key for the element
+        '''
+        return getattr(element, cls._ELE_KEY_ATTR)
+
+    def clear(self):
+        '''Deletes all elements from the set.'''
+        setattr(self, self._ELE_ATTR, OrderedDict())
+
+    def copy(self):
+        '''Returns a deep copy of the set.
+
+        Returns:
+            a Set
+        '''
+        return copy.deepcopy(self)
+
+    def get_keys(self):
+        '''Returns the set of keys for the elements of the set.'''
+        return set(self.__elements__)
+
+    def add(self, element):
+        '''Adds an element to the container.
+
+        Args:
+            element: an instance of `_ELE_CLS`
+        '''
+        key = self.get_key(element) or str(uuid4())
+        self.__elements__[key] = element
+
+    def add_set(self, set_):
+        '''Adds the elements in the given set to this set.
+
+        Args:
+            set_: a Set
+        '''
+        self.__elements__.update(set_.__elements__)
+
+    def add_iterable(self, elements):
+        '''Adds the elements in the given iterable to the set.
+
+        Args:
+            elements: an iterable of `_ELE_CLS` objects
+        '''
+        for element in elements:
+            self.add(element)
+
+    def filter_elements(self, filters, match=any):
+        '''Removes elements that don't match the given filters from the set.
+
+        Args:
+            filters: a list of functions that accept elements and return
+                True/False
+            match: a function (usually `any` or `all`) that accepts an iterable
+                and returns True/False. Used to aggregate the outputs of each
+                filter to decide whether a match has occurred. The default is
+                `any`
+        '''
+        elements = self._filter_elements(filters, match)
+        setattr(self, self._ELE_ATTR, elements)
+
+    def delete_keys(self, keys):
+        '''Deletes the elements from the set with the given keys.
+
+        Args:
+            keys: an iterable of keys of the elements to delete
+        '''
+        for key in keys:
+            del self.__elements__[key]
+
+    def keep_keys(self, keys):
+        '''Keeps only the elements in the set with the given keys.
+
+        Args:
+            keys: an iterable of keys of the elements to keep
+        '''
+        elements = self._get_elements(keys)
+        setattr(self, self._ELE_ATTR, elements)
+
+    def extract_keys(self, keys):
+        '''Creates a new set having only the elements with the given keys.
+
+        Args:
+            keys: an iterable of keys of the elements to keep
+
+        Returns:
+            a Set
+        '''
+        new_set = self.copy()
+        new_set.keep_keys(keys)
+        return new_set
+
+    def count_matches(self, filters, match=any):
+        '''Counts the number of elements in the set that match the given
+        filters.
+
+        Args:
+            filters: a list of functions that accept instances of class
+                `_ELE_CLS`and return True/False
+            match: a function (usually `any` or `all`) that accepts an iterable
+                and returns True/False. Used to aggregate the outputs of each
+                filter to decide whether a match has occurred. The default is
+                `any`
+
+        Returns:
+            the number of elements in the set that match the filters
+        '''
+        elements = self._filter_elements(filters, match)
+        return len(elements)
+
+    def get_matches(self, filters, match=any):
+        '''Gets elements matching the given filters.
+
+        Args:
+            filters: a list of functions that accept elements and return
+                True/False
+            match: a function (usually `any` or `all`) that accepts an iterable
+                and returns True/False. Used to aggregate the outputs of each
+                filter to decide whether a match has occurred. The default is
+                `any`
+
+        Returns:
+            a copy of the set containing only the elements that match the
+                filters
+        '''
+        new_set = self.copy()
+        new_set.filter_elements(filters, match=match)
+        return new_set
+
+    def sort_by(self, attr, reverse=False):
+        '''Sorts the elements in the set by the given attribute.
+
+        Elements whose attribute is None are always put at the end of the set.
+
+        Args:
+            attr: the element attribute to sort by
+            reverse: whether to sort in descending order. The default is False
+        '''
+        def field_none_last(key_ele_pair):
+            val = getattr(key_ele_pair[1], attr)
+            return ((val is None) ^ reverse, val)  # always puts None last
+
+        elements = OrderedDict(
+            sorted(
+                iteritems(self.__elements__),
+                reverse=reverse, key=field_none_last))
+        setattr(self, self._ELE_ATTR, elements)
+
+    def attributes(self):
+        '''Returns the list of class attributes that will be serialized.'''
+        return [self._ELE_ATTR]
+
+    def serialize(self, reflective=False):
+        '''Serializes the set into a dictionary.
+
+        Args:
+            reflective: whether to include reflective attributes when
+                serializing the object. By default, this is False
+
+        Returns:
+            a JSON dictionary representation of the set
+        '''
+        d = OrderedDict()
+        if reflective:
+            d["_CLS"] = self.get_class_name()
+            d[self._ELE_CLS_FIELD] = etau.get_class_name(self._ELE_CLS)
+
+        #
+        # Note that we serialize the dictionary into a list; the keys are
+        # re-generated during de-serialization
+        #
+        elements_list = list(itervalues(self.__elements__))
+        d[self._ELE_ATTR] = _recurse(elements_list, False)
+
+        return d
+
+    @classmethod
+    def from_dict(cls, d):
+        '''Constructs a Set from a JSON dictionary.
+
+        If the dictionary has the `"_CLS"` and `cls._ELE_CLS_FIELD`
+        keys, they are used to infer the Set class and underlying element
+        classes, respectively, and this method can be invoked on any
+        `Set` subclass that has the same `_ELE_CLS_FIELD` setting.
+
+        Otherwise, this method must be called on the same concrete `Set`
+        subclass from which the JSON was generated.
+
+        Args:
+            d: a JSON dictionary representation of a Set object
+
+        Returns:
+            an instance of the Set class
+        '''
+        cls = cls._validate_dict(d)
+        elements = [cls._ELE_CLS.from_dict(dd) for dd in d[cls._ELE_ATTR]]
+        return cls(**{cls._ELE_ATTR: elements})
+
+    def _get_elements(self, keys):
+        if isinstance(keys, six.string_types):
+            logger.debug("Wrapping single filename as a list")
+            keys = [keys]
+
+        return OrderedDict(
+            (k, v) for k, v in iteritems(self.__elements__) if k in set(keys))
+
+    def _filter_elements(self, filters, match):
+        return OrderedDict(
+            (k, v) for k, v in iteritems(self.__elements__)
+            if match(f(v) for f in filters))
+
+    @classmethod
+    def _validate_cls(cls):
+        '''Validates that a Set instance is valid.'''
+        if cls._ELE_CLS is None:
+            raise SetError(
+                "Cannot instantiate a Set for which _ELE_CLS is None")
+        if cls._ELE_ATTR is None:
+            raise SetError(
+                "Cannot instantiate a Set for which _ELE_ATTR is None")
+        if not issubclass(cls._ELE_CLS, Serializable):
+            raise SetError(
+                "%s is not Serializable" % cls._ELE_CLS)
+        if cls._ELE_KEY_ATTR is None:
+            raise SetError(
+                "Cannot instantiate a Set for which _ELE_KEY_ATTR is None")
+
+    @classmethod
+    def _validate_dict(cls, d):
+        if cls._ELE_CLS_FIELD is None:
+            raise SetError(
+                "%s is an abstract set and cannot be used to load a "
+                "JSON dictionary. Please use a Set subclass that "
+                "defines its `_ELE_CLS_FIELD` member" % cls)
+
+        if "_CLS" not in d:
+            return cls
+
+        if cls._ELE_CLS_FIELD not in d:
+            raise SetError(
+                "Cannot use %s to reflectively load this set because the "
+                "expected field '%s' was not found in the JSON "
+                "dictionary" % (cls, cls._ELE_CLS_FIELD))
+
+        return etau.get_class(d["_CLS"])
+
+
+class SetError(Exception):
+    '''Exception raised when an invalid Set is encountered.'''
+    pass
+
+
 class Container(Serializable):
     '''Abstract base class for flexible containers that store homogeneous lists
     of elements of a `Serializable` class.
 
-    Container subclasses embed their class names and underlying element class
-    names in their JSON representations, so they can be read reflectively from
-    disk.
+    This class cannot be instantiated directly. Instead a subclass should
+    be created for each type of element to be stored. Subclasses MUST set the
+    following members:
+        -  `_ELE_CLS`: the class of the element stored in the container
 
-    This class cannot be instantiated directly.
+    In addition, sublasses MAY override the following members:
+        - `_ELE_CLS_FIELD`: the name of the private attribute that will store
+            the class of the elements in the container
+        - `_ELE_ATTR`: the name of the attribute that will store the elements
+            in the container
 
-    This class currently has only two direct subclasses, which bifurcate the
-    container implementation into two distinct categories:
-        - `eta.core.config.ConfigContainer`: base class for containers that
-            store lists of `Config` instances
-        - `eta.core.data.DataContainer`: base class for containers that store
-            lists of arbitrary `Serializable` data instances
+    Container subclasses can optionally embed their class names and underlying
+    element class names in their JSON representations, so they can be read
+    reflectively from disk.
 
-    See `ConfigContainer` and `DataContainer` for concrete usage examples.
+    Examples:
+        ```
+        from eta.core.serial import Container
+        from eta.core.geometry import LabeledPointContainer
+
+        points = LabeledPointContainer()
+        points.write_json("points.json", reflective=True)
+
+        points2 = Container.from_json("points.json")
+        print(points2.__class__)  # LabeledPointContainer, not Container!
+        ```
     '''
 
     #
@@ -437,29 +845,29 @@ class Container(Serializable):
     # The name of the private attribute that will store the class of the
     # elements in the container
     #
-    # Subclasses MUST set this field
+    # Subclasses MAY set this field
     #
-    _ELE_CLS_FIELD = None
+    _ELE_CLS_FIELD = "_ELEMENT_CLS"
 
     #
     # The name of the attribute that will store the elements in the container
     #
-    # Subclasses MUST set this field
+    # Subclasses MAY set this field
     #
-    _ELE_ATTR = None
+    _ELE_ATTR = "elements"
 
     def __init__(self, **kwargs):
         '''Creates a Container instance.
 
         Args:
-            <elements>: an optional list of elements to store in the Container.
-                The appropriate name of this keyword argument is determined by
-                the `_ELE_ATTR` member of the Container subclass
+            <elements>: an optional iterable of elements to store in the
+                Container. The appropriate name of this keyword argument is
+                determined by the `_ELE_ATTR` member of the Container subclass
 
         Raises:
             ContainerError: if there was an error while creating the container
         '''
-        self._validate()
+        self._validate_cls()
 
         if kwargs and self._ELE_ATTR not in kwargs:
             raise ContainerError(
@@ -473,16 +881,17 @@ class Container(Serializable):
                     "Container %s expects elements of type %s but found "
                     "%s" % (self.__class__, self._ELE_CLS, e.__class__))
 
-        setattr(self, self._ELE_ATTR, elements)
+        self.clear()
+        self.add_iterable(elements)
 
-    def __getitem__(self, index):
-        return self.__elements__[index]
+    def __getitem__(self, idx):
+        return self.__elements__[idx]
 
-    def __setitem__(self, index, value):
-        self.__elements__[index] = value
+    def __setitem__(self, idx, element):
+        self.__elements__[idx] = element
 
-    def __delitem__(self, index):
-        del self.__elements__[index]
+    def __delitem__(self, idx):
+        del self.__elements__[idx]
 
     def __iter__(self):
         return iter(self.__elements__)
@@ -491,19 +900,43 @@ class Container(Serializable):
         return len(self.__elements__)
 
     def __bool__(self):
-        return self.size > 0
+        return bool(self.__elements__)
 
     @property
     def __elements__(self):
         return getattr(self, self._ELE_ATTR)
 
-    def add(self, instance):
+    @classmethod
+    def get_element_class(cls):
+        '''Gets the class of elements stored in this container.'''
+        return cls._ELE_CLS
+
+    @classmethod
+    def get_element_class_name(cls):
+        '''Returns the fully-qualified class name string of the element
+        instances in this container.
+        '''
+        return etau.get_class_name(cls._ELE_CLS)
+
+    def clear(self):
+        '''Deletes all elements from the container.'''
+        setattr(self, self._ELE_ATTR, [])
+
+    def copy(self):
+        '''Returns a deep copy of the container.
+
+        Returns:
+            a Container
+        '''
+        return copy.deepcopy(self)
+
+    def add(self, element):
         '''Adds an element to the container.
 
         Args:
-            instance: an instance of `_ELE_CLS`
+            element: an instance of `_ELE_CLS`
         '''
-        self.__elements__.append(instance)
+        self.__elements__.append(element)
 
     def add_container(self, container):
         '''Adds the elements in the given container to this container.
@@ -512,6 +945,18 @@ class Container(Serializable):
             container: a Container instance
         '''
         self.__elements__.extend(container.__elements__)
+
+    def add_iterable(self, elements):
+        '''Adds the elements in the given iterable to the container.
+
+        Args:
+            elements: an iterable of `_ELE_CLS` objects
+        '''
+        if isinstance(elements, list):
+            self.__elements__.extend(elements)
+        else:
+            for element in elements:
+                self.add(element)
 
     def filter_elements(self, filters, match=any):
         '''Removes elements that don't match the given filters from the
@@ -543,8 +988,7 @@ class Container(Serializable):
         Args:
             inds: an iterable of indices of the elements to keep
         '''
-        inds = set(inds)
-        elements = [e for i, e in enumerate(self.__elements__) if i in inds]
+        elements = self._get_elements(inds)
         setattr(self, self._ELE_ATTR, elements)
 
     def extract_inds(self, inds):
@@ -557,18 +1001,9 @@ class Container(Serializable):
         Returns:
             a Container
         '''
-        container = copy.deepcopy(self)
-        container.keep_inds(inds)
-        return container
-
-    def clear(self):
-        '''Deletes all elements from the container.'''
-        setattr(self, self._ELE_ATTR, [])
-
-    @property
-    def size(self):
-        '''Returns the number of elements in the container.'''
-        return len(self.__elements__)
+        new_container = self.copy()
+        new_container.keep_inds(inds)
+        return new_container
 
     def count_matches(self, filters, match=any):
         '''Counts the number of elements in the container that match the
@@ -585,7 +1020,8 @@ class Container(Serializable):
         Returns:
             the number of elements in the container that match the filters
         '''
-        return self.get_matches(filters, match=match).size
+        elements = self._filter_elements(filters, match)
+        return len(elements)
 
     def get_matches(self, filters, match=any):
         '''Gets elements matching the given filters.
@@ -602,8 +1038,9 @@ class Container(Serializable):
             a copy of the container containing only the elements that match
                 the filters
         '''
-        elements = self._filter_elements(filters, match)
-        return self.__class__(**{self._ELE_ATTR: elements})
+        new_container = self.copy()
+        new_container.filter_elements(filters, match=match)
+        return new_container
 
     def sort_by(self, attr, reverse=False):
         '''Sorts the elements in the container by the given attribute.
@@ -618,9 +1055,9 @@ class Container(Serializable):
             val = getattr(ele, attr)
             return ((val is None) ^ reverse, val)  # always puts None last
 
-        setattr(
-            self, self._ELE_ATTR, sorted(
-                self.__elements__, reverse=reverse, key=field_none_last))
+        elements = sorted(
+            self.__elements__, reverse=reverse, key=field_none_last)
+        setattr(self, self._ELE_ATTR, elements)
 
     def attributes(self):
         '''Returns the list of class attributes that will be serialized.'''
@@ -654,48 +1091,499 @@ class Container(Serializable):
 
         Otherwise, this method must be called on the same concrete `Container`
         subclass from which the JSON was generated.
+
+        Args:
+            d: a JSON dictionary representation of a Container object
+
+        Returns:
+            an instance of the Container class
         '''
+        cls = cls._validate_dict(d)
+        elements = [cls._ELE_CLS.from_dict(dd) for dd in d[cls._ELE_ATTR]]
+        return cls(**{cls._ELE_ATTR: elements})
+
+    def _get_elements(self, inds):
+        if isinstance(inds, numbers.Integral):
+            logger.debug("Wrapping single index as a list")
+            inds = [inds]
+
+        return [e for i, e in enumerate(self.__elements__) if i in set(inds)]
+
+    def _filter_elements(self, filters, match):
+        return list(
+            filter(lambda o: match(f(o) for f in filters), self.__elements__))
+
+    @classmethod
+    def _validate_cls(cls):
+        '''Validates that a Container instance is valid.'''
+        if cls._ELE_CLS is None:
+            raise ContainerError(
+                "Cannot instantiate a Container for which _ELE_CLS is None")
+        if cls._ELE_ATTR is None:
+            raise ContainerError(
+                "Cannot instantiate a Container for which _ELE_ATTR is None")
+        if not issubclass(cls._ELE_CLS, Serializable):
+            raise ContainerError(
+                "%s is not Serializable" % cls._ELE_CLS)
+
+    @classmethod
+    def _validate_dict(cls, d):
         if cls._ELE_CLS_FIELD is None:
             raise ContainerError(
                 "%s is an abstract container and cannot be used to load a "
                 "JSON dictionary. Please use a Container subclass that "
                 "defines its `_ELE_CLS_FIELD` member" % cls)
 
-        if "_CLS" in d:
-            if cls._ELE_CLS_FIELD not in d:
-                raise ContainerError(
-                    "Cannot use %s to reflectively load this container "
-                    "because the expected field '%s' was not found in the "
-                    "JSON dictionary" % (cls, cls._ELE_CLS_FIELD))
+        if "_CLS" not in d:
+            return cls
 
-            # Parse reflectively
-            cls = etau.get_class(d["_CLS"])
-            ele_cls = etau.get_class(d[cls._ELE_CLS_FIELD])
+        if cls._ELE_CLS_FIELD not in d:
+            raise ContainerError(
+                "Cannot use %s to reflectively load this container "
+                "because the expected field '%s' was not found in the "
+                "JSON dictionary" % (cls, cls._ELE_CLS_FIELD))
+
+        return etau.get_class(d["_CLS"])
+
+
+class BigContainer(Container):
+    '''Container that stores a (potentially huge) list of `Serializable`
+    objects. The elements are stored on disk in a backing directory; accessing
+    any element in the list causes an immediate READ from disk, and
+    adding/setting an element causes an immediate WRITE to disk.
+
+    BigContainers store a `backing_dir` attribute that specifies the path on
+    disk to the serialized elements. The container also maintains a list of
+    uuids in its `_ELE_ATTR` field to locate elements on disk. This list is
+    included in lieu of the actual elements when serializing BigContainer
+    instances.
+
+    To read/write archives of BigContainer that also include their elements,
+    use the `to_archive()` and `from_archive()` methods, respectively.
+
+    This class cannot be instantiated directly. Instead a subclass should
+    be created for each type of element to be stored. Subclasses MUST set the
+    following members:
+        -  `_ELE_CLS`: the class of the element stored in the container
+
+    In addition, sublasses MAY override the following members:
+        - `_ELE_CLS_FIELD`: the name of the private attribute that will store
+            the class of the elements in the container
+        - `_ELE_ATTR`: the name of the attribute that will store the elements
+            in the container
+
+    Examples:
+        ```
+        import eta.core.geometry as etag
+
+        point = etag.LabeledPoint("origin", etag.RelativePoint(0, 0))
+        points = etag.BigLabeledPointContainer("/tmp/BigLabeledPointContainer")
+
+        # Immediately writes the LabeledPoint to disk
+        points.add(point)
+
+        # Reads the LabeledPoint from disk
+        print(points[0])
+
+        # Only the index of the BigContainer is serialized
+        print(points)
+        ```
+    '''
+
+    def __init__(self, backing_dir, **kwargs):
+        '''Creates a BigContainer instance.
+
+        Args:
+            backing_dir: the backing directory in which the elements are/will
+                be stored
+            <elements>: an optional list of uuids for elements in the
+                container. The appropriate name of this keyword argument is
+                determined by the `_ELE_ATTR` member of the BigContainer
+                subclass
+
+        Raises:
+            ContainerError: if there was an error while creating the container
+        '''
+        self._validate_cls()
+
+        self._backing_dir = None
+        self._set_backing_dir(backing_dir)
+
+        if self._ELE_ATTR in kwargs:
+            etau.ensure_dir(self.backing_dir)
+            elements = kwargs[self._ELE_ATTR]
         else:
-            # Validates the cls settings
-            cls()
-            # Parse using provided class
-            ele_cls = cls._ELE_CLS
+            etau.ensure_empty_dir(self.backing_dir)
+            elements = []
 
-        return cls(**{
-            cls._ELE_ATTR: [ele_cls.from_dict(dd) for dd in d[cls._ELE_ATTR]]
-        })
+        setattr(self, self._ELE_ATTR, elements)
+
+    def __iter__(self):
+        return iter(self._load_ele(path) for path in self._ele_paths)
+
+    def __getitem__(self, idx):
+        if idx < 0:
+            idx += len(self)
+        return self._load_ele(self._ele_path(idx))
+
+    def __setitem__(self, idx, ele):
+        if idx < 0:
+            idx += len(self)
+        ele.write_json(self._ele_path(idx))
+
+    def __delitem__(self, idx):
+        if idx < 0:
+            idx += len(self)
+        etau.delete_file(self._ele_path(idx))
+        super(BigContainer, self).__delitem__(idx)
+
+    @property
+    def backing_dir(self):
+        '''The backing directory for this BigContainer.'''
+        return self._backing_dir
+
+    def clear(self):
+        '''Deletes all elements from the container.'''
+        super(BigContainer, self).clear()
+        etau.delete_dir(self.backing_dir)
+        etau.ensure_dir(self.backing_dir)
+
+    def copy(self, new_backing_dir):
+        '''Creates a deep copy of this container backed by the given directory.
+
+        Args:
+            new_backing_dir: backing directory to use for the new container.
+                Must be empty or non-existent
+
+        Returns:
+            a BigContainer
+        '''
+        etau.ensure_empty_dir(new_backing_dir)
+        container = copy.deepcopy(self)
+        container._set_backing_dir(new_backing_dir)
+        container.clear()
+        container.add_container(self)
+        return container
+
+    def move(self, new_backing_dir):
+        '''Moves the backing directory of the container to the given location.
+
+        Args:
+            new_backing_dir: backing directory to use for the new container.
+                Must be empty or non-existent
+        '''
+        etau.ensure_empty_dir(new_backing_dir)
+        etau.move_dir(self.backing_dir, new_backing_dir)
+        self._set_backing_dir(new_backing_dir)
+
+    def add(self, element):
+        '''Adds an element to the container.
+
+        Args:
+            element: an instance of `_ELE_CLS`
+        '''
+        self.__elements__.append(self._make_uuid())
+        self[-1] = element
+
+    def add_container(self, container):
+        '''Adds the given container's elements to the container.
+
+        Args:
+            container: a Container to add
+        '''
+        if isinstance(container, BigContainer):
+            # Copy BigContainer elements via disk to avoid loading into memory
+            for path in container._ele_paths:
+                self._add_by_path(path)
+        else:
+            for element in container:
+                self.add(element)
+
+    def add_iterable(self, elements):
+        '''Adds the elements in the given iterable to the container.
+
+        Args:
+            elements: an iterable of `_ELE_CLS` objects
+        '''
+        for element in elements:
+            self.add(element)
+
+    def filter_elements(self, filters, match=any):
+        '''Removes elements that don't match the given filters from the
+        container.
+
+        Args:
+            filters: a list of functions that accept elements and return
+                True/False
+            match: a function (usually `any` or `all`) that accepts an iterable
+                and returns True/False. Used to aggregate the outputs of each
+                filter to decide whether a match has occurred. The default is
+                `any`
+        '''
+        new_ele_set = set(self._filter_elements(filters, match))
+        inds = [
+            idx for idx, uuid in enumerate(self.__elements__)
+            if uuid not in new_ele_set]
+        self.delete_inds(inds)
+
+    def delete_inds(self, inds):
+        '''Deletes the elements from the container with the given indices.
+
+        Args:
+            inds: a list of indices of the elements to delete
+        '''
+        for idx in sorted(inds, reverse=True):
+            del self[idx]
+
+    def keep_inds(self, inds):
+        '''Keeps only the elements in the container with the given indices.
+
+        Args:
+            inds: an iterable of indices of the elements to keep
+        '''
+        self.delete_inds(set(range(len(self))) - set(inds))
+
+    def extract_inds(self, new_backing_dir, inds):
+        '''Creates a new container having only the elements with the given
+        indices.
+
+        Args:
+            new_backing_dir: backing directory to use for the new container.
+                Must be empty or non-existent
+            inds: a list of indices of the elements to keep
+
+        Returns:
+            a BigContainer
+        '''
+        etau.ensure_empty_dir(new_backing_dir)
+        container = copy.deepcopy(self)
+        container._set_backing_dir(new_backing_dir)
+        container.clear()
+        for idx in inds:
+            container._add_by_path(self._ele_path(idx))
+
+        return container
+
+    def count_matches(self, filters, match=any):
+        '''Counts the number of elements in the container that match the
+        given filters.
+
+        Args:
+            filters: a list of functions that accept instances of class
+                `_ELE_CLS`and return True/False
+            match: a function (usually `any` or `all`) that accepts an iterable
+                and returns True/False. Used to aggregate the outputs of each
+                filter to decide whether a match has occurred. The default is
+                `any`
+
+        Returns:
+            the number of elements in the container that match the filters
+        '''
+        elements = self._filter_elements(filters, match=match)
+        return len(elements)
+
+    def get_matches(self, new_backing_dir, filters, match=any):
+        '''Gets elements matching the given filters.
+
+        Args:
+            new_backing_dir: backing directory to use for the new container.
+                Must be empty or non-existent
+            filters: a list of functions that accept elements and return
+                True/False
+            match: a function (usually `any` or `all`) that accepts an iterable
+                and returns True/False. Used to aggregate the outputs of each
+                filter to decide whether a match has occurred. The default is
+                `any`
+
+        Returns:
+            a copy of the container containing only the elements that match
+                the filters
+        '''
+        inds = self._filter_elements(filters, match)
+        return self.extract_inds(new_backing_dir, inds)
+
+    def sort_by(self, attr, reverse=False):
+        '''Sorts the elements in the container by the given attribute.
+
+        Elements whose attribute is None are always put at the end of the list.
+
+        Args:
+            attr: the element attribute to sort by
+            reverse: whether to sort in descending order. The default is False
+        '''
+        def field_none_last(uuid):
+            ele = self._load_ele_by_uuid(uuid)
+            val = getattr(ele, attr)
+            return ((val is None) ^ reverse, val)  # always puts None last
+
+        elements = sorted(
+            self.__elements__, reverse=reverse, key=field_none_last)
+        setattr(self, self._ELE_ATTR, elements)
+
+    def attributes(self):
+        '''Returns the list of class attributes that will be serialized.'''
+        return ["backing_dir"] + super(BigContainer, self).attributes()
+
+    def to_archive(self, archive_path, delete_backing_dir=False):
+        '''Writes the BigContainer to a self-contained archive file.
+
+        The archive contains both a JSON index and the raw element JSON files
+        organized in the directory structure shown below. The filename (without
+        extension) defines the root directory inside the archive.
+
+        ```
+        <root>/
+            index.json
+            <elements>/
+                <uuid>.json
+        ```
+
+        Note that deleting the backing directory is a more efficient way to
+        create the archive because it avoids data duplication.
+
+        Args:
+            archive_path: the path + extension to write the output archive
+            delete_backing_dir: whether to delete the original backing
+                directory when creating the archive. By default, this is False
+        '''
+        with etau.TempDir() as tmp_dir:
+            name = os.path.splitext(os.path.basename(archive_path))[0]
+            rootdir = os.path.join(tmp_dir, name)
+            index_path = os.path.join(rootdir, "index.json")
+            ele_dir = os.path.join(rootdir, self._ELE_ATTR)
+
+            if delete_backing_dir:
+                self.move(ele_dir)
+                container = self
+            else:
+                container = self.copy(ele_dir)
+
+            full_backing_dir = container.backing_dir
+            #
+            # This backing directory is not actually used (neither here nor
+            # in `from_archive`), but we set it relative to the root of the
+            # archive, for completeness.
+            #
+            container._backing_dir = "./" + self._ELE_ATTR
+            container.write_json(index_path)
+            container._backing_dir = full_backing_dir
+            etau.make_archive(rootdir, archive_path)
+
+    @classmethod
+    def from_archive(cls, archive_path, backing_dir, delete_archive=False):
+        '''Loads a BigContainer from an archive created by `to_archive()`.
+
+        Args:
+            archive_path: the path to the archive to load
+            backing_dir: backing directory to use for the new container.
+                Must be empty or non-existent
+            delete_archive: whether to delete the archive after unpacking it.
+                By default, this is False
+
+        Returns:
+            a BigContainer
+        '''
+        with etau.TempDir() as tmp_dir:
+            name = os.path.splitext(os.path.basename(archive_path))[0]
+            rootdir = os.path.join(tmp_dir, name)
+            index_path = os.path.join(rootdir, "index.json")
+            tmp_backing_dir = os.path.join(rootdir, cls._ELE_ATTR)
+
+            etau.extract_archive(
+                archive_path, outdir=tmp_dir, delete_archive=delete_archive)
+            container = cls.from_json(index_path)
+            container._backing_dir = tmp_backing_dir
+            container.move(backing_dir)
+
+        return container
+
+    @classmethod
+    def from_paths(cls, backing_dir, paths):
+        '''Creates a BigContainer from a list of `_ELE_CLS` JSON files.
+
+        Args:
+            backing_dir: the backing directory to use for the new BigContainer.
+                Must be empty or non-existent
+            paths: an iterable of paths to `_ELE_CLS` JSON files
+
+        Returns:
+            a BigContainer
+        '''
+        container = cls(backing_dir)
+        for path in paths:
+            container._add_by_path(path)
+        return container
+
+    @classmethod
+    def from_dir(cls, backing_dir, source_dir):
+        '''Creates a BigContainer from an unstructured directory of `_ELE_CLS`
+        JSON files on disk.
+
+        The source directory is traversed recursively.
+
+        Args:
+            backing_dir: the backing directory to use for the new BigContainer.
+                Must be empty or non-existent
+            source_dir: the source directory from which to ingest elements
+
+        Returns:
+            a BigContainer
+        '''
+        paths = etau.multiglob(".json", root=source_dir + "/**/*")
+        return cls.from_paths(backing_dir, paths)
+
+    @classmethod
+    def from_dict(cls, d):
+        '''Creates a BigContainer from a JSON dictionary.
+
+        Args:
+            d: a JSON dictionary representation of a BigContainer object
+
+        Returns:
+            an instance of the BigContainer class
+        '''
+        cls = cls._validate_dict(d)
+        return cls(**d)
 
     def _filter_elements(self, filters, match):
-        return list(
-            filter(lambda o: match(f(o) for f in filters), self.__elements__))
+        def run_filters(uuid):
+            ele = self._load_ele_by_uuid(uuid)
+            return match(f(ele) for f in filters)
 
-    def _validate(self):
-        '''Validates that a Container instance is valid.'''
-        if self._ELE_CLS is None:
-            raise ContainerError(
-                "Cannot instantiate a Container for which _ELE_CLS is None")
-        if self._ELE_ATTR is None:
-            raise ContainerError(
-                "Cannot instantiate a Container for which _ELE_ATTR is None")
-        if not issubclass(self._ELE_CLS, Serializable):
-            raise ContainerError(
-                "%s is not Serializable" % self._ELE_CLS)
+        return list(filter(run_filters, self.__elements__))
+
+    def _set_backing_dir(self, backing_dir):
+        self._backing_dir = os.path.abspath(backing_dir)
+
+    @property
+    def _ele_paths(self):
+        return (self._ele_path(idx) for idx in range(len(self)))
+
+    @staticmethod
+    def _make_uuid():
+        return str(uuid4())
+
+    def _ele_filename(self, idx):
+        if idx < 0 or idx >= len(self):
+            raise IndexError("Container index %d out of bounds" % idx)
+        return "%s.json" % self.__elements__[idx]
+
+    def _ele_path(self, idx):
+        return os.path.join(self.backing_dir, self._ele_filename(idx))
+
+    def _ele_path_by_uuid(self, uuid):
+        return os.path.join(self.backing_dir, "%s.json" % uuid)
+
+    def _load_ele(self, path):
+        return self._ELE_CLS.from_json(path)
+
+    def _load_ele_by_uuid(self, uuid):
+        return self._ELE_CLS.from_json(self._ele_path_by_uuid(uuid))
+
+    def _add_by_path(self, path):
+        uuid = self._make_uuid()
+        self.__elements__.append(uuid)
+        etau.copy_file(path, self._ele_path_by_uuid(uuid))
 
 
 class ContainerError(Exception):
