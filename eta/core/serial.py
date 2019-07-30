@@ -846,7 +846,8 @@ class BigSet(Set):
             SetError: if there was an error while creating the set
         '''
         self._validate_cls()
-        self._backing_dir = backing_dir
+        self._backing_dir = None
+        self._set_backing_dir(backing_dir)
 
         if self._ELE_ATTR in kwargs:
             etau.ensure_dir(self.backing_dir)
@@ -861,8 +862,8 @@ class BigSet(Set):
     def __getitem__(self, key):
         return self._load_ele(self._ele_path(key))
 
-    def __setitem__(self, key, ele):
-        super(BigSet, self).__setitem__(key, ele)
+    def __setitem__(self, key, element):
+        super(BigSet, self).__setitem__(key, element)
         ele.write_json(self._ele_path(key))
 
     def __delitem__(self, key):
@@ -895,7 +896,7 @@ class BigSet(Set):
         '''
         etau.ensure_empty_dir(new_backing_dir)
         set_ = copy.deepcopy(self)
-        set_._backing_dir = new_backing_dir
+        set_._set_backing_dir(new_backing_dir)
         set_.clear()
         set_.add_set(self)
         return set_
@@ -909,7 +910,7 @@ class BigSet(Set):
         '''
         etau.ensure_empty_dir(new_backing_dir)
         etau.move_dir(self.backing_dir, new_backing_dir)
-        self._backing_dir = new_backing_dir
+        self._set_backing_dir(new_backing_dir)
 
     def add_set(self, set_):
         '''Adds the elements in the given set to this set.
@@ -962,10 +963,10 @@ class BigSet(Set):
         '''
         etau.ensure_empty_dir(new_backing_dir)
         set_ = copy.deepcopy(self)
-        set_._backing_dir = new_backing_dir
+        set_._set_backing_dir(new_backing_dir)
         set_.clear()
         for key in keys:
-            self._add_by_path(self._ele_path(key))
+            set_._add_by_path(self._ele_path(key))
 
         return set_
 
@@ -1045,11 +1046,17 @@ class BigSet(Set):
                 set_ = self.copy(ele_dir)
 
             full_backing_dir = set_.backing_dir
-            set_._backing_dir = self._ELE_ATTR
+            #
+            # This backing directory is not actually used (neither here nor
+            # in `from_archive`), but we set it relative to the root of the
+            # archive, for completeness.
+            #
+            container._backing_dir = "./" + self._ELE_ATTR
             set_.write_json(index_path)
             set_._backing_dir = full_backing_dir
             etau.make_archive(rootdir, archive_path)
 
+    @classmethod
     def from_archive(cls, archive_path, backing_dir, delete_archive=False):
         '''Loads a BigSet from an archive created by `to_archive()`.
 
@@ -1109,8 +1116,8 @@ class BigSet(Set):
         Returns:
             a BigSet
         '''
-        return cls.from_paths(
-            backing_dir, etau.multiglob(".json", source_dir + "/**"))
+        paths = etau.multiglob(".json", root=source_dir + "/**/*")
+        return cls.from_paths(backing_dir, paths)
 
     @classmethod
     def from_dict(cls, d):
@@ -1133,6 +1140,9 @@ class BigSet(Set):
         return OrderedDict(
             (k, v) for k, v in iteritems(self.__elements__)
             if match(run_filters(v)))
+
+    def _set_backing_dir(self, backing_dir):
+        self._backing_dir = os.path.abspath(backing_dir)
 
     @property
     def _ele_paths(self):
