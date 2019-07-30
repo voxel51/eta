@@ -41,7 +41,7 @@ import eta
 from eta.core.data import AttributeContainer, AttributeContainerSchema, \
     AttributeContainerSchemaError
 from eta.core.objects import DetectedObjectContainer
-from eta.core.serial import Serializable, Set
+from eta.core.serial import Serializable, Set, BigSet
 import eta.core.utils as etau
 import eta.core.web as etaw
 
@@ -784,6 +784,17 @@ class ImageSetLabels(Serializable):
             schema = ImageLabelsSchema.from_dict(schema)
 
         return cls(images=images, schema=schema)
+
+
+class _BigImageLabelsSet(BigSet, _ImageLabelsSet):
+    '''Internal set type used by BigImageSetLabels to store labels.'''
+
+
+class BigImageSetLabels(ImageSetLabels):
+    '''ImageSetLabels which uses a BigSet (_BigImageLabelsSet) to store labels.
+    '''
+
+    _SET_CLS = _BigImageLabelsSet
 
 
 ###### Image I/O ##############################################################

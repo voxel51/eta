@@ -45,7 +45,7 @@ from eta.core.data import AttributeContainer, AttributeContainerSchema
 import eta.core.gps as etag
 import eta.core.image as etai
 from eta.core.objects import DetectedObjectContainer
-from eta.core.serial import load_json, Serializable, Set
+from eta.core.serial import load_json, Serializable, Set, BigSet
 import eta.core.utils as etau
 
 
@@ -1453,6 +1453,17 @@ class VideoSetLabels(Serializable):
             schema = VideoLabelsSchema.from_dict(schema)
 
         return cls(videos=videos, schema=schema)
+
+
+class _BigVideoLabelsSet(BigSet, _VideoLabelsSet):
+    '''Internal set type used by BigVideoSetLabels to store labels.'''
+
+
+class BigImageSetLabels(VideoSetLabels):
+    '''VideoSetLabels which uses a BigSet (_BigVideoLabelsSet) to store labels.
+    '''
+
+    _SET_CLS = _BigVideoLabelsSet
 
 
 class VideoStreamInfo(Serializable):
