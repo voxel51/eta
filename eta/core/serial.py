@@ -1205,7 +1205,9 @@ class BigContainer(Container):
             ContainerError: if there was an error while creating the container
         '''
         self._validate_cls()
-        self._backing_dir = backing_dir
+
+        self._backing_dir = None
+        self._set_backing_dir(backing_dir)
 
         if self._ELE_ATTR in kwargs:
             etau.ensure_dir(self.backing_dir)
@@ -1258,7 +1260,7 @@ class BigContainer(Container):
         '''
         etau.ensure_empty_dir(new_backing_dir)
         container = copy.deepcopy(self)
-        container._backing_dir = new_backing_dir
+        container._set_backing_dir(new_backing_dir)
         container.clear()
         container.add_container(self)
         return container
@@ -1272,7 +1274,7 @@ class BigContainer(Container):
         '''
         etau.ensure_empty_dir(new_backing_dir)
         etau.move_dir(self.backing_dir, new_backing_dir)
-        self._backing_dir = new_backing_dir
+        self._set_backing_dir(new_backing_dir)
 
     def add(self, element):
         '''Adds an element to the container.
@@ -1355,7 +1357,7 @@ class BigContainer(Container):
         '''
         etau.ensure_empty_dir(new_backing_dir)
         container = copy.deepcopy(self)
-        container._backing_dir = new_backing_dir
+        container._set_backing_dir(new_backing_dir)
         container.clear()
         for idx in inds:
             self._add_by_path(self._ele_path(idx))
@@ -1457,7 +1459,12 @@ class BigContainer(Container):
                 container = self.copy(ele_dir)
 
             full_backing_dir = container.backing_dir
-            container._backing_dir = self._ELE_ATTR
+            #
+            # This backing directory is not actually used (neither here nor
+            # in `from_archive`), but we set it relative to the root of the
+            # archive, for completeness.
+            #
+            container._backing_dir = "./" + self._ELE_ATTR
             container.write_json(index_path)
             container._backing_dir = full_backing_dir
             etau.make_archive(rootdir, archive_path)
@@ -1544,6 +1551,9 @@ class BigContainer(Container):
             return match(f(ele) for f in filters)
 
         return list(filter(run_filters, self.__elements__))
+
+    def _set_backing_dir(self, backing_dir):
+        self._backing_dir = os.path.abspath(backing_dir)
 
     @property
     def _ele_paths(self):
