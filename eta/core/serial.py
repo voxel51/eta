@@ -509,8 +509,8 @@ class Set(Serializable):
     def __getitem__(self, key):
         return self.__elements__[key]
 
-    def __setitem__(self, key, value):
-        self.__elements__[key] = value
+    def __setitem__(self, key, element):
+        self.__elements__[key] = element
 
     def __delitem__(self, key):
         del self.__elements__[key]
@@ -884,14 +884,14 @@ class Container(Serializable):
         self.clear()
         self.add_iterable(elements)
 
-    def __getitem__(self, index):
-        return self.__elements__[index]
+    def __getitem__(self, idx):
+        return self.__elements__[idx]
 
-    def __setitem__(self, index, value):
-        self.__elements__[index] = value
+    def __setitem__(self, idx, element):
+        self.__elements__[idx] = element
 
-    def __delitem__(self, index):
-        del self.__elements__[index]
+    def __delitem__(self, idx):
+        del self.__elements__[idx]
 
     def __iter__(self):
         return iter(self.__elements__)
