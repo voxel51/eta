@@ -509,8 +509,8 @@ class Set(Serializable):
     def __getitem__(self, key):
         return self.__elements__[key]
 
-    def __setitem__(self, key, value):
-        self.__elements__[key] = value
+    def __setitem__(self, key, element):
+        self.__elements__[key] = element
 
     def __delitem__(self, key):
         del self.__elements__[key]
@@ -1260,14 +1260,14 @@ class Container(Serializable):
         self.clear()
         self.add_iterable(elements)
 
-    def __getitem__(self, index):
-        return self.__elements__[index]
+    def __getitem__(self, idx):
+        return self.__elements__[idx]
 
-    def __setitem__(self, index, value):
-        self.__elements__[index] = value
+    def __setitem__(self, idx, element):
+        self.__elements__[idx] = element
 
-    def __delitem__(self, index):
-        del self.__elements__[index]
+    def __delitem__(self, idx):
+        del self.__elements__[idx]
 
     def __iter__(self):
         return iter(self.__elements__)
@@ -1581,7 +1581,9 @@ class BigContainer(Container):
             ContainerError: if there was an error while creating the container
         '''
         self._validate_cls()
-        self._backing_dir = backing_dir
+
+        self._backing_dir = None
+        self._set_backing_dir(backing_dir)
 
         if self._ELE_ATTR in kwargs:
             etau.ensure_dir(self.backing_dir)
@@ -1634,7 +1636,7 @@ class BigContainer(Container):
         '''
         etau.ensure_empty_dir(new_backing_dir)
         container = copy.deepcopy(self)
-        container._backing_dir = new_backing_dir
+        container._set_backing_dir(new_backing_dir)
         container.clear()
         container.add_container(self)
         return container
@@ -1648,7 +1650,7 @@ class BigContainer(Container):
         '''
         etau.ensure_empty_dir(new_backing_dir)
         etau.move_dir(self.backing_dir, new_backing_dir)
-        self._backing_dir = new_backing_dir
+        self._set_backing_dir(new_backing_dir)
 
     def add(self, element):
         '''Adds an element to the container.
@@ -1727,14 +1729,14 @@ class BigContainer(Container):
             inds: a list of indices of the elements to keep
 
         Returns:
-            BigContainer
+            a BigContainer
         '''
         etau.ensure_empty_dir(new_backing_dir)
         container = copy.deepcopy(self)
-        container._backing_dir = new_backing_dir
+        container._set_backing_dir(new_backing_dir)
         container.clear()
         for idx in inds:
-            self._add_by_path(self._ele_path(idx))
+            container._add_by_path(self._ele_path(idx))
 
         return container
 
@@ -1815,11 +1817,17 @@ class BigContainer(Container):
                 container = self.copy(ele_dir)
 
             full_backing_dir = container.backing_dir
-            container._backing_dir = self._ELE_ATTR
+            #
+            # This backing directory is not actually used (neither here nor
+            # in `from_archive`), but we set it relative to the root of the
+            # archive, for completeness.
+            #
+            container._backing_dir = "./" + self._ELE_ATTR
             container.write_json(index_path)
             container._backing_dir = full_backing_dir
             etau.make_archive(rootdir, archive_path)
 
+    @classmethod
     def from_archive(cls, archive_path, backing_dir, delete_archive=False):
         '''Loads a BigContainer from an archive created by `to_archive()`.
 
@@ -1879,8 +1887,8 @@ class BigContainer(Container):
         Returns:
             a BigContainer
         '''
-        return cls.from_paths(
-            backing_dir, etau.multiglob(".json", source_dir + "/**"))
+        paths = etau.multiglob(".json", root=source_dir + "/**/*")
+        return cls.from_paths(backing_dir, paths)
 
     @classmethod
     def from_dict(cls, d):
@@ -1901,6 +1909,9 @@ class BigContainer(Container):
             return match(f(ele) for f in filters)
 
         return list(filter(run_filters, self.__elements__))
+
+    def _set_backing_dir(self, backing_dir):
+        self._backing_dir = os.path.abspath(backing_dir)
 
     @property
     def _ele_paths(self):
