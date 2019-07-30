@@ -778,12 +778,20 @@ def ensure_path(path):
 
 
 def ensure_basedir(path):
-    '''Makes the base directory of the given path, if necessary.'''
+    '''Makes the base directory of the given path, if necessary.
+
+    Args:
+        path: the filepath
+    '''
     ensure_dir(os.path.dirname(path))
 
 
 def ensure_dir(dirname):
-    '''Makes the given directory, if necessary.'''
+    '''Makes the given directory, if necessary.
+
+    Args:
+        dirname: the directory path
+    '''
     if dirname and not os.path.isdir(dirname):
         logger.debug("Making directory '%s'", dirname)
         os.makedirs(dirname)
@@ -904,96 +912,150 @@ def to_human_bits_str(num_bits, decimals=1):
     return (str_fmt % num_bits).rstrip("0").rstrip(".") + unit
 
 
+_ARCHIVE_FORMATS = {
+    ".zip": "zip",
+    ".tar": "tar",
+    ".tar.gz": "gztar",
+    ".tgz": "gztar",
+    ".tar.bz": "bztar",
+    ".tbz": "bztar"
+}
+
+
+def make_archive(dir_path, archive_path):
+    '''Makes an archive containing the given directory.
+
+    Supported formats include `.zip`, `.tar`, `.tar.gz`, `.tgz`, `.tar.bz`,
+    and `.tbz`.
+
+    Args:
+        dir_path: the directory to archive
+        archive_path: the path + filename of the archive to create
+    '''
+    outpath, ext = os.path.splitext(archive_path)
+    if ext == ".zip" and eta.is_python2():
+        make_zip64(dir_path, archive_path)
+        return
+
+    format = _ARCHIVE_FORMATS[ext]
+    rootdir, basedir = os.path.split(os.path.realpath(dir_path))
+    shutil.make_archive(outpath, format, rootdir, basedir)
+
+
 def make_tar(dir_path, tar_path):
-    '''Makes a .tar.gz file containing the given directory.
+    '''Makes a tarfile containing the given directory.
+
+    Supported formats include `.tar`, `.tar.gz`, `.tgz`, `.tar.bz`, and `.tbz`.
 
     Args:
         dir_path: the directory to tar
         tar_path: the path + filename of the .tar.gz file to create
     '''
-    outpath = re.sub(r"\.tar\.gz$", "", tar_path)
-    rootdir, basedir = os.path.split(os.path.realpath(dir_path))
-    shutil.make_archive(outpath, "gztar", rootdir, basedir)
-
-
-def extract_tar(inpath, outdir=None, delete_tar=False):
-    '''Extracts the contents of a .tar, tar.gz, .tgz, .tar.bz, or .tbz file.
-
-    Args:
-        inpath: the path to the tar or compressed tar file
-        outdir: the directory into which to extract the archive contents. By
-            default, the directory containing the tar file is used
-        delete_tar: whether to delete the tar archive after extraction. By
-            default, this is False
-    '''
-    if inpath.endswith("tar"):
-        fmt = "r:"
-    elif inpath.endswith("tar.gz") or inpath.endswith("tgz"):
-        fmt = "r:gz"
-    elif inpath.endswith("tar.bz") or inpath.endswith("tbz"):
-        fmt = "r:bz2"
-    else:
-        raise ValueError(
-            "Expected file '%s' to have extension .tar, .tar.gz, .tgz,"
-            ".tar.bz, or .tbz in order to extract it" % inpath)
-
-    outdir = outdir or os.path.dirname(inpath) or "."
-    with tarfile.open(inpath, fmt) as tar:
-        tar.extractall(path=outdir)
-
-    if delete_tar:
-        delete_file(inpath)
+    make_archive(dir_path, tar_path)
 
 
 def make_zip(dir_path, zip_path):
-    '''Makes a .zip file containing the given directory.
+    '''Makes a zipfile containing the given directory.
 
-    Use `make_zip64` for python 2 compatibility when making large archives.
-    `shutil.make_archive` does not offer Zip64 in python 2, and is therefore
+    Python 2 users must use `make_zip64` when making large zip files.
+    `shutil.make_archive` does not offer Zip64 in Python 2, and is therefore
     limited to 4GiB archives with less than 65,536 entries.
 
     Args:
         dir_path: the directory to zip
-        zip_path: the path + filename of the .zip file to create
+        zip_path: the path + filename of the zip file to create
     '''
-    outpath = os.path.splitext(zip_path)[0]
-    rootdir, basedir = os.path.split(os.path.realpath(dir_path))
-    shutil.make_archive(outpath, "zip", rootdir, basedir)
+    make_archive(dir_path, zip_path)
 
 
 def make_zip64(dir_path, zip_path):
-    '''Makes a .zip file containing the given directory in Zip64 format.
+    '''Makes a zip file containing the given directory in Zip64 format.
 
     Args:
         dir_path: the directory to zip
-        zip_path: the path + filename of the .zip file to create
+        zip_path: the path + filename of the zip file to create
     '''
-    rootdir, basedir = os.path.split(os.path.realpath(dir_path))
+    dir_path = os.path.realpath(dir_path)
     with zf.ZipFile(zip_path, "w", zf.ZIP_DEFLATED, allowZip64=True) as f:
         for root, _, filenames in os.walk(dir_path):
+            base = os.path.relpath(root, dir_path)
             for name in filenames:
-                outpath = os.path.join(root, name)
-                inpath = os.path.join(os.path.relpath(root, rootdir), name)
-                f.write(outpath, inpath)
+                src_path = os.path.join(root, name)
+                dest_path = os.path.join(base, name)
+                f.write(src_path, dest_path)
 
 
-def extract_zip(inpath, outdir=None, delete_zip=False):
+def extract_archive(archive_path, outdir=None, delete_archive=False):
+    '''Extracts the contents of an archive.
+
+    Supported formats include `.zip`, `.tar`, `.tar.gz`, `.tgz`, `.tar.bz`,
+    and `.tbz`.
+
+    Args:
+        archive_path: the path to the archive file
+        outdir: the directory into which to extract the archive contents. By
+            default, the directory containing the archive is used
+        delete_archive: whether to delete the archive after extraction. By
+            default, this is False
+    '''
+    #
+    # One could use `shutil.unpack_archive` in Python 3...
+    # https://docs.python.org/3/library/shutil.html#shutil.unpack_archive
+    #
+    if archive_path.endswith(".zip"):
+        extract_zip(archive_path, outdir=outdir, delete_zip=delete_archive)
+    else:
+        extract_tar(archive_path, outdir=outdir, delete_tar=delete_archive)
+
+
+def extract_zip(zip_path, outdir=None, delete_zip=False):
     '''Extracts the contents of a .zip file.
 
     Args:
-        inpath: the path to the zip file
+        zip_path: the path to the zip file
         outdir: the directory into which to extract the zip contents. By
             default, the directory containing the zip file is used
         delete_zip: whether to delete the zip after extraction. By default,
             this is False
     '''
-    outdir = outdir or os.path.dirname(inpath) or "."
+    outdir = outdir or os.path.dirname(zip_path) or "."
 
-    with zf.ZipFile(inpath, "r") as zfile:
+    with zf.ZipFile(zip_path, "r") as zfile:
         zfile.extractall(outdir)
 
     if delete_zip:
-        delete_file(inpath)
+        delete_file(zip_path)
+
+
+def extract_tar(tar_path, outdir=None, delete_tar=False):
+    '''Extracts the contents of a tarfile.
+
+    Supported formats include `.tar`, `.tar.gz`, `.tgz`, `.tar.bz`, and `.tbz`.
+
+    Args:
+        tar_path: the path to the tarfile
+        outdir: the directory into which to extract the archive contents. By
+            default, the directory containing the tar file is used
+        delete_tar: whether to delete the tar archive after extraction. By
+            default, this is False
+    '''
+    if tar_path.endswith(".tar"):
+        fmt = "r:"
+    elif tar_path.endswith(".tar.gz") or tar_path.endswith(".tgz"):
+        fmt = "r:gz"
+    elif tar_path.endswith(".tar.bz") or tar_path.endswith(".tbz"):
+        fmt = "r:bz2"
+    else:
+        raise ValueError(
+            "Expected file '%s' to have extension .tar, .tar.gz, .tgz,"
+            ".tar.bz, or .tbz in order to extract it" % tar_path)
+
+    outdir = outdir or os.path.dirname(tar_path) or "."
+    with tarfile.open(tar_path, fmt) as tar:
+        tar.extractall(path=outdir)
+
+    if delete_tar:
+        delete_file(tar_path)
 
 
 def multiglob(*patterns, **kwargs):
