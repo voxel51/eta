@@ -270,6 +270,44 @@ class ImageModel(Model):
         raise NotImplementedError("subclasses must implement process()")
 
 
+class VideoFramesModelConfig(ModelConfig):
+    '''Base configuration class that encapsulates the name of a
+    `VideoFramesModel` subclass and an instance of its associated Config class.
+
+    Attributes:
+        type: the fully-qualified class name of the `VideoFramesModel` subclass
+        config: an instance of the Config class associated with the specified
+            `VideoFramesModel` subclass
+    '''
+
+    def __init__(self, d):
+        super(VideoFramesModelConfig, self).__init__(d)
+        self._validate_type(VideoFramesModel)
+
+
+class VideoFramesModel(Model):
+    '''Interface for generic models that process videos represented as a tensor
+    of images.
+
+    Subclasses of `VideoFramesModel` must implement the `process()` method.
+
+    `VideoFramesModel` is useful when implementing a highly customized model
+    that does not fit any of the concrete classifier/detector interfaces.
+    '''
+
+    def process(self, imgs):
+        '''Generates labels for the given tensor of images.
+
+        Args:
+            imgs: a list (or d x ny x nx x 3 tensor) of images to process
+
+        Returns:
+            an `eta.core.image.VideoLabels` instance containing the labels
+                generated for the given tensor of images
+        '''
+        raise NotImplementedError("subclasses must implement process()")
+
+
 class VideoModelConfig(ModelConfig):
     '''Base configuration class that encapsulates the name of an `VideoModel`
     subclass and an instance of its associated Config class.
@@ -373,11 +411,6 @@ class ImageClassifier(Classifier, ImageModel):
     that featurizes the input images.
     '''
 
-    def process(self, img):
-        labels = etai.ImageLabels()
-        labels.add_image_attributes(self.predict(img))
-        return labels
-
     def predict(self, img):
         '''Peforms prediction on the given image.
 
@@ -404,6 +437,18 @@ class ImageClassifier(Classifier, ImageModel):
                 the predictions for each image
         '''
         return [self.predict(img) for img in imgs]
+
+    def process(self, img):
+        '''Generates labels for the given image.
+
+        Args:
+            img: the image to process
+
+        Returns:
+            an `eta.core.image.ImageLabels` instance containing the labels
+                generated for the given image
+        '''
+        return etai.ImageLabels(attrs=self.predict(img))
 
 
 class VideoFramesClassifierConfig(ClassifierConfig):
@@ -450,6 +495,24 @@ class VideoFramesClassifier(Classifier):
         '''
         raise NotImplementedError("subclasses must implement predict()")
 
+    def process(self, imgs):
+        '''Generates labels for the given tensor of images.
+
+        Args:
+            imgs: a list (or d x ny x nx x 3 tensor) of images to process
+
+        Returns:
+            an `eta.core.image.VideoLabels` instance containing the labels
+                generated for the given tensor of images
+        '''
+        labels = etav.VideoLabels()
+        attrs = self.predict(imgs)
+        for idx, imgs in enumerate(imgs):
+            frame_number = idx + 1
+            frame_labels = etav.VideoFrameLabels(frame_number, attrs=attrs)
+            labels.add_frame(frame_labels)
+        return labels
+
 
 class VideoClassifierConfig(ClassifierConfig):
     '''Configuration class that encapsulates the name of a `VideoClassifier`
@@ -479,11 +542,6 @@ class VideoClassifier(Classifier, VideoModel):
     that featurizes the frames of the input video.
     '''
 
-    def process(self, img):
-        labels = etai.VideoLabels()
-        labels.add_video_attributes(self.predict(img))
-        return labels
-
     def predict(self, video_path):
         '''Peforms prediction on the given video.
 
@@ -495,6 +553,18 @@ class VideoClassifier(Classifier, VideoModel):
                 predictions
         '''
         raise NotImplementedError("subclasses must implement predict()")
+
+    def process(self, video_path):
+        '''Generates labels for the given video.
+
+        Args:
+            video_path: the path to the video
+
+        Returns:
+            an `eta.core.video.VideoLabels` instance containing the labels
+                generated for the given video
+        '''
+        return etai.VideoLabels(attrs=self.predict(video_path))
 
 
 class DetectorConfig(ModelConfig):
@@ -563,11 +633,6 @@ class ObjectDetector(Detector, ImageModel):
     that featurizes the input images.
     '''
 
-    def process(self, img):
-        labels = etai.ImageLabels()
-        labels.add_objects(self.detect(img))
-        return labels
-
     def detect(self, img):
         '''Detects objects in the given image.
 
@@ -594,6 +659,18 @@ class ObjectDetector(Detector, ImageModel):
                 describing the detections for each image
         '''
         return [self.detect(img) for img in imgs]
+
+    def process(self, img):
+        '''Generates labels for the given image.
+
+        Args:
+            img: the image to process
+
+        Returns:
+            an `eta.core.image.ImageLabels` instance containing the labels
+                generated for the given image
+        '''
+        return etai.ImageLabels(objects=self.detect(img))
 
 
 class VideoFramesObjectDetectorConfig(DetectorConfig):
@@ -640,6 +717,24 @@ class VideoFramesObjectDetector(Detector):
         '''
         raise NotImplementedError("subclasses must implement detect()")
 
+    def process(self, imgs):
+        '''Generates labels for the given tensor of images.
+
+        Args:
+            imgs: a list (or d x ny x nx x 3 tensor) of images to process
+
+        Returns:
+            an `eta.core.image.VideoLabels` instance containing the labels
+                generated for the given tensor of images
+        '''
+        labels = etav.VideoLabels()
+        attrs = self.detect(imgs)
+        for idx, imgs in enumerate(imgs):
+            frame_number = idx + 1
+            frame_labels = etav.VideoFrameLabels(frame_number, attrs=attrs)
+            labels.add_frame(frame_labels)
+        return labels
+
 
 class VideoObjectDetectorConfig(DetectorConfig):
     '''Configuration class that encapsulates the name of a
@@ -679,3 +774,17 @@ class VideoObjectDetector(Detector):
                 the detections for the video
         '''
         raise NotImplementedError("subclasses must implement detect()")
+
+    def process(self, video_path):
+        '''Generates labels for the given video.
+
+        Args:
+            video_path: the path to the video
+
+        Returns:
+            an `eta.core.video.VideoLabels` instance containing the labels
+                generated for the given video
+        '''
+        labels = etav.VideoLabels()
+        labels.add_objects(self.detect(video_path))
+        return labels
