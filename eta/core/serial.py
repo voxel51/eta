@@ -900,12 +900,27 @@ class Container(Serializable):
         self.add_iterable(elements)
 
     def __getitem__(self, idx):
+        if isinstance(idx, slice):
+            inds = self._slice_to_inds(idx)
+            return self.extract_inds(inds)
+
         return self.__elements__[idx]
 
     def __setitem__(self, idx, element):
+        if isinstance(idx, slice):
+            inds = self._slice_to_inds(idx)
+            for idx, ele in zip(inds, element):
+                self[idx] = ele
+            return
+
         self.__elements__[idx] = element
 
     def __delitem__(self, idx):
+        if isinstance(idx, slice):
+            inds = self._slice_to_inds(idx)
+            self.delete_inds(inds)
+            return
+
         del self.__elements__[idx]
 
     def __iter__(self):
@@ -1003,7 +1018,7 @@ class Container(Serializable):
         '''Deletes the elements from the container with the given indices.
 
         Args:
-            inds: a list of indices of the elements to delete
+            inds: an iterable of indices of the elements to delete
         '''
         for idx in sorted(inds, reverse=True):
             del self.__elements__[idx]
@@ -1021,14 +1036,17 @@ class Container(Serializable):
         '''Creates a new container having only the elements with the given
         indices.
 
+        The elements are passed by reference, not copied.
+
         Args:
-            inds: a list of indices of the elements to keep
+            inds: an iterable of indices of the elements to keep
 
         Returns:
-            a Container
+            a Container with the requested elements
         '''
-        new_container = self.copy()
-        new_container.keep_inds(inds)
+        new_container = self.empty()
+        for idx in inds:
+            new_container.add(self[idx])
         return new_container
 
     def count_matches(self, filters, match=any):
@@ -1052,6 +1070,8 @@ class Container(Serializable):
     def get_matches(self, filters, match=any):
         '''Gets elements matching the given filters.
 
+        The elements are passed by reference, not copied.
+
         Args:
             filters: a list of functions that accept elements and return
                 True/False
@@ -1061,11 +1081,11 @@ class Container(Serializable):
                 `any`
 
         Returns:
-            a copy of the container containing only the elements that match
-                the filters
+            a Container with elements that matched the filters
         '''
-        new_container = self.copy()
-        new_container.filter_elements(filters, match=match)
+        new_container = self.empty()
+        elements = self._filter_elements(filters, match)
+        new_container.add_iterable(elements)
         return new_container
 
     def sort_by(self, attr, reverse=False):
@@ -1138,6 +1158,9 @@ class Container(Serializable):
     def _filter_elements(self, filters, match):
         return list(
             filter(lambda o: match(f(o) for f in filters), self.__elements__))
+
+    def _slice_to_inds(self, sli):
+        return range(len(self))[sli]
 
     def _validate(self):
         '''Validates that a Container instance is valid.'''
