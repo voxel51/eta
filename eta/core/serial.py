@@ -1589,6 +1589,31 @@ class BigContainer(Container):
 
         return container
 
+    def to_container(self):
+        '''Loads a BigContainer into an in-memory Container of the associated
+        class.
+
+        Returns:
+            a Container
+        '''
+        return self[:]
+
+    @classmethod
+    def from_container(cls, container, backing_dir):
+        '''Creates a BigContainer with the given Container's elements.
+
+        Args:
+            container: a Container
+            backing_dir: backing directory to use for the new container.
+                Must be empty or non-existent
+
+        Returns:
+            a BigContainer
+        '''
+        big_container = cls(backing_dir)
+        big_container.add_container(container)
+        return big_container
+
     @classmethod
     def from_paths(cls, backing_dir, paths):
         '''Creates a BigContainer from a list of `_ELE_CLS` JSON files.
