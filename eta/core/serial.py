@@ -1320,8 +1320,8 @@ class BigContainer(Container):
     @property
     def container_cls(self):
         '''Returns the Container class associated with this BigContainer.'''
-        module, _, big_cls = etau.get_class_name(self).rpartition(".")
-        cls_name = module + "." + big_cls[len("Big"):]
+        module, dot, big_cls = etau.get_class_name(self).rpartition(".")
+        cls_name = module + dot + big_cls[len("Big"):]
         return etau.get_class(cls_name)
 
     def clear(self):
