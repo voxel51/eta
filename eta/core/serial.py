@@ -821,6 +821,11 @@ class Container(Serializable):
     '''Abstract base class for flexible containers that store homogeneous lists
     of elements of a `Serializable` class.
 
+    Containers provide native support for all common array operations like
+    getting, setting, deleting, length, and slicing. So, for example,
+    `container[:5]` will return a `Container` that contains the first 5
+    elements of `container`.
+
     This class cannot be instantiated directly. Instead a subclass should
     be created for each type of element to be stored. Subclasses MUST set the
     following members:
@@ -1199,6 +1204,13 @@ class BigContainer(Container):
     objects. The elements are stored on disk in a backing directory; accessing
     any element in the list causes an immediate READ from disk, and
     adding/setting an element causes an immediate WRITE to disk.
+
+    BigContainers provide native support for all common array operations like
+    getting, setting, deleting, length, and slicing. In the case of slicing,
+    a BigContainer slice will be returned as an in-memory instance of the
+    corresponding `Container` version of the `BigContainer` class. So, for
+    example, `big_container[:5]` will return a `Container` that contains the
+    first 5 elements of `big_container`.
 
     BigContainers store a `backing_dir` attribute that specifies the path on
     disk to the serialized elements. The container also maintains a list of
