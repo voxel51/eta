@@ -302,7 +302,7 @@ class VideoFramesModel(Model):
             imgs: a list (or d x ny x nx x 3 tensor) of images to process
 
         Returns:
-            an `eta.core.image.VideoLabels` instance containing the labels
+            an `eta.core.video.VideoLabels` instance containing the labels
                 generated for the given tensor of images
         '''
         raise NotImplementedError("subclasses must implement process()")
@@ -502,7 +502,7 @@ class VideoFramesClassifier(Classifier, VideoFramesModel):
             imgs: a list (or d x ny x nx x 3 tensor) of images to process
 
         Returns:
-            an `eta.core.image.VideoLabels` instance containing the labels
+            an `eta.core.video.VideoLabels` instance containing the labels
                 generated for the given tensor of images
         '''
         labels = etav.VideoLabels()
@@ -724,7 +724,7 @@ class VideoFramesObjectDetector(Detector, VideoFramesModel):
             imgs: a list (or d x ny x nx x 3 tensor) of images to process
 
         Returns:
-            an `eta.core.image.VideoLabels` instance containing the labels
+            an `eta.core.video.VideoLabels` instance containing the labels
                 generated for the given tensor of images
         '''
         labels = etav.VideoLabels()
