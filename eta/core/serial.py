@@ -1266,29 +1266,51 @@ class BigContainer(Container):
 
         setattr(self, self._ELE_ATTR, elements)
 
-    def __iter__(self):
-        return iter(self._load_ele(path) for path in self._ele_paths)
-
     def __getitem__(self, idx):
+        if isinstance(idx, slice):
+            inds = self._slice_to_inds(idx)
+            return self.extract_inds(inds)
+
         if idx < 0:
             idx += len(self)
         return self._load_ele(self._ele_path(idx))
 
-    def __setitem__(self, idx, ele):
+    def __setitem__(self, idx, element):
+        if isinstance(idx, slice):
+            inds = self._slice_to_inds(idx)
+            for idx, ele in zip(inds, element):
+                self[idx] = ele
+            return
+
         if idx < 0:
             idx += len(self)
-        ele.write_json(self._ele_path(idx))
+        element.write_json(self._ele_path(idx))
 
     def __delitem__(self, idx):
+        if isinstance(idx, slice):
+            inds = self._slice_to_inds(idx)
+            self.delete_inds(inds)
+            return
+
         if idx < 0:
             idx += len(self)
         etau.delete_file(self._ele_path(idx))
         super(BigContainer, self).__delitem__(idx)
 
+    def __iter__(self):
+        return iter(self._load_ele(path) for path in self._ele_paths)
+
     @property
     def backing_dir(self):
         '''The backing directory for this BigContainer.'''
         return self._backing_dir
+
+    @property
+    def container_cls(self):
+        '''Returns the Container class associated with this BigContainer.'''
+        module, _, big_cls = etau.get_class_name(self).rpartition(".")
+        cls_name = module + "." + big_cls[len("Big"):]
+        return etau.get_class(cls_name)
 
     def clear(self):
         '''Deletes all elements from the container.'''
@@ -1296,28 +1318,41 @@ class BigContainer(Container):
         etau.delete_dir(self.backing_dir)
         etau.ensure_dir(self.backing_dir)
 
-    def copy(self, new_backing_dir):
+    def copy(self, backing_dir):
         '''Creates a deep copy of this container backed by the given directory.
 
         Args:
-            new_backing_dir: backing directory to use for the new container.
+            backing_dir: backing directory to use for the new BigContainer.
                 Must be empty or non-existent
 
         Returns:
             a BigContainer
         '''
-        etau.ensure_empty_dir(new_backing_dir)
-        container = copy.deepcopy(self)
-        container._set_backing_dir(new_backing_dir)
-        container.clear()
-        container.add_container(self)
-        return container
+        new_container = self.empty(backing_dir)
+        new_container.add_container(self)
+        return new_container
+
+    def empty(self, backing_dir):
+        '''Returns an empty copy of the container backed by the given
+        directory.
+
+        Subclasses may override this method, but, by default, this method
+        constructs an empty container via `self.__class__(backing_dir)`
+
+        Args:
+            backing_dir: backing directory to use for the new BigContainer.
+                Must be empty or non-existent
+
+        Returns:
+            an empty BigContainer
+        '''
+        return self.__class__(backing_dir)
 
     def move(self, new_backing_dir):
         '''Moves the backing directory of the container to the given location.
 
         Args:
-            new_backing_dir: backing directory to use for the new container.
+            new_backing_dir: backing directory to use for the new BigContainer.
                 Must be empty or non-existent
         '''
         etau.ensure_empty_dir(new_backing_dir)
@@ -1344,8 +1379,7 @@ class BigContainer(Container):
             for path in container._ele_paths:
                 self._add_by_path(path)
         else:
-            for element in container:
-                self.add(element)
+            self.add_iterable(container)
 
     def add_iterable(self, elements):
         '''Adds the elements in the given iterable to the container.
@@ -1391,26 +1425,33 @@ class BigContainer(Container):
         '''
         self.delete_inds(set(range(len(self))) - set(inds))
 
-    def extract_inds(self, new_backing_dir, inds):
-        '''Creates a new container having only the elements with the given
-        indices.
+    def extract_inds(self, inds, backing_dir=None):
+        '''Returns a container having only the elements with the given indices.
+
+        If a backing directory is provided, a BigContainer is created.
+        Otherwise, an in-memory Container is returned.
 
         Args:
-            new_backing_dir: backing directory to use for the new container.
-                Must be empty or non-existent
             inds: a list of indices of the elements to keep
+            backing_dir: an optional backing directory to use to create a
+                BigContainer. If provided, the directory must be empty or
+                non-existent
 
         Returns:
-            a BigContainer
+            a Container or BigContainer with the requested elements
         '''
-        etau.ensure_empty_dir(new_backing_dir)
-        container = copy.deepcopy(self)
-        container._set_backing_dir(new_backing_dir)
-        container.clear()
-        for idx in inds:
-            container._add_by_path(self._ele_path(idx))
+        if not backing_dir:
+            # Return results in a Container
+            new_container = self.container_cls()
+            for idx in inds:
+                new_container.add(self[idx])
+            return new_container
 
-        return container
+        # Return results in a BigContainer
+        new_container = self.empty(backing_dir)
+        for idx in inds:
+            new_container._add_by_path(self._ele_path(idx))
+        return new_container
 
     def count_matches(self, filters, match=any):
         '''Counts the number of elements in the container that match the
@@ -1430,25 +1471,28 @@ class BigContainer(Container):
         elements = self._filter_elements(filters, match=match)
         return len(elements)
 
-    def get_matches(self, new_backing_dir, filters, match=any):
-        '''Gets elements matching the given filters.
+    def get_matches(self, filters, match=any, backing_dir=None):
+        '''Returns a container with elements matching the given filters.
+
+        If a backing directory is provided, a BigContainer is created.
+        Otherwise, an in-memory Container is returned.
 
         Args:
-            new_backing_dir: backing directory to use for the new container.
-                Must be empty or non-existent
             filters: a list of functions that accept elements and return
                 True/False
             match: a function (usually `any` or `all`) that accepts an iterable
                 and returns True/False. Used to aggregate the outputs of each
                 filter to decide whether a match has occurred. The default is
                 `any`
+            backing_dir: an optional backing directory to use to create a
+                BigContainer. If provided, the directory must be empty or
+                non-existent
 
         Returns:
-            a copy of the container containing only the elements that match
-                the filters
+            a Container or BigContainer with elements that match the filters
         '''
         inds = self._filter_elements(filters, match)
-        return self.extract_inds(new_backing_dir, inds)
+        return self.extract_inds(inds, backing_dir=backing_dir)
 
     def sort_by(self, attr, reverse=False):
         '''Sorts the elements in the container by the given attribute.
