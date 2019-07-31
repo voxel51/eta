@@ -641,16 +641,19 @@ class Set(Serializable):
         setattr(self, self._ELE_ATTR, elements)
 
     def extract_keys(self, keys):
-        '''Creates a new set having only the elements with the given keys.
+        '''Returns a new set having only the elements with the given keys.
+
+        The elements are passed by reference, not copied.
 
         Args:
             keys: an iterable of keys of the elements to keep
 
         Returns:
-            a Set
+            a Set with the requested elements
         '''
-        new_set = self.copy()
-        new_set.keep_keys(keys)
+        new_set = self.empty()
+        for key in keys:
+            new_set.add(self[key])
         return new_set
 
     def count_matches(self, filters, match=any):
@@ -672,7 +675,9 @@ class Set(Serializable):
         return len(elements)
 
     def get_matches(self, filters, match=any):
-        '''Gets elements matching the given filters.
+        '''Returns a set of elements matching the given filters.
+
+        The elements are passed by reference, not copied.
 
         Args:
             filters: a list of functions that accept elements and return
@@ -683,11 +688,11 @@ class Set(Serializable):
                 `any`
 
         Returns:
-            a copy of the set containing only the elements that match the
-                filters
+            a Set with elements matching the filters
         '''
-        new_set = self.copy()
-        new_set.filter_elements(filters, match=match)
+        new_set = self.empty()
+        elements = self._filter_elements(filters, match)
+        new_set.add_iterable(elements)
         return new_set
 
     def sort_by(self, attr, reverse=False):
