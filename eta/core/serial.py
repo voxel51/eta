@@ -567,6 +567,17 @@ class Set(Serializable):
         '''
         return copy.deepcopy(self)
 
+    def empty(self):
+        '''Returns an empty copy of the set.
+
+        Subclasses may override this method, but, by default, this method
+        constructs an empty set via `self.__class__()`
+
+        Returns:
+            an empty Set
+        '''
+        return self.__class__()
+
     def get_keys(self):
         '''Returns the set of keys for the elements of the set.'''
         return set(self.__elements__)
@@ -928,6 +939,17 @@ class Container(Serializable):
             a Container
         '''
         return copy.deepcopy(self)
+
+    def empty(self):
+        '''Returns an empty copy of the container.
+
+        Subclasses may override this method, but, by default, this method
+        constructs an empty container via `self.__class__()`
+
+        Returns:
+            an empty Container
+        '''
+        return self.__class__()
 
     def add(self, element):
         '''Adds an element to the container.
