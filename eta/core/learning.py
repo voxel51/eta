@@ -466,7 +466,7 @@ class VideoFramesClassifierConfig(ClassifierConfig):
         self._validate_type(VideoFramesClassifier)
 
 
-class VideoFramesClassifier(Classifier):
+class VideoFramesClassifier(Classifier, VideoFramesModel):
     '''Base class for classifiers that operate directly on videos represented
     as tensors of images.
 
@@ -688,7 +688,7 @@ class VideoFramesObjectDetectorConfig(DetectorConfig):
         self._validate_type(VideoFramesObjectDetector)
 
 
-class VideoFramesObjectDetector(Detector):
+class VideoFramesObjectDetector(Detector, VideoFramesModel):
     '''Base class for detectors that operate directly on videos
     represented as tensors of images.
 
