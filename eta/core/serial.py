@@ -909,16 +909,16 @@ class BigSet(Set):
         set_.add_set(self)
         return set_
 
-    def move(self, new_backing_dir):
+    def move(self, new_backing_dir=None):
         '''Moves the backing directory of the set to the given location.
 
         Args:
             new_backing_dir: backing directory to use for the new set.
                 Must be empty or non-existent
         '''
-        etau.ensure_empty_dir(new_backing_dir)
-        etau.move_dir(self.backing_dir, new_backing_dir)
-        self._set_backing_dir(new_backing_dir)
+        old_backing_dir = self.backing_dir
+        self._set_backing_dir(None)
+        etau.move_dir(old_backing_dir, self.backing_dir)
 
     def add_set(self, set_):
         '''Adds the elements in the given set to this set.
@@ -949,7 +949,7 @@ class BigSet(Set):
         Args:
             keys: an iterable of keys of the elements to delete
         '''
-        for key in keys:
+        for key in self:
             del self[key]
 
     def keep_keys(self, keys):
@@ -1121,7 +1121,7 @@ class BigSet(Set):
         Returns:
             a BigSet
         '''
-        set_ = cls(backing_dir)
+        set_ = cls(backing_dir=backing_dir)
         for path in paths:
             set_._add_by_path(path)
         return set_
@@ -1142,7 +1142,7 @@ class BigSet(Set):
             a BigSet
         '''
         paths = etau.multiglob(".json", root=source_dir + "/**/*")
-        return cls.from_paths(backing_dir, paths)
+        return cls.from_paths(paths, backing_dir)
 
     @classmethod
     def from_dict(cls, d):
