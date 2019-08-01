@@ -1051,7 +1051,7 @@ class BigSet(Set):
             # in `from_archive`), but we set it relative to the root of the
             # archive, for completeness.
             #
-            container._backing_dir = "./" + self._ELE_ATTR
+            set_._backing_dir = "./" + self._ELE_ATTR
             set_.write_json(index_path)
             set_._backing_dir = full_backing_dir
             etau.make_archive(rootdir, archive_path)
@@ -1130,7 +1130,9 @@ class BigSet(Set):
             an instance of the BigSet class
         '''
         cls = cls._validate_dict(d)
-        return cls(**d)
+        uuid_list = d.get(self._ELE_ATTR, [])
+        set_ = cls(**d)
+        set_._init_dict(uuid_list)
 
     def _filter_elements(self, filters, match):
         def run_filters(uuid):
@@ -1171,6 +1173,12 @@ class BigSet(Set):
 
     def _add_by_path(self, path):
         self.add(self._load_ele(path))
+
+    def _init_dict(self, uuid_list):
+        for uuid in uuid_list:
+            ele = set_._load_ele_by_uuid(uuid)
+            key = cls.get_key(ele)
+            set_.__elements__[key] = uuid
 
 
 class SetError(Exception):
