@@ -30,6 +30,7 @@ import logging
 import os
 import random
 from collections import Counter, defaultdict
+import random
 
 import numpy as np
 
@@ -2000,8 +2001,8 @@ class Balancer(DatasetTransformer):
 
         Args:
             A: the occurrence matrix computed in Balancer._get_occurrence_matrix
-            counts: (vector) the original counts for each value
-            target_count: (int) the target value
+            counts (vector): the original counts for each value
+            target_count (int): the target value
 
         Returns:
             a list of integer indices to keep
@@ -2010,7 +2011,7 @@ class Balancer(DatasetTransformer):
 
         x = self._greedy(A, b)
 
-        return np.where(x==0)[0]
+        return np.where(x == 0)[0]
 
     def _random(self, A, b):
         '''A random search algorithm for finding the indices to omit.
@@ -2022,10 +2023,9 @@ class Balancer(DatasetTransformer):
         Returns:
             x: the solution vector. x[j]=1 -> omit the j'th record
         '''
-        best_x = np.zeros(A.shape[1], dtype=np.dtype('int'))
+        best_x = np.zeros(A.shape[1], dtype=np.dtype("int"))
         best_score = self._solution_score(b - np.dot(A, best_x))
 
-        import random
         random.seed(1)
         for _ in range(10000):
             i = random.choice(np.where(best_x == 0)[0])
@@ -2050,12 +2050,9 @@ class Balancer(DatasetTransformer):
         '''
         best_x = np.zeros(A.shape[1], dtype=np.dtype('int'))
         best_score = self._solution_score(b - np.dot(A, best_x))
+        w = np.where(best_x == 0)[0]
 
-        while True:
-            w = np.where(best_x == 0)[0]
-            if not len(w):
-                break
-
+        while len(w):
             x_matrix = np.zeros((len(best_x), len(w)), dtype=np.dtype('int'))
             for idx, val in enumerate(w):
                 x_matrix[:, idx] = best_x
@@ -2066,11 +2063,12 @@ class Balancer(DatasetTransformer):
 
             i = np.argmin(cur_scores)
 
-            if cur_scores[i] < best_score:
-                best_score = cur_scores[i]
-                best_x = x_matrix[:, i]
-            else:
+            if cur_scores[i] >= best_score:
                 break
+
+            best_score = cur_scores[i]
+            best_x = x_matrix[:, i]
+            w = np.where(best_x == 0)[0]
 
         return best_x
 
