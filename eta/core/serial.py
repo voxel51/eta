@@ -1046,7 +1046,7 @@ class BigSet(Set):
             d[self._ELE_CLS_FIELD] = etau.get_class_name(self._ELE_CLS)
 
         #
-        # Note that we serialize the dictionary into list of (key, value)
+        # Note that we serialize the dictionary into a list of (key, value)
         # tuples
         #
         d[self._ELE_ATTR] = _recurse(list(self.__elements__.items()), False)
