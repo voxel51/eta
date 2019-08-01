@@ -490,7 +490,7 @@ class ImageSetLabels(Set):
                 By default, no schema is enforced
         '''
         self.schema = kwargs.pop("schema", None)
-        super(ImageSetLabels, self).__init__(**d)
+        super(ImageSetLabels, self).__init__(**kwargs)
 
     def __getitem__(self, filename):
         if filename not in self:
