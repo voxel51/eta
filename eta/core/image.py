@@ -458,11 +458,13 @@ class ImageLabelsSchemaError(Exception):
     pass
 
 
-class ImageSetLabels(Set):
-    '''Class encapsulating labels for a set of images.
+class AbstractImageSetLabels(object):
+    '''Abstract class encapsulating labels for a set of images.
 
-    ImageSetLabels support item indexing by the `filename` of the ImageLabels
-    instances in the set.
+    ImageSetLabels and BigImageSetLabels are the concrete implementations.
+
+    ImageSetLabels subclasses support item indexing by the `filename` of the
+    ImageLabels instances in the set.
 
     ImageSetLabels instances behave like defaultdicts: new ImageLabels
     instances are automatically created if a non-existent filename is accessed.
@@ -471,7 +473,7 @@ class ImageSetLabels(Set):
     accessed by `filename`-based lookup.
 
     Attributes:
-        images: a list of ImageLabels instances
+        images: an OrderedDict of ImageLabels with filenames as keys
         schema: an ImageLabelsSchema describing the schema of the image labels
     '''
 
@@ -490,14 +492,14 @@ class ImageSetLabels(Set):
                 By default, no schema is enforced
         '''
         self.schema = kwargs.pop("schema", None)
-        super(ImageSetLabels, self).__init__(**kwargs)
+        super(ImageSetLabelsMixin, self).__init__(**kwargs)
 
     def __getitem__(self, filename):
         if filename not in self:
             image_labels = ImageLabels(filename=filename)
             self.add_image_labels(image_labels)
 
-        return super(ImageSetLabels, self).__getitem__(filename)
+        return super(ImageSetLabelsMixin, self).__getitem__(filename)
 
     def __setitem__(self, filename, image_labels):
         image_labels.filename = filename
@@ -505,7 +507,7 @@ class ImageSetLabels(Set):
         if self.has_schema:
             self._validate_image_labels(image_labels)
 
-        super(ImageSetLabels, self).__setitem__(filename, image_labels)
+        super(ImageSetLabelsMixin, self).__setitem__(filename, image_labels)
 
     @property
     def has_schema(self):
@@ -673,6 +675,15 @@ class ImageSetLabels(Set):
             for image_labels in self:
                 self._validate_image_labels(image_labels)
 
+
+class ImageSetLabels(ImageSetLabelsMixin, Set):
+    '''ImageSetLabels.
+
+    Attributes:
+        images: an OrderedDict of ImageLabels with filenames as keys
+        schema: an ImageLabelsSchema describing the schema of the image labels
+    '''
+
     @classmethod
     def from_dict(cls, d):
         '''Constructs an ImageSetLabels from a JSON dictionary.'''
@@ -688,8 +699,15 @@ class ImageSetLabels(Set):
         return cls(images=images, schema=schema)
 
 
-class BigImageSetLabels(BigSet, ImageSetLabels):
-    '''A BigSet of ImageSetLabels.'''
+class BigImageSetLabels(ImageSetLabels, BigSet):
+    '''A BigSet of ImageSetLabels.
+
+
+    Attributes:
+        images: an OrderedDict of ImageLabels with filenames as keys and BigSet
+            uuids for storage.
+        schema: an ImageLabelsSchema describing the schema of the image labels
+    '''
 
     @classmethod
     def from_dict(cls, d):
