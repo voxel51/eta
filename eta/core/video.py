@@ -1233,6 +1233,16 @@ class VideoSetLabels(Serializable):
         '''
         return copy.deepcopy(self)
 
+    def empty(self):
+        '''Returns an empty copy of the VideoSetLabels.
+
+        The schema of the set is preserved, if applicable.
+
+        Returns:
+            an empty VideoSetLabels
+        '''
+        return self.__class__(schema=self.schema)
+
     def add_video_labels(self, video_labels):
         '''Adds the VideoLabels to the set.
 
@@ -1344,17 +1354,21 @@ class VideoSetLabels(Serializable):
         self.videos.keep_keys(filenames)
 
     def extract_video_labels(self, filenames):
-        '''Creates a new VideoSetLabels having only the VideoLabels with the
+        '''Returns a new VideoSetLabels having only the VideoLabels with the
         given filenames.
+
+        The VideoLabels are passed by reference, not copied.
 
         Args:
             filenames: an iterable of filenames to keep
 
         Returns:
-            an VideoSetLabels
+            a VideoSetLabels with the requested labels
         '''
-        video_set_labels = self.copy()
-        video_set_labels.keep_video_labels(filenames)
+        video_set_labels = self.empty()
+        for filename in filenames:
+            # Intentionally bypass schema checking, for efficiency
+            video_set_labels.videos.add(self[filename])
         return video_set_labels
 
     def count_matches(self, filters, match=any):
@@ -1375,7 +1389,9 @@ class VideoSetLabels(Serializable):
         return self.videos.count_matches(filters, match=match)
 
     def get_matches(self, filters, match=any):
-        '''Gets VideoLabels matching the given filters.
+        '''Returns a VideoSetLabels with labels matching the given filters.
+
+        The VideoLabels are passed by reference, not copied.
 
         Args:
             filters: a list of functions that accept elements and return
@@ -1386,11 +1402,12 @@ class VideoSetLabels(Serializable):
                 `any`
 
         Returns:
-            a copy of the VideoSetLabels containing only the VideoLabels that
-                match the filters
+            a VideoSetLabels with labels matching the filters
         '''
-        video_set_labels = self.copy()
-        video_set_labels.filter_video_labels(filters, match=match)
+        video_set_labels = self.empty()
+        # Intentionally bypass schema checking, for efficiency
+        labels = self.videos.get_matches(filters, match=match)
+        video_set_labels.videos.add_iterable(labels)
         return video_set_labels
 
     def sort_by_filename(self, reverse=False):
