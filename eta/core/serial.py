@@ -941,7 +941,7 @@ class BigSet(Set):
         '''
         new_ele_set = self._filter_elements(filters, match)
         keys = [key for key in self.__elements__ if key not in new_ele_set]
-        self.delete_inds(keys)
+        self.delete_keys(keys)
 
     def delete_keys(self, keys):
         '''Deletes the elements from the set with the given keys.
