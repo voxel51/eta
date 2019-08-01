@@ -1364,7 +1364,7 @@ class VideoSetLabels(Set):
 
 
 class BigVideoSetLabels(VideoSetLabels, BigSet):
-    '''A BigSet of ImageSetLabels.
+    '''A BigSet of VideoSetLabels.
 
      Attributes:
         videos: an OrderedDict of VideoLabels with filenames as keys and BigSet
