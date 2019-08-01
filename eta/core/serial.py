@@ -1212,12 +1212,6 @@ class BigSet(Set):
     def _add_by_path(self, path):
         self.add(self._load_ele(path))
 
-    def _init_dict(self, uuid_list):
-        for uuid in uuid_list:
-            ele = self._load_ele_by_uuid(uuid)
-            key = self.get_key(ele)
-            self.__elements__[key] = uuid
-
 
 class SetError(Exception):
     '''Exception raised when an invalid Set is encountered.'''
