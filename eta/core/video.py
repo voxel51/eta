@@ -1187,6 +1187,16 @@ class VideoSetLabels(Set):
         '''Returns True/False whether the container has an enforced schema.'''
         return self.schema is not None
 
+    def empty(self):
+        '''Returns an empty copy of the VideoSetLabels.
+
+        The schema of the set is preserved, if applicable.
+
+        Returns:
+            an empty VideoSetLabels
+        '''
+        return self.__class__(schema=self.schema)
+
     def add_video_labels(self, video_labels):
         '''Adds the VideoLabels to the set.
 
@@ -1298,18 +1308,18 @@ class VideoSetLabels(Set):
         self.keep_keys(filenames)
 
     def extract_video_labels(self, filenames):
-        '''Creates a new VideoSetLabels having only the VideoLabels with the
+        '''Returns a new VideoSetLabels having only the VideoLabels with the
         given filenames.
+
+        The VideoLabels are passed by reference, not copied.
 
         Args:
             filenames: an iterable of filenames to keep
 
         Returns:
-            an VideoSetLabels
+            a VideoSetLabels with the requested labels
         '''
-        video_set_labels = self.copy()
-        video_set_labels.keep_video_labels(filenames)
-        return video_set_labels
+        return self.extract_keys(filenames)
 
     def sort_by_filename(self, reverse=False):
         '''Sorts the VideoLabels in this instance by filename.

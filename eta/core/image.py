@@ -514,6 +514,16 @@ class ImageSetLabels(Set):
         '''Returns True/False whether this instance has an enforced schema.'''
         return self.schema is not None
 
+    def empty(self):
+        '''Returns an empty copy of the ImageSetLabels.
+
+        The schema of the set is preserved, if applicable.
+
+        Returns:
+            an empty ImageSetLabels
+        '''
+        return self.__class__(schema=self.schema)
+
     def add_image_labels(self, image_labels):
         '''Adds the ImageLabels to the set.
 
@@ -626,16 +636,19 @@ class ImageSetLabels(Set):
         self.keep_keys(filenames)
 
     def extract_image_labels(self, filenames):
-        '''Creates a new ImageSetLabels having only the ImageLabels with the
+        '''Returns a new ImageSetLabels having only the ImageLabels with the
         given filenames.
+
+        The ImageLabels are passed by reference, not copied.
 
         Args:
             filenames: an iterable of filenames to keep
 
         Returns:
-            an ImageSetLabels
+            an ImageSetLabels with the requested labels
         '''
         return self.extract_keys(filenames)
+
 
     def sort_by_filename(self, reverse=False):
         '''Sorts the ImageLabels in this instance by filename.
