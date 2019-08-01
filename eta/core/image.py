@@ -458,7 +458,7 @@ class ImageLabelsSchemaError(Exception):
     pass
 
 
-class AbstractImageSetLabels(object):
+class ImageSetLabels(Set):
     '''Abstract class encapsulating labels for a set of images.
 
     ImageSetLabels and BigImageSetLabels are the concrete implementations.
@@ -492,14 +492,14 @@ class AbstractImageSetLabels(object):
                 By default, no schema is enforced
         '''
         self.schema = kwargs.pop("schema", None)
-        super(ImageSetLabelsMixin, self).__init__(**kwargs)
+        super(ImageSetLabels, self).__init__(**kwargs)
 
     def __getitem__(self, filename):
         if filename not in self:
             image_labels = ImageLabels(filename=filename)
             self.add_image_labels(image_labels)
 
-        return super(ImageSetLabelsMixin, self).__getitem__(filename)
+        return super(ImageSetLabels, self).__getitem__(filename)
 
     def __setitem__(self, filename, image_labels):
         image_labels.filename = filename
@@ -507,7 +507,7 @@ class AbstractImageSetLabels(object):
         if self.has_schema:
             self._validate_image_labels(image_labels)
 
-        super(ImageSetLabelsMixin, self).__setitem__(filename, image_labels)
+        super(ImageSetLabels, self).__setitem__(filename, image_labels)
 
     @property
     def has_schema(self):
@@ -675,15 +675,6 @@ class AbstractImageSetLabels(object):
             for image_labels in self:
                 self._validate_image_labels(image_labels)
 
-
-class ImageSetLabels(ImageSetLabelsMixin, Set):
-    '''ImageSetLabels.
-
-    Attributes:
-        images: an OrderedDict of ImageLabels with filenames as keys
-        schema: an ImageLabelsSchema describing the schema of the image labels
-    '''
-
     @classmethod
     def from_dict(cls, d):
         '''Constructs an ImageSetLabels from a JSON dictionary.'''
@@ -700,14 +691,7 @@ class ImageSetLabels(ImageSetLabelsMixin, Set):
 
 
 class BigImageSetLabels(ImageSetLabels, BigSet):
-    '''A BigSet of ImageSetLabels.
-
-
-    Attributes:
-        images: an OrderedDict of ImageLabels with filenames as keys and BigSet
-            uuids for storage.
-        schema: an ImageLabelsSchema describing the schema of the image labels
-    '''
+    '''A BigSet of ImageSetLabels.'''
 
     @classmethod
     def from_dict(cls, d):
