@@ -567,6 +567,17 @@ class Set(Serializable):
         '''
         return copy.deepcopy(self)
 
+    def empty(self):
+        '''Returns an empty copy of the set.
+
+        Subclasses may override this method, but, by default, this method
+        constructs an empty set via `self.__class__()`
+
+        Returns:
+            an empty Set
+        '''
+        return self.__class__()
+
     def get_keys(self):
         '''Returns the set of keys for the elements of the set.'''
         return set(self.__elements__)
@@ -630,16 +641,19 @@ class Set(Serializable):
         setattr(self, self._ELE_ATTR, elements)
 
     def extract_keys(self, keys):
-        '''Creates a new set having only the elements with the given keys.
+        '''Returns a new set having only the elements with the given keys.
+
+        The elements are passed by reference, not copied.
 
         Args:
             keys: an iterable of keys of the elements to keep
 
         Returns:
-            a Set
+            a Set with the requested elements
         '''
-        new_set = self.copy()
-        new_set.keep_keys(keys)
+        new_set = self.empty()
+        for key in keys:
+            new_set.add(self[key])
         return new_set
 
     def count_matches(self, filters, match=any):
@@ -661,7 +675,9 @@ class Set(Serializable):
         return len(elements)
 
     def get_matches(self, filters, match=any):
-        '''Gets elements matching the given filters.
+        '''Returns a set of elements matching the given filters.
+
+        The elements are passed by reference, not copied.
 
         Args:
             filters: a list of functions that accept elements and return
@@ -672,11 +688,11 @@ class Set(Serializable):
                 `any`
 
         Returns:
-            a copy of the set containing only the elements that match the
-                filters
+            a Set with elements matching the filters
         '''
-        new_set = self.copy()
-        new_set.filter_elements(filters, match=match)
+        new_set = self.empty()
+        elements = self._filter_elements(filters, match)
+        new_set.add_iterable(elements)
         return new_set
 
     def sort_by(self, attr, reverse=False):
@@ -805,6 +821,11 @@ class Container(Serializable):
     '''Abstract base class for flexible containers that store homogeneous lists
     of elements of a `Serializable` class.
 
+    Containers provide native support for all common array operations like
+    getting, setting, deleting, length, and slicing. So, for example,
+    `container[:5]` will return a `Container` that contains the first 5
+    elements of `container`.
+
     This class cannot be instantiated directly. Instead a subclass should
     be created for each type of element to be stored. Subclasses MUST set the
     following members:
@@ -884,12 +905,27 @@ class Container(Serializable):
         self.add_iterable(elements)
 
     def __getitem__(self, idx):
+        if isinstance(idx, slice):
+            inds = self._slice_to_inds(idx)
+            return self.extract_inds(inds)
+
         return self.__elements__[idx]
 
     def __setitem__(self, idx, element):
+        if isinstance(idx, slice):
+            inds = self._slice_to_inds(idx)
+            for idx, ele in zip(inds, element):
+                self[idx] = ele
+            return
+
         self.__elements__[idx] = element
 
     def __delitem__(self, idx):
+        if isinstance(idx, slice):
+            inds = self._slice_to_inds(idx)
+            self.delete_inds(inds)
+            return
+
         del self.__elements__[idx]
 
     def __iter__(self):
@@ -928,6 +964,17 @@ class Container(Serializable):
             a Container
         '''
         return copy.deepcopy(self)
+
+    def empty(self):
+        '''Returns an empty copy of the container.
+
+        Subclasses may override this method, but, by default, this method
+        constructs an empty container via `self.__class__()`
+
+        Returns:
+            an empty Container
+        '''
+        return self.__class__()
 
     def add(self, element):
         '''Adds an element to the container.
@@ -976,7 +1023,7 @@ class Container(Serializable):
         '''Deletes the elements from the container with the given indices.
 
         Args:
-            inds: a list of indices of the elements to delete
+            inds: an iterable of indices of the elements to delete
         '''
         for idx in sorted(inds, reverse=True):
             del self.__elements__[idx]
@@ -994,14 +1041,17 @@ class Container(Serializable):
         '''Creates a new container having only the elements with the given
         indices.
 
+        The elements are passed by reference, not copied.
+
         Args:
-            inds: a list of indices of the elements to keep
+            inds: an iterable of indices of the elements to keep
 
         Returns:
-            a Container
+            a Container with the requested elements
         '''
-        new_container = self.copy()
-        new_container.keep_inds(inds)
+        new_container = self.empty()
+        for idx in inds:
+            new_container.add(self[idx])
         return new_container
 
     def count_matches(self, filters, match=any):
@@ -1025,6 +1075,8 @@ class Container(Serializable):
     def get_matches(self, filters, match=any):
         '''Gets elements matching the given filters.
 
+        The elements are passed by reference, not copied.
+
         Args:
             filters: a list of functions that accept elements and return
                 True/False
@@ -1034,11 +1086,11 @@ class Container(Serializable):
                 `any`
 
         Returns:
-            a copy of the container containing only the elements that match
-                the filters
+            a Container with elements that matched the filters
         '''
-        new_container = self.copy()
-        new_container.filter_elements(filters, match=match)
+        new_container = self.empty()
+        elements = self._filter_elements(filters, match)
+        new_container.add_iterable(elements)
         return new_container
 
     def sort_by(self, attr, reverse=False):
@@ -1112,6 +1164,9 @@ class Container(Serializable):
         return list(
             filter(lambda o: match(f(o) for f in filters), self.__elements__))
 
+    def _slice_to_inds(self, sli):
+        return range(len(self))[sli]
+
     def _validate(self):
         '''Validates that a Container instance is valid.'''
         if self._ELE_CLS is None:
@@ -1149,6 +1204,13 @@ class BigContainer(Container):
     objects. The elements are stored on disk in a backing directory; accessing
     any element in the list causes an immediate READ from disk, and
     adding/setting an element causes an immediate WRITE to disk.
+
+    BigContainers provide native support for all common array operations like
+    getting, setting, deleting, length, and slicing. In the case of slicing,
+    a BigContainer slice will be returned as an in-memory instance of the
+    corresponding `Container` version of the `BigContainer` class. So, for
+    example, `big_container[:5]` will return a `Container` that contains the
+    first 5 elements of `big_container`.
 
     BigContainers store a `backing_dir` attribute that specifies the path on
     disk to the serialized elements. The container also maintains a list of
@@ -1216,29 +1278,51 @@ class BigContainer(Container):
 
         setattr(self, self._ELE_ATTR, elements)
 
-    def __iter__(self):
-        return iter(self._load_ele(path) for path in self._ele_paths)
-
     def __getitem__(self, idx):
+        if isinstance(idx, slice):
+            inds = self._slice_to_inds(idx)
+            return self.extract_inds(inds)
+
         if idx < 0:
             idx += len(self)
         return self._load_ele(self._ele_path(idx))
 
-    def __setitem__(self, idx, ele):
+    def __setitem__(self, idx, element):
+        if isinstance(idx, slice):
+            inds = self._slice_to_inds(idx)
+            for idx, ele in zip(inds, element):
+                self[idx] = ele
+            return
+
         if idx < 0:
             idx += len(self)
-        ele.write_json(self._ele_path(idx))
+        element.write_json(self._ele_path(idx))
 
     def __delitem__(self, idx):
+        if isinstance(idx, slice):
+            inds = self._slice_to_inds(idx)
+            self.delete_inds(inds)
+            return
+
         if idx < 0:
             idx += len(self)
         etau.delete_file(self._ele_path(idx))
         super(BigContainer, self).__delitem__(idx)
 
+    def __iter__(self):
+        return iter(self._load_ele(path) for path in self._ele_paths)
+
     @property
     def backing_dir(self):
         '''The backing directory for this BigContainer.'''
         return self._backing_dir
+
+    @property
+    def container_cls(self):
+        '''Returns the Container class associated with this BigContainer.'''
+        module, dot, big_cls = etau.get_class_name(self).rpartition(".")
+        cls_name = module + dot + big_cls[len("Big"):]
+        return etau.get_class(cls_name)
 
     def clear(self):
         '''Deletes all elements from the container.'''
@@ -1246,28 +1330,41 @@ class BigContainer(Container):
         etau.delete_dir(self.backing_dir)
         etau.ensure_dir(self.backing_dir)
 
-    def copy(self, new_backing_dir):
+    def copy(self, backing_dir):
         '''Creates a deep copy of this container backed by the given directory.
 
         Args:
-            new_backing_dir: backing directory to use for the new container.
+            backing_dir: backing directory to use for the new BigContainer.
                 Must be empty or non-existent
 
         Returns:
             a BigContainer
         '''
-        etau.ensure_empty_dir(new_backing_dir)
-        container = copy.deepcopy(self)
-        container._set_backing_dir(new_backing_dir)
-        container.clear()
-        container.add_container(self)
-        return container
+        new_container = self.empty(backing_dir)
+        new_container.add_container(self)
+        return new_container
+
+    def empty(self, backing_dir):
+        '''Returns an empty copy of the container backed by the given
+        directory.
+
+        Subclasses may override this method, but, by default, this method
+        constructs an empty container via `self.__class__(backing_dir)`
+
+        Args:
+            backing_dir: backing directory to use for the new BigContainer.
+                Must be empty or non-existent
+
+        Returns:
+            an empty BigContainer
+        '''
+        return self.__class__(backing_dir)
 
     def move(self, new_backing_dir):
         '''Moves the backing directory of the container to the given location.
 
         Args:
-            new_backing_dir: backing directory to use for the new container.
+            new_backing_dir: backing directory to use for the new BigContainer.
                 Must be empty or non-existent
         '''
         etau.ensure_empty_dir(new_backing_dir)
@@ -1294,8 +1391,7 @@ class BigContainer(Container):
             for path in container._ele_paths:
                 self._add_by_path(path)
         else:
-            for element in container:
-                self.add(element)
+            self.add_iterable(container)
 
     def add_iterable(self, elements):
         '''Adds the elements in the given iterable to the container.
@@ -1341,26 +1437,33 @@ class BigContainer(Container):
         '''
         self.delete_inds(set(range(len(self))) - set(inds))
 
-    def extract_inds(self, new_backing_dir, inds):
-        '''Creates a new container having only the elements with the given
-        indices.
+    def extract_inds(self, inds, backing_dir=None):
+        '''Returns a container having only the elements with the given indices.
+
+        If a backing directory is provided, a BigContainer is created.
+        Otherwise, an in-memory Container is returned.
 
         Args:
-            new_backing_dir: backing directory to use for the new container.
-                Must be empty or non-existent
             inds: a list of indices of the elements to keep
+            backing_dir: an optional backing directory to use to create a
+                BigContainer. If provided, the directory must be empty or
+                non-existent
 
         Returns:
-            a BigContainer
+            a Container or BigContainer with the requested elements
         '''
-        etau.ensure_empty_dir(new_backing_dir)
-        container = copy.deepcopy(self)
-        container._set_backing_dir(new_backing_dir)
-        container.clear()
-        for idx in inds:
-            container._add_by_path(self._ele_path(idx))
+        if not backing_dir:
+            # Return results in a Container
+            new_container = self.container_cls()
+            for idx in inds:
+                new_container.add(self[idx])
+            return new_container
 
-        return container
+        # Return results in a BigContainer
+        new_container = self.empty(backing_dir)
+        for idx in inds:
+            new_container._add_by_path(self._ele_path(idx))
+        return new_container
 
     def count_matches(self, filters, match=any):
         '''Counts the number of elements in the container that match the
@@ -1380,25 +1483,28 @@ class BigContainer(Container):
         elements = self._filter_elements(filters, match=match)
         return len(elements)
 
-    def get_matches(self, new_backing_dir, filters, match=any):
-        '''Gets elements matching the given filters.
+    def get_matches(self, filters, match=any, backing_dir=None):
+        '''Returns a container with elements matching the given filters.
+
+        If a backing directory is provided, a BigContainer is created.
+        Otherwise, an in-memory Container is returned.
 
         Args:
-            new_backing_dir: backing directory to use for the new container.
-                Must be empty or non-existent
             filters: a list of functions that accept elements and return
                 True/False
             match: a function (usually `any` or `all`) that accepts an iterable
                 and returns True/False. Used to aggregate the outputs of each
                 filter to decide whether a match has occurred. The default is
                 `any`
+            backing_dir: an optional backing directory to use to create a
+                BigContainer. If provided, the directory must be empty or
+                non-existent
 
         Returns:
-            a copy of the container containing only the elements that match
-                the filters
+            a Container or BigContainer with elements that match the filters
         '''
         inds = self._filter_elements(filters, match)
-        return self.extract_inds(new_backing_dir, inds)
+        return self.extract_inds(inds, backing_dir=backing_dir)
 
     def sort_by(self, attr, reverse=False):
         '''Sorts the elements in the container by the given attribute.
@@ -1494,6 +1600,31 @@ class BigContainer(Container):
             container.move(backing_dir)
 
         return container
+
+    def to_container(self):
+        '''Loads a BigContainer into an in-memory Container of the associated
+        class.
+
+        Returns:
+            a Container
+        '''
+        return self[:]
+
+    @classmethod
+    def from_container(cls, container, backing_dir):
+        '''Creates a BigContainer with the given Container's elements.
+
+        Args:
+            container: a Container
+            backing_dir: backing directory to use for the new container.
+                Must be empty or non-existent
+
+        Returns:
+            a BigContainer
+        '''
+        big_container = cls(backing_dir)
+        big_container.add_container(container)
+        return big_container
 
     @classmethod
     def from_paths(cls, backing_dir, paths):

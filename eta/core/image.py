@@ -553,6 +553,16 @@ class ImageSetLabels(Serializable):
         '''
         return copy.deepcopy(self)
 
+    def empty(self):
+        '''Returns an empty copy of the ImageSetLabels.
+
+        The schema of the set is preserved, if applicable.
+
+        Returns:
+            an empty ImageSetLabels
+        '''
+        return self.__class__(schema=self.schema)
+
     def add_image_labels(self, image_labels):
         '''Adds the ImageLabels to the set.
 
@@ -665,17 +675,21 @@ class ImageSetLabels(Serializable):
         self.images.keep_keys(filenames)
 
     def extract_image_labels(self, filenames):
-        '''Creates a new ImageSetLabels having only the ImageLabels with the
+        '''Returns a new ImageSetLabels having only the ImageLabels with the
         given filenames.
+
+        The ImageLabels are passed by reference, not copied.
 
         Args:
             filenames: an iterable of filenames to keep
 
         Returns:
-            an ImageSetLabels
+            an ImageSetLabels with the requested labels
         '''
-        image_set_labels = self.copy()
-        image_set_labels.keep_image_labels(filenames)
+        image_set_labels = self.empty()
+        for filename in filenames:
+            # Intentionally bypass schema checking, for efficiency
+            image_set_labels.images.add(self[filename])
         return image_set_labels
 
     def count_matches(self, filters, match=any):
@@ -696,7 +710,9 @@ class ImageSetLabels(Serializable):
         return self.images.count_matches(filters, match=match)
 
     def get_matches(self, filters, match=any):
-        '''Gets ImageLabels matching the given filters.
+        '''Returns an ImageSetLabels with labels matching the given filters.
+
+        The ImageLabels are passed by reference, not copied.
 
         Args:
             filters: a list of functions that accept elements and return
@@ -707,11 +723,12 @@ class ImageSetLabels(Serializable):
                 `any`
 
         Returns:
-            a copy of the ImageSetLabels containing only the ImageLabels that
-                match the filters
+            an ImageSetLabels with labels matching the filters
         '''
-        image_set_labels = self.copy()
-        image_set_labels.filter_image_labels(filters, match=match)
+        image_set_labels = self.empty()
+        # Intentionally bypass schema checking, for efficiency
+        labels = self.images.get_matches(filters, match=match)
+        image_set_labels.images.add_iterable(labels)
         return image_set_labels
 
     def sort_by_filename(self, reverse=False):
