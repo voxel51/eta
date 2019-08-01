@@ -507,8 +507,7 @@ class VideoFramesClassifier(Classifier, VideoFramesModel):
         '''
         labels = etav.VideoLabels()
         attrs = self.predict(imgs)
-        for idx, imgs in enumerate(imgs):
-            frame_number = idx + 1
+        for frame_number, imgs in enumerate(imgs, 1):
             frame_labels = etav.VideoFrameLabels(frame_number, attrs=attrs)
             labels.add_frame(frame_labels)
         return labels
@@ -728,11 +727,9 @@ class VideoFramesObjectDetector(Detector, VideoFramesModel):
                 generated for the given tensor of images
         '''
         labels = etav.VideoLabels()
-        attrs = self.detect(imgs)
-        for idx, imgs in enumerate(imgs):
-            frame_number = idx + 1
-            frame_labels = etav.VideoFrameLabels(frame_number, attrs=attrs)
-            labels.add_frame(frame_labels)
+        objects = self.detect(imgs)
+        for obj in objects:
+            labels.add_object(obj, obj.frame_number)
         return labels
 
 
