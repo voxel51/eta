@@ -26,9 +26,8 @@ from future.utils import iteritems
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 import colorsys
-import copy
 import errno
 import os
 import operator
@@ -481,7 +480,7 @@ class ImageSetLabels(Set):
     _ELE_CLS = ImageLabels
     _ELE_CLS_FIELD = "_LABELS_CLS"
 
-    def __init__(self, images=[], schema=None):
+    def __init__(self, **kwargs):
         '''Constructs an ImageSetLabels instance.
 
         Args:
@@ -490,8 +489,8 @@ class ImageSetLabels(Set):
             schema: an optional ImageLabelsSchema to enforce on the object.
                 By default, no schema is enforced
         '''
-        self.schema = schema
-        super(ImageSetLabels, self).__init__(images=images)
+        self.schema = kwargs.pop("schema", None)
+        super(ImageSetLabels, self).__init__(**d)
 
     def __getitem__(self, filename):
         if filename not in self:
@@ -682,7 +681,7 @@ class ImageSetLabels(Set):
         if schema is not None:
             schema = ImageLabelsSchema.from_dict(schema)
 
-        images = d.get("schema", None)
+        images = d.get("images", None)
         if images is not None:
             images = [ImageLabels.from_dict(il) for il in images]
 
@@ -690,7 +689,7 @@ class ImageSetLabels(Set):
 
 
 class BigImageSetLabels(BigSet, ImageSetLabels):
-    '''A BigSet version of ImageSetLabels.'''
+    '''A BigSet of ImageSetLabels.'''
 
     @classmethod
     def from_dict(cls, d):
@@ -700,11 +699,10 @@ class BigImageSetLabels(BigSet, ImageSetLabels):
         if schema is not None:
             schema = ImageLabelsSchema.from_dict(schema)
 
-        images = d.get("images", [])
+        images = d.pop("images", [])
 
         set_ = cls(**d)
-        set_.set_schema = schema
-        set_._init_dict(images)
+        setattr(set_, cls._ELE_ATTR, OrderedDict(images))
         return set_
 
 

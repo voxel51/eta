@@ -30,6 +30,7 @@ import numbers
 import os
 import pickle as _pickle
 import pprint
+import tempfile
 from uuid import uuid4
 
 import numpy as np
@@ -572,7 +573,7 @@ class Set(Serializable):
         return set(self.__elements__)
 
     def add(self, element):
-        '''Adds an element to the container.
+        '''Adds an element to the set.
 
         Args:
             element: an instance of `_ELE_CLS`
@@ -831,7 +832,7 @@ class BigSet(Set):
         ```
     '''
 
-    def __init__(self, backing_dir, **kwargs):
+    def __init__(self, **kwargs):
         '''Creates a BigSet instance.
 
         Args:
@@ -846,8 +847,7 @@ class BigSet(Set):
             SetError: if there was an error while creating the set
         '''
         self._validate_cls()
-        self._backing_dir = None
-        self._set_backing_dir(backing_dir)
+        self._set_backing_dir(kwargs.pop("backing_dir", None))
 
         if self._ELE_ATTR in kwargs:
             etau.ensure_dir(self.backing_dir)
@@ -859,12 +859,17 @@ class BigSet(Set):
         self.clear()
         self.add_iterable(elements)
 
+    def __del__(self):
+        if self._temp_storage:
+            etau.delete_dir(self.backing_dir)
+
     def __getitem__(self, key):
         return self._load_ele(self._ele_path(key))
 
     def __setitem__(self, key, element):
-        super(BigSet, self).__setitem__(key, element)
-        ele.write_json(self._ele_path(key))
+        if key not in self.__elements__:
+            self.__elements__[key] = self._make_uuid()
+        element.write_json(self._ele_path(key))
 
     def __delitem__(self, key):
         etau.delete_file(self._ele_path(key))
@@ -876,7 +881,9 @@ class BigSet(Set):
     @property
     def backing_dir(self):
         '''The backing directory for this BigSet.'''
-        return self._backing_dir
+        if self._backing_dir is not None:
+            return self._backing_dir
+        return self._tempdir
 
     def clear(self):
         '''Deletes all elements from the set.'''
@@ -884,7 +891,7 @@ class BigSet(Set):
         etau.delete_dir(self.backing_dir)
         etau.ensure_dir(self.backing_dir)
 
-    def copy(self, new_backing_dir):
+    def copy(self, new_backing_dir=None):
         '''Creates a deep copy of this set backed by the given directory.
 
         Args:
@@ -894,7 +901,8 @@ class BigSet(Set):
         Returns:
             a BigSet
         '''
-        etau.ensure_empty_dir(new_backing_dir)
+        if new_backing_dir is not None:
+            etau.ensure_empty_dir(new_backing_dir)
         set_ = copy.deepcopy(self)
         set_._set_backing_dir(new_backing_dir)
         set_.clear()
@@ -952,7 +960,7 @@ class BigSet(Set):
         '''
         self.delete_keys(set(self.__elements__.keys()) - set(keys))
 
-    def extract_keys(self, new_backing_dir, keys):
+    def extract_keys(self, keys, new_backing_dir=None):
         '''Creates a new set having only the elements with the given keys.
 
         Args:
@@ -961,7 +969,8 @@ class BigSet(Set):
         Returns:
             a BigSet
         '''
-        etau.ensure_empty_dir(new_backing_dir)
+        if new_backing_dir is not None:
+            etau.ensure_empty_dir(new_backing_dir)
         set_ = copy.deepcopy(self)
         set_._set_backing_dir(new_backing_dir)
         set_.clear()
@@ -970,7 +979,7 @@ class BigSet(Set):
 
         return set_
 
-    def get_matches(self, new_backing_dir, filters, match=any):
+    def get_matches(self, filters, match=any, new_backing_dir=None):
         '''Gets elements matching the given filters.
 
         Args:
@@ -1011,7 +1020,30 @@ class BigSet(Set):
         '''Returns the list of class attributes that will be serialized.'''
         return ["backing_dir"] + super(BigSet, self).attributes()
 
-    def to_archive(self, archive_path, delete_backing_dir=False):
+    def serialize(self, reflective=False):
+        '''Serializes the set into a dictionary.
+
+        Args:
+            reflective: whether to include reflective attributes when
+                serializing the object. By default, this is False
+
+        Returns:
+            a JSON dictionary representation of the set
+        '''
+        d = OrderedDict()
+        if reflective:
+            d["_CLS"] = self.get_class_name()
+            d[self._ELE_CLS_FIELD] = etau.get_class_name(self._ELE_CLS)
+
+        #
+        # Note that we serialize the dictionary into list of (key, value)
+        # tuples
+        #
+        d[self._ELE_ATTR] = _recurse(list(self.__elements__.items()), False)
+
+        return d
+
+    def to_archive(self, archive_path):
         '''Writes the BigSet to a self-contained archive file.
 
         The archive contains both a JSON index and the raw element JSON files
@@ -1025,13 +1057,8 @@ class BigSet(Set):
                 <uuid>.json
         ```
 
-        Note that deleting the backing directory is a more efficient way to
-        create the archive because it avoids data duplication.
-
         Args:
             archive_path: the path + extension to write the output archive
-            delete_backing_dir: whether to delete the original backing
-                directory when creating the archive. By default, this is False
         '''
         with etau.TempDir() as tmp_dir:
             name = os.path.splitext(os.path.basename(archive_path))[0]
@@ -1039,11 +1066,7 @@ class BigSet(Set):
             index_path = os.path.join(rootdir, "index.json")
             ele_dir = os.path.join(rootdir, self._ELE_ATTR)
 
-            if delete_backing_dir:
-                self.move(ele_dir)
-                set_ = self
-            else:
-                set_ = self.copy(ele_dir)
+            set_ = self.copy(ele_dir)
 
             full_backing_dir = set_.backing_dir
             #
@@ -1057,7 +1080,8 @@ class BigSet(Set):
             etau.make_archive(rootdir, archive_path)
 
     @classmethod
-    def from_archive(cls, archive_path, backing_dir, delete_archive=False):
+    def from_archive(cls, archive_path, backing_dir=None,
+                     delete_archive=False):
         '''Loads a BigSet from an archive created by `to_archive()`.
 
         Args:
@@ -1079,13 +1103,14 @@ class BigSet(Set):
             etau.extract_archive(
                 archive_path, outdir=tmp_dir, delete_archive=delete_archive)
             set_ = cls.from_json(index_path)
-            set_._backing_dir = tmp_backing_dir
-            set_.move(backing_dir)
+            etau.move_dir(tmp_backing_dir, set_.backing_dir)
+            if backing_dir is not None:
+                set_.move(backing_dir)
 
         return set_
 
     @classmethod
-    def from_paths(cls, backing_dir, paths):
+    def from_paths(cls, paths, backing_dir=None):
         '''Creates a BigSet from a list of `_ELE_CLS` JSON files.
 
         Args:
@@ -1102,7 +1127,7 @@ class BigSet(Set):
         return set_
 
     @classmethod
-    def from_dir(cls, backing_dir, source_dir):
+    def from_dir(cls, source_dir, backing_dir=None):
         '''Creates a BigSet from an unstructured directory of `_ELE_CLS`
         JSON files on disk.
 
@@ -1130,9 +1155,7 @@ class BigSet(Set):
             an instance of the BigSet class
         '''
         cls = cls._validate_dict(d)
-        uuid_list = d.get(self._ELE_ATTR, [])
-        set_ = cls(**d)
-        set_._init_dict(uuid_list)
+        return cls(**d)
 
     def _filter_elements(self, filters, match):
         def run_filters(uuid):
@@ -1144,7 +1167,12 @@ class BigSet(Set):
             if match(run_filters(v)))
 
     def _set_backing_dir(self, backing_dir):
-        self._backing_dir = os.path.abspath(backing_dir)
+        if backing_dir is not None:
+            self._temp_storage = False
+            self._backing_dir = os.path.abspath(backing_dir)
+        else:
+            self._temp_storage = True
+            self._backing_dir = tempfile.mkdtemp()
 
     @property
     def _ele_paths(self):
@@ -1176,9 +1204,9 @@ class BigSet(Set):
 
     def _init_dict(self, uuid_list):
         for uuid in uuid_list:
-            ele = set_._load_ele_by_uuid(uuid)
-            key = cls.get_key(ele)
-            set_.__elements__[key] = uuid
+            ele = self._load_ele_by_uuid(uuid)
+            key = self.get_key(ele)
+            self.__elements__[key] = uuid
 
 
 class SetError(Exception):
