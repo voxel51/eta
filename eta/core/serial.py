@@ -927,7 +927,7 @@ class BigSet(Set):
                 Must be empty or non-existent
         '''
         old_backing_dir = self.backing_dir
-        self._set_backing_dir(None)
+        self._set_backing_dir(new_backing_dir)
         etau.move_dir(old_backing_dir, self.backing_dir)
 
     def add_set(self, set_):
