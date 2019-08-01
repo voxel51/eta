@@ -1710,7 +1710,7 @@ class Sampler(DatasetTransformer):
         '''Sample from the existing records.
 
         Args:
-            src (BuilderImageDataset or BuilderVideoDataset
+            src (BuilderImageDataset or BuilderVideoDataset)
 
         Returns:
             None
