@@ -29,8 +29,8 @@ import copy
 import logging
 import os
 import random
+import re
 from collections import Counter, defaultdict
-import random
 
 import numpy as np
 
@@ -1058,6 +1058,11 @@ class LabeledDataset(object):
         etau.ensure_dir(data_subdir)
         etau.ensure_dir(labels_subdir)
 
+    @property
+    def builder_cls(self):
+        '''Getter for the associated LabeledDatasetBuilder class.'''
+        return etau.get_class(etau.get_class_name(self) + "Builder")
+
     def builder(self):
         '''Creates a LabeledDatasetBuilder instance for this dataset for
         transformations to be run.
@@ -1065,7 +1070,7 @@ class LabeledDataset(object):
         Returns:
             LabeledDatasetBuilder
         '''
-        builder = etau.get_class(self._BUILDER_CLS_FIELD)()
+        builder = self.builder_cls()
         for paths in self.iter_paths():
             builder.add_record(builder.record_cls(*paths))
         return builder
@@ -1093,8 +1098,6 @@ class LabeledVideoDataset(LabeledDataset):
     Labeled video datasets are referenced in code by their `dataset_path`,
     which points to the `manifest.json` file for the dataset.
     '''
-
-    _BUILDER_CLS_FIELD = "eta.core.datasets.LabeledVideoDatasetBuilder"
 
     @classmethod
     def validate_dataset(cls, dataset_path):
@@ -1165,8 +1168,6 @@ class LabeledImageDataset(LabeledDataset):
     Labeled image datasets are referenced in code by their `dataset_path`,
     which points to the `manifest.json` file for the dataset.
     '''
-
-    _BUILDER_CLS_FIELD = "eta.core.datasets.LabeledImageDatasetBuilder"
 
     @classmethod
     def validate_dataset(cls, dataset_path):
@@ -1383,13 +1384,10 @@ class LabeledDatasetBuilder(object):
     Transformations are run in the order they are added.
     '''
 
-    _DATASET_CLS_FIELD = None
-    _BUILDER_DATASET_CLS_FIELD = None
-
     def __init__(self):
         '''Initialize the LabeledDatasetBuilder.'''
         self._transformers = []
-        self._dataset = etau.get_class(self._BUILDER_DATASET_CLS_FIELD)()
+        self._dataset = self.dataset_cls()
 
     def add_record(self, record):
         '''Add a record. LabeledImageDatasetBuilders take BuilderImageRecords
@@ -1415,6 +1413,12 @@ class LabeledDatasetBuilder(object):
         self._transformers.append(transform)
 
     @property
+    def dataset_cls(self):
+        '''DatasetBuilder class getter.'''
+        dataset_cls_name = re.sub("Builder$", "", etau.get_class_name(self))
+        return etau.get_class(dataset_cls_name)
+
+    @property
     def record_cls(self):
         '''Record class getter.'''
         return self._dataset.record_cls
@@ -1434,8 +1438,7 @@ class LabeledDatasetBuilder(object):
         for transformer in self._transformers:
             transformer.transform(self._dataset)
 
-        dataset_cls = etau.get_class(self._DATASET_CLS_FIELD)
-        dataset = dataset_cls.create_empty_dataset(path, description)
+        dataset = self.dataset_cls.create_empty_dataset(path, description)
 
         with etau.TempDir() as dir_path:
             for idx, record in enumerate(self._dataset):
@@ -1449,15 +1452,9 @@ class LabeledDatasetBuilder(object):
 class LabeledImageDatasetBuilder(LabeledDatasetBuilder):
     '''LabeledDatasetBuilder for images.'''
 
-    _DATASET_CLS_FIELD = "eta.core.datasets.LabeledImageDataset"
-    _BUILDER_DATASET_CLS_FIELD = "eta.core.datasets.BuilderImageDataset"
-
 
 class LabeledVideoDatasetBuilder(LabeledDatasetBuilder):
     '''LabeledDatasetBuilder for videos.'''
-
-    _DATASET_CLS_FIELD = "eta.core.datasets.LabeledVideoDataset"
-    _BUILDER_DATASET_CLS_FIELD = "eta.core.datasets.BuilderVideoDataset"
 
 
 class BuilderDataRecord(BaseDataRecord):
