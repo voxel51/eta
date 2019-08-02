@@ -1387,7 +1387,7 @@ class LabeledDatasetBuilder(object):
     def __init__(self):
         '''Initialize the LabeledDatasetBuilder.'''
         self._transformers = []
-        self._dataset = self.dataset_cls()
+        self._dataset = self.builder_dataset_cls()
 
     def add_record(self, record):
         '''Add a record. LabeledImageDatasetBuilders take BuilderImageRecords
@@ -1413,10 +1413,20 @@ class LabeledDatasetBuilder(object):
         self._transformers.append(transform)
 
     @property
+    def builder_dataset_cls(self):
+        '''Associated BuilderDataset class getter.'''
+        cls_breakup = etau.get_class_name(self).split(".")
+        cls = cls_breakup[-1]
+        cls = re.sub("^Labeled", "Builder", re.sub("Builder$", "", cls))
+        cls_breakup[-1] = cls
+        full_cls_path = ".".join(cls_breakup)
+        return etau.get_class(full_cls_path)
+
+    @property
     def dataset_cls(self):
-        '''DatasetBuilder class getter.'''
-        dataset_cls_name = re.sub("Builder$", "", etau.get_class_name(self))
-        return etau.get_class(dataset_cls_name)
+        '''Associated LabeledDataset class getter.'''
+        cls = etau.get_class_name(self)
+        return etau.get_class(re.sub("Builder$", "", cls))
 
     @property
     def record_cls(self):
