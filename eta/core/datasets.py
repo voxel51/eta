@@ -1378,7 +1378,7 @@ class LabeledDatasetError(Exception):
 
 
 class LabeledDatasetBuilder(object):
-    '''This object builds a LabeledDataset with with transformations applied,
+    '''This object builds a LabeledDataset with transformations applied,
     e.g. Sampler, Balancer.
 
     Transformations are run in the order they are added.
