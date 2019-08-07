@@ -1426,7 +1426,8 @@ class LabeledDatasetBuilder(object):
     def dataset_cls(self):
         '''Associated LabeledDataset class getter.'''
         cls = etau.get_class_name(self)
-        return etau.get_class(re.sub("Builder$", "", cls))
+        cls = re.sub("Builder$", "", cls).split(".")[-1]
+        return etau.get_class(cls, "eta.core.datasets")
 
     @property
     def record_cls(self):
