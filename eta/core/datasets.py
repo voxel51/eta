@@ -1741,8 +1741,8 @@ class Balancer(DatasetTransformer):
         `object_label`.
     '''
 
-    def __init__(self, attribute_name, object_label=None,
-                 target_quantile=0.25, negative_power=5, target_count=None):
+    def __init__(self, attribute_name, object_label=None, target_quantile=0.25,
+                 negative_power=5, target_count=None, algorithm="greedy"):
         '''Creates a Balancer instance.
 
         Args:
@@ -1767,12 +1767,15 @@ class Balancer(DatasetTransformer):
                 Check Balancer._solution_score for more details.
             target_count (int): override target count for each attribute value.
                 If this is provided, target_quantile is ignored.
+            algorithm (str): name of the balancing search algorithm. Currently
+                available are: ["random", "greedy"]
         '''
         self.attr_name = attribute_name
         self.object_label = object_label
         self.target_quantile = target_quantile
         self.negative_power = negative_power
         self.target_count = target_count
+        self.algorithm = algorithm
 
     def transform(self, src):
         '''Modify the BuilderDataset records by removing records until the
@@ -2016,7 +2019,13 @@ class Balancer(DatasetTransformer):
         '''
         b = counts - target_count
 
-        x = self._greedy(A, b)
+        if self.algorithm == "random":
+            x = self._random(A, b)
+        elif self.algorithm == "greedy":
+            x = self._greedy(A, b)
+        else:
+            raise ValueError(
+                "Unknown balancing algorithm '{}'".format(self.algorithm))
 
         return np.where(x == 0)[0]
 
