@@ -496,7 +496,7 @@ class Set(Serializable):
             raise SetError(
                 "Expected elements to be provided in keyword argument '%s'; "
                 "found keys %s" % (self._ELE_ATTR, list(kwargs.keys())))
-        elements = kwargs.get(self._ELE_ATTR, [])
+        elements = kwargs.get(self._ELE_ATTR, None) or []
 
         for e in elements:
             if not isinstance(e, self._ELE_CLS):
@@ -1294,7 +1294,7 @@ class Container(Serializable):
             raise ContainerError(
                 "Expected elements to be provided in keyword argument '%s'; "
                 "found keys %s" % (self._ELE_ATTR, list(kwargs.keys())))
-        elements = kwargs.get(self._ELE_ATTR, [])
+        elements = kwargs.get(self._ELE_ATTR, None) or []
 
         for e in elements:
             if not isinstance(e, self._ELE_CLS):
