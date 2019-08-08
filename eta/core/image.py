@@ -530,14 +530,6 @@ class ImageSetLabels(Set):
             self._validate_labels(image_labels)
         super(ImageSetLabels, self).add(image_labels)
 
-    def add_set(self, image_set_labels):
-        '''Merges the ImageSetLabels into the set.
-
-        Args:
-            image_set_labels: an ImageSetLabels instance
-        '''
-        self.add_iterable(image_set_labels)
-
     def get_filenames(self):
         '''Returns the set of filenames of ImageLabels in the set.
 
