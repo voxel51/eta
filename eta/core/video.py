@@ -1325,27 +1325,40 @@ class VideoSetLabels(Set):
 
 
 class BigVideoSetLabels(VideoSetLabels, BigSet):
-    '''A BigSet of VideoSetLabels.
+    '''A BigSet of VideoLabels.
 
-     Attributes:
-        videos: an OrderedDict of VideoLabels with filenames as keys and BigSet
-            uuids for storage.
-        schema: an VideoLabelsSchema describing the schema of the video labels
+    Behaves identically to VideoSetLabels except that each VideoLabels is
+    stored on disk.
+
+    Attributes:
+        backing_dir: the backing directory in which the VideoLabels
+            are/will be stored
+        videos: an OrderedDict whose keys are filenames and whose values are
+            uuids for locating VideoLabels on disk
+        schema: a VideoLabelsSchema describing the schema of the labels
     '''
+
+    def __init__(self, backing_dir, videos=None, schema=None):
+        '''Creates a BigVideoSetLabels instance.
+
+        Args:
+            backing_dir: the backing directory in which the VideoLabels
+                are/will be stored
+            videos: an optional list of uuids for elements in the set
+            schema: an optional VideoLabelsSchema to enforce on the object.
+                By default, no schema is enforced
+        '''
+        self.schema = schema
+        BigSet.__init__(self, backing_dir, videos=videos)
 
     @classmethod
     def from_dict(cls, d):
         '''Constructs a BigVideoSetLabels from a JSON dictionary.'''
-
-        schema = d.get("schema", None)
+        schema = d.pop("schema", None)
         if schema is not None:
             schema = VideoLabelsSchema.from_dict(schema)
 
-        videos = d.pop("videos", [])
-
-        set_ = cls(**d)
-        setattr(set_, cls._ELE_ATTR, OrderedDict(videos))
-        return set_
+        return super(BigVideoSetLabels, cls).from_dict(d, schema=schema)
 
 
 class VideoStreamInfo(Serializable):
