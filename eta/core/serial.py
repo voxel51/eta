@@ -590,7 +590,7 @@ class Set(Serializable):
             element: an instance of `_ELE_CLS`
         '''
         key = self.get_key(element) or str(uuid4())
-        self[key] = element
+        self.__elements__[key] = element
 
     def add_set(self, set_):
         '''Adds the elements in the given set to this set.
