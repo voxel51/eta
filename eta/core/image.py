@@ -656,21 +656,40 @@ class ImageSetLabels(Set):
 
 
 class BigImageSetLabels(ImageSetLabels, BigSet):
-    '''A BigSet of ImageSetLabels.'''
+    '''A BigSet of ImageLabels.
+
+    Behaves identically to ImageSetLabels except that each ImageLabels is
+    stored on disk.
+
+    Attributes:
+        backing_dir: the backing directory in which the ImageLabels
+                are/will be stored
+        images: an OrderedDict whose keys are filenames and whose values are
+            uuids for locating ImageLabels on disk
+        schema: a ImageLabelsSchema describing the schema of the labels
+    '''
+
+    def __init__(self, backing_dir, images=None, schema=None):
+        '''Creates a BigImageSetLabels instance.
+
+        Args:
+            backing_dir: the backing directory in which the ImageLabels
+                are/will be stored
+            images: an optional list of uuids for elements in the set
+            schema: an optional ImageLabelsSchema to enforce on the object.
+                By default, no schema is enforced
+        '''
+        self.schema = schema
+        BigSet.__init__(self, backing_dir, images=images)
 
     @classmethod
     def from_dict(cls, d):
         '''Constructs a BigImageSetLabels from a JSON dictionary.'''
-
-        schema = d.get("schema", None)
+        schema = d.pop("schema", None)
         if schema is not None:
             schema = ImageLabelsSchema.from_dict(schema)
 
-        images = d.pop("images", [])
-
-        set_ = cls(**d)
-        setattr(set_, cls._ELE_ATTR, OrderedDict(images))
-        return set_
+        return super(BigImageSetLabels, cls).from_dict(d, schema=schema)
 
 
 ###### Image I/O ##############################################################
