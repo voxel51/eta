@@ -495,7 +495,7 @@ class ImageSetLabels(Set):
     def __getitem__(self, filename):
         if filename not in self:
             image_labels = ImageLabels(filename=filename)
-            self.add_image_labels(image_labels)
+            self.add(image_labels)
 
         return super(ImageSetLabels, self).__getitem__(filename)
 
@@ -503,7 +503,7 @@ class ImageSetLabels(Set):
         image_labels.filename = filename
 
         if self.has_schema:
-            self._validate_image_labels(image_labels)
+            self._validate_labels(image_labels)
 
         super(ImageSetLabels, self).__setitem__(filename, image_labels)
 
@@ -522,20 +522,23 @@ class ImageSetLabels(Set):
         '''
         return self.__class__(schema=self.schema)
 
-    def add_image_labels(self, image_labels):
+    def add(self, image_labels):
         '''Adds the ImageLabels to the set.
 
         Args:
             image_labels: an ImageLabels instance
         '''
         if self.has_schema:
-            self._validate_image_labels(image_labels)
-        self.add(image_labels)
+            self._validate_labels(image_labels)
+        super(ImageSetLabels, self).add(image_labels)
 
-    def merge_image_set_labels(self, image_set_labels):
-        '''Merges the given ImageSetLabels into this labels.'''
-        for image_labels in image_set_labels:
-            self.add_image_labels(image_labels)
+    def add_set(self, image_set_labels):
+        '''Merges the ImageSetLabels into the set.
+
+        Args:
+            image_set_labels: an ImageSetLabels instance
+        '''
+        self.add_iterable(image_set_labels)
 
     def get_filenames(self):
         '''Returns the set of filenames of ImageLabels in the set.
@@ -604,50 +607,6 @@ class ImageSetLabels(Set):
         '''Removes the enforced schema from the image set.'''
         self.schema = None
 
-    def filter_image_labels(self, filters, match=any):
-        '''Removes ImageLabels that don't match the given filters from the set.
-
-        Args:
-            filters: a list of functions that accept ImageLabels and return
-                True/False
-            match: a function (usually `any` or `all`) that accepts an iterable
-                and returns True/False. Used to aggregate the outputs of each
-                filter to decide whether a match has occurred. The default is
-                `any`
-        '''
-        self.filter_elements(filters, match=match)
-
-    def delete_image_labels(self, filenames):
-        '''Deletes ImageLabels from the set with the given filenames.
-
-        Args:
-            filenames: an iterable of filenames to delete
-        '''
-        self.delete_keys(filenames)
-
-    def keep_image_labels(self, filenames):
-        '''Keeps only the ImageLabels in the set with the given filenames.
-
-        Args:
-            filenames: an iterable of filenames to keep
-        '''
-        self.keep_keys(filenames)
-
-    def extract_image_labels(self, filenames):
-        '''Returns a new ImageSetLabels having only the ImageLabels with the
-        given filenames.
-
-        The ImageLabels are passed by reference, not copied.
-
-        Args:
-            filenames: an iterable of filenames to keep
-
-        Returns:
-            an ImageSetLabels with the requested labels
-        '''
-        return self.extract_keys(filenames)
-
-
     def sort_by_filename(self, reverse=False):
         '''Sorts the ImageLabels in this instance by filename.
 
@@ -666,7 +625,7 @@ class ImageSetLabels(Set):
             return ["schema"] + _attrs
         return _attrs
 
-    def _validate_image_labels(self, image_labels):
+    def _validate_labels(self, image_labels):
         if self.has_schema:
             for image_attr in image_labels.attrs:
                 self._validate_image_attribute(image_attr)
@@ -684,21 +643,16 @@ class ImageSetLabels(Set):
     def _validate_schema(self):
         if self.has_schema:
             for image_labels in self:
-                self._validate_image_labels(image_labels)
+                self._validate_labels(image_labels)
 
     @classmethod
     def from_dict(cls, d):
         '''Constructs an ImageSetLabels from a JSON dictionary.'''
-
         schema = d.get("schema", None)
         if schema is not None:
             schema = ImageLabelsSchema.from_dict(schema)
 
-        images = d.get("images", None)
-        if images is not None:
-            images = [ImageLabels.from_dict(il) for il in images]
-
-        return cls(images=images, schema=schema)
+        return super(ImageSetLabels, cls).from_dict(d, schema=schema)
 
 
 class BigImageSetLabels(ImageSetLabels, BigSet):
