@@ -819,16 +819,22 @@ class Set(Serializable):
 
 
 class BigSet(Set):
-    '''Set that stores a (potentially huge) list of `Serializable`
+    '''Set that stores a (potentially huge) set of `Serializable`
     objects. The elements are stored on disk in a backing directory; accessing
     any element in the list causes an immediate READ from disk, and
     adding/setting an element causes an immediate WRITE to disk.
 
     BigSets store a `backing_dir` attribute that specifies the path on
-    disk to the serialized elements. The set also maintains an OrderedDict of
-    keys determined by `_ELE_KEY_ATTR` and values of uuids which are used to
-    locate elements on disk. This OrderedDict is included in lieu of the actual
-    elements when serializing BigSet instances.
+    disk to the serialized elements. If a backing directory is explicitly
+    provided by a user, the directory will be maintained after the BigSet
+    object is deleted; if no backing directory is specified, a temporary
+    backing directory is used and is deleted when the BigSet instance is
+    garbage collected.
+
+    BigSets maintain an OrderedDict of keys determined by `_ELE_KEY_ATTR` and
+    values of uuids which are used to locate elements on disk. This OrderedDict
+    is included in lieu of the actual elements when serializing BigSet
+    instances.
 
     To read/write archives of BigSet that also include their elements,
     use the `to_archive()` and `from_archive()` methods, respectively.
@@ -847,42 +853,44 @@ class BigSet(Set):
             in the set
     '''
 
-    def __init__(self, **kwargs):
+    def __init__(self, backing_dir=None, **kwargs):
         '''Creates a BigSet instance.
 
         Args:
-            backing_dir: the backing directory in which the elements are/will
-                be stored
-            <elements>: an optional list of uuids for elements in the
-                set. The appropriate name of this keyword argument is
-                determined by the `_ELE_ATTR` member of the BigContainer
+            backing_dir: an optional backing directory in which the elements
+                are/will be stored. If omitted, a temporary backing directory
+                is used
+            <elements>: an optional dictionary or list of (key, uuid) tuples
+                for elements in the set. The appropriate name of this keyword
+                argument is determined by the `_ELE_ATTR` member of the BigSet
                 subclass
 
         Raises:
             SetError: if there was an error while creating the set
         '''
         self._validate()
-        self._set_backing_dir(kwargs.pop("backing_dir", None))
 
-        if self._ELE_ATTR in kwargs:
+        self._uses_temporary_storage = False
+        self._backing_dir = None
+        self._set_backing_dir(backing_dir)
+
+        elements = kwargs.get(self._ELE_ATTR, None) or []
+        if elements:
             etau.ensure_dir(self.backing_dir)
-            elements = kwargs[self._ELE_ATTR]
         else:
             etau.ensure_empty_dir(self.backing_dir)
-            elements = []
 
-        self.clear()
-        self.add_iterable(elements)
+        setattr(self, self._ELE_ATTR, OrderedDict(elements))
 
     def __del__(self):
-        if self._temp_storage:
+        if self.uses_temporary_storage:
             etau.delete_dir(self.backing_dir)
 
     def __getitem__(self, key):
         return self._load_ele(self._ele_path(key))
 
     def __setitem__(self, key, element):
-        if key not in self.__elements__:
+        if key not in self:
             self.__elements__[key] = self._make_uuid()
         element.write_json(self._ele_path(key))
 
@@ -900,48 +908,88 @@ class BigSet(Set):
             return self._backing_dir
         return self._tempdir
 
+    @property
+    def uses_temporary_storage(self):
+        '''Whether this BigSet is backed by temporary storage.'''
+        return self._uses_temporary_storage
+
+    @property
+    def set_cls(self):
+        '''Returns the Set class associated with this BigSet.'''
+        module, dot, big_cls = etau.get_class_name(self).rpartition(".")
+        cls_name = module + dot + big_cls[len("Big"):]
+        return etau.get_class(cls_name)
+
     def clear(self):
         '''Deletes all elements from the set.'''
         super(BigSet, self).clear()
         etau.delete_dir(self.backing_dir)
         etau.ensure_dir(self.backing_dir)
 
-    def copy(self, new_backing_dir=None):
+    def copy(self, backing_dir=None):
         '''Creates a deep copy of this set backed by the given directory.
 
         Args:
-            new_backing_dir: backing directory to use for the new set.
-                Must be empty or non-existent
+            backing_dir: an optional backing directory to use for the new
+                BigSet. If provided, must be empty or non-existent
 
         Returns:
             a BigSet
         '''
-        if new_backing_dir is not None:
-            etau.ensure_empty_dir(new_backing_dir)
-        set_ = copy.deepcopy(self)
-        set_._set_backing_dir(new_backing_dir)
-        set_.clear()
-        set_.add_set(self)
-        return set_
+        new_set = self.empty(backing_dir=backing_dir)
+        new_set.add_set(self)
+        return new_set
 
-    def move(self, new_backing_dir=None):
+    def empty(self, backing_dir=None):
+        '''Returns an empty copy of the set backed by the given directory.
+
+        Subclasses may override this method, but, by default, this method makes
+        the empty set via `self.__class__(backing_dir=backing_dir)`
+
+        Args:
+            backing_dir: an optional backing directory to use for the new
+                BigSet. If provided, must be empty or non-existent
+
+        Returns:
+            an empty BigSet
+        '''
+        return self.__class__(backing_dir=backing_dir)
+
+    def move(self, backing_dir=None):
         '''Moves the backing directory of the set to the given location.
 
         Args:
-            new_backing_dir: backing directory to use for the new set.
-                Must be empty or non-existent
+            backing_dir: an optional backing directory to use for the new
+                BigSet. If provided, must be empty or non-existent
         '''
-        old_backing_dir = self.backing_dir
-        self._set_backing_dir(new_backing_dir)
-        etau.move_dir(old_backing_dir, self.backing_dir)
+        if backing_dir is not None:
+            etau.ensure_empty_dir(backing_dir)
+        orig_backing_dir = self.backing_dir
+        self._set_backing_dir(backing_dir)
+        etau.move_dir(orig_backing_dir, self.backing_dir)
 
-    def add_set(self, set_):
-        '''Adds the elements in the given set to this set.
+    def add(self, element):
+        '''Adds an element to the set.
 
         Args:
-            set_: a BigSet
+            element: an instance of `_ELE_CLS`
         '''
-        self.add_iterable(set_)
+        key = self.get_key(element) or str(uuid4())
+        self[key] = element
+
+    def add_set(self, set_):
+        '''Adds the given set's elements to the set.
+
+        Args:
+            set_: a Set of `_ELE_CLS` objects
+        '''
+        if isinstance(set_, BigSet):
+            # Copy BigSet elements via disk to avoid loading into memory
+            for key in set_.keys():
+                path = set_._ele_path(key)
+                self._add_by_path(path, key=key)
+        else:
+            self.add_iterable(set_)
 
     def filter_elements(self, filters, match=any):
         '''Removes elements that don't match the given filters from the set.
@@ -958,15 +1006,6 @@ class BigSet(Set):
         keys = [key for key in self.__elements__ if key not in new_ele_set]
         self.delete_keys(keys)
 
-    def delete_keys(self, keys):
-        '''Deletes the elements from the set with the given keys.
-
-        Args:
-            keys: an iterable of keys of the elements to delete
-        '''
-        for key in self:
-            del self[key]
-
     def keep_keys(self, keys):
         '''Keeps only the elements in the set with the given keys.
 
@@ -975,26 +1014,34 @@ class BigSet(Set):
         '''
         self.delete_keys(set(self.__elements__.keys()) - set(keys))
 
-    def extract_keys(self, keys, new_backing_dir=None):
-        '''Creates a new set having only the elements with the given keys.
+    def extract_keys(self, keys, big=True, backing_dir=None):
+        '''Returns a set having only the elements with the given keys.
 
         Args:
             keys: an iterable of keys of the elements to keep
+            big: whether to create a BigSet (True) or Set (False). By default,
+                this is True
+            backing_dir: an optional backing directory to use for the new
+                BigSet. If provided, must be empty or non-existent
 
         Returns:
-            a BigSet
+            a BigSet or Set with the requested elements
         '''
-        if new_backing_dir is not None:
-            etau.ensure_empty_dir(new_backing_dir)
-        set_ = copy.deepcopy(self)
-        set_._set_backing_dir(new_backing_dir)
-        set_.clear()
+        if not big:
+            # Return results in a Set
+            new_set = self.set_cls()
+            for key in keys:
+                new_set.add(self[key])
+            return new_set
+
+        # Return results in a BigSet
+        new_set = self.empty(backing_dir=backing_dir)
         for key in keys:
-            set_._add_by_path(self._ele_path(key))
+            path = self._ele_path(key)
+            new_set._add_by_path(path, key=key)
+        return new_set
 
-        return set_
-
-    def get_matches(self, filters, match=any, new_backing_dir=None):
+    def get_matches(self, filters, match=any, big=True, backing_dir=None):
         '''Gets elements matching the given filters.
 
         Args:
@@ -1004,13 +1051,17 @@ class BigSet(Set):
                 and returns True/False. Used to aggregate the outputs of each
                 filter to decide whether a match has occurred. The default is
                 `any`
+            big: whether to create a BigSet (True) or Set (False). By default,
+                this is True
+            backing_dir: an optional backing directory to use for the new
+                BigSet. If provided, must be empty or non-existent
 
         Returns:
             a copy of the set containing only the elements that match the
                 filters
         '''
         keys = self._filter_elements(filters, match)
-        return self.extract_keys(new_backing_dir, keys)
+        return self.extract_keys(keys, big=big, backing_dir=backing_dir)
 
     def sort_by(self, attr, reverse=False):
         '''Sorts the elements in the set by the given attribute.
@@ -1050,15 +1101,17 @@ class BigSet(Set):
             d["_CLS"] = self.get_class_name()
             d[self._ELE_CLS_FIELD] = etau.get_class_name(self._ELE_CLS)
 
+        d.update(super(BigSet, self).serialize(reflective=False))
+
         #
         # Note that we serialize the dictionary into a list of (key, value)
-        # tuples
+        # tuples, to preserve order
         #
         d[self._ELE_ATTR] = _recurse(list(self.__elements__.items()), False)
 
         return d
 
-    def to_archive(self, archive_path):
+    def to_archive(self, archive_path, delete_backing_dir=False):
         '''Writes the BigSet to a self-contained archive file.
 
         The archive contains both a JSON index and the raw element JSON files
@@ -1072,8 +1125,13 @@ class BigSet(Set):
                 <uuid>.json
         ```
 
+        Note that deleting the backing directory is a more efficient way to
+        create the archive because it avoids data duplication.
+
         Args:
             archive_path: the path + extension to write the output archive
+            delete_backing_dir: whether to delete the original backing
+                directory when creating the archive. By default, this is False
         '''
         with etau.TempDir() as tmp_dir:
             name = os.path.splitext(os.path.basename(archive_path))[0]
@@ -1081,28 +1139,33 @@ class BigSet(Set):
             index_path = os.path.join(rootdir, "index.json")
             ele_dir = os.path.join(rootdir, self._ELE_ATTR)
 
-            set_ = self.copy(ele_dir)
+            if delete_backing_dir:
+                self.move(backing_dir=ele_dir)
+                set_ = self
+            else:
+                set_ = self.copy(backing_dir=ele_dir)
 
+            #
+            # The backing directory embedded in the JSON is not actually used
+            # (neither here nor in `from_archive`), but we set it relative to
+            # the root of the archive, for completeness.
+            #
             full_backing_dir = set_.backing_dir
-            #
-            # This backing directory is not actually used (neither here nor
-            # in `from_archive`), but we set it relative to the root of the
-            # archive, for completeness.
-            #
             set_._backing_dir = "./" + self._ELE_ATTR
             set_.write_json(index_path)
             set_._backing_dir = full_backing_dir
+
             etau.make_archive(rootdir, archive_path)
 
     @classmethod
-    def from_archive(cls, archive_path, backing_dir=None,
-                     delete_archive=False):
+    def from_archive(
+            cls, archive_path, backing_dir=None, delete_archive=False):
         '''Loads a BigSet from an archive created by `to_archive()`.
 
         Args:
             archive_path: the path to the archive to load
-            backing_dir: backing directory to use for the new container.
-                Must be empty or non-existent
+            backing_dir: an optional backing directory to use for the new
+                BigSet. If provided, must be empty or non-existent
             delete_archive: whether to delete the archive after unpacking it.
                 By default, this is False
 
@@ -1118,20 +1181,45 @@ class BigSet(Set):
             etau.extract_archive(
                 archive_path, outdir=tmp_dir, delete_archive=delete_archive)
             set_ = cls.from_json(index_path)
-            etau.move_dir(tmp_backing_dir, set_.backing_dir)
-            if backing_dir is not None:
-                set_.move(backing_dir)
+            set_._backing_dir = tmp_backing_dir
+            set_.move(backing_dir=backing_dir)
 
         return set_
+
+    def to_set(self):
+        '''Loads a BigSet into an in-memory Set of the associated class.
+
+        Returns:
+            a Set
+        '''
+        set_ = self.set_cls()
+        set_.add_set(self)
+        return set_
+
+    @classmethod
+    def from_set(cls, set_, backing_dir=None):
+        '''Creates a BigSet with the given Set's elements.
+
+        Args:
+            set_: a Set
+            backing_dir: an optional backing directory to use for the new
+                BigSet. If provided, must be empty or non-existent
+
+        Returns:
+            a BigSet
+        '''
+        big_set = cls(backing_dir=backing_dir)
+        big_set.add_set(set_)
+        return big_set
 
     @classmethod
     def from_paths(cls, paths, backing_dir=None):
         '''Creates a BigSet from a list of `_ELE_CLS` JSON files.
 
         Args:
-            backing_dir: the backing directory to use for the new BigSet.
-                Must be empty or non-existent
             paths: an iterable of paths to `_ELE_CLS` JSON files
+            backing_dir: an optional backing directory to use for the new
+                BigSet. If provided, must be empty or non-existent
 
         Returns:
             a BigSet
@@ -1149,15 +1237,15 @@ class BigSet(Set):
         The source directory is traversed recursively.
 
         Args:
-            backing_dir: the backing directory to use for the new BigSet.
-                Must be empty or non-existent
             source_dir: the source directory from which to ingest elements
+            backing_dir: an optional backing directory to use for the new
+                BigSet. If provided, must be empty or non-existent
 
         Returns:
             a BigSet
         '''
         paths = etau.multiglob(".json", root=source_dir + "/**/*")
-        return cls.from_paths(paths, backing_dir)
+        return cls.from_paths(paths, backing_dir=backing_dir)
 
     @classmethod
     def from_dict(cls, d, **kwargs):
@@ -1185,11 +1273,11 @@ class BigSet(Set):
 
     def _set_backing_dir(self, backing_dir):
         if backing_dir is not None:
-            self._temp_storage = False
+            self._uses_temporary_storage = False
             self._backing_dir = os.path.abspath(backing_dir)
         else:
-            self._temp_storage = True
-            self._backing_dir = tempfile.mkdtemp()
+            self._uses_temporary_storage = True
+            self._backing_dir = etau.make_temp_dir()
 
     @property
     def _ele_paths(self):
@@ -1216,8 +1304,17 @@ class BigSet(Set):
     def _load_ele_by_uuid(self, uuid):
         return self._load_ele(self._ele_path_by_uuid(uuid))
 
-    def _add_by_path(self, path):
-        self.add(self._load_ele(path))
+    def _add_by_path(self, path, key=None):
+        if key is None:
+            # Must load element to get key
+            self.add(self._load_ele(path))
+            return
+
+        if key not in self:
+            # Must add key to set
+            self.__elements__[key] = self._make_uuid()
+
+        etau.copy_file(path, self._ele_path(key))
 
 
 class SetError(Exception):
