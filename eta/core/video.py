@@ -1210,14 +1210,6 @@ class VideoSetLabels(Set):
             self._apply_schema_to_video(video_labels)
         super(VideoSetLabels, self).add(video_labels)
 
-    def add_set(self, video_set_labels):
-        '''Merges the VideoSetLabels into the set.
-
-        Args:
-            video_set_labels: a VideoSetLabels instance
-        '''
-        self.add_iterable(video_set_labels)
-
     def get_filenames(self):
         '''Returns the set of filenames of VideoLabels in the set.
 
