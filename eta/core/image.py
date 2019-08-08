@@ -459,12 +459,10 @@ class ImageLabelsSchemaError(Exception):
 
 
 class ImageSetLabels(Set):
-    '''Abstract class encapsulating labels for a set of images.
+    '''Class encapsulating labels for a set of images.
 
-    ImageSetLabels and BigImageSetLabels are the concrete implementations.
-
-    ImageSetLabels subclasses support item indexing by the `filename` of the
-    ImageLabels instances in the set.
+    ImageSetLabels support item indexing by the `filename` of the ImageLabels
+    instances in the set.
 
     ImageSetLabels instances behave like defaultdicts: new ImageLabels
     instances are automatically created if a non-existent filename is accessed.
@@ -474,7 +472,7 @@ class ImageSetLabels(Set):
 
     Attributes:
         images: an OrderedDict of ImageLabels with filenames as keys
-        schema: an ImageLabelsSchema describing the schema of the image labels
+        schema: an ImageLabelsSchema describing the schema of the labels
     '''
 
     _ELE_ATTR = "images"
