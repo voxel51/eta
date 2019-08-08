@@ -26,7 +26,7 @@ from future.utils import iteritems
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-from collections import defaultdict, OrderedDict
+from collections import defaultdict
 import colorsys
 import errno
 import os
