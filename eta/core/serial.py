@@ -1531,7 +1531,7 @@ class Container(Serializable):
             inds: an iterable of indices of the elements to delete
         '''
         for idx in sorted(inds, reverse=True):
-            del self.__elements__[idx]
+            del self[idx]
 
     def keep_inds(self, inds):
         '''Keeps only the elements in the container with the given indices.
