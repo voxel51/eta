@@ -651,26 +651,35 @@ class BigImageSetLabels(ImageSetLabels, BigSet):
     Behaves identically to ImageSetLabels except that each ImageLabels is
     stored on disk.
 
+    BigImageSetLabels store a `backing_dir` attribute that specifies the path
+    on disk to the serialized elements. If a backing directory is explicitly
+    provided, the directory will be maintained after the BigImageSetLabels
+    object is deleted; if no backing directory is specified, a temporary
+    backing directory is used and is deleted when the BigImageSetLabels
+    instance is garbage collected.
+
     Attributes:
-        backing_dir: the backing directory in which the ImageLabels
-                are/will be stored
         images: an OrderedDict whose keys are filenames and whose values are
             uuids for locating ImageLabels on disk
         schema: a ImageLabelsSchema describing the schema of the labels
+        backing_dir: the backing directory in which the ImageLabels
+            are/will be stored
     '''
 
-    def __init__(self, backing_dir, images=None, schema=None):
+    def __init__(self, images=None, schema=None, backing_dir=None):
         '''Creates a BigImageSetLabels instance.
 
         Args:
-            backing_dir: the backing directory in which the ImageLabels
-                are/will be stored
-            images: an optional list of uuids for elements in the set
+            images: an optional dictionary or list of (key, uuid) tuples for
+                elements in the set
             schema: an optional ImageLabelsSchema to enforce on the object.
                 By default, no schema is enforced
+            backing_dir: an optional backing directory in which the ImageLabels
+                are/will be stored. If omitted, a temporary backing directory
+                is used
         '''
         self.schema = schema
-        BigSet.__init__(self, backing_dir, images=images)
+        BigSet.__init__(self, backing_dir=backing_dir, images=images)
 
     @classmethod
     def from_dict(cls, d):
@@ -679,7 +688,7 @@ class BigImageSetLabels(ImageSetLabels, BigSet):
         if schema is not None:
             schema = ImageLabelsSchema.from_dict(schema)
 
-        return super(BigImageSetLabels, cls).from_dict(d, schema=schema)
+        return BigSet.from_dict(cls, d, schema=schema)
 
 
 ###### Image I/O ##############################################################
