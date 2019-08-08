@@ -25,7 +25,7 @@ import six
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-from collections import Counter, defaultdict
+from collections import defaultdict
 import copy
 import logging
 import os
@@ -1474,8 +1474,8 @@ class BuilderDataRecord(BaseDataRecord):
     _LABELS_EXT = ".json"
 
     def __init__(self, data_path, labels_path):
-        '''Initialize the BuilderDataRecord. The label and data paths cannot and
-        should not be modified after initializion.
+        '''Initialize the BuilderDataRecord. The label and data paths cannot
+        and should not be modified after initializion.
 
         Args:
             data_path (str): path to data file
@@ -1580,7 +1580,7 @@ class BuilderImageRecord(BuilderDataRecord):
         return
 
     def _build_data(self, data_path):
-        etau.copyfile(self.data_path, data_path)
+        etau.copy_file(self.data_path, data_path)
 
 
 class BuilderVideoRecord(BuilderDataRecord):
@@ -1716,7 +1716,7 @@ class Sampler(DatasetTransformer):
         try:
             src.records = random.sample(src.records, self.k)
         except ValueError as err:
-            raise DatasetTransformerError(err.message)
+            raise DatasetTransformerError(err)
 
 
 class Balancer(DatasetTransformer):
@@ -1751,7 +1751,8 @@ class Balancer(DatasetTransformer):
                 samples, they dataset will be excessively trimmed.
             negative_power (float): value between [1, ~LARGE~] that weights the
                 negative values (where the count of a value is less than the
-                target) when computing the score for a set of indices to remove.
+                target) when computing the score for a set of indices to
+                remove.
                 1 - will weight them the same as positive values
                 2 - will square the values
                 ...
@@ -1786,7 +1787,8 @@ class Balancer(DatasetTransformer):
         target_count = self._get_target_count(counts)
 
         # STEP 3: find the records to keep
-        keep_idxs = self._get_keep_idxs(occurrence_matrix, counts, target_count)
+        keep_idxs = self._get_keep_idxs(
+            occurrence_matrix, counts, target_count)
 
         # STEP 4: modify the list of records
         old_records = src.records
@@ -1974,10 +1976,12 @@ class Balancer(DatasetTransformer):
         return helper_list
 
     def _get_target_count(self, counts):
-        '''Compute the target count that we would like to balance each value to.
+        '''Compute the target count that we would like to balance each
+        value to.
 
         Args:
-            A: the occurrence matrix computed in Balancer._get_occurrence_matrix
+            A: the occurrence matrix computed in
+                Balancer._get_occurrence_matrix
 
         Returns: Integer target value
         '''
@@ -2001,7 +2005,8 @@ class Balancer(DatasetTransformer):
         and different algorithms may be substituted in.
 
         Args:
-            A: the occurrence matrix computed in Balancer._get_occurrence_matrix
+            A: the occurrence matrix computed in
+                Balancer._get_occurrence_matrix
             counts (vector): the original counts for each value
             target_count (int): the target value
 
@@ -2104,8 +2109,8 @@ class Balancer(DatasetTransformer):
 
 
 class SchemaFilter(DatasetTransformer):
-    '''Filter all labels in the dataset by the provided schema. If the schema is
-    None, no filtering is done.
+    '''Filter all labels in the dataset by the provided schema. If the schema
+    is None, no filtering is done.
     '''
 
     def __init__(self, schema):
@@ -2183,7 +2188,8 @@ class Clipper(DatasetTransformer):
                 self._add_clipping(start_frame, end_frame, record, src.records)
                 start_frame += self.stride_len
 
-    def _add_clipping(self, start_frame, end_frame, old_record, records):
+    @staticmethod
+    def _add_clipping(start_frame, end_frame, old_record, records):
         new_record = old_record.copy()
         new_record.clip_start_frame = start_frame
         new_record.clip_end_frame = end_frame
