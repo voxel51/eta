@@ -589,15 +589,16 @@ class Set(Serializable):
             element: an instance of `_ELE_CLS`
         '''
         key = self.get_key(element) or str(uuid4())
-        self.__elements__[key] = element
+        self[key] = element
 
     def add_set(self, set_):
         '''Adds the elements in the given set to this set.
 
         Args:
-            set_: a Set
+            set_: a Set of `_ELE_CLS` objects
         '''
-        self.__elements__.update(set_.__elements__)
+        for key in set_.keys():
+            self[key] = set_[key]
 
     def add_iterable(self, elements):
         '''Adds the elements in the given iterable to the set.
@@ -629,7 +630,7 @@ class Set(Serializable):
             keys: an iterable of keys of the elements to delete
         '''
         for key in keys:
-            del self.__elements__[key]
+            del self[key]
 
     def keep_keys(self, keys):
         '''Keeps only the elements in the set with the given keys.
