@@ -744,7 +744,7 @@ class Set(Serializable):
         return d
 
     @classmethod
-    def from_dict(cls, d):
+    def from_dict(cls, d, **kwargs):
         '''Constructs a Set from a JSON dictionary.
 
         If the dictionary has the `"_CLS"` and `cls._ELE_CLS_FIELD`
@@ -757,13 +757,15 @@ class Set(Serializable):
 
         Args:
             d: a JSON dictionary representation of a Set object
+            **kwargs: an optional set of keyword arguments that have already
+                been parsed by a subclass
 
         Returns:
             an instance of the Set class
         '''
         cls = cls._validate_dict(d)
         elements = [cls._ELE_CLS.from_dict(dd) for dd in d[cls._ELE_ATTR]]
-        return cls(**{cls._ELE_ATTR: elements})
+        return cls(**etau.join_dicts({cls._ELE_ATTR: elements}, kwargs))
 
     def _get_elements(self, keys):
         if isinstance(keys, six.string_types):
@@ -1155,17 +1157,19 @@ class BigSet(Set):
         return cls.from_paths(paths, backing_dir)
 
     @classmethod
-    def from_dict(cls, d):
+    def from_dict(cls, d, **kwargs):
         '''Creates a BigSet from a JSON dictionary.
 
         Args:
             d: a JSON dictionary representation of a BigSet object
+            **kwargs: optional keyword arguments that have already been parsed
+                by a subclass
 
         Returns:
             an instance of the BigSet class
         '''
         cls = cls._validate_dict(d)
-        return cls(**d)
+        return cls(**etau.join_dicts(d, kwargs))
 
     def _filter_elements(self, filters, match):
         def run_filters(uuid):
@@ -1533,7 +1537,7 @@ class Container(Serializable):
         return d
 
     @classmethod
-    def from_dict(cls, d):
+    def from_dict(cls, d, **kwargs):
         '''Constructs a Container from a JSON dictionary.
 
         If the dictionary has the `"_CLS"` and `cls._ELE_CLS_FIELD`
@@ -1546,13 +1550,15 @@ class Container(Serializable):
 
         Args:
             d: a JSON dictionary representation of a Container object
+            **kwargs: optional keyword arguments that have already been parsed
+                by a subclass
 
         Returns:
             an instance of the Container class
         '''
         cls = cls._validate_dict(d)
         elements = [cls._ELE_CLS.from_dict(dd) for dd in d[cls._ELE_ATTR]]
-        return cls(**{cls._ELE_ATTR: elements})
+        return cls(**etau.join_dicts({cls._ELE_ATTR: elements}, kwargs))
 
     def _get_elements(self, inds):
         if isinstance(inds, numbers.Integral):
@@ -2063,17 +2069,19 @@ class BigContainer(Container):
         return cls.from_paths(backing_dir, paths)
 
     @classmethod
-    def from_dict(cls, d):
+    def from_dict(cls, d, **kwargs):
         '''Creates a BigContainer from a JSON dictionary.
 
         Args:
             d: a JSON dictionary representation of a BigContainer object
+            **kwargs: optional keyword arguments that have already been parsed
+                by a subclass
 
         Returns:
             an instance of the BigContainer class
         '''
         cls = cls._validate_dict(d)
-        return cls(**d)
+        return cls(**etau.join_dicts(d, kwargs))
 
     def _filter_elements(self, filters, match):
         def run_filters(uuid):
