@@ -1320,26 +1320,35 @@ class BigVideoSetLabels(VideoSetLabels, BigSet):
     Behaves identically to VideoSetLabels except that each VideoLabels is
     stored on disk.
 
+    BigVideoSetLabels store a `backing_dir` attribute that specifies the path
+    on disk to the serialized elements. If a backing directory is explicitly
+    provided, the directory will be maintained after the BigVideoSetLabels
+    object is deleted; if no backing directory is specified, a temporary
+    backing directory is used and is deleted when the BigVideoSetLabels
+    instance is garbage collected.
+
     Attributes:
-        backing_dir: the backing directory in which the VideoLabels
-            are/will be stored
         videos: an OrderedDict whose keys are filenames and whose values are
             uuids for locating VideoLabels on disk
         schema: a VideoLabelsSchema describing the schema of the labels
+        backing_dir: the backing directory in which the VideoLabels
+            are/will be stored
     '''
 
-    def __init__(self, backing_dir, videos=None, schema=None):
+    def __init__(self, videos=None, schema=None, backing_dir=None):
         '''Creates a BigVideoSetLabels instance.
 
         Args:
-            backing_dir: the backing directory in which the VideoLabels
-                are/will be stored
-            videos: an optional list of uuids for elements in the set
+            videos: an optional dictionary or list of (key, uuid) tuples for
+                elements in the set
             schema: an optional VideoLabelsSchema to enforce on the object.
                 By default, no schema is enforced
+            backing_dir: an optional backing directory in which the VideoLabels
+                are/will be stored. If omitted, a temporary backing directory
+                is used
         '''
         self.schema = schema
-        BigSet.__init__(self, backing_dir, videos=videos)
+        BigSet.__init__(self, backing_dir=backing_dir, videos=videos)
 
     @classmethod
     def from_dict(cls, d):
@@ -1348,7 +1357,7 @@ class BigVideoSetLabels(VideoSetLabels, BigSet):
         if schema is not None:
             schema = VideoLabelsSchema.from_dict(schema)
 
-        return super(BigVideoSetLabels, cls).from_dict(d, schema=schema)
+        return BigSet.from_dict(d, schema=schema)
 
 
 class VideoStreamInfo(Serializable):
