@@ -769,7 +769,7 @@ class Set(Serializable):
 
     def _get_elements(self, keys):
         if isinstance(keys, six.string_types):
-            logger.debug("Wrapping single filename as a list")
+            logger.debug("Wrapping single key as a list")
             keys = [keys]
 
         return OrderedDict(
