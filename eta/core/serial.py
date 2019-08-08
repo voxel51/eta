@@ -30,7 +30,6 @@ import numbers
 import os
 import pickle as _pickle
 import pprint
-import tempfile
 from uuid import uuid4
 
 import numpy as np
@@ -532,6 +531,10 @@ class Set(Serializable):
     def __elements__(self):
         return getattr(self, self._ELE_ATTR)
 
+    def keys(self):
+        '''Returns an iterator over the keys of the elements in the set.'''
+        return iter(self.__elements__)
+
     @classmethod
     def get_element_class(cls):
         '''Gets the class of elements stored in this set.'''
@@ -578,10 +581,6 @@ class Set(Serializable):
             an empty Set
         '''
         return self.__class__()
-
-    def get_keys(self):
-        '''Returns the set of keys for the elements of the set.'''
-        return set(self.__elements__)
 
     def add(self, element):
         '''Adds an element to the set.
