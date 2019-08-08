@@ -20,7 +20,7 @@ from builtins import *
 # pragma pylint: enable=wildcard-import
 
 import eta.core.numutils as etan
-from eta.core.serial import BigContainer, Container, Serializable, Set
+from eta.core.serial import BigContainer, Container, Serializable, Set, BigSet
 
 
 class BoundingBox(Serializable):
@@ -320,6 +320,15 @@ class LabeledPointSet(Set):
     _ELE_CLS = LabeledPoint
     _ELE_ATTR = "points"
     _ELE_KEY_ATTR = "label"
+
+
+class BigLabeledPointSet(BigSet, LabeledPointSet):
+    '''Big set for points in an image that each have an associated label.
+
+    As a BigSet, each LabeledPoint is stored individually on disk.
+    '''
+
+    pass
 
 
 def _to_frame_size(frame_size=None, shape=None, img=None):
