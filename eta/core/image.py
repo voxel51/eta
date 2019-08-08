@@ -688,7 +688,7 @@ class BigImageSetLabels(ImageSetLabels, BigSet):
         if schema is not None:
             schema = ImageLabelsSchema.from_dict(schema)
 
-        return BigSet.from_dict(cls, d, schema=schema)
+        return BigSet.from_dict(d, schema=schema)
 
 
 ###### Image I/O ##############################################################
