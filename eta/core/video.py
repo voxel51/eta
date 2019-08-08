@@ -1180,8 +1180,6 @@ class VideoSetLabels(Set):
         return super(VideoSetLabels, self).__getitem__(filename)
 
     def __setitem__(self, filename, video_labels):
-        video_labels.filename = filename
-
         if self.has_schema:
             self._apply_schema_to_video(video_labels)
 
