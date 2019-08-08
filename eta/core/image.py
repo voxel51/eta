@@ -480,17 +480,17 @@ class ImageSetLabels(Set):
     _ELE_CLS = ImageLabels
     _ELE_CLS_FIELD = "_LABELS_CLS"
 
-    def __init__(self, **kwargs):
+    def __init__(self, images=None, schema=None):
         '''Constructs an ImageSetLabels instance.
 
         Args:
-            images: an optional list of ImageLabels instances. By default, an
-                empty list is created
+            images: an optional iterable of ImageLabels. By default, an empty
+                set is created
             schema: an optional ImageLabelsSchema to enforce on the object.
                 By default, no schema is enforced
         '''
-        self.schema = kwargs.pop("schema", None)
-        super(ImageSetLabels, self).__init__(**kwargs)
+        self.schema = schema
+        super(ImageSetLabels, self).__init__(images=images)
 
     def __getitem__(self, filename):
         if filename not in self:
