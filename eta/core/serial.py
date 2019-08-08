@@ -717,7 +717,8 @@ class Set(Serializable):
 
     def attributes(self):
         '''Returns the list of class attributes that will be serialized.'''
-        return [self._ELE_ATTR]
+        # `_ELE_ATTR` is omitted here because it is serialized manually
+        return []
 
     def serialize(self, reflective=False):
         '''Serializes the set into a dictionary.
@@ -734,8 +735,10 @@ class Set(Serializable):
             d["_CLS"] = self.get_class_name()
             d[self._ELE_CLS_FIELD] = etau.get_class_name(self._ELE_CLS)
 
+        d.update(super(Set, self).serialize(reflective=False))
+
         #
-        # Note that we serialize the dictionary into a list; the keys are
+        # Note that we serialize the elements as a list; the keys are
         # re-generated during de-serialization
         #
         elements_list = list(itervalues(self.__elements__))
