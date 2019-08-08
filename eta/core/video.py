@@ -1151,21 +1151,26 @@ class VideoSetLabels(Set):
     accessed by `filename`-based lookup.
 
     Attributes:
-        videos: a list of VideoLabels instances
-        schema: a VideoLabelsSchema describing the schema of the video labels
+        videos: an OrderedDict of VideoLabels with filenames as keys
+        schema: a VideoLabelsSchema describing the schema of the labels
     '''
 
-    def __init__(self, **kwargs):
+    _ELE_ATTR = "videos"
+    _ELE_KEY_ATTR = "filename"
+    _ELE_CLS = VideoLabels
+    _ELE_CLS_FIELD = "_LABELS_CLS"
+
+    def __init__(self, videos=None, schema=None):
         '''Constructs a VideoSetLabels instance.
 
         Args:
-            videos: an optional list of VideoLabels instances. By default, an
-                empty list is created
+            videos: an optional iterable of VideoLabels. By default, an empty
+                set is created
             schema: an optional VideoLabelsSchema to enforce on the object.
                 By default, no schema is enforced
         '''
-        self.schema = kwargs.pop("schema", None)
-        super(VideoSetLabels, self).__init__(**kwargs)
+        self.schema = schema
+        super(VideoSetLabels, self).__init__(videos=videos)
 
     def __getitem__(self, filename):
         if filename not in self:
