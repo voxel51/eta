@@ -1475,7 +1475,7 @@ class BuilderDataRecord(BaseDataRecord):
 
     def __init__(self, data_path, labels_path):
         '''Initialize the BuilderDataRecord. The label and data paths cannot
-        and should not be modified after initializion.
+        and should not be modified after initialization.
 
         Args:
             data_path (str): path to data file
