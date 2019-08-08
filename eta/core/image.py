@@ -500,8 +500,6 @@ class ImageSetLabels(Set):
         return super(ImageSetLabels, self).__getitem__(filename)
 
     def __setitem__(self, filename, image_labels):
-        image_labels.filename = filename
-
         if self.has_schema:
             self._validate_labels(image_labels)
 
