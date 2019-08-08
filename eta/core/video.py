@@ -1175,7 +1175,7 @@ class VideoSetLabels(Set):
     def __getitem__(self, filename):
         if filename not in self:
             video_labels = VideoLabels(filename=filename)
-            self.add_video_labels(video_labels)
+            self.add(video_labels)
 
         return super(VideoSetLabels, self).__getitem__(filename)
 
@@ -1185,7 +1185,7 @@ class VideoSetLabels(Set):
         if self.has_schema:
             self._apply_schema_to_video(video_labels)
 
-        super(VideoLabels, self).__setitem__(filename, video_labels)
+        super(VideoSetLabels, self).__setitem__(filename, video_labels)
 
     @property
     def has_schema(self):
@@ -1202,20 +1202,23 @@ class VideoSetLabels(Set):
         '''
         return self.__class__(schema=self.schema)
 
-    def add_video_labels(self, video_labels):
+    def add(self, video_labels):
         '''Adds the VideoLabels to the set.
 
         Args:
-            video_labels: an VideoLabels instance
+            video_labels: a VideoLabels instance
         '''
         if self.has_schema:
             self._apply_schema_to_video(video_labels)
-        self.add(video_labels)
+        super(VideoSetLabels, self).add(video_labels)
 
-    def merge_video_set_labels(self, video_set_labels):
-        '''Merges the given VideoSetLabels into this labels.'''
-        for video_labels in video_set_labels:
-            self.add_video_labels(video_labels)
+    def add_set(self, video_set_labels):
+        '''Merges the VideoSetLabels into the set.
+
+        Args:
+            video_set_labels: a VideoSetLabels instance
+        '''
+        self.add_iterable(video_set_labels)
 
     def get_filenames(self):
         '''Returns the set of filenames of VideoLabels in the set.
@@ -1232,7 +1235,7 @@ class VideoSetLabels(Set):
         return self.schema
 
     def get_active_schema(self):
-        '''Returns an VideoLabelsSchema describing the active schema of the
+        '''Returns a VideoLabelsSchema describing the active schema of the
         video set.
         '''
         schema = VideoLabelsSchema()
@@ -1283,49 +1286,6 @@ class VideoSetLabels(Set):
         self.schema = None
         self._apply_schema()
 
-    def filter_video_labels(self, filters, match=any):
-        '''Removes VideoLabels that don't match the given filters from the set.
-
-        Args:
-            filters: a list of functions that accept VideoLabels and return
-                True/False
-            match: a function (usually `any` or `all`) that accepts an iterable
-                and returns True/False. Used to aggregate the outputs of each
-                filter to decide whether a match has occurred. The default is
-                `any`
-        '''
-        self.filter_elements(filters, match=match)
-
-    def delete_video_labels(self, filenames):
-        '''Deletes VideoLabels from the set with the given filenames.
-
-        Args:
-            filenames: an iterable of filenames to delete
-        '''
-        self.delete_keys(filenames)
-
-    def keep_video_labels(self, filenames):
-        '''Keeps only the VideoLabels in the set with the given filenames.
-
-        Args:
-            filenames: an iterable of filenames to keep
-        '''
-        self.keep_keys(filenames)
-
-    def extract_video_labels(self, filenames):
-        '''Returns a new VideoSetLabels having only the VideoLabels with the
-        given filenames.
-
-        The VideoLabels are passed by reference, not copied.
-
-        Args:
-            filenames: an iterable of filenames to keep
-
-        Returns:
-            a VideoSetLabels with the requested labels
-        '''
-        return self.extract_keys(filenames)
-
     def sort_by_filename(self, reverse=False):
         '''Sorts the VideoLabels in this instance by filename.
 
@@ -1356,16 +1316,12 @@ class VideoSetLabels(Set):
 
     @classmethod
     def from_dict(cls, d):
-        '''Constructs an VideoSetLabels from a JSON dictionary.'''
-        videos = d.get("videos", None)
-        if videos is not None:
-            videos = [VideoLabels.from_dict(vl) for vl in videos]
-
-        schema = d.get("schema", None)
+        '''Constructs a VideoSetLabels from a JSON dictionary.'''
+        schema = d.pop("schema", None)
         if schema is not None:
             schema = VideoLabelsSchema.from_dict(schema)
 
-        return cls(videos=videos, schema=schema)
+        return super(VideoSetLabels, cls).from_dict(d, schema=schema)
 
 
 class BigVideoSetLabels(VideoSetLabels, BigSet):
