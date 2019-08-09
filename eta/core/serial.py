@@ -1271,7 +1271,9 @@ class BigSet(Set):
             an instance of the BigSet class
         '''
         cls = cls._validate_dict(d)
-        return cls(**etau.join_dicts(d, kwargs))
+        backing_dir = d.get("backing_dir", None)
+        kwargs[cls._ELE_ATTR] = d[cls._ELE_ATTR]
+        return cls(backing_dir=backing_dir, **kwargs)
 
     def _filter_elements(self, filters, match):
         def run_filters(uuid):
