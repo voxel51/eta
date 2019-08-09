@@ -955,6 +955,17 @@ class BigSet(Set):
         '''
         return self.__class__(backing_dir=backing_dir)
 
+    def empty_set(self):
+        '''Returns an empty in-memory Set version of this BigSet.
+
+        Subclasses may override this method, but, by default, this method makes
+        the empty Set via `self.set_cls()`
+
+        Returns:
+            an empty Set
+        '''
+        return self.set_cls()
+
     def move(self, backing_dir=None):
         '''Moves the backing directory of the set to the given location.
 
@@ -1029,7 +1040,7 @@ class BigSet(Set):
         '''
         if not big:
             # Return results in a Set
-            new_set = self.set_cls()
+            new_set = self.empty_set()
             for key in keys:
                 new_set.add(self[key])
             return new_set
@@ -1192,7 +1203,7 @@ class BigSet(Set):
         Returns:
             a Set
         '''
-        set_ = self.set_cls()
+        set_ = self.empty_set()
         set_.add_set(self)
         return set_
 
@@ -1882,6 +1893,17 @@ class BigContainer(Container):
         '''
         return self.__class__(backing_dir=backing_dir)
 
+    def empty_container(self):
+        '''Returns an empty in-memory Container version of this BigContainer.
+
+        Subclasses may override this method, but, by default, this method makes
+        the empty Container via `self.container_cls()`
+
+        Returns:
+            an empty Container
+        '''
+        return self.container_cls()
+
     def move(self, backing_dir=None):
         '''Moves the backing directory of the container to the given location.
 
@@ -1968,7 +1990,7 @@ class BigContainer(Container):
         '''
         if not big:
             # Return results in a Container
-            new_container = self.container_cls()
+            new_container = self.empty_container()
             for idx in inds:
                 new_container.add(self[idx])
             return new_container
@@ -2105,7 +2127,9 @@ class BigContainer(Container):
         Returns:
             a Container
         '''
-        return self[:]
+        new_container = self.empty_container()
+        new_container.add_container(self)
+        return new_container
 
     @classmethod
     def from_container(cls, container, backing_dir=None):
