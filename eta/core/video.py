@@ -1219,14 +1219,12 @@ class VideoSetLabels(Set):
         return set(vl.filename for vl in self if vl.filename)
 
     def get_schema(self):
-        '''Gets the current enforced schema for the video set, or None if no
-        schema is enforced.
-        '''
+        '''Gets the schema for the set, or None if no schema is enforced.'''
         return self.schema
 
     def get_active_schema(self):
         '''Returns a VideoLabelsSchema describing the active schema of the
-        video set.
+        set.
         '''
         schema = VideoLabelsSchema()
         for video_labels in self:
@@ -1235,18 +1233,18 @@ class VideoSetLabels(Set):
         return schema
 
     def set_schema(self, schema, filter_by_schema=False):
-        '''Sets the enforced schema to the given VideoLabelsSchema.
+        '''Sets the schema to the given VideoLabelsSchema.
 
         Args:
             schema: the VideoLabelsSchema to use
             filter_by_schema: whether to filter any invalid objects/attributes
-                from this object after changing the schema. By default, this is
+                from the set after changing the schema. By default, this is
                 False
 
         Raises:
-            VideoLabelsSchemaError: if `filter_by_schema` was False and this
-                object contains attributes/objects that are not compliant with
-                the schema
+            VideoLabelsSchemaError: if `filter_by_schema` was False and the
+                set contains attributes/objects that are not compliant with the
+                schema
         '''
         self.schema = schema
 
@@ -1256,8 +1254,8 @@ class VideoSetLabels(Set):
         self._apply_schema()
 
     def filter_by_schema(self, schema):
-        '''Removes objects/attributes from the VideoLabels in this object that
-        are not compliant with the given schema.
+        '''Removes objects/attributes from the VideoLabels in the set that are
+        not compliant with the given schema.
 
         Args:
             schema: a VideoLabelsSchema
@@ -1266,13 +1264,11 @@ class VideoSetLabels(Set):
             video_labels.filter_by_schema(schema)
 
     def freeze_schema(self):
-        '''Sets the enforced schema for the video set to the current active
-        schema.
-        '''
+        '''Sets the schema for the set to the current active schema.'''
         self.set_schema(self.get_active_schema())
 
     def remove_schema(self):
-        '''Removes the enforced schema from the video set.'''
+        '''Removes the schema from the set.'''
         self.schema = None
         self._apply_schema()
 
