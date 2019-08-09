@@ -503,7 +503,7 @@ class ImageSetLabels(Set):
         if self.has_schema:
             self._validate_labels(image_labels)
 
-        super(ImageSetLabels, self).__setitem__(filename, image_labels)
+        return super(ImageSetLabels, self).__setitem__(filename, image_labels)
 
     @property
     def has_schema(self):
@@ -528,6 +528,7 @@ class ImageSetLabels(Set):
         '''
         if self.has_schema:
             self._validate_labels(image_labels)
+
         super(ImageSetLabels, self).add(image_labels)
 
     def get_filenames(self):
