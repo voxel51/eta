@@ -647,8 +647,35 @@ class ImageSetLabels(Set):
         Returns:
             an ImageSetLabels with the requested labels
         '''
-        return self.extract_keys(filenames)
+        # Intentionally bypass schema checking, for efficiency
+        schema = self.schema
+        self.schema = None
+        image_set_labels = self.extract_keys(filenames)
+        self.schema = schema
+        return image_set_labels
 
+    def get_matches(self, filters, match=any):
+        '''Returns an ImageSetLabels with labels matching the given filters.
+        The ImageLabels are passed by reference, not copied.
+
+        Args:
+            filters: a list of functions that accept elements and return
+                True/False
+            match: a function (usually `any` or `all`) that accepts an iterable
+                and returns True/False. Used to aggregate the outputs of each
+                filter to decide whether a match has occurred. The default is
+                `any`
+
+        Returns:
+            an ImageSetLabels with labels matching the filters
+        '''
+        # Intentionally bypass schema checking, for efficiency
+        schema = self.schema
+        self.schema = None
+        image_set_labels = super(ImageSetLabels, self).get_matches(
+            filters, match=match)
+        self.schema = schema
+        return image_set_labels
 
     def sort_by_filename(self, reverse=False):
         '''Sorts the ImageLabels in this instance by filename.

@@ -1319,7 +1319,35 @@ class VideoSetLabels(Set):
         Returns:
             a VideoSetLabels with the requested labels
         '''
-        return self.extract_keys(filenames)
+        # Intentionally bypass schema checking, for efficiency
+        schema = self.schema
+        self.schema = None
+        video_set_labels = self.extract_keys(filenames)
+        self.schema = schema
+        return video_set_labels
+
+    def get_matches(self, filters, match=any):
+        '''Returns a VideoSetLabels with labels matching the given filters.
+        The VideoLabels are passed by reference, not copied.
+
+        Args:
+            filters: a list of functions that accept elements and return
+                True/False
+            match: a function (usually `any` or `all`) that accepts an iterable
+                and returns True/False. Used to aggregate the outputs of each
+                filter to decide whether a match has occurred. The default is
+                `any`
+
+        Returns:
+            a VideoSetLabels with labels matching the filters
+        '''
+        # Intentionally bypass schema checking, for efficiency
+        schema = self.schema
+        self.schema = None
+        video_set_labels = super(VideoSetLabels, self).get_matches(
+            filters, match=match)
+        self.schema = schema
+        return video_set_labels
 
     def sort_by_filename(self, reverse=False):
         '''Sorts the VideoLabels in this instance by filename.
