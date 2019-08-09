@@ -1297,7 +1297,7 @@ class VideoSetLabels(Set):
             video_labels.remove_schema()
 
     def _apply_schema(self):
-        for video_labels in self.videos:
+        for video_labels in self:
             self._apply_schema_to_video(video_labels)
 
     @classmethod
