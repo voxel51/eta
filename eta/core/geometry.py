@@ -305,7 +305,7 @@ class LabeledPointContainer(Container):
         return set(p.label for p in self)
 
 
-class BigLabeledPointContainer(BigContainer, LabeledPointContainer):
+class BigLabeledPointContainer(LabeledPointContainer, BigContainer):
     '''Big container for points in an image that each have an associated label.
 
     As a BigContainer, each LabeledPoint is stored individually on disk.
@@ -321,8 +321,12 @@ class LabeledPointSet(Set):
     _ELE_ATTR = "points"
     _ELE_KEY_ATTR = "label"
 
+    def get_labels(self):
+        '''Returns a set containing the labels of the LabeledPoints.'''
+        return set(p.label for p in self)
 
-class BigLabeledPointSet(BigSet, LabeledPointSet):
+
+class BigLabeledPointSet(LabeledPointSet, BigSet):
     '''Big set for points in an image that each have an associated label.
 
     As a BigSet, each LabeledPoint is stored individually on disk.
