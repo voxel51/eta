@@ -1346,14 +1346,32 @@ class BigVideoSetLabels(VideoSetLabels, BigSet):
         self.schema = schema
         BigSet.__init__(self, backing_dir=backing_dir, videos=videos)
 
-    @classmethod
-    def from_dict(cls, d):
-        '''Constructs a BigVideoSetLabels from a JSON dictionary.'''
-        schema = d.pop("schema", None)
-        if schema is not None:
-            schema = VideoLabelsSchema.from_dict(schema)
+    def empty_set(self):
+        '''Returns an empty in-memory VideoSetLabels version of this
+        BigVideoSetLabels.
 
-        return BigSet.from_dict(d, schema=schema)
+        Returns:
+            an empty VideoSetLabels
+        '''
+        return VideoSetLabels(schema=self.schema)
+
+    def filter_by_schema(self, schema):
+        '''Removes objects/attributes from the VideoLabels in the set that are
+        not compliant with the given schema.
+
+        Args:
+            schema: a VideoLabelsSchema
+        '''
+        for key in self.keys():
+            video_labels = self[key]
+            video_labels.filter_by_schema(schema)
+            self[key] = video_labels
+
+    def _apply_schema(self):
+        for key in self.keys():
+            video_labels = self[key]
+            self._apply_schema_to_video(video_labels)
+            self[key] = video_labels
 
 
 class VideoStreamInfo(Serializable):
