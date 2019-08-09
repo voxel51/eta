@@ -678,14 +678,26 @@ class BigImageSetLabels(ImageSetLabels, BigSet):
         self.schema = schema
         BigSet.__init__(self, backing_dir=backing_dir, images=images)
 
-    @classmethod
-    def from_dict(cls, d):
-        '''Constructs a BigImageSetLabels from a JSON dictionary.'''
-        schema = d.pop("schema", None)
-        if schema is not None:
-            schema = ImageLabelsSchema.from_dict(schema)
+    def empty_set(self):
+        '''Returns an empty in-memory ImageSetLabels version of this
+        BigImageSetLabels.
 
-        return BigSet.from_dict(d, schema=schema)
+        Returns:
+            an empty ImageSetLabels
+        '''
+        return ImageSetLabels(schema=self.schema)
+
+    def filter_by_schema(self, schema):
+        '''Removes objects/attributes from the ImageLabels in the set that are
+        not compliant with the given schema.
+
+        Args:
+            schema: an ImageLabelsSchema
+        '''
+        for key in self.keys():
+            image_labels = self[key]
+            image_labels.filter_by_schema(schema)
+            self[key] = image_labels
 
 
 ###### Image I/O ##############################################################
