@@ -255,8 +255,10 @@ def sample_videos_to_images(
         stride: optional frequency with which to sample frames from
             videos
         num_images: optional total number of frames to sample from
-            videos. Only one of `stride` and `num_images` can be
-            specified at the same time.
+            videos. If `stride` is not specified then it will be
+            calculated based on `num_images`. If `stride` is
+            specified, frames will be sampled at this stride until
+            a total of `num_images` are obtained.
         frame_filter: function that takes an
             `eta.core.video.VideoFrameLabels` instance as input and
             returns False if the frame should not be included in the
@@ -275,7 +277,7 @@ def sample_videos_to_images(
 
     _validate_stride_and_num_images(stride, num_images)
 
-    if num_images is not None:
+    if num_images is not None and stride is None:
         stride = _compute_stride(video_dataset, num_images, frame_filter)
         logger.info("Sampling video frames with stride %d", stride)
 
@@ -284,7 +286,8 @@ def sample_videos_to_images(
 
     frame_iterator = _iter_filtered_video_frames(
         video_dataset, frame_filter, stride)
-    for frame_img, frame_labels, base_filename in frame_iterator:
+    for img_number, (frame_img, frame_labels, base_filename) in enumerate(
+            frame_iterator, 1):
         image_filename = "%s%s" % (base_filename, image_extension)
         labels_filename = "%s.json" % base_filename
 
@@ -295,6 +298,9 @@ def sample_videos_to_images(
         image_dataset.add_data(
             frame_img, image_labels, image_filename,
             labels_filename)
+
+        if num_images is not None and img_number >= num_images:
+            break
 
     if not image_dataset:
         logger.info(
@@ -308,12 +314,6 @@ def sample_videos_to_images(
 
 
 def _validate_stride_and_num_images(stride, num_images):
-    if stride is not None and num_images is not None:
-        raise ValueError(
-            "Only one of `stride` and `num_images` can be "
-            "specified, but got stride = %s, num_images = %s" %
-            (stride, num_images))
-
     if stride is not None and stride < 1:
         raise ValueError(
             "stride must be >= 1, but got %d" % stride)
