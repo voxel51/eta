@@ -829,7 +829,8 @@ class BigMixin(object):
     `move()` can be used to move the Big object between a set (persistent)
     backing directory and a temporary backing directory.
 
-    See BigSet and BigContainer for concrete implementations.
+    See BigSet and BigContainer for full class implementations and
+    BigLabeledPointContainer BigLabeledPointSet for concrete implementations.
     '''
 
     def __init__(self):
@@ -1022,7 +1023,7 @@ class BigMixin(object):
             self._backing_dir = os.path.abspath(backing_dir)
         else:
             self._temp_storage = True
-            self._backing_dir = tempfile.mkdtemp()
+            self._backing_dir = etau.make_temp_dir()
 
     @staticmethod
     def _make_uuid():
