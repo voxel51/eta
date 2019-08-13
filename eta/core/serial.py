@@ -1135,25 +1135,6 @@ class BigSet(BigMixin, Set):
         cls_name = module + dot + big_cls[len("Big"):]
         return etau.get_class(cls_name)
 
-    def add_by_path(self, path, key=None):
-        '''Adds an element to the BigSet via its path on disk.
-
-        Args:
-            path: the path to the element JSON file on disk
-            key: optional key value to the element. If not provided, the
-                element is loaded and the key is read
-        '''
-        if key is None:
-            # Must load element to get key
-            self.add(self._load_ele(path))
-            return
-
-        if key not in self:
-            # Must add key to set
-            self.__elements__[key] = self._make_uuid()
-
-        etau.copy_file(path, self._ele_path(key))
-
     def empty_set(self):
         '''Returns an empty in-memory Set version of this BigSet.
 
@@ -1174,6 +1155,25 @@ class BigSet(BigMixin, Set):
         key = self.get_key(element) or str(uuid4())
         self[key] = element
 
+    def add_by_path(self, path, key=None):
+        '''Adds an element to the BigSet via its path on disk.
+
+        Args:
+            path: the path to the element JSON file on disk
+            key: optional key value to the element. If not provided, the
+                element is loaded and the key is read
+        '''
+        if key is None:
+            # Must load element to get key
+            self.add(self._load_ele(path))
+            return
+
+        if key not in self:
+            # Must add key to set
+            self.__elements__[key] = self._make_uuid()
+
+        etau.copy_file(path, self._ele_path(key))
+
     def add_set(self, set_):
         '''Adds the given set's elements to the set.
 
@@ -1187,6 +1187,15 @@ class BigSet(BigMixin, Set):
                 self.add_by_path(path, key=key)
         else:
             self.add_iterable(set_)
+
+    def add_iterable(self, elements):
+        '''Adds the elements in the given iterable to the set.
+
+        Args:
+            elements: an iterable of `_ELE_CLS` objects
+        '''
+        for element in elements:
+            self.add(element)
 
     def filter_elements(self, filters, match=any):
         '''Removes elements that don't match the given filters from the set.
