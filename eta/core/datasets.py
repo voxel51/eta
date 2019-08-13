@@ -279,7 +279,8 @@ def sample_videos_to_images(
 
     if num_images is not None and stride is None:
         stride = _compute_stride(video_dataset, num_images, frame_filter)
-        logger.info("Sampling video frames with stride %d", stride)
+        
+    logger.info("Sampling video frames with stride %d", stride)
 
     image_dataset = LabeledImageDataset.create_empty_dataset(
         image_dataset_path, description=description)
