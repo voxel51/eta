@@ -860,7 +860,7 @@ class BigMixin(object):
         return self._uses_temporary_storage
 
     def add_by_path(self, path):
-        '''Add a an element by its absolute path on disk.
+        '''Add an element by via its path on disk.
 
         Args:
             path: the path to the element JSON file on disk
@@ -1127,7 +1127,7 @@ class BigSet(BigMixin, Set):
         return etau.get_class(cls_name)
 
     def add_by_path(self, path, key=None):
-        '''Add a an element by its absolute path on disk.
+        '''Add an element via its path on disk.
 
         No validation is done. Subclasses may choose to implement this method
         for suchs purposes, etc.
@@ -1891,7 +1891,7 @@ class BigContainer(BigMixin, Container):
         return etau.get_class(cls_name)
 
     def add_by_path(self, path):
-        '''Add a an element by its absolute path on disk.
+        '''Add an element via its path on disk.
 
         No validation is done. Subclasses may choose to implement this method
         for suchs purposes, etc.
