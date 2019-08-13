@@ -819,37 +819,44 @@ class Set(Serializable):
 
 
 class BigMixin(object):
-    '''Mixin class for BigContainer and BigSet.
+    '''Mixin class for "big" Serializable classes, which store their elements
+    on disk rather than in-memory.
+
+    Subclasses must call BigMixin's constructor to properly initialize the
+    Big object.
 
     `backing_dir` is an optional keyword argument for any methods that require
-    initializing a new instance of a Big iterable. When a `backing_dir` is not
-    provided, a tmp directory is used and is deleted when the Big iterable is
-    garbage collected.
+    initializing a new instance of a Big iterable. When `backing_dir` is
+    `None`, a temporary directory is used and is deleted when the Big iterable
+    is garbage collected.
 
     `move()` can be used to move the Big iterable between a set (persistent)
     backing directory and a temporary backing directory.
-
-    See BigSet and BigContainer for full class implementations and
-    BigLabeledPointContainer BigLabeledPointSet for concrete implementations.
     '''
 
-    def __init__(self):
-        raise NotImplementedError("subclasses must implement __init__()")
+    def __init__(self, backing_dir):
+        '''Initializes the base BigMixin.
+
+        Args:
+            backing_dir: the backing directory to use, or None if using
+                temporary storage
+        '''
+        self._backing_dir = None
+        self._uses_temporary_storage = False
+        self._set_backing_dir(backing_dir)
 
     def __del__(self):
-        if self._temp_storage and os.path.exists(self.backing_dir):
+        if self.uses_temporary_storage and os.path.exists(self.backing_dir):
             etau.delete_dir(self.backing_dir)
 
     @property
     def backing_dir(self):
         '''The backing directory for this Big iterable.'''
-        if self._backing_dir is not None:
-            return self._backing_dir
-        return self._tempdir
+        return self._backing_dir
 
     @property
     def uses_temporary_storage(self):
-        '''Whether this BigSet is backed by temporary storage.'''
+        '''Whether this Big iterable is backed by temporary storage.'''
         return self._uses_temporary_storage
 
     def add_by_path(self, path):
@@ -902,9 +909,9 @@ class BigMixin(object):
         '''Moves the backing directory of the Big iterable to the given
         location.
 
-        When `backing_dir` is not provided, it is moved to a new tmp directory.
-        Therefore, this method can be used to move a Big iterable out of the
-        current `backing_dir` and into a tmp storage state.
+        When `backing_dir` is not provided, it is moved to a temporary
+        directory. Therefore, this method can be used to move a Big iterable
+        out of the current `backing_dir` and into a temporary storage state.
 
         Args:
             backing_dir: optional backing directory to use for the new Big
@@ -964,8 +971,8 @@ class BigMixin(object):
             etau.make_archive(rootdir, archive_path)
 
     @classmethod
-    def from_archive(cls, archive_path, backing_dir=None,
-                     delete_archive=False):
+    def from_archive(
+            cls, archive_path, backing_dir=None, delete_archive=False):
         '''Loads a Big iterable from an archive created by `to_archive()`.
 
         Args:
@@ -1029,10 +1036,10 @@ class BigMixin(object):
 
     def _set_backing_dir(self, backing_dir):
         if backing_dir is not None:
-            self._temp_storage = False
+            self._uses_temporary_storage = False
             self._backing_dir = os.path.abspath(backing_dir)
         else:
-            self._temp_storage = True
+            self._uses_temporary_storage = True
             self._backing_dir = etau.make_temp_dir()
 
 
@@ -1087,10 +1094,7 @@ class BigSet(BigMixin, Set):
             SetError: if there was an error while creating the set
         '''
         self._validate()
-
-        self._uses_temporary_storage = False
-        self._backing_dir = None
-        self._set_backing_dir(backing_dir)
+        super(BigSet, self).__init__(backing_dir)
 
         elements = kwargs.get(self._ELE_ATTR, None) or []
         if elements:
@@ -1835,10 +1839,7 @@ class BigContainer(BigMixin, Container):
             ContainerError: if there was an error while creating the container
         '''
         self._validate()
-
-        self._uses_temporary_storage = False
-        self._backing_dir = None
-        self._set_backing_dir(backing_dir)
+        super(BigContainer, self).__init__(backing_dir)
 
         elements = kwargs.get(self._ELE_ATTR, None) or []
         if elements:
