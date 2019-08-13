@@ -1903,6 +1903,14 @@ class BigContainer(BigMixin, Container):
         self.__elements__.append(uuid)
         etau.copy_file(path, self._ele_path_by_uuid(uuid))
 
+    def add_iterable(self, elements):
+        '''Adds the elements in the given iterable to the Big iterable.
+
+        Args:
+            elements: an iterable of elements
+        '''
+        raise NotImplementedError("subclasses must implement add_iterable()")
+
     def empty_container(self):
         '''Returns an empty in-memory Container version of this BigContainer.
 
