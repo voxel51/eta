@@ -822,11 +822,11 @@ class BigMixin(object):
     '''Mixin class for BigContainer and BigSet.
 
     `backing_dir` is an optional keyword argument for any methods that require
-    initializing a new instance of a Big object. When a `backing_dir` is not
-    provided, a tmp directory is used and is deleted upon the Big object's
-    destruction.
+    initializing a new instance of a Big iterable. When a `backing_dir` is not
+    provided, a tmp directory is used and is deleted when the Big iterable is
+    garbage collected.
 
-    `move()` can be used to move the Big object between a set (persistent)
+    `move()` can be used to move the Big iterable between a set (persistent)
     backing directory and a temporary backing directory.
 
     See BigSet and BigContainer for full class implementations and
@@ -842,7 +842,7 @@ class BigMixin(object):
 
     @property
     def backing_dir(self):
-        '''The backing directory for this Big object.'''
+        '''The backing directory for this Big iterable.'''
         if self._backing_dir is not None:
             return self._backing_dir
         return self._tempdir
@@ -853,52 +853,54 @@ class BigMixin(object):
         return self._uses_temporary_storage
 
     def clear(self):
-        '''Deletes all elements from the Big object.'''
+        '''Deletes all elements from the Big iterable.'''
         super(BigSet, self).clear()
         etau.delete_dir(self.backing_dir)
         etau.ensure_dir(self.backing_dir)
 
     def copy(self, backing_dir=None):
-        '''Creates a deep copy of this Big object backed by the given directory.
+        '''Creates a deep copy of this Big iterable backed by the given
+        directory.
 
         Args:
-            backing_dir: optional backing directory to use for the new set.
-                If provided, it must be empty or non-existent
+            backing_dir: optional backing directory to use for the new big
+                iterable. If provided, it must be empty or non-existent
 
         Returns:
-            a Big object
+            a Big iterable
         '''
         new_big = self.empty(backing_dir=backing_dir)
         new_big.add_iterable(self)
         return new_big
 
     def empty(self, backing_dir=None):
-        '''Returns an empty copy of the container backed by the given
+        '''Returns an empty copy of the Big iterable backed by the given
         directory.
 
         Subclasses may override this method, but, by default, this method
-        constructs an empty Big object via
+        constructs an empty Big iterable via
         `self.__class__(backing_dir=backing_dir)`
 
         Args:
             backing_dir: optional backing directory to use for the new Big
-                object. If provided, it must be empty or non-existent
+                iterable. If provided, it must be empty or non-existent
 
         Returns:
-            an empty Big object
+            an empty Big iterable
         '''
         return self.__class__(backing_dir=backing_dir)
 
     def move(self, backing_dir=None):
-        '''Moves the backing directory of the Big object to the given location.
+        '''Moves the backing directory of the Big iterable to the given
+        location.
 
-        When backing_dir is not provided, it is moved to a new tmp directory.
-        This approach can be used to move a Big object out of the current
-        backing_dir and into a tmp storage state.
+        When `backing_dir` is not provided, it is moved to a new tmp directory.
+        Therefore, this method can be used to move a Big iterable out of the
+        current `backing_dir` and into a tmp storage state.
 
         Args:
-            backing_dir: optional backing directory to use for the new set. If
-                provided, it must be empty or non-existent
+            backing_dir: optional backing directory to use for the new Big
+                iterable. If provided, it must be empty or non-existent
         '''
         if backing_dir is not None:
             etau.ensure_empty_dir(backing_dir)
@@ -907,7 +909,7 @@ class BigMixin(object):
         etau.move_dir(orig_backing_dir, self.backing_dir)
 
     def to_archive(self, archive_path, delete_backing_dir=False):
-        '''Writes the Big object to a self-contained archive file.
+        '''Writes the Big iterable to a self-contained archive file.
 
         The archive contains both a JSON index and the raw element JSON files
         organized in the directory structure shown below. The filename (without
@@ -922,7 +924,7 @@ class BigMixin(object):
 
         Note that deleting the backing directory is a more efficient way to
         create the archive because it avoids data duplication, but it also
-        invalidates the current Big object.
+        invalidates the current Big iterable.
 
         Args:
             archive_path: the path + extension to write the output archive
@@ -956,17 +958,17 @@ class BigMixin(object):
     @classmethod
     def from_archive(cls, archive_path, backing_dir=None,
                      delete_archive=False):
-        '''Loads a Big object from an archive created by `to_archive()`.
+        '''Loads a Big iterable from an archive created by `to_archive()`.
 
         Args:
             archive_path: the path to the archive to load
             backing_dir: optional backing directory to use for the new Big
-                object. If provided, it must be empty or non-existent
+                iterable. If provided, it must be empty or non-existent
             delete_archive: whether to delete the archive after unpacking it.
                 By default, this is False
 
         Returns:
-            a Big object
+            a Big iterable
         '''
         with etau.TempDir() as tmp_dir:
             name = os.path.splitext(os.path.basename(archive_path))[0]
@@ -984,15 +986,15 @@ class BigMixin(object):
 
     @classmethod
     def from_paths(cls, paths, backing_dir=None):
-        '''Creates a Big object from a list of `_ELE_CLS` JSON files.
+        '''Creates a Big iterable from a list of `_ELE_CLS` JSON files.
 
         Args:
-            backing_dir: optional backing directory to use for the Big object.
+            backing_dir: optional backing directory to use for the Big iterable.
                 If provided, it must be empty or non-existent
             paths: an iterable of paths to `_ELE_CLS` JSON files
 
         Returns:
-            a Big object
+            a Big iterable
         '''
         big = cls(backing_dir=backing_dir)
         for path in paths:
@@ -1001,18 +1003,18 @@ class BigMixin(object):
 
     @classmethod
     def from_dir(cls, source_dir, backing_dir=None):
-        '''Creates a Big object from an unstructured directory of `_ELE_CLS`
+        '''Creates a Big iterable from an unstructured directory of `_ELE_CLS`
         JSON files on disk.
 
         The source directory is traversed recursively.
 
         Args:
             backing_dir: optional backing directory to use for the new Big
-                object. If provied, it must be empty or non-existent
+                iterable. If provided, it must be empty or non-existent
             source_dir: the source directory from which to ingest elements
 
         Returns:
-            a Big object
+            a Big iterable
         '''
         paths = etau.multiglob(".json", root=source_dir + "/**/*")
         return cls.from_paths(paths, backing_dir=backing_dir)
