@@ -834,8 +834,16 @@ class BigMixin(object):
     backing directory and a temporary backing directory.
     '''
 
-    def __init__(self):
-        raise NotImplementedError("subclasses must implement __init__()")
+    def __init__(self, backing_dir):
+        '''Initializes the base BigMixin.
+
+        Args:
+            backing_dir: the backing directory to use, or None if using
+                temporary storage
+        '''
+        self._backing_dir = None
+        self._uses_temporary_storage = False
+        self._set_backing_dir(backing_dir)
 
     def __del__(self):
         if self._temp_storage and os.path.exists(self.backing_dir):
@@ -1096,10 +1104,7 @@ class BigSet(BigMixin, Set):
             SetError: if there was an error while creating the set
         '''
         self._validate()
-
-        self._uses_temporary_storage = False
-        self._backing_dir = None
-        self._set_backing_dir(backing_dir)
+        BigMixin.__init__(self, backing_dir)
 
         elements = kwargs.get(self._ELE_ATTR, None) or []
         if elements:
@@ -1820,10 +1825,7 @@ class BigContainer(BigMixin, Container):
             ContainerError: if there was an error while creating the container
         '''
         self._validate()
-
-        self._uses_temporary_storage = False
-        self._backing_dir = None
-        self._set_backing_dir(backing_dir)
+        BigMixin.__init__(self, backing_dir)
 
         elements = kwargs.get(self._ELE_ATTR, None) or []
         if elements:
