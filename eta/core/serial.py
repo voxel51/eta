@@ -495,7 +495,7 @@ class Set(Serializable):
             raise SetError(
                 "Expected elements to be provided in keyword argument '%s'; "
                 "found keys %s" % (self._ELE_ATTR, list(kwargs.keys())))
-        elements = kwargs.get(self._ELE_ATTR, [])
+        elements = kwargs.get(self._ELE_ATTR, None) or []
 
         for e in elements:
             if not isinstance(e, self._ELE_CLS):
@@ -530,6 +530,10 @@ class Set(Serializable):
     @property
     def __elements__(self):
         return getattr(self, self._ELE_ATTR)
+
+    def keys(self):
+        '''Returns an iterator over the keys of the elements in the set.'''
+        return iter(self.__elements__)
 
     @classmethod
     def get_element_class(cls):
@@ -578,26 +582,23 @@ class Set(Serializable):
         '''
         return self.__class__()
 
-    def get_keys(self):
-        '''Returns the set of keys for the elements of the set.'''
-        return set(self.__elements__)
-
     def add(self, element):
-        '''Adds an element to the container.
+        '''Adds an element to the set.
 
         Args:
             element: an instance of `_ELE_CLS`
         '''
         key = self.get_key(element) or str(uuid4())
-        self.__elements__[key] = element
+        self[key] = element
 
     def add_set(self, set_):
         '''Adds the elements in the given set to this set.
 
         Args:
-            set_: a Set
+            set_: a Set of `_ELE_CLS` objects
         '''
-        self.__elements__.update(set_.__elements__)
+        for key in set_.keys():
+            self[key] = set_[key]
 
     def add_iterable(self, elements):
         '''Adds the elements in the given iterable to the set.
@@ -629,7 +630,7 @@ class Set(Serializable):
             keys: an iterable of keys of the elements to delete
         '''
         for key in keys:
-            del self.__elements__[key]
+            del self[key]
 
     def keep_keys(self, keys):
         '''Keeps only the elements in the set with the given keys.
@@ -716,7 +717,8 @@ class Set(Serializable):
 
     def attributes(self):
         '''Returns the list of class attributes that will be serialized.'''
-        return [self._ELE_ATTR]
+        # `_ELE_ATTR` is omitted here because it is serialized manually
+        return []
 
     def serialize(self, reflective=False):
         '''Serializes the set into a dictionary.
@@ -733,8 +735,10 @@ class Set(Serializable):
             d["_CLS"] = self.get_class_name()
             d[self._ELE_CLS_FIELD] = etau.get_class_name(self._ELE_CLS)
 
+        d.update(super(Set, self).serialize(reflective=False))
+
         #
-        # Note that we serialize the dictionary into a list; the keys are
+        # Note that we serialize the elements as a list; the keys are
         # re-generated during de-serialization
         #
         elements_list = list(itervalues(self.__elements__))
@@ -743,7 +747,7 @@ class Set(Serializable):
         return d
 
     @classmethod
-    def from_dict(cls, d):
+    def from_dict(cls, d, **kwargs):
         '''Constructs a Set from a JSON dictionary.
 
         If the dictionary has the `"_CLS"` and `cls._ELE_CLS_FIELD`
@@ -756,17 +760,19 @@ class Set(Serializable):
 
         Args:
             d: a JSON dictionary representation of a Set object
+            **kwargs: an optional set of keyword arguments that have already
+                been parsed by a subclass
 
         Returns:
             an instance of the Set class
         '''
         cls = cls._validate_dict(d)
         elements = [cls._ELE_CLS.from_dict(dd) for dd in d[cls._ELE_ATTR]]
-        return cls(**{cls._ELE_ATTR: elements})
+        return cls(**etau.join_dicts({cls._ELE_ATTR: elements}, kwargs))
 
     def _get_elements(self, keys):
         if isinstance(keys, six.string_types):
-            logger.debug("Wrapping single filename as a list")
+            logger.debug("Wrapping single key as a list")
             keys = [keys]
 
         return OrderedDict(
@@ -810,6 +816,581 @@ class Set(Serializable):
                 "dictionary" % (cls, cls._ELE_CLS_FIELD))
 
         return etau.get_class(d["_CLS"])
+
+
+class BigMixin(object):
+    '''Mixin class for "big" Serializable classes, which store their elements
+    on disk rather than in-memory.
+
+    Subclasses must call BigMixin's constructor to properly initialize the
+    Big object, and they must implement the `add_by_path()` and
+    `add_iterable()` methods.
+
+    `backing_dir` is an optional keyword argument for any methods that require
+    initializing a new instance of a Big iterable. When `backing_dir` is
+    `None`, a temporary directory is used and is deleted when the Big iterable
+    is garbage collected.
+
+    `move()` can be used to move the Big iterable between a set (persistent)
+    backing directory and a temporary backing directory.
+    '''
+
+    def __init__(self, backing_dir):
+        '''Initializes the base BigMixin.
+
+        Args:
+            backing_dir: the backing directory to use, or None if using
+                temporary storage
+        '''
+        self._backing_dir = None
+        self._uses_temporary_storage = False
+        self._set_backing_dir(backing_dir)
+
+    def __del__(self):
+        if self.uses_temporary_storage and os.path.exists(self.backing_dir):
+            etau.delete_dir(self.backing_dir)
+
+    @property
+    def backing_dir(self):
+        '''The backing directory for this Big iterable.'''
+        return self._backing_dir
+
+    @property
+    def uses_temporary_storage(self):
+        '''Whether this Big iterable is backed by temporary storage.'''
+        return self._uses_temporary_storage
+
+    def add_by_path(self, path):
+        '''Adds an element to the Big iterable via its path on disk.
+
+        Args:
+            path: the path to the element JSON file on disk
+        '''
+        raise NotImplementedError("subclasses must implement add_by_path()")
+
+    def add_iterable(self, elements):
+        '''Adds the elements in the given iterable to the Big iterable.
+
+         Args:
+            elements: an iterable of elements
+        '''
+        raise NotImplementedError("subclasses must implement add_iterable()")
+
+    def clear(self):
+        '''Deletes all elements from the Big iterable.'''
+        super(BigSet, self).clear()
+        etau.delete_dir(self.backing_dir)
+        etau.ensure_dir(self.backing_dir)
+
+    def copy(self, backing_dir=None):
+        '''Creates a deep copy of this Big iterable backed by the given
+        directory.
+
+        Args:
+            backing_dir: optional backing directory to use for the new big
+                iterable. If provided, it must be empty or non-existent
+
+        Returns:
+            a Big iterable
+        '''
+        new_big = self.empty(backing_dir=backing_dir)
+        new_big.add_iterable(self)
+        return new_big
+
+    def empty(self, backing_dir=None):
+        '''Returns an empty copy of the Big iterable backed by the given
+        directory.
+
+        Subclasses may override this method, but, by default, this method
+        constructs an empty Big iterable via
+        `self.__class__(backing_dir=backing_dir)`
+
+        Args:
+            backing_dir: optional backing directory to use for the new Big
+                iterable. If provided, it must be empty or non-existent
+
+        Returns:
+            an empty Big iterable
+        '''
+        return self.__class__(backing_dir=backing_dir)
+
+    def move(self, backing_dir=None):
+        '''Moves the backing directory of the Big iterable to the given
+        location.
+
+        When `backing_dir` is not provided, it is moved to a temporary
+        directory. Therefore, this method can be used to move a Big iterable
+        out of the current `backing_dir` and into a temporary storage state.
+
+        Args:
+            backing_dir: optional backing directory to use for the new Big
+                iterable. If provided, it must be empty or non-existent
+        '''
+        if backing_dir is not None:
+            etau.ensure_empty_dir(backing_dir)
+        orig_backing_dir = self.backing_dir
+        self._set_backing_dir(backing_dir)
+        etau.move_dir(orig_backing_dir, self.backing_dir)
+
+    def to_archive(self, archive_path, delete_backing_dir=False):
+        '''Writes the Big iterable to a self-contained archive file.
+
+        The archive contains both a JSON index and the raw element JSON files
+        organized in the directory structure shown below. The filename (without
+        extension) defines the root directory inside the archive.
+
+        ```
+        <root>/
+            index.json
+            <elements>/
+                <uuid>.json
+        ```
+
+        Note that deleting the backing directory is a more efficient way to
+        create the archive because it avoids data duplication, but it also
+        invalidates the current Big iterable.
+
+        Args:
+            archive_path: the path + extension to write the output archive
+            delete_backing_dir: whether to delete the original backing
+                directory when creating the archive. By default, this is False
+        '''
+        with etau.TempDir() as tmp_dir:
+            name = os.path.splitext(os.path.basename(archive_path))[0]
+            rootdir = os.path.join(tmp_dir, name)
+            index_path = os.path.join(rootdir, "index.json")
+            ele_dir = os.path.join(rootdir, self._ELE_ATTR)
+
+            if delete_backing_dir:
+                self.move(backing_dir=ele_dir)
+                big = self
+            else:
+                big = self.copy(backing_dir=ele_dir)
+
+            #
+            # The backing directory embedded in the JSON is not actually used
+            # (neither here nor in `from_archive`), but we set it relative to
+            # the root of the archive, for completeness.
+            #
+            full_backing_dir = big.backing_dir
+            big._backing_dir = "./" + self._ELE_ATTR
+            big.write_json(index_path)
+            big._backing_dir = full_backing_dir
+
+            etau.make_archive(rootdir, archive_path)
+
+    @classmethod
+    def from_archive(
+            cls, archive_path, backing_dir=None, delete_archive=False):
+        '''Loads a Big iterable from an archive created by `to_archive()`.
+
+        Args:
+            archive_path: the path to the archive to load
+            backing_dir: optional backing directory to use for the new Big
+                iterable. If provided, it must be empty or non-existent
+            delete_archive: whether to delete the archive after unpacking it.
+                By default, this is False
+
+        Returns:
+            a Big iterable
+        '''
+        with etau.TempDir() as tmp_dir:
+            name = os.path.splitext(os.path.basename(archive_path))[0]
+            rootdir = os.path.join(tmp_dir, name)
+            index_path = os.path.join(rootdir, "index.json")
+            tmp_backing_dir = os.path.join(rootdir, cls._ELE_ATTR)
+
+            etau.extract_archive(
+                archive_path, outdir=tmp_dir, delete_archive=delete_archive)
+            big = cls.from_json(index_path)
+            big._backing_dir = tmp_backing_dir
+            big.move(backing_dir=backing_dir)
+
+        return big
+
+    @classmethod
+    def from_paths(cls, paths, backing_dir=None):
+        '''Creates a Big iterable from a list of element JSON files.
+
+        Args:
+            backing_dir: optional backing directory to use for the Big
+                iterable. If provided, it must be empty or non-existent
+            paths: an iterable of paths to element JSON files
+
+        Returns:
+            a Big iterable
+        '''
+        big = cls(backing_dir=backing_dir)
+        for path in paths:
+            big.add_by_path(path)
+        return big
+
+    @classmethod
+    def from_dir(cls, source_dir, backing_dir=None):
+        '''Creates a Big iterable from an unstructured directory of element
+        JSON files on disk.
+
+        The source directory is traversed recursively.
+
+        Args:
+            backing_dir: optional backing directory to use for the new Big
+                iterable. If provided, it must be empty or non-existent
+            source_dir: the source directory from which to ingest elements
+
+        Returns:
+            a Big iterable
+        '''
+        paths = etau.multiglob(".json", root=source_dir + "/**/*")
+        return cls.from_paths(paths, backing_dir=backing_dir)
+
+    def _set_backing_dir(self, backing_dir):
+        if backing_dir is not None:
+            self._uses_temporary_storage = False
+            self._backing_dir = os.path.abspath(backing_dir)
+        else:
+            self._uses_temporary_storage = True
+            self._backing_dir = etau.make_temp_dir()
+
+
+class BigSet(BigMixin, Set):
+    '''Set that stores a (potentially huge) list of `Serializable`
+    objects. The elements are stored on disk in a backing directory; accessing
+    any element in the list causes an immediate READ from disk, and
+    adding/setting an element causes an immediate WRITE to disk.
+
+    BigSets store a `backing_dir` attribute that specifies the path on
+    disk to the serialized elements. If a backing directory is explicitly
+    provided by a user, the directory will be maintained after the BigSet
+    object is deleted; if no backing directory is specified, a temporary
+    backing directory is used and is deleted when the BigSet instance is
+    garbage collected.
+
+    BigSets maintain an OrderedDict of keys determined by `_ELE_KEY_ATTR` and
+    values of uuids which are used to locate elements on disk. This OrderedDict
+    is included in lieu of the actual elements when serializing BigSet
+    instances.
+
+    To read/write archives of BigSet that also include their elements,
+    use the `to_archive()` and `from_archive()` methods, respectively.
+
+    This class cannot be instantiated directly. Instead a subclass should
+    be created for each type of element to be stored. Subclasses MUST set the
+    following members:
+        -  `_ELE_CLS`: the class of the element stored in the set
+        -  `_ELE_KEY_ATTR`: the name of the element attribute to use to perform
+            element lookups
+
+    In addition, sublasses MAY override the following members:
+        - `_ELE_CLS_FIELD`: the name of the private attribute that will store
+            the class of the elements in the set
+        - `_ELE_ATTR`: the name of the attribute that will store the elements
+            in the set
+    '''
+
+    def __init__(self, backing_dir=None, **kwargs):
+        '''Creates a BigSet instance.
+
+        Args:
+            backing_dir: an optional backing directory in which the elements
+                are/will be stored. If omitted, a temporary backing directory
+                is used
+            <elements>: an optional dictionary or list of (key, uuid) tuples
+                for elements in the set. The appropriate name of this keyword
+                argument is determined by the `_ELE_ATTR` member of the BigSet
+                subclass
+
+        Raises:
+            SetError: if there was an error while creating the set
+        '''
+        self._validate()
+        super(BigSet, self).__init__(backing_dir)
+
+        elements = kwargs.get(self._ELE_ATTR, None) or []
+        if elements:
+            etau.ensure_dir(self.backing_dir)
+        else:
+            etau.ensure_empty_dir(self.backing_dir)
+
+        setattr(self, self._ELE_ATTR, OrderedDict(elements))
+
+    def __getitem__(self, key):
+        return self._load_ele(self._ele_path(key))
+
+    def __setitem__(self, key, element):
+        if key not in self:
+            self.__elements__[key] = self._make_uuid()
+        element.write_json(self._ele_path(key))
+
+    def __delitem__(self, key):
+        etau.delete_file(self._ele_path(key))
+        super(BigSet, self).__delitem__(key)
+
+    def __iter__(self):
+        return iter(self._load_ele(path) for path in self._ele_paths)
+
+    @property
+    def set_cls(self):
+        '''Returns the Set class associated with this BigSet.'''
+        module, dot, big_cls = etau.get_class_name(self).rpartition(".")
+        cls_name = module + dot + big_cls[len("Big"):]
+        return etau.get_class(cls_name)
+
+    def empty_set(self):
+        '''Returns an empty in-memory Set version of this BigSet.
+
+        Subclasses may override this method, but, by default, this method makes
+        the empty Set via `self.set_cls()`
+
+        Returns:
+            an empty Set
+        '''
+        return self.set_cls()
+
+    def add(self, element):
+        '''Adds an element to the set.
+
+        Args:
+            element: an instance of `_ELE_CLS`
+        '''
+        key = self.get_key(element) or str(uuid4())
+        self[key] = element
+
+    def add_by_path(self, path, key=None):
+        '''Adds an element to the BigSet via its path on disk.
+
+        Args:
+            path: the path to the element JSON file on disk
+            key: optional key value to the element. If not provided, the
+                element is loaded and the key is read
+        '''
+        if key is None:
+            # Must load element to get key
+            self.add(self._load_ele(path))
+            return
+
+        if key not in self:
+            # Must add key to set
+            self.__elements__[key] = self._make_uuid()
+
+        etau.copy_file(path, self._ele_path(key))
+
+    def add_set(self, set_):
+        '''Adds the given set's elements to the set.
+
+        Args:
+            set_: a Set of `_ELE_CLS` objects
+        '''
+        if isinstance(set_, BigSet):
+            # Copy BigSet elements via disk to avoid loading into memory
+            for key in set_.keys():
+                path = set_._ele_path(key)
+                self.add_by_path(path, key=key)
+        else:
+            self.add_iterable(set_)
+
+    def add_iterable(self, elements):
+        '''Adds the elements in the given iterable to the set.
+
+        Args:
+            elements: an iterable of `_ELE_CLS` objects
+        '''
+        for element in elements:
+            self.add(element)
+
+    def filter_elements(self, filters, match=any):
+        '''Removes elements that don't match the given filters from the set.
+
+        Args:
+            filters: a list of functions that accept elements and return
+                True/False
+            match: a function (usually `any` or `all`) that accepts an iterable
+                and returns True/False. Used to aggregate the outputs of each
+                filter to decide whether a match has occurred. The default is
+                `any`
+        '''
+        self.keep_keys(self._filter_elements(filters, match).keys())
+
+    def keep_keys(self, keys):
+        '''Keeps only the elements in the set with the given keys.
+
+        Args:
+            keys: an iterable of keys of the elements to keep
+        '''
+        self.delete_keys(set(self.__elements__.keys()) - set(keys))
+
+    def extract_keys(self, keys, big=True, backing_dir=None):
+        '''Returns a set having only the elements with the given keys.
+
+        Args:
+            keys: an iterable of keys of the elements to keep
+            big: whether to create a BigSet (True) or Set (False). By default,
+                this is True
+            backing_dir: an optional backing directory to use for the new
+                BigSet. If provided, must be empty or non-existent
+
+        Returns:
+            a BigSet or Set with the requested elements
+        '''
+        if not big:
+            # Return results in a Set
+            new_set = self.empty_set()
+            for key in keys:
+                new_set.add(self[key])
+            return new_set
+
+        # Return results in a BigSet
+        new_set = self.empty(backing_dir=backing_dir)
+        for key in keys:
+            path = self._ele_path(key)
+            new_set.add_by_path(path, key=key)
+        return new_set
+
+    def get_matches(self, filters, match=any, big=True, backing_dir=None):
+        '''Gets elements matching the given filters.
+
+        Args:
+            filters: a list of functions that accept elements and return
+                True/False
+            match: a function (usually `any` or `all`) that accepts an iterable
+                and returns True/False. Used to aggregate the outputs of each
+                filter to decide whether a match has occurred. The default is
+                `any`
+            big: whether to create a BigSet (True) or Set (False). By default,
+                this is True
+            backing_dir: an optional backing directory to use for the new
+                BigSet. If provided, must be empty or non-existent
+
+        Returns:
+            a Set or BigSet with elements matching the filters
+        '''
+        subset = self._filter_elements(filters, match)
+        return self.extract_keys(
+            subset.keys(), big=big, backing_dir=backing_dir)
+
+    def sort_by(self, attr, reverse=False):
+        '''Sorts the elements in the set by the given attribute.
+
+        Elements whose attribute is None are always put at the end of the set.
+
+        Args:
+            attr: the element attribute to sort by
+            reverse: whether to sort in descending order. The default is False
+        '''
+        def field_none_last(key_ele_pair):
+            val = getattr(self[key_ele_pair[0]], attr)
+            return ((val is None) ^ reverse, val)  # always puts None last
+
+        elements = OrderedDict(
+            sorted(
+                iteritems(self.__elements__),
+                reverse=reverse, key=field_none_last))
+        setattr(self, self._ELE_ATTR, elements)
+
+    def attributes(self):
+        '''Returns the list of class attributes that will be serialized.'''
+        return ["backing_dir"] + super(BigSet, self).attributes()
+
+    def serialize(self, reflective=False):
+        '''Serializes the set into a dictionary.
+
+        Args:
+            reflective: whether to include reflective attributes when
+                serializing the object. By default, this is False
+
+        Returns:
+            a JSON dictionary representation of the set
+        '''
+        d = OrderedDict()
+        if reflective:
+            d["_CLS"] = self.get_class_name()
+            d[self._ELE_CLS_FIELD] = etau.get_class_name(self._ELE_CLS)
+
+        d.update(super(BigSet, self).serialize(reflective=False))
+
+        #
+        # Note that we serialize the dictionary into a list of (key, value)
+        # tuples, to preserve order
+        #
+        d[self._ELE_ATTR] = _recurse(list(self.__elements__.items()), False)
+
+        return d
+
+    def to_set(self):
+        '''Loads a BigSet into an in-memory Set of the associated class.
+
+        Returns:
+            a Set
+        '''
+        set_ = self.empty_set()
+        set_.add_set(self)
+        return set_
+
+    @classmethod
+    def from_set(cls, set_, backing_dir=None):
+        '''Creates a BigSet with the given Set's elements.
+
+        Args:
+            set_: a Set
+            backing_dir: an optional backing directory to use for the new
+                BigSet. If provided, must be empty or non-existent
+
+        Returns:
+            a BigSet
+        '''
+        big_set = cls(backing_dir=backing_dir)
+        big_set.add_set(set_)
+        return big_set
+
+    @classmethod
+    def from_dict(cls, d, **kwargs):
+        '''Creates a BigSet from a JSON dictionary.
+
+        Args:
+            d: a JSON dictionary representation of a BigSet object
+            **kwargs: optional keyword arguments that have already been parsed
+                by a subclass
+
+        Returns:
+            an instance of the BigSet class
+        '''
+        cls = cls._validate_dict(d)
+        backing_dir = d.get("backing_dir", None)
+        kwargs[cls._ELE_ATTR] = d[cls._ELE_ATTR]
+        return cls(backing_dir=backing_dir, **kwargs)
+
+    def _filter_elements(self, filters, match):
+        def run_filters(key):
+            ele = self[key]
+            return match(f(ele) for f in filters)
+
+        return OrderedDict(
+            (k, v) for k, v in iteritems(self.__elements__)
+            if run_filters(k))
+
+    @property
+    def _ele_paths(self):
+        return iter(self._ele_path(key) for key in self.__elements__)
+
+    def _ele_filename(self, key):
+        if key not in self.__elements__:
+            raise KeyError("Set key %d does not exist" % key)
+        return "%s.json" % self.__elements__[key]
+
+    def _ele_path(self, key):
+        return os.path.join(self.backing_dir, self._ele_filename(key))
+
+    def _ele_path_by_uuid(self, uuid):
+        return os.path.join(self.backing_dir, "%s.json" % uuid)
+
+    def _load_ele(self, path):
+        return self._ELE_CLS.from_json(path)
+
+    def _load_ele_by_uuid(self, uuid):
+        return self._load_ele(self._ele_path_by_uuid(uuid))
+
+    @staticmethod
+    def _make_uuid():
+        return str(uuid4())
 
 
 class SetError(Exception):
@@ -893,7 +1474,7 @@ class Container(Serializable):
             raise ContainerError(
                 "Expected elements to be provided in keyword argument '%s'; "
                 "found keys %s" % (self._ELE_ATTR, list(kwargs.keys())))
-        elements = kwargs.get(self._ELE_ATTR, [])
+        elements = kwargs.get(self._ELE_ATTR, None) or []
 
         for e in elements:
             if not isinstance(e, self._ELE_CLS):
@@ -1026,7 +1607,7 @@ class Container(Serializable):
             inds: an iterable of indices of the elements to delete
         '''
         for idx in sorted(inds, reverse=True):
-            del self.__elements__[idx]
+            del self[idx]
 
     def keep_inds(self, inds):
         '''Keeps only the elements in the container with the given indices.
@@ -1132,7 +1713,7 @@ class Container(Serializable):
         return d
 
     @classmethod
-    def from_dict(cls, d):
+    def from_dict(cls, d, **kwargs):
         '''Constructs a Container from a JSON dictionary.
 
         If the dictionary has the `"_CLS"` and `cls._ELE_CLS_FIELD`
@@ -1145,13 +1726,15 @@ class Container(Serializable):
 
         Args:
             d: a JSON dictionary representation of a Container object
+            **kwargs: optional keyword arguments that have already been parsed
+                by a subclass
 
         Returns:
             an instance of the Container class
         '''
         cls = cls._validate_dict(d)
         elements = [cls._ELE_CLS.from_dict(dd) for dd in d[cls._ELE_ATTR]]
-        return cls(**{cls._ELE_ATTR: elements})
+        return cls(**etau.join_dicts({cls._ELE_ATTR: elements}, kwargs))
 
     def _get_elements(self, inds):
         if isinstance(inds, numbers.Integral):
@@ -1199,7 +1782,7 @@ class Container(Serializable):
         return etau.get_class(d["_CLS"])
 
 
-class BigContainer(Container):
+class BigContainer(BigMixin, Container):
     '''Container that stores a (potentially huge) list of `Serializable`
     objects. The elements are stored on disk in a backing directory; accessing
     any element in the list causes an immediate READ from disk, and
@@ -1213,10 +1796,15 @@ class BigContainer(Container):
     first 5 elements of `big_container`.
 
     BigContainers store a `backing_dir` attribute that specifies the path on
-    disk to the serialized elements. The container also maintains a list of
-    uuids in its `_ELE_ATTR` field to locate elements on disk. This list is
-    included in lieu of the actual elements when serializing BigContainer
-    instances.
+    disk to the serialized elements. If a backing directory is explicitly
+    provided by a user, the directory will be maintained after the BigContainer
+    object is deleted; if no backing directory is specified, a temporary
+    backing directory is used and is deleted when the BigContainer instance
+    is garbage collected.
+
+    BigContainers maintain a list of uuids in their `_ELE_ATTR` field to locate
+    elements on disk. This list is included in lieu of the actual elements when
+    serializing BigContainer instances.
 
     To read/write archives of BigContainer that also include their elements,
     use the `to_archive()` and `from_archive()` methods, respectively.
@@ -1250,12 +1838,13 @@ class BigContainer(Container):
         ```
     '''
 
-    def __init__(self, backing_dir, **kwargs):
+    def __init__(self, backing_dir=None, **kwargs):
         '''Creates a BigContainer instance.
 
         Args:
-            backing_dir: the backing directory in which the elements are/will
-                be stored
+            backing_dir: an optional backing directory in which the elements
+                are/will be stored. If omitted, a temporary backing directory
+                is used
             <elements>: an optional list of uuids for elements in the
                 container. The appropriate name of this keyword argument is
                 determined by the `_ELE_ATTR` member of the BigContainer
@@ -1265,23 +1854,20 @@ class BigContainer(Container):
             ContainerError: if there was an error while creating the container
         '''
         self._validate()
+        super(BigContainer, self).__init__(backing_dir)
 
-        self._backing_dir = None
-        self._set_backing_dir(backing_dir)
-
-        if self._ELE_ATTR in kwargs:
+        elements = kwargs.get(self._ELE_ATTR, None) or []
+        if elements:
             etau.ensure_dir(self.backing_dir)
-            elements = kwargs[self._ELE_ATTR]
         else:
             etau.ensure_empty_dir(self.backing_dir)
-            elements = []
 
         setattr(self, self._ELE_ATTR, elements)
 
     def __getitem__(self, idx):
         if isinstance(idx, slice):
             inds = self._slice_to_inds(idx)
-            return self.extract_inds(inds)
+            return self.extract_inds(inds, big=False)
 
         if idx < 0:
             idx += len(self)
@@ -1313,63 +1899,35 @@ class BigContainer(Container):
         return iter(self._load_ele(path) for path in self._ele_paths)
 
     @property
-    def backing_dir(self):
-        '''The backing directory for this BigContainer.'''
-        return self._backing_dir
-
-    @property
     def container_cls(self):
         '''Returns the Container class associated with this BigContainer.'''
         module, dot, big_cls = etau.get_class_name(self).rpartition(".")
         cls_name = module + dot + big_cls[len("Big"):]
         return etau.get_class(cls_name)
 
-    def clear(self):
-        '''Deletes all elements from the container.'''
-        super(BigContainer, self).clear()
-        etau.delete_dir(self.backing_dir)
-        etau.ensure_dir(self.backing_dir)
+    def add_by_path(self, path):
+        '''Add an element via its path on disk.
 
-    def copy(self, backing_dir):
-        '''Creates a deep copy of this container backed by the given directory.
+        No validation is done. Subclasses may choose to implement this method
+        for suchs purposes, etc.
 
         Args:
-            backing_dir: backing directory to use for the new BigContainer.
-                Must be empty or non-existent
+            path: the path to the element JSON file on disk
+        '''
+        uuid = self._make_uuid()
+        self.__elements__.append(uuid)
+        etau.copy_file(path, self._ele_path_by_uuid(uuid))
+
+    def empty_container(self):
+        '''Returns an empty in-memory Container version of this BigContainer.
+
+        Subclasses may override this method, but, by default, this method makes
+        the empty Container via `self.container_cls()`
 
         Returns:
-            a BigContainer
+            an empty Container
         '''
-        new_container = self.empty(backing_dir)
-        new_container.add_container(self)
-        return new_container
-
-    def empty(self, backing_dir):
-        '''Returns an empty copy of the container backed by the given
-        directory.
-
-        Subclasses may override this method, but, by default, this method
-        constructs an empty container via `self.__class__(backing_dir)`
-
-        Args:
-            backing_dir: backing directory to use for the new BigContainer.
-                Must be empty or non-existent
-
-        Returns:
-            an empty BigContainer
-        '''
-        return self.__class__(backing_dir)
-
-    def move(self, new_backing_dir):
-        '''Moves the backing directory of the container to the given location.
-
-        Args:
-            new_backing_dir: backing directory to use for the new BigContainer.
-                Must be empty or non-existent
-        '''
-        etau.ensure_empty_dir(new_backing_dir)
-        etau.move_dir(self.backing_dir, new_backing_dir)
-        self._set_backing_dir(new_backing_dir)
+        return self.container_cls()
 
     def add(self, element):
         '''Adds an element to the container.
@@ -1384,12 +1942,12 @@ class BigContainer(Container):
         '''Adds the given container's elements to the container.
 
         Args:
-            container: a Container to add
+            container: a Container of `_ELE_CLS` objects
         '''
         if isinstance(container, BigContainer):
             # Copy BigContainer elements via disk to avoid loading into memory
             for path in container._ele_paths:
-                self._add_by_path(path)
+                self.add_by_path(path)
         else:
             self.add_iterable(container)
 
@@ -1414,20 +1972,7 @@ class BigContainer(Container):
                 filter to decide whether a match has occurred. The default is
                 `any`
         '''
-        new_ele_set = set(self._filter_elements(filters, match))
-        inds = [
-            idx for idx, uuid in enumerate(self.__elements__)
-            if uuid not in new_ele_set]
-        self.delete_inds(inds)
-
-    def delete_inds(self, inds):
-        '''Deletes the elements from the container with the given indices.
-
-        Args:
-            inds: a list of indices of the elements to delete
-        '''
-        for idx in sorted(inds, reverse=True):
-            del self[idx]
+        self.keep_inds(self._filter_elements(filters, match))
 
     def keep_inds(self, inds):
         '''Keeps only the elements in the container with the given indices.
@@ -1437,57 +1982,35 @@ class BigContainer(Container):
         '''
         self.delete_inds(set(range(len(self))) - set(inds))
 
-    def extract_inds(self, inds, backing_dir=None):
+    def extract_inds(self, inds, big=True, backing_dir=None):
         '''Returns a container having only the elements with the given indices.
-
-        If a backing directory is provided, a BigContainer is created.
-        Otherwise, an in-memory Container is returned.
 
         Args:
             inds: a list of indices of the elements to keep
-            backing_dir: an optional backing directory to use to create a
+            big: whether to create a BigContainer (True) or Container (False).
+                By default, this is True
+            backing_dir: an optional backing directory to use for the new
                 BigContainer. If provided, the directory must be empty or
-                non-existent
+                non-existent. Only relevant if to_container is False
 
         Returns:
-            a Container or BigContainer with the requested elements
+            a BigContainer or Container with the requested elements
         '''
-        if not backing_dir:
+        if not big:
             # Return results in a Container
-            new_container = self.container_cls()
+            new_container = self.empty_container()
             for idx in inds:
                 new_container.add(self[idx])
             return new_container
 
         # Return results in a BigContainer
-        new_container = self.empty(backing_dir)
+        new_container = self.empty(backing_dir=backing_dir)
         for idx in inds:
-            new_container._add_by_path(self._ele_path(idx))
+            new_container.add_by_path(self._ele_path(idx))
         return new_container
 
-    def count_matches(self, filters, match=any):
-        '''Counts the number of elements in the container that match the
-        given filters.
-
-        Args:
-            filters: a list of functions that accept instances of class
-                `_ELE_CLS`and return True/False
-            match: a function (usually `any` or `all`) that accepts an iterable
-                and returns True/False. Used to aggregate the outputs of each
-                filter to decide whether a match has occurred. The default is
-                `any`
-
-        Returns:
-            the number of elements in the container that match the filters
-        '''
-        elements = self._filter_elements(filters, match=match)
-        return len(elements)
-
-    def get_matches(self, filters, match=any, backing_dir=None):
+    def get_matches(self, filters, match=any, big=True, backing_dir=None):
         '''Returns a container with elements matching the given filters.
-
-        If a backing directory is provided, a BigContainer is created.
-        Otherwise, an in-memory Container is returned.
 
         Args:
             filters: a list of functions that accept elements and return
@@ -1496,15 +2019,17 @@ class BigContainer(Container):
                 and returns True/False. Used to aggregate the outputs of each
                 filter to decide whether a match has occurred. The default is
                 `any`
+            big: whether to create a BigContainer (True) or Container (False).
+                By default, this is True
             backing_dir: an optional backing directory to use to create a
                 BigContainer. If provided, the directory must be empty or
-                non-existent
+                non-existent. Only relevant if to_container is False
 
         Returns:
-            a Container or BigContainer with elements that match the filters
+            a BigContainer or Container with elements that match the filters
         '''
         inds = self._filter_elements(filters, match)
-        return self.extract_inds(inds, backing_dir=backing_dir)
+        return self.extract_inds(inds, big=big, backing_dir=backing_dir)
 
     def sort_by(self, attr, reverse=False):
         '''Sorts the elements in the container by the given attribute.
@@ -1528,79 +2053,6 @@ class BigContainer(Container):
         '''Returns the list of class attributes that will be serialized.'''
         return ["backing_dir"] + super(BigContainer, self).attributes()
 
-    def to_archive(self, archive_path, delete_backing_dir=False):
-        '''Writes the BigContainer to a self-contained archive file.
-
-        The archive contains both a JSON index and the raw element JSON files
-        organized in the directory structure shown below. The filename (without
-        extension) defines the root directory inside the archive.
-
-        ```
-        <root>/
-            index.json
-            <elements>/
-                <uuid>.json
-        ```
-
-        Note that deleting the backing directory is a more efficient way to
-        create the archive because it avoids data duplication.
-
-        Args:
-            archive_path: the path + extension to write the output archive
-            delete_backing_dir: whether to delete the original backing
-                directory when creating the archive. By default, this is False
-        '''
-        with etau.TempDir() as tmp_dir:
-            name = os.path.splitext(os.path.basename(archive_path))[0]
-            rootdir = os.path.join(tmp_dir, name)
-            index_path = os.path.join(rootdir, "index.json")
-            ele_dir = os.path.join(rootdir, self._ELE_ATTR)
-
-            if delete_backing_dir:
-                self.move(ele_dir)
-                container = self
-            else:
-                container = self.copy(ele_dir)
-
-            full_backing_dir = container.backing_dir
-            #
-            # This backing directory is not actually used (neither here nor
-            # in `from_archive`), but we set it relative to the root of the
-            # archive, for completeness.
-            #
-            container._backing_dir = "./" + self._ELE_ATTR
-            container.write_json(index_path)
-            container._backing_dir = full_backing_dir
-            etau.make_archive(rootdir, archive_path)
-
-    @classmethod
-    def from_archive(cls, archive_path, backing_dir, delete_archive=False):
-        '''Loads a BigContainer from an archive created by `to_archive()`.
-
-        Args:
-            archive_path: the path to the archive to load
-            backing_dir: backing directory to use for the new container.
-                Must be empty or non-existent
-            delete_archive: whether to delete the archive after unpacking it.
-                By default, this is False
-
-        Returns:
-            a BigContainer
-        '''
-        with etau.TempDir() as tmp_dir:
-            name = os.path.splitext(os.path.basename(archive_path))[0]
-            rootdir = os.path.join(tmp_dir, name)
-            index_path = os.path.join(rootdir, "index.json")
-            tmp_backing_dir = os.path.join(rootdir, cls._ELE_ATTR)
-
-            etau.extract_archive(
-                archive_path, outdir=tmp_dir, delete_archive=delete_archive)
-            container = cls.from_json(index_path)
-            container._backing_dir = tmp_backing_dir
-            container.move(backing_dir)
-
-        return container
-
     def to_container(self):
         '''Loads a BigContainer into an in-memory Container of the associated
         class.
@@ -1608,89 +2060,51 @@ class BigContainer(Container):
         Returns:
             a Container
         '''
-        return self[:]
+        new_container = self.empty_container()
+        new_container.add_container(self)
+        return new_container
 
     @classmethod
-    def from_container(cls, container, backing_dir):
+    def from_container(cls, container, backing_dir=None):
         '''Creates a BigContainer with the given Container's elements.
 
         Args:
             container: a Container
-            backing_dir: backing directory to use for the new container.
-                Must be empty or non-existent
+            backing_dir: an optional backing directory to use for the new
+                BigContainer. If provided, must be empty or non-existent
 
         Returns:
             a BigContainer
         '''
-        big_container = cls(backing_dir)
+        big_container = cls(backing_dir=backing_dir)
         big_container.add_container(container)
         return big_container
 
     @classmethod
-    def from_paths(cls, backing_dir, paths):
-        '''Creates a BigContainer from a list of `_ELE_CLS` JSON files.
-
-        Args:
-            backing_dir: the backing directory to use for the new BigContainer.
-                Must be empty or non-existent
-            paths: an iterable of paths to `_ELE_CLS` JSON files
-
-        Returns:
-            a BigContainer
-        '''
-        container = cls(backing_dir)
-        for path in paths:
-            container._add_by_path(path)
-        return container
-
-    @classmethod
-    def from_dir(cls, backing_dir, source_dir):
-        '''Creates a BigContainer from an unstructured directory of `_ELE_CLS`
-        JSON files on disk.
-
-        The source directory is traversed recursively.
-
-        Args:
-            backing_dir: the backing directory to use for the new BigContainer.
-                Must be empty or non-existent
-            source_dir: the source directory from which to ingest elements
-
-        Returns:
-            a BigContainer
-        '''
-        paths = etau.multiglob(".json", root=source_dir + "/**/*")
-        return cls.from_paths(backing_dir, paths)
-
-    @classmethod
-    def from_dict(cls, d):
+    def from_dict(cls, d, **kwargs):
         '''Creates a BigContainer from a JSON dictionary.
 
         Args:
             d: a JSON dictionary representation of a BigContainer object
+            **kwargs: optional keyword arguments that have already been parsed
+                by a subclass
 
         Returns:
             an instance of the BigContainer class
         '''
         cls = cls._validate_dict(d)
-        return cls(**d)
+        return cls(**etau.join_dicts(d, kwargs))
 
     def _filter_elements(self, filters, match):
-        def run_filters(uuid):
-            ele = self._load_ele_by_uuid(uuid)
+        def run_filters(idx):
+            ele = self[idx]
             return match(f(ele) for f in filters)
 
-        return list(filter(run_filters, self.__elements__))
-
-    def _set_backing_dir(self, backing_dir):
-        self._backing_dir = os.path.abspath(backing_dir)
+        return list(filter(run_filters, range(len(self))))
 
     @property
     def _ele_paths(self):
-        return (self._ele_path(idx) for idx in range(len(self)))
-
-    @staticmethod
-    def _make_uuid():
-        return str(uuid4())
+        return iter(self._ele_path(idx) for idx in range(len(self)))
 
     def _ele_filename(self, idx):
         if idx < 0 or idx >= len(self):
@@ -1707,12 +2121,11 @@ class BigContainer(Container):
         return self._ELE_CLS.from_json(path)
 
     def _load_ele_by_uuid(self, uuid):
-        return self._ELE_CLS.from_json(self._ele_path_by_uuid(uuid))
+        return self._load_ele(self._ele_path_by_uuid(uuid))
 
-    def _add_by_path(self, path):
-        uuid = self._make_uuid()
-        self.__elements__.append(uuid)
-        etau.copy_file(path, self._ele_path_by_uuid(uuid))
+    @staticmethod
+    def _make_uuid():
+        return str(uuid4())
 
 
 class ContainerError(Exception):

@@ -28,7 +28,6 @@ from future.utils import iteritems
 
 from collections import defaultdict
 import colorsys
-import copy
 import errno
 import os
 import operator
@@ -41,7 +40,7 @@ import eta
 from eta.core.data import AttributeContainer, AttributeContainerSchema, \
     AttributeContainerSchemaError
 from eta.core.objects import DetectedObjectContainer
-from eta.core.serial import Serializable, Set
+from eta.core.serial import Serializable, Set, BigSet
 import eta.core.utils as etau
 import eta.core.web as etaw
 
@@ -459,16 +458,7 @@ class ImageLabelsSchemaError(Exception):
     pass
 
 
-class _ImageLabelsSet(Set):
-    '''Internal set type used by ImageSetLabels to store labels.'''
-
-    _ELE_CLS = ImageLabels
-    _ELE_KEY_ATTR = "filename"
-    _ELE_CLS_FIELD = "_LABELS_CLS"
-    _ELE_ATTR = "images"
-
-
-class ImageSetLabels(Serializable):
+class ImageSetLabels(Set):
     '''Class encapsulating labels for a set of images.
 
     ImageSetLabels support item indexing by the `filename` of the ImageLabels
@@ -481,77 +471,44 @@ class ImageSetLabels(Serializable):
     accessed by `filename`-based lookup.
 
     Attributes:
-        images: a list of ImageLabels instances
-        schema: an ImageLabelsSchema describing the schema of the image labels
+        images: an OrderedDict of ImageLabels with filenames as keys
+        schema: an ImageLabelsSchema describing the schema of the labels
     '''
 
-    # The Set class used internally to store ImageLabels
-    _SET_CLS = _ImageLabelsSet
+    _ELE_ATTR = "images"
+    _ELE_KEY_ATTR = "filename"
+    _ELE_CLS = ImageLabels
+    _ELE_CLS_FIELD = "_LABELS_CLS"
 
     def __init__(self, images=None, schema=None):
         '''Constructs an ImageSetLabels instance.
 
         Args:
-            images: an optional list of ImageLabels instances. By default, an
-                empty list is created
+            images: an optional iterable of ImageLabels. By default, an empty
+                set is created
             schema: an optional ImageLabelsSchema to enforce on the object.
                 By default, no schema is enforced
         '''
         self.schema = schema
-        self.images = self._SET_CLS()
-        if images is not None:
-            self.images.add_iterable(images)
+        super(ImageSetLabels, self).__init__(images=images)
 
     def __getitem__(self, filename):
-        if not filename in self:
+        if filename not in self:
             image_labels = ImageLabels(filename=filename)
-            self.add_image_labels(image_labels)
+            self.add(image_labels)
 
-        return self.images[filename]
+        return super(ImageSetLabels, self).__getitem__(filename)
 
     def __setitem__(self, filename, image_labels):
-        image_labels.filename = filename
-
-        if not filename in self:
-            self.add_image_labels(image_labels)
-            return
-
         if self.has_schema:
-            self._validate_image_labels(image_labels)
+            self._validate_labels(image_labels)
 
-        self.images[filename] = image_labels
-
-    def __delitem__(self, filename):
-        del self.images[filename]
-
-    def __contains__(self, filename):
-        return filename in self.images
-
-    def __iter__(self):
-        return iter(self.images)
-
-    def __len__(self):
-        return len(self.images)
-
-    def __bool__(self):
-        return bool(self.images)
+        return super(ImageSetLabels, self).__setitem__(filename, image_labels)
 
     @property
     def has_schema(self):
         '''Returns True/False whether this instance has an enforced schema.'''
         return self.schema is not None
-
-    def clear(self):
-        '''Deletes all ImageLabels from the set.'''
-        self.images.clear()
-
-    def copy(self):
-        '''Returns a deep copy of the ImageSetLabels.
-
-        Returns:
-            an ImageSetLabels
-        '''
-        return copy.deepcopy(self)
 
     def empty(self):
         '''Returns an empty copy of the ImageSetLabels.
@@ -563,20 +520,16 @@ class ImageSetLabels(Serializable):
         '''
         return self.__class__(schema=self.schema)
 
-    def add_image_labels(self, image_labels):
+    def add(self, image_labels):
         '''Adds the ImageLabels to the set.
 
         Args:
             image_labels: an ImageLabels instance
         '''
         if self.has_schema:
-            self._validate_image_labels(image_labels)
-        self.images.add(image_labels)
+            self._validate_labels(image_labels)
 
-    def merge_image_set_labels(self, image_set_labels):
-        '''Merges the given ImageSetLabels into this labels.'''
-        for image_labels in image_set_labels:
-            self.add_image_labels(image_labels)
+        super(ImageSetLabels, self).add(image_labels)
 
     def get_filenames(self):
         '''Returns the set of filenames of ImageLabels in the set.
@@ -587,34 +540,32 @@ class ImageSetLabels(Serializable):
         return set(il.filename for il in self if il.filename)
 
     def get_schema(self):
-        '''Gets the current enforced schema for the image set, or None if no
-        schema is enforced.
-        '''
+        '''Gets the schema for the set, or None if no schema is enforced.'''
         return self.schema
 
     def get_active_schema(self):
-        '''Returns an ImageLabelsSchema describing the active schema of the
-        image set.
+        '''Gets the ImageLabelsSchema describing the active schema of the
+        set.
         '''
         schema = ImageLabelsSchema()
-        for image_labels in self.images:
+        for image_labels in self:
             schema.merge_schema(
                 ImageLabelsSchema.build_active_schema(image_labels))
         return schema
 
     def set_schema(self, schema, filter_by_schema=False):
-        '''Sets the enforced schema to the given ImageLabelsSchema.
+        '''Sets the schema to the given ImageLabelsSchema.
 
         Args:
             schema: the ImageLabelsSchema to use
             filter_by_schema: whether to filter any invalid objects/attributes
-                from this object after changing the schema. By default, this is
+                from the set after changing the schema. By default, this is
                 False
 
         Raises:
-            ImageLabelsSchemaError: if `filter_by_schema` was False and this
-                object contains attributes/objects that are not compliant with
-                the schema
+            ImageLabelsSchemaError: if `filter_by_schema` was False and the
+                set contains attributes/objects that are not compliant with the
+                schema
         '''
         self.schema = schema
         if not self.has_schema:
@@ -626,110 +577,22 @@ class ImageSetLabels(Serializable):
             self._validate_schema()
 
     def filter_by_schema(self, schema):
-        '''Removes objects/attributes from the ImageLabels in this object that
-        are not compliant with the given schema.
+        '''Removes objects/attributes from the ImageLabels in the set that are
+        not compliant with the given schema.
 
         Args:
             schema: an ImageLabelsSchema
         '''
-        for image_labels in self.images:
+        for image_labels in self:
             image_labels.filter_by_schema(schema)
 
     def freeze_schema(self):
-        '''Sets the enforced schema for the image set to the current active
-        schema.
-        '''
+        '''Sets the schema for the set to the current active schema.'''
         self.set_schema(self.get_active_schema())
 
     def remove_schema(self):
-        '''Removes the enforced schema from the image set.'''
+        '''Removes the schema from the set.'''
         self.schema = None
-
-    def filter_image_labels(self, filters, match=any):
-        '''Removes ImageLabels that don't match the given filters from the set.
-
-        Args:
-            filters: a list of functions that accept ImageLabels and return
-                True/False
-            match: a function (usually `any` or `all`) that accepts an iterable
-                and returns True/False. Used to aggregate the outputs of each
-                filter to decide whether a match has occurred. The default is
-                `any`
-        '''
-        self.images.filter_elements(filters, match=match)
-
-    def delete_image_labels(self, filenames):
-        '''Deletes ImageLabels from the set with the given filenames.
-
-        Args:
-            filenames: an iterable of filenames to delete
-        '''
-        self.images.delete_keys(filenames)
-
-    def keep_image_labels(self, filenames):
-        '''Keeps only the ImageLabels in the set with the given filenames.
-
-        Args:
-            filenames: an iterable of filenames to keep
-        '''
-        self.images.keep_keys(filenames)
-
-    def extract_image_labels(self, filenames):
-        '''Returns a new ImageSetLabels having only the ImageLabels with the
-        given filenames.
-
-        The ImageLabels are passed by reference, not copied.
-
-        Args:
-            filenames: an iterable of filenames to keep
-
-        Returns:
-            an ImageSetLabels with the requested labels
-        '''
-        image_set_labels = self.empty()
-        for filename in filenames:
-            # Intentionally bypass schema checking, for efficiency
-            image_set_labels.images.add(self[filename])
-        return image_set_labels
-
-    def count_matches(self, filters, match=any):
-        '''Counts the number of ImageLabels in the set that match the given
-        filters.
-
-        Args:
-            filters: a list of functions that accept ImageLabels and return
-                True/False
-            match: a function (usually `any` or `all`) that accepts an iterable
-                and returns True/False. Used to aggregate the outputs of each
-                filter to decide whether a match has occurred. The default is
-                `any`
-
-        Returns:
-            the number of ImageLabels in the set that match the filters
-        '''
-        return self.images.count_matches(filters, match=match)
-
-    def get_matches(self, filters, match=any):
-        '''Returns an ImageSetLabels with labels matching the given filters.
-
-        The ImageLabels are passed by reference, not copied.
-
-        Args:
-            filters: a list of functions that accept elements and return
-                True/False
-            match: a function (usually `any` or `all`) that accepts an iterable
-                and returns True/False. Used to aggregate the outputs of each
-                filter to decide whether a match has occurred. The default is
-                `any`
-
-        Returns:
-            an ImageSetLabels with labels matching the filters
-        '''
-        image_set_labels = self.empty()
-        # Intentionally bypass schema checking, for efficiency
-        labels = self.images.get_matches(filters, match=match)
-        image_set_labels.images.add_iterable(labels)
-        return image_set_labels
 
     def sort_by_filename(self, reverse=False):
         '''Sorts the ImageLabels in this instance by filename.
@@ -740,36 +603,16 @@ class ImageSetLabels(Serializable):
             reverse: whether to sort in reverse order. By default, this is
                 False
         '''
-        self.images.sort_by("filename", reverse=reverse)
+        self.sort_by("filename", reverse=reverse)
 
     def attributes(self):
         '''Returns the list of class attributes that will be serialized.'''
-        _attrs = []
+        _attrs = super(ImageSetLabels, self).attributes()
         if self.has_schema:
-            _attrs.append("schema")
-        _attrs.append("images")
+            return ["schema"] + _attrs
         return _attrs
 
-    def serialize(self, reflective=False):
-        '''Serializes the ImageSetLabels into a dictionary.
-
-        Args:
-            reflective: whether to include reflective attributes when
-                serializing the set. By default, this is False
-
-        Returns:
-            a JSON dictionary representation of the ImageSetLabels
-        '''
-        d = super(ImageSetLabels, self).serialize(reflective=reflective)
-        #
-        # Here we remove the extra "images" namespace, which effectively stores
-        # the ImageLabels directly as a list
-        #
-        if "images" in d:
-            d["images"] = d["images"].get("images", [])
-        return d
-
-    def _validate_image_labels(self, image_labels):
+    def _validate_labels(self, image_labels):
         if self.has_schema:
             for image_attr in image_labels.attrs:
                 self._validate_image_attribute(image_attr)
@@ -786,21 +629,75 @@ class ImageSetLabels(Serializable):
 
     def _validate_schema(self):
         if self.has_schema:
-            for image_labels in self.images:
-                self._validate_image_labels(image_labels)
+            for image_labels in self:
+                self._validate_labels(image_labels)
 
     @classmethod
     def from_dict(cls, d):
         '''Constructs an ImageSetLabels from a JSON dictionary.'''
-        images = d.get("images", None)
-        if images is not None:
-            images = [ImageLabels.from_dict(il) for il in images]
-
         schema = d.get("schema", None)
         if schema is not None:
             schema = ImageLabelsSchema.from_dict(schema)
 
-        return cls(images=images, schema=schema)
+        return super(ImageSetLabels, cls).from_dict(d, schema=schema)
+
+
+class BigImageSetLabels(ImageSetLabels, BigSet):
+    '''A BigSet of ImageLabels.
+
+    Behaves identically to ImageSetLabels except that each ImageLabels is
+    stored on disk.
+
+    BigImageSetLabels store a `backing_dir` attribute that specifies the path
+    on disk to the serialized elements. If a backing directory is explicitly
+    provided, the directory will be maintained after the BigImageSetLabels
+    object is deleted; if no backing directory is specified, a temporary
+    backing directory is used and is deleted when the BigImageSetLabels
+    instance is garbage collected.
+
+    Attributes:
+        images: an OrderedDict whose keys are filenames and whose values are
+            uuids for locating ImageLabels on disk
+        schema: a ImageLabelsSchema describing the schema of the labels
+        backing_dir: the backing directory in which the ImageLabels
+            are/will be stored
+    '''
+
+    def __init__(self, images=None, schema=None, backing_dir=None):
+        '''Creates a BigImageSetLabels instance.
+
+        Args:
+            images: an optional dictionary or list of (key, uuid) tuples for
+                elements in the set
+            schema: an optional ImageLabelsSchema to enforce on the object.
+                By default, no schema is enforced
+            backing_dir: an optional backing directory in which the ImageLabels
+                are/will be stored. If omitted, a temporary backing directory
+                is used
+        '''
+        self.schema = schema
+        BigSet.__init__(self, backing_dir=backing_dir, images=images)
+
+    def empty_set(self):
+        '''Returns an empty in-memory ImageSetLabels version of this
+        BigImageSetLabels.
+
+        Returns:
+            an empty ImageSetLabels
+        '''
+        return ImageSetLabels(schema=self.schema)
+
+    def filter_by_schema(self, schema):
+        '''Removes objects/attributes from the ImageLabels in the set that are
+        not compliant with the given schema.
+
+        Args:
+            schema: an ImageLabelsSchema
+        '''
+        for key in self.keys():
+            image_labels = self[key]
+            image_labels.filter_by_schema(schema)
+            self[key] = image_labels
 
 
 ###### Image I/O ##############################################################

@@ -30,7 +30,6 @@ import six
 # pragma pylint: enable=wildcard-import
 
 from collections import defaultdict, OrderedDict
-import copy
 import dateutil.parser
 import errno
 import logging
@@ -45,7 +44,7 @@ from eta.core.data import AttributeContainer, AttributeContainerSchema
 import eta.core.gps as etag
 import eta.core.image as etai
 from eta.core.objects import DetectedObjectContainer
-from eta.core.serial import load_json, Serializable, Set
+from eta.core.serial import load_json, Serializable, Set, BigSet
 import eta.core.utils as etau
 
 
@@ -1139,16 +1138,7 @@ class VideoLabelsSchemaError(Exception):
     pass
 
 
-class _VideoLabelsSet(Set):
-    '''Internal set type used by VideoSetLabels to store labels.'''
-
-    _ELE_CLS = VideoLabels
-    _ELE_KEY_ATTR = "filename"
-    _ELE_CLS_FIELD = "_LABELS_CLS"
-    _ELE_ATTR = "videos"
-
-
-class VideoSetLabels(Serializable):
+class VideoSetLabels(Set):
     '''Class encapsulating labels for a set of videos.
 
     VideoSetLabels support item indexing by the `filename` of the VideoLabels
@@ -1161,77 +1151,44 @@ class VideoSetLabels(Serializable):
     accessed by `filename`-based lookup.
 
     Attributes:
-        videos: a list of VideoLabels instances
-        schema: a VideoLabelsSchema describing the schema of the video labels
+        videos: an OrderedDict of VideoLabels with filenames as keys
+        schema: a VideoLabelsSchema describing the schema of the labels
     '''
 
-    # The Set class used internally to store VideoLabels
-    _SET_CLS = _VideoLabelsSet
+    _ELE_ATTR = "videos"
+    _ELE_KEY_ATTR = "filename"
+    _ELE_CLS = VideoLabels
+    _ELE_CLS_FIELD = "_LABELS_CLS"
 
     def __init__(self, videos=None, schema=None):
         '''Constructs a VideoSetLabels instance.
 
         Args:
-            videos: an optional list of VideoLabels instances. By default, an
-                empty list is created
+            videos: an optional iterable of VideoLabels. By default, an empty
+                set is created
             schema: an optional VideoLabelsSchema to enforce on the object.
                 By default, no schema is enforced
         '''
         self.schema = schema
-        self.videos = self._SET_CLS()
-        if videos is not None:
-            self.videos.add_iterable(videos)
+        super(VideoSetLabels, self).__init__(videos=videos)
 
     def __getitem__(self, filename):
-        if not filename in self:
+        if filename not in self:
             video_labels = VideoLabels(filename=filename)
-            self.add_video_labels(video_labels)
+            self.add(video_labels)
 
-        return self.videos[filename]
+        return super(VideoSetLabels, self).__getitem__(filename)
 
     def __setitem__(self, filename, video_labels):
-        video_labels.filename = filename
-
-        if not filename in self:
-            self.add_video_labels(video_labels)
-            return
-
         if self.has_schema:
             self._apply_schema_to_video(video_labels)
 
-        self.videos[filename] = video_labels
-
-    def __delitem__(self, filename):
-        del self.videos[filename]
-
-    def __contains__(self, filename):
-        return filename in self.videos
-
-    def __iter__(self):
-        return iter(self.videos)
-
-    def __len__(self):
-        return len(self.videos)
-
-    def __bool__(self):
-        return bool(self.videos)
+        super(VideoSetLabels, self).__setitem__(filename, video_labels)
 
     @property
     def has_schema(self):
         '''Returns True/False whether the container has an enforced schema.'''
         return self.schema is not None
-
-    def clear(self):
-        '''Deletes all VideoLabels from the set.'''
-        self.videos.clear()
-
-    def copy(self):
-        '''Returns a deep copy of the VideoSetLabels.
-
-        Returns:
-            an VideoSetLabels
-        '''
-        return copy.deepcopy(self)
 
     def empty(self):
         '''Returns an empty copy of the VideoSetLabels.
@@ -1243,20 +1200,15 @@ class VideoSetLabels(Serializable):
         '''
         return self.__class__(schema=self.schema)
 
-    def add_video_labels(self, video_labels):
+    def add(self, video_labels):
         '''Adds the VideoLabels to the set.
 
         Args:
-            video_labels: an VideoLabels instance
+            video_labels: a VideoLabels instance
         '''
         if self.has_schema:
             self._apply_schema_to_video(video_labels)
-        self.videos.add(video_labels)
-
-    def merge_video_set_labels(self, video_set_labels):
-        '''Merges the given VideoSetLabels into this labels.'''
-        for video_labels in video_set_labels:
-            self.add_video_labels(video_labels)
+        super(VideoSetLabels, self).add(video_labels)
 
     def get_filenames(self):
         '''Returns the set of filenames of VideoLabels in the set.
@@ -1267,34 +1219,32 @@ class VideoSetLabels(Serializable):
         return set(vl.filename for vl in self if vl.filename)
 
     def get_schema(self):
-        '''Gets the current enforced schema for the video set, or None if no
-        schema is enforced.
-        '''
+        '''Gets the schema for the set, or None if no schema is enforced.'''
         return self.schema
 
     def get_active_schema(self):
-        '''Returns an VideoLabelsSchema describing the active schema of the
-        video set.
+        '''Returns a VideoLabelsSchema describing the active schema of the
+        set.
         '''
         schema = VideoLabelsSchema()
-        for video_labels in self.videos:
+        for video_labels in self:
             schema.merge_schema(
                 VideoLabelsSchema.build_active_schema(video_labels))
         return schema
 
     def set_schema(self, schema, filter_by_schema=False):
-        '''Sets the enforced schema to the given VideoLabelsSchema.
+        '''Sets the schema to the given VideoLabelsSchema.
 
         Args:
             schema: the VideoLabelsSchema to use
             filter_by_schema: whether to filter any invalid objects/attributes
-                from this object after changing the schema. By default, this is
+                from the set after changing the schema. By default, this is
                 False
 
         Raises:
-            VideoLabelsSchemaError: if `filter_by_schema` was False and this
-                object contains attributes/objects that are not compliant with
-                the schema
+            VideoLabelsSchemaError: if `filter_by_schema` was False and the
+                set contains attributes/objects that are not compliant with the
+                schema
         '''
         self.schema = schema
 
@@ -1304,111 +1254,23 @@ class VideoSetLabels(Serializable):
         self._apply_schema()
 
     def filter_by_schema(self, schema):
-        '''Removes objects/attributes from the VideoLabels in this object that
-        are not compliant with the given schema.
+        '''Removes objects/attributes from the VideoLabels in the set that are
+        not compliant with the given schema.
 
         Args:
             schema: a VideoLabelsSchema
         '''
-        for video_labels in self.videos:
+        for video_labels in self:
             video_labels.filter_by_schema(schema)
 
     def freeze_schema(self):
-        '''Sets the enforced schema for the video set to the current active
-        schema.
-        '''
+        '''Sets the schema for the set to the current active schema.'''
         self.set_schema(self.get_active_schema())
 
     def remove_schema(self):
-        '''Removes the enforced schema from the video set.'''
+        '''Removes the schema from the set.'''
         self.schema = None
         self._apply_schema()
-
-    def filter_video_labels(self, filters, match=any):
-        '''Removes VideoLabels that don't match the given filters from the set.
-
-        Args:
-            filters: a list of functions that accept VideoLabels and return
-                True/False
-            match: a function (usually `any` or `all`) that accepts an iterable
-                and returns True/False. Used to aggregate the outputs of each
-                filter to decide whether a match has occurred. The default is
-                `any`
-        '''
-        self.videos.filter_elements(filters, match=match)
-
-    def delete_video_labels(self, filenames):
-        '''Deletes VideoLabels from the set with the given filenames.
-
-        Args:
-            filenames: an iterable of filenames to delete
-        '''
-        self.videos.delete_keys(filenames)
-
-    def keep_video_labels(self, filenames):
-        '''Keeps only the VideoLabels in the set with the given filenames.
-
-        Args:
-            filenames: an iterable of filenames to keep
-        '''
-        self.videos.keep_keys(filenames)
-
-    def extract_video_labels(self, filenames):
-        '''Returns a new VideoSetLabels having only the VideoLabels with the
-        given filenames.
-
-        The VideoLabels are passed by reference, not copied.
-
-        Args:
-            filenames: an iterable of filenames to keep
-
-        Returns:
-            a VideoSetLabels with the requested labels
-        '''
-        video_set_labels = self.empty()
-        for filename in filenames:
-            # Intentionally bypass schema checking, for efficiency
-            video_set_labels.videos.add(self[filename])
-        return video_set_labels
-
-    def count_matches(self, filters, match=any):
-        '''Counts the number of VideoLabels in the set that match the given
-        filters.
-
-        Args:
-            filters: a list of functions that accept VideoLabels and return
-                True/False
-            match: a function (usually `any` or `all`) that accepts an iterable
-                and returns True/False. Used to aggregate the outputs of each
-                filter to decide whether a match has occurred. The default is
-                `any`
-
-        Returns:
-            the number of VideoLabels in the set that match the filters
-        '''
-        return self.videos.count_matches(filters, match=match)
-
-    def get_matches(self, filters, match=any):
-        '''Returns a VideoSetLabels with labels matching the given filters.
-
-        The VideoLabels are passed by reference, not copied.
-
-        Args:
-            filters: a list of functions that accept elements and return
-                True/False
-            match: a function (usually `any` or `all`) that accepts an iterable
-                and returns True/False. Used to aggregate the outputs of each
-                filter to decide whether a match has occurred. The default is
-                `any`
-
-        Returns:
-            a VideoSetLabels with labels matching the filters
-        '''
-        video_set_labels = self.empty()
-        # Intentionally bypass schema checking, for efficiency
-        labels = self.videos.get_matches(filters, match=match)
-        video_set_labels.videos.add_iterable(labels)
-        return video_set_labels
 
     def sort_by_filename(self, reverse=False):
         '''Sorts the VideoLabels in this instance by filename.
@@ -1419,34 +1281,14 @@ class VideoSetLabels(Serializable):
             reverse: whether to sort in reverse order. By default, this is
                 False
         '''
-        self.videos.sort_by("filename", reverse=reverse)
+        self.sort_by("filename", reverse=reverse)
 
     def attributes(self):
         '''Returns the list of class attributes that will be serialized.'''
-        _attrs = []
+        _attrs = super(VideoSetLabels, self).attributes()
         if self.has_schema:
-            _attrs.append("schema")
-        _attrs.append("videos")
+            return ["schema"] + _attrs
         return _attrs
-
-    def serialize(self, reflective=False):
-        '''Serializes the VideoSetLabels into a dictionary.
-
-        Args:
-            reflective: whether to include reflective attributes when
-                serializing the set. By default, this is False
-
-        Returns:
-            a JSON dictionary representation of the VideoSetLabels
-        '''
-        d = super(VideoSetLabels, self).serialize(reflective=reflective)
-        #
-        # Here we remove the extra "videos" namespace, which effectively stores
-        # the VideoLabels directly as a list
-        #
-        if "videos" in d:
-            d["videos"] = d["videos"].get("videos", [])
-        return d
 
     def _apply_schema_to_video(self, video_labels):
         if self.has_schema:
@@ -1455,21 +1297,81 @@ class VideoSetLabels(Serializable):
             video_labels.remove_schema()
 
     def _apply_schema(self):
-        for video_labels in self.videos:
+        for video_labels in self:
             self._apply_schema_to_video(video_labels)
 
     @classmethod
     def from_dict(cls, d):
-        '''Constructs an VideoSetLabels from a JSON dictionary.'''
-        videos = d.get("videos", None)
-        if videos is not None:
-            videos = [VideoLabels.from_dict(vl) for vl in videos]
-
-        schema = d.get("schema", None)
+        '''Constructs a VideoSetLabels from a JSON dictionary.'''
+        schema = d.pop("schema", None)
         if schema is not None:
             schema = VideoLabelsSchema.from_dict(schema)
 
-        return cls(videos=videos, schema=schema)
+        return super(VideoSetLabels, cls).from_dict(d, schema=schema)
+
+
+class BigVideoSetLabels(VideoSetLabels, BigSet):
+    '''A BigSet of VideoLabels.
+
+    Behaves identically to VideoSetLabels except that each VideoLabels is
+    stored on disk.
+
+    BigVideoSetLabels store a `backing_dir` attribute that specifies the path
+    on disk to the serialized elements. If a backing directory is explicitly
+    provided, the directory will be maintained after the BigVideoSetLabels
+    object is deleted; if no backing directory is specified, a temporary
+    backing directory is used and is deleted when the BigVideoSetLabels
+    instance is garbage collected.
+
+    Attributes:
+        videos: an OrderedDict whose keys are filenames and whose values are
+            uuids for locating VideoLabels on disk
+        schema: a VideoLabelsSchema describing the schema of the labels
+        backing_dir: the backing directory in which the VideoLabels
+            are/will be stored
+    '''
+
+    def __init__(self, videos=None, schema=None, backing_dir=None):
+        '''Creates a BigVideoSetLabels instance.
+
+        Args:
+            videos: an optional dictionary or list of (key, uuid) tuples for
+                elements in the set
+            schema: an optional VideoLabelsSchema to enforce on the object.
+                By default, no schema is enforced
+            backing_dir: an optional backing directory in which the VideoLabels
+                are/will be stored. If omitted, a temporary backing directory
+                is used
+        '''
+        self.schema = schema
+        BigSet.__init__(self, backing_dir=backing_dir, videos=videos)
+
+    def empty_set(self):
+        '''Returns an empty in-memory VideoSetLabels version of this
+        BigVideoSetLabels.
+
+        Returns:
+            an empty VideoSetLabels
+        '''
+        return VideoSetLabels(schema=self.schema)
+
+    def filter_by_schema(self, schema):
+        '''Removes objects/attributes from the VideoLabels in the set that are
+        not compliant with the given schema.
+
+        Args:
+            schema: a VideoLabelsSchema
+        '''
+        for key in self.keys():
+            video_labels = self[key]
+            video_labels.filter_by_schema(schema)
+            self[key] = video_labels
+
+    def _apply_schema(self):
+        for key in self.keys():
+            video_labels = self[key]
+            self._apply_schema_to_video(video_labels)
+            self[key] = video_labels
 
 
 class VideoStreamInfo(Serializable):
