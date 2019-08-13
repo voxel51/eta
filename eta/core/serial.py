@@ -846,15 +846,13 @@ class BigMixin(object):
         self._set_backing_dir(backing_dir)
 
     def __del__(self):
-        if self._temp_storage and os.path.exists(self.backing_dir):
+        if self.uses_temporary_storage and os.path.exists(self.backing_dir):
             etau.delete_dir(self.backing_dir)
 
     @property
     def backing_dir(self):
         '''The backing directory for this Big iterable.'''
-        if self._backing_dir is not None:
-            return self._backing_dir
-        return self._tempdir
+        return self._backing_dir
 
     @property
     def uses_temporary_storage(self):
@@ -1030,10 +1028,10 @@ class BigMixin(object):
 
     def _set_backing_dir(self, backing_dir):
         if backing_dir is not None:
-            self._temp_storage = False
+            self._uses_temporary_storage = False
             self._backing_dir = os.path.abspath(backing_dir)
         else:
-            self._temp_storage = True
+            self._uses_temporary_storage = True
             self._backing_dir = etau.make_temp_dir()
 
     @staticmethod
