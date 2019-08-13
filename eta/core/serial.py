@@ -2096,8 +2096,8 @@ class BigContainer(BigMixin, Container):
             raise IndexError("Container index %d out of bounds" % idx)
         return "%s.json" % self.__elements__[idx]
 
-    def _ele_path(self, key):
-        return os.path.join(self.backing_dir, self._ele_filename(key))
+    def _ele_path(self, idx):
+        return os.path.join(self.backing_dir, self._ele_filename(idx))
 
     def _ele_path_by_uuid(self, uuid):
         return os.path.join(self.backing_dir, "%s.json" % uuid)
