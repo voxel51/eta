@@ -868,7 +868,7 @@ class BigMixin(object):
         '''
         raise NotImplementedError("subclasses must implement add_by_path()")
 
-     def add_iterable(self, elements):
+    def add_iterable(self, elements):
         '''Adds the elements in the given iterable to the Big iterable.
 
          Args:
