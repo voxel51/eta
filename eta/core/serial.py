@@ -823,7 +823,8 @@ class BigMixin(object):
     on disk rather than in-memory.
 
     Subclasses must call BigMixin's constructor to properly initialize the
-    Big object.
+    Big object, and they must implement the `add_by_path()` and
+    `add_iterable()` methods.
 
     `backing_dir` is an optional keyword argument for any methods that require
     initializing a new instance of a Big iterable. When `backing_dir` is
