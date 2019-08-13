@@ -837,7 +837,7 @@ class BigMixin(object):
         raise NotImplementedError("subclasses must implement __init__()")
 
     def __del__(self):
-        if self._temp_storage:
+        if self._temp_storage and os.path.exists(self.backing_dir):
             etau.delete_dir(self.backing_dir)
 
     @property
@@ -1230,8 +1230,9 @@ class BigSet(BigMixin, Set):
         Returns:
             a Set or BigSet with elements matching the filters
         '''
-        keys = self._filter_elements(filters, match)
-        return self.extract_keys(keys, big=big, backing_dir=backing_dir)
+        subset = self._filter_elements(filters, match)
+        return self.extract_keys(
+            subset.keys(), big=big, backing_dir=backing_dir)
 
     def sort_by(self, attr, reverse=False):
         '''Sorts the elements in the set by the given attribute.
@@ -1331,7 +1332,7 @@ class BigSet(BigMixin, Set):
 
         return OrderedDict(
             (k, v) for k, v in iteritems(self.__elements__)
-            if match(run_filters(k)))
+            if run_filters(k))
 
     @property
     def _ele_paths(self):
@@ -1924,11 +1925,7 @@ class BigContainer(BigMixin, Container):
                 filter to decide whether a match has occurred. The default is
                 `any`
         '''
-        new_ele_set = set(self._filter_elements(filters, match))
-        inds = [
-            idx for idx, uuid in enumerate(self.__elements__)
-            if uuid not in new_ele_set]
-        self.delete_inds(inds)
+        self.keep_inds(self._filter_elements(filters, match))
 
     def keep_inds(self, inds):
         '''Keeps only the elements in the container with the given indices.
@@ -2014,7 +2011,7 @@ class BigContainer(BigMixin, Container):
         class.
 
         Returns:
-            a BigContainer
+            a Container
         '''
         new_container = self.empty_container()
         new_container.add_container(self)
@@ -2063,7 +2060,6 @@ class BigContainer(BigMixin, Container):
         return iter(self._ele_path(idx) for idx in range(len(self)))
 
     def _ele_filename(self, idx):
-        print(idx)
         if idx < 0 or idx >= len(self):
             raise IndexError("Container index %d out of bounds" % idx)
         return "%s.json" % self.__elements__[idx]
