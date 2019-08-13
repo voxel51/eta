@@ -819,18 +819,19 @@ class Set(Serializable):
 
 
 class BigMixin(object):
-    '''Mixin class for BigContainer and BigSet.
+    '''Mixin class for "big" Serializable classes, which store their elements
+    on disk rather than in-memory.
+
+    Subclasses must call BigMixin's constructor to properly initialize the
+    Big object.
 
     `backing_dir` is an optional keyword argument for any methods that require
-    initializing a new instance of a Big iterable. When a `backing_dir` is not
-    provided, a tmp directory is used and is deleted when the Big iterable is
-    garbage collected.
+    initializing a new instance of a Big iterable. When `backing_dir` is
+    `None`, a temporary directory is used and is deleted when the Big iterable
+    is garbage collected.
 
     `move()` can be used to move the Big iterable between a set (persistent)
     backing directory and a temporary backing directory.
-
-    See BigSet and BigContainer for full class implementations and
-    BigLabeledPointContainer BigLabeledPointSet for concrete implementations.
     '''
 
     def __init__(self):
@@ -849,7 +850,7 @@ class BigMixin(object):
 
     @property
     def uses_temporary_storage(self):
-        '''Whether this BigSet is backed by temporary storage.'''
+        '''Whether this Big iterable is backed by temporary storage.'''
         return self._uses_temporary_storage
 
     def clear(self):
@@ -894,9 +895,9 @@ class BigMixin(object):
         '''Moves the backing directory of the Big iterable to the given
         location.
 
-        When `backing_dir` is not provided, it is moved to a new tmp directory.
-        Therefore, this method can be used to move a Big iterable out of the
-        current `backing_dir` and into a tmp storage state.
+        When `backing_dir` is not provided, it is moved to a temporary
+        directory. Therefore, this method can be used to move a Big iterable
+        out of the current `backing_dir` and into a temporary storage state.
 
         Args:
             backing_dir: optional backing directory to use for the new Big
@@ -989,8 +990,8 @@ class BigMixin(object):
         '''Creates a Big iterable from a list of `_ELE_CLS` JSON files.
 
         Args:
-            backing_dir: optional backing directory to use for the Big iterable.
-                If provided, it must be empty or non-existent
+            backing_dir: optional backing directory to use for the new Big
+                iterable. If provided, it must be empty or non-existent
             paths: an iterable of paths to `_ELE_CLS` JSON files
 
         Returns:
