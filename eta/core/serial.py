@@ -867,6 +867,14 @@ class BigMixin(object):
         '''
         raise NotImplementedError("subclasses must implement add_by_path()")
 
+     def add_iterable(self, elements):
+        '''Adds the elements in the given iterable to the Big iterable.
+
+         Args:
+            elements: an iterable of elements
+        '''
+        raise NotImplementedError("subclasses must implement add_iterable()")
+
     def clear(self):
         '''Deletes all elements from the Big iterable.'''
         super(BigSet, self).clear()
