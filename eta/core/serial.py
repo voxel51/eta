@@ -1102,7 +1102,7 @@ class BigSet(BigMixin, Set):
             SetError: if there was an error while creating the set
         '''
         self._validate()
-        BigMixin.__init__(self, backing_dir)
+        super(BigSet, self).__init__(backing_dir)
 
         elements = kwargs.get(self._ELE_ATTR, None) or []
         if elements:
@@ -1823,7 +1823,7 @@ class BigContainer(BigMixin, Container):
             ContainerError: if there was an error while creating the container
         '''
         self._validate()
-        BigMixin.__init__(self, backing_dir)
+        super(BigContainer, self).__init__(backing_dir)
 
         elements = kwargs.get(self._ELE_ATTR, None) or []
         if elements:
