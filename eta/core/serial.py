@@ -963,8 +963,8 @@ class BigMixin(object):
             etau.make_archive(rootdir, archive_path)
 
     @classmethod
-    def from_archive(cls, archive_path, backing_dir=None,
-                     delete_archive=False):
+    def from_archive(
+            cls, archive_path, backing_dir=None, delete_archive=False):
         '''Loads a Big iterable from an archive created by `to_archive()`.
 
         Args:
