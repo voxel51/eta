@@ -852,6 +852,14 @@ class BigMixin(object):
         '''Whether this BigSet is backed by temporary storage.'''
         return self._uses_temporary_storage
 
+    def add_by_path(self, path):
+        '''Add a an element by its absolute path on disk.
+
+        Args:
+            path: the path to the element JSON file on disk
+        '''
+        raise NotImplementedError("subclasses must implement add_by_path()")
+
     def clear(self):
         '''Deletes all elements from the Big iterable.'''
         super(BigSet, self).clear()
@@ -986,24 +994,24 @@ class BigMixin(object):
 
     @classmethod
     def from_paths(cls, paths, backing_dir=None):
-        '''Creates a Big iterable from a list of `_ELE_CLS` JSON files.
+        '''Creates a Big iterable from a list of element JSON files.
 
         Args:
-            backing_dir: optional backing directory to use for the Big iterable.
-                If provided, it must be empty or non-existent
-            paths: an iterable of paths to `_ELE_CLS` JSON files
+            backing_dir: optional backing directory to use for the Big
+                iterable. If provided, it must be empty or non-existent
+            paths: an iterable of paths to element JSON files
 
         Returns:
             a Big iterable
         '''
         big = cls(backing_dir=backing_dir)
         for path in paths:
-            big._add_by_path(path)
+            big.add_by_path(path)
         return big
 
     @classmethod
     def from_dir(cls, source_dir, backing_dir=None):
-        '''Creates a Big iterable from an unstructured directory of `_ELE_CLS`
+        '''Creates a Big iterable from an unstructured directory of element
         JSON files on disk.
 
         The source directory is traversed recursively.
@@ -1026,22 +1034,6 @@ class BigMixin(object):
         else:
             self._temp_storage = True
             self._backing_dir = etau.make_temp_dir()
-
-    @staticmethod
-    def _make_uuid():
-        return str(uuid4())
-
-    def _ele_path(self, key):
-        return os.path.join(self.backing_dir, self._ele_filename(key))
-
-    def _ele_path_by_uuid(self, uuid):
-        return os.path.join(self.backing_dir, "%s.json" % uuid)
-
-    def _load_ele(self, path):
-        return self._ELE_CLS.from_json(path)
-
-    def _load_ele_by_uuid(self, uuid):
-        return self._load_ele(self._ele_path_by_uuid(uuid))
 
 
 class BigSet(BigMixin, Set):
@@ -1130,6 +1122,28 @@ class BigSet(BigMixin, Set):
         cls_name = module + dot + big_cls[len("Big"):]
         return etau.get_class(cls_name)
 
+    def add_by_path(self, path, key=None):
+        '''Add a an element by its absolute path on disk.
+
+        No validation is done. Subclasses may choose to implement this method
+        for suchs purposes, etc.
+
+        Args:
+            path: the path to the element JSON file on disk
+            key: optional key value to the element. If not provided, the
+                element is loaded and the key is read.
+        '''
+        if key is None:
+            # Must load element to get key
+            self.add(self._load_ele(path))
+            return
+
+        if key not in self:
+            # Must add key to set
+            self.__elements__[key] = self._make_uuid()
+
+        etau.copy_file(path, self._ele_path(key))
+
     def empty_set(self):
         '''Returns an empty in-memory Set version of this BigSet.
 
@@ -1160,7 +1174,7 @@ class BigSet(BigMixin, Set):
             # Copy BigSet elements via disk to avoid loading into memory
             for key in set_.keys():
                 path = set_._ele_path(key)
-                self._add_by_path(path, key=key)
+                self.add_by_path(path, key=key)
         else:
             self.add_iterable(set_)
 
@@ -1175,9 +1189,7 @@ class BigSet(BigMixin, Set):
                 filter to decide whether a match has occurred. The default is
                 `any`
         '''
-        new_ele_set = self._filter_elements(filters, match)
-        keys = [key for key in self.__elements__ if key not in new_ele_set]
-        self.delete_keys(keys)
+        self.keep_keys(self._filter_elements(filters, match).keys())
 
     def keep_keys(self, keys):
         '''Keeps only the elements in the set with the given keys.
@@ -1211,7 +1223,7 @@ class BigSet(BigMixin, Set):
         new_set = self.empty(backing_dir=backing_dir)
         for key in keys:
             path = self._ele_path(key)
-            new_set._add_by_path(path, key=key)
+            new_set.add_by_path(path, key=key)
         return new_set
 
     def get_matches(self, filters, match=any, big=True, backing_dir=None):
@@ -1345,17 +1357,21 @@ class BigSet(BigMixin, Set):
             raise KeyError("Set key %d does not exist" % key)
         return "%s.json" % self.__elements__[key]
 
-    def _add_by_path(self, path, key=None):
-        if key is None:
-            # Must load element to get key
-            self.add(self._load_ele(path))
-            return
+    def _ele_path(self, key):
+        return os.path.join(self.backing_dir, self._ele_filename(key))
 
-        if key not in self:
-            # Must add key to set
-            self.__elements__[key] = self._make_uuid()
+    def _ele_path_by_uuid(self, uuid):
+        return os.path.join(self.backing_dir, "%s.json" % uuid)
 
-        etau.copy_file(path, self._ele_path(key))
+    def _load_ele(self, path):
+        return self._ELE_CLS.from_json(path)
+
+    def _load_ele_by_uuid(self, uuid):
+        return self._load_ele(self._ele_path_by_uuid(uuid))
+
+    @staticmethod
+    def _make_uuid():
+        return str(uuid4())
 
 
 class SetError(Exception):
@@ -1873,6 +1889,19 @@ class BigContainer(BigMixin, Container):
         cls_name = module + dot + big_cls[len("Big"):]
         return etau.get_class(cls_name)
 
+    def add_by_path(self, path):
+        '''Add a an element by its absolute path on disk.
+
+        No validation is done. Subclasses may choose to implement this method
+        for suchs purposes, etc.
+
+        Args:
+            path: the path to the element JSON file on disk
+        '''
+        uuid = self._make_uuid()
+        self.__elements__.append(uuid)
+        etau.copy_file(path, self._ele_path_by_uuid(uuid))
+
     def empty_container(self):
         '''Returns an empty in-memory Container version of this BigContainer.
 
@@ -1902,7 +1931,7 @@ class BigContainer(BigMixin, Container):
         if isinstance(container, BigContainer):
             # Copy BigContainer elements via disk to avoid loading into memory
             for path in container._ele_paths:
-                self._add_by_path(path)
+                self.add_by_path(path)
         else:
             self.add_iterable(container)
 
@@ -1961,7 +1990,7 @@ class BigContainer(BigMixin, Container):
         # Return results in a BigContainer
         new_container = self.empty(backing_dir=backing_dir)
         for idx in inds:
-            new_container._add_by_path(self._ele_path(idx))
+            new_container.add_by_path(self._ele_path(idx))
         return new_container
 
     def get_matches(self, filters, match=any, big=True, backing_dir=None):
@@ -2066,10 +2095,21 @@ class BigContainer(BigMixin, Container):
             raise IndexError("Container index %d out of bounds" % idx)
         return "%s.json" % self.__elements__[idx]
 
-    def _add_by_path(self, path):
-        uuid = self._make_uuid()
-        self.__elements__.append(uuid)
-        etau.copy_file(path, self._ele_path_by_uuid(uuid))
+    def _ele_path(self, key):
+        return os.path.join(self.backing_dir, self._ele_filename(key))
+
+    def _ele_path_by_uuid(self, uuid):
+        return os.path.join(self.backing_dir, "%s.json" % uuid)
+
+    def _load_ele(self, path):
+        return self._ELE_CLS.from_json(path)
+
+    def _load_ele_by_uuid(self, uuid):
+        return self._load_ele(self._ele_path_by_uuid(uuid))
+
+    @staticmethod
+    def _make_uuid():
+        return str(uuid4())
 
 
 class ContainerError(Exception):
