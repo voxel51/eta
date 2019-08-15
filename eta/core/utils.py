@@ -1122,6 +1122,31 @@ def list_files(dir_path, abs_paths=False):
     return files
 
 
+def list_subdirs(dir_path, abs_paths=False):
+    '''Lists the sub-directories in the given directory, sorted alphabetically
+    and excluding hidden directories.
+
+    Args:
+        dir_path: the path to the directory to list
+        abs_paths: whether to return the absolute paths to the dirs. By
+            default, this is False
+
+    Returns:
+        a sorted list of the non-hidden sub-directory names (or paths) in the
+            directory
+    '''
+    dirs = sorted(
+        d for d in os.listdir(dir_path)
+        if os.path.isdir(os.path.join(dir_path, d)) and not d.startswith(".")
+    )
+
+    if abs_paths:
+        basedir = os.path.abspath(os.path.realpath(dir_path))
+        dirs = [os.path.join(basedir, d) for d in dirs]
+
+    return dirs
+
+
 def parse_pattern(patt):
     '''Inspects the files matching the given pattern and returns the numeric
     indicies of the sequence.
