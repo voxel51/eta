@@ -206,13 +206,13 @@ class ObjectCounts(Container):
 
 
 class EvaluationType(object):
-    '''Enumeration representing the type of evaluation a label is intended for.
-    This enables evaluation of false negatives on a subset of the labels used
-    for evaluating false positives.
+    '''Enumeration representing the type of evaluation an object label is
+    intended for. This enables evaluation of false negatives on a subset of
+    the labels used for evaluating false positives.
 
-    RECALL - this label is part of the subset that MUST be detected. If it is
+    RECALL - this object is part of the subset that MUST be detected. If it is
              not, it is considered a false negative.
-    PRECISION - this label MAY be detected, and if so, is marked as a true
+    PRECISION - this object MAY be detected, and if so, is marked as a true
                 positive, however, if it is not, it is NOT considered a false
                 negative.
     '''
