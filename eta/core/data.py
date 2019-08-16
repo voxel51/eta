@@ -66,22 +66,6 @@ def majority_vote_categorical_attrs(attrs, confidence_weighted=False):
     return voted_attrs
 
 
-class EvaluationType(object):
-    '''Enumeration representing the type of evaluation a label is intended for.
-    This enables evaluation of false negatives on a subset of the labels used
-    for evaluating false positives.
-
-    RECALL - this label is part of the subset that MUST be detected. If it is
-             not, it is considered a false negative.
-    PRECISION - this label MAY be detected, and if so, is marked as a true
-                positive, however, if it is not, it is NOT considered a false
-                negative.
-    '''
-
-    RECALL = "RECALL"
-    PRECISION = "PRECISION"
-
-
 class Attribute(Serializable):
     '''Base class for attributes.
 
@@ -90,7 +74,7 @@ class Attribute(Serializable):
     module.
     '''
 
-    def __init__(self, name, value, confidence=None, eval_type=None):
+    def __init__(self, name, value, confidence=None):
         '''Constructs an Attribute instance.
 
         Args:
@@ -98,14 +82,11 @@ class Attribute(Serializable):
             value: the attribute value
             confidence: an optional confidence of the value, in [0, 1]. By
                 default, no confidence is stored
-            eval_type: an optional instance of EvaluationType enumeration
         '''
         self.type = etau.get_class_name(self)
         self.name = name
         self.value = self.parse_value(value)
         self.confidence = confidence
-        self.eval_type = eval_type
-
 
     @classmethod
     def get_schema_cls(cls):
@@ -127,8 +108,6 @@ class Attribute(Serializable):
         _attrs = ["type", "name", "value"]
         if self.confidence is not None:
             _attrs.append("confidence")
-        if self.eval_type is not None:
-            _attrs.append("eval_type")
         return _attrs
 
     @classmethod
@@ -136,8 +115,7 @@ class Attribute(Serializable):
         '''Constructs an Attribute from a JSON dictionary.'''
         attr_cls = etau.get_class(d["type"])
         return attr_cls(
-            d["name"], d["value"], confidence=d.get("confidence", None),
-            eval_type=d.get("eval_type", None))
+            d["name"], d["value"], confidence=d.get("confidence", None))
 
 
 class CategoricalAttribute(Attribute):

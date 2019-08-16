@@ -18,7 +18,7 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-from eta.core.data import EvaluationType, AttributeContainer
+from eta.core.data import AttributeContainer
 from eta.core.geometry import BoundingBox, HasBoundingBox
 from eta.core.serial import Container, Serializable
 
@@ -203,3 +203,19 @@ class ObjectCounts(Container):
 
     _ELE_CLS = ObjectCount
     _ELE_ATTR = "counts"
+
+
+class EvaluationType(object):
+    '''Enumeration representing the type of evaluation a label is intended for.
+    This enables evaluation of false negatives on a subset of the labels used
+    for evaluating false positives.
+
+    RECALL - this label is part of the subset that MUST be detected. If it is
+             not, it is considered a false negative.
+    PRECISION - this label MAY be detected, and if so, is marked as a true
+                positive, however, if it is not, it is NOT considered a false
+                negative.
+    '''
+
+    RECALL = "RECALL"
+    PRECISION = "PRECISION"
