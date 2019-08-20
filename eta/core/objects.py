@@ -38,11 +38,12 @@ class DetectedObject(Serializable, HasBoundingBox):
             where it was detected
         attrs: (optional) an AttributeContainer describing additional
             attributes of the object
+        eval_type: (optional) instance of EvaluationType enumeration
     '''
 
     def __init__(
             self, label, bounding_box, confidence=None, index=None, score=None,
-            frame_number=None, index_in_frame=None, attrs=None):
+            frame_number=None, index_in_frame=None, attrs=None, eval_type=None):
         '''Constructs a DetectedObject.
 
         Args:
@@ -57,6 +58,7 @@ class DetectedObject(Serializable, HasBoundingBox):
                 where it was detected
             attrs: (optional) an AttributeContainer describing additional
                 attributes of the object
+            eval_type: (optional) instance of EvaluationType enumeration
         '''
         self.label = label
         self.bounding_box = bounding_box
@@ -65,6 +67,7 @@ class DetectedObject(Serializable, HasBoundingBox):
         self.score = score
         self.frame_number = frame_number
         self.index_in_frame = index_in_frame
+        self.eval_type = eval_type
         self.attrs = attrs or AttributeContainer()
         self._meta = None  # Usable by clients to store temporary metadata
 
@@ -89,7 +92,8 @@ class DetectedObject(Serializable, HasBoundingBox):
         '''Returns the list of attributes to serialize.'''
         _attrs = ["label", "bounding_box"]
         _optional_attrs = [
-            "confidence", "index", "score", "frame_number", "index_in_frame"]
+            "confidence", "index", "score", "frame_number", "index_in_frame",
+            "eval_type"]
         _attrs.extend(
             [a for a in _optional_attrs if getattr(self, a) is not None])
         if self.attrs:
@@ -112,6 +116,7 @@ class DetectedObject(Serializable, HasBoundingBox):
             frame_number=d.get("frame_number", None),
             index_in_frame=d.get("index_in_frame", None),
             attrs=attrs,
+            eval_type=d.get("eval_type", None),
         )
 
 
@@ -198,3 +203,19 @@ class ObjectCounts(Container):
 
     _ELE_CLS = ObjectCount
     _ELE_ATTR = "counts"
+
+
+class EvaluationType(object):
+    '''Enumeration representing the type of evaluation an object label is
+    intended for. This enables evaluation of false negatives on a subset of
+    the labels used for evaluating false positives.
+
+    RECALL - this object is part of the subset that MUST be detected. If it is
+             not, it is considered a false negative.
+    PRECISION - this object MAY be detected, and if so, is marked as a true
+                positive, however, if it is not, it is NOT considered a false
+                negative.
+    '''
+
+    RECALL = "RECALL"
+    PRECISION = "PRECISION"
