@@ -1453,7 +1453,7 @@ class VideoStreamInfo(Serializable):
 
         try:
             # try `duration` x `frame rate`
-            return int(self.duration * self.frame_rate)
+            return int(round(self.duration * self.frame_rate))
         except VideoStreamInfoError:
             pass
 
