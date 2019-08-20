@@ -2854,6 +2854,17 @@ class FFmpeg(object):
             filters.append("fps={0}".format(fps))
         if size:
             filters.append("scale={0}:{1}".format(*size))
+
+            #
+            # If the aspect ratio is changing, we must manually set SAR/DAR
+            # https://stackoverflow.com/questions/34148780/ffmpeg-setsar-value-gets-overriden
+            #
+            if all(p > 0 for p in size):
+                # Force square pixels
+                filters.append("setsar=sar=1:1")
+
+                # Force correct display aspect ratio when playing video
+                filters.append("setdar=dar={0}:{1}".format(*size))
         elif scale:
             filters.append("scale=iw*{0}:ih*{0}".format(scale))
         return ["-vf", ",".join(filters)] if filters else []
