@@ -1411,6 +1411,12 @@ class LabeledDatasetBuilder(object):
         '''
         self._transformers.append(transform)
 
+
+    @property
+    def builder_dataset(self):
+        '''The underlying BuilderDataset instance'''
+        return self._dataset
+
     @property
     def builder_dataset_cls(self):
         '''Associated BuilderDataset class getter.'''
@@ -1695,6 +1701,9 @@ class DatasetTransformer(object):
 
 class Sampler(DatasetTransformer):
     '''Randomly sample the number of records in the dataset to some number k.
+
+    If the number of records is less than k, then all records are kept, but
+    the order is randomized.
     '''
 
     def __init__(self, k):
@@ -1714,10 +1723,9 @@ class Sampler(DatasetTransformer):
         Returns:
             None
         '''
-        try:
-            src.records = random.sample(src.records, self.k)
-        except ValueError as err:
-            raise DatasetTransformerError(err)
+        src.records = random.sample(
+            src.records, min(self.k, len(src.records))
+        )
 
 
 class Balancer(DatasetTransformer):
@@ -2216,6 +2224,40 @@ class EmptyLabels(DatasetTransformer):
 
         for record in src:
             record.set_labels(labels_cls())
+
+
+class Merger(DatasetTransformer):
+    '''Merges another dataset into the existing dataset.'''
+
+    def __init__(self, dataset_builder):
+        '''Creates a Merger instance.
+
+        Args:
+            dataset_builder: a LabeledDatasetBuilder instance for the
+                dataset to be merged with the existing one
+        '''
+        self._builder_dataset_to_merge = dataset_builder.builder_dataset
+
+    def transform(self, src):
+        '''Merges `self._builder_dataset_to_merge` into `src`.
+
+        Args:
+            src (BuilderDataset)
+
+        Returns:
+            None
+        '''
+        if self._builder_dataset_to_merge.record_cls != src.record_cls:
+            raise DatasetTransformerError(
+                "BuilderDatasets have different record_cls types: "
+                "src.record_cls = %s, to_merge.record_cls = %s" % (
+                    etau.get_class_name(src.record_cls),
+                    etau.get_class_name(
+                        self._builder_dataset_to_merge.record_cls)
+                )
+            )
+
+        src.add_container(self._builder_dataset_to_merge)
 
 
 class DatasetTransformerError(Exception):
