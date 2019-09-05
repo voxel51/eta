@@ -280,7 +280,7 @@ def sample_videos_to_images(
 
     if num_images is not None and stride is None:
         stride = _compute_stride(video_dataset, num_images, frame_filter)
-        
+
     logger.info("Sampling video frames with stride %d", stride)
 
     image_dataset = LabeledImageDataset.create_empty_dataset(
@@ -1412,7 +1412,6 @@ class LabeledDatasetBuilder(object):
         '''
         self._transformers.append(transform)
 
-
     @property
     def builder_dataset(self):
         '''The underlying BuilderDataset instance'''
@@ -1762,9 +1761,10 @@ class Balancer(DatasetTransformer):
                 a schema that indicates which attributes, object labels, etc.
                 should be used for balancing. This can be specified as an
                 alternative to `attribute_name` and `object_label`. If the
-                latter are specified, these take precedence over `labels_schema`.
-                Note that labels are not altered; this schema just picks out the
-                attributes that are used for balancing.
+                latter are specified, these take precedence over
+                `labels_schema`. Note that labels are not altered; this
+                schema just picks out the attributes that are used for
+                balancing.
             target_quantile (float): value between [0, 1] to specify what the
                 target count per attribute value will be.
                 0.5 - will result in the true median
@@ -1904,7 +1904,8 @@ class Balancer(DatasetTransformer):
 
         if self.object_label is not None:
             raise ValueError(
-                "attribute_name must be specified if object_label is specified")
+                "attribute_name must be specified if object_label is "
+                "specified")
 
         return self._to_helper_list_schema(records)
 
@@ -1933,8 +1934,7 @@ class Balancer(DatasetTransformer):
         if isinstance(records[0], BuilderImageRecord):
             return self._to_helper_list_image_schema(records)
 
-        if isinstance(records[0], BuilderVideoRecord):
-            return self._to_helper_list_video_schema(records)
+        return self._to_helper_list_video_schema(records)
 
     def _to_helper_list_image(self, records):
         '''Balancer._to_helper_list for image attributes'''
@@ -2056,7 +2056,8 @@ class Balancer(DatasetTransformer):
                         etau.get_class_name(build_rec_cls)
                     )
                 )
-            elif isinstance(records[0], build_rec_cls):
+
+            if isinstance(records[0], build_rec_cls):
                 break
         else:
             raise DatasetTransformerError(
@@ -2073,7 +2074,9 @@ class Balancer(DatasetTransformer):
 
             for attr in labels.attrs:
                 if self.labels_schema.is_valid_image_attribute(attr):
-                    helper[1].append(("image_attribute", attr.name, attr.value))
+                    helper[1].append(
+                        ("image_attribute", attr.name, attr.value)
+                    )
 
             for detected_object in labels.objects:
                 if not self.labels_schema.is_valid_object_label(
@@ -2104,7 +2107,9 @@ class Balancer(DatasetTransformer):
 
             for attr in labels.attrs:
                 if self.labels_schema.is_valid_video_attribute(attr):
-                    helper[1].append(("video_attribute", attr.name, attr.value))
+                    helper[1].append(
+                        ("video_attribute", attr.name, attr.value)
+                    )
 
             for frame_no in labels:
                 if (frame_no < record.clip_start_frame
@@ -2130,7 +2135,7 @@ class Balancer(DatasetTransformer):
                                 (attr.name, attr.value)
                             )
 
-            for (label, index), attr_set in iteritems(helper_dict):
+            for (label, _), attr_set in iteritems(helper_dict):
                 for name, value in attr_set:
                     helper[1].append(
                         ("object_attribute", label, name, value)
@@ -2275,7 +2280,8 @@ class Balancer(DatasetTransformer):
         except np.AxisError:
             return np.sum(vector2)
 
-    def _add_to_meet_minimum_count(self, x, A, target_count):
+    @staticmethod
+    def _add_to_meet_minimum_count(x, A, target_count):
         '''Add more indices to `keep_idxs` so that the count for every
         attribute value is at least equal to `target_count`.
 
