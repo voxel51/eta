@@ -1454,6 +1454,10 @@ class LabeledDatasetBuilder(object):
         for transformer in self._transformers:
             transformer.transform(self._dataset)
 
+        logger.info(
+            "Building dataset with %d elements" % len(self.builder_dataset)
+        )
+
         dataset = self.dataset_cls.create_empty_dataset(path, description)
 
         with etau.TempDir() as dir_path:
