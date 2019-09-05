@@ -20,6 +20,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
+from future.utils import iteritems
 import six
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
@@ -1741,9 +1742,15 @@ class Balancer(DatasetTransformer):
         `object_label`.
     '''
 
-    def __init__(self, attribute_name, object_label=None, target_quantile=0.25,
-                 negative_power=5, target_count=None, target_hard_min=False,
-                 algorithm="greedy"):
+    _BUILDER_RECORD_TO_SCHEMA = [
+        (BuilderImageRecord, etai.ImageLabelsSchema),
+        (BuilderVideoRecord, etav.VideoLabelsSchema)
+    ]
+
+    def __init__(
+            self, attribute_name=None, object_label=None, labels_schema=None,
+            target_quantile=0.25, negative_power=5, target_count=None,
+            target_hard_min=False, algorithm="greedy"):
         '''Creates a Balancer instance.
 
         Args:
@@ -1751,6 +1758,13 @@ class Balancer(DatasetTransformer):
             object_label (str): the name of the object label that the
                 attribute_name must be nested under. If this is None, it is
                 assumed that the attributes are Image/Frame level attrs.
+            labels_schema (etai.ImageLabelsSchema or etav.VideoLabelsSchema):
+                a schema that indicates which attributes, object labels, etc.
+                should be used for balancing. This can be specified as an
+                alternative to `attribute_name` and `object_label`. If the
+                latter are specified, these take precedence over `labels_schema`.
+                Note that labels are not altered; this schema just picks out the
+                attributes that are used for balancing.
             target_quantile (float): value between [0, 1] to specify what the
                 target count per attribute value will be.
                 0.5 - will result in the true median
@@ -1776,11 +1790,14 @@ class Balancer(DatasetTransformer):
         '''
         self.attr_name = attribute_name
         self.object_label = object_label
+        self.labels_schema = labels_schema
         self.target_quantile = target_quantile
         self.negative_power = negative_power
         self.target_count = target_count
         self.target_hard_min = target_hard_min
         self.algorithm = algorithm
+
+        self._validate()
 
     def transform(self, src):
         '''Modify the BuilderDataset records by removing records until the
@@ -1808,6 +1825,14 @@ class Balancer(DatasetTransformer):
         src.clear()
         for ki in keep_idxs:
             src.add(old_records[record_idxs[ki]])
+
+    def _validate(self):
+        if all([self.attr_name is None,
+                self.object_label is None,
+                self.labels_schema is None]):
+            raise ValueError(
+                "At least one of the following must be specified: "
+                "attribute_name, object_label, labels_schema")
 
     def _get_occurrence_matrix(self, records):
         '''Compute occurrence of each attribute value for each class
@@ -1871,24 +1896,45 @@ class Balancer(DatasetTransformer):
                             three objects with the 'color' attribute in this
                             record.
         '''
-
         if not len(records):
             return []
 
-        elif isinstance(records[0], BuilderImageRecord):
+        if self.attr_name is not None:
+            return self._to_helper_list_attr_name(records)
+
+        if self.object_label is not None:
+            raise ValueError(
+                "attribute_name must be specified if object_label is specified")
+
+        return self._to_helper_list_schema(records)
+
+    def _to_helper_list_attr_name(self, records):
+        '''Balancer._to_helper_list when `self.attr_name` is specified.'''
+        if isinstance(records[0], BuilderImageRecord):
             if self.object_label:
                 return self._to_helper_list_image_objects(records)
-            else:
-                return self._to_helper_list_image(records)
+            return self._to_helper_list_image(records)
 
-        elif isinstance(records[0], BuilderVideoRecord):
+        if isinstance(records[0], BuilderVideoRecord):
             if self.object_label:
                 return self._to_helper_list_video_objects(records)
-            else:
-                return self._to_helper_list_video(records)
+            return self._to_helper_list_video(records)
 
         raise DatasetTransformerError(
-            "Unknown record type: {}".format(type(records[0])))
+            "Unknown record type: {}".format(
+                etau.get_class_name(records[0])
+            )
+        )
+
+    def _to_helper_list_schema(self, records):
+        '''Balancer._to_helper_list when `self.labels_schema` is specified.'''
+        self._validate_schema(records)
+
+        if isinstance(records[0], BuilderImageRecord):
+            return self._to_helper_list_image_schema(records)
+
+        if isinstance(records[0], BuilderVideoRecord):
+            return self._to_helper_list_video_schema(records)
 
     def _to_helper_list_image(self, records):
         '''Balancer._to_helper_list for image attributes'''
@@ -1934,7 +1980,12 @@ class Balancer(DatasetTransformer):
             labels = record.get_labels()
             helper = (i, set())
 
-            for frame in labels.frames.values():
+            for frame_no in labels:
+                if (frame_no < record.clip_start_frame or
+                    frame_no >= record.clip_end_frame):
+                    continue
+
+                frame = labels[frame_no]
                 for attr in frame.attrs:
                     if attr.name == self.attr_name:
                         helper[1].add(attr.value)
@@ -1955,11 +2006,12 @@ class Balancer(DatasetTransformer):
             NO_ID = 'NO_ID'
             helper_dict = defaultdict(set)
 
-            for frame_no, frame in labels.frames.items():
+            for frame_no in labels:
                 if (frame_no < record.clip_start_frame
                         or frame_no >= record.clip_end_frame):
                     continue
 
+                frame = labels[frame_no]
                 for detected_object in frame.objects:
                     if detected_object.label != self.object_label:
                         continue
@@ -1984,6 +2036,107 @@ class Balancer(DatasetTransformer):
                 helper = (i, [])
                 for s in helper_dict.values():
                     helper[1].extend(s)
+                helper_list.append(helper)
+
+        return helper_list
+
+    def _validate_schema(self, records):
+        '''Checks that `self.labels_schema` and `records` are compatible.
+
+        Args:
+            records: list of BuilderDataRecords to be balanced
+        '''
+        for build_rec_cls, schema_cls in self._BUILDER_RECORD_TO_SCHEMA:
+            if isinstance(records[0], build_rec_cls) and not isinstance(
+                    self.labels_schema, schema_cls):
+                raise TypeError(
+                    "Expected self.labels_schema to be an instance of '%s' "
+                    "since builder records are instances of '%s'" % (
+                        etau.get_class_name(schema_cls),
+                        etau.get_class_name(build_rec_cls)
+                    )
+                )
+            elif isinstance(records[0], build_rec_cls):
+                break
+        else:
+            raise DatasetTransformerError(
+                "Unknown record type: '%s'" % etau.get_class_name(records[0])
+            )
+
+    def _to_helper_list_image_schema(self, records):
+        '''Balancer._to_helper_list when an etai.ImageLabelsSchema is given'''
+        helper_list = []
+
+        for i, record in enumerate(records):
+            labels = record.get_labels()
+            helper = (i, [])
+
+            for attr in labels.attrs:
+                if self.labels_schema.is_valid_image_attribute(attr):
+                    helper[1].append(("image_attribute", attr.name, attr.value))
+
+            for detected_object in labels.objects:
+                if not self.labels_schema.is_valid_object_label(
+                        detected_object.label):
+                    continue
+
+                for attr in detected_object.attrs:
+                    if self.labels_schema.is_valid_object_attribute(
+                            detected_object.label, attr):
+                        helper[1].append(
+                            ("object_attribute", detected_object.label,
+                             attr.name, attr.value)
+                        )
+
+            if len(helper[1]):
+                helper_list.append(helper)
+
+        return helper_list
+
+    def _to_helper_list_video_schema(self, records):
+        '''Balancer._to_helper_list when an etav.VideoLabelsSchema is given'''
+        helper_list = []
+
+        for i, record in enumerate(records):
+            labels = record.get_labels()
+            helper = (i, [])
+            helper_dict = defaultdict(set)
+
+            for attr in labels.attrs:
+                if self.labels_schema.is_valid_video_attribute(attr):
+                    helper[1].append(("video_attribute", attr.name, attr.value))
+
+            for frame_no in labels:
+                if (frame_no < record.clip_start_frame
+                        or frame_no >= record.clip_end_frame):
+                    continue
+
+                frame = labels[frame_no]
+                for attr in frame.attrs:
+                    if self.labels_schema.is_valid_frame_attribute(attr):
+                        helper[1].append(
+                            ("frame_attribute", attr.name, attr.value)
+                        )
+
+                for obj in frame.objects:
+                    if not self.labels_schema.is_valid_object_label(
+                            obj.label):
+                        continue
+
+                    for attr in obj.attrs:
+                        if self.labels_schema.is_valid_object_attribute(
+                                obj.label, attr):
+                            helper_dict[(obj.label, obj.index)].add(
+                                (attr.name, attr.value)
+                            )
+
+            for (label, index), attr_set in iteritems(helper_dict):
+                for name, value in attr_set:
+                    helper[1].append(
+                        ("object_attribute", label, name, value)
+                    )
+
+            if len(helper[1]):
                 helper_list.append(helper)
 
         return helper_list
@@ -2148,16 +2301,22 @@ class Balancer(DatasetTransformer):
         current_counts = np.dot(A, 1 - x_out).astype("int")
         omitted_idxs = np.where(x_out == 1)[0]
 
+        total_counts = np.dot(A, np.ones(x_out.shape)).astype("int")
+        # If the total count in the entire dataset for a value is less than
+        # `target_count`, then the target for that value should be its total
+        # count
+        target_vec = np.minimum(total_counts, target_count)
+
         random.shuffle(omitted_idxs)
         for candidate_idx in omitted_idxs:
-            if not (current_counts < target_count).any():
+            if not (current_counts < target_vec).any():
                 # All counts meet the minimum
                 break
 
             additional_counts = A[:, candidate_idx]
             # If keeping this index would increase the counts for any
             # value that doesn't meet the minimum, then keep this index
-            if (additional_counts[current_counts < target_count] > 0).any():
+            if (additional_counts[current_counts < target_vec] > 0).any():
                 x_out[candidate_idx] = 0
                 current_counts += additional_counts
 
