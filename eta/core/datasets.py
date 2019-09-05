@@ -2338,7 +2338,7 @@ class SchemaFilter(DatasetTransformer):
         '''Initialize the SchemaFilter with a schema.
 
         Args:
-            schema (VideoLabelsSchema orImageLabelsSchema)
+            schema (VideoLabelsSchema or ImageLabelsSchema)
         '''
         self.schema = schema
 
@@ -2470,6 +2470,33 @@ class Merger(DatasetTransformer):
             )
 
         src.add_container(self._builder_dataset_to_merge)
+
+
+class FilterByFilename(DatasetTransformer):
+    '''Filters data from a dataset using a filename blacklist.'''
+
+    def __init__(self, filename_blacklist):
+        '''Creates a FilterByFilename instance.
+
+        Args:
+            filename_blacklist: a list of data filenames to filter out
+        '''
+        self._files_to_remove = set(filename_blacklist)
+
+    def transform(self, src):
+        '''Removes data with filenames that match the blacklist.
+
+        Args:
+            src (BuilderDataset)
+
+        Returns:
+            None
+        '''
+        src.cull_with_function(
+            "data_path",
+            lambda path: os.path.basename(
+                path) not in self._files_to_remove
+        )
 
 
 class DatasetTransformerError(Exception):
