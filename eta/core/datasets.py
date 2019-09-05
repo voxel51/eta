@@ -1492,8 +1492,8 @@ class BuilderDataRecord(BaseDataRecord):
             data_path (str): path to data file
             labels_path (str): path to labels json
         '''
-        self._data_path = data_path
-        self._labels_path = labels_path
+        self.data_path = data_path
+        self.labels_path = labels_path
         self._labels_cls = None
         self._labels_obj = None
 
@@ -1518,16 +1518,6 @@ class BuilderDataRecord(BaseDataRecord):
             None
         '''
         self._labels_obj = labels
-
-    @property
-    def data_path(self):
-        '''Data path getter.'''
-        return self._data_path
-
-    @property
-    def labels_path(self):
-        '''Labels path getter.'''
-        return self._labels_path
 
     def build(self, dir_path, filename, pretty_print=False):
         '''Write the transformed labels and data files to dir_path. The
