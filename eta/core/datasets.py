@@ -723,7 +723,8 @@ class LabeledDataset(object):
             os.rmdir(new_data_subdir)
             os.rmdir(new_labels_subdir)
             os.symlink(
-                os.path.join(self.data_dir, self._DATA_SUBDIR),
+                os.path.abspath(os.path.realpath(
+                    os.path.join(self.data_dir, self._DATA_SUBDIR))),
                 new_data_subdir
             )
             shutil.copytree(
