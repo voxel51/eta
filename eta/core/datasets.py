@@ -2493,6 +2493,35 @@ class FilterByFilename(DatasetTransformer):
         )
 
 
+class FilterByPath(DatasetTransformer):
+    '''Filters data from a dataset using a full path blacklist.'''
+
+    def __init__(self, full_path_blacklist):
+        '''Creates a FilterByPath instance.
+
+        Args:
+            full_path_blacklist: a list of full paths to data files
+                to filter out
+        '''
+        self._paths_to_remove = {
+            os.path.abspath(path) for path in full_path_blacklist}
+
+    def transform(self, src):
+        '''Removes data with full paths that match the blacklist.
+
+        Args:
+            src (BuilderDataset)
+
+        Returns:
+            None
+        '''
+        src.cull_with_function(
+            "data_path",
+            lambda path: os.path.abspath(
+                path) not in self._paths_to_remove
+        )
+
+
 class DatasetTransformerError(Exception):
     '''Exception raised when there is an error in a DatasetTransformer'''
     pass
