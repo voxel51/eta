@@ -52,7 +52,7 @@ logger = logging.getLogger(__name__)
 
 
 #
-# The file extensions of supported video files
+# The file extensions of supported video files. Use LOWERCASE!
 #
 # In practice, any video that ffmpeg can read will be supported. Nonetheless,
 # we enumerate this list here so that the ETA type system can verify the
@@ -61,7 +61,7 @@ logger = logging.getLogger(__name__)
 # This list was taken from https://en.wikipedia.org/wiki/Video_file_format
 #
 SUPPORTED_VIDEO_FILE_FORMATS = {
-    ".3g2", ".3gp", ".M2TS", ".MTS", ".amv", ".avi", ".f4a", ".f4b", ".f4p",
+    ".3g2", ".3gp", ".m2ts", ".mts", ".amv", ".avi", ".f4a", ".f4b", ".f4p",
     ".f4v", ".flv", ".m2v", ".m4p", ".m4v", ".mkv", ".mov", ".mp2", ".mp4",
     ".mpe", ".mpeg", ".mpg", ".mpv", ".nsv", ".ogg", ".ogv", ".qt", ".rm",
     ".rmvb", ".svi", ".vob", ".webm", ".wmv", ".yuv"
@@ -91,7 +91,7 @@ def is_supported_video_file(path):
     Returns:
         True/False if the path refers to a supported video file type
     '''
-    return os.path.splitext(path)[1] in SUPPORTED_VIDEO_FILE_FORMATS
+    return os.path.splitext(path)[1].lower() in SUPPORTED_VIDEO_FILE_FORMATS
 
 
 def is_supported_image_sequence(path):

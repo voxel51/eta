@@ -46,7 +46,7 @@ import eta.core.web as etaw
 
 
 #
-# The file extensions of supported image files
+# The file extensions of supported image files. Use LOWERCASE!
 #
 # In practice, any image that `cv2.imread` can read will be supported.
 # Nonetheless, we enumerate this list here so that the ETA type system can
@@ -63,7 +63,7 @@ SUPPORTED_IMAGE_FORMATS = {
 
 def is_supported_image(filepath):
     '''Determines whether the given file has a supported image type.'''
-    return os.path.splitext(filepath)[1] in SUPPORTED_IMAGE_FORMATS
+    return os.path.splitext(filepath)[1].lower() in SUPPORTED_IMAGE_FORMATS
 
 
 def glob_images(dir_):
