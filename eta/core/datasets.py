@@ -1451,6 +1451,8 @@ class LabeledDatasetBuilder(object):
         Returns:
             LabeledDataset
         '''
+        logger.info("Applying transformations to dataset")
+
         for transformer in self._transformers:
             transformer.transform(self._dataset)
 
@@ -1800,25 +1802,33 @@ class Balancer(DatasetTransformer):
         Args:
             src (BuilderDataset): the dataset builder
         '''
+        logger.info("Balancing dataset")
+
         # STEP 1: Get attribute value(s) for every record
+        logger.info("Calculating occurrence matrix...")
         occurrence_matrix, attribute_values, record_idxs = \
             self._get_occurrence_matrix(src.records)
         if not attribute_values:
             return
 
         # STEP 2: determine target number to remove of each attribute value
+        logger.info("Determining target counts...")
         counts = np.sum(occurrence_matrix, axis=1).astype(np.dtype('int'))
         target_count = self._get_target_count(counts)
 
         # STEP 3: find the records to keep
+        logger.info("Calculating which records to keep...")
         keep_idxs = self._get_keep_idxs(
             occurrence_matrix, counts, target_count)
 
         # STEP 4: modify the list of records
+        logger.info("Filtering records...")
         old_records = src.records
         src.clear()
         for ki in keep_idxs:
             src.add(old_records[record_idxs[ki]])
+
+        logger.info("Balancing of dataset complete")
 
     def _validate(self):
         if all([self.attr_name is None,
