@@ -20,7 +20,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
-from future.utils import iteritems
+from future.utils import iteritems, itervalues
 import six
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
@@ -1494,10 +1494,20 @@ class BuilderDataRecord(BaseDataRecord):
             data_path (str): path to data file
             labels_path (str): path to labels json
         '''
-        self.data_path = data_path
-        self.labels_path = labels_path
+        self._data_path = data_path
+        self._labels_path = labels_path
         self._labels_cls = None
         self._labels_obj = None
+
+    @property
+    def data_path(self):
+        '''Data path getter.'''
+        return self._data_path
+
+    @property
+    def labels_path(self):
+        '''Labels path getter.'''
+        return self._labels_path
 
     def get_labels(self):
         '''Labels getter.
@@ -1557,6 +1567,16 @@ class BuilderDataRecord(BaseDataRecord):
         '''
         return copy.deepcopy(self)
 
+    def attributes(self):
+        '''Overrides Serializable.attributes() to provide a custom list of
+        attributes to be serialized.
+
+        Returns:
+            a list of class attributes to be serialized
+        '''
+        return super(BuilderDataRecord, self).attributes() + [
+            "data_path", "labels_path"]
+
     def _build_labels(self):
         raise NotImplementedError(
             "subclasses must implement _build_labels()")
@@ -1569,14 +1589,14 @@ class BuilderDataRecord(BaseDataRecord):
 class BuilderImageRecord(BuilderDataRecord):
     '''BuilderDataRecord for images.'''
 
-    def __init__(self, image_path, labels_path):
-        '''Initialize a BuilderVideoRecord with the data_path and labels_path.
+    def __init__(self, data_path, labels_path):
+        '''Initialize a BuilderImageRecord with the data_path and labels_path.
 
         Args:
-            data_path (str): path to video
+            data_path (str): path to image
             labels_path (str): path to labels
         '''
-        super(BuilderImageRecord, self).__init__(image_path, labels_path)
+        super(BuilderImageRecord, self).__init__(data_path, labels_path)
         self._labels_cls = etai.ImageLabels
 
     def _build_labels(self):
@@ -1756,11 +1776,9 @@ class Balancer(DatasetTransformer):
             labels_schema (etai.ImageLabelsSchema or etav.VideoLabelsSchema):
                 a schema that indicates which attributes, object labels, etc.
                 should be used for balancing. This can be specified as an
-                alternative to `attribute_name` and `object_label`. If the
-                latter are specified, these take precedence over
-                `labels_schema`. Note that labels are not altered; this
-                schema just picks out the attributes that are used for
-                balancing.
+                alternative to `attribute_name` and `object_label`. Note that
+                labels are not altered; this schema just picks out the
+                attributes that are used for balancing.
             target_quantile (float): value between [0, 1] to specify what the
                 target count per attribute value will be.
                 0.5 - will result in the true median
@@ -1831,12 +1849,37 @@ class Balancer(DatasetTransformer):
         logger.info("Balancing of dataset complete")
 
     def _validate(self):
-        if all([self.attr_name is None,
-                self.object_label is None,
-                self.labels_schema is None]):
+        specified = {
+            "attribute_name": self.attr_name is not None,
+            "object_label": self.object_label is not None,
+            "labels_schema": self.labels_schema is not None
+        }
+
+        # The following two patterns of null/non-null arguments are acceptable
+
+        if specified["attribute_name"] and not specified["labels_schema"]:
+            return
+
+        if (not specified["attribute_name"] and not specified["object_label"]
+            and specified["labels_schema"]):
+            return
+
+        # Anything else is unacceptable. Raise a ValueError with the
+        # appropriate message.
+
+        if not any(itervalues(specified)):
+            raise ValueError("Must specify attribute_name or labels_schema")
+
+        if specified["attribute_name"] and specified["labels_schema"]:
             raise ValueError(
-                "At least one of the following must be specified: "
-                "attribute_name, object_label, labels_schema")
+                "Specify only one of attribute_name and labels_schema")
+
+        if not specified["attribute_name"] and specified["object_label"]:
+            raise ValueError(
+                "Cannot specify object_label without specifying "
+                "attribute_name")
+
+        raise AssertionError("Internal logic error")
 
     def _get_occurrence_matrix(self, records):
         '''Compute occurrence of each attribute value for each class
@@ -1905,11 +1948,6 @@ class Balancer(DatasetTransformer):
 
         if self.attr_name is not None:
             return self._to_helper_list_attr_name(records)
-
-        if self.object_label is not None:
-            raise ValueError(
-                "attribute_name must be specified if object_label is "
-                "specified")
 
         return self._to_helper_list_schema(records)
 
