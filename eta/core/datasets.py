@@ -778,7 +778,8 @@ class LabeledDataset(object):
         if description is not None:
             merged_dataset.set_description(description)
 
-        merged_dataset.write_manifest(merged_dataset_path)
+        merged_dataset.write_manifest(
+            os.path.basename(merged_dataset_path))
         return merged_dataset
 
     def apply_to_data(self, func):
