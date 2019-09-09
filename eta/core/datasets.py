@@ -1499,16 +1499,6 @@ class BuilderDataRecord(BaseDataRecord):
         self._labels_cls = None
         self._labels_obj = None
 
-    @property
-    def data_path(self):
-        '''Data path getter.'''
-        return self._data_path
-
-    @property
-    def labels_path(self):
-        '''Labels path getter.'''
-        return self._labels_path
-
     def get_labels(self):
         '''Labels getter.
 
@@ -1530,6 +1520,16 @@ class BuilderDataRecord(BaseDataRecord):
             None
         '''
         self._labels_obj = labels
+
+    @property
+    def data_path(self):
+        '''Data path getter.'''
+        return self._data_path
+
+    @property
+    def labels_path(self):
+        '''Labels path getter.'''
+        return self._labels_path
 
     def build(self, dir_path, filename, pretty_print=False):
         '''Write the transformed labels and data files to dir_path. The
