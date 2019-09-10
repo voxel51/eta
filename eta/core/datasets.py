@@ -781,6 +781,64 @@ class LabeledDataset(object):
         merged_dataset.write_manifest(merged_dataset_path)
         return merged_dataset
 
+    def deduplicate(self):
+        '''Removes duplicate data files from the index.
+
+        If sets of files are found with the same content, one file in each
+        is set is chosen arbitarily to be kept, and the rest are removed.
+        Note that no files are deleted; this method only removes entries
+        from the index.
+
+        Returns:
+            self
+        '''
+        duplicate_data_paths = etau.find_duplicate_files(
+            list(self.iter_data_paths()))
+
+        if not duplicate_data_paths:
+            return self
+
+        data_paths_remove = set()
+        for group in duplicate_data_paths:
+            for path in group[1:]:
+                data_paths_remove.add(path)
+
+        self.dataset_index.cull_with_function(
+            lambda record: os.path.join(
+                self.data_dir, record.data) not in data_paths_remove)
+
+        self._build_index_map()
+
+        return self
+
+    def prune(self):
+        '''Deletes data and label files that are not in the index.
+
+        Note that actual files will be deleted if they are not present in
+        `self.dataset_index`, for which the current state can be different
+        than when it was read from a manifest JSON file.
+
+        Returns:
+            self
+        '''
+        data_filenames = set()
+        labels_filenames = set()
+        for data_path, labels_path in self.iter_paths():
+            data_filenames.add(os.path.basename(data_path))
+            labels_filenames.add(os.path.basename(labels_path))
+
+        data_subdir = os.path.join(self.data_dir, self._DATA_SUBDIR)
+        for filename in etau.list_files(data_subdir):
+            if filename not in data_filenames:
+                os.remove(os.path.join(data_subdir, filename))
+
+        labels_subdir = os.path.join(self.data_dir, self._LABELS_SUBDIR)
+        for filename in etau.list_files(labels_subdir):
+            if filename not in labels_filenames:
+                os.remove(os.path.join(labels_subdir, filename))
+
+        return self
+
     def apply_to_data(self, func):
         '''Apply the given function to each data element and overwrite the
         data file with the output.

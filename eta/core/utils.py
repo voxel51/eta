@@ -1396,70 +1396,64 @@ def remove_none_values(d):
     return {k: v for k, v in iteritems(d) if v is not None}
 
 
-def find_duplicate_files(dir_path, abs_paths=False):
-    '''Returns a list of lists of files that have identical contents to each
-    other in the given directory.
+def find_duplicate_files(path_list):
+    '''Returns a list of lists of file paths from the input, that have
+    identical contents to each other.
 
     Args:
-        dir_path: the path to the directory in which to look for duplicate
-            files
-        abs_paths: whether to return the absolute paths to the files
+        path_list: list of file paths in which to look for duplicate files
 
     Returns:
-        duplicates: a list of lists, where each list contains a set of
-            filenames of files that all have identical content. Filenames of
-            files that don't have any duplicates in the directory will not
-            appear in the output.
+        duplicates: a list of lists, where each list contains a group of
+            file paths that all have identical content. File paths in
+            `path_list` that don't have any duplicates will not appear in
+            the output.
     '''
-    filenames = list_files(dir_path, abs_paths=False)
-
     hash_buckets = defaultdict(list)
-    for filename in filenames:
-        file_path = os.path.join(dir_path, filename)
-        with open(file_path, "rb") as f:
-            hash_buckets[hash(f.read())].append(filename)
+    for path in path_list:
+        if not os.path.isfile(path):
+            logger.warning(
+                "File '%s' is a directory or does not exist. "
+                "Skipping." % path)
+            continue
+
+        with open(path, "rb") as f:
+            hash_buckets[hash(f.read())].append(path)
 
     duplicates = []
-    for filegroup in itervalues(hash_buckets):
-        if len(filegroup) >= 2:
-            duplicates.extend(_find_duplicates_brute_force(
-                dir_path, filegroup))
-
-    if abs_paths:
-        basedir = os.path.abspath(os.path.realpath(dir_path))
-        duplicates = [
-            [os.path.join(basedir, filename) for filename in filegroup]
-            for filegroup in duplicates
-        ]
+    for file_group in itervalues(hash_buckets):
+        if len(file_group) >= 2:
+            duplicates.extend(_find_duplicates_brute_force(file_group))
 
     return duplicates
 
 
-def _find_duplicates_brute_force(dir_path, filenames):
-    if not filenames:
+def _find_duplicates_brute_force(path_list):
+    if len(path_list) < 2:
         return []
 
-    candidate_filename = filenames[0]
-    candidate_duplicates = [candidate_filename]
-    candidate_file_path = os.path.join(dir_path, candidate_filename)
+    candidate_file_path = path_list[0]
+    candidate_duplicates = [candidate_file_path]
     with open(candidate_file_path, "rb") as f:
         candidate_content = f.read()
 
-    remaining_filenames = []
-    for filename in filenames[1:]:
-        file_path = os.path.join(dir_path, filename)
-        with open(file_path, "rb") as f:
+    remaining_paths = []
+    for path in path_list[1:]:
+        if os.path.normpath(path) == os.path.normpath(candidate_file_path):
+            candidate_duplicates.append(path)
+            continue
+
+        with open(path, "rb") as f:
             if f.read() == candidate_content:
-                candidate_duplicates.append(filename)
+                candidate_duplicates.append(path)
             else:
-                remaining_filenames.append(filename)
+                remaining_paths.append(path)
 
     duplicates = []
     if len(candidate_duplicates) >= 2:
         duplicates.append(candidate_duplicates)
 
-    duplicates.extend(_find_duplicates_brute_force(
-        dir_path, remaining_filenames))
+    duplicates.extend(_find_duplicates_brute_force(remaining_paths))
 
     return duplicates
 
