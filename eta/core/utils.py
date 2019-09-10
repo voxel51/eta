@@ -15,12 +15,13 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
-from future.utils import iteritems
+from future.utils import iteritems, itervalues
 import six
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+from collections import defaultdict
 import datetime
 import errno
 import glob
@@ -1393,6 +1394,68 @@ def remove_none_values(d):
         a copy of the input dictionary with keys whose value was None ommitted
     '''
     return {k: v for k, v in iteritems(d) if v is not None}
+
+
+def find_duplicate_files(path_list):
+    '''Returns a list of lists of file paths from the input, that have
+    identical contents to each other.
+
+    Args:
+        path_list: list of file paths in which to look for duplicate files
+
+    Returns:
+        duplicates: a list of lists, where each list contains a group of
+            file paths that all have identical content. File paths in
+            `path_list` that don't have any duplicates will not appear in
+            the output.
+    '''
+    hash_buckets = defaultdict(list)
+    for path in path_list:
+        if not os.path.isfile(path):
+            logger.warning(
+                "File '%s' is a directory or does not exist. "
+                "Skipping." % path)
+            continue
+
+        with open(path, "rb") as f:
+            hash_buckets[hash(f.read())].append(path)
+
+    duplicates = []
+    for file_group in itervalues(hash_buckets):
+        if len(file_group) >= 2:
+            duplicates.extend(_find_duplicates_brute_force(file_group))
+
+    return duplicates
+
+
+def _find_duplicates_brute_force(path_list):
+    if len(path_list) < 2:
+        return []
+
+    candidate_file_path = path_list[0]
+    candidate_duplicates = [candidate_file_path]
+    with open(candidate_file_path, "rb") as f:
+        candidate_content = f.read()
+
+    remaining_paths = []
+    for path in path_list[1:]:
+        if os.path.normpath(path) == os.path.normpath(candidate_file_path):
+            candidate_duplicates.append(path)
+            continue
+
+        with open(path, "rb") as f:
+            if f.read() == candidate_content:
+                candidate_duplicates.append(path)
+            else:
+                remaining_paths.append(path)
+
+    duplicates = []
+    if len(candidate_duplicates) >= 2:
+        duplicates.append(candidate_duplicates)
+
+    duplicates.extend(_find_duplicates_brute_force(remaining_paths))
+
+    return duplicates
 
 
 class FileHasher(object):
