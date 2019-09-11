@@ -1098,7 +1098,7 @@ def multiglob(*patterns, **kwargs):
     return it.chain.from_iterable(glob2.iglob(root + p) for p in patterns)
 
 
-def list_files(dir_path, abs_paths=False):
+def list_files(dir_path, abs_paths=False, recursive=False):
     '''Lists the files in the given directory, sorted alphabetically and
     excluding directories and hidden files.
 
@@ -1106,15 +1106,25 @@ def list_files(dir_path, abs_paths=False):
         dir_path: the path to the directory to list
         abs_paths: whether to return the absolute paths to the files. By
             default, this is False
+        recursive: whether to recursively traverse subdirectories. By default,
+            this is False
 
     Returns:
-        a sorted list of the non-hidden filenames (or filepaths) in the
-            directory
+        a sorted list of the non-hidden files in the directory
     '''
-    files = sorted(
-        f for f in os.listdir(dir_path)
-        if os.path.isfile(os.path.join(dir_path, f)) and not f.startswith(".")
-    )
+    if recursive:
+        files = []
+        for root, _, filenames in os.walk(dir_path):
+            files.extend([
+                os.path.relpath(os.path.join(root, f), dir_path)
+                for f in filenames if not f.startswith(".")])
+    else:
+        files = [
+            f for f in os.listdir(dir_path)
+            if os.path.isfile(os.path.join(dir_path, f))
+                and not f.startswith(".")]
+
+    files = sorted(files)
 
     if abs_paths:
         basedir = os.path.abspath(os.path.realpath(dir_path))
@@ -1123,23 +1133,33 @@ def list_files(dir_path, abs_paths=False):
     return files
 
 
-def list_subdirs(dir_path, abs_paths=False):
-    '''Lists the sub-directories in the given directory, sorted alphabetically
+def list_subdirs(dir_path, abs_paths=False, recursive=False):
+    '''Lists the subdirectories in the given directory, sorted alphabetically
     and excluding hidden directories.
 
     Args:
         dir_path: the path to the directory to list
         abs_paths: whether to return the absolute paths to the dirs. By
             default, this is False
+        recursive: whether to recursively traverse subdirectories. By default,
+            this is False
 
     Returns:
-        a sorted list of the non-hidden sub-directory names (or paths) in the
-            directory
+        a sorted list of the non-hidden subdirectories in the directory
     '''
-    dirs = sorted(
-        d for d in os.listdir(dir_path)
-        if os.path.isdir(os.path.join(dir_path, d)) and not d.startswith(".")
-    )
+    if recursive:
+        dirs = []
+        for root, dirnames, _ in os.walk(dir_path):
+            dirs.extend([
+                os.path.relpath(os.path.join(root, d), dir_path)
+                for d in dirnames if not d.startswith(".")])
+    else:
+        dirs = [
+            d for d in os.listdir(dir_path)
+            if os.path.isdir(os.path.join(dir_path, d))
+                and not d.startswith(".")]
+
+    dirs = sorted(dirs)
 
     if abs_paths:
         basedir = os.path.abspath(os.path.realpath(dir_path))

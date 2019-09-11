@@ -315,6 +315,25 @@ class GoogleCloudStorageClient(StorageClient, NeedsGoogleCredentials):
         blob = self._get_blob(cloud_path)
         blob.upload_from_file(file_obj, content_type=content_type)
 
+    def upload_dir(self, local_dir, cloud_dir):
+        '''Uploads the contents of the given directory (recursively) to Google
+        Cloud Storage.
+
+        The cloud paths are created by appending the relative paths of all
+        files inside the local directory to the provided base "directory" in
+        Google Cloud Storage.
+
+        Args:
+            local_dir: the local directory to upload
+            cloud_dir: the base "directory" to use when creating Google Cloud
+                object paths
+        '''
+        files = etau.list_files(local_dir, recursive=True)
+        for f in files:
+            local_path = os.path.join(local_dir, f)
+            cloud_path = os.path.join(cloud_dir, f)
+            self.upload(local_path, cloud_path)
+
     @google_cloud_api_retry
     def download(self, cloud_path, local_path):
         '''Downloads the file from Google Cloud Storage.
@@ -354,6 +373,23 @@ class GoogleCloudStorageClient(StorageClient, NeedsGoogleCredentials):
         '''
         blob = self._get_blob(cloud_path)
         blob.download_to_file(file_obj)
+
+    def download_dir(self, cloud_dir, local_dir):
+        '''Downloads the contents of the "directory" in Google Cloud Storage to
+        the given local directory.
+
+        The files are written inside the specified local directory according
+        to their relative paths w.r.t. the provided cloud "directory".
+
+        Args:
+            cloud_dir: the Google Cloud Storage "directory" to download
+            local_dir: the local directory in which to write the files
+        '''
+        cloud_paths = self.list_files_in_folder(cloud_dir)
+        for cloud_path in cloud_paths:
+            local_path = os.path.join(
+                local_dir, os.path.relpath(cloud_path, cloud_dir))
+            self.download(cloud_path, local_path)
 
     @google_cloud_api_retry
     def delete(self, cloud_path):
