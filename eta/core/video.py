@@ -2368,7 +2368,7 @@ class FFmpegVideoReader(VideoReader):
 
         width, height = self.frame_size
         try:
-            vec = np.fromstring(self._raw_frame, dtype="uint8")
+            vec = np.frombuffer(self._raw_frame, dtype="uint8")
             return vec.reshape((height, width, 3))
         except ValueError as e:
             # Possible alternative: return all zeros matrix instead
