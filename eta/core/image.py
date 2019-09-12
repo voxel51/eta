@@ -759,7 +759,10 @@ def read(path, include_alpha=False, flag=None):
         a uint8 numpy array containing the image
     '''
     flag = _get_opencv_imread_flag(flag, include_alpha)
-    return _exchange_rb(cv2.imread(path, flag))
+    img_bgr = cv2.imread(path, flag)
+    if img_bgr is None:
+        raise OSError("Image not found '%s'" % path)
+    return _exchange_rb(img_bgr)
 
 
 def write(img, path):
