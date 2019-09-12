@@ -592,6 +592,10 @@ class VideoLabels(Serializable):
         '''Deletes the VideoFrameLabels for the given frame number.'''
         del self.frames[frame_number]
 
+    def get_frame_numbers(self):
+        '''Returns a sorted list of all frames with VideoFrameLabels.'''
+        return sorted(self.frames.keys())
+
     def merge_video_labels(self, video_labels):
         '''Merges the given VideoLabels into this labels.'''
         self.attrs.add_container(video_labels.attrs)
