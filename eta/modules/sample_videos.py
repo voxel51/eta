@@ -151,7 +151,8 @@ def _process_video(input_path, output_frames_dir, parameters):
 
     # Sample frames
     output_patt = os.path.join(
-        output_frames_dir, eta.config.default_sequence_idx)
+        output_frames_dir,
+        eta.config.default_sequence_idx + eta.config.default_image_ext)
     with etav.FFmpegVideoReader(input_path) as vr:
         for img in vr:
             if vr.frame_number not in sample_frames:
