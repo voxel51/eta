@@ -14,7 +14,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
-from future.utils import iteritems
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
@@ -71,12 +70,13 @@ class PipelineStatus(Serializable):
             jobs: an optional list of JobStatus instances
         '''
         self.name = name or ""
-        self.state = PipelineState.READY
-        self.start_time = None
-        self.complete_time = None
-        self.fail_time = None
-        self.messages = []
-        self.jobs = []
+        self.state = state
+        self.start_time = start_time
+        self.complete_time = complete_time
+        self.fail_time = fail_time
+        self.messages = messages or []
+        self.jobs = jobs or []
+
         self._publish_callback = None
         self._active_job = None
 
