@@ -1,0 +1,62 @@
+{
+    "info": {
+        "name": "sample_videos",
+        "type": "eta.core.types.Module",
+        "version": "0.1.0",
+        "description": "A module for sampling frames from videos",
+        "exe": "sample_videos.py"
+    },
+    "inputs": [
+        {
+            "name": "input_path",
+            "type": "eta.core.types.Video",
+            "description": "The input video",
+            "required": true
+        }
+    ],
+    "outputs": [
+        {
+            "name": "output_frames_dir",
+            "type": "eta.core.types.ImageSequenceDirectory",
+            "description": "A directory of sampled frames",
+            "required": true
+        }
+    ],
+    "parameters": [
+        {
+            "name": "max_size",
+            "type": "eta.core.types.Array",
+            "description": "A maximum (width, height) allowed for the sampled frames. Frames are resized as necessary to meet this limit. Dimensions can be -1, in which case no constraint is applied to them",
+            "required": false,
+            "default": null
+        },
+        {
+            "name": "always_sample_last",
+            "type": "eta.core.types.Boolean",
+            "description": "Whether to always sample the last frame of the video",
+            "required": false,
+            "default": false
+        },
+        {
+            "name": "accel",
+            "type": "eta.core.types.Number",
+            "description": "A desired acceleration factor to apply when sampling fframes. For example, an acceleration of 2x would correspond to sampling every other frame",
+            "required": false,
+            "default": null
+        },
+        {
+            "name": "fps",
+            "type": "eta.core.types.Number",
+            "description": "The desired sampling rate, which must be less than the frame rate of the input video",
+            "required": false,
+            "default": null
+        },
+        {
+            "name": "size",
+            "type": "eta.core.types.Array",
+            "description": "A desired output (width, height) of the sampled frames. Dimensions can be -1, in which case the input aspect ratio is preserved",
+            "required": false,
+            "default": null
+        }
+    ]
+}
