@@ -27,13 +27,13 @@ from builtins import *
 # pragma pylint: enable=wildcard-import
 
 import logging
+import os
 import sys
 
+import eta
 from eta.core.config import Config, ConfigError
 import eta.core.image as etai
 import eta.core.module as etam
-import eta.core.numutils as etan
-import eta.core.utils as etau
 import eta.core.video as etav
 
 
@@ -121,8 +121,8 @@ def _process_video(input_path, output_frames_dir, parameters):
     elif parameters.fps is not None:
         if parameters.fps > ifps:
             raise ValueError(
-                "Sampling frame rate (%d) cannot be greater than input frame "
-                "rate (%d)", parameters.fps, ifps)
+                "Sampling frame rate (%g) cannot be greater than input frame "
+                "rate (%g)" % (parameters.fps, ifps))
         accel = ifps / parameters.fps
     else:
         raise ConfigError("One of `accel` or `fps` must be specified")
