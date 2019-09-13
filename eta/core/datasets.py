@@ -1816,6 +1816,7 @@ class Balancer(DatasetTransformer):
         `object_label`.
     '''
 
+    _NUM_RANDOM_ITER = 10000
     _BUILDER_RECORD_TO_SCHEMA = [
         (BuilderImageRecord, etai.ImageLabelsSchema),
         (BuilderVideoRecord, etav.VideoLabelsSchema)
@@ -1859,7 +1860,7 @@ class Balancer(DatasetTransformer):
             target_hard_min (bool): whether or not to require that each
                 attribute value have at least the target count after balancing
             algorithm (str): name of the balancing search algorithm. Currently
-                available are: ["random", "greedy"]
+                available are: ["random", "greedy", "simple"]
         '''
         self.attr_name = attribute_name
         self.object_label = object_label
@@ -2290,6 +2291,8 @@ class Balancer(DatasetTransformer):
             x = self._random(A, b)
         elif self.algorithm == "greedy":
             x = self._greedy(A, b)
+        elif self.algorithm == "simple":
+            x = self._simple(A, b)
         else:
             raise ValueError(
                 "Unknown balancing algorithm '{}'".format(self.algorithm))
@@ -2313,7 +2316,7 @@ class Balancer(DatasetTransformer):
         best_score = self._solution_score(b - np.dot(A, best_x))
 
         random.seed(1)
-        for _ in range(10000):
+        for _ in range(self._NUM_RANDOM_ITER):
             i = random.choice(np.where(best_x == 0)[0])
             cur_x = best_x.copy()
             cur_x[i] = 1
@@ -2357,6 +2360,69 @@ class Balancer(DatasetTransformer):
             w = np.where(best_x == 0)[0]
 
         return best_x
+
+    def _simple(self, A, b):
+        '''This algorithm for finding the indices to omit just goes through
+        each class and adds records minimally such that the class has count
+        equal to the target.
+
+        Args:
+            A: the occurrence matrix
+            b: the target vector to match
+
+        Returns:
+            x: the solution vector. x[j]=1 -> omit the j'th record
+        '''
+        x = np.ones(A.shape[1], dtype="int")
+        counts = np.dot(A, x)
+        dropped_counts = counts.copy()
+
+        # Go through attributes from lowest to highest count and try to
+        # minimally add records to get the target for that attribute
+        for attr_idx in np.argsort(counts):
+            # We can only decrease the dropped counts for this attribute
+            # by changing some 1's to 0's in `x`. Therefore, if
+            # `dropped_counts[attr_idx]` is already less than or equal
+            # to the target, then do nothing.
+            attr_target = b[attr_idx]
+            if dropped_counts[attr_idx] <= attr_target:
+                continue
+
+            # We can change some set of 1's in `x` to 0's, but not vice
+            # versa.  Create an array of the counts for this attribute,
+            # for records for which `x` contains a 1.
+            dropped_counts_for_attr = A[attr_idx, :] * x
+
+            # Right now, `dropped_counts_for_attr.sum()` would give a
+            # a number equal to `dropped_counts[attr_idx]`. We want to
+            # find which elements of `dropped_counts_for_attr` can be
+            # removed so that `dropped_counts_for_attr.sum()` is equal
+            # to `attr_target`. Sort `dropped_counts_for_attr` in
+            # descending order and drop elements as long as that won't
+            # make the sum go below attr_target.
+            new_dropped_counts = dropped_counts[attr_idx]
+            indices_to_remove = []
+            for record_idx in np.flip(np.argsort(dropped_counts_for_attr)):
+                if new_dropped_counts <= attr_target:
+                    break
+
+                count = dropped_counts_for_attr[record_idx]
+                if count ==0 or new_dropped_counts - count < attr_target:
+                    # Don't want to explicitly remove records with 0 counts
+                    # for this attribute since it won't help us reach the
+                    # object of `attr_target` for this attribute, and may
+                    # affect other attributes.
+                    continue
+
+                # Remove this count
+                indices_to_remove.append(record_idx)
+                new_dropped_counts -= count
+
+            # Update `x` and `dropped_counts`
+            x[indices_to_remove] = 0
+            dropped_counts = np.dot(A, x)
+
+        return x
 
     def _solution_score(self, vector):
         '''Compute the score for a vector (smaller is better). This is a custom
