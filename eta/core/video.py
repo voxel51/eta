@@ -596,6 +596,11 @@ class VideoLabels(Serializable):
         '''Returns a sorted list of all frames with VideoFrameLabels.'''
         return sorted(self.frames.keys())
 
+    def get_frame_range(self):
+        '''Returns the (min, max) frame numbers with VideoFrameLabels.'''
+        fns = self.get_frame_numbers()
+        return (fns[0], fns[-1]) if fns else (None, None)
+
     def merge_video_labels(self, video_labels):
         '''Merges the given VideoLabels into this labels.'''
         self.attrs.add_container(video_labels.attrs)
