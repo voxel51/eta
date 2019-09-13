@@ -555,6 +555,10 @@ class VideoLabels(Serializable):
     def __getitem__(self, frame_number):
         return self.get_frame(frame_number)
 
+    def __setitem__(self, frame_number, frame_labels):
+        frame_labels.frame_number = frame_number
+        self.add_frame(frame_labels, overwrite=True)
+
     def __delitem__(self, frame_number):
         self.delete_frame(frame_number)
 
