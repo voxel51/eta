@@ -538,7 +538,7 @@ class Config(etas.Serializable):
         d = [(k, v) for k, v in iteritems(fields) if v]
         num_fields = len(d)
         if num_fields != 1:
-            ConfigError(
+            raise ConfigError(
                 "Expected exactly one field in the following to be specified, "
                 "but found %d:\n%s" % (num_fields, etas.pretty_str(d)))
         return d[0]
