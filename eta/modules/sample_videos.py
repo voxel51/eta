@@ -30,6 +30,8 @@ import logging
 import os
 import sys
 
+import numpy as np
+
 import eta
 from eta.core.config import Config, ConfigError
 import eta.core.image as etai
@@ -128,8 +130,8 @@ def _process_video(input_path, output_frames_dir, parameters):
         raise ConfigError("One of `accel` or `fps` must be specified")
 
     # Determine frames to sample
-    maxi = int(iframe_count / accel)  # rounds down
-    sample_frames = set(1 + int(round(accel * i)) for i in range(maxi))
+    sample_pts = np.arange(1, iframe_count, accel)
+    sample_frames = set(int(round(x)) for x in sample_pts)
     if parameters.always_sample_last:
         sample_frames.add(iframe_count)
 
