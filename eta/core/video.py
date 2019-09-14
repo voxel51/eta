@@ -555,6 +555,10 @@ class VideoLabels(Serializable):
     def __getitem__(self, frame_number):
         return self.get_frame(frame_number)
 
+    def __setitem__(self, frame_number, frame_labels):
+        frame_labels.frame_number = frame_number
+        self.add_frame(frame_labels, overwrite=True)
+
     def __delitem__(self, frame_number):
         self.delete_frame(frame_number)
 
@@ -591,6 +595,15 @@ class VideoLabels(Serializable):
     def delete_frame(self, frame_number):
         '''Deletes the VideoFrameLabels for the given frame number.'''
         del self.frames[frame_number]
+
+    def get_frame_numbers(self):
+        '''Returns a sorted list of all frames with VideoFrameLabels.'''
+        return sorted(self.frames.keys())
+
+    def get_frame_range(self):
+        '''Returns the (min, max) frame numbers with VideoFrameLabels.'''
+        fns = self.get_frame_numbers()
+        return (fns[0], fns[-1]) if fns else (None, None)
 
     def merge_video_labels(self, video_labels):
         '''Merges the given VideoLabels into this labels.'''

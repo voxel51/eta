@@ -95,7 +95,7 @@ def run(
 
 
 def _make_pipeline_status(pipeline_config):
-    pipeline_status = etas.PipelineStatus(pipeline_config.name)
+    pipeline_status = etas.PipelineStatus(name=pipeline_config.name)
 
     if pipeline_config.status_path:
         pcb = _make_publish_status_callback(pipeline_config.status_path)
