@@ -149,7 +149,7 @@ class PipelineStatus(Serializable):
         complete_time = d["complete_time"]
         fail_time = d["fail_time"]
         messages = [StatusMessage.from_dict(sd) for sd in d["messages"]]
-        jobs = [JobStatus.from_dict(_d) for _d in d.get("jobs", [])]
+        jobs = [JobStatus.from_dict(jd) for jd in d.get("jobs", [])]
         return cls(
             name, state=state, start_time=start_time,
             complete_time=complete_time, fail_time=fail_time,
@@ -235,8 +235,7 @@ class JobStatus(Serializable):
         job_status.complete_time = d["complete_time"]
         job_status.fail_time = d["fail_time"]
         job_status.messages = [
-            StatusMessage.from_dict(_d) for _d in d["messages"]
-        ]
+            StatusMessage.from_dict(sd) for sd in d["messages"]]
         return job_status
 
 
