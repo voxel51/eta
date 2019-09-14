@@ -77,7 +77,7 @@ class ParametersConfig(Config):
 
     Parameters:
         accel (eta.core.types.Number): [None] A desired acceleration factor to
-            apply when sampling fframes. For example, an acceleration of 2x
+            apply when sampling frames. For example, an acceleration of 2x
             would correspond to sampling every other frame
         fps (eta.core.types.Number): [None] The desired sampling rate, which
             must be less than the frame rate of the input video

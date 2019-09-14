@@ -40,7 +40,7 @@
         {
             "name": "accel",
             "type": "eta.core.types.Number",
-            "description": "A desired acceleration factor to apply when sampling fframes. For example, an acceleration of 2x would correspond to sampling every other frame",
+            "description": "A desired acceleration factor to apply when sampling frames. For example, an acceleration of 2x would correspond to sampling every other frame",
             "required": false,
             "default": null
         },
