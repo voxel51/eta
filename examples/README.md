@@ -49,7 +49,7 @@ eta build -r classify-images-tfslim-template.json --patterns {{model}}=mobilenet
 cd ..
 ```
 
-View the images in the `demo_image_classifier/out/images-mobilenet-v2`
+View the images in the `demo_image_classifier/out/images-mobilenet-v2-imagenet`
 directory to inspect the output of the pipeline.
 
 
