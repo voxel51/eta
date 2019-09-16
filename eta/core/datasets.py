@@ -28,6 +28,7 @@ import six
 
 from collections import defaultdict
 import copy
+import glob
 import logging
 import os
 import random
@@ -313,6 +314,40 @@ def sample_videos_to_images(
     image_dataset.write_manifest(image_dataset_path)
 
     return image_dataset
+
+
+def get_manifest_path_from_dir(dirpath):
+    '''Infers the filename of the manifest within the given
+    `LabeledDataset` directory, and returns the path to that file.
+
+    Args:
+        dirpath: path to a `LabeledDataset` directory
+
+    Returns:
+        path to the manifest inside the directory `dirpath`
+    '''
+    candidate_manifests = {
+        os.path.basename(path)
+        for path in glob.glob(os.path.join(dirpath, "*.json"))
+    }
+
+    if not candidate_manifests:
+        raise ValueError(
+            "Directory '%s' contains no JSON files to use as a "
+            "manifest" % dirpath
+        )
+
+    if "manifest.json" in candidate_manifests:
+        return os.path.join(dirpath, "manifest.json")
+
+    starts_with_manifest = [
+        filename for filename in candidate_manifests
+        if filename.startswith("manifest")
+    ]
+    if starts_with_manifest:
+        return os.path.join(dirpath, starts_with_manifest[0])
+
+    return os.path.join(dirpath, candidate_manifests.pop())
 
 
 def _validate_stride_and_num_images(stride, num_images):

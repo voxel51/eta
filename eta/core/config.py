@@ -539,8 +539,12 @@ class Config(etas.Serializable):
         num_fields = len(d)
         if num_fields != 1:
             raise ConfigError(
-                "Expected exactly one field in the following to be specified, "
-                "but found %d:\n%s" % (num_fields, etas.pretty_str(d)))
+                "Expected exactly one field in the following to be specified: "
+                "%s, but found %d:\n%s" % (
+                    etas.pretty_str(list(fields.keys())), num_fields,
+                    etas.pretty_str(d)
+                )
+            )
         return d[0]
 
 
