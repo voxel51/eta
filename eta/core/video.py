@@ -52,7 +52,7 @@ logger = logging.getLogger(__name__)
 
 
 #
-# The file extensions of supported video files
+# The file extensions of supported video files. Use LOWERCASE!
 #
 # In practice, any video that ffmpeg can read will be supported. Nonetheless,
 # we enumerate this list here so that the ETA type system can verify the
@@ -61,7 +61,7 @@ logger = logging.getLogger(__name__)
 # This list was taken from https://en.wikipedia.org/wiki/Video_file_format
 #
 SUPPORTED_VIDEO_FILE_FORMATS = {
-    ".3g2", ".3gp", ".M2TS", ".MTS", ".amv", ".avi", ".f4a", ".f4b", ".f4p",
+    ".3g2", ".3gp", ".m2ts", ".mts", ".amv", ".avi", ".f4a", ".f4b", ".f4p",
     ".f4v", ".flv", ".m2v", ".m4p", ".m4v", ".mkv", ".mov", ".mp2", ".mp4",
     ".mpe", ".mpeg", ".mpg", ".mpv", ".nsv", ".ogg", ".ogv", ".qt", ".rm",
     ".rmvb", ".svi", ".vob", ".webm", ".wmv", ".yuv"
@@ -91,7 +91,7 @@ def is_supported_video_file(path):
     Returns:
         True/False if the path refers to a supported video file type
     '''
-    return os.path.splitext(path)[1] in SUPPORTED_VIDEO_FILE_FORMATS
+    return os.path.splitext(path)[1].lower() in SUPPORTED_VIDEO_FILE_FORMATS
 
 
 def is_supported_image_sequence(path):
@@ -555,6 +555,10 @@ class VideoLabels(Serializable):
     def __getitem__(self, frame_number):
         return self.get_frame(frame_number)
 
+    def __setitem__(self, frame_number, frame_labels):
+        frame_labels.frame_number = frame_number
+        self.add_frame(frame_labels, overwrite=True)
+
     def __delitem__(self, frame_number):
         self.delete_frame(frame_number)
 
@@ -591,6 +595,15 @@ class VideoLabels(Serializable):
     def delete_frame(self, frame_number):
         '''Deletes the VideoFrameLabels for the given frame number.'''
         del self.frames[frame_number]
+
+    def get_frame_numbers(self):
+        '''Returns a sorted list of all frames with VideoFrameLabels.'''
+        return sorted(self.frames.keys())
+
+    def get_frame_range(self):
+        '''Returns the (min, max) frame numbers with VideoFrameLabels.'''
+        fns = self.get_frame_numbers()
+        return (fns[0], fns[-1]) if fns else (None, None)
 
     def merge_video_labels(self, video_labels):
         '''Merges the given VideoLabels into this labels.'''

@@ -14,7 +14,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
-from future.utils import iteritems
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
@@ -55,23 +54,29 @@ class PipelineStatus(Serializable):
             that make up the pipeline
     '''
 
-    def __init__(self, name, serialize_jobs=True):
+    def __init__(
+            self, name=None, state=PipelineState.READY, start_time=None,
+            complete_time=None, fail_time=None, messages=None, jobs=None):
         '''Construct a new PipelineStatus instance.
 
         Args:
             name: the name of the pipeline
-            serialize_jobs: whether to include jobs when serializing this
-                instance
+            state: an optional PipelineState of the pipeline. The default is
+                PipelineState.READY
+            start_time: the time the pipeline started, if applicable
+            complete_time: the time the pipeline completed, if applicable
+            fail_time: the time the pipeline failed, if applicable
+            messages: an optional list of StatusMessage instances
+            jobs: an optional list of JobStatus instances
         '''
-        self.name = name
-        self.state = PipelineState.READY
-        self.start_time = None
-        self.complete_time = None
-        self.fail_time = None
-        self.messages = []
-        self.jobs = []
+        self.name = name or ""
+        self.state = state
+        self.start_time = start_time
+        self.complete_time = complete_time
+        self.fail_time = fail_time
+        self.messages = messages or []
+        self.jobs = jobs or []
 
-        self._serialize_jobs = serialize_jobs
         self._publish_callback = None
         self._active_job = None
 
@@ -130,28 +135,25 @@ class PipelineStatus(Serializable):
         self.state = PipelineState.FAILED
 
     def attributes(self):
-        attrs = [
+        '''Returns a list of class attributes to be serialized.'''
+        return [
             "name", "state", "start_time", "complete_time", "fail_time",
-            "messages"]
-        if self._serialize_jobs:
-            attrs.append("jobs")
-        return attrs
+            "messages", "jobs"]
 
     @classmethod
     def from_dict(cls, d):
         '''Constructs a PipelineStatus instance from a JSON dictionary.'''
-        pipeline_status = cls(d["name"])
-        pipeline_status.state = d["state"]
-        pipeline_status.start_time = d["start_time"]
-        pipeline_status.complete_time = d["complete_time"]
-        pipeline_status.fail_time = d["fail_time"]
-        pipeline_status.messages = [
-            StatusMessage.from_dict(_d) for _d in d["messages"]
-        ]
-        pipeline_status.jobs = [
-            JobStatus.from_dict(_d) for _d in d.get("jobs", [])
-        ]
-        return pipeline_status
+        name = d["name"]
+        state = d["state"]
+        start_time = d["start_time"]
+        complete_time = d["complete_time"]
+        fail_time = d["fail_time"]
+        messages = [StatusMessage.from_dict(sd) for sd in d["messages"]]
+        jobs = [JobStatus.from_dict(jd) for jd in d.get("jobs", [])]
+        return cls(
+            name, state=state, start_time=start_time,
+            complete_time=complete_time, fail_time=fail_time,
+            messages=messages, jobs=jobs)
 
 
 class JobState(object):
@@ -233,8 +235,7 @@ class JobStatus(Serializable):
         job_status.complete_time = d["complete_time"]
         job_status.fail_time = d["fail_time"]
         job_status.messages = [
-            StatusMessage.from_dict(_d) for _d in d["messages"]
-        ]
+            StatusMessage.from_dict(sd) for sd in d["messages"]]
         return job_status
 
 

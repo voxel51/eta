@@ -20,6 +20,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
+from future.utils import iteritems, itervalues
 import six
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
@@ -280,7 +281,7 @@ def sample_videos_to_images(
 
     if num_images is not None and stride is None:
         stride = _compute_stride(video_dataset, num_images, frame_filter)
-        
+
     logger.info("Sampling video frames with stride %d", stride)
 
     image_dataset = LabeledImageDataset.create_empty_dataset(
@@ -799,8 +800,67 @@ class LabeledDataset(object):
         if description is not None:
             merged_dataset.set_description(description)
 
-        merged_dataset.write_manifest(merged_dataset_path)
+        merged_dataset.write_manifest(
+            os.path.basename(merged_dataset_path))
         return merged_dataset
+
+    def deduplicate(self):
+        '''Removes duplicate data files from the index.
+
+        If sets of files are found with the same content, one file in each
+        is set is chosen arbitarily to be kept, and the rest are removed.
+        Note that no files are deleted; this method only removes entries
+        from the index.
+
+        Returns:
+            self
+        '''
+        duplicate_data_paths = etau.find_duplicate_files(
+            list(self.iter_data_paths()))
+
+        if not duplicate_data_paths:
+            return self
+
+        data_paths_remove = set()
+        for group in duplicate_data_paths:
+            for path in group[1:]:
+                data_paths_remove.add(path)
+
+        self.dataset_index.cull_with_function(
+            lambda record: os.path.join(
+                self.data_dir, record.data) not in data_paths_remove)
+
+        self._build_index_map()
+
+        return self
+
+    def prune(self):
+        '''Deletes data and label files that are not in the index.
+
+        Note that actual files will be deleted if they are not present in
+        `self.dataset_index`, for which the current state can be different
+        than when it was read from a manifest JSON file.
+
+        Returns:
+            self
+        '''
+        data_filenames = set()
+        labels_filenames = set()
+        for data_path, labels_path in self.iter_paths():
+            data_filenames.add(os.path.basename(data_path))
+            labels_filenames.add(os.path.basename(labels_path))
+
+        data_subdir = os.path.join(self.data_dir, self._DATA_SUBDIR)
+        for filename in etau.list_files(data_subdir):
+            if filename not in data_filenames:
+                os.remove(os.path.join(data_subdir, filename))
+
+        labels_subdir = os.path.join(self.data_dir, self._LABELS_SUBDIR)
+        for filename in etau.list_files(labels_subdir):
+            if filename not in labels_filenames:
+                os.remove(os.path.join(labels_subdir, filename))
+
+        return self
 
     def apply_to_data(self, func):
         '''Apply the given function to each data element and overwrite the
@@ -1433,6 +1493,11 @@ class LabeledDatasetBuilder(object):
         self._transformers.append(transform)
 
     @property
+    def builder_dataset(self):
+        '''The underlying BuilderDataset instance'''
+        return self._dataset
+
+    @property
     def builder_dataset_cls(self):
         '''Associated BuilderDataset class getter.'''
         cls_breakup = etau.get_class_name(self).split(".")
@@ -1466,8 +1531,14 @@ class LabeledDatasetBuilder(object):
         Returns:
             LabeledDataset
         '''
+        logger.info("Applying transformations to dataset")
+
         for transformer in self._transformers:
             transformer.transform(self._dataset)
+
+        logger.info(
+            "Building dataset with %d elements" % len(self.builder_dataset)
+        )
 
         dataset = self.dataset_cls.create_empty_dataset(path, description)
 
@@ -1576,6 +1647,16 @@ class BuilderDataRecord(BaseDataRecord):
         '''
         return copy.deepcopy(self)
 
+    def attributes(self):
+        '''Overrides Serializable.attributes() to provide a custom list of
+        attributes to be serialized.
+
+        Returns:
+            a list of class attributes to be serialized
+        '''
+        return super(BuilderDataRecord, self).attributes() + [
+            "data_path", "labels_path"]
+
     def _build_labels(self):
         raise NotImplementedError(
             "subclasses must implement _build_labels()")
@@ -1588,14 +1669,14 @@ class BuilderDataRecord(BaseDataRecord):
 class BuilderImageRecord(BuilderDataRecord):
     '''BuilderDataRecord for images.'''
 
-    def __init__(self, image_path, labels_path):
-        '''Initialize a BuilderVideoRecord with the data_path and labels_path.
+    def __init__(self, data_path, labels_path):
+        '''Initialize a BuilderImageRecord with the data_path and labels_path.
 
         Args:
-            data_path (str): path to video
+            data_path (str): path to image
             labels_path (str): path to labels
         '''
-        super(BuilderImageRecord, self).__init__(image_path, labels_path)
+        super(BuilderImageRecord, self).__init__(data_path, labels_path)
         self._labels_cls = etai.ImageLabels
 
     def _build_labels(self):
@@ -1716,6 +1797,9 @@ class DatasetTransformer(object):
 
 class Sampler(DatasetTransformer):
     '''Randomly sample the number of records in the dataset to some number k.
+
+    If the number of records is less than k, then all records are kept, but
+    the order is randomized.
     '''
 
     def __init__(self, k):
@@ -1735,10 +1819,9 @@ class Sampler(DatasetTransformer):
         Returns:
             None
         '''
-        try:
-            src.records = random.sample(src.records, self.k)
-        except ValueError as err:
-            raise DatasetTransformerError(err)
+        src.records = random.sample(
+            src.records, min(self.k, len(src.records))
+        )
 
 
 class Balancer(DatasetTransformer):
@@ -1754,8 +1837,16 @@ class Balancer(DatasetTransformer):
         `object_label`.
     '''
 
-    def __init__(self, attribute_name, object_label=None, target_quantile=0.25,
-                 negative_power=5, target_count=None, algorithm="greedy"):
+    _NUM_RANDOM_ITER = 10000
+    _BUILDER_RECORD_TO_SCHEMA = [
+        (BuilderImageRecord, etai.ImageLabelsSchema),
+        (BuilderVideoRecord, etav.VideoLabelsSchema)
+    ]
+
+    def __init__(
+            self, attribute_name=None, object_label=None, labels_schema=None,
+            target_quantile=0.25, negative_power=5, target_count=None,
+            target_hard_min=False, algorithm="greedy"):
         '''Creates a Balancer instance.
 
         Args:
@@ -1763,6 +1854,12 @@ class Balancer(DatasetTransformer):
             object_label (str): the name of the object label that the
                 attribute_name must be nested under. If this is None, it is
                 assumed that the attributes are Image/Frame level attrs.
+            labels_schema (etai.ImageLabelsSchema or etav.VideoLabelsSchema):
+                a schema that indicates which attributes, object labels, etc.
+                should be used for balancing. This can be specified as an
+                alternative to `attribute_name` and `object_label`. Note that
+                labels are not altered; this schema just picks out the
+                attributes that are used for balancing.
             target_quantile (float): value between [0, 1] to specify what the
                 target count per attribute value will be.
                 0.5 - will result in the true median
@@ -1781,15 +1878,21 @@ class Balancer(DatasetTransformer):
                 Check Balancer._solution_score for more details.
             target_count (int): override target count for each attribute value.
                 If this is provided, target_quantile is ignored.
+            target_hard_min (bool): whether or not to require that each
+                attribute value have at least the target count after balancing
             algorithm (str): name of the balancing search algorithm. Currently
-                available are: ["random", "greedy"]
+                available are: ["random", "greedy", "simple"]
         '''
         self.attr_name = attribute_name
         self.object_label = object_label
+        self.labels_schema = labels_schema
         self.target_quantile = target_quantile
         self.negative_power = negative_power
         self.target_count = target_count
+        self.target_hard_min = target_hard_min
         self.algorithm = algorithm
+
+        self._validate()
 
     def transform(self, src):
         '''Modify the BuilderDataset records by removing records until the
@@ -1798,25 +1901,66 @@ class Balancer(DatasetTransformer):
         Args:
             src (BuilderDataset): the dataset builder
         '''
+        logger.info("Balancing dataset")
+
         # STEP 1: Get attribute value(s) for every record
+        logger.info("Calculating occurrence matrix...")
         occurrence_matrix, attribute_values, record_idxs = \
             self._get_occurrence_matrix(src.records)
         if not attribute_values:
             return
 
         # STEP 2: determine target number to remove of each attribute value
+        logger.info("Determining target counts...")
         counts = np.sum(occurrence_matrix, axis=1).astype(np.dtype('int'))
         target_count = self._get_target_count(counts)
 
         # STEP 3: find the records to keep
+        logger.info("Calculating which records to keep...")
         keep_idxs = self._get_keep_idxs(
             occurrence_matrix, counts, target_count)
 
         # STEP 4: modify the list of records
+        logger.info("Filtering records...")
         old_records = src.records
         src.clear()
         for ki in keep_idxs:
             src.add(old_records[record_idxs[ki]])
+
+        logger.info("Balancing of dataset complete")
+
+    def _validate(self):
+        specified = {
+            "attribute_name": self.attr_name is not None,
+            "object_label": self.object_label is not None,
+            "labels_schema": self.labels_schema is not None
+        }
+
+        # The following two patterns of null/non-null arguments are acceptable
+
+        if specified["attribute_name"] and not specified["labels_schema"]:
+            return
+
+        if (not specified["attribute_name"] and not specified["object_label"]
+            and specified["labels_schema"]):
+            return
+
+        # Anything else is unacceptable. Raise a ValueError with the
+        # appropriate message.
+
+        if not any(itervalues(specified)):
+            raise ValueError("Must specify attribute_name or labels_schema")
+
+        if specified["attribute_name"] and specified["labels_schema"]:
+            raise ValueError(
+                "Specify only one of attribute_name and labels_schema")
+
+        if not specified["attribute_name"] and specified["object_label"]:
+            raise ValueError(
+                "Cannot specify object_label without specifying "
+                "attribute_name")
+
+        raise AssertionError("Internal logic error")
 
     def _get_occurrence_matrix(self, records):
         '''Compute occurrence of each attribute value for each class
@@ -1880,24 +2024,40 @@ class Balancer(DatasetTransformer):
                             three objects with the 'color' attribute in this
                             record.
         '''
-
         if not len(records):
             return []
 
-        elif isinstance(records[0], BuilderImageRecord):
+        if self.attr_name is not None:
+            return self._to_helper_list_attr_name(records)
+
+        return self._to_helper_list_schema(records)
+
+    def _to_helper_list_attr_name(self, records):
+        '''Balancer._to_helper_list when `self.attr_name` is specified.'''
+        if isinstance(records[0], BuilderImageRecord):
             if self.object_label:
                 return self._to_helper_list_image_objects(records)
-            else:
-                return self._to_helper_list_image(records)
+            return self._to_helper_list_image(records)
 
-        elif isinstance(records[0], BuilderVideoRecord):
+        if isinstance(records[0], BuilderVideoRecord):
             if self.object_label:
                 return self._to_helper_list_video_objects(records)
-            else:
-                return self._to_helper_list_video(records)
+            return self._to_helper_list_video(records)
 
         raise DatasetTransformerError(
-            "Unknown record type: {}".format(type(records[0])))
+            "Unknown record type: {}".format(
+                etau.get_class_name(records[0])
+            )
+        )
+
+    def _to_helper_list_schema(self, records):
+        '''Balancer._to_helper_list when `self.labels_schema` is specified.'''
+        self._validate_schema(records)
+
+        if isinstance(records[0], BuilderImageRecord):
+            return self._to_helper_list_image_schema(records)
+
+        return self._to_helper_list_video_schema(records)
 
     def _to_helper_list_image(self, records):
         '''Balancer._to_helper_list for image attributes'''
@@ -1943,7 +2103,12 @@ class Balancer(DatasetTransformer):
             labels = record.get_labels()
             helper = (i, set())
 
-            for frame in labels.frames.values():
+            for frame_no in labels:
+                if (frame_no < record.clip_start_frame or
+                    frame_no >= record.clip_end_frame):
+                    continue
+
+                frame = labels[frame_no]
                 for attr in frame.attrs:
                     if attr.name == self.attr_name:
                         helper[1].add(attr.value)
@@ -1964,11 +2129,12 @@ class Balancer(DatasetTransformer):
             NO_ID = 'NO_ID'
             helper_dict = defaultdict(set)
 
-            for frame_no, frame in labels.frames.items():
+            for frame_no in labels:
                 if (frame_no < record.clip_start_frame
                         or frame_no >= record.clip_end_frame):
                     continue
 
+                frame = labels[frame_no]
                 for detected_object in frame.objects:
                     if detected_object.label != self.object_label:
                         continue
@@ -1997,13 +2163,118 @@ class Balancer(DatasetTransformer):
 
         return helper_list
 
+    def _validate_schema(self, records):
+        '''Checks that `self.labels_schema` and `records` are compatible.
+
+        Args:
+            records: list of BuilderDataRecords to be balanced
+        '''
+        for build_rec_cls, schema_cls in self._BUILDER_RECORD_TO_SCHEMA:
+            if isinstance(records[0], build_rec_cls) and not isinstance(
+                    self.labels_schema, schema_cls):
+                raise TypeError(
+                    "Expected self.labels_schema to be an instance of '%s' "
+                    "since builder records are instances of '%s'" % (
+                        etau.get_class_name(schema_cls),
+                        etau.get_class_name(build_rec_cls)
+                    )
+                )
+
+            if isinstance(records[0], build_rec_cls):
+                break
+        else:
+            raise DatasetTransformerError(
+                "Unknown record type: '%s'" % etau.get_class_name(records[0])
+            )
+
+    def _to_helper_list_image_schema(self, records):
+        '''Balancer._to_helper_list when an etai.ImageLabelsSchema is given'''
+        helper_list = []
+
+        for i, record in enumerate(records):
+            labels = record.get_labels()
+            helper = (i, [])
+
+            for attr in labels.attrs:
+                if self.labels_schema.is_valid_image_attribute(attr):
+                    helper[1].append(
+                        ("image_attribute", attr.name, attr.value)
+                    )
+
+            for detected_object in labels.objects:
+                if not self.labels_schema.is_valid_object_label(
+                        detected_object.label):
+                    continue
+
+                for attr in detected_object.attrs:
+                    if self.labels_schema.is_valid_object_attribute(
+                            detected_object.label, attr):
+                        helper[1].append(
+                            ("object_attribute", detected_object.label,
+                             attr.name, attr.value)
+                        )
+
+            if len(helper[1]):
+                helper_list.append(helper)
+
+        return helper_list
+
+    def _to_helper_list_video_schema(self, records):
+        '''Balancer._to_helper_list when an etav.VideoLabelsSchema is given'''
+        helper_list = []
+
+        for i, record in enumerate(records):
+            labels = record.get_labels()
+            helper = (i, [])
+            helper_dict = defaultdict(set)
+
+            for attr in labels.attrs:
+                if self.labels_schema.is_valid_video_attribute(attr):
+                    helper[1].append(
+                        ("video_attribute", attr.name, attr.value)
+                    )
+
+            for frame_no in labels:
+                if (frame_no < record.clip_start_frame
+                        or frame_no >= record.clip_end_frame):
+                    continue
+
+                frame = labels[frame_no]
+                for attr in frame.attrs:
+                    if self.labels_schema.is_valid_frame_attribute(attr):
+                        helper[1].append(
+                            ("frame_attribute", attr.name, attr.value)
+                        )
+
+                for obj in frame.objects:
+                    if not self.labels_schema.is_valid_object_label(
+                            obj.label):
+                        continue
+
+                    for attr in obj.attrs:
+                        if self.labels_schema.is_valid_object_attribute(
+                                obj.label, attr):
+                            helper_dict[(obj.label, obj.index)].add(
+                                (attr.name, attr.value)
+                            )
+
+            for (label, _), attr_set in iteritems(helper_dict):
+                for name, value in attr_set:
+                    helper[1].append(
+                        ("object_attribute", label, name, value)
+                    )
+
+            if len(helper[1]):
+                helper_list.append(helper)
+
+        return helper_list
+
     def _get_target_count(self, counts):
         '''Compute the target count that we would like to balance each
         value to.
 
         Args:
-            A: the occurrence matrix computed in
-                Balancer._get_occurrence_matrix
+            counts (vector): the original counts for each value
 
         Returns: Integer target value
         '''
@@ -2041,9 +2312,14 @@ class Balancer(DatasetTransformer):
             x = self._random(A, b)
         elif self.algorithm == "greedy":
             x = self._greedy(A, b)
+        elif self.algorithm == "simple":
+            x = self._simple(A, b)
         else:
             raise ValueError(
                 "Unknown balancing algorithm '{}'".format(self.algorithm))
+
+        if self.target_hard_min:
+            x = self._add_to_meet_minimum_count(x, A, target_count)
 
         return np.where(x == 0)[0]
 
@@ -2061,7 +2337,7 @@ class Balancer(DatasetTransformer):
         best_score = self._solution_score(b - np.dot(A, best_x))
 
         random.seed(1)
-        for _ in range(10000):
+        for _ in range(self._NUM_RANDOM_ITER):
             i = random.choice(np.where(best_x == 0)[0])
             cur_x = best_x.copy()
             cur_x[i] = 1
@@ -2106,6 +2382,69 @@ class Balancer(DatasetTransformer):
 
         return best_x
 
+    def _simple(self, A, b):
+        '''This algorithm for finding the indices to omit just goes through
+        each class and adds records minimally such that the class has count
+        equal to the target.
+
+        Args:
+            A: the occurrence matrix
+            b: the target vector to match
+
+        Returns:
+            x: the solution vector. x[j]=1 -> omit the j'th record
+        '''
+        x = np.ones(A.shape[1], dtype="int")
+        counts = np.dot(A, x)
+        dropped_counts = counts.copy()
+
+        # Go through attributes from lowest to highest count and try to
+        # minimally add records to get the target for that attribute
+        for attr_idx in np.argsort(counts):
+            # We can only decrease the dropped counts for this attribute
+            # by changing some 1's to 0's in `x`. Therefore, if
+            # `dropped_counts[attr_idx]` is already less than or equal
+            # to the target, then do nothing.
+            attr_target = b[attr_idx]
+            if dropped_counts[attr_idx] <= attr_target:
+                continue
+
+            # We can change some set of 1's in `x` to 0's, but not vice
+            # versa.  Create an array of the counts for this attribute,
+            # for records for which `x` contains a 1.
+            dropped_counts_for_attr = A[attr_idx, :] * x
+
+            # Right now, `dropped_counts_for_attr.sum()` would give a
+            # a number equal to `dropped_counts[attr_idx]`. We want to
+            # find which elements of `dropped_counts_for_attr` can be
+            # removed so that `dropped_counts_for_attr.sum()` is equal
+            # to `attr_target`. Sort `dropped_counts_for_attr` in
+            # descending order and drop elements as long as that won't
+            # make the sum go below attr_target.
+            new_dropped_counts = dropped_counts[attr_idx]
+            indices_to_remove = []
+            for record_idx in np.flip(np.argsort(dropped_counts_for_attr)):
+                if new_dropped_counts <= attr_target:
+                    break
+
+                count = dropped_counts_for_attr[record_idx]
+                if count == 0 or new_dropped_counts - count < attr_target:
+                    # Don't want to explicitly remove records with 0 counts
+                    # for this attribute since it won't help us reach the
+                    # object of `attr_target` for this attribute, and may
+                    # affect other attributes.
+                    continue
+
+                # Remove this count
+                indices_to_remove.append(record_idx)
+                new_dropped_counts -= count
+
+            # Update `x` and `dropped_counts`
+            x[indices_to_remove] = 0
+            dropped_counts = np.dot(A, x)
+
+        return x
+
     def _solution_score(self, vector):
         '''Compute the score for a vector (smaller is better). This is a custom
         scoring function that sorta computes the L1 norm for positive values
@@ -2129,6 +2468,54 @@ class Balancer(DatasetTransformer):
         except np.AxisError:
             return np.sum(vector2)
 
+    @staticmethod
+    def _add_to_meet_minimum_count(x, A, target_count):
+        '''Add more indices to `keep_idxs` so that the count for every
+        attribute value is at least equal to `target_count`.
+
+        If for some attribute values, there are fewer than `target_count`
+        instances in the whole dataset, every record containing those
+        attribute values will be added.
+
+        Args:
+            x: an array of shape (M,) containing 1's or 0's, indicating which
+                records are being omitted
+            A: the NxM occurrence matrix generated by
+                `self._get_occurrence_matrix()`
+            target_count: an integer giving the desired count for each value
+
+        Returns:
+            x_out: an array of shape (M,) containing 1's or 0's, indicating
+                records to omit. All entries that were 0 in the input `x`
+                will also be 0 in `x_out`, and some entries that were 1 in
+                `x` may be 0 in `x_out` as well, such that the total count
+                for each value is at least `target_count`.
+        '''
+        x_out = x.copy()
+        current_counts = np.dot(A, 1 - x_out).astype("int")
+        omitted_idxs = np.where(x_out == 1)[0]
+
+        total_counts = np.dot(A, np.ones(x_out.shape)).astype("int")
+        # If the total count in the entire dataset for a value is less than
+        # `target_count`, then the target for that value should be its total
+        # count
+        target_vec = np.minimum(total_counts, target_count)
+
+        random.shuffle(omitted_idxs)
+        for candidate_idx in omitted_idxs:
+            if not (current_counts < target_vec).any():
+                # All counts meet the minimum
+                break
+
+            additional_counts = A[:, candidate_idx]
+            # If keeping this index would increase the counts for any
+            # value that doesn't meet the minimum, then keep this index
+            if (additional_counts[current_counts < target_vec] > 0).any():
+                x_out[candidate_idx] = 0
+                current_counts += additional_counts
+
+        return x_out
+
 
 class SchemaFilter(DatasetTransformer):
     '''Filter all labels in the dataset by the provided schema. If the schema
@@ -2139,7 +2526,7 @@ class SchemaFilter(DatasetTransformer):
         '''Initialize the SchemaFilter with a schema.
 
         Args:
-            schema (VideoLabelsSchema orImageLabelsSchema)
+            schema (VideoLabelsSchema or ImageLabelsSchema)
         '''
         self.schema = schema
 
@@ -2237,6 +2624,96 @@ class EmptyLabels(DatasetTransformer):
 
         for record in src:
             record.set_labels(labels_cls())
+
+
+class Merger(DatasetTransformer):
+    '''Merges another dataset into the existing dataset.'''
+
+    def __init__(self, dataset_builder):
+        '''Creates a Merger instance.
+
+        Args:
+            dataset_builder: a LabeledDatasetBuilder instance for the
+                dataset to be merged with the existing one
+        '''
+        self._builder_dataset_to_merge = dataset_builder.builder_dataset
+
+    def transform(self, src):
+        '''Merges `self._builder_dataset_to_merge` into `src`.
+
+        Args:
+            src (BuilderDataset)
+
+        Returns:
+            None
+        '''
+        if self._builder_dataset_to_merge.record_cls != src.record_cls:
+            raise DatasetTransformerError(
+                "BuilderDatasets have different record_cls types: "
+                "src.record_cls = %s, to_merge.record_cls = %s" % (
+                    etau.get_class_name(src.record_cls),
+                    etau.get_class_name(
+                        self._builder_dataset_to_merge.record_cls)
+                )
+            )
+
+        src.add_container(self._builder_dataset_to_merge)
+
+
+class FilterByFilename(DatasetTransformer):
+    '''Filters data from a dataset using a filename blacklist.'''
+
+    def __init__(self, filename_blacklist):
+        '''Creates a FilterByFilename instance.
+
+        Args:
+            filename_blacklist: a list of data filenames to filter out
+        '''
+        self._files_to_remove = set(filename_blacklist)
+
+    def transform(self, src):
+        '''Removes data with filenames that match the blacklist.
+
+        Args:
+            src (BuilderDataset)
+
+        Returns:
+            None
+        '''
+        src.cull_with_function(
+            "data_path",
+            lambda path: os.path.basename(
+                path) not in self._files_to_remove
+        )
+
+
+class FilterByPath(DatasetTransformer):
+    '''Filters data from a dataset using a full path blacklist.'''
+
+    def __init__(self, full_path_blacklist):
+        '''Creates a FilterByPath instance.
+
+        Args:
+            full_path_blacklist: a list of full paths to data files
+                to filter out
+        '''
+        self._paths_to_remove = {
+            os.path.abspath(path) for path in full_path_blacklist}
+
+    def transform(self, src):
+        '''Removes data with full paths that match the blacklist.
+
+        Args:
+            src (BuilderDataset)
+
+        Returns:
+            None
+        '''
+        src.cull_with_function(
+            "data_path",
+            lambda path: os.path.abspath(
+                path) not in self._paths_to_remove
+        )
 
 
 class DatasetTransformerError(Exception):

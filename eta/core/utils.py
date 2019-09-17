@@ -15,12 +15,13 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
-from future.utils import iteritems
+from future.utils import iteritems, itervalues
 import six
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+from collections import defaultdict
 import datetime
 import errno
 import glob
@@ -1097,7 +1098,7 @@ def multiglob(*patterns, **kwargs):
     return it.chain.from_iterable(glob2.iglob(root + p) for p in patterns)
 
 
-def list_files(dir_path, abs_paths=False):
+def list_files(dir_path, abs_paths=False, recursive=False):
     '''Lists the files in the given directory, sorted alphabetically and
     excluding directories and hidden files.
 
@@ -1105,15 +1106,25 @@ def list_files(dir_path, abs_paths=False):
         dir_path: the path to the directory to list
         abs_paths: whether to return the absolute paths to the files. By
             default, this is False
+        recursive: whether to recursively traverse subdirectories. By default,
+            this is False
 
     Returns:
-        a sorted list of the non-hidden filenames (or filepaths) in the
-            directory
+        a sorted list of the non-hidden files in the directory
     '''
-    files = sorted(
-        f for f in os.listdir(dir_path)
-        if os.path.isfile(os.path.join(dir_path, f)) and not f.startswith(".")
-    )
+    if recursive:
+        files = []
+        for root, _, filenames in os.walk(dir_path):
+            files.extend([
+                os.path.relpath(os.path.join(root, f), dir_path)
+                for f in filenames if not f.startswith(".")])
+    else:
+        files = [
+            f for f in os.listdir(dir_path)
+            if os.path.isfile(os.path.join(dir_path, f))
+                and not f.startswith(".")]
+
+    files = sorted(files)
 
     if abs_paths:
         basedir = os.path.abspath(os.path.realpath(dir_path))
@@ -1122,23 +1133,33 @@ def list_files(dir_path, abs_paths=False):
     return files
 
 
-def list_subdirs(dir_path, abs_paths=False):
-    '''Lists the sub-directories in the given directory, sorted alphabetically
+def list_subdirs(dir_path, abs_paths=False, recursive=False):
+    '''Lists the subdirectories in the given directory, sorted alphabetically
     and excluding hidden directories.
 
     Args:
         dir_path: the path to the directory to list
         abs_paths: whether to return the absolute paths to the dirs. By
             default, this is False
+        recursive: whether to recursively traverse subdirectories. By default,
+            this is False
 
     Returns:
-        a sorted list of the non-hidden sub-directory names (or paths) in the
-            directory
+        a sorted list of the non-hidden subdirectories in the directory
     '''
-    dirs = sorted(
-        d for d in os.listdir(dir_path)
-        if os.path.isdir(os.path.join(dir_path, d)) and not d.startswith(".")
-    )
+    if recursive:
+        dirs = []
+        for root, dirnames, _ in os.walk(dir_path):
+            dirs.extend([
+                os.path.relpath(os.path.join(root, d), dir_path)
+                for d in dirnames if not d.startswith(".")])
+    else:
+        dirs = [
+            d for d in os.listdir(dir_path)
+            if os.path.isdir(os.path.join(dir_path, d))
+                and not d.startswith(".")]
+
+    dirs = sorted(dirs)
 
     if abs_paths:
         basedir = os.path.abspath(os.path.realpath(dir_path))
@@ -1393,6 +1414,68 @@ def remove_none_values(d):
         a copy of the input dictionary with keys whose value was None ommitted
     '''
     return {k: v for k, v in iteritems(d) if v is not None}
+
+
+def find_duplicate_files(path_list):
+    '''Returns a list of lists of file paths from the input, that have
+    identical contents to each other.
+
+    Args:
+        path_list: list of file paths in which to look for duplicate files
+
+    Returns:
+        duplicates: a list of lists, where each list contains a group of
+            file paths that all have identical content. File paths in
+            `path_list` that don't have any duplicates will not appear in
+            the output.
+    '''
+    hash_buckets = defaultdict(list)
+    for path in path_list:
+        if not os.path.isfile(path):
+            logger.warning(
+                "File '%s' is a directory or does not exist. "
+                "Skipping." % path)
+            continue
+
+        with open(path, "rb") as f:
+            hash_buckets[hash(f.read())].append(path)
+
+    duplicates = []
+    for file_group in itervalues(hash_buckets):
+        if len(file_group) >= 2:
+            duplicates.extend(_find_duplicates_brute_force(file_group))
+
+    return duplicates
+
+
+def _find_duplicates_brute_force(path_list):
+    if len(path_list) < 2:
+        return []
+
+    candidate_file_path = path_list[0]
+    candidate_duplicates = [candidate_file_path]
+    with open(candidate_file_path, "rb") as f:
+        candidate_content = f.read()
+
+    remaining_paths = []
+    for path in path_list[1:]:
+        if os.path.normpath(path) == os.path.normpath(candidate_file_path):
+            candidate_duplicates.append(path)
+            continue
+
+        with open(path, "rb") as f:
+            if f.read() == candidate_content:
+                candidate_duplicates.append(path)
+            else:
+                remaining_paths.append(path)
+
+    duplicates = []
+    if len(candidate_duplicates) >= 2:
+        duplicates.append(candidate_duplicates)
+
+    duplicates.extend(_find_duplicates_brute_force(remaining_paths))
+
+    return duplicates
 
 
 class FileHasher(object):

@@ -262,6 +262,18 @@ CRITICAL protoc research/object_detection/protos/*.proto \
     --python_out=research
 MSG "You must have '$(pwd)/research' in 'pythonpath_dirs' in your ETA config"
 MSG "You must have '$(pwd)/research/slim' in 'pythonpath_dirs' in your ETA config"
+
+# Remove all tensorflow/models subdirectories that we don't use
+MSG "Removing unused tensorflow/models subdirectories"
+rm -rf samples
+rm -rf tutorials
+mv research/slim .
+mv research/object_detection .
+rm -rf research
+mkdir -p research
+mv slim research
+mv object_detection research
+
 cd ../..
 
 
