@@ -38,13 +38,14 @@ class DetectedObject(Serializable, HasBoundingBox):
             where it was detected
         attrs: (optional) an AttributeContainer describing additional
             attributes of the object
-        eval_type: (optional) instance of EvaluationType enumeration
+        eval_type: (optional) an EvaluationType value
     '''
 
     def __init__(
             self, label, bounding_box, confidence=None, index=None, score=None,
-            frame_number=None, index_in_frame=None, attrs=None, eval_type=None):
-        '''Constructs a DetectedObject.
+            frame_number=None, index_in_frame=None, attrs=None,
+            eval_type=None):
+        '''Creates a DetectedObject instance.
 
         Args:
             label: object label string
@@ -58,7 +59,7 @@ class DetectedObject(Serializable, HasBoundingBox):
                 where it was detected
             attrs: (optional) an AttributeContainer describing additional
                 attributes of the object
-            eval_type: (optional) instance of EvaluationType enumeration
+            eval_type: (optional) an EvaluationType value
         '''
         self.label = label
         self.bounding_box = bounding_box
@@ -210,11 +211,12 @@ class EvaluationType(object):
     intended for. This enables evaluation of false negatives on a subset of
     the labels used for evaluating false positives.
 
-    RECALL - this object is part of the subset that MUST be detected. If it is
-             not, it is considered a false negative.
-    PRECISION - this object MAY be detected, and if so, is marked as a true
-                positive, however, if it is not, it is NOT considered a false
-                negative.
+    Attributes:
+        RECALL: this object is part of the subset that MUST be detected. If it
+            is not, it is considered a false negative
+        PRECISION: this object MAY be detected, and if so, is marked as a true
+            positive, however, if it is not, it is NOT considered a false
+            negative
     '''
 
     RECALL = "RECALL"
