@@ -32,6 +32,7 @@ import logging
 import os
 import random
 import re
+import shutil
 
 import numpy as np
 
@@ -692,7 +693,7 @@ class LabeledDataset(object):
 
         return self
 
-    def copy(self, dataset_path):
+    def copy(self, dataset_path, symlink_data=False):
         '''Copies the dataset to another directory.
 
         If the dataset index has been manipulated, this will be reflected
@@ -702,6 +703,12 @@ class LabeledDataset(object):
             dataset_path: the path to the `manifest.json` file for the
                 copy of the dataset that will be written. The containing
                 directory must either not exist or be empty.
+            symlink_data: whether or not to symlink the data directory
+                instead of copying over all of the files. Note that with
+                this option, the entire labels directory will be copied,
+                so the new `LabeledDataset` directory may contain data
+                and labels that are not in the manifest, (depending on
+                the current state of `self.dataset_index`).
 
         Returns:
             dataset_copy: `LabeledDataset` instance that points to the new
@@ -713,10 +720,24 @@ class LabeledDataset(object):
         new_data_subdir = os.path.join(new_data_dir, self._DATA_SUBDIR)
         new_labels_subdir = os.path.join(new_data_dir, self._LABELS_SUBDIR)
 
-        for data_path, labels_path in zip(
-                self.iter_data_paths(), self.iter_labels_paths()):
-            etau.copy_file(data_path, new_data_subdir)
-            etau.copy_file(labels_path, new_labels_subdir)
+        if symlink_data:
+            os.rmdir(new_data_subdir)
+            os.rmdir(new_labels_subdir)
+            os.symlink(
+                os.path.abspath(os.path.realpath(
+                    os.path.join(self.data_dir, self._DATA_SUBDIR))),
+                new_data_subdir
+            )
+            shutil.copytree(
+                os.path.join(self.data_dir, self._LABELS_SUBDIR),
+                new_labels_subdir
+            )
+        else:
+            for data_path, labels_path in zip(
+                    self.iter_data_paths(), self.iter_labels_paths()):
+                etau.copy_file(data_path, new_data_subdir)
+                etau.copy_file(labels_path, new_labels_subdir)
+
         self.dataset_index.write_json(dataset_path)
 
         type = etau.get_class_name(self)
