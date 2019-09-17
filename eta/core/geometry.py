@@ -64,6 +64,24 @@ class BoundingBox(Serializable):
             frame_size=frame_size, shape=shape, img=img)
         return tl[0], tl[1], br[0] - tl[0], br[1] - tl[1]
 
+    def aspect_ratio_in(self, frame_size=None, shape=None, img=None):
+        '''Returns the aspect ratio of the bounding box in the specified image.
+
+        Pass *one* keyword argument to this function.
+
+        Args:
+            frame_size: the (width, height) of the image
+            shape: the (height, width, ...) of the image, e.g. from img.shape
+            img: the image itself
+
+        Returns:
+            the aspect ratio of the box
+        '''
+        w, h = _to_frame_size(frame_size=frame_size, shape=shape, img=img)
+        tl = self.top_left
+        br = self.bottom_right
+        return (br.x - tl.x) * w / (h * (br.y - tl.y))
+
     def extract_from(self, img, force_square=False):
         '''Extracts the subimage defined by this bounding box from the image.
 
