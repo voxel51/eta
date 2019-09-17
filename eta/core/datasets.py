@@ -2407,7 +2407,7 @@ class Balancer(DatasetTransformer):
                     break
 
                 count = dropped_counts_for_attr[record_idx]
-                if count ==0 or new_dropped_counts - count < attr_target:
+                if count == 0 or new_dropped_counts - count < attr_target:
                     # Don't want to explicitly remove records with 0 counts
                     # for this attribute since it won't help us reach the
                     # object of `attr_target` for this attribute, and may
