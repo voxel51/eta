@@ -206,9 +206,13 @@ class HasBoundingBox(object):
     '''Mixin to explicitly indicate that an instance has a bounding box.'''
 
     def get_bounding_box(self):
+        '''Gets the bounding box for the instance.
+
+        Returns:
+            a BoundingBox
+        '''
         raise NotImplementedError(
-            "Classes implementing HasBoundingBox need to implement the "
-            "get_bounding_box method.")
+            "Subclasses must implement get_bounding_box()")
 
 
 class RelativePoint(Serializable):
