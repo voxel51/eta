@@ -20,6 +20,7 @@ import six
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+import inspect
 import numbers
 import os
 import sys
@@ -503,7 +504,8 @@ class Config(etas.Serializable):
         Args:
             d: a JSON dictionary
             key: the key to parse
-            choices: an iterable of possible values
+            choices: either an iterable of possible values or an enum-like
+                class whose attributes define the possible values
             default: a default value to return if key is not present
 
         Returns:
@@ -516,9 +518,13 @@ class Config(etas.Serializable):
                 and the key was not found in the dictionary
         '''
         val, found = _parse_key(d, key, None, default)
+        if inspect.isclass(choices):
+            choices = set(
+                v for k, v in iteritems(vars(choices))
+                if not k.startswith("_"))
         if found and val not in choices:
             raise ConfigError(
-                "Unsupported value %s; choices are %s" % (val, choices))
+                "Unsupported value '%s'; choices are %s" % (val, choices))
         return val
 
     @staticmethod
