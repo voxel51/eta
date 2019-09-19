@@ -350,6 +350,31 @@ def get_manifest_path_from_dir(dirpath):
     return os.path.join(dirpath, candidate_manifests.pop())
 
 
+def load_dataset(manifest_path):
+    '''Loads a `LabeledDataset` instance from the manifest JSON at
+    the given path.
+
+    The manifest JSON is assumed to sit inside a `LabeledDataset`
+    directory structure, as outlined in the `LabeledDataset`
+    documentation. This function will read the specific subclass
+    of `LabeledDataset` that should be used to load the dataset
+    from the manifest, and return an instance of that subclass.
+
+    Args:
+        manifest_path: path to a `manifest.json` within a
+            `LabeledDataset` directory
+
+    Returns:
+        an instance of a `LabeledDataset` subclass, (e.g.
+            `LabeledImageDataset`, `LabeledVideoDataset`)
+    '''
+    index = LabeledDatasetIndex.from_json(manifest_path)
+    dataset_type = index.type
+    dataset_cls = etau.get_class(dataset_type)
+
+    return dataset_cls(manifest_path)
+
+
 def _validate_stride_and_num_images(stride, num_images):
     if stride is not None and stride < 1:
         raise ValueError(
