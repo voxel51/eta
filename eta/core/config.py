@@ -553,6 +553,29 @@ class Config(etas.Serializable):
             )
         return d[0]
 
+    @staticmethod
+    def validate_all_or_nothing_fields(fields):
+        '''Validates a dictionary of pre-parsed fields checking that either
+        all or none of the fields have a truthy value.
+
+        Args:
+            fields: a dictionary of pre-parsed fields
+
+        Raises:
+            ConfigError: if some values are truth and some are not
+        '''
+        d = [(k, v) for k, v in iteritems(fields) if v]
+        d_falsey = [(k, v) for k, v in iteritems(fields) if not v]
+        num_fields = len(d)
+        if num_fields != 0 and num_fields != len(fields):
+            raise ConfigError(
+                "Expected either all or none of the following to be "
+                "specified: %s, but found %d fields specified:\n%s" % (
+                    etas.pretty_str(list(fields.keys())), num_fields,
+                    etas.pretty_str(d)
+                )
+            )
+
 
 class ConfigContainer(etas.Container):
     '''Abstract base class for containers that store homogeneous lists of
