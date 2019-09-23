@@ -508,7 +508,7 @@ class LabeledDataset(object):
             iterator: iterator over (data, labels) pairs, where data is an
                 object returned by self._read_data() and labels is an object
                 returned by self._read_labels() from the respective paths
-                of a data and corresponding labels file
+                of a data file and corresponding labels file
         '''
         return zip(self.iter_data(), self.iter_labels())
 
