@@ -1980,6 +1980,62 @@ def extract_keyframes(video_path, output_patt=None):
         return [img for img in r]
 
 
+def split_video(
+        video_path, output_patt, num_clips=None, clip_duration=None,
+        clip_size_bytes=None):
+    '''Splits the input video into clips of the specified size.
+
+    Exactly one keyword argument should be provided.
+
+    This implementation uses an `ffmpeg` command of the following form:
+
+    ```
+    ffmpeg \
+        -i input.mp4 \
+        -c copy -segment_time HH:MM:SS -f segment -reset_timestamps 1 \
+        output-%03d.mp4
+    ```
+
+    Args:
+        video_path: the path to a video
+        output_patt: an output pattern like "/path/to/clips-%03d.mp4"
+            specifying where to write the output clips
+        num_clips: the number of (roughly) equal size clips to break the
+            video into
+        clip_duration: the (approximate) duration, in seconds, of each clip to
+            generate. The last clip may be shorter
+        clip_size_bytes: the (approximate) size, in bytes, of each clip to
+            generate. The last clip may be smaller
+    '''
+    #
+    # Determine the segment time
+    #
+    metadata = VideoMetadata.build_for(video_path)
+    if num_clips:
+        # Round up to nearest second to ensure that an additional small clip
+        # is not created at the end
+        segment_time = np.ceil(metadata.duration / num_clips)
+    elif clip_duration:
+        segment_time = clip_duration
+    elif clip_size_bytes:
+        # Round up to nearest second to ensure that an additional small clip
+        # is not created at the end
+        segment_time = np.ceil(metadata.size_bytes / clip_size_bytes)
+    else:
+        raise ValueError("One keyword argument must be provided")
+
+    # Perform clipping
+    in_opts = []
+    out_opts = [
+        "-c:v", "copy",
+        "-segment_time", "%.3f" % segment_time,
+        "-f", "segment",
+        "-reset_timestamps", "1",
+    ]
+    ffmpeg = FFmpeg(in_opts=in_opts, out_opts=out_opts)
+    ffmpeg.run(video_path, output_patt)
+
+
 class VideoProcessor(object):
     '''Class for reading a video and writing a new video frame-by-frame.
 
