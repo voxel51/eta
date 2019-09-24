@@ -127,8 +127,10 @@ class LocalStorageClient(StorageClient):
             file is uploaded/downloaded at once
     '''
 
+    #
     # The chunk size (in bytes) to use when streaming. If a negative value
     # is supplied, then the entire file is uploaded/downloaded at once
+    #
     DEFAULT_CHUNK_SIZE = -1
 
     def __init__(self, chunk_size=None):
@@ -245,9 +247,11 @@ class GoogleCloudStorageClient(StorageClient, NeedsGoogleCredentials):
     `cloud_path` should have form "gs://<bucket>/<path/to/object>".
     '''
 
+    #
     # The default chunk size to use when uploading and downloading files.
     # Note that this gives the GCS API the right to use up to this much memory
     # as a buffer during read/write
+    #
     DEFAULT_CHUNK_SIZE = 256 * 1024 * 1024  # in bytes
 
     def __init__(self, credentials=None, chunk_size=None):
@@ -523,9 +527,11 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
             uploads and downloads
     '''
 
+    #
     # The default chunk size to use when uploading and downloading files.
     # Note that this gives the Drive API the right to use up to this
     # much memory as a buffer during read/write
+    #
     DEFAULT_CHUNK_SIZE = 256 * 1024 * 1024  # in bytes
 
     def __init__(self, credentials=None, chunk_size=None):
@@ -1113,9 +1119,11 @@ class HTTPStorageClient(StorageClient):
         ```
     '''
 
+    #
     # The default chunk size to use when downloading files.
     # Note that this gives the requests toolbelt the right to use up to this
     # much memory as a buffer during read/write
+    #
     DEFAULT_CHUNK_SIZE = 32 * 1024 * 1024  # in bytes
 
     def __init__(
