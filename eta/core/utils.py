@@ -1429,16 +1429,7 @@ def find_duplicate_files(path_list):
             `path_list` that don't have any duplicates will not appear in
             the output.
     '''
-    hash_buckets = defaultdict(list)
-    for path in path_list:
-        if not os.path.isfile(path):
-            logger.warning(
-                "File '%s' is a directory or does not exist. "
-                "Skipping." % path)
-            continue
-
-        with open(path, "rb") as f:
-            hash_buckets[hash(f.read())].append(path)
+    hash_buckets = _get_file_hash_buckets(path_list)
 
     duplicates = []
     for file_group in itervalues(hash_buckets):
@@ -1446,6 +1437,47 @@ def find_duplicate_files(path_list):
             duplicates.extend(_find_duplicates_brute_force(file_group))
 
     return duplicates
+
+
+def find_matching_file_pairs(path_list1, path_list2):
+    '''Returns a list of pairs of paths that have identical contents, where
+    the paths in each pair aren't from the same path list.
+
+    Args:
+        path_list1: list of file paths
+        path_list2: another list of file paths
+
+    Returns:
+        pairs: a list of pairs of file paths that have identical content,
+            where one member of the pair is from `path_list1` and the other
+            member is from `path_list2`
+    '''
+    hash_buckets1 = _get_file_hash_buckets(path_list1)
+    pairs = []
+    for path in path_list2:
+        with open(path, "rb") as f:
+            content = f.read()
+        candidate_matches = hash_buckets1.get(hash(content), [])
+        for candidate_path in candidate_matches:
+            if not _diff_paths(candidate_path, path, content2=content):
+                pairs.append((candidate_path, path))
+
+    return pairs
+
+
+def _get_file_hash_buckets(path_list):
+    hash_buckets = defaultdict(list)
+    for path in path_list:
+        if not os.path.isfile(path):
+            logger.warning(
+                "File '%s' is a directory or does not exist. "
+                "Skipping.", path)
+            continue
+
+        with open(path, "rb") as f:
+            hash_buckets[hash(f.read())].append(path)
+
+    return hash_buckets
 
 
 def _find_duplicates_brute_force(path_list):
@@ -1459,15 +1491,11 @@ def _find_duplicates_brute_force(path_list):
 
     remaining_paths = []
     for path in path_list[1:]:
-        if os.path.normpath(path) == os.path.normpath(candidate_file_path):
+        if _diff_paths(
+                candidate_file_path, path, content1=candidate_content):
+            remaining_paths.append(path)
+        else:
             candidate_duplicates.append(path)
-            continue
-
-        with open(path, "rb") as f:
-            if f.read() == candidate_content:
-                candidate_duplicates.append(path)
-            else:
-                remaining_paths.append(path)
 
     duplicates = []
     if len(candidate_duplicates) >= 2:
@@ -1476,6 +1504,39 @@ def _find_duplicates_brute_force(path_list):
     duplicates.extend(_find_duplicates_brute_force(remaining_paths))
 
     return duplicates
+
+
+def _diff_paths(path1, path2, content1=None, content2=None):
+    '''Returns whether or not the files at `path1` and `path2` are different
+    without using hashing.
+
+    Since hashing is not used, this is a good function to use when two paths
+    are in the same hash bucket.
+
+    Args:
+        path1: path to the first file
+        path2: path to the second file
+        content1: optional binary contents of the file at `path1`. If not
+            provided, the contents will be read from disk.
+        content2: optional binary contents of the file at `path2`. If not
+            provided, the contents will be read from disk.
+
+    Returns:
+        `True` if the files at `path1` and `path2` are different, otherwise
+            returns `False`
+    '''
+    if os.path.normpath(path1) == os.path.normpath(path2):
+        return False
+
+    if content1 is None:
+        with open(path1, "rb") as f:
+            content1 = f.read()
+
+    if content2 is None:
+        with open(path2, "rb") as f:
+            content2 = f.read()
+
+    return content1 != content2
 
 
 class FileHasher(object):
