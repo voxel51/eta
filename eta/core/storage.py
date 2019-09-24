@@ -781,15 +781,20 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
             folder_id = self._create_folder(folder, folder_id)
         return folder_id
 
-    def list_files_in_folder(self, folder_id):
+    def list_files_in_folder(
+            self, folder_id, include_folders=False, recursive=False):
         '''Returns a list of the files in the folder with the given ID.
 
         Args:
             folder_id: the ID of a folder
+            include_folders: whether to include "folders" in the list of
+                returned files. By default, this is False
+            recursive: whether to recursively traverse sub-"folders". By
+                default, this is False
 
         Returns:
             A list of dicts containing the `id`, `name`, and `mimeType` of the
-                files in the folder
+                files/sub-folders in the folder
         '''
         team_drive_id = self.get_root_team_drive_id(folder_id)
         if team_drive_id:
@@ -804,6 +809,7 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
             params = {}
 
         # Build file list
+        folders = []
         files = []
         page_token = None
         query = "'%s' in parents and trashed=false" % folder_id
@@ -817,20 +823,44 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
                 **params
             ).execute()
             page_token = response.get("nextPageToken", None)
-            files += response["files"]
+
+            for f in response["files"]:
+                if f["mimeType"] == "application/vnd.google-apps.folder":
+                    folders.append(f)
+                else:
+                    files.append(f)
 
             # Check for end of list
             if not page_token:
-                return files
+                break
+
+        if recursive:
+            # Recursively traverse subfolders
+            for folder in folders:
+                if include_folders:
+                    # Include folder in list just before its contents
+                    files.append(folder)
+
+                contents = self.list_files_in_folder(
+                    folder["id"], include_folders=include_folders,
+                    recursive=True)
+                for f in contents:
+                    # Embed <folder-name>/<file-name> namespace in filename
+                    f["name"] = os.path.join(folder["name"], f["name"])
+                    files.append(f)
+
+        elif include_folders:
+            files.extend(folders)
+
+        return files
 
     def upload_files_in_folder(
             self, local_dir, folder_id, skip_failures=False,
-            skip_existing_files=False):
+            skip_existing_files=False, recursive=False):
         '''Uploads the files in the given folder to Google Drive.
 
         Note that this function uses `eta.core.utils.list_files` to determine
-        which files to upload. This means that subdirectories and hidden files
-        are skipped.
+        which files to upload. This means that hidden files are skipped.
 
         Args:
             local_dir: the directory of files to upload
