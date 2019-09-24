@@ -876,6 +876,8 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
             skip_existing_files: whether to skip files whose names match
                 existing files in the Google Drive folder. By default, this is
                 False
+            recursive: whether to recursively upload the contents of
+                subdirectories. By default, this is False
 
         Returns:
             a dict mapping filenames to IDs of the uploaded files
@@ -885,12 +887,13 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
                 failure skipping is turned off
         '''
         # @todo retry failures? exponential backoff? rate limit requests?
-        files = etau.list_files(local_dir)
+        files = etau.list_files(local_dir, recursive=recursive)
 
         # Skip existing files, if requested
         if skip_existing_files:
             existing_files = set(
-                f["name"] for f in self.list_files_in_folder(folder_id))
+                f["name"] for f in self.list_files_in_folder(
+                    folder_id, recursive=recursive))
             _files = [f for f in files if f not in existing_files]
             num_skipped = len(files) - len(_files)
             if num_skipped > 0:
@@ -942,7 +945,7 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
                 failure skipping is turned off
         '''
         # @todo retry failures? exponential backoff? rate limit requests?
-        files = self.list_files_in_folder(folder_id)
+        files = self.list_files_in_folder(folder_id, include_folders=True)
 
         # Skip existing files, if requested
         if skip_existing_files:
@@ -985,7 +988,8 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
                     local_path)
         return filenames
 
-    def delete_duplicate_files_in_folder(self, folder_id, skip_failures=False):
+    def delete_duplicate_files_in_folder(
+            self, folder_id, skip_failures=False, recursive=False):
         '''Deletes any duplicate files (files with the same filename) in the
         given Google Drive folder.
 
@@ -993,6 +997,8 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
             folder_id: the ID of the Drive folder to process
             skip_failures: whether to gracefully skip deletion errors. By
                 default, this is False
+            recursive: whether to recursively traverse subfolders. By default,
+                this is False
 
         Returns:
             num_deleted: the number of deleted files
@@ -1001,7 +1007,7 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
             GoogleDriveStorageClientError if a deletion error occured and
                 failure skipping is turned off
         '''
-        files = self.list_files_in_folder(folder_id)
+        files = self.list_files_in_folder(folder_id, recursive=recursive)
         existing_files = set()
         num_deleted = 0
         for f in files:
