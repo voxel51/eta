@@ -360,7 +360,7 @@ class ImageLabelsSchema(Serializable):
         try:
             self.validate_object(obj)
             return True
-        except AttributeContainerSchemaError:
+        except (ImageLabelsSchemaError, AttributeContainerSchemaError):
             return False
 
     def validate_image_attribute(self, image_attr):
