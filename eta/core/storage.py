@@ -25,6 +25,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
+from future.utils import iteritems
 import six
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
@@ -656,9 +657,9 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
         self._service.files().delete(
             fileId=file_or_folder_id, supportsTeamDrives=True).execute()
 
-    def delete_all_files_in_folder(self, folder_id, skip_failures=False):
-        '''Deletes all the files in the Google Drive folder and retains the
-        original folder.
+    def delete_folder_contents(self, folder_id, skip_failures=False):
+        '''Deletes the contents (files and subfolders) of the given Google
+        Drive folder, retaining the (now empty) parent folder.
 
         Args:
             folder_id: the ID of the Google Drive folder from which the files
@@ -666,35 +667,32 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
             skip_failures: whether to gracefully skip delete errors. By
                 default, this is False
         '''
-        files = self.list_files_in_folder(folder_id)
-        for f in files:
-            filename = f["name"]
+        for f in self.list_files_in_folder(folder_id, include_folders=True):
             try:
                 with etau.Timer() as t:
                     self.delete(f["id"])
                     logger.info(
-                        "File '%s' deleted from '%s' (%s)", filename,
-                        folder_id, t.elapsed_time_str)
+                        "'%s' deleted from '%s' (%s)", f["name"], folder_id,
+                        t.elapsed_time_str)
             except Exception as e:
                 if not skip_failures:
                     raise GoogleDriveStorageClientError(e)
                 logger.info(
-                    "Failed to delete file '%s' from '%s' (%s)", filename,
+                    "Failed to delete '%s' from '%s' (%s)", f["name"],
                     folder_id, t.elapsed_time_str)
 
-        if not self.count_files_in_folder(folder_id):
-            logger.info("All files deleted in %s", folder_id)
-
-    def count_files_in_folder(self, folder_id):
-        '''Returns count of number of files in the Google Drive folder
+    def count_files_in_folder(self, folder_id, recursive=False):
+        '''Returns count of number of files in the Google Drive folder.
 
         Args:
             folder_id: the ID of the Google Drive folder to be processed
+            recursive: whether to recursively count files in subfolders. By
+                default, this is False
 
         Returns:
             the count of files in folder
         '''
-        return len(self.list_files_in_folder(folder_id))
+        return len(self.list_files_in_folder(folder_id, recursive=recursive))
 
     def get_team_drive_id(self, name):
         '''Get the ID of the Team Drive with the given name.
@@ -750,8 +748,8 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
         Returns:
             True/False whether the file is a folder
         '''
-        mime_type = self.get_file_metadata(file_id).get("mimeType", None)
-        return mime_type == "application/vnd.google-apps.folder"
+        f = self.get_file_metadata(file_id)
+        return self._is_folder(f)
 
     def create_folder_if_necessary(self, folder_name, parent_folder_id):
         '''Creates the given folder within the given parent folder, if
@@ -802,43 +800,8 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
             A list of dicts containing the `id`, `name`, and `mimeType` of the
                 files/sub-folders in the folder
         '''
-        team_drive_id = self.get_root_team_drive_id(folder_id)
-        if team_drive_id:
-            # Parameters required to list Team Drives
-            params = {
-                "corpora": "teamDrive",
-                "supportsTeamDrives": True,
-                "includeTeamDriveItems": True,
-                "teamDriveId": team_drive_id,
-            }
-        else:
-            params = {}
-
-        # Build file list
-        folders = []
-        files = []
-        page_token = None
-        query = "'%s' in parents and trashed=false" % folder_id
-        while True:
-            # Get the next page of files
-            response = self._service.files().list(
-                q=query,
-                fields="files(id, name, mimeType),nextPageToken",
-                pageSize=256,
-                pageToken=page_token,
-                **params
-            ).execute()
-            page_token = response.get("nextPageToken", None)
-
-            for f in response["files"]:
-                if f["mimeType"] == "application/vnd.google-apps.folder":
-                    folders.append(f)
-                else:
-                    files.append(f)
-
-            # Check for end of list
-            if not page_token:
-                break
+        # List folder contents
+        files, folders = self._list_folder_contents(folder_id)
 
         if recursive:
             # Recursively traverse subfolders
@@ -854,18 +817,42 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
                     # Embed <folder-name>/<file-name> namespace in filename
                     f["name"] = os.path.join(folder["name"], f["name"])
                     files.append(f)
-
         elif include_folders:
             files.extend(folders)
 
         return files
+
+    def list_subfolders(self, folder_id, recursive=False):
+        '''Returns a list of the subfolders of the folder with the given ID.
+
+        Args:
+            folder_id: the ID of a folder
+            recursive: whether to recursively traverse subfolders. By
+                default, this is False
+
+        Returns:
+            A list of dicts containing the `id`, `name`, and `mimeType` of the
+                subfolders in the folder
+        '''
+        # List folder contents
+        _, folders = self._list_folder_contents(folder_id)
+
+        if recursive:
+            # Recursively traverse subfolders
+            for folder in folders:
+                for f in self.list_subfolders(folder["id"], recursive=True):
+                    # Embed <root>/<subdir> namespace in folder name
+                    f["name"] = os.path.join(folder["name"], f["name"])
+                    folders.append(f)
+
+        return folders
 
     def upload_files_in_folder(
             self, local_dir, folder_id, skip_failures=False,
             skip_existing_files=False, recursive=False):
         '''Uploads the files in the given folder to Google Drive.
 
-        Note that this function uses `eta.core.utils.list_files` to determine
+        Note that this function uses `eta.core.utils.list_files()` to determine
         which files to upload. This means that hidden files are skipped.
 
         Args:
@@ -887,21 +874,28 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
                 failure skipping is turned off
         '''
         # @todo retry failures? exponential backoff? rate limit requests?
-        files = etau.list_files(local_dir, recursive=recursive)
+
+        # Get local files to upload
+        files = etau.list_files(local_dir)
+
+        # Get existing Drive files
+        if skip_existing_files or recursive:
+            existing_files, existing_folders = self._list_folder_contents(
+                folder_id)
 
         # Skip existing files, if requested
         if skip_existing_files:
-            existing_files = set(
-                f["name"] for f in self.list_files_in_folder(
-                    folder_id, recursive=recursive))
-            _files = [f for f in files if f not in existing_files]
+            _existing_files = set(f["name"] for f in existing_files)
+            _files = [f for f in files if f not in _existing_files]
             num_skipped = len(files) - len(_files)
             if num_skipped > 0:
                 logger.info("Skipping %d existing files", num_skipped)
                 files = _files
 
+        # Upload files
         num_files = len(files)
-        logger.info("Uploading %d files to '%s'", num_files, folder_id)
+        if num_files > 0:
+            logger.info("Uploading %d files to '%s'", num_files, folder_id)
         file_ids = {}
         for idx, filename in enumerate(files, 1):
             try:
@@ -918,6 +912,24 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
                 logger.info(
                     "Failed to upload file '%s' to '%s'; skipping", local_path,
                     folder_id)
+
+        # Recursively traverse subfolders, if requested
+        if recursive:
+            for subfolder in etau.list_subdirs(local_dir):
+                subfolder_id = self._create_folder_if_necessary(
+                    subfolder, folder_id, existing_folders=existing_folders)
+                logger.info(
+                    "Recursively uploading contents of '%s' to '%s'",
+                    subfolder, subfolder_id)
+
+                sublocal_dir = os.path.join(local_dir, subfolder)
+                subfile_ids = self.upload_files_in_folder(
+                    sublocal_dir, subfolder_id, skip_failures=skip_failures,
+                    skip_existing_files=skip_existing_files, recursive=True)
+
+                for subname, subid in iteritems(subfile_ids):
+                    file_ids[os.path.join(subfolder, subname)] = subid
+
         return file_ids
 
     def download_files_in_folder(
@@ -945,7 +957,9 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
                 failure skipping is turned off
         '''
         # @todo retry failures? exponential backoff? rate limit requests?
-        files = self.list_files_in_folder(folder_id, include_folders=True)
+
+        # Get Drive files in folder
+        files, folders = self._list_folder_contents(folder_id)
 
         # Skip existing files, if requested
         if skip_existing_files:
@@ -957,41 +971,52 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
                 logger.info("Skipping %d existing files", num_skipped)
                 files = _files
 
+        # Download files
         num_files = len(files)
-        logger.info("Downloading %d files to '%s'", num_files, local_dir)
+        if num_files > 0:
+            logger.info("Downloading %d files to '%s'", num_files, local_dir)
         filenames = []
         for idx, f in enumerate(files, 1):
             filename = f["name"]
             file_id = f["id"]
             try:
-                if (recursive and
-                        f["mimeType"] == "application/vnd.google-apps.folder"):
-                    self.download_files_in_folder(
-                        file_id,
-                        os.path.join(local_dir, filename),
-                        skip_failures=skip_failures,
-                        skip_existing_files=skip_existing_files,
-                        recursive=True)
-                else:
-                    local_path = os.path.join(local_dir, filename)
-                    with etau.Timer() as t:
-                        self.download(file_id, local_path)
-                        filenames.append(filename)
-                    logger.info(
-                        "File '%s' downloaded to '%s' (%s) (%d/%d)", filename,
-                        local_path, t.elapsed_time_str, idx, num_files)
+                local_path = os.path.join(local_dir, filename)
+                with etau.Timer() as t:
+                    self.download(file_id, local_path)
+                    filenames.append(filename)
+                logger.info(
+                    "File '%s' downloaded to '%s' (%s) (%d/%d)", filename,
+                    local_path, t.elapsed_time_str, idx, num_files)
             except Exception as e:
                 if not skip_failures:
                     raise GoogleDriveStorageClientError(e)
                 logger.info(
                     "Failed to download file '%s' to '%s'; skipping", file_id,
                     local_path)
+
+        # Recursively download folders, if requested
+        if recursive:
+            for folder in folders:
+                subdir_name = folder["name"]
+                subdir_id = folder["id"]
+                local_subdir = os.path.join(local_dir, subdir_name)
+                logger.info(
+                    "Recursively downloading contents of '%s' to '%s'",
+                    subdir_id, local_subdir)
+
+                subfiles = self.download_files_in_folder(
+                    subdir_id, local_subdir, skip_failures=skip_failures,
+                    skip_existing_files=skip_existing_files, recursive=True)
+
+                for subfile in subfiles:
+                    filenames.append(os.path.join(subdir_name, subfile))
+
         return filenames
 
     def delete_duplicate_files_in_folder(
             self, folder_id, skip_failures=False, recursive=False):
-        '''Deletes any duplicate files (files with the same filename) in the
-        given Google Drive folder.
+        '''Deletes any duplicate files (i.e., files with the same filename) in
+        the given Google Drive folder.
 
         Args:
             folder_id: the ID of the Drive folder to process
@@ -1007,10 +1032,9 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
             GoogleDriveStorageClientError if a deletion error occured and
                 failure skipping is turned off
         '''
-        files = self.list_files_in_folder(folder_id, recursive=recursive)
         existing_files = set()
         num_deleted = 0
-        for f in files:
+        for f in self.list_files_in_folder(folder_id, recursive=recursive):
             filename = f["name"]
             if filename not in existing_files:
                 existing_files.add(filename)
@@ -1063,10 +1087,18 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
         while not done:
             status, done = downloader.next_chunk()
 
-    def _create_folder_if_necessary(self, new_folder, parent_folder_id):
+    @staticmethod
+    def _is_folder(f):
+        return f.get("mimeType", "") == "application/vnd.google-apps.folder"
+
+    def _create_folder_if_necessary(
+            self, new_folder, parent_folder_id, existing_folders=None):
+        if existing_folders is None:
+            _, existing_folders = self._list_folder_contents(parent_folder_id)
+
         folder_id = None
-        for f in self.list_files_in_folder(parent_folder_id):
-            if f["name"] == new_folder:
+        for f in existing_folders:
+            if new_folder == f["name"]:
                 folder_id = f["id"]
                 break
 
@@ -1084,6 +1116,47 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
         folder = self._service.files().create(
             body=body, supportsTeamDrives=True, fields="id").execute()
         return folder["id"]
+
+    def _list_folder_contents(self, folder_id):
+        # Handle Team Drives
+        team_drive_id = self.get_root_team_drive_id(folder_id)
+        if team_drive_id:
+            params = {
+                "corpora": "teamDrive",
+                "supportsTeamDrives": True,
+                "includeTeamDriveItems": True,
+                "teamDriveId": team_drive_id,
+            }
+        else:
+            params = {}
+
+        # Perform query
+        folders = []
+        files = []
+        page_token = None
+        query = "'%s' in parents and trashed=false" % folder_id
+        while True:
+            # Get the next page of files
+            response = self._service.files().list(
+                q=query,
+                fields="files(id, name, mimeType),nextPageToken",
+                pageSize=256,
+                pageToken=page_token,
+                **params
+            ).execute()
+            page_token = response.get("nextPageToken", None)
+
+            for f in response["files"]:
+                if self._is_folder(f):
+                    folders.append(f)
+                else:
+                    files.append(f)
+
+            # Check for end of list
+            if not page_token:
+                break
+
+        return files, folders
 
 
 class GoogleDriveStorageClientError(Exception):
