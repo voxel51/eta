@@ -1983,7 +1983,7 @@ def extract_keyframes(video_path, output_patt=None):
 def split_video(
         video_path, output_patt, num_clips=None, clip_duration=None,
         clip_size_bytes=None):
-    '''Splits the input video into clips of the specified size.
+    '''Splits the video into (roughly) equal-sized clips of the specified size.
 
     Exactly one keyword argument should be provided.
 
@@ -1992,7 +1992,7 @@ def split_video(
     ```
     ffmpeg \
         -i input.mp4 \
-        -c copy -segment_time HH:MM:SS -f segment -reset_timestamps 1 \
+        -c copy -segment_time SS.XXX -f segment -reset_timestamps 1 \
         output-%03d.mp4
     ```
 
