@@ -1579,7 +1579,7 @@ class LabeledDatasetBuilder(object):
         '''Record class getter.'''
         return self._dataset.record_cls
 
-    def build(self, path, description=None, pretty_print=False):
+    def build(self, path, description=None, pretty_print=False, dir=None):
         '''Build the new LabeledDataset after all records and transformations
         have been added.
 
@@ -1587,6 +1587,7 @@ class LabeledDatasetBuilder(object):
             path (str): path to write the new dataset (manifest.json)
             description (str): optional dataset description
             pretty_print (bool): pretty print flag for json labels
+            dir (str): optional directory in which to make temp dirs
 
         Returns:
             LabeledDataset
@@ -1602,7 +1603,7 @@ class LabeledDatasetBuilder(object):
 
         dataset = self.dataset_cls.create_empty_dataset(path, description)
 
-        with etau.TempDir() as dir_path:
+        with etau.TempDir(dir=dir) as dir_path:
             for idx, record in enumerate(self._dataset):
                 result = record.build(dir_path, str(idx),
                                       pretty_print=pretty_print)
