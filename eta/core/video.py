@@ -573,6 +573,28 @@ class VideoLabels(Serializable):
         return bool(self.frames)
 
     @property
+    def has_frame_attributes(self):
+        '''Returns True/False whether the container has at least one frame
+        attribute.
+        '''
+        for frame_number in self:
+            if self[frame_number].attrs:
+                return True
+
+        return False
+
+    @property
+    def has_objects(self):
+        '''Returns True/False whether the container has at least one
+        DetectedObject.
+        '''
+        for frame_number in self:
+            if self[frame_number].objects:
+                return True
+
+        return False
+
+    @property
     def has_schema(self):
         '''Returns True/False whether the container has an enforced schema.'''
         return self.schema is not None
