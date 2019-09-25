@@ -798,7 +798,7 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
 
         Returns:
             A list of dicts containing the `id`, `name`, and `mimeType` of the
-                files/sub-folders in the folder
+                files/subfolders in the folder
         '''
         # List folder contents
         files, folders = self._list_folder_contents(folder_id)
