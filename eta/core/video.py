@@ -2008,8 +2008,9 @@ def split_video(
             generate. The last clip may be smaller
     '''
     #
-    # Determine the segment time
+    # Determine segment time
     #
+
     metadata = VideoMetadata.build_for(video_path)
     if clip_size_bytes:
         num_clips = metadata.size_bytes / clip_size_bytes
@@ -2023,7 +2024,10 @@ def split_video(
     else:
         raise ValueError("One keyword argument must be provided")
 
+    #
     # Perform clipping
+    #
+
     in_opts = []
     out_opts = [
         "-c:v", "copy",
