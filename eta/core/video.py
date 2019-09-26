@@ -2011,16 +2011,15 @@ def split_video(
     # Determine the segment time
     #
     metadata = VideoMetadata.build_for(video_path)
+    if clip_size_bytes:
+        num_clips = metadata.size_bytes / clip_size_bytes
+
     if num_clips:
         # Round up to nearest second to ensure that an additional small clip
         # is not created at the end
         segment_time = np.ceil(metadata.duration / num_clips)
     elif clip_duration:
         segment_time = clip_duration
-    elif clip_size_bytes:
-        # Round up to nearest second to ensure that an additional small clip
-        # is not created at the end
-        segment_time = np.ceil(metadata.size_bytes / clip_size_bytes)
     else:
         raise ValueError("One keyword argument must be provided")
 
