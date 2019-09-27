@@ -194,12 +194,33 @@ class BoundingBox(Serializable):
         return cls(RelativePoint.origin(), RelativePoint.origin())
 
     @classmethod
+    def from_coords(cls, tlx, tly, brx, bry):
+        '''Constructs a BoundingBox from its top-left and bottom-right
+        coordinates.
+
+        Args:
+            tlx: the top-left x coordinate
+            tly: the top-left y coordinate
+            brx: the bottom-right x coordinate
+            bry: the bottom-right y coordinate
+
+        Returns:
+            a BoundingBox
+        '''
+        tlx = max(0, min(tlx, 1))
+        tly = max(0, min(tly, 1))
+        brx = max(0, min(brx, 1))
+        bry = max(0, min(bry, 1))
+        top_left = RelativePoint(tlx, tly)
+        bottom_right = RelativePoint(brx, bry)
+        return cls(top_left, bottom_right)
+
+    @classmethod
     def from_dict(cls, d):
         '''Constructs a BoundingBox from a JSON dictionary.'''
         return cls(
             RelativePoint.from_dict(d["top_left"]),
-            RelativePoint.from_dict(d["bottom_right"]),
-        )
+            RelativePoint.from_dict(d["bottom_right"]))
 
 
 class HasBoundingBox(object):
