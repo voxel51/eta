@@ -274,6 +274,14 @@ mkdir -p research
 mv slim research
 mv object_detection research
 
+MSG "Installing COCO API"
+git clone https://github.com/cocodataset/cocoapi.git
+cd cocoapi/PythonAPI
+make
+cd ../..
+cp -r cocoapi/PythonAPI/pycocotools research/
+rm -rf cocoapi
+
 cd ../..
 
 
