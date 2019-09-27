@@ -470,6 +470,13 @@ class LabeledDataset(object):
         read initially)
     - each data file appears only once is `self.dataset_index`
 
+    Note that any method that doesn't take a manifest path as input will only
+    change the internal state in `self.dataset_index`, and will not write to
+    any manifest JSON files on disk. (Example methods are `self.sample()` and
+    `self.add_file()`.) Thus it may desirable to use the
+    `self.write_manifest()` method to write the internal state to a manifest
+    JSON file on disk, at some point after using these methods.
+
     Attributes:
         dataset_index: a `LabeledDatasetIndex` containing the paths of data
             and labels files in the dataset
@@ -750,6 +757,27 @@ class LabeledDataset(object):
         )
 
         self._data_to_labels_map[data_filename] = labels_filename
+
+        return self
+
+    def remove_data_files(self, data_filenames):
+        '''Removes the given data files from `self.dataset_index`.
+
+        Note that this method doesn't delete the files from disk, it just
+        removes them from the index. To remove files from disk that are
+        not present in the index, use the `prune()` method.
+
+        Args:
+            data_filenames: list of filenames of data to remove
+
+        Returns:
+            self
+        '''
+        removals = set(data_filenames)
+        self.dataset_index.cull_with_function(
+            lambda record: os.path.basename(record.data) not in removals)
+
+        self._build_index_map()
 
         return self
 
