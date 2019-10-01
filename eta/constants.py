@@ -30,9 +30,9 @@ BASE_DIR = os.path.dirname(ETA_DIR)
 EXAMPLES_DIR = os.path.join(BASE_DIR, "examples")
 RESOURCES_DIR = os.path.join(ETA_DIR, "resources")
 TF_MODELS_DIR = os.path.join(BASE_DIR, "tensorflow/models")
-TF_OBJECT_DETECTION_DIR = os.path.join(
-    TF_MODELS_DIR, "research/object_detection")
-TF_SLIM_DIR = os.path.join(TF_MODELS_DIR, "research/slim")
+TF_RESEARCH_DIR = os.path.join(TF_MODELS_DIR, "research")
+TF_OBJECT_DETECTION_DIR = os.path.join(TF_RESEARCH_DIR, "object_detection")
+TF_SLIM_DIR = os.path.join(TF_RESEARCH_DIR, "slim")
 
 
 # Paths
