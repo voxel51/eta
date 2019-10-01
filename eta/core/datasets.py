@@ -1031,6 +1031,16 @@ class LabeledDataset(object):
             builder.add_record(builder.record_cls(*paths))
         return builder
 
+    def get_labels_set(self):
+        '''Creates a SetLabels type object from this dataset's labels,
+        (e.g. etai.ImageSetLabels, etav.VideoSetLabels).
+
+        Returns:
+            etai.ImageSetLabels, etav.VideoSetLabels, etc.
+        '''
+        raise NotImplementedError(
+            "subclasses must implement get_labels_set()")
+
     @classmethod
     def create_empty_dataset(cls, dataset_path, description=None):
         '''Creates a new empty labeled dataset.
@@ -1267,6 +1277,15 @@ class LabeledVideoDataset(LabeledDataset):
     which points to the `manifest.json` file for the dataset.
     '''
 
+    def get_labels_set(self):
+        '''Creates an etav.VideoSetLabels type object from this dataset's
+        labels.
+
+        Returns:
+            etav.VideoSetLabels
+        '''
+        return etav.VideoSetLabels(videos=list(self.iter_labels()))
+
     @classmethod
     def validate_dataset(cls, dataset_path):
         '''Determines whether the data at the given path is a valid
@@ -1336,6 +1355,15 @@ class LabeledImageDataset(LabeledDataset):
     Labeled image datasets are referenced in code by their `dataset_path`,
     which points to the `manifest.json` file for the dataset.
     '''
+
+    def get_labels_set(self):
+        '''Creates an etai.ImageSetLabels type object from this dataset's
+        labels.
+
+        Returns:
+            etai.ImageSetLabels
+        '''
+        return etai.ImageSetLabels(images=list(self.iter_labels()))
 
     @classmethod
     def validate_dataset(cls, dataset_path):
