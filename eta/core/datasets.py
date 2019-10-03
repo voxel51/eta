@@ -37,6 +37,7 @@ import shutil
 
 import numpy as np
 
+import eta.core.annotations as etaa
 from eta.core.data import BaseDataRecord, DataRecords
 import eta.core.image as etai
 from eta.core.serial import Serializable
@@ -1041,6 +1042,20 @@ class LabeledDataset(object):
         raise NotImplementedError(
             "subclasses must implement get_labels_set()")
 
+    def write_annotated_data(self, output_dir_path, annotation_config=None):
+        '''Annotates the data with its labels, and outputs the
+        annotated data to the specified directory.
+
+        Args:
+            output_dir_path: the path to the directory into which
+                the annotated data will be written
+            annotation_config: an optional etaa.AnnotationConfig specifying
+                how to render the annotations. If omitted, the default config
+                is used.
+        '''
+        raise NotImplementedError(
+            "subclasses must implement write_annotated_data()")
+
     @classmethod
     def create_empty_dataset(cls, dataset_path, description=None):
         '''Creates a new empty labeled dataset.
@@ -1286,6 +1301,25 @@ class LabeledVideoDataset(LabeledDataset):
         '''
         return etav.VideoSetLabels(videos=list(self.iter_labels()))
 
+    def write_annotated_data(self, output_dir_path, annotation_config=None):
+        '''Annotates the data with its labels, and outputs the
+        annotated data to the specified directory.
+
+        Args:
+            output_dir_path: the path to the directory into which
+                the annotated data will be written
+            annotation_config: an optional etaa.AnnotationConfig specifying
+                how to render the annotations. If omitted, the default config
+                is used.
+        '''
+        for video_path, video_labels in zip(
+                self.iter_data_paths(), self.iter_labels()):
+            output_path = os.path.join(
+                output_dir_path, os.path.basename(video_path))
+            etaa.annotate_video(
+                video_path, video_labels, output_path,
+                annotation_config=annotation_config)
+
     @classmethod
     def validate_dataset(cls, dataset_path):
         '''Determines whether the data at the given path is a valid
@@ -1364,6 +1398,25 @@ class LabeledImageDataset(LabeledDataset):
             etai.ImageSetLabels
         '''
         return etai.ImageSetLabels(images=list(self.iter_labels()))
+
+    def write_annotated_data(self, output_dir_path, annotation_config=None):
+        '''Annotates the data with its labels, and outputs the
+        annotated data to the specified directory.
+
+        Args:
+            output_dir_path: the path to the directory into which
+                the annotated data will be written
+            annotation_config: an optional etaa.AnnotationConfig specifying
+                how to render the annotations. If omitted, the default config
+                is used.
+        '''
+        for img, image_path, image_labels in zip(
+                self.iter_data(), self.iter_data_paths(), self.iter_labels()):
+            img_annotated = etaa.annotate_image(
+                img, image_labels, annotation_config=annotation_config)
+            output_path = os.path.join(
+                output_dir_path, os.path.basename(image_path))
+            self._write_data(img_annotated, output_path)
 
     @classmethod
     def validate_dataset(cls, dataset_path):
