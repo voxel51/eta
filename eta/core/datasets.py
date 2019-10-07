@@ -1745,7 +1745,19 @@ class BuilderDataRecord(BaseDataRecord):
             a list of class attributes to be serialized
         '''
         return super(BuilderDataRecord, self).attributes() + [
-            "data_path", "labels_path"]
+            "data_path",
+            "labels_path"
+        ]
+
+    @classmethod
+    def required(cls):
+        '''Returns a list of attributes that are required by all instances of
+        the data record.
+        '''
+        return super(BuilderDataRecord, cls).required() + [
+            "data_path",
+            "labels_path"
+        ]
 
     def _build_labels(self):
         raise NotImplementedError(
@@ -1806,6 +1818,19 @@ class BuilderVideoRecord(BuilderDataRecord):
             self.duration = duration
             self.total_frame_count = total_frame_count
         self._labels_cls = etav.VideoLabels
+
+    @classmethod
+    def optional(cls):
+        '''Returns a list of attributes that are optionally included in the
+        data record if they are present in the data dictionary.
+        '''
+        return super(BuilderDataRecord, cls).required() + [
+            "clip_start_frame",
+            "clip_end_frame",
+            "duration",
+            "total_frame_count"
+        ]
+
 
     def _build_labels(self):
         start_frame, end_frame = (self.clip_start_frame, self.clip_end_frame)
