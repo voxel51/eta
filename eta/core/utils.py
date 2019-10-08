@@ -529,9 +529,14 @@ def move_file(inpath, outpath, check_ext=False):
         OSError: if check_ext is True and the input and output paths have
             different extensions
     '''
-    if not os.path.isdir(outpath) and check_ext:
-        assert_same_extensions(inpath, outpath)
-    ensure_basedir(outpath)
+    if not os.path.splitext(outpath)[1]:
+        # Output location is a directory
+        ensure_dir(outpath)
+    else:
+        # Output location is a file
+        if check_ext:
+            assert_same_extensions(inpath, outpath)
+        ensure_basedir(outpath)
     shutil.move(inpath, outpath)
 
 
