@@ -839,6 +839,37 @@ def assert_same_extensions(*args):
         raise OSError("Expected %s to have the same extensions" % str(args))
 
 
+def split_path(path):
+    '''Splits a path into a list of its individual parts.
+
+    E.g. split_path("/path/to/file") = ["/", "path", "to", "file"]
+
+    Taken from
+    https://www.oreilly.com/library/view/python-cookbook/0596001673/ch04s16.html
+
+    Args:
+        path: a path to a file or directory
+
+    Returns:
+        all_parts: the path split into its individual components (directory
+            and file names)
+    '''
+    all_parts = []
+    while True:
+        parts = os.path.split(path)
+        if parts[0] == path:  # sentinel for absolute paths
+            all_parts.insert(0, parts[0])
+            break
+        elif parts[1] == path: # sentinel for relative paths
+            all_parts.insert(0, parts[1])
+            break
+        else:
+            path = parts[0]
+            all_parts.insert(0, parts[1])
+
+    return all_parts
+
+
 def to_human_decimal_str(num, decimals=1):
     '''Returns a human-readable string represntation of the given decimal
     (base-10) number.
