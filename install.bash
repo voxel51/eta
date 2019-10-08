@@ -104,7 +104,7 @@ else
 fi
 
 
-# Check that specified package manager exists in Mac OS
+# Check that specified package manager is installed in Mac OS
 if [ "${OS}" == "Darwin" ]; then
     if [ ${USE_MACPORTS} = true -a -z "$(which port)" ]; then
         EXIT "MacPorts specified, but 'port' application not found. INSTALLATION FAILED."
