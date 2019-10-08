@@ -20,8 +20,8 @@ Custom installations:
         required to use the core library. The default is a full install.
 
 Mac-only options:
--b      Use brew to install packages (mac only). The default is false.
--p      Use port to install packages (mac only). The default is true.
+-b      Use brew to install packages (mac only). The default is true.
+-p      Use port to install packages (mac only). The default is false.
 "
 }
 
@@ -29,7 +29,7 @@ Mac-only options:
 # Parse flags
 SHOW_HELP=false
 LITE_INSTALL=false
-USE_MACPORTS=true
+USE_MACPORTS=false
 while getopts "hlbp" FLAG; do
     case "${FLAG}" in
         h) SHOW_HELP=true ;;
@@ -101,6 +101,16 @@ if [[ ${LITE_INSTALL} = true ]]; then
     MSG "LITE INSTALLATION STARTED"
 else
     MSG "INSTALLATION STARTED"
+fi
+
+
+# Check that specified package manager exists in Mac OS
+if [ "${OS}" == "Darwin" ]; then
+    if [ ${USE_MACPORTS} = true -a -z "$(which port)" ]; then
+        EXIT "MacPorts specified, but 'port' application not found. INSTALLATION FAILED."
+    elif [ ${USE_MACPORTS} = false -a -z "$(which brew)" ]; then
+        EXIT "Homebrew specified, but 'brew' application not found. INSTALLATION FAILED."
+    fi
 fi
 
 
