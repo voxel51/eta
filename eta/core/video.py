@@ -2774,7 +2774,7 @@ class FFprobe(object):
         if self._p.returncode != 0:
             raise etau.ExecutableRuntimeError(self.cmd, err)
 
-        return out.decode() if decode else out
+        return out.decode("utf-8") if decode else out
 
 
 class FFmpeg(object):
