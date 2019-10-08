@@ -176,15 +176,32 @@ def timestamp_to_frame_number(timestamp, duration, total_frame_count):
     '''Converts the given timestamp in a video to a frame number.
 
     Args:
-        timestamp: the timestanp (in seconds) of interest
+        timestamp: the timestamp (in seconds or "HH:MM:SS.XXX" format) of
+            interest
         duration: the length of the video (in seconds)
         total_frame_count: the total number of frames in the video
 
     Returns:
         the frame number associated with the given timestamp in the video
     '''
+    if isinstance(timestamp, six.string_types):
+        timestamp = timestamp_str_to_seconds(timestamp)
     alpha = timestamp / duration
     return 1 + int(round(alpha * (total_frame_count - 1)))
+
+
+def timestamp_str_to_seconds(timestamp):
+    '''Converts a timestamp string in "HH:MM:SS.XXX" format to seconds.
+
+    Args:
+        timestamp: a string in "HH:MM:SS.XXX" format
+
+    Returns:
+        the number of seconds
+    '''
+    return sum(
+        float(n) * m for n, m in zip(
+            reversed(timestamp.split(":")), (1, 60, 3600)))
 
 
 def world_time_to_timestamp(world_time, start_time):
@@ -290,7 +307,8 @@ class VideoMetadata(Serializable):
         Exactly one keyword argument must be supplied.
 
         Args:
-            timestamp: the timestamp (in seconds) of interest
+            timestamp: the timestamp (in seconds or "HH:MM:SS.XXX" format) of
+                interest
             world_time: a datetime describing the world time of interest
 
         Returns:
@@ -314,7 +332,8 @@ class VideoMetadata(Serializable):
 
         Args:
             frame_number: the frame number of interest
-            timestamp: the number of seconds into the video
+            timestamp: the timestamp (in seconds or "HH:MM:SS.XXX" format) of
+                interest
             world_time: a datetime describing the absolute (world) time of
                 interest
 
