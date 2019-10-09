@@ -235,22 +235,6 @@ MSG "Initializing submodules"
 CRITICAL git submodule init
 CRITICAL git submodule update
 
-#
-# Install tensorflow/models
-#
-# This requires compiling protocol buffers, which, in turn requires a suitable
-# version of `protoc` to be installed on your machine. ETA's `requirements.txt`
-# file attempted to install `protoc`, but, if that didn't work, then the code
-# below will try to install it another way.
-#
-# NOTE: If you don't have proctoc>=3.6.1, you may get errors when the `protoc`
-# command below runs. To manually install a recent protoc version, follow these
-# instructions:
-# https://gist.github.com/sofyanhadia/37787e5ed098c97919b8c593f0ec44d8
-#
-# As of this writing, we recommend installing protoc==3.6.1. Prebuilt binary:
-# https://github.com/google/protobuf/releases/download/v3.6.1/protoc-3.6.1-linux-x86_64.zip
-#
 MSG "Installing tensorflow/models"
 cd tensorflow/models
 INFO command -v protoc
@@ -266,6 +250,29 @@ else
         CRITICAL sudo apt-get install -y protobuf-compiler
     fi
 fi
+
+# Check if protoc installed successfully, otherwise install manually
+INFO command -v protoc
+if [ $? -ne 0 ]; then
+    MSG "Protoc installation failed with package manager. Installing now manually."
+    if [ "${OS}" == "Darwin" ]; then
+        # Mac - Download Protoc from github
+        CRITICAL curl -OL https://github.com/protocolbuffers/protobuf/releases/download/v3.6.1/protoc-3.6.1-osx-x86_64.zip
+        CRITICAL unzip protoc-3.6.1-osx-x86_64.zip -d protoc3
+        CRITICAL rm -rf protoc-3.6.1-osx-x86_64.zip
+     else
+        # Linux - Download Protoc from github
+        CRITICAL curl -OL https://github.com/protocolbuffers/protobuf/releases/download/v3.6.1/protoc-3.6.1-linux-x86_64.zip
+        CRITICAL unzip protoc-3.6.1-linux-x86_64.zip -d protoc3
+        CRITICAL rm -rf protoc-3.6.1-linux-x86_64.zip
+    fi
+
+    # Move protoc to /usr/local/
+    CRITICAL sudo mv protoc3/bin/* /usr/local/bin/
+    CRITICAL sudo mv protoc3/include/* /usr/local/include/
+    CRITICAL rm -rf protoc3
+fi
+
 MSG "Compiling protocol buffers"
 CRITICAL protoc research/object_detection/protos/*.proto \
     --proto_path=research \
