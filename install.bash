@@ -266,6 +266,42 @@ else
         CRITICAL sudo apt-get install -y protobuf-compiler
     fi
 fi
+
+INFO command -v protoc
+if [ $? -eq 0 ]; then
+    MSG "protoc already installed"
+else
+    MSG "Installing protoc"
+    if [ "${OS}" == "Darwin" ]; then
+        # Mac
+        CRITICAL brew install protobuf
+     else
+        # Linux
+        CRITICAL sudo apt-get install -y protobuf-compiler
+    fi
+fi
+
+# Check if protoc installed successfully, otherwise install manually
+INFO command -v protoc
+if [ $? -ne 0 ]; then
+    if [ "${OS}" == "Darwin" ]; then
+        # Mac - Download Protoc from github
+        CRITICAL curl -OL https://github.com/protocolbuffers/protobuf/releases/download/v3.6.1/protoc-3.6.1-osx-x86_64.zip
+        CRITICAL unzip protoc-3.6.1-osx-x86_64.zip -d protoc3
+        CRITICAL rm -rf protoc-3.6.1-osx-x86_64.zip
+     else
+        # Linux - Download Protoc from github
+        CRITICAL curl -OL https://github.com/protocolbuffers/protobuf/releases/download/v3.6.1/protoc-3.6.1-linux-x86_64.zip
+        CRITICAL unzip protoc-3.6.1-linux-x86_64.zip -d protoc3
+        CRITICAL rm -rf protoc-3.6.1-linux-x86_64.zip
+    fi
+
+    # Move protoc to /usr/local/
+    CRITICAL sudo mv protoc3/bin/* /usr/local/bin/
+    CRITICAL sudo mv protoc3/include/* /usr/local/include/
+    CRITICAL rm -rf protoc3
+fi
+
 MSG "Compiling protocol buffers"
 CRITICAL protoc research/object_detection/protos/*.proto \
     --proto_path=research \
