@@ -24,7 +24,7 @@ brew install python
 brew install python3
 ```
 * <b>Note:</b>
-Since we currently only support Python 3.6.X, you may need to install this older Python version. Homebrew allows us to roll back to a previous version of Python. If, for example, you have had Python 3.6.5 installed previously, you may run the following:
+Since we currently only support Python 3.6.X, you may need to install this older Python version. On MacOS, Homebrew allows us to roll back to a previous version of Python. If, for example, you have had Python 3.6.5 installed previously, you may run the following:
 ```shell
 # Mac
 brew switch python 3.6.5_1
@@ -32,6 +32,17 @@ brew switch python 3.6.5_1
 
 * If you need a fresh install of Python 3.6.5, run the following:
 ```shell
+# Linux
+sudo apt-get update
+sudo apt-get -y --no-install-recommends install software-properties-common
+sudo add-apt-repository -y ppa:deadsnakes/ppa
+sudo apt-get update
+sudo apt-get -y --no-install-recommends install python3.6 python3.6-dev
+sudo ln -s /usr/bin/python3.6 /usr/local/bin/python
+curl https://bootstrap.pypa.io/get-pip.py | sudo python
+sudo pip install --upgrade pip setuptools
+sudo pip install virtualenv
+
 # Mac
 brew unlink python
 brew install pkg-config gdbm openssl readline sqlite xz
