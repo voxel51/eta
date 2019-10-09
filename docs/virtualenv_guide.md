@@ -24,13 +24,15 @@ brew install python
 brew install python3
 ```
 * <b>Note:</b>
-Since we currently only support up to Python 3.6.X, you may need to brew install this older Python version. If you have had Python 3.6 installed previously, run the following:
+Since we currently only support Python 3.6.X, you may need to install this older Python version. Homebrew allows us to roll back to a previous version of Python. If, for example, you have had Python 3.6.5 installed previously, you may run the following:
 ```shell
+# Mac
 brew switch python 3.6.5_1
 ```
 
 * If you need a fresh install of Python 3.6.5, run the following:
 ```shell
+# Mac
 brew unlink python
 brew install pkg-config gdbm openssl readline sqlite xz
 brew install --ignore-dependencies https://raw.githubusercontent.com/Homebrew/homebrew-core/f2a764ef944b1080be64bd88dca9a1d80130c558/Formula/python.rb
