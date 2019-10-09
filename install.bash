@@ -267,20 +267,6 @@ else
     fi
 fi
 
-INFO command -v protoc
-if [ $? -eq 0 ]; then
-    MSG "protoc already installed"
-else
-    MSG "Installing protoc"
-    if [ "${OS}" == "Darwin" ]; then
-        # Mac
-        CRITICAL brew install protobuf
-     else
-        # Linux
-        CRITICAL sudo apt-get install -y protobuf-compiler
-    fi
-fi
-
 # Check if protoc installed successfully, otherwise install manually
 INFO command -v protoc
 if [ $? -ne 0 ]; then
