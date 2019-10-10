@@ -11,17 +11,33 @@ packages and Python applications on your machine.
 
 Follow these instructions to create Python 2 and Python 3 virtual environments.
 
-* If desired, install fresh python distributions from
+* If desired, install fresh python distributions (2.7 and 3.6) from
 https://www.python.org/downloads
 
+* Sometimes installing an older version of Python can be unclear. If you need a fresh install of Python 3.6, you can also run the following:
 ```shell
-# Linux
-sudo apt-get install python2.7
-sudo apt-get install python3.6
+# Ubuntu
+sudo apt-get update
+sudo apt-get -y --no-install-recommends install software-properties-common
+sudo add-apt-repository -y ppa:deadsnakes/ppa
+sudo apt-get update
+sudo apt-get -y --no-install-recommends install python3.6 python3.6-dev
+sudo ln -s /usr/bin/python3.6 /usr/local/bin/python
+curl https://bootstrap.pypa.io/get-pip.py | sudo python
+sudo pip install --upgrade pip setuptools
+sudo pip install virtualenv
 
 # Mac
-brew install python
-brew install python3
+brew unlink python
+brew install pkg-config gdbm openssl readline sqlite xz
+brew install --ignore-dependencies https://raw.githubusercontent.com/Homebrew/homebrew-core/f2a764ef944b1080be64bd88dca9a1d80130c558/Formula/python.rb
+```
+
+* <b>Note:</b>
+If you have previously had Python 3.6.5 installed through Homebrew on MacOS, running the following will switch your Python 3.7.x with Python 3.6.5. In some cases, this may be an easier solution.
+```shell
+# Mac
+brew switch python 3.6.5_1
 ```
 
 * Install the `virtualenv` package:
