@@ -1153,12 +1153,12 @@ def list_files(dir_path, abs_paths=False, recursive=False):
         for root, _, filenames in os.walk(dir_path):
             files.extend([
                 os.path.relpath(os.path.join(root, f), dir_path)
-                for f in filenames if not f.decode("utf-8").startswith(".")])
+                for f in filenames if not f.startswith(".")])
     else:
         files = [
             f for f in os.listdir(dir_path)
             if os.path.isfile(os.path.join(dir_path, f))
-                and not f.decode("utf-8").startswith(".")]
+                and not f.startswith(".")]
 
     files = sorted(files)
 
@@ -1188,12 +1188,12 @@ def list_subdirs(dir_path, abs_paths=False, recursive=False):
         for root, dirnames, _ in os.walk(dir_path):
             dirs.extend([
                 os.path.relpath(os.path.join(root, d), dir_path)
-                for d in dirnames if not d.decode("utf-8").startswith(".")])
+                for d in dirnames if not d.startswith(".")])
     else:
         dirs = [
             d for d in os.listdir(dir_path)
             if os.path.isdir(os.path.join(dir_path, d))
-                and not d.decode("utf-8").startswith(".")]
+                and not d.startswith(".")]
 
     dirs = sorted(dirs)
 
