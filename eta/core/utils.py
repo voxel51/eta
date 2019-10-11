@@ -265,10 +265,10 @@ def query_yes_no(question, default=None):
 
 
 def call(args):
-    '''Runs the command via `subprocess.call`.
+    '''Runs the command via `subprocess.call()`.
 
     stdout and stderr are streamed live during execution. If you want to
-    capture these streams, use `communicate`.
+    capture these streams, use `communicate()`.
 
     Args:
         args: the command specified as a ["list", "of", "strings"]
@@ -280,7 +280,7 @@ def call(args):
 
 
 def communicate(args, decode=False):
-    '''Runs the command via subprocess.communicate()
+    '''Runs the command via `subprocess.communicate()`
 
     Args:
         args: the command specified as a ["list", "of", "strings"]
@@ -302,11 +302,13 @@ def communicate(args, decode=False):
 
 
 def communicate_or_die(args, decode=False):
-    '''Wrapper around communicate() that raises an exception if any error
+    '''Wrapper around `communicate()` that raises an exception if any error
     occurs.
 
     Args:
-        same as communicate()
+        args: the command specified as a ["list", "of", "strings"]
+        decode: whether to decode the output bytes into utf-8 strings. By
+            default, the raw bytes are returned
 
     Returns:
         out: the command's stdout
