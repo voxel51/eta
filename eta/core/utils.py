@@ -152,7 +152,7 @@ def parse_kvps(kvps_str):
                 k, v = pair.strip().split("=")
                 kvps[k.strip()] = v.strip()
         except ValueError:
-            raise ValueError("Invalid key-value pair string '%s'", kvps_str)
+            raise ValueError("Invalid key-value pair string '%s'" % kvps_str)
     return kvps
 
 
