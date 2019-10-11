@@ -44,8 +44,9 @@ def run(job_config, pipeline_status, overwrite=True):
             the job was (succesfully) run
 
     Returns:
-        True/False: if the job was actually run
-        True/False: if execution terminated succesfully
+        (ran_job, success), where:
+            ran_job: True/False if the job was actually run
+            success: True/False if execution terminated succesfully
 
     Raises:
         JobConfigError: if the JobConfig was invalid
@@ -120,6 +121,7 @@ def _run(job_config):
 
 
 class JobConfigError(Exception):
+    '''Exception raised when an invalid JobConfig is encountered.'''
     pass
 
 
