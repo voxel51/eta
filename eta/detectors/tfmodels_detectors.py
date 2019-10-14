@@ -125,6 +125,7 @@ class TFModelsDetector(ObjectDetector, UsesTFSession):
         objects = [
             _to_detected_object(b, s, c, self._category_index)
             for b, s, c in zip(boxes, scores, classes)
+            if c in self._category_index
         ]
         return DetectedObjectContainer(objects=objects)
 
