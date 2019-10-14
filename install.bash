@@ -243,19 +243,6 @@ if [ $? -eq 0 ]; then
 else
     MSG "Installing protoc"
     if [ "${OS}" == "Darwin" ]; then
-        # Mac
-        CRITICAL brew install protobuf
-     else
-        # Linux
-        CRITICAL sudo apt-get install -y protobuf-compiler
-    fi
-fi
-
-# Check if protoc installed successfully, otherwise install manually
-INFO command -v protoc
-if [ $? -ne 0 ]; then
-    MSG "Protoc installation failed with package manager. Installing now manually."
-    if [ "${OS}" == "Darwin" ]; then
         # Mac - Download Protoc from github
         CRITICAL curl -OL https://github.com/protocolbuffers/protobuf/releases/download/v3.6.1/protoc-3.6.1-osx-x86_64.zip
         CRITICAL unzip protoc-3.6.1-osx-x86_64.zip -d protoc3
