@@ -120,17 +120,35 @@ class PipelineStatus(Serializable):
         return status_message.time
 
     def start(self, message="Pipeline started"):
-        '''Mark the pipeline as started and record the given message.'''
+        '''Mark the pipeline as started and record the given message.
+
+        If the pipeline is already started, no action is taken.
+        '''
+        if self.state == PipelineState.RUNNING:
+            return
+
         self.start_time = self.add_message(message)
         self.state = PipelineState.RUNNING
 
     def complete(self, message="Pipeline completed"):
-        '''Mark the pipelne as complete and record the given message.'''
+        '''Mark the pipelne as complete and record the given message.
+
+        If the pipeline is already complete, no action is taken.
+        '''
+        if self.state == PipelineState.COMPLETE:
+            return
+
         self.complete_time = self.add_message(message)
         self.state = PipelineState.COMPLETE
 
     def fail(self, message="Pipeline failed"):
-        '''Mark the pipelne as failed and record the given message.'''
+        '''Mark the pipelne as failed and record the given message.
+
+        If the pipeline is already failed, no action is taken.
+        '''
+        if self.state == PipelineState.FAILED:
+            return
+
         self.fail_time = self.add_message(message)
         self.state = PipelineState.FAILED
 
