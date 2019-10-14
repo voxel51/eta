@@ -472,6 +472,14 @@ class VideoFrameLabels(Serializable):
         '''
         self.objects.add_container(objs)
 
+    def clear_frame_attributes(self):
+        '''Removes all frame attributes from the instance.'''
+        self.attrs = AttributeContainer()
+
+    def clear_objects(self):
+        '''Removes all objects from the instance.'''
+        self.objects = DetectedObjectContainer()
+
     def merge_frame_labels(self, frame_labels):
         '''Merges the labels into the frame.
 
@@ -743,6 +751,16 @@ class VideoLabels(Serializable):
         for obj in objs:
             obj.frame_number = frame_number
             self.frames[frame_number].add_object(obj)
+
+    def clear_frame_attributes(self):
+        '''Removes all frame attributes from the instance.'''
+        for frame_number in self:
+            self[frame_number].clear_frame_attributes()
+
+    def clear_objects(self):
+        '''Removes all objects from the instance.'''
+        for frame_number in self:
+            self[frame_number].clear_objects()
 
     def get_schema(self):
         '''Gets the current enforced schema for the video, or None if no schema
@@ -1263,6 +1281,16 @@ class VideoSetLabels(Set):
         if self.has_schema:
             self._apply_schema_to_video(video_labels)
         super(VideoSetLabels, self).add(video_labels)
+
+    def clear_frame_attributes(self):
+        '''Removes all frame attributes from all VideoLabels in the set.'''
+        for video_labels in self:
+            video_labels.clear_frame_attributes()
+
+    def clear_objects(self):
+        '''Removes all objects from all VideoLabels in the set.'''
+        for video_labels in self:
+            video_labels.clear_objects()
 
     def get_filenames(self):
         '''Returns the set of filenames of VideoLabels in the set.

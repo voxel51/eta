@@ -161,6 +161,14 @@ class ImageLabels(Serializable):
         '''
         self.objects.add_container(objs)
 
+    def clear_frame_attributes(self):
+        '''Removes all frame attributes from the instance.'''
+        self.attrs = AttributeContainer()
+
+    def clear_objects(self):
+        '''Removes all objects from the instance.'''
+        self.objects = DetectedObjectContainer()
+
     def merge_labels(self, image_labels):
         '''Merges the ImageLabels into this object.'''
         self.add_image_attributes(image_labels.attrs)
@@ -530,6 +538,16 @@ class ImageSetLabels(Set):
             self._validate_labels(image_labels)
 
         super(ImageSetLabels, self).add(image_labels)
+
+    def clear_frame_attributes(self):
+        '''Removes all frame attributes from all ImageLabels in the set.'''
+        for image_labels in self:
+            image_labels.clear_frame_attributes()
+
+    def clear_objects(self):
+        '''Removes all objects from all ImageLabels in the set.'''
+        for image_labels in self:
+            image_labels.clear_objects()
 
     def get_filenames(self):
         '''Returns the set of filenames of ImageLabels in the set.
