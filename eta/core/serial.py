@@ -1674,6 +1674,22 @@ class Container(Serializable):
         new_container.add_iterable(elements)
         return new_container
 
+    def get_matching_inds(self, filters, match=any):
+        '''Gets the indices of the elements matching the given filters.
+
+        Args:
+            filters: a list of functions that accept elements and return
+                True/False
+            match: a function (usually `any` or `all`) that accepts an iterable
+                and returns True/False. Used to aggregate the outputs of each
+                filter to decide whether a match has occurred. The default is
+                `any`
+
+        Returns:
+            a list of indices
+        '''
+        return self._get_matching_inds(filters, match)
+
     def sort_by(self, attr, reverse=False):
         '''Sorts the elements in the container by the given attribute.
 
@@ -1746,6 +1762,11 @@ class Container(Serializable):
     def _filter_elements(self, filters, match):
         return list(
             filter(lambda o: match(f(o) for f in filters), self.__elements__))
+
+    def _get_matching_inds(self, filters, match):
+        return [
+            ind for ind, o in enumerate(self.__elements__)
+            if match(f(o) for f in filters)]
 
     def _slice_to_inds(self, sli):
         return range(len(self))[sli]
@@ -2101,6 +2122,10 @@ class BigContainer(BigMixin, Container):
             return match(f(ele) for f in filters)
 
         return list(filter(run_filters, range(len(self))))
+
+    def _get_matching_inds(self, filters, match):
+        # For BigContainers, `_filter_elements` already does the job here
+        return self._filter_elements(filters, match)
 
     @property
     def _ele_paths(self):
