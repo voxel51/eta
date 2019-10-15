@@ -458,11 +458,16 @@ def read_file(inpath, binary=False):
 def write_file(str_or_bytes, outpath):
     '''Writes the given string/bytes to disk.
 
+    If a string is provided, it is encoded via `.encode()`.
+
     Args:
         str_or_bytes: the string or bytes to write to disk
         outpath: the desired output filepath
     '''
     ensure_basedir(outpath)
+    if is_str(str_or_bytes):
+        str_or_bytes = str_or_bytes.encode()
+
     with open(outpath, "wb") as f:
         f.write(str_or_bytes)
 
