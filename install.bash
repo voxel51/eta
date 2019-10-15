@@ -153,7 +153,7 @@ CRITICAL pip install --upgrade virtualenv
 
 
 MSG "Installing Python packages"
-CRITICAL pip install -r requirements.txt
+CRITICAL pip install -r requirements.txt --ignore-installed
 
 
 # Install Tensorflow
