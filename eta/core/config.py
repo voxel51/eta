@@ -20,6 +20,7 @@ import six
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+import inspect
 import numbers
 import os
 import sys
@@ -496,6 +497,37 @@ class Config(etas.Serializable):
         return _parse_key(d, key, None, default)[0]
 
     @staticmethod
+    def parse_categorical(d, key, choices, default=no_default):
+        '''Parses a categorical JSON field, which must take a value from among
+        the given choices.
+
+        Args:
+            d: a JSON dictionary
+            key: the key to parse
+            choices: either an iterable of possible values or an enum-like
+                class whose attributes define the possible values
+            default: a default value to return if key is not present
+
+        Returns:
+            the raw (untouched) value of the given field, which is equal to a
+            value from `choices`
+
+        Raises:
+            ConfigError: if the key was present in the dictionary but its value
+                was not an allowed choice, or if no default value was provided
+                and the key was not found in the dictionary
+        '''
+        val, found = _parse_key(d, key, None, default)
+        if inspect.isclass(choices):
+            choices = set(
+                v for k, v in iteritems(vars(choices))
+                if not k.startswith("_"))
+        if found and val not in choices:
+            raise ConfigError(
+                "Unsupported value '%s'; choices are %s" % (val, choices))
+        return val
+
+    @staticmethod
     def parse_mutually_exclusive_fields(fields):
         '''Parses a mutually exclusive dictionary of pre-parsed fields, which
         must contain exactly one field with a truthy value.
@@ -512,10 +544,37 @@ class Config(etas.Serializable):
         d = [(k, v) for k, v in iteritems(fields) if v]
         num_fields = len(d)
         if num_fields != 1:
-            ConfigError(
-                "Expected exactly one field in the following to be specified, "
-                "but found %d:\n%s" % (num_fields, etas.pretty_str(d)))
+            raise ConfigError(
+                "Expected exactly one field in the following to be specified: "
+                "%s, but found %d:\n%s" % (
+                    etas.pretty_str(list(fields.keys())), num_fields,
+                    etas.pretty_str(d)
+                )
+            )
         return d[0]
+
+    @staticmethod
+    def validate_all_or_nothing_fields(fields):
+        '''Validates a dictionary of pre-parsed fields checking that either
+        all or none of the fields have a truthy value.
+
+        Args:
+            fields: a dictionary of pre-parsed fields
+
+        Raises:
+            ConfigError: if some values are truth and some are not
+        '''
+        d = [(k, v) for k, v in iteritems(fields) if v]
+        d_falsey = [(k, v) for k, v in iteritems(fields) if not v]
+        num_fields = len(d)
+        if num_fields != 0 and num_fields != len(fields):
+            raise ConfigError(
+                "Expected either all or none of the following to be "
+                "specified: %s, but found %d fields specified:\n%s" % (
+                    etas.pretty_str(list(fields.keys())), num_fields,
+                    etas.pretty_str(d)
+                )
+            )
 
 
 class ConfigContainer(etas.Container):

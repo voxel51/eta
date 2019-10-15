@@ -2,7 +2,7 @@
 Core data structures for working with geometric concepts like points,
 bounding boxes, etc.
 
-Copyright 2017-2018, Voxel51, Inc.
+Copyright 2017-2019, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
@@ -63,6 +63,24 @@ class BoundingBox(Serializable):
         br = self.bottom_right.coords_in(
             frame_size=frame_size, shape=shape, img=img)
         return tl[0], tl[1], br[0] - tl[0], br[1] - tl[1]
+
+    def aspect_ratio_in(self, frame_size=None, shape=None, img=None):
+        '''Returns the aspect ratio of the bounding box in the specified image.
+
+        Pass *one* keyword argument to this function.
+
+        Args:
+            frame_size: the (width, height) of the image
+            shape: the (height, width, ...) of the image, e.g. from img.shape
+            img: the image itself
+
+        Returns:
+            the aspect ratio of the box
+        '''
+        w, h = _to_frame_size(frame_size=frame_size, shape=shape, img=img)
+        tl = self.top_left
+        br = self.bottom_right
+        return (br.x - tl.x) * w / (h * (br.y - tl.y))
 
     def extract_from(self, img, force_square=False):
         '''Extracts the subimage defined by this bounding box from the image.
@@ -176,21 +194,46 @@ class BoundingBox(Serializable):
         return cls(RelativePoint.origin(), RelativePoint.origin())
 
     @classmethod
+    def from_coords(cls, tlx, tly, brx, bry):
+        '''Constructs a BoundingBox from its top-left and bottom-right
+        coordinates.
+
+        Args:
+            tlx: the top-left x coordinate
+            tly: the top-left y coordinate
+            brx: the bottom-right x coordinate
+            bry: the bottom-right y coordinate
+
+        Returns:
+            a BoundingBox
+        '''
+        tlx = max(0, min(tlx, 1))
+        tly = max(0, min(tly, 1))
+        brx = max(0, min(brx, 1))
+        bry = max(0, min(bry, 1))
+        top_left = RelativePoint(tlx, tly)
+        bottom_right = RelativePoint(brx, bry)
+        return cls(top_left, bottom_right)
+
+    @classmethod
     def from_dict(cls, d):
         '''Constructs a BoundingBox from a JSON dictionary.'''
         return cls(
             RelativePoint.from_dict(d["top_left"]),
-            RelativePoint.from_dict(d["bottom_right"]),
-        )
+            RelativePoint.from_dict(d["bottom_right"]))
 
 
 class HasBoundingBox(object):
     '''Mixin to explicitly indicate that an instance has a bounding box.'''
 
     def get_bounding_box(self):
+        '''Gets the bounding box for the instance.
+
+        Returns:
+            a BoundingBox
+        '''
         raise NotImplementedError(
-            "Classes implementing HasBoundingBox need to implement the "
-            "get_bounding_box method.")
+            "Subclasses must implement get_bounding_box()")
 
 
 class RelativePoint(Serializable):

@@ -20,8 +20,8 @@ Custom installations:
         required to use the core library. The default is a full install.
 
 Mac-only options:
--b      Use brew to install packages (mac only). The default is false.
--p      Use port to install packages (mac only). The default is true.
+-b      Use brew to install packages (mac only). The default is true.
+-p      Use port to install packages (mac only). The default is false.
 "
 }
 
@@ -29,7 +29,7 @@ Mac-only options:
 # Parse flags
 SHOW_HELP=false
 LITE_INSTALL=false
-USE_MACPORTS=true
+USE_MACPORTS=false
 while getopts "hlbp" FLAG; do
     case "${FLAG}" in
         h) SHOW_HELP=true ;;
@@ -101,6 +101,16 @@ if [[ ${LITE_INSTALL} = true ]]; then
     MSG "LITE INSTALLATION STARTED"
 else
     MSG "INSTALLATION STARTED"
+fi
+
+
+# Check that specified package manager is installed in Mac OS
+if [ "${OS}" == "Darwin" ]; then
+    if [ ${USE_MACPORTS} = true -a -z "$(which port)" ]; then
+        EXIT "MacPorts specified, but 'port' application not found. INSTALLATION FAILED."
+    elif [ ${USE_MACPORTS} = false -a -z "$(which brew)" ]; then
+        EXIT "Homebrew specified, but 'brew' application not found. INSTALLATION FAILED."
+    fi
 fi
 
 
@@ -225,22 +235,6 @@ MSG "Initializing submodules"
 CRITICAL git submodule init
 CRITICAL git submodule update
 
-#
-# Install tensorflow/models
-#
-# This requires compiling protocol buffers, which, in turn requires a suitable
-# version of `protoc` to be installed on your machine. ETA's `requirements.txt`
-# file attempted to install `protoc`, but, if that didn't work, then the code
-# below will try to install it another way.
-#
-# NOTE: If you don't have proctoc>=3.6.1, you may get errors when the `protoc`
-# command below runs. To manually install a recent protoc version, follow these
-# instructions:
-# https://gist.github.com/sofyanhadia/37787e5ed098c97919b8c593f0ec44d8
-#
-# As of this writing, we recommend installing protoc==3.6.1. Prebuilt binary:
-# https://github.com/google/protobuf/releases/download/v3.6.1/protoc-3.6.1-linux-x86_64.zip
-#
 MSG "Installing tensorflow/models"
 cd tensorflow/models
 INFO command -v protoc
@@ -249,19 +243,41 @@ if [ $? -eq 0 ]; then
 else
     MSG "Installing protoc"
     if [ "${OS}" == "Darwin" ]; then
-        # Mac
-        CRITICAL brew install protobuf
+        # Mac - Download Protoc from github
+        CRITICAL curl -OL https://github.com/protocolbuffers/protobuf/releases/download/v3.6.1/protoc-3.6.1-osx-x86_64.zip
+        CRITICAL unzip protoc-3.6.1-osx-x86_64.zip -d protoc3
+        CRITICAL rm -rf protoc-3.6.1-osx-x86_64.zip
      else
-        # Linux
-        CRITICAL sudo apt-get install -y protobuf-compiler
+        # Linux - Download Protoc from github
+        CRITICAL curl -OL https://github.com/protocolbuffers/protobuf/releases/download/v3.6.1/protoc-3.6.1-linux-x86_64.zip
+        CRITICAL unzip protoc-3.6.1-linux-x86_64.zip -d protoc3
+        CRITICAL rm -rf protoc-3.6.1-linux-x86_64.zip
     fi
+
+    # Move protoc to /usr/local/
+    CRITICAL sudo mv protoc3/bin/* /usr/local/bin/
+    CRITICAL sudo mv protoc3/include/* /usr/local/include/
+    CRITICAL rm -rf protoc3
 fi
+
 MSG "Compiling protocol buffers"
 CRITICAL protoc research/object_detection/protos/*.proto \
     --proto_path=research \
     --python_out=research
 MSG "You must have '$(pwd)/research' in 'pythonpath_dirs' in your ETA config"
 MSG "You must have '$(pwd)/research/slim' in 'pythonpath_dirs' in your ETA config"
+
+# Remove all tensorflow/models subdirectories that we don't use
+MSG "Removing unused tensorflow/models subdirectories"
+rm -rf samples
+rm -rf tutorials
+mv research/slim .
+mv research/object_detection .
+rm -rf research
+mkdir -p research
+mv slim research
+mv object_detection research
+
 cd ../..
 
 

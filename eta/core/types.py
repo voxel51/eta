@@ -1550,3 +1550,33 @@ class CheckpointFile(File, ConcreteData):
     @staticmethod
     def is_valid_path(path):
         return File.is_valid_path(path) and etau.has_extension(path, ".ckpt")
+
+
+class LabeledVideoDatasetDirectory(Directory):
+    '''A `eta.core.datasets.LabeledVideoDataset` directory.
+
+    Examples:
+        /path/to/labeled_video_dataset
+    '''
+    pass
+
+
+class LabeledImageDatasetDirectory(Directory):
+    '''A `eta.core.datasets.LabeledImageDataset` directory.
+
+    Examples:
+        /path/to/labeled_image_dataset
+    '''
+    pass
+
+
+class LabeledDatasetIndex(JSONFile):
+    '''An encapsulation of the manifest of a `LabeledDataset`.
+
+    This type is implemented in ETA by the
+    `eta.core.datasets.LabeledDatasetIndex` class.
+
+    Examples:
+        /path/to/labeled_dataset/manifest.json
+    '''
+    pass

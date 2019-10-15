@@ -52,7 +52,7 @@ logger = logging.getLogger(__name__)
 
 
 #
-# The file extensions of supported video files
+# The file extensions of supported video files. Use LOWERCASE!
 #
 # In practice, any video that ffmpeg can read will be supported. Nonetheless,
 # we enumerate this list here so that the ETA type system can verify the
@@ -61,7 +61,7 @@ logger = logging.getLogger(__name__)
 # This list was taken from https://en.wikipedia.org/wiki/Video_file_format
 #
 SUPPORTED_VIDEO_FILE_FORMATS = {
-    ".3g2", ".3gp", ".M2TS", ".MTS", ".amv", ".avi", ".f4a", ".f4b", ".f4p",
+    ".3g2", ".3gp", ".m2ts", ".mts", ".amv", ".avi", ".f4a", ".f4b", ".f4p",
     ".f4v", ".flv", ".m2v", ".m4p", ".m4v", ".mkv", ".mov", ".mp2", ".mp4",
     ".mpe", ".mpeg", ".mpg", ".mpv", ".nsv", ".ogg", ".ogv", ".qt", ".rm",
     ".rmvb", ".svi", ".vob", ".webm", ".wmv", ".yuv"
@@ -91,7 +91,7 @@ def is_supported_video_file(path):
     Returns:
         True/False if the path refers to a supported video file type
     '''
-    return os.path.splitext(path)[1] in SUPPORTED_VIDEO_FILE_FORMATS
+    return os.path.splitext(path)[1].lower() in SUPPORTED_VIDEO_FILE_FORMATS
 
 
 def is_supported_image_sequence(path):
@@ -176,15 +176,32 @@ def timestamp_to_frame_number(timestamp, duration, total_frame_count):
     '''Converts the given timestamp in a video to a frame number.
 
     Args:
-        timestamp: the timestanp (in seconds) of interest
+        timestamp: the timestamp (in seconds or "HH:MM:SS.XXX" format) of
+            interest
         duration: the length of the video (in seconds)
         total_frame_count: the total number of frames in the video
 
     Returns:
         the frame number associated with the given timestamp in the video
     '''
+    if isinstance(timestamp, six.string_types):
+        timestamp = timestamp_str_to_seconds(timestamp)
     alpha = timestamp / duration
     return 1 + int(round(alpha * (total_frame_count - 1)))
+
+
+def timestamp_str_to_seconds(timestamp):
+    '''Converts a timestamp string in "HH:MM:SS.XXX" format to seconds.
+
+    Args:
+        timestamp: a string in "HH:MM:SS.XXX" format
+
+    Returns:
+        the number of seconds
+    '''
+    return sum(
+        float(n) * m for n, m in zip(
+            reversed(timestamp.split(":")), (1, 60, 3600)))
 
 
 def world_time_to_timestamp(world_time, start_time):
@@ -290,7 +307,8 @@ class VideoMetadata(Serializable):
         Exactly one keyword argument must be supplied.
 
         Args:
-            timestamp: the timestamp (in seconds) of interest
+            timestamp: the timestamp (in seconds or "HH:MM:SS.XXX" format) of
+                interest
             world_time: a datetime describing the world time of interest
 
         Returns:
@@ -314,7 +332,8 @@ class VideoMetadata(Serializable):
 
         Args:
             frame_number: the frame number of interest
-            timestamp: the number of seconds into the video
+            timestamp: the timestamp (in seconds or "HH:MM:SS.XXX" format) of
+                interest
             world_time: a datetime describing the absolute (world) time of
                 interest
 
@@ -453,6 +472,14 @@ class VideoFrameLabels(Serializable):
         '''
         self.objects.add_container(objs)
 
+    def clear_frame_attributes(self):
+        '''Removes all frame attributes from the instance.'''
+        self.attrs = AttributeContainer()
+
+    def clear_objects(self):
+        '''Removes all objects from the instance.'''
+        self.objects = DetectedObjectContainer()
+
     def merge_frame_labels(self, frame_labels):
         '''Merges the labels into the frame.
 
@@ -555,6 +582,10 @@ class VideoLabels(Serializable):
     def __getitem__(self, frame_number):
         return self.get_frame(frame_number)
 
+    def __setitem__(self, frame_number, frame_labels):
+        frame_labels.frame_number = frame_number
+        self.add_frame(frame_labels, overwrite=True)
+
     def __delitem__(self, frame_number):
         self.delete_frame(frame_number)
 
@@ -567,6 +598,28 @@ class VideoLabels(Serializable):
 
     def __bool__(self):
         return bool(self.frames)
+
+    @property
+    def has_frame_attributes(self):
+        '''Returns True/False whether the container has at least one frame
+        attribute.
+        '''
+        for frame_number in self:
+            if self[frame_number].attrs:
+                return True
+
+        return False
+
+    @property
+    def has_objects(self):
+        '''Returns True/False whether the container has at least one
+        DetectedObject.
+        '''
+        for frame_number in self:
+            if self[frame_number].objects:
+                return True
+
+        return False
 
     @property
     def has_schema(self):
@@ -591,6 +644,15 @@ class VideoLabels(Serializable):
     def delete_frame(self, frame_number):
         '''Deletes the VideoFrameLabels for the given frame number.'''
         del self.frames[frame_number]
+
+    def get_frame_numbers(self):
+        '''Returns a sorted list of all frames with VideoFrameLabels.'''
+        return sorted(self.frames.keys())
+
+    def get_frame_range(self):
+        '''Returns the (min, max) frame numbers with VideoFrameLabels.'''
+        fns = self.get_frame_numbers()
+        return (fns[0], fns[-1]) if fns else (None, None)
 
     def merge_video_labels(self, video_labels):
         '''Merges the given VideoLabels into this labels.'''
@@ -689,6 +751,16 @@ class VideoLabels(Serializable):
         for obj in objs:
             obj.frame_number = frame_number
             self.frames[frame_number].add_object(obj)
+
+    def clear_frame_attributes(self):
+        '''Removes all frame attributes from the instance.'''
+        for frame_number in self:
+            self[frame_number].clear_frame_attributes()
+
+    def clear_objects(self):
+        '''Removes all objects from the instance.'''
+        for frame_number in self:
+            self[frame_number].clear_objects()
 
     def get_schema(self):
         '''Gets the current enforced schema for the video, or None if no schema
@@ -1210,6 +1282,16 @@ class VideoSetLabels(Set):
             self._apply_schema_to_video(video_labels)
         super(VideoSetLabels, self).add(video_labels)
 
+    def clear_frame_attributes(self):
+        '''Removes all frame attributes from all VideoLabels in the set.'''
+        for video_labels in self:
+            video_labels.clear_frame_attributes()
+
+    def clear_objects(self):
+        '''Removes all objects from all VideoLabels in the set.'''
+        for video_labels in self:
+            video_labels.clear_objects()
+
     def get_filenames(self):
         '''Returns the set of filenames of VideoLabels in the set.
 
@@ -1377,16 +1459,16 @@ class BigVideoSetLabels(VideoSetLabels, BigSet):
 class VideoStreamInfo(Serializable):
     '''Class encapsulating the stream info for a video.'''
 
-    def __init__(self, stream_info):
+    def __init__(self, stream_info, format_info=None):
         '''Constructs a VideoStreamInfo instance.
 
-        This constructor should not normally be called directly. The proper way
-        to instantiate this class is via the `build_for()` factory method.
-
         Args:
-            stream_info: a dictionary generated by `get_stream_info()`
+            stream_info: a dictionary of video stream info
+            format_info: an optional dictionary of video format info. By
+                default, no format info is stored
         '''
         self.stream_info = stream_info
+        self.format_info = format_info or {}
 
     @property
     def encoding_str(self):
@@ -1453,7 +1535,7 @@ class VideoStreamInfo(Serializable):
 
         try:
             # try `duration` x `frame rate`
-            return int(self.duration * self.frame_rate)
+            return int(round(self.duration * self.frame_rate))
         except VideoStreamInfoError:
             pass
 
@@ -1492,6 +1574,12 @@ class VideoStreamInfo(Serializable):
         except KeyError:
             pass
 
+        try:
+            # try `duration` from format info
+            return float(self.format_info["duration"])
+        except KeyError:
+            pass
+
         logger.warning("Unable to determine duration; returning -1")
         return -1
 
@@ -1515,8 +1603,7 @@ class VideoStreamInfo(Serializable):
 
     @classmethod
     def build_for(cls, inpath):
-        '''Builds a VideoStreamInfo object for the given video using
-        `get_stream_info()`.
+        '''Builds a VideoStreamInfo instance for the given video.
 
         Args:
             inpath: the path to the input video
@@ -1524,12 +1611,15 @@ class VideoStreamInfo(Serializable):
         Returns:
             a VideoStreamInfo instance
         '''
-        return cls(get_stream_info(inpath))
+        stream_info, format_info = _get_stream_info(inpath)
+        return cls(stream_info, format_info=format_info)
 
     @classmethod
     def from_dict(cls, d):
         '''Constructs a VideoStreamInfo from a JSON dictionary.'''
-        return cls(d["stream_info"])
+        stream_info = d["stream_info"]
+        format_info = d.get("format_info", None)
+        return cls(stream_info, format_info=format_info)
 
 
 class VideoStreamInfoError(Exception):
@@ -1539,37 +1629,32 @@ class VideoStreamInfoError(Exception):
     pass
 
 
-def get_stream_info(inpath):
-    '''Get stream info for the video using `ffprobe -show_streams`.
+def _get_stream_info(inpath):
+    # Get stream info via ffprobe
+    ffprobe = FFprobe(opts=[
+        "-show_format",              # get format info
+        "-show_streams",             # get stream info
+        "-print_format", "json",     # return in JSON format
+    ])
+    out = ffprobe.run(inpath, decode=True)
+    info = load_json(out)
 
-    Args:
-        inpath: video path
+    # Get format info
+    format_info = info["format"]
 
-    Returns:
-        stream: a dictionary of stream info
+    # Get stream info
+    video_streams = [s for s in info["streams"] if s["codec_type"] == "video"]
+    num_video_streams = len(video_streams)
+    if num_video_streams == 1:
+        stream_info = video_streams[0]
+    elif num_video_streams == 0:
+        logger.warning("No video stream found; defaulting to first stream")
+        stream_info = info["streams"][0]
+    else:
+        logger.warning("Found multiple video streams; using first stream")
+        stream_info = video_streams[0]
 
-    Raises:
-        FFprobeError: if no stream info was found
-    '''
-    try:
-        ffprobe = FFprobe(opts=[
-            "-show_streams",             # get stream info
-            "-print_format", "json",     # return in JSON format
-        ])
-        out = ffprobe.run(inpath, decode=True)
-
-        info = load_json(out)
-
-        for stream in info["streams"]:
-            if stream["codec_type"] == "video":
-                return stream
-
-        logger.warning(
-            "No stream found with codec_type = video. Returning the first "
-            "stream")
-        return info["streams"][0]  # default to the first stream
-    except:
-        raise FFprobeError("Unable to get stream info for '%s'" % inpath)
+    return stream_info, format_info
 
 
 def get_encoding_str(inpath):
@@ -1962,6 +2047,65 @@ def extract_keyframes(video_path, output_patt=None):
     # Load frames into memory via FFmpegVideoReader
     with FFmpegVideoReader(video_path, keyframes_only=True) as r:
         return [img for img in r]
+
+
+def split_video(
+        video_path, output_patt, num_clips=None, clip_duration=None,
+        clip_size_bytes=None):
+    '''Splits the video into (roughly) equal-sized clips of the specified size.
+
+    Exactly one keyword argument should be provided.
+
+    This implementation uses an `ffmpeg` command of the following form:
+
+    ```
+    ffmpeg \
+        -i input.mp4 \
+        -c copy -segment_time SS.XXX -f segment -reset_timestamps 1 \
+        output-%03d.mp4
+    ```
+
+    Args:
+        video_path: the path to a video
+        output_patt: an output pattern like "/path/to/clips-%03d.mp4"
+            specifying where to write the output clips
+        num_clips: the number of (roughly) equal size clips to break the
+            video into
+        clip_duration: the (approximate) duration, in seconds, of each clip to
+            generate. The last clip may be shorter
+        clip_size_bytes: the (approximate) size, in bytes, of each clip to
+            generate. The last clip may be smaller
+    '''
+    #
+    # Determine segment time
+    #
+
+    metadata = VideoMetadata.build_for(video_path)
+    if clip_size_bytes:
+        num_clips = metadata.size_bytes / clip_size_bytes
+
+    if num_clips:
+        # Round up to nearest second to ensure that an additional small clip
+        # is not created at the end
+        segment_time = np.ceil(metadata.duration / num_clips)
+    elif clip_duration:
+        segment_time = clip_duration
+    else:
+        raise ValueError("One keyword argument must be provided")
+
+    #
+    # Perform clipping
+    #
+
+    in_opts = []
+    out_opts = [
+        "-c:v", "copy",
+        "-segment_time", "%.3f" % segment_time,
+        "-f", "segment",
+        "-reset_timestamps", "1",
+    ]
+    ffmpeg = FFmpeg(in_opts=in_opts, out_opts=out_opts)
+    ffmpeg.run(video_path, output_patt)
 
 
 class VideoProcessor(object):
@@ -2677,12 +2821,7 @@ class FFprobe(object):
         if self._p.returncode != 0:
             raise etau.ExecutableRuntimeError(self.cmd, err)
 
-        return out.decode() if decode else out
-
-
-class FFprobeError(Exception):
-    '''Exception raised when FFprobe was unable to analyze a video.'''
-    pass
+        return out.decode("utf-8") if decode else out
 
 
 class FFmpeg(object):
@@ -2856,6 +2995,17 @@ class FFmpeg(object):
             filters.append("fps={0}".format(fps))
         if size:
             filters.append("scale={0}:{1}".format(*size))
+
+            #
+            # If the aspect ratio is changing, we must manually set SAR/DAR
+            # https://stackoverflow.com/questions/34148780/ffmpeg-setsar-value-gets-overriden
+            #
+            if all(p > 0 for p in size):
+                # Force square pixels
+                filters.append("setsar=sar=1:1")
+
+                # Force correct display aspect ratio when playing video
+                filters.append("setdar=dar={0}:{1}".format(*size))
         elif scale:
             filters.append("scale=iw*{0}:ih*{0}".format(scale))
         return ["-vf", ",".join(filters)] if filters else []

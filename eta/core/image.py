@@ -46,7 +46,7 @@ import eta.core.web as etaw
 
 
 #
-# The file extensions of supported image files
+# The file extensions of supported image files. Use LOWERCASE!
 #
 # In practice, any image that `cv2.imread` can read will be supported.
 # Nonetheless, we enumerate this list here so that the ETA type system can
@@ -63,7 +63,7 @@ SUPPORTED_IMAGE_FORMATS = {
 
 def is_supported_image(filepath):
     '''Determines whether the given file has a supported image type.'''
-    return os.path.splitext(filepath)[1] in SUPPORTED_IMAGE_FORMATS
+    return os.path.splitext(filepath)[1].lower() in SUPPORTED_IMAGE_FORMATS
 
 
 def glob_images(dir_):
@@ -160,6 +160,14 @@ class ImageLabels(Serializable):
             objs: a DetectedObjectContainer
         '''
         self.objects.add_container(objs)
+
+    def clear_frame_attributes(self):
+        '''Removes all frame attributes from the instance.'''
+        self.attrs = AttributeContainer()
+
+    def clear_objects(self):
+        '''Removes all objects from the instance.'''
+        self.objects = DetectedObjectContainer()
 
     def merge_labels(self, image_labels):
         '''Merges the ImageLabels into this object.'''
@@ -340,7 +348,7 @@ class ImageLabelsSchema(Serializable):
         try:
             self.validate_object_label(label)
             return True
-        except AttributeContainerSchemaError:
+        except ImageLabelsSchemaError:
             return False
 
     def is_valid_object_attribute(self, label, obj_attr):
@@ -360,7 +368,7 @@ class ImageLabelsSchema(Serializable):
         try:
             self.validate_object(obj)
             return True
-        except AttributeContainerSchemaError:
+        except (ImageLabelsSchemaError, AttributeContainerSchemaError):
             return False
 
     def validate_image_attribute(self, image_attr):
@@ -530,6 +538,16 @@ class ImageSetLabels(Set):
             self._validate_labels(image_labels)
 
         super(ImageSetLabels, self).add(image_labels)
+
+    def clear_frame_attributes(self):
+        '''Removes all frame attributes from all ImageLabels in the set.'''
+        for image_labels in self:
+            image_labels.clear_frame_attributes()
+
+    def clear_objects(self):
+        '''Removes all objects from all ImageLabels in the set.'''
+        for image_labels in self:
+            image_labels.clear_objects()
 
     def get_filenames(self):
         '''Returns the set of filenames of ImageLabels in the set.
@@ -759,7 +777,10 @@ def read(path, include_alpha=False, flag=None):
         a uint8 numpy array containing the image
     '''
     flag = _get_opencv_imread_flag(flag, include_alpha)
-    return _exchange_rb(cv2.imread(path, flag))
+    img_bgr = cv2.imread(path, flag)
+    if img_bgr is None:
+        raise OSError("Image not found '%s'" % path)
+    return _exchange_rb(img_bgr)
 
 
 def write(img, path):

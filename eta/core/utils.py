@@ -15,12 +15,13 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
-from future.utils import iteritems
+from future.utils import iteritems, itervalues
 import six
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+from collections import defaultdict
 import datetime
 import errno
 import glob
@@ -151,7 +152,7 @@ def parse_kvps(kvps_str):
                 k, v = pair.strip().split("=")
                 kvps[k.strip()] = v.strip()
         except ValueError:
-            raise ValueError("Invalid key-value pair string '%s'", kvps_str)
+            raise ValueError("Invalid key-value pair string '%s'" % kvps_str)
     return kvps
 
 
@@ -264,10 +265,10 @@ def query_yes_no(question, default=None):
 
 
 def call(args):
-    '''Runs the command via `subprocess.call`.
+    '''Runs the command via `subprocess.call()`.
 
     stdout and stderr are streamed live during execution. If you want to
-    capture these streams, use `communicate`.
+    capture these streams, use `communicate()`.
 
     Args:
         args: the command specified as a ["list", "of", "strings"]
@@ -279,7 +280,7 @@ def call(args):
 
 
 def communicate(args, decode=False):
-    '''Runs the command via subprocess.communicate()
+    '''Runs the command via `subprocess.communicate()`
 
     Args:
         args: the command specified as a ["list", "of", "strings"]
@@ -301,11 +302,13 @@ def communicate(args, decode=False):
 
 
 def communicate_or_die(args, decode=False):
-    '''Wrapper around communicate() that raises an exception if any error
+    '''Wrapper around `communicate()` that raises an exception if any error
     occurs.
 
     Args:
-        same as communicate()
+        args: the command specified as a ["list", "of", "strings"]
+        decode: whether to decode the output bytes into utf-8 strings. By
+            default, the raw bytes are returned
 
     Returns:
         out: the command's stdout
@@ -528,9 +531,14 @@ def move_file(inpath, outpath, check_ext=False):
         OSError: if check_ext is True and the input and output paths have
             different extensions
     '''
-    if not os.path.isdir(outpath) and check_ext:
-        assert_same_extensions(inpath, outpath)
-    ensure_basedir(outpath)
+    if not os.path.splitext(outpath)[1]:
+        # Output location is a directory
+        ensure_dir(outpath)
+    else:
+        # Output location is a file
+        if check_ext:
+            assert_same_extensions(inpath, outpath)
+        ensure_basedir(outpath)
     shutil.move(inpath, outpath)
 
 
@@ -838,6 +846,37 @@ def assert_same_extensions(*args):
         raise OSError("Expected %s to have the same extensions" % str(args))
 
 
+def split_path(path):
+    '''Splits a path into a list of its individual parts.
+
+    E.g. split_path("/path/to/file") = ["/", "path", "to", "file"]
+
+    Taken from
+    https://www.oreilly.com/library/view/python-cookbook/0596001673/ch04s16.html
+
+    Args:
+        path: a path to a file or directory
+
+    Returns:
+        all_parts: the path split into its individual components (directory
+            and file names)
+    '''
+    all_parts = []
+    while True:
+        parts = os.path.split(path)
+        if parts[0] == path:  # sentinel for absolute paths
+            all_parts.insert(0, parts[0])
+            break
+        elif parts[1] == path: # sentinel for relative paths
+            all_parts.insert(0, parts[1])
+            break
+        else:
+            path = parts[0]
+            all_parts.insert(0, parts[1])
+
+    return all_parts
+
+
 def to_human_decimal_str(num, decimals=1):
     '''Returns a human-readable string represntation of the given decimal
     (base-10) number.
@@ -1097,7 +1136,7 @@ def multiglob(*patterns, **kwargs):
     return it.chain.from_iterable(glob2.iglob(root + p) for p in patterns)
 
 
-def list_files(dir_path, abs_paths=False):
+def list_files(dir_path, abs_paths=False, recursive=False):
     '''Lists the files in the given directory, sorted alphabetically and
     excluding directories and hidden files.
 
@@ -1105,15 +1144,25 @@ def list_files(dir_path, abs_paths=False):
         dir_path: the path to the directory to list
         abs_paths: whether to return the absolute paths to the files. By
             default, this is False
+        recursive: whether to recursively traverse subdirectories. By default,
+            this is False
 
     Returns:
-        a sorted list of the non-hidden filenames (or filepaths) in the
-            directory
+        a sorted list of the non-hidden files in the directory
     '''
-    files = sorted(
-        f for f in os.listdir(dir_path)
-        if os.path.isfile(os.path.join(dir_path, f)) and not f.startswith(".")
-    )
+    if recursive:
+        files = []
+        for root, _, filenames in os.walk(dir_path):
+            files.extend([
+                os.path.relpath(os.path.join(root, f), dir_path)
+                for f in filenames if not f.startswith(".")])
+    else:
+        files = [
+            f for f in os.listdir(dir_path)
+            if os.path.isfile(os.path.join(dir_path, f))
+                and not f.startswith(".")]
+
+    files = sorted(files)
 
     if abs_paths:
         basedir = os.path.abspath(os.path.realpath(dir_path))
@@ -1122,23 +1171,33 @@ def list_files(dir_path, abs_paths=False):
     return files
 
 
-def list_subdirs(dir_path, abs_paths=False):
-    '''Lists the sub-directories in the given directory, sorted alphabetically
+def list_subdirs(dir_path, abs_paths=False, recursive=False):
+    '''Lists the subdirectories in the given directory, sorted alphabetically
     and excluding hidden directories.
 
     Args:
         dir_path: the path to the directory to list
         abs_paths: whether to return the absolute paths to the dirs. By
             default, this is False
+        recursive: whether to recursively traverse subdirectories. By default,
+            this is False
 
     Returns:
-        a sorted list of the non-hidden sub-directory names (or paths) in the
-            directory
+        a sorted list of the non-hidden subdirectories in the directory
     '''
-    dirs = sorted(
-        d for d in os.listdir(dir_path)
-        if os.path.isdir(os.path.join(dir_path, d)) and not d.startswith(".")
-    )
+    if recursive:
+        dirs = []
+        for root, dirnames, _ in os.walk(dir_path):
+            dirs.extend([
+                os.path.relpath(os.path.join(root, d), dir_path)
+                for d in dirnames if not d.startswith(".")])
+    else:
+        dirs = [
+            d for d in os.listdir(dir_path)
+            if os.path.isdir(os.path.join(dir_path, d))
+                and not d.startswith(".")]
+
+    dirs = sorted(dirs)
 
     if abs_paths:
         basedir = os.path.abspath(os.path.realpath(dir_path))
@@ -1395,6 +1454,129 @@ def remove_none_values(d):
     return {k: v for k, v in iteritems(d) if v is not None}
 
 
+def find_duplicate_files(path_list):
+    '''Returns a list of lists of file paths from the input, that have
+    identical contents to each other.
+
+    Args:
+        path_list: list of file paths in which to look for duplicate files
+
+    Returns:
+        duplicates: a list of lists, where each list contains a group of
+            file paths that all have identical content. File paths in
+            `path_list` that don't have any duplicates will not appear in
+            the output.
+    '''
+    hash_buckets = _get_file_hash_buckets(path_list)
+
+    duplicates = []
+    for file_group in itervalues(hash_buckets):
+        if len(file_group) >= 2:
+            duplicates.extend(_find_duplicates_brute_force(file_group))
+
+    return duplicates
+
+
+def find_matching_file_pairs(path_list1, path_list2):
+    '''Returns a list of pairs of paths that have identical contents, where
+    the paths in each pair aren't from the same path list.
+
+    Args:
+        path_list1: list of file paths
+        path_list2: another list of file paths
+
+    Returns:
+        pairs: a list of pairs of file paths that have identical content,
+            where one member of the pair is from `path_list1` and the other
+            member is from `path_list2`
+    '''
+    hash_buckets1 = _get_file_hash_buckets(path_list1)
+    pairs = []
+    for path in path_list2:
+        with open(path, "rb") as f:
+            content = f.read()
+        candidate_matches = hash_buckets1.get(hash(content), [])
+        for candidate_path in candidate_matches:
+            if not _diff_paths(candidate_path, path, content2=content):
+                pairs.append((candidate_path, path))
+
+    return pairs
+
+
+def _get_file_hash_buckets(path_list):
+    hash_buckets = defaultdict(list)
+    for path in path_list:
+        if not os.path.isfile(path):
+            logger.warning(
+                "File '%s' is a directory or does not exist. "
+                "Skipping.", path)
+            continue
+
+        with open(path, "rb") as f:
+            hash_buckets[hash(f.read())].append(path)
+
+    return hash_buckets
+
+
+def _find_duplicates_brute_force(path_list):
+    if len(path_list) < 2:
+        return []
+
+    candidate_file_path = path_list[0]
+    candidate_duplicates = [candidate_file_path]
+    with open(candidate_file_path, "rb") as f:
+        candidate_content = f.read()
+
+    remaining_paths = []
+    for path in path_list[1:]:
+        if _diff_paths(
+                candidate_file_path, path, content1=candidate_content):
+            remaining_paths.append(path)
+        else:
+            candidate_duplicates.append(path)
+
+    duplicates = []
+    if len(candidate_duplicates) >= 2:
+        duplicates.append(candidate_duplicates)
+
+    duplicates.extend(_find_duplicates_brute_force(remaining_paths))
+
+    return duplicates
+
+
+def _diff_paths(path1, path2, content1=None, content2=None):
+    '''Returns whether or not the files at `path1` and `path2` are different
+    without using hashing.
+
+    Since hashing is not used, this is a good function to use when two paths
+    are in the same hash bucket.
+
+    Args:
+        path1: path to the first file
+        path2: path to the second file
+        content1: optional binary contents of the file at `path1`. If not
+            provided, the contents will be read from disk.
+        content2: optional binary contents of the file at `path2`. If not
+            provided, the contents will be read from disk.
+
+    Returns:
+        `True` if the files at `path1` and `path2` are different, otherwise
+            returns `False`
+    '''
+    if os.path.normpath(path1) == os.path.normpath(path2):
+        return False
+
+    if content1 is None:
+        with open(path1, "rb") as f:
+            content1 = f.read()
+
+    if content2 is None:
+        with open(path2, "rb") as f:
+            content2 = f.read()
+
+    return content1 != content2
+
+
 class FileHasher(object):
     '''Base class for file hashers.'''
 
@@ -1459,23 +1641,32 @@ class MD5FileHasher(FileHasher):
             return str(hashlib.md5(f.read()).hexdigest())
 
 
-def make_temp_dir():
+def make_temp_dir(dir=None):
     '''Makes a temporary directory.
+
+    Args:
+        dir: an optional directory in which to put the temp dir
 
     Returns:
         the path to the temporary directory
     '''
-    return tempfile.mkdtemp()
+    return tempfile.mkdtemp(dir=dir)
 
 
 class TempDir(object):
     '''Context manager that creates and destroys a temporary directory.'''
 
-    def __init__(self):
+    def __init__(self, dir=None):
+        '''Creates a TempDir instance.
+
+        Args:
+            dir: an optional directory in which to put the temp dir
+        '''
+        self._dir = dir
         self._name = None
 
     def __enter__(self):
-        self._name = make_temp_dir()
+        self._name = make_temp_dir(dir=self._dir)
         return self._name
 
     def __exit__(self, *args):

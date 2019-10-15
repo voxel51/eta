@@ -49,7 +49,7 @@ PIPELINE_OUTPUT_NAME = "OUTPUT"
 
 def run(
         pipeline_config_path, pipeline_status=None, mark_as_complete=True,
-        rotate_logs=True, force_overwrite=False):
+        handle_failures=True, rotate_logs=True, force_overwrite=False):
     '''Run the pipeline specified by the PipelineConfig.
 
     Args:
@@ -59,6 +59,9 @@ def run(
             specified in the provided PipelineConfig
         mark_as_complete: whether to mark the PipelineStatus as complete when
             the pipeline finishes. By default, this is True
+        handle_failures: whether to gracefully handle job failures and return
+            a success flag (True) or raise a PipelineExecutionError if a job
+            fails (False). The default is True
         rotate_logs: whether to rotate any existing pipeline log(s) before
             running. By default, this is True
         force_overwrite: whether to force the pipeline to overwrite any
@@ -68,6 +71,10 @@ def run(
 
     Returns:
         True/False whether the pipeline completed successfully
+
+    Raises:
+        PipelineExecutionError: if the pipeline failed and `handle_failures` is
+            False
     '''
     # Load pipeline config
     pipeline_config = PipelineConfig.from_json(pipeline_config_path)
@@ -91,11 +98,11 @@ def run(
     # Run pipeline
     return _run(
         pipeline_config, pipeline_config_path, pipeline_status,
-        mark_as_complete)
+        mark_as_complete, handle_failures)
 
 
 def _make_pipeline_status(pipeline_config):
-    pipeline_status = etas.PipelineStatus(pipeline_config.name)
+    pipeline_status = etas.PipelineStatus(name=pipeline_config.name)
 
     if pipeline_config.status_path:
         pcb = _make_publish_status_callback(pipeline_config.status_path)
@@ -114,7 +121,7 @@ def _make_publish_status_callback(status_path):
 
 def _run(
         pipeline_config, pipeline_config_path, pipeline_status,
-        mark_as_complete):
+        mark_as_complete, handle_failures):
     # Starting pipeline
     logger.info("Pipeline %s started", pipeline_config.name)
     pipeline_status.start()
@@ -136,10 +143,13 @@ def _run(
                 job_config, pipeline_status, overwrite=overwrite)
 
             if not success:
+                if not handle_failures:
+                    raise PipelineExecutionError(
+                        "Pipeline %s failed; aborting" % pipeline_config.name)
+
                 # Pipeline failed
                 logger.info("Pipeline %s failed", pipeline_config.name)
                 pipeline_status.fail()
-
                 pipeline_status.publish()
                 return False
 
@@ -150,6 +160,11 @@ def _run(
 
     pipeline_status.publish()
     return True
+
+
+class PipelineExecutionError(Exception):
+    '''Exception raised when a pipeline fails.'''
+    pass
 
 
 def load_all_metadata():
