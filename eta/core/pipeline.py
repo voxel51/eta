@@ -133,8 +133,6 @@ def _run(
     with etau.WorkingDir(pipeline_config.working_dir):
         for job_config in pipeline_config.jobs:
             if ran_last_job and not overwrite:
-                logger.info(
-                    "Config change detected, running all remaining jobs")
                 overwrite = True
 
             # Run job
