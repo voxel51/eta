@@ -280,6 +280,14 @@ class RelativePoint(Serializable):
         '''Clamps the (x, y) coordinates to [0, 1].'''
         return max(0, min(x, 1)), max(0, min(y, 1))
 
+    def to_tuple(self):
+        '''Returns a tuple representation of the point.
+
+        Returns:
+            an (x, y) tuple
+        '''
+        return (self.x, self.y)
+
     @classmethod
     def from_abs(cls, x, y, frame_size=None, shape=None, img=None):
         '''Constructs a RelativePoint from absolute (x, y) pixel coordinates.
