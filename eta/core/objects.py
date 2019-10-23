@@ -77,9 +77,9 @@ class DetectedObject(Serializable, HasBoundingBox):
         '''Returns True/False if this object has attributes.'''
         return bool(self.attrs)
 
-    def get_bounding_box(self):
-        '''Returns the bounding box for the object.'''
-        return self.bounding_box
+    def clear_attributes(self):
+        '''Removes all attributes from the object.'''
+        self.attrs = AttributeContainer()
 
     def add_attribute(self, attr):
         '''Adds the Attribute to the object.'''
@@ -88,6 +88,10 @@ class DetectedObject(Serializable, HasBoundingBox):
     def add_attributes(self, attrs):
         '''Adds the AttributeContainer of attributes to the object.'''
         self.attrs.add_container(attrs)
+
+    def get_bounding_box(self):
+        '''Returns the bounding box for the object.'''
+        return self.bounding_box
 
     def attributes(self):
         '''Returns the list of attributes to serialize.'''
