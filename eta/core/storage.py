@@ -320,9 +320,9 @@ class GoogleCloudStorageClient(StorageClient, NeedsGoogleCredentials):
         blob = self._get_blob(cloud_path)
         blob.upload_from_file(file_obj, content_type=content_type)
 
-    def upload_dir(self, local_dir, cloud_dir):
-        '''Uploads the contents of the given directory (recursively) to Google
-        Cloud Storage.
+    def upload_dir(self, local_dir, cloud_dir, recursive=True):
+        '''Uploads the contents of the given directory to the given Google
+        Cloud Storage "directory".
 
         The cloud paths are created by appending the relative paths of all
         files inside the local directory to the provided base "directory" in
@@ -332,8 +332,14 @@ class GoogleCloudStorageClient(StorageClient, NeedsGoogleCredentials):
             local_dir: the local directory to upload
             cloud_dir: the base "directory" to use when creating Google Cloud
                 object paths
+            recursive: whether to recursively traverse subdirectories. By
+                default, this is True
         '''
-        files = etau.list_files(local_dir, recursive=True)
+        files = etau.list_files(local_dir, recursive=recursive)
+        if not files:
+            return
+
+        logger.info("Uploading %d files to '%s'", len(files), cloud_dir)
         for f in files:
             local_path = os.path.join(local_dir, f)
             cloud_path = os.path.join(cloud_dir, f)
