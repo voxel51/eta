@@ -345,46 +345,54 @@ class GoogleCloudStorageClient(StorageClient, NeedsGoogleCredentials):
             cloud_path = os.path.join(cloud_dir, f)
             self.upload(local_path, cloud_path)
 
-    def sync_dir(self, local_dir, cloud_dir, overwrite=False):
-        '''Syncs the contents of the given directory (recursively) to Google
-        Cloud Storage.
+    def upload_dir_sync(
+            self, local_dir, cloud_dir, overwrite=False, recursive=True):
+        '''Syncs the contents of the given local directory to the given Google
+        Cloud Storage "directory".
 
-        This method is similar to `upload_dir()`, except that files not in
-        the local directory will be deleted if they are present in the
-        remote directory, and files that are present in both the local
-        and remote directory may not be copied over, depending on the
-        value of the `overwrite` option.
+        This method is similar to `upload_dir()`, except that files in the
+        remote diretory that are not present in the local directory will be
+        deleted, and files that are already present in the remote directory
+        are not uploaded if `overwrite` is False.
 
         Args:
-            local_dir: the local directory sync
-            cloud_dir: the directory in the cloud to sync to
-            overwrite: whether or not to upload local files that are
-                already present in the cloud directory, thus
-                overwriting them
+            local_dir: the local directory to sync
+            cloud_dir: the base cloud "directory" to sync to
+            overwrite: whether or not to upload files that are already present
+                in the cloud directory, thus overwriting them. By default, this
+                is False
+            recursive: whether to recursively traverse subdirectories. By
+                default, this is True
         '''
-        local_files = set(etau.list_files(local_dir, recursive=True))
-        remote_files = {
-            f[len(cloud_dir):].lstrip("/")
-            for f in self.list_files_in_folder(cloud_dir)
-        }
+        local_files = set(etau.list_files(local_dir, recursive=recursive))
+        remote_files = set(
+            os.path.relpath(f, cloud_dir)
+            for f in self.list_files_in_folder(cloud_dir, recursive=recursive)
+        )
 
         # Files to delete remotely
-        to_delete = remote_files - local_files
+        delete_files = remote_files - local_files
 
         # Files to upload to remote directory
         if overwrite:
-            to_upload = local_files
+            upload_files = local_files
         else:
-            to_upload = local_files - remote_files
+            upload_files = local_files - remote_files
 
-        for f in to_delete:
-            cloud_path = os.path.join(cloud_dir, f)
-            self.delete(cloud_path)
+        if delete_files:
+            logger.info(
+                "Deleting %d files from '%s'", len(delete_files), cloud_dir)
+            for f in delete_files:
+                cloud_path = os.path.join(cloud_dir, f)
+                self.delete(cloud_path)
 
-        for f in to_upload:
-            local_path = os.path.join(local_dir, f)
-            cloud_path = os.path.join(cloud_dir, f)
-            self.upload(local_path, cloud_path)
+        if upload_files:
+            logger.info(
+                "Uploading %d files to '%s'", len(upload_files), cloud_dir)
+            for f in upload_files:
+                local_path = os.path.join(local_dir, f)
+                cloud_path = os.path.join(cloud_dir, f)
+                self.upload(local_path, cloud_path)
 
     @google_cloud_api_retry
     def download(self, cloud_path, local_path):
