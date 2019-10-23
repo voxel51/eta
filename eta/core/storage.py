@@ -434,7 +434,7 @@ class GoogleCloudStorageClient(StorageClient, NeedsGoogleCredentials):
         blob = self._get_blob(cloud_path)
         blob.download_to_file(file_obj)
 
-    def download_dir(self, cloud_dir, local_dir):
+    def download_dir(self, cloud_dir, local_dir, recursive=True):
         '''Downloads the contents of the "directory" in Google Cloud Storage to
         the given local directory.
 
@@ -444,8 +444,15 @@ class GoogleCloudStorageClient(StorageClient, NeedsGoogleCredentials):
         Args:
             cloud_dir: the Google Cloud Storage "directory" to download
             local_dir: the local directory in which to write the files
+            recursive: whether to recursively traverse sub-"directories". By
+                default, this is True
         '''
-        cloud_paths = self.list_files_in_folder(cloud_dir)
+        cloud_paths = self.list_files_in_folder(cloud_dir, recursive=recursive)
+        if not cloud_paths:
+            return
+
+        logger.info(
+            "Downloading %d files from '%s'", len(cloud_paths), cloud_dir)
         for cloud_path in cloud_paths:
             local_path = os.path.join(
                 local_dir, os.path.relpath(cloud_path, cloud_dir))
