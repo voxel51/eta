@@ -1196,7 +1196,7 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
 
         done = False
         while not done:
-            status, done = downloader.next_chunk()
+            _, done = downloader.next_chunk()
 
     @staticmethod
     def _is_folder(f):
@@ -1841,9 +1841,8 @@ def _read_file_in_chunks(file_obj, chunk_size):
 
 def _to_bytes(val, encoding="utf-8"):
     bytes_str = (
-        val.encode(encoding) if isinstance(val, six.text_type) else val
-    )
-    if isinstance(bytes_str, six.binary_type):
-        return bytes_str
-    else:
+        val.encode(encoding) if isinstance(val, six.text_type) else val)
+    if not isinstance(bytes_str, six.binary_type):
         raise TypeError("Failed to convert %r to bytes" % bytes_str)
+
+    return bytes_str
