@@ -458,6 +458,55 @@ class GoogleCloudStorageClient(StorageClient, NeedsGoogleCredentials):
                 local_dir, os.path.relpath(cloud_path, cloud_dir))
             self.download(cloud_path, local_path)
 
+    def download_dir_sync(
+            self, cloud_dir, local_dir, overwrite=False, recursive=True):
+        '''Syncs the contents of the given Google Cloud Storage "directory"
+        to the given local directory.
+
+        This method is similar to `download_dir()`, except that files in the
+        local diretory that are not present in the remote directory will be
+        deleted, and files that are already present in the local directory
+        are not downloaded if `overwrite` is False.
+
+        Args:
+            cloud_dir: the base cloud "directory" to sync
+            local_dir: the local directory to sync to
+            overwrite: whether or not to download files that are already
+                present in the local directory, thus overwriting them. By
+                default, this is False
+            recursive: whether to recursively traverse subdirectories. By
+                default, this is True
+        '''
+        remote_files = set(
+            os.path.relpath(f, cloud_dir)
+            for f in self.list_files_in_folder(cloud_dir, recursive=recursive)
+        )
+        local_files = set(etau.list_files(local_dir, recursive=recursive))
+
+        # Files to delete locally
+        delete_files = local_files - remote_files
+
+        # Files to download locally
+        if overwrite:
+            download_files = remote_files
+        else:
+            download_files = remote_files - local_files
+
+        if delete_files:
+            logger.info(
+                "Deleting %d files from '%s'", len(delete_files), local_dir)
+            for f in delete_files:
+                local_path = os.path.join(local_dir, f)
+                etau.delete_file(local_path)
+
+        if download_files:
+            logger.info(
+                "Downloading %d files to '%s'", len(download_files), local_dir)
+            for f in download_files:
+                cloud_path = os.path.join(cloud_dir, f)
+                local_path = os.path.join(local_dir, f)
+                self.download(cloud_path, local_path)
+
     @google_cloud_api_retry
     def delete(self, cloud_path):
         '''Deletes the given file from Google Cloud Storage.
