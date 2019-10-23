@@ -11,7 +11,7 @@ Jinja2==2.10.1
 lxml==4.3.0
 numpy==1.16.3
 opencv-python-headless==4.1.0.25
-Pillow==4.2.1
+Pillow==6.2.0
 protobuf==3.6.1
 pycodestyle==2.3.1
 pylint==1.9.4;python_version<"3"
