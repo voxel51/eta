@@ -83,16 +83,21 @@ class DataConfig(Config):
     '''
 
     def __init__(self, d):
+        # Single video
         self.video_path = self.parse_string(d, "video_path", default=None)
         self.input_labels_path = self.parse_string(
             d, "input_labels_path", default=None)
         self.output_labels_path = self.parse_string(
             d, "output_labels_path", default=None)
+
+        # Single image
         self.image_path = self.parse_string(d, "image_path", default=None)
         self.input_image_labels_path = self.parse_string(
             d, "input_image_labels_path", default=None)
         self.output_image_labels_path = self.parse_string(
             d, "output_image_labels_path", default=None)
+
+        # Directory of images
         self.images_dir = self.parse_string(d, "images_dir", default=None)
         self.input_image_set_labels_path = self.parse_string(
             d, "input_image_set_labels_path", default=None)
@@ -193,7 +198,7 @@ def _apply_object_detector(config):
     # Build object filter
     object_filter = _build_detection_filter(config.parameters.objects)
 
-    # Process videos
+    # Process data
     with detector:
         for data in config.data:
             if data.video_path:
@@ -208,7 +213,6 @@ def _apply_object_detector(config):
 
 
 def _process_video(data, detector, object_filter):
-    # Load labels
     if data.input_labels_path:
         logger.info(
             "Reading existing labels from '%s'", data.input_labels_path)
@@ -232,7 +236,6 @@ def _process_video(data, detector, object_filter):
 
 
 def _process_image(data, detector, object_filter):
-    # Load labels
     if data.input_image_labels_path:
         logger.info(
             "Reading existing labels from '%s'", data.input_image_labels_path)
@@ -250,7 +253,6 @@ def _process_image(data, detector, object_filter):
 
 
 def _process_images_dir(data, detector, object_filter):
-    # Load labels
     if data.input_image_set_labels_path:
         logger.info(
             "Reading existing labels from '%s'",
