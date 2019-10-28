@@ -1094,14 +1094,25 @@ class Convert(object):
 
 
 def has_alpha(img):
-    '''Checks if the image has an alpha channel.'''
+    '''Checks if the image has an alpha channel.
+
+    Args:
+        img: an image
+
+    Returns:
+        True/False
+    '''
     return not is_gray(img) and img.shape[2] == 4
 
 
 def is_gray(img):
-    '''Checks if the image is grayscale and return True if so.
+    '''Checks if the image is grayscale, i.e., has exactly two channels.
 
-    The check is performed by counting the number of bands.
+    Args:
+        img: an image
+
+    Returns:
+        True/False
     '''
     return len(img.shape) == 2
 
@@ -1124,12 +1135,14 @@ def to_frame_size(frame_size=None, shape=None, img=None):
     '''
     if img is not None:
         shape = img.shape
+
     if shape is not None:
         return shape[1], shape[0]
-    elif frame_size is not None:
+
+    if frame_size is not None:
         return tuple(frame_size)
-    else:
-        raise TypeError("A valid keyword argument must be provided")
+
+    raise TypeError("A valid keyword argument must be provided")
 
 
 def aspect_ratio(**kwargs):
@@ -1233,7 +1246,7 @@ class Length(object):
     '''
 
     def __init__(self, length_str, dim):
-        '''Builds a Length object.
+        '''Creates a Length instance.
 
         Args:
             length_str: a string of the form '<float>%' or '<int>px' describing
@@ -1291,7 +1304,7 @@ class Width(Length):
     '''
 
     def __init__(self, width_str):
-        '''Builds a Width object.
+        '''Creates a Width instance.
 
         Args:
             width_str: a string of the form '<float>%' or '<int>px' describing
@@ -1306,7 +1319,7 @@ class Height(Length):
     '''
 
     def __init__(self, height_str):
-        '''Builds a Height object.
+        '''Creates a Height instance.
 
         Args:
             height_str: a string of the form '<float>%' or '<int>px' describing
@@ -1325,7 +1338,7 @@ class Location(object):
     BOTTOM_LEFT = ["bottom-left", "bl"]
 
     def __init__(self, loc):
-        '''Constructs a Location object.
+        '''Creates a Location instance.
 
         Args:
             loc: a (case-insenstive) string specifying a location
@@ -1443,46 +1456,98 @@ def tile_images(imgs, width, height, fill_value=0):
 
 
 def rgb_to_hsv(r, g, b):
-    '''Converts (red, green, blue) to a (hue, saturation, value) tuple.'''
+    '''Converts (red, green, blue) to a (hue, saturation, value) tuple.
+
+    Args:
+        r, g, b: the RGB values
+
+    Returns:
+        an H, S, V tuple
+    '''
     return colorsys.rgb_to_hsv(r / 255.0, g / 255.0, b / 255.0)
 
 
 def rgb_to_hls(r, g, b):
-    '''Converts (red, green, blue) to a (hue, lightness, saturation) tuple.'''
+    '''Converts (red, green, blue) to a (hue, lightness, saturation) tuple.
+
+    Args:
+        r, g, b: the RGB values
+
+    Returns:
+        an H, L, S tuple
+    '''
     return colorsys.rgb_to_hls(r / 255.0, g / 255.0, b / 255.0)
 
 
 def rgb_to_hex(r, g, b):
-    '''Converts (red, green, blue) to a "#rrbbgg" string.'''
+    '''Converts (red, green, blue) to a "#rrbbgg" string.
+
+    Args:
+        r, g, b: the RGB values
+
+    Returns:
+        a hex string
+    '''
     return "#%02x%02x%02x" % (r, g, b)
 
 
 def bgr_to_hsv(b, g, r):
-    '''Converts (blue, green, red) to a (hue, saturation, value) tuple.'''
+    '''Converts (blue, green, red) to a (hue, saturation, value) tuple.
+
+    Args:
+        b, g, r: the BGR values
+
+    Returns:
+        an H, S, V tuple
+    '''
     return rgb_to_hsv(r, g, b)
 
 
 def bgr_to_hls(b, g, r):
-    '''Converts (blue, green, red) to a (hue, lightness, saturation) tuple.'''
+    '''Converts (blue, green, red) to a (hue, lightness, saturation) tuple.
+
+    Args:
+        b, g, r: the BGR values
+
+    Returns:
+        an H, L, S tuple
+    '''
     return rgb_to_hls(r, g, b)
 
 
 def bgr_to_hex(b, g, r):
-    '''Converts (blue, green, red) to a "#rrbbgg" string.'''
+    '''Converts (blue, green, red) to a "#rrbbgg" string.
+
+    Args:
+        b, g, r: the BGR values
+
+    Returns:
+        a hex string
+    '''
     return rgb_to_hex(r, g, b)
 
 
 def hsv_to_rgb(h, s, v):
-    '''Converts a (hue, saturation, value) tuple to a (red, green blue)
-    tuple.
+    '''Converts a (hue, saturation, value) tuple to a (red, green blue) tuple.
+
+    Args:
+        h, s, v: the HSV values
+
+    Returns:
+        an R, G, B tuple
     '''
     r, g, b = colorsys.hsv_to_rgb(h, s, v)
     return (int(255 * r), int(255 * g), int(255 * b))
 
 
 def hsv_to_bgr(h, s, v):
-    '''Converts a (hue, saturation, value) tuple to a (blue, green red)
-    tuple.
+    '''Converts a (hue, saturation, value) tuple to a (blue, green red) tuple.
+
+    Args:
+        h, s, v: the HSV values
+
+    Returns:
+        a B, G, R tuple
     '''
     return hsv_to_rgb(h, s, v)[::-1]
 
@@ -1490,18 +1555,37 @@ def hsv_to_bgr(h, s, v):
 def hsv_to_hls(h, s, v):
     '''Converts a (hue, saturation, value) tuple to a
     (hue, lightness, saturation) tuple.
+
+    Args:
+        h, s, v: the HSV values
+
+    Returns:
+        an H, L, S tuple
     '''
     return rgb_to_hls(*hsv_to_rgb(h, s, v))
 
 
 def hsv_to_hex(h, s, v):
-    '''Converts a (hue, saturation, value) tuple to a "#rrbbgg" string.'''
+    '''Converts a (hue, saturation, value) tuple to a "#rrbbgg" string.
+
+    Args:
+        h, s, v: the HSV values
+
+    Returns:
+        a hex string
+    '''
     return rgb_to_hex(*hsv_to_rgb(h, s, v))
 
 
 def hls_to_rgb(h, l, s):
     '''Converts a (hue, lightness, saturation) tuple to a (red, green blue)
     tuple.
+
+    Args:
+        h, l, s: the HLS values
+
+    Returns:
+        an R, G, B tuple
     '''
     r, g, b = colorsys.hls_to_rgb(h, l, s)
     return (int(255 * r), int(255 * g), int(255 * b))
@@ -1510,6 +1594,12 @@ def hls_to_rgb(h, l, s):
 def hls_to_bgr(h, l, s):
     '''Converts a (hue, lightness, saturation) tuple to a (blue, green red)
     tuple.
+
+    Args:
+        h, l, s: the HLS values
+
+    Returns:
+        a B, G, R tuple
     '''
     return hls_to_rgb(h, l, s)[::-1]
 
@@ -1517,77 +1607,164 @@ def hls_to_bgr(h, l, s):
 def hls_to_hsv(h, l, s):
     '''Converts a (hue, lightness, saturation) tuple to a
     (hue, saturation, value) tuple.
+
+    Args:
+        h, l, s: the HLS values
+
+    Returns:
+        an H, S, V tuple
     '''
     return rgb_to_hls(*hls_to_rgb(h, l, s))
 
 
 def hls_to_hex(h, l, s):
-    '''Converts a (hue, lightness, saturation) tuple to a "#rrbbgg" string.'''
+    '''Converts a (hue, lightness, saturation) tuple to a "#rrbbgg" string.
+
+    Args:
+        h, l, s: the HLS values
+
+    Returns:
+        a hex string
+    '''
     return rgb_to_hex(*hls_to_rgb(h, l, s))
 
 
 def hex_to_rgb(h):
-    '''Converts a "#rrbbgg" string to a (red, green, blue) tuple.'''
+    '''Converts a "#rrbbgg" string to a (red, green, blue) tuple.
+
+    Args:
+        h: a hex string
+
+    Returns:
+        an R, G, B tuple
+    '''
     h = h.lstrip('#')
     return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))
 
 
 def hex_to_bgr(h):
-    '''Converts a "#rrbbgg" string to a (blue, green, red) tuple.'''
+    '''Converts a "#rrbbgg" string to a (blue, green, red) tuple.
+
+    Args:
+        h: a hex string
+
+    Returns:
+        a B, G, R tuple
+    '''
     return hex_to_rgb(h)[::-1]
 
 
 def hex_to_hsv(h):
-    '''Converts a "#rrbbgg" string to a (hue, saturation, value) tuple.'''
+    '''Converts a "#rrbbgg" string to a (hue, saturation, value) tuple.
+
+    Args:
+        h: a hex string
+
+    Returns:
+        an H, S, V tuple
+    '''
     return rgb_to_hsv(*hex_to_rgb(h))
 
 
 def hex_to_hls(h):
-    '''Converts a "#rrbbgg" string to a (hue, lightness, saturation) tuple.'''
+    '''Converts a "#rrbbgg" string to a (hue, lightness, saturation) tuple.
+
+    Args:
+        h: a hex string
+
+    Returns:
+        an H, L, S tuple
+    '''
     return rgb_to_hls(*hex_to_rgb(h))
 
 
 def rgb_to_gray(img):
-    '''Converts the input RGB image to a grayscale image.'''
+    '''Converts the input RGB image to a grayscale image.
+
+    Args:
+        img: an RGB image
+
+    Returns:
+        a grayscale image
+    '''
     if is_gray(img):
         return img
     return cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
 
 
 def bgr_to_gray(img):
-    '''Converts the input BGR image to a grayscale image.'''
+    '''Converts the input BGR image to a grayscale image.
+
+    Args:
+        img: a BGR image
+
+    Returns:
+        a grayscale image
+    '''
     if is_gray(img):
         return img
     return cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
 
 def gray_to_bgr(img):
-    '''Convert a grayscale image to an BGR image.'''
+    '''Convert a grayscale image to an BGR image.
+
+    Args:
+        img: a grayscale image
+
+    Returns:
+        a BGR image
+    '''
     return cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
 
 
 def gray_to_rgb(img):
-    '''Convert a grayscale image to an RGB image.'''
+    '''Convert a grayscale image to an RGB image.
+
+    Args:
+        img: a grayscale image
+
+    Returns:
+        an RGB image
+    '''
     return cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
 
 
 def rgb_to_bgr(img):
-    '''Converts an RGB image to a BGR image (supports alpha).'''
+    '''Converts an RGB image to a BGR image (supports alpha).
+
+    Args:
+        img: an RGB image
+
+    Returns:
+        a BGR image
+    '''
     return _exchange_rb(img)
 
 
 def bgr_to_rgb(img):
-    '''Converts a BGR image to an RGB image (supports alpha).'''
+    '''Converts a BGR image to an RGB image (supports alpha).
+
+    Args:
+        img: a BGR image
+
+    Returns:
+        an RGB image
+    '''
     return _exchange_rb(img)
 
 
 def _exchange_rb(img):
-    '''Converts an image from opencv format (BGR) to/from eta format (RGB) by
-    exchanging the red and blue channels.
+    '''Converts an image from BGR to/from RGB format by exchanging the red and
+    blue channels.
 
-    This is a symmetric procedure and hence only needs one function.
+    Handles gray (passthrough), 3-channel, and 4-channel images.
 
-    Handles gray (pass-through), 3- and 4-channel images.
+    Args:
+        img: an image
+
+    Returns:
+        a copy of the input image with its first and third channels swapped
     '''
     if is_gray(img):
         return img
