@@ -1894,7 +1894,7 @@ def sample_first_frames(imgs_or_video_path, k, stride=1, size=None):
         k: number of frames to extract
         stride: number of frames to be skipped in between. By default, a
             contiguous array of frames in extracted
-        size: an optional [width, height] to resize the sampled frames. By
+        size: an optional (width, height) to resize the sampled frames. By
             default, the native dimensions of the frames are used
 
     Returns:
@@ -1921,7 +1921,7 @@ def sample_first_frames(imgs_or_video_path, k, stride=1, size=None):
         ))
 
     # Resize frames, if necessary
-    if size:
+    if size is not None:
         imgs_out = [etai.resize(img, *size) for img in imgs_out]
 
     return np.array(imgs_out)
@@ -1938,7 +1938,7 @@ def uniformly_sample_frames(imgs_or_video_path, k, size=None):
         imgs_or_video_path: can be either the path to the input video or an
             array of frames of size [num_frames, height, width, num_channels]
         k: the number of frames to extract
-        size: an optional [width, height] to resize the sampled frames. By
+        size: an optional (width, height) to resize the sampled frames. By
             default, the native dimensions of the frames are used
 
     Returns:
@@ -1964,7 +1964,7 @@ def uniformly_sample_frames(imgs_or_video_path, k, size=None):
         imgs_out = [imgs[f - 1] for f in frames]
 
     # Resize frames, if necessary
-    if size:
+    if size is not None:
         imgs_out = [etai.resize(img, *size) for img in imgs_out]
 
     return np.array(imgs_out)
@@ -1982,7 +1982,7 @@ def sliding_window_sample_frames(imgs_or_video_path, k, stride, size=None):
             array of frames of size [num_frames, height, width, num_channels]
         k: the size of each window
         stride: the stride for sliding window
-        size: an optional [width, height] to resize the sampled frames. By
+        size: an optional (width, height) to resize the sampled frames. By
             default, the native dimensions of the frames are used
 
     Returns:
@@ -2020,7 +2020,7 @@ def sliding_window_sample_frames(imgs_or_video_path, k, stride, size=None):
             imgs_dict[fn] = imgs[fn - 1]
 
     # Resize frames, if necessary
-    if size:
+    if size is not None:
         imgs_dict = {
             fn: etai.resize(img, *size) for fn, img in iteritems(imgs_dict)
         }
