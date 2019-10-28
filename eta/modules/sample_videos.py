@@ -155,10 +155,8 @@ def _process_video(input_path, output_frames_dir, parameters):
     output_patt = os.path.join(
         output_frames_dir,
         eta.config.default_sequence_idx + eta.config.default_image_ext)
-    with etav.FFmpegVideoReader(input_path) as vr:
+    with etav.FFmpegVideoReader(input_path, frames=sample_frames) as vr:
         for img in vr:
-            if vr.frame_number not in sample_frames:
-                continue
             if not same_size:
                 img = etai.resize(img, width=owidth, height=oheight)
 
