@@ -2974,11 +2974,13 @@ class FFmpeg(object):
         self.is_input_streaming = (inpath == "-")
         self.is_output_streaming = (outpath == "-")
 
+        # Input options
         if self._in_opts is None:
             in_opts = self.DEFAULT_IN_OPTS
         else:
             in_opts = self._in_opts
 
+        # Output options
         if self._out_opts is None:
             if is_supported_video_file(outpath):
                 out_opts = self.DEFAULT_VIDEO_OUT_OPTS
@@ -2987,11 +2989,27 @@ class FFmpeg(object):
         else:
             out_opts = self._out_opts
 
+        # Add filters to output options, if necessary
+        out_opts = list(out_opts)
+        if self._filter_opts:
+            merged = False
+            for idx, o in enumerate(out_opts):
+                if o.strip() == self._filter_opts[0]:
+                    # Merge with existing filter(s)
+                    out_opts[idx + 1] += "," + self._filter_opts[1]
+                    merged = True
+                    break
+
+            if not merged:
+                # Append filters
+                out_opts += self._filter_opts
+
+        # Construct ffmpeg command
         self._args = (
             ["ffmpeg"] +
             self._global_opts +
             in_opts + ["-i", inpath] +
-            self._filter_opts + out_opts + [outpath]
+            out_opts + [outpath]
         )
 
         if not self.is_output_streaming:
