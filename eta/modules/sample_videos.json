@@ -24,20 +24,6 @@
     ],
     "parameters": [
         {
-            "name": "max_size",
-            "type": "eta.core.types.Array",
-            "description": "A maximum (width, height) allowed for the sampled frames. Frames are resized as necessary to meet this limit. Dimensions can be -1, in which case no constraint is applied to them",
-            "required": false,
-            "default": null
-        },
-        {
-            "name": "always_sample_last",
-            "type": "eta.core.types.Boolean",
-            "description": "Whether to always sample the last frame of the video",
-            "required": false,
-            "default": false
-        },
-        {
             "name": "accel",
             "type": "eta.core.types.Number",
             "description": "A desired acceleration factor to apply when sampling frames. For example, an acceleration of 2x would correspond to sampling every other frame",
@@ -57,6 +43,20 @@
             "description": "A desired output (width, height) of the sampled frames. Dimensions can be -1, in which case the input aspect ratio is preserved",
             "required": false,
             "default": null
+        },
+        {
+            "name": "max_size",
+            "type": "eta.core.types.Array",
+            "description": "A maximum (width, height) allowed for the sampled frames. Frames are resized as necessary to meet this limit. Dimensions can be -1, in which case no constraint is applied to them",
+            "required": false,
+            "default": null
+        },
+        {
+            "name": "always_sample_last",
+            "type": "eta.core.types.Boolean",
+            "description": "Whether to always sample the last frame of the video",
+            "required": false,
+            "default": false
         }
     ]
 }
