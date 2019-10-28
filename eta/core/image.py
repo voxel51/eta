@@ -256,7 +256,7 @@ class ImageLabelsSchema(Serializable):
                 attributes of each object class
         '''
         self.attrs = attrs or AttributeContainerSchema()
-        self.objects = defaultdict(lambda: AttributeContainerSchema())
+        self.objects = defaultdict(AttributeContainerSchema)
         if objects is not None:
             self.objects.update(objects)
 
@@ -1081,8 +1081,7 @@ class Convert(object):
         except EnvironmentError as e:
             if e.errno == errno.ENOENT:
                 raise etau.ExecutableNotFoundError(self._executable)
-            else:
-                raise
+            raise
 
         out, err = self._p.communicate()
         if self._p.returncode != 0:
