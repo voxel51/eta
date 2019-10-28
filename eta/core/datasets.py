@@ -1032,9 +1032,13 @@ class LabeledDataset(object):
             builder.add_record(builder.record_cls(*paths))
         return builder
 
-    def get_labels_set(self):
+    def get_labels_set(self, ensure_filenames=True):
         '''Creates a SetLabels type object from this dataset's labels,
         (e.g. etai.ImageSetLabels, etav.VideoSetLabels).
+
+        Args:
+            ensure_filenames: whether to add the filename into the individual
+                labels if it is not present
 
         Returns:
             etai.ImageSetLabels, etav.VideoSetLabels, etc.
@@ -1292,13 +1296,30 @@ class LabeledVideoDataset(LabeledDataset):
     which points to the `manifest.json` file for the dataset.
     '''
 
-    def get_labels_set(self):
+    def get_labels_set(self, ensure_filenames=True):
         '''Creates an etav.VideoSetLabels type object from this dataset's
         labels.
+
+        Args:
+            ensure_filenames: whether to add the filename into the individual
+                labels if it is not present
 
         Returns:
             etav.VideoSetLabels
         '''
+        if ensure_filenames:
+            video_set_labels = etav.VideoSetLabels()
+            for data_path, video_labels in zip(
+                    self.iter_data_paths(), self.iter_labels()):
+                if video_labels.filename is None:
+                    filename = os.path.basename(data_path)
+                    video_labels.filename = filename
+                else:
+                    filename = video_labels.filename
+                video_set_labels[filename] = video_labels
+
+            return video_set_labels
+
         return etav.VideoSetLabels(videos=list(self.iter_labels()))
 
     def write_annotated_data(self, output_dir_path, annotation_config=None):
@@ -1390,13 +1411,30 @@ class LabeledImageDataset(LabeledDataset):
     which points to the `manifest.json` file for the dataset.
     '''
 
-    def get_labels_set(self):
+    def get_labels_set(self, ensure_filenames=True):
         '''Creates an etai.ImageSetLabels type object from this dataset's
         labels.
+
+        Args:
+            ensure_filenames: whether to add the filename into the individual
+                labels if it is not present
 
         Returns:
             etai.ImageSetLabels
         '''
+        if ensure_filenames:
+            image_set_labels = etai.ImageSetLabels()
+            for data_path, image_labels in zip(
+                    self.iter_data_paths(), self.iter_labels()):
+                if image_labels.filename is None:
+                    filename = os.path.basename(data_path)
+                    image_labels.filename = filename
+                else:
+                    filename = image_labels.filename
+                image_set_labels[filename] = image_labels
+
+            return image_set_labels
+
         return etai.ImageSetLabels(images=list(self.iter_labels()))
 
     def write_annotated_data(self, output_dir_path, annotation_config=None):
@@ -1911,7 +1949,6 @@ class BuilderVideoRecord(BuilderDataRecord):
             "duration",
             "total_frame_count"
         ]
-
 
     def _build_labels(self):
         start_frame, end_frame = (self.clip_start_frame, self.clip_end_frame)
