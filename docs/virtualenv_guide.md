@@ -6,15 +6,23 @@ environment is highly recommended because it allows you to maintain a separate
 Python working environment for ETA that operates independently of other
 packages and Python applications on your machine.
 
+> Note that ETA does not currently support Python 3.7, so you must instead
+> have a Python 3.6 distribution installed on your machine
 
-## Creating virtual environments
+> Note also that it is highly recommended that you do NOT use an Anaconda
+> Python distribution; if you do, the steps described here may fail... Fear
+> not, however, as ETA will install all necessary pacakges for you!
 
-Follow these instructions to create Python 2 and Python 3 virtual environments.
 
-* If desired, install fresh python distributions (2.7 and 3.6) from
+## Creating a virtual environment
+
+* If you want to create a Python 2.7 virtual environment and need a fresh
+Python installtion, download and install it from
 https://www.python.org/downloads
 
-* Sometimes installing an older version of Python can be unclear. If you need a fresh install of Python 3.6, you can also run the following:
+* If you want to create a Python 3.6 virtual environment and need a fresh
+Python installation, follow the steps below:
+
 ```shell
 # Ubuntu
 sudo apt-get update
@@ -31,13 +39,6 @@ sudo pip install virtualenv
 brew unlink python
 brew install pkg-config gdbm openssl readline sqlite xz
 brew install --ignore-dependencies https://raw.githubusercontent.com/Homebrew/homebrew-core/f2a764ef944b1080be64bd88dca9a1d80130c558/Formula/python.rb
-```
-
-* <b>Note:</b>
-If you have previously had Python 3.6.5 installed through Homebrew on MacOS, running the following will switch your Python 3.7.x with Python 3.6.5. In some cases, this may be an easier solution.
-```shell
-# Mac
-brew switch python 3.6.5_1
 ```
 
 * Install the `virtualenv` package:
@@ -60,14 +61,12 @@ cd "${ENV_DIR}"
 * Make a virtual environment, modifying the python executable path as needed:
 
 ```shell
-# example for Python 2.X
-virtualenv -p /usr/local/bin/python2 eta2
+# Example for Python 2.7
+virtualenv -p /usr/local/bin/python eta2
 
-# example for Python 3.X
+# Example for Python 3.6
 virtualenv -p /usr/local/bin/python3 eta3
 ```
-
-> Note: the above commands may fail if an Anaconda python distribution is used.
 
 * Add some convenience functions to your `~/.bashrc` or `~/.bash_profile` for
 activating and deactivating the environments:
@@ -88,11 +87,10 @@ exit() {
 
 ## Installing ETA in a virtual environment
 
-To install ETA in a virtual environment, simply activate the virtual
-environment:
+To install ETA in a virtual environment, simply activate the environment:
 
 ```shell
-# Example of activating the Python 3.X environment created above
+# Example of activating a Python 3.6 environment created above
 eta3
 ```
 
@@ -114,7 +112,7 @@ pip freeze
 then deactivate the virtual environment
 
 ```shell
-# Example of deactivating an environment created in the previous section
+# Example of deactivating an environment created above
 exit
 ```
 
