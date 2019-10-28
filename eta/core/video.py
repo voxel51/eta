@@ -2262,14 +2262,22 @@ class VideoProcessor(object):
         return self._reader.total_frame_count
 
     def process(self):
-        '''Returns the next frame.'''
+        '''Returns the next frame.
+
+        Returns:
+            img: the frame as a numpy array
+        '''
         img = self._reader.read()
         if self._write_clips and self._reader.is_new_frame_range:
             self._reset_video_clip_writer()
         return img
 
     def write(self, img):
-        '''Writes the given image to the output writer(s).'''
+        '''Appends the image to the output VideoWriter(s).
+
+        Args:
+            img: an numpy array containing the image
+        '''
         if self._write_images:
             etai.write(img, self.out_images_path % self._reader.frame_number)
         if self._write_video:
@@ -2302,6 +2310,7 @@ class VideoProcessor(object):
 
 
 class VideoProcessorError(Exception):
+    '''Exception raised when an error occurs within a VideoProcessor.'''
     pass
 
 
@@ -2309,6 +2318,19 @@ class VideoReader(object):
     '''Base class for reading videos.'''
 
     def __init__(self, inpath, frames):
+        '''Initializes a VideoReader base instance.
+
+        Args:
+            inpath: the input video path
+            frames: one of the following quantities specifying a collection of
+                frames to process:
+                - None (all frames)
+                - "*" (all frames)
+                - a string like "1-3,6,8-10"
+                - a FrameRange or FrameRanges instance
+                - an iterable, e.g., [1, 2, 3, 6, 8, 9, 10]. The frames do not
+                    need to be in sorted order
+        '''
         self.inpath = inpath
         if frames is None:
             self.frames = "1-%d" % self.total_frame_count
@@ -2319,14 +2341,14 @@ class VideoReader(object):
                 frames = "1-%d" % self.total_frame_count
             self.frames = frames
             self._ranges = FrameRanges.from_str(frames)
-        elif isinstance(frames, (list, tuple)):
-            # Frames list
-            self._ranges = FrameRanges.from_list(frames)
-            self.frames = self._ranges.to_str()
         elif isinstance(frames, (FrameRange, FrameRanges)):
             # FrameRange or FrameRanges
             self._ranges = frames
             self.frames = frames.to_str()
+        elif hasattr(frames, "__iter__"):
+            # Frames iterable
+            self._ranges = FrameRanges.from_iterable(frames)
+            self.frames = self._ranges.to_str()
         else:
             raise VideoReaderError("Invalid frames %s" % frames)
 
@@ -2361,24 +2383,34 @@ class VideoReader(object):
 
     @property
     def encoding_str(self):
+        '''The video encoding string.'''
         raise NotImplementedError("subclass must implement encoding_str")
 
     @property
     def frame_size(self):
+        '''The (width, height) of each frame.'''
         raise NotImplementedError("subclass must implement frame_size")
 
     @property
     def frame_rate(self):
+        '''The frame rate.'''
         raise NotImplementedError("subclass must implement frame_rate")
 
     @property
     def total_frame_count(self):
+        '''The total number of frames in the video.'''
         raise NotImplementedError("subclass must implement total_frame_count")
 
     def read(self):
+        '''Reads the next frame.
+
+        Returns:
+            img: the next frame
+        '''
         raise NotImplementedError("subclass must implement read()")
 
     def close(self):
+        '''Closes the video reader.'''
         raise NotImplementedError("subclass must implement close()")
 
 
@@ -2410,11 +2442,12 @@ class FFmpegVideoReader(VideoReader):
                 ffmpeg
             frames: one of the following optional quantities specifying a
                 collection of frames to process:
-                    - None (all frames - the default)
-                    - "*" (all frames)
-                    - a string like "1-3,6,8-10"
-                    - a list like [1, 2, 3, 6, 8, 9, 10]
-                    - a FrameRange or FrameRanges instance
+                - None (all frames - the default)
+                - "*" (all frames)
+                - a string like "1-3,6,8-10"
+                - a FrameRange or FrameRanges instance
+                - an iterable, e.g., [1, 2, 3, 6, 8, 9, 10]. The frames do not
+                    need to be in sorted order
             keyframes_only: whether to only read keyframes. By default, this
                 is False. When this is True, `frames` is interpreted as
                 keyframe numbers
@@ -2442,7 +2475,7 @@ class FFmpegVideoReader(VideoReader):
 
     @property
     def encoding_str(self):
-        '''Return the video encoding string.'''
+        '''The video encoding string.'''
         return self._stream_info.encoding_str
 
     @property
@@ -2545,11 +2578,12 @@ class OpenCVVideoReader(VideoReader):
                 cv2.VideoCapture
             frames: one of the following optional quantities specifying a
                 collection of frames to process:
-                    - None (all frames - the default)
-                    - "*" (all frames)
-                    - a string like "1-3,6,8-10"
-                    - a list like [1, 2, 3, 6, 8, 9, 10]
-                    - a FrameRange or FrameRanges instance
+                - None (all frames - the default)
+                - "*" (all frames)
+                - a string like "1-3,6,8-10"
+                - a FrameRange or FrameRanges instance
+                - an iterable, e.g., [1, 2, 3, 6, 8, 9, 10]. The frames do not
+                    need to be in sorted order
 
         Raises:
             VideoReaderError: if the input video could not be opened.
@@ -2662,13 +2696,20 @@ class VideoWriter(object):
         self.close()
 
     def write(self, img):
+        '''Appends the image to the output video.
+
+        Args:
+            img: a numpy array
+        '''
         raise NotImplementedError("subclass must implement write()")
 
     def close(self):
+        '''Closes the video writer.'''
         raise NotImplementedError("subclass must implement close()")
 
 
 class VideoWriterError(Exception):
+    '''Exception raised when a VideoWriter encounters an error.'''
     pass
 
 
@@ -2705,7 +2746,7 @@ class FFmpegVideoWriter(VideoWriter):
         '''Appends the image to the output video.
 
         Args:
-            img: an image in ETA format (RGB)
+            img: a numpy array
         '''
         self._ffmpeg.stream(img.tostring())
 
@@ -2746,7 +2787,7 @@ class OpenCVVideoWriter(VideoWriter):
         '''Appends the image to the output video.
 
         Args:
-            img: an image in ETA format
+            img: a numpy array
         '''
         self._writer.write(etai.rgb_to_bgr(img))
 
@@ -2961,6 +3002,9 @@ class FFmpeg(object):
     def stream(self, string):
         '''Writes the string to ffmpeg's stdin stream.
 
+        Args:
+            string: the string to write
+
         Raises:
             FFmpegStreamingError: if input streaming mode is not active
         '''
@@ -2970,6 +3014,12 @@ class FFmpeg(object):
 
     def read(self, num_bytes):
         '''Reads the given number of bytes from ffmpeg's stdout stream.
+
+        Args:
+            num_bytes: the number of bytes to read
+
+        Returns:
+            the bytes
 
         Raises:
             FFmpegStreamingError: if output streaming mode is not active
@@ -3012,6 +3062,9 @@ class FFmpeg(object):
 
 
 class FFmpegStreamingError(Exception):
+    '''Exception raised when an error occurs while operating an FFmpeg instance
+    in streaming mode.
+    '''
     pass
 
 
@@ -3019,7 +3072,15 @@ class FOURCC(object):
     '''Class reprsesenting a FOURCC code.'''
 
     def __init__(self, _i=None, _s=None):
-        '''Don't call this directly!'''
+        '''Creates a FOURCC instance.
+
+        Don't call this directly! Instead, use `from_str ` or `from_int` to
+        create a FOURCC instance.
+
+        Args:
+            _i: the integer representation of the FOURCC code
+            _s: the string representation of the FOURCC code
+        '''
         if _i:
             self.int = _i
             self.str = FOURCC.int_to_str(_i)
@@ -3029,17 +3090,38 @@ class FOURCC(object):
 
     @classmethod
     def from_str(cls, s):
-        '''Construct a FOURCC instance from a string.'''
+        '''Construct a FOURCC instance from a string.
+
+        Args:
+            s: the string representation of the FOURCC code
+
+        Returns:
+            a FOURCC instance
+        '''
         return cls(_s=s)
 
     @classmethod
     def from_int(cls, i):
-        '''Construct a FOURCC instance from an integer.'''
+        '''Construct a FOURCC instance from an integer.
+
+        Args:
+            i: the integer representation of the FOURCC code
+
+        Returns:
+            a FOURCC instance
+        '''
         return cls(_i=i)
 
     @staticmethod
     def str_to_int(s):
-        '''Convert the FOURCC string to an int.'''
+        '''Returns the integer representation of the given FOURCC string.
+
+        Args:
+            s: the string representation of the FOURCC code
+
+        Returns:
+            the integer representation of the FOURCC code
+        '''
         try:
             # OpenCV 3
             return cv2.VideoWriter_fourcc(*s)
@@ -3049,7 +3131,14 @@ class FOURCC(object):
 
     @staticmethod
     def int_to_str(i):
-        '''Convert the FOURCC int to a string.'''
+        '''Returns the string representation of the given FOURCC integer.
+
+        Args:
+            i: the integer representation of the FOURCC code
+
+        Returns:
+            the string representation of the FOURCC code
+        '''
         return chr((i & 0x000000FF) >> 0) + \
                chr((i & 0x0000FF00) >> 8) + \
                chr((i & 0x00FF0000) >> 16) + \
@@ -3057,11 +3146,16 @@ class FOURCC(object):
 
 
 class FrameRanges(object):
-    '''A monotonically increasing and disjoint series of frames.'''
+    '''Class representing a monotonically increasing and disjoint series of
+    frames.
+    '''
 
     def __init__(self, ranges):
-        '''Constructs a frame range series from a list of (first, last) tuples,
-        which must be disjoint and monotonically increasing.
+        '''Creates a FrameRanges instance.
+
+        Args:
+            ranges: an iterable of (first, last) tuples, which must be disjoint
+                and monotonically increasing
 
         Raises:
             FrameRangesError: if the series is not disjoint and monotonically
@@ -3084,11 +3178,6 @@ class FrameRanges(object):
         return self
 
     def __next__(self):
-        '''Returns the next frame number.
-
-        Raises:
-            StopIteration: if there are no more frames to process
-        '''
         self._started = True
         try:
             frame = next(self._ranges[self._idx])
@@ -3127,7 +3216,12 @@ class FrameRanges(object):
         return False
 
     def to_list(self):
-        '''Return a list of frames in the frame ranges.'''
+        '''Returns the list of frames, in sorted order, described by this
+        object.
+
+        Returns:
+            list of frames
+        '''
         frames = []
         for r in self._ranges:
             frames += r.to_list()
@@ -3135,7 +3229,11 @@ class FrameRanges(object):
         return frames
 
     def to_str(self):
-        '''Return a string representation of the frame ranges.'''
+        '''Returns a string representation of this object.
+
+        Returns:
+            a string like "1-3,6,8-10" describing the frame ranges
+        '''
         return ",".join([r.to_str() for r in self._ranges])
 
     @classmethod
@@ -3143,7 +3241,10 @@ class FrameRanges(object):
         '''Constructs a FrameRanges object from a frames string.
 
         Args:
-            frames_str: a string like "1-3,6,8-10"
+            frames_str: a frames string like "1-3,6,8-10"
+
+        Returns:
+            a FrameRanges instance
 
         Raises:
             FrameRangesError: if the frames string is invalid
@@ -3157,16 +3258,21 @@ class FrameRanges(object):
         return cls(ranges)
 
     @classmethod
-    def from_list(cls, frames_list):
-        '''Constructs a FrameRanges object from a frames list.
+    def from_iterable(cls, frames):
+        '''Constructs a FrameRanges object from an iterable of frames.
+
+        The frames do not need to be in sorted order.
 
         Args:
-            frames_list: a list like [1, 2, 3, 6, 8, 9, 10]
+            frames: an iterable of frames, e.g., [1, 2, 3, 6, 8, 9, 10]
+
+        Returns:
+            a FrameRanges instance
 
         Raises:
             FrameRangesError: if the frames list is invalid
         '''
-        return cls(_list_to_ranges(frames_list))
+        return cls(_iterable_to_ranges(frames))
 
 
 class FrameRangesError(Exception):
@@ -3178,8 +3284,11 @@ class FrameRange(object):
     '''An iterator over a range of frames.'''
 
     def __init__(self, first, last):
-        '''Constructs a frame range with the given first and last values,
-        inclusive.
+        '''Creates a FrameRange instance.
+
+        Args:
+            first: the first frame in the range (inclusive)
+            last: the last frame in the range (inclusive)
 
         Raises:
             FrameRangeError: if last < first
@@ -3201,11 +3310,6 @@ class FrameRange(object):
         return self.idx == self.first
 
     def __next__(self):
-        '''Returns the next frame number.
-
-        Raises:
-            StopIteration: if there are no more frames in the range
-        '''
         if self.idx < 0:
             self.idx = self.first
         elif self.idx < self.last:
@@ -3216,11 +3320,19 @@ class FrameRange(object):
         return self.idx
 
     def to_list(self):
-        '''Return a list of frames in the range.'''
+        '''Returns the list of frames in the range.
+
+        Returns:
+            a list of frames
+        '''
         return list(range(self.first, self.last + 1))
 
     def to_str(self):
-        '''Return a string representation of the range.'''
+        '''Returns a string representation of the range.
+
+        Returns:
+            a string like "1-5"
+        '''
         if self.first == self.last:
             return "%d" % self.first
 
@@ -3231,7 +3343,10 @@ class FrameRange(object):
         '''Constructs a FrameRange object from a string.
 
         Args:
-            frames_str: a string like "1-5"
+            frames_str: a frames string like "1-5"
+
+        Returns:
+            a FrameRange instance
 
         Raises:
             FrameRangeError: if the frame range string is invalid
@@ -3244,18 +3359,24 @@ class FrameRange(object):
                 "Invalid frame range string '%s'" % frames_str)
 
     @classmethod
-    def from_list(cls, frames_list):
-        '''Constructs a FrameRange object from a frames list.
+    def from_iterable(cls, frames):
+        '''Constructs a FrameRange object from an iterable of frames.
+
+        The frames do not need to be in sorted order, but they must define a
+        single interval.
 
         Args:
-            frames_list: a consecutive list like [1, 2, 3, 4, 5]
+            frames: an iterable of frames, e.g., [1, 2, 3, 4, 5]
+
+        Returns:
+            a FrameRange instance
 
         Raises:
             FrameRangeError: if the frame range list is invalid
         '''
-        ranges = list(_list_to_ranges(frames_list))
+        ranges = list(_iterable_to_ranges(frames))
         if len(ranges) != 1:
-            raise FrameRangeError("Invalid frame range list %s" % frames_list)
+            raise FrameRangeError("Invalid frame range list %s" % frames)
 
         return cls(*ranges[0])
 
@@ -3265,7 +3386,7 @@ class FrameRangeError(Exception):
     pass
 
 
-def _list_to_ranges(vals):
+def _iterable_to_ranges(vals):
     if not vals:
         raise StopIteration
 
