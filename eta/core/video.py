@@ -1811,7 +1811,8 @@ def extract_clip(
         ffmpeg.run(tmp_path, output_path)
 
 
-def sample_select_frames(video_path, frames, output_patt=None, fast=False):
+def sample_select_frames(
+        video_path, frames, output_patt=None, size=None, fast=False):
     '''Samples the specified frames of the video.
 
     When `fast=False`, this implementation uses `VideoProcessor`. When
@@ -1823,13 +1824,18 @@ def sample_select_frames(video_path, frames, output_patt=None, fast=False):
         output_patt: an optional output pattern like "/path/to/frames-%d.png"
             specifying where to write the sampled frames. If omitted, the
             frames are instead returned in an in-memory list
-        fast: whether to use a faster native ffmpeg method to perform the
-            extraction. While faster, this may be inconsistent with other
-            video processing methods in ETA. By default, this is False
+        size: an optional (width, height) to resize the sampled frames. By
+            default, the native dimensions of the frames are used
+        fast: whether to use a native ffmpeg method to perform the extraction.
+            While faster, this may be inconsistent with other video processing
+            methods in ETA. By default, this is False
 
     Returns:
         a list of the sampled frames if output_patt is None, and None otherwise
     '''
+    # Parse parameters
+    resize_images = size is not None
+
     if not fast:
         if output_patt:
             # Sample frames to disk via VideoProcessor
@@ -1837,11 +1843,16 @@ def sample_select_frames(video_path, frames, output_patt=None, fast=False):
                 video_path, frames=frames, out_images_path=output_patt)
             with p:
                 for img in p:
+                    if resize_images:
+                        img = etai.resize(img, *size)
                     p.write(img)
             return None
 
         # Sample frames in memory via FFmpegVideoReader
         with FFmpegVideoReader(video_path, frames=frames) as r:
+            if resize_images:
+                return [etai.resize(img, *size) for img in r]
+
             return [img for img in r]
 
     #
@@ -1849,13 +1860,15 @@ def sample_select_frames(video_path, frames, output_patt=None, fast=False):
     # the requested frames
     #
 
+    # If reading into memory, use `png` to ensure lossless-ness
     ext = os.path.splitext(output_patt)[1] if output_patt else ".png"
 
     with etau.TempDir() as d:
         # Sample frames to disk temporarily
         tmp_patt = os.path.join(d, "frame-%d" + ext)
         ss = "+".join(["eq(n\,%d)" % (f - 1) for f in frames])
-        ffmpeg = FFmpeg(out_opts=["-vf", "select='%s'" % ss, "-vsync", "0"])
+        ffmpeg = FFmpeg(
+            size=size, out_opts=["-vf", "select='%s'" % ss, "-vsync", "0"])
         ffmpeg.run(video_path, tmp_patt)
 
         if output_patt is not None:
