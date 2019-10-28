@@ -975,8 +975,8 @@ def rasterize(vector_path, width, include_alpha=True, flag=None):
 def resize(img, width=None, height=None, *args, **kwargs):
     '''Resizes the given image to the given width and height.
 
-    At most one dimension can be None, in which case the aspect-preserving
-    value is used.
+    At most one dimension can be None or negative, in which case the
+    aspect-preserving value is used.
 
     Args:
         img: input image
@@ -988,9 +988,9 @@ def resize(img, width=None, height=None, *args, **kwargs):
     Returns:
         the resized image
     '''
-    if height is None:
+    if height is None or height < 0:
         height = int(round(img.shape[0] * (width * 1.0 / img.shape[1])))
-    if width is None:
+    if width is None or width < 0:
         width = int(round(img.shape[1] * (height * 1.0 / img.shape[0])))
     return cv2.resize(img, (width, height), *args, **kwargs)
 
