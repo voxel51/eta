@@ -136,32 +136,29 @@ def _process_video(input_path, output_frames_dir, parameters):
         sample_frames.add(iframe_count)
 
     # Compute output frame size
-    if parameters.size:
+    if parameters.size is not None:
         psize = etai.parse_frame_size(parameters.size)
         osize = etai.infer_missing_dims(psize, isize)
     else:
         osize = isize
-    if parameters.max_size:
+    if parameters.max_size is not None:
         msize = etai.parse_frame_size(parameters.max_size)
         osize = etai.clamp_frame_size(osize, msize)
 
     # Avoid resizing if possible
-    same_size = osize == isize
-    if not same_size:
+    resize_frames = osize != isize
+    if resize_frames:
         owidth, oheight = osize
         logger.info("Resizing frames to %d x %d", owidth, oheight)
 
     # Sample frames
+    frames = sorted(sample_frames)
     output_patt = os.path.join(
         output_frames_dir,
         eta.config.default_sequence_idx + eta.config.default_image_ext)
-    with etav.FFmpegVideoReader(input_path, frames=sample_frames) as vr:
-        for img in vr:
-            if not same_size:
-                img = etai.resize(img, width=owidth, height=oheight)
-
-            logger.debug("Sampling frame %d", vr.frame_number)
-            etai.write(img, output_patt % vr.frame_number)
+    size = osize if resize_frames else None
+    etav.sample_select_frames(
+        input_path, frames, output_patt=output_patt, size=size, fast=True)
 
 
 def run(config_path, pipeline_config_path=None):
