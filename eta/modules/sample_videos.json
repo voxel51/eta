@@ -45,6 +45,13 @@
             "default": null
         },
         {
+            "name": "max_fps",
+            "type": "eta.core.types.Number",
+            "description": "The maximum sampling rate allowed for the output video. If this parameter is specified, the accel parameter will be increased if necessary to satisfy this constraint",
+            "required": false,
+            "default": null
+        },
+        {
             "name": "max_size",
             "type": "eta.core.types.Array",
             "description": "A maximum (width, height) allowed for the sampled frames. Frames are resized as necessary to meet this limit. Dimensions can be -1, in which case no constraint is applied to them",
