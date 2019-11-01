@@ -3442,7 +3442,7 @@ class FrameRangeError(Exception):
 
 def _iterable_to_ranges(vals):
     if not vals:
-        raise StopIteration
+        return
 
     vals = sorted(vals)
     first = last = vals[0]
