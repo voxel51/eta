@@ -84,6 +84,10 @@ class ParametersConfig(Config):
         size (eta.core.types.Array): [None] A desired output (width, height)
             of the sampled frames. Dimensions can be -1, in which case the
             input aspect ratio is preserved
+        max_fps (eta.core.types.Number): [None] The maximum sampling rate
+            allowed for the output video. If this parameter is specified, the
+            `accel` parameter will be increased if necessary to satisfy this
+            constraint
         max_size (eta.core.types.Array): [None] A maximum (width, height)
             allowed for the sampled frames. Frames are resized as necessary to
             meet this limit. Dimensions can be -1, in which case no constraint
@@ -96,6 +100,7 @@ class ParametersConfig(Config):
         self.accel = self.parse_number(d, "accel", default=1.0)
         self.fps = self.parse_number(d, "fps", default=None)
         self.size = self.parse_array(d, "size", default=None)
+        self.max_fps = self.parse_number(d, "max_fps", default=None)
         self.max_size = self.parse_array(d, "max_size", default=None)
         self.always_sample_last = self.parse_bool(
             d, "always_sample_last", default=False)
@@ -114,20 +119,28 @@ def _process_video(input_path, output_frames_dir, parameters):
     iframe_count = stream_info.total_frame_count
 
     # Compute acceleration
-    if parameters.accel is not None:
-        if parameters.accel < 1:
+    accel = parameters.accel
+    fps = parameters.fps
+    max_fps = parameters.max_fps
+    if accel is not None:
+        if accel < 1:
             raise ValueError(
-                "Acceleration factor must be greater than 1; found "
-                "%d" % parameters.accel)
-        accel = parameters.accel
-    elif parameters.fps is not None:
-        if parameters.fps > ifps:
+                "Acceleration factor must be greater than 1; found %d" % accel)
+    if fps is not None:
+        if fps > ifps:
             raise ValueError(
                 "Sampling frame rate (%g) cannot be greater than input frame "
-                "rate (%g)" % (parameters.fps, ifps))
-        accel = ifps / parameters.fps
-    else:
-        raise ConfigError("One of `accel` or `fps` must be specified")
+                "rate (%g)" % (fps, ifps))
+        accel = ifps / fps
+    if max_fps is not None and max_fps > 0:
+        min_accel = ifps / max_fps
+        if accel < min_accel:
+            raise ValueError(
+                "Maximum frame rate %g requires acceleration of at least %g; "
+                "setting `accel = %g` now" % (max_fps, min_accel, min_accel))
+        accel = min_accel
+    if accel is None:
+        raise ConfigError("One of `accel,fps,max_fps` must be specified")
 
     # Determine frames to sample
     sample_pts = np.arange(1, iframe_count, accel)
