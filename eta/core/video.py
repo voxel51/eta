@@ -1811,6 +1811,11 @@ def extract_clip(
         ffmpeg.run(tmp_path, output_path)
 
 
+def _make_ffmpeg_select_arg(frames):
+    ss = "+".join(["eq(n\,%d)" % (f - 1) for f in frames])
+    return "select='%s'" % ss
+
+
 def sample_select_frames(
         video_path, frames, output_patt=None, size=None, fast=False):
     '''Samples the specified frames of the video.
@@ -1835,6 +1840,25 @@ def sample_select_frames(
     '''
     # Parse parameters
     resize_images = size is not None
+
+    #
+    # Revert to `fast=False` if necessary
+    #
+    # As per https://stackoverflow.com/questions/29801975, one cannot pass an
+    # argument of length > 131072 to subprocess. So, we have to make sure the
+    # user isn't requesting too many frames to handle
+    #
+    if fast:
+        select_arg_str = _make_ffmpeg_select_arg(frames)
+        if len(select_arg_str) > 131072:
+            logger.info(
+                "Number of frames (%d) requested too large; reverting to "
+                "`fast=False`", len(frames))
+            fast = False
+
+    #
+    # In "slow mode", we sample the requested frames via VideoProcessor
+    #
 
     if not fast:
         if output_patt:
@@ -1866,9 +1890,8 @@ def sample_select_frames(
     with etau.TempDir() as d:
         # Sample frames to disk temporarily
         tmp_patt = os.path.join(d, "frame-%d" + ext)
-        ss = "+".join(["eq(n\,%d)" % (f - 1) for f in frames])
         ffmpeg = FFmpeg(
-            size=size, out_opts=["-vf", "select='%s'" % ss, "-vsync", "0"])
+            size=size, out_opts=["-vf", select_arg_str, "-vsync", "0"])
         ffmpeg.run(video_path, tmp_patt)
 
         if output_patt is not None:
