@@ -140,7 +140,7 @@ def _process_video(input_path, output_frames_dir, parameters):
                 "setting `accel = %g` now" % (max_fps, min_accel, min_accel))
         accel = min_accel
     if accel is None:
-        raise ConfigError("One of `accel,fps,max_fps` must be specified")
+        raise ConfigError("One of (accel, fps, max_fps) must be specified")
 
     # Determine frames to sample
     sample_pts = np.arange(1, iframe_count, accel)
