@@ -131,18 +131,21 @@ def _process_video(input_path, output_frames_dir, parameters):
         if accel < 1:
             raise ValueError(
                 "Acceleration factor must be greater than 1; found %d" % accel)
+
     elif fps is not None:
         if fps > ifps:
             raise ValueError(
                 "Sampling frame rate (%g) cannot be greater than input frame "
                 "rate (%g)" % (fps, ifps))
+
         accel = ifps / fps
     if max_fps is not None and max_fps > 0:
         min_accel = ifps / max_fps
         if accel is None or accel < min_accel:
-            raise ValueError(
+            logger.warning(
                 "Maximum frame rate %g requires acceleration of at least %g; "
-                "setting `accel = %g` now" % (max_fps, min_accel, min_accel))
+                "setting `accel = %g` now", max_fps, min_accel, min_accel)
+
         accel = min_accel
     if accel is None:
         raise ConfigError("One of (accel, fps, max_fps) must be specified")
