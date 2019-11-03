@@ -1,7 +1,9 @@
 '''
 Core tools for building block diagrams of modules and pipelines.
 
-Copyright 2017-2018, Voxel51, Inc.
+Block diagrams are built using the `blockdiag` package.
+
+Copyright 2017-2019, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
@@ -29,12 +31,11 @@ import eta.core.utils as etau
 logger = logging.getLogger(__name__)
 
 
-EXECUTABLE = "blockdiag"
-INDENTATION = 2
 TOP_LEVEL_NAME = "blockdiag"
 GROUP_NAME = "group"
-PARAM_COLOR = "\"#EE7531\""  # Voxel51 orange
-MODULE_COLOR = "\"#AAAAAA\""  # Voxel51 gray
+INDENTATION = 2
+PARAM_COLOR = "\"#FF6D05\""  # Voxel51 orange
+MODULE_COLOR = "\"#F4F4F4\""  # Voxel51 gray
 MODULE_HEIGHT = 60
 NODE_HEIGHT = 40
 
@@ -43,14 +44,18 @@ class HasBlockDiagram(object):
     '''Mixin class for objects that can be rendered as block diagrams.'''
 
     def to_blockdiag(self):
-        '''Returns a BlockdiagFile representation of the instance.'''
+        '''Returns a BlockdiagFile representation of the instance.
+
+        Returns:
+             a BlockdiagFile instance
+        '''
         raise NotImplementedError("subclass must implement to_blockdiag()")
 
     def render(self, path, keep_diag_file=False):
-        '''Render the block diagram as an SVG image.
+        '''Renders the block diagram as an SVG image.
 
         Args:
-            path: the output path, which should have extension ".svg"
+            path: the output path, which must have extension ".svg"
             keep_diag_file: whether to keep the .diag file (True) or delete it
                 after the SVG is generated (False). The default is False
         '''
@@ -67,9 +72,9 @@ class HasBlockDiagram(object):
         self.to_blockdiag().write(blockdiag_path)
 
         try:
-            # Render .svg
-            logger.info("Rendering block diagram image '%s'", svg_path)
-            args = [EXECUTABLE, "-Tsvg", "-o", svg_path, blockdiag_path]
+            # Generate .svg
+            logger.info("Generating block diagram '%s'", svg_path)
+            args = ["blockdiag", "-Tsvg", "-o", svg_path, blockdiag_path]
             etau.communicate_or_die(args)
         finally:
             if not keep_diag_file:
@@ -84,7 +89,11 @@ class BlockdiagFile(object):
         self._file = BlockdiagGroup(is_top_level=True)
 
     def add_element(self, element):
-        '''Adds the element to the file.'''
+        '''Adds the element to the file.
+
+        Args:
+            element: a BlockdiagElement
+        '''
         self._file.add_element(element)
 
     def export(self, **kwargs):
@@ -92,6 +101,9 @@ class BlockdiagFile(object):
 
         Args:
             **kwargs: optional attributes to add to the group
+
+        Returns:
+            a BlockdiagGroup describing the file
         '''
         group = copy.deepcopy(self._file)
         group.name = GROUP_NAME  # downgrade from top-level to nested group
@@ -196,7 +208,7 @@ class BlockdiagModule(BlockdiagFile):
     '''Class representing a module as a blockdiag file.'''
 
     def __init__(self, name):
-        '''Creates a new block diagram module.
+        '''Creates a BlockdiagModule instance.
 
         Args:
             name: the name of the module
@@ -221,30 +233,39 @@ class BlockdiagModule(BlockdiagFile):
         self.add_element(self._param_edges)
 
     def add_input(self, name):
-        '''Add a module input with the given name.'''
+        '''Add a module input with the given name.
+
+        Args:
+            name: the name of the module input
+        '''
         node = BlockdiagNode(
             name, shape="endpoint", height=NODE_HEIGHT,
             width=_node_extent(name))
         self._inputs.add_element(node)
-
         self._add_io_edge(name, self.name)
 
     def add_output(self, name):
-        '''Add a module output with the given name.'''
+        '''Add a module output with the given name.
+
+        Args:
+            name: the name of the module output
+        '''
         node = BlockdiagNode(
             name, shape="endpoint", height=NODE_HEIGHT,
             width=_node_extent(name))
         self._outputs.add_element(node)
-
         self._add_io_edge(self.name, name)
 
     def add_parameter(self, name):
-        '''Add a module parameter with the given name.'''
+        '''Add a module parameter with the given name.
+
+        Args:
+            name: the name of the module parameter
+        '''
         node = BlockdiagNode(
             name, shape="beginpoint", rotate=270, height=_node_extent(name),
             width=NODE_HEIGHT)
         self._parameters.add_element(node)
-
         self._add_param_edge(name)
 
     def _add_module(self, name):
@@ -252,7 +273,6 @@ class BlockdiagModule(BlockdiagFile):
             name, shape="box",
             height=MODULE_HEIGHT, width=_module_extent(name))
         self._module.add_element(node)
-
         self._param_group = BlockdiagGroup(
             orientation="portrait", color=PARAM_COLOR)
         self._param_edges.add_element(self._param_group)
@@ -267,13 +287,16 @@ class BlockdiagModule(BlockdiagFile):
 
 
 class BlockdiagElement(object):
-    '''Interface for all elements of a block diagram file.'''
+    '''Base class for all elements of a block diagram file.'''
 
     def render(self, indent=0):
         '''Renders the element as a string at the given indentiation level.
 
         Args:
             indent: the indentation level at which to render the element
+
+        Returns:
+            a string containing the rendered element
         '''
         raise NotImplementedError("subclass must implement render()")
 
@@ -282,7 +305,7 @@ class BlockdiagContainer(BlockdiagElement):
     '''Base class for block digram elements that contain other elements.'''
 
     def __init__(self):
-        '''Creates a new empty block diagram container.'''
+        '''Creates a BlockdiagContainer instance.'''
         self.elements = []
 
     @property
@@ -292,7 +315,11 @@ class BlockdiagContainer(BlockdiagElement):
 
     def prefix_names(self, prefix):
         '''Prepend the given prefix to all nodes names in the given container.
-        Operates recursively on nested containers.
+
+        This function operates recursively on nested containers.
+
+        Args:
+            prefix: the string to prepend
         '''
         for e in self.elements:
             if isinstance(e, BlockdiagContainer):
@@ -304,19 +331,23 @@ class BlockdiagContainer(BlockdiagElement):
                 e.sink = prefix + e.sink
 
     def add_element(self, element):
-        '''Adds the element to the container.'''
+        '''Adds the element to the container.
+
+        Args:
+            element: a BlockdiagElement
+        '''
         self.elements.append(element)
 
 
 class BlockdiagGroup(BlockdiagContainer):
-    '''A group of elements.'''
+    '''A group of BlockdiagElements.'''
 
     def __init__(self, is_top_level=False, **kwargs):
-        '''Creates a new block diagram group.
+        '''Creates a BlockdiagGroup instance.
 
         Args:
             is_top_level: whether this is the top-level blockdiag group or a
-                nested group
+                nested group. By default, this is False
             **kwargs: optional attributes for the group
         '''
         super(BlockdiagGroup, self).__init__()
@@ -334,6 +365,14 @@ class BlockdiagGroup(BlockdiagContainer):
             self.attributes.append(BlockdiagAttribute(k, v))
 
     def render(self, indent=0):
+        '''Renders the BlockdiagGroup as a string with the given indentation.
+
+        Args:
+            indent: the indentation level at which to render the element
+
+        Returns:
+            a string containing the rendered BlockdiagGroup
+        '''
         if self.is_empty:
             return ""
         c = [_indent(self.name + " {", indent)]
@@ -346,19 +385,27 @@ class BlockdiagGroup(BlockdiagContainer):
 
 
 class BlockdiagSection(BlockdiagContainer):
-    '''A list of elements with an optional comment above.'''
+    '''A list of BlockdiagElements with an optional BlockdiagComment above.'''
 
     def __init__(self, comment=None):
-        '''Creates a new block diagram section.
+        '''Creates a BlockdiagSection instance.
 
         Args:
-            comment: an optional comment to place above the section
+            comment: an optional comment string
         '''
         super(BlockdiagSection, self).__init__()
         if comment:
             self.add_element(BlockdiagComment(comment))
 
     def render(self, indent=0):
+        '''Renders the BlockdiagSection as a string with the given indentation.
+
+        Args:
+            indent: the indentation level at which to render the element
+
+        Returns:
+            a string containing the rendered BlockdiagSection
+        '''
         c = []
         for e in self.elements:
             c.append(e.render(indent=indent))
@@ -367,25 +414,33 @@ class BlockdiagSection(BlockdiagContainer):
 
 
 class BlockdiagComment(BlockdiagElement):
-    '''A comment element.'''
+    '''A BlockdiagElement representing a comment.'''
 
     def __init__(self, comment):
-        '''Creates a new block diagram comment.
+        '''Creates a BlockdiagComment instance.
 
         Args:
-            comment: a string
+            comment: a comment string
         '''
         self.comment = comment
 
     def render(self, indent=0):
+        '''Renders the BlockdiagComment as a string with the given indentation.
+
+        Args:
+            indent: the indentation level at which to render the element
+
+        Returns:
+            a string containing the rendered BlockdiagComment
+        '''
         return _indent("// " + self.comment, indent)
 
 
 class BlockdiagAttribute(BlockdiagElement):
-    '''A key = value attribute element.'''
+    '''A BlockdiagElement representing a key-value pair.'''
 
     def __init__(self, key, value):
-        '''Creates a new block diagram attribute
+        '''Creates a BlockdiagAttribute instance.
 
         Args:
             key: the attribute key
@@ -395,14 +450,23 @@ class BlockdiagAttribute(BlockdiagElement):
         self.value = value
 
     def render(self, indent=0):
+        '''Renders the BlockdiagAttribute as a string with the given
+        indentation.
+
+        Args:
+            indent: the indentation level at which to render the element
+
+        Returns:
+            a string containing the rendered BlockdiagAttribute
+        '''
         return _indent("%s = %s;" % (self.key, self.value), indent)
 
 
 class BlockdiagNode(BlockdiagElement):
-    '''A name [key = value, ...] node element.'''
+    '''A BlockdiagElement representing a `name [key = value, ...]` node.'''
 
     def __init__(self, name, *args, **kwargs):
-        '''Creates a new block diagram node.
+        '''Creates a BlockdiagNode instance.
 
         Args:
             name: the name of the node
@@ -414,6 +478,14 @@ class BlockdiagNode(BlockdiagElement):
         self.kwargs = kwargs
 
     def render(self, indent=0):
+        '''Renders the BlockdiagNode as a string with the given indentation.
+
+        Args:
+            indent: the indentation level at which to render the element
+
+        Returns:
+            a string containing the rendered BlockdiagNode
+        '''
         line = self.name
         attributes = self.args + [
             "%s = %s" % (k, v) for k, v in iteritems(self.kwargs)
@@ -424,10 +496,10 @@ class BlockdiagNode(BlockdiagElement):
 
 
 class BlockdiagDirectedEdge(BlockdiagElement):
-    '''A source -> sink directed edge element.'''
+    '''A BlockdiagElement representing a `source -> sink` directed edge.'''
 
     def __init__(self, source, sink):
-        '''Creates a new block diagram directed edge.
+        '''Creates a BlockdiagDirectedEdge instance.
 
         Args:
             source: the edge source
@@ -437,6 +509,15 @@ class BlockdiagDirectedEdge(BlockdiagElement):
         self.sink = sink
 
     def render(self, indent=0):
+        '''Renders the BlockdiagDirectedEdge as a string with the given
+        indentation.
+
+        Args:
+            indent: the indentation level at which to render the element
+
+        Returns:
+            a string containing the rendered BlockdiagDirectedEdge
+        '''
         return _indent(self.source + " -> " + self.sink + ";", indent)
 
 
