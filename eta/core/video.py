@@ -254,7 +254,7 @@ class VideoMetadata(Serializable):
             self, start_time=None, frame_size=None, frame_rate=None,
             total_frame_count=None, duration=None, size_bytes=None,
             mime_type=None, encoding_str=None, gps_waypoints=None):
-        '''Constructs a VideoMetadata instance. All args are optional.
+        '''Creates a VideoMetadata instance.
 
         Args:
             start_time: a datetime describing
@@ -2169,7 +2169,7 @@ class VideoProcessor(object):
             out_fps=None,
             out_size=None,
             out_opts=None):
-        '''Constructs a new VideoProcessor instance.
+        '''Creates a VideoProcessor instance.
 
         Args:
             inpath: path to the input video. Passed directly to a VideoReader
@@ -2469,7 +2469,7 @@ class FFmpegVideoReader(VideoReader):
     '''
 
     def __init__(self, inpath, frames=None, keyframes_only=False):
-        '''Constructs a new VideoReader with ffmpeg backend.
+        '''Creates an FFmpegVideoReader instance.
 
         Args:
             inpath: path to the input video, which can be a standalone video
@@ -2605,7 +2605,7 @@ class OpenCVVideoReader(VideoReader):
     '''
 
     def __init__(self, inpath, frames=None):
-        '''Constructs a new VideoReader with OpenCV backend.
+        '''Creates an OpenCVVideoReader instance.
 
         Args:
             inpath: path to the input video, which can be a standalone video
@@ -2753,7 +2753,7 @@ class FFmpegVideoWriter(VideoWriter):
     '''Class for writing videos using ffmpeg.'''
 
     def __init__(self, outpath, fps, size, out_opts=None):
-        '''Constructs a VideoWriter with ffmpeg backend.
+        '''Creates an FFmpegVideoWriter instance.
 
         Args:
             outpath: the output video path. Existing files are overwritten,
@@ -2798,7 +2798,7 @@ class OpenCVVideoWriter(VideoWriter):
     '''
 
     def __init__(self, outpath, fps, size):
-        '''Constructs a VideoWriter with OpenCV backend.
+        '''Creates an OpenCVVideoWriter instance.
 
         Args:
             outpath: the output video path. Existing files are overwritten,
@@ -2839,7 +2839,7 @@ class FFprobe(object):
     DEFAULT_GLOBAL_OPTS = ["-loglevel", "error"]
 
     def __init__(self, global_opts=None, opts=None):
-        '''Constructs an ffprobe command, minus the input path.
+        '''Creates an FFprobe instance.
 
         Args:
             global_opts: a list of global options for ffprobe. By default,
@@ -2936,7 +2936,7 @@ class FFmpeg(object):
             global_opts=None,
             in_opts=None,
             out_opts=None):
-        '''Constructs an ffmpeg command, minus the input/output paths.
+        '''Creates an FFmpeg instance.
 
         Args:
             fps: an optional output frame rate. By default, the native frame
