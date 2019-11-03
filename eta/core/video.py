@@ -2400,6 +2400,10 @@ class VideoReader(object):
     def __next__(self):
         return self.read()
 
+    def close(self):
+        '''Closes the VideoReader.'''
+        pass
+
     @property
     def frame_number(self):
         '''The current frame number, or -1 if no frames have been read.'''
@@ -2444,10 +2448,6 @@ class VideoReader(object):
             img: the next frame
         '''
         raise NotImplementedError("subclass must implement read()")
-
-    def close(self):
-        '''Closes the video reader.'''
-        raise NotImplementedError("subclass must implement close()")
 
 
 class VideoReaderError(Exception):
