@@ -2623,7 +2623,7 @@ class SampledFramesVideoReader(VideoReader):
         if frames is None or frames == "*":
             frames = all_frames
 
-        super(FFmpegVideoReader, self).__init__(frames_dir, frames)
+        super(SampledFramesVideoReader, self).__init__(frames_dir, frames)
 
     @property
     def encoding_str(self):
