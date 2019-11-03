@@ -118,7 +118,12 @@ def _process_video(input_path, output_frames_dir, parameters):
     isize = stream_info.frame_size
     iframe_count = stream_info.total_frame_count
 
-    # Compute acceleration
+    #
+    # Compute acceleration using the following strategy:
+    #   (i) use `accel` if provided
+    #   (ii) if `accel` is not provided, use `fps` to set `accel`
+    #   (iii) if a `max_fps` is provided, always increase `accel` if necessary
+    #
     accel = parameters.accel
     fps = parameters.fps
     max_fps = parameters.max_fps
@@ -126,7 +131,7 @@ def _process_video(input_path, output_frames_dir, parameters):
         if accel < 1:
             raise ValueError(
                 "Acceleration factor must be greater than 1; found %d" % accel)
-    if fps is not None:
+    elif fps is not None:
         if fps > ifps:
             raise ValueError(
                 "Sampling frame rate (%g) cannot be greater than input frame "
@@ -134,7 +139,7 @@ def _process_video(input_path, output_frames_dir, parameters):
         accel = ifps / fps
     if max_fps is not None and max_fps > 0:
         min_accel = ifps / max_fps
-        if accel < min_accel:
+        if accel is None or accel < min_accel:
             raise ValueError(
                 "Maximum frame rate %g requires acceleration of at least %g; "
                 "setting `accel = %g` now" % (max_fps, min_accel, min_accel))
