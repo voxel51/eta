@@ -99,12 +99,15 @@ class BlockdiagFile(object):
         return group
 
     def write(self, path):
-        '''Writes the block diagram to disk, creating the output directory if
-        necessary.
+        '''Writes the block diagram to disk as a `.diag` text file.
+
+        The output directory is created, if necessary.
+
+        Args:
+            path: the output path
         '''
-        etau.ensure_basedir(path)
-        with open(path, "wb") as f:
-            f.write(self._file.render())
+        diagram_str = self._file.render()
+        etau.write_file(diagram_str, path)
 
 
 class BlockdiagPipeline(BlockdiagFile):
