@@ -2590,6 +2590,97 @@ class FFmpegVideoReader(VideoReader):
             raise StopIteration
 
 
+class SampledFramesVideoReader(VideoReader):
+    '''Class for reading video stored as sampled frames on disk.
+
+    A frames string like "1-5,10-15" can optionally be passed to only read
+    certain frame ranges.
+
+    This class uses 1-based indexing for all frame operations.
+    '''
+
+    def __init__(self, frames_dir, frames=None):
+        '''Creates a SampledFramesVideoReader instance.
+
+        Args:
+            frames_dir: the path to a directory of frames, which must be
+                parseable by `eta.core.utils.parse_dir_pattern()`
+            frames: one of the following optional quantities specifying a
+                collection of frames to process:
+                - None (all frames - the default)
+                - "*" (all frames)
+                - a string like "1-3,6,8-10"
+                - a FrameRange or FrameRanges instance
+                - an iterable, e.g., [1, 2, 3, 6, 8, 9, 10]. The frames do not
+                    need to be in sorted order
+        '''
+        self._frames_dir = None
+        self._frames_patt = None
+        self._frame_size = None
+        self._total_frame_count = None
+
+        all_frames = self._init_for_frames_dir(frames_dir)
+        if frames is None or frames == "*":
+            frames = all_frames
+
+        super(FFmpegVideoReader, self).__init__(frames_dir, frames)
+
+    @property
+    def encoding_str(self):
+        '''The video encoding string.'''
+        return None
+
+    @property
+    def frame_size(self):
+        '''The (width, height) of each frame.'''
+        return self._frame_size
+
+    @property
+    def frame_rate(self):
+        '''The frame rate.'''
+        return None
+
+    @property
+    def total_frame_count(self):
+        '''The total number of frames in the video, or 0 if it could not be
+        determined.
+        '''
+        return self._total_frame_count
+
+    def read(self):
+        '''Reads the next frame.
+
+        Returns:
+            img: the next frame
+
+        Raises:
+            StopIteration: if there are no more frames to process or the next
+                frame could not be read or parsed for any reason
+        '''
+        frame_number = next(self._ranges)
+        try:
+            return etai.read(self._frames_patt % frame_number)
+        except:
+            logger.warning(
+                "Failed to grab frame %d. Raising StopIteration now",
+                frame_number)
+            raise StopIteration
+
+    def _init_for_frames_dir(self, frames_dir):
+        frames_patt, all_frames = etau.parse_dir_pattern(frames_dir)
+        if not all_frames:
+            raise ValueError("Found no frames in '%s'" % frames_dir)
+
+        img = etai.read(frames_patt % all_frames[0])
+
+        self._frames_dir = frames_dir
+        self._frames_patt = frames_patt
+        self._frame_size = etai.to_frame_size(img=img)
+        self._total_frame_count = all_frames[-1]
+
+        return all_frames
+
+
 class OpenCVVideoReader(VideoReader):
     '''Class for reading video using OpenCV.
 
