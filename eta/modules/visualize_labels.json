@@ -8,6 +8,12 @@
     },
     "inputs": [
         {
+            "name": "video_path",
+            "type": "eta.core.types.Video",
+            "description": "A video",
+            "required": true
+        },
+        {
             "name": "video_labels_path",
             "type": "eta.core.types.VideoLabels",
             "description": "A JSON file containing the video labels",
@@ -18,12 +24,6 @@
             "type": "eta.core.types.DetectedObjects",
             "description": "A JSON file containing the detected objects",
             "required": false
-        },
-        {
-            "name": "video_path",
-            "type": "eta.core.types.Video",
-            "description": "A video",
-            "required": true
         }
     ],
     "outputs": [
