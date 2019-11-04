@@ -6,7 +6,7 @@ Info:
     type: eta.core.types.Module
     version: 0.1.0
 
-Copyright 2017-2018, Voxel51, Inc.
+Copyright 2017-2019, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
@@ -38,8 +38,8 @@ import eta.core.ziputils as etaz
 logger = logging.getLogger(__name__)
 
 
-class FormatterConfig(etam.BaseModuleConfig):
-    '''Formatter configuration settings.
+class FormatVideosConfig(etam.BaseModuleConfig):
+    '''Format videos configuration settings.
 
     Attributes:
         data (DataConfig)
@@ -47,7 +47,7 @@ class FormatterConfig(etam.BaseModuleConfig):
     '''
 
     def __init__(self, d):
-        super(FormatterConfig, self).__init__(d)
+        super(FormatVideosConfig, self).__init__(d)
         self.data = self.parse_object_array(d, "data", DataConfig)
         self.parameters = self.parse_object(d, "parameters", ParametersConfig)
 
@@ -114,6 +114,7 @@ class DataConfig(Config):
         self._output_field = field
         self._output_val = val
 
+
 class ParametersConfig(Config):
     '''Parameter configuration settings.
 
@@ -145,6 +146,7 @@ class ParametersConfig(Config):
 
 def _format_videos(config):
     parameters = config.parameters
+
     for data in config.data:
         if data.is_zip:
             _process_zip(data.input_zip, data.output_zip, parameters)
@@ -227,10 +229,10 @@ def run(config_path, pipeline_config_path=None):
     '''Run the format_videos module.
 
     Args:
-        config_path: path to a FormatterConfig file
+        config_path: path to a FormatVideosConfig file
         pipeline_config_path: optional path to a PipelineConfig file
     '''
-    config = FormatterConfig.from_json(config_path)
+    config = FormatVideosConfig.from_json(config_path)
     etam.setup(config, pipeline_config_path=pipeline_config_path)
     _format_videos(config)
 
