@@ -1646,32 +1646,34 @@ class MD5FileHasher(FileHasher):
             return str(hashlib.md5(f.read()).hexdigest())
 
 
-def make_temp_dir(dir=None):
+def make_temp_dir(basedir=None):
     '''Makes a temporary directory.
 
     Args:
-        dir: an optional directory in which to put the temp dir
+        basedir: an optional directory in which to create the new directory
 
     Returns:
         the path to the temporary directory
     '''
-    return tempfile.mkdtemp(dir=dir)
+    if basedir:
+        ensure_dir(basedir)
+    return tempfile.mkdtemp(dir=basedir)
 
 
 class TempDir(object):
     '''Context manager that creates and destroys a temporary directory.'''
 
-    def __init__(self, dir=None):
+    def __init__(self, basedir=None):
         '''Creates a TempDir instance.
 
         Args:
-            dir: an optional directory in which to put the temp dir
+            basedir: an optional base directory in which to create the temp dir
         '''
-        self._dir = dir
+        self._basedir = basedir
         self._name = None
 
     def __enter__(self):
-        self._name = make_temp_dir(dir=self._dir)
+        self._name = make_temp_dir(basedir=self._basedir)
         return self._name
 
     def __exit__(self, *args):
