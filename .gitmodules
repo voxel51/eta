@@ -1,3 +1,4 @@
 [submodule "tensorflow/models"]
 	path = tensorflow/models
 	url = https://github.com/voxel51/models
+    ignore = dirty
