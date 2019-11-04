@@ -1655,8 +1655,10 @@ def make_temp_dir(basedir=None):
     Returns:
         the path to the temporary directory
     '''
-    if basedir:
-        ensure_dir(basedir)
+    if not basedir:
+        basedir = tempfile.gettempdir()
+
+    ensure_dir(basedir)
     return tempfile.mkdtemp(dir=basedir)
 
 
