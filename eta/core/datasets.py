@@ -1751,7 +1751,7 @@ class LabeledDatasetBuilder(object):
 
         dataset = self.dataset_cls.create_empty_dataset(path, description)
 
-        with etau.TempDir(dir=tmp_dir_base) as dir_path:
+        with etau.TempDir(tmp_dir_base) as dir_path:
             for idx, record in enumerate(self._dataset):
                 result = record.build(dir_path, str(idx),
                                       pretty_print=pretty_print)
