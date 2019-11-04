@@ -88,6 +88,7 @@ class ParametersConfig(Config):
 
 def _visualize_labels(config):
     annotation_config = config.parameters.annotation_config
+
     for data in config.data:
         _process_video(data, annotation_config)
 
@@ -95,8 +96,10 @@ def _visualize_labels(config):
 def _process_video(data, annotation_config):
     # Load labels
     if data.video_labels_path:
+        logger.info("Reading labels from '%s'", data.video_labels_path)
         labels = etav.VideoLabels.from_json(data.video_labels_path)
     elif data.objects_path:
+        logger.info("Reading objects from '%s'", data.objects_path)
         objects = etao.DetectedObjectContainer.from_json(data.objects_path)
         labels = etav.VideoLabels.from_detected_objects(objects)
     else:
