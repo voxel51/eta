@@ -167,13 +167,22 @@ def _process_zip(input_zip, output_zip, parameters):
 
 
 def _process_video(input_path, output_path, parameters):
+    # Parse parameters
+    fps = parameters.fps
+    max_fps = parameters.max_fps
+    scale = parameters.scale
+    size = parameters.size
+    max_size = parameters.max_size
+    ffmpeg_out_opts = parameters.ffmpeg_out_opts
+
+    # Get input video details
     stream_info = etav.VideoStreamInfo.build_for(input_path)
     ifps = stream_info.frame_rate
     isize = stream_info.frame_size
 
     # Compute output frame rate
-    ofps = parameters.fps or -1
-    max_fps = parameters.max_fps or -1
+    ofps = fps or -1
+    max_fps = max_fps or -1
     if ofps < 0:
         logger.info("Defaulting to the input frame rate of %s", ifps)
         ofps = ifps
@@ -182,17 +191,17 @@ def _process_video(input_path, output_path, parameters):
         ofps = max_fps
 
     # Compute output frame size
-    if parameters.scale:
-        osize = etai.scale_frame_size(isize, parameters.scale)
-    elif parameters.size:
-        psize = etai.parse_frame_size(parameters.size)
+    if scale:
+        osize = etai.scale_frame_size(isize, scale)
+    elif size:
+        psize = etai.parse_frame_size(size)
         osize = etai.infer_missing_dims(psize, isize)
     else:
         osize = isize
 
     # Apply size limit, if requested
-    if parameters.max_size:
-        msize = etai.parse_frame_size(parameters.max_size)
+    if max_size:
+        msize = etai.parse_frame_size(max_size)
         osize = etai.clamp_frame_size(osize, msize)
 
     # Handle no-ops efficiently
@@ -210,18 +219,22 @@ def _process_video(input_path, output_path, parameters):
     # ffmpeg requires that height/width be even
     osize = [etan.round_to_even(x) for x in osize]
 
+    #
     # Format video
+    #
+
     logger.info("Formatting video '%s'", input_path)
     if not same_fps:
         logger.info("*** resampling at frame rate %s", ofps)
     else:
         ofps = None  # omit unused argument
+
     if not same_size:
         logger.info("*** resizing to %s", str(osize))
     else:
         osize = None  # omit unused argument
-    ffmpeg = etav.FFmpeg(
-        fps=ofps, size=osize, out_opts=parameters.ffmpeg_out_opts)
+
+    ffmpeg = etav.FFmpeg(fps=ofps, size=osize, out_opts=ffmpeg_out_opts)
     ffmpeg.run(input_path, output_path)
 
 
