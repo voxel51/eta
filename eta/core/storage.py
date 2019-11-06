@@ -41,6 +41,7 @@ try:
 except ImportError:
     import urlparse  # Python 2
 
+import boto3
 import google.api_core.exceptions as gae
 import google.cloud.storage as gcs
 import google.oauth2.service_account as gos
@@ -215,6 +216,51 @@ class LocalStorageClient(StorageClient):
             storage_path: the path to the storage location
         '''
         etau.delete_file(storage_path)
+
+
+class NeedsAWSCredentials(object):
+    '''Mixin for classes that need AWS credentials to take authenticated
+    actions.
+
+    By convention, StorageClient classes that derive from this class should
+    allow users to specify their credentials in the following ways, rather than
+    using the `from_ini()` method:
+
+        (1) setting the `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and
+            `AWS_DEFAULT_REGION` environment variables directly
+
+        (2) setting the `AWS_SHARED_CREDENTIALS_FILE` environment variable to
+            point to a valid credentials `.ini` file
+
+        (3) setting the `AWS_CONFIG_FILE` environment variable to point to a
+            valid credentials `.ini` file
+
+    In the above, the `.ini` file should have syntax similar to the following:
+
+    ```
+    [default]
+    aws_access_key_id = XXX
+    aws_secret_access_key = YYY
+    region = ZZZ
+    ```
+
+    See the following link for more information:
+    https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html#configuration
+    '''
+
+    @classmethod
+    def from_ini(cls, credentials_path):
+        '''Creates a cls instance from the given credentials file.
+
+        Args:
+            credentials_path: the path to a credentials `.ini` file
+
+        Returns:
+            an instance of cls with the given credentials
+        '''
+        os.environ["AWS_SHARED_CREDENTIALS_FILE"] = credentials_path
+        os.environ["AWS_CONFIG_FILE"] = credentials_path
+        return cls()
 
 
 class NeedsGoogleCredentials(object):
