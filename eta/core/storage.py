@@ -66,7 +66,7 @@ def google_cloud_api_retry(func):
     '''Decorator for handling retry of Google API errors.
 
     Follows recommendations from:
-        https://cloud.google.com/apis/design/errors#error_retries
+    https://cloud.google.com/apis/design/errors#error_retries
     '''
 
     def is_500_or_503(exception):
@@ -218,13 +218,16 @@ class LocalStorageClient(StorageClient):
 
 
 class NeedsGoogleCredentials(object):
-    '''Mixin for classes that need a google.auth.credentials.Credentials
-    instance in order to take authenticated actions.
+    '''Mixin for classes that need a `google.auth.credentials.Credentials`
+    instance to take authenticated actions.
 
     By convention, storage client classes that derive from this class should
     allow users to set the `GOOGLE_APPLICATION_CREDENTIALS` environment
     variable to point to a valid service account JSON file rather than
     constructing an instance using the `from_json()` method.
+
+    See the following page for more information:
+    https://cloud.google.com/docs/authentication/getting-started
     '''
 
     @classmethod
@@ -245,7 +248,11 @@ class NeedsGoogleCredentials(object):
 class GoogleCloudStorageClient(StorageClient, NeedsGoogleCredentials):
     '''Client for reading/writing data from Google Cloud Storage buckets.
 
-    `cloud_path` should have form "gs://<bucket>/<path/to/object>".
+    All cloud path strings used by this class should have the form
+    "gs://<bucket>/<path/to/object>".
+
+    See `NeedsGoogleCredentials` for more information about the authentication
+    strategy used by this class.
     '''
 
     #
@@ -259,10 +266,10 @@ class GoogleCloudStorageClient(StorageClient, NeedsGoogleCredentials):
         '''Creates a GoogleCloudStorageClient instance.
 
         Args:
-            credentials: a google.auth.credentials.Credentials instance. If no
-                credentials are provided, the `GOOGLE_APPLICATION_CREDENTIALS`
-                environment variable must be set to point to a valid service
-                account JSON file
+            credentials: a `google.auth.credentials.Credentials instance`. If
+                not provided, the `GOOGLE_APPLICATION_CREDENTIALS` environment
+                variable must be set to point to a valid service account JSON
+                file
             chunk_size: an optional chunk size (in bytes) to use for uploads
                 and downloads. By default, `DEFAULT_CHUNK_SIZE` is used
         '''
@@ -396,7 +403,7 @@ class GoogleCloudStorageClient(StorageClient, NeedsGoogleCredentials):
 
     @google_cloud_api_retry
     def download(self, cloud_path, local_path):
-        '''Downloads the file from Google Cloud Storage.
+        '''Downloads the file from Google Cloud Storage to the given location.
 
         Args:
             cloud_path: the path to the Google Cloud object to download
@@ -413,7 +420,6 @@ class GoogleCloudStorageClient(StorageClient, NeedsGoogleCredentials):
 
         Args:
             cloud_path: the path to the Google Cloud object to download
-            local_path: the local disk path to store the downloaded file
 
         Returns:
             the downloaded bytes string
@@ -530,12 +536,7 @@ class GoogleCloudStorageClient(StorageClient, NeedsGoogleCredentials):
                 `encoding`
         '''
         blob = self._get_blob(cloud_path)
-        #
-        # WARNING:
-        #   If `patch()` isn't called, the blob's properties will not be
-        #   populated
-        #
-        blob.patch()
+        blob.patch()  # must call `patch()` to populate the blob's properties
         return {
             "name": os.path.basename(blob.name),
             "bucket": blob.bucket,
@@ -580,13 +581,12 @@ class GoogleCloudStorageClient(StorageClient, NeedsGoogleCredentials):
         Anyone with the URL can access the object with the permission until it
         expires.
 
-        Note that the Google Cloud documentation strongly recommends using PUT
-        rather than POST to upload objects.
+        Note that you should use `PUT`, not `POST`, to upload objects!
 
         Args:
             cloud_path: the path to the Google Cloud object
-            hours: the number of hours that the URL is valid
             method: the HTTP verb (GET, PUT, DELETE) to authorize
+            hours: the number of hours that the URL is valid
 
         Returns:
             a URL for accessing the object via HTTP request
@@ -602,18 +602,17 @@ class GoogleCloudStorageClient(StorageClient, NeedsGoogleCredentials):
 
     @staticmethod
     def _parse_cloud_storage_path(cloud_path):
-        '''Parses a cloud storage path string.
+        '''Parses a Google Cloud Storage path.
 
         Args:
-            cloud_path: a string of the form gs://<bucket_name>/<object_name>
+            cloud_path: a string of form "gs://<bucket_name>/<object_name>"
 
         Returns:
             bucket_name: the name of the Google Cloud Storage bucket
             object_name: the name of the object
 
         Raises:
-            GoogleCloudStorageClientError: if the cloud storage path string was
-                invalid
+            GoogleCloudStorageClientError: if the cloud path string was invalid
         '''
         if not cloud_path.startswith("gs://"):
             raise GoogleCloudStorageClientError(
@@ -625,6 +624,7 @@ class GoogleCloudStorageClient(StorageClient, NeedsGoogleCredentials):
 
 
 class GoogleCloudStorageClientError(Exception):
+    '''Error raised when a problem occurred in a GoogleCloudStorageClient.'''
     pass
 
 
@@ -633,6 +633,9 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
 
     The service account credentials you use must have access permissions for
     any Drive folders you intend to access.
+
+    See `NeedsGoogleCredentials` for more information about the authentication
+    strategy used by this class.
 
     Attributes:
         chunk_size: the chunk size (in bytes) that will be used for streaming
@@ -650,10 +653,10 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
         '''Creates a GoogleDriveStorageClient instance.
 
         Args:
-            credentials: a google.auth.credentials.Credentials instance. If no
-                credentials are provided, the `GOOGLE_APPLICATION_CREDENTIALS`
-                environment variable must be set to point to a valid service
-                account JSON file
+            credentials: a `google.auth.credentials.Credentials` instance. If
+                not provided, the `GOOGLE_APPLICATION_CREDENTIALS` environment
+                variable must be set to point to a valid service account JSON
+                file
             chunk_size: an optional chunk size (in bytes) to use for uploads
                 and downloads. By default, `DEFAULT_CHUNK_SIZE` is used
         '''
