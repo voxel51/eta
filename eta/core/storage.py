@@ -263,6 +263,205 @@ class NeedsAWSCredentials(object):
         return cls()
 
 
+class S3StorageClient(StorageClient, NeedsAWSCredentials):
+    '''Client for reading/writing data from S3 buckets.
+
+    All cloud path strings used by this class should have the form
+    "s3://<bucket>/<path/to/object>".
+
+    See `NeedsAWSCredentials` for more information about the authentication
+    strategy used by this class.
+    '''
+
+    def __init__(self):
+        '''Creates an S3StorageClient instance.'''
+        self._client = boto3.client("s3")
+
+    def upload(self, local_path, cloud_path, content_type=None):
+        '''Uploads the file to S3.
+
+        Args:
+            local_path: the path to the file to upload
+            cloud_path: the path to the S3 object to create
+            content_type: the optional type of the content being uploaded. If
+                no value is provided, it is guessed from the filename
+        '''
+        self._do_upload(
+            cloud_path, local_path=local_path, content_type=content_type)
+
+    def upload_stream(self, file_obj, cloud_path, content_type=None):
+        '''Uploads the contents of the given file-like object to S3.
+
+        Args:
+            file_obj: the file-like object to upload, which must be open for
+                reading in binary (not text) mode
+            cloud_path: the path to the S3 object to create
+            content_type: the optional type of the content being uploaded. If
+                no value is provided but the object already exists in S3, then
+                the same value is used. Otherwise, the default value
+                ("application/octet-stream") is used
+        '''
+        self._do_upload(
+            cloud_path, file_obj=file_obj, content_type=content_type)
+
+    def upload_bytes(self, bytes_str, cloud_path, content_type=None):
+        '''Uploads the given bytes to S3.
+
+        Args:
+            bytes_str: the bytes string to upload
+            cloud_path: the path to the S3 object to create
+            content_type: the optional type of the content being uploaded. If
+                no value is provided but the object already exists in S3, then
+                the same value is used. Otherwise, the default value
+                ("application/octet-stream") is used
+        '''
+        # @todo use a self._client method directly to do this!
+        with io.BytesIO(_to_bytes(bytes_str)) as f:
+            self._do_upload(cloud_path, file_obj=f, content_type=content_type)
+
+    def download(self, cloud_path, local_path):
+        '''Downloads the file from S3 to the given location.
+
+        Args:
+            cloud_path: the path to the S3 object to download
+            local_path: the local disk path to store the downloaded file
+        '''
+        self._do_download(cloud_path, local_path=local_path)
+
+    def download_stream(self, cloud_path, file_obj):
+        '''Downloads the file from S3 to the given file-like object.
+
+        Args:
+            cloud_path: the path to the S3 object to download
+            file_obj: the file-like object to which to write the download,
+                which must be open for writing in binary mode
+        '''
+        self._do_download(cloud_path, file_obj=file_obj)
+
+    def download_bytes(self, cloud_path):
+        '''Downloads the file from S3 and returns the bytes string.
+
+        Args:
+            cloud_path: the path to the S3 object to download
+
+        Returns:
+            the downloaded bytes string
+        '''
+        # @todo use a self._client method directly to do this!
+        with io.BytesIO() as f:
+            self.download_stream(cloud_path, f)
+            return f.getvalue()
+
+    def delete(self, cloud_path):
+        '''Deletes the given file from S3.
+
+        Args:
+            cloud_path: the path to the S3 object to delete
+        '''
+        bucket, object_name = self._parse_cloud_storage_path(cloud_path)
+        self._client.delete_object(Bucket=bucket, Key=object_name)
+
+    def get_file_metadata(self, cloud_path):
+        '''Returns metadata about the given file in S3.
+
+        Args:
+            cloud_path: the path to the S3 object
+
+        Returns:
+            a dictionary containing metadata about the file, including its
+                `name`, `bucket`, `creation_date`, `size`, and `mime_type`
+        '''
+        bucket, object_name = self._parse_cloud_storage_path(cloud_path)
+        metadata = self._client.head_object(Bucket=bucket, Key=object_name)
+        return {
+            "name": os.path.basename(object_name),
+            "bucket": bucket,
+            "creation_date": metadata["LastModified"],
+            "size": metadata["ContentLength"],
+            "mime_type": metadata["ContentType"],
+        }
+
+    def generate_signed_url(self, cloud_path, method="GET", hours=24):
+        '''Generates a signed URL for accessing the given S3 object.
+
+        Anyone with the URL can access the object with the permission until it
+        expires.
+
+        Note that you should use `PUT`, not `POST`, to upload objects!
+
+        Args:
+            cloud_path: the path to the S3 object
+            method: the HTTP verb (GET, PUT, DELETE) to authorize
+            hours: the number of hours that the URL is valid
+
+        Returns:
+            a URL for accessing the object via HTTP request
+        '''
+        client_method = method.lower() + "_object"
+        bucket, object_name = self._parse_cloud_storage_path(cloud_path)
+        params = {"Bucket": bucket, "Key": object_name}
+        expiration = int(3600 * hours)
+        return self._client.generate_presigned_url(
+            ClientMethod=client_method, Params=params, ExpiresIn=expiration)
+
+    def _do_upload(
+            self, cloud_path, local_path=None, file_obj=None,
+            content_type=None):
+        bucket, object_name = self._parse_cloud_storage_path(cloud_path)
+
+        if local_path and not content_type:
+            content_type = etau.guess_mime_type(local_path)
+
+        if content_type:
+            extra_args = {"ContentType": content_type}
+        else:
+            extra_args = None
+
+        if local_path:
+            self._client.upload_file(
+                local_path, bucket, object_name, ExtraArgs=extra_args)
+
+        if file_obj is not None:
+            self._client.upload_fileobj(
+                file_obj, bucket, object_name, ExtraArgs=extra_args)
+
+    def _do_download(self, cloud_path, local_path=None, file_obj=None):
+        bucket, object_name = self._parse_cloud_storage_path(cloud_path)
+
+        if local_path:
+            self._client.download_file(bucket, object_name, local_path)
+
+        if file_obj is not None:
+            self._client.download_fileobj(bucket, object_name, file_obj)
+
+    @staticmethod
+    def _parse_cloud_storage_path(cloud_path):
+        '''Parses an S3 path.
+
+        Args:
+            cloud_path: a string of form "s3://<bucket_name>/<object_name>"
+
+        Returns:
+            bucket_name: the name of the S3 bucket
+            object_name: the name of the object
+
+        Raises:
+            S3StorageClientError: if the cloud path string was invalid
+        '''
+        if not cloud_path.startswith("s3://"):
+            raise S3StorageClientError(
+                "Cloud storage path '%s' must start with s3://" % cloud_path)
+        chunks = cloud_path[5:].split("/", 1)
+        if len(chunks) != 2:
+            return chunks[0], ""
+        return chunks[0], chunks[1]
+
+
+class S3StorageClientError(Exception):
+    '''Error raised when a problem occurred in an S3StorageClient.'''
+    pass
+
+
 class NeedsGoogleCredentials(object):
     '''Mixin for classes that need a `google.auth.credentials.Credentials`
     instance to take authenticated actions.
