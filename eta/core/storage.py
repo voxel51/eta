@@ -170,7 +170,177 @@ class StorageClient(object):
         raise NotImplementedError("subclass must implement delete()")
 
 
-class LocalStorageClient(StorageClient):
+class CanSyncDirectories(object):
+    '''Mixin class for `StorageClient`s that can sync directories to/remote
+    remote storage.
+
+    Depending on the nature of the concrete StorageClient, `remote_dir` may be
+    a cloud bucket or prefix, the ID of a directory, or some other construct
+    that contains a collection of files of interest.
+    '''
+
+    def list_files_in_folder(self, remote_dir, recursive=True):
+        '''Returns a list of the files in the given remote directory.
+
+        Args:
+            remote_dir: the remote directory
+            recursive: whether to recursively traverse sub-directories. By
+                default, this is True
+
+        Returns:
+            a list of full paths to the files in the folder
+        '''
+        raise NotImplementedError(
+            "subclass must implement list_files_in_folder()")
+
+    def upload_dir(self, local_dir, remote_dir, recursive=True):
+        '''Uploads the contents of the given directory to the given remote
+        storage directory.
+
+        The remote paths are created by appending the relative paths of all
+        files inside the local directory to the provided remote directory.
+
+        Args:
+            local_dir: the local directory to upload
+            remote_dir: the remote directory to upload into
+            recursive: whether to recursively traverse subdirectories. By
+                default, this is True
+        '''
+        files = etau.list_files(local_dir, recursive=recursive)
+        if not files:
+            return
+
+        logger.info("Uploading %d files to '%s'", len(files), remote_dir)
+        for f in files:
+            local_path = os.path.join(local_dir, f)
+            remote_path = os.path.join(remote_dir, f)
+            self.upload(local_path, remote_path)
+
+    def upload_dir_sync(
+            self, local_dir, remote_dir, overwrite=False, recursive=True):
+        '''Syncs the contents of the given local directory to the given remote
+        storage directory.
+
+        This method is similar to `upload_dir()`, except that files in the
+        remote diretory that are not present in the local directory will be
+        deleted, and files that are already present in the remote directory
+        are not uploaded if `overwrite` is False.
+
+        Args:
+            local_dir: the local directory to sync
+            remote_dir: the remote directory to sync to
+            overwrite: whether or not to upload files that are already present
+                in the remote directory, thus overwriting them. By default,
+                this is False
+            recursive: whether to recursively traverse subdirectories. By
+                default, this is True
+        '''
+        local_files = set(etau.list_files(local_dir, recursive=recursive))
+        remote_files = set(
+            os.path.relpath(f, remote_dir)
+            for f in self.list_files_in_folder(remote_dir, recursive=recursive)
+        )
+
+        # Files to delete remotely
+        delete_files = remote_files - local_files
+
+        # Files to upload to remote directory
+        if overwrite:
+            upload_files = local_files
+        else:
+            upload_files = local_files - remote_files
+
+        if delete_files:
+            logger.info(
+                "Deleting %d files from '%s'", len(delete_files), remote_dir)
+            for f in delete_files:
+                remote_path = os.path.join(remote_dir, f)
+                self.delete(remote_path)
+
+        if upload_files:
+            logger.info(
+                "Uploading %d files to '%s'", len(upload_files), remote_dir)
+            for f in upload_files:
+                local_path = os.path.join(local_dir, f)
+                remote_path = os.path.join(remote_dir, f)
+                self.upload(local_path, remote_path)
+
+    def download_dir(self, remote_dir, local_dir, recursive=True):
+        '''Downloads the contents of the remote directory to the given local
+        directory.
+
+        The files are written inside the specified local directory according
+        to their relative paths w.r.t. the provided remote directory.
+
+        Args:
+            remote_dir: the remote directory to download
+            local_dir: the local directory in which to write the files
+            recursive: whether to recursively traverse subdirectories. By
+                default, this is True
+        '''
+        remote_paths = self.list_files_in_folder(
+            remote_dir, recursive=recursive)
+        if not remote_paths:
+            return
+
+        logger.info(
+            "Downloading %d files from '%s'", len(remote_paths), remote_dir)
+        for remote_path in remote_paths:
+            local_path = os.path.join(
+                local_dir, os.path.relpath(remote_path, remote_dir))
+            self.download(remote_path, local_path)
+
+    def download_dir_sync(
+            self, remote_dir, local_dir, overwrite=False, recursive=True):
+        '''Syncs the contents of the given remote directory to the given local
+        directory.
+
+        This method is similar to `download_dir()`, except that files in the
+        local diretory that are not present in the remote directory will be
+        deleted, and files that are already present in the local directory
+        are not downloaded if `overwrite` is False.
+
+        Args:
+            remote_dir: the remote directory to sync
+            local_dir: the local directory to sync to
+            overwrite: whether or not to download files that are already
+                present in the local directory, thus overwriting them. By
+                default, this is False
+            recursive: whether to recursively traverse subdirectories. By
+                default, this is True
+        '''
+        remote_files = set(
+            os.path.relpath(f, remote_dir)
+            for f in self.list_files_in_folder(remote_dir, recursive=recursive)
+        )
+        local_files = set(etau.list_files(local_dir, recursive=recursive))
+
+        # Files to delete locally
+        delete_files = local_files - remote_files
+
+        # Files to download locally
+        if overwrite:
+            download_files = remote_files
+        else:
+            download_files = remote_files - local_files
+
+        if delete_files:
+            logger.info(
+                "Deleting %d files from '%s'", len(delete_files), local_dir)
+            for f in delete_files:
+                local_path = os.path.join(local_dir, f)
+                etau.delete_file(local_path)
+
+        if download_files:
+            logger.info(
+                "Downloading %d files to '%s'", len(download_files), local_dir)
+            for f in download_files:
+                remote_path = os.path.join(remote_dir, f)
+                local_path = os.path.join(local_dir, f)
+                self.download(remote_path, local_path)
+
+
+class LocalStorageClient(StorageClient, CanSyncDirectories):
     '''Client for reading/writing data from local disk storage.
 
     Since this class encapsulates local disk storage, the `storage_path`
@@ -330,7 +500,7 @@ class NeedsAWSCredentials(object):
         return cls()
 
 
-class S3StorageClient(StorageClient, NeedsAWSCredentials):
+class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
     '''Client for reading/writing data from S3 buckets.
 
     All cloud path strings used by this class should have the form
