@@ -1383,6 +1383,30 @@ class VideoSetLabels(Set):
             self._apply_schema_to_video(video_labels)
 
     @classmethod
+    def from_video_labels_patt(cls, video_labels_patt):
+        '''Creates an instance of VideoSetLabels from a pattern of VideoLabels
+        files.
+
+        Args:
+             video_labels_patt: a pattern with one or more numeric sequences:
+                "/path/to/frame-%05d.jpg" or "/path/to/clips/%02d-%d.mp4"
+
+        Returns:
+            a VideoSetLabels instance
+
+        '''
+        labels_list = [
+            VideoLabels.from_json(labels_path)
+            for labels_path in etau.get_pattern_matches(video_labels_patt)
+        ]
+
+        video_set_labels = VideoSetLabels()
+        for video_labels in labels_list:
+            video_set_labels.add(video_labels)
+
+        return video_set_labels
+
+    @classmethod
     def from_dict(cls, d):
         '''Constructs a VideoSetLabels from a JSON dictionary.'''
         schema = d.pop("schema", None)
