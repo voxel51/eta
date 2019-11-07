@@ -935,7 +935,7 @@ class GoogleCloudStorageClient(
         Returns:
             a list of full cloud paths to the files in the folder
         '''
-        bucket_name, folder_name = self._parse_cloud_storage_path(cloud_folder)
+        bucket_name, folder_name = self._parse_gcs_path(cloud_folder)
         bucket = self._client.get_bucket(bucket_name)
 
         if folder_name and not folder_name.endswith("/"):
@@ -972,12 +972,12 @@ class GoogleCloudStorageClient(
         return blob.generate_signed_url(expiration=expiration, method=method)
 
     def _get_blob(self, cloud_path):
-        bucket_name, object_name = self._parse_cloud_storage_path(cloud_path)
+        bucket_name, object_name = self._parse_gcs_path(cloud_path)
         bucket = self._client.get_bucket(bucket_name)
         return bucket.blob(object_name, chunk_size=self.chunk_size)
 
     @staticmethod
-    def _parse_cloud_storage_path(cloud_path):
+    def _parse_gcs_path(cloud_path):
         '''Parses a Google Cloud Storage path.
 
         Args:
