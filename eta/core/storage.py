@@ -5,17 +5,17 @@ See `docs/storage_dev_guide.md` for more information and best practices for
 using this module to work with remote storage resources.
 
 This module currently provides clients for the following storage resources:
-- Google Cloud buckets via the `google.cloud.storage` API
-- Google Drive via the `googleapiclient` Drive API
+- S3 buckets via the `boto3` package
+- Google Cloud buckets via the `google.cloud.storage` package
+- Google Drive via the `googleapiclient` package
+- Remote servers via the `pysftp` package
 - Web storage via HTTP requests
-- Remote servers via SFTP
 - Local disk storage
 
-Copyright 2018-2019, Voxel51, Inc.
+Copyright 2017-2019, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
-Ravali Pinnaka, ravali@voxel51.com
 '''
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
@@ -41,6 +41,7 @@ try:
 except ImportError:
     import urlparse  # Python 2
 
+import boto3
 import google.api_core.exceptions as gae
 import google.cloud.storage as gcs
 import google.oauth2.service_account as gos
@@ -66,7 +67,7 @@ def google_cloud_api_retry(func):
     '''Decorator for handling retry of Google API errors.
 
     Follows recommendations from:
-        https://cloud.google.com/apis/design/errors#error_retries
+    https://cloud.google.com/apis/design/errors#error_retries
     '''
 
     def is_500_or_503(exception):
@@ -92,31 +93,254 @@ def google_cloud_api_retry(func):
 
 
 class StorageClient(object):
-    '''Interface for storage clients.'''
+    '''Interface for storage clients that read/write files from remote storage
+    locations.
 
-    def upload(self, *args, **kwargs):
+    Depending on the nature of the concrete StorageClient, `remote_path` may be
+    a cloud object, a file ID, or some other construct that represents the path
+    to which the file will be written.
+    '''
+
+    def upload(self, local_path, remote_path):
+        '''Uploads the file to the given remote path.
+
+        Args:
+            local_path: the path to the file to upload
+            remote_path: the remote path to write the file
+        '''
         raise NotImplementedError("subclass must implement upload()")
 
-    def upload_bytes(self, *args, **kwargs):
+    def upload_bytes(self, bytes_str, remote_path):
+        '''Uploads the given bytes to the given remote path.
+
+        Args:
+            bytes_str: the bytes string to upload
+            remote_path: the remote path to write the file
+        '''
         raise NotImplementedError("subclass must implement upload_bytes()")
 
-    def upload_stream(self, *args, **kwargs):
+    def upload_stream(self, file_obj, remote_path):
+        '''Uploads the contents of the given file-like object to the given
+        remote path.
+
+        Args:
+            file_obj: the file-like object to upload, which must be open for
+                reading
+            remote_path: the remote path to write the file
+        '''
         raise NotImplementedError("subclass must implement upload_stream()")
 
-    def download(self, *args, **kwargs):
+    def download(self, remote_path, local_path):
+        '''Downloads the remote file to the given local path.
+
+        Args:
+            remote_path: the remote file to download
+            local_path: the path to which to write the downloaded file
+        '''
         raise NotImplementedError("subclass must implement download()")
 
-    def download_bytes(self, *args, **kwargs):
+    def download_bytes(self, remote_path):
+        '''Downloads bytes from the given remote path.
+
+        Args:
+            remote_path: the remote file to download
+
+        Returns:
+            the downloaded bytes string
+        '''
         raise NotImplementedError("subclass must implement download_bytes()")
 
-    def download_stream(self, *args, **kwargs):
+    def download_stream(self, remote_path, file_obj):
+        '''Downloads the file from the given remote path to the given
+        file-like object.
+
+        Args:
+            remote_path: the remote file to download
+            file_obj: the file-like object to which to write the download,
+                which must be open for writing
+        '''
         raise NotImplementedError("subclass must implement download_stream()")
 
-    def delete(self, *args, **kwargs):
+    def delete(self, remote_path):
+        '''Deletes the file at the remote path.
+
+        Args:
+            remote_path: the remote path to delete
+        '''
         raise NotImplementedError("subclass must implement delete()")
 
 
-class LocalStorageClient(StorageClient):
+class CanSyncDirectories(object):
+    '''Mixin class for `StorageClient`s that can sync directories to/from
+    remote storage.
+
+    Depending on the nature of the concrete StorageClient, `remote_dir` may be
+    a cloud bucket or prefix, the ID of a directory, or some other construct
+    that contains a collection of files of interest.
+    '''
+
+    def list_files_in_folder(self, remote_dir, recursive=True):
+        '''Returns a list of the files in the given remote directory.
+
+        Args:
+            remote_dir: the remote directory
+            recursive: whether to recursively traverse sub-directories. By
+                default, this is True
+
+        Returns:
+            a list of full paths to the files in the folder
+        '''
+        raise NotImplementedError(
+            "subclass must implement list_files_in_folder()")
+
+    def upload_dir(self, local_dir, remote_dir, recursive=True):
+        '''Uploads the contents of the given directory to the given remote
+        storage directory.
+
+        The remote paths are created by appending the relative paths of all
+        files inside the local directory to the provided remote directory.
+
+        Args:
+            local_dir: the local directory to upload
+            remote_dir: the remote directory to upload into
+            recursive: whether to recursively traverse subdirectories. By
+                default, this is True
+        '''
+        files = etau.list_files(local_dir, recursive=recursive)
+        if not files:
+            return
+
+        logger.info("Uploading %d files to '%s'", len(files), remote_dir)
+        for f in files:
+            local_path = os.path.join(local_dir, f)
+            remote_path = os.path.join(remote_dir, f)
+            self.upload(local_path, remote_path)
+
+    def upload_dir_sync(
+            self, local_dir, remote_dir, overwrite=False, recursive=True):
+        '''Syncs the contents of the given local directory to the given remote
+        storage directory.
+
+        This method is similar to `upload_dir()`, except that files in the
+        remote diretory that are not present in the local directory will be
+        deleted, and files that are already present in the remote directory
+        are not uploaded if `overwrite` is False.
+
+        Args:
+            local_dir: the local directory to sync
+            remote_dir: the remote directory to sync to
+            overwrite: whether or not to upload files that are already present
+                in the remote directory, thus overwriting them. By default,
+                this is False
+            recursive: whether to recursively traverse subdirectories. By
+                default, this is True
+        '''
+        local_files = set(etau.list_files(local_dir, recursive=recursive))
+        remote_files = set(
+            os.path.relpath(f, remote_dir)
+            for f in self.list_files_in_folder(remote_dir, recursive=recursive)
+        )
+
+        # Files to delete remotely
+        delete_files = remote_files - local_files
+
+        # Files to upload to remote directory
+        if overwrite:
+            upload_files = local_files
+        else:
+            upload_files = local_files - remote_files
+
+        if delete_files:
+            logger.info(
+                "Deleting %d files from '%s'", len(delete_files), remote_dir)
+            for f in delete_files:
+                remote_path = os.path.join(remote_dir, f)
+                self.delete(remote_path)
+
+        if upload_files:
+            logger.info(
+                "Uploading %d files to '%s'", len(upload_files), remote_dir)
+            for f in upload_files:
+                local_path = os.path.join(local_dir, f)
+                remote_path = os.path.join(remote_dir, f)
+                self.upload(local_path, remote_path)
+
+    def download_dir(self, remote_dir, local_dir, recursive=True):
+        '''Downloads the contents of the remote directory to the given local
+        directory.
+
+        The files are written inside the specified local directory according
+        to their relative paths w.r.t. the provided remote directory.
+
+        Args:
+            remote_dir: the remote directory to download
+            local_dir: the local directory in which to write the files
+            recursive: whether to recursively traverse subdirectories. By
+                default, this is True
+        '''
+        remote_paths = self.list_files_in_folder(
+            remote_dir, recursive=recursive)
+        if not remote_paths:
+            return
+
+        logger.info(
+            "Downloading %d files from '%s'", len(remote_paths), remote_dir)
+        for remote_path in remote_paths:
+            local_path = os.path.join(
+                local_dir, os.path.relpath(remote_path, remote_dir))
+            self.download(remote_path, local_path)
+
+    def download_dir_sync(
+            self, remote_dir, local_dir, overwrite=False, recursive=True):
+        '''Syncs the contents of the given remote directory to the given local
+        directory.
+
+        This method is similar to `download_dir()`, except that files in the
+        local diretory that are not present in the remote directory will be
+        deleted, and files that are already present in the local directory
+        are not downloaded if `overwrite` is False.
+
+        Args:
+            remote_dir: the remote directory to sync
+            local_dir: the local directory to sync to
+            overwrite: whether or not to download files that are already
+                present in the local directory, thus overwriting them. By
+                default, this is False
+            recursive: whether to recursively traverse subdirectories. By
+                default, this is True
+        '''
+        remote_files = set(
+            os.path.relpath(f, remote_dir)
+            for f in self.list_files_in_folder(remote_dir, recursive=recursive)
+        )
+        local_files = set(etau.list_files(local_dir, recursive=recursive))
+
+        # Files to delete locally
+        delete_files = local_files - remote_files
+
+        # Files to download locally
+        if overwrite:
+            download_files = remote_files
+        else:
+            download_files = remote_files - local_files
+
+        if delete_files:
+            logger.info(
+                "Deleting %d files from '%s'", len(delete_files), local_dir)
+            for f in delete_files:
+                local_path = os.path.join(local_dir, f)
+                etau.delete_file(local_path)
+
+        if download_files:
+            logger.info(
+                "Downloading %d files to '%s'", len(download_files), local_dir)
+            for f in download_files:
+                remote_path = os.path.join(remote_dir, f)
+                local_path = os.path.join(local_dir, f)
+                self.download(remote_path, local_path)
+
+
+class LocalStorageClient(StorageClient, CanSyncDirectories):
     '''Client for reading/writing data from local disk storage.
 
     Since this class encapsulates local disk storage, the `storage_path`
@@ -216,15 +440,316 @@ class LocalStorageClient(StorageClient):
         '''
         etau.delete_file(storage_path)
 
+    def list_files_in_folder(self, storage_dir, recursive=True):
+        '''Returns a list of the files in the given storage directory.
+
+        Args:
+            storage_dir: the storage directory
+            recursive: whether to recursively traverse sub-directories. By
+                default, this is True
+
+        Returns:
+            a list of full paths to the files in the storage directory
+        '''
+        return etau.list_files(
+            storage_dir, abs_paths=True, recursive=recursive)
+
+
+class NeedsAWSCredentials(object):
+    '''Mixin for classes that need AWS credentials to take authenticated
+    actions.
+
+    By convention, StorageClient classes that derive from this class should
+    allow users to specify their credentials in the following ways, rather than
+    using the `from_ini()` method:
+
+        (1) setting the `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and
+            `AWS_DEFAULT_REGION` environment variables directly
+
+        (2) setting the `AWS_SHARED_CREDENTIALS_FILE` environment variable to
+            point to a valid credentials `.ini` file
+
+        (3) setting the `AWS_CONFIG_FILE` environment variable to point to a
+            valid credentials `.ini` file
+
+    In the above, the `.ini` file should have syntax similar to the following:
+
+    ```
+    [default]
+    aws_access_key_id = XXX
+    aws_secret_access_key = YYY
+    region = ZZZ
+    ```
+
+    See the following link for more information:
+    https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html#configuration
+    '''
+
+    @classmethod
+    def from_ini(cls, credentials_path):
+        '''Creates a cls instance from the given credentials file.
+
+        Args:
+            credentials_path: the path to a credentials `.ini` file
+
+        Returns:
+            an instance of cls with the given credentials
+        '''
+        os.environ["AWS_SHARED_CREDENTIALS_FILE"] = credentials_path
+        os.environ["AWS_CONFIG_FILE"] = credentials_path
+        return cls()
+
+
+class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
+    '''Client for reading/writing data from S3 buckets.
+
+    All cloud path strings used by this class should have the form
+    "s3://<bucket>/<path/to/object>".
+
+    See `NeedsAWSCredentials` for more information about the authentication
+    strategy used by this class.
+    '''
+
+    def __init__(self):
+        '''Creates an S3StorageClient instance.'''
+        self._client = boto3.client("s3")
+
+    def upload(self, local_path, cloud_path, content_type=None):
+        '''Uploads the file to S3.
+
+        Args:
+            local_path: the path to the file to upload
+            cloud_path: the path to the S3 object to create
+            content_type: the optional type of the content being uploaded. If
+                no value is provided, it is guessed from the filename
+        '''
+        self._do_upload(
+            cloud_path, local_path=local_path, content_type=content_type)
+
+    def upload_stream(self, file_obj, cloud_path, content_type=None):
+        '''Uploads the contents of the given file-like object to S3.
+
+        Args:
+            file_obj: the file-like object to upload, which must be open for
+                reading in binary (not text) mode
+            cloud_path: the path to the S3 object to create
+            content_type: the optional type of the content being uploaded. If
+                no value is provided but the object already exists in S3, then
+                the same value is used. Otherwise, the default value
+                ("application/octet-stream") is used
+        '''
+        self._do_upload(
+            cloud_path, file_obj=file_obj, content_type=content_type)
+
+    def upload_bytes(self, bytes_str, cloud_path, content_type=None):
+        '''Uploads the given bytes to S3.
+
+        Args:
+            bytes_str: the bytes string to upload
+            cloud_path: the path to the S3 object to create
+            content_type: the optional type of the content being uploaded. If
+                no value is provided but the object already exists in S3, then
+                the same value is used. Otherwise, the default value
+                ("application/octet-stream") is used
+        '''
+        with io.BytesIO(_to_bytes(bytes_str)) as f:
+            self._do_upload(cloud_path, file_obj=f, content_type=content_type)
+
+    def download(self, cloud_path, local_path):
+        '''Downloads the file from S3 to the given location.
+
+        Args:
+            cloud_path: the path to the S3 object to download
+            local_path: the local disk path to store the downloaded file
+        '''
+        self._do_download(cloud_path, local_path=local_path)
+
+    def download_stream(self, cloud_path, file_obj):
+        '''Downloads the file from S3 to the given file-like object.
+
+        Args:
+            cloud_path: the path to the S3 object to download
+            file_obj: the file-like object to which to write the download,
+                which must be open for writing in binary mode
+        '''
+        self._do_download(cloud_path, file_obj=file_obj)
+
+    def download_bytes(self, cloud_path):
+        '''Downloads the file from S3 and returns the bytes string.
+
+        Args:
+            cloud_path: the path to the S3 object to download
+
+        Returns:
+            the downloaded bytes string
+        '''
+        with io.BytesIO() as f:
+            self.download_stream(cloud_path, f)
+            return f.getvalue()
+
+    def delete(self, cloud_path):
+        '''Deletes the given file from S3.
+
+        Args:
+            cloud_path: the path to the S3 object to delete
+        '''
+        bucket, object_name = self._parse_s3_path(cloud_path)
+        self._client.delete_object(Bucket=bucket, Key=object_name)
+
+    def get_file_metadata(self, cloud_path):
+        '''Returns metadata about the given file in S3.
+
+        Args:
+            cloud_path: the path to the S3 object
+
+        Returns:
+            a dictionary containing metadata about the file, including its
+                `name`, `bucket`, `creation_date`, `size`, and `mime_type`
+        '''
+        bucket, object_name = self._parse_s3_path(cloud_path)
+        metadata = self._client.head_object(Bucket=bucket, Key=object_name)
+        return {
+            "name": os.path.basename(object_name),
+            "bucket": bucket,
+            "creation_date": metadata["LastModified"],
+            "size": metadata["ContentLength"],
+            "mime_type": metadata["ContentType"],
+        }
+
+    def list_files_in_folder(self, cloud_folder, recursive=True):
+        '''Returns a list of the files in the given "folder" in S3.
+
+        Args:
+            cloud_folder: a string like `s3://<bucket-name>/<folder-path>`
+            recursive: whether to recursively traverse sub-"folders". By
+                default, this is True
+
+        Returns:
+            a list of full cloud paths to the files in the folder
+        '''
+        bucket, folder_name = self._parse_s3_path(cloud_folder)
+        if folder_name and not folder_name.endswith("/"):
+            folder_name += "/"
+
+        kwargs = {"Bucket": bucket, "Prefix": folder_name}
+        if not recursive:
+            kwargs["Delimiter"] = "/"
+
+        paths = []
+        prefix = "s3://" + bucket
+        while True:
+            resp = self._client.list_objects_v2(**kwargs)
+
+            for obj in resp.get("Contents", []):
+                path = obj["Key"]
+                if not path.endswith("/"):
+                    paths.append(os.path.join(prefix, path))
+
+            try:
+                kwargs["NextContinuationToken"] = resp["NextContinuationToken"]
+            except KeyError:
+                break
+
+        return paths
+
+    def generate_signed_url(
+            self, cloud_path, method="GET", hours=24, content_type=None):
+        '''Generates a signed URL for accessing the given S3 object.
+
+        Anyone with the URL can access the object with the permission until it
+        expires.
+
+        Note that you should use `PUT`, not `POST`, to upload objects!
+
+        Args:
+            cloud_path: the path to the S3 object
+            method: the HTTP verb (GET, PUT, DELETE) to authorize
+            hours: the number of hours that the URL is valid
+            content_type: (PUT actions only) the optional type of the content
+                being uploaded
+
+        Returns:
+            a URL for accessing the object via HTTP request
+        '''
+        client_method = method.lower() + "_object"
+        bucket, object_name = self._parse_s3_path(cloud_path)
+        params = {"Bucket": bucket, "Key": object_name}
+        if client_method == "put_object" and content_type:
+            params["ContentType"] = content_type
+        expiration = int(3600 * hours)
+        return self._client.generate_presigned_url(
+            ClientMethod=client_method, Params=params, ExpiresIn=expiration)
+
+    def _do_upload(
+            self, cloud_path, local_path=None, file_obj=None,
+            content_type=None):
+        bucket, object_name = self._parse_s3_path(cloud_path)
+
+        if local_path and not content_type:
+            content_type = etau.guess_mime_type(local_path)
+
+        if content_type:
+            extra_args = {"ContentType": content_type}
+        else:
+            extra_args = None
+
+        if local_path:
+            self._client.upload_file(
+                local_path, bucket, object_name, ExtraArgs=extra_args)
+
+        if file_obj is not None:
+            self._client.upload_fileobj(
+                file_obj, bucket, object_name, ExtraArgs=extra_args)
+
+    def _do_download(self, cloud_path, local_path=None, file_obj=None):
+        bucket, object_name = self._parse_s3_path(cloud_path)
+
+        if local_path:
+            etau.ensure_basedir(local_path)
+            self._client.download_file(bucket, object_name, local_path)
+
+        if file_obj is not None:
+            self._client.download_fileobj(bucket, object_name, file_obj)
+
+    @staticmethod
+    def _parse_s3_path(cloud_path):
+        '''Parses an S3 path.
+
+        Args:
+            cloud_path: a string of form "s3://<bucket_name>/<object_name>"
+
+        Returns:
+            bucket_name: the name of the S3 bucket
+            object_name: the name of the object
+
+        Raises:
+            S3StorageClientError: if the cloud path string was invalid
+        '''
+        if not cloud_path.startswith("s3://"):
+            raise S3StorageClientError(
+                "Cloud storage path '%s' must start with s3://" % cloud_path)
+        chunks = cloud_path[5:].split("/", 1)
+        if len(chunks) != 2:
+            return chunks[0], ""
+        return chunks[0], chunks[1]
+
+
+class S3StorageClientError(Exception):
+    '''Error raised when a problem occurred in an S3StorageClient.'''
+    pass
+
 
 class NeedsGoogleCredentials(object):
-    '''Mixin for classes that need a google.auth.credentials.Credentials
-    instance in order to take authenticated actions.
+    '''Mixin for classes that need a `google.auth.credentials.Credentials`
+    instance to take authenticated actions.
 
     By convention, storage client classes that derive from this class should
     allow users to set the `GOOGLE_APPLICATION_CREDENTIALS` environment
     variable to point to a valid service account JSON file rather than
     constructing an instance using the `from_json()` method.
+
+    See the following page for more information:
+    https://cloud.google.com/docs/authentication/getting-started
     '''
 
     @classmethod
@@ -242,10 +767,15 @@ class NeedsGoogleCredentials(object):
         return cls(credentials)
 
 
-class GoogleCloudStorageClient(StorageClient, NeedsGoogleCredentials):
+class GoogleCloudStorageClient(
+        StorageClient, CanSyncDirectories, NeedsGoogleCredentials):
     '''Client for reading/writing data from Google Cloud Storage buckets.
 
-    `cloud_path` should have form "gs://<bucket>/<path/to/object>".
+    All cloud path strings used by this class should have the form
+    "gs://<bucket>/<path/to/object>".
+
+    See `NeedsGoogleCredentials` for more information about the authentication
+    strategy used by this class.
     '''
 
     #
@@ -259,10 +789,10 @@ class GoogleCloudStorageClient(StorageClient, NeedsGoogleCredentials):
         '''Creates a GoogleCloudStorageClient instance.
 
         Args:
-            credentials: a google.auth.credentials.Credentials instance. If no
-                credentials are provided, the `GOOGLE_APPLICATION_CREDENTIALS`
-                environment variable must be set to point to a valid service
-                account JSON file
+            credentials: a `google.auth.credentials.Credentials instance`. If
+                not provided, the `GOOGLE_APPLICATION_CREDENTIALS` environment
+                variable must be set to point to a valid service account JSON
+                file
             chunk_size: an optional chunk size (in bytes) to use for uploads
                 and downloads. By default, `DEFAULT_CHUNK_SIZE` is used
         '''
@@ -320,83 +850,9 @@ class GoogleCloudStorageClient(StorageClient, NeedsGoogleCredentials):
         blob = self._get_blob(cloud_path)
         blob.upload_from_file(file_obj, content_type=content_type)
 
-    def upload_dir(self, local_dir, cloud_dir, recursive=True):
-        '''Uploads the contents of the given directory to the given Google
-        Cloud Storage "directory".
-
-        The cloud paths are created by appending the relative paths of all
-        files inside the local directory to the provided base "directory" in
-        Google Cloud Storage.
-
-        Args:
-            local_dir: the local directory to upload
-            cloud_dir: the base "directory" to use when creating Google Cloud
-                object paths
-            recursive: whether to recursively traverse subdirectories. By
-                default, this is True
-        '''
-        files = etau.list_files(local_dir, recursive=recursive)
-        if not files:
-            return
-
-        logger.info("Uploading %d files to '%s'", len(files), cloud_dir)
-        for f in files:
-            local_path = os.path.join(local_dir, f)
-            cloud_path = os.path.join(cloud_dir, f)
-            self.upload(local_path, cloud_path)
-
-    def upload_dir_sync(
-            self, local_dir, cloud_dir, overwrite=False, recursive=True):
-        '''Syncs the contents of the given local directory to the given Google
-        Cloud Storage "directory".
-
-        This method is similar to `upload_dir()`, except that files in the
-        remote diretory that are not present in the local directory will be
-        deleted, and files that are already present in the remote directory
-        are not uploaded if `overwrite` is False.
-
-        Args:
-            local_dir: the local directory to sync
-            cloud_dir: the base cloud "directory" to sync to
-            overwrite: whether or not to upload files that are already present
-                in the cloud directory, thus overwriting them. By default, this
-                is False
-            recursive: whether to recursively traverse subdirectories. By
-                default, this is True
-        '''
-        local_files = set(etau.list_files(local_dir, recursive=recursive))
-        remote_files = set(
-            os.path.relpath(f, cloud_dir)
-            for f in self.list_files_in_folder(cloud_dir, recursive=recursive)
-        )
-
-        # Files to delete remotely
-        delete_files = remote_files - local_files
-
-        # Files to upload to remote directory
-        if overwrite:
-            upload_files = local_files
-        else:
-            upload_files = local_files - remote_files
-
-        if delete_files:
-            logger.info(
-                "Deleting %d files from '%s'", len(delete_files), cloud_dir)
-            for f in delete_files:
-                cloud_path = os.path.join(cloud_dir, f)
-                self.delete(cloud_path)
-
-        if upload_files:
-            logger.info(
-                "Uploading %d files to '%s'", len(upload_files), cloud_dir)
-            for f in upload_files:
-                local_path = os.path.join(local_dir, f)
-                cloud_path = os.path.join(cloud_dir, f)
-                self.upload(local_path, cloud_path)
-
     @google_cloud_api_retry
     def download(self, cloud_path, local_path):
-        '''Downloads the file from Google Cloud Storage.
+        '''Downloads the file from Google Cloud Storage to the given location.
 
         Args:
             cloud_path: the path to the Google Cloud object to download
@@ -413,7 +869,6 @@ class GoogleCloudStorageClient(StorageClient, NeedsGoogleCredentials):
 
         Args:
             cloud_path: the path to the Google Cloud object to download
-            local_path: the local disk path to store the downloaded file
 
         Returns:
             the downloaded bytes string
@@ -434,79 +889,6 @@ class GoogleCloudStorageClient(StorageClient, NeedsGoogleCredentials):
         blob = self._get_blob(cloud_path)
         blob.download_to_file(file_obj)
 
-    def download_dir(self, cloud_dir, local_dir, recursive=True):
-        '''Downloads the contents of the "directory" in Google Cloud Storage to
-        the given local directory.
-
-        The files are written inside the specified local directory according
-        to their relative paths w.r.t. the provided cloud "directory".
-
-        Args:
-            cloud_dir: the Google Cloud Storage "directory" to download
-            local_dir: the local directory in which to write the files
-            recursive: whether to recursively traverse sub-"directories". By
-                default, this is True
-        '''
-        cloud_paths = self.list_files_in_folder(cloud_dir, recursive=recursive)
-        if not cloud_paths:
-            return
-
-        logger.info(
-            "Downloading %d files from '%s'", len(cloud_paths), cloud_dir)
-        for cloud_path in cloud_paths:
-            local_path = os.path.join(
-                local_dir, os.path.relpath(cloud_path, cloud_dir))
-            self.download(cloud_path, local_path)
-
-    def download_dir_sync(
-            self, cloud_dir, local_dir, overwrite=False, recursive=True):
-        '''Syncs the contents of the given Google Cloud Storage "directory"
-        to the given local directory.
-
-        This method is similar to `download_dir()`, except that files in the
-        local diretory that are not present in the remote directory will be
-        deleted, and files that are already present in the local directory
-        are not downloaded if `overwrite` is False.
-
-        Args:
-            cloud_dir: the base cloud "directory" to sync
-            local_dir: the local directory to sync to
-            overwrite: whether or not to download files that are already
-                present in the local directory, thus overwriting them. By
-                default, this is False
-            recursive: whether to recursively traverse subdirectories. By
-                default, this is True
-        '''
-        remote_files = set(
-            os.path.relpath(f, cloud_dir)
-            for f in self.list_files_in_folder(cloud_dir, recursive=recursive)
-        )
-        local_files = set(etau.list_files(local_dir, recursive=recursive))
-
-        # Files to delete locally
-        delete_files = local_files - remote_files
-
-        # Files to download locally
-        if overwrite:
-            download_files = remote_files
-        else:
-            download_files = remote_files - local_files
-
-        if delete_files:
-            logger.info(
-                "Deleting %d files from '%s'", len(delete_files), local_dir)
-            for f in delete_files:
-                local_path = os.path.join(local_dir, f)
-                etau.delete_file(local_path)
-
-        if download_files:
-            logger.info(
-                "Downloading %d files to '%s'", len(download_files), local_dir)
-            for f in download_files:
-                cloud_path = os.path.join(cloud_dir, f)
-                local_path = os.path.join(local_dir, f)
-                self.download(cloud_path, local_path)
-
     @google_cloud_api_retry
     def delete(self, cloud_path):
         '''Deletes the given file from Google Cloud Storage.
@@ -526,23 +908,16 @@ class GoogleCloudStorageClient(StorageClient, NeedsGoogleCredentials):
 
         Returns:
             a dictionary containing metadata about the file, including its
-                `name`, `bucket`, `creation_date`, `size`, `mime_type`, and
-                `encoding`
+                `name`, `bucket`, `creation_date`, `size`, and `mime_type`
         '''
         blob = self._get_blob(cloud_path)
-        #
-        # WARNING:
-        #   If `patch()` isn't called, the blob's properties will not be
-        #   populated
-        #
-        blob.patch()
+        blob.patch()  # must call `patch()` to populate the blob's properties
         return {
             "name": os.path.basename(blob.name),
             "bucket": blob.bucket,
             "creation_date": blob.updated,
             "size": blob.size,
             "mime_type": blob.content_type,
-            "encoding": blob.content_encoding
         }
 
     @google_cloud_api_retry
@@ -558,7 +933,7 @@ class GoogleCloudStorageClient(StorageClient, NeedsGoogleCredentials):
         Returns:
             a list of full cloud paths to the files in the folder
         '''
-        bucket_name, folder_name = self._parse_cloud_storage_path(cloud_folder)
+        bucket_name, folder_name = self._parse_gcs_path(cloud_folder)
         bucket = self._client.get_bucket(bucket_name)
 
         if folder_name and not folder_name.endswith("/"):
@@ -571,49 +946,52 @@ class GoogleCloudStorageClient(StorageClient, NeedsGoogleCredentials):
         for blob in blobs:
             if not blob.name.endswith("/"):
                 paths.append(os.path.join(prefix, blob.name))
+
         return paths
 
     @google_cloud_api_retry
-    def generate_signed_url(self, cloud_path, method="GET", hours=24):
+    def generate_signed_url(
+            self, cloud_path, method="GET", hours=24, content_type=None):
         '''Generates a signed URL for accessing the given storage object.
 
         Anyone with the URL can access the object with the permission until it
         expires.
 
-        Note that the Google Cloud documentation strongly recommends using PUT
-        rather than POST to upload objects.
+        Note that you should use `PUT`, not `POST`, to upload objects!
 
         Args:
             cloud_path: the path to the Google Cloud object
-            hours: the number of hours that the URL is valid
             method: the HTTP verb (GET, PUT, DELETE) to authorize
+            hours: the number of hours that the URL is valid
+            content_type: (PUT actions only) the optional type of the content
+                being uploaded
 
         Returns:
             a URL for accessing the object via HTTP request
         '''
         blob = self._get_blob(cloud_path)
         expiration = datetime.timedelta(hours=hours)
-        return blob.generate_signed_url(expiration=expiration, method=method)
+        return blob.generate_signed_url(
+            expiration=expiration, method=method, content_type=content_type)
 
     def _get_blob(self, cloud_path):
-        bucket_name, object_name = self._parse_cloud_storage_path(cloud_path)
+        bucket_name, object_name = self._parse_gcs_path(cloud_path)
         bucket = self._client.get_bucket(bucket_name)
         return bucket.blob(object_name, chunk_size=self.chunk_size)
 
     @staticmethod
-    def _parse_cloud_storage_path(cloud_path):
-        '''Parses a cloud storage path string.
+    def _parse_gcs_path(cloud_path):
+        '''Parses a Google Cloud Storage path.
 
         Args:
-            cloud_path: a string of the form gs://<bucket_name>/<object_name>
+            cloud_path: a string of form "gs://<bucket_name>/<object_name>"
 
         Returns:
             bucket_name: the name of the Google Cloud Storage bucket
             object_name: the name of the object
 
         Raises:
-            GoogleCloudStorageClientError: if the cloud storage path string was
-                invalid
+            GoogleCloudStorageClientError: if the cloud path string was invalid
         '''
         if not cloud_path.startswith("gs://"):
             raise GoogleCloudStorageClientError(
@@ -625,6 +1003,7 @@ class GoogleCloudStorageClient(StorageClient, NeedsGoogleCredentials):
 
 
 class GoogleCloudStorageClientError(Exception):
+    '''Error raised when a problem occurred in a GoogleCloudStorageClient.'''
     pass
 
 
@@ -633,6 +1012,9 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
 
     The service account credentials you use must have access permissions for
     any Drive folders you intend to access.
+
+    See `NeedsGoogleCredentials` for more information about the authentication
+    strategy used by this class.
 
     Attributes:
         chunk_size: the chunk size (in bytes) that will be used for streaming
@@ -650,10 +1032,10 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
         '''Creates a GoogleDriveStorageClient instance.
 
         Args:
-            credentials: a google.auth.credentials.Credentials instance. If no
-                credentials are provided, the `GOOGLE_APPLICATION_CREDENTIALS`
-                environment variable must be set to point to a valid service
-                account JSON file
+            credentials: a `google.auth.credentials.Credentials` instance. If
+                not provided, the `GOOGLE_APPLICATION_CREDENTIALS` environment
+                variable must be set to point to a valid service account JSON
+                file
             chunk_size: an optional chunk size (in bytes) to use for uploads
                 and downloads. By default, `DEFAULT_CHUNK_SIZE` is used
         '''
