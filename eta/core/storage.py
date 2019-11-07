@@ -171,7 +171,7 @@ class StorageClient(object):
 
 
 class CanSyncDirectories(object):
-    '''Mixin class for `StorageClient`s that can sync directories to/remote
+    '''Mixin class for `StorageClient`s that can sync directories to/from
     remote storage.
 
     Depending on the nature of the concrete StorageClient, `remote_dir` may be
