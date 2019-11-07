@@ -705,6 +705,7 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
         bucket, object_name = self._parse_s3_path(cloud_path)
 
         if local_path:
+            etau.ensure_basedir(local_path)
             self._client.download_file(bucket, object_name, local_path)
 
         if file_obj is not None:
