@@ -270,6 +270,20 @@ class LocalStorageClient(StorageClient):
         '''
         etau.delete_file(storage_path)
 
+    def list_files_in_folder(self, storage_dir, recursive=True):
+        '''Returns a list of the files in the given storage directory.
+
+        Args:
+            storage_dir: the storage directory
+            recursive: whether to recursively traverse sub-directories. By
+                default, this is True
+
+        Returns:
+            a list of full paths to the files in the storage directory
+        '''
+        return etau.list_files(
+            storage_dir, abs_paths=True, recursive=recursive)
+
 
 class NeedsAWSCredentials(object):
     '''Mixin for classes that need AWS credentials to take authenticated
