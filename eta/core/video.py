@@ -1384,23 +1384,22 @@ class VideoSetLabels(Set):
 
     @classmethod
     def from_video_labels_patt(cls, video_labels_patt):
-        '''Creates an instance of VideoSetLabels from a pattern of VideoLabels
-        files.
+        '''Creates an instance of `cls` from a pattern of `_ELE_CLS` files.
 
         Args:
              video_labels_patt: a pattern with one or more numeric sequences:
                 example: "/path/to/labels/%05d.json"
 
         Returns:
-            a VideoSetLabels instance
+            a `cls` instance
 
         '''
         labels_list = [
-            VideoLabels.from_json(labels_path)
+            cls._ELE_CLS.from_json(labels_path)
             for labels_path in etau.get_pattern_matches(video_labels_patt)
         ]
 
-        video_set_labels = VideoSetLabels()
+        video_set_labels = cls()
         for video_labels in labels_list:
             video_set_labels.add(video_labels)
 

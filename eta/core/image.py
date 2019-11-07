@@ -652,23 +652,22 @@ class ImageSetLabels(Set):
 
     @classmethod
     def from_image_labels_patt(cls, image_labels_patt):
-        '''Creates an instance of ImageSetLabels from a pattern of ImageLabels
-        files.
+        '''Creates an instance of `cls` from a pattern of `_ELE_CLS` files.
 
         Args:
              image_labels_patt: a pattern with one or more numeric sequences:
                 example: "/path/to/labels/%05d.json"
 
         Returns:
-            a ImageSetLabels instance
+            a `cls` instance
 
         '''
         labels_list = [
-            ImageLabels.from_json(labels_path)
+            cls._ELE_CLS.from_json(labels_path)
             for labels_path in etau.get_pattern_matches(image_labels_patt)
         ]
 
-        image_set_labels = ImageSetLabels()
+        image_set_labels = cls()
         for image_labels in labels_list:
             image_set_labels.add(image_labels)
 
