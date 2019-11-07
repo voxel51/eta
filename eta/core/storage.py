@@ -593,7 +593,7 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
         Args:
             cloud_path: the path to the S3 object to delete
         '''
-        bucket, object_name = self._parse_cloud_storage_path(cloud_path)
+        bucket, object_name = self._parse_s3_path(cloud_path)
         self._client.delete_object(Bucket=bucket, Key=object_name)
 
     def get_file_metadata(self, cloud_path):
@@ -606,7 +606,7 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
             a dictionary containing metadata about the file, including its
                 `name`, `bucket`, `creation_date`, `size`, and `mime_type`
         '''
-        bucket, object_name = self._parse_cloud_storage_path(cloud_path)
+        bucket, object_name = self._parse_s3_path(cloud_path)
         metadata = self._client.head_object(Bucket=bucket, Key=object_name)
         return {
             "name": os.path.basename(object_name),
@@ -616,7 +616,44 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
             "mime_type": metadata["ContentType"],
         }
 
-    def generate_signed_url(self, cloud_path, method="GET", hours=24):
+    def list_files_in_folder(self, cloud_folder, recursive=True):
+        '''Returns a list of the files in the given "folder" in S3.
+
+        Args:
+            cloud_folder: a string like `s3://<bucket-name>/<folder-path>`
+            recursive: whether to recursively traverse sub-"folders". By
+                default, this is True
+
+        Returns:
+            a list of full cloud paths to the files in the folder
+        '''
+        bucket, folder_name = self._parse_s3_path(cloud_folder)
+        if folder_name and not folder_name.endswith("/"):
+            folder_name += "/"
+
+        kwargs = {"Bucket": bucket, "Prefix": folder_name}
+        if not recursive:
+            kwargs["Delimiter"] = "/"
+
+        paths = []
+        prefix = "s3://" + bucket
+        while True:
+            resp = self._client.list_objects_v2(**kwargs)
+
+            for obj in resp.get("Contents", []):
+                path = obj["Key"]
+                if not path.endswith("/"):
+                    paths.append(os.path.join(prefix, path))
+
+            try:
+                kwargs["NextContinuationToken"] = resp["NextContinuationToken"]
+            except KeyError:
+                break
+
+        return paths
+
+    def generate_signed_url(
+            self, cloud_path, method="GET", hours=24, content_type=None):
         '''Generates a signed URL for accessing the given S3 object.
 
         Anyone with the URL can access the object with the permission until it
@@ -628,13 +665,17 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
             cloud_path: the path to the S3 object
             method: the HTTP verb (GET, PUT, DELETE) to authorize
             hours: the number of hours that the URL is valid
+            content_type: (PUT actions only) the optional type of the content
+                being uploaded
 
         Returns:
             a URL for accessing the object via HTTP request
         '''
         client_method = method.lower() + "_object"
-        bucket, object_name = self._parse_cloud_storage_path(cloud_path)
+        bucket, object_name = self._parse_s3_path(cloud_path)
         params = {"Bucket": bucket, "Key": object_name}
+        if client_method == "put_object" and content_type:
+            params["ContentType"] = content_type
         expiration = int(3600 * hours)
         return self._client.generate_presigned_url(
             ClientMethod=client_method, Params=params, ExpiresIn=expiration)
@@ -642,7 +683,7 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
     def _do_upload(
             self, cloud_path, local_path=None, file_obj=None,
             content_type=None):
-        bucket, object_name = self._parse_cloud_storage_path(cloud_path)
+        bucket, object_name = self._parse_s3_path(cloud_path)
 
         if local_path and not content_type:
             content_type = etau.guess_mime_type(local_path)
@@ -661,7 +702,7 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
                 file_obj, bucket, object_name, ExtraArgs=extra_args)
 
     def _do_download(self, cloud_path, local_path=None, file_obj=None):
-        bucket, object_name = self._parse_cloud_storage_path(cloud_path)
+        bucket, object_name = self._parse_s3_path(cloud_path)
 
         if local_path:
             self._client.download_file(bucket, object_name, local_path)
@@ -670,7 +711,7 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
             self._client.download_fileobj(bucket, object_name, file_obj)
 
     @staticmethod
-    def _parse_cloud_storage_path(cloud_path):
+    def _parse_s3_path(cloud_path):
         '''Parses an S3 path.
 
         Args:
