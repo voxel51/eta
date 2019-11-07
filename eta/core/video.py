@@ -1394,16 +1394,10 @@ class VideoSetLabels(Set):
             a `cls` instance
 
         '''
-        labels_list = [
-            cls._ELE_CLS.from_json(labels_path)
-            for labels_path in etau.get_pattern_matches(video_labels_patt)
-        ]
-
-        video_set_labels = cls()
-        for video_labels in labels_list:
-            video_set_labels.add(video_labels)
-
-        return video_set_labels
+        image_set_labels = cls()
+        for labels_path in etau.get_pattern_matches(video_labels_patt):
+            image_set_labels.add(cls._ELE_CLS.from_json(labels_path))
+        return image_set_labels
 
     @classmethod
     def from_dict(cls, d):

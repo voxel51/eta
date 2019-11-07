@@ -662,15 +662,9 @@ class ImageSetLabels(Set):
             a `cls` instance
 
         '''
-        labels_list = [
-            cls._ELE_CLS.from_json(labels_path)
-            for labels_path in etau.get_pattern_matches(image_labels_patt)
-        ]
-
         image_set_labels = cls()
-        for image_labels in labels_list:
-            image_set_labels.add(image_labels)
-
+        for labels_path in etau.get_pattern_matches(image_labels_patt):
+            image_set_labels.add(cls._ELE_CLS.from_json(labels_path))
         return image_set_labels
 
     @classmethod
