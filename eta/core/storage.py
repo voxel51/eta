@@ -93,27 +93,80 @@ def google_cloud_api_retry(func):
 
 
 class StorageClient(object):
-    '''Interface for storage clients.'''
+    '''Interface for storage clients that read/write files from remote storage
+    locations.
 
-    def upload(self, *args, **kwargs):
+    Depending on the nature of the concrete StorageClient, `remote_path` may be
+    a cloud object, a file ID, or some other construct that represents the path
+    to which the file will be written.
+    '''
+
+    def upload(self, local_path, remote_path):
+        '''Uploads the file to the given remote path.
+
+        Args:
+            local_path: the path to the file to upload
+            remote_path: the remote path to write the file
+        '''
         raise NotImplementedError("subclass must implement upload()")
 
-    def upload_bytes(self, *args, **kwargs):
+    def upload_bytes(self, bytes_str, remote_path):
+        '''Uploads the given bytes to the given remote path.
+
+        Args:
+            bytes_str: the bytes string to upload
+            remote_path: the remote path to write the file
+        '''
         raise NotImplementedError("subclass must implement upload_bytes()")
 
-    def upload_stream(self, *args, **kwargs):
+    def upload_stream(self, file_obj, remote_path):
+        '''Uploads the contents of the given file-like object to the given
+        remote path.
+
+        Args:
+            file_obj: the file-like object to upload, which must be open for
+                reading
+            remote_path: the remote path to write the file
+        '''
         raise NotImplementedError("subclass must implement upload_stream()")
 
-    def download(self, *args, **kwargs):
+    def download(self, remote_path, local_path):
+        '''Downloads the remote file to the given local path.
+
+        Args:
+            remote_path: the remote file to download
+            local_path: the path to which to write the downloaded file
+        '''
         raise NotImplementedError("subclass must implement download()")
 
-    def download_bytes(self, *args, **kwargs):
+    def download_bytes(self, remote_path):
+        '''Downloads bytes from the given remote path.
+
+        Args:
+            remote_path: the remote file to download
+
+        Returns:
+            the downloaded bytes string
+        '''
         raise NotImplementedError("subclass must implement download_bytes()")
 
-    def download_stream(self, *args, **kwargs):
+    def download_stream(self, remote_path, file_obj):
+        '''Downloads the file from the given remote path to the given
+        file-like object.
+
+        Args:
+            remote_path: the remote file to download
+            file_obj: the file-like object to which to write the download,
+                which must be open for writing
+        '''
         raise NotImplementedError("subclass must implement download_stream()")
 
-    def delete(self, *args, **kwargs):
+    def delete(self, remote_path):
+        '''Deletes the file at the remote path.
+
+        Args:
+            remote_path: the remote path to delete
+        '''
         raise NotImplementedError("subclass must implement delete()")
 
 
