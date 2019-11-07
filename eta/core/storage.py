@@ -948,10 +948,12 @@ class GoogleCloudStorageClient(
         for blob in blobs:
             if not blob.name.endswith("/"):
                 paths.append(os.path.join(prefix, blob.name))
+
         return paths
 
     @google_cloud_api_retry
-    def generate_signed_url(self, cloud_path, method="GET", hours=24):
+    def generate_signed_url(
+            self, cloud_path, method="GET", hours=24, content_type=None):
         '''Generates a signed URL for accessing the given storage object.
 
         Anyone with the URL can access the object with the permission until it
@@ -963,13 +965,16 @@ class GoogleCloudStorageClient(
             cloud_path: the path to the Google Cloud object
             method: the HTTP verb (GET, PUT, DELETE) to authorize
             hours: the number of hours that the URL is valid
+            content_type: (PUT actions only) the optional type of the content
+                being uploaded
 
         Returns:
             a URL for accessing the object via HTTP request
         '''
         blob = self._get_blob(cloud_path)
         expiration = datetime.timedelta(hours=hours)
-        return blob.generate_signed_url(expiration=expiration, method=method)
+        return blob.generate_signed_url(
+            expiration=expiration, method=method, content_type=content_type)
 
     def _get_blob(self, cloud_path):
         bucket_name, object_name = self._parse_gcs_path(cloud_path)
