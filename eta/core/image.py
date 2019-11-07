@@ -651,6 +651,30 @@ class ImageSetLabels(Set):
                 self._validate_labels(image_labels)
 
     @classmethod
+    def from_image_labels_patt(cls, image_labels_patt):
+        '''Creates an instance of ImageSetLabels from a pattern of ImageLabels
+        files.
+
+        Args:
+             image_labels_patt: a pattern with one or more numeric sequences:
+                example: "/path/to/labels/%05d.json"
+
+        Returns:
+            a ImageSetLabels instance
+
+        '''
+        labels_list = [
+            ImageLabels.from_json(labels_path)
+            for labels_path in etau.get_pattern_matches(image_labels_patt)
+        ]
+
+        image_set_labels = ImageSetLabels()
+        for image_labels in labels_list:
+            image_set_labels.add(image_labels)
+
+        return image_set_labels
+
+    @classmethod
     def from_dict(cls, d):
         '''Constructs an ImageSetLabels from a JSON dictionary.'''
         schema = d.get("schema", None)

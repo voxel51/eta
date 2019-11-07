@@ -1389,7 +1389,7 @@ class VideoSetLabels(Set):
 
         Args:
              video_labels_patt: a pattern with one or more numeric sequences:
-                "/path/to/frame-%05d.jpg" or "/path/to/clips/%02d-%d.mp4"
+                example: "/path/to/labels/%05d.json"
 
         Returns:
             a VideoSetLabels instance
