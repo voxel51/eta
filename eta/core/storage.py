@@ -908,8 +908,7 @@ class GoogleCloudStorageClient(
 
         Returns:
             a dictionary containing metadata about the file, including its
-                `name`, `bucket`, `creation_date`, `size`, `mime_type`, and
-                `encoding`
+                `name`, `bucket`, `creation_date`, `size`, and `mime_type`
         '''
         blob = self._get_blob(cloud_path)
         blob.patch()  # must call `patch()` to populate the blob's properties
@@ -919,7 +918,6 @@ class GoogleCloudStorageClient(
             "creation_date": blob.updated,
             "size": blob.size,
             "mime_type": blob.content_type,
-            "encoding": blob.content_encoding
         }
 
     @google_cloud_api_retry
