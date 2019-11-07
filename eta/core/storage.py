@@ -552,7 +552,6 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
                 the same value is used. Otherwise, the default value
                 ("application/octet-stream") is used
         '''
-        # @todo use a self._client method directly to do this!
         with io.BytesIO(_to_bytes(bytes_str)) as f:
             self._do_upload(cloud_path, file_obj=f, content_type=content_type)
 
@@ -584,7 +583,6 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
         Returns:
             the downloaded bytes string
         '''
-        # @todo use a self._client method directly to do this!
         with io.BytesIO() as f:
             self.download_stream(cloud_path, f)
             return f.getvalue()
