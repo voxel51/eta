@@ -1238,8 +1238,8 @@ def get_pattern_matches(patt):
     '''Returns a list of file paths matching the given pattern.
 
     Args:
-        patt: a pattern with a one or more numeric sequences like
-            "/path/to/frame-%05d.jpg" or `/path/to/clips/%02d-%d.mp4`
+        patt: a pattern with one or more numeric sequences like
+            "/path/to/frame-%05d.jpg" or "/path/to/clips/%02d-%d.mp4"
 
     Returns:
         a list of file paths that match the pattern `patt`
