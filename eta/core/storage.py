@@ -5,17 +5,17 @@ See `docs/storage_dev_guide.md` for more information and best practices for
 using this module to work with remote storage resources.
 
 This module currently provides clients for the following storage resources:
-- Google Cloud buckets via the `google.cloud.storage` API
-- Google Drive via the `googleapiclient` Drive API
+- S3 buckets via the `boto3` package
+- Google Cloud buckets via the `google.cloud.storage` package
+- Google Drive via the `googleapiclient` package
+- Remote servers via the `pysftp` package
 - Web storage via HTTP requests
-- Remote servers via SFTP
 - Local disk storage
 
-Copyright 2018-2019, Voxel51, Inc.
+Copyright 2017-2019, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
-Ravali Pinnaka, ravali@voxel51.com
 '''
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
