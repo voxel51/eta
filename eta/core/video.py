@@ -1392,7 +1392,6 @@ class VideoSetLabels(Set):
 
         Returns:
             a `cls` instance
-
         '''
         image_set_labels = cls()
         for labels_path in etau.get_pattern_matches(video_labels_patt):

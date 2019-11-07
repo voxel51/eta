@@ -660,7 +660,6 @@ class ImageSetLabels(Set):
 
         Returns:
             a `cls` instance
-
         '''
         image_set_labels = cls()
         for labels_path in etau.get_pattern_matches(image_labels_patt):
