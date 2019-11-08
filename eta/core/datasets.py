@@ -2920,6 +2920,36 @@ class FilterByFilename(DatasetTransformer):
         )
 
 
+class FilterByFilenameRegex(DatasetTransformer):
+    '''Filters data from a dataset using a regex blacklist for filenames.'''
+
+    def __init__(self, filename_regex_blacklist):
+        '''Creates a FilterByFilenameRegex instance.
+
+        Args:
+            filename_regex_blacklist: a list of data filename regexes to filter
+                out
+        '''
+        self._regex_blacklist = [
+            re.compile(s) for s in filename_regex_blacklist]
+
+    def transform(self, src):
+        '''Removes data with filenames that match the regex blacklist.
+
+        Args:
+            src (BuilderDataset)
+
+        Returns:
+            None
+        '''
+        src.cull_with_function(
+            "data_path",
+            lambda path: not any(
+                rgx.match(os.path.basename(path))
+                for rgx in self._regex_blacklist)
+        )
+
+
 class FilterByPath(DatasetTransformer):
     '''Filters data from a dataset using a full path blacklist.'''
 
