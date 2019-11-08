@@ -1372,8 +1372,7 @@ class LabeledVideoDataset(LabeledDataset):
             if not os.path.isfile(labels_path):
                 raise LabeledDatasetError("File not found: %s" % labels_path)
 
-    @property
-    def average_video_duration(self):
+    def compute_average_video_duration(self):
         '''Computes the average duration over all videos in the dataset.
 
         Returns:
