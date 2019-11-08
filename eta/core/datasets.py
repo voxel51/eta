@@ -1372,6 +1372,18 @@ class LabeledVideoDataset(LabeledDataset):
             if not os.path.isfile(labels_path):
                 raise LabeledDatasetError("File not found: %s" % labels_path)
 
+    @property
+    def average_video_duration(self):
+        '''Computes the average duration over all videos in the dataset.
+
+        Returns:
+             (float) the average duration in seconds
+        '''
+        video_durations = [etav.VideoMetadata.build_for(data_path).duration
+                           for data_path in self.iter_data_paths()]
+
+        return np.mean(video_durations)
+
     def _read_data(self, path):
         return etav.FFmpegVideoReader(path)
 
