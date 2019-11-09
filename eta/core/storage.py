@@ -1180,18 +1180,18 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
                     "Failed to delete '%s' from '%s' (%s)", f["name"],
                     folder_id, t.elapsed_time_str)
 
-    def count_files_in_folder(self, folder_id, recursive=False):
-        '''Returns count of number of files in the Google Drive folder.
+    def get_file_metadata(self, file_id):
+        '''Gets metadata about the file with the given ID.
 
         Args:
-            folder_id: the ID of the Google Drive folder to be processed
-            recursive: whether to recursively count files in subfolders. By
-                default, this is False
+            file_id: the ID of a file (or folder)
 
         Returns:
-            the count of files in folder
+            a dictionary containing the available metadata about the file,
+                including at least `name`, `kind`, and `mimeType`
         '''
-        return len(self.list_files_in_folder(folder_id, recursive=recursive))
+        return self._service.files().get(
+            fileId=file_id, supportsTeamDrives=True).execute()
 
     def get_team_drive_id(self, name):
         '''Get the ID of the Team Drive with the given name.
@@ -1212,19 +1212,6 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
                 return team_drive["id"]
 
         raise GoogleDriveStorageClientError("Team Drive '%s' not found" % name)
-
-    def get_file_metadata(self, file_id):
-        '''Gets metadata about the file with the given ID.
-
-        Args:
-            file_id: the ID of a file (or folder)
-
-        Returns:
-            a dictionary containing the available metadata about the file,
-                including at least `name`, `kind`, and `mimeType`
-        '''
-        return self._service.files().get(
-            fileId=file_id, supportsTeamDrives=True).execute()
 
     def get_root_team_drive_id(self, file_id):
         '''Returns the ID of the root Team Drive in which this file lives.
@@ -1284,6 +1271,31 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
             folder_id = self._create_folder(folder, folder_id)
         return folder_id
 
+    def list_subfolders(self, folder_id, recursive=False):
+        '''Returns a list of the subfolders of the folder with the given ID.
+
+        Args:
+            folder_id: the ID of a folder
+            recursive: whether to recursively traverse subfolders. By
+                default, this is False
+
+        Returns:
+            A list of dicts containing the `id`, `name`, and `mimeType` of the
+                subfolders in the folder
+        '''
+        # List folder contents
+        _, folders = self._list_folder_contents(folder_id)
+
+        if recursive:
+            # Recursively traverse subfolders
+            for folder in folders:
+                for f in self.list_subfolders(folder["id"], recursive=True):
+                    # Embed <root>/<subdir> namespace in folder name
+                    f["name"] = os.path.join(folder["name"], f["name"])
+                    folders.append(f)
+
+        return folders
+
     def list_files_in_folder(
             self, folder_id, include_folders=False, recursive=False):
         '''Returns a list of the files in the folder with the given ID.
@@ -1321,30 +1333,18 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
 
         return files
 
-    def list_subfolders(self, folder_id, recursive=False):
-        '''Returns a list of the subfolders of the folder with the given ID.
+    def count_files_in_folder(self, folder_id, recursive=False):
+        '''Returns count of number of files in the Google Drive folder.
 
         Args:
-            folder_id: the ID of a folder
-            recursive: whether to recursively traverse subfolders. By
+            folder_id: the ID of the Google Drive folder to be processed
+            recursive: whether to recursively count files in subfolders. By
                 default, this is False
 
         Returns:
-            A list of dicts containing the `id`, `name`, and `mimeType` of the
-                subfolders in the folder
+            the count of files in folder
         '''
-        # List folder contents
-        _, folders = self._list_folder_contents(folder_id)
-
-        if recursive:
-            # Recursively traverse subfolders
-            for folder in folders:
-                for f in self.list_subfolders(folder["id"], recursive=True):
-                    # Embed <root>/<subdir> namespace in folder name
-                    f["name"] = os.path.join(folder["name"], f["name"])
-                    folders.append(f)
-
-        return folders
+        return len(self.list_files_in_folder(folder_id, recursive=recursive))
 
     def upload_files_in_folder(
             self, local_dir, folder_id, skip_failures=False,
