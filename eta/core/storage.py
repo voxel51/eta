@@ -1372,8 +1372,6 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
             GoogleDriveStorageClientError if an upload error occured and
                 failure skipping is turned off
         '''
-        # @todo retry failures? exponential backoff? rate limit requests?
-
         # Get local files to upload
         files = etau.list_files(local_dir)
 
@@ -1455,8 +1453,6 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
             GoogleDriveStorageClientError if a download error occured and
                 failure skipping is turned off
         '''
-        # @todo retry failures? exponential backoff? rate limit requests?
-
         # Get Drive files in folder
         files, folders = self._list_folder_contents(folder_id)
 
