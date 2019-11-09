@@ -214,6 +214,7 @@ class CanSyncDirectories(object):
         for f in files:
             local_path = os.path.join(local_dir, f)
             remote_path = os.path.join(remote_dir, f)
+            logger.info("Uploading to '%s'", remote_path)
             self.upload(local_path, remote_path)
 
     def upload_dir_sync(
@@ -255,6 +256,7 @@ class CanSyncDirectories(object):
                 "Deleting %d files from '%s'", len(delete_files), remote_dir)
             for f in delete_files:
                 remote_path = os.path.join(remote_dir, f)
+                logger.info("  Deleting '%s'", remote_path)
                 self.delete(remote_path)
 
         if upload_files:
@@ -263,6 +265,7 @@ class CanSyncDirectories(object):
             for f in upload_files:
                 local_path = os.path.join(local_dir, f)
                 remote_path = os.path.join(remote_dir, f)
+                logger.info("  Uploading to '%s'", remote_path)
                 self.upload(local_path, remote_path)
 
     def download_dir(self, remote_dir, local_dir, recursive=True):
@@ -288,6 +291,7 @@ class CanSyncDirectories(object):
         for remote_path in remote_paths:
             local_path = os.path.join(
                 local_dir, os.path.relpath(remote_path, remote_dir))
+            logger.info("  Downloading to '%s'", local_path)
             self.download(remote_path, local_path)
 
     def download_dir_sync(
@@ -329,6 +333,7 @@ class CanSyncDirectories(object):
                 "Deleting %d files from '%s'", len(delete_files), local_dir)
             for f in delete_files:
                 local_path = os.path.join(local_dir, f)
+                logger.info("  Deleting '%s'", local_path)
                 etau.delete_file(local_path)
 
         if download_files:
@@ -337,6 +342,7 @@ class CanSyncDirectories(object):
             for f in download_files:
                 remote_path = os.path.join(remote_dir, f)
                 local_path = os.path.join(local_dir, f)
+                logger.info("  Downloading to '%s'", local_path)
                 self.download(remote_path, local_path)
 
 
