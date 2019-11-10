@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 '''
-Install ETA package.
+Installs the ETA package.
 
-Copyright 2017-2018, Voxel51, Inc.
+Copyright 2017-2019, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
