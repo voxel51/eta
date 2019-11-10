@@ -69,12 +69,12 @@ class C3D(object):
         '''
         self.config = config or C3DConfig.default()
         self.sess = sess or etat.make_tf_session()
-        self.clips = clips or tf.placeholder(
+        self.clips = clips or tf.compat.v1.placeholder(
             tf.float32, [None, 16, 112, 112, 3])
 
         # The source (https://github.com/hx173149/C3D-tensorflow) of the models
         # we use picked this variable scope, so we must use it too
-        with tf.variable_scope("var_name"):
+        with tf.compat.v1.variable_scope("var_name"):
             self._build_conv_layers()
             self._build_fc_layers()
             self._build_output_layer()
@@ -116,7 +116,7 @@ class C3D(object):
             self.sess = None
 
     def _build_conv_layers(self):
-        with tf.name_scope("conv1") as scope:
+        with tf.compat.v1.name_scope("conv1") as scope:
             weights = _tf_variable_with_weight_decay(
                 "wc1", [3, 3, 3, 3, 64], 0.04, 0.00)
             biases = _tf_variable_with_weight_decay(
@@ -125,7 +125,7 @@ class C3D(object):
             self.conv1 = tf.nn.relu(conv, name=scope)
             self.pool1 = _max_pool("pool1", self.conv1, k=1)
 
-        with tf.name_scope("conv2") as scope:
+        with tf.compat.v1.name_scope("conv2") as scope:
             weights = _tf_variable_with_weight_decay(
                 "wc2", [3, 3, 3, 64, 128], 0.04, 0.00)
             biases = _tf_variable_with_weight_decay(
@@ -134,7 +134,7 @@ class C3D(object):
             self.conv2 = tf.nn.relu(conv, name=scope)
             self.pool2 = _max_pool("pool2", self.conv2, k=2)
 
-        with tf.name_scope("conv3a") as scope:
+        with tf.compat.v1.name_scope("conv3a") as scope:
             weights = _tf_variable_with_weight_decay(
                 "wc3a", [3, 3, 3, 128, 256], 0.04, 0.00)
             biases = _tf_variable_with_weight_decay(
@@ -142,7 +142,7 @@ class C3D(object):
             conv = _conv3d(self.pool2, weights, biases)
             self.conv3a = tf.nn.relu(conv, name=scope)
 
-        with tf.name_scope("conv3b") as scope:
+        with tf.compat.v1.name_scope("conv3b") as scope:
             weights = _tf_variable_with_weight_decay(
                 "wc3b", [3, 3, 3, 256, 256], 0.04, 0.00)
             biases = _tf_variable_with_weight_decay(
@@ -151,7 +151,7 @@ class C3D(object):
             self.conv3b = tf.nn.relu(conv, name=scope)
             self.pool3 = _max_pool("pool3", self.conv3b, k=2)
 
-        with tf.name_scope("conv4a") as scope:
+        with tf.compat.v1.name_scope("conv4a") as scope:
             weights = _tf_variable_with_weight_decay(
                 "wc4a", [3, 3, 3, 256, 512], 0.04, 0.00)
             biases = _tf_variable_with_weight_decay(
@@ -159,7 +159,7 @@ class C3D(object):
             conv = _conv3d(self.pool3, weights, biases)
             self.conv4a = tf.nn.relu(conv, name=scope)
 
-        with tf.name_scope("conv4b") as scope:
+        with tf.compat.v1.name_scope("conv4b") as scope:
             weights = _tf_variable_with_weight_decay(
                 "wc4b", [3, 3, 3, 512, 512], 0.04, 0.00)
             biases = _tf_variable_with_weight_decay(
@@ -168,7 +168,7 @@ class C3D(object):
             self.conv4b = tf.nn.relu(conv, name=scope)
             self.pool4 = _max_pool("pool4", self.conv4b, k=2)
 
-        with tf.name_scope("conv5a") as scope:
+        with tf.compat.v1.name_scope("conv5a") as scope:
             weights = _tf_variable_with_weight_decay(
                 "wc5a", [3, 3, 3, 512, 512], 0.04, 0.00)
             biases = _tf_variable_with_weight_decay(
@@ -176,7 +176,7 @@ class C3D(object):
             conv = _conv3d(self.pool4, weights, biases)
             self.conv5a = tf.nn.relu(conv, name=scope)
 
-        with tf.name_scope("conv5b") as scope:
+        with tf.compat.v1.name_scope("conv5b") as scope:
             weights = _tf_variable_with_weight_decay(
                 "wc5b", [3, 3, 3, 512, 512], 0.04, 0.00)
             biases = _tf_variable_with_weight_decay(
@@ -186,7 +186,7 @@ class C3D(object):
             self.pool5 = _max_pool("pool5", self.conv5b, k=2)
 
     def _build_fc_layers(self):
-        with tf.name_scope("fc1") as scope:
+        with tf.compat.v1.name_scope("fc1") as scope:
             inputs = tf.reshape(self.pool5, [-1, 8192])
             weights = _tf_variable_with_weight_decay(
                 "wd1", [8192, 4096], 0.04, 0.001)
@@ -196,7 +196,7 @@ class C3D(object):
             self.fc1 = tf.nn.relu(self.fc1l, name=scope)
             #self.fc1 = tf.nn.dropout(self.fc1, 0.6)  # training only
 
-        with tf.name_scope("fc2") as scope:
+        with tf.compat.v1.name_scope("fc2") as scope:
             weights = _tf_variable_with_weight_decay(
                 "wd2", [4096, 4096], 0.04, 0.002)
             biases = _tf_variable_with_weight_decay(
@@ -205,7 +205,7 @@ class C3D(object):
             self.fc2 = tf.nn.relu(self.fc2l, name=scope)
             #self.fc2 = tf.nn.dropout(self.fc2, 0.6)  # training only
 
-        with tf.name_scope("fc3") as scope:
+        with tf.compat.v1.name_scope("fc3") as scope:
             weights = _tf_variable_with_weight_decay(
                 "wout", [4096, 101], 0.04, 0.005)
             biases = _tf_variable_with_weight_decay(
@@ -216,18 +216,18 @@ class C3D(object):
         self.probs = tf.nn.softmax(self.fc3l)
 
     def _load_model(self, model_name):
-        init = tf.global_variables_initializer()
+        init = tf.compat.v1.global_variables_initializer()
         self.sess.run(init)
         etat.TFModelCheckpoint(model_name, self.sess).load()
 
 
 def _tf_variable_with_weight_decay(name, shape, stddev, decay):
-    var = tf.get_variable(
+    var = tf.compat.v1.get_variable(
         name, shape,
-        initializer=tf.truncated_normal_initializer(stddev=stddev))
+        initializer=tf.compat.v1.truncated_normal_initializer(stddev=stddev))
     if decay is not None:
         weight_decay = tf.nn.l2_loss(var) * decay
-        tf.add_to_collection("losses", weight_decay)
+        tf.compat.v1.add_to_collection("losses", weight_decay)
     return var
 
 

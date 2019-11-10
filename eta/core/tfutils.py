@@ -58,7 +58,7 @@ class TFModelCheckpoint(etam.PublishedModel):
         self._sess = sess
 
     def _load(self):
-        saver = tf.train.Saver()
+        saver = tf.compat.v1.train.Saver()
         saver.restore(self._sess, self.model_path)
 
 
@@ -130,7 +130,7 @@ def make_tf_session(config_proto=None, graph=None):
         the tf.Session
     '''
     config = make_tf_config(config_proto=config_proto)
-    return tf.Session(config=config, graph=graph)
+    return tf.compat.v1.Session(config=config, graph=graph)
 
 
 def make_tf_config(config_proto=None):
@@ -144,7 +144,7 @@ def make_tf_config(config_proto=None):
     Returns:
         a tf.ConfigProto
     '''
-    config = copy.copy(config_proto) if config_proto else tf.ConfigProto()
+    config = copy.copy(config_proto) if config_proto else tf.compat.v1.ConfigProto()
 
     if eta.config.tf_config:
         logger.info(

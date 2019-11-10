@@ -133,8 +133,8 @@ class TFModelsDetector(ObjectDetector, UsesTFSession):
     def _build_graph(model_path):
         tf_graph = tf.Graph()
         with tf_graph.as_default():
-            graph_def = tf.GraphDef()
-            with tf.gfile.GFile(model_path, "rb") as f:
+            graph_def = tf.compat.v1.GraphDef()
+            with tf.io.gfile.GFile(model_path, "rb") as f:
                 graph_def.ParseFromString(f.read())
                 tf.import_graph_def(graph_def, name="")
         return tf_graph

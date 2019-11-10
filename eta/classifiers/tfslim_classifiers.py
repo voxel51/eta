@@ -199,8 +199,8 @@ class TFSlimClassifier(etal.ImageClassifier, etat.UsesTFSession):
     def _build_graph(model_path):
         graph = tf.Graph()
         with graph.as_default():
-            graph_def = tf.GraphDef()
-            with tf.gfile.GFile(model_path, "rb") as f:
+            graph_def = tf.compat.v1.GraphDef()
+            with tf.io.gfile.GFile(model_path, "rb") as f:
                 graph_def.ParseFromString(f.read())
                 tf.import_graph_def(graph_def, name="prefix")
         return graph
@@ -236,7 +236,7 @@ class TFSlimClassifier(etal.ImageClassifier, etat.UsesTFSession):
         return self._builtin_preprocessing_tf
 
     def _builtin_preprocessing_tf(self, imgs):
-        _imgs = tf.placeholder("uint8", [None, None, 3])
+        _imgs = tf.compat.v1.placeholder("uint8", [None, None, 3])
         _imgs_proc = tf.expand_dims(
             self._preprocessing_fcn(_imgs, self.img_size, self.img_size), 0)
 
