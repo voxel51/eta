@@ -1,7 +1,7 @@
 '''
-Core module that defines the functionality of the `eta` command-line tool.
+Core module that defines the `eta` command-line interface (CLI).
 
-Copyright 2018-2019, Voxel51, Inc.
+Copyright 2017-2019, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
@@ -40,7 +40,7 @@ logger = logging.getLogger(__name__)
 
 
 class Command(object):
-    '''Interface for defining ETA commands.'''
+    '''Interface for defining commands for the ETA CLI.'''
 
     @staticmethod
     def setup(parser):
@@ -470,7 +470,7 @@ def _register_command(cmd, cls):
 
 
 # Main setup
-parser = argparse.ArgumentParser(description="ETA command-line tool.")
+parser = argparse.ArgumentParser(description="ETA command-line interface.")
 parser.add_argument(
     "-v", "--version", action="version", version=eta.version,
     help="show version info")
@@ -487,7 +487,7 @@ _register_command("pipelines", PipelinesCommand)
 
 
 def main():
-    '''Executes the `eta` tool with the current command-line args.'''
+    '''Executes the `eta` tool with the given command-line args.'''
     if len(sys.argv) == 1:
         parser.print_help()
         sys.exit(0)
