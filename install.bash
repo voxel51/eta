@@ -162,6 +162,8 @@ if [ "${GCARD}" == "ON" ]; then
     # Supported tensorflow-gpu + CUDA configurations
     # https://www.tensorflow.org/install/install_sources#tested_source_configurations
     #
+
+    # @todo(Tyler) will TF 2.0 fail with CUDA 8/9?
     if [ $(cat /usr/local/cuda/version.txt | grep -c "CUDA Version 8") -gt 0 ]; then
         # Found CUDA 8, so we must install an old version
         MSG "Installing tensorflow-gpu 1.4"
@@ -172,15 +174,15 @@ if [ "${GCARD}" == "ON" ]; then
         CRITICAL pip install --upgrade tensorflow-gpu==1.12.0
     elif [ $(cat /usr/local/cuda/version.txt | grep -c "CUDA Version 10") -gt 0 ]; then
         # Found CUDA 10, so we must install version 1.14.0
-        MSG "Installing tensorflow-gpu 1.14.0"
-        CRITICAL pip install --upgrade tensorflow-gpu==1.14.0
+        MSG "Installing tensorflow-gpu 2.0.0"
+        CRITICAL pip install --upgrade tensorflow-gpu==2.0.0
     else
         MSG "Installing latest tensorflow-gpu"
         CRITICAL pip install --upgrade tensorflow-gpu
     fi
 else
-    MSG "Installing tensorflow 1.12.0"
-    CRITICAL pip install --upgrade tensorflow==1.12.0
+    MSG "Installing tensorflow 2.0.0"
+    CRITICAL pip install --upgrade tensorflow==2.0.0
 fi
 
 
