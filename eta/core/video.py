@@ -1855,9 +1855,10 @@ def sample_select_frames(
         a list of the sampled frames if output_patt is None, and None otherwise
     '''
     if fast:
-        return _sample_select_frames_fast(video_path, frames, output_patt, size)
-    else:
-        return _sample_select_frames_slow(video_path, frames, output_patt, size)
+        return _sample_select_frames_fast(
+            video_path, frames, output_patt, size)
+
+    return _sample_select_frames_slow(video_path, frames, output_patt, size)
 
 
 def _sample_select_frames_fast(video_path, frames, output_patt, size):
@@ -1873,7 +1874,8 @@ def _sample_select_frames_fast(video_path, frames, output_patt, size):
         logger.info(
             "Number of frames (%d) requested too large; reverting to "
             "`fast=False`", len(frames))
-        return _sample_select_frames_slow(video_path, frames, output_patt, size)
+        return _sample_select_frames_slow(
+            video_path, frames, output_patt, size)
 
     #
     # In "fast mode", we use ffmpeg's native  `-vf select` option to sample
