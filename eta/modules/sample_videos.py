@@ -146,7 +146,7 @@ def _process_video(input_path, output_frames_dir, parameters):
                 "Maximum frame rate %g requires acceleration of at least %g; "
                 "setting `accel = %g` now", max_fps, min_accel, min_accel)
 
-        accel = min_accel
+            accel = min_accel
     if accel is None:
         raise ConfigError("One of (accel, fps, max_fps) must be specified")
 
