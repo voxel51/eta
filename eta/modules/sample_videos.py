@@ -36,8 +36,8 @@ import eta
 from eta.core.config import Config, ConfigError
 import eta.core.image as etai
 import eta.core.module as etam
-import eta.core.video as etav
 import eta.core.utils as etau
+import eta.core.video as etav
 
 
 logger = logging.getLogger(__name__)
@@ -199,23 +199,21 @@ def _process_video(input_path, output_frames_dir, parameters):
 
 def _check_input_video_size(
         stream_info, max_video_file_size, max_video_duration):
-    if max_video_file_size is not None:
-        file_size = int(stream_info.format_info["size"])
-        if file_size > max_video_file_size:
-            raise ValueError(
-                "Input video file size must be less than {}; found {}".format(
-                    etau.to_human_bytes_str(max_video_file_size),
-                    etau.to_human_bytes_str(file_size))
-            )
+    if (max_video_file_size is not None
+            and stream_info.size_bytes > max_video_file_size):
+        raise ValueError(
+            "Input video file size must be less than {}; found {}".format(
+                etau.to_human_bytes_str(max_video_file_size),
+                etau.to_human_bytes_str(stream_info.size_bytes))
+        )
 
-    if max_video_duration is not None:
-        video_dur = float(stream_info.format_info["duration"])
-        if video_dur > max_video_duration:
-            raise ValueError(
-                ("Input video duration must be less than {} seconds;"
-                 " found {} seconds").format(max_video_duration, video_dur)
-            )
-
+    if (max_video_duration is not None
+            and stream_info.duration > max_video_duration):
+        raise ValueError(
+            ("Input video duration must be less than {} seconds;"
+             " found {} seconds").format(
+                max_video_duration, stream_info.duration)
+        )
 
 
 def run(config_path, pipeline_config_path=None):
