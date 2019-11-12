@@ -1608,7 +1608,7 @@ class VideoStreamInfo(Serializable):
         except KeyError:
             pass
 
-        logger.warning("Unable to determine filesize; returning -1")
+        logger.warning("Unable to determine video size; returning -1")
         return -1
 
     def attributes(self):
