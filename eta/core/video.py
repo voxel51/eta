@@ -1902,7 +1902,7 @@ def _sample_select_frames_fast(
         try:
             ffmpeg.run(video_path, tmp_patt)
         except etau.ExecutableRuntimeError as e:
-            num_frames_output = len(etau.parse_pattern(output_patt))
+            num_frames_output = len(etau.parse_pattern(tmp_patt))
             if float(num_frames_output) / len(frames) < min_frac_frames_out:
                 raise FastSelectFramesError(
                     "FFmpeg run time error before %.1f%% of frames were output."
