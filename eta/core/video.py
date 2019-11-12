@@ -381,7 +381,7 @@ class VideoMetadata(Serializable):
             frame_rate=vsi.frame_rate,
             total_frame_count=vsi.total_frame_count,
             duration=vsi.duration,
-            size_bytes=os.path.getsize(filepath),
+            size_bytes=vsi.size_bytes,
             mime_type=etau.guess_mime_type(filepath),
             encoding_str=vsi.encoding_str,
             gps_waypoints=gps_waypoints,
