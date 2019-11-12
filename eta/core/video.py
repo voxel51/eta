@@ -1833,7 +1833,8 @@ def _make_ffmpeg_select_arg(frames):
 
 
 def sample_select_frames(
-        video_path, frames, output_patt=None, size=None, fast=False):
+        video_path, frames, output_patt=None, size=None, fast=False,
+        min_frac_frames_fast=0.8):
     '''Samples the specified frames of the video.
 
     When `fast=False`, this implementation uses `VideoProcessor`. When
@@ -1850,18 +1851,26 @@ def sample_select_frames(
         fast: whether to use a native ffmpeg method to perform the extraction.
             While faster, this may be inconsistent with other video processing
             methods in ETA. By default, this is False
+        min_frac_frames_fast: the minimum fraction of the frames that must be
+            output in fast mode without considering it a failure and reverting
+            to slow mode
 
     Returns:
         a list of the sampled frames if output_patt is None, and None otherwise
     '''
     if fast:
-        return _sample_select_frames_fast(
-            video_path, frames, output_patt, size)
+        try:
+            return _sample_select_frames_fast(
+                video_path, frames, output_patt, size, min_frac_frames_fast)
+        except FastSelectFramesError as e:
+            logger.info("Select frames fast mode failed: '%s'", e)
+            logger.info("Reverting to `fast=False`")
 
     return _sample_select_frames_slow(video_path, frames, output_patt, size)
 
 
-def _sample_select_frames_fast(video_path, frames, output_patt, size):
+def _sample_select_frames_fast(
+        video_path, frames, output_patt, size, min_frac_frames_out):
     #
     # Revert to `fast=False` if necessary
     #
@@ -1871,11 +1880,9 @@ def _sample_select_frames_fast(video_path, frames, output_patt, size):
     #
     select_arg_str = _make_ffmpeg_select_arg(frames)
     if len(select_arg_str) > 131072:
-        logger.info(
-            "Number of frames (%d) requested too large; reverting to "
-            "`fast=False`", len(frames))
-        return _sample_select_frames_slow(
-            video_path, frames, output_patt, size)
+        raise FastSelectFramesError(
+            "Number of frames (%d) requested too large" % len(frames)
+        )
 
     #
     # In "fast mode", we use ffmpeg's native  `-vf select` option to sample
@@ -1891,21 +1898,17 @@ def _sample_select_frames_fast(video_path, frames, output_patt, size):
         ffmpeg = FFmpeg(
             size=size, out_opts=["-vf", select_arg_str, "-vsync", "0"])
 
-        #
         # Make sure to handle case where ffmpeg command errors out.
-        # This can happen if the `frames` argument passed to the current
-        # function includes frames that are not actually present in the video.
-        #
         try:
             ffmpeg.run(video_path, tmp_patt)
         except etau.ExecutableRuntimeError as e:
-            err_msg = str(e)
-            if len(err_msg) > 350:
-                err_msg = "%s ... %s" % (err_msg[:175], err_msg[-175:])
-            logger.info("FFmpeg runtime error: '%s'", err_msg)
-            logger.info("Reverting to `fast=False`")
-            return _sample_select_frames_slow(
-                video_path, frames, output_patt, size)
+            num_frames_output = len(etau.parse_pattern(output_patt))
+            if float(num_frames_output) / len(frames) < min_frac_frames_out:
+                raise FastSelectFramesError(
+                    "FFmpeg run time error before %.1f%% of frames were output."
+                    "Error: '%s'" % (min_frac_frames_out * 100, e)
+                )
+            frames = frames[:num_frames_output]
 
         if output_patt is not None:
             # Move frames into place with correct output names
@@ -3568,6 +3571,13 @@ class FrameRange(object):
 
 class FrameRangeError(Exception):
     '''Exception raised when an invalid FrameRange is encountered.'''
+    pass
+
+
+class FastSelectFramesError(Exception):
+    '''Exception raised when the `sample_select_frames()` in "fast" mode
+    fails, but is expected to work in "slow" mode.
+    '''
     pass
 
 
