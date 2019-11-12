@@ -1924,10 +1924,6 @@ def _sample_select_frames_slow(video_path, frames, output_patt, size):
     # Parse parameters
     resize_images = size is not None
 
-    #
-    # In "slow mode", we sample the requested frames via VideoProcessor
-    #
-
     if output_patt:
         # Sample frames to disk via VideoProcessor
         p = VideoProcessor(
