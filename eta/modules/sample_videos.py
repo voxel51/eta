@@ -97,10 +97,10 @@ class ParametersConfig(Config):
             sample the last frame of the video
         max_video_file_size (eta.core.types.Number): [None] The maximum file
             size of the input video in bytes. If size is greater than this,
-            an error will be thrown.
+            an error will be thrown
         max_video_duration (eta.core.types.Number): [None] The maximum duration
             of the input video in seconds. If duration is greater than this,
-            an error will be thrown.
+            an error will be thrown
     '''
 
     def __init__(self, d):
