@@ -1475,16 +1475,15 @@ class BigVideoSetLabels(VideoSetLabels, BigSet):
 class VideoStreamInfo(Serializable):
     '''Class encapsulating the stream info for a video.'''
 
-    def __init__(self, stream_info, format_info=None):
+    def __init__(self, stream_info, format_info):
         '''Constructs a VideoStreamInfo instance.
 
         Args:
             stream_info: a dictionary of video stream info
-            format_info: an optional dictionary of video format info. By
-                default, no format info is stored
+            format_info: a dictionary of video format info
         '''
         self.stream_info = stream_info
-        self.format_info = format_info or {}
+        self.format_info = format_info
 
     @property
     def encoding_str(self):
@@ -1599,19 +1598,18 @@ class VideoStreamInfo(Serializable):
         logger.warning("Unable to determine duration; returning -1")
         return -1
 
-    def get_raw_value(self, key):
-        '''Gets a value from the raw stream info dictionary.
-
-        Args:
-            key: the key to lookup in the stream info dictionary
-
-        Returns:
-            the value for the given key
-
-        Raises:
-            KeyError: if the key was not found in the stream info dictionary
+    @property
+    def size_bytes(self):
+        '''The size of the video on disk, in bytes, or -1 if it could not be
+        determined.
         '''
-        return self.stream_info[key]
+        try:
+            return int(self.format_info["size"])
+        except KeyError:
+            pass
+
+        logger.warning("Unable to determine filesize; returning -1")
+        return -1
 
     def attributes(self):
         '''Returns the list of class attributes that will be serialized.'''
@@ -1628,14 +1626,14 @@ class VideoStreamInfo(Serializable):
             a VideoStreamInfo instance
         '''
         stream_info, format_info = _get_stream_info(inpath)
-        return cls(stream_info, format_info=format_info)
+        return cls(stream_info, format_info)
 
     @classmethod
     def from_dict(cls, d):
         '''Constructs a VideoStreamInfo from a JSON dictionary.'''
         stream_info = d["stream_info"]
-        format_info = d.get("format_info", None)
-        return cls(stream_info, format_info=format_info)
+        format_info = d["format_info"]
+        return cls(stream_info, format_info)
 
 
 class VideoStreamInfoError(Exception):
