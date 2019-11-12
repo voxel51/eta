@@ -1863,8 +1863,8 @@ def sample_select_frames(
             return _sample_select_frames_fast(
                 video_path, frames, output_patt, size, min_frac_frames_fast)
         except FastSelectFramesError as e:
-            logger.info("Select frames fast mode failed: '%s'", e)
-            logger.info("Reverting to `fast=False`")
+            logger.error("Select frames fast mode failed: '%s'", e)
+            logger.error("Reverting to `fast=False`")
 
     return _sample_select_frames_slow(video_path, frames, output_patt, size)
 
