@@ -492,7 +492,8 @@ def copy_file(inpath, outpath, check_ext=False):
     if not os.path.isdir(outpath) and check_ext:
         assert_same_extensions(inpath, outpath)
     ensure_basedir(outpath)
-    shutil.copy(inpath, outpath)
+    communicate_or_die(["cp", inpath, outpath])
+
 
 
 def symlink_file(filepath, linkpath, check_ext=False):
@@ -690,7 +691,17 @@ def copy_dir(indir, outdir):
     '''
     if os.path.isdir(outdir):
         shutil.rmtree(outdir)
-    shutil.copytree(indir, outdir)
+
+    for filepath in list_files(indir, include_hidden_files=True, sort=False):
+        copy_file(
+            os.path.join(indir, filepath),
+            os.path.join(outdir, filepath)
+        )
+
+    for subdir in list_subdirs(indir):
+        outsubdir = os.path.join(outdir, subdir)
+        insubdir = os.path.join(indir, subdir)
+        copy_dir(insubdir, outsubdir)
 
 
 def delete_file(path):
@@ -1141,7 +1152,8 @@ def multiglob(*patterns, **kwargs):
     return it.chain.from_iterable(glob2.iglob(root + p) for p in patterns)
 
 
-def list_files(dir_path, abs_paths=False, recursive=False):
+def list_files(dir_path, abs_paths=False, recursive=False,
+               include_hidden_files=False, sort=True):
     '''Lists the files in the given directory, sorted alphabetically and
     excluding directories and hidden files.
 
@@ -1165,9 +1177,10 @@ def list_files(dir_path, abs_paths=False, recursive=False):
         files = [
             f for f in os.listdir(dir_path)
             if os.path.isfile(os.path.join(dir_path, f))
-                and not f.startswith(".")]
+                and (not f.startswith(".") or include_hidden_files)]
 
-    files = sorted(files)
+    if sort:
+        files = sorted(files)
 
     if abs_paths:
         basedir = os.path.abspath(os.path.realpath(dir_path))
@@ -1714,3 +1727,5 @@ class ExecutableRuntimeError(Exception):
     def __init__(self, cmd, err):
         message = "Command '%s' failed with error:\n%s" % (cmd, err)
         super(ExecutableRuntimeError, self).__init__(message)
+
+
