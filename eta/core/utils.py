@@ -496,7 +496,7 @@ def copy_file(inpath, outpath, check_ext=False):
 
 
 def link_file(filepath, linkpath, check_ext=False):
-    '''Creates a hard link at the given location that using the given file.
+    '''Creates a hard link at the given location using the given file.
 
     The base output directory is created if necessary, and any existing file
     will be overwritten.
@@ -644,9 +644,8 @@ def copy_sequence(inpatt, outpatt, check_ext=False):
         copy_file(inpatt % idx, outpatt % idx)
 
 
-def symlink_sequence(inpatt, outpatt, check_ext=False):
-    '''Creates hard links at the given locations using the given
-    sequence.
+def link_sequence(inpatt, outpatt, check_ext=False):
+    '''Creates hard links at the given locations using the given sequence.
 
     The base output directory is created if necessary, and any existing files
     will be overwritten.
@@ -1773,5 +1772,3 @@ class ExecutableRuntimeError(Exception):
     def __init__(self, cmd, err):
         message = "Command '%s' failed with error:\n%s" % (cmd, err)
         super(ExecutableRuntimeError, self).__init__(message)
-
-
