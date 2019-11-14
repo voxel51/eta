@@ -662,7 +662,7 @@ class LabeledDataset(object):
         return dataset_list
 
     def add_file(self, data_path, labels_path, move_files=False,
-                 error_on_duplicates=False):
+                 error_on_duplicates=False, hard_link_data=False):
         '''Adds a single data file and its labels file to this dataset.
 
         Args:
@@ -685,6 +685,9 @@ class LabeledDataset(object):
                 data file already present in the dataset and
                 `error_on_duplicates` is True
         '''
+        if move_files and hard_link_data:
+            raise ValueError(
+                "only one of move_files and hard_link_data can be True")
         if error_on_duplicates:
             self._validate_new_data_file(data_path)
 
@@ -693,6 +696,8 @@ class LabeledDataset(object):
         if os.path.dirname(data_path) != data_subdir:
             if move_files:
                 etau.move_file(data_path, data_subdir)
+            elif hard_link_data:
+                etau.link_file(data_path, data_subdir)
             else:
                 etau.copy_file(data_path, data_subdir)
         if os.path.dirname(labels_path) != labels_subdir:

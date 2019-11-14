@@ -495,6 +495,29 @@ def copy_file(inpath, outpath, check_ext=False):
     communicate_or_die(["cp", inpath, outpath])
 
 
+def link_file(filepath, linkpath, check_ext=False):
+    '''Creates a hard link at the given location that using the given file.
+
+    The base output directory is created if necessary, and any existing file
+    will be overwritten.
+
+    Args:
+        filepath: a file or directory
+        linkpath: the desired symlink path
+        check_ext: whether to check if the extensions (or lack thereof, for
+            directories) of the input and output paths match
+
+    Raises:
+        OSError: if check_ext is True and the input and output paths have
+            different extensions
+    '''
+    if check_ext:
+        assert_same_extensions(filepath, linkpath)
+    ensure_basedir(linkpath)
+    if os.path.exists(linkpath):
+        os.remove(linkpath)
+    os.link(os.path.realpath(filepath), linkpath)
+
 
 def symlink_file(filepath, linkpath, check_ext=False):
     '''Creates a symlink at the given location that points to the given file.
@@ -619,6 +642,29 @@ def copy_sequence(inpatt, outpatt, check_ext=False):
         assert_same_extensions(inpatt, outpatt)
     for idx in parse_pattern(inpatt):
         copy_file(inpatt % idx, outpatt % idx)
+
+
+def symlink_sequence(inpatt, outpatt, check_ext=False):
+    '''Creates hard links at the given locations using the given
+    sequence.
+
+    The base output directory is created if necessary, and any existing files
+    will be overwritten.
+
+    Args:
+        inpatt: the input sequence
+        outpatt: the output sequence
+        check_ext: whether to check if the extensions of the input and output
+            sequences match
+
+    Raises:
+        OSError: if check_ext is True and the input and output sequences have
+            different extensions
+    '''
+    if check_ext:
+        assert_same_extensions(inpatt, outpatt)
+    for idx in parse_pattern(inpatt):
+        link_file(inpatt % idx, outpatt % idx)
 
 
 def symlink_sequence(inpatt, outpatt, check_ext=False):
