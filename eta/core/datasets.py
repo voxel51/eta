@@ -662,7 +662,7 @@ class LabeledDataset(object):
         return dataset_list
 
     def add_file(self, data_path, labels_path, move_files=False,
-                 error_on_duplicates=False, hard_link_data=False):
+                 error_on_duplicates=False, link_data=False):
         '''Adds a single data file and its labels file to this dataset.
 
         Args:
@@ -676,6 +676,7 @@ class LabeledDataset(object):
                 data file in the dataset. If this is set to `False`, the
                 previous mapping of the data filename to a labels file
                 will be deleted.
+            link_data: whether to hard link the data file instead of copying it
 
         Returns:
             self
@@ -685,9 +686,9 @@ class LabeledDataset(object):
                 data file already present in the dataset and
                 `error_on_duplicates` is True
         '''
-        if move_files and hard_link_data:
+        if move_files and link_data:
             raise ValueError(
-                "only one of move_files and hard_link_data can be True")
+                "only one of move_files and link_data can be True")
         if error_on_duplicates:
             self._validate_new_data_file(data_path)
 
@@ -696,8 +697,11 @@ class LabeledDataset(object):
         if os.path.dirname(data_path) != data_subdir:
             if move_files:
                 etau.move_file(data_path, data_subdir)
-            elif hard_link_data:
-                etau.link_file(data_path, data_subdir)
+            elif link_data:
+                etau.link_file(
+                    data_path,
+                    os.path.join(data_subdir, os.path.basename(data_path))
+                )
             else:
                 etau.copy_file(data_path, data_subdir)
         if os.path.dirname(labels_path) != labels_subdir:
@@ -787,7 +791,7 @@ class LabeledDataset(object):
 
         return self
 
-    def copy(self, dataset_path, symlink_data=False):
+    def copy(self, dataset_path, symlink_data=False, link_data=False):
         '''Copies the dataset to another directory.
 
         If the dataset index has been manipulated, this will be reflected
@@ -822,7 +826,7 @@ class LabeledDataset(object):
                     os.path.join(self.data_dir, self._DATA_SUBDIR))),
                 new_data_subdir
             )
-            shutil.copytree(
+            etau.copy_dir(
                 os.path.join(self.data_dir, self._LABELS_SUBDIR),
                 new_labels_subdir
             )
