@@ -1180,18 +1180,29 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
                     "Failed to delete '%s' from '%s' (%s)", f["name"],
                     folder_id, t.elapsed_time_str)
 
-    def get_file_metadata(self, file_id):
+    def get_file_metadata(self, file_id, extra_fields=None, all_fields=False):
         '''Gets metadata about the file with the given ID.
 
         Args:
             file_id: the ID of a file (or folder)
+            extra_fields: an optional list of extra fields to return
+            all_fields: an optional flag to set if you want to return all
+                available metadata fields. By default, this is False
 
         Returns:
             a dictionary containing the available metadata about the file,
-                including at least `name`, `kind`, and `mimeType`
+                including (at least) the `name`, `size`, `createdTime`, and
+                `mimeType` fields
         '''
+        if all_fields:
+            fields = "*"
+        else:
+            fields = "name,size,createdTime,mimeType"
+            if extra_fields is not None:
+                fields += "," + ",".join(extra_fields)
+
         return self._service.files().get(
-            fileId=file_id, supportsTeamDrives=True).execute()
+            fileId=file_id, fields=fields, supportsTeamDrives=True).execute()
 
     def get_team_drive_id(self, name):
         '''Get the ID of the Team Drive with the given name.
@@ -1223,7 +1234,9 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
             the ID of the Team Drive, or None if the file does not live in a
                 Team Drive
         '''
-        return self.get_file_metadata(file_id).get("teamDriveId", None)
+        metadata = self.get_file_metadata(
+            file_id, extra_fields=["teamDriveId"])
+        return metadata.get("teamDriveId", None)
 
     def is_folder(self, file_id):
         '''Determines whether the file with the given ID is a folder.
