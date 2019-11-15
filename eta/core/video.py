@@ -360,8 +360,7 @@ class VideoMetadata(Serializable):
         return [a for a in _attrs if getattr(self, a) is not None]
 
     @classmethod
-    def build_for(
-            cls, filepath, start_time=None, gps_waypoints=None):
+    def build_for(cls, filepath, start_time=None, gps_waypoints=None):
         '''Builds a VideoMetadata object for the given video.
 
         Args:
