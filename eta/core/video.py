@@ -1851,51 +1851,34 @@ def sample_select_frames(
     Returns:
         a list of the sampled frames if output_patt is None, and None otherwise
     '''
-    # Parse parameters
-    resize_images = size is not None
+    if fast:
+        try:
+            return _sample_select_frames_fast(
+                video_path, frames, output_patt, size)
+        except SampleSelectFramesError as e:
+            logger.warning("Select frames fast mode failed: '%s'", e)
+            logger.info("Reverting to `fast=False`")
 
-    #
-    # Revert to `fast=False` if necessary
+    return _sample_select_frames_slow(video_path, frames, output_patt, size)
+
+
+class SampleSelectFramesError(Exception):
+    '''Exception raised when the `sample_select_frames` method encounters an
+    error.
+    '''
+    pass
+
+
+def _sample_select_frames_fast(video_path, frames, output_patt, size):
     #
     # As per https://stackoverflow.com/questions/29801975, one cannot pass an
     # argument of length > 131072 to subprocess. So, we have to make sure the
     # user isn't requesting too many frames to handle
     #
-    if fast:
-        select_arg_str = _make_ffmpeg_select_arg(frames)
-        if len(select_arg_str) > 131072:
-            logger.info(
-                "Number of frames (%d) requested too large; reverting to "
-                "`fast=False`", len(frames))
-            fast = False
-
-    #
-    # In "slow mode", we sample the requested frames via VideoProcessor
-    #
-
-    if not fast:
-        if output_patt:
-            # Sample frames to disk via VideoProcessor
-            p = VideoProcessor(
-                video_path, frames=frames, out_images_path=output_patt)
-            with p:
-                for img in p:
-                    if resize_images:
-                        img = etai.resize(img, *size)
-                    p.write(img)
-            return None
-
-        # Sample frames in memory via FFmpegVideoReader
-        with FFmpegVideoReader(video_path, frames=frames) as r:
-            if resize_images:
-                return [etai.resize(img, *size) for img in r]
-
-            return [img for img in r]
-
-    #
-    # In "fast mode", we use ffmpeg's native  `-vf select` option to sample
-    # the requested frames
-    #
+    select_arg_str = _make_ffmpeg_select_arg(frames)
+    if len(select_arg_str) > 131072:
+        raise SampleSelectFramesError(
+            "Number of frames (%d) requested too large" % len(frames))
 
     # If reading into memory, use `png` to ensure lossless-ness
     ext = os.path.splitext(output_patt)[1] if output_patt else ".png"
@@ -1905,7 +1888,20 @@ def sample_select_frames(
         tmp_patt = os.path.join(d, "frame-%d" + ext)
         ffmpeg = FFmpeg(
             size=size, out_opts=["-vf", select_arg_str, "-vsync", "0"])
-        ffmpeg.run(video_path, tmp_patt)
+
+        try:
+            ffmpeg.run(video_path, tmp_patt)
+        except etau.ExecutableRuntimeError:
+            #
+            # Sometimes ffmpeg can't decode frames in video. Analogous to
+            # FFmpegVideoReader, our approach here is to gracefully fail and
+            # just give the user however many frames we can...
+            #
+            num_frames = len(etau.parse_pattern(tmp_patt))
+            frames = frames[:num_frames]
+            logger.warning(
+                "Only %d of %d expected frames were sampled", num_frames,
+                 len(frames))
 
         if output_patt is not None:
             # Move frames into place with correct output names
@@ -1919,6 +1915,29 @@ def sample_select_frames(
             imgs.append(etai.read(tmp_patt % idx))
 
         return imgs
+
+
+def _sample_select_frames_slow(video_path, frames, output_patt, size):
+    # Parse parameters
+    resize_images = size is not None
+
+    if output_patt:
+        # Sample frames to disk via VideoProcessor
+        p = VideoProcessor(
+            video_path, frames=frames, out_images_path=output_patt)
+        with p:
+            for img in p:
+                if resize_images:
+                    img = etai.resize(img, *size)
+                p.write(img)
+        return None
+
+    # Sample frames in memory via FFmpegVideoReader
+    with FFmpegVideoReader(video_path, frames=frames) as r:
+        if resize_images:
+            return [etai.resize(img, *size) for img in r]
+
+        return [img for img in r]
 
 
 def sample_first_frames(imgs_or_video_path, k, stride=1, size=None):
