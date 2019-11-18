@@ -103,8 +103,8 @@ def _process_video(data, annotation_config):
         objects = etao.DetectedObjectContainer.from_json(data.objects_path)
         labels = etav.VideoLabels.from_detected_objects(objects)
     else:
-        raise ValueError(
-            "Must supply one of 'video_labels_path' or 'objects_path'")
+        logger.info("No labels found; rendering raw video")
+        labels = etav.VideoLabels()
 
     # Annotate video
     etaa.annotate_video(
