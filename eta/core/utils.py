@@ -227,9 +227,9 @@ def get_function(function_name, module_name=None):
 
 
 def query_yes_no(question, default=None):
-    '''Asks a yes/no question via raw_input() and returns the answer.
+    '''Asks a yes/no question via the command-line and returns the answer.
 
-    This function is case insensitive and partially matches are allowed.
+    This function is case insensitive and partial matches are allowed.
 
     Args:
         question: the question to ask
@@ -255,13 +255,13 @@ def query_yes_no(question, default=None):
 
     while True:
         sys.stdout.write(question + prompt)
-        choice = raw_input().lower()
+        choice = six.moves.input().lower()
         if default and not choice:
             return valid[default]
         elif choice in valid:
             return valid[choice]
         else:
-            print("Please respond with 'yes' or 'no'")
+            print("Please respond with 'y[es]' or 'n[o]'")
 
 
 def call(args):
