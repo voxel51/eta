@@ -151,7 +151,7 @@ def is_python3():
 
 
 # Version string
-version = "%s %s, %s" % (etac.NAME, etac.VERSION, etac.AUTHOR)
+version = "%s v%s, %s" % (etac.NAME, etac.VERSION, etac.AUTHOR)
 
 # Default logging behavior
 etal.basic_setup()
