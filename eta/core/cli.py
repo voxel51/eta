@@ -40,14 +40,19 @@ logger = logging.getLogger(__name__)
 
 
 class Command(object):
-    '''Interface for defining commands for the ETA CLI.'''
+    '''Interface for defining commands.
+
+    Command instances must implement the `setup()` method, and they should
+    implement the `run()` method if they perform any functionality beyond
+    defining subparsers.
+    '''
 
     @staticmethod
     def setup(parser):
         '''Setup the command-line arguments for the command.
 
         Args:
-            parser: an argparse.ArgumentParser instance
+            parser: an `argparse.ArgumentParser` instance
         '''
         raise NotImplementedError("subclass must implement setup()")
 
@@ -56,14 +61,28 @@ class Command(object):
         '''Execute the command on the given args.
 
         args:
-            args: an argparse.Namespace instance containing the arguments
+            args: an `argparse.Namespace` instance containing the arguments
                 for the command
         '''
-        raise NotImplementedError("subclass must implement run()")
+        pass
+
+
+class ETACommand(Command):
+    '''ETA command-line interface.'''
+
+    @staticmethod
+    def setup(parser):
+        subparsers = parser.add_subparsers(title="available commands")
+        _register_command(subparsers, "build", BuildCommand)
+        _register_command(subparsers, "run", RunCommand)
+        _register_command(subparsers, "clean", CleanCommand)
+        _register_command(subparsers, "models", ModelsCommand)
+        _register_command(subparsers, "modules", ModulesCommand)
+        _register_command(subparsers, "pipelines", PipelinesCommand)
 
 
 class BuildCommand(Command):
-    '''Command-line tool for building ETA pipelines.
+    '''Tools for building pipelines.
 
     Examples:
         # Build pipeline from a pipeline build request
@@ -172,7 +191,7 @@ class BuildCommand(Command):
 
 
 class RunCommand(Command):
-    '''Command-line tool for running ETA pipelines and modules.
+    '''Tools for running pipelines and modules.
 
     Examples:
         # Run pipeline defined by a pipeline config
@@ -229,7 +248,7 @@ def _run_pipeline(config, force_overwrite=False):
 
 
 class CleanCommand(Command):
-    '''Command-line tool for cleaning up after ETA pipelines.
+    '''Tools for cleaning up after pipelines.
 
     Examples:
         # Cleanup pipeline defined by a given pipeline config
@@ -270,7 +289,7 @@ class CleanCommand(Command):
 
 
 class ModelsCommand(Command):
-    '''Command-line tool for working with ETA models.
+    '''Tools for working with models.
 
     Examples:
         # List all available models
@@ -344,7 +363,7 @@ class ModelsCommand(Command):
 
 
 class ModulesCommand(Command):
-    '''Command-line tool for working with ETA modules.
+    '''Tools for working with modules.
 
     Examples:
         # List all available modules
@@ -408,7 +427,7 @@ class ModulesCommand(Command):
 
 
 class PipelinesCommand(Command):
-    '''Command-line tool for working with ETA pipelines.
+    '''Tools for working with pipelines.
 
     Examples:
         # List all available pipelines
@@ -464,37 +483,35 @@ def _group_by_dir(d):
     return dd
 
 
-def _register_command(cmd, cls):
-    parser = subparsers.add_parser(
-        cmd, help=cls.__doc__.splitlines()[0],
-        description=cls.__doc__.rstrip(),
+def _register_main_command(command, version=None):
+    parser = argparse.ArgumentParser(description=command.__doc__.rstrip())
+    if version:
+        parser.add_argument(
+            "-v", "--version", action="version", version=version,
+            help="show version info")
+
+    parser.set_defaults(run=command.run)
+    command.setup(parser)
+    return parser
+
+
+def _register_command(parent, name, command):
+    parser = parent.add_parser(
+        name, help=command.__doc__.splitlines()[0],
+        description=command.__doc__.rstrip(),
         formatter_class=argparse.RawTextHelpFormatter)
-    parser.set_defaults(run=cls.run)
-    cls.setup(parser)
-
-
-# Main setup
-parser = argparse.ArgumentParser(description="ETA command-line interface.")
-parser.add_argument(
-    "-v", "--version", action="version", version=eta.version,
-    help="show version info")
-subparsers = parser.add_subparsers(title="available commands")
-
-
-# Command setup
-_register_command("build", BuildCommand)
-_register_command("run", RunCommand)
-_register_command("clean", CleanCommand)
-_register_command("models", ModelsCommand)
-_register_command("modules", ModulesCommand)
-_register_command("pipelines", PipelinesCommand)
+    parser.set_defaults(run=command.run)
+    command.setup(parser)
+    return parser
 
 
 def main():
     '''Executes the `eta` tool with the given command-line args.'''
+    parser = _register_main_command(ETACommand, version=eta.version)
+
     if len(sys.argv) == 1:
         parser.print_help()
-        sys.exit(0)
+        return
 
     args = parser.parse_args()
     args.run(args)
