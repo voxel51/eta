@@ -1738,7 +1738,7 @@ class LabeledDatasetBuilder(object):
         return self._dataset.record_cls
 
     def build(self, path, description=None, pretty_print=False,
-              tmp_dir_base=None):
+              tmp_dir_base=None, create_empty=False):
         '''Build the new LabeledDataset after all records and transformations
         have been added.
 
@@ -1747,6 +1747,7 @@ class LabeledDatasetBuilder(object):
             description (str): optional dataset description
             pretty_print (bool): pretty print flag for json labels
             tmp_dir_base (str): optional directory in which to make temp dirs
+            create_empty (bool): if False, empty dataset is not written to disk
 
         Returns:
             LabeledDataset
@@ -1755,6 +1756,10 @@ class LabeledDatasetBuilder(object):
 
         for transformer in self._transformers:
             transformer.transform(self._dataset)
+
+        if not create_empty and not len(self.builder_dataset):
+            logger.info("Built dataset is empty. Skipping write out.")
+            return None
 
         logger.info(
             "Building dataset with %d elements" % len(self.builder_dataset)
