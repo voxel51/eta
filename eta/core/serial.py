@@ -1160,7 +1160,7 @@ class BigSet(BigMixin, Set):
         self[key] = element
 
     def add_by_path(self, path, key=None):
-        '''Adds an element to the BigSet via its path on disk.
+        '''Adds an element to the set via its path on disk.
 
         Args:
             path: the path to the element JSON file on disk
