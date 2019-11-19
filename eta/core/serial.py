@@ -1154,7 +1154,9 @@ class BigSet(BigMixin, Set):
         Args:
             element: an instance of `_ELE_CLS`
         '''
-        key = self.get_key(element) or str(uuid4())
+        key = self.get_key(element)
+        if key is None:
+            key = str(uuid4())
         self[key] = element
 
     def add_by_path(self, path, key=None):
