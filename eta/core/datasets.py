@@ -2766,13 +2766,16 @@ class SchemaFilter(DatasetTransformer):
     is None, no filtering is done.
     '''
 
-    def __init__(self, schema):
+    def __init__(self, schema, prune_empty=True):
         '''Initialize the SchemaFilter with a schema.
 
         Args:
             schema (VideoLabelsSchema or ImageLabelsSchema)
+            prune_empty (bool) if True, records whose labels are empty after
+                filtering are pruned from the dataset.
         '''
         self.schema = schema
+        self.prune_empty = prune_empty
 
     def transform(self, src):
         '''Filter all records in src. If the schema is None, no filtering is
@@ -2786,10 +2789,14 @@ class SchemaFilter(DatasetTransformer):
         '''
         if self.schema is None:
             return
-        for record in src:
+        old_records = src.records
+        src.clear()
+        for record in old_records:
             labels = record.get_labels()
             labels.filter_by_schema(self.schema)
-            record.set_labels(labels)
+            if not self.prune_empty or not labels.is_empty:
+                record.set_labels(labels)
+                src.add(record)
 
 
 class Clipper(DatasetTransformer):
