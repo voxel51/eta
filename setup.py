@@ -9,17 +9,17 @@ Brian Moore, brian@voxel51.com
 '''
 from setuptools import setup, find_packages
 
-import eta.constants as c
+import eta.constants as etac
 
 
 setup(
-    name=c.NAME,
-    version=c.VERSION,
-    description=c.DESCRIPTION,
-    author=c.AUTHOR,
-    author_email=c.CONTACT,
-    url=c.URL,
-    license=c.LICENSE,
+    name=etac.NAME,
+    version=etac.VERSION,
+    description=etac.DESCRIPTION,
+    author=etac.AUTHOR,
+    author_email=etac.CONTACT,
+    url=etac.URL,
+    license=etac.LICENSE,
     packages=find_packages(),
     classifiers=[
         "Operating System :: MacOS :: MacOS X",
