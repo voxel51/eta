@@ -599,6 +599,13 @@ class VideoLabels(Serializable):
         return bool(self.frames)
 
     @property
+    def has_video_attributes(self):
+        '''Returns True/False whether the container has at least one video
+        attribute.
+        '''
+        return bool(self.attrs)
+
+    @property
     def has_frame_attributes(self):
         '''Returns True/False whether the container has at least one frame
         attribute.
@@ -619,6 +626,13 @@ class VideoLabels(Serializable):
                 return True
 
         return False
+
+    @property
+    def is_empty(self):
+        '''Returns True if the container has no labels of any kind.'''
+        return (not self.has_video_attributes
+                and not self.has_frame_attributes
+                and not self.has_objects)
 
     @property
     def has_schema(self):
