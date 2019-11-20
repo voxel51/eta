@@ -1770,16 +1770,25 @@ class LabeledDatasetBuilder(object):
         with etau.TempDir(tmp_dir_base) as tmp_dir:
             for record in self._dataset:
                 data_filename = os.path.basename(record.data_path)
-                labels_filename = os.path.basename(record.labels_path)
-
                 data_path = os.path.join(tmp_dir, data_filename)
+                labels_filename = os.path.basename(record.labels_path)
                 labels_path = os.path.join(tmp_dir, labels_filename)
 
-                # @todo(Tyler)
-                # while dataset.has_data_with_name(data_path):
+                # add an incrementing index to the filename until a unique name
+                # is found
+                data_basename, data_ext = os.path.splitext(data_filename)
+                labels_basename, labels_ext = os.path.splitext(labels_filename)
+                idx = -1
+                while dataset.has_data_with_name(data_path):
+                    idx += 1
+                    unique_appender = "-{}".format(idx)
+                    data_path = os.path.join(
+                        tmp_dir, data_basename + unique_appender + data_ext)
+                    labels_path = os.path.join(
+                        tmp_dir, labels_basename + unique_appender + labels_ext)
 
                 record.build(data_path, labels_path, pretty_print=pretty_print)
-                dataset.add_file(data_path, labels_path, move_files=True)
+                dataset.add_file(labels_basename, labels_path, move_files=True)
 
         dataset.write_manifest(os.path.basename(path))
         return dataset
@@ -3011,6 +3020,6 @@ class TylersTestTransform(DatasetTransformer):
         src.clear()
         for idx, record in enumerate(old_records):
             src.add(record)
-            # src.add(record)
-            # src.add(record)
+            src.add(record)
+            src.add(record)
             break
