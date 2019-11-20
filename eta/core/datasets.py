@@ -661,6 +661,20 @@ class LabeledDataset(object):
 
         return dataset_list
 
+    def has_data_with_name(self, data_path):
+        '''Checks whether if a data file already exists in the dataset with the
+        provided filename.
+
+        Args:
+            data_path: path to or filename of a data file
+
+        Returns:
+            (bool): True if the filename of `data_path` is the same as a
+                data file already present in the dataset
+        '''
+        data_file = os.path.basename(data_path)
+        return data_file in self._data_to_labels_map
+
     def add_file(self, data_path, labels_path, move_files=False,
                  error_on_duplicates=False):
         '''Adds a single data file and its labels file to this dataset.
@@ -685,8 +699,9 @@ class LabeledDataset(object):
                 data file already present in the dataset and
                 `error_on_duplicates` is True
         '''
-        if error_on_duplicates:
-            self._validate_new_data_file(data_path)
+        if error_on_duplicates and self.has_data_with_name(data_path):
+            raise ValueError("Data file '%s' already present in dataset"
+                             % os.path.basename(data_path))
 
         data_subdir = os.path.join(self.data_dir, self._DATA_SUBDIR)
         labels_subdir = os.path.join(self.data_dir, self._LABELS_SUBDIR)
@@ -737,8 +752,9 @@ class LabeledDataset(object):
         Returns:
             self
         '''
-        if error_on_duplicates:
-            self._validate_new_data_file(data_filename)
+        if error_on_duplicates and self.has_data_with_name(data_filename):
+            raise ValueError("Data file '%s' already present in dataset"
+                             % os.path.basename(data_filename))
 
         data_path = os.path.join(
             self.data_dir, self._DATA_SUBDIR, data_filename)
@@ -1142,22 +1158,6 @@ class LabeledDataset(object):
                     "Data file '%s' maps to multiple labels files" %
                     data_file)
             self._data_to_labels_map[data_file] = labels_file
-
-    def _validate_new_data_file(self, data_path):
-        '''Checks whether a data file would be a duplicate of an existing
-        data file in the dataset.
-
-        Args:
-            data_path: path to or filename of the new data file
-
-        Raises:
-            ValueError: if the filename of `data_path` is the same as a
-                data file already present in the dataset
-        '''
-        data_file = os.path.basename(data_path)
-        if data_file in self._data_to_labels_map:
-            raise ValueError(
-                "Data file '%s' already present in dataset" % data_file)
 
     def _read_data(self, path):
         '''Reads data from a data file at the given path.
