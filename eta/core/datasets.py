@@ -661,6 +661,20 @@ class LabeledDataset(object):
 
         return dataset_list
 
+    def has_data_with_name(self, data_path):
+        '''Checks whether a data file already exists in the dataset with the
+        provided filename.
+
+        Args:
+            data_path: path to or filename of a data file
+
+        Returns:
+            (bool): True if the filename of `data_path` is the same as a
+                data file already present in the dataset
+        '''
+        data_file = os.path.basename(data_path)
+        return data_file in self._data_to_labels_map
+
     def add_file(self, data_path, labels_path, move_files=False,
                  error_on_duplicates=False):
         '''Adds a single data file and its labels file to this dataset.
@@ -685,8 +699,9 @@ class LabeledDataset(object):
                 data file already present in the dataset and
                 `error_on_duplicates` is True
         '''
-        if error_on_duplicates:
-            self._validate_new_data_file(data_path)
+        if error_on_duplicates and self.has_data_with_name(data_path):
+            raise ValueError("Data file '%s' already present in dataset"
+                             % os.path.basename(data_path))
 
         data_subdir = os.path.join(self.data_dir, self._DATA_SUBDIR)
         labels_subdir = os.path.join(self.data_dir, self._LABELS_SUBDIR)
@@ -737,8 +752,9 @@ class LabeledDataset(object):
         Returns:
             self
         '''
-        if error_on_duplicates:
-            self._validate_new_data_file(data_filename)
+        if error_on_duplicates and self.has_data_with_name(data_filename):
+            raise ValueError("Data file '%s' already present in dataset"
+                             % os.path.basename(data_filename))
 
         data_path = os.path.join(
             self.data_dir, self._DATA_SUBDIR, data_filename)
@@ -1142,22 +1158,6 @@ class LabeledDataset(object):
                     "Data file '%s' maps to multiple labels files" %
                     data_file)
             self._data_to_labels_map[data_file] = labels_file
-
-    def _validate_new_data_file(self, data_path):
-        '''Checks whether a data file would be a duplicate of an existing
-        data file in the dataset.
-
-        Args:
-            data_path: path to or filename of the new data file
-
-        Raises:
-            ValueError: if the filename of `data_path` is the same as a
-                data file already present in the dataset
-        '''
-        data_file = os.path.basename(data_path)
-        if data_file in self._data_to_labels_map:
-            raise ValueError(
-                "Data file '%s' already present in dataset" % data_file)
 
     def _read_data(self, path):
         '''Reads data from a data file at the given path.
@@ -1738,7 +1738,7 @@ class LabeledDatasetBuilder(object):
         return self._dataset.record_cls
 
     def build(self, path, description=None, pretty_print=False,
-              tmp_dir_base=None):
+              tmp_dir_base=None, create_empty=False):
         '''Build the new LabeledDataset after all records and transformations
         have been added.
 
@@ -1747,6 +1747,7 @@ class LabeledDatasetBuilder(object):
             description (str): optional dataset description
             pretty_print (bool): pretty print flag for json labels
             tmp_dir_base (str): optional directory in which to make temp dirs
+            create_empty (bool): if False, empty dataset is not written to disk
 
         Returns:
             LabeledDataset
@@ -1756,17 +1757,39 @@ class LabeledDatasetBuilder(object):
         for transformer in self._transformers:
             transformer.transform(self._dataset)
 
+        if not create_empty and not len(self.builder_dataset):
+            logger.info("Built dataset is empty. Skipping write out.")
+            return None
+
         logger.info(
             "Building dataset with %d elements" % len(self.builder_dataset)
         )
 
         dataset = self.dataset_cls.create_empty_dataset(path, description)
 
-        with etau.TempDir(tmp_dir_base) as dir_path:
-            for idx, record in enumerate(self._dataset):
-                result = record.build(dir_path, str(idx),
-                                      pretty_print=pretty_print)
-                dataset.add_file(*result, move_files=True)
+        with etau.TempDir(tmp_dir_base) as tmp_dir:
+            for record in self._dataset:
+                data_filename = os.path.basename(record.data_path)
+                data_path = os.path.join(tmp_dir, data_filename)
+                labels_filename = os.path.basename(record.labels_path)
+                labels_path = os.path.join(tmp_dir, labels_filename)
+
+                # add an incrementing index to the filename until a unique name
+                # is found
+                data_basename, data_ext = os.path.splitext(data_filename)
+                labels_basename, labels_ext = os.path.splitext(labels_filename)
+                idx = -1
+                while dataset.has_data_with_name(data_path):
+                    idx += 1
+                    unique_appender = "-{}".format(idx)
+                    data_path = os.path.join(
+                        tmp_dir, data_basename + unique_appender + data_ext)
+                    labels_path = os.path.join(
+                        tmp_dir, labels_basename + unique_appender + labels_ext)
+
+                record.build(data_path, labels_path, pretty_print=pretty_print)
+                dataset.add_file(data_path, labels_path, move_files=True)
+
         dataset.write_manifest(os.path.basename(path))
         return dataset
 
@@ -1783,8 +1806,6 @@ class BuilderDataRecord(BaseDataRecord):
     '''This class is responsible for tracking all of the metadata about a data
     record required for dataset operations on a BuilderDataset.
     '''
-
-    _LABELS_EXT = ".json"
 
     def __init__(self, data_path, labels_path):
         '''Initialize the BuilderDataRecord. The label and data paths cannot
@@ -1831,32 +1852,22 @@ class BuilderDataRecord(BaseDataRecord):
         '''Labels path getter.'''
         return self._labels_path
 
-    def build(self, dir_path, filename, pretty_print=False):
+    def build(self, data_path, labels_path, pretty_print=False):
         '''Write the transformed labels and data files to dir_path. The
         subclasses BuilderVideoRecord and BuilderDataRecord are responsible for
         writing the data file.
 
         Args:
-            dir_path (str): path to write the files
-            filename (str): filename prefix that data and labels share
+            data_path (str): path to write the data file to
+            labels_path (str): path to write the labels file to
             pretty_print (bool): pretty_print json flag for labels
-
-        Returns:
-            tuple (data_path, labels_path): the paths to the written files
         '''
         self._build_labels()
-
-        labels_path = os.path.join(dir_path, filename + self._LABELS_EXT)
         labels = self.get_labels()
-
-        data_ext = os.path.splitext(self.data_path)[1]
-        data_path = os.path.join(dir_path, filename + data_ext)
-
-        labels.filename = filename + data_ext
+        labels.filename = os.path.basename(data_path)
         labels.write_json(labels_path, pretty_print=pretty_print)
 
         self._build_data(data_path)
-        return data_path, labels_path
 
     def copy(self):
         '''Safely copy a record. Only copy should be used when creating new
@@ -2766,13 +2777,16 @@ class SchemaFilter(DatasetTransformer):
     is None, no filtering is done.
     '''
 
-    def __init__(self, schema):
+    def __init__(self, schema, prune_empty=True):
         '''Initialize the SchemaFilter with a schema.
 
         Args:
             schema (VideoLabelsSchema or ImageLabelsSchema)
+            prune_empty (bool) if True, records whose labels are empty after
+                filtering are pruned from the dataset.
         '''
         self.schema = schema
+        self.prune_empty = prune_empty
 
     def transform(self, src):
         '''Filter all records in src. If the schema is None, no filtering is
@@ -2786,10 +2800,14 @@ class SchemaFilter(DatasetTransformer):
         '''
         if self.schema is None:
             return
-        for record in src:
+        old_records = src.records
+        src.clear()
+        for record in old_records:
             labels = record.get_labels()
             labels.filter_by_schema(self.schema)
-            record.set_labels(labels)
+            if not self.prune_empty or not labels.is_empty:
+                record.set_labels(labels)
+                src.add(record)
 
 
 class Clipper(DatasetTransformer):

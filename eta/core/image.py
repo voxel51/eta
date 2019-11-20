@@ -184,6 +184,24 @@ class ImageLabels(Serializable):
         self.attrs.filter_by_schema(schema.attrs)
         self.objects.filter_by_schema(schema)
 
+    @property
+    def has_attributes(self):
+        '''Returns True/False whether the container has at least one attribute.
+        '''
+        return bool(self.attrs)
+
+    @property
+    def has_objects(self):
+        '''Returns True/False whether the container has at least one
+        DetectedObject.
+        '''
+        return bool(self.objects)
+
+    @property
+    def is_empty(self):
+        '''Returns True if the container has no labels of any kind.'''
+        return not self.has_attributes and not self.has_objects
+
     def attributes(self):
         '''Returns the list of class attributes that will be serialized.'''
         _attrs = []
