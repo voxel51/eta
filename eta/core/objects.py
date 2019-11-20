@@ -182,15 +182,14 @@ class DetectedObjectContainer(Container):
 
         Args:
             schema: an ImageLabelsSchema or VideoLabelsSchema
-            remove_objects_without_attrs: whether to remove objects with
-                no attributes, after filtering. By default, this is False
+            remove_objects_without_attrs: (bool) If True, remove objects that no
+                longer have attributes after filtering
         '''
         filter_func = lambda obj: obj.label in schema.objects
         self.filter_elements([filter_func])
         for obj in self:
             if obj.has_attributes:
                 obj.attrs.filter_by_schema(schema.objects[obj.label])
-
         if remove_objects_without_attrs:
             filter_func = lambda obj: obj.has_attributes
             self.filter_elements([filter_func])

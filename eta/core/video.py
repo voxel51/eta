@@ -494,12 +494,11 @@ class VideoFrameLabels(Serializable):
 
         Args:
             schema: a VideoLabelsSchema
-            remove_objects_without_attrs: whether to remove objects with
-                no attributes, after filtering. By default, this is False
+            remove_objects_without_attrs: (bool) If True, remove objects that no
+                longer have attributes after filtering
         '''
         self.attrs.filter_by_schema(schema.frames)
-        self.objects.filter_by_schema(
-            schema, remove_objects_without_attrs=remove_objects_without_attrs)
+        self.objects.filter_by_schema(schema, remove_objects_without_attrs)
 
     def attributes(self):
         '''Returns the list of class attributes that will be serialized.'''
@@ -818,14 +817,12 @@ class VideoLabels(Serializable):
 
         Args:
             schema: a VideoLabelsSchema
-            remove_objects_without_attrs: whether to remove objects with
-                no attributes, after filtering. By default, this is False
+            remove_objects_without_attrs: (bool) If True, remove objects that no
+                longer have attributes after filtering
         '''
         self.attrs.filter_by_schema(schema.attrs)
         for frame_labels in itervalues(self.frames):
-            frame_labels.filter_by_schema(
-                schema,
-                remove_objects_without_attrs=remove_objects_without_attrs)
+            frame_labels.filter_by_schema(schema, remove_objects_without_attrs)
 
     def freeze_schema(self):
         '''Sets the enforced schema for the video to the current active
@@ -1361,13 +1358,11 @@ class VideoSetLabels(Set):
 
         Args:
             schema: a VideoLabelsSchema
-            remove_objects_without_attrs: whether to remove objects with
-                no attributes, after filtering. By default, this is False
+            remove_objects_without_attrs: (bool) If True, remove objects that no
+                longer have attributes after filtering
         '''
         for video_labels in self:
-            video_labels.filter_by_schema(
-                schema,
-                remove_objects_without_attrs=remove_objects_without_attrs)
+            video_labels.filter_by_schema(schema, remove_objects_without_attrs)
 
     def freeze_schema(self):
         '''Sets the schema for the set to the current active schema.'''
@@ -1483,14 +1478,12 @@ class BigVideoSetLabels(VideoSetLabels, BigSet):
 
         Args:
             schema: a VideoLabelsSchema
-            remove_objects_without_attrs: whether to remove objects with
-                no attributes, after filtering. By default, this is False
+            remove_objects_without_attrs: (bool) If True, remove objects that no
+                longer have attributes after filtering
         '''
         for key in self.keys():
             video_labels = self[key]
-            video_labels.filter_by_schema(
-                schema,
-                remove_objects_without_attrs=remove_objects_without_attrs)
+            video_labels.filter_by_schema(schema, remove_objects_without_attrs)
             self[key] = video_labels
 
     def _apply_schema(self):
