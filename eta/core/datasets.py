@@ -1788,7 +1788,7 @@ class LabeledDatasetBuilder(object):
                         tmp_dir, labels_basename + unique_appender + labels_ext)
 
                 record.build(data_path, labels_path, pretty_print=pretty_print)
-                dataset.add_file(labels_basename, labels_path, move_files=True)
+                dataset.add_file(data_path, labels_path, move_files=True)
 
         dataset.write_manifest(os.path.basename(path))
         return dataset
