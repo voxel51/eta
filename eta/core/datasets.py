@@ -662,7 +662,7 @@ class LabeledDataset(object):
         return dataset_list
 
     def has_data_with_name(self, data_path):
-        '''Checks whether if a data file already exists in the dataset with the
+        '''Checks whether a data file already exists in the dataset with the
         provided filename.
 
         Args:
