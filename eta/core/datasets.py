@@ -2777,19 +2777,20 @@ class SchemaFilter(DatasetTransformer):
     is None, no filtering is done.
     '''
 
-    def __init__(self, schema, remove_objects_without_attrs=False,
-                 prune_empty=True):
+    def __init__(self, schema, object_labels_to_filter=None, prune_empty=True):
         '''Initialize the SchemaFilter with a schema.
 
         Args:
             schema (VideoLabelsSchema or ImageLabelsSchema)
-            remove_objects_without_attrs: (bool) If True, remove objects that no
-                longer have attributes after filtering
+            object_labels_to_filter: a list of DetectedObject.label strings that
+                each object instance with no attributes is removed.
+                DetectedObject.labels not in this list are not removed even if
+                they have no attributes.
             prune_empty (bool) if True, records whose labels are empty after
                 filtering are pruned from the dataset.
         '''
         self.schema = schema
-        self.remove_objects_without_attrs = remove_objects_without_attrs
+        self.object_labels_to_filter = object_labels_to_filter
         self.prune_empty = prune_empty
 
     def transform(self, src):
@@ -2808,8 +2809,10 @@ class SchemaFilter(DatasetTransformer):
         src.clear()
         for record in old_records:
             labels = record.get_labels()
-            labels.filter_by_schema(self.schema,
-                                    self.remove_objects_without_attrs)
+            labels.filter_by_schema(self.schema)
+            if self.object_labels_to_filter is not None:
+                labels.remove_objects_without_attrs(
+                    self.object_labels_to_filter)
             if not self.prune_empty or not labels.is_empty:
                 record.set_labels(labels)
                 src.add(record)
