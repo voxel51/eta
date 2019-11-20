@@ -383,8 +383,11 @@ class Timer(object):
         self.stop_time = timeit.default_timer()
 
 
-def to_human_time_str(num_seconds, decimals=1):
+def to_human_time_str(num_seconds, decimals=1, max_unit=None):
     '''Converts the given number of seconds to a human-readable time string.
+
+    The supported units are ["ns", "us", "ms", "second", "minute", "hour",
+    "day", "week", "month", "year"].
 
     Examples:
         0.001 => "1ms"
@@ -396,21 +399,32 @@ def to_human_time_str(num_seconds, decimals=1):
         num_seconds: the number of seconds
         decimals: the desired number of decimal points to show in the string.
             The default is 1
+        max_unit: an optional max unit, e.g., "hour", beyond which to stop
+            converting to larger units, e.g., "day". By default, no maximum
+            unit is used
 
     Returns:
         a human-readable time string like "1.5 minutes" or "20.1 days"
     '''
+    if num_seconds == 0:
+        return "0 seconds"
+
     units = [
         "ns", "us", "ms", " second", " minute", " hour", " day", " week",
-        " month", " year"
-    ]
+        " month", " year"]
     conversions = [1000, 1000, 1000, 60, 60, 24, 7, 52 / 12, 12, float("inf")]
     pluralizable = [
-        False, False, False, True, True, True, True, True, True, True
-    ]
+        False, False, False, True, True, True, True, True, True, True]
+
+    if max_unit and not any(u.strip() == max_unit for u in units):
+        logger.warning("Unsupported max_unit = %s; ignoring", max_unit)
+        max_unit = None
+
     num = 1e9 * num_seconds  # start with smallest unit
-    for idx, conv in enumerate(conversions):
+    for unit, conv, plural in zip(units, conversions, pluralizable):
         if abs(num) < conv:
+            break
+        if max_unit and unit.strip() == max_unit:
             break
         num /= conv
 
@@ -420,9 +434,10 @@ def to_human_time_str(num_seconds, decimals=1):
     num_only_str = (str_fmt % num).rstrip("0").rstrip(".")
 
     # Add units
-    num_str = num_only_str + units[idx]
-    if pluralizable[idx] and num_only_str != "1":
+    num_str = num_only_str + unit
+    if plural and num_only_str != "1":
         num_str += "s"  # handle pluralization
+
     return num_str
 
 
@@ -882,9 +897,11 @@ def split_path(path):
     return all_parts
 
 
-def to_human_decimal_str(num, decimals=1):
+def to_human_decimal_str(num, decimals=1, max_unit=None):
     '''Returns a human-readable string represntation of the given decimal
     (base-10) number.
+
+    Supported units are ["", "K", "M", "B", "T"].
 
     Examples:
         65 => "65"
@@ -895,21 +912,34 @@ def to_human_decimal_str(num, decimals=1):
         num: a number
         decimals: the desired number of digits after the decimal point to show.
             The default is 1
+        max_unit: an optional max unit, e.g., "M", beyond which to stop
+            converting to larger units, e.g., "B". By default, no maximum unit
+            is used
 
     Returns:
         a human-readable decimal string
     '''
-    for unit in ["", "K", "M", "B", "T"]:
+    units = ["", "K", "M", "B", "T"]
+    if max_unit is not None and max_unit not in units:
+        logger.warning("Unsupported max_unit = %s; ignoring", max_unit)
+        max_unit = None
+
+    for unit in units:
         if abs(num) < 1000:
             break
+        if max_unit is not None and unit == max_unit:
+            break
         num /= 1000
+
     str_fmt = "%." + str(decimals) + "f"
     return (str_fmt % num).rstrip("0").rstrip(".") + unit
 
 
-def to_human_bytes_str(num_bytes, decimals=1):
+def to_human_bytes_str(num_bytes, decimals=1, max_unit=None):
     '''Returns a human-readable string represntation of the given number of
     bytes.
+
+    Supported units are ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"].
 
     Examples:
         123 => "123B"
@@ -920,21 +950,34 @@ def to_human_bytes_str(num_bytes, decimals=1):
         num_bytes: a number of bytes
         decimals: the desired number of digits after the decimal point to show.
             The default is 1
+        max_unit: an optional max unit, e.g., "TB", beyond which to stop
+            converting to larger units, e.g., "PB". By default, no maximum
+            unit is used
 
     Returns:
         a human-readable bytes string
     '''
-    for unit in ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"]:
+    units = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"]
+    if max_unit is not None and max_unit not in units:
+        logger.warning("Unsupported max_unit = %s; ignoring", max_unit)
+        max_unit = None
+
+    for unit in units:
         if abs(num_bytes) < 1024:
             break
+        if max_unit is not None and unit == max_unit:
+            break
         num_bytes /= 1024
+
     str_fmt = "%." + str(decimals) + "f"
     return (str_fmt % num_bytes).rstrip("0").rstrip(".") + unit
 
 
-def to_human_bits_str(num_bits, decimals=1):
+def to_human_bits_str(num_bits, decimals=1, max_unit=None):
     '''Returns a human-readable string represntation of the given number of
     bits.
+
+    Supported units are ["b", "Kb", "Mb", "Gb", "Tb", "Pb", "Eb", "Zb", "Yb"].
 
     Examples:
         123 => "123b"
@@ -945,14 +988,25 @@ def to_human_bits_str(num_bits, decimals=1):
         num_bits: a number of bits
         decimals: the desired number of digits after the decimal point to show.
             The default is 1
+        max_unit: an optional max unit, e.g., "Tb", beyond which to stop
+            converting to larger units, e.g., "Pb". By default, no maximum
+            unit is used
 
     Returns:
         a human-readable bits string
     '''
-    for unit in ["b", "Kb", "Mb", "Gb", "Tb", "Pb", "Eb", "Zb", "Yb"]:
+    units = ["b", "Kb", "Mb", "Gb", "Tb", "Pb", "Eb", "Zb", "Yb"]
+    if max_unit is not None and max_unit not in units:
+        logger.warning("Unsupported max_unit = %s; ignoring", max_unit)
+        max_unit = None
+
+    for unit in units:
         if abs(num_bits) < 1024:
             break
+        if max_unit is not None and unit == max_unit:
+            break
         num_bits /= 1024
+
     str_fmt = "%." + str(decimals) + "f"
     return (str_fmt % num_bits).rstrip("0").rstrip(".") + unit
 
