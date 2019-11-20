@@ -3254,7 +3254,8 @@ class FFmpeg(object):
                 filters.append("setsar=sar=1:1")
 
                 # Force correct display aspect ratio when playing video
-                filters.append("setdar=dar={0}:{1}".format(*size))
+                filters.append("setdar=dar={0}/{1}".format(*size))
+
         elif scale:
             filters.append("scale=iw*{0}:ih*{0}".format(scale))
         return ["-vf", ",".join(filters)] if filters else []
