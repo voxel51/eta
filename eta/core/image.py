@@ -180,11 +180,12 @@ class ImageLabels(Serializable):
 
         Args:
             schema: an ImageLabelsSchema
-            remove_objects_without_attrs: (bool) If True, remove objects that no
-                longer have attributes after filtering
+            remove_objects_without_attrs: whether to remove objects with
+                no attributes, after filtering. By default, this is False
         '''
         self.attrs.filter_by_schema(schema.attrs)
-        self.objects.filter_by_schema(schema, remove_objects_without_attrs)
+        self.objects.filter_by_schema(
+            schema, remove_objects_without_attrs=remove_objects_without_attrs)
 
     @property
     def has_attributes(self):
@@ -620,11 +621,13 @@ class ImageSetLabels(Set):
 
         Args:
             schema: an ImageLabelsSchema
-            remove_objects_without_attrs: (bool) If True, remove objects that no
-                longer have attributes after filtering
+            remove_objects_without_attrs: whether to remove objects with
+                no attributes, after filtering. By default, this is False
         '''
         for image_labels in self:
-            image_labels.filter_by_schema(schema, remove_objects_without_attrs)
+            image_labels.filter_by_schema(
+                schema,
+                remove_objects_without_attrs=remove_objects_without_attrs)
 
     def freeze_schema(self):
         '''Sets the schema for the set to the current active schema.'''
@@ -749,12 +752,14 @@ class BigImageSetLabels(ImageSetLabels, BigSet):
 
         Args:
             schema: an ImageLabelsSchema
-            remove_objects_without_attrs: (bool) If True, remove objects that no
-                longer have attributes after filtering
+            remove_objects_without_attrs: whether to remove objects with
+                no attributes, after filtering. By default, this is False
         '''
         for key in self.keys():
             image_labels = self[key]
-            image_labels.filter_by_schema(schema, remove_objects_without_attrs)
+            image_labels.filter_by_schema(
+                schema,
+                remove_objects_without_attrs=remove_objects_without_attrs)
             self[key] = image_labels
 
 
