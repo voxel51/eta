@@ -2927,6 +2927,7 @@ class Merger(DatasetTransformer):
                 /new_directory/dataset001_001-123
         '''
         self._builder_dataset_to_merge = dataset_builder.builder_dataset
+        self.prepend = prepend
 
     def transform(self, src):
         '''Merges `self._builder_dataset_to_merge` into `src`.
