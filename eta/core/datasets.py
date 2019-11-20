@@ -1767,16 +1767,19 @@ class LabeledDatasetBuilder(object):
 
         dataset = self.dataset_cls.create_empty_dataset(path, description)
 
-        with etau.TempDir(tmp_dir_base) as dir_path:
-            for idx, record in enumerate(self._dataset):
-                data_path, labels_path = record.build(
-                    dir_path, pretty_print=pretty_print)
-                try:
-                    dataset.add_file(data_path, labels_path, move_files=True,
-                                     error_on_duplicates=True)
-                except ValueError as e:
-                    raise ValueError("@todo(Tyler)")
+        with etau.TempDir(tmp_dir_base) as tmp_dir:
+            for record in self._dataset:
+                data_filename = os.path.basename(record.data_path)
+                labels_filename = os.path.basename(record.labels_path)
 
+                data_path = os.path.join(tmp_dir, data_filename)
+                labels_path = os.path.join(labels_filename, tmp_dir)
+
+                # @todo(Tyler)
+                # while dataset.has_data_with_name(data_path):
+
+                record.build(data_path, labels_path, pretty_print=pretty_print)
+                dataset.add_file(data_path, labels_path, move_files=True)
 
         dataset.write_manifest(os.path.basename(path))
         return dataset
@@ -1840,32 +1843,22 @@ class BuilderDataRecord(BaseDataRecord):
         '''Labels path getter.'''
         return self._labels_path
 
-    def build(self, dir_path, pretty_print=False):
+    def build(self, data_path, labels_path, pretty_print=False):
         '''Write the transformed labels and data files to dir_path. The
         subclasses BuilderVideoRecord and BuilderDataRecord are responsible for
         writing the data file.
 
         Args:
-            dir_path (str): path to write the files
-            filename (str): filename prefix that data and labels share
+            data_path (str): path to write the data file to
+            labels_path (str): path to write the labels file to
             pretty_print (bool): pretty_print json flag for labels
-
-        Returns:
-            tuple (data_path, labels_path): the paths to the written files
         '''
         self._build_labels()
-
-        labels_path = os.path.join(dir_path, os.path.basename(self.labels_path))
         labels = self.get_labels()
-
-        data_filename = os.path.basename(self.data_path)
-        data_path = os.path.join(dir_path, data_filename)
-
-        labels.filename = data_filename
+        labels.filename = os.path.basename(data_path)
         labels.write_json(labels_path, pretty_print=pretty_print)
 
         self._build_data(data_path)
-        return data_path, labels_path
 
     def copy(self):
         '''Safely copy a record. Only copy should be used when creating new
@@ -3017,5 +3010,7 @@ class TylersTestTransform(DatasetTransformer):
         old_records = src.records
         src.clear()
         for idx, record in enumerate(old_records):
-            if idx % 2 == 0:
-                src.add(record)
+            src.add(record)
+            # src.add(record)
+            # src.add(record)
+            break
