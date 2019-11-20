@@ -1769,9 +1769,9 @@ class LabeledDatasetBuilder(object):
 
         with etau.TempDir(tmp_dir_base) as tmp_dir:
             for record in self._dataset:
-                data_filename = os.path.basename(record.data_path)
+                data_filename = os.path.basename(record.new_data_path)
                 data_path = os.path.join(tmp_dir, data_filename)
-                labels_filename = os.path.basename(record.labels_path)
+                labels_filename = os.path.basename(record.new_labels_path)
                 labels_path = os.path.join(tmp_dir, labels_filename)
 
                 # add an incrementing index to the filename until a unique name
@@ -1817,6 +1817,8 @@ class BuilderDataRecord(BaseDataRecord):
         '''
         self._data_path = data_path
         self._labels_path = labels_path
+        self._new_data_path = None
+        self._new_labels_path = None
         self._labels_cls = None
         self._labels_obj = None
 
@@ -1851,6 +1853,22 @@ class BuilderDataRecord(BaseDataRecord):
     def labels_path(self):
         '''Labels path getter.'''
         return self._labels_path
+
+    @property
+    def new_data_path(self):
+        return self._new_data_path if self._new_data_path is not None else self._data_path
+
+    @property
+    def new_labels_path(self):
+        return self._new_data_path if self._new_data_path is not None else self._data_path
+
+    @new_data_path.setter
+    def new_data_path(self, value):
+        self._data_path = value
+
+    @new_labels_path.setter
+    def new_labels_path(self, value):
+        self._labels_path = value
 
     def build(self, data_path, labels_path, pretty_print=False):
         '''Write the transformed labels and data files to dir_path. The
@@ -2896,12 +2914,17 @@ class EmptyLabels(DatasetTransformer):
 class Merger(DatasetTransformer):
     '''Merges another dataset into the existing dataset.'''
 
-    def __init__(self, dataset_builder):
+    def __init__(self, dataset_builder, prepend=True):
         '''Creates a Merger instance.
 
         Args:
             dataset_builder: a LabeledDatasetBuilder instance for the
                 dataset to be merged with the existing one
+
+            prepend: This flag enables an option to prepend both the data and
+                labels filepaths with the folder name containing the original
+                files. E.g. /path/to/dataset001/001-123.mp4 =>
+                /new_directory/dataset001_001-123
         '''
         self._builder_dataset_to_merge = dataset_builder.builder_dataset
 
@@ -2923,6 +2946,20 @@ class Merger(DatasetTransformer):
                         self._builder_dataset_to_merge.record_cls)
                 )
             )
+
+        # Prepend the folder name containing the record
+        if self.prepend:
+            for record in self._builder_dataset_to_merge.records:
+                record.new_data_path = os.path.basename(os.path.dirname(
+                    record.data_path)) + '_' + os.path.basename(record.data_path)
+
+                record.new_labels_path = os.path.basename(os.path.dirname(
+                    record.labels_path)) + '_' + os.path.basename(record.labels_path)
+
+                print(record.data_path)
+                print(record.labels_path)
+                # record.data_path = ""
+                # record.labels_path = ""
 
         src.add_container(self._builder_dataset_to_merge)
 
