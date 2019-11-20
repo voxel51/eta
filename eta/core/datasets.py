@@ -2757,16 +2757,15 @@ class SchemaFilter(DatasetTransformer):
 
         Args:
             schema: a VideoLabelsSchema or ImageLabelsSchema
-            remove_objects_without_attrs: (bool) if True, run the
-                `remove_objects_without_attrs` function on the labels, using
-                 `object_labels_to_filter` as input
-            object_labels_to_filter: a list of DetectedObject.label strings that
-                each object instance with no attributes is removed.
-                DetectedObject.labels not in this list are not removed even if
-                they have no attributes. If None, all object labels are
-                filtered.
-            prune_empty: (bool) if True, records whose labels are empty after
-                filtering are pruned from the dataset. By default, this is True
+            remove_objects_without_attrs: whether to remove objects with no
+                attributes, after filtering. Use the `object_labels_to_filter`
+                argument to control which object labels are filtered. By
+                default, this is False
+            object_labels_to_filter: an optional list of object labels for
+                which to restrict attention when filtering objects with no
+                attributes. If None, all objects are filtered
+            prune_empty: whether to remove records from the dataset whose
+                labels are empty after filtering. By default, this is True
         '''
         self.schema = schema
         self.remove_objects_without_attrs = remove_objects_without_attrs
