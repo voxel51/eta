@@ -3,7 +3,7 @@
         "name": "video_formatter",
         "type": "eta.core.types.Pipeline",
         "version": "0.1.0",
-        "description": "A pipeline for formatting video files"
+        "description": "A pipeline for resampling, resizing, and reformatting videos"
     },
     "inputs": ["video"],
     "outputs": ["formatted_video"],
