@@ -1769,9 +1769,15 @@ class LabeledDatasetBuilder(object):
 
         with etau.TempDir(tmp_dir_base) as dir_path:
             for idx, record in enumerate(self._dataset):
-                result = record.build(dir_path, str(idx),
-                                      pretty_print=pretty_print)
-                dataset.add_file(*result, move_files=True)
+                data_path, labels_path = record.build(
+                    dir_path, pretty_print=pretty_print)
+                try:
+                    dataset.add_file(data_path, labels_path, move_files=True,
+                                     error_on_duplicates=True)
+                except ValueError as e:
+                    raise ValueError("@todo(Tyler)")
+
+
         dataset.write_manifest(os.path.basename(path))
         return dataset
 
@@ -1788,8 +1794,6 @@ class BuilderDataRecord(BaseDataRecord):
     '''This class is responsible for tracking all of the metadata about a data
     record required for dataset operations on a BuilderDataset.
     '''
-
-    _LABELS_EXT = ".json"
 
     def __init__(self, data_path, labels_path):
         '''Initialize the BuilderDataRecord. The label and data paths cannot
@@ -1836,7 +1840,7 @@ class BuilderDataRecord(BaseDataRecord):
         '''Labels path getter.'''
         return self._labels_path
 
-    def build(self, dir_path, filename, pretty_print=False):
+    def build(self, dir_path, pretty_print=False):
         '''Write the transformed labels and data files to dir_path. The
         subclasses BuilderVideoRecord and BuilderDataRecord are responsible for
         writing the data file.
@@ -1851,13 +1855,13 @@ class BuilderDataRecord(BaseDataRecord):
         '''
         self._build_labels()
 
-        labels_path = os.path.join(dir_path, filename + self._LABELS_EXT)
+        labels_path = os.path.join(dir_path, os.path.basename(self.labels_path))
         labels = self.get_labels()
 
-        data_ext = os.path.splitext(self.data_path)[1]
-        data_path = os.path.join(dir_path, filename + data_ext)
+        data_filename = os.path.basename(self.data_path)
+        data_path = os.path.join(dir_path, data_filename)
 
-        labels.filename = filename + data_ext
+        labels.filename = data_filename
         labels.write_json(labels_path, pretty_print=pretty_print)
 
         self._build_data(data_path)
