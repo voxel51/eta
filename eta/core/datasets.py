@@ -2751,20 +2751,25 @@ class SchemaFilter(DatasetTransformer):
     is None, no filtering is done.
     '''
 
-    def __init__(self, schema, object_labels_to_filter=None, prune_empty=True):
+    def __init__(self, schema, remove_objects_without_attrs=False,
+                 object_labels_to_filter=None, prune_empty=True):
         '''Initialize the SchemaFilter
 
         Args:
             schema: a VideoLabelsSchema or ImageLabelsSchema
+            remove_objects_without_attrs: (bool) if True, run the
+                `remove_objects_without_attrs` function on the labels, using
+                 `object_labels_to_filter` as input
             object_labels_to_filter: a list of DetectedObject.label strings that
                 each object instance with no attributes is removed.
                 DetectedObject.labels not in this list are not removed even if
                 they have no attributes. If None, all object labels are
                 filtered.
-            prune_empty (bool) if True, records whose labels are empty after
+            prune_empty: (bool) if True, records whose labels are empty after
                 filtering are pruned from the dataset. By default, this is True
         '''
         self.schema = schema
+        self.remove_objects_without_attrs = remove_objects_without_attrs
         self.object_labels_to_filter = object_labels_to_filter
         self.prune_empty = prune_empty
 
@@ -2781,8 +2786,16 @@ class SchemaFilter(DatasetTransformer):
         src.clear()
         for record in old_records:
             labels = record.get_labels()
+
+            # filter by schema
             labels.filter_by_schema(self.schema)
-            labels.remove_objects_without_attrs(self.object_labels_to_filter)
+
+            # filter objects that don't have attributes
+            if self.remove_objects_without_attrs:
+                labels.remove_objects_without_attrs(
+                    self.object_labels_to_filter)
+
+            # add the filtered record to the new dataset
             if not self.prune_empty or not labels.is_empty:
                 record.set_labels(labels)
                 src.add(record)
