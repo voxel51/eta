@@ -2785,7 +2785,8 @@ class SchemaFilter(DatasetTransformer):
             object_labels_to_filter: a list of DetectedObject.label strings that
                 each object instance with no attributes is removed.
                 DetectedObject.labels not in this list are not removed even if
-                they have no attributes.
+                they have no attributes. If None, all object labels are
+                filtered.
             prune_empty (bool) if True, records whose labels are empty after
                 filtering are pruned from the dataset.
         '''
@@ -2810,9 +2811,7 @@ class SchemaFilter(DatasetTransformer):
         for record in old_records:
             labels = record.get_labels()
             labels.filter_by_schema(self.schema)
-            if self.object_labels_to_filter is not None:
-                labels.remove_objects_without_attrs(
-                    self.object_labels_to_filter)
+            labels.remove_objects_without_attrs(self.object_labels_to_filter)
             if not self.prune_empty or not labels.is_empty:
                 record.set_labels(labels)
                 src.add(record)
