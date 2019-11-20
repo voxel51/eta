@@ -3009,3 +3009,13 @@ class FilterByPath(DatasetTransformer):
 class DatasetTransformerError(Exception):
     '''Exception raised when there is an error in a DatasetTransformer'''
     pass
+
+
+class TylersTestTransform(DatasetTransformer):
+
+    def transform(self, src):
+        old_records = src.records
+        src.clear()
+        for idx, record in enumerate(old_records):
+            if idx % 2 == 0:
+                src.add(record)
