@@ -31,7 +31,6 @@ from eta.core.geometry import BoundingBox, RelativePoint
 from eta.core.learning import ObjectDetector, HasDefaultDeploymentConfig
 import eta.core.models as etam
 from eta.core.objects import DetectedObject, DetectedObjectContainer
-import eta.core.serial as etas
 from eta.core.tfutils import UsesTFSession
 import eta.core.utils as etau
 
