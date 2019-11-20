@@ -498,14 +498,15 @@ class VideoFrameLabels(Serializable):
         self.attrs.filter_by_schema(schema.frames)
         self.objects.filter_by_schema(schema)
 
-    def remove_objects_without_attrs(self, object_labels_to_filter):
+    def remove_objects_without_attrs(self, object_labels_to_filter=None):
         '''Removes DetectedObjects from the VideoFrameLabels that do not have
         attributes.
 
         Args:
             object_labels_to_filter: a list of DetectedObject.label strings.
                 DetectedObject.labels not in this list are not removed even if
-                they have no attributes.
+                they have no attributes. If None, all object labels are
+                filtered.
         '''
         self.objects.remove_objects_without_attrs(object_labels_to_filter)
 
@@ -831,14 +832,15 @@ class VideoLabels(Serializable):
         for frame_labels in itervalues(self.frames):
             frame_labels.filter_by_schema(schema)
 
-    def remove_objects_without_attrs(self, object_labels_to_filter):
+    def remove_objects_without_attrs(self, object_labels_to_filter=None):
         '''Removes DetectedObjects from the VideoLabels that do not have
         attributes.
 
         Args:
             object_labels_to_filter: a list of DetectedObject.label strings.
                 DetectedObject.labels not in this list are not removed even if
-                they have no attributes.
+                they have no attributes. If None, all object labels are
+                filtered.
         '''
         for frame_labels in itervalues(self.frames):
             frame_labels.remove_objects_without_attrs(object_labels_to_filter)
@@ -1381,14 +1383,15 @@ class VideoSetLabels(Set):
         for video_labels in self:
             video_labels.filter_by_schema(schema)
 
-    def remove_objects_without_attrs(self, object_labels_to_filter):
+    def remove_objects_without_attrs(self, object_labels_to_filter=None):
         '''Removes DetectedObjects from the VideoSetLabels that do not have
         attributes.
 
         Args:
             object_labels_to_filter: a list of DetectedObject.label strings.
                 DetectedObject.labels not in this list are not removed even if
-                they have no attributes.
+                they have no attributes. If None, all object labels are
+                filtered.
         '''
         for video_labels in self:
             video_labels.remove_objects_without_attrs(object_labels_to_filter)
@@ -1513,14 +1516,15 @@ class BigVideoSetLabels(VideoSetLabels, BigSet):
             video_labels.filter_by_schema(schema)
             self[key] = video_labels
 
-    def remove_objects_without_attrs(self, object_labels_to_filter):
+    def remove_objects_without_attrs(self, object_labels_to_filter=None):
         '''Removes DetectedObjects from the BigVideoSetLabels that do not have
         attributes.
 
         Args:
             object_labels_to_filter: a list of DetectedObject.label strings.
                 DetectedObject.labels not in this list are not removed even if
-                they have no attributes.
+                they have no attributes. If None, all object labels are
+                filtered.
         '''
         for key in self.keys():
             video_labels = self[key]

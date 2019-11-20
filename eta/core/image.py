@@ -184,13 +184,14 @@ class ImageLabels(Serializable):
         self.attrs.filter_by_schema(schema.attrs)
         self.objects.filter_by_schema(schema)
 
-    def remove_objects_without_attrs(self, object_labels_to_filter):
+    def remove_objects_without_attrs(self, object_labels_to_filter=None):
         '''Removes DetectedObjects from this object that do not have attributes.
 
         Args:
             object_labels_to_filter: a list of DetectedObject.label strings.
                 DetectedObject.labels not in this list are not removed even if
-                they have no attributes.
+                they have no attributes. If None, all object labels are
+                filtered.
         '''
         self.objects.remove_objects_without_attrs(object_labels_to_filter)
 
@@ -632,14 +633,15 @@ class ImageSetLabels(Set):
         for image_labels in self:
             image_labels.filter_by_schema(schema)
 
-    def remove_objects_without_attrs(self, object_labels_to_filter):
+    def remove_objects_without_attrs(self, object_labels_to_filter=None):
         '''Removes DetectedObjects from the ImageLabels in the set that do not
         have attributes.
 
         Args:
             object_labels_to_filter: a list of DetectedObject.label strings.
                 DetectedObject.labels not in this list are not removed even if
-                they have no attributes.
+                they have no attributes. If None, all object labels are
+                filtered.
         '''
         for image_labels in self:
             image_labels.remove_objects_without_attrs(object_labels_to_filter)
@@ -773,14 +775,15 @@ class BigImageSetLabels(ImageSetLabels, BigSet):
             image_labels.filter_by_schema(schema)
             self[key] = image_labels
 
-    def remove_objects_without_attrs(self, object_labels_to_filter):
+    def remove_objects_without_attrs(self, object_labels_to_filter=None):
         '''Removes DetectedObjects from the ImageLabels in the set that do not
         have attributes.
 
         Args:
             object_labels_to_filter: a list of DetectedObject.label strings.
                 DetectedObject.labels not in this list are not removed even if
-                they have no attributes.
+                they have no attributes. If None, all object labels are
+                filtered.
         '''
         for key in self.keys():
             image_labels = self[key]
