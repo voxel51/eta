@@ -2816,10 +2816,7 @@ class SchemaFilter(DatasetTransformer):
             if self.prune_empty:
                 do_add_record = not labels.is_empty
                 if do_add_record and self.prune_objects_without_attrs:
-                    do_add_record = (
-                            not hasattr(labels, "has_object_attributes")
-                            or not labels.has_object_attributes
-                    )
+                    do_add_record = labels.has_object_attributes
 
             if do_add_record:
                 record.set_labels(labels)

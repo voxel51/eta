@@ -198,6 +198,17 @@ class ImageLabels(Serializable):
         return bool(self.objects)
 
     @property
+    def has_object_attributes(self):
+        '''Returns True/False whether the container has at least one
+        DetectedObject with an attribute
+        '''
+        for obj in self.objects:
+            if obj.has_attributes:
+                return True
+
+        return False
+
+    @property
     def is_empty(self):
         '''Returns True if the container has no labels of any kind.'''
         return not self.has_attributes and not self.has_objects
