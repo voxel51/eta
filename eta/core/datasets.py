@@ -1773,7 +1773,7 @@ class LabeledDatasetBuilder(object):
                 labels_filename = os.path.basename(record.labels_path)
 
                 data_path = os.path.join(tmp_dir, data_filename)
-                labels_path = os.path.join(labels_filename, tmp_dir)
+                labels_path = os.path.join(tmp_dir, labels_filename)
 
                 # @todo(Tyler)
                 # while dataset.has_data_with_name(data_path):
