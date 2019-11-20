@@ -498,17 +498,15 @@ class VideoFrameLabels(Serializable):
         self.attrs.filter_by_schema(schema.frames)
         self.objects.filter_by_schema(schema)
 
-    def remove_objects_without_attrs(self, object_labels_to_filter=None):
+    def remove_objects_without_attrs(self, labels=None):
         '''Removes DetectedObjects from the VideoFrameLabels that do not have
         attributes.
 
         Args:
-            object_labels_to_filter: a list of DetectedObject.label strings.
-                DetectedObject.labels not in this list are not removed even if
-                they have no attributes. If None, all object labels are
-                filtered.
+            labels: an optional list of object labels to which to restrict
+                attention when filtering. By default, all objects are processed
         '''
-        self.objects.remove_objects_without_attrs(object_labels_to_filter)
+        self.objects.remove_objects_without_attrs(labels=labels)
 
     def attributes(self):
         '''Returns the list of class attributes that will be serialized.'''
@@ -832,18 +830,16 @@ class VideoLabels(Serializable):
         for frame_labels in itervalues(self.frames):
             frame_labels.filter_by_schema(schema)
 
-    def remove_objects_without_attrs(self, object_labels_to_filter=None):
+    def remove_objects_without_attrs(self, labels=None):
         '''Removes DetectedObjects from the VideoLabels that do not have
         attributes.
 
         Args:
-            object_labels_to_filter: a list of DetectedObject.label strings.
-                DetectedObject.labels not in this list are not removed even if
-                they have no attributes. If None, all object labels are
-                filtered.
+            labels: an optional list of object labels to which to restrict
+                attention when filtering. By default, all objects are processed
         '''
         for frame_labels in itervalues(self.frames):
-            frame_labels.remove_objects_without_attrs(object_labels_to_filter)
+            frame_labels.remove_objects_without_attrs(labels=labels)
 
     def freeze_schema(self):
         '''Sets the enforced schema for the video to the current active
@@ -1383,18 +1379,16 @@ class VideoSetLabels(Set):
         for video_labels in self:
             video_labels.filter_by_schema(schema)
 
-    def remove_objects_without_attrs(self, object_labels_to_filter=None):
+    def remove_objects_without_attrs(self, labels=None):
         '''Removes DetectedObjects from the VideoSetLabels that do not have
         attributes.
 
         Args:
-            object_labels_to_filter: a list of DetectedObject.label strings.
-                DetectedObject.labels not in this list are not removed even if
-                they have no attributes. If None, all object labels are
-                filtered.
+            labels: an optional list of object labels to which to restrict
+                attention when filtering. By default, all objects are processed
         '''
         for video_labels in self:
-            video_labels.remove_objects_without_attrs(object_labels_to_filter)
+            video_labels.remove_objects_without_attrs(labels=labels)
 
     def freeze_schema(self):
         '''Sets the schema for the set to the current active schema.'''
@@ -1516,19 +1510,17 @@ class BigVideoSetLabels(VideoSetLabels, BigSet):
             video_labels.filter_by_schema(schema)
             self[key] = video_labels
 
-    def remove_objects_without_attrs(self, object_labels_to_filter=None):
+    def remove_objects_without_attrs(self, labels=None):
         '''Removes DetectedObjects from the BigVideoSetLabels that do not have
         attributes.
 
         Args:
-            object_labels_to_filter: a list of DetectedObject.label strings.
-                DetectedObject.labels not in this list are not removed even if
-                they have no attributes. If None, all object labels are
-                filtered.
+            labels: an optional list of object labels to which to restrict
+                attention when filtering. By default, all objects are processed
         '''
         for key in self.keys():
             video_labels = self[key]
-            video_labels.remove_objects_without_attrs(object_labels_to_filter)
+            video_labels.remove_objects_without_attrs(labels=labels)
             self[key] = video_labels
 
     def _apply_schema(self):

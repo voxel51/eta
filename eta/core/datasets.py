@@ -2792,7 +2792,7 @@ class SchemaFilter(DatasetTransformer):
             # filter objects that don't have attributes
             if self.remove_objects_without_attrs:
                 labels.remove_objects_without_attrs(
-                    self.object_labels_to_filter)
+                    labels=self.object_labels_to_filter)
 
             # add the filtered record to the new dataset
             if not self.prune_empty or not labels.is_empty:

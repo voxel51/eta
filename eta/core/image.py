@@ -184,16 +184,15 @@ class ImageLabels(Serializable):
         self.attrs.filter_by_schema(schema.attrs)
         self.objects.filter_by_schema(schema)
 
-    def remove_objects_without_attrs(self, object_labels_to_filter=None):
-        '''Removes DetectedObjects from this object that do not have attributes.
+    def remove_objects_without_attrs(self, labels=None):
+        '''Removes DetectedObjects from this instance that do not have
+        attributes.
 
         Args:
-            object_labels_to_filter: a list of DetectedObject.label strings.
-                DetectedObject.labels not in this list are not removed even if
-                they have no attributes. If None, all object labels are
-                filtered.
+            labels: an optional list of object labels to which to restrict
+                attention when filtering. By default, all objects are processed
         '''
-        self.objects.remove_objects_without_attrs(object_labels_to_filter)
+        self.objects.remove_objects_without_attrs(labels=labels)
 
     @property
     def has_attributes(self):
@@ -633,18 +632,16 @@ class ImageSetLabels(Set):
         for image_labels in self:
             image_labels.filter_by_schema(schema)
 
-    def remove_objects_without_attrs(self, object_labels_to_filter=None):
+    def remove_objects_without_attrs(self, labels=None):
         '''Removes DetectedObjects from the ImageLabels in the set that do not
         have attributes.
 
         Args:
-            object_labels_to_filter: a list of DetectedObject.label strings.
-                DetectedObject.labels not in this list are not removed even if
-                they have no attributes. If None, all object labels are
-                filtered.
+            labels: an optional list of object labels to which to restrict
+                attention when filtering. By default, all objects are processed
         '''
         for image_labels in self:
-            image_labels.remove_objects_without_attrs(object_labels_to_filter)
+            image_labels.remove_objects_without_attrs(labels=labels)
 
     def freeze_schema(self):
         '''Sets the schema for the set to the current active schema.'''
@@ -775,19 +772,17 @@ class BigImageSetLabels(ImageSetLabels, BigSet):
             image_labels.filter_by_schema(schema)
             self[key] = image_labels
 
-    def remove_objects_without_attrs(self, object_labels_to_filter=None):
+    def remove_objects_without_attrs(self, labels=None):
         '''Removes DetectedObjects from the ImageLabels in the set that do not
         have attributes.
 
         Args:
-            object_labels_to_filter: a list of DetectedObject.label strings.
-                DetectedObject.labels not in this list are not removed even if
-                they have no attributes. If None, all object labels are
-                filtered.
+            labels: an optional list of object labels to which to restrict
+                attention when filtering. By default, all objects are processed
         '''
         for key in self.keys():
             image_labels = self[key]
-            image_labels.remove_objects_without_attrs(object_labels_to_filter)
+            image_labels.remove_objects_without_attrs(labels=labels)
             self[key] = image_labels
 
 

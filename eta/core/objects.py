@@ -189,18 +189,15 @@ class DetectedObjectContainer(Container):
             if obj.has_attributes:
                 obj.attrs.filter_by_schema(schema.objects[obj.label])
 
-    def remove_objects_without_attrs(self, object_labels_to_filter=None):
+    def remove_objects_without_attrs(self, labels=None):
         '''Filters the objects from this container that do not have attributes.
 
         Args:
-            object_labels_to_filter: a list of DetectedObject.label strings.
-                DetectedObject.labels not in this list are not removed even if
-                they have no attributes. If None, all object labels are
-                filtered.
+            labels: an optional list of object labels to which to restrict
+                attention when filtering. By default, all objects are processed
         '''
         filter_func = lambda obj: (
-            (object_labels_to_filter is not None
-             and obj.label not in object_labels_to_filter)
+            (labels is not None and obj.label not in labels)
             or obj.has_attributes
         )
         self.filter_elements([filter_func])
