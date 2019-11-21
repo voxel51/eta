@@ -29,7 +29,7 @@ import time
 import eta
 from eta.core.config import Config, Configurable
 import eta.core.job as etaj
-import eta.core.log as etal
+import eta.core.logging as etal
 import eta.core.module as etam
 import eta.core.pipeline as etap
 import eta.core.types as etat

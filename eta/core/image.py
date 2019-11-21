@@ -184,6 +184,35 @@ class ImageLabels(Serializable):
         self.attrs.filter_by_schema(schema.attrs)
         self.objects.filter_by_schema(schema)
 
+    def remove_objects_without_attrs(self, labels=None):
+        '''Removes DetectedObjects from this instance that do not have
+        attributes.
+
+        Args:
+            labels: an optional list of DetectedObject label strings to which
+                to restrict attention when filtering. By default, all objects
+                are processed
+        '''
+        self.objects.remove_objects_without_attrs(labels=labels)
+
+    @property
+    def has_attributes(self):
+        '''Returns True/False whether the container has at least one attribute.
+        '''
+        return bool(self.attrs)
+
+    @property
+    def has_objects(self):
+        '''Returns True/False whether the container has at least one
+        DetectedObject.
+        '''
+        return bool(self.objects)
+
+    @property
+    def is_empty(self):
+        '''Returns True if the container has no labels of any kind.'''
+        return not self.has_attributes and not self.has_objects
+
     def attributes(self):
         '''Returns the list of class attributes that will be serialized.'''
         _attrs = []
@@ -604,6 +633,18 @@ class ImageSetLabels(Set):
         for image_labels in self:
             image_labels.filter_by_schema(schema)
 
+    def remove_objects_without_attrs(self, labels=None):
+        '''Removes DetectedObjects from the ImageLabels in the set that do not
+        have attributes.
+
+        Args:
+            labels: an optional list of DetectedObject label strings to which
+                to restrict attention when filtering. By default, all objects
+                are processed
+        '''
+        for image_labels in self:
+            image_labels.remove_objects_without_attrs(labels=labels)
+
     def freeze_schema(self):
         '''Sets the schema for the set to the current active schema.'''
         self.set_schema(self.get_active_schema())
@@ -649,6 +690,22 @@ class ImageSetLabels(Set):
         if self.has_schema:
             for image_labels in self:
                 self._validate_labels(image_labels)
+
+    @classmethod
+    def from_image_labels_patt(cls, image_labels_patt):
+        '''Creates an instance of `cls` from a pattern of `_ELE_CLS` files.
+
+        Args:
+             image_labels_patt: a pattern with one or more numeric sequences:
+                example: "/path/to/labels/%05d.json"
+
+        Returns:
+            a `cls` instance
+        '''
+        image_set_labels = cls()
+        for labels_path in etau.get_pattern_matches(image_labels_patt):
+            image_set_labels.add(cls._ELE_CLS.from_json(labels_path))
+        return image_set_labels
 
     @classmethod
     def from_dict(cls, d):
@@ -715,6 +772,20 @@ class BigImageSetLabels(ImageSetLabels, BigSet):
         for key in self.keys():
             image_labels = self[key]
             image_labels.filter_by_schema(schema)
+            self[key] = image_labels
+
+    def remove_objects_without_attrs(self, labels=None):
+        '''Removes DetectedObjects from the ImageLabels in the set that do not
+        have attributes.
+
+        Args:
+            labels: an optional list of DetectedObject label strings to which
+                to restrict attention when filtering. By default, all objects
+                are processed
+        '''
+        for key in self.keys():
+            image_labels = self[key]
+            image_labels.remove_objects_without_attrs(labels=labels)
             self[key] = image_labels
 
 

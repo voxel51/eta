@@ -1,46 +1,180 @@
 # Storage Developer's Guide
 
-This document describes best practices for accessing remote storage resources
-in ETA. The functionality is implemented in the `eta.core.storage` module.
+This document describes ETA's infrastructure for accessing resources in remote
+storage, which is contained in the [eta.core.storage](
+https://github.com/voxel51/eta/blob/develop/eta/core/storage.py) module.
 
 
-## Installation
+## Supported Clients
 
-The `eta.core.storage` module depends on the following third-party packages,
-which are installed by ETA's `requirements.txt` file:
+ETA supports the following storage clients:
 
-```shell
-# Google Drive
-pip install --upgrade google-api-python-client
-pip install --upgrade google-auth-httplib2
+| Storage Type | ETA class | Underlying Python package |
+| ------------ | --------- | ------------------------- |
+| Amazon S3 | `eta.core.storage.S3StorageClient` | `boto3` |
+| Google Cloud Storage | `eta.core.storage.GoogleCloudStorageClient` | `google.cloud.storage` |
+| Google Drive | `eta.core.storage.GoogleDriveStorageClient` | `googleapiclient` |
+| HTTP | `eta.core.storage.HTTPStorageClient` | `requests` |
+| SFTP | `eta.core.storage.SFTPStorageClient` | `pysftp` |
 
-# Google Cloud
-pip install --upgrade google-cloud-storage
 
-# HTTP
-pip install --upgrade requests
-pip install --upgrade requests-toolbelt
+## Amazon S3 Client
 
-# SFTP
-pip install --upgrade pysftp
+The `eta.core.storage.S3StorageClient` class provides programmatic access to
+Amazon S3 buckets.
+
+### Authentication
+
+All instances of this client must be provided with AWS credentials with the
+appropriate permissions to perform the file manipulations that you request.
+This can be done in any of the following ways:
+
+- setting the `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and
+`AWS_DEFAULT_REGION` environment variables directly
+
+- setting the `AWS_SHARED_CREDENTIALS_FILE` environment variable to point to
+a valid credentials `.ini` file
+
+- setting the `AWS_CONFIG_FILE` environment variable to point to a valid
+credentials `.ini` file
+
+- using the `eta.core.storage.S3StorageClient.from_ini()` method to manually
+specify the credentials `.ini` file to use
+
+In the above, the `.ini` file should have syntax similar to the following:
+
+```
+[default]
+aws_access_key_id = XXX
+aws_secret_access_key = YYY
+region = ZZZ
 ```
 
+See the following link for more information:
+https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html#configuration
 
-## Google Drive Storage API
+### Example usage
 
-The `GoogleDriveStorageClient` class provides programmatic access to Google
-Drive.
+```py
+import eta.core.storage as etas
+
+credentials_path = "/path/to/credentials.ini"
+local_path1 = "/path/to/file.txt"
+local_path2 = "/path/to/file2.txt"
+cloud_path = "s3://bucket-name/file.txt"
+
+client = etas.S3StorageClient.from_ini(credentials_path)
+client.upload(local_path1, cloud_path)
+client.download(cloud_path, local_path2)
+client.delete(cloud_path)
+```
+
+### References
+
+- https://docs.aws.amazon.com/AmazonS3/latest/dev/Introduction.html
+- https://boto3.amazonaws.com/v1/documentation/api/latest/guide/quickstart.html
+
+
+## Google Cloud Storage Client
+
+The `eta.core.storage.GoogleCloudStorageClient` class provides programmatic
+access to Google Cloud Storage buckets.
+
+### Authentication
 
 All instances of this client must be provided with Google service account
 credentials with the appropriate permissions to perform the file manipulations
-that you request. This can be done either by passing the path to the service
-account JSON file to the constructor or by setting the
-`GOOGLE_APPLICATION_CREDENTIALS` environment variable to point to it.
+that you request. This can be done in any of the following ways:
+
+- setting the `GOOGLE_APPLICATION_CREDENTIALS` environment variable to point to
+a valid service account JSON file
+
+- using the `eta.core.storage.GoogleCloudStorageClient.from_json()` method to
+manually specify the service account JSON file to use
+
+In the above, the service account JSON file should have syntax similar to the
+following:
+
+```json
+{
+  "type": "service_account",
+  "project_id": "<project-id>",
+  "private_key_id": "WWWWW",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nXXXXX\n-----END PRIVATE KEY-----\n",
+  "client_email": "<account-name>@<project-id>.iam.gserviceaccount.com",
+  "client_id": "YYYYY",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/ZZZZZ"
+}
+```
+
+### Example usage
+
+```py
+import eta.core.storage as etas
+
+credentials_path = "/path/to/service-account.json"
+local_path1 = "/path/to/file.txt"
+local_path2 = "/path/to/file2.txt"
+cloud_path = "gs://bucket-name/file.txt"
+
+client = etas.GoogleCloudStorageClient.from_json(credentials_path)
+client.upload(local_path1, cloud_path)
+client.download(cloud_path, local_path2)
+client.delete(cloud_path)
+```
+
+### References
+
+- https://cloud.google.com/storage/docs/reference/libraries
+- https://cloud.google.com/storage/docs/reference/libraries#client-libraries-install-python
+- https://github.com/GoogleCloudPlatform/python-docs-samples/blob/master/storage/cloud-client/snippets.py
+
+
+## Google Drive Client
+
+The `eta.core.storage.GoogleDriveStorageClient` class provides programmatic
+access to Google Drive.
+
+### Authentication
+
+All instances of this client must be provided with Google service account
+credentials with the appropriate permissions to perform the file manipulations
+that you request. This can be done in any of the following ways:
+
+- setting the `GOOGLE_APPLICATION_CREDENTIALS` environment variable to point to
+a valid service account JSON file
+
+- using the `eta.core.storage.GoogleDriveStorageClient.from_json()` method to
+manually specify the service account JSON file to use
+
+In the above, the service account JSON file should have syntax similar to the
+following:
+
+```json
+{
+  "type": "service_account",
+  "project_id": "<project-id>",
+  "private_key_id": "WWWWW",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nXXXXX\n-----END PRIVATE KEY-----\n",
+  "client_email": "<account-name>@<project-id>.iam.gserviceaccount.com",
+  "client_id": "YYYYY",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/ZZZZZ"
+}
+```
 
 ### Enable the Google Drive API
 
+In order to access Google Drive files via the API, you must enable API use
+at the following link:
 https://console.developers.google.com/apis/api/drive.googleapis.com
-(once per organization)
+
+> Note: for organizations, this activation only needs to be performed once
 
 ### Giving a service account access to a Team Drive
 
@@ -54,11 +188,11 @@ https://console.developers.google.com/apis/api/drive.googleapis.com
 import eta.core.storage as etas
 
 team_drive_name = "public"
-credentials_json_path = "/path/to/service-account.json"
+credentials_path = "/path/to/service-account.json"
 local_path1 = "/path/to/file.txt"
 local_path2 = "/path/to/file2.txt"
 
-client = etas.GoogleDriveStorageClient.from_json(credentials_json_path)
+client = etas.GoogleDriveStorageClient.from_json(credentials_path)
 team_drive_id = client.get_team_drive_id(team_drive_name)
 file_id = client.upload(local_path1, team_drive_id)
 client.download(file_id, local_path2)
@@ -95,60 +229,28 @@ ACCESS_TOKEN="$(gcloud auth print-access-token)"
 - https://developers.google.com/api-client-library/python/apis/drive/v3
 
 
-## Google Cloud Storage API
+## HTTP Storage Client
 
-The `GoogleCloudStorageClient` class provides programmatic access to Google
-Cloud Storage buckets.
-
-All instances of this client must be provided with Google service account
-credentials with the appropriate permissions to perform the file manipulations
-that you request. This can be done either by passing the path to the service
-account JSON file to the constructor or by setting the
-`GOOGLE_APPLICATION_CREDENTIALS` environment variable to point to it.
+The `eta.core.storage.HTTPStorageClient` class provides a convenient API for
+issuing HTTP requests to upload and download files of arbitrary sizes from
+URLs.
 
 ### Example usage
+
+The following snippet demonstrates an example of
+`eta.core.storage.GoogleCloudStorageClient` to generate signed URLs for
+accessing objects in GCS and then using `eta.core.storage.HTTPStorageClient` to
+access the resources via HTTP requests.
 
 ```py
 import eta.core.storage as etas
 
-credentials_json_path = "/path/to/service-account.json"
+credentials_path = "/path/to/service-account.json"
 local_path1 = "/path/to/file.txt"
 local_path2 = "/path/to/file2.txt"
 cloud_path = "gs://bucket-name/file.txt"
 
-client = etas.GoogleCloudStorageClient.from_json(credentials_json_path)
-client.upload(local_path1, cloud_path)
-client.download(cloud_path, local_path2)
-client.delete(cloud_path)
-```
-
-### References
-
-- https://cloud.google.com/storage/docs/reference/libraries
-- https://cloud.google.com/storage/docs/reference/libraries#client-libraries-install-python
-- https://github.com/GoogleCloudPlatform/python-docs-samples/blob/master/storage/cloud-client/snippets.py
-
-
-## HTTP Storage API
-
-The `HTTPStorageClient` class provides a convenient API for issuing HTTP
-requests to upload and download files of arbitrary sizes from URLs.
-
-### Example usage
-
-The following snippet demonstrates an example of `GoogleCloudStorageClient` to
-generate signed URLs for accessing objects in Google Cloud storage and then
-using `HTTPStorageClient` to access the resources via HTTP requests.
-
-```py
-import eta.core.storage as etas
-
-credentials_json_path = "/path/to/service-account.json"
-local_path1 = "/path/to/file.txt"
-local_path2 = "/path/to/file2.txt"
-cloud_path = "gs://bucket-name/file.txt"
-
-gsclient = etas.GoogleCloudStorageClient.from_json(credentials_json_path)
+gsclient = etas.GoogleCloudStorageClient.from_json(credentials_path)
 client = etas.HTTPStorageClient()
 
 put_url = gsclient.generate_signed_url(cloud_path, method="PUT")
@@ -162,10 +264,11 @@ client.delete(delete_url)
 ```
 
 
-## SFTP Storage API
+## SFTP Storage Client
 
-The `SFTPStorageClient` class provides an SFTP client to perform file transfers
-to/from a remote file server using ssh key-based authentication.
+The `eta.core.storage.SFTPStorageClient` class provides an SFTP client to
+perform file transfers to/from a remote file server using ssh key-based
+authentication.
 
 ### Example usage
 

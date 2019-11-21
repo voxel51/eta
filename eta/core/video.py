@@ -360,8 +360,7 @@ class VideoMetadata(Serializable):
         return [a for a in _attrs if getattr(self, a) is not None]
 
     @classmethod
-    def build_for(
-            cls, filepath, start_time=None, gps_waypoints=None):
+    def build_for(cls, filepath, start_time=None, gps_waypoints=None):
         '''Builds a VideoMetadata object for the given video.
 
         Args:
@@ -381,7 +380,7 @@ class VideoMetadata(Serializable):
             frame_rate=vsi.frame_rate,
             total_frame_count=vsi.total_frame_count,
             duration=vsi.duration,
-            size_bytes=os.path.getsize(filepath),
+            size_bytes=vsi.size_bytes,
             mime_type=etau.guess_mime_type(filepath),
             encoding_str=vsi.encoding_str,
             gps_waypoints=gps_waypoints,
@@ -499,6 +498,17 @@ class VideoFrameLabels(Serializable):
         self.attrs.filter_by_schema(schema.frames)
         self.objects.filter_by_schema(schema)
 
+    def remove_objects_without_attrs(self, labels=None):
+        '''Removes DetectedObjects from the VideoFrameLabels that do not have
+        attributes.
+
+        Args:
+            labels: an optional list of DetectedObject label strings to which
+                to restrict attention when filtering. By default, all objects
+                are processed
+        '''
+        self.objects.remove_objects_without_attrs(labels=labels)
+
     def attributes(self):
         '''Returns the list of class attributes that will be serialized.'''
         _attrs = ["frame_number"]
@@ -600,6 +610,13 @@ class VideoLabels(Serializable):
         return bool(self.frames)
 
     @property
+    def has_video_attributes(self):
+        '''Returns True/False whether the container has at least one video
+        attribute.
+        '''
+        return bool(self.attrs)
+
+    @property
     def has_frame_attributes(self):
         '''Returns True/False whether the container has at least one frame
         attribute.
@@ -620,6 +637,13 @@ class VideoLabels(Serializable):
                 return True
 
         return False
+
+    @property
+    def is_empty(self):
+        '''Returns True if the container has no labels of any kind.'''
+        return (not self.has_video_attributes
+                and not self.has_frame_attributes
+                and not self.has_objects)
 
     @property
     def has_schema(self):
@@ -806,6 +830,18 @@ class VideoLabels(Serializable):
         self.attrs.filter_by_schema(schema.attrs)
         for frame_labels in itervalues(self.frames):
             frame_labels.filter_by_schema(schema)
+
+    def remove_objects_without_attrs(self, labels=None):
+        '''Removes DetectedObjects from the VideoLabels that do not have
+        attributes.
+
+        Args:
+            labels: an optional list of DetectedObject label strings to which
+                to restrict attention when filtering. By default, all objects
+                are processed
+        '''
+        for frame_labels in itervalues(self.frames):
+            frame_labels.remove_objects_without_attrs(labels=labels)
 
     def freeze_schema(self):
         '''Sets the enforced schema for the video to the current active
@@ -1345,6 +1381,18 @@ class VideoSetLabels(Set):
         for video_labels in self:
             video_labels.filter_by_schema(schema)
 
+    def remove_objects_without_attrs(self, labels=None):
+        '''Removes DetectedObjects from the VideoSetLabels that do not have
+        attributes.
+
+        Args:
+            labels: an optional list of DetectedObject label strings to which
+                to restrict attention when filtering. By default, all objects
+                are processed
+        '''
+        for video_labels in self:
+            video_labels.remove_objects_without_attrs(labels=labels)
+
     def freeze_schema(self):
         '''Sets the schema for the set to the current active schema.'''
         self.set_schema(self.get_active_schema())
@@ -1381,6 +1429,22 @@ class VideoSetLabels(Set):
     def _apply_schema(self):
         for video_labels in self:
             self._apply_schema_to_video(video_labels)
+
+    @classmethod
+    def from_video_labels_patt(cls, video_labels_patt):
+        '''Creates an instance of `cls` from a pattern of `_ELE_CLS` files.
+
+        Args:
+             video_labels_patt: a pattern with one or more numeric sequences:
+                example: "/path/to/labels/%05d.json"
+
+        Returns:
+            a `cls` instance
+        '''
+        image_set_labels = cls()
+        for labels_path in etau.get_pattern_matches(video_labels_patt):
+            image_set_labels.add(cls._ELE_CLS.from_json(labels_path))
+        return image_set_labels
 
     @classmethod
     def from_dict(cls, d):
@@ -1449,6 +1513,20 @@ class BigVideoSetLabels(VideoSetLabels, BigSet):
             video_labels.filter_by_schema(schema)
             self[key] = video_labels
 
+    def remove_objects_without_attrs(self, labels=None):
+        '''Removes DetectedObjects from the BigVideoSetLabels that do not have
+        attributes.
+
+        Args:
+            labels: an optional list of DetectedObject label strings to which
+                to restrict attention when filtering. By default, all objects
+                are processed
+        '''
+        for key in self.keys():
+            video_labels = self[key]
+            video_labels.remove_objects_without_attrs(labels=labels)
+            self[key] = video_labels
+
     def _apply_schema(self):
         for key in self.keys():
             video_labels = self[key]
@@ -1459,16 +1537,15 @@ class BigVideoSetLabels(VideoSetLabels, BigSet):
 class VideoStreamInfo(Serializable):
     '''Class encapsulating the stream info for a video.'''
 
-    def __init__(self, stream_info, format_info=None):
+    def __init__(self, stream_info, format_info):
         '''Constructs a VideoStreamInfo instance.
 
         Args:
             stream_info: a dictionary of video stream info
-            format_info: an optional dictionary of video format info. By
-                default, no format info is stored
+            format_info: a dictionary of video format info
         '''
         self.stream_info = stream_info
-        self.format_info = format_info or {}
+        self.format_info = format_info
 
     @property
     def encoding_str(self):
@@ -1583,19 +1660,18 @@ class VideoStreamInfo(Serializable):
         logger.warning("Unable to determine duration; returning -1")
         return -1
 
-    def get_raw_value(self, key):
-        '''Gets a value from the raw stream info dictionary.
-
-        Args:
-            key: the key to lookup in the stream info dictionary
-
-        Returns:
-            the value for the given key
-
-        Raises:
-            KeyError: if the key was not found in the stream info dictionary
+    @property
+    def size_bytes(self):
+        '''The size of the video on disk, in bytes, or -1 if it could not be
+        determined.
         '''
-        return self.stream_info[key]
+        try:
+            return int(self.format_info["size"])
+        except KeyError:
+            pass
+
+        logger.warning("Unable to determine video size; returning -1")
+        return -1
 
     def attributes(self):
         '''Returns the list of class attributes that will be serialized.'''
@@ -1612,14 +1688,14 @@ class VideoStreamInfo(Serializable):
             a VideoStreamInfo instance
         '''
         stream_info, format_info = _get_stream_info(inpath)
-        return cls(stream_info, format_info=format_info)
+        return cls(stream_info, format_info)
 
     @classmethod
     def from_dict(cls, d):
         '''Constructs a VideoStreamInfo from a JSON dictionary.'''
         stream_info = d["stream_info"]
-        format_info = d.get("format_info", None)
-        return cls(stream_info, format_info=format_info)
+        format_info = d["format_info"]
+        return cls(stream_info, format_info)
 
 
 class VideoStreamInfoError(Exception):
@@ -1838,51 +1914,34 @@ def sample_select_frames(
     Returns:
         a list of the sampled frames if output_patt is None, and None otherwise
     '''
-    # Parse parameters
-    resize_images = size is not None
+    if fast:
+        try:
+            return _sample_select_frames_fast(
+                video_path, frames, output_patt, size)
+        except SampleSelectFramesError as e:
+            logger.warning("Select frames fast mode failed: '%s'", e)
+            logger.info("Reverting to `fast=False`")
 
-    #
-    # Revert to `fast=False` if necessary
+    return _sample_select_frames_slow(video_path, frames, output_patt, size)
+
+
+class SampleSelectFramesError(Exception):
+    '''Exception raised when the `sample_select_frames` method encounters an
+    error.
+    '''
+    pass
+
+
+def _sample_select_frames_fast(video_path, frames, output_patt, size):
     #
     # As per https://stackoverflow.com/questions/29801975, one cannot pass an
     # argument of length > 131072 to subprocess. So, we have to make sure the
     # user isn't requesting too many frames to handle
     #
-    if fast:
-        select_arg_str = _make_ffmpeg_select_arg(frames)
-        if len(select_arg_str) > 131072:
-            logger.info(
-                "Number of frames (%d) requested too large; reverting to "
-                "`fast=False`", len(frames))
-            fast = False
-
-    #
-    # In "slow mode", we sample the requested frames via VideoProcessor
-    #
-
-    if not fast:
-        if output_patt:
-            # Sample frames to disk via VideoProcessor
-            p = VideoProcessor(
-                video_path, frames=frames, out_images_path=output_patt)
-            with p:
-                for img in p:
-                    if resize_images:
-                        img = etai.resize(img, *size)
-                    p.write(img)
-            return None
-
-        # Sample frames in memory via FFmpegVideoReader
-        with FFmpegVideoReader(video_path, frames=frames) as r:
-            if resize_images:
-                return [etai.resize(img, *size) for img in r]
-
-            return [img for img in r]
-
-    #
-    # In "fast mode", we use ffmpeg's native  `-vf select` option to sample
-    # the requested frames
-    #
+    select_arg_str = _make_ffmpeg_select_arg(frames)
+    if len(select_arg_str) > 131072:
+        raise SampleSelectFramesError(
+            "Number of frames (%d) requested too large" % len(frames))
 
     # If reading into memory, use `png` to ensure lossless-ness
     ext = os.path.splitext(output_patt)[1] if output_patt else ".png"
@@ -1892,7 +1951,20 @@ def sample_select_frames(
         tmp_patt = os.path.join(d, "frame-%d" + ext)
         ffmpeg = FFmpeg(
             size=size, out_opts=["-vf", select_arg_str, "-vsync", "0"])
-        ffmpeg.run(video_path, tmp_patt)
+
+        try:
+            ffmpeg.run(video_path, tmp_patt)
+        except etau.ExecutableRuntimeError:
+            #
+            # Sometimes ffmpeg can't decode frames in video. Analogous to
+            # FFmpegVideoReader, our approach here is to gracefully fail and
+            # just give the user however many frames we can...
+            #
+            num_frames = len(etau.parse_pattern(tmp_patt))
+            frames = frames[:num_frames]
+            logger.warning(
+                "Only %d of %d expected frames were sampled", num_frames,
+                 len(frames))
 
         if output_patt is not None:
             # Move frames into place with correct output names
@@ -1906,6 +1978,29 @@ def sample_select_frames(
             imgs.append(etai.read(tmp_patt % idx))
 
         return imgs
+
+
+def _sample_select_frames_slow(video_path, frames, output_patt, size):
+    # Parse parameters
+    resize_images = size is not None
+
+    if output_patt:
+        # Sample frames to disk via VideoProcessor
+        p = VideoProcessor(
+            video_path, frames=frames, out_images_path=output_patt)
+        with p:
+            for img in p:
+                if resize_images:
+                    img = etai.resize(img, *size)
+                p.write(img)
+        return None
+
+    # Sample frames in memory via FFmpegVideoReader
+    with FFmpegVideoReader(video_path, frames=frames) as r:
+        if resize_images:
+            return [etai.resize(img, *size) for img in r]
+
+        return [img for img in r]
 
 
 def sample_first_frames(imgs_or_video_path, k, stride=1, size=None):
@@ -3200,7 +3295,8 @@ class FFmpeg(object):
                 filters.append("setsar=sar=1:1")
 
                 # Force correct display aspect ratio when playing video
-                filters.append("setdar=dar={0}:{1}".format(*size))
+                filters.append("setdar=dar={0}/{1}".format(*size))
+
         elif scale:
             filters.append("scale=iw*{0}:ih*{0}".format(scale))
         return ["-vf", ",".join(filters)] if filters else []

@@ -36,6 +36,7 @@ import eta
 from eta.core.config import Config, ConfigError
 import eta.core.image as etai
 import eta.core.module as etam
+import eta.core.utils as etau
 import eta.core.video as etav
 
 
@@ -94,6 +95,12 @@ class ParametersConfig(Config):
             is applied to them
         always_sample_last (eta.core.types.Boolean): [False] Whether to always
             sample the last frame of the video
+        max_video_file_size (eta.core.types.Number): [None] The maximum file
+            size of the input video in bytes. If size is greater than this,
+            an error will be thrown
+        max_video_duration (eta.core.types.Number): [None] The maximum duration
+            of the input video in seconds. If duration is greater than this,
+            an error will be thrown
     '''
 
     def __init__(self, d):
@@ -104,6 +111,10 @@ class ParametersConfig(Config):
         self.max_size = self.parse_array(d, "max_size", default=None)
         self.always_sample_last = self.parse_bool(
             d, "always_sample_last", default=False)
+        self.max_video_file_size = self.parse_number(
+            d, "max_video_file_size", default=None)
+        self.max_video_duration = self.parse_number(
+            d, "max_video_duration", default=None)
 
 
 def _sample_videos(config):
@@ -114,6 +125,10 @@ def _sample_videos(config):
 
 def _process_video(input_path, output_frames_dir, parameters):
     stream_info = etav.VideoStreamInfo.build_for(input_path)
+
+    _check_input_video_size(stream_info, parameters.max_video_file_size,
+                            parameters.max_video_duration)
+
     ifps = stream_info.frame_rate
     isize = stream_info.frame_size
     iframe_count = stream_info.total_frame_count
@@ -146,7 +161,7 @@ def _process_video(input_path, output_frames_dir, parameters):
                 "Maximum frame rate %g requires acceleration of at least %g; "
                 "setting `accel = %g` now", max_fps, min_accel, min_accel)
 
-        accel = min_accel
+            accel = min_accel
     if accel is None:
         raise ConfigError("One of (accel, fps, max_fps) must be specified")
 
@@ -180,6 +195,25 @@ def _process_video(input_path, output_frames_dir, parameters):
     size = osize if resize_frames else None
     etav.sample_select_frames(
         input_path, frames, output_patt=output_patt, size=size, fast=True)
+
+
+def _check_input_video_size(
+        stream_info, max_video_file_size, max_video_duration):
+    if (max_video_file_size is not None
+            and stream_info.size_bytes > max_video_file_size):
+        raise ValueError(
+            "Input video file size must be less than {}; found {}".format(
+                etau.to_human_bytes_str(max_video_file_size),
+                etau.to_human_bytes_str(stream_info.size_bytes))
+        )
+
+    if (max_video_duration is not None
+            and stream_info.duration > max_video_duration):
+        raise ValueError(
+            ("Input video duration must be less than {} seconds;"
+             " found {} seconds").format(
+                max_video_duration, stream_info.duration)
+        )
 
 
 def run(config_path, pipeline_config_path=None):

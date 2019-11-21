@@ -25,7 +25,7 @@ import sys
 
 import eta.constants as etac
 from eta.core.config import Config, EnvConfig
-import eta.core.log as etal
+import eta.core.logging as etal
 import eta.core.utils as etau
 
 
@@ -151,7 +151,7 @@ def is_python3():
 
 
 # Version string
-version = "%s %s, %s" % (etac.NAME, etac.VERSION, etac.AUTHOR)
+version = "%s v%s, %s" % (etac.NAME, etac.VERSION, etac.AUTHOR)
 
 # Default logging behavior
 etal.basic_setup()

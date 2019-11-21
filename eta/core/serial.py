@@ -588,7 +588,9 @@ class Set(Serializable):
         Args:
             element: an instance of `_ELE_CLS`
         '''
-        key = self.get_key(element) or str(uuid4())
+        key = self.get_key(element)
+        if key is None:
+            key = str(uuid4())
         self[key] = element
 
     def add_set(self, set_):
@@ -1152,11 +1154,13 @@ class BigSet(BigMixin, Set):
         Args:
             element: an instance of `_ELE_CLS`
         '''
-        key = self.get_key(element) or str(uuid4())
+        key = self.get_key(element)
+        if key is None:
+            key = str(uuid4())
         self[key] = element
 
     def add_by_path(self, path, key=None):
-        '''Adds an element to the BigSet via its path on disk.
+        '''Adds an element to the set via its path on disk.
 
         Args:
             path: the path to the element JSON file on disk

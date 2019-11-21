@@ -64,6 +64,20 @@
             "description": "Whether to always sample the last frame of the video",
             "required": false,
             "default": false
+        },
+        {
+            "name": "max_video_file_size",
+            "type": "eta.core.types.Number",
+            "description": "The maximum file size of the input video in bytes. If size is greater than this, an error will be thrown",
+            "required": false,
+            "default": null
+        },
+        {
+            "name": "max_video_duration",
+            "type": "eta.core.types.Number",
+            "description": "The maximum duration of the input video in seconds. If duration is greater than this, an error will be thrown",
+            "required": false,
+            "default": null
         }
     ]
 }

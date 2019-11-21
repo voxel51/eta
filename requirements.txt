@@ -1,4 +1,5 @@
 blockdiag==1.5.3
+boto3==1.10.9
 contextlib2==0.5.5
 Cython==0.28.5
 dill==0.2.7.1

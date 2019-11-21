@@ -8,9 +8,7 @@ Matthew Lightman, matthew@voxel51.com
 Brian Moore, brian@voxel51.com
 Jason Corso, jason@voxel51.com
 Ben Kane, ben@voxel51.com
-Kevin Qi, kevin@voxel51.com
 Tyler Ganter, tyler@voxel51.com
-Ravali Pinnaka, ravali@voxel51.com
 '''
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
@@ -447,6 +445,18 @@ def _iter_filtered_video_frames(video_dataset, frame_filter, stride):
 
 # Core LabeledDataset infrastructure
 
+COPY = "copy"
+LINK = "link"
+MOVE = "move"
+SYMLINK = "symlink"
+FILE_METHODS = set(COPY, LINK, MOVE, SYMLINK)
+_FILE_METHODS_MAP = {
+    COPY: etau.copy_file,
+    LINK: etau.link_file,
+    MOVE: etau.move_file,
+    SYMLINK: etau.symlink_file
+}
+
 
 class LabeledDataset(object):
     '''Base class for labeled datasets.
@@ -660,22 +670,48 @@ class LabeledDataset(object):
 
         return dataset_list
 
-    def add_file(self, data_path, labels_path, move_files=False,
-                 error_on_duplicates=False, link_data=False):
+    def has_data_with_name(self, data_path):
+        '''Checks whether a data file already exists in the dataset with the
+        provided filename.
+
+        Args:
+            data_path: path to or filename of a data file
+
+        Returns:
+            (bool): True if the filename of `data_path` is the same as a
+                data file already present in the dataset
+        '''
+        data_file = os.path.basename(data_path)
+        return data_file in self._data_to_labels_map
+
+    def _parse_file_methods(self, file_method, by_dir=False):
+        if isinstance(file_method, tuple) and len(file_method) == 2:
+            data_method, labels_method = file_method
+        else:
+            data_method = labels_method = file_method
+
+        if (data_method not in FILE_METHODS
+                or labels_method not in FILE_METHODS):
+            raise ValueError("invalid file_method: %s", str(file_method))
+
+        return _FILE_METHODS_MAP[data_method], _FILE_METHODS_MAP[labels_method]
+
+    def add_file(self, data_path, labels_path, file_method=COPY,
+                 error_on_duplicates=False):
         '''Adds a single data file and its labels file to this dataset.
 
         Args:
             data_path: path to data file to be added
             labels_path: path to corresponding labels file to be added
-            move_files: whether to move the files from their original
-                location into the dataset directory. If False, files
-                are copied into the dataset directory.
             error_on_duplicates: whether to raise an error if the file
                 at `data_path` has the same filename as an existing
                 data file in the dataset. If this is set to `False`, the
                 previous mapping of the data filename to a labels file
                 will be deleted.
-            link_data: whether to hard link the data file instead of copying it
+            file_method: how to add the files to the dataset. One of "copy",
+                "link", move", or "symlink". A tuple, e.g. `("move", "copy")`,
+                may be used as well to move data files and copy label files,
+                for example. The default is "copy"
 
         Returns:
             self
@@ -683,34 +719,27 @@ class LabeledDataset(object):
         Raises:
             ValueError: if the filename of `data_path` is the same as a
                 data file already present in the dataset and
-                `error_on_duplicates` is True
+                `error_on_duplicates` is True, or if `file_method` is not valid
         '''
-        if move_files and link_data:
-            raise ValueError(
-                "only one of move_files and link_data can be True")
-        if error_on_duplicates:
-            self._validate_new_data_file(data_path)
+        if error_on_duplicates and self.has_data_with_name(data_path):
+            raise ValueError("Data file '%s' already present in dataset"
+                             % os.path.basename(data_path))
 
         data_subdir = os.path.join(self.data_dir, self._DATA_SUBDIR)
-        labels_subdir = os.path.join(self.data_dir, self._LABELS_SUBDIR)
-        if os.path.dirname(data_path) != data_subdir:
-            if move_files:
-                etau.move_file(data_path, data_subdir)
-            elif link_data:
-                etau.link_file(
-                    data_path,
-                    os.path.join(data_subdir, os.path.basename(data_path))
-                )
-            else:
-                etau.copy_file(data_path, data_subdir)
-        if os.path.dirname(labels_path) != labels_subdir:
-            if move_files:
-                etau.move_file(labels_path, labels_subdir)
-            else:
-                etau.copy_file(labels_path, labels_subdir)
-
         new_data_file = os.path.basename(data_path)
+
+        labels_subdir = os.path.join(self.data_dir, self._LABELS_SUBDIR)
         new_labels_file = os.path.basename(labels_path)
+
+        data_method, labels_method = self._parse_file_methods(file_method)
+
+        if os.path.dirname(data_path) != data_subdir:
+            new_data_path = os.path.join(data_subdir, new_data_file)
+            data_method(data_path, new_data_path)
+        if os.path.dirname(labels_path) != labels_subdir:
+            new_labels_path = os.path.join(labels_subdir, new_labels_file)
+            labels_method(labels_path, new_labels_path)
+
         # First remove any other records with the same data filename
         self.dataset_index.cull_with_function(
             lambda record: os.path.basename(record.data) != new_data_file)
@@ -745,8 +774,9 @@ class LabeledDataset(object):
         Returns:
             self
         '''
-        if error_on_duplicates:
-            self._validate_new_data_file(data_filename)
+        if error_on_duplicates and self.has_data_with_name(data_filename):
+            raise ValueError("Data file '%s' already present in dataset"
+                             % os.path.basename(data_filename))
 
         data_path = os.path.join(
             self.data_dir, self._DATA_SUBDIR, data_filename)
@@ -790,7 +820,7 @@ class LabeledDataset(object):
 
         return self
 
-    def copy(self, dataset_path, symlink_data=False, link_data=False):
+    def copy(self, dataset_path, file_method=COPY):
         '''Copies the dataset to another directory.
 
         If the dataset index has been manipulated, this will be reflected
@@ -800,12 +830,10 @@ class LabeledDataset(object):
             dataset_path: the path to the `manifest.json` file for the
                 copy of the dataset that will be written. The containing
                 directory must either not exist or be empty.
-            symlink_data: whether or not to symlink the data directory
-                instead of copying over all of the files. Note that with
-                this option, the entire labels directory will be copied,
-                so the new `LabeledDataset` directory may contain data
-                and labels that are not in the manifest, (depending on
-                the current state of `self.dataset_index`).
+            file_method: how to add the files to the dataset. One of "copy",
+                "link", move", or "symlink". A tuple, e.g. `("move", "copy")`,
+                may be used as well to move data files and copy label files,
+                for example. The default is "copy"
 
         Returns:
             dataset_copy: `LabeledDataset` instance that points to the new
@@ -814,26 +842,21 @@ class LabeledDataset(object):
         self._ensure_empty_dataset_dir(dataset_path)
 
         new_data_dir = os.path.dirname(dataset_path)
+
         new_data_subdir = os.path.join(new_data_dir, self._DATA_SUBDIR)
+
         new_labels_subdir = os.path.join(new_data_dir, self._LABELS_SUBDIR)
 
-        if symlink_data:
-            os.rmdir(new_data_subdir)
-            os.rmdir(new_labels_subdir)
-            os.symlink(
-                os.path.abspath(os.path.realpath(
-                    os.path.join(self.data_dir, self._DATA_SUBDIR))),
-                new_data_subdir
-            )
-            etau.copy_dir(
-                os.path.join(self.data_dir, self._LABELS_SUBDIR),
-                new_labels_subdir
-            )
-        else:
-            for data_path, labels_path in zip(
-                    self.iter_data_paths(), self.iter_labels_paths()):
-                etau.copy_file(data_path, new_data_subdir)
-                etau.copy_file(labels_path, new_labels_subdir)
+        data_method, labels_method = self._parse_file_methods(file_method)
+
+        for data_path, labels_path in zip(
+                self.iter_data_paths(), self.iter_labels_paths()):
+            new_data_file = os.path.basename(data_path)
+            new_data_path = os.path.join(new_data_subdir, new_data_file)
+            data_method(data_path, new_data_path)
+            new_labels_file = os.path.basename(labels_path)
+            new_labels_path = os.path.join(new_labels_subdir, new_labels_file)
+            labels_method(labels_path, new_labels_path)
 
         self.dataset_index.write_json(dataset_path)
 
@@ -842,7 +865,7 @@ class LabeledDataset(object):
         return cls(dataset_path)
 
     def merge(self, labeled_dataset_or_path, merged_dataset_path,
-              in_place=False, description=None):
+              in_place=False, description=None, file_method="copy"):
         '''Union of two labeled datasets.
 
         Args:
@@ -859,6 +882,10 @@ class LabeledDataset(object):
                 will be added into `self.data_dir`.
             description: optional description for the manifest of the merged
                 dataset. If not specified, the existing description is used.
+            file_method: how to add the files to the dataset. One of "copy",
+                "link", move", or "symlink". A tuple, e.g. `("move", "copy")`,
+                may be used as well to move data files and copy label files,
+                for example. The default is "copy"
 
         Returns:
             merged_dataset: a `LabeledDataset` instance pointing to the
@@ -892,7 +919,8 @@ class LabeledDataset(object):
                 labeled_dataset.iter_data_paths(),
                 labeled_dataset.iter_labels_paths()):
             if os.path.basename(data_path) in data_filenames_to_merge:
-                merged_dataset.add_file(data_path, labels_path)
+                merged_dataset.add_file(
+                    data_path, labels_path, file_method=file_method)
 
         if description is not None:
             merged_dataset.set_description(description)
@@ -950,12 +978,12 @@ class LabeledDataset(object):
         data_subdir = os.path.join(self.data_dir, self._DATA_SUBDIR)
         for filename in etau.list_files(data_subdir):
             if filename not in data_filenames:
-                os.remove(os.path.join(data_subdir, filename))
+                os.unlink(os.path.join(data_subdir, filename))
 
         labels_subdir = os.path.join(self.data_dir, self._LABELS_SUBDIR)
         for filename in etau.list_files(labels_subdir):
             if filename not in labels_filenames:
-                os.remove(os.path.join(labels_subdir, filename))
+                os.unlink(os.path.join(labels_subdir, filename))
 
         return self
 
@@ -1033,7 +1061,7 @@ class LabeledDataset(object):
         transformations to be run.
 
         Returns:
-            LabeledDatasetBuilder
+            a LabeledDatasetBuilder
         '''
         builder = self.builder_cls()
         for paths in self.iter_paths():
@@ -1041,15 +1069,14 @@ class LabeledDataset(object):
         return builder
 
     def get_labels_set(self, ensure_filenames=True):
-        '''Creates a SetLabels type object from this dataset's labels,
-        (e.g. etai.ImageSetLabels, etav.VideoSetLabels).
+        '''Creates a SetLabels type object from this dataset's labels.
 
         Args:
             ensure_filenames: whether to add the filename into the individual
                 labels if it is not present
 
         Returns:
-            etai.ImageSetLabels, etav.VideoSetLabels, etc.
+            an ImageSetLabels or VideoSetLabels
         '''
         raise NotImplementedError(
             "subclasses must implement get_labels_set()")
@@ -1150,22 +1177,6 @@ class LabeledDataset(object):
                     "Data file '%s' maps to multiple labels files" %
                     data_file)
             self._data_to_labels_map[data_file] = labels_file
-
-    def _validate_new_data_file(self, data_path):
-        '''Checks whether a data file would be a duplicate of an existing
-        data file in the dataset.
-
-        Args:
-            data_path: path to or filename of the new data file
-
-        Raises:
-            ValueError: if the filename of `data_path` is the same as a
-                data file already present in the dataset
-        '''
-        data_file = os.path.basename(data_path)
-        if data_file in self._data_to_labels_map:
-            raise ValueError(
-                "Data file '%s' already present in dataset" % data_file)
 
     def _read_data(self, path):
         '''Reads data from a data file at the given path.
@@ -1305,15 +1316,14 @@ class LabeledVideoDataset(LabeledDataset):
     '''
 
     def get_labels_set(self, ensure_filenames=True):
-        '''Creates an etav.VideoSetLabels type object from this dataset's
-        labels.
+        '''Creates a VideoSetLabels containing this dataset's labels.
 
         Args:
             ensure_filenames: whether to add the filename into the individual
                 labels if it is not present
 
         Returns:
-            etav.VideoSetLabels
+            a VideoSetLabels instance
         '''
         if ensure_filenames:
             video_set_labels = etav.VideoSetLabels()
@@ -1380,6 +1390,17 @@ class LabeledVideoDataset(LabeledDataset):
             if not os.path.isfile(labels_path):
                 raise LabeledDatasetError("File not found: %s" % labels_path)
 
+    def compute_average_video_duration(self):
+        '''Computes the average duration over all videos in the dataset.
+
+        Returns:
+             the average duration in seconds
+        '''
+        video_durations = [etav.VideoMetadata.build_for(data_path).duration
+                           for data_path in self.iter_data_paths()]
+
+        return np.mean(video_durations)
+
     def _read_data(self, path):
         return etav.FFmpegVideoReader(path)
 
@@ -1420,15 +1441,14 @@ class LabeledImageDataset(LabeledDataset):
     '''
 
     def get_labels_set(self, ensure_filenames=True):
-        '''Creates an etai.ImageSetLabels type object from this dataset's
-        labels.
+        '''Creates an ImageSetLabels instance containing this dataset's labels.
 
         Args:
             ensure_filenames: whether to add the filename into the individual
                 labels if it is not present
 
         Returns:
-            etai.ImageSetLabels
+            an ImageSetLabels instance
         '''
         if ensure_filenames:
             image_set_labels = etai.ImageSetLabels()
@@ -1454,7 +1474,7 @@ class LabeledImageDataset(LabeledDataset):
                 the annotated data will be written
             annotation_config: an optional etaa.AnnotationConfig specifying
                 how to render the annotations. If omitted, the default config
-                is used.
+                is used
         '''
         for img, image_path, image_labels in zip(
                 self.iter_data(), self.iter_data_paths(), self.iter_labels()):
@@ -1543,7 +1563,7 @@ class LabeledDatasetIndex(Serializable):
             type: the fully qualified class name of the `LabeledDataset`
                 subclass that encapsulates the dataset
             index: a list of `LabeledDataRecord`s. By default and empty list is
-                created.
+                created
             description: an optional description of the dataset
         '''
         self.type = type
@@ -1584,15 +1604,13 @@ class LabeledDatasetIndex(Serializable):
         self.index = random.sample(self.index, k)
 
     def shuffle(self):
-        '''Randomly shuffles the index.
-        '''
+        '''Randomly shuffles the index.'''
         random.shuffle(self.index)
 
     def split(self, split_fractions=None, descriptions=None,
               split_method="random_exact"):
-        '''Splits the `LabeledDatasetIndex` into multiple
-        `LabeledDatasetIndex` instances, containing disjoint subsets of
-        the original index.
+        '''Splits the `LabeledDatasetIndex` into multiple `LabeledDatasetIndex`
+        instances, containing disjoint subsets of the original index.
 
         Args:
             split_fractions: an optional list of split fractions, which
@@ -1689,10 +1707,7 @@ class LabeledDatasetBuilder(object):
         and LabeledVideoDatasetBuilders take BuilderVideoRecords.
 
         Args:
-            record (BuilderImageRecord or BuilderVideoRecord)
-
-        Returns:
-            None
+            record: a BuilderImageRecord or BuilderVideoRecord
         '''
         self._dataset.add(record)
 
@@ -1700,10 +1715,7 @@ class LabeledDatasetBuilder(object):
         '''Add a DatasetTransformer.
 
         Args:
-            transform (DatasetTransformer)
-
-        Returns:
-            None
+            transform: a DatasetTransformer
         '''
         self._transformers.append(transform)
 
@@ -1714,7 +1726,7 @@ class LabeledDatasetBuilder(object):
 
     @property
     def builder_dataset_cls(self):
-        '''Associated BuilderDataset class getter.'''
+        '''The associated BuilderDataset class.'''
         cls_breakup = etau.get_class_name(self).split(".")
         cls = cls_breakup[-1]
         cls = re.sub("^Labeled", "Builder", re.sub("Builder$", "", cls))
@@ -1724,34 +1736,41 @@ class LabeledDatasetBuilder(object):
 
     @property
     def dataset_cls(self):
-        '''Associated LabeledDataset class getter.'''
+        '''The associated LabeledDataset class.'''
         cls = etau.get_class_name(self)
         cls = re.sub("Builder$", "", cls).split(".")[-1]
         return etau.get_class(cls, "eta.core.datasets")
 
     @property
     def record_cls(self):
-        '''Record class getter.'''
+        '''The record class.'''
         return self._dataset.record_cls
 
     def build(self, path, description=None, pretty_print=False,
-              tmp_dir_base=None):
+              tmp_dir_base=None, create_empty=False):
         '''Build the new LabeledDataset after all records and transformations
         have been added.
 
         Args:
-            path (str): path to write the new dataset (manifest.json)
-            description (str): optional dataset description
-            pretty_print (bool): pretty print flag for json labels
-            tmp_dir_base (str): optional directory in which to make temp dirs
+            path: path to write the new dataset (manifest.json)
+            description: optional dataset description
+            pretty_print: whether to pretty print JSON labels. By default, this
+                is False
+            tmp_dir_base: optional directory in which to make temp dirs
+            create_empty: whether to write empty datasets to disk. By default,
+                this is False
 
         Returns:
-            LabeledDataset
+            a LabeledDataset
         '''
         logger.info("Applying transformations to dataset")
 
         for transformer in self._transformers:
             transformer.transform(self._dataset)
+
+        if not create_empty and not len(self.builder_dataset):
+            logger.info("Built dataset is empty. Skipping write out.")
+            return None
 
         logger.info(
             "Building dataset with %d elements" % len(self.builder_dataset)
@@ -1759,11 +1778,31 @@ class LabeledDatasetBuilder(object):
 
         dataset = self.dataset_cls.create_empty_dataset(path, description)
 
-        with etau.TempDir(tmp_dir_base) as dir_path:
-            for idx, record in enumerate(self._dataset):
-                result = record.build(dir_path, str(idx),
-                                      pretty_print=pretty_print)
-                dataset.add_file(*result, move_files=True)
+        with etau.TempDir(tmp_dir_base) as tmp_dir:
+            for record in self._dataset:
+                data_filename = os.path.basename(record.data_path)
+                data_path = os.path.join(tmp_dir, data_filename)
+                labels_filename = os.path.basename(record.labels_path)
+                labels_path = os.path.join(tmp_dir, labels_filename)
+
+                # add an incrementing index to the filename until a unique name
+                # is found
+                data_basename, data_ext = os.path.splitext(data_filename)
+                labels_basename, labels_ext = os.path.splitext(labels_filename)
+                idx = -1
+                while dataset.has_data_with_name(data_path):
+                    idx += 1
+                    unique_appender = "-{}".format(idx)
+                    data_path = os.path.join(
+                        tmp_dir, data_basename + unique_appender + data_ext
+                    )
+                    labels_path = os.path.join(
+                        tmp_dir, labels_basename + unique_appender + labels_ext
+                    )
+
+                record.build(data_path, labels_path, pretty_print=pretty_print)
+                dataset.add_file(data_path, labels_path, file_method=MOVE)
+
         dataset.write_manifest(os.path.basename(path))
         return dataset
 
@@ -1781,15 +1820,13 @@ class BuilderDataRecord(BaseDataRecord):
     record required for dataset operations on a BuilderDataset.
     '''
 
-    _LABELS_EXT = ".json"
-
     def __init__(self, data_path, labels_path):
         '''Initialize the BuilderDataRecord. The label and data paths cannot
         and should not be modified after initialization.
 
         Args:
-            data_path (str): path to data file
-            labels_path (str): path to labels json
+            data_path: path to data file
+            labels_path: path to labels json
         '''
         self._data_path = data_path
         self._labels_path = labels_path
@@ -1797,10 +1834,10 @@ class BuilderDataRecord(BaseDataRecord):
         self._labels_obj = None
 
     def get_labels(self):
-        '''Labels getter.
+        '''Get the labels in this record..
 
         Returns:
-            ImageLabels or VideoLabels
+            an ImageLabels or VideoLabels
         '''
         if self._labels_obj is not None:
             return self._labels_obj
@@ -1808,52 +1845,40 @@ class BuilderDataRecord(BaseDataRecord):
         return self._labels_obj
 
     def set_labels(self, labels):
-        '''Labels setter.
+        '''Set the labels for this record.
 
         Args:
-            labels (ImageLabels or VideoLabels)
-
-        Returns:
-            None
+            labels: ImageLabels or VideoLabels
         '''
         self._labels_obj = labels
 
     @property
     def data_path(self):
-        '''Data path getter.'''
+        '''The data path.'''
         return self._data_path
 
     @property
     def labels_path(self):
-        '''Labels path getter.'''
+        '''The labels path.'''
         return self._labels_path
 
-    def build(self, dir_path, filename, pretty_print=False):
+    def build(self, data_path, labels_path, pretty_print=False):
         '''Write the transformed labels and data files to dir_path. The
         subclasses BuilderVideoRecord and BuilderDataRecord are responsible for
         writing the data file.
 
         Args:
-            dir_path (str): path to write the files
-            filename (str): filename prefix that data and labels share
-            pretty_print (bool): pretty_print json flag for labels
-
-        Returns:
-            tuple (data_path, labels_path): the paths to the written files
+            data_path: path to write the data file to
+            labels_path: path to write the labels file to
+            pretty_print: whether to pretty print JSON. By default, this is
+                False
         '''
         self._build_labels()
-
-        labels_path = os.path.join(dir_path, filename + self._LABELS_EXT)
         labels = self.get_labels()
-
-        data_ext = os.path.splitext(self.data_path)[1]
-        data_path = os.path.join(dir_path, filename + data_ext)
-
-        labels.filename = filename + data_ext
+        labels.filename = os.path.basename(data_path)
         labels.write_json(labels_path, pretty_print=pretty_print)
 
         self._build_data(data_path)
-        return data_path, labels_path
 
     def copy(self):
         '''Safely copy a record. Only copy should be used when creating new
@@ -1899,11 +1924,11 @@ class BuilderImageRecord(BuilderDataRecord):
     '''BuilderDataRecord for images.'''
 
     def __init__(self, data_path, labels_path):
-        '''Initialize a BuilderImageRecord with the data_path and labels_path.
+        '''Creates a BuilderImageRecord instance.
 
         Args:
-            data_path (str): path to image
-            labels_path (str): path to labels
+            data_path: path to image
+            labels_path: path to labels
         '''
         super(BuilderImageRecord, self).__init__(data_path, labels_path)
         self._labels_cls = etai.ImageLabels
@@ -1919,20 +1944,19 @@ class BuilderVideoRecord(BuilderDataRecord):
     '''BuilderDataRecord for video.'''
 
     def __init__(self, data_path, labels_path, clip_start_frame=1,
-                 clip_end_frame=None, duration=None,
-                 total_frame_count=None):
+                 clip_end_frame=None, duration=None, total_frame_count=None):
         '''Initialize a BuilderVideoRecord with data_path, labels_path, and
         optional metadata about video. Without the optional arguments their
         values will be loaded from the video metadata and the start and end
         frames will default to covering the entire video.
 
         Args:
-            data_path (str): path to video
-            labels_path (str): path to labels
-            clip_start_frame (int): start frame of the clip
-            clip_end_frame (int): end frame of the clip
-            duration (float): duration (seconds) of the VIDEO (NOT THE CLIP)
-            total_frame_count (int): frame count of the VIDEO (NOT THE CLIP)
+            data_path: path to video
+            labels_path: path to labels
+            clip_start_frame: start frame of the clip
+            clip_end_frame: end frame of the clip
+            duration: duration (in seconds) of the full video (not the clip)
+            total_frame_count: number of frames in full video (not the clip)
         '''
         super(BuilderVideoRecord, self).__init__(data_path, labels_path)
         self.clip_start_frame = clip_start_frame
@@ -2025,13 +2049,10 @@ class DatasetTransformer(object):
     '''
 
     def transform(self, src):
-        ''' Transform a BuilderDataset
+        '''Transforms a BuilderDataset.
 
         Args:
-            src (BuilderDataset)
-
-        Returns:
-            None
+            src: a BuilderDataset
         '''
         raise NotImplementedError("subclasses must implement transform()")
 
@@ -2047,7 +2068,7 @@ class Sampler(DatasetTransformer):
         '''Initialize the Samples with k; the number of samples to take.
 
         Args:
-            k (int)
+            k: the number of samples to take
         '''
         self.k = k
 
@@ -2055,10 +2076,7 @@ class Sampler(DatasetTransformer):
         '''Sample from the existing records.
 
         Args:
-            src (BuilderImageDataset or BuilderVideoDataset)
-
-        Returns:
-            None
+            src: a BuilderImageDataset or BuilderVideoDataset
         '''
         src.records = random.sample(
             src.records, min(self.k, len(src.records))
@@ -2091,38 +2109,36 @@ class Balancer(DatasetTransformer):
         '''Creates a Balancer instance.
 
         Args:
-            attribute_name (str): the name of the attribute to balance by
-            object_label (str): the name of the object label that the
-                attribute_name must be nested under. If this is None, it is
-                assumed that the attributes are Image/Frame level attrs.
-            labels_schema (etai.ImageLabelsSchema or etav.VideoLabelsSchema):
-                a schema that indicates which attributes, object labels, etc.
-                should be used for balancing. This can be specified as an
-                alternative to `attribute_name` and `object_label`. Note that
-                labels are not altered; this schema just picks out the
-                attributes that are used for balancing.
-            target_quantile (float): value between [0, 1] to specify what the
-                target count per attribute value will be.
-                0.5 - will result in the true median
-                0   - the minimum value
+            attribute_name: the name of the attribute to balance by
+            object_label: the name of the object label that the attribute_name
+                must be nested under. If this is None, it is assumed that the
+                attributes are Image/Frame level attrs
+            labels_schema: an ImageLabelsSchema or VideoLabelsSchema that
+                indicates which attributes, object labels, etc. should be used
+                for balancing. This can be specified as an alternative to
+                `attribute_name` and `object_label`. Note that labels are not
+                altered; this schema just picks out the attributes that are
+                used for balancing
+            target_quantile: value between [0, 1] to specify what the target
+                count per attribute value will be.
+                    0.5: will result in the true median
+                      0: the minimum value
                 It is recommended to set this somewhere between [0, 0.5]. The
                 smaller this value is, the closer all values can be balanced,
                 at the risk that if some values have particularly low number of
-                samples, they dataset will be excessively trimmed.
-            negative_power (float): value between [1, ~LARGE~] that weights the
-                negative values (where the count of a value is less than the
-                target) when computing the score for a set of indices to
-                remove.
-                1 - will weight them the same as positive values
-                2 - will square the values
-                ...
-                Check Balancer._solution_score for more details.
-            target_count (int): override target count for each attribute value.
-                If this is provided, target_quantile is ignored.
-            target_hard_min (bool): whether or not to require that each
-                attribute value have at least the target count after balancing
-            algorithm (str): name of the balancing search algorithm. Currently
-                available are: ["random", "greedy", "simple"]
+                samples, they dataset will be excessively trimmed
+            negative_power: value between [1, inf) that weights the negative
+                values (where the count of a value is less than the target)
+                when computing the score for a set of indices to remove.
+                    1: will weight them the same as positive values
+                    2: will square the values
+                See `Balancer._solution_score` for more details
+            target_count: override target count for each attribute value. If
+                provided, target_quantile is ignored
+            target_hard_min: whether or not to require that each attribute
+                value have at least the target count after balancing
+            algorithm: name of the balancing search algorithm. Supported values
+                are ["random", "greedy", "simple"]
         '''
         self.attr_name = attribute_name
         self.object_label = object_label
@@ -2140,7 +2156,7 @@ class Balancer(DatasetTransformer):
         target attribute is ~roughly~ balanced for each value.
 
         Args:
-            src (BuilderDataset): the dataset builder
+            src: a BuilderDataset
         '''
         logger.info("Balancing dataset")
 
@@ -2183,7 +2199,7 @@ class Balancer(DatasetTransformer):
             return
 
         if (not specified["attribute_name"] and not specified["object_label"]
-            and specified["labels_schema"]):
+                and specified["labels_schema"]):
             return
 
         # Anything else is unacceptable. Raise a ValueError with the
@@ -2210,16 +2226,15 @@ class Balancer(DatasetTransformer):
             records: list of BuilderDataRecord's
 
         Returns:
-            A - NxM occurrence matrix, counting the number of instances of each
-                attribute value in a record, where:
-                    N - length of `values`
-                    M - number of records that contain the attribute to balance
-            values - list of N strings; one for each unique attribute value
-            record_idxs - a list of M integers; each being the index into
-                          `records` for the corresponding column in A
-
-            A[i, j] = the number of instances of values[i] in
-                      records[record_idxs[j]]
+            A: an N x M occurrence matrix counting the number of instances of
+                each attribute value in a record, where:
+                    N: length of `values`
+                    M: number of records that contain the attribute to balance
+            values: list of N strings; one for each unique attribute value
+            record_idxs: a list of M integers; each being the index into
+                `records` for the corresponding column in A, where:
+                    A[i, j] = the number of instances of values[i] in
+                              records[record_idxs[j]]
         '''
         helper_list = self._to_helper_list(records)
         record_idxs = [idx for idx, _ in helper_list]
@@ -2250,20 +2265,19 @@ class Balancer(DatasetTransformer):
 
         Returns:
             a list of tuples with two entries:
-
+            ```
                 [
                     (record_id, list_of_values),
                     (record_id, list_of_values),
                     (record_id, list_of_values),
                     ...
                 ]
-
+            ```
             record_id: integer ID of the corresponding old_record
             list_of_values: list of attribute values for the attribute to be
-                            balanced, one per unique object, if using objects.
-                            For example: ['red', 'red', 'green'] would imply
-                            three objects with the 'color' attribute in this
-                            record.
+                balanced, one per unique object, if using objects. For example:
+                ["red", "red", "green"] would imply three objects with the
+                "color" attribute in this record
         '''
         if not len(records):
             return []
@@ -2346,7 +2360,7 @@ class Balancer(DatasetTransformer):
 
             for frame_no in labels:
                 if (frame_no < record.clip_start_frame or
-                    frame_no >= record.clip_end_frame):
+                        frame_no >= record.clip_end_frame):
                     continue
 
                 frame = labels[frame_no]
@@ -2429,7 +2443,7 @@ class Balancer(DatasetTransformer):
             )
 
     def _to_helper_list_image_schema(self, records):
-        '''Balancer._to_helper_list when an etai.ImageLabelsSchema is given'''
+        '''Balancer._to_helper_list when an ImageLabelsSchema is given.'''
         helper_list = []
 
         for i, record in enumerate(records):
@@ -2461,7 +2475,7 @@ class Balancer(DatasetTransformer):
         return helper_list
 
     def _to_helper_list_video_schema(self, records):
-        '''Balancer._to_helper_list when an etav.VideoLabelsSchema is given'''
+        '''Balancer._to_helper_list when an VideoLabelsSchema is given.'''
         helper_list = []
 
         for i, record in enumerate(records):
@@ -2511,38 +2525,37 @@ class Balancer(DatasetTransformer):
         return helper_list
 
     def _get_target_count(self, counts):
-        '''Compute the target count that we would like to balance each
-        value to.
+        '''Compute the target count that we'd like to balance each value to.
 
         Args:
-            counts (vector): the original counts for each value
+            counts: a vector of original counts for each value
 
-        Returns: Integer target value
+        Returns:
+            the target value
         '''
         if self.target_count:
             return self.target_count
         return int(np.quantile(counts, self.target_quantile))
 
     def _get_keep_idxs(self, A, counts, target_count):
-        '''Algorithm fun! This function chooses the set of records to keep (and
-        remove).
+        '''This function chooses the set of records to keep (and remove).
 
         There's still plenty of potential for testing and improvement here.
 
-
         This problem can be posed as:
-            minimize:
-                ||np.dot(A, x) - b||
+
+            ```
+            minimize \|Ax - b\|
             subject to:
                 x[i] is an element of [0, 1]
+            ```
 
         and different algorithms may be substituted in.
 
         Args:
-            A: the occurrence matrix computed in
-                Balancer._get_occurrence_matrix
-            counts (vector): the original counts for each value
-            target_count (int): the target value
+            A: the occurrence matrix from `Balancer._get_occurrence_matrix`
+            counts: the vector of original counts for each value
+            target_count: the target value
 
         Returns:
             a list of integer indices to keep
@@ -2572,7 +2585,7 @@ class Balancer(DatasetTransformer):
             b: the target vector to match
 
         Returns:
-            x: the solution vector. x[j]=1 -> omit the j'th record
+            x: the solution vector, where `x[j] == 1` --> omit the j'th record
         '''
         best_x = np.zeros(A.shape[1], dtype=np.dtype("int"))
         best_score = self._solution_score(b - np.dot(A, best_x))
@@ -2597,7 +2610,7 @@ class Balancer(DatasetTransformer):
             b: the target vector to match
 
         Returns:
-            x: the solution vector. x[j]=1 -> omit the j'th record
+            x: the solution vector, where `x[j] == 1` --> omit the j'th record
         '''
         best_x = np.zeros(A.shape[1], dtype=np.dtype('int'))
         best_score = self._solution_score(b - np.dot(A, best_x))
@@ -2633,7 +2646,7 @@ class Balancer(DatasetTransformer):
             b: the target vector to match
 
         Returns:
-            x: the solution vector. x[j]=1 -> omit the j'th record
+            x: the solution vector, where `x[j] == 1` --> omit the j'th record
         '''
         x = np.ones(A.shape[1], dtype="int")
         counts = np.dot(A, x)
@@ -2695,11 +2708,10 @@ class Balancer(DatasetTransformer):
         of any attribute values that are already below the target.
 
         Args:
-            vector: Vector_Of_Counts - Target_Count
+            vector: `vector of counts` - `target count`
 
         Returns:
-            (float) a score value, (which is only meaningful in a relative
-                    sense). Smaller -> Better!
+            a relative score value, where smaller --> better
         '''
         v_pos = np.maximum(vector, 0)
         v_neg = np.abs(np.minimum(vector, 0))
@@ -2721,16 +2733,16 @@ class Balancer(DatasetTransformer):
         Args:
             x: an array of shape (M,) containing 1's or 0's, indicating which
                 records are being omitted
-            A: the NxM occurrence matrix generated by
+            A: the N x M occurrence matrix generated by
                 `self._get_occurrence_matrix()`
             target_count: an integer giving the desired count for each value
 
         Returns:
             x_out: an array of shape (M,) containing 1's or 0's, indicating
-                records to omit. All entries that were 0 in the input `x`
-                will also be 0 in `x_out`, and some entries that were 1 in
-                `x` may be 0 in `x_out` as well, such that the total count
-                for each value is at least `target_count`.
+                records to omit. All entries that were 0 in the input `x` will
+                also be 0 in `x_out`, and some entries that were 1 in `x` may
+                be 0 in `x_out` as well, such that the total count for each
+                value is at least `target_count`
         '''
         x_out = x.copy()
         current_counts = np.dot(A, 1 - x_out).astype("int")
@@ -2763,44 +2775,68 @@ class SchemaFilter(DatasetTransformer):
     is None, no filtering is done.
     '''
 
-    def __init__(self, schema):
-        '''Initialize the SchemaFilter with a schema.
+    def __init__(self, schema, remove_objects_without_attrs=False,
+                 object_labels_to_filter=None, prune_empty=True):
+        '''Initialize the SchemaFilter
 
         Args:
-            schema (VideoLabelsSchema or ImageLabelsSchema)
+            schema: a VideoLabelsSchema or ImageLabelsSchema
+            remove_objects_without_attrs: whether to remove objects with no
+                attributes, after filtering. Use the `object_labels_to_filter`
+                argument to control which object labels are filtered. By
+                default, this is False
+            object_labels_to_filter: an optional list of DetectedObject label
+                strings to which to restrict attention when filtering. If None,
+                all objects are filtered
+            prune_empty: whether to remove records from the dataset whose
+                labels are empty after filtering. By default, this is True
         '''
         self.schema = schema
+        self.remove_objects_without_attrs = remove_objects_without_attrs
+        self.object_labels_to_filter = object_labels_to_filter
+        self.prune_empty = prune_empty
 
     def transform(self, src):
         '''Filter all records in src. If the schema is None, no filtering is
         done.
 
         Args:
-            src (BuilderImageDataset or BuilderVideoDataset)
-
-        Returns:
-            None
+            src: a BuilderImageDataset or BuilderVideoDataset
         '''
         if self.schema is None:
             return
-        for record in src:
+        old_records = src.records
+        src.clear()
+        for record in old_records:
             labels = record.get_labels()
+
+            # filter by schema
             labels.filter_by_schema(self.schema)
-            record.set_labels(labels)
+
+            # filter objects that don't have attributes
+            if self.remove_objects_without_attrs:
+                labels.remove_objects_without_attrs(
+                    labels=self.object_labels_to_filter)
+
+            # add the filtered record to the new dataset
+            if not self.prune_empty or not labels.is_empty:
+                record.set_labels(labels)
+                src.add(record)
 
 
 class Clipper(DatasetTransformer):
     '''Clip longer videos into shorter ones, and sample at some stride step.'''
 
     def __init__(self, clip_len, stride_len, min_clip_len):
-        '''Creates a Clipper instance. min_clip_len determines whether
-        remainders are included or not.
+        '''Creates a Clipper instance.
+
+        min_clip_len determines whether remainders are included or not.
 
         Args:
-            clip_len (int): number of frames per clip, must be > 0
-            stride_len (int): stride (step size), must be > 0
-            min_clip_len (int): minimum number of frames allowed, must be > 0
-                                and less than clip_len
+            clip_len: number of frames per clip, must be > 0
+            stride_len: stride (step size), must be > 0
+            min_clip_len: minimum number of frames allowed, must be > 0 and
+                less than clip_len
         '''
         self.clip_len = int(clip_len)
         self.stride_len = int(stride_len)
@@ -2816,10 +2852,7 @@ class Clipper(DatasetTransformer):
         records list.
 
         Args:
-            src (BuilderVideoDataset)
-
-        Returns:
-            None
+            src: a BuilderVideoDataset
         '''
         if not isinstance(src, BuilderVideoDataset):
             raise DatasetTransformerError(
@@ -2853,10 +2886,7 @@ class EmptyLabels(DatasetTransformer):
         '''Assign empty labels to all records.
 
         Args:
-            src (BuilderDataRecord)
-
-        Returns:
-            None
+            src: a BuilderDataRecord
         '''
         if not src:
             return
@@ -2874,19 +2904,16 @@ class Merger(DatasetTransformer):
         '''Creates a Merger instance.
 
         Args:
-            dataset_builder: a LabeledDatasetBuilder instance for the
-                dataset to be merged with the existing one
+            dataset_builder: a LabeledDatasetBuilder instance for the dataset
+                to be merged with the existing one
         '''
         self._builder_dataset_to_merge = dataset_builder.builder_dataset
 
     def transform(self, src):
-        '''Merges `self._builder_dataset_to_merge` into `src`.
+        '''Merges the given BuilderDataset into this instance.
 
         Args:
-            src (BuilderDataset)
-
-        Returns:
-            None
+            src: a BuilderDataset
         '''
         if self._builder_dataset_to_merge.record_cls != src.record_cls:
             raise DatasetTransformerError(
@@ -2916,15 +2943,39 @@ class FilterByFilename(DatasetTransformer):
         '''Removes data with filenames that match the blacklist.
 
         Args:
-            src (BuilderDataset)
-
-        Returns:
-            None
+            src: a BuilderDataset
         '''
         src.cull_with_function(
             "data_path",
             lambda path: os.path.basename(
                 path) not in self._files_to_remove
+        )
+
+
+class FilterByFilenameRegex(DatasetTransformer):
+    '''Filters data from a dataset using a regex blacklist for filenames.'''
+
+    def __init__(self, filename_regex_blacklist):
+        '''Creates a FilterByFilenameRegex instance.
+
+        Args:
+            filename_regex_blacklist: a list of data filename regexes to filter
+                out
+        '''
+        self._regex_blacklist = [
+            re.compile(s) for s in filename_regex_blacklist]
+
+    def transform(self, src):
+        '''Removes data with filenames that match the regex blacklist.
+
+        Args:
+            src: a BuilderDataset
+        '''
+        src.cull_with_function(
+            "data_path",
+            lambda path: not any(
+                rgx.match(os.path.basename(path))
+                for rgx in self._regex_blacklist)
         )
 
 
@@ -2935,8 +2986,8 @@ class FilterByPath(DatasetTransformer):
         '''Creates a FilterByPath instance.
 
         Args:
-            full_path_blacklist: a list of full paths to data files
-                to filter out
+            full_path_blacklist: a list of full paths to data files to filter
+                out
         '''
         self._paths_to_remove = {
             os.path.abspath(path) for path in full_path_blacklist}
@@ -2945,10 +2996,7 @@ class FilterByPath(DatasetTransformer):
         '''Removes data with full paths that match the blacklist.
 
         Args:
-            src (BuilderDataset)
-
-        Returns:
-            None
+            src: a BuilderDataset
         '''
         src.cull_with_function(
             "data_path",
