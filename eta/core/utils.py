@@ -943,7 +943,7 @@ def split_path(path):
         if parts[0] == path:  # sentinel for absolute paths
             all_parts.insert(0, parts[0])
             break
-        elif parts[1] == path: # sentinel for relative paths
+        elif parts[1] == path:  # sentinel for relative paths
             all_parts.insert(0, parts[1])
             break
         else:
@@ -1262,6 +1262,8 @@ def list_files(dir_path, abs_paths=False, recursive=False,
             default, this is False
         recursive: whether to recursively traverse subdirectories. By default,
             this is False
+        sort: whether to sort the list of files
+        include_hidden_files: whether to include dot files
 
     Returns:
         a sorted list of the non-hidden files in the directory
@@ -1276,7 +1278,7 @@ def list_files(dir_path, abs_paths=False, recursive=False,
         files = [
             f for f in os.listdir(dir_path)
             if os.path.isfile(os.path.join(dir_path, f))
-                and (not f.startswith(".") or include_hidden_files)]
+            and (not f.startswith(".") or include_hidden_files)]
 
     if sort:
         files = sorted(files)
@@ -1312,7 +1314,7 @@ def list_subdirs(dir_path, abs_paths=False, recursive=False):
         dirs = [
             d for d in os.listdir(dir_path)
             if os.path.isdir(os.path.join(dir_path, d))
-                and not d.startswith(".")]
+            and not d.startswith(".")]
 
     dirs = sorted(dirs)
 
