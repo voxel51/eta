@@ -1750,7 +1750,7 @@ class LabeledDatasetBuilder(object):
         return self._dataset.record_cls
 
     def build(self, path, description=None, pretty_print=False,
-              tmp_dir_base=None, create_empty=False):
+              tmp_dir_base=None, create_empty=False, data_method="copy"):
         '''Build the new LabeledDataset after all records and transformations
         have been added.
 
@@ -1762,11 +1762,20 @@ class LabeledDatasetBuilder(object):
             tmp_dir_base: optional directory in which to make temp dirs
             create_empty: whether to write empty datasets to disk. By default,
                 this is False
+            data_method: how to add the data files to the dataset, when
+                applicable. If clipping is required, this option is ignored,
+                for example. One of "copy", "link", move", or "symlink". Labels
+                files are written from their class instances and do not apply.
 
         Returns:
             a LabeledDataset
         '''
         logger.info("Applying transformations to dataset")
+
+        if data_method not in FILE_METHODS:
+            raise ValueError("invalid file_method: %s", str(data_method))
+
+        data_method = _FILE_METHODS_MAP[data_method]
 
         for transformer in self._transformers:
             transformer.transform(self._dataset)
@@ -1793,7 +1802,6 @@ class LabeledDatasetBuilder(object):
             data_basename, data_ext = os.path.splitext(data_filename)
             labels_basename, labels_ext = os.path.splitext(labels_filename)
             idx = -1
-            data_path = None
             while True:
                 idx += 1
                 unique_appender = "-{}".format(idx)
@@ -1809,8 +1817,15 @@ class LabeledDatasetBuilder(object):
                 )
                 break
 
-            record.build(data_path, labels_path, pretty_print=pretty_print)
-            dataset.add_file(data_path, labels_path, file_method=MOVE)
+            record.build(
+                data_path,
+                labels_path,
+                pretty_print=pretty_print,
+                data_method=data_method
+            )
+            # The `file_method` is irrelevant in this situation as the files
+            # are placed directly into the dataset by `record.build()`.
+            dataset.add_file(data_path, labels_path)
 
         dataset.write_manifest(os.path.basename(path))
         return dataset
@@ -1871,7 +1886,8 @@ class BuilderDataRecord(BaseDataRecord):
         '''The labels path.'''
         return self._labels_path
 
-    def build(self, data_path, labels_path, pretty_print=False):
+    def build(self, data_path, labels_path, pretty_print=False,
+              data_method="copy"):
         '''Write the transformed labels and data files to dir_path. The
         subclasses BuilderVideoRecord and BuilderDataRecord are responsible for
         writing the data file.
@@ -1881,13 +1897,15 @@ class BuilderDataRecord(BaseDataRecord):
             labels_path: path to write the labels file to
             pretty_print: whether to pretty print JSON. By default, this is
                 False
+            data_method: how to create the data file, when applicable. The
+                default is copy
         '''
         self._build_labels()
         labels = self.get_labels()
         labels.filename = os.path.basename(data_path)
         labels.write_json(labels_path, pretty_print=pretty_print)
 
-        self._build_data(data_path)
+        self._build_data(data_path, data_method)
 
     def copy(self):
         '''Safely copy a record. Only copy should be used when creating new
@@ -1924,7 +1942,7 @@ class BuilderDataRecord(BaseDataRecord):
         raise NotImplementedError(
             "subclasses must implement _build_labels()")
 
-    def _build_data(self, data_path):
+    def _build_data(self, data_path, data_method):
         raise NotImplementedError(
             "subclasses must implement _build_data()")
 
@@ -1945,8 +1963,8 @@ class BuilderImageRecord(BuilderDataRecord):
     def _build_labels(self):
         return
 
-    def _build_data(self, data_path):
-        etau.copy_file(self.data_path, data_path)
+    def _build_data(self, data_path, data_method):
+        data_method(self.data_path, data_path)
 
 
 class BuilderVideoRecord(BuilderDataRecord):
@@ -2014,10 +2032,10 @@ class BuilderVideoRecord(BuilderDataRecord):
         self.duration = duration or metadata.duration
         self.clip_end_frame = clip_end_frame or metadata.total_frame_count
 
-    def _build_data(self, data_path):
+    def _build_data(self, data_path, data_method):
         start_frame, end_frame = (self.clip_start_frame, self.clip_end_frame)
         if start_frame == 1 and end_frame == self.total_frame_count:
-            etau.copy_file(self.data_path, data_path)
+            data_method(self.data_path, data_path)
         else:
             args = (
                 self.data_path,
