@@ -856,6 +856,7 @@ class LabeledDataset(object):
             new_data_file = os.path.basename(data_path)
             new_data_path = os.path.join(new_data_subdir, new_data_file)
             data_method(data_path, new_data_path)
+
             new_labels_file = os.path.basename(labels_path)
             new_labels_path = os.path.join(new_labels_subdir, new_labels_file)
             labels_method(labels_path, new_labels_path)
