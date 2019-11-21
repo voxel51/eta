@@ -23,7 +23,7 @@ import os
 import sys
 
 from eta.core.config import Config
-import eta.core.log as etal
+import eta.core.logging as etal
 import eta.core.utils as etau
 
 

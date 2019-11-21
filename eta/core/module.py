@@ -30,7 +30,7 @@ import os
 import eta
 from eta.core.config import Config, ConfigError, Configurable
 from eta.core.diagram import HasBlockDiagram, BlockdiagModule
-import eta.core.log as etal
+import eta.core.logging as etal
 import eta.core.types as etat
 import eta.core.utils as etau
 
@@ -232,7 +232,7 @@ class BaseModuleConfigSettings(Config):
     Attributes:
         eta_config: a dictionary defining custom ETA config settings to apply
             before running the module
-        logging_config: an `eta.core.log.LoggingConfig` instance defining
+        logging_config: an `eta.core.logging.LoggingConfig` instance defining
             the logging configuration settings for the module
     '''
 
