@@ -1850,11 +1850,11 @@ class BuilderDataRecord(BaseDataRecord):
 
     @new_data_path.setter
     def new_data_path(self, value):
-        self._data_path = value
+        self._new_data_path = value
 
     @new_labels_path.setter
     def new_labels_path(self, value):
-        self._labels_path = value
+        self._new_labels_path = value
 
     def build(self, data_path, labels_path, pretty_print=False):
         '''Write the transformed labels and data files to dir_path. The
@@ -2935,8 +2935,6 @@ class Merger(DatasetTransformer):
 
                 print(record.data_path)
                 print(record.labels_path)
-                # record.data_path = ""
-                # record.labels_path = ""
 
         src.add_container(self._builder_dataset_to_merge)
 
