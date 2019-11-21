@@ -445,11 +445,13 @@ def _iter_filtered_video_frames(video_dataset, frame_filter, stride):
 
 # Core LabeledDataset infrastructure
 
+
+# File method enums and helpers
 COPY = "copy"
 LINK = "link"
 MOVE = "move"
 SYMLINK = "symlink"
-FILE_METHODS = set(COPY, LINK, MOVE, SYMLINK)
+FILE_METHODS = {COPY, LINK, MOVE, SYMLINK}
 _FILE_METHODS_MAP = {
     COPY: etau.copy_file,
     LINK: etau.link_file,
@@ -684,7 +686,7 @@ class LabeledDataset(object):
         data_file = os.path.basename(data_path)
         return data_file in self._data_to_labels_map
 
-    def _parse_file_methods(self, file_method, by_dir=False):
+    def _parse_file_methods(self, file_method):
         if isinstance(file_method, tuple) and len(file_method) == 2:
             data_method, labels_method = file_method
         else:
