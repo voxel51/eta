@@ -712,7 +712,7 @@ class LabeledDataset(object):
                 will be deleted.
             file_method: how to add the files to the dataset. One of "copy",
                 "link", move", or "symlink". A tuple, e.g. `("move", "copy")`,
-                may be used as well to move data files and copy label files,
+                may be used as well to move data files and copy labels files,
                 for example. The default is "copy"
 
         Returns:
@@ -834,7 +834,7 @@ class LabeledDataset(object):
                 directory must either not exist or be empty.
             file_method: how to add the files to the dataset. One of "copy",
                 "link", move", or "symlink". A tuple, e.g. `("move", "copy")`,
-                may be used as well to move data files and copy label files,
+                may be used as well to move data files and copy labels files,
                 for example. The default is "copy"
 
         Returns:
@@ -887,7 +887,7 @@ class LabeledDataset(object):
                 dataset. If not specified, the existing description is used.
             file_method: how to add the files to the dataset. One of "copy",
                 "link", move", or "symlink". A tuple, e.g. `("move", "copy")`,
-                may be used as well to move data files and copy label files,
+                may be used as well to move data files and copy labels files,
                 for example. The default is "copy"
 
         Returns:
@@ -963,7 +963,7 @@ class LabeledDataset(object):
         return self
 
     def prune(self):
-        '''Deletes data and label files that are not in the index.
+        '''Deletes data and labels files that are not in the index.
 
         Note that actual files will be deleted if they are not present in
         `self.dataset_index`, for which the current state can be different
