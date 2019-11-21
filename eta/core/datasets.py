@@ -2751,20 +2751,25 @@ class SchemaFilter(DatasetTransformer):
     is None, no filtering is done.
     '''
 
-    def __init__(
-            self, schema, remove_objects_without_attrs=False,
-            prune_empty=True):
-        '''Initialize the SchemaFilter with a schema.
+    def __init__(self, schema, remove_objects_without_attrs=False,
+                 object_labels_to_filter=None, prune_empty=True):
+        '''Initialize the SchemaFilter
 
         Args:
             schema: a VideoLabelsSchema or ImageLabelsSchema
             remove_objects_without_attrs: whether to remove objects with no
-                attributes, after filtering. By default, this is False
+                attributes, after filtering. Use the `object_labels_to_filter`
+                argument to control which object labels are filtered. By
+                default, this is False
+            object_labels_to_filter: an optional list of DetectedObject label
+                strings to which to restrict attention when filtering. If None,
+                all objects are filtered
             prune_empty: whether to remove records from the dataset whose
                 labels are empty after filtering. By default, this is True
         '''
         self.schema = schema
         self.remove_objects_without_attrs = remove_objects_without_attrs
+        self.object_labels_to_filter = object_labels_to_filter
         self.prune_empty = prune_empty
 
     def transform(self, src):
@@ -2780,8 +2785,16 @@ class SchemaFilter(DatasetTransformer):
         src.clear()
         for record in old_records:
             labels = record.get_labels()
-            labels.filter_by_schema(self.schema,
-                                    self.remove_objects_without_attrs)
+
+            # filter by schema
+            labels.filter_by_schema(self.schema)
+
+            # filter objects that don't have attributes
+            if self.remove_objects_without_attrs:
+                labels.remove_objects_without_attrs(
+                    labels=self.object_labels_to_filter)
+
+            # add the filtered record to the new dataset
             if not self.prune_empty or not labels.is_empty:
                 record.set_labels(labels)
                 src.add(record)

@@ -176,23 +176,32 @@ class DetectedObjectContainer(Container):
         '''
         self.sort_by("frame_number", reverse=reverse)
 
-    def filter_by_schema(self, schema, remove_objects_without_attrs=False):
+    def filter_by_schema(self, schema):
         '''Filters the objects/attributes from this container that are not
         compliant with the given schema.
 
         Args:
             schema: an ImageLabelsSchema or VideoLabelsSchema
-            remove_objects_without_attrs: (bool) If True, remove objects that no
-                longer have attributes after filtering
         '''
         filter_func = lambda obj: obj.label in schema.objects
         self.filter_elements([filter_func])
         for obj in self:
             if obj.has_attributes:
                 obj.attrs.filter_by_schema(schema.objects[obj.label])
-        if remove_objects_without_attrs:
-            filter_func = lambda obj: obj.has_attributes
-            self.filter_elements([filter_func])
+
+    def remove_objects_without_attrs(self, labels=None):
+        '''Filters the objects from this container that do not have attributes.
+
+        Args:
+            labels: an optional list of DetectedObject label strings to which
+                to restrict attention when filtering. By default, all objects
+                are processed
+        '''
+        filter_func = lambda obj: (
+            (labels is not None and obj.label not in labels)
+            or obj.has_attributes
+        )
+        self.filter_elements([filter_func])
 
 
 class ObjectCount(Serializable):
