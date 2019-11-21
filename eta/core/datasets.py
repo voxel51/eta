@@ -1780,31 +1780,37 @@ class LabeledDatasetBuilder(object):
         )
 
         dataset = self.dataset_cls.create_empty_dataset(path, description)
+        dataset_dir = os.path.dirname(path)
+        data_subdir = os.path.join(dataset_dir, dataset._DATA_SUBDIR)
+        labels_subdir = os.path.join(dataset_dir, dataset._LABELS_SUBDIR)
 
-        with etau.TempDir(tmp_dir_base) as tmp_dir:
-            for record in self._dataset:
-                data_filename = os.path.basename(record.data_path)
-                data_path = os.path.join(tmp_dir, data_filename)
-                labels_filename = os.path.basename(record.labels_path)
-                labels_path = os.path.join(tmp_dir, labels_filename)
+        for record in self._dataset:
+            data_filename = os.path.basename(record.data_path)
+            labels_filename = os.path.basename(record.labels_path)
 
-                # add an incrementing index to the filename until a unique name
-                # is found
-                data_basename, data_ext = os.path.splitext(data_filename)
-                labels_basename, labels_ext = os.path.splitext(labels_filename)
-                idx = -1
-                while dataset.has_data_with_name(data_path):
-                    idx += 1
-                    unique_appender = "-{}".format(idx)
-                    data_path = os.path.join(
-                        tmp_dir, data_basename + unique_appender + data_ext
-                    )
-                    labels_path = os.path.join(
-                        tmp_dir, labels_basename + unique_appender + labels_ext
-                    )
+            # add an incrementing index to the filename until a unique name
+            # is found
+            data_basename, data_ext = os.path.splitext(data_filename)
+            labels_basename, labels_ext = os.path.splitext(labels_filename)
+            idx = -1
+            data_path = None
+            while True:
+                idx += 1
+                unique_appender = "-{}".format(idx)
+                data_path = os.path.join(
+                    data_subdir,
+                    data_basename + unique_appender + data_ext
+                )
+                if dataset.has_data_with_name(data_path):
+                    continue
+                labels_path = os.path.join(
+                    labels_subdir,
+                    labels_basename + unique_appender + labels_ext
+                )
+                break
 
-                record.build(data_path, labels_path, pretty_print=pretty_print)
-                dataset.add_file(data_path, labels_path, file_method=MOVE)
+            record.build(data_path, labels_path, pretty_print=pretty_print)
+            dataset.add_file(data_path, labels_path, file_method=MOVE)
 
         dataset.write_manifest(os.path.basename(path))
         return dataset
