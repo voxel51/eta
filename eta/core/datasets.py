@@ -1750,7 +1750,7 @@ class LabeledDatasetBuilder(object):
         return self._dataset.record_cls
 
     def build(self, path, description=None, pretty_print=False,
-              tmp_dir_base=None, create_empty=False, data_method="copy"):
+              create_empty=False, data_method="copy"):
         '''Build the new LabeledDataset after all records and transformations
         have been added.
 
@@ -1759,7 +1759,6 @@ class LabeledDatasetBuilder(object):
             description: optional dataset description
             pretty_print: whether to pretty print JSON labels. By default, this
                 is False
-            tmp_dir_base: optional directory in which to make temp dirs
             create_empty: whether to write empty datasets to disk. By default,
                 this is False
             data_method: how to add the data files to the dataset, when
