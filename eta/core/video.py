@@ -503,8 +503,9 @@ class VideoFrameLabels(Serializable):
         attributes.
 
         Args:
-            labels: an optional list of object labels to which to restrict
-                attention when filtering. By default, all objects are processed
+            labels: an optional list of DetectedObject label strings to which
+                to restrict attention when filtering. By default, all objects
+                are processed
         '''
         self.objects.remove_objects_without_attrs(labels=labels)
 
@@ -835,8 +836,9 @@ class VideoLabels(Serializable):
         attributes.
 
         Args:
-            labels: an optional list of object labels to which to restrict
-                attention when filtering. By default, all objects are processed
+            labels: an optional list of DetectedObject label strings to which
+                to restrict attention when filtering. By default, all objects
+                are processed
         '''
         for frame_labels in itervalues(self.frames):
             frame_labels.remove_objects_without_attrs(labels=labels)
@@ -1384,8 +1386,9 @@ class VideoSetLabels(Set):
         attributes.
 
         Args:
-            labels: an optional list of object labels to which to restrict
-                attention when filtering. By default, all objects are processed
+            labels: an optional list of DetectedObject label strings to which
+                to restrict attention when filtering. By default, all objects
+                are processed
         '''
         for video_labels in self:
             video_labels.remove_objects_without_attrs(labels=labels)
@@ -1515,8 +1518,9 @@ class BigVideoSetLabels(VideoSetLabels, BigSet):
         attributes.
 
         Args:
-            labels: an optional list of object labels to which to restrict
-                attention when filtering. By default, all objects are processed
+            labels: an optional list of DetectedObject label strings to which
+                to restrict attention when filtering. By default, all objects
+                are processed
         '''
         for key in self.keys():
             video_labels = self[key]

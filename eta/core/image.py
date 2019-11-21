@@ -189,8 +189,9 @@ class ImageLabels(Serializable):
         attributes.
 
         Args:
-            labels: an optional list of object labels to which to restrict
-                attention when filtering. By default, all objects are processed
+            labels: an optional list of DetectedObject label strings to which
+                to restrict attention when filtering. By default, all objects
+                are processed
         '''
         self.objects.remove_objects_without_attrs(labels=labels)
 
@@ -637,8 +638,9 @@ class ImageSetLabels(Set):
         have attributes.
 
         Args:
-            labels: an optional list of object labels to which to restrict
-                attention when filtering. By default, all objects are processed
+            labels: an optional list of DetectedObject label strings to which
+                to restrict attention when filtering. By default, all objects
+                are processed
         '''
         for image_labels in self:
             image_labels.remove_objects_without_attrs(labels=labels)
@@ -777,8 +779,9 @@ class BigImageSetLabels(ImageSetLabels, BigSet):
         have attributes.
 
         Args:
-            labels: an optional list of object labels to which to restrict
-                attention when filtering. By default, all objects are processed
+            labels: an optional list of DetectedObject label strings to which
+                to restrict attention when filtering. By default, all objects
+                are processed
         '''
         for key in self.keys():
             image_labels = self[key]

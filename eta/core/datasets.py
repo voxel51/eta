@@ -2761,9 +2761,9 @@ class SchemaFilter(DatasetTransformer):
                 attributes, after filtering. Use the `object_labels_to_filter`
                 argument to control which object labels are filtered. By
                 default, this is False
-            object_labels_to_filter: an optional list of object labels for
-                which to restrict attention when filtering objects with no
-                attributes. If None, all objects are filtered
+            object_labels_to_filter: an optional list of DetectedObject label
+                strings to which to restrict attention when filtering. If None,
+                all objects are filtered
             prune_empty: whether to remove records from the dataset whose
                 labels are empty after filtering. By default, this is True
         '''
