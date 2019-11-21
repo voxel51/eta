@@ -33,7 +33,7 @@ from eta.core.config import Config, Configurable
 from eta.core.diagram import HasBlockDiagram, BlockdiagPipeline
 import eta.core.graph as etag
 import eta.core.job as etaj
-import eta.core.log as etal
+import eta.core.logging as etal
 import eta.core.module as etam
 import eta.core.status as etas
 import eta.core.types as etat
