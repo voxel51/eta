@@ -11,7 +11,7 @@
         "apply_object_detector.detector": {
             "type": "eta.detectors.TFModelsDetector",
             "config": {
-                "model_name": "ssd-resnet50-v1-fpn-coco"
+                "model_name": "ssd-resnet50-fpn-coco"
             }
         },
         "apply_object_detector.objects": [
