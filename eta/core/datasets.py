@@ -1840,7 +1840,6 @@ class LabeledDatasetBuilder(object):
                         tmp_dir, labels_basename + unique_appender + labels_ext)
 
                 record.build(data_path, labels_path, pretty_print=pretty_print)
-
                 dataset.add_file_and_rename(data_path, labels_path,
                                             os.path.basename(record.new_data_path),
                                             os.path.basename(record.new_labels_path),
@@ -2994,17 +2993,26 @@ class Merger(DatasetTransformer):
         # Prepend the folder name containing the record
         if self.prepend:
             for record in self._builder_dataset_to_merge.records:
-
-                print("dpath:", record.data_path)
                 base = os.path.basename(os.path.dirname(os.path.dirname(record.data_path)))
-
                 record.new_data_path = base + '_' + os.path.basename(record.data_path)
                 record.new_labels_path = base + '_' + os.path.basename(record.labels_path)
 
-                print("new_dpath:", record.new_data_path)
-                print("new_lpath:", record.new_labels_path)
-
         src.add_container(self._builder_dataset_to_merge)
+
+class PrependDatasetNameToRecords(DatasetTransformer):
+    ''' TODO '''
+
+    def transform(self, src):
+        ''' TODO '''
+        for i in range(len(src.records)):
+            base = os.path.basename(os.path.dirname(os.path.dirname(
+                src.records[i].data_path)))
+
+            src.records[i].new_data_path = base + '_' + \
+                os.path.basename(src.records[i].data_path)
+
+            src.records[i].new_labels_path = base + '_' + \
+                os.path.basename(src.records[i].labels_path)
 
 
 class FilterByFilename(DatasetTransformer):
