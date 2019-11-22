@@ -765,7 +765,10 @@ class LabeledDataset(object):
         labels_subdir = os.path.join(self.data_dir, self._LABELS_SUBDIR)
         if os.path.dirname(data_path) != data_subdir:
             if move_files:
-                etau.move_file(data_path, os.path.join(data_subdir, new_data_path))
+                print(data_path)
+                out_path = os.path.join(data_subdir, new_data_path)
+                print(out_path)
+                etau.move_file(data_path, out_path)
             else:
                 etau.copy_file(data_path, os.path.join(data_subdir, new_data_path))
         if os.path.dirname(labels_path) != labels_subdir:
