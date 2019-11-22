@@ -765,9 +765,9 @@ class LabeledDataset(object):
         labels_subdir = os.path.join(self.data_dir, self._LABELS_SUBDIR)
         if os.path.dirname(data_path) != data_subdir:
             if move_files:
-                print(data_path)
+                print("data_path:", data_path)
                 out_path = os.path.join(data_subdir, new_data_path)
-                print(out_path)
+                print("out_path:", out_path)
                 etau.move_file(data_path, out_path)
             else:
                 etau.copy_file(data_path, os.path.join(data_subdir, new_data_path))
@@ -2999,8 +2999,8 @@ class Merger(DatasetTransformer):
                 record.new_labels_path = os.path.basename(os.path.dirname(
                     record.labels_path)) + '_' + os.path.basename(record.labels_path)
 
-                print(record.data_path)
-                print(record.labels_path)
+                print(record.new_data_path)
+                print(record.new_labels_path)
 
         src.add_container(self._builder_dataset_to_merge)
 
