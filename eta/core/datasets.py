@@ -706,7 +706,7 @@ class LabeledDataset(object):
             data_path: path to data file to be added
             labels_path: path to corresponding labels file to be added
             file_method: how to add the files to the dataset. One of "copy",
-                "link", move", or "symlink". A tuple, e.g. `("move", "copy")`,
+                "link", "move", or "symlink". A tuple, e.g. `("move", "copy")`,
                 may be used as well to move data files and copy labels files,
                 for example. The default is "copy"
             error_on_duplicates: whether to raise an error if the file
@@ -833,7 +833,7 @@ class LabeledDataset(object):
                 copy of the dataset that will be written. The containing
                 directory must either not exist or be empty.
             file_method: how to add the files to the dataset. One of "copy",
-                "link", move", or "symlink". A tuple, e.g. `("move", "copy")`,
+                "link", "move", or "symlink". A tuple, e.g. `("move", "copy")`,
                 may be used as well to move data files and copy labels files,
                 for example. The default is "copy"
 
@@ -886,7 +886,7 @@ class LabeledDataset(object):
             description: optional description for the manifest of the merged
                 dataset. If not specified, the existing description is used.
             file_method: how to add the files to the dataset. One of "copy",
-                "link", move", or "symlink". A tuple, e.g. `("move", "copy")`,
+                "link", "move", or "symlink". A tuple, e.g. `("move", "copy")`,
                 may be used as well to move data files and copy labels files,
                 for example. The default is "copy"
 
@@ -1763,7 +1763,7 @@ class LabeledDatasetBuilder(object):
                 this is False
             data_method: how to add the data files to the dataset, when
                 applicable. If clipping is required, this option is ignored,
-                for example. One of "copy", "link", move", or "symlink". Labels
+                for example. One of "copy", "link", "move", or "symlink". Labels
                 files are written from their class instances and do not apply.
 
         Returns:
