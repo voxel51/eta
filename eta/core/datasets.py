@@ -3000,10 +3000,18 @@ class Merger(DatasetTransformer):
         src.add_container(self._builder_dataset_to_merge)
 
 class PrependDatasetNameToRecords(DatasetTransformer):
-    ''' TODO '''
+    ''' Given a labeled dataset, this transformation prepends the dataset name
+    followed by an underscore to all data and label files in the dataset.
+    E.g. mydataset/data/vid.mp4 is now mydataset/data/mydataset_vid.mp4
+    '''
 
     def transform(self, src):
-        ''' TODO '''
+        '''Prepends the dataset name and an underscore to all records in the
+        dataset
+
+        Args:
+            src: a BuilderDataset
+        '''
         for i in range(len(src.records)):
             base = os.path.basename(os.path.dirname(os.path.dirname(
                 src.records[i].data_path)))
