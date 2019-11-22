@@ -2968,8 +2968,8 @@ class Merger(DatasetTransformer):
                 to be merged with the existing one
             prepend_dataset_name: This flag enables an option to prepend both
                 the data and labels filepaths with the folder name containing
-                the original files. E.g. /path/to/dataset001/001-123.mp4 =>
-                /new_directory/dataset001_001-123
+                the original files. E.g. /path/to/dataset001/data/001-123.mp4 =>
+                /new_directory/data/dataset001_001-123
         '''
         self._builder_dataset_to_merge = dataset_builder.builder_dataset
         self.prepend_dataset_name = prepend_dataset_name
