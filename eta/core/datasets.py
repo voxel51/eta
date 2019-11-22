@@ -1750,7 +1750,7 @@ class LabeledDatasetBuilder(object):
         return self._dataset.record_cls
 
     def build(self, path, description=None, pretty_print=False,
-              create_empty=False, data_method="copy"):
+              create_empty=False, data_method=COPY):
         '''Build the new LabeledDataset after all records and transformations
         have been added.
 
