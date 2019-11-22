@@ -530,7 +530,7 @@ def link_file(filepath, linkpath, check_ext=False):
         assert_same_extensions(filepath, linkpath)
     ensure_basedir(linkpath)
     if os.path.exists(linkpath):
-        os.remove(linkpath)
+        delete_file(linkpath)
     os.link(os.path.realpath(filepath), linkpath)
 
 
@@ -554,7 +554,7 @@ def symlink_file(filepath, linkpath, check_ext=False):
         assert_same_extensions(filepath, linkpath)
     ensure_basedir(linkpath)
     if os.path.exists(linkpath):
-        os.remove(linkpath)
+        delete_file(linkpath)
     os.symlink(os.path.realpath(filepath), linkpath)
 
 
@@ -771,11 +771,8 @@ def delete_file(path):
 
     Args:
         path: the filepath
-
-    Raises:
-        OSError: if the file did not exist
     '''
-    os.remove(path)
+    communicate_or_die(["rm", "-f",  path])
     try:
         os.removedirs(os.path.dirname(path))
     except OSError:
@@ -855,7 +852,7 @@ def ensure_path(path):
     '''
     if os.path.isfile(path):
         logger.debug("Deleting '%s'", path)
-        os.remove(path)
+        delete_file(path)
 
     ensure_basedir(path)
 
