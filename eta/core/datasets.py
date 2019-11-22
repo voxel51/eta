@@ -1840,6 +1840,11 @@ class LabeledDatasetBuilder(object):
                         tmp_dir, labels_basename + unique_appender + labels_ext)
 
                 record.build(data_path, labels_path, pretty_print=pretty_print)
+
+                base = os.path.basename(os.path.dirname(os.path.dirname(record.data_path)))
+                record.new_data_path = base + '_' + os.path.basename(record.data_path)
+                record.new_labels_path = base + '_' + os.path.basename(record.labels_path)
+
                 dataset.add_file_and_rename(data_path, labels_path,
                                             record.new_data_path,
                                             record.new_labels_path,
