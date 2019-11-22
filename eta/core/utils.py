@@ -599,7 +599,7 @@ def move_dir(indir, outdir):
     if os.path.isdir(outdir):
         delete_dir(outdir)
     ensure_basedir(outdir)
-    communicate_or_die(["mv", inpath, outpath])
+    communicate_or_die(["mv", indir, outdir])
 
 
 def partition_files(indir, outdir=None, num_parts=None, dir_size=None):
