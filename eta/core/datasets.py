@@ -2995,7 +2995,7 @@ class Merger(DatasetTransformer):
             for record in self._builder_dataset_to_merge.records:
 
                 print("dpath:", record.data_path)
-                base = os.path.basename(os.path.basename(os.path.dirname(record.data_path)))
+                base = os.path.basename(os.path.basename(os.path.basename(os.path.dirname(record.data_path))))
 
                 record.new_data_path = base + '_' + os.path.basename(record.data_path)
                 record.new_labels_path = base + '_' + os.path.basename(record.labels_path)
