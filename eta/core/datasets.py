@@ -981,12 +981,12 @@ class LabeledDataset(object):
         data_subdir = os.path.join(self.data_dir, self._DATA_SUBDIR)
         for filename in etau.list_files(data_subdir):
             if filename not in data_filenames:
-                os.remove(os.path.join(data_subdir, filename))
+                etau.delete_file(os.path.join(data_subdir, filename))
 
         labels_subdir = os.path.join(self.data_dir, self._LABELS_SUBDIR)
         for filename in etau.list_files(labels_subdir):
             if filename not in labels_filenames:
-                os.remove(os.path.join(labels_subdir, filename))
+                etau.delete_file(os.path.join(labels_subdir, filename))
 
         return self
 
