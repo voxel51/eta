@@ -2975,7 +2975,7 @@ class PrependDatasetNameToRecords(DatasetTransformer):
         '''
         for i in range(len(src.records)):
             base = _get_dataset_name(src.records[i].data_path)
-            src.records[i].record.prepend_to_name(prefix=base)
+            src.records[i].prepend_to_name(prefix=base)
 
 
 class FilterByFilename(DatasetTransformer):
