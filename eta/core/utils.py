@@ -750,7 +750,8 @@ def copy_dir(indir, outdir):
         outdir: the output directory
     '''
     if os.path.isdir(outdir):
-        e
+        communicate_or_die(["rm", "-rf",  outdir])
+    ensure_dir(outdir)
 
     for filepath in list_files(indir, include_hidden_files=True, sort=False):
         copy_file(
