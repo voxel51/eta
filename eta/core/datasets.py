@@ -705,15 +705,15 @@ class LabeledDataset(object):
         Args:
             data_path: path to data file to be added
             labels_path: path to corresponding labels file to be added
+            file_method: how to add the files to the dataset. One of "copy",
+                "link", move", or "symlink". A tuple, e.g. `("move", "copy")`,
+                may be used as well to move data files and copy labels files,
+                for example. The default is "copy"
             error_on_duplicates: whether to raise an error if the file
                 at `data_path` has the same filename as an existing
                 data file in the dataset. If this is set to `False`, the
                 previous mapping of the data filename to a labels file
                 will be deleted.
-            file_method: how to add the files to the dataset. One of "copy",
-                "link", move", or "symlink". A tuple, e.g. `("move", "copy")`,
-                may be used as well to move data files and copy labels files,
-                for example. The default is "copy"
 
         Returns:
             self
@@ -868,7 +868,7 @@ class LabeledDataset(object):
         return cls(dataset_path)
 
     def merge(self, labeled_dataset_or_path, merged_dataset_path,
-              in_place=False, description=None, file_method="copy"):
+              in_place=False, description=None, file_method=COPY):
         '''Union of two labeled datasets.
 
         Args:
@@ -981,12 +981,12 @@ class LabeledDataset(object):
         data_subdir = os.path.join(self.data_dir, self._DATA_SUBDIR)
         for filename in etau.list_files(data_subdir):
             if filename not in data_filenames:
-                os.unlink(os.path.join(data_subdir, filename))
+                os.remove(os.path.join(data_subdir, filename))
 
         labels_subdir = os.path.join(self.data_dir, self._LABELS_SUBDIR)
         for filename in etau.list_files(labels_subdir):
             if filename not in labels_filenames:
-                os.unlink(os.path.join(labels_subdir, filename))
+                os.remove(os.path.join(labels_subdir, filename))
 
         return self
 
@@ -1886,7 +1886,7 @@ class BuilderDataRecord(BaseDataRecord):
         return self._labels_path
 
     def build(self, data_path, labels_path, pretty_print=False,
-              data_method="copy"):
+              data_method=COPY):
         '''Write the transformed labels and data files to dir_path. The
         subclasses BuilderVideoRecord and BuilderDataRecord are responsible for
         writing the data file.

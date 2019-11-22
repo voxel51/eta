@@ -1262,8 +1262,8 @@ def list_files(dir_path, abs_paths=False, recursive=False,
             default, this is False
         recursive: whether to recursively traverse subdirectories. By default,
             this is False
-        sort: whether to sort the list of files
         include_hidden_files: whether to include dot files
+        sort: whether to sort the list of files
 
     Returns:
         a sorted list of the non-hidden files in the directory
