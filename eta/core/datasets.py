@@ -1842,8 +1842,8 @@ class LabeledDatasetBuilder(object):
                 record.build(data_path, labels_path, pretty_print=pretty_print)
 
                 dataset.add_file_and_rename(data_path, labels_path,
-                                            record.new_data_path,
-                                            record.new_labels_path,
+                                            os.path.basename(record.new_data_path),
+                                            os.path.basename(record.new_labels_path),
                                             move_files=True)
 
         dataset.write_manifest(os.path.basename(path))
