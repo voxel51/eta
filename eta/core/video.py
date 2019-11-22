@@ -1961,10 +1961,10 @@ def _sample_select_frames_fast(video_path, frames, output_patt, size):
             # just give the user however many frames we can...
             #
             num_frames = len(etau.parse_pattern(tmp_patt))
-            frames = frames[:num_frames]
             logger.warning(
                 "Only %d of %d expected frames were sampled", num_frames,
                  len(frames))
+            frames = frames[:num_frames]
 
         if output_patt is not None:
             # Move frames into place with correct output names
