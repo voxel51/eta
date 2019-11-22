@@ -42,7 +42,6 @@ from eta.core.serial import Serializable
 import eta.core.utils as etau
 import eta.core.video as etav
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -1642,7 +1641,7 @@ class LabeledDatasetIndex(Serializable):
         return [
             LabeledDatasetIndex(self.type, split_index, description)
             for split_index, description in zip(
-                    split_indices, descriptions)]
+                split_indices, descriptions)]
 
     @classmethod
     def from_dict(cls, d):
@@ -1794,12 +1793,11 @@ class LabeledDatasetBuilder(object):
                         tmp_dir, labels_basename + unique_appender + labels_ext)
 
                 record.build(data_path, labels_path, pretty_print=pretty_print)
-                dataset.add_file_and_rename(data_path, labels_path,
-                                            os.path.basename(
-                                                record.new_data_path),
-                                            os.path.basename(
-                                                record.new_labels_path),
-                                            move_files=True)
+                dataset.add_file(data_path, labels_path, os.path.basename(
+                    record.new_data_path),
+                                 os.path.basename(
+                                     record.new_labels_path),
+                                 move_files=True)
 
         dataset.write_manifest(os.path.basename(path))
         return dataset
@@ -2023,7 +2021,7 @@ class BuilderVideoRecord(BuilderDataRecord):
             self, clip_end_frame, duration, total_frame_count):
         metadata = etav.VideoMetadata.build_for(self.data_path)
         self.total_frame_count = (
-            total_frame_count or metadata.total_frame_count)
+                total_frame_count or metadata.total_frame_count)
         self.duration = duration or metadata.duration
         self.clip_end_frame = clip_end_frame or metadata.total_frame_count
 
@@ -2221,7 +2219,7 @@ class Balancer(DatasetTransformer):
             return
 
         if (not specified["attribute_name"] and not specified["object_label"]
-            and specified["labels_schema"]):
+                and specified["labels_schema"]):
             return
 
         # Anything else is unacceptable. Raise a ValueError with the
@@ -2382,7 +2380,7 @@ class Balancer(DatasetTransformer):
 
             for frame_no in labels:
                 if (frame_no < record.clip_start_frame or
-                    frame_no >= record.clip_end_frame):
+                        frame_no >= record.clip_end_frame):
                     continue
 
                 frame = labels[frame_no]
