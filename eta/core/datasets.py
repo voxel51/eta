@@ -2973,9 +2973,7 @@ class PrependDatasetNameToRecords(DatasetTransformer):
         '''
         for i in range(len(src.records)):
             base = _get_dataset_name(src.records[i].data_path)
-            print("base:", base)
             src.records[i].prepend_to_name(prefix=base)
-            print("rec:", src.records[i].new_data_path)
 
 
 class FilterByFilename(DatasetTransformer):
