@@ -583,7 +583,7 @@ def move_file(inpath, outpath, check_ext=False):
         if check_ext:
             assert_same_extensions(inpath, outpath)
         ensure_basedir(outpath)
-    shutil.move(inpath, outpath)
+    communicate_or_die(["mv", inpath, outpath])
 
 
 def move_dir(indir, outdir):
@@ -599,7 +599,7 @@ def move_dir(indir, outdir):
     if os.path.isdir(outdir):
         delete_dir(outdir)
     ensure_basedir(outdir)
-    shutil.move(indir, outdir)
+    communicate_or_die(["mv", inpath, outpath])
 
 
 def partition_files(indir, outdir=None, num_parts=None, dir_size=None):
@@ -750,7 +750,7 @@ def copy_dir(indir, outdir):
         outdir: the output directory
     '''
     if os.path.isdir(outdir):
-        shutil.rmtree(outdir)
+        e
 
     for filepath in list_files(indir, include_hidden_files=True, sort=False):
         copy_file(
@@ -788,12 +788,9 @@ def delete_dir(dir_):
 
     Args:
         dir_: the directory path
-
-    Raises:
-        OSError: if the directory did not exist
     '''
     dir_ = os.path.normpath(dir_)
-    shutil.rmtree(dir_)
+    communicate_or_die(["rm", "-rf",  dir_])
     try:
         os.removedirs(os.path.dirname(dir_))
     except OSError:
