@@ -27,6 +27,7 @@ import sys
 
 import eta
 import eta.core.builder as etab
+import eta.constants as etac
 import eta.core.logging as etal
 import eta.core.metadata as etame
 import eta.core.models as etamode
@@ -79,6 +80,7 @@ class ETACommand(Command):
         _register_command(subparsers, "models", ModelsCommand)
         _register_command(subparsers, "modules", ModulesCommand)
         _register_command(subparsers, "pipelines", PipelinesCommand)
+        _register_command(subparsers, "constants", ConstantsCommand)
 
 
 class BuildCommand(Command):
@@ -264,7 +266,8 @@ class CleanCommand(Command):
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "config", nargs="?", help="path to a PipelineConfig file")
+            "config", nargs="?", metavar="PATH",
+            help="path to a PipelineConfig file")
         parser.add_argument(
             "-l", "--last", action="store_true",
             help="cleanup the last built pipeline")
@@ -465,6 +468,24 @@ class PipelinesCommand(Command):
         if args.diagram:
             metadata = etap.load_metadata(args.diagram)
             metadata.render("./" + args.diagram + ".svg")
+
+
+class ConstantsCommand(Command):
+    '''Print constants from `eta.constants`.
+
+    Examples:
+        # Print a constant defined in `eta.constants`
+        eta constants <CONSTANT>
+    '''
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "constant", metavar="CONSTANT", help="the constant to print")
+
+    @staticmethod
+    def run(args):
+        logger.info(getattr(etac, args.constant))
 
 
 def _render_names_in_dirs_str(d):
