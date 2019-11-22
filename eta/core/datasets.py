@@ -2994,13 +2994,14 @@ class Merger(DatasetTransformer):
         if self.prepend:
             for record in self._builder_dataset_to_merge.records:
 
+                print("dpath:", record.data_path)
                 base = os.path.basename(os.path.basename(os.path.dirname(record.data_path)))
 
                 record.new_data_path = base + '_' + os.path.basename(record.data_path)
                 record.new_labels_path = base + '_' + os.path.basename(record.labels_path)
 
-                print(record.new_data_path)
-                print(record.new_labels_path)
+                print("new_dpath:", record.new_data_path)
+                print("new_lpath:", record.new_labels_path)
 
         src.add_container(self._builder_dataset_to_merge)
 
