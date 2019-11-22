@@ -2993,11 +2993,11 @@ class Merger(DatasetTransformer):
         # Prepend the folder name containing the record
         if self.prepend:
             for record in self._builder_dataset_to_merge.records:
-                record.new_data_path = os.path.basename(os.path.dirname(
-                    record.data_path)) + '_' + os.path.basename(record.data_path)
 
-                record.new_labels_path = os.path.basename(os.path.dirname(
-                    record.labels_path)) + '_' + os.path.basename(record.labels_path)
+                base = os.path.basename(os.path.basename(os.path.dirname(record.data_path)))
+
+                record.new_data_path = base + '_' + os.path.basename(record.data_path)
+                record.new_labels_path = base + '_' + os.path.basename(record.labels_path)
 
                 print(record.new_data_path)
                 print(record.new_labels_path)
