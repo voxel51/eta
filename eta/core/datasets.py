@@ -2960,19 +2960,19 @@ class EmptyLabels(DatasetTransformer):
 class Merger(DatasetTransformer):
     '''Merges another dataset into the existing dataset.'''
 
-    def __init__(self, dataset_builder, prepend=True):
+    def __init__(self, dataset_builder, prepend_dataset_name=True):
         '''Creates a Merger instance.
 
         Args:
             dataset_builder: a LabeledDatasetBuilder instance for the dataset
                 to be merged with the existing one
-            prepend: This flag enables an option to prepend both the data and
-                labels filepaths with the folder name containing the original
-                files. E.g. /path/to/dataset001/001-123.mp4 =>
+            prepend_dataset_name: This flag enables an option to prepend both
+                the data and labels filepaths with the folder name containing
+                the original files. E.g. /path/to/dataset001/001-123.mp4 =>
                 /new_directory/dataset001_001-123
         '''
         self._builder_dataset_to_merge = dataset_builder.builder_dataset
-        self.prepend = prepend
+        self.prepend_dataset_name = prepend_dataset_name
 
     def transform(self, src):
         '''Merges the given BuilderDataset into this instance.
@@ -2990,8 +2990,7 @@ class Merger(DatasetTransformer):
                 )
             )
 
-        # Prepend the folder name containing the record
-        if self.prepend:
+        if self.prepend_dataset_name:
             for record in self._builder_dataset_to_merge.records:
                 base = os.path.basename(os.path.dirname(os.path.dirname(record.data_path)))
                 record.new_data_path = base + '_' + os.path.basename(record.data_path)
