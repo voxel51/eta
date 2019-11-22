@@ -730,6 +730,66 @@ class LabeledDataset(object):
 
         return self
 
+    def add_file_and_rename(self, data_path, labels_path, new_data_path,
+                            new_labels_path, move_files=False,
+                            error_on_duplicates=False):
+        '''Adds a single data file and its labels file to this dataset.
+
+        Args:
+            data_path: path to data file to be added
+            labels_path: path to corresponding labels file to be added
+            new_data_path: filename for the data file to be renamed to
+            new_labels_path: filename for the labels file to be renamed to
+            move_files: whether to move the files from their original
+                location into the dataset directory. If False, files
+                are copied into the dataset directory.
+            error_on_duplicates: whether to raise an error if the file
+                at `data_path` has the same filename as an existing
+                data file in the dataset. If this is set to `False`, the
+                previous mapping of the data filename to a labels file
+                will be deleted.
+
+        Returns:
+            self
+
+        Raises:
+            ValueError: if the filename of `data_path` is the same as a
+                data file already present in the dataset and
+                `error_on_duplicates` is True
+        '''
+        if error_on_duplicates and self.has_data_with_name(data_path):
+            raise ValueError("Data file '%s' already present in dataset"
+                             % os.path.basename(data_path))
+
+        data_subdir = os.path.join(self.data_dir, self._DATA_SUBDIR)
+        labels_subdir = os.path.join(self.data_dir, self._LABELS_SUBDIR)
+        if os.path.dirname(data_path) != data_subdir:
+            if move_files:
+                etau.move_file(data_path, os.path.join(data_subdir, new_data_path))
+            else:
+                etau.copy_file(data_path, os.path.join(data_subdir, new_data_path))
+        if os.path.dirname(labels_path) != labels_subdir:
+            if move_files:
+                etau.move_file(labels_path, os.path.join(labels_subdir, new_labels_path))
+            else:
+                etau.copy_file(labels_path, labels_subdir)
+
+        new_data_file = os.path.basename(new_data_path)
+        new_labels_file = os.path.basename(new_labels_path)
+        # First remove any other records with the same data filename
+        self.dataset_index.cull_with_function(
+            lambda record: os.path.basename(record.data) != new_data_file)
+        self.dataset_index.append(
+            LabeledDataRecord(
+                os.path.join(self._DATA_SUBDIR, new_data_file),
+                os.path.join(self._LABELS_SUBDIR, new_labels_file)
+            )
+        )
+
+        self._data_to_labels_map[new_data_file] = new_labels_file
+
+        return self
+
     def add_data(self, data, labels, data_filename, labels_filename,
                  error_on_duplicates=False):
         '''Creates and adds a single data file and its labels file to this
@@ -1758,9 +1818,9 @@ class LabeledDatasetBuilder(object):
 
         with etau.TempDir(tmp_dir_base) as tmp_dir:
             for record in self._dataset:
-                data_filename = os.path.basename(record.new_data_path)
+                data_filename = os.path.basename(record.data_path)
                 data_path = os.path.join(tmp_dir, data_filename)
-                labels_filename = os.path.basename(record.new_labels_path)
+                labels_filename = os.path.basename(record.labels_path)
                 labels_path = os.path.join(tmp_dir, labels_filename)
 
                 # add an incrementing index to the filename until a unique name
@@ -1777,7 +1837,10 @@ class LabeledDatasetBuilder(object):
                         tmp_dir, labels_basename + unique_appender + labels_ext)
 
                 record.build(data_path, labels_path, pretty_print=pretty_print)
-                dataset.add_file(data_path, labels_path, move_files=True)
+                dataset.add_file_and_rename(data_path, labels_path,
+                                            record.new_data_path,
+                                            record.new_labels_path,
+                                            move_files=True)
 
         dataset.write_manifest(os.path.basename(path))
         return dataset
