@@ -26,6 +26,7 @@ import os
 
 # Directories
 ETA_DIR = os.path.abspath(os.path.dirname(__file__))
+ETA_CONFIG_DIR = os.path.join(os.path.expanduser("~"), ".eta")
 BASE_DIR = os.path.dirname(ETA_DIR)
 EXAMPLES_DIR = os.path.join(BASE_DIR, "examples")
 RESOURCES_DIR = os.path.join(ETA_DIR, "resources")
