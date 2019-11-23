@@ -927,19 +927,17 @@ class GoogleCloudStorageClient(
         '''Creates a GoogleCloudStorageClient instance.
 
         Args:
-            credentials: a `google.auth.credentials.Credentials instance`. If
-                not provided, the `GOOGLE_APPLICATION_CREDENTIALS` environment
-                variable must be set to point to a valid service account JSON
-                file
+            credentials: an optional `google.auth.credentials.Credentials`
+                instance. If not provided, active credentials are automatically
+                loaded as described in `NeedsGoogleCredentials`
             chunk_size: an optional chunk size (in bytes) to use for uploads
                 and downloads. By default, `DEFAULT_CHUNK_SIZE` is used
         '''
-        if credentials:
-            self._client = gcs.Client(
-                credentials=credentials, project=credentials.project_id)
-        else:
-            # Uses credentials from GOOGLE_APPLICATION_CREDENTIALS
-            self._client = gcs.Client()
+        if credentials is None:
+            credentials = self.load_credentials()
+
+        self._client = gcs.Client(
+            credentials=credentials, project=credentials.project_id)
         self.chunk_size = chunk_size or self.DEFAULT_CHUNK_SIZE
 
     @google_cloud_api_retry
