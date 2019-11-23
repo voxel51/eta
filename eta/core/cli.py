@@ -25,6 +25,8 @@ import logging
 import os
 import sys
 
+from tabulate import tabulate
+
 import eta
 import eta.core.builder as etab
 import eta.constants as etac
@@ -33,7 +35,8 @@ import eta.core.metadata as etame
 import eta.core.models as etamode
 import eta.core.module as etamodu
 import eta.core.pipeline as etap
-import eta.core.serial as etas
+from eta.core.serial import load_json, json_to_str
+import eta.core.storage as etas
 import eta.core.utils as etau
 
 
@@ -81,6 +84,8 @@ class ETACommand(Command):
         _register_command(subparsers, "modules", ModulesCommand)
         _register_command(subparsers, "pipelines", PipelinesCommand)
         _register_command(subparsers, "constants", ConstantsCommand)
+        _register_command(subparsers, "auth", AuthCommand)
+        _register_command(subparsers, "gdrive", GoogleDriveCommand)
 
 
 class BuildCommand(Command):
@@ -104,22 +109,22 @@ class BuildCommand(Command):
         request = parser.add_argument_group("request arguments")
         request.add_argument("-n", "--name", help="pipeline name")
         request.add_argument(
-            "-r", "--request", type=etas.load_json,
+            "-r", "--request", type=load_json,
             help="path to a PipelineBuildRequest file")
         request.add_argument(
-            "-i", "--inputs", type=etas.load_json,
+            "-i", "--inputs", type=load_json,
             metavar="'KEY=VAL,...'", help="pipeline inputs")
         request.add_argument(
-            "-o", "--outputs", type=etas.load_json,
+            "-o", "--outputs", type=load_json,
             metavar="'KEY=VAL,...'", help="pipeline outputs")
         request.add_argument(
-            "-p", "--parameters", type=etas.load_json,
+            "-p", "--parameters", type=load_json,
             metavar="'KEY=VAL,...'", help="pipeline parameters")
         request.add_argument(
-            "-e", "--eta-config", type=etas.load_json,
+            "-e", "--eta-config", type=load_json,
             metavar="'KEY=VAL,...'", help="ETA config settings")
         request.add_argument(
-            "-l", "--logging", type=etas.load_json,
+            "-l", "--logging", type=load_json,
             metavar="'KEY=VAL,...'", help="logging config settings")
         request.add_argument(
             "--patterns", type=etau.parse_kvps, metavar="'KEY=VAL,...'",
@@ -168,8 +173,7 @@ class BuildCommand(Command):
 
         # Replace any patterns
         if args.patterns:
-            d = etas.load_json(
-                etau.fill_patterns(etas.json_to_str(d), args.patterns))
+            d = load_json(etau.fill_patterns(json_to_str(d), args.patterns))
 
         logger.info("Parsing pipeline request")
         request = etab.PipelineBuildRequest.from_dict(d)
@@ -486,6 +490,120 @@ class ConstantsCommand(Command):
     @staticmethod
     def run(args):
         logger.info(getattr(etac, args.constant))
+
+
+class AuthCommand(Command):
+    '''Tools for configuring authentication credentials.'''
+
+    @staticmethod
+    def setup(parser):
+        subparsers = parser.add_subparsers(title="available commands")
+        _register_command(subparsers, "show", ShowAuthCommand)
+        _register_command(subparsers, "activate", ActivateAuthCommand)
+        _register_command(subparsers, "clean", CleanAuthCommand)
+
+
+class ShowAuthCommand(Command):
+    '''Show info about active credentials.
+
+    Examples:
+        # Print info about all active credentials
+        eta auth show
+
+        # Print info about active Google credentials
+        eta auth show --google
+    '''
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "--google", action="store_true",
+            help="show info about Google credentials")
+        parser.add_argument(
+            "--aws", action="store_true",
+            help="show info about AWS credentials")
+
+    @staticmethod
+    def run(args):
+        all_credentials = not args.google and not args.aws
+
+        if args.google or all_credentials:
+            _print_google_credentials_info()
+
+        if args.aws or all_credentials:
+            pass
+
+
+def _print_google_credentials_info():
+    credentials_path = \
+        etas.NeedsGoogleCredentials.get_active_credentials_path()
+    credentials = etas.NeedsGoogleCredentials.load_credentials_json(
+        credentials_path)
+    contents = [
+        ("project id", credentials["project_id"]),
+        ("client email", credentials["client_email"]),
+        ("private key id", credentials["private_key_id"]),
+        ("path", credentials_path),
+    ]
+    table_str = tabulate(contents, tablefmt="plain")
+    logger.info(table_str)
+
+
+class ActivateAuthCommand(Command):
+    '''Activate authentication credentials.
+
+    Examples:
+        # Activate Google credentials
+        eta auth activate --google '/path/to/service-account.json'
+
+        # Activate AWS credentials
+        eta auth activate --aws '/path/to/credentials.ini'
+    '''
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "--google", metavar="PATH",
+            help="path to Google service account JSON file")
+        parser.add_argument(
+            "--aws", metavar="PATH", help="path to AWS credentials file")
+
+    @staticmethod
+    def run(args):
+        if args.google:
+            etas.NeedsGoogleCredentials.activate_credentials(args.google)
+
+        if args.aws:
+            pass
+
+
+class CleanAuthCommand(Command):
+    '''Deletes the active API token, if any.'''
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "--google", action="store_true",
+            help="delete the active Google credentials")
+        parser.add_argument(
+            "--aws", action="store_true",
+            help="delete the active AWS credentials")
+
+    @staticmethod
+    def run(args):
+        if args.google:
+            etas.NeedsGoogleCredentials.deactivate_credentials()
+
+        if args.aws:
+            pass
+
+
+class GoogleDriveCommand(Command):
+    '''Tools for working with Google Drive storage.'''
+
+    @staticmethod
+    def setup(parser):
+        subparsers = parser.add_subparsers(title="available commands")
 
 
 def _render_names_in_dirs_str(d):
