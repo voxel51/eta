@@ -51,6 +51,7 @@ import pysftp
 from retrying import retry
 import requests
 
+import eta.constants as etac
 import eta.core.serial as etas
 import eta.core.utils as etau
 
@@ -749,28 +750,159 @@ class NeedsGoogleCredentials(object):
     '''Mixin for classes that need a `google.auth.credentials.Credentials`
     instance to take authenticated actions.
 
-    By convention, storage client classes that derive from this class should
-    allow users to set the `GOOGLE_APPLICATION_CREDENTIALS` environment
-    variable to point to a valid service account JSON file rather than
-    constructing an instance using the `from_json()` method.
+    Storage clients that dervie from this class should allow users to provide
+    credentials in the following ways (in order of precedence):
+
+        (1) manually constructing an instance of the class via the
+            `cls.from_json()` method by providing a path to a valid service
+            account JSON file
+
+        (2) setting the `GOOGLE_APPLICATION_CREDENTIALS` environment variable
+            to point to a service account JSON file
+
+        (3) loading credentials from `~/.eta/google-credentials.json` that have
+            been activated via `cls.activate_credentials()`
+
+    In the above, the service account JSON file should have syntax similar to
+    the following:
+
+    ```
+    {
+      "type": "service_account",
+      "project_id": "<project-id>",
+      "private_key_id": "<private-key-id>",
+      "private_key": "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n",
+      "client_email": "<account-name>@<project-id>.iam.gserviceaccount.com",
+      "client_id": "<client-id>",
+      "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+      "token_uri": "https://oauth2.googleapis.com/token",
+      "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+      "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/..."
+    }
+    ```
 
     See the following page for more information:
     https://cloud.google.com/docs/authentication/getting-started
     '''
 
+    CREDENTIALS_ENV_VAR = "GOOGLE_APPLICATION_CREDENTIALS"
+    CREDENTIALS_PATH = os.path.join(
+        etac.ETA_CONFIG_DIR, "google-credentials.json")
+
     @classmethod
-    def from_json(cls, credentials_json_path):
+    def activate_credentials(cls, credentials_path):
+        '''Activate the credentials by copying them to
+        `~/.eta/google-credentials.json`.
+
+        Args:
+            credentials_path: the path to a service account JSON file
+        '''
+        etau.copy_file(credentials_path, cls.CREDENTIALS_PATH)
+        logger.info(
+            "Google credentials successfully activated at '%s'",
+            cls.CREDENTIALS_PATH)
+
+    @classmethod
+    def deactivate_credentials(cls):
+        '''Deactivates (deletes) the currently active credentials, if any.
+
+        Active credentials (if any) are at `~/.eta/google-credentials.json`.
+        '''
+        try:
+            os.remove(cls.CREDENTIALS_PATH)
+            logger.info(
+                "Google credentials '%s' successfully deactivated",
+                cls.CREDENTIALS_PATH)
+        except OSError:
+            logger.info("No Google credentials to deactivate")
+
+    @classmethod
+    def get_active_credentials_path(cls):
+        '''Gets the path to the active credentials.
+
+        If the `GOOGLE_APPLICATION_CREDENTIALS` environment variable is set,
+        that path is used. Otherwise, ``~/.eta/google-credentials.json` is
+        used.
+
+        Returns:
+            the path to the active credentials
+
+        Raises:
+            GoogleCredentialsError if no credentials were found
+        '''
+        credentials_path = os.environ.get(cls.CREDENTIALS_ENV_VAR, None)
+        if credentials_path is not None:
+            if not os.path.isfile(credentials_path):
+                raise GoogleCredentialsError(
+                    "No Google credentials found at '%s=%s'" %
+                    (cls.CREDENTIALS_ENV_VAR, credentials_path))
+        elif os.path.isfile(cls.CREDENTIALS_PATH):
+            credentials_path = cls.CREDENTIALS_PATH
+        else:
+            raise GoogleCredentialsError("No Google credentials found")
+
+        return credentials_path
+
+    @classmethod
+    def load_credentials(cls, credentials_path=None):
+        '''Loads Google credentials as an `google.auth.credentials.Credentials`
+        instance.
+
+        Args:
+            credentials_path: an optional path to a service account JSON file.
+                If omitted `cls.get_active_credentials_path()` is used to
+                locate the active credentials
+
+        Returns:
+            an `google.auth.credentials.Credentials` instance
+        '''
+        info = cls.load_credentials_json(credentials_path=credentials_path)
+        return gos.Credentials.from_service_account_info(info)
+
+    @classmethod
+    def load_credentials_json(cls, credentials_path=None):
+        '''Loads the Google credentials as a JSON dictionary.
+
+        Args:
+            credentials_path: an optional path to a service account JSON file.
+                If omitted `cls.get_active_credentials_path()` is used to
+                locate the active credentials
+
+        Returns:
+            a service account JSON dictionary
+        '''
+        if credentials_path is None:
+            credentials_path = cls.get_active_credentials_path()
+
+        return etas.read_json(credentials_path)
+
+    @classmethod
+    def from_json(cls, credentials_path):
         '''Creates a cls instance from the given service account JSON file.
 
         Args:
-            credentials_json_path: the path to a service account JSON file
+            credentials_path: the path to a service account JSON file
 
         Returns:
-            an instance of cls with the given credentials
+            an instance of cls
         '''
-        info = etas.read_json(credentials_json_path)
-        credentials = gos.Credentials.from_service_account_info(info)
+        credentials = cls.load_credentials(credentials_path=credentials_path)
         return cls(credentials)
+
+
+class GoogleCredentialsError(Exception):
+    '''Error raised when a problem with Google credentials is encountered.'''
+
+    def __init__(self, message):
+        '''Creates a GoogleCredentialsError instance.
+
+        Args:
+            message: the error message
+        '''
+        super(GoogleCredentialsError, self).__init__(
+            "%s. Read the documentation for "
+            "`eta.core.storage.NeedsGoogleCredentials` for more information "
+            "about authenticating with Google services." % message)
 
 
 class GoogleCloudStorageClient(
