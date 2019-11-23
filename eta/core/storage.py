@@ -1168,20 +1168,17 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
         '''Creates a GoogleDriveStorageClient instance.
 
         Args:
-            credentials: a `google.auth.credentials.Credentials` instance. If
-                not provided, the `GOOGLE_APPLICATION_CREDENTIALS` environment
-                variable must be set to point to a valid service account JSON
-                file
+            credentials: an optional `google.auth.credentials.Credentials`
+                instance. If not provided, active credentials are automatically
+                loaded as described in `NeedsGoogleCredentials`
             chunk_size: an optional chunk size (in bytes) to use for uploads
                 and downloads. By default, `DEFAULT_CHUNK_SIZE` is used
         '''
-        if credentials:
-            self._service = gad.build(
-                "drive", "v3", credentials=credentials, cache_discovery=False)
-        else:
-            # Uses credentials from GOOGLE_APPLICATION_CREDENTIALS
-            self._service = gad.build("drive", "v3", cache_discovery=False)
+        if credentials is None:
+            credentials = self.load_credentials()
 
+        self._service = gad.build(
+            "drive", "v3", credentials=credentials, cache_discovery=False)
         self.chunk_size = chunk_size or self.DEFAULT_CHUNK_SIZE
 
     def upload(self, local_path, folder_id, filename=None, content_type=None):
