@@ -512,6 +512,9 @@ class ShowAuthCommand(Command):
 
         # Print info about active Google credentials
         eta auth show --google
+
+        # Print info about active AWS credentials
+        eta auth show --aws
     '''
 
     @staticmethod
@@ -525,28 +528,50 @@ class ShowAuthCommand(Command):
 
     @staticmethod
     def run(args):
-        all_credentials = not args.google and not args.aws
-
-        if args.google or all_credentials:
+        if args.google:
             _print_google_credentials_info()
 
-        if args.aws or all_credentials:
-            pass
+        if args.aws:
+            _print_aws_credentials_info()
+
+        all_credentials = not args.google and not args.aws
+        if all_credentials:
+            try:
+                _print_google_credentials_info()
+            except etas.GoogleCredentialsError:
+                pass
+
+            try:
+                _print_aws_credentials_info()
+            except etas.AWSCredentialsError:
+                pass
 
 
 def _print_google_credentials_info():
-    credentials_path = \
-        etas.NeedsGoogleCredentials.get_active_credentials_path()
-    credentials = etas.NeedsGoogleCredentials.load_credentials_json(
-        credentials_path)
+    credentials, path = etas.NeedsGoogleCredentials.load_credentials_json()
     contents = [
         ("project id", credentials["project_id"]),
         ("client email", credentials["client_email"]),
         ("private key id", credentials["private_key_id"]),
-        ("path", credentials_path),
+        ("path", path),
     ]
-    table_str = tabulate(contents, tablefmt="plain")
-    logger.info(table_str)
+    table_str = tabulate(
+        contents, headers=["Google credentials", ""], tablefmt="simple")
+    logger.info(table_str + "\n")
+
+
+def _print_aws_credentials_info():
+    credentials, path = etas.NeedsAWSCredentials.load_credentials()
+    contents = []
+    for key, value in iteritems(credentials):
+        contents.append((key.lower().replace("_", " "), value))
+
+    if path:
+        contents.append(("path", path))
+
+    table_str = tabulate(
+        contents, headers=["AWS credentials", ""], tablefmt="simple")
+    logger.info(table_str + "\n")
 
 
 class ActivateAuthCommand(Command):
@@ -574,11 +599,11 @@ class ActivateAuthCommand(Command):
             etas.NeedsGoogleCredentials.activate_credentials(args.google)
 
         if args.aws:
-            pass
+            etas.NeedsAWSCredentials.activate_credentials(args.aws)
 
 
 class CleanAuthCommand(Command):
-    '''Deletes the active API token, if any.'''
+    '''Delete authentication credentials.'''
 
     @staticmethod
     def setup(parser):
@@ -595,7 +620,7 @@ class CleanAuthCommand(Command):
             etas.NeedsGoogleCredentials.deactivate_credentials()
 
         if args.aws:
-            pass
+            etas.NeedsAWSCredentials.deactivate_credentials()
 
 
 class GoogleDriveCommand(Command):
