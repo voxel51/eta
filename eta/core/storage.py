@@ -927,7 +927,6 @@ class NeedsGoogleCredentials(object):
     https://cloud.google.com/docs/authentication/getting-started
     '''
 
-    CREDENTIALS_ENV_VAR = "GOOGLE_APPLICATION_CREDENTIALS"
     CREDENTIALS_PATH = os.path.join(
         etac.ETA_CONFIG_DIR, "google-credentials.json")
 
@@ -959,31 +958,14 @@ class NeedsGoogleCredentials(object):
             logger.info("No Google credentials to deactivate")
 
     @classmethod
-    def get_active_credentials_path(cls):
-        '''Gets the path to the active credentials.
-
-        If the `GOOGLE_APPLICATION_CREDENTIALS` environment variable is set,
-        that path is used. Otherwise, ``~/.eta/google-credentials.json` is
-        used.
+    def has_activate_credentials(cls):
+        '''Determines whether there are any active credentials stored at
+        `~/.eta/google-credentials.json`.
 
         Returns:
-            the path to the active credentials
-
-        Raises:
-            GoogleCredentialsError if no credentials were found
+            True/False
         '''
-        credentials_path = os.environ.get(cls.CREDENTIALS_ENV_VAR, None)
-        if credentials_path is not None:
-            if not os.path.isfile(credentials_path):
-                raise GoogleCredentialsError(
-                    "No Google credentials found at '%s=%s'" %
-                    (cls.CREDENTIALS_ENV_VAR, credentials_path))
-        elif os.path.isfile(cls.CREDENTIALS_PATH):
-            credentials_path = cls.CREDENTIALS_PATH
-        else:
-            raise GoogleCredentialsError("No Google credentials found")
-
-        return credentials_path
+        return os.path.isfile(cls.CREDENTIALS_PATH)
 
     @classmethod
     def load_credentials(cls, credentials_path=None):
@@ -992,14 +974,18 @@ class NeedsGoogleCredentials(object):
 
         Args:
             credentials_path: an optional path to a service account JSON file.
-                If omitted `cls.get_active_credentials_path()` is used to
-                locate the active credentials
+                If omitted, the strategy described in the class docstring of
+                `NeedsGoogleCredentials` is used to locate credentials
 
         Returns:
-            an `google.auth.credentials.Credentials` instance
+            a (credentials, path) tuple containing the
+                `google.auth.credentials.Credentials` instance and the path
+                from which it was loaded
         '''
-        info = cls.load_credentials_json(credentials_path=credentials_path)
-        return gos.Credentials.from_service_account_info(info)
+        info, credentials_path = cls.load_credentials_json(
+            credentials_path=credentials_path)
+        credentials = gos.Credentials.from_service_account_info(info)
+        return credentials, credentials_path
 
     @classmethod
     def load_credentials_json(cls, credentials_path=None):
@@ -1007,20 +993,26 @@ class NeedsGoogleCredentials(object):
 
         Args:
             credentials_path: an optional path to a service account JSON file.
-                If omitted `cls.get_active_credentials_path()` is used to
-                locate the active credentials
+                If omitted, the strategy described in the class docstring of
+                `NeedsGoogleCredentials` is used to locate credentials
 
         Returns:
-            a service account JSON dictionary
+            a (credentials_dict, path) tuple containing the service account
+                dictionary and the path from which it was loaded
         '''
-        if credentials_path is None:
-            credentials_path = cls.get_active_credentials_path()
+        if credentials_path is not None:
+            logger.debug(
+                "Loading Google credentials from manually provided path '%s'",
+                credentials_path)
+        else:
+            credentials_path = cls._find_active_credentials()
 
-        return etas.read_json(credentials_path)
+        credentials_dict = etas.read_json(credentials_path)
+        return credentials_dict, credentials_path
 
     @classmethod
     def from_json(cls, credentials_path):
-        '''Creates a cls instance from the given service account JSON file.
+        '''Creates a `cls` instance from the given service account JSON file.
 
         Args:
             credentials_path: the path to a service account JSON file
@@ -1028,8 +1020,27 @@ class NeedsGoogleCredentials(object):
         Returns:
             an instance of cls
         '''
-        credentials = cls.load_credentials(credentials_path=credentials_path)
-        return cls(credentials)
+        credentials, _ = cls.load_credentials(
+            credentials_path=credentials_path)
+        return cls(credentials=credentials)
+
+    @classmethod
+    def _find_active_credentials(cls):
+        credentials_path = os.environ.get(
+            "GOOGLE_APPLICATION_CREDENTIALS", None)
+        if credentials_path is not None:
+            logger.debug(
+                "Loading Google credentials from environment variable "
+                "'GOOGLE_APPLICATION_CREDENTIALS=%s'", credentials_path)
+        elif cls.has_activate_credentials():
+            credentials_path = cls.CREDENTIALS_PATH
+            logger.debug(
+                "Loading activated Google credentials from '%s'",
+                credentials_path)
+        else:
+            raise GoogleCredentialsError("No Google credentials found")
+
+        return credentials_path
 
 
 class GoogleCredentialsError(Exception):
@@ -1076,7 +1087,7 @@ class GoogleCloudStorageClient(
                 and downloads. By default, `DEFAULT_CHUNK_SIZE` is used
         '''
         if credentials is None:
-            credentials = self.load_credentials()
+            credentials, _ = self.load_credentials()
 
         self._client = gcs.Client(
             credentials=credentials, project=credentials.project_id)
@@ -1317,7 +1328,7 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
                 and downloads. By default, `DEFAULT_CHUNK_SIZE` is used
         '''
         if credentials is None:
-            credentials = self.load_credentials()
+            credentials, _ = self.load_credentials()
 
         self._service = gad.build(
             "drive", "v3", credentials=credentials, cache_discovery=False)
