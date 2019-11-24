@@ -648,9 +648,20 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
     strategy used by this class.
     '''
 
-    def __init__(self):
-        '''Creates an S3StorageClient instance.'''
-        self._client = boto3.client("s3")
+    def __init__(self, credentials=None):
+        '''Creates an S3StorageClient instance.
+
+        Args:
+            credentials: an optional AWS credentials dictionary. If provided,
+                the values are directly passed to `boto3` via
+                `boto3.client("s3", **credentials)`. If not provided, active
+                credentials are automatically loaded as described in
+                `NeedsAWSCredentials`
+        '''
+        if credentials is None:
+            credentials = {}
+
+        self._client = boto3.client("s3", **credentials)
 
     def upload(self, local_path, cloud_path, content_type=None):
         '''Uploads the file to S3.
