@@ -31,6 +31,7 @@ import six
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+import configparser
 import datetime
 import io
 import logging
@@ -466,18 +467,24 @@ class NeedsAWSCredentials(object):
     '''Mixin for classes that need AWS credentials to take authenticated
     actions.
 
-    By convention, StorageClient classes that derive from this class should
-    allow users to specify their credentials in the following ways, rather than
-    using the `from_ini()` method:
+    Storage clients that dervie from this class should allow users to provide
+    credentials in the following ways (in order of precedence):
 
-        (1) setting the `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and
+        (1) manually constructing an instance of the class via the
+            `cls.from_ini()` method by providing a path to a valid credentials
+            `.ini` file
+
+        (2) setting the `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and
             `AWS_DEFAULT_REGION` environment variables directly
 
-        (2) setting the `AWS_SHARED_CREDENTIALS_FILE` environment variable to
+        (3) setting the `AWS_SHARED_CREDENTIALS_FILE` environment variable to
             point to a valid credentials `.ini` file
 
-        (3) setting the `AWS_CONFIG_FILE` environment variable to point to a
+        (4) setting the `AWS_CONFIG_FILE` environment variable to point to a
             valid credentials `.ini` file
+
+        (5) loading credentials from `~/.eta/aws-credentials.ini` that have
+            been activated via `cls.activate_credentials()`
 
     In the above, the `.ini` file should have syntax similar to the following:
 
@@ -492,19 +499,143 @@ class NeedsAWSCredentials(object):
     https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html#configuration
     '''
 
+    CREDENTIALS_PATH = os.path.join(
+        etac.ETA_CONFIG_DIR, "aws-credentials.json")
+
     @classmethod
-    def from_ini(cls, credentials_path):
-        '''Creates a cls instance from the given credentials file.
+    def activate_credentials(cls, credentials_path):
+        '''Activate the credentials by copying them to
+        `~/.eta/aws-credentials.json`.
 
         Args:
             credentials_path: the path to a credentials `.ini` file
+        '''
+        etau.copy_file(credentials_path, cls.CREDENTIALS_PATH)
+        logger.info(
+            "AWS credentials successfully activated at '%s'",
+            cls.CREDENTIALS_PATH)
+
+    @classmethod
+    def deactivate_credentials(cls):
+        '''Deactivates (deletes) the currently active credentials, if any.
+
+        Active credentials (if any) are at `~/.eta/aws-credentials.json`.
+        '''
+        try:
+            os.remove(cls.CREDENTIALS_PATH)
+            logger.info(
+                "AWS credentials '%s' successfully deactivated",
+                cls.CREDENTIALS_PATH)
+        except OSError:
+            logger.info("No AWS credentials to deactivate")
+
+    @classmethod
+    def has_activate_credentials(cls):
+        '''Determines whether there are any active credentials stored at
+        `~/.eta/aws-credentials.json`.
+
+        Returns:
+            True/False
+        '''
+        return os.path.isfile(cls.CREDENTIALS_PATH)
+
+    @classmethod
+    def load_credentials(cls, credentials_path=None, profile=None):
+        '''Loads the AWS credentials as a dictionary.
+
+        Args:
+            credentials_path: an optional path to a credentials `.ini` file.
+                If omitted, active credentials are located using the strategy
+                described in the class docstring of `NeedsAWSCredentials`
+            profile: an optional profile to load when a credentials `.ini` file
+                is loaded (if applicable). If not provided, the "default"
+                section is loaded
+
+        Returns:
+            a (credentials, path) tuple containing the credentials and the path
+                from which they were loaded, or None if the credentials were
+                loaded from `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`
+        '''
+        if credentials_path:
+            logger.debug(
+                "Loading AWS credentials from manually provided path "
+                "'%s'", credentials_path)
+            credentials = cls._load_credentials_ini(
+                credentials_path, profile=profile)
+            return credentials, credentials_path
+
+        if ("AWS_ACCESS_KEY_ID" in os.environ and
+                "AWS_SECRET_ACCESS_KEY" in os.environ):
+            logger.debug(
+                "Loading AWS credentials from 'AWS_ACCESS_KEY_ID' and "
+                "'AWS_SECRET_ACCESS_KEY' environment variables")
+            credentials = {
+                "aws_access_key_id": os.environ["AWS_ACCESS_KEY_ID"],
+                "aws_secret_access_key": os.environ["AWS_SECRET_ACCESS_KEY"]
+            }
+            if "AWS_DEFAULT_REGION" in os.environ:
+                credentials["region"] = os.environ["AWS_DEFAULT_REGION"]
+            return credentials, None
+
+        if "AWS_SHARED_CREDENTIALS_FILE" in os.environ:
+            credentials_path = os.environ["AWS_SHARED_CREDENTIALS_FILE"]
+            logger.debug(
+                "Loading AWS credentials from environment variable "
+                "AWS_SHARED_CREDENTIALS_FILE='%s'", credentials_path)
+        elif "AWS_CONFIG_FILE" in os.environ:
+            credentials_path = os.environ["AWS_CONFIG_FILE"]
+            logger.debug(
+                "Loading AWS credentials from environment variable "
+                "AWS_CONFIG_FILE='%s'", credentials_path)
+        elif cls.has_activate_credentials():
+            credentials_path = cls.CREDENTIALS_PATH
+            logger.debug(
+                "Loading activated AWS credentials from '%s'",
+                credentials_path)
+        else:
+            raise AWSCredentialsError("No AWS credentials found")
+
+        credentials = cls._load_credentials_ini(
+            credentials_path, profile=profile)
+        return credentials, credentials_path
+
+    @classmethod
+    def from_ini(cls, credentials_path, profile=None):
+        '''Creates a `cls` instance from the given credentials `.ini` file.
+
+        Args:
+            credentials_path: the path to a credentials `.ini` file
+            profile: an optional profile to load. If not provided the "default"
+                section is loaded
 
         Returns:
             an instance of cls with the given credentials
         '''
-        os.environ["AWS_SHARED_CREDENTIALS_FILE"] = credentials_path
-        os.environ["AWS_CONFIG_FILE"] = credentials_path
-        return cls()
+        credentials, _ = cls.load_credentials(
+            credentials_path=credentials_path, profile=profile)
+        return cls(credentials=credentials)
+
+    @classmethod
+    def _load_credentials_ini(cls, credentials_path, profile=None):
+        config = configparser.ConfigParser()
+        config.read(credentials_path)
+        section = "profile " + profile if profile else "default"
+        return dict(config[section])
+
+
+class AWSCredentialsError(Exception):
+    '''Error raised when a problem with AWS credentials is encountered.'''
+
+    def __init__(self, message):
+        '''Creates an AWSCredentialsError instance.
+
+        Args:
+            message: the error message
+        '''
+        super(AWSCredentialsError, self).__init__(
+            "%s. Read the documentation for "
+            "`eta.core.storage.NeedsAWSCredentials` for more information "
+            "about authenticating with AWS services." % message)
 
 
 class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
