@@ -1866,7 +1866,7 @@ class BuilderDataRecord(BaseDataRecord):
 
     @property
     def new_labels_path(self):
-        return self._new_data_path if self._new_data_path is not None else self._data_path
+        return self._new_labels_path if self._new_labels_path is not None else self._labels_path
 
     @new_data_path.setter
     def new_data_path(self, value):
