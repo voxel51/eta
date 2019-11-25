@@ -760,28 +760,29 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
 
         Returns:
             a dictionary containing metadata about the file, including its
-                `name`, `bucket`, `creation_date`, `size`, and `mime_type`
+                `bucket`, `object_name`, `name`, `size`, `mime_type`, and
+                `last_modified`
         '''
         bucket, object_name = self._parse_s3_path(cloud_path)
-        metadata = self._client.head_object(Bucket=bucket, Key=object_name)
-        return {
-            "name": os.path.basename(object_name),
-            "bucket": bucket,
-            "creation_date": metadata["LastModified"],
-            "size": metadata["ContentLength"],
-            "mime_type": metadata["ContentType"],
-        }
+        return self._get_file_metadata(bucket, object_name)
 
-    def list_files_in_folder(self, cloud_folder, recursive=True):
+    def list_files_in_folder(
+            self, cloud_folder, recursive=True, return_metadata=False):
         '''Returns a list of the files in the given "folder" in S3.
 
         Args:
             cloud_folder: a string like `s3://<bucket-name>/<folder-path>`
             recursive: whether to recursively traverse sub-"folders". By
                 default, this is True
+            return_metadata: whether to return a metadata dictionary for each
+                file, including its `bucket`, `object_name`, `name`, `size`,
+                `mime_type`, and `last_modified`. By default, only the paths to
+                the files are returned
 
         Returns:
-            a list of full cloud paths to the files in the folder
+            a list of full cloud paths (when `return_metadata == False`) or a
+                list of metadata dictionaries (when `return_metadata == True`)
+                for the files in the folder
         '''
         bucket, folder_name = self._parse_s3_path(cloud_folder)
         if folder_name and not folder_name.endswith("/"):
@@ -791,7 +792,7 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
         if not recursive:
             kwargs["Delimiter"] = "/"
 
-        paths = []
+        paths_or_metadata = []
         prefix = "s3://" + bucket
         while True:
             resp = self._client.list_objects_v2(**kwargs)
@@ -799,14 +800,18 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
             for obj in resp.get("Contents", []):
                 path = obj["Key"]
                 if not path.endswith("/"):
-                    paths.append(os.path.join(prefix, path))
+                    if return_metadata:
+                        paths_or_metadata.append(
+                            self._get_object_metadata(bucket, obj))
+                    else:
+                        paths_or_metadata.append(os.path.join(prefix, path))
 
             try:
                 kwargs["NextContinuationToken"] = resp["NextContinuationToken"]
             except KeyError:
                 break
 
-        return paths
+        return paths_or_metadata
 
     def generate_signed_url(
             self, cloud_path, method="GET", hours=24, content_type=None):
@@ -866,6 +871,31 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
 
         if file_obj is not None:
             self._client.download_fileobj(bucket, object_name, file_obj)
+
+    def _get_file_metadata(self, bucket, object_name):
+        metadata = self._client.head_object(Bucket=bucket, Key=object_name)
+        return {
+            "bucket": bucket,
+            "object_name": object_name,
+            "name": os.path.basename(object_name),
+            "size": metadata["ContentLength"],
+            "mime_type": metadata["ContentType"],
+            "last_modified": metadata["LastModified"],
+        }
+
+    @staticmethod
+    def _get_object_metadata(bucket, obj):
+        # @todo is there a way to get the MIME type without guessing or making
+        # an expensive call to `head_object`?
+        path = obj["Key"]
+        return {
+            "bucket": bucket,
+            "object_name": path,
+            "name": os.path.basename(path),
+            "size": obj["Size"],
+            "mime_type": etau.guess_mime_type(path),
+            "last_modified": obj["LastModified"],
+        }
 
     @staticmethod
     def _parse_s3_path(cloud_path):
