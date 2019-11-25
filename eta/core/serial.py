@@ -403,11 +403,11 @@ class Serializable(object):
 def _recurse(v, reflective):
     if isinstance(v, Serializable):
         return v.serialize(reflective=reflective)
-    elif isinstance(v, set):
+    if isinstance(v, set):
         v = list(v)  # convert sets to lists
     if isinstance(v, list):
         return [_recurse(vi, reflective) for vi in v]
-    elif isinstance(v, dict):
+    if isinstance(v, dict):
         return OrderedDict(
             (ki, _recurse(vi, reflective)) for ki, vi in iteritems(v))
     return v
