@@ -525,6 +525,9 @@ class ShowAuthCommand(Command):
 
         # Print info about active AWS credentials
         eta auth show --aws
+
+        # Print info about active SSH credentials
+        eta auth show --ssh
     '''
 
     @staticmethod
@@ -535,6 +538,9 @@ class ShowAuthCommand(Command):
         parser.add_argument(
             "--aws", action="store_true",
             help="show info about AWS credentials")
+        parser.add_argument(
+            "--ssh", action="store_true",
+            help="show info about SSH credentials")
 
     @staticmethod
     def run(args):
@@ -544,8 +550,11 @@ class ShowAuthCommand(Command):
         if args.aws:
             _print_aws_credentials_info()
 
-        all_credentials = not args.google and not args.aws
-        if all_credentials:
+        if args.ssh:
+            _print_ssh_credentials_info()
+
+        show_all_credentials = not any((args.google, args.aws, args.ssh))
+        if show_all_credentials:
             try:
                 _print_google_credentials_info()
             except etas.GoogleCredentialsError:
@@ -554,6 +563,11 @@ class ShowAuthCommand(Command):
             try:
                 _print_aws_credentials_info()
             except etas.AWSCredentialsError:
+                pass
+
+            try:
+                _print_ssh_credentials_info()
+            except etas.SSHCredentialsError:
                 pass
 
 
@@ -584,6 +598,16 @@ def _print_aws_credentials_info():
     logger.info(table_str + "\n")
 
 
+def _print_ssh_credentials_info():
+    path = etas.NeedsSSHCredentials.get_private_key_path()
+    contents = [
+        ("path", path),
+    ]
+    table_str = tabulate(
+        contents, headers=["SSH credentials", ""], tablefmt="simple")
+    logger.info(table_str + "\n")
+
+
 class ActivateAuthCommand(Command):
     '''Activate authentication credentials.
 
@@ -602,6 +626,8 @@ class ActivateAuthCommand(Command):
             help="path to Google service account JSON file")
         parser.add_argument(
             "--aws", metavar="PATH", help="path to AWS credentials file")
+        parser.add_argument(
+            "--ssh", metavar="PATH", help="path to SSH private key")
 
     @staticmethod
     def run(args):
@@ -610,6 +636,9 @@ class ActivateAuthCommand(Command):
 
         if args.aws:
             etas.NeedsAWSCredentials.activate_credentials(args.aws)
+
+        if args.ssh:
+            etas.NeedsSSHCredentials.activate_credentials(args.ssh)
 
 
 class CleanAuthCommand(Command):
@@ -623,6 +652,9 @@ class CleanAuthCommand(Command):
         parser.add_argument(
             "--aws", action="store_true",
             help="delete the active AWS credentials")
+        parser.add_argument(
+            "--ssh", action="store_true",
+            help="delete the active SSH credentials")
 
     @staticmethod
     def run(args):
