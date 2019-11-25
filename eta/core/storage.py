@@ -661,7 +661,12 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
                 `NeedsAWSCredentials`
         '''
         if credentials is None:
-            credentials = {}
+            credentials, _ = self.load_credentials()
+
+            # The .ini files use `region` but `boto3.client` uses `region_name`
+            region = credentials.pop("region", None)
+            if region:
+                credentials["region_name"] = region
 
         self._client = boto3.client("s3", **credentials)
 
