@@ -42,6 +42,8 @@ try:
 except ImportError:
     import urlparse  # Python 2
 
+import dateutil.parser
+
 import boto3
 import google.api_core.exceptions as gae
 import google.cloud.storage as gcs
@@ -369,8 +371,8 @@ class LocalStorageClient(StorageClient, CanSyncDirectories):
     def __init__(self, chunk_size=None):
         '''Creates a LocalStorageClient instance.
 
-        chunk_size: an optional chunk size (in bytes) to use for uploads
-            and downloads. By default, `DEFAULT_CHUNK_SIZE` is used
+        chunk_size: an optional chunk size (in bytes) to use for streaming
+            uploads and downloads. By default, `DEFAULT_CHUNK_SIZE` is used
         '''
         self.chunk_size = chunk_size or self.DEFAULT_CHUNK_SIZE
 
@@ -530,7 +532,7 @@ class NeedsAWSCredentials(object):
             logger.info("No AWS credentials to deactivate")
 
     @classmethod
-    def has_activate_credentials(cls):
+    def has_active_credentials(cls):
         '''Determines whether there are any active credentials stored at
         `~/.eta/aws-credentials.json`.
 
@@ -587,7 +589,7 @@ class NeedsAWSCredentials(object):
             logger.debug(
                 "Loading AWS credentials from environment variable "
                 "AWS_CONFIG_FILE='%s'", credentials_path)
-        elif cls.has_activate_credentials():
+        elif cls.has_active_credentials():
             credentials_path = cls.CREDENTIALS_PATH
             logger.debug(
                 "Loading activated AWS credentials from '%s'",
@@ -633,7 +635,7 @@ class AWSCredentialsError(Exception):
             message: the error message
         '''
         super(AWSCredentialsError, self).__init__(
-            "%s. Read the documentation for "
+            "%s. Read the class docstring of "
             "`eta.core.storage.NeedsAWSCredentials` for more information "
             "about authenticating with AWS services." % message)
 
