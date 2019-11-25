@@ -995,7 +995,7 @@ class NeedsGoogleCredentials(object):
             logger.info("No Google credentials to deactivate")
 
     @classmethod
-    def has_activate_credentials(cls):
+    def has_active_credentials(cls):
         '''Determines whether there are any active credentials stored at
         `~/.eta/google-credentials.json`.
 
@@ -1069,7 +1069,7 @@ class NeedsGoogleCredentials(object):
             logger.debug(
                 "Loading Google credentials from environment variable "
                 "'GOOGLE_APPLICATION_CREDENTIALS=%s'", credentials_path)
-        elif cls.has_activate_credentials():
+        elif cls.has_active_credentials():
             credentials_path = cls.CREDENTIALS_PATH
             logger.debug(
                 "Loading activated Google credentials from '%s'",
