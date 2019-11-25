@@ -1,7 +1,7 @@
 '''
-Core tools for accessing files on the web.
+Core tools for downloading files from the web.
 
-Copyright 2017-2018, Voxel51, Inc.
+Copyright 2017-2019, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
@@ -21,7 +21,7 @@ from future.utils import iteritems
 
 import logging
 import requests
-import time
+from time import time
 
 import eta.constants as etac
 import eta.core.utils as etau
