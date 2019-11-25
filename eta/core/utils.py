@@ -258,10 +258,9 @@ def query_yes_no(question, default=None):
         choice = six.moves.input().lower()
         if default and not choice:
             return valid[default]
-        elif choice in valid:
+        if choice in valid:
             return valid[choice]
-        else:
-            print("Please respond with 'y[es]' or 'n[o]'")
+        print("Please respond with 'y[es]' or 'n[o]'")
 
 
 def call(args):
