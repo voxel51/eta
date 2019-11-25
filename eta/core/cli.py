@@ -23,9 +23,11 @@ import argparse
 from collections import defaultdict
 import logging
 import os
+import re
 import sys
 
 from tabulate import tabulate
+from tzlocal import get_localzone
 
 import eta
 import eta.core.builder as etab
@@ -38,9 +40,14 @@ import eta.core.pipeline as etap
 from eta.core.serial import load_json, json_to_str
 import eta.core.storage as etas
 import eta.core.utils as etau
+import eta.core.web as etaw
 
 
 logger = logging.getLogger(__name__)
+
+
+MAX_NAME_COLUMN_WIDTH = None
+TABLE_FORMAT = "simple"
 
 
 class Command(object):
@@ -85,7 +92,10 @@ class ETACommand(Command):
         _register_command(subparsers, "pipelines", PipelinesCommand)
         _register_command(subparsers, "constants", ConstantsCommand)
         _register_command(subparsers, "auth", AuthCommand)
-        _register_command(subparsers, "gdrive", GoogleDriveCommand)
+        _register_command(subparsers, "http", HTTPStorageCommand)
+        _register_command(subparsers, "s3", S3StorageCommand)
+        _register_command(subparsers, "gcs", GoogleCloudStorageCommand)
+        _register_command(subparsers, "gdrive", GoogleDriveStorageCommand)
 
 
 class BuildCommand(Command):
@@ -622,13 +632,1111 @@ class CleanAuthCommand(Command):
         if args.aws:
             etas.NeedsAWSCredentials.deactivate_credentials()
 
+        if args.ssh:
+            etas.NeedsSSHCredentials.deactivate_credentials()
 
-class GoogleDriveCommand(Command):
-    '''Tools for working with Google Drive storage.'''
+
+class HTTPStorageCommand(Command):
+    '''Tools for working with HTTP storage.'''
 
     @staticmethod
     def setup(parser):
         subparsers = parser.add_subparsers(title="available commands")
+        _register_command(subparsers, "upload", HTTPUploadCommand)
+        _register_command(subparsers, "download", HTTPDownloadCommand)
+        _register_command(subparsers, "delete", HTTPDeleteCommand)
+
+
+class HTTPUploadCommand(Command):
+    '''Upload file via HTTP.
+
+    Examples:
+        # Upload file
+        eta http upload <local-path> <url>
+    '''
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "path", metavar="PATH", help="the path to the file to upload")
+        parser.add_argument(
+            "url", metavar="URL", help="the URL to which to PUT the file")
+        parser.add_argument(
+            "-f", "--filename", metavar="FILENAME", help="an optional filename "
+            "to include in the request. By default, the name of the local "
+            "file is used")
+        parser.add_argument(
+            "-t", "--content-type", metavar="TYPE", help="an optional content "
+            "type of the file. By default, the type is guessed from the "
+            "filename")
+
+    @staticmethod
+    def run(args):
+        set_content_type = bool(args.content_type)
+        client = etas.HTTPStorageClient(set_content_type=set_content_type)
+
+        logger.info("Uploading '%s' to '%s'", args.path, args.url)
+        client.upload(
+            args.path, args.url, filename=args.filename,
+            content_type=args.content_type)
+
+
+class HTTPDownloadCommand(Command):
+    '''Download file via HTTP.
+
+    Examples:
+        # Download file
+        eta http download <url> <local-path>
+
+        # Print download to stdout
+        eta http download <url> --print
+    '''
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "url", metavar="URL", help="the URL from which to GET the file")
+        parser.add_argument(
+            "path", nargs="?", metavar="PATH", help="the path to which to "
+            "write the downloaded file. If not provided, the filename is "
+            "guessed from the URL")
+        parser.add_argument(
+            "-p", "--print", action="store_true", help="whether to print the "
+            "download to stdout. If true, a file is NOT written to disk")
+        parser.add_argument(
+            "-s", "--chunk-size", metavar="SIZE", type=int, help="an optional "
+            "chunk size (in bytes) to use")
+
+    @staticmethod
+    def run(args):
+        client = etas.HTTPStorageClient(chunk_size=args.chunk_size)
+
+        if args.print:
+            logger.info(client.download_bytes(args.url))
+        else:
+            local_path = args.path or client.get_filename(args.url)
+            logger.info("Downloading '%s' to '%s'", args.url, local_path)
+            client.download(args.url, local_path)
+
+
+class HTTPDeleteCommand(Command):
+    '''Delete file via HTTP.
+
+    Examples:
+        # Delete file
+        eta http delete <url>
+    '''
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument("url", metavar="URL", help="the URL to DELETE")
+
+    @staticmethod
+    def run(args):
+        client = etas.HTTPStorageClient()
+        logger.info("Deleting '%s'", args.url)
+        client.delete(args.url)
+
+
+class S3StorageCommand(Command):
+    '''Tools for working with S3.'''
+
+    @staticmethod
+    def setup(parser):
+        subparsers = parser.add_subparsers(title="available commands")
+        _register_command(subparsers, "info", S3StorageInfoCommand)
+        _register_command(subparsers, "list", S3StorageListCommand)
+        _register_command(subparsers, "upload", S3StorageUploadCommand)
+        _register_command(
+            subparsers, "upload-dir", S3StorageUploadDirectoryCommand)
+        _register_command(subparsers, "download", S3StorageDownloadCommand)
+        _register_command(
+            subparsers, "download-dir", S3StorageDownloadDirectoryCommand)
+        _register_command(subparsers, "delete", S3StorageDeleteCommand)
+
+
+class S3StorageInfoCommand(Command):
+    '''Get information about files in S3.
+
+    Examples:
+        # Get file info
+        eta s3 info <path> [...]
+    '''
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "paths", nargs="+", metavar="PATH",
+            help="the path(s) of the files of interest in S3")
+
+    @staticmethod
+    def run(args):
+        client = etas.S3StorageClient()
+
+        metadata = [client.get_file_metadata(path) for path in args.paths]
+        _print_s3_info_table(metadata)
+
+
+class S3StorageListCommand(Command):
+    '''List contents of an S3 folder.
+
+    Examples:
+        # List folder contents
+        eta s3 list <folder>
+
+        # List folder contents recursively
+        eta s3 list <folder> --recursive
+
+        # List folder contents according to the given query
+        eta s3 list <folder>
+            [--limit <limit>]
+            [--search [<field>:]<str>]
+            [--sort-by <field>]
+            [--ascending]
+            [--count]
+    '''
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "folder", metavar="PATH", help="the S3 folder to list")
+        parser.add_argument(
+            "-r", "--recursive", action="store_true", help="whether to "
+            "recursively list the contents of subfolders")
+        parser.add_argument(
+            "-l", "--limit", metavar="LIMIT", type=int, default=-1,
+            help="limit the number of files listed")
+        parser.add_argument(
+            "-s", "--search", metavar="[FIELD:]STR",
+            help="search to limit results when listing files")
+        parser.add_argument(
+            "--sort-by", metavar="FIELD",
+            help="field to sort by when listing files")
+        parser.add_argument(
+            "--ascending", action="store_true",
+            help="whether to sort in ascending order")
+        parser.add_argument(
+            "-c", "--count", action="store_true",
+            help="whether to show the number of files in the list")
+
+    @staticmethod
+    def run(args):
+        client = etas.S3StorageClient()
+
+        metadata = client.list_files_in_folder(
+            args.folder, recursive=args.recursive, return_metadata=True)
+
+        metadata = _apply_search(
+            metadata, args.limit, args.search, args.sort_by, args.ascending,
+            _S3_SEARCH_FIELDS_MAP)
+
+        _print_s3_info_table(metadata, show_count=args.count)
+
+
+_S3_SEARCH_FIELDS_MAP = {
+    "name": "object_name",
+    "size": "size",
+    "type": "mime_type",
+    "last_modified": "last_modified",
+}
+
+
+class S3StorageUploadCommand(Command):
+    '''Upload file to S3.
+
+    Examples:
+        # Upload file
+        eta s3 upload <local-path> <cloud-path>
+    '''
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "local_path", metavar="PATH", help="the path to the file to "
+            "upload")
+        parser.add_argument(
+            "cloud_path", metavar="PATH", help="the path to the S3 object to "
+            "create")
+        parser.add_argument(
+            "-t", "--content-type", metavar="TYPE", help="an optional content "
+            "type of the file. By default, the type is guessed from the "
+            "filename")
+
+    @staticmethod
+    def run(args):
+        client = etas.S3StorageClient()
+
+        logger.info("Uploading '%s' to '%s'", args.local_path, args.cloud_path)
+        client.upload(
+            args.local_path, args.cloud_path, content_type=args.content_type)
+
+
+class S3StorageUploadDirectoryCommand(Command):
+    '''Upload directory to S3.
+
+    Examples:
+        # Upload directory
+        eta s3 upload-dir <local-dir> <cloud-dir>
+
+        # Upload-sync directory
+        eta s3 upload-dir --sync <local-dir> <cloud-dir>
+    '''
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "local_dir", metavar="DIR", help="the directory of files to "
+            "upload")
+        parser.add_argument(
+            "cloud_dir", metavar="DIR", help="the S3 directory to upload into")
+        parser.add_argument(
+            "--sync", action="store_true", help="whether to sync the S3 "
+            "directory to match the contents of the local directory")
+        parser.add_argument(
+            "-o", "--overwrite", action="store_true", help="whether to "
+            "overwrite existing files; only valid in `--sync` mode")
+        parser.add_argument(
+            "-r", "--recursive", action="store_true", help="whether to "
+            "recursively upload the contents of subdirecotires")
+
+    @staticmethod
+    def run(args):
+        client = etas.S3StorageClient()
+
+        if args.sync:
+            client.upload_dir_sync(
+                args.local_dir, args.cloud_dir, overwrite=args.overwrite,
+                recursive=args.recursive)
+        else:
+            client.upload_dir(
+                args.local_dir, args.cloud_dir, recursive=args.recursive)
+
+
+class S3StorageDownloadCommand(Command):
+    '''Download file from S3.
+
+    Examples:
+        # Download file
+        eta s3 download <cloud-path> <local-path>
+
+        # Print download to stdout
+        eta s3 download <cloud-path> --print
+    '''
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "cloud_path", metavar="PATH", help="the S3 object to download")
+        parser.add_argument(
+            "local_path", nargs="?", metavar="PATH", help="the path to which "
+            "to write the downloaded file. If not provided, the filename of "
+            "the file in S3 is used")
+        parser.add_argument(
+            "-p", "--print", action="store_true", help="whether to print the "
+            "download to stdout. If true, a file is NOT written to disk")
+
+    @staticmethod
+    def run(args):
+        client = etas.S3StorageClient()
+
+        if args.print:
+            logger.info(client.download_bytes(args.cloud_path))
+        else:
+            local_path = args.local_path
+            if local_path is None:
+                local_path = client.get_file_metadata(args.cloud_path)["name"]
+
+            logger.info(
+                "Downloading '%s' to '%s'", args.cloud_path, local_path)
+            client.download(args.cloud_path, local_path)
+
+
+class S3StorageDownloadDirectoryCommand(Command):
+    '''Download directory from S3.
+
+    Examples:
+        # Download directory
+        eta s3 download-dir <cloud-folder> <local-dir>
+
+        # Download directory sync
+        eta s3 download-dir --sync <cloud-folder> <local-dir>
+    '''
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "cloud_dir", metavar="DIR", help="the S3 directory to download")
+        parser.add_argument(
+            "local_dir", metavar="DIR", help="the directory to which to "
+            "download files into")
+        parser.add_argument(
+            "--sync", action="store_true", help="whether to sync the local"
+            "directory to match the contents of the S3 directory")
+        parser.add_argument(
+            "-o", "--overwrite", action="store_true", help="whether to "
+            "overwrite existing files; only valid in `--sync` mode")
+        parser.add_argument(
+            "-r", "--recursive", action="store_true", help="whether to "
+            "recursively download the contents of subdirecotires")
+
+    @staticmethod
+    def run(args):
+        client = etas.S3StorageClient()
+
+        if args.sync:
+            client.download_dir_sync(
+                args.cloud_dir, args.local_dir, overwrite=args.overwrite,
+                recursive=args.recursive)
+        else:
+            client.download_dir(
+                args.cloud_dir, args.local_dir, recursive=args.recursive)
+
+
+class S3StorageDeleteCommand(Command):
+    '''Delete file from S3.
+
+    Examples:
+        # Delete file
+        eta s3 delete <cloud-path>
+    '''
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "cloud_path", metavar="PATH", help="the file to delete")
+
+    @staticmethod
+    def run(args):
+        client = etas.S3StorageClient()
+
+        logger.info("Deleting '%s'", args.cloud_path)
+        client.delete(args.cloud_path)
+
+
+class GoogleCloudStorageCommand(Command):
+    '''Tools for working with Google Cloud Storage.'''
+
+    @staticmethod
+    def setup(parser):
+        subparsers = parser.add_subparsers(title="available commands")
+        _register_command(subparsers, "info", GoogleCloudStorageInfoCommand)
+        _register_command(subparsers, "list", GoogleCloudStorageListCommand)
+        _register_command(
+            subparsers, "upload", GoogleCloudStorageUploadCommand)
+        _register_command(
+            subparsers, "upload-dir", GoogleCloudStorageUploadDirectoryCommand)
+        _register_command(
+            subparsers, "download", GoogleCloudStorageDownloadCommand)
+        _register_command(
+            subparsers, "download-dir",
+            GoogleCloudStorageDownloadDirectoryCommand)
+        _register_command(
+            subparsers, "delete", GoogleCloudStorageDeleteCommand)
+
+
+class GoogleCloudStorageInfoCommand(Command):
+    '''Get information about files in GCS.
+
+    Examples:
+        # Get file info
+        eta gcs info <path> [...]
+    '''
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "paths", nargs="+", metavar="PATH", help="path(s) to GCS files")
+
+    @staticmethod
+    def run(args):
+        client = etas.GoogleCloudStorageClient()
+
+        metadata = [client.get_file_metadata(path) for path in args.paths]
+        _print_gcs_info_table(metadata)
+
+
+class GoogleCloudStorageListCommand(Command):
+    '''List contents of a GCS folder.
+
+    Examples:
+        # List folder contents
+        eta gcs list <folder>
+
+        # List folder contents recursively
+        eta gcs list <folder> --recursive
+
+        # List folder contents according to the given query
+        eta gcs list <folder>
+            [--limit <limit>]
+            [--search [<field>:]<str>]
+            [--sort-by <field>]
+            [--ascending]
+            [--count]
+    '''
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "folder", metavar="PATH", help="the GCS folder to list")
+        parser.add_argument(
+            "-r", "--recursive", action="store_true", help="whether to "
+            "recursively list the contents of subfolders")
+        parser.add_argument(
+            "-l", "--limit", metavar="LIMIT", type=int, default=-1,
+            help="limit the number of files listed")
+        parser.add_argument(
+            "-s", "--search", metavar="[FIELD:]STR",
+            help="search to limit results when listing files")
+        parser.add_argument(
+            "--sort-by", metavar="FIELD",
+            help="field to sort by when listing files")
+        parser.add_argument(
+            "--ascending", action="store_true",
+            help="whether to sort in ascending order")
+        parser.add_argument(
+            "-c", "--count", action="store_true",
+            help="whether to show the number of files in the list")
+
+    @staticmethod
+    def run(args):
+        client = etas.GoogleCloudStorageClient()
+
+        metadata = client.list_files_in_folder(
+            args.folder, recursive=args.recursive, return_metadata=True)
+
+        metadata = _apply_search(
+            metadata, args.limit, args.search, args.sort_by, args.ascending,
+            _GOOGLE_CLOUD_STORAGE_SEARCH_FIELDS_MAP)
+
+        _print_gcs_info_table(metadata, show_count=args.count)
+
+
+_GOOGLE_CLOUD_STORAGE_SEARCH_FIELDS_MAP = {
+    "name": "object_name",
+    "size": "size",
+    "type": "mime_type",
+    "last_modified": "last_modified",
+}
+
+
+class GoogleCloudStorageUploadCommand(Command):
+    '''Upload file to GCS.
+
+    Examples:
+        # Upload file
+        eta gcs upload <local-path> <cloud-path>
+    '''
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "local_path", metavar="PATH", help="the path to the file to "
+            "upload")
+        parser.add_argument(
+            "cloud_path", metavar="PATH", help="the path to the GCS object to "
+            "create")
+        parser.add_argument(
+            "-t", "--content-type", metavar="TYPE", help="an optional content "
+            "type of the file. By default, the type is guessed from the "
+            "filename")
+        parser.add_argument(
+            "-s", "--chunk-size", metavar="SIZE", type=int, help="an optional "
+            "chunk size (in bytes) to use")
+
+    @staticmethod
+    def run(args):
+        client = etas.GoogleCloudStorageClient(chunk_size=args.chunk_size)
+
+        logger.info("Uploading '%s' to '%s'", args.local_path, args.cloud_path)
+        client.upload(
+            args.local_path, args.cloud_path, content_type=args.content_type)
+
+
+class GoogleCloudStorageUploadDirectoryCommand(Command):
+    '''Upload directory to GCS.
+
+    Examples:
+        # Upload directory
+        eta gcs upload-dir <local-dir> <cloud-dir>
+
+        # Upload-sync directory
+        eta gcs upload-dir --sync <local-dir> <cloud-dir>
+    '''
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "local_dir", metavar="DIR", help="the directory of files to "
+            "upload")
+        parser.add_argument(
+            "cloud_dir", metavar="DIR", help="the GCS directory to upload "
+            "into")
+        parser.add_argument(
+            "--sync", action="store_true", help="whether to sync the GCS"
+            "directory to match the contents of the local directory")
+        parser.add_argument(
+            "-o", "--overwrite", action="store_true", help="whether to "
+            "overwrite existing files; only valid in `--sync` mode")
+        parser.add_argument(
+            "-r", "--recursive", action="store_true", help="whether to "
+            "recursively upload the contents of subdirecotires")
+        parser.add_argument(
+            "-s", "--chunk-size", metavar="SIZE", type=int, help="an optional "
+            "chunk size (in bytes) to use")
+
+    @staticmethod
+    def run(args):
+        client = etas.GoogleCloudStorageClient(chunk_size=args.chunk_size)
+
+        if args.sync:
+            client.upload_dir_sync(
+                args.local_dir, args.cloud_dir, overwrite=args.overwrite,
+                recursive=args.recursive)
+        else:
+            client.upload_dir(
+                args.local_dir, args.cloud_dir, recursive=args.recursive)
+
+
+class GoogleCloudStorageDownloadCommand(Command):
+    '''Download file from GCS.
+
+    Examples:
+        # Download file
+        eta gcs download <cloud-path> <local-path>
+
+        # Print download to stdout
+        eta gcs download <cloud-path> --print
+    '''
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "cloud_path", metavar="PATH", help="the GCS object to download")
+        parser.add_argument(
+            "local_path", nargs="?", metavar="PATH", help="the path to which "
+            "to write the downloaded file. If not provided, the filename of "
+            "the file in GCS is used")
+        parser.add_argument(
+            "-p", "--print", action="store_true", help="whether to print the "
+            "download to stdout. If true, a file is NOT written to disk")
+        parser.add_argument(
+            "-s", "--chunk-size", metavar="SIZE", type=int, help="an optional "
+            "chunk size (in bytes) to use")
+
+    @staticmethod
+    def run(args):
+        client = etas.GoogleCloudStorageClient(chunk_size=args.chunk_size)
+
+        if args.print:
+            logger.info(client.download_bytes(args.cloud_path))
+        else:
+            local_path = args.local_path
+            if local_path is None:
+                local_path = client.get_file_metadata(args.cloud_path)["name"]
+
+            logger.info(
+                "Downloading '%s' to '%s'", args.cloud_path, local_path)
+            client.download(args.cloud_path, local_path)
+
+
+class GoogleCloudStorageDownloadDirectoryCommand(Command):
+    '''Download directory from GCS.
+
+    Examples:
+        # Download directory
+        eta gcs download-dir <cloud-folder> <local-dir>
+
+        # Download directory sync
+        eta gcs download-dir --sync <cloud-folder> <local-dir>
+    '''
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "cloud_dir", metavar="DIR", help="the GCS directory to download")
+        parser.add_argument(
+            "local_dir", metavar="DIR", help="the directory to which to "
+            "download files into")
+        parser.add_argument(
+            "--sync", action="store_true", help="whether to sync the local"
+            "directory to match the contents of the GCS directory")
+        parser.add_argument(
+            "-o", "--overwrite", action="store_true", help="whether to "
+            "overwrite existing files; only valid in `--sync` mode")
+        parser.add_argument(
+            "-r", "--recursive", action="store_true", help="whether to "
+            "recursively download the contents of subdirecotires")
+        parser.add_argument(
+            "-s", "--chunk-size", metavar="SIZE", type=int, help="an optional "
+            "chunk size (in bytes) to use")
+
+    @staticmethod
+    def run(args):
+        client = etas.GoogleCloudStorageClient(chunk_size=args.chunk_size)
+
+        if args.sync:
+            client.download_dir_sync(
+                args.cloud_dir, args.local_dir, overwrite=args.overwrite,
+                recursive=args.recursive)
+        else:
+            client.download_dir(
+                args.cloud_dir, args.local_dir, recursive=args.recursive)
+
+
+class GoogleCloudStorageDeleteCommand(Command):
+    '''Delete file from GCS.
+
+    Examples:
+        # Delete file
+        eta gcs delete <cloud-path>
+    '''
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "cloud_path", metavar="PATH", help="the GCS file to delete")
+
+    @staticmethod
+    def run(args):
+        client = etas.GoogleCloudStorageClient()
+
+        logger.info("Deleting '%s'", args.cloud_path)
+        client.delete(args.cloud_path)
+
+
+class GoogleDriveStorageCommand(Command):
+    '''Tools for working with Google Drive.'''
+
+    @staticmethod
+    def setup(parser):
+        subparsers = parser.add_subparsers(title="available commands")
+        _register_command(subparsers, "info", GoogleDriveInfoCommand)
+        _register_command(subparsers, "list", GoogleDriveListCommand)
+        _register_command(subparsers, "upload", GoogleDriveUploadCommand)
+        _register_command(
+            subparsers, "upload-dir", GoogleDriveUploadDirectoryCommand)
+        _register_command(subparsers, "download", GoogleDriveDownloadCommand)
+        _register_command(
+            subparsers, "download-dir", GoogleDriveDownloadDirectoryCommand)
+        _register_command(subparsers, "delete", GoogleDriveDeleteCommand)
+
+
+class GoogleDriveInfoCommand(Command):
+    '''Get information about files in Google Drive.
+
+    Examples:
+        # Get file info
+        eta gdrive info <id> [...]
+    '''
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "ids", nargs="+", metavar="ID",
+            help="the ID(s) of the files of interest in Google Drive")
+
+    @staticmethod
+    def run(args):
+        client = etas.GoogleDriveStorageClient()
+
+        metadata = [client.get_file_metadata(fid) for fid in args.ids]
+        _print_google_drive_info_table(metadata)
+
+
+class GoogleDriveListCommand(Command):
+    '''List contents of a Google Drive folder.
+
+    Examples:
+        # List folder contents
+        eta gdrive list <id>
+
+        # List folder contents recursively
+        eta gdrive list <id> --recursive
+
+        # List folder contents according to the given query
+        eta gdrive list <id>
+            [--limit <limit>]
+            [--search [<field>:]<str>]
+            [--sort-by <field>]
+            [--ascending]
+            [--count]
+    '''
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "folder_id", metavar="ID", help="the ID of the folder to list")
+        parser.add_argument(
+            "-r", "--recursive", action="store_true", help="whether to "
+            "recursively list the contents of subfolders")
+        parser.add_argument(
+            "-l", "--limit", metavar="LIMIT", type=int, default=-1,
+            help="limit the number of files listed")
+        parser.add_argument(
+            "-s", "--search", metavar="[FIELD:]STR",
+            help="search to limit results when listing files")
+        parser.add_argument(
+            "--sort-by", metavar="FIELD",
+            help="field to sort by when listing files")
+        parser.add_argument(
+            "--ascending", action="store_true",
+            help="whether to sort in ascending order")
+        parser.add_argument(
+            "-c", "--count", action="store_true",
+            help="whether to show the number of files in the list")
+
+    @staticmethod
+    def run(args):
+        client = etas.GoogleDriveStorageClient()
+
+        metadata = client.list_files_in_folder(
+            args.folder_id, recursive=args.recursive)
+
+        metadata = _apply_search(
+            metadata, args.limit, args.search, args.sort_by, args.ascending,
+            _GOOGLE_DRIVE_SEARCH_FIELDS_MAP)
+
+        _print_google_drive_info_table(metadata, show_count=args.count)
+
+
+_GOOGLE_DRIVE_SEARCH_FIELDS_MAP = {
+    "id": "id",
+    "name": "name",
+    "size": "size",
+    "type": "mime_type",
+    "last_modified": "last_modified",
+}
+
+
+class GoogleDriveUploadCommand(Command):
+    '''Upload file to Google Drive.
+
+    Examples:
+        # Upload file
+        eta gdrive upload <local-path> <folder-id>
+    '''
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "path", metavar="PATH", help="the path to the file to upload")
+        parser.add_argument(
+            "folder_id", metavar="ID", help="the ID of the folder to upload "
+            "the file into")
+        parser.add_argument(
+            "-f", "--filename", metavar="FILENAME", help="an optional "
+            "filename to include in the request. By default, the name of the "
+            "local file is used")
+        parser.add_argument(
+            "-t", "--content-type", metavar="TYPE", help="an optional content "
+            "type of the file. By default, the type is guessed from the "
+            "filename")
+        parser.add_argument(
+            "-s", "--chunk-size", metavar="SIZE", type=int, help="an optional "
+            "chunk size (in bytes) to use")
+
+    @staticmethod
+    def run(args):
+        client = etas.GoogleDriveStorageClient(chunk_size=args.chunk_size)
+
+        logger.info("Uploading '%s' to '%s'", args.path, args.folder_id)
+        client.upload(
+            args.path, args.folder_id, filename=args.filename,
+            content_type=args.content_type)
+
+
+class GoogleDriveUploadDirectoryCommand(Command):
+    '''Upload directory to Google Drive.
+
+    Examples:
+        # Upload directory
+        eta gdrive upload-dir <local-dir> <folder-id>
+    '''
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "local_dir", metavar="DIR", help="the directory of files to "
+            "upload")
+        parser.add_argument(
+            "folder_id", metavar="ID", help="the ID of the folder to upload "
+            "the files into")
+        parser.add_argument(
+            "-f", "--skip-failures", action="store_true", help="whether to "
+            "skip failures")
+        parser.add_argument(
+            "-e", "--skip-existing", action="store_true", help="whether to "
+            "skip existing files")
+        parser.add_argument(
+            "-r", "--recursive", action="store_true", help="whether to "
+            "recursively upload the contents of subdirecotires")
+        parser.add_argument(
+            "-s", "--chunk-size", metavar="SIZE", type=int, help="an optional "
+            "chunk size (in bytes) to use")
+
+    @staticmethod
+    def run(args):
+        client = etas.GoogleDriveStorageClient(chunk_size=args.chunk_size)
+
+        client.upload_files_in_folder(
+            args.local_dir, args.folder_id, skip_failures=args.skip_failures,
+            skip_existing_files=args.skip_existing, recursive=args.recursive)
+
+
+class GoogleDriveDownloadCommand(Command):
+    '''Download file from Google Drive.
+
+    Examples:
+        # Download file
+        eta gdrive download <file-id> <local-path>
+
+        # Print download to stdout
+        eta gdrive download <file-id> --print
+
+        # Download file with link sharing turned on (no credentials required)
+        eta gdrive download --public <file-id>
+    '''
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "file_id", metavar="ID", help="the ID of the file to download")
+        parser.add_argument(
+            "path", nargs="?", metavar="PATH", help="the path to which to "
+            "write the downloaded file. If not provided, the filename of the "
+            "file in Google Drive is used")
+        parser.add_argument(
+            "--public", action="store_true", help="whether the file has "
+            "public link sharing turned on and can therefore be downloaded "
+            "with no credentials")
+        parser.add_argument(
+            "-p", "--print", action="store_true", help="whether to print the "
+            "download to stdout. If true, a file is NOT written to disk")
+        parser.add_argument(
+            "-s", "--chunk-size", metavar="SIZE", type=int, help="an optional "
+            "chunk size (in bytes) to use")
+
+    @staticmethod
+    def run(args):
+        #
+        # Download publicly available file
+        #
+
+        if args.public:
+            if args.print:
+                logger.info(
+                    etaw.download_google_drive_file(
+                        args.file_id, chunk_size=args.chunk_size))
+            elif args.path is None:
+                raise ValueError(
+                    "Must provide `path` when `--public` flag is set")
+            else:
+                logger.info(
+                    "Downloading '%s' to '%s'", args.file_id, args.path)
+                etaw.download_google_drive_file(
+                    args.file_id, path=args.path, chunk_size=args.chunk_size)
+
+            return
+
+        #
+        # Download via GoogleDriveStorageClient
+        #
+
+        client = etas.GoogleDriveStorageClient(chunk_size=args.chunk_size)
+
+        if args.print:
+            logger.info(client.download_bytes(args.file_id))
+        else:
+            local_path = args.path
+            if local_path is None:
+                local_path = client.get_file_metadata(args.file_id)["name"]
+
+            logger.info("Downloading '%s' to '%s'", args.file_id, local_path)
+            client.download(args.file_id, local_path)
+
+
+class GoogleDriveDownloadDirectoryCommand(Command):
+    '''Download directory from Google Drive.
+
+    Examples:
+        # Download directory
+        eta gdrive download-dir <folder-id> <local-dir>
+    '''
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "folder_id", metavar="ID", help="the ID of the folder to download")
+        parser.add_argument(
+            "local_dir", metavar="DIR", help="the directory to download the "
+            "files into")
+        parser.add_argument(
+            "-f", "--skip-failures", action="store_true", help="whether to "
+            "skip failures")
+        parser.add_argument(
+            "-e", "--skip-existing", action="store_true", help="whether to "
+            "skip existing files")
+        parser.add_argument(
+            "-r", "--recursive", action="store_true", help="whether to "
+            "recursively download the contents of subdirecotires")
+        parser.add_argument(
+            "-s", "--chunk-size", metavar="SIZE", type=int, help="an optional "
+            "chunk size (in bytes) to use")
+
+    @staticmethod
+    def run(args):
+        client = etas.GoogleDriveStorageClient(chunk_size=args.chunk_size)
+
+        client.download_files_in_folder(
+            args.folder_id, args.local_dir, skip_failures=args.skip_failures,
+            skip_existing_files=args.skip_existing, recursive=args.recursive)
+
+
+class GoogleDriveDeleteCommand(Command):
+    '''Delete file from Google Drive.
+
+    Examples:
+        # Delete file or folder
+        eta gdrive delete <id>
+
+        # Delete the contents (only) of a folder
+        eta gdrive delete <id> --contents-only
+    '''
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "id", metavar="ID", help="the ID of the file/folder to delete")
+        parser.add_argument(
+            "-c", "--contents-only", action="store_true", help="whether to "
+            "delete only the contents of the folder (not the folder itself)")
+        parser.add_argument(
+            "-s", "--skip-failures", action="store_true", help="whether to "
+            "skip failed deletions")
+
+    @staticmethod
+    def run(args):
+        client = etas.GoogleDriveStorageClient()
+
+        if args.contents_only:
+            logger.info("Deleting contents of '%s'", args.id)
+            client.delete_folder_contents(
+                args.id, skip_failures=args.skip_failures)
+        else:
+            logger.info("Deleting '%s'", args.id)
+            client.delete(args.id)
+
+
+def _apply_search(records, limit, search, sort_by, ascending, field_map):
+    if search:
+        for match in _parse_search(search, field_map):
+            records = [r for r in records if match(r)]
+
+    reverse = not ascending
+    if sort_by:
+        records = sorted(records, key=lambda r: r[sort_by], reverse=reverse)
+    elif reverse:
+        records = reversed(records)
+
+    if limit > 0:
+        records = records[:limit]
+
+    return records
+
+
+def _parse_search(search, field_map):
+    for s in _split_on_char(search, ","):
+        chunks = [_remove_escapes(c, ":,") for c in _split_on_char(s, ":")]
+        if len(chunks) == 1:
+            # Match any field
+            value = chunks[0]
+            yield lambda record: any(value in str(record[f]) for f in record)
+        else:
+            # Match specific field
+            key = chunks[0]
+            value = ":".join(chunks[1:])
+            yield lambda record: value in str(record[field_map[key]])
+
+
+def _split_on_char(s, char):
+    return re.split(r"(?<!\\)" + char, s)
+
+
+def _remove_escapes(s, chars):
+    return re.sub("\\\(" + "|".join(chars) + ")", "\\1", s)
+
+
+def _print_s3_info_table(metadata, show_count=False):
+    records = [(
+        m["bucket"], _parse_name(m["object_name"]), _parse_size(m["size"]),
+        m["mime_type"], _parse_datetime(m["last_modified"])
+    ) for m in metadata]
+
+    table_str = tabulate(
+        records,
+        headers=["bucket", "name", "size", "type", "last modified"],
+        tablefmt=TABLE_FORMAT)
+
+    logger.info(table_str)
+    if show_count:
+        logger.info("\nFound %d files\n", len(records))
+
+
+def _print_gcs_info_table(metadata, show_count=False):
+    records = [(
+        m["bucket"], _parse_name(m["object_name"]), _parse_size(m["size"]),
+        m["mime_type"], _parse_datetime(m["last_modified"])
+    ) for m in metadata]
+
+    table_str = tabulate(
+        records,
+        headers=["bucket", "name", "size", "type", "last modified"],
+        tablefmt=TABLE_FORMAT)
+
+    logger.info(table_str)
+    if show_count:
+        logger.info("\nFound %d files\n", len(records))
+
+
+def _print_google_drive_info_table(metadata, show_count=False):
+    records = [(
+        m["id"], _parse_name(m["name"]), _parse_size(m["size"]),
+        _parse_google_drive_mime_type(m["mime_type"]),
+        _parse_datetime(m["last_modified"])
+    ) for m in metadata]
+
+    table_str = tabulate(
+        records,
+        headers=["id", "name", "size", "type", "last modified"],
+        tablefmt=TABLE_FORMAT)
+
+    logger.info(table_str)
+    if show_count:
+        logger.info("\nFound %d files\n", len(records))
+
+
+def _parse_google_drive_mime_type(mime_type):
+    if mime_type == "application/vnd.google-apps.folder":
+        mime_type = "(folder)"
+
+    return mime_type
+
+
+def _parse_name(name):
+    if MAX_NAME_COLUMN_WIDTH is not None and len(name) > MAX_NAME_COLUMN_WIDTH:
+        name = name[:(MAX_NAME_COLUMN_WIDTH - 4)] + " ..."
+    return name
+
+
+def _parse_size(size):
+    if size is None or size < 0:
+        return ""
+
+    return etau.to_human_bytes_str(size)
+
+
+def _parse_datetime(dt):
+    return dt.astimezone(get_localzone()).strftime("%Y-%m-%d %H:%M:%S %Z")
 
 
 def _render_names_in_dirs_str(d):
