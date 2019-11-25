@@ -510,7 +510,7 @@ class AuthCommand(Command):
         subparsers = parser.add_subparsers(title="available commands")
         _register_command(subparsers, "show", ShowAuthCommand)
         _register_command(subparsers, "activate", ActivateAuthCommand)
-        _register_command(subparsers, "clean", CleanAuthCommand)
+        _register_command(subparsers, "deactivate", DeactivateAuthCommand)
 
 
 class ShowAuthCommand(Command):
@@ -641,8 +641,8 @@ class ActivateAuthCommand(Command):
             etas.NeedsSSHCredentials.activate_credentials(args.ssh)
 
 
-class CleanAuthCommand(Command):
-    '''Delete authentication credentials.'''
+class DeactivateAuthCommand(Command):
+    '''Deactivate authentication credentials.'''
 
     @staticmethod
     def setup(parser):
