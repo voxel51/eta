@@ -1234,20 +1234,16 @@ class GoogleCloudStorageClient(
 
         Returns:
             a dictionary containing metadata about the file, including its
-                `name`, `bucket`, `creation_date`, `size`, and `mime_type`
+                `bucket`, `object_name`, `name`, `size`, `mime_type`, and
+                `last_modified`
         '''
         blob = self._get_blob(cloud_path)
-        blob.patch()  # must call `patch()` to populate the blob's properties
-        return {
-            "name": os.path.basename(blob.name),
-            "bucket": blob.bucket,
-            "creation_date": blob.updated,
-            "size": blob.size,
-            "mime_type": blob.content_type,
-        }
+        blob.patch()  # must call `patch` so metadata is populated
+        return self._get_file_metadata(blob)
 
     @google_cloud_api_retry
-    def list_files_in_folder(self, cloud_folder, recursive=True):
+    def list_files_in_folder(
+            self, cloud_folder, recursive=True, return_metadata=False):
         '''Returns a list of the files in the given "folder" in Google Cloud
         Storage.
 
@@ -1255,9 +1251,15 @@ class GoogleCloudStorageClient(
             cloud_folder: a string like `gs://<bucket-name>/<folder-path>`
             recursive: whether to recursively traverse sub-"folders". By
                 default, this is True
+            return_metadata: whether to return a metadata dictionary for each
+                file, including its  `bucket`, `object_name`, `name`, `size`,
+                `mime_type`, and `last_modified`. By default, only the paths
+                to the files are returned
 
         Returns:
-            a list of full cloud paths to the files in the folder
+            a list of full cloud paths (when `return_metadata == False`) or a
+                list of metadata dictionaries (when `return_metadata == True`)
+                for the files in the folder
         '''
         bucket_name, folder_name = self._parse_gcs_path(cloud_folder)
         bucket = self._client.get_bucket(bucket_name)
@@ -1267,6 +1269,16 @@ class GoogleCloudStorageClient(
         delimiter = "/" if not recursive else None
         blobs = bucket.list_blobs(prefix=folder_name, delimiter=delimiter)
 
+        # Return metadata dictionaries for each file
+        if return_metadata:
+            metadata = []
+            for blob in blobs:
+                if not blob.name.endswith("/"):
+                    metadata.append(self._get_file_metadata(blob))
+
+            return metadata
+
+        # Return paths for each file
         paths = []
         prefix = "gs://" + bucket_name
         for blob in blobs:
@@ -1304,6 +1316,16 @@ class GoogleCloudStorageClient(
         bucket_name, object_name = self._parse_gcs_path(cloud_path)
         bucket = self._client.get_bucket(bucket_name)
         return bucket.blob(object_name, chunk_size=self.chunk_size)
+
+    def _get_file_metadata(self, blob):
+        return {
+            "bucket": blob.bucket.name,
+            "object_name": blob.name,
+            "name": os.path.basename(blob.name),
+            "size": blob.size,
+            "mime_type": blob.content_type,
+            "last_modified": blob.updated,
+        }
 
     @staticmethod
     def _parse_gcs_path(cloud_path):
