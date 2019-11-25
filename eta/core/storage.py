@@ -2254,40 +2254,106 @@ class NeedsSSHCredentials(object):
 
     The SSH key used must have _no password_.
 
-    This class provides the ability to locate an SSH key either from a
-    `private_key_path` argument or by reading the `SSH_PRIVATE_KEY_PATH`
-    environment variable that points to a valid SSH key file.
+    Storage clients that dervie from this class should allow users to provide
+    their private key in the following ways (in order of precedence):
+
+        (1) manually providing a private key path when contructing an instance
+            of the class
+
+        (2) setting the `SSH_PRIVATE_KEY_PATH` environment variable to point to
+            a private key file
+
+        (3) loading credentials from `~/.eta/id_rsa` that have been activated
+            via `cls.activate_credentials()`
     '''
 
-    SSH_PRIVATE_KEY_PATH_ENVIRON_VAR = "SSH_PRIVATE_KEY_PATH"
+    CREDENTIALS_PATH = os.path.join(etac.ETA_CONFIG_DIR, "id_rsa")
 
-    @staticmethod
-    def parse_private_key_path(private_key_path=None):
-        '''Parses the private key path.
+    @classmethod
+    def activate_credentials(cls, credentials_path):
+        '''Activate the credentials by copying them to `~/.eta/id_rsa`.
+
+        Args:
+            credentials_path: the path to an SSH private key file
+        '''
+        etau.copy_file(credentials_path, cls.CREDENTIALS_PATH)
+        logger.info(
+            "SSH credentials successfully activated at '%s'",
+            cls.CREDENTIALS_PATH)
+
+    @classmethod
+    def deactivate_credentials(cls):
+        '''Deactivates (deletes) the currently active credentials, if any.
+
+        Active credentials (if any) are at `~/.eta/id_rsa`.
+        '''
+        try:
+            os.remove(cls.CREDENTIALS_PATH)
+            logger.info(
+                "SSH credentials '%s' successfully deactivated",
+                cls.CREDENTIALS_PATH)
+        except OSError:
+            logger.info("No SSH credentials to deactivate")
+
+    @classmethod
+    def has_active_credentials(cls):
+        '''Determines whether there are any active credentials stored at
+        `~/.eta/id_rsa`.
+
+        Returns:
+            True/False
+        '''
+        return os.path.isfile(cls.CREDENTIALS_PATH)
+
+    @classmethod
+    def get_private_key_path(cls, private_key_path=None):
+        '''Gets the path to the SSH private key.
 
         Args:
             private_key_path: an optional path to an SSH private key. If no
-                value is provided, the `SSH_PRIVATE_KEY_PATH` environment
-                variable must be set to point to the key
+                value is provided, the active credentials are located via the
+                strategy described in the `NeedsSSHCredentials` class docstring
 
         Returns:
-            the path to the private key file
+            path to the private key file
 
         Raises:
-            SSHKeyError: if no SSH key file was found
+            SSHCredentialsError: if no private key file was found
         '''
-        pkp = (
-            private_key_path or os.environ.get(
-                NeedsSSHCredentials.SSH_PRIVATE_KEY_PATH_ENVIRON_VAR)
-        )
-        if not pkp or not os.path.isfile(pkp):
-            raise SSHKeyError("No SSH key found")
+        if private_key_path is not None:
+            logger.debug(
+                "Using manually provided SSH private key path '%s'",
+                private_key_path)
+            return private_key_path
 
-        return pkp
+        private_key_path = os.environ.get("SSH_PRIVATE_KEY_PATH", None)
+        if private_key_path is not None:
+            logger.debug(
+                "Using SSH private key from environment variable "
+                "'SSH_PRIVATE_KEY_PATH=%s'", private_key_path)
+        elif cls.has_active_credentials():
+            private_key_path = cls.CREDENTIALS_PATH
+            logger.debug(
+                "Using activated SSH private key from '%s'", private_key_path)
+        else:
+            raise SSHCredentialsError("No SSH credentials found")
+
+        return private_key_path
 
 
-class SSHKeyError(Exception):
-    pass
+class SSHCredentialsError(Exception):
+    '''Error raised when a problem with SSH credentials is encountered.'''
+
+    def __init__(self, message):
+        '''Creates an SSHCredentialsError instance.
+
+        Args:
+            message: the error message
+        '''
+        super(SSHCredentialsError, self).__init__(
+            "%s. Read the documentation for "
+            "`eta.core.storage.NeedsSSHCredentials` for more information "
+            "about authenticating with SSH keys." % message)
 
 
 class SFTPStorageClient(StorageClient, NeedsSSHCredentials):
@@ -2331,17 +2397,18 @@ class SFTPStorageClient(StorageClient, NeedsSSHCredentials):
         Args:
             hostname: the host name of the remote server
             username: the username to login to
-            private_key_path: the path to an SSH private key to use. If not
-                provided, the `SSH_PRIVATE_KEY_PATH` environment variable must
-                be set to point to a private key file
-            port: the remote port to use for the SFTP connection. The default
-                value is 22
+            private_key_path: an optional path to an SSH private key to use. If
+                not provided, the active private key is located using the
+                strategy described in `NeedsSSHCredentials`
+            port: an optional remote port to use for the SFTP connection. The
+                default value is 22
             keep_open: whether to keep the connection open between API calls.
                 The default value is False
         '''
         self.hostname = hostname
         self.username = username
-        self.private_key_path = self.parse_private_key_path(private_key_path)
+        self.private_key_path = self.get_private_key_path(
+            private_key_path=private_key_path)
         self.port = port
         self.keep_open = keep_open
 
