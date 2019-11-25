@@ -1365,8 +1365,8 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
     strategy used by this class.
 
     Attributes:
-        chunk_size: the chunk size (in bytes) that will be used for streaming
-            uploads and downloads
+        chunk_size: the chunk size (in bytes) that will be used for uploads and
+            downloads
     '''
 
     #
@@ -1457,7 +1457,7 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
 
         Args:
             file_id: the ID of the file to download
-            local_path: the path to the storage location
+            local_path: the path to which to download the file
         '''
         etau.ensure_basedir(local_path)
         with open(local_path, "wb") as f:
