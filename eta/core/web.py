@@ -121,13 +121,13 @@ class WebSession(object):
         etau.ensure_basedir(path)
 
         num_bytes = 0
-        start_time = time.time()
+        start_time = time()
         with open(path, "wb") as f:
             for chunk in r.iter_content(chunk_size=self.chunk_size):
                 num_bytes += len(chunk)
                 f.write(chunk)
 
-        time_elapsed = time.time() - start_time
+        time_elapsed = time() - start_time
         _log_download_stats(num_bytes, time_elapsed)
 
     def _get_streaming_response(self, url, params=None):
@@ -172,6 +172,6 @@ class GoogleDriveSession(WebSession):
 
 def _log_download_stats(num_bytes, time_elapsed):
     bytes_str = etau.to_human_bytes_str(num_bytes)
+    time_str = etau.to_human_time_str(time_elapsed)
     avg_speed = etau.to_human_bits_str(8 * num_bytes / time_elapsed) + "/s"
-    logger.info(
-        "%s downloaded in %.1fs (%s)" % (bytes_str, time_elapsed, avg_speed))
+    logger.info("%s downloaded in %s (%s)", bytes_str, time_str, avg_speed)
