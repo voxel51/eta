@@ -92,10 +92,11 @@ class ETACommand(Command):
         _register_command(subparsers, "pipelines", PipelinesCommand)
         _register_command(subparsers, "constants", ConstantsCommand)
         _register_command(subparsers, "auth", AuthCommand)
-        _register_command(subparsers, "http", HTTPStorageCommand)
         _register_command(subparsers, "s3", S3StorageCommand)
         _register_command(subparsers, "gcs", GoogleCloudStorageCommand)
         _register_command(subparsers, "gdrive", GoogleDriveStorageCommand)
+        _register_command(subparsers, "http", HTTPStorageCommand)
+        _register_command(subparsers, "sftp", SFTPStorageCommand)
 
 
 class BuildCommand(Command):
@@ -668,108 +669,6 @@ class DeactivateAuthCommand(Command):
             etas.NeedsSSHCredentials.deactivate_credentials()
 
 
-class HTTPStorageCommand(Command):
-    '''Tools for working with HTTP storage.'''
-
-    @staticmethod
-    def setup(parser):
-        subparsers = parser.add_subparsers(title="available commands")
-        _register_command(subparsers, "upload", HTTPUploadCommand)
-        _register_command(subparsers, "download", HTTPDownloadCommand)
-        _register_command(subparsers, "delete", HTTPDeleteCommand)
-
-
-class HTTPUploadCommand(Command):
-    '''Upload file via HTTP.
-
-    Examples:
-        # Upload file
-        eta http upload <local-path> <url>
-    '''
-
-    @staticmethod
-    def setup(parser):
-        parser.add_argument(
-            "path", metavar="PATH", help="the path to the file to upload")
-        parser.add_argument(
-            "url", metavar="URL", help="the URL to which to PUT the file")
-        parser.add_argument(
-            "-f", "--filename", metavar="FILENAME", help="an optional filename "
-            "to include in the request. By default, the name of the local "
-            "file is used")
-        parser.add_argument(
-            "-t", "--content-type", metavar="TYPE", help="an optional content "
-            "type of the file. By default, the type is guessed from the "
-            "filename")
-
-    @staticmethod
-    def run(args):
-        set_content_type = bool(args.content_type)
-        client = etas.HTTPStorageClient(set_content_type=set_content_type)
-
-        logger.info("Uploading '%s' to '%s'", args.path, args.url)
-        client.upload(
-            args.path, args.url, filename=args.filename,
-            content_type=args.content_type)
-
-
-class HTTPDownloadCommand(Command):
-    '''Download file via HTTP.
-
-    Examples:
-        # Download file
-        eta http download <url> <local-path>
-
-        # Print download to stdout
-        eta http download <url> --print
-    '''
-
-    @staticmethod
-    def setup(parser):
-        parser.add_argument(
-            "url", metavar="URL", help="the URL from which to GET the file")
-        parser.add_argument(
-            "path", nargs="?", metavar="PATH", help="the path to which to "
-            "write the downloaded file. If not provided, the filename is "
-            "guessed from the URL")
-        parser.add_argument(
-            "-p", "--print", action="store_true", help="whether to print the "
-            "download to stdout. If true, a file is NOT written to disk")
-        parser.add_argument(
-            "-s", "--chunk-size", metavar="SIZE", type=int, help="an optional "
-            "chunk size (in bytes) to use")
-
-    @staticmethod
-    def run(args):
-        client = etas.HTTPStorageClient(chunk_size=args.chunk_size)
-
-        if args.print:
-            logger.info(client.download_bytes(args.url))
-        else:
-            local_path = args.path or client.get_filename(args.url)
-            logger.info("Downloading '%s' to '%s'", args.url, local_path)
-            client.download(args.url, local_path)
-
-
-class HTTPDeleteCommand(Command):
-    '''Delete file via HTTP.
-
-    Examples:
-        # Delete file
-        eta http delete <url>
-    '''
-
-    @staticmethod
-    def setup(parser):
-        parser.add_argument("url", metavar="URL", help="the URL to DELETE")
-
-    @staticmethod
-    def run(args):
-        client = etas.HTTPStorageClient()
-        logger.info("Deleting '%s'", args.url)
-        client.delete(args.url)
-
-
 class S3StorageCommand(Command):
     '''Tools for working with S3.'''
 
@@ -964,7 +863,7 @@ class S3StorageDownloadCommand(Command):
             "to write the downloaded file. If not provided, the filename of "
             "the file in S3 is used")
         parser.add_argument(
-            "-p", "--print", action="store_true", help="whether to print the "
+            "--print", action="store_true", help="whether to print the "
             "download to stdout. If true, a file is NOT written to disk")
 
     @staticmethod
@@ -1249,7 +1148,7 @@ class GoogleCloudStorageDownloadCommand(Command):
             "to write the downloaded file. If not provided, the filename of "
             "the file in GCS is used")
         parser.add_argument(
-            "-p", "--print", action="store_true", help="whether to print the "
+            "--print", action="store_true", help="whether to print the "
             "download to stdout. If true, a file is NOT written to disk")
         parser.add_argument(
             "-s", "--chunk-size", metavar="SIZE", type=int, help="an optional "
@@ -1542,7 +1441,7 @@ class GoogleDriveDownloadCommand(Command):
             "public link sharing turned on and can therefore be downloaded "
             "with no credentials")
         parser.add_argument(
-            "-p", "--print", action="store_true", help="whether to print the "
+            "--print", action="store_true", help="whether to print the "
             "download to stdout. If true, a file is NOT written to disk")
         parser.add_argument(
             "-s", "--chunk-size", metavar="SIZE", type=int, help="an optional "
@@ -1657,6 +1556,242 @@ class GoogleDriveDeleteCommand(Command):
         else:
             logger.info("Deleting '%s'", args.id)
             client.delete(args.id)
+
+
+class HTTPStorageCommand(Command):
+    '''Tools for working with HTTP storage.'''
+
+    @staticmethod
+    def setup(parser):
+        subparsers = parser.add_subparsers(title="available commands")
+        _register_command(subparsers, "upload", HTTPUploadCommand)
+        _register_command(subparsers, "download", HTTPDownloadCommand)
+        _register_command(subparsers, "delete", HTTPDeleteCommand)
+
+
+class HTTPUploadCommand(Command):
+    '''Upload file via HTTP.
+
+    Examples:
+        # Upload file
+        eta http upload <local-path> <url>
+    '''
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "path", metavar="PATH", help="the path to the file to upload")
+        parser.add_argument(
+            "url", metavar="URL", help="the URL to which to PUT the file")
+        parser.add_argument(
+            "-f", "--filename", metavar="FILENAME", help="an optional "
+            "filename to include in the request. By default, the name of the "
+            "local file is used")
+        parser.add_argument(
+            "-t", "--content-type", metavar="TYPE", help="an optional content "
+            "type of the file. By default, the type is guessed from the "
+            "filename")
+
+    @staticmethod
+    def run(args):
+        set_content_type = bool(args.content_type)
+        client = etas.HTTPStorageClient(set_content_type=set_content_type)
+
+        logger.info("Uploading '%s' to '%s'", args.path, args.url)
+        client.upload(
+            args.path, args.url, filename=args.filename,
+            content_type=args.content_type)
+
+
+class HTTPDownloadCommand(Command):
+    '''Download file via HTTP.
+
+    Examples:
+        # Download file
+        eta http download <url> <local-path>
+
+        # Print download to stdout
+        eta http download <url> --print
+    '''
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "url", metavar="URL", help="the URL from which to GET the file")
+        parser.add_argument(
+            "path", nargs="?", metavar="PATH", help="the path to which to "
+            "write the downloaded file. If not provided, the filename is "
+            "guessed from the URL")
+        parser.add_argument(
+            "--print", action="store_true", help="whether to print the "
+            "download to stdout. If true, a file is NOT written to disk")
+        parser.add_argument(
+            "-s", "--chunk-size", metavar="SIZE", type=int, help="an optional "
+            "chunk size (in bytes) to use")
+
+    @staticmethod
+    def run(args):
+        client = etas.HTTPStorageClient(chunk_size=args.chunk_size)
+
+        if args.print:
+            logger.info(client.download_bytes(args.url))
+        else:
+            local_path = args.path or client.get_filename(args.url)
+            logger.info("Downloading '%s' to '%s'", args.url, local_path)
+            client.download(args.url, local_path)
+
+
+class HTTPDeleteCommand(Command):
+    '''Delete file via HTTP.
+
+    Examples:
+        # Delete file
+        eta http delete <url>
+    '''
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument("url", metavar="URL", help="the URL to DELETE")
+
+    @staticmethod
+    def run(args):
+        client = etas.HTTPStorageClient()
+        logger.info("Deleting '%s'", args.url)
+        client.delete(args.url)
+
+
+class SFTPStorageCommand(Command):
+    '''Tools for working with SFTP storage.'''
+
+    @staticmethod
+    def setup(parser):
+        subparsers = parser.add_subparsers(title="available commands")
+        _register_command(subparsers, "upload", SFTPUploadCommand)
+        _register_command(subparsers, "download", SFTPDownloadCommand)
+        _register_command(subparsers, "delete", SFTPDeleteCommand)
+
+
+class SFTPUploadCommand(Command):
+    '''Upload file via SFTP.
+
+    Examples:
+        # Upload file
+        eta sftp upload <local-path> <user>@<host>:<remote-path>
+        eta sftp upload -u <user> -h <host> <local-path> <remote-path>
+    '''
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "local_path", metavar="PATH", help="the path to the file to "
+            "upload")
+        parser.add_argument(
+            "remote_path", metavar="PATH", help="the remote path to write the "
+            "file")
+        parser.add_argument(
+            "-u", "--username", metavar="USER", help="the username")
+        parser.add_argument(
+            "-h", "--host", metavar="HOST", help="the hostname to connect to")
+        parser.add_argument(
+            "-p", "--port", metavar="PORT", help="the port to use "
+            "(default = 22)")
+
+    @staticmethod
+    def run(args):
+        hostname, username, remote_path = _parse_remote_path(
+            args.remote_path, args.host, args.user)
+
+        client = etas.SFTPStorageClient(hostname, username, port=args.port)
+
+        logger.info("Uploading '%s' to '%s'", args.local_path, remote_path)
+        client.upload(args.local_path, remote_path)
+
+
+class SFTPDownloadCommand(Command):
+    '''Download file via SFTP.
+
+    Examples:
+        # Download file
+        eta sftp download <user>@<host>:<remote-path> <local-path>
+        eta sftp download -u <user> -h <host> <remote-path> <local-path>
+
+        # Print download to stdout
+        eta sftp download <remote-path> --print
+    '''
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "remote_path", metavar="PATH", help="the remote file to download")
+        parser.add_argument(
+            "local_path", nargs="?", metavar="PATH", help="the path to which "
+            "to write the downloaded file. If not provided, the filename is "
+            "guessed from the remote path")
+        parser.add_argument(
+            "-u", "--user", metavar="USER", help="the username")
+        parser.add_argument(
+            "-h", "--host", metavar="HOST", help="the hostname to connect to")
+        parser.add_argument(
+            "-p", "--port", metavar="PORT", help="the port to use "
+            "(default = 22)")
+        parser.add_argument(
+            "--print", action="store_true", help="whether to print the "
+            "download to stdout. If true, a file is NOT written to disk")
+
+    @staticmethod
+    def run(args):
+        hostname, username, remote_path = _parse_remote_path(
+            args.remote_path, args.host, args.user)
+
+        client = etas.SFTPStorageClient(hostname, username, port=args.port)
+
+        if args.print:
+            logger.info(client.download_bytes(remote_path))
+        else:
+            local_path = args.local_path or os.path.basename(remote_path)
+            logger.info("Downloading '%s' to '%s'", remote_path, local_path)
+            client.download(remote_path, local_path)
+
+
+class SFTPDeleteCommand(Command):
+    '''Delete file via SFTP.
+
+    Examples:
+        # Delete file
+        eta sftp delete <user>@<host>:<remote-path>
+        eta sftp delete -u <user> -h <host> <remote-path>
+    '''
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "remote_path", metavar="PATH", help="the remote file to delete")
+        parser.add_argument(
+            "-u", "--user", metavar="USER", help="the username")
+        parser.add_argument(
+            "-h", "--host", metavar="HOST", help="the hostname to connect to")
+        parser.add_argument(
+            "-p", "--port", metavar="PORT", help="the port to use "
+            "(default = 22)")
+
+    @staticmethod
+    def run(args):
+        hostname, username, remote_path = _parse_remote_path(
+            args.remote_path, args.host, args.user)
+
+        client = etas.SFTPStorageClient(hostname, username, port=args.port)
+
+        logger.info("Deleting '%s'", remote_path)
+        client.delete(remote_path)
+
+
+def _parse_remote_path(remote_path, hostname, username):
+    if "@" in remote_path:
+        username, remote_path = remote_path.split("@")
+    if ":" in remote_path:
+        hostname, remote_path = remote_path.split(":")
+    return hostname, username, remote_path
+
 
 
 def _apply_search(records, limit, search, sort_by, ascending, field_map):
