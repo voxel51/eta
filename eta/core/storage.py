@@ -2020,6 +2020,7 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
 
 
 class GoogleDriveStorageClientError(Exception):
+    '''Error raised when a problem occurred in a GoogleDriveStorageClient.'''
     pass
 
 
