@@ -30,13 +30,14 @@ import eta.core.utils as etau
 logger = logging.getLogger(__name__)
 
 
-def download_file(url, path=None):
+def download_file(url, path=None, chunk_size=None):
     '''Downloads a file from a URL. If a path is specified, the file is written
     there. Otherwise, the content is returned as a binary string.
 
     Args:
         url: the URL to get
         path: an optional path to write the file to
+        chunk_size: an optional chunk size (in bytes) to use
 
     Returns:
         the binary string if path is not specified; otherwise None
@@ -44,11 +45,11 @@ def download_file(url, path=None):
     Raises:
         WebSessionError: if the download failed
     '''
-    sess = WebSession()
+    sess = WebSession(chunk_size=chunk_size)
     return sess.write(path, url) if path else sess.get(url)
 
 
-def download_google_drive_file(fid, path=None):
+def download_google_drive_file(fid, path=None, chunk_size=None):
     '''Downloads the Google Drive file with the given ID. If a path is
     specified, the file is written there. Otherwise, the file contents are
     returned as a binary string.
@@ -56,6 +57,7 @@ def download_google_drive_file(fid, path=None):
     Args:
         fid: the ID of the Google Drive file (usually a 28 character string)
         path: an optional path to write the file to
+        chunk_size: an optional chunk size (in bytes) to use
 
     Returns:
         the binary string if path is not specified; otherwise None
@@ -63,16 +65,23 @@ def download_google_drive_file(fid, path=None):
     Raises:
         WebSessionError: if the download failed
     '''
-    sess = GoogleDriveSession()
+    sess = GoogleDriveSession(chunk_size=chunk_size)
     return sess.write(path, fid) if path else sess.get(fid)
 
 
 class WebSession(object):
     '''Class for downloading files from the web.'''
 
-    def __init__(self):
-        '''Constructs a WebSession instance.'''
+    DEFAULT_CHUNK_SIZE = None
+
+    def __init__(self, chunk_size=None):
+        '''Creates a WebSession instance.
+
+        chunk_size: an optional chunk size (in bytes) to use for downloads.
+            By default, `DEFAULT_CHUNK_SIZE` is used
+        '''
         self.sess = requests.Session()
+        self.chunk_size = chunk_size or self.DEFAULT_CHUNK_SIZE
 
         # Tell the website who is downloading
         header = "%s v%s, %s" % (etac.NAME, etac.VERSION, etac.AUTHOR)
@@ -114,7 +123,7 @@ class WebSession(object):
         num_bytes = 0
         start_time = time.time()
         with open(path, "wb") as f:
-            for chunk in r.iter_content(None):
+            for chunk in r.iter_content(chunk_size=self.chunk_size):
                 num_bytes += len(chunk)
                 f.write(chunk)
 
