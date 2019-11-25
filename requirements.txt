@@ -18,6 +18,7 @@ pycodestyle==2.3.1
 pylint==1.9.4;python_version<"3"
 pylint==2.3.1;python_version>="3"
 pysftp==0.2.9
+pytz==2019.3
 python-dateutil==2.6.1
 requests==2.21.0
 requests-toolbelt==0.8.0
@@ -30,3 +31,4 @@ six==1.11.0
 Sphinx==1.7.5
 sphinxcontrib-napoleon==0.6.1
 tabulate==0.8.5
+tzlocal==2.0.0
