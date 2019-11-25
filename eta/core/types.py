@@ -30,7 +30,6 @@ import eta
 import eta.core.features as etaf
 import eta.core.image as etai
 import eta.core.learning as etal
-import eta.core.tfutils as etat
 import eta.core.utils as etau
 import eta.core.video as etav
 
@@ -1427,6 +1426,8 @@ class TFRecord(File, ConcreteData):
 
     @staticmethod
     def is_valid_path(path):
+        # Do this locally to avoid importing TF unless absolutely necessary
+        import eta.core.tfutils as etat
         return File.is_valid_path(path) and etat.is_valid_tf_record_path(path)
 
 
