@@ -743,11 +743,11 @@ class LabeledDataset(object):
                              % os.path.basename(data_path))
 
         data_subdir = os.path.join(self.data_dir, self._DATA_SUBDIR)
-        if new_data_filename is not None:
+        if new_data_filename is None:
             new_data_filename = os.path.basename(data_path)
 
         labels_subdir = os.path.join(self.data_dir, self._LABELS_SUBDIR)
-        if new_labels_filename is not None:
+        if new_labels_filename is None:
             new_labels_filename = os.path.basename(data_path)
 
         data_method, labels_method = self._parse_file_methods(file_method)
