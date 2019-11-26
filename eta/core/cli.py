@@ -2144,7 +2144,10 @@ def _parse_size(size):
 
 
 def _parse_datetime(dt):
-    return dt.astimezone(get_localzone()).strftime("%Y-%m-%d %H:%M:%S %Z")
+    try:
+        return dt.astimezone(get_localzone()).strftime("%Y-%m-%d %H:%M:%S %Z")
+    except:
+        return "-"
 
 
 def _render_names_in_dirs_str(d):
