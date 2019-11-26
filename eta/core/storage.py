@@ -688,7 +688,7 @@ class AWSCredentialsError(Exception):
 
 
 class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
-    '''Client for reading/writing data from S3 buckets.
+    '''Client for reading/writing data from Amazon S3 buckets.
 
     All cloud path strings used by this class should have the form
     "s3://<bucket>/<path/to/object>".
@@ -1179,11 +1179,11 @@ class GoogleCloudStorageClient(
 
     @google_cloud_api_retry
     def upload(self, local_path, cloud_path, content_type=None):
-        '''Uploads the file to Google Cloud Storage.
+        '''Uploads the file to GCS.
 
         Args:
             local_path: the path to the file to upload
-            cloud_path: the path to the Google Cloud object to create
+            cloud_path: the path to the GCS object to create
             content_type: the optional type of the content being uploaded. If
                 no value is provided, it is guessed from the filename
         '''
@@ -1193,11 +1193,11 @@ class GoogleCloudStorageClient(
 
     @google_cloud_api_retry
     def upload_bytes(self, bytes_str, cloud_path, content_type=None):
-        '''Uploads the given bytes to Google Cloud Storage.
+        '''Uploads the given bytes to GCS.
 
         Args:
             bytes_str: the bytes string to upload
-            cloud_path: the path to the Google Cloud object to create
+            cloud_path: the path to the GCS object to create
             content_type: the optional type of the content being uploaded. If
                 no value is provided but the object already exists in GCS, then
                 the same value is used. Otherwise, the default value
@@ -1208,13 +1208,12 @@ class GoogleCloudStorageClient(
 
     @google_cloud_api_retry
     def upload_stream(self, file_obj, cloud_path, content_type=None):
-        '''Uploads the contents of the given file-like object to Google Cloud
-        Storage.
+        '''Uploads the contents of the given file-like object to GCS.
 
         Args:
             file_obj: the file-like object to upload, which must be open for
                 reading
-            cloud_path: the path to the Google Cloud object to create
+            cloud_path: the path to the GCS object to create
             content_type: the optional type of the content being uploaded. If
                 no value is provided but the object already exists in GCS, then
                 the same value is used. Otherwise, the default value
@@ -1225,10 +1224,10 @@ class GoogleCloudStorageClient(
 
     @google_cloud_api_retry
     def download(self, cloud_path, local_path):
-        '''Downloads the file from Google Cloud Storage to the given location.
+        '''Downloads the file from GCS to the given location.
 
         Args:
-            cloud_path: the path to the Google Cloud object to download
+            cloud_path: the path to the GCS object to download
             local_path: the local disk path to store the downloaded file
         '''
         blob = self._get_blob(cloud_path)
@@ -1237,11 +1236,10 @@ class GoogleCloudStorageClient(
 
     @google_cloud_api_retry
     def download_bytes(self, cloud_path):
-        '''Downloads the file from Google Cloud Storage and returns the bytes
-        string.
+        '''Downloads the file from GCS and returns the bytes string.
 
         Args:
-            cloud_path: the path to the Google Cloud object to download
+            cloud_path: the path to the GCS object to download
 
         Returns:
             the downloaded bytes string
@@ -1251,11 +1249,10 @@ class GoogleCloudStorageClient(
 
     @google_cloud_api_retry
     def download_stream(self, cloud_path, file_obj):
-        '''Downloads the file from Google Cloud Storage to the given file-like
-        object.
+        '''Downloads the file from GCS to the given file-like object.
 
         Args:
-            cloud_path: the path to the Google Cloud object to download
+            cloud_path: the path to the GCS object to download
             file_obj: the file-like object to which to write the download,
                 which must be open for writing
         '''
@@ -1264,20 +1261,20 @@ class GoogleCloudStorageClient(
 
     @google_cloud_api_retry
     def delete(self, cloud_path):
-        '''Deletes the given file from Google Cloud Storage.
+        '''Deletes the given file from GCS.
 
         Args:
-            cloud_path: the path to the Google Cloud object to delete
+            cloud_path: the path to the GCS object to delete
         '''
         blob = self._get_blob(cloud_path)
         blob.delete()
 
     @google_cloud_api_retry
     def get_file_metadata(self, cloud_path):
-        '''Returns metadata about the given file in Google Cloud Storage.
+        '''Returns metadata about the given file in GCS.
 
         Args:
-            cloud_path: the path to the Google Cloud object
+            cloud_path: the path to the GCS object
 
         Returns:
             a dictionary containing metadata about the file, including its
@@ -1291,8 +1288,7 @@ class GoogleCloudStorageClient(
     @google_cloud_api_retry
     def list_files_in_folder(
             self, cloud_folder, recursive=True, return_metadata=False):
-        '''Returns a list of the files in the given "folder" in Google Cloud
-        Storage.
+        '''Returns a list of the files in the given "folder" in GCS.
 
         Args:
             cloud_folder: a string like `gs://<bucket-name>/<folder-path>`
@@ -1337,7 +1333,7 @@ class GoogleCloudStorageClient(
     @google_cloud_api_retry
     def generate_signed_url(
             self, cloud_path, method="GET", hours=24, content_type=None):
-        '''Generates a signed URL for accessing the given storage object.
+        '''Generates a signed URL for accessing the given GCS object.
 
         Anyone with the URL can access the object with the permission until it
         expires.
@@ -1345,7 +1341,7 @@ class GoogleCloudStorageClient(
         Note that you should use `PUT`, not `POST`, to upload objects!
 
         Args:
-            cloud_path: the path to the Google Cloud object
+            cloud_path: the path to the GCS object
             method: the HTTP verb (GET, PUT, DELETE) to authorize
             hours: the number of hours that the URL is valid
             content_type: (PUT actions only) the optional type of the content
@@ -1364,7 +1360,8 @@ class GoogleCloudStorageClient(
         bucket = self._client.get_bucket(bucket_name)
         return bucket.blob(object_name, chunk_size=self.chunk_size)
 
-    def _get_file_metadata(self, blob):
+    @staticmethod
+    def _get_file_metadata(blob):
         return {
             "bucket": blob.bucket.name,
             "object_name": blob.name,
@@ -1376,18 +1373,6 @@ class GoogleCloudStorageClient(
 
     @staticmethod
     def _parse_gcs_path(cloud_path):
-        '''Parses a Google Cloud Storage path.
-
-        Args:
-            cloud_path: a string of form "gs://<bucket_name>/<object_name>"
-
-        Returns:
-            bucket_name: the name of the Google Cloud Storage bucket
-            object_name: the name of the object
-
-        Raises:
-            GoogleCloudStorageClientError: if the cloud path string was invalid
-        '''
         if not cloud_path.startswith("gs://"):
             raise GoogleCloudStorageClientError(
                 "Cloud storage path '%s' must start with gs://" % cloud_path)
@@ -1567,7 +1552,7 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
                     folder_id, t.elapsed_time_str)
 
     def get_file_metadata(self, file_id, all_fields=False):
-        '''Gets metadata about the file with the given ID.
+        '''Gets metadata about the file (or folder) with the given ID.
 
         Args:
             file_id: the ID of a file (or folder)
@@ -1577,31 +1562,12 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
         Returns:
             a dictionary containing the available metadata about the file,
                 including (at least) its `id`, `name`, `size`, `mime_type`, and
-                `last_modified`
+                `last_modified`. For folders, `size == -1`
         '''
         fields = ["id", "name", "size", "mimeType", "modifiedTime"]
         metadata = self._get_file_metadata(
             file_id, fields=fields, all_fields=all_fields)
         return self._parse_file_metadata(metadata)
-
-    def _get_file_metadata(self, file_id, fields=None, all_fields=False):
-        if all_fields:
-            fields = "*"
-        else:
-            fields = ",".join(fields)
-
-        return self._service.files().get(
-            fileId=file_id, fields=fields, supportsTeamDrives=True).execute()
-
-    @staticmethod
-    def _parse_file_metadata(metadata):
-        return {
-            "id": metadata["id"],
-            "name": metadata["name"],
-            "size": int(metadata.get("size", -1)),
-            "mime_type": metadata["mimeType"],
-            "last_modified": dateutil.parser.parse(metadata["modifiedTime"]),
-        }
 
     def get_team_drive_id(self, name):
         '''Get the ID of the Team Drive with the given name.
@@ -2064,6 +2030,33 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
                 break
 
         return files, folders
+
+    def _get_file_metadata(self, file_id, fields=None, all_fields=False):
+        if all_fields:
+            fields = "*"
+        else:
+            fields = ",".join(fields)
+
+        return self._service.files().get(
+            fileId=file_id, fields=fields, supportsTeamDrives=True).execute()
+
+    @staticmethod
+    def _parse_file_metadata(metadata):
+        return {
+            "id": metadata["id"],
+            "name": metadata["name"],
+            "size": int(metadata.get("size", -1)),
+            "mime_type": metadata["mimeType"],
+            "last_modified": dateutil.parser.parse(metadata["modifiedTime"]),
+        }
+
+    @staticmethod
+    def _parse_folder_metadata(metadata):
+        return {
+            "id": metadata["id"],
+            "name": metadata["name"],
+            "last_modified": dateutil.parser.parse(metadata["modifiedTime"]),
+        }
 
 
 class GoogleDriveStorageClientError(Exception):
