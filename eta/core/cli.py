@@ -687,11 +687,14 @@ class S3Command(Command):
 
 
 class S3InfoCommand(Command):
-    '''Get information about files in S3.
+    '''Get information about files/folders in S3.
 
     Examples:
         # Get file info
         eta s3 info <path> [...]
+
+        # Get folder info
+        eta s3 info --folder <path> [...]
     '''
 
     @staticmethod
@@ -699,13 +702,21 @@ class S3InfoCommand(Command):
         parser.add_argument(
             "paths", nargs="+", metavar="CLOUD_PATH",
             help="the path(s) of the files of interest in S3")
+        parser.add_argument(
+            "-f", "--folder", action="store_true", help="whether the provided"
+            "paths are folders, not files")
 
     @staticmethod
     def run(args):
         client = etas.S3StorageClient()
 
-        metadata = [client.get_file_metadata(path) for path in args.paths]
-        _print_s3_info_table(metadata)
+        if args.folder:
+            metadata = [client.get_folder_metadata(p) for p in args.paths]
+            _print_s3_folder_info_table(metadata)
+            return
+
+        metadata = [client.get_file_metadata(p) for p in args.paths]
+        _print_s3_file_info_table(metadata)
 
 
 class S3ListCommand(Command):
@@ -761,7 +772,7 @@ class S3ListCommand(Command):
             metadata, args.limit, args.search, args.sort_by, args.ascending,
             _S3_SEARCH_FIELDS_MAP)
 
-        _print_s3_info_table(metadata, show_count=args.count)
+        _print_s3_file_info_table(metadata, show_count=args.count)
 
 
 _S3_SEARCH_FIELDS_MAP = {
@@ -986,11 +997,14 @@ class GCSCommand(Command):
 
 
 class GCSInfoCommand(Command):
-    '''Get information about files in GCS.
+    '''Get information about files/folders in GCS.
 
     Examples:
         # Get file info
         eta gcs info <path> [...]
+
+        # Get folder info
+        eta gcs info --folder <path> [...]
     '''
 
     @staticmethod
@@ -998,13 +1012,21 @@ class GCSInfoCommand(Command):
         parser.add_argument(
             "paths", nargs="+", metavar="CLOUD_PATH",
             help="path(s) to GCS files")
+        parser.add_argument(
+            "-f", "--folder", action="store_true", help="whether the provided"
+            "paths are folders, not files")
 
     @staticmethod
     def run(args):
         client = etas.GoogleCloudStorageClient()
 
+        if args.folder:
+            metadata = [client.get_folder_metadata(p) for p in args.paths]
+            _print_gcs_folder_info_table(metadata)
+            return
+
         metadata = [client.get_file_metadata(path) for path in args.paths]
-        _print_gcs_info_table(metadata)
+        _print_gcs_file_info_table(metadata)
 
 
 class GCSListCommand(Command):
@@ -1058,12 +1080,12 @@ class GCSListCommand(Command):
 
         metadata = _apply_search(
             metadata, args.limit, args.search, args.sort_by, args.ascending,
-            _GOOGLE_CLOUD_STORAGE_SEARCH_FIELDS_MAP)
+            _GCS_SEARCH_FIELDS_MAP)
 
-        _print_gcs_info_table(metadata, show_count=args.count)
+        _print_gcs_file_info_table(metadata, show_count=args.count)
 
 
-_GOOGLE_CLOUD_STORAGE_SEARCH_FIELDS_MAP = {
+_GCS_SEARCH_FIELDS_MAP = {
     "name": "object_name",
     "size": "size",
     "type": "mime_type",
@@ -1300,11 +1322,14 @@ class GoogleDriveStorageCommand(Command):
 
 
 class GoogleDriveInfoCommand(Command):
-    '''Get information about files in Google Drive.
+    '''Get information about files/folders in Google Drive.
 
     Examples:
         # Get file info
         eta gdrive info <id> [...]
+
+        # Get folder info
+        eta gdrive info --folder <id> [...]
     '''
 
     @staticmethod
@@ -1312,13 +1337,21 @@ class GoogleDriveInfoCommand(Command):
         parser.add_argument(
             "ids", nargs="+", metavar="ID",
             help="the ID(s) of the files of interest in Google Drive")
+        parser.add_argument(
+            "-f", "--folder", action="store_true", help="whether the files of"
+            "interest are folders")
 
     @staticmethod
     def run(args):
         client = etas.GoogleDriveStorageClient()
 
+        if args.folder:
+            metadata = [client.get_folder_metadata(fid) for fid in args.ids]
+            _print_google_drive_folder_info_table(metadata)
+            return
+
         metadata = [client.get_file_metadata(fid) for fid in args.ids]
-        _print_google_drive_info_table(metadata)
+        _print_google_drive_file_info_table(metadata)
 
 
 class GoogleDriveListCommand(Command):
@@ -1374,7 +1407,7 @@ class GoogleDriveListCommand(Command):
             metadata, args.limit, args.search, args.sort_by, args.ascending,
             _GOOGLE_DRIVE_SEARCH_FIELDS_MAP)
 
-        _print_google_drive_info_table(metadata, show_count=args.count)
+        _print_google_drive_file_info_table(metadata, show_count=args.count)
 
 
 _GOOGLE_DRIVE_SEARCH_FIELDS_MAP = {
@@ -1999,7 +2032,7 @@ def _remove_escapes(s, chars):
     return re.sub("\\\(" + "|".join(chars) + ")", "\\1", s)
 
 
-def _print_s3_info_table(metadata, show_count=False):
+def _print_s3_file_info_table(metadata, show_count=False):
     records = [(
         m["bucket"], _parse_name(m["object_name"]), _parse_size(m["size"]),
         m["mime_type"], _parse_datetime(m["last_modified"])
@@ -2015,7 +2048,21 @@ def _print_s3_info_table(metadata, show_count=False):
         logger.info("\nFound %d files\n", len(records))
 
 
-def _print_gcs_info_table(metadata, show_count=False):
+def _print_s3_folder_info_table(metadata):
+    records = [(
+        m["bucket"], m["path"], m["num_files"], _parse_size(m["size"]),
+        _parse_datetime(m["last_modified"])
+    ) for m in metadata]
+
+    table_str = tabulate(
+        records,
+        headers=["bucket", "path", "num files", "size", "last modified"],
+        tablefmt=TABLE_FORMAT)
+
+    logger.info(table_str)
+
+
+def _print_gcs_file_info_table(metadata, show_count=False):
     records = [(
         m["bucket"], _parse_name(m["object_name"]), _parse_size(m["size"]),
         m["mime_type"], _parse_datetime(m["last_modified"])
@@ -2031,7 +2078,21 @@ def _print_gcs_info_table(metadata, show_count=False):
         logger.info("\nFound %d files\n", len(records))
 
 
-def _print_google_drive_info_table(metadata, show_count=False):
+def _print_gcs_folder_info_table(metadata):
+    records = [(
+        m["bucket"], m["path"], m["num_files"], _parse_size(m["size"]),
+        _parse_datetime(m["last_modified"])
+    ) for m in metadata]
+
+    table_str = tabulate(
+        records,
+        headers=["bucket", "path", "num files", "size", "last modified"],
+        tablefmt=TABLE_FORMAT)
+
+    logger.info(table_str)
+
+
+def _print_google_drive_file_info_table(metadata, show_count=False):
     records = [(
         m["id"], _parse_name(m["name"]), _parse_size(m["size"]),
         _parse_google_drive_mime_type(m["mime_type"]),
@@ -2046,6 +2107,20 @@ def _print_google_drive_info_table(metadata, show_count=False):
     logger.info(table_str)
     if show_count:
         logger.info("\nFound %d files\n", len(records))
+
+
+def _print_google_drive_folder_info_table(metadata):
+    records = [(
+        m["drive"], m["path"], m["num_files"], _parse_size(m["size"]),
+        _parse_datetime(m["last_modified"])
+    ) for m in metadata]
+
+    table_str = tabulate(
+        records,
+        headers=["drive", "path", "num files", "size", "last modified"],
+        tablefmt=TABLE_FORMAT)
+
+    logger.info(table_str)
 
 
 def _parse_google_drive_mime_type(mime_type):
