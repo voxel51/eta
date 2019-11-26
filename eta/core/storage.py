@@ -1656,8 +1656,8 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
         Drive folder, retaining the (now empty) parent folder.
 
         Args:
-            folder_id: the ID of the Google Drive folder from which the files
-                are to be deleted
+            folder_id: the ID of the folder from which the files are to be
+                deleted
             skip_failures: whether to gracefully skip delete errors. By
                 default, this is False
         '''
