@@ -92,8 +92,8 @@ class ETACommand(Command):
         _register_command(subparsers, "pipelines", PipelinesCommand)
         _register_command(subparsers, "constants", ConstantsCommand)
         _register_command(subparsers, "auth", AuthCommand)
-        _register_command(subparsers, "s3", S3StorageCommand)
-        _register_command(subparsers, "gcs", GoogleCloudStorageCommand)
+        _register_command(subparsers, "s3", S3Command)
+        _register_command(subparsers, "gcs", GCSCommand)
         _register_command(subparsers, "gdrive", GoogleDriveStorageCommand)
         _register_command(subparsers, "http", HTTPStorageCommand)
         _register_command(subparsers, "sftp", SFTPStorageCommand)
@@ -669,24 +669,24 @@ class DeactivateAuthCommand(Command):
             etas.NeedsSSHCredentials.deactivate_credentials()
 
 
-class S3StorageCommand(Command):
+class S3Command(Command):
     '''Tools for working with S3.'''
 
     @staticmethod
     def setup(parser):
         subparsers = parser.add_subparsers(title="available commands")
-        _register_command(subparsers, "info", S3StorageInfoCommand)
-        _register_command(subparsers, "list", S3StorageListCommand)
-        _register_command(subparsers, "upload", S3StorageUploadCommand)
+        _register_command(subparsers, "info", S3InfoCommand)
+        _register_command(subparsers, "list", S3ListCommand)
+        _register_command(subparsers, "upload", S3UploadCommand)
+        _register_command(subparsers, "upload-dir", S3UploadDirectoryCommand)
+        _register_command(subparsers, "download", S3DownloadCommand)
         _register_command(
-            subparsers, "upload-dir", S3StorageUploadDirectoryCommand)
-        _register_command(subparsers, "download", S3StorageDownloadCommand)
-        _register_command(
-            subparsers, "download-dir", S3StorageDownloadDirectoryCommand)
-        _register_command(subparsers, "delete", S3StorageDeleteCommand)
+            subparsers, "download-dir", S3DownloadDirectoryCommand)
+        _register_command(subparsers, "delete", S3DeleteCommand)
+        _register_command(subparsers, "delete-dir", S3DeleteDirCommand)
 
 
-class S3StorageInfoCommand(Command):
+class S3InfoCommand(Command):
     '''Get information about files in S3.
 
     Examples:
@@ -697,7 +697,7 @@ class S3StorageInfoCommand(Command):
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "paths", nargs="+", metavar="PATH",
+            "paths", nargs="+", metavar="CLOUD_PATH",
             help="the path(s) of the files of interest in S3")
 
     @staticmethod
@@ -708,7 +708,7 @@ class S3StorageInfoCommand(Command):
         _print_s3_info_table(metadata)
 
 
-class S3StorageListCommand(Command):
+class S3ListCommand(Command):
     '''List contents of an S3 folder.
 
     Examples:
@@ -730,7 +730,7 @@ class S3StorageListCommand(Command):
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "folder", metavar="PATH", help="the S3 folder to list")
+            "folder", metavar="CLOUD_DIR", help="the S3 folder to list")
         parser.add_argument(
             "-r", "--recursive", action="store_true", help="whether to "
             "recursively list the contents of subfolders")
@@ -772,7 +772,7 @@ _S3_SEARCH_FIELDS_MAP = {
 }
 
 
-class S3StorageUploadCommand(Command):
+class S3UploadCommand(Command):
     '''Upload file to S3.
 
     Examples:
@@ -783,11 +783,11 @@ class S3StorageUploadCommand(Command):
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "local_path", metavar="PATH", help="the path to the file to "
+            "local_path", metavar="LOCAL_PATH", help="the path to the file to "
             "upload")
         parser.add_argument(
-            "cloud_path", metavar="PATH", help="the path to the S3 object to "
-            "create")
+            "cloud_path", metavar="CLOUD_PATH", help="the path to the S3 "
+            "object to create")
         parser.add_argument(
             "-t", "--content-type", metavar="TYPE", help="an optional content "
             "type of the file. By default, the type is guessed from the "
@@ -802,7 +802,7 @@ class S3StorageUploadCommand(Command):
             args.local_path, args.cloud_path, content_type=args.content_type)
 
 
-class S3StorageUploadDirectoryCommand(Command):
+class S3UploadDirectoryCommand(Command):
     '''Upload directory to S3.
 
     Examples:
@@ -816,10 +816,11 @@ class S3StorageUploadDirectoryCommand(Command):
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "local_dir", metavar="DIR", help="the directory of files to "
+            "local_dir", metavar="LOCAL_DIR", help="the directory of files to "
             "upload")
         parser.add_argument(
-            "cloud_dir", metavar="DIR", help="the S3 directory to upload into")
+            "cloud_dir", metavar="CLOUD_DIR", help="the S3 directory to "
+            "upload into")
         parser.add_argument(
             "--sync", action="store_true", help="whether to sync the S3 "
             "directory to match the contents of the local directory")
@@ -843,7 +844,7 @@ class S3StorageUploadDirectoryCommand(Command):
                 args.local_dir, args.cloud_dir, recursive=args.recursive)
 
 
-class S3StorageDownloadCommand(Command):
+class S3DownloadCommand(Command):
     '''Download file from S3.
 
     Examples:
@@ -857,11 +858,12 @@ class S3StorageDownloadCommand(Command):
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "cloud_path", metavar="PATH", help="the S3 object to download")
+            "cloud_path", metavar="CLOUD_PATH", help="the S3 object to "
+            "download")
         parser.add_argument(
-            "local_path", nargs="?", metavar="PATH", help="the path to which "
-            "to write the downloaded file. If not provided, the filename of "
-            "the file in S3 is used")
+            "local_path", nargs="?", metavar="LOCAL_PATH", help="the path to "
+            "which to write the downloaded file. If not provided, the "
+            "filename of the file in S3 is used")
         parser.add_argument(
             "--print", action="store_true", help="whether to print the "
             "download to stdout. If true, a file is NOT written to disk")
@@ -882,7 +884,7 @@ class S3StorageDownloadCommand(Command):
             client.download(args.cloud_path, local_path)
 
 
-class S3StorageDownloadDirectoryCommand(Command):
+class S3DownloadDirectoryCommand(Command):
     '''Download directory from S3.
 
     Examples:
@@ -896,9 +898,10 @@ class S3StorageDownloadDirectoryCommand(Command):
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "cloud_dir", metavar="DIR", help="the S3 directory to download")
+            "cloud_dir", metavar="CLOUD_DIR", help="the S3 directory to "
+            "download")
         parser.add_argument(
-            "local_dir", metavar="DIR", help="the directory to which to "
+            "local_dir", metavar="LOCAL_DIR", help="the directory to which to "
             "download files into")
         parser.add_argument(
             "--sync", action="store_true", help="whether to sync the local"
@@ -923,7 +926,7 @@ class S3StorageDownloadDirectoryCommand(Command):
                 args.cloud_dir, args.local_dir, recursive=args.recursive)
 
 
-class S3StorageDeleteCommand(Command):
+class S3DeleteCommand(Command):
     '''Delete file from S3.
 
     Examples:
@@ -934,7 +937,7 @@ class S3StorageDeleteCommand(Command):
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "cloud_path", metavar="PATH", help="the file to delete")
+            "cloud_path", metavar="CLOUD_PATH", help="the S3 file to delete")
 
     @staticmethod
     def run(args):
@@ -944,28 +947,45 @@ class S3StorageDeleteCommand(Command):
         client.delete(args.cloud_path)
 
 
-class GoogleCloudStorageCommand(Command):
+class S3DeleteDirCommand(Command):
+    '''Delete directory from S3.
+
+    Examples:
+        # Delete directory
+        eta s3 delete-dir <cloud-dir>
+    '''
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "cloud_dir", metavar="CLOUD_DIR", help="the S3 folder to delete")
+
+    @staticmethod
+    def run(args):
+        client = etas.S3StorageClient()
+
+        logger.info("Deleting '%s'", args.cloud_dir)
+        client.delete_folder(args.cloud_dir)
+
+
+class GCSCommand(Command):
     '''Tools for working with Google Cloud Storage.'''
 
     @staticmethod
     def setup(parser):
         subparsers = parser.add_subparsers(title="available commands")
-        _register_command(subparsers, "info", GoogleCloudStorageInfoCommand)
-        _register_command(subparsers, "list", GoogleCloudStorageListCommand)
+        _register_command(subparsers, "info", GCSInfoCommand)
+        _register_command(subparsers, "list", GCSListCommand)
+        _register_command(subparsers, "upload", GCSUploadCommand)
+        _register_command(subparsers, "upload-dir", GCSUploadDirectoryCommand)
+        _register_command(subparsers, "download", GCSDownloadCommand)
         _register_command(
-            subparsers, "upload", GoogleCloudStorageUploadCommand)
-        _register_command(
-            subparsers, "upload-dir", GoogleCloudStorageUploadDirectoryCommand)
-        _register_command(
-            subparsers, "download", GoogleCloudStorageDownloadCommand)
-        _register_command(
-            subparsers, "download-dir",
-            GoogleCloudStorageDownloadDirectoryCommand)
-        _register_command(
-            subparsers, "delete", GoogleCloudStorageDeleteCommand)
+            subparsers, "download-dir", GCSDownloadDirectoryCommand)
+        _register_command(subparsers, "delete", GCSDeleteCommand)
+        _register_command(subparsers, "delete-dir", GCSDeleteDirCommand)
 
 
-class GoogleCloudStorageInfoCommand(Command):
+class GCSInfoCommand(Command):
     '''Get information about files in GCS.
 
     Examples:
@@ -976,7 +996,8 @@ class GoogleCloudStorageInfoCommand(Command):
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "paths", nargs="+", metavar="PATH", help="path(s) to GCS files")
+            "paths", nargs="+", metavar="CLOUD_PATH",
+            help="path(s) to GCS files")
 
     @staticmethod
     def run(args):
@@ -986,7 +1007,7 @@ class GoogleCloudStorageInfoCommand(Command):
         _print_gcs_info_table(metadata)
 
 
-class GoogleCloudStorageListCommand(Command):
+class GCSListCommand(Command):
     '''List contents of a GCS folder.
 
     Examples:
@@ -1008,7 +1029,7 @@ class GoogleCloudStorageListCommand(Command):
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "folder", metavar="PATH", help="the GCS folder to list")
+            "folder", metavar="CLOUD_DIR", help="the GCS folder to list")
         parser.add_argument(
             "-r", "--recursive", action="store_true", help="whether to "
             "recursively list the contents of subfolders")
@@ -1050,7 +1071,7 @@ _GOOGLE_CLOUD_STORAGE_SEARCH_FIELDS_MAP = {
 }
 
 
-class GoogleCloudStorageUploadCommand(Command):
+class GCSUploadCommand(Command):
     '''Upload file to GCS.
 
     Examples:
@@ -1061,11 +1082,11 @@ class GoogleCloudStorageUploadCommand(Command):
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "local_path", metavar="PATH", help="the path to the file to "
+            "local_path", metavar="LOCAL_PATH", help="the path to the file to "
             "upload")
         parser.add_argument(
-            "cloud_path", metavar="PATH", help="the path to the GCS object to "
-            "create")
+            "cloud_path", metavar="CLOUD_PATH", help="the path to the GCS "
+            "object to create")
         parser.add_argument(
             "-t", "--content-type", metavar="TYPE", help="an optional content "
             "type of the file. By default, the type is guessed from the "
@@ -1083,7 +1104,7 @@ class GoogleCloudStorageUploadCommand(Command):
             args.local_path, args.cloud_path, content_type=args.content_type)
 
 
-class GoogleCloudStorageUploadDirectoryCommand(Command):
+class GCSUploadDirectoryCommand(Command):
     '''Upload directory to GCS.
 
     Examples:
@@ -1097,11 +1118,11 @@ class GoogleCloudStorageUploadDirectoryCommand(Command):
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "local_dir", metavar="DIR", help="the directory of files to "
+            "local_dir", metavar="LOCAL_DIR", help="the directory of files to "
             "upload")
         parser.add_argument(
-            "cloud_dir", metavar="DIR", help="the GCS directory to upload "
-            "into")
+            "cloud_dir", metavar="CLOUD_DIR", help="the GCS directory to "
+            "upload into")
         parser.add_argument(
             "--sync", action="store_true", help="whether to sync the GCS"
             "directory to match the contents of the local directory")
@@ -1128,7 +1149,7 @@ class GoogleCloudStorageUploadDirectoryCommand(Command):
                 args.local_dir, args.cloud_dir, recursive=args.recursive)
 
 
-class GoogleCloudStorageDownloadCommand(Command):
+class GCSDownloadCommand(Command):
     '''Download file from GCS.
 
     Examples:
@@ -1142,11 +1163,12 @@ class GoogleCloudStorageDownloadCommand(Command):
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "cloud_path", metavar="PATH", help="the GCS object to download")
+            "cloud_path", metavar="CLOUD_PATH", help="the GCS object to "
+            "download")
         parser.add_argument(
-            "local_path", nargs="?", metavar="PATH", help="the path to which "
-            "to write the downloaded file. If not provided, the filename of "
-            "the file in GCS is used")
+            "local_path", nargs="?", metavar="LOCAL_PATH", help="the path to "
+            "which to write the downloaded file. If not provided, the "
+            "filename of the file in GCS is used")
         parser.add_argument(
             "--print", action="store_true", help="whether to print the "
             "download to stdout. If true, a file is NOT written to disk")
@@ -1170,7 +1192,7 @@ class GoogleCloudStorageDownloadCommand(Command):
             client.download(args.cloud_path, local_path)
 
 
-class GoogleCloudStorageDownloadDirectoryCommand(Command):
+class GCSDownloadDirectoryCommand(Command):
     '''Download directory from GCS.
 
     Examples:
@@ -1184,9 +1206,10 @@ class GoogleCloudStorageDownloadDirectoryCommand(Command):
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "cloud_dir", metavar="DIR", help="the GCS directory to download")
+            "cloud_dir", metavar="CLOUD_DIR", help="the GCS directory to "
+            "download")
         parser.add_argument(
-            "local_dir", metavar="DIR", help="the directory to which to "
+            "local_dir", metavar="LOCAL_DIR", help="the directory to which to "
             "download files into")
         parser.add_argument(
             "--sync", action="store_true", help="whether to sync the local"
@@ -1214,7 +1237,7 @@ class GoogleCloudStorageDownloadDirectoryCommand(Command):
                 args.cloud_dir, args.local_dir, recursive=args.recursive)
 
 
-class GoogleCloudStorageDeleteCommand(Command):
+class GCSDeleteCommand(Command):
     '''Delete file from GCS.
 
     Examples:
@@ -1225,7 +1248,7 @@ class GoogleCloudStorageDeleteCommand(Command):
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "cloud_path", metavar="PATH", help="the GCS file to delete")
+            "cloud_path", metavar="CLOUD_PATH", help="the GCS file to delete")
 
     @staticmethod
     def run(args):
@@ -1350,7 +1373,7 @@ class GoogleDriveUploadCommand(Command):
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "path", metavar="PATH", help="the path to the file to upload")
+            "path", metavar="LOCAL_PATH", help="the path to the file to upload")
         parser.add_argument(
             "folder_id", metavar="ID", help="the ID of the folder to upload "
             "the file into")
@@ -1387,7 +1410,7 @@ class GoogleDriveUploadDirectoryCommand(Command):
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "local_dir", metavar="DIR", help="the directory of files to "
+            "local_dir", metavar="LOCAL_DIR", help="the directory of files to "
             "upload")
         parser.add_argument(
             "folder_id", metavar="ID", help="the ID of the folder to upload "
@@ -1433,9 +1456,9 @@ class GoogleDriveDownloadCommand(Command):
         parser.add_argument(
             "file_id", metavar="ID", help="the ID of the file to download")
         parser.add_argument(
-            "path", nargs="?", metavar="PATH", help="the path to which to "
-            "write the downloaded file. If not provided, the filename of the "
-            "file in Google Drive is used")
+            "path", nargs="?", metavar="LOCAL_PATH", help="the path to which "
+            "to write the downloaded file. If not provided, the filename of "
+            "the file in Google Drive is used")
         parser.add_argument(
             "--public", action="store_true", help="whether the file has "
             "public link sharing turned on and can therefore be downloaded "
@@ -1499,8 +1522,8 @@ class GoogleDriveDownloadDirectoryCommand(Command):
         parser.add_argument(
             "folder_id", metavar="ID", help="the ID of the folder to download")
         parser.add_argument(
-            "local_dir", metavar="DIR", help="the directory to download the "
-            "files into")
+            "local_dir", metavar="LOCAL_DIR", help="the directory to download "
+            "the files into")
         parser.add_argument(
             "-f", "--skip-failures", action="store_true", help="whether to "
             "skip failures")
@@ -1527,35 +1550,55 @@ class GoogleDriveDeleteCommand(Command):
     '''Delete file from Google Drive.
 
     Examples:
-        # Delete file or folder
+        # Delete file
         eta gdrive delete <id>
-
-        # Delete the contents (only) of a folder
-        eta gdrive delete <id> --contents-only
     '''
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "id", metavar="ID", help="the ID of the file/folder to delete")
+            "id", metavar="ID", help="the ID of the file to delete")
+
+    @staticmethod
+    def run(args):
+        client = etas.GoogleDriveStorageClient()
+
+        logger.info("Deleting '%s'", args.id)
+        client.delete(args.id)
+
+
+class GoogleDriveDeleteDirCommand(Command):
+    '''Delete directory from Google Drive.
+
+    Examples:
+        # Delete directory
+        eta gdrive delete-dir <id>
+
+        # Delete the contents (only) of a directory
+        eta gdrive delete-dir <id> --contents-only
+    '''
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "id", metavar="ID", help="the ID of the folder to delete")
         parser.add_argument(
             "-c", "--contents-only", action="store_true", help="whether to "
             "delete only the contents of the folder (not the folder itself)")
         parser.add_argument(
             "-s", "--skip-failures", action="store_true", help="whether to "
-            "skip failed deletions")
+            "skip failures")
 
     @staticmethod
     def run(args):
         client = etas.GoogleDriveStorageClient()
 
         if args.contents_only:
-            logger.info("Deleting contents of '%s'", args.id)
             client.delete_folder_contents(
                 args.id, skip_failures=args.skip_failures)
         else:
             logger.info("Deleting '%s'", args.id)
-            client.delete(args.id)
+            client.delete_folder(args.id)
 
 
 class HTTPStorageCommand(Command):
@@ -1580,7 +1623,8 @@ class HTTPUploadCommand(Command):
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "path", metavar="PATH", help="the path to the file to upload")
+            "path", metavar="LOCAL_PATH", help="the path to the file to "
+            "upload")
         parser.add_argument(
             "url", metavar="URL", help="the URL to which to PUT the file")
         parser.add_argument(
@@ -1619,8 +1663,8 @@ class HTTPDownloadCommand(Command):
         parser.add_argument(
             "url", metavar="URL", help="the URL from which to GET the file")
         parser.add_argument(
-            "path", nargs="?", metavar="PATH", help="the path to which to "
-            "write the downloaded file. If not provided, the filename is "
+            "path", nargs="?", metavar="LOCAL_PATH", help="the path to which "
+            "to write the downloaded file. If not provided, the filename is "
             "guessed from the URL")
         parser.add_argument(
             "--print", action="store_true", help="whether to print the "
@@ -1897,7 +1941,7 @@ def _parse_name(name):
 
 def _parse_size(size):
     if size is None or size < 0:
-        return ""
+        return "-"
 
     return etau.to_human_bytes_str(size)
 
