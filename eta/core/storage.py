@@ -1312,6 +1312,22 @@ class GoogleCloudStorageClient(
         blob.delete()
 
     @google_cloud_api_retry
+    def delete_folder(self, cloud_folder):
+        '''Deletes all files in the given GCS "folder".
+
+        Args:
+            cloud_folder: a string like `gs://<bucket-name>/<folder-path>`
+        '''
+        bucket_name, folder_name = self._parse_gcs_path(cloud_folder)
+        bucket = self._client.get_bucket(bucket_name)
+
+        if folder_name and not folder_name.endswith("/"):
+            folder_name += "/"
+
+        for blob in bucket.list_blobs(prefix=folder_name):
+            blob.delete()
+
+    @google_cloud_api_retry
     def get_file_metadata(self, cloud_path):
         '''Returns metadata about the given file in GCS.
 
@@ -1371,6 +1387,23 @@ class GoogleCloudStorageClient(
                 paths.append(os.path.join(prefix, blob.name))
 
         return paths
+
+    def get_folder_size(self, cloud_folder):
+        '''Returns the size of the contents of the given "folder" in GCS.
+
+        Note that this method is *expensive*; the only way to compute this
+        value is to call `list_files_in_folder(..., recursive=True)` and sum
+        the individual file sizes!
+
+        Args:
+            cloud_folder: a string like `gs://<bucket-name>/<folder-path>`
+
+        Returns:
+            the size of the folder's contents, in bytes
+        '''
+        files = self.list_files_in_folder(
+            cloud_folder, recursive=True, return_metadata=True)
+        return sum(f["size"] for f in files)
 
     @google_cloud_api_retry
     def generate_signed_url(
