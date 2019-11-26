@@ -1746,8 +1746,8 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
                 default, this is False
 
         Returns:
-            a list of dicts containing the `id`, `name`, `size`, `mime_type`
-                and `last_modified` of the subfolders in the folder
+            a list of dicts containing the `id`, `name`, and `last_modified` of
+                the subfolders
         '''
         # List folder contents
         _, folders = self._list_folder_contents(folder_id)
@@ -1760,22 +1760,19 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
                     f["name"] = os.path.join(folder["name"], f["name"])
                     folders.append(f)
 
-        return [self._parse_file_metadata(f) for f in folders]
+        return [self._parse_folder_metadata(f) for f in folders]
 
-    def list_files_in_folder(
-            self, folder_id, include_folders=False, recursive=False):
+    def list_files_in_folder(self, folder_id, recursive=False):
         '''Returns a list of the files in the folder with the given ID.
 
         Args:
             folder_id: the ID of a folder
-            include_folders: whether to include "folders" in the list of
-                returned files. By default, this is False
             recursive: whether to recursively traverse sub-"folders". By
                 default, this is False
 
         Returns:
             a list of dicts containing the `id`, `name`, `size`, `mime_type`,
-                and `last_modified` of the files/subfolders in the folder
+                and `last_modified` of the files in the folder
         '''
         # List folder contents
         files, folders = self._list_folder_contents(folder_id)
@@ -1783,34 +1780,30 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
         if recursive:
             # Recursively traverse subfolders
             for folder in folders:
-                if include_folders:
-                    # Include folder in list just before its contents
-                    files.append(folder)
-
                 contents = self.list_files_in_folder(
-                    folder["id"], include_folders=include_folders,
-                    recursive=True)
+                    folder["id"], recursive=True)
                 for f in contents:
                     # Embed <folder-name>/<file-name> namespace in filename
                     f["name"] = os.path.join(folder["name"], f["name"])
                     files.append(f)
-        elif include_folders:
-            files.extend(folders)
 
         return [self._parse_file_metadata(f) for f in files]
 
-    def count_files_in_folder(self, folder_id, recursive=False):
-        '''Returns count of number of files in the Google Drive folder.
+    def get_folder_size(self, folder_id):
+        '''Returns the size of the contents of the given folder.
+
+        Note that this method is *expensive*; the only way to compute this
+        value is to call `list_files_in_folder(..., recursive=True)` and sum
+        the individual file sizes!
 
         Args:
-            folder_id: the ID of the Google Drive folder to be processed
-            recursive: whether to recursively count files in subfolders. By
-                default, this is False
+            folder_id: the ID of a folder
 
         Returns:
-            the count of files in folder
+            the size of the folder's contents, in bytes
         '''
-        return len(self.list_files_in_folder(folder_id, recursive=recursive))
+        files = self.list_files_in_folder(folder_id, recursive=True)
+        return sum(f["size"] for f in files)
 
     def upload_files_in_folder(
             self, local_dir, folder_id, skip_failures=False,
@@ -1860,20 +1853,17 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
         if num_files > 0:
             logger.info("Uploading %d files to '%s'", num_files, folder_id)
         file_ids = {}
-        for idx, filename in enumerate(files, 1):
+        for filename in files:
             try:
                 local_path = os.path.join(local_dir, filename)
-                with etau.Timer() as t:
-                    file_id = self.upload(local_path, folder_id)
-                    file_ids[filename] = file_id
-                logger.info(
-                    "File '%s' uploaded to '%s' (%s) (%d/%d)", local_path,
-                    folder_id, t.elapsed_time_str, idx, num_files)
+                file_id = self.upload(local_path, folder_id)
+                file_ids[filename] = file_id
+                logger.info("Uploaded '%s'", local_path)
             except Exception as e:
                 if not skip_failures:
                     raise GoogleDriveStorageClientError(e)
-                logger.info(
-                    "Failed to upload file '%s' to '%s'; skipping", local_path,
+                logger.warning(
+                    "Failed to upload '%s' to '%s'; skipping", local_path,
                     folder_id)
 
         # Recursively traverse subfolders, if requested
@@ -1937,22 +1927,19 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
         if num_files > 0:
             logger.info("Downloading %d files to '%s'", num_files, local_dir)
         filenames = []
-        for idx, f in enumerate(files, 1):
+        for f in files:
             filename = f["name"]
             file_id = f["id"]
             try:
                 local_path = os.path.join(local_dir, filename)
-                with etau.Timer() as t:
-                    self.download(file_id, local_path)
-                    filenames.append(filename)
-                logger.info(
-                    "File '%s' downloaded to '%s' (%s) (%d/%d)", filename,
-                    local_path, t.elapsed_time_str, idx, num_files)
+                self.download(file_id, local_path)
+                filenames.append(filename)
+                logger.info("Downloaded '%s'", local_path)
             except Exception as e:
                 if not skip_failures:
                     raise GoogleDriveStorageClientError(e)
-                logger.info(
-                    "Failed to download file '%s' to '%s'; skipping", file_id,
+                logger.warning(
+                    "Failed to download '%s' to '%s'; skipping", file_id,
                     local_path)
 
         # Recursively download folders, if requested
@@ -2003,18 +1990,15 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
 
             # Delete duplicate file
             try:
-                with etau.Timer() as t:
-                    self.delete(f["id"])
-                    num_deleted += 1
-                logger.info(
-                    "File '%s' deleted from '%s' (%s)", filename, folder_id,
-                    t.elapsed_time_str)
+                self.delete(f["id"])
+                num_deleted += 1
+                logger.info("Deleted '%s' from '%s'", filename, folder_id)
             except Exception as e:
                 if not skip_failures:
                     raise GoogleDriveStorageClientError(e)
-                logger.info(
-                    "Failed to delete file '%s' in '%s'; skipping",
-                    filename, folder_id)
+                logger.warning(
+                    "Failed to delete '%s' from '%s'; skipping", filename,
+                    folder_id)
 
         return num_deleted
 
