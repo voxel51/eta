@@ -1593,14 +1593,23 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
         '''
         self._do_download(file_id, file_obj)
 
-    def delete(self, file_or_folder_id):
-        '''Deletes the file or folder from Google Drive.
+    def delete(self, file_id):
+        '''Deletes the file from Google Drive.
 
         Args:
-            file_or_folder_id: the ID of the file or folder to delete
+            file_id: the ID of the file to delete
         '''
         self._service.files().delete(
-            fileId=file_or_folder_id, supportsTeamDrives=True).execute()
+            fileId=file_id, supportsTeamDrives=True).execute()
+
+    def delete_folder(self, folder_id):
+        '''Deletes the folder from Google Drive.
+
+        Args:
+            folder_id: the ID of the folder to delete
+        '''
+        self._service.files().delete(
+            fileId=folder_id, supportsTeamDrives=True).execute()
 
     def delete_folder_contents(self, folder_id, skip_failures=False):
         '''Deletes the contents (files and subfolders) of the given Google
@@ -1612,19 +1621,24 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
             skip_failures: whether to gracefully skip delete errors. By
                 default, this is False
         '''
-        for f in self.list_files_in_folder(folder_id, include_folders=True):
+        files, folders = self._list_folder_contents(folder_id)
+        files += folders
+
+        num_files = len(files)
+        if num_files > 0:
+            logger.info(
+                "Deleting %d files and folders from '%s'",
+                num_files, folder_id)
+        for f in files:
             try:
-                with etau.Timer() as t:
-                    self.delete(f["id"])
-                    logger.info(
-                        "'%s' deleted from '%s' (%s)", f["name"], folder_id,
-                        t.elapsed_time_str)
+                self.delete(f["id"])  # works for files and folders
+                logger.info("Deleted '%s'", f["name"])
             except Exception as e:
                 if not skip_failures:
                     raise GoogleDriveStorageClientError(e)
-                logger.info(
-                    "Failed to delete '%s' from '%s' (%s)", f["name"],
-                    folder_id, t.elapsed_time_str)
+                logger.warning(
+                    "Failed to delete '%s' from '%s'; skipping",
+                    f["name"], folder_id)
 
     def get_file_metadata(self, file_id, all_fields=False):
         '''Gets metadata about the file (or folder) with the given ID.
