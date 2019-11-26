@@ -349,8 +349,52 @@ class CanSyncDirectories(object):
             for f in download_files:
                 remote_path = os.path.join(remote_dir, f)
                 local_path = os.path.join(local_dir, f)
-                logger.info("  Downloading to '%s'", local_path)
-                self.download(remote_path, local_path)
+                self._do_download_sync(remote_path, local_path, skip_failures)
+
+    def _do_upload_sync(self, local_path, remote_path, skip_failures):
+        try:
+            self.upload(local_path, remote_path)
+            logger.info("Uploaded '%s'", remote_path)
+        except Exception as e:
+            if not skip_failures:
+                raise SyncDirectoriesError(e)
+            logger.warning(
+                "Failed to upload '%s' to '%s'; skipping",
+                local_path, remote_path)
+
+    def _do_download_sync(self, remote_path, local_path, skip_failures):
+        try:
+            self.download(remote_path, local_path)
+            logger.info("Downloaded '%s'", local_path)
+        except Exception as e:
+            if not skip_failures:
+                raise SyncDirectoriesError(e)
+            logger.warning(
+                "Failed to download '%s' to '%s'; skipping",
+                remote_path, local_path)
+
+    def _do_local_delete_sync(self, local_path, skip_failures):
+        try:
+            etau.delete_file(local_path)
+            logger.info("Deleted '%s'", local_path)
+        except Exception as e:
+            if not skip_failures:
+                raise SyncDirectoriesError(e)
+            logger.warning("Failed to delete '%s'; skipping", local_path)
+
+    def _do_remote_delete_sync(self, remote_path, skip_failures):
+        try:
+            self.delete(remote_path)
+            logger.info("Deleted '%s'", remote_path)
+        except Exception as e:
+            if not skip_failures:
+                raise SyncDirectoriesError(e)
+            logger.warning("Failed to delete '%s'; skipping", remote_path)
+
+
+class SyncDirectoriesError(Exception):
+    '''Error raised when a CanSyncDirectories method fails.'''
+    pass
 
 
 class LocalStorageClient(StorageClient, CanSyncDirectories):
