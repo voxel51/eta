@@ -1295,6 +1295,8 @@ class GoogleDriveStorageCommand(Command):
         _register_command(
             subparsers, "download-dir", GoogleDriveDownloadDirectoryCommand)
         _register_command(subparsers, "delete", GoogleDriveDeleteCommand)
+        _register_command(
+            subparsers, "delete-dir", GoogleDriveDeleteDirCommand)
 
 
 class GoogleDriveInfoCommand(Command):
@@ -1733,8 +1735,11 @@ class SFTPStorageCommand(Command):
     def setup(parser):
         subparsers = parser.add_subparsers(title="available commands")
         _register_command(subparsers, "upload", SFTPUploadCommand)
+        _register_command(subparsers, "upload-dir", SFTPUploadDirCommand)
         _register_command(subparsers, "download", SFTPDownloadCommand)
+        _register_command(subparsers, "download-dir", SFTPDownloadDirCommand)
         _register_command(subparsers, "delete", SFTPDeleteCommand)
+        _register_command(subparsers, "delete-dir", SFTPDeleteDirCommand)
 
 
 class SFTPUploadCommand(Command):
@@ -1743,21 +1748,19 @@ class SFTPUploadCommand(Command):
     Examples:
         # Upload file
         eta sftp upload <local-path> <user>@<host>:<remote-path>
-        eta sftp upload -u <user> -h <host> <local-path> <remote-path>
+        eta sftp upload --user <user> --host <host> <local-path> <remote-path>
     '''
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "local_path", metavar="PATH", help="the path to the file to "
+            "local_path", metavar="LOCAL_PATH", help="the path to the file to "
             "upload")
         parser.add_argument(
-            "remote_path", metavar="PATH", help="the remote path to write the "
-            "file")
-        parser.add_argument(
-            "-u", "--username", metavar="USER", help="the username")
-        parser.add_argument(
-            "-h", "--host", metavar="HOST", help="the hostname to connect to")
+            "remote_path", metavar="REMOTE_PATH", help="the remote path to "
+            "write the file")
+        parser.add_argument("--user", metavar="USER", help="the username")
+        parser.add_argument("--host", metavar="HOST", help="the hostname")
         parser.add_argument(
             "-p", "--port", metavar="PORT", help="the port to use "
             "(default = 22)")
@@ -1773,13 +1776,47 @@ class SFTPUploadCommand(Command):
         client.upload(args.local_path, remote_path)
 
 
+class SFTPUploadDirCommand(Command):
+    '''Upload directory via SFTP.
+
+    Examples:
+        # Upload directory
+        eta sftp upload-dir <local-dir> <user>@<host>:<remote-dir>
+        eta sftp upload-dir --user <user> --host <host> <local-dir> <remote-dir>
+    '''
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "local_dir", metavar="LOCAL_DIR", help="the path to the directory "
+            "to upload")
+        parser.add_argument(
+            "remote_dir", metavar="REMOTE_DIR", help="the remote directory to "
+            "write the uploaded directory")
+        parser.add_argument("--user", metavar="USER", help="the username")
+        parser.add_argument("--host", metavar="HOST", help="the hostname")
+        parser.add_argument(
+            "-p", "--port", metavar="PORT", help="the port to use "
+            "(default = 22)")
+
+    @staticmethod
+    def run(args):
+        hostname, username, remote_dir = _parse_remote_path(
+            args.remote_dir, args.host, args.user)
+
+        client = etas.SFTPStorageClient(hostname, username, port=args.port)
+
+        logger.info("Uploading '%s' to '%s'", args.local_dir, remote_dir)
+        client.upload_dir(args.local_dir, remote_dir)
+
+
 class SFTPDownloadCommand(Command):
     '''Download file via SFTP.
 
     Examples:
         # Download file
         eta sftp download <user>@<host>:<remote-path> <local-path>
-        eta sftp download -u <user> -h <host> <remote-path> <local-path>
+        eta sftp download --user <user> --host <host> <remote-path> <local-path>
 
         # Print download to stdout
         eta sftp download <remote-path> --print
@@ -1788,15 +1825,14 @@ class SFTPDownloadCommand(Command):
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "remote_path", metavar="PATH", help="the remote file to download")
+            "remote_path", metavar="REMOTE_PATH", help="the remote file to "
+            "download")
         parser.add_argument(
-            "local_path", nargs="?", metavar="PATH", help="the path to which "
-            "to write the downloaded file. If not provided, the filename is "
-            "guessed from the remote path")
-        parser.add_argument(
-            "-u", "--user", metavar="USER", help="the username")
-        parser.add_argument(
-            "-h", "--host", metavar="HOST", help="the hostname to connect to")
+            "local_path", nargs="?", metavar="LOCAL_PATH", help="the path to "
+            "which to write the downloaded file. If not provided, the "
+            "filename is guessed from the remote path")
+        parser.add_argument("--user", metavar="USER", help="the username")
+        parser.add_argument("--host", metavar="HOST", help="the hostname")
         parser.add_argument(
             "-p", "--port", metavar="PORT", help="the port to use "
             "(default = 22)")
@@ -1819,23 +1855,56 @@ class SFTPDownloadCommand(Command):
             client.download(remote_path, local_path)
 
 
+class SFTPDownloadDirCommand(Command):
+    '''Download directory via SFTP.
+
+    Examples:
+        # Download directory
+        eta sftp download-dir <user>@<host>:<remote-dir> <local-dir>
+        eta sftp download-dir --user <user> --host <host> <remote-dir> <local-dir>
+    '''
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "remote_dir", metavar="REMOTE_DIR", help="the remote directory to "
+            "download")
+        parser.add_argument(
+            "local_dir", metavar="LOCAL_DIR", help="the local directory to "
+            "write the downloaded directory")
+        parser.add_argument("--user", metavar="USER", help="the username")
+        parser.add_argument("--host", metavar="HOST", help="the hostname")
+        parser.add_argument(
+            "-p", "--port", metavar="PORT", help="the port to use "
+            "(default = 22)")
+
+    @staticmethod
+    def run(args):
+        hostname, username, remote_dir = _parse_remote_path(
+            args.remote_dir, args.host, args.user)
+
+        client = etas.SFTPStorageClient(hostname, username, port=args.port)
+
+        logger.info("Downloading '%s' to '%s'", remote_dir, args.local_dir)
+        client.download_dir(remote_dir, args.local_dir)
+
+
 class SFTPDeleteCommand(Command):
     '''Delete file via SFTP.
 
     Examples:
         # Delete file
         eta sftp delete <user>@<host>:<remote-path>
-        eta sftp delete -u <user> -h <host> <remote-path>
+        eta sftp delete --user <user> --host <host> <remote-path>
     '''
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "remote_path", metavar="PATH", help="the remote file to delete")
-        parser.add_argument(
-            "-u", "--user", metavar="USER", help="the username")
-        parser.add_argument(
-            "-h", "--host", metavar="HOST", help="the hostname to connect to")
+            "remote_path", metavar="REMOTE_PATH", help="the remote file to "
+            "delete")
+        parser.add_argument("--user", metavar="USER", help="the username")
+        parser.add_argument("--host", metavar="HOST", help="the hostname")
         parser.add_argument(
             "-p", "--port", metavar="PORT", help="the port to use "
             "(default = 22)")
@@ -1849,6 +1918,37 @@ class SFTPDeleteCommand(Command):
 
         logger.info("Deleting '%s'", remote_path)
         client.delete(remote_path)
+
+
+class SFTPDeleteDirCommand(Command):
+    '''Delete directory via SFTP.
+
+    Examples:
+        # Delete directory
+        eta sftp delete <user>@<host>:<remote-dir>
+        eta sftp delete --user <user> --host <host> <remote-dir>
+    '''
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "remote_dir", metavar="REMOTE_DIR", help="the remote directory to "
+            "delete")
+        parser.add_argument("--user", metavar="USER", help="the username")
+        parser.add_argument("--host", metavar="HOST", help="the hostname")
+        parser.add_argument(
+            "-p", "--port", metavar="PORT", help="the port to use "
+            "(default = 22)")
+
+    @staticmethod
+    def run(args):
+        hostname, username, remote_dir = _parse_remote_path(
+            args.remote_dir, args.host, args.user)
+
+        client = etas.SFTPStorageClient(hostname, username, port=args.port)
+
+        logger.info("Deleting '%s'", remote_dir)
+        client.delete_dir(remote_dir)
 
 
 def _parse_remote_path(remote_path, hostname, username):
