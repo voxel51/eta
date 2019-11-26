@@ -444,6 +444,12 @@ def _iter_filtered_video_frames(video_dataset, frame_filter, stride):
 
 
 def _get_dataset_name(path):
+    ''' Given a filepath to a specific data or label file in a labeled dataset,
+    this will return the dataset name determined by the containing folder.
+    
+    E.g. => /datasets/special-dataset-1/labels/vid-1.json 
+    returns 'special-dataset-1'
+    '''
     base = os.path.basename(os.path.dirname(os.path.dirname(path)))
     return base
 
@@ -685,8 +691,8 @@ class LabeledDataset(object):
         Args:
             data_path: path to data file to be added
             labels_path: path to corresponding labels file to be added
-            new_data_path: filename for the data file to be renamed to
-            new_labels_path: filename for the labels file to be renamed to
+            new_data_path: optional filename for the data file to be renamed to
+            new_labels_path: optional filename for the labels file to be renamed to
             move_files: whether to move the files from their original
                 location into the dataset directory. If False, files
                 are copied into the dataset directory.
