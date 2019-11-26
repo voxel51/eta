@@ -1258,6 +1258,28 @@ class GCSDeleteCommand(Command):
         client.delete(args.cloud_path)
 
 
+class GCSDeleteDirCommand(Command):
+    '''Delete directory from GCS.
+
+    Examples:
+        # Delete directory
+        eta gcs delete-dir <cloud-dir>
+    '''
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "cloud_dir", metavar="CLOUD_DIR", help="the GCS directory to "
+            "delete")
+
+    @staticmethod
+    def run(args):
+        client = etas.GoogleCloudStorageClient()
+
+        logger.info("Deleting '%s'", args.cloud_dir)
+        client.delete_folder(args.cloud_dir)
+
+
 class GoogleDriveStorageCommand(Command):
     '''Tools for working with Google Drive.'''
 
