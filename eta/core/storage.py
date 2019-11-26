@@ -838,6 +838,43 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
         bucket, object_name = self._parse_s3_path(cloud_path)
         return self._get_file_metadata(bucket, object_name)
 
+    def get_folder_metadata(self, cloud_folder):
+        '''Returns metadata about the given "folder" in S3.
+
+        Note that this method is *expensive*; the only way to compute this
+        information is to call `list_files_in_folder(..., recursive=True)` and
+        compute stats from individual files!
+
+        Args:
+            cloud_folder: a string like `s3://<bucket-name>/<folder-path>`
+
+        Returns:
+            a dictionary containing metadata about the "folder", including its
+                `bucket`, `path`, `num_files`, `size`, and `last_modified`
+        '''
+        files = self.list_files_in_folder(
+            cloud_folder, recursive=True, return_metadata=True)
+
+        bucket, path = self._parse_s3_path(cloud_folder)
+        path = path.rstrip("/")
+
+        if files:
+            num_files = len(files)
+            size = sum(f["size"] for f in files)
+            last_modified = max(f["last_modified"] for f in files)
+        else:
+            num_files = 0
+            size = 0
+            last_modified = "-"
+
+        return {
+            "bucket": bucket,
+            "path": path,
+            "num_files": num_files,
+            "size": size,
+            "last_modified": last_modified,
+        }
+
     def list_files_in_folder(
             self, cloud_folder, recursive=True, return_metadata=False):
         '''Returns a list of the files in the given "folder" in S3.
@@ -884,23 +921,6 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
                 break
 
         return paths_or_metadata
-
-    def get_folder_size(self, cloud_folder):
-        '''Returns the size of the contents of the given "folder" in S3.
-
-        Note that this method is *expensive*; the only way to compute this
-        value is to call `list_files_in_folder(..., recursive=True)` and sum
-        the individual file sizes!
-
-        Args:
-            cloud_folder: a string like `s3://<bucket-name>/<folder-path>`
-
-        Returns:
-            the size of the folder's contents, in bytes
-        '''
-        files = self.list_files_in_folder(
-            cloud_folder, recursive=True, return_metadata=True)
-        return sum(f["size"] for f in files)
 
     def generate_signed_url(
             self, cloud_path, method="GET", hours=24, content_type=None):
@@ -1343,6 +1363,43 @@ class GoogleCloudStorageClient(
         blob.patch()  # must call `patch` so metadata is populated
         return self._get_file_metadata(blob)
 
+    def get_folder_metadata(self, cloud_folder):
+        '''Returns metadata about the given "folder" in GCS.
+
+        Note that this method is *expensive*; the only way to compute this
+        information is to call `list_files_in_folder(..., recursive=True)` and
+        compute stats from individual files!
+
+        Args:
+            cloud_folder: a string like `gs://<bucket-name>/<folder-path>`
+
+        Returns:
+            a dictionary containing metadata about the "folder", including its
+                `bucket`, `path`, `num_files`, `size`, and `last_modified`
+        '''
+        files = self.list_files_in_folder(
+            cloud_folder, recursive=True, return_metadata=True)
+
+        bucket, path = self._parse_gcs_path(cloud_folder)
+        path = path.rstrip("/")
+
+        if files:
+            num_files = len(files)
+            size = sum(f["size"] for f in files)
+            last_modified = max(f["last_modified"] for f in files)
+        else:
+            num_files = 0
+            size = 0
+            last_modified = "-"
+
+        return {
+            "bucket": bucket,
+            "path": path,
+            "num_files": num_files,
+            "size": size,
+            "last_modified": last_modified,
+        }
+
     @google_cloud_api_retry
     def list_files_in_folder(
             self, cloud_folder, recursive=True, return_metadata=False):
@@ -1387,23 +1444,6 @@ class GoogleCloudStorageClient(
                 paths.append(os.path.join(prefix, blob.name))
 
         return paths
-
-    def get_folder_size(self, cloud_folder):
-        '''Returns the size of the contents of the given "folder" in GCS.
-
-        Note that this method is *expensive*; the only way to compute this
-        value is to call `list_files_in_folder(..., recursive=True)` and sum
-        the individual file sizes!
-
-        Args:
-            cloud_folder: a string like `gs://<bucket-name>/<folder-path>`
-
-        Returns:
-            the size of the folder's contents, in bytes
-        '''
-        files = self.list_files_in_folder(
-            cloud_folder, recursive=True, return_metadata=True)
-        return sum(f["size"] for f in files)
 
     @google_cloud_api_retry
     def generate_signed_url(
@@ -1640,23 +1680,54 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
                     "Failed to delete '%s' from '%s'; skipping",
                     f["name"], folder_id)
 
-    def get_file_metadata(self, file_id, all_fields=False):
-        '''Gets metadata about the file (or folder) with the given ID.
+    def get_file_metadata(self, file_id):
+        '''Gets metadata about the file with the given ID.
 
         Args:
-            file_id: the ID of a file (or folder)
-            all_fields: an optional flag to set if you want to return all
-                available metadata fields. By default, this is False
+            file_id: the ID of the file
 
         Returns:
             a dictionary containing the available metadata about the file,
-                including (at least) its `id`, `name`, `size`, `mime_type`, and
-                `last_modified`. For folders, `size == -1`
+                including its `id`, `name`, `size`, `mime_type`, and
+                `last_modified`
         '''
         fields = ["id", "name", "size", "mimeType", "modifiedTime"]
-        metadata = self._get_file_metadata(
-            file_id, fields=fields, all_fields=all_fields)
+        metadata = self._get_file_metadata(file_id, fields=fields)
         return self._parse_file_metadata(metadata)
+
+    def get_folder_metadata(self, folder_id):
+        '''Returns metadata about the given folder.
+
+        Note that this method is *expensive*; the only way to compute this
+        information is to call `list_files_in_folder(..., recursive=True)` and
+        compute stats from individual files!
+
+        Args:
+            folder_id: the ID of the folder
+
+        Returns:
+            a dictionary containing metadata about the folder, including its
+                `drive`, `path`, `num_files`, `size`, and `last_modified`
+        '''
+        drive, path = self.get_filepath(folder_id)
+        files = self.list_files_in_folder(folder_id, recursive=True)
+
+        if files:
+            num_files = len(files)
+            size = sum(f["size"] for f in files)
+            last_modified = max(f["last_modified"] for f in files)
+        else:
+            num_files = 0
+            size = 0
+            last_modified = "-"
+
+        return {
+            "drive": drive,
+            "path": path,
+            "num_files": num_files,
+            "size": size,
+            "last_modified": last_modified,
+        }
 
     def get_team_drive_id(self, name):
         '''Get the ID of the Team Drive with the given name.
@@ -1690,6 +1761,27 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
         '''
         metadata = self._get_file_metadata(file_id, ["teamDriveId"])
         return metadata.get("teamDriveId", None)
+
+    def get_filepath(self, file_id):
+        '''Returns the filepath to the given file.
+
+        Args:
+            file_id: the ID of the file (or folder)
+
+        Returns:
+            a ("<drive>", "path/to/file") tuple
+        '''
+        parts = []
+        while True:
+            metadata = self._get_file_metadata(file_id, ["name", "parents"])
+            if "parents" in metadata:
+                parts.append(metadata["name"])
+                file_id = metadata["parents"][0]
+            else:
+                drive = metadata["name"]
+                break
+
+        return drive, "/".join(reversed(parts))
 
     def is_folder(self, file_id):
         '''Determines whether the file with the given ID is a folder.
@@ -1788,22 +1880,6 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
                     files.append(f)
 
         return [self._parse_file_metadata(f) for f in files]
-
-    def get_folder_size(self, folder_id):
-        '''Returns the size of the contents of the given folder.
-
-        Note that this method is *expensive*; the only way to compute this
-        value is to call `list_files_in_folder(..., recursive=True)` and sum
-        the individual file sizes!
-
-        Args:
-            folder_id: the ID of a folder
-
-        Returns:
-            the size of the folder's contents, in bytes
-        '''
-        files = self.list_files_in_folder(folder_id, recursive=True)
-        return sum(f["size"] for f in files)
 
     def upload_files_in_folder(
             self, local_dir, folder_id, skip_failures=False,
