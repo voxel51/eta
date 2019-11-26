@@ -799,6 +799,31 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
         bucket, object_name = self._parse_s3_path(cloud_path)
         self._client.delete_object(Bucket=bucket, Key=object_name)
 
+    def delete_folder(self, cloud_folder):
+        '''Deletes all files in the given S3 "folder".
+
+        Args:
+            cloud_folder: a string like `s3://<bucket-name>/<folder-path>`
+        '''
+        bucket, folder_name = self._parse_s3_path(cloud_folder)
+        if folder_name and not folder_name.endswith("/"):
+            folder_name += "/"
+
+        kwargs = {"Bucket": bucket, "Prefix": folder_name}
+        while True:
+            resp = self._client.list_objects_v2(**kwargs)
+            contents = resp.get("Contents", [])
+            if contents:
+                delete = {
+                    "Objects" : [{"Key": obj["Key"]} for obj in contents]
+                }
+                self._client.delete_objects(Bucket=bucket, Delete=delete)
+
+            try:
+                kwargs["NextContinuationToken"] = resp["NextContinuationToken"]
+            except KeyError:
+                break
+
     def get_file_metadata(self, cloud_path):
         '''Returns metadata about the given file in S3.
 
@@ -859,6 +884,23 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
                 break
 
         return paths_or_metadata
+
+    def get_folder_size(self, cloud_folder):
+        '''Returns the size of the contents of the given "folder" in S3.
+
+        Note that this method is *expensive*; the only way to compute this
+        value is to call `list_files_in_folder(..., recursive=True)` and sum
+        the individual file sizes!
+
+        Args:
+            cloud_folder: a string like `s3://<bucket-name>/<folder-path>`
+
+        Returns:
+            the size of the folder's contents, in bytes
+        '''
+        files = self.list_files_in_folder(
+            cloud_folder, recursive=True, return_metadata=True)
+        return sum(f["size"] for f in files)
 
     def generate_signed_url(
             self, cloud_path, method="GET", hours=24, content_type=None):
