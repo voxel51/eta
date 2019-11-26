@@ -41,7 +41,6 @@ from eta.core.serial import Serializable
 import eta.core.utils as etau
 import eta.core.video as etav
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -443,6 +442,17 @@ def _iter_filtered_video_frames(video_dataset, frame_filter, stride):
                 yield frame_img, frame_labels, base_filename
 
 
+def _get_dataset_name(path):
+    ''' Given a filepath to a specific data or label file in a labeled dataset,
+    this will return the dataset name determined by the containing folder.
+
+    E.g. => /datasets/special-dataset-1/labels/vid-1.json
+    returns 'special-dataset-1'
+    '''
+    base = os.path.basename(os.path.dirname(os.path.dirname(path)))
+    return base
+
+
 # Core LabeledDataset infrastructure
 
 
@@ -698,13 +708,18 @@ class LabeledDataset(object):
 
         return _FILE_METHODS_MAP[data_method], _FILE_METHODS_MAP[labels_method]
 
-    def add_file(self, data_path, labels_path, file_method=COPY,
+    def add_file(self, data_path, labels_path=None, new_data_filename=None,
+                 new_labels_filename=None, file_method=COPY,
                  error_on_duplicates=False):
         '''Adds a single data file and its labels file to this dataset.
 
         Args:
             data_path: path to data file to be added
             labels_path: path to corresponding labels file to be added
+            new_data_filename: optional filename for the data file to be
+                renamed to
+            new_labels_filename: optional filename for the labels file to be
+                renamed to
             file_method: how to add the files to the dataset. One of "copy",
                 "link", "move", or "symlink". A tuple, e.g. `("move", "copy")`,
                 may be used as well to move data files and copy labels files,
@@ -728,31 +743,34 @@ class LabeledDataset(object):
                              % os.path.basename(data_path))
 
         data_subdir = os.path.join(self.data_dir, self._DATA_SUBDIR)
-        new_data_file = os.path.basename(data_path)
+        if new_data_filename is not None:
+            new_data_filename = os.path.basename(data_path)
 
         labels_subdir = os.path.join(self.data_dir, self._LABELS_SUBDIR)
-        new_labels_file = os.path.basename(labels_path)
+        if new_labels_filename is not None:
+            new_labels_filename = os.path.basename(data_path)
 
         data_method, labels_method = self._parse_file_methods(file_method)
 
-        if os.path.dirname(data_path) != data_subdir:
-            new_data_path = os.path.join(data_subdir, new_data_file)
+        new_data_path = os.path.join(data_subdir, new_data_filename)
+        if data_path != new_data_path:
             data_method(data_path, new_data_path)
-        if os.path.dirname(labels_path) != labels_subdir:
-            new_labels_path = os.path.join(labels_subdir, new_labels_file)
+
+        new_labels_path = os.path.join(labels_subdir, new_labels_filename)
+        if labels_path != new_labels_path:
             labels_method(labels_path, new_labels_path)
 
         # First remove any other records with the same data filename
         self.dataset_index.cull_with_function(
-            lambda record: os.path.basename(record.data) != new_data_file)
+            lambda record: os.path.basename(record.data) != new_data_filename)
         self.dataset_index.append(
             LabeledDataRecord(
-                os.path.join(self._DATA_SUBDIR, new_data_file),
-                os.path.join(self._LABELS_SUBDIR, new_labels_file)
+                os.path.join(self._DATA_SUBDIR, new_data_filename),
+                os.path.join(self._LABELS_SUBDIR, new_labels_filename)
             )
         )
 
-        self._data_to_labels_map[new_data_file] = new_labels_file
+        self._data_to_labels_map[new_data_filename] = new_labels_filename
 
         return self
 
@@ -1650,7 +1668,7 @@ class LabeledDatasetIndex(Serializable):
         return [
             LabeledDatasetIndex(self.type, split_index, description)
             for split_index, description in zip(
-                    split_indices, descriptions)]
+                split_indices, descriptions)]
 
     @classmethod
     def from_dict(cls, d):
@@ -1763,8 +1781,9 @@ class LabeledDatasetBuilder(object):
                 this is False
             data_method: how to add the data files to the dataset, when
                 applicable. If clipping is required, this option is ignored,
-                for example. One of "copy", "link", "move", or "symlink". Labels
-                files are written from their class instances and do not apply.
+                for example. One of "copy", "link", "move", or "symlink".
+                Labels files are written from their class instances and do not
+                apply.
 
         Returns:
             a LabeledDataset
@@ -1822,6 +1841,7 @@ class LabeledDatasetBuilder(object):
                 pretty_print=pretty_print,
                 data_method=data_method
             )
+
             # The `file_method` is irrelevant in this situation as the files
             # are placed directly into the dataset by `record.build()`.
             dataset.add_file(data_path, labels_path)
@@ -1853,6 +1873,8 @@ class BuilderDataRecord(BaseDataRecord):
         '''
         self._data_path = data_path
         self._labels_path = labels_path
+        self._new_data_path = None
+        self._new_labels_path = None
         self._labels_cls = None
         self._labels_obj = None
 
@@ -1884,6 +1906,26 @@ class BuilderDataRecord(BaseDataRecord):
     def labels_path(self):
         '''The labels path.'''
         return self._labels_path
+
+    @property
+    def new_data_path(self):
+        if self._new_data_path is not None:
+            return self._new_data_path
+        return self._data_path
+
+    @property
+    def new_labels_path(self):
+        if self._new_labels_path is not None:
+            return self._new_labels_path
+        return self._labels_path
+
+    @new_data_path.setter
+    def new_data_path(self, value):
+        self._new_data_path = value
+
+    @new_labels_path.setter
+    def new_labels_path(self, value):
+        self._new_labels_path = value
 
     def build(self, data_path, labels_path, pretty_print=False,
               data_method=COPY):
@@ -1936,6 +1978,12 @@ class BuilderDataRecord(BaseDataRecord):
             "data_path",
             "labels_path"
         ]
+
+    def prepend_to_name(self, prefix):
+        '''Prepends a prefix to the data and label filenames respectively.'''
+        self._new_data_path = prefix + '_' + os.path.basename(self._data_path)
+        self._new_labels_path = prefix + '_' + os.path.basename(
+            self._labels_path)
 
     def _build_labels(self):
         raise NotImplementedError(
@@ -2027,7 +2075,7 @@ class BuilderVideoRecord(BuilderDataRecord):
             self, clip_end_frame, duration, total_frame_count):
         metadata = etav.VideoMetadata.build_for(self.data_path)
         self.total_frame_count = (
-            total_frame_count or metadata.total_frame_count)
+                total_frame_count or metadata.total_frame_count)
         self.duration = duration or metadata.duration
         self.clip_end_frame = clip_end_frame or metadata.total_frame_count
 
@@ -2926,14 +2974,19 @@ class EmptyLabels(DatasetTransformer):
 class Merger(DatasetTransformer):
     '''Merges another dataset into the existing dataset.'''
 
-    def __init__(self, dataset_builder):
+    def __init__(self, dataset_builder, prepend_dataset_name=True):
         '''Creates a Merger instance.
 
         Args:
             dataset_builder: a LabeledDatasetBuilder instance for the dataset
                 to be merged with the existing one
+            prepend_dataset_name: This flag enables an option to prepend both
+                the data and labels filepaths with the folder name containing
+                the original files. E.g. /path/to/dataset001/data/001-123.mp4
+                =>/new_directory/data/dataset001_001-123
         '''
         self._builder_dataset_to_merge = dataset_builder.builder_dataset
+        self.prepend_dataset_name = prepend_dataset_name
 
     def transform(self, src):
         '''Merges the given BuilderDataset into this instance.
@@ -2951,7 +3004,30 @@ class Merger(DatasetTransformer):
                 )
             )
 
+        if self.prepend_dataset_name:
+            for record in self._builder_dataset_to_merge.records:
+                base = _get_dataset_name(record.data_path)
+                record.prepend_to_name(prefix=base)
+
         src.add_container(self._builder_dataset_to_merge)
+
+
+class PrependDatasetNameToRecords(DatasetTransformer):
+    ''' Given a labeled dataset, this transformation prepends the dataset name
+    followed by an underscore to all data and label files in the dataset.
+    E.g. mydataset/data/vid.mp4 is now mydataset/data/mydataset_vid.mp4
+    '''
+
+    def transform(self, src):
+        '''Prepends the dataset name and an underscore to all records in the
+        dataset
+
+        Args:
+            src: a BuilderDataset
+        '''
+        for i in range(len(src.records)):
+            base = _get_dataset_name(src.records[i].data_path)
+            src.records[i].prepend_to_name(prefix=base)
 
 
 class FilterByFilename(DatasetTransformer):

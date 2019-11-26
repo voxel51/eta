@@ -1893,7 +1893,8 @@ def _make_ffmpeg_select_arg(frames):
 
 
 def sample_select_frames(
-        video_path, frames, output_patt=None, size=None, fast=False):
+        video_path, frames, output_patt=None, size=None, fast=False,
+        retry_with_slow=True):
     '''Samples the specified frames of the video.
 
     When `fast=False`, this implementation uses `VideoProcessor`. When
@@ -1910,6 +1911,11 @@ def sample_select_frames(
         fast: whether to use a native ffmpeg method to perform the extraction.
             While faster, this may be inconsistent with other video processing
             methods in ETA. By default, this is False
+        retry_with_slow: whether to retry in slow mode if the fast native
+            ffmpeg method fails to write all of the video frames. If this
+            option is set to `False` and if `fast=True`, the function will just
+            return whichever frames the function succeeds in writing out. By
+            default, this is True.
 
     Returns:
         a list of the sampled frames if output_patt is None, and None otherwise
@@ -1917,7 +1923,7 @@ def sample_select_frames(
     if fast:
         try:
             return _sample_select_frames_fast(
-                video_path, frames, output_patt, size)
+                video_path, frames, output_patt, size, retry_with_slow)
         except SampleSelectFramesError as e:
             logger.warning("Select frames fast mode failed: '%s'", e)
             logger.info("Reverting to `fast=False`")
@@ -1932,7 +1938,8 @@ class SampleSelectFramesError(Exception):
     pass
 
 
-def _sample_select_frames_fast(video_path, frames, output_patt, size):
+def _sample_select_frames_fast(
+        video_path, frames, output_patt, size, exception_if_incomplete):
     #
     # As per https://stackoverflow.com/questions/29801975, one cannot pass an
     # argument of length > 131072 to subprocess. So, we have to make sure the
@@ -1956,15 +1963,21 @@ def _sample_select_frames_fast(video_path, frames, output_patt, size):
             ffmpeg.run(video_path, tmp_patt)
         except etau.ExecutableRuntimeError:
             #
-            # Sometimes ffmpeg can't decode frames in video. Analogous to
-            # FFmpegVideoReader, our approach here is to gracefully fail and
-            # just give the user however many frames we can...
+            # Sometimes ffmpeg can't decode frames in video.
             #
+
             num_frames = len(etau.parse_pattern(tmp_patt))
-            frames = frames[:num_frames]
-            logger.warning(
-                "Only %d of %d expected frames were sampled", num_frames,
-                 len(frames))
+            msg = "Only %d of %d expected frames were sampled" % (
+                num_frames, len(frames))
+
+            if exception_if_incomplete:
+                raise SampleSelectFramesError(msg)
+            else:
+                # Analogous to FFmpegVideoReader, our approach here is to
+                # gracefully fail and just give the user however many frames we
+                # can...
+                logger.warning(msg)
+                frames = frames[:num_frames]
 
         if output_patt is not None:
             # Move frames into place with correct output names

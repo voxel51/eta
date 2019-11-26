@@ -27,7 +27,7 @@ import numpy as np
 import tensorflow as tf
 
 import eta.constants as etac
-from eta.core.config import Config
+from eta.core.config import Config, ConfigError
 import eta.core.data as etad
 import eta.core.learning as etal
 import eta.core.models as etam
@@ -51,11 +51,15 @@ class TFSlimClassifierConfig(Config, etal.HasDefaultDeploymentConfig):
     patterns to be resolved.
 
     Note that this class implements the `HasDefaultDeploymentConfig` mixin, so
-    any omitted fields present in the default deployment config for the model
-    will be automatically populated.
+    if a published model is provided via the `model_name` attribute, then any
+    omitted fields present in the default deployment config for the published
+    model will be automatically populated.
 
     Attributes:
-        model_name: the name of the published model to load
+        model_name: the name of the published model to load. If this value is
+            provided, `model_path` does not need to be
+        model_path: the path to a TF SavedModel in `.pb` format to load. If
+            this value is provided, `model_name` does not need to be
         attr_name: the name of the attribute that the classifier predicts
         network_name: the name of the network architecture from
             `tf.slim.nets.nets_factory`
@@ -70,10 +74,12 @@ class TFSlimClassifierConfig(Config, etal.HasDefaultDeploymentConfig):
     '''
 
     def __init__(self, d):
-        self.model_name = self.parse_string(d, "model_name")
+        self.model_name = self.parse_string(d, "model_name", default=None)
+        self.model_path = self.parse_string(d, "model_path", default=None)
 
-        # Loads any default deployment parameters
-        d = self.load_default_deployment_params(d, self.model_name)
+        # Loads any default deployment parameters, if possible
+        if self.model_name:
+            d = self.load_default_deployment_params(d, self.model_name)
 
         self.attr_name = self.parse_string(d, "attr_name")
         self.network_name = self.parse_string(d, "network_name")
@@ -83,6 +89,13 @@ class TFSlimClassifierConfig(Config, etal.HasDefaultDeploymentConfig):
             d, "preprocessing_fcn", default=None)
         self.input_name = self.parse_string(d, "input_name", default="input")
         self.output_name = self.parse_string(d, "output_name", default=None)
+
+        self._validate()
+
+    def _validate(self):
+        if not self.model_name and not self.model_path:
+            raise ConfigError(
+                "Either `model_name` or `model_path` must be provided")
 
 
 class TFSlimClassifier(etal.ImageClassifier, etat.UsesTFSession):
@@ -125,8 +138,11 @@ class TFSlimClassifier(etal.ImageClassifier, etat.UsesTFSession):
         self.config = config
         etat.UsesTFSession.__init__(self)
 
-        # Downloads the model if necessary
-        model_path = etam.download_model(self.config.model_name)
+        if self.config.model_name:
+            # Downloads the published model, if necessary
+            model_path = etam.download_model(self.config.model_name)
+        else:
+            model_path = self.config.model_path
 
         # Load graph
         self._graph = self._build_graph(model_path)
