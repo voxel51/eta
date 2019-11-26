@@ -197,7 +197,8 @@ class CanSyncDirectories(object):
         raise NotImplementedError(
             "subclass must implement list_files_in_folder()")
 
-    def upload_dir(self, local_dir, remote_dir, recursive=True):
+    def upload_dir(
+            self, local_dir, remote_dir, recursive=True, skip_failures=False):
         '''Uploads the contents of the given directory to the given remote
         storage directory.
 
@@ -209,6 +210,7 @@ class CanSyncDirectories(object):
             remote_dir: the remote directory to upload into
             recursive: whether to recursively traverse subdirectories. By
                 default, this is True
+            skip_failures: whether to skip failures. By default, this is False
         '''
         files = etau.list_files(local_dir, recursive=recursive)
         if not files:
@@ -218,11 +220,11 @@ class CanSyncDirectories(object):
         for f in files:
             local_path = os.path.join(local_dir, f)
             remote_path = os.path.join(remote_dir, f)
-            logger.info("Uploading to '%s'", remote_path)
-            self.upload(local_path, remote_path)
+            self._do_upload_sync(local_path, remote_path, skip_failures)
 
     def upload_dir_sync(
-            self, local_dir, remote_dir, overwrite=False, recursive=True):
+            self, local_dir, remote_dir, overwrite=False, recursive=True,
+            skip_failures=False):
         '''Syncs the contents of the given local directory to the given remote
         storage directory.
 
@@ -239,6 +241,7 @@ class CanSyncDirectories(object):
                 this is False
             recursive: whether to recursively traverse subdirectories. By
                 default, this is True
+            skip_failures: whether to skip failures. By default, this is False
         '''
         local_files = set(etau.list_files(local_dir, recursive=recursive))
         remote_files = set(
@@ -260,8 +263,7 @@ class CanSyncDirectories(object):
                 "Deleting %d files from '%s'", len(delete_files), remote_dir)
             for f in delete_files:
                 remote_path = os.path.join(remote_dir, f)
-                logger.info("  Deleting '%s'", remote_path)
-                self.delete(remote_path)
+                self._do_remote_delete_sync(remote_path, skip_failures)
 
         if upload_files:
             logger.info(
@@ -269,10 +271,10 @@ class CanSyncDirectories(object):
             for f in upload_files:
                 local_path = os.path.join(local_dir, f)
                 remote_path = os.path.join(remote_dir, f)
-                logger.info("  Uploading to '%s'", remote_path)
-                self.upload(local_path, remote_path)
+                self._do_upload_sync(local_path, remote_path, skip_failures)
 
-    def download_dir(self, remote_dir, local_dir, recursive=True):
+    def download_dir(
+            self, remote_dir, local_dir, recursive=True, skip_failures=False):
         '''Downloads the contents of the remote directory to the given local
         directory.
 
@@ -284,6 +286,7 @@ class CanSyncDirectories(object):
             local_dir: the local directory in which to write the files
             recursive: whether to recursively traverse subdirectories. By
                 default, this is True
+            skip_failures: whether to skip failures. By default, this is False
         '''
         remote_paths = self.list_files_in_folder(
             remote_dir, recursive=recursive)
@@ -295,11 +298,11 @@ class CanSyncDirectories(object):
         for remote_path in remote_paths:
             local_path = os.path.join(
                 local_dir, os.path.relpath(remote_path, remote_dir))
-            logger.info("  Downloading to '%s'", local_path)
-            self.download(remote_path, local_path)
+            self._do_download_sync(remote_path, local_path, skip_failures)
 
     def download_dir_sync(
-            self, remote_dir, local_dir, overwrite=False, recursive=True):
+            self, remote_dir, local_dir, overwrite=False, recursive=True,
+            skip_failures=False):
         '''Syncs the contents of the given remote directory to the given local
         directory.
 
@@ -316,6 +319,7 @@ class CanSyncDirectories(object):
                 default, this is False
             recursive: whether to recursively traverse subdirectories. By
                 default, this is True
+            skip_failures: whether to skip failures. By default, this is False
         '''
         remote_files = set(
             os.path.relpath(f, remote_dir)
@@ -337,8 +341,7 @@ class CanSyncDirectories(object):
                 "Deleting %d files from '%s'", len(delete_files), local_dir)
             for f in delete_files:
                 local_path = os.path.join(local_dir, f)
-                logger.info("  Deleting '%s'", local_path)
-                etau.delete_file(local_path)
+                self._do_local_delete_sync(local_path, skip_failures)
 
         if download_files:
             logger.info(
