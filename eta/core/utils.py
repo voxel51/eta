@@ -382,64 +382,6 @@ class Timer(object):
         self.stop_time = timeit.default_timer()
 
 
-def to_human_time_str(num_seconds, decimals=1, max_unit=None):
-    '''Converts the given number of seconds to a human-readable time string.
-
-    The supported units are ["ns", "us", "ms", "second", "minute", "hour",
-    "day", "week", "month", "year"].
-
-    Examples:
-        0.001 => "1ms"
-        60 => "1 minute"
-        65 => "1.1 minutes"
-        60123123 => "1.9 years"
-
-    Args:
-        num_seconds: the number of seconds
-        decimals: the desired number of decimal points to show in the string.
-            The default is 1
-        max_unit: an optional max unit, e.g., "hour", beyond which to stop
-            converting to larger units, e.g., "day". By default, no maximum
-            unit is used
-
-    Returns:
-        a human-readable time string like "1.5 minutes" or "20.1 days"
-    '''
-    if num_seconds == 0:
-        return "0 seconds"
-
-    units = [
-        "ns", "us", "ms", " second", " minute", " hour", " day", " week",
-        " month", " year"]
-    conversions = [1000, 1000, 1000, 60, 60, 24, 7, 52 / 12, 12, float("inf")]
-    pluralizable = [
-        False, False, False, True, True, True, True, True, True, True]
-
-    if max_unit and not any(u.strip() == max_unit for u in units):
-        logger.warning("Unsupported max_unit = %s; ignoring", max_unit)
-        max_unit = None
-
-    num = 1e9 * num_seconds  # start with smallest unit
-    for unit, conv, plural in zip(units, conversions, pluralizable):
-        if abs(num) < conv:
-            break
-        if max_unit and unit.strip() == max_unit:
-            break
-        num /= conv
-
-    # Convert to string with the desired number of decimals, UNLESS those
-    # decimals are zeros, in which case they are removed
-    str_fmt = "%." + str(decimals) + "f"
-    num_only_str = (str_fmt % num).rstrip("0").rstrip(".")
-
-    # Add units
-    num_str = num_only_str + unit
-    if plural and num_only_str != "1":
-        num_str += "s"  # handle pluralization
-
-    return num_str
-
-
 def guess_mime_type(filepath):
     '''Guess the MIME type for the given file path. If no reasonable guess can
     be determined, `application/octet-stream` is returned.
@@ -896,8 +838,103 @@ def split_path(path):
     return all_parts
 
 
+_TIME_UNITS = [
+    "ns", "us", "ms", " second", " minute", " hour", " day", " week", " month",
+    " year"]
+_TIME_CONVERSIONS = [
+    1000, 1000, 1000, 60, 60, 24, 7, 52 / 12, 12, float("inf")]
+_TIME_IN_SECS = [
+    1e-9, 1e-6, 1e-3, 1, 60, 3600, 86400, 606461.5384615385, 2628000, 31536000]
+_TIME_PLURALS = [False, False, False, True, True, True, True, True, True, True]
+_DECIMAL_UNITS = ["", "K", "M", "B", "T"]
+_BYTES_UNITS = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"]
+_BITS_UNITS = ["b", "Kb", "Mb", "Gb", "Tb", "Pb", "Eb", "Zb", "Yb"]
+
+
+def to_human_time_str(num_seconds, decimals=1, max_unit=None):
+    '''Converts the given number of seconds to a human-readable time string.
+
+    The supported units are ["ns", "us", "ms", "second", "minute", "hour",
+    "day", "week", "month", "year"].
+
+    Examples:
+        0.001 => "1ms"
+        60 => "1 minute"
+        65 => "1.1 minutes"
+        60123123 => "1.9 years"
+
+    Args:
+        num_seconds: the number of seconds
+        decimals: the desired number of decimal points to show in the string.
+            The default is 1
+        max_unit: an optional max unit, e.g., "hour", beyond which to stop
+            converting to larger units, e.g., "day". By default, no maximum
+            unit is used
+
+    Returns:
+        a human-readable time string like "1.5 minutes" or "20.1 days"
+    '''
+    if num_seconds == 0:
+        return "0 seconds"
+
+    if max_unit and not any(u.strip() == max_unit for u in _TIME_UNITS):
+        logger.warning("Unsupported max_unit = %s; ignoring", max_unit)
+        max_unit = None
+
+    num = 1e9 * num_seconds  # start with smallest unit
+    for unit, conv, plural in zip(
+            _TIME_UNITS, _TIME_CONVERSIONS, _TIME_PLURALS):
+        if abs(num) < conv:
+            break
+        if max_unit and unit.strip() == max_unit:
+            break
+        num /= conv
+
+    # Convert to string with the desired number of decimals, UNLESS those
+    # decimals are zeros, in which case they are removed
+    str_fmt = "%." + str(decimals) + "f"
+    num_only_str = (str_fmt % num).rstrip("0").rstrip(".")
+
+    # Add units
+    num_str = num_only_str + unit
+    if plural and num_only_str != "1":
+        num_str += "s"  # handle pluralization
+
+    return num_str
+
+
+def from_human_time_str(time_str):
+    '''Parses the number of seconds from the given human-readable time string.
+
+    The supported units are ["ns", "us", "ms", "second", "minute", "hour",
+    "day", "week", "month", "year"].
+
+    Examples:
+        "1ms" => 0.001
+        "1 minute" => 60.0
+        "1.1 minutes" => 66.0
+        "1.9 years" => 59918400.0
+
+    Args:
+        time_str: a human-readable time string
+
+    Returns:
+        the number of seconds
+    '''
+    # Handle unit == "" outside loop
+    for idx in reversed(range(len(_TIME_UNITS))):
+        unit = _TIME_UNITS[idx].strip()
+        can_be_plural = _TIME_PLURALS[idx]
+        if time_str.endswith(unit):
+            return float(time_str[:-len(unit)]) * _TIME_IN_SECS[idx]
+        elif can_be_plural and time_str.endswith(unit + "s"):
+            return float(time_str[:-(len(unit) + 1)]) * _TIME_IN_SECS[idx]
+
+    return float(time_str)
+
+
 def to_human_decimal_str(num, decimals=1, max_unit=None):
-    '''Returns a human-readable string represntation of the given decimal
+    '''Returns a human-readable string representation of the given decimal
     (base-10) number.
 
     Supported units are ["", "K", "M", "B", "T"].
@@ -918,12 +955,11 @@ def to_human_decimal_str(num, decimals=1, max_unit=None):
     Returns:
         a human-readable decimal string
     '''
-    units = ["", "K", "M", "B", "T"]
-    if max_unit is not None and max_unit not in units:
+    if max_unit is not None and max_unit not in _DECIMAL_UNITS:
         logger.warning("Unsupported max_unit = %s; ignoring", max_unit)
         max_unit = None
 
-    for unit in units:
+    for unit in _DECIMAL_UNITS:
         if abs(num) < 1000:
             break
         if max_unit is not None and unit == max_unit:
@@ -934,8 +970,33 @@ def to_human_decimal_str(num, decimals=1, max_unit=None):
     return (str_fmt % num).rstrip("0").rstrip(".") + unit
 
 
+def from_human_decimal_str(num_str):
+    '''Parses the decimal number from the given human-readable decimal string.
+
+    Supported units are ["", "K", "M", "B", "T"].
+
+    Examples:
+        "65" => 65.0
+        "123.5K" => 123450.0
+        "10M" => 1e7
+
+    Args:
+        num_str: a human-readable decimal string
+
+    Returns:
+        the decimal number
+    '''
+    # Handle unit == "" outside loop
+    for idx in reversed(range(len(_DECIMAL_UNITS))[1:]):
+        unit = _DECIMAL_UNITS[idx]
+        if num_str.endswith(unit):
+            return float(num_str[:-len(unit)]) * (1000 ** idx)
+
+    return float(num_str)
+
+
 def to_human_bytes_str(num_bytes, decimals=1, max_unit=None):
-    '''Returns a human-readable string represntation of the given number of
+    '''Returns a human-readable string representation of the given number of
     bytes.
 
     Supported units are ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"].
@@ -956,12 +1017,11 @@ def to_human_bytes_str(num_bytes, decimals=1, max_unit=None):
     Returns:
         a human-readable bytes string
     '''
-    units = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"]
-    if max_unit is not None and max_unit not in units:
+    if max_unit is not None and max_unit not in _BYTES_UNITS:
         logger.warning("Unsupported max_unit = %s; ignoring", max_unit)
         max_unit = None
 
-    for unit in units:
+    for unit in _BYTES_UNITS:
         if abs(num_bytes) < 1024:
             break
         if max_unit is not None and unit == max_unit:
@@ -972,8 +1032,32 @@ def to_human_bytes_str(num_bytes, decimals=1, max_unit=None):
     return (str_fmt % num_bytes).rstrip("0").rstrip(".") + unit
 
 
+def from_human_bytes_str(bytes_str):
+    '''Parses the number of bytes from the given human-readable bytes string.
+
+    Supported units are ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"].
+
+    Examples:
+        "123B" => 123
+        "120.1KB" => 122982
+        "1TB" => 1024 ** 4
+
+    Args:
+        bytes_str: a human-readable bytes string
+
+    Returns:
+        the number of bytes
+    '''
+    for idx in reversed(range(len(_BYTES_UNITS))):
+        unit = _BYTES_UNITS[idx]
+        if bytes_str.endswith(unit):
+            return int(float(bytes_str[:-len(unit)]) * 1024 ** idx)
+
+    return int(bytes_str)
+
+
 def to_human_bits_str(num_bits, decimals=1, max_unit=None):
-    '''Returns a human-readable string represntation of the given number of
+    '''Returns a human-readable string representation of the given number of
     bits.
 
     Supported units are ["b", "Kb", "Mb", "Gb", "Tb", "Pb", "Eb", "Zb", "Yb"].
@@ -994,12 +1078,11 @@ def to_human_bits_str(num_bits, decimals=1, max_unit=None):
     Returns:
         a human-readable bits string
     '''
-    units = ["b", "Kb", "Mb", "Gb", "Tb", "Pb", "Eb", "Zb", "Yb"]
-    if max_unit is not None and max_unit not in units:
+    if max_unit is not None and max_unit not in _BITS_UNITS:
         logger.warning("Unsupported max_unit = %s; ignoring", max_unit)
         max_unit = None
 
-    for unit in units:
+    for unit in _BITS_UNITS:
         if abs(num_bits) < 1024:
             break
         if max_unit is not None and unit == max_unit:
@@ -1008,6 +1091,30 @@ def to_human_bits_str(num_bits, decimals=1, max_unit=None):
 
     str_fmt = "%." + str(decimals) + "f"
     return (str_fmt % num_bits).rstrip("0").rstrip(".") + unit
+
+
+def from_human_bits_str(bits_str):
+    '''Parses the number of bits from the given human-readable bits string.
+
+    Supported units are ["b", "Kb", "Mb", "Gb", "Tb", "Pb", "Eb", "Zb", "Yb"].
+
+    Examples:
+        "123b" => 123
+        "120.1Kb" => 122982
+        "1Tb" => 1024 ** 4
+
+    Args:
+        bits_str: a human-readable bits string
+
+    Returns:
+        the number of bits
+    '''
+    for idx in reversed(range(len(_BITS_UNITS))):
+        unit = _BITS_UNITS[idx]
+        if bits_str.endswith(unit):
+            return int(float(bits_str[:-len(unit)]) * 1024 ** idx)
+
+    return int(bits_str)
 
 
 def _get_archive_format(archive_path):
