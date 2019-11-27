@@ -727,18 +727,98 @@ class S3ListCommand(Command):
 
     Examples:
         # List folder contents
-        eta s3 list <folder>
+        eta s3 list s3://<bucket>/<prefix>
 
         # List folder contents recursively
-        eta s3 list <folder> --recursive
+        eta s3 list s3://<bucket>/<prefix> --recursive
 
         # List folder contents according to the given query
-        eta s3 list <folder>
+        eta s3 list s3://<bucket>/<prefix>
+            [--recursive]
             [--limit <limit>]
-            [--search [<field>:]<str>]
+            [--search [<field><operator>]<str>[,...]]
             [--sort-by <field>]
             [--ascending]
             [--count]
+
+        # List the last 10 modified files that contain "test" in any field
+        eta s3 list s3://<bucket>/<prefix> \\
+            --search test --limit 10 --sort-by last_modified
+
+        # List files whose size is 10-20MB, from smallest to largest
+        eta s3 list s3://<bucket>/<prefix> \\
+            --search 'size>10MB,size<20MB' --sort-by size --ascending
+
+        # List files that were uploaded before November 26th, 2019, recurisvely
+        # traversing subfolders, and display the count
+        eta s3 list s3://<bucket>/<prefix> \\
+            --recursive --search 'last modified<2019-11-26' --count
+
+    Search syntax:
+        The generic search syntax is:
+
+            --search [<field><operator>]<str>[,...]
+
+        where:
+            <field>    an optional field name on which to search
+            <operator> an optional operator to use when evaluating matches
+            <str>      the search string
+
+        If <field><operator> is omitted, the search will match any records for
+        which any column contains the given search string.
+
+        Multiple searches can be specified as a comma-separated list. Records
+        must match all searches in order to appear in the search results.
+
+        The supported fields are:
+
+        field         type     description
+        ------------- -------- ------------------------------------------
+        bucket        string   the name of the bucket
+        name          string   the name of the object in the bucket
+        size          bytes    the size of the object
+        type          string   the MIME type of the object
+        last modified datetime the date that the object was last modified
+
+        Fields are case insensitive, and underscores can be used in-place of
+        spaces.
+
+        The meaning of the operators are as follows:
+
+        operator  type       description
+        --------- ---------- --------------------------------------------------
+        =         contains   the field contains the search string
+        ==        comparison the search string is equal to the field
+        <         comparison the search string is less than the field
+        <=        comparison the search string is less or equal to the field
+        >         comparison the search string is greater than the field
+        >=        comparison the search string is greater or equal to the field
+
+        For contains ("=") queries, the search/record values are parsed as
+        follows:
+
+        type     description
+        -------- --------------------------------------------------------------
+        string   the search and record are treated as strings
+        bytes    the search is treated as a string, and the record is converted
+                 to a human-readable bytes string
+        datetime the search is treated as a string, and the record is rendered
+                 as a string in "%Y-%m-%d %H:%M:%S %Z" format in local timezone
+
+        For comparison ("==", "<", "<=", ">", ">=") queries, the search/record
+        values are parsed as follows:
+
+        type     description
+        -------- ------------------------------------------------------------
+        string   the search and record are treated as strings
+        bytes    the search must be a human-readable bytes string, which is
+                 converted to numeric bytes for comparison with the record
+        datetime the search must be an ISO time string, which is converted to
+                 a datetime for comparison with the record. If no timezone is
+                 included in the search, local time is assumed
+
+        To perform literal matches on special characters ("=", "<", ">", ",")
+        in search string, escape them with "\\".
     '''
 
     @staticmethod
@@ -1029,18 +1109,98 @@ class GCSListCommand(Command):
 
     Examples:
         # List folder contents
-        eta gcs list <folder>
+        eta gcs list gs://<bucket>/<prefix>
 
         # List folder contents recursively
-        eta gcs list <folder> --recursive
+        eta gcs list gs://<bucket>/<prefix> --recursive
 
         # List folder contents according to the given query
-        eta gcs list <folder>
+        eta gcs list gs://<bucket>/<prefix>
+            [--recursive]
             [--limit <limit>]
-            [--search [<field>:]<str>]
+            [--search [<field><operator>]<str>[,...]]
             [--sort-by <field>]
             [--ascending]
             [--count]
+
+        # List the last 10 modified files that contain "test" in any field
+        eta gcs list gs://<bucket>/<prefix> \\
+            --search test --limit 10 --sort-by last_modified
+
+        # List files whose size is 10-20MB, from smallest to largest
+        eta gcs list gs://<bucket>/<prefix> \\
+            --search 'size>10MB,size<20MB' --sort-by size --ascending
+
+        # List files that were uploaded before November 26th, 2019, recurisvely
+        # traversing subfolders, and display the count
+        eta gcs list gs://<bucket>/<prefix> \\
+            --recursive --search 'last modified<2019-11-26' --count
+
+    Search syntax:
+        The generic search syntax is:
+
+            --search [<field><operator>]<str>[,...]
+
+        where:
+            <field>    an optional field name on which to search
+            <operator> an optional operator to use when evaluating matches
+            <str>      the search string
+
+        If <field><operator> is omitted, the search will match any records for
+        which any column contains the given search string.
+
+        Multiple searches can be specified as a comma-separated list. Records
+        must match all searches in order to appear in the search results.
+
+        The supported fields are:
+
+        field         type     description
+        ------------- -------- ------------------------------------------
+        bucket        string   the name of the bucket
+        name          string   the name of the object in the bucket
+        size          bytes    the size of the object
+        type          string   the MIME type of the object
+        last modified datetime the date that the object was last modified
+
+        Fields are case insensitive, and underscores can be used in-place of
+        spaces.
+
+        The meaning of the operators are as follows:
+
+        operator  type       description
+        --------- ---------- --------------------------------------------------
+        =         contains   the field contains the search string
+        ==        comparison the search string is equal to the field
+        <         comparison the search string is less than the field
+        <=        comparison the search string is less or equal to the field
+        >         comparison the search string is greater than the field
+        >=        comparison the search string is greater or equal to the field
+
+        For contains ("=") queries, the search/record values are parsed as
+        follows:
+
+        type     description
+        -------- --------------------------------------------------------------
+        string   the search and record are treated as strings
+        bytes    the search is treated as a string, and the record is converted
+                 to a human-readable bytes string
+        datetime the search is treated as a string, and the record is rendered
+                 as a string in "%Y-%m-%d %H:%M:%S %Z" format in local timezone
+
+        For comparison ("==", "<", "<=", ">", ">=") queries, the search/record
+        values are parsed as follows:
+
+        type     description
+        -------- ------------------------------------------------------------
+        string   the search and record are treated as strings
+        bytes    the search must be a human-readable bytes string, which is
+                 converted to numeric bytes for comparison with the record
+        datetime the search must be an ISO time string, which is converted to
+                 a datetime for comparison with the record. If no timezone is
+                 included in the search, local time is assumed
+
+        To perform literal matches on special characters ("=", "<", ">", ",")
+        in search string, escape them with "\\".
     '''
 
     @staticmethod
@@ -1346,18 +1506,98 @@ class GoogleDriveListCommand(Command):
 
     Examples:
         # List folder contents
-        eta gdrive list <id>
+        eta gdrive list <folder-id>
 
         # List folder contents recursively
-        eta gdrive list <id> --recursive
+        eta gdrive list <folder-id> --recursive
 
         # List folder contents according to the given query
-        eta gdrive list <id>
+        eta gdrive list <folder-id>
+            [--recursive]
             [--limit <limit>]
-            [--search [<field>:]<str>]
+            [--search [<field><operator>]<str>[,...]]
             [--sort-by <field>]
             [--ascending]
             [--count]
+
+        # List the last 10 modified files that contain "test" in any field
+        eta gdrive list <folder-id> \\
+            --search test --limit 10 --sort-by last_modified
+
+        # List files whose size is 10-20MB, from smallest to largest
+        eta gdrive list <folder-id> \\
+            --search 'size>10MB,size<20MB' --sort-by size --ascending
+
+        # List files that were uploaded before November 26th, 2019, recurisvely
+        # traversing subfolders, and display the count
+        eta gdrive list <folder-id> \\
+            --recursive --search 'last modified<2019-11-26' --count
+
+    Search syntax:
+        The generic search syntax is:
+
+            --search [<field><operator>]<str>[,...]
+
+        where:
+            <field>    an optional field name on which to search
+            <operator> an optional operator to use when evaluating matches
+            <str>      the search string
+
+        If <field><operator> is omitted, the search will match any records for
+        which any column contains the given search string.
+
+        Multiple searches can be specified as a comma-separated list. Records
+        must match all searches in order to appear in the search results.
+
+        The supported fields are:
+
+        field         type     description
+        ------------- -------- ------------------------------------------
+        id            string   the ID of the file
+        name          string   the name of the file
+        size          bytes    the size of the file
+        type          string   the MIME type of the object
+        last modified datetime the date that the file was last modified
+
+        Fields are case insensitive, and underscores can be used in-place of
+        spaces.
+
+        The meaning of the operators are as follows:
+
+        operator  type       description
+        --------- ---------- --------------------------------------------------
+        =         contains   the field contains the search string
+        ==        comparison the search string is equal to the field
+        <         comparison the search string is less than the field
+        <=        comparison the search string is less or equal to the field
+        >         comparison the search string is greater than the field
+        >=        comparison the search string is greater or equal to the field
+
+        For contains ("=") queries, the search/record values are parsed as
+        follows:
+
+        type     description
+        -------- --------------------------------------------------------------
+        string   the search and record are treated as strings
+        bytes    the search is treated as a string, and the record is converted
+                 to a human-readable bytes string
+        datetime the search is treated as a string, and the record is rendered
+                 as a string in "%Y-%m-%d %H:%M:%S %Z" format in local timezone
+
+        For comparison ("==", "<", "<=", ">", ">=") queries, the search/record
+        values are parsed as follows:
+
+        type     description
+        -------- ------------------------------------------------------------
+        string   the search and record are treated as strings
+        bytes    the search must be a human-readable bytes string, which is
+                 converted to numeric bytes for comparison with the record
+        datetime the search must be an ISO time string, which is converted to
+                 a datetime for comparison with the record. If no timezone is
+                 included in the search, local time is assumed
+
+        To perform literal matches on special characters ("=", "<", ">", ",")
+        in search string, escape them with "\\".
     '''
 
     @staticmethod
