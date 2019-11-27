@@ -1473,10 +1473,10 @@ class GoogleDriveInfoCommand(Command):
 
     Examples:
         # Get file info
-        eta gdrive info <id> [...]
+        eta gdrive info <file-id> [...]
 
         # Get folder info
-        eta gdrive info --folder <id> [...]
+        eta gdrive info --folder <folder-id> [...]
     '''
 
     @staticmethod
@@ -1826,7 +1826,7 @@ class GoogleDriveDeleteCommand(Command):
 
     Examples:
         # Delete file
-        eta gdrive delete <id>
+        eta gdrive delete <file-id>
     '''
 
     @staticmethod
@@ -1847,10 +1847,10 @@ class GoogleDriveDeleteDirCommand(Command):
 
     Examples:
         # Delete directory
-        eta gdrive delete-dir <id>
+        eta gdrive delete-dir <folder-id>
 
         # Delete the contents (only) of a directory
-        eta gdrive delete-dir <id> --contents-only
+        eta gdrive delete-dir <folder-id> --contents-only
     '''
 
     @staticmethod
