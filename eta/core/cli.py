@@ -15,6 +15,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
 from future.utils import iteritems, itervalues
+import six
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
@@ -22,10 +23,12 @@ from future.utils import iteritems, itervalues
 import argparse
 from collections import defaultdict
 import logging
+import operator
 import os
 import re
 import sys
 
+import dateutil.parser
 from tabulate import tabulate
 from tzlocal import get_localzone
 
@@ -749,7 +752,7 @@ class S3ListCommand(Command):
             "-l", "--limit", metavar="LIMIT", type=int, default=-1,
             help="limit the number of files listed")
         parser.add_argument(
-            "-s", "--search", metavar="[FIELD:]STR",
+            "-s", "--search", metavar="SEARCH",
             help="search to limit results when listing files")
         parser.add_argument(
             "--sort-by", metavar="FIELD",
@@ -768,19 +771,11 @@ class S3ListCommand(Command):
         metadata = client.list_files_in_folder(
             args.folder, recursive=args.recursive, return_metadata=True)
 
-        metadata = _apply_search(
+        metadata = _filter_records(
             metadata, args.limit, args.search, args.sort_by, args.ascending,
             _S3_SEARCH_FIELDS_MAP)
 
         _print_s3_file_info_table(metadata, show_count=args.count)
-
-
-_S3_SEARCH_FIELDS_MAP = {
-    "name": "object_name",
-    "size": "size",
-    "type": "mime_type",
-    "last_modified": "last_modified",
-}
 
 
 class S3UploadCommand(Command):
@@ -1059,7 +1054,7 @@ class GCSListCommand(Command):
             "-l", "--limit", metavar="LIMIT", type=int, default=-1,
             help="limit the number of files listed")
         parser.add_argument(
-            "-s", "--search", metavar="[FIELD:]STR",
+            "-s", "--search", metavar="SEARCH",
             help="search to limit results when listing files")
         parser.add_argument(
             "--sort-by", metavar="FIELD",
@@ -1078,19 +1073,11 @@ class GCSListCommand(Command):
         metadata = client.list_files_in_folder(
             args.folder, recursive=args.recursive, return_metadata=True)
 
-        metadata = _apply_search(
+        metadata = _filter_records(
             metadata, args.limit, args.search, args.sort_by, args.ascending,
             _GCS_SEARCH_FIELDS_MAP)
 
         _print_gcs_file_info_table(metadata, show_count=args.count)
-
-
-_GCS_SEARCH_FIELDS_MAP = {
-    "name": "object_name",
-    "size": "size",
-    "type": "mime_type",
-    "last_modified": "last_modified",
-}
 
 
 class GCSUploadCommand(Command):
@@ -1384,7 +1371,7 @@ class GoogleDriveListCommand(Command):
             "-l", "--limit", metavar="LIMIT", type=int, default=-1,
             help="limit the number of files listed")
         parser.add_argument(
-            "-s", "--search", metavar="[FIELD:]STR",
+            "-s", "--search", metavar="SEARCH",
             help="search to limit results when listing files")
         parser.add_argument(
             "--sort-by", metavar="FIELD",
@@ -1403,20 +1390,11 @@ class GoogleDriveListCommand(Command):
         metadata = client.list_files_in_folder(
             args.folder_id, recursive=args.recursive)
 
-        metadata = _apply_search(
+        metadata = _filter_records(
             metadata, args.limit, args.search, args.sort_by, args.ascending,
             _GOOGLE_DRIVE_SEARCH_FIELDS_MAP)
 
         _print_google_drive_file_info_table(metadata, show_count=args.count)
-
-
-_GOOGLE_DRIVE_SEARCH_FIELDS_MAP = {
-    "id": "id",
-    "name": "name",
-    "size": "size",
-    "type": "mime_type",
-    "last_modified": "last_modified",
-}
 
 
 class GoogleDriveUploadCommand(Command):
@@ -1992,17 +1970,126 @@ def _parse_remote_path(remote_path, hostname, username):
     return hostname, username, remote_path
 
 
+class Searcher(object):
+    '''Base class for search classes.'''
 
-def _apply_search(records, limit, search, sort_by, ascending, field_map):
-    if search:
-        for match in _parse_search(search, field_map):
-            records = [r for r in records if match(r)]
+    def __init__(self, name):
+        self.name = name
+
+    @staticmethod
+    def contains(usr, rec):
+        '''Determines whether the record value contains the user's search.
+
+        Args:
+            usr: the user's search string
+            rec: the metadata record value
+
+        Returns:
+            True/False
+        '''
+        raise NotImplementedError("subclass must implement contains()")
+
+    @staticmethod
+    def compare(usr, rec, op):
+        '''Compares the user's search with the record value via the given
+        operation.
+
+        Args:
+            usr: the user's search string
+            rec: the metadata record value
+            op: the operation to apply
+
+        Returns:
+            True/False
+        '''
+        raise NotImplementedError("subclass must implement contains()")
+
+
+class StringSearcher(Searcher):
+    '''Class for searching on string fields.'''
+
+    @staticmethod
+    def contains(usr, rec):
+        return str(usr) in str(rec)
+
+    @staticmethod
+    def compare(usr, rec, op):
+        return op(str(usr), str(rec))
+
+
+class BytesSearcher(Searcher):
+    '''Class for searching on bytes fields.'''
+
+    @staticmethod
+    def contains(usr, rec):
+        rec_str = _render_bytes(rec)  # bytes -> string
+        return str(usr) in rec_str
+
+    @staticmethod
+    def compare(usr, rec, op):
+        usr_bytes = etau.from_human_bytes_str(usr)  # string -> bytes
+        return op(usr_bytes, rec)
+
+
+class DatetimeSearcher(Searcher):
+    '''Class for searching on datetime fields.'''
+
+    @staticmethod
+    def contains(usr, rec):
+        rec_str = _render_datetime(rec)  # datime -> local datetime string
+        return str(usr) in rec_str
+
+    @staticmethod
+    def compare(usr, rec, op):
+        rec_dt = _parse_datetime(rec)  # datetime -> local datetime
+        usr_dt = _parse_datetime(usr)  # str -> local datetime
+        return op(usr_dt, rec_dt)
+
+
+_S3_SEARCH_FIELDS_MAP = {
+    "bucket": StringSearcher("bucket"),
+    "name": StringSearcher("object_name"),
+    "size": BytesSearcher("size"),
+    "type": StringSearcher("mime_type"),
+    "last_modified": DatetimeSearcher("last_modified"),
+}
+
+
+_GCS_SEARCH_FIELDS_MAP = {
+    "bucket": StringSearcher("bucket"),
+    "name": StringSearcher("object_name"),
+    "size": BytesSearcher("size"),
+    "type": StringSearcher("mime_type"),
+    "last_modified": DatetimeSearcher("last_modified"),
+}
+
+
+_GOOGLE_DRIVE_SEARCH_FIELDS_MAP = {
+    "id": StringSearcher("id"),
+    "name": StringSearcher("name"),
+    "size": BytesSearcher("size"),
+    "type": StringSearcher("mime_type"),
+    "last_modified": DatetimeSearcher("last_modified"),
+}
+
+
+def _filter_records(records, limit, search_str, sort_by, ascending, field_map):
+    if search_str:
+        for match_fcn in _parse_search_str(search_str, field_map):
+            records = [r for r in records if match_fcn(r)]
 
     reverse = not ascending
     if sort_by:
-        records = sorted(records, key=lambda r: r[sort_by], reverse=reverse)
+        sort_by_normalized = sort_by.lower().strip().replace(" ", "_")
+        key = lambda r: r[sort_by_normalized]
+        try:
+            records = sorted(records, key=key, reverse=reverse)
+        except KeyError:
+            raise KeyError(
+                "Invalid sort by field '%s' (normalized to '%s'); supported "
+                "keys are %s" % (sort_by, sort_by_normalized, list(field_map)))
     elif reverse:
-        records = reversed(records)
+        records = list(reversed(records))
 
     if limit > 0:
         records = records[:limit]
@@ -2010,22 +2097,71 @@ def _apply_search(records, limit, search, sort_by, ascending, field_map):
     return records
 
 
-def _parse_search(search, field_map):
-    for s in _split_on_char(search, ","):
-        chunks = [_remove_escapes(c, ":,") for c in _split_on_char(s, ":")]
+_SEARCH_OPERATORS = {
+    "==": operator.eq,
+    "<": operator.gt,
+    "<=": operator.ge,
+    ">": operator.lt,
+    ">=": operator.le,
+}
+
+
+def _make_any_match_fcn(value, field_map):
+    value = _remove_escapes(value, ",<=>").strip()
+    searcher_map = {s.name: s for s in itervalues(field_map)}
+
+    def _any_match_fcn(record):
+        for name in record:
+            searcher = searcher_map.get(name, None)
+            if searcher is not None and searcher.contains(value, record[name]):
+                return True
+        return False
+
+    return _any_match_fcn
+
+
+def _make_match_fcn(key, value, delimiter, field_map, search_str):
+    key_normalized = key.lower().strip().replace(" ", "_")
+    value = _remove_escapes(value, ",<=>").strip()
+
+    searcher = field_map.get(key_normalized, None)
+    if searcher is None:
+        raise KeyError(
+            "Invalid search '%s'; unsupported key '%s' (normalized to '%s'); "
+            "supported keys are %s" %
+            (search_str, key, key_normalized, list(field_map)))
+
+    if delimiter == "=":
+        # Contains search
+        return lambda record: searcher.contains(value, record[searcher.name])
+
+    op = _SEARCH_OPERATORS.get(delimiter, None)
+    if op is None:
+        raise KeyError(
+            "Invalid search '%s'; unsupported delimiter '%s'" %
+            (search_str, delimiter))
+
+    # Comparison search
+    return lambda record: searcher.compare(value, record[searcher.name], op)
+
+
+def _parse_search_str(search_str, field_map):
+    for s in _split_on_chars(search_str, ","):
+        chunks = _split_on_chars(s, "<=>", max_splits=1, keep_delimiters=True)
         if len(chunks) == 1:
-            # Match any field
+            # Any field contains value
             value = chunks[0]
-            yield lambda record: any(value in str(record[f]) for f in record)
+            yield _make_any_match_fcn(value, field_map)
         else:
             # Match specific field
-            key = chunks[0]
-            value = ":".join(chunks[1:])
-            yield lambda record: value in str(record[field_map[key]])
+            key, delimiter, value = chunks
+            yield _make_match_fcn(key, value, delimiter, field_map, search_str)
 
 
-def _split_on_char(s, char):
-    return re.split(r"(?<!\\)" + char, s)
+def _split_on_chars(s, chars, max_splits=None, keep_delimiters=False):
+    max_splits = max_splits or 0
+    chunks = re.split("(?<!\\\\)([" + chars + "]+)", s, max_splits)
+    return chunks if keep_delimiters else chunks[::2]
 
 
 def _remove_escapes(s, chars):
@@ -2034,8 +2170,8 @@ def _remove_escapes(s, chars):
 
 def _print_s3_file_info_table(metadata, show_count=False):
     records = [(
-        m["bucket"], _parse_name(m["object_name"]), _parse_size(m["size"]),
-        m["mime_type"], _parse_datetime(m["last_modified"])
+        m["bucket"], _render_name(m["object_name"]), _render_bytes(m["size"]),
+        m["mime_type"], _render_datetime(m["last_modified"])
     ) for m in metadata]
 
     table_str = tabulate(
@@ -2045,13 +2181,14 @@ def _print_s3_file_info_table(metadata, show_count=False):
 
     logger.info(table_str)
     if show_count:
-        logger.info("\nFound %d files\n", len(records))
+        total_size = _render_bytes(sum(m["size"] for m in metadata))
+        logger.info("\n%d files, %s\n", len(records), total_size)
 
 
 def _print_s3_folder_info_table(metadata):
     records = [(
-        m["bucket"], m["path"], m["num_files"], _parse_size(m["size"]),
-        _parse_datetime(m["last_modified"])
+        m["bucket"], m["path"], m["num_files"], _render_bytes(m["size"]),
+        _render_datetime(m["last_modified"])
     ) for m in metadata]
 
     table_str = tabulate(
@@ -2064,8 +2201,8 @@ def _print_s3_folder_info_table(metadata):
 
 def _print_gcs_file_info_table(metadata, show_count=False):
     records = [(
-        m["bucket"], _parse_name(m["object_name"]), _parse_size(m["size"]),
-        m["mime_type"], _parse_datetime(m["last_modified"])
+        m["bucket"], _render_name(m["object_name"]), _render_bytes(m["size"]),
+        m["mime_type"], _render_datetime(m["last_modified"])
     ) for m in metadata]
 
     table_str = tabulate(
@@ -2075,13 +2212,14 @@ def _print_gcs_file_info_table(metadata, show_count=False):
 
     logger.info(table_str)
     if show_count:
-        logger.info("\nFound %d files\n", len(records))
+        total_size = _render_bytes(sum(m["size"] for m in metadata))
+        logger.info("\n%d files, %s\n", len(records), total_size)
 
 
 def _print_gcs_folder_info_table(metadata):
     records = [(
-        m["bucket"], m["path"], m["num_files"], _parse_size(m["size"]),
-        _parse_datetime(m["last_modified"])
+        m["bucket"], m["path"], m["num_files"], _render_bytes(m["size"]),
+        _render_datetime(m["last_modified"])
     ) for m in metadata]
 
     table_str = tabulate(
@@ -2094,9 +2232,9 @@ def _print_gcs_folder_info_table(metadata):
 
 def _print_google_drive_file_info_table(metadata, show_count=False):
     records = [(
-        m["id"], _parse_name(m["name"]), _parse_size(m["size"]),
+        m["id"], _render_name(m["name"]), _render_bytes(m["size"]),
         _parse_google_drive_mime_type(m["mime_type"]),
-        _parse_datetime(m["last_modified"])
+        _render_datetime(m["last_modified"])
     ) for m in metadata]
 
     table_str = tabulate(
@@ -2106,13 +2244,14 @@ def _print_google_drive_file_info_table(metadata, show_count=False):
 
     logger.info(table_str)
     if show_count:
-        logger.info("\nFound %d files\n", len(records))
+        total_size = _render_bytes(sum(m["size"] for m in metadata))
+        logger.info("\nShowing %d files, %s\n", len(records), total_size)
 
 
 def _print_google_drive_folder_info_table(metadata):
     records = [(
-        m["drive"], m["path"], m["num_files"], _parse_size(m["size"]),
-        _parse_datetime(m["last_modified"])
+        m["drive"], m["path"], m["num_files"], _render_bytes(m["size"]),
+        _render_datetime(m["last_modified"])
     ) for m in metadata]
 
     table_str = tabulate(
@@ -2126,28 +2265,31 @@ def _print_google_drive_folder_info_table(metadata):
 def _parse_google_drive_mime_type(mime_type):
     if mime_type == "application/vnd.google-apps.folder":
         mime_type = "(folder)"
-
     return mime_type
 
 
-def _parse_name(name):
+def _parse_datetime(datetime_or_str):
+    if isinstance(datetime_or_str, six.string_types):
+        dt = dateutil.parser.isoparse(datetime_or_str)
+    else:
+        dt = datetime_or_str
+    return dt.astimezone(get_localzone())
+
+
+def _render_name(name):
     if MAX_NAME_COLUMN_WIDTH is not None and len(name) > MAX_NAME_COLUMN_WIDTH:
         name = name[:(MAX_NAME_COLUMN_WIDTH - 4)] + " ..."
     return name
 
 
-def _parse_size(size):
+def _render_bytes(size):
     if size is None or size < 0:
         return "-"
-
     return etau.to_human_bytes_str(size)
 
 
-def _parse_datetime(dt):
-    try:
-        return dt.astimezone(get_localzone()).strftime("%Y-%m-%d %H:%M:%S %Z")
-    except:
-        return "-"
+def _render_datetime(dt):
+    return _parse_datetime(dt).strftime("%Y-%m-%d %H:%M:%S %Z")
 
 
 def _render_names_in_dirs_str(d):
