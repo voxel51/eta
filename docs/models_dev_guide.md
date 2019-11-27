@@ -61,22 +61,32 @@ The following is an example contents of a `manifest.json` file:
 {
     "models": [
         {
-            "base_name": "vgg16-imagenet",
-            "base_filename": "vgg16-imagenet.npz",
+            "base_name": "ssd-resnet50-v1-fpn-coco",
+            "base_filename": "ssd-resnet50-v1-fpn-coco.pb",
             "version": null,
-            "description": "VGG-16 model trained on ImageNet. Source: https://github.com/ethereon/caffe-tensorflow",
+            "description": "A FPN Single Shot Detector with ResNet50 backbone trained on COCO",
             "manager": {
+                "type": "eta.core.models.ETAModelManager",
                 "config": {
-                    "google_drive_id": "0B_-5gc091ngGMzBFMVJ0RE9HNmc"
-                },
-                "type": "eta.core.models.ETAModelManager"
+                    "google_drive_id": "1ZvVQTuDIexyfntq8ajBVp5aSndHW6wQk"
+                }
             },
-            "date_created": "2018-06-20 17:35:53"
+            "default_deployment_config_dict": {
+                "type": "eta.detectors.TFModelsDetector",
+                "config": {
+                    "model_name": "ssd-resnet50-v1-fpn-coco",
+                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_label_map.pbtxt"
+                }
+            },
+            "date_created": "2019-04-11 12:01:29"
         },
         ...
     ]
 }
 ```
+
+The `manager` and `default_deployment_config_dict` entries of the manifest
+are described in the following sections.
 
 #### Model managers
 
@@ -96,31 +106,56 @@ functionality used to download these models.
 > delete models. These tasks must be performed manually by a Voxel51
 > administrator.
 
-#### Model weights
+### Default deployment configs
 
-We use the term "model weights" to refer broadly to the actual data contained
-in a model, regardless of its concrete form (weights of a network, parameters,
-coefficients, etc). Obscure model formats can always be read manually from disk
-after they are downloaded, but the `eta.core.models.ModelWeights` class defines
-the interface for classes that can load models in certain "known" formats.
-Subclasses of `ModelWeights` can load models automatically based on their
-`name` either by reading it from local storage if it exists or by automatically
-downloading the model from remote storage. It is straightforward to add new
-subclasses of `ModelWeights` to support new model formats.
+The `default_deployment_config_dict` value in each models manifest entry
+defines an `eta.core.learning.ModelConfig` instance that specifies how to load
+and perform inference with the model using its default settings.
 
-For example, the `eta.core.models.NpzModelWeights` provides a dictionary
-interface to access weights stored as an `.npz` file on disk:
+The `ModelConfig` specifies the `type` of model (e.g.,
+`eta.detectors.TFModelsDetector` in the above example) and the `config` field
+provides a valid config instance (e.g., `eta.detectors.TFModelsDetectorConfig`)
+for instantiating the model.
+
+For example, the following code loads the `ssd-resnet50-v1-fpn-coco` with its
+default settings and performs inference on an image:
 
 ```py
-import eta.core.models as etam
+import eta.core.image as etai
+import eta.core.learning as etal
 
-# Loads the model by name
-# Automatically downloads the model from the cloud, if necessary
-weights = etam.NpzModelWeights(name).load()
+model = etal.load_default_deployment_model("ssd-resnet50-v1-fpn-coco")
 
-# Dictionary-based access to the weights
-weights["layer-1"]
+image = etai.read("/path/to/image.jpg")
+
+with model:
+    objects = model.detect(img)
+
+print(objects)
 ```
+
+Example output:
+```json
+{
+    "objects": [
+        {
+            "label": "vehicle",
+            "confidence": 0.95,
+            "bounding_box": {
+                "bottom_right": {
+                    "y": 0.5722222222222222,
+                    "x": 0.09765625
+                },
+                "top_left": {
+                    "y": 0.4708333333333333,
+                    "x": 0.0
+                }
+            },
+            "attrs": {}
+        }
+    ]
+}
+````
 
 
 ## Basic Usage
@@ -223,7 +258,7 @@ description = "A short description of your model"
 # model. Otherwise, if no models directory is provided, the first directory on
 # your models search path will be used by default.
 #
-base_filename = "your-model-weights.npz"
+base_filename = "your-model.pb"
 models_dir = "/path/to/models/dir"
 
 # Publish the model
