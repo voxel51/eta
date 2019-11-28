@@ -548,13 +548,12 @@ class NeedsAWSCredentials(object):
     https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html#configuration
     '''
 
-    CREDENTIALS_PATH = os.path.join(
-        etac.ETA_CONFIG_DIR, "aws-credentials.json")
+    CREDENTIALS_PATH = os.path.join(etac.ETA_CONFIG_DIR, "aws-credentials.ini")
 
     @classmethod
     def activate_credentials(cls, credentials_path):
         '''Activate the credentials by copying them to
-        `~/.eta/aws-credentials.json`.
+        `~/.eta/aws-credentials.ini`.
 
         Args:
             credentials_path: the path to a credentials `.ini` file
@@ -568,7 +567,7 @@ class NeedsAWSCredentials(object):
     def deactivate_credentials(cls):
         '''Deactivates (deletes) the currently active credentials, if any.
 
-        Active credentials (if any) are at `~/.eta/aws-credentials.json`.
+        Active credentials (if any) are at `~/.eta/aws-credentials.ini`.
         '''
         try:
             os.remove(cls.CREDENTIALS_PATH)
@@ -581,7 +580,7 @@ class NeedsAWSCredentials(object):
     @classmethod
     def has_active_credentials(cls):
         '''Determines whether there are any active credentials stored at
-        `~/.eta/aws-credentials.json`.
+        `~/.eta/aws-credentials.ini`.
 
         Returns:
             True/False
