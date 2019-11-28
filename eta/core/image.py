@@ -1066,18 +1066,61 @@ def resize(img, width=None, height=None, *args, **kwargs):
     return cv2.resize(img, (width, height), *args, **kwargs)
 
 
-def central_crop(img, h, w):
-    '''Crops the central part of an image of required size. Works for both
-    2D and 3D images.
+def expand(img, width=None, height=None, *args, **kwargs):
+    '''Resizes the given image, if necesary, so that its width and height are
+    greater than or equal to the specified minimum values.
+
+    The aspect ratio of the input image is preserved.
 
     Args:
         img: input image
-        (h, w): required output height and width
+        width: the minimum width
+        height: the minimum height
+        *args: valid positional arguments for `cv2.resize()`
+        **kwargs: valid keyword arguments for `cv2.resize()`
+
+    Returns:
+        the expanded image
+    '''
+    iw, ih = to_frame_size(img=img)
+    ow, oh = iw, ih
+    if ow < width:
+        oh = int(round(oh * (width / ow)))
+        ow = width
+
+    if oh < height:
+        ow = int(round(ow * (height / oh)))
+        oh = height
+
+    if (ow > iw) or (oh > ih):
+        img = resize(img, width=ow, height=oh)
+
+    return img
+
+
+def central_crop(img, frame_size=None, shape=None):
+    '''Extracts a centered crop of the required size from the given image.
+
+    The image is resized as necessary if the requested size is larger than the
+    resolution of the input image.
+
+    Pass *one* keyword argument to this function.
+
+    Args:
+        img: the input image
+        frame_size: the (width, height) of the image
+        shape: the (height, width, ...) of the image, e.g. from img.shape
 
     Returns:
         A cropped portion of the image of height `h` and width `w`.
     '''
-    bounding = (h, w)
+    width, height = to_frame_size(frame_size=frame_size, shape=shape)
+
+    # Expand image, if necessary
+    img = expand(img, width=width, height=height)
+
+    # Extract central crop
+    bounding = (height, width)
     start = tuple(map(lambda a, da: a // 2 - da // 2, img.shape, bounding))
     end = tuple(map(operator.add, start, bounding))
     slices = tuple(map(slice, start, end))
