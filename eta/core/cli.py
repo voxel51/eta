@@ -621,6 +621,9 @@ class ActivateAuthCommand(Command):
 
         # Activate AWS credentials
         eta auth activate --aws '/path/to/credentials.ini'
+
+        # Activate SSH credentials
+        eta auth activate --ssh '/path/to/id_rsa'
     '''
 
     @staticmethod
@@ -646,7 +649,21 @@ class ActivateAuthCommand(Command):
 
 
 class DeactivateAuthCommand(Command):
-    '''Deactivate authentication credentials.'''
+    '''Deactivate authentication credentials.
+
+    Examples:
+        # Deactivate Google credentials
+        eta auth deactivate --google '/path/to/service-account.json'
+
+        # Deactivate AWS credentials
+        eta auth deactivate --aws '/path/to/credentials.ini'
+
+        # Deactivate SSH credentials
+        eta auth deactivate --ssh '/path/to/id_rsa'
+
+        # Deactivate all credentials
+        eta auth deactivate --all
+    '''
 
     @staticmethod
     def setup(parser):
@@ -659,16 +676,18 @@ class DeactivateAuthCommand(Command):
         parser.add_argument(
             "--ssh", action="store_true",
             help="delete the active SSH credentials")
+        parser.add_argument(
+            "--all", action="store_true", help="delete all active credentials")
 
     @staticmethod
     def run(args):
-        if args.google:
+        if args.google or args.all:
             etas.NeedsGoogleCredentials.deactivate_credentials()
 
-        if args.aws:
+        if args.aws or args.all:
             etas.NeedsAWSCredentials.deactivate_credentials()
 
-        if args.ssh:
+        if args.ssh or args.all:
             etas.NeedsSSHCredentials.deactivate_credentials()
 
 
