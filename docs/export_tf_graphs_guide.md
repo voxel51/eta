@@ -41,11 +41,10 @@ import eta.classifiers.tfslim_classifiers as etat
 
 checkpoint_path = "resnet_v2_50_2017_04_14.ckpt"
 network_name = "resnet_v2_50"
-labels_map_path = "tfslim_imagenet_labels.txt"
 output_path = "resnet_v2_50_2017_04_14.pb"
 
 etat.export_frozen_inference_graph(
-    checkpoint_path, network_name, labels_map_path, output_path)
+    checkpoint_path, network_name, output_path, num_classes=1001)
 ```
 
 
