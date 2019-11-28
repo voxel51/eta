@@ -713,10 +713,10 @@ class S3InfoCommand(Command):
 
     Examples:
         # Get file info
-        eta s3 info <path> [...]
+        eta s3 info <cloud-path> [...]
 
         # Get folder info
-        eta s3 info --folder <path> [...]
+        eta s3 info --folder <cloud-path> [...]
     '''
 
     @staticmethod
@@ -1095,10 +1095,10 @@ class GCSInfoCommand(Command):
 
     Examples:
         # Get file info
-        eta gcs info <path> [...]
+        eta gcs info <cloud-path> [...]
 
         # Get folder info
-        eta gcs info --folder <path> [...]
+        eta gcs info --folder <cloud-path> [...]
     '''
 
     @staticmethod
