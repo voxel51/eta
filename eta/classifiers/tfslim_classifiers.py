@@ -42,6 +42,28 @@ from nets import nets_factory
 logger = logging.getLogger(__name__)
 
 
+# Networks for which we provide default `output_name`s
+_DEFAULT_OUTPUT_NAMES = {
+    "resnet_v1_50": "resnet_v1_50/predictions/Reshape_1",
+    "resnet_v2_50": "resnet_v2_50/predictions/Reshape_1",
+    "mobilenet_v1_025": "MobilenetV1/Predictions/Reshape_1",
+    "mobilenet_v2": "MobilenetV2/Predictions/Reshape_1",
+    "inception_v3": "InceptionV3/Predictions/Reshape_1",
+    "inception_v4": "InceptionV4/Logits/Predictions",
+    "inception_resnet_v2": "InceptionResnetV2/Logits/Predictions"
+}
+
+# Networks for which we provide pre-processing implemented in numpy
+_NUMPY_PREPROC_FUNCTIONS = {
+    "resnet_v1_50": etat.vgg_preprocessing_numpy,
+    "resnet_v2_50": etat.inception_preprocessing_numpy,
+    "mobilenet_v2": etat.inception_preprocessing_numpy,
+    "inception_v3": etat.inception_preprocessing_numpy,
+    "inception_v4": etat.inception_preprocessing_numpy,
+    "inception_resnet_v2": etat.inception_preprocessing_numpy,
+}
+
+
 class TFSlimClassifierConfig(Config, etal.HasDefaultDeploymentConfig):
     '''Configuration class for loading a TensorFlow classifier whose network
     architecture is defined in `tf.slim.nets`.
@@ -70,7 +92,7 @@ class TFSlimClassifierConfig(Config, etal.HasDefaultDeploymentConfig):
         input_name: the name of the graph node to use as input. If omitted,
             the name "input" is used
         output_name: the name of the graph node to use as output. If omitted,
-            the `_DEFAULT_OUTPUT_OPS_MAP` is checked for a default value to use
+            the `_DEFAULT_OUTPUT_NAMES` is checked for a default value to use
     '''
 
     def __init__(self, d):
@@ -109,26 +131,6 @@ class TFSlimClassifier(etal.ImageClassifier, etat.UsesTFSession):
     manually call `close()` when finished to release memory.
     '''
 
-    # Networks for which we provide default `output_name`s
-    _DEFAULT_OUTPUT_OPS_MAP = {
-        "resnet_v1_50": "resnet_v1_50/predictions/Reshape_1",
-        "resnet_v2_50": "resnet_v2_50/predictions/Reshape_1",
-        "mobilenet_v2": "MobilenetV2/Predictions/Reshape_1",
-        "inception_v3": "InceptionV3/Predictions/Reshape_1",
-        "inception_v4": "InceptionV4/Logits/Predictions",
-        "inception_resnet_v2": "InceptionResnetV2/Logits/Predictions",
-    }
-
-    # Networks for which we provide pre-processing implemented in numpy
-    _PREPROC_NUMPY_FUNCTIONS = {
-        "resnet_v1_50": etat.vgg_preprocessing_numpy,
-        "resnet_v2_50": etat.inception_preprocessing_numpy,
-        "mobilenet_v2": etat.inception_preprocessing_numpy,
-        "inception_v3": etat.inception_preprocessing_numpy,
-        "inception_v4": etat.inception_preprocessing_numpy,
-        "inception_resnet_v2": etat.inception_preprocessing_numpy,
-    }
-
     def __init__(self, config):
         '''Creates a TFSlimClassifier instance.
 
@@ -166,8 +168,7 @@ class TFSlimClassifier(etal.ImageClassifier, etat.UsesTFSession):
         if self.config.output_name:
             self.output_name = self.config.output_name
         else:
-            self.output_name = TFSlimClassifier._DEFAULT_OUTPUT_OPS_MAP.get(
-                network_name, None)
+            self.output_name = _DEFAULT_OUTPUT_NAMES.get(network_name, None)
             if self.output_name is None:
                 raise ValueError(
                     "`output_name` was not provided and network `%s` was not "
@@ -232,8 +233,7 @@ class TFSlimClassifier(etal.ImageClassifier, etat.UsesTFSession):
                 imgs, self.img_size, self.img_size)
 
         # Use numpy-based pre-processing if supported
-        preproc_fcn_np = TFSlimClassifier._PREPROC_NUMPY_FUNCTIONS.get(
-            network_name, None)
+        preproc_fcn_np = _NUMPY_PREPROC_FUNCTIONS.get(network_name, None)
         if preproc_fcn_np is not None:
             logger.info(
                 "Found numpy-based pre-processing implementation for network "
