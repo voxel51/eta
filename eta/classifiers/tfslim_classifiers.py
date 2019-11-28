@@ -25,6 +25,7 @@ import sys
 
 import numpy as np
 import tensorflow as tf
+from tensorflow.python.tools import freeze_graph
 
 import eta.constants as etac
 from eta.core.config import Config, ConfigError
@@ -270,3 +271,59 @@ class TFSlimClassifier(etal.ImageClassifier, etat.UsesTFSession):
             self.config.attr_name, label, confidence=confidence)
         attrs.add(attr)
         return attrs
+
+
+def export_frozen_inference_graph(
+        checkpoint_path, network_name, output_path, num_classes=None,
+        labels_map_path=None, output_node=None):
+    '''Exports the given TF-Slim model checkpoint as a frozen inference graph
+    suitable for running inference.
+
+    Either `num_classes` or `labels_map_path` must be provided.
+
+    Args:
+        checkpoint_path: path to the training checkpoint to export
+        network_name: the name of the network architecture from
+            `tf.slim.nets.nets_factory`
+        output_path: the path to write the frozen graph `.pb` file
+        num_classes: the number of output classes for the model. If specified,
+            `labels_map_path` is ignored
+        labels_map_path: the path to the labels map for the classifier; used to
+            determine the number of output classes. Must be provided if
+            `num_classes` is not provided
+        output_node: the name of the output node from which to extract
+            predictions. By default, this value is loaded from
+            `_DEFAULT_OUTPUT_NAMES`
+    '''
+    if num_classes is None:
+        if labels_map_path is None:
+            raise ValueError(
+                "Must provide a `labels_map_path` when `num_classes` is not "
+                "specified")
+        else:
+            num_classes = len(etal.load_labels_map(labels_map_path))
+
+    output_node = _DEFAULT_OUTPUT_NAMES.get(network_name, None)
+    if output_node is None:
+        raise ValueError(
+            "No 'output_node' manually provided and no default output found " +
+            "for network '%s'" % network_name)
+
+    with tf.Graph().as_default() as graph:
+        graph_def = _get_graph_def(graph, network_name, num_classes)
+        freeze_graph.freeze_graph_with_def_protos(
+            graph_def, None, checkpoint_path, output_node, None, None,
+            output_path, True, "")
+
+
+def _get_graph_def(graph, network_name, num_classes):
+    # Adapted from `tensorflow/models/research/slim/export_inference_graph.py`
+    network_fn = nets_factory.get_network_fn(
+        network_name, num_classes=num_classes, is_training=False)
+    img_size = network_fn.default_image_size
+    input_shape = [1, img_size, img_size, 3]
+    placeholder = tf.placeholder(
+        name="input", dtype=tf.float32, shape=input_shape)
+    network_fn(placeholder)
+
+    return graph.as_graph_def()
