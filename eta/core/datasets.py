@@ -708,7 +708,7 @@ class LabeledDataset(object):
 
         return _FILE_METHODS_MAP[data_method], _FILE_METHODS_MAP[labels_method]
 
-    def add_file(self, data_path, labels_path=None, new_data_filename=None,
+    def add_file(self, data_path, labels_path, new_data_filename=None,
                  new_labels_filename=None, file_method=COPY,
                  error_on_duplicates=False):
         '''Adds a single data file and its labels file to this dataset.
@@ -748,7 +748,7 @@ class LabeledDataset(object):
 
         labels_subdir = os.path.join(self.data_dir, self._LABELS_SUBDIR)
         if new_labels_filename is None:
-            new_labels_filename = os.path.basename(data_path)
+            new_labels_filename = os.path.basename(labels_path)
 
         data_method, labels_method = self._parse_file_methods(file_method)
 
