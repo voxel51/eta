@@ -787,14 +787,14 @@ class S3ListCommand(Command):
 
         operator  type       description
         --------- ---------- --------------------------------------------------
-        =         contains   the field contains the search string
+        :         contains   the field contains the search string
         ==        comparison the search string is equal to the field
         <         comparison the search string is less than the field
         <=        comparison the search string is less or equal to the field
         >         comparison the search string is greater than the field
         >=        comparison the search string is greater or equal to the field
 
-        For contains ("=") queries, the search/record values are parsed as
+        For contains (":") queries, the search/record values are parsed as
         follows:
 
         type     description
@@ -817,8 +817,8 @@ class S3ListCommand(Command):
                  a datetime for comparison with the record. If no timezone is
                  included in the search, local time is assumed
 
-        To perform literal matches on special characters ("=", "<", ">", ",")
-        in search string, escape them with "\\".
+        You can include special characters (":", "=", "<", ">", ",") in search
+        strings by escaping them with "\\".
     '''
 
     @staticmethod
@@ -1169,14 +1169,14 @@ class GCSListCommand(Command):
 
         operator  type       description
         --------- ---------- --------------------------------------------------
-        =         contains   the field contains the search string
+        :         contains   the field contains the search string
         ==        comparison the search string is equal to the field
         <         comparison the search string is less than the field
         <=        comparison the search string is less or equal to the field
         >         comparison the search string is greater than the field
         >=        comparison the search string is greater or equal to the field
 
-        For contains ("=") queries, the search/record values are parsed as
+        For contains (":") queries, the search/record values are parsed as
         follows:
 
         type     description
@@ -1199,8 +1199,8 @@ class GCSListCommand(Command):
                  a datetime for comparison with the record. If no timezone is
                  included in the search, local time is assumed
 
-        To perform literal matches on special characters ("=", "<", ">", ",")
-        in search string, escape them with "\\".
+        You can include special characters (":", "=", "<", ">", ",") in search
+        strings by escaping them with "\\".
     '''
 
     @staticmethod
@@ -1566,14 +1566,14 @@ class GoogleDriveListCommand(Command):
 
         operator  type       description
         --------- ---------- --------------------------------------------------
-        =         contains   the field contains the search string
+        :         contains   the field contains the search string
         ==        comparison the search string is equal to the field
         <         comparison the search string is less than the field
         <=        comparison the search string is less or equal to the field
         >         comparison the search string is greater than the field
         >=        comparison the search string is greater or equal to the field
 
-        For contains ("=") queries, the search/record values are parsed as
+        For contains (":") queries, the search/record values are parsed as
         follows:
 
         type     description
@@ -1596,8 +1596,8 @@ class GoogleDriveListCommand(Command):
                  a datetime for comparison with the record. If no timezone is
                  included in the search, local time is assumed
 
-        To perform literal matches on special characters ("=", "<", ">", ",")
-        in search string, escape them with "\\".
+        You can include special characters (":", "=", "<", ">", ",") in search
+        strings by escaping them with "\\".
     '''
 
     @staticmethod
@@ -2337,7 +2337,7 @@ def _filter_records(records, limit, search_str, sort_by, ascending, field_map):
     return records
 
 
-_SEARCH_OPERATORS = {
+_SEARCH_COMPARISON_OPERATORS = {
     "==": operator.eq,
     "<": operator.gt,
     "<=": operator.ge,
@@ -2347,7 +2347,7 @@ _SEARCH_OPERATORS = {
 
 
 def _make_any_match_fcn(value, field_map):
-    value = _remove_escapes(value, ",<=>").strip()
+    value = _remove_escapes(value, ",:=<>").strip()
     searcher_map = {s.name: s for s in itervalues(field_map)}
 
     def _any_match_fcn(record):
@@ -2362,7 +2362,7 @@ def _make_any_match_fcn(value, field_map):
 
 def _make_match_fcn(key, value, delimiter, field_map, search_str):
     key_normalized = key.lower().strip().replace(" ", "_")
-    value = _remove_escapes(value, ",<=>").strip()
+    value = _remove_escapes(value, ",:=<>").strip()
 
     searcher = field_map.get(key_normalized, None)
     if searcher is None:
@@ -2371,11 +2371,11 @@ def _make_match_fcn(key, value, delimiter, field_map, search_str):
             "supported keys are %s" %
             (search_str, key, key_normalized, list(field_map)))
 
-    if delimiter == "=":
+    if delimiter == ":":
         # Contains search
         return lambda record: searcher.contains(value, record[searcher.name])
 
-    op = _SEARCH_OPERATORS.get(delimiter, None)
+    op = _SEARCH_COMPARISON_OPERATORS.get(delimiter, None)
     if op is None:
         raise KeyError(
             "Invalid search '%s'; unsupported delimiter '%s'" %
@@ -2387,7 +2387,7 @@ def _make_match_fcn(key, value, delimiter, field_map, search_str):
 
 def _parse_search_str(search_str, field_map):
     for s in _split_on_chars(search_str, ","):
-        chunks = _split_on_chars(s, "<=>", max_splits=1, keep_delimiters=True)
+        chunks = _split_on_chars(s, ":=<>", max_splits=1, keep_delimiters=True)
         if len(chunks) == 1:
             # Any field contains value
             value = chunks[0]
