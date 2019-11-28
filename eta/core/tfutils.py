@@ -257,7 +257,7 @@ def vgg_preprocessing_numpy(imgs, height, width):
         else:
             img = etai.resize(img, width=256)
 
-        img = etai.central_crop(img, height, width)
+        img = etai.central_crop(img, shape=(height, width))
         img = img.astype(np.float) - imagenet_mean
         imgs_out.append(img)
 
