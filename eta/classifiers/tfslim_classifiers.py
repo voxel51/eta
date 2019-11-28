@@ -275,7 +275,7 @@ class TFSlimClassifier(etal.ImageClassifier, etat.UsesTFSession):
 
 def export_frozen_inference_graph(
         checkpoint_path, network_name, output_path, num_classes=None,
-        labels_map_path=None, output_node=None):
+        labels_map_path=None, output_name=None):
     '''Exports the given TF-Slim model checkpoint as a frozen inference graph
     suitable for running inference.
 
@@ -291,7 +291,7 @@ def export_frozen_inference_graph(
         labels_map_path: the path to the labels map for the classifier; used to
             determine the number of output classes. Must be provided if
             `num_classes` is not provided
-        output_node: the name of the output node from which to extract
+        output_name: the name of the output node from which to extract
             predictions. By default, this value is loaded from
             `_DEFAULT_OUTPUT_NAMES`
     '''
@@ -303,16 +303,16 @@ def export_frozen_inference_graph(
         else:
             num_classes = len(etal.load_labels_map(labels_map_path))
 
-    output_node = _DEFAULT_OUTPUT_NAMES.get(network_name, None)
-    if output_node is None:
+    output_name = _DEFAULT_OUTPUT_NAMES.get(network_name, None)
+    if output_name is None:
         raise ValueError(
-            "No 'output_node' manually provided and no default output found " +
+            "No 'output_name' manually provided and no default output found " +
             "for network '%s'" % network_name)
 
     with tf.Graph().as_default() as graph:
         graph_def = _get_graph_def(graph, network_name, num_classes)
         freeze_graph.freeze_graph_with_def_protos(
-            graph_def, None, checkpoint_path, output_node, None, None,
+            graph_def, None, checkpoint_path, output_name, None, None,
             output_path, True, "")
 
 
