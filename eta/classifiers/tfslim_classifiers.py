@@ -25,6 +25,7 @@ import sys
 
 import numpy as np
 import tensorflow as tf
+from tensorflow.python.tools import freeze_graph
 
 import eta.constants as etac
 from eta.core.config import Config, ConfigError
@@ -40,6 +41,28 @@ from nets import nets_factory
 
 
 logger = logging.getLogger(__name__)
+
+
+# Networks for which we provide default `output_name`s
+_DEFAULT_OUTPUT_NAMES = {
+    "resnet_v1_50": "resnet_v1_50/predictions/Reshape_1",
+    "resnet_v2_50": "resnet_v2_50/predictions/Reshape_1",
+    "mobilenet_v1_025": "MobilenetV1/Predictions/Reshape_1",
+    "mobilenet_v2": "MobilenetV2/Predictions/Reshape_1",
+    "inception_v3": "InceptionV3/Predictions/Reshape_1",
+    "inception_v4": "InceptionV4/Logits/Predictions",
+    "inception_resnet_v2": "InceptionResnetV2/Logits/Predictions"
+}
+
+# Networks for which we provide pre-processing implemented in numpy
+_NUMPY_PREPROC_FUNCTIONS = {
+    "resnet_v1_50": etat.vgg_preprocessing_numpy,
+    "resnet_v2_50": etat.inception_preprocessing_numpy,
+    "mobilenet_v2": etat.inception_preprocessing_numpy,
+    "inception_v3": etat.inception_preprocessing_numpy,
+    "inception_v4": etat.inception_preprocessing_numpy,
+    "inception_resnet_v2": etat.inception_preprocessing_numpy,
+}
 
 
 class TFSlimClassifierConfig(Config, etal.HasDefaultDeploymentConfig):
@@ -58,8 +81,8 @@ class TFSlimClassifierConfig(Config, etal.HasDefaultDeploymentConfig):
     Attributes:
         model_name: the name of the published model to load. If this value is
             provided, `model_path` does not need to be
-        model_path: the path to a TF SavedModel in `.pb` format to load. If
-            this value is provided, `model_name` does not need to be
+        model_path: the path to a frozen inference graph in `.pb` format to
+            load. If this value is provided, `model_name` does not need to be
         attr_name: the name of the attribute that the classifier predicts
         network_name: the name of the network architecture from
             `tf.slim.nets.nets_factory`
@@ -70,7 +93,7 @@ class TFSlimClassifierConfig(Config, etal.HasDefaultDeploymentConfig):
         input_name: the name of the graph node to use as input. If omitted,
             the name "input" is used
         output_name: the name of the graph node to use as output. If omitted,
-            the `_DEFAULT_OUTPUT_OPS_MAP` is checked for a default value to use
+            the `_DEFAULT_OUTPUT_NAMES` is checked for a default value to use
     '''
 
     def __init__(self, d):
@@ -109,26 +132,6 @@ class TFSlimClassifier(etal.ImageClassifier, etat.UsesTFSession):
     manually call `close()` when finished to release memory.
     '''
 
-    # Networks for which we provide default `output_name`s
-    _DEFAULT_OUTPUT_OPS_MAP = {
-        "resnet_v1_50": "resnet_v1_50/predictions/Reshape_1",
-        "resnet_v2_50": "resnet_v2_50/predictions/Reshape_1",
-        "mobilenet_v2": "MobilenetV2/Predictions/Reshape_1",
-        "inception_v3": "InceptionV3/Predictions/Reshape_1",
-        "inception_v4": "InceptionV4/Logits/Predictions",
-        "inception_resnet_v2": "InceptionResnetV2/Logits/Predictions",
-    }
-
-    # Networks for which we provide pre-processing implemented in numpy
-    _PREPROC_NUMPY_FUNCTIONS = {
-        "resnet_v1_50": etat.vgg_preprocessing_numpy,
-        "resnet_v2_50": etat.inception_preprocessing_numpy,
-        "mobilenet_v2": etat.inception_preprocessing_numpy,
-        "inception_v3": etat.inception_preprocessing_numpy,
-        "inception_v4": etat.inception_preprocessing_numpy,
-        "inception_resnet_v2": etat.inception_preprocessing_numpy,
-    }
-
     def __init__(self, config):
         '''Creates a TFSlimClassifier instance.
 
@@ -166,8 +169,7 @@ class TFSlimClassifier(etal.ImageClassifier, etat.UsesTFSession):
         if self.config.output_name:
             self.output_name = self.config.output_name
         else:
-            self.output_name = TFSlimClassifier._DEFAULT_OUTPUT_OPS_MAP.get(
-                network_name, None)
+            self.output_name = _DEFAULT_OUTPUT_NAMES.get(network_name, None)
             if self.output_name is None:
                 raise ValueError(
                     "`output_name` was not provided and network `%s` was not "
@@ -232,8 +234,7 @@ class TFSlimClassifier(etal.ImageClassifier, etat.UsesTFSession):
                 imgs, self.img_size, self.img_size)
 
         # Use numpy-based pre-processing if supported
-        preproc_fcn_np = TFSlimClassifier._PREPROC_NUMPY_FUNCTIONS.get(
-            network_name, None)
+        preproc_fcn_np = _NUMPY_PREPROC_FUNCTIONS.get(network_name, None)
         if preproc_fcn_np is not None:
             logger.info(
                 "Found numpy-based pre-processing implementation for network "
@@ -270,3 +271,59 @@ class TFSlimClassifier(etal.ImageClassifier, etat.UsesTFSession):
             self.config.attr_name, label, confidence=confidence)
         attrs.add(attr)
         return attrs
+
+
+def export_frozen_inference_graph(
+        checkpoint_path, network_name, output_path, num_classes=None,
+        labels_map_path=None, output_name=None):
+    '''Exports the given TF-Slim model checkpoint as a frozen inference graph
+    suitable for running inference.
+
+    Either `num_classes` or `labels_map_path` must be provided.
+
+    Args:
+        checkpoint_path: path to the training checkpoint to export
+        network_name: the name of the network architecture from
+            `tf.slim.nets.nets_factory`
+        output_path: the path to write the frozen graph `.pb` file
+        num_classes: the number of output classes for the model. If specified,
+            `labels_map_path` is ignored
+        labels_map_path: the path to the labels map for the classifier; used to
+            determine the number of output classes. Must be provided if
+            `num_classes` is not provided
+        output_name: the name of the output node from which to extract
+            predictions. By default, this value is loaded from
+            `_DEFAULT_OUTPUT_NAMES`
+    '''
+    if num_classes is None:
+        if labels_map_path is None:
+            raise ValueError(
+                "Must provide a `labels_map_path` when `num_classes` is not "
+                "specified")
+        else:
+            num_classes = len(etal.load_labels_map(labels_map_path))
+
+    output_name = _DEFAULT_OUTPUT_NAMES.get(network_name, None)
+    if output_name is None:
+        raise ValueError(
+            "No 'output_name' manually provided and no default output found " +
+            "for network '%s'" % network_name)
+
+    with tf.Graph().as_default() as graph:
+        graph_def = _get_graph_def(graph, network_name, num_classes)
+        freeze_graph.freeze_graph_with_def_protos(
+            graph_def, None, checkpoint_path, output_name, None, None,
+            output_path, True, "")
+
+
+def _get_graph_def(graph, network_name, num_classes):
+    # Adapted from `tensorflow/models/research/slim/export_inference_graph.py`
+    network_fn = nets_factory.get_network_fn(
+        network_name, num_classes=num_classes, is_training=False)
+    img_size = network_fn.default_image_size
+    input_shape = [1, img_size, img_size, 3]
+    placeholder = tf.placeholder(
+        name="input", dtype=tf.float32, shape=input_shape)
+    network_fn(placeholder)
+
+    return graph.as_graph_def()
