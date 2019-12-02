@@ -492,18 +492,40 @@ class ConstantsCommand(Command):
     '''Print constants from `eta.constants`.
 
     Examples:
-        # Print a constant defined in `eta.constants`
+        # Print the specified constant
         eta constants <CONSTANT>
+
+        # Print all constants
+        eta constants --all
     '''
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "constant", metavar="CONSTANT", help="the constant to print")
+            "constant", nargs="?", metavar="CONSTANT",
+            help="the constant to print")
+        parser.add_argument(
+            "-a", "--all", action="store_true",
+            help="print all available constants")
 
     @staticmethod
     def run(args):
-        logger.info(getattr(etac, args.constant))
+        if args.all:
+            d = {
+                k: v for k, v in iteritems(vars(etac))
+                if not k.startswith("_") and k == k.upper()
+            }
+            _print_constants_table(d)
+
+        if args.constant:
+            logger.info(getattr(etac, args.constant))
+
+
+def _print_constants_table(d):
+    contents = sorted(d.items(), key=lambda kv: kv[0])
+    table_str = tabulate(
+        contents, headers=["constant", "value"], tablefmt=TABLE_FORMAT)
+    logger.info(table_str)
 
 
 class AuthCommand(Command):
