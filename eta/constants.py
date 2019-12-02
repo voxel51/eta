@@ -55,8 +55,3 @@ AUTHOR = _VER["author"]
 CONTACT = _VER["contact"]
 URL = _VER["url"]
 LICENSE = _VER["license"]
-
-
-# ASCII art
-with open(ASCII_ART_PATH, "rt") as f:
-    ASCII_ART = f.read()

@@ -135,9 +135,14 @@ def set_config_settings(**kwargs):
 
 def startup_message():
     '''Logs ETA startup message.'''
-    logger.info("Starting...\n" + etac.ASCII_ART)
+    logger.info("Starting...\n" + _load_ascii_art())
     logger.info(version)
     logger.info("Revision %s", etau.get_eta_rev())
+
+
+def _load_ascii_art():
+    with open(etac.ASCII_ART_PATH, "rt") as f:
+        return f.read()
 
 
 def is_python2():
