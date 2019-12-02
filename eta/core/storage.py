@@ -516,7 +516,7 @@ class NeedsAWSCredentials(object):
     '''Mixin for classes that need AWS credentials to take authenticated
     actions.
 
-    Storage clients that dervie from this class should allow users to provide
+    Storage clients that derive from this class should allow users to provide
     credentials in the following ways (in order of precedence):
 
         (1) manually constructing an instance of the class via the
@@ -1037,7 +1037,7 @@ class NeedsGoogleCredentials(object):
     '''Mixin for classes that need a `google.auth.credentials.Credentials`
     instance to take authenticated actions.
 
-    Storage clients that dervie from this class should allow users to provide
+    Storage clients that derive from this class should allow users to provide
     credentials in the following ways (in order of precedence):
 
         (1) manually constructing an instance of the class via the
@@ -2442,7 +2442,7 @@ class NeedsSSHCredentials(object):
 
     The SSH key used must have _no password_.
 
-    Storage clients that dervie from this class should allow users to provide
+    Storage clients that derive from this class should allow users to provide
     their private key in the following ways (in order of precedence):
 
         (1) manually providing a private key path when contructing an instance
