@@ -1849,7 +1849,9 @@ class LabeledDatasetBuilder(object):
 
             # The `file_method` is irrelevant in this situation as the files
             # are placed directly into the dataset by `record.build()`.
-            dataset.add_file(data_path, labels_path)
+            dataset.add_file(data_path, labels_path,
+                             os.path.basename(record.new_data_path),
+                             os.path.basename(record.new_labels_path))
 
         dataset.write_manifest(os.path.basename(path))
         return dataset
