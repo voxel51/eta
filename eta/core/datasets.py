@@ -2018,7 +2018,8 @@ class BuilderImageRecord(BuilderDataRecord):
         return
 
     def _build_data(self, data_path, data_method):
-        data_method(self.data_path, data_path)
+        pass
+        # data_method(self.data_path, data_path)
 
 
 class BuilderVideoRecord(BuilderDataRecord):
