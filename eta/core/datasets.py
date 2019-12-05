@@ -750,7 +750,7 @@ class LabeledDataset(object):
         if new_labels_filename is None:
             new_labels_filename = os.path.basename(labels_path)
 
-        data_method, labels_method = self._parse_file_methods(file_method)
+        data_method, labels_method = self._parse_file_methods(MOVE)
 
         new_data_path = os.path.join(data_subdir, new_data_filename)
         if data_path != new_data_path:
