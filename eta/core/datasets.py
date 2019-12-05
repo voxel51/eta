@@ -946,7 +946,7 @@ class LabeledDataset(object):
                 labeled_dataset.iter_labels_paths()):
             if os.path.basename(data_path) in data_filenames_to_merge:
                 merged_dataset.add_file(
-                    data_path, labels_path, file_method=MOVE)
+                    data_path, labels_path, file_method=file_method)
 
         if description is not None:
             merged_dataset.set_description(description)
