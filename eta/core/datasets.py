@@ -1817,8 +1817,8 @@ class LabeledDatasetBuilder(object):
         labels_subdir = os.path.join(dataset_dir, dataset._LABELS_SUBDIR)
 
         for record in self._dataset:
-            data_filename = os.path.basename(record.data_path)
-            labels_filename = os.path.basename(record.labels_path)
+            data_filename = os.path.basename(record.new_data_path)
+            labels_filename = os.path.basename(record.new_labels_path)
 
             # add an incrementing index to the filename until a unique name
             # is found
@@ -2018,8 +2018,7 @@ class BuilderImageRecord(BuilderDataRecord):
         return
 
     def _build_data(self, data_path, data_method):
-        pass
-        # data_method(self.data_path, data_path)
+        data_method(self.data_path, data_path)
 
 
 class BuilderVideoRecord(BuilderDataRecord):
