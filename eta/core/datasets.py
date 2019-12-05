@@ -1847,8 +1847,7 @@ class LabeledDatasetBuilder(object):
                 data_method=data_method
             )
 
-            # The `file_method` is irrelevant in this situation as the files
-            # are placed directly into the dataset by `record.build()`.
+            # MOVE here is used to rename the file
             dataset.add_file(data_path, labels_path,
                              os.path.basename(record.new_data_path),
                              os.path.basename(record.new_labels_path),
