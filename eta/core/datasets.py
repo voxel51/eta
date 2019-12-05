@@ -37,7 +37,7 @@ import numpy as np
 import eta.core.annotations as etaa
 from eta.core.data import BaseDataRecord, DataRecords
 import eta.core.image as etai
-from eta.core.serial import Serializable
+from eta.core.serial import Serializable, load_json, write_json
 import eta.core.utils as etau
 import eta.core.video as etav
 
@@ -759,6 +759,11 @@ class LabeledDataset(object):
         new_labels_path = os.path.join(labels_subdir, new_labels_filename)
         if labels_path != new_labels_path:
             labels_method(labels_path, new_labels_path)
+            # renames the 'filename' attribute within the json file to reflect
+            # the updated data_filename
+            data = load_json(new_labels_path)
+            data['filename'] = os.path.basename(new_data_path)
+            write_json(data, new_labels_path)
 
         # First remove any other records with the same data filename
         self.dataset_index.cull_with_function(
