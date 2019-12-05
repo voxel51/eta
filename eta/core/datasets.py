@@ -750,7 +750,7 @@ class LabeledDataset(object):
         if new_labels_filename is None:
             new_labels_filename = os.path.basename(labels_path)
 
-        data_method, labels_method = self._parse_file_methods(MOVE)
+        data_method, labels_method = self._parse_file_methods(file_method)
 
         new_data_path = os.path.join(data_subdir, new_data_filename)
         if data_path != new_data_path:
@@ -1851,7 +1851,8 @@ class LabeledDatasetBuilder(object):
             # are placed directly into the dataset by `record.build()`.
             dataset.add_file(data_path, labels_path,
                              os.path.basename(record.new_data_path),
-                             os.path.basename(record.new_labels_path))
+                             os.path.basename(record.new_labels_path),
+                             file_method=MOVE)
 
         dataset.write_manifest(os.path.basename(path))
         return dataset
