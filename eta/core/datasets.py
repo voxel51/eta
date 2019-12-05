@@ -754,11 +754,11 @@ class LabeledDataset(object):
 
         new_data_path = os.path.join(data_subdir, new_data_filename)
         if data_path != new_data_path:
-            data_method(data_path, new_data_path)
+            MOVE(data_path, new_data_path)
 
         new_labels_path = os.path.join(labels_subdir, new_labels_filename)
         if labels_path != new_labels_path:
-            labels_method(labels_path, new_labels_path)
+            MOVE(labels_path, new_labels_path)
             # renames the 'filename' attribute within the json file to reflect
             # the updated data_filename
             data = load_json(new_labels_path)
