@@ -448,7 +448,31 @@ def copy_file(inpath, outpath, check_ext=False):
     if not os.path.isdir(outpath) and check_ext:
         assert_same_extensions(inpath, outpath)
     ensure_basedir(outpath)
-    shutil.copy(inpath, outpath)
+    communicate_or_die(["cp", inpath, outpath])
+
+
+def link_file(filepath, linkpath, check_ext=False):
+    '''Creates a hard link at the given location using the given file.
+
+    The base output directory is created if necessary, and any existing file
+    will be overwritten.
+
+    Args:
+        filepath: a file or directory
+        linkpath: the desired symlink path
+        check_ext: whether to check if the extensions (or lack thereof, for
+            directories) of the input and output paths match
+
+    Raises:
+        OSError: if check_ext is True and the input and output paths have
+            different extensions
+    '''
+    if check_ext:
+        assert_same_extensions(filepath, linkpath)
+    ensure_basedir(linkpath)
+    if os.path.exists(linkpath):
+        delete_file(linkpath)
+    os.link(os.path.realpath(filepath), linkpath)
 
 
 def symlink_file(filepath, linkpath, check_ext=False):
@@ -471,7 +495,7 @@ def symlink_file(filepath, linkpath, check_ext=False):
         assert_same_extensions(filepath, linkpath)
     ensure_basedir(linkpath)
     if os.path.exists(linkpath):
-        os.remove(linkpath)
+        delete_file(linkpath)
     os.symlink(os.path.realpath(filepath), linkpath)
 
 
@@ -500,7 +524,7 @@ def move_file(inpath, outpath, check_ext=False):
         if check_ext:
             assert_same_extensions(inpath, outpath)
         ensure_basedir(outpath)
-    shutil.move(inpath, outpath)
+    communicate_or_die(["mv", inpath, outpath])
 
 
 def move_dir(indir, outdir):
@@ -516,7 +540,7 @@ def move_dir(indir, outdir):
     if os.path.isdir(outdir):
         delete_dir(outdir)
     ensure_basedir(outdir)
-    shutil.move(indir, outdir)
+    communicate_or_die(["mv", indir, outdir])
 
 
 def partition_files(indir, outdir=None, num_parts=None, dir_size=None):
@@ -574,6 +598,28 @@ def copy_sequence(inpatt, outpatt, check_ext=False):
         assert_same_extensions(inpatt, outpatt)
     for idx in parse_pattern(inpatt):
         copy_file(inpatt % idx, outpatt % idx)
+
+
+def link_sequence(inpatt, outpatt, check_ext=False):
+    '''Creates hard links at the given locations using the given sequence.
+
+    The base output directory is created if necessary, and any existing files
+    will be overwritten.
+
+    Args:
+        inpatt: the input sequence
+        outpatt: the output sequence
+        check_ext: whether to check if the extensions of the input and output
+            sequences match
+
+    Raises:
+        OSError: if check_ext is True and the input and output sequences have
+            different extensions
+    '''
+    if check_ext:
+        assert_same_extensions(inpatt, outpatt)
+    for idx in parse_pattern(inpatt):
+        link_file(inpatt % idx, outpatt % idx)
 
 
 def symlink_sequence(inpatt, outpatt, check_ext=False):
@@ -645,8 +691,19 @@ def copy_dir(indir, outdir):
         outdir: the output directory
     '''
     if os.path.isdir(outdir):
-        shutil.rmtree(outdir)
-    shutil.copytree(indir, outdir)
+        communicate_or_die(["rm", "-rf",  outdir])
+    ensure_dir(outdir)
+
+    for filepath in list_files(indir, include_hidden_files=True, sort=False):
+        copy_file(
+            os.path.join(indir, filepath),
+            os.path.join(outdir, filepath)
+        )
+
+    for subdir in list_subdirs(indir):
+        outsubdir = os.path.join(outdir, subdir)
+        insubdir = os.path.join(indir, subdir)
+        copy_dir(insubdir, outsubdir)
 
 
 def delete_file(path):
@@ -655,11 +712,8 @@ def delete_file(path):
 
     Args:
         path: the filepath
-
-    Raises:
-        OSError: if the file did not exist
     '''
-    os.remove(path)
+    communicate_or_die(["rm", "-f",  path])
     try:
         os.removedirs(os.path.dirname(path))
     except OSError:
@@ -673,12 +727,9 @@ def delete_dir(dir_):
 
     Args:
         dir_: the directory path
-
-    Raises:
-        OSError: if the directory did not exist
     '''
     dir_ = os.path.normpath(dir_)
-    shutil.rmtree(dir_)
+    communicate_or_die(["rm", "-rf",  dir_])
     try:
         os.removedirs(os.path.dirname(dir_))
     except OSError:
@@ -742,7 +793,7 @@ def ensure_path(path):
     '''
     if os.path.isfile(path):
         logger.debug("Deleting '%s'", path)
-        os.remove(path)
+        delete_file(path)
 
     ensure_basedir(path)
 
@@ -828,7 +879,7 @@ def split_path(path):
         if parts[0] == path:  # sentinel for absolute paths
             all_parts.insert(0, parts[0])
             break
-        elif parts[1] == path: # sentinel for relative paths
+        elif parts[1] == path:  # sentinel for relative paths
             all_parts.insert(0, parts[1])
             break
         else:
@@ -1301,7 +1352,8 @@ def multiglob(*patterns, **kwargs):
     return it.chain.from_iterable(glob2.iglob(root + p) for p in patterns)
 
 
-def list_files(dir_path, abs_paths=False, recursive=False):
+def list_files(dir_path, abs_paths=False, recursive=False,
+               include_hidden_files=False, sort=True):
     '''Lists the files in the given directory, sorted alphabetically and
     excluding directories and hidden files.
 
@@ -1311,6 +1363,8 @@ def list_files(dir_path, abs_paths=False, recursive=False):
             default, this is False
         recursive: whether to recursively traverse subdirectories. By default,
             this is False
+        include_hidden_files: whether to include dot files
+        sort: whether to sort the list of files
 
     Returns:
         a sorted list of the non-hidden files in the directory
@@ -1325,9 +1379,10 @@ def list_files(dir_path, abs_paths=False, recursive=False):
         files = [
             f for f in os.listdir(dir_path)
             if os.path.isfile(os.path.join(dir_path, f))
-                and not f.startswith(".")]
+            and (not f.startswith(".") or include_hidden_files)]
 
-    files = sorted(files)
+    if sort:
+        files = sorted(files)
 
     if abs_paths:
         basedir = os.path.abspath(os.path.realpath(dir_path))
@@ -1360,7 +1415,7 @@ def list_subdirs(dir_path, abs_paths=False, recursive=False):
         dirs = [
             d for d in os.listdir(dir_path)
             if os.path.isdir(os.path.join(dir_path, d))
-                and not d.startswith(".")]
+            and not d.startswith(".")]
 
     dirs = sorted(dirs)
 
