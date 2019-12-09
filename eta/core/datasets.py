@@ -37,7 +37,7 @@ import numpy as np
 import eta.core.annotations as etaa
 from eta.core.data import BaseDataRecord, DataRecords
 import eta.core.image as etai
-from eta.core.serial import Serializable, load_json, write_json
+from eta.core.serial import Serializable
 import eta.core.utils as etau
 import eta.core.video as etav
 
@@ -710,7 +710,7 @@ class LabeledDataset(object):
 
     def add_file(self, data_path, labels_path, new_data_filename=None,
                  new_labels_filename=None, file_method=COPY,
-                 error_on_duplicates=False):
+                 error_on_duplicates=False, update_filename_in_labels=True):
         '''Adds a single data file and its labels file to this dataset.
 
         Args:
@@ -729,6 +729,9 @@ class LabeledDataset(object):
                 data file in the dataset. If this is set to `False`, the
                 previous mapping of the data filename to a labels file
                 will be deleted.
+            update_filename_in_labels: whether to update the `filename`
+                attribute inside the labels JSON, with the filename of the data
+                file being added by this method
 
         Returns:
             self
@@ -738,32 +741,33 @@ class LabeledDataset(object):
                 data file already present in the dataset and
                 `error_on_duplicates` is True, or if `file_method` is not valid
         '''
-        if error_on_duplicates and self.has_data_with_name(data_path):
-            raise ValueError("Data file '%s' already present in dataset"
-                             % os.path.basename(data_path))
-
-        data_subdir = os.path.join(self.data_dir, self._DATA_SUBDIR)
         if new_data_filename is None:
             new_data_filename = os.path.basename(data_path)
 
-        labels_subdir = os.path.join(self.data_dir, self._LABELS_SUBDIR)
         if new_labels_filename is None:
             new_labels_filename = os.path.basename(labels_path)
 
+        if error_on_duplicates and self.has_data_with_name(new_data_filename):
+            raise ValueError("Data file '%s' already present in dataset"
+                             % new_data_filename)
+
         data_method, labels_method = self._parse_file_methods(file_method)
 
-        new_data_path = os.path.join(data_subdir, new_data_filename)
+        new_data_path = os.path.join(
+            self.data_dir, self._DATA_SUBDIR, new_data_filename)
         if data_path != new_data_path:
             data_method(data_path, new_data_path)
 
-        new_labels_path = os.path.join(labels_subdir, new_labels_filename)
+        new_labels_path = os.path.join(
+            self.data_dir, self._LABELS_SUBDIR, new_labels_filename)
         if labels_path != new_labels_path:
             labels_method(labels_path, new_labels_path)
-            # renames the 'filename' attribute within the json file to reflect
-            # the updated data_filename
-            data = load_json(new_labels_path)
-            data['filename'] = os.path.basename(new_data_path)
-            write_json(data, new_labels_path)
+
+        # Update the filename attribute in the labels JSON if requested
+        if update_filename_in_labels:
+            labels_ = self._read_labels(new_labels_path)
+            labels_.filename = new_data_filename
+            self._write_labels(labels_, new_labels_path)
 
         # First remove any other records with the same data filename
         self.dataset_index.cull_with_function(
@@ -780,7 +784,7 @@ class LabeledDataset(object):
         return self
 
     def add_data(self, data, labels, data_filename, labels_filename,
-                 error_on_duplicates=False):
+                 error_on_duplicates=False, update_filename_in_labels=True):
         '''Creates and adds a single data file and its labels file to this
         dataset, using the input python data structure.
 
@@ -795,6 +799,9 @@ class LabeledDataset(object):
                 with the name `data_filename` already exists in the dataset.
                 If this is set to `False`, the previous mapping of
                 `data_filename` to a labels file will be deleted.
+            update_filename_in_labels: whether to update the `filename`
+                attribute inside the labels JSON, with the filename of the data
+                file being added by this method
 
         Returns:
             self
@@ -807,6 +814,10 @@ class LabeledDataset(object):
             self.data_dir, self._DATA_SUBDIR, data_filename)
         labels_path = os.path.join(
             self.data_dir, self._LABELS_SUBDIR, labels_filename)
+
+        if update_filename_in_labels:
+            labels.filename = data_filename
+
         self._write_data(data, data_path)
         self._write_labels(labels, labels_path)
 
