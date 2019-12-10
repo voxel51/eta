@@ -8,6 +8,7 @@ glob2==0.6
 google-api-python-client==1.6.5
 google-auth-httplib2==0.0.3
 google-cloud-storage==1.7.0
+h5py==2.10.0
 Jinja2==2.10.1
 lxml==4.3.0
 numpy==1.16.3
