@@ -94,6 +94,8 @@ class TFSlimClassifierConfig(Config, etal.HasDefaultDeploymentConfig):
             the name "input" is used
         output_name: the name of the graph node to use as output. If omitted,
             the `_DEFAULT_OUTPUT_NAMES` is checked for a default value to use
+        confidence_thresh: a confidence threshold to apply to candidate
+            predictions
     '''
 
     def __init__(self, d):
@@ -112,6 +114,8 @@ class TFSlimClassifierConfig(Config, etal.HasDefaultDeploymentConfig):
             d, "preprocessing_fcn", default=None)
         self.input_name = self.parse_string(d, "input_name", default="input")
         self.output_name = self.parse_string(d, "output_name", default=None)
+        self.confidence_thresh = self.parse_number(
+            d, "confidence_thresh", default=None)
 
         self._validate()
 
@@ -267,9 +271,12 @@ class TFSlimClassifier(etal.ImageClassifier, etat.UsesTFSession):
 
     def _package_attr(self, label, confidence):
         attrs = etad.AttributeContainer()
-        attr = etad.CategoricalAttribute(
-            self.config.attr_name, label, confidence=confidence)
-        attrs.add(attr)
+        if (self.config.confidence_thresh is None or
+                confidence > self.config.confidence_thresh):
+            attr = etad.CategoricalAttribute(
+                self.config.attr_name, label, confidence=confidence)
+            attrs.add(attr)
+
         return attrs
 
 
