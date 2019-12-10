@@ -56,6 +56,8 @@ class TFModelsDetectorConfig(Config, HasDefaultDeploymentConfig):
         model_path: the path to a TF SavedModel in `.pb` format to load. If
             this value is provided, `model_name` does not need to be
         labels_path: the path to the labels map for the model
+        confidence_thresh: a confidence threshold to apply to candidate
+            detections
     '''
 
     def __init__(self, d):
@@ -68,6 +70,8 @@ class TFModelsDetectorConfig(Config, HasDefaultDeploymentConfig):
 
         self.labels_path = etau.fill_config_patterns(
             self.parse_string(d, "labels_path"))
+        self.confidence_thresh = self.parse_number(
+            d, "confidence_thresh", default=None)
 
         self._validate()
 
@@ -140,7 +144,9 @@ class TFModelsDetector(ObjectDetector, UsesTFSession):
         objects = [
             _to_detected_object(b, s, c, self._category_index)
             for b, s, c in zip(boxes, scores, classes)
-            if c in self._category_index
+            if c in self._category_index and (
+                self.config.confidence_thresh is None or
+                s > self.config.confidence_thresh)
         ]
         return DetectedObjectContainer(objects=objects)
 
@@ -156,7 +162,7 @@ class TFModelsDetector(ObjectDetector, UsesTFSession):
 
 
 def _to_detected_object(box, score, class_id, label_map):
-    '''Converts a tensorflow/models prediction dictionary to a DetectedObject.
+    '''Converts a detection to a DetectedObject.
 
     Args:
         box (array): [ymin, xmin, ymax, xmax]
