@@ -1804,10 +1804,10 @@ class LabeledDatasetBuilder(object):
         Returns:
             a LabeledDataset
         '''
-        logger.info("Applying transformations to dataset")
-
         if data_method not in FILE_METHODS:
             raise ValueError("invalid file_method: %s", str(data_method))
+
+        logger.info("Applying transformations to dataset")
 
         data_method = _FILE_METHODS_MAP[data_method]
 
@@ -1823,33 +1823,14 @@ class LabeledDatasetBuilder(object):
         )
 
         dataset = self.dataset_cls.create_empty_dataset(path, description)
-        dataset_dir = os.path.dirname(path)
-        data_subdir = os.path.join(dataset_dir, dataset._DATA_SUBDIR)
-        labels_subdir = os.path.join(dataset_dir, dataset._LABELS_SUBDIR)
+        data_subdir = os.path.join(dataset.data_dir, dataset._DATA_SUBDIR)
+        labels_subdir = os.path.join(dataset.data_dir, dataset._LABELS_SUBDIR)
 
         for record in self._dataset:
             data_filename = os.path.basename(record.new_data_path)
             labels_filename = os.path.basename(record.new_labels_path)
-
-            # add an incrementing index to the filename until a unique name
-            # is found
-            data_basename, data_ext = os.path.splitext(data_filename)
-            labels_basename, labels_ext = os.path.splitext(labels_filename)
-            idx = -1
-            while True:
-                idx += 1
-                unique_appender = "-{}".format(idx)
-                data_path = os.path.join(
-                    data_subdir,
-                    data_basename + unique_appender + data_ext
-                )
-                if dataset.has_data_with_name(data_path):
-                    continue
-                labels_path = os.path.join(
-                    labels_subdir,
-                    labels_basename + unique_appender + labels_ext
-                )
-                break
+            data_path = os.path.join(data_subdir, data_filename)
+            labels_path = os.path.join(labels_subdir, labels_filename)
 
             record.build(
                 data_path,
@@ -1858,11 +1839,9 @@ class LabeledDatasetBuilder(object):
                 data_method=data_method
             )
 
-            # MOVE here is used to rename the file
-            dataset.add_file(data_path, labels_path,
-                             os.path.basename(record.new_data_path),
-                             os.path.basename(record.new_labels_path),
-                             file_method=MOVE)
+            # The `file_method` is irrelevant because the files are already in
+            # the dataset directory
+            dataset.add_file(data_path, labels_path)
 
         dataset.write_manifest(os.path.basename(path))
         return dataset
@@ -1999,9 +1978,9 @@ class BuilderDataRecord(BaseDataRecord):
 
     def prepend_to_name(self, prefix):
         '''Prepends a prefix to the data and label filenames respectively.'''
-        self._new_data_path = prefix + '_' + os.path.basename(self._data_path)
+        self._new_data_path = prefix + '_' + os.path.basename(self.data_path)
         self._new_labels_path = prefix + '_' + os.path.basename(
-            self._labels_path)
+            self.labels_path)
 
     def _build_labels(self):
         raise NotImplementedError(
