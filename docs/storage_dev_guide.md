@@ -89,13 +89,18 @@ access to Google Cloud Storage buckets.
 
 All instances of this client must be provided with Google service account
 credentials with the appropriate permissions to perform the file manipulations
-that you request. This can be done in any of the following ways:
+that you request. This can be done in the following ways (in order of
+precedence):
+
+- using the `eta.core.storage.GoogleCloudStorageClient.from_json()` method to
+manually specify the service account JSON file to use
 
 - setting the `GOOGLE_APPLICATION_CREDENTIALS` environment variable to point to
 a valid service account JSON file
 
-- using the `eta.core.storage.GoogleCloudStorageClient.from_json()` method to
-manually specify the service account JSON file to use
+- automatically loading credentials from `~/.eta/google-credentials.json` that
+have been activated via
+`eta.core.storage.GoogleCloudStorageClient.activate_credentials()`
 
 In the above, the service account JSON file should have syntax similar to the
 following:
@@ -147,13 +152,18 @@ access to Google Drive.
 
 All instances of this client must be provided with Google service account
 credentials with the appropriate permissions to perform the file manipulations
-that you request. This can be done in any of the following ways:
+that you request. This can be done in the following ways (in order of
+precedence):
+
+- using the `eta.core.storage.GoogleDriveStorageClient.from_json()` method to
+manually specify the service account JSON file to use
 
 - setting the `GOOGLE_APPLICATION_CREDENTIALS` environment variable to point to
 a valid service account JSON file
 
-- using the `eta.core.storage.GoogleDriveStorageClient.from_json()` method to
-manually specify the service account JSON file to use
+- automatically loading credentials from `~/.eta/google-credentials.json` that
+have been activated via
+`eta.core.storage.GoogleDriveStorageClient.activate_credentials()`
 
 In the above, the service account JSON file should have syntax similar to the
 following:
