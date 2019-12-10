@@ -285,6 +285,30 @@ The `eta.core.storage.SFTPStorageClient` class provides an SFTP client to
 perform file transfers to/from a remote file server using ssh key-based
 authentication.
 
+### Authentication
+
+All instances of this client must be provided with an SSH private key with
+access to the remote host of interest. This can be done in the following ways
+(in order of precedence):
+
+- providing the `private_key_path` argument to
+`eta.core.storage.SFTPStorageClient()` to manually specify the private key file
+to use
+
+- setting the `SSH_PRIVATE_KEY_PATH` environment variable to point to a private
+key file to use
+
+- automatically loading credentials from `~/.eta/id_rsa` that have been
+activated via `eta.core.storage.SFTPStorageClient.activate_credentials()`
+
+In the above, the private key file should have syntax similar to the following:
+
+```
+-----BEGIN RSA PRIVATE KEY-----
+...
+-----END RSA PRIVATE KEY-----
+```
+
 ### Example usage
 
 ```py
