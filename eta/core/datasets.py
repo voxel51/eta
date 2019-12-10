@@ -3013,9 +3013,9 @@ class PrependDatasetNameToRecords(DatasetTransformer):
         Args:
             src: a BuilderDataset
         '''
-        for i in range(len(src.records)):
-            base = _get_dataset_name(src.records[i].data_path)
-            src.records[i].prepend_to_name(prefix=base)
+        for record in src.records:
+            base = _get_dataset_name(record.data_path)
+            record.prepend_to_name(prefix=base)
 
 
 class FilterByFilename(DatasetTransformer):
