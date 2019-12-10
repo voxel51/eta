@@ -523,8 +523,9 @@ class NeedsAWSCredentials(object):
             `cls.from_ini()` method by providing a path to a valid credentials
             `.ini` file
 
-        (2) setting the `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and
-            `AWS_DEFAULT_REGION` environment variables directly
+        (2) setting the `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`,
+            `AWS_SESSION_TOKEN` (if applicable), and `AWS_DEFAULT_REGION`
+            environment variables directly
 
         (3) setting the `AWS_SHARED_CREDENTIALS_FILE` environment variable to
             point to a valid credentials `.ini` file
@@ -539,8 +540,9 @@ class NeedsAWSCredentials(object):
 
     ```
     [default]
-    aws_access_key_id = XXX
-    aws_secret_access_key = YYY
+    aws_access_key_id = WWW
+    aws_secret_access_key = XXX
+    aws_session_token = YYY
     region = ZZZ
     ```
 
@@ -601,8 +603,8 @@ class NeedsAWSCredentials(object):
 
         Returns:
             a (credentials, path) tuple containing the credentials and the path
-                from which they were loaded, or None if the credentials were
-                loaded from `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`
+                from which they were loaded. If the credentials were loaded
+                from environment variables, `path` will be None
         '''
         if credentials_path:
             logger.debug(
@@ -615,14 +617,23 @@ class NeedsAWSCredentials(object):
         if ("AWS_ACCESS_KEY_ID" in os.environ and
                 "AWS_SECRET_ACCESS_KEY" in os.environ):
             logger.debug(
-                "Loading AWS credentials from 'AWS_ACCESS_KEY_ID' and "
-                "'AWS_SECRET_ACCESS_KEY' environment variables")
+                "Loading access key and secret key from 'AWS_ACCESS_KEY_ID' "
+                "and 'AWS_SECRET_ACCESS_KEY' environment variables")
             credentials = {
                 "aws_access_key_id": os.environ["AWS_ACCESS_KEY_ID"],
                 "aws_secret_access_key": os.environ["AWS_SECRET_ACCESS_KEY"]
             }
             if "AWS_DEFAULT_REGION" in os.environ:
+                logger.debug(
+                    "Loading region from 'AWS_DEFAULT_REGION' environment "
+                    "variable")
                 credentials["region"] = os.environ["AWS_DEFAULT_REGION"]
+            if "AWS_SESSION_TOKEN" in os.environ:
+                logger.debug(
+                    "Loading session token from 'AWS_SESSION_TOKEN' "
+                    "environment variable")
+                credentials["aws_session_token"] = \
+                    os.environ["AWS_SESSION_TOKEN"]
             return credentials, None
 
         if "AWS_SHARED_CREDENTIALS_FILE" in os.environ:
