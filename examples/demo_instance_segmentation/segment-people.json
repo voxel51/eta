@@ -1,22 +1,22 @@
 {
     "pipeline": "object_detector",
     "inputs": {
-        "video": "../data/road.mp4"
+        "video": "../data/people.mp4"
     },
     "outputs": {
-        "labels": "out/vehicles-labels.json",
-        "annotated_video": "out/vehicles-annotated.mp4"
+        "labels": "out/people-labels.json",
+        "annotated_video": "out/people-annotated.mp4"
     },
     "parameters": {
         "apply_object_detector.detector": {
-            "type": "eta.detectors.TFModelsDetector",
+            "type": "eta.detectors.TFModelsSegmenter",
             "config": {
-                "model_name": "faster-rcnn-resnet50-coco"
+                "model_name": "mask-rcnn-resnet101-atrous-coco"
             }
         },
         "apply_object_detector.objects": [
             {
-                "labels": ["car", "truck", "bus"],
+                "labels": ["person"],
                 "threshold": 0.5
             }
         ],

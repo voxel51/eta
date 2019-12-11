@@ -27,10 +27,14 @@ Amazon S3 buckets.
 
 All instances of this client must be provided with AWS credentials with the
 appropriate permissions to perform the file manipulations that you request.
-This can be done in any of the following ways:
+This can be done in the following ways (in order of precedence):
 
-- setting the `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and
-`AWS_DEFAULT_REGION` environment variables directly
+- using the `eta.core.storage.S3StorageClient.from_ini()` method to manually
+specify the credentials `.ini` file to use
+
+- setting the `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`,
+`AWS_SESSION_TOKEN` (if applicable), and `AWS_DEFAULT_REGION` environment
+variables directly
 
 - setting the `AWS_SHARED_CREDENTIALS_FILE` environment variable to point to
 a valid credentials `.ini` file
@@ -38,15 +42,16 @@ a valid credentials `.ini` file
 - setting the `AWS_CONFIG_FILE` environment variable to point to a valid
 credentials `.ini` file
 
-- using the `eta.core.storage.S3StorageClient.from_ini()` method to manually
-specify the credentials `.ini` file to use
+- automatically loading credentials from `~/.eta/aws-credentials.ini` that have
+been activated via `eta.core.storage.S3StorageClient.activate_credentials()`
 
 In the above, the `.ini` file should have syntax similar to the following:
 
 ```
 [default]
-aws_access_key_id = XXX
-aws_secret_access_key = YYY
+aws_access_key_id = WWW
+aws_secret_access_key = XXX
+aws_session_token = YYY
 region = ZZZ
 ```
 
@@ -84,13 +89,18 @@ access to Google Cloud Storage buckets.
 
 All instances of this client must be provided with Google service account
 credentials with the appropriate permissions to perform the file manipulations
-that you request. This can be done in any of the following ways:
+that you request. This can be done in the following ways (in order of
+precedence):
+
+- using the `eta.core.storage.GoogleCloudStorageClient.from_json()` method to
+manually specify the service account JSON file to use
 
 - setting the `GOOGLE_APPLICATION_CREDENTIALS` environment variable to point to
 a valid service account JSON file
 
-- using the `eta.core.storage.GoogleCloudStorageClient.from_json()` method to
-manually specify the service account JSON file to use
+- automatically loading credentials from `~/.eta/google-credentials.json` that
+have been activated via
+`eta.core.storage.GoogleCloudStorageClient.activate_credentials()`
 
 In the above, the service account JSON file should have syntax similar to the
 following:
@@ -142,13 +152,18 @@ access to Google Drive.
 
 All instances of this client must be provided with Google service account
 credentials with the appropriate permissions to perform the file manipulations
-that you request. This can be done in any of the following ways:
+that you request. This can be done in the following ways (in order of
+precedence):
+
+- using the `eta.core.storage.GoogleDriveStorageClient.from_json()` method to
+manually specify the service account JSON file to use
 
 - setting the `GOOGLE_APPLICATION_CREDENTIALS` environment variable to point to
 a valid service account JSON file
 
-- using the `eta.core.storage.GoogleDriveStorageClient.from_json()` method to
-manually specify the service account JSON file to use
+- automatically loading credentials from `~/.eta/google-credentials.json` that
+have been activated via
+`eta.core.storage.GoogleDriveStorageClient.activate_credentials()`
 
 In the above, the service account JSON file should have syntax similar to the
 following:
@@ -269,6 +284,30 @@ client.delete(delete_url)
 The `eta.core.storage.SFTPStorageClient` class provides an SFTP client to
 perform file transfers to/from a remote file server using ssh key-based
 authentication.
+
+### Authentication
+
+All instances of this client must be provided with an SSH private key with
+access to the remote host of interest. This can be done in the following ways
+(in order of precedence):
+
+- providing the `private_key_path` argument to
+`eta.core.storage.SFTPStorageClient()` to manually specify the private key file
+to use
+
+- setting the `SSH_PRIVATE_KEY_PATH` environment variable to point to a private
+key file to use
+
+- automatically loading credentials from `~/.eta/id_rsa` that have been
+activated via `eta.core.storage.SFTPStorageClient.activate_credentials()`
+
+In the above, the private key file should have syntax similar to the following:
+
+```
+-----BEGIN RSA PRIVATE KEY-----
+...
+-----END RSA PRIVATE KEY-----
+```
 
 ### Example usage
 

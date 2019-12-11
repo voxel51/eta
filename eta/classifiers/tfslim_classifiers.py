@@ -91,8 +91,8 @@ class TFSlimClassifierConfig(Config, etal.HasDefaultDeploymentConfig):
     Attributes:
         model_name: the name of the published model to load. If this value is
             provided, `model_path` does not need to be
-        model_path: the path to a frozen inference graph in `.pb` format to
-            load. If this value is provided, `model_name` does not need to be
+        model_path: the path to a frozen inference graph to load. If this value
+            is provided, `model_name` does not need to be
         attr_name: the name of the attribute that the classifier predicts
         network_name: the name of the network architecture from
             `tf.slim.nets.nets_factory`
