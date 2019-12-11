@@ -819,7 +819,7 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
                 self._client.delete_objects(Bucket=bucket, Delete=delete)
 
             try:
-                kwargs["NextContinuationToken"] = resp["NextContinuationToken"]
+                kwargs["ContinuationToken"] = resp["NextContinuationToken"]
             except KeyError:
                 break
 
@@ -915,7 +915,7 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
                         paths_or_metadata.append(os.path.join(prefix, path))
 
             try:
-                kwargs["NextContinuationToken"] = resp["NextContinuationToken"]
+                kwargs["ContinuationToken"] = resp["NextContinuationToken"]
             except KeyError:
                 break
 
