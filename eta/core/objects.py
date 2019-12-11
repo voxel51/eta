@@ -51,7 +51,8 @@ class DetectedObject(Serializable, HasBoundingBox):
         Args:
             label: object label string
             bounding_box: a BoundingBox around the object
-            mask: (optional) a mask for the object within its bounding box
+            mask: (optional) a numpy array describing the mask for the object
+                within its bounding box
             confidence: (optional) the detection confidence, in [0, 1]
             index: (optional) an index assigned to the object
             score: (optional) an optional score for the object
