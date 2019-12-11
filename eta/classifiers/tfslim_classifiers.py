@@ -281,7 +281,7 @@ class TFSlimClassifier(etal.ImageClassifier, etat.UsesTFSession):
 def export_frozen_inference_graph(
         checkpoint_path, network_name, output_path, num_classes=None,
         labels_map_path=None, output_name=None):
-    '''Exports the given TF-Slim model checkpoint as a frozen inference graph
+    '''Exports the given TF-Slim checkpoint as a frozen inference graph
     suitable for running inference.
 
     Either `num_classes` or `labels_map_path` must be provided.
