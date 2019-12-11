@@ -119,7 +119,7 @@ class TFModelsSegmenter(ObjectDetector, UsesTFSession):
         # Load labels
         label_map = gool.load_labelmap(self.config.labels_path)
         categories = gool.convert_label_map_to_categories(
-            label_map, max_num_classes=90, use_display_name=True)
+            label_map, float("inf"), use_display_name=True)
         self._category_index = gool.create_category_index(categories)
 
     def __enter__(self):
