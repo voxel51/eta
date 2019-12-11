@@ -229,6 +229,9 @@ class TFSlimClassifier(etal.ImageClassifier, etat.UsesTFSession):
     def features_dim(self):
         '''The dimension of the features extracted by this classifier, or None
         if it cannot generate features.
+
+        CAUTION: this is a slow operation! Inference on a dummy image is used
+        to infer this value dynamically from the underlying graph.
         '''
         if not self.can_generate_features:
             return None
@@ -263,7 +266,7 @@ class TFSlimClassifier(etal.ImageClassifier, etat.UsesTFSession):
         if not self.can_generate_features:
             return None
 
-        return self._evaluate(img, [self._feature_op])[0][0]
+        return np.squeeze(self._evaluate(img, [self._feature_op])[0])
 
     def predict_and_featurize(self, img):
         '''Performs prediction on the given image and returns both the
@@ -283,7 +286,7 @@ class TFSlimClassifier(etal.ImageClassifier, etat.UsesTFSession):
 
         probs, fvec = self._evaluate(img, [self._output_op, self._feature_op])
         attrs = self._parse_prediction(probs[0])
-        return attrs, fvec[0][0]
+        return attrs, np.squeeze(fvec[0])
 
     def _evaluate(self, img, ops):
         # Perform pre-processing
@@ -386,7 +389,11 @@ class TFSlimFeaturizer(ImageFeaturizer):
         self._classifier = None
 
     def dim(self):
-        '''The dimension of the features extracted by this Featurizer.'''
+        '''The dimension of the features extracted by this Featurizer.
+
+        CAUTION: this is a slow operation! Inference on a dummy image is used
+        to infer this value dynamically from the underlying graph.
+        '''
         if self._classifier is None:
             with self:
                 return self._classifier.features_dim
@@ -412,7 +419,7 @@ class TFSlimFeaturizer(ImageFeaturizer):
             img: the input image
 
         Returns:
-            the feature vector, a 1D array of length XXXXXXX
+            the feature vector (a 1D array)
         '''
         return self._classifier.featurize(img)
 
