@@ -2,6 +2,9 @@
 
 This document describes how to export frozen TensorFlow graphs for inference.
 
+See [this document](visualize_tf_graphs_guide.md) for more information about
+visualizing the architecture of graphs that you have exported.
+
 
 ## Exporting pre-trained models from the TF-Slim Model Zoo
 
