@@ -199,9 +199,11 @@ def serialize_numpy_array(array):
     Returns:
         the serialized string
     '''
-    #return pickle.dumps(array)
+    #
+    # We currently serialize in HDF5 format. Other alternatives considered were
+    # `pickle.dumps(array)` and `np.save(f, array, allow_pickle=False)`
+    #
     with io.BytesIO() as f:
-        #np.save(f, array, allow_pickle=False)
         with h5py.File(f, "w") as h:
             h["array"] = array
 
@@ -219,10 +221,12 @@ def deserialize_numpy_array(numpy_str):
     Returns:
         the numpy array
     '''
-    #return pickle.loads(numpy_str)
+    #
+    # We currently serialize in HDF5 format. Other alternatives considered were
+    # `pickle.loads(numpy_str)` and `return np.load(f)`
+    #
     bytes_str = b64decode(numpy_str.encode("ascii"))
     with io.BytesIO(bytes_str) as f:
-        #return np.load(f)
         with h5py.File(f, "r") as h:
             return h[list(h.keys())[0]][()]
 
