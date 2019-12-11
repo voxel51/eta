@@ -1,7 +1,7 @@
 {
     "pipeline": "object_detector",
     "inputs": {
-        "video": "../data/road.mp4"
+        "video": "../data/people.mp4"
     },
     "outputs": {
         "labels": "out/people-labels.json",
