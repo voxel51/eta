@@ -228,6 +228,46 @@ def _find_next_available_idx(idx, unavailable_indicators):
     return None
 
 
+def _append_index_if_necessary(dataset, data_path, labels_path):
+    '''Appends an index to the data and labels names if the data filename
+    already exists in the dataset.
+
+    Args:
+        dataset: a `LabeledDataset` instance
+        data_path: a path where we want to add a data file to the dataset
+        labels_path: a path where we want to add a labels file to the dataset
+
+    Returns:
+        new_data_path: a path for the data file which is not already present in
+            the dataset
+        new_labels_path: a path for the labels files which potentially has the
+            same index appended to the name as for the data
+    '''
+    if not dataset.has_data_with_name(data_path):
+        return data_path, labels_path
+
+    data_filename = os.path.basename(data_path)
+    labels_filename = os.path.basename(labels_path)
+    data_basename, data_ext = os.path.splitext(data_filename)
+    labels_basename, labels_ext = os.path.splitext(labels_filename)
+
+    filename_regex = re.compile("%s-([0-9]+)%s" % (data_basename, data_ext))
+    existing_indices = []
+    for existing_data_path in dataset.iter_data_paths():
+        existing_data_filename = os.path.basename(existing_data_path)
+        match = filename_regex.match(existing_data_filename)
+        if match is not None:
+            existing_indices.append(int(match.group(1)))
+
+    new_index = max(existing_indices, default=0) + 1
+    return (
+        os.path.join(os.path.dirname(data_path),
+                     "%s-%d%s" % (data_basename, new_index, data_ext)),
+        os.path.join(os.path.dirname(labels_path),
+                     "%s-%d%s" % (labels_basename, new_index, labels_ext))
+    )
+
+
 SPLIT_FUNCTIONS = {
     "round_robin": round_robin_split,
     "random_exact": random_split_exact,
@@ -738,27 +778,33 @@ class LabeledDataset(object):
                 data file already present in the dataset and
                 `error_on_duplicates` is True, or if `file_method` is not valid
         '''
-        if error_on_duplicates and self.has_data_with_name(data_path):
-            raise ValueError("Data file '%s' already present in dataset"
-                             % os.path.basename(data_path))
-
-        data_subdir = os.path.join(self.data_dir, self._DATA_SUBDIR)
         if new_data_filename is None:
             new_data_filename = os.path.basename(data_path)
 
-        labels_subdir = os.path.join(self.data_dir, self._LABELS_SUBDIR)
         if new_labels_filename is None:
             new_labels_filename = os.path.basename(labels_path)
 
+        if error_on_duplicates and self.has_data_with_name(new_data_filename):
+            raise ValueError("Data file '%s' already present in dataset"
+                             % new_data_filename)
+
         data_method, labels_method = self._parse_file_methods(file_method)
 
-        new_data_path = os.path.join(data_subdir, new_data_filename)
+        new_data_path = os.path.join(
+            self.data_dir, self._DATA_SUBDIR, new_data_filename)
         if data_path != new_data_path:
             data_method(data_path, new_data_path)
 
-        new_labels_path = os.path.join(labels_subdir, new_labels_filename)
+        new_labels_path = os.path.join(
+            self.data_dir, self._LABELS_SUBDIR, new_labels_filename)
         if labels_path != new_labels_path:
             labels_method(labels_path, new_labels_path)
+
+        # Update the filename attribute in the labels JSON if necessary
+        if new_data_filename != os.path.basename(data_path):
+            labels_ = self._read_labels(new_labels_path)
+            labels_.filename = new_data_filename
+            self._write_labels(labels_, new_labels_path)
 
         # First remove any other records with the same data filename
         self.dataset_index.cull_with_function(
@@ -802,6 +848,7 @@ class LabeledDataset(object):
             self.data_dir, self._DATA_SUBDIR, data_filename)
         labels_path = os.path.join(
             self.data_dir, self._LABELS_SUBDIR, labels_filename)
+
         self._write_data(data, data_path)
         self._write_labels(labels, labels_path)
 
@@ -1788,10 +1835,10 @@ class LabeledDatasetBuilder(object):
         Returns:
             a LabeledDataset
         '''
-        logger.info("Applying transformations to dataset")
-
         if data_method not in FILE_METHODS:
             raise ValueError("invalid file_method: %s", str(data_method))
+
+        logger.info("Applying transformations to dataset")
 
         data_method = _FILE_METHODS_MAP[data_method]
 
@@ -1807,33 +1854,24 @@ class LabeledDatasetBuilder(object):
         )
 
         dataset = self.dataset_cls.create_empty_dataset(path, description)
-        dataset_dir = os.path.dirname(path)
-        data_subdir = os.path.join(dataset_dir, dataset._DATA_SUBDIR)
-        labels_subdir = os.path.join(dataset_dir, dataset._LABELS_SUBDIR)
+        data_subdir = os.path.join(dataset.data_dir, dataset._DATA_SUBDIR)
+        labels_subdir = os.path.join(dataset.data_dir, dataset._LABELS_SUBDIR)
 
+        did_warn_duplicate_name = False
         for record in self._dataset:
-            data_filename = os.path.basename(record.data_path)
-            labels_filename = os.path.basename(record.labels_path)
+            data_filename = os.path.basename(record.new_data_path)
+            labels_filename = os.path.basename(record.new_labels_path)
+            data_path = os.path.join(data_subdir, data_filename)
+            labels_path = os.path.join(labels_subdir, labels_filename)
 
-            # add an incrementing index to the filename until a unique name
-            # is found
-            data_basename, data_ext = os.path.splitext(data_filename)
-            labels_basename, labels_ext = os.path.splitext(labels_filename)
-            idx = -1
-            while True:
-                idx += 1
-                unique_appender = "-{}".format(idx)
-                data_path = os.path.join(
-                    data_subdir,
-                    data_basename + unique_appender + data_ext
-                )
-                if dataset.has_data_with_name(data_path):
-                    continue
-                labels_path = os.path.join(
-                    labels_subdir,
-                    labels_basename + unique_appender + labels_ext
-                )
-                break
+            old_data_path = data_path
+            data_path, labels_path = _append_index_if_necessary(
+                dataset, data_path, labels_path)
+            if data_path != old_data_path and not did_warn_duplicate_name:
+                logger.warn(
+                    "Duplicate data filenames found in dataset being built. "
+                    "Appending indices to names as necessary.")
+                did_warn_duplicate_name = True
 
             record.build(
                 data_path,
@@ -1842,8 +1880,8 @@ class LabeledDatasetBuilder(object):
                 data_method=data_method
             )
 
-            # The `file_method` is irrelevant in this situation as the files
-            # are placed directly into the dataset by `record.build()`.
+            # The `file_method` is irrelevant because the files were already
+            # placed directly into the dataset directory by `record.build()`.
             dataset.add_file(data_path, labels_path)
 
         dataset.write_manifest(os.path.basename(path))
@@ -1981,9 +2019,9 @@ class BuilderDataRecord(BaseDataRecord):
 
     def prepend_to_name(self, prefix):
         '''Prepends a prefix to the data and label filenames respectively.'''
-        self._new_data_path = prefix + '_' + os.path.basename(self._data_path)
+        self._new_data_path = prefix + '_' + os.path.basename(self.data_path)
         self._new_labels_path = prefix + '_' + os.path.basename(
-            self._labels_path)
+            self.labels_path)
 
     def _build_labels(self):
         raise NotImplementedError(
@@ -3025,9 +3063,9 @@ class PrependDatasetNameToRecords(DatasetTransformer):
         Args:
             src: a BuilderDataset
         '''
-        for i in range(len(src.records)):
-            base = _get_dataset_name(src.records[i].data_path)
-            src.records[i].prepend_to_name(prefix=base)
+        for record in src.records:
+            base = _get_dataset_name(record.data_path)
+            record.prepend_to_name(prefix=base)
 
 
 class FilterByFilename(DatasetTransformer):
