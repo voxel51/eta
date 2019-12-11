@@ -61,6 +61,20 @@ class TFModelsSegmenterConfig(Config, HasDefaultDeploymentConfig):
             detections
         mask_thresh: the threshold to use when generating the instance masks
             for detections
+        input_name: the name of the `tf.Operation` to use as input. If omitted,
+            the default value "image_tensor" is used
+        boxes_name: the name of the `tf.Operation` to use to extract the box
+            coordinates. If omitted, the default value "detection_boxes" is
+            used
+        scores_name: the name of the `tf.Operation` to use to extract the
+            detection scores. If omitted, the default value "detection_scores"
+            is used
+        classes_name: the name of the `tf.Operation` to use to extract the
+            class indices. If omitted, the default value "detection_classes"
+            is used
+        masks_name: the name of the `tf.Operation` to use to extract the
+            instance masks. If omitted, the default value "detection_masks"
+            is used
     '''
 
     def __init__(self, d):
@@ -76,6 +90,16 @@ class TFModelsSegmenterConfig(Config, HasDefaultDeploymentConfig):
         self.confidence_thresh = self.parse_number(
             d, "confidence_thresh", default=None)
         self.mask_thresh = self.parse_number(d, "mask_thresh", default=0.5)
+        self.input_name = self.parse_number(
+            d, "input_name", default="image_tensor")
+        self.boxes_name = self.parse_number(
+            d, "boxes_name", default="detection_boxes")
+        self.scores_name = self.parse_number(
+            d, "scores_name", default="detection_scores")
+        self.classes_name = self.parse_number(
+            d, "classes_name", default="detection_classes")
+        self.masks_name = self.parse_number(
+            d, "masks_name", default="detection_masks")
 
         self._validate()
 
@@ -113,14 +137,26 @@ class TFModelsSegmenter(ObjectDetector, UsesTFSession):
             model_path = self.config.model_path
 
         # Load model
-        self._tf_graph = self._build_graph(model_path)
-        self._sess = self.make_tf_session(graph=self._tf_graph)
+        self._graph = self._build_graph(model_path)
+        self._sess = self.make_tf_session(graph=self._graph)
 
         # Load labels
         label_map = gool.load_labelmap(self.config.labels_path)
         categories = gool.convert_label_map_to_categories(
             label_map, max_num_classes=90, use_display_name=True)
         self._category_index = gool.create_category_index(categories)
+
+        # Get operations
+        self._input_op = self._graph.get_operation_by_name(
+            self.config.input_name)
+        self._boxes_op = self._graph.get_operation_by_name(
+            self.config.boxes_name)
+        self._scores_op = self._graph.get_operation_by_name(
+            self.config.scores_name)
+        self._classes_op = self._graph.get_operation_by_name(
+            self.config.classes_name)
+        self._masks_op = self._graph.get_operation_by_name(
+            self.config.masks_name)
 
     def __enter__(self):
         return self
@@ -138,15 +174,15 @@ class TFModelsSegmenter(ObjectDetector, UsesTFSession):
             objects: An `eta.core.objects.DetectedObjectContainer` describing
                 the detections
         '''
-        img_exp = np.expand_dims(img, axis=0)
-        image_tensor = self._tf_graph.get_tensor_by_name("image_tensor:0")
-        boxes = self._tf_graph.get_tensor_by_name("detection_boxes:0")
-        scores = self._tf_graph.get_tensor_by_name("detection_scores:0")
-        classes = self._tf_graph.get_tensor_by_name("detection_classes:0")
-        masks = self._tf_graph.get_tensor_by_name("detection_masks:0")
-
+        imgs = np.expand_dims(img, axis=0)
+        output_ops = [
+            self._boxes_op.outputs[0],
+            self._scores_op.outputs[0],
+            self._classes_op.outputs[0],
+            self._masks_op.outputs[0]
+        ]
         boxes, scores, classes, masks = self._sess.run(
-            [boxes, scores, classes, masks], feed_dict={image_tensor: img_exp})
+            output_ops, feed_dict={self._input_op.outputs[0]: imgs})
         boxes, scores, classes, masks = map(
             np.squeeze, [boxes, scores, classes, masks])
         objects = [
@@ -160,13 +196,13 @@ class TFModelsSegmenter(ObjectDetector, UsesTFSession):
         return DetectedObjectContainer(objects=objects)
 
     @staticmethod
-    def _build_graph(model_path):
+    def _build_graph(model_path, prefix=""):
         tf_graph = tf.Graph()
         with tf_graph.as_default():
             graph_def = tf.GraphDef()
             with tf.gfile.GFile(model_path, "rb") as f:
                 graph_def.ParseFromString(f.read())
-                tf.import_graph_def(graph_def, name="")
+                tf.import_graph_def(graph_def, name=prefix)
         return tf_graph
 
 

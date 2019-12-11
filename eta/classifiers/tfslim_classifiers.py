@@ -90,10 +90,10 @@ class TFSlimClassifierConfig(Config, etal.HasDefaultDeploymentConfig):
         preprocessing_fcn: the fully-qualified name of a pre-processing
             function to use. If omitted, the default pre-processing for the
             specified network architecture is used
-        input_name: the name of the graph node to use as input. If omitted,
-            the name "input" is used
-        output_name: the name of the graph node to use as output. If omitted,
-            the `_DEFAULT_OUTPUT_NAMES` is checked for a default value to use
+        input_name: the name of the `tf.Operation` to use as input. If omitted,
+            the default value "input" is used
+        output_name: the name of the `tf.Operation` to use as output. If
+            omitted, the default value is loaded from `_DEFAULT_OUTPUT_NAMES`
         confidence_thresh: a confidence threshold to apply to candidate
             predictions
     '''
@@ -152,7 +152,8 @@ class TFSlimClassifier(etal.ImageClassifier, etat.UsesTFSession):
             model_path = self.config.model_path
 
         # Load graph
-        self._graph = self._build_graph(model_path)
+        self._prefix = "main"
+        self._graph = self._build_graph(model_path, prefix=self._prefix)
         self._sess = self.make_tf_session(graph=self._graph)
 
         # Load labels map
@@ -164,22 +165,19 @@ class TFSlimClassifier(etal.ImageClassifier, etat.UsesTFSession):
             network_name, num_classes=len(self.labels_map), is_training=False)
         self.img_size = network_fn.default_image_size
 
-        # Parse input name
-        self.input_name = self.config.input_name
+        # Get operations
         self._input_op = self._graph.get_operation_by_name(
-            "prefix/" + self.input_name)
-
-        # Parse output name
+            self._prefix + "/" + self.config.input_name)
         if self.config.output_name:
-            self.output_name = self.config.output_name
+            output_name = self.config.output_name
         else:
-            self.output_name = _DEFAULT_OUTPUT_NAMES.get(network_name, None)
-            if self.output_name is None:
+            output_name = _DEFAULT_OUTPUT_NAMES.get(network_name, None)
+            if output_name is None:
                 raise ValueError(
                     "`output_name` was not provided and network `%s` was not "
                     "found in default outputs map" % network_name)
         self._output_op = self._graph.get_operation_by_name(
-            "prefix/" + self.output_name)
+            self._prefix + "/" + output_name)
 
         # Setup pre-processing
         self._preprocessing_fcn = None
@@ -218,13 +216,13 @@ class TFSlimClassifier(etal.ImageClassifier, etat.UsesTFSession):
         return self._package_attr(label, confidence)
 
     @staticmethod
-    def _build_graph(model_path):
+    def _build_graph(model_path, prefix=""):
         graph = tf.Graph()
         with graph.as_default():
             graph_def = tf.GraphDef()
             with tf.gfile.GFile(model_path, "rb") as f:
                 graph_def.ParseFromString(f.read())
-                tf.import_graph_def(graph_def, name="prefix")
+                tf.import_graph_def(graph_def, name=prefix)
         return graph
 
     def _make_preprocessing_fcn(self, network_name, preprocessing_fcn):
@@ -298,8 +296,8 @@ def export_frozen_inference_graph(
         labels_map_path: the path to the labels map for the classifier; used to
             determine the number of output classes. Must be provided if
             `num_classes` is not provided
-        output_name: the name of the output node from which to extract
-            predictions. By default, this value is loaded from
+        output_name: the name of the `tf.Operation` from which to extract the
+            output  predictions. By default, this value is loaded from
             `_DEFAULT_OUTPUT_NAMES`
     '''
     if num_classes is None:
