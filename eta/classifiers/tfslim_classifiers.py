@@ -56,10 +56,10 @@ _NUMPY_PREPROC_FUNCTIONS = {
 
 # Networks for which we provicde default `feature_name`s
 _DEFAULT_FEATURE_NAMES = {
-    "resnet_v1_50": None,
-    "resnet_v2_50": None,
-    "mobilenet_v2": None,
-    "inception_v4": None,
+    "resnet_v1_50": "resnet_v1_50/pool5",
+    "resnet_v2_50": "resnet_v2_50/pool5",
+    "mobilenet_v2": "MobilenetV2/Logits/AvgPool",
+    "inception_v4": "InceptionV4/Logits/PreLogitsFlatten/flatten",
     "inception_resnet_v2": "InceptionResnetV2/Logits/Dropout/Identity",
 }
 
