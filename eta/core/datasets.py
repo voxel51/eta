@@ -228,6 +228,46 @@ def _find_next_available_idx(idx, unavailable_indicators):
     return None
 
 
+def _append_index_if_necessary(dataset, data_path, labels_path):
+    '''Appends an index to the data and labels names if the data filename
+    already exists in the dataset.
+
+    Args:
+        dataset: a `LabeledDataset` instance
+        data_path: a path where we want to add a data file to the dataset
+        labels_path: a path where we want to add a labels file to the dataset
+
+    Returns:
+        new_data_path: a path for the data file which is not already present in
+            the dataset
+        new_labels_path: a path for the labels files which potentially has the
+            same index appended to the name as for the data
+    '''
+    if not dataset.has_data_with_name(data_path):
+        return data_path, labels_path
+
+    data_filename = os.path.basename(data_path)
+    labels_filename = os.path.basename(labels_path)
+    data_basename, data_ext = os.path.splitext(data_filename)
+    labels_basename, labels_ext = os.path.splitext(labels_filename)
+
+    filename_regex = re.compile("%s-([0-9]+)%s" % (data_basename, data_ext))
+    existing_indices = []
+    for existing_data_path in dataset.iter_data_paths():
+        existing_data_filename = os.path.basename(existing_data_path)
+        match = filename_regex.match(existing_data_filename)
+        if match is not None:
+            existing_indices.append(int(match.group(1)))
+
+    new_index = max(existing_indices, default=0) + 1
+    return (
+        os.path.join(os.path.dirname(data_path),
+                     "%s-%d%s" % (data_basename, new_index, data_ext)),
+        os.path.join(os.path.dirname(labels_path),
+                     "%s-%d%s" % (labels_basename, new_index, labels_ext))
+    )
+
+
 SPLIT_FUNCTIONS = {
     "round_robin": round_robin_split,
     "random_exact": random_split_exact,
@@ -1817,11 +1857,21 @@ class LabeledDatasetBuilder(object):
         data_subdir = os.path.join(dataset.data_dir, dataset._DATA_SUBDIR)
         labels_subdir = os.path.join(dataset.data_dir, dataset._LABELS_SUBDIR)
 
+        did_warn_duplicate_name = False
         for record in self._dataset:
             data_filename = os.path.basename(record.new_data_path)
             labels_filename = os.path.basename(record.new_labels_path)
             data_path = os.path.join(data_subdir, data_filename)
             labels_path = os.path.join(labels_subdir, labels_filename)
+
+            old_data_path = data_path
+            data_path, labels_path = _append_index_if_necessary(
+                dataset, data_path, labels_path)
+            if data_path != old_data_path and not did_warn_duplicate_name:
+                logger.warn(
+                    "Duplicate data filenames found in dataset being built. "
+                    "Appending indices to names as necessary.")
+                did_warn_duplicate_name = True
 
             record.build(
                 data_path,
