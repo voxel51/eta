@@ -71,6 +71,24 @@ Open the `demo_object_detector/out/people-annotated.mp4` and
 inspect the output of the pipelines.
 
 
+## Instance segmentation
+
+The following code runs an instance segmentation pipeline on video.
+
+See [this README](demo_instance_segmentation/README.md) for more information.
+
+```shell
+cd demo_instance_segmentation
+eta build -r segment-people.json --run-now
+eta build -r segment-vehicles.json --run-now
+cd ..
+```
+
+Open the `demo_instance_segmentation/out/people-annotated.mp4` and
+`demo_instance_segmentation/out/vehicles-annotated.mp4` in your video player to
+inspect the output of the pipelines.
+
+
 ## Image detection and classification
 
 The following code runs a pipeline that performs image detection and
