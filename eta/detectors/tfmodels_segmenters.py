@@ -54,8 +54,8 @@ class TFModelsSegmenterConfig(Config, HasDefaultDeploymentConfig):
     Attributes:
         model_name: the name of the published model to load. If this value is
             provided, `model_path` does not need to be
-        model_path: the path to a TF SavedModel in `.pb` format to load. If
-            this value is provided, `model_name` does not need to be
+        model_path: the path to a frozen inference graph to load. If this value
+            is provided, `model_name` does not need to be
         labels_path: the path to the labels map for the model
         confidence_thresh: a confidence threshold to apply to candidate
             detections
