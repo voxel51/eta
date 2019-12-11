@@ -17,7 +17,7 @@
         "apply_object_detector.objects": [
             {
                 "labels": ["person"],
-                "threshold": null
+                "threshold": 0.5
             }
         ],
         "visualize_labels.annotation_config": {
