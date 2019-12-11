@@ -1,7 +1,7 @@
 '''
 Core data structures for working with detected objects in images and videos.
 
-Copyright 2017-2018, Voxel51, Inc.
+Copyright 2017-2019, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
@@ -20,7 +20,7 @@ from builtins import *
 
 from eta.core.data import AttributeContainer
 from eta.core.geometry import BoundingBox, HasBoundingBox
-from eta.core.serial import Container, Serializable
+from eta.core.serial import Container, Serializable, deserialize_numpy_array
 
 
 class DetectedObject(Serializable, HasBoundingBox):
@@ -29,6 +29,7 @@ class DetectedObject(Serializable, HasBoundingBox):
     Attributes:
         label: object label
         bounding_box: a BoundingBox around the object
+        mask: (optional) a mask for the object within its bounding box
         confidence: (optional) the detection confidence, in [0, 1]
         index: (optional) an index assigned to the object
         score: (optional) an optional score for the object
@@ -42,14 +43,16 @@ class DetectedObject(Serializable, HasBoundingBox):
     '''
 
     def __init__(
-            self, label, bounding_box, confidence=None, index=None, score=None,
-            frame_number=None, index_in_frame=None, attrs=None,
+            self, label, bounding_box, mask=None, confidence=None, index=None,
+            score=None, frame_number=None, index_in_frame=None, attrs=None,
             eval_type=None):
         '''Creates a DetectedObject instance.
 
         Args:
             label: object label string
             bounding_box: a BoundingBox around the object
+            mask: (optional) a numpy array describing the mask for the object
+                within its bounding box
             confidence: (optional) the detection confidence, in [0, 1]
             index: (optional) an index assigned to the object
             score: (optional) an optional score for the object
@@ -63,6 +66,7 @@ class DetectedObject(Serializable, HasBoundingBox):
         '''
         self.label = label
         self.bounding_box = bounding_box
+        self.mask = mask
         self.confidence = confidence
         self.index = index
         self.score = score
@@ -76,6 +80,11 @@ class DetectedObject(Serializable, HasBoundingBox):
     def has_attributes(self):
         '''Returns True/False if this object has attributes.'''
         return bool(self.attrs)
+
+    @property
+    def has_mask(self):
+        '''Returns True/False if this object has a segmentation mask.'''
+        return self.mask is not None
 
     def clear_attributes(self):
         '''Removes all attributes from the object.'''
@@ -97,8 +106,8 @@ class DetectedObject(Serializable, HasBoundingBox):
         '''Returns the list of attributes to serialize.'''
         _attrs = ["label", "bounding_box"]
         _optional_attrs = [
-            "confidence", "index", "score", "frame_number", "index_in_frame",
-            "eval_type"]
+            "mask", "confidence", "index", "score", "frame_number",
+            "index_in_frame", "eval_type"]
         _attrs.extend(
             [a for a in _optional_attrs if getattr(self, a) is not None])
         if self.attrs:
@@ -112,9 +121,14 @@ class DetectedObject(Serializable, HasBoundingBox):
         if attrs is not None:
             attrs = AttributeContainer.from_dict(attrs)
 
+        mask = d.get("mask", None)
+        if mask is not None:
+            mask = deserialize_numpy_array(mask)
+
         return cls(
             d["label"],
             BoundingBox.from_dict(d["bounding_box"]),
+            mask=mask,
             confidence=d.get("confidence", None),
             index=d.get("index", None),
             score=d.get("score", None),

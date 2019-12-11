@@ -20,10 +20,18 @@ import six
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+try:
+    from base64 import encodebytes as b64encode  # Python 3
+    from base64 import decodebytes as b64decode  # Python 3
+except ImportError:
+    from base64 import encodestring as b64encode  # Python 2
+    from base64 import decodestring as b64decode  # Python 2
+
 from collections import OrderedDict
 import copy
 import datetime as dt
 import dill as pickle
+import io
 import json
 import logging
 import numbers
@@ -32,6 +40,7 @@ import pickle as _pickle
 import pprint
 from uuid import uuid4
 
+import h5py
 import numpy as np
 
 import eta.core.utils as etau
@@ -179,6 +188,47 @@ def write_pickle(obj, path):
     etau.ensure_basedir(path)
     with open(path, "wb") as f:
         pickle.dump(obj, f)
+
+
+def serialize_numpy_array(array):
+    '''Serializes a numpy array.
+
+    Args:
+        array: a numpy array
+
+    Returns:
+        the serialized string
+    '''
+    #
+    # We currently serialize in HDF5 format. Other alternatives considered were
+    # `pickle.dumps(array)` and `np.save(f, array, allow_pickle=False)`
+    #
+    with io.BytesIO() as f:
+        with h5py.File(f, "w") as h:
+            h["array"] = array
+
+        bytes_str = f.getvalue()
+
+    return b64encode(bytes_str).decode("ascii")
+
+
+def deserialize_numpy_array(numpy_str):
+    '''Loads a serialized numpy array from string.
+
+    Args:
+        numpy_str: serialized numpy array string
+
+    Returns:
+        the numpy array
+    '''
+    #
+    # We currently serialize in HDF5 format. Other alternatives considered were
+    # `pickle.loads(numpy_str)` and `return np.load(f)`
+    #
+    bytes_str = b64decode(numpy_str.encode("ascii"))
+    with io.BytesIO(bytes_str) as f:
+        with h5py.File(f, "r") as h:
+            return h[list(h.keys())[0]][()]
 
 
 class Serializable(object):
@@ -410,6 +460,8 @@ def _recurse(v, reflective):
     if isinstance(v, dict):
         return OrderedDict(
             (ki, _recurse(vi, reflective)) for ki, vi in iteritems(v))
+    if isinstance(v, np.ndarray):
+        return serialize_numpy_array(v)
     return v
 
 

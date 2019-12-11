@@ -145,6 +145,90 @@
             "date_created": "2019-05-23 13:42:33"
         },
         {
+            "base_name": "mask-rcnn-inception-resnet-v2-atrous-coco",
+            "base_filename": "mask-rcnn-inception-resnet-v2-atrous-coco.pb",
+            "version": null,
+            "description": "A Mask R-CNN Atrous Inception ResNet object detector trained on COCO",
+            "manager": {
+                "type": "eta.core.models.ETAModelManager",
+                "config": {
+                    "google_drive_id": "1-Q2LoPx3LIYSQo4_AXau9fd8zYyjSjmK"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "eta.detectors.TFModelsSegmenter",
+                "config": {
+                    "model_name": "mask-rcnn-inception-resnet-v2-atrous-coco",
+                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_label_map.pbtxt",
+                    "mask_thresh": 0.5
+                }
+            },
+            "date_created": "2019-12-10 12:07:51"
+        },
+        {
+            "base_name": "mask-rcnn-inception-v2-coco",
+            "base_filename": "mask-rcnn-inception-v2-coco.pb",
+            "version": null,
+            "description": "A Mask R-CNN Inception object detector trained on COCO",
+            "manager": {
+                "type": "eta.core.models.ETAModelManager",
+                "config": {
+                    "google_drive_id": "1Nj5WCeI6MeO4OyltOaZbvBoz_RmRE3pI"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "eta.detectors.TFModelsSegmenter",
+                "config": {
+                    "model_name": "mask-rcnn-inception-v2-coco",
+                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_label_map.pbtxt",
+                    "mask_thresh": 0.5
+                }
+            },
+            "date_created": "2019-12-10 12:07:51"
+        },
+        {
+            "base_name": "mask-rcnn-resnet50-atrous-coco",
+            "base_filename": "mask-rcnn-resnet50-atrous-coco.pb",
+            "version": null,
+            "description": "A Mask R-CNN Atrous ResNet50 object detector trained on COCO",
+            "manager": {
+                "type": "eta.core.models.ETAModelManager",
+                "config": {
+                    "google_drive_id": "1QGlpJw97j7XxPlHC5FtWjgil6ebPTgEG"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "eta.detectors.TFModelsSegmenter",
+                "config": {
+                    "model_name": "mask-rcnn-resnet50-atrous-coco",
+                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_label_map.pbtxt",
+                    "mask_thresh": 0.5
+                }
+            },
+            "date_created": "2019-12-10 12:07:51"
+        },
+        {
+            "base_name": "mask-rcnn-resnet101-atrous-coco",
+            "base_filename": "mask-rcnn-resnet101-atrous-coco.pb",
+            "version": null,
+            "description": "A Mask R-CNN Atrous ResNet101 object detector trained on COCO",
+            "manager": {
+                "type": "eta.core.models.ETAModelManager",
+                "config": {
+                    "google_drive_id": "1PvW3E6Ey3yC7E7mri_Bw6FyjyOOy4_aX"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "eta.detectors.TFModelsSegmenter",
+                "config": {
+                    "model_name": "mask-rcnn-resnet101-atrous-coco",
+                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_label_map.pbtxt",
+                    "mask_thresh": 0.5
+                }
+            },
+            "date_created": "2019-12-10 12:07:51"
+        },
+        {
             "base_name": "mobilenet-v2-imagenet",
             "base_filename": "mobilenet-v2-imagenet.pb",
             "version": null,

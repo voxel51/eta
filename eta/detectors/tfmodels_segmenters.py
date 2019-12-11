@@ -1,5 +1,6 @@
 '''
-Interface to the TF models object detection library available at
+Interface to the instance segmentation models from the TF object detection
+library available at
 https://github.com/tensorflow/models/tree/master/research/object_detection.
 
 Copyright 2017-2019, Voxel51, Inc.
@@ -38,8 +39,8 @@ sys.path.append(os.path.join(etac.TF_OBJECT_DETECTION_DIR, "utils"))
 import label_map_util as gool
 
 
-class TFModelsDetectorConfig(Config, HasDefaultDeploymentConfig):
-    '''TFModelsDetector configuration settings.
+class TFModelsSegmenterConfig(Config, HasDefaultDeploymentConfig):
+    '''TFModelsSegmenter configuration settings.
 
     Note that `labels_path` is passed through
     `eta.core.utils.fill_config_patterns` at load time, so it can contain
@@ -58,6 +59,8 @@ class TFModelsDetectorConfig(Config, HasDefaultDeploymentConfig):
         labels_path: the path to the labels map for the model
         confidence_thresh: a confidence threshold to apply to candidate
             detections
+        mask_thresh: the threshold to use when generating the instance masks
+            for detections
     '''
 
     def __init__(self, d):
@@ -72,6 +75,7 @@ class TFModelsDetectorConfig(Config, HasDefaultDeploymentConfig):
             self.parse_string(d, "labels_path"))
         self.confidence_thresh = self.parse_number(
             d, "confidence_thresh", default=None)
+        self.mask_thresh = self.parse_number(d, "mask_thresh", default=0.5)
 
         self._validate()
 
@@ -81,8 +85,9 @@ class TFModelsDetectorConfig(Config, HasDefaultDeploymentConfig):
                 "Either `model_name` or `model_path` must be provided")
 
 
-class TFModelsDetector(ObjectDetector, UsesTFSession):
-    '''Interface to the TF-Models object detection library at
+class TFModelsSegmenter(ObjectDetector, UsesTFSession):
+    '''Interface to the instance segmentation models from the TF-Models
+    detection library at
     https://github.com/tensorflow/models/tree/master/research/object_detection.
 
     This class uses `eta.core.tfutils.UsesTFSession` to create TF sessions, so
@@ -93,10 +98,10 @@ class TFModelsDetector(ObjectDetector, UsesTFSession):
     '''
 
     def __init__(self, config):
-        '''Creates a TFModelsDetector instance.
+        '''Creates a TFModelsSegmenter instance.
 
         Args:
-            config: a TFModelsDetectorConfig instance
+            config: a TFModelsSegmenterConfig instance
         '''
         self.config = config
         UsesTFSession.__init__(self)
@@ -138,12 +143,16 @@ class TFModelsDetector(ObjectDetector, UsesTFSession):
         boxes = self._tf_graph.get_tensor_by_name("detection_boxes:0")
         scores = self._tf_graph.get_tensor_by_name("detection_scores:0")
         classes = self._tf_graph.get_tensor_by_name("detection_classes:0")
-        boxes, scores, classes = self._sess.run(
-            [boxes, scores, classes], feed_dict={image_tensor: img_exp})
-        boxes, scores, classes = map(np.squeeze, [boxes, scores, classes])
+        masks = self._tf_graph.get_tensor_by_name("detection_masks:0")
+
+        boxes, scores, classes, masks = self._sess.run(
+            [boxes, scores, classes, masks], feed_dict={image_tensor: img_exp})
+        boxes, scores, classes, masks = map(
+            np.squeeze, [boxes, scores, classes, masks])
         objects = [
-            _to_detected_object(b, s, c, self._category_index)
-            for b, s, c in zip(boxes, scores, classes)
+            _to_detected_object(
+                b, s, c, m, self._category_index, self.config.mask_thresh)
+            for b, s, c, m in zip(boxes, scores, classes, masks)
             if c in self._category_index and (
                 self.config.confidence_thresh is None or
                 s > self.config.confidence_thresh)
@@ -161,14 +170,18 @@ class TFModelsDetector(ObjectDetector, UsesTFSession):
         return tf_graph
 
 
-def _to_detected_object(box, score, class_id, label_map):
+def _to_detected_object(
+        box, score, class_id, mask_probs, label_map, mask_thresh):
     '''Converts a detection to a DetectedObject.
 
     Args:
         box (array): [ymin, xmin, ymax, xmax]
         score (float): confidence score
         class_id (int): predicted class ID
+        mask_probs (array): a numpy array containing the mask probabilities
         label_map (dict): mapping from class IDs to names
+        mask_thresh (float): the threshold to use when computing the instance
+            mask for the detection
 
     Returns:
         a DetectedObject describing the detection
@@ -179,5 +192,6 @@ def _to_detected_object(box, score, class_id, label_map):
             RelativePoint(box[1], box[0]),
             RelativePoint(box[3], box[2]),
         ),
+        mask=(mask_probs >= mask_thresh),
         confidence=score,
     )

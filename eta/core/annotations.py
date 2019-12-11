@@ -44,6 +44,8 @@ class AnnotationConfig(Config):
     Attributes:
         colormap_config: the `eta.core.annotations.ColormapConfig` to use to
             render the annotation boxes
+        show_object_boxes: whether to show object bounding boxes, if available.
+            If this is false, all attributes, confidences, etc. are also hidden
         show_object_confidences: whether to show object label confidences, if
             available
         show_object_attr_confidences: whether to show object attribute
@@ -52,6 +54,8 @@ class AnnotationConfig(Config):
             confidences, if available
         show_all_confidences: whether to show all confidences, if available.
             If set to `True`, the other confidence-rendering flags are ignored
+        show_object_masks: whether to show object segmentation masks, if
+            available
         font_path: the path to the `PIL.ImageFont` to use
         font_size: the font size to use
         linewidth: the linewidth, in pixels, of the object bounding boxes
@@ -67,6 +71,9 @@ class AnnotationConfig(Config):
             frame attributes box
         attrs_text_line_spacing_pixels: the padding, in pixels, between each
             line of text in the frame attributes box
+        mask_border_thickness: the thickness, in pixels, to use when drawing
+            the border of segmentation masks
+        mask_fill_alpha: the transparency of the segmentation mask
         add_logo: whether to add a logo to the output video
         logo_config: the `eta.core.logo.LogoConfig` describing the logo to use
     '''
@@ -75,6 +82,8 @@ class AnnotationConfig(Config):
         self.colormap_config = self.parse_object(
             d, "colormap_config", ColormapConfig, default=None)
 
+        self.show_object_boxes = self.parse_bool(
+            d, "show_object_boxes", default=True)
         self.show_object_confidences = self.parse_bool(
             d, "show_object_confidences", default=False)
         self.show_object_attr_confidences = self.parse_bool(
@@ -83,6 +92,8 @@ class AnnotationConfig(Config):
             d, "show_frame_attr_confidences", default=False)
         self.show_all_confidences = self.parse_bool(
             d, "show_all_confidences", default=False)
+        self.show_object_masks = self.parse_bool(
+            d, "show_object_masks", default=True)
 
         self.font_path = self.parse_string(
             d, "font_path", default=etac.DEFAULT_FONT_PATH)
@@ -100,7 +111,10 @@ class AnnotationConfig(Config):
             d, "attrs_text_pad_pixels", default=5)
         self.attrs_text_line_spacing_pixels = self.parse_number(
             d, "attrs_text_line_spacing_pixels", default=1)
-
+        self.mask_border_thickness = self.parse_number(
+            d, "mask_border_thickness", default=2)
+        self.mask_fill_alpha = self.parse_number(
+            d, "mask_fill_alpha", default=0.5)
         self.add_logo = self.parse_bool(d, "add_logo", default=True)
         self.logo_config = self.parse_object(
             d, "logo_config", etal.LogoConfig, default=None)
@@ -405,18 +419,22 @@ def _annotate_attrs(img, attr_strs, annotation_config):
 
 def _annotate_object(img, obj, annotation_config):
     # Parse config
+    show_object_boxes = annotation_config.show_object_boxes
     show_object_confidences = (
         annotation_config.show_object_confidences or
         annotation_config.show_all_confidences)
     show_object_attr_confidences = (
         annotation_config.show_object_attr_confidences or
         annotation_config.show_all_confidences)
+    show_object_masks = annotation_config.show_object_masks
     colormap = annotation_config.colormap
     font = annotation_config.font
     alpha = annotation_config.alpha
     linewidth = annotation_config.linewidth
     pad = annotation_config.object_text_pad_pixels
     text_color = tuple(_parse_hex_color(annotation_config.text_color))
+    mask_border_thickness = annotation_config.mask_border_thickness
+    mask_fill_alpha = annotation_config.mask_fill_alpha
 
     # Construct label string
     label_str, label_hash = _render_object_label(
@@ -425,24 +443,47 @@ def _annotate_object(img, obj, annotation_config):
     # Get box color
     box_color = _parse_hex_color(colormap.get_color(label_hash))
 
-    overlay = img.copy()
     label_text_size = font.getsize(label_str)  # width, height
 
+    img_anno = img.copy()
+
+    #
+    # Draw segmentation mask
+    #
+
+    if obj.has_mask and show_object_masks:
+        img_anno = _draw_object_mask(
+            img_anno, obj, box_color, border_thickness=mask_border_thickness,
+            border_alpha=alpha, fill_alpha=mask_fill_alpha)
+
+    #
     # Draw bounding box
+    #
+
+    if not show_object_boxes:
+        return img_anno
+
+    overlay = img_anno.copy()
+
+    # Bounding box
     objtlx, objtly = obj.bounding_box.top_left.coords_in(img=img)
     objbrx, objbry = obj.bounding_box.bottom_right.coords_in(img=img)
     cv2.rectangle(
         overlay, (objtlx, objtly), (objbrx, objbry), box_color, linewidth)
 
-    # Draw label background
+    # Label background
     bgtlx = objtlx - linewidth + 1
     bgbry = objtly - linewidth + 1
     bgbrx = bgtlx + label_text_size[0] + 2 * (pad + _DX)
     bgtly = bgbry - label_text_size[1] - 2 * pad
     cv2.rectangle(overlay, (bgtlx, bgtly), (bgbrx, bgbry), box_color, -1)
 
-    # Overlay translucent box
-    img_anno = cv2.addWeighted(overlay, alpha, img, 1 - alpha, 0)
+    # Overlay
+    img_anno = cv2.addWeighted(overlay, alpha, img_anno, 1 - alpha, 0)
+
+    #
+    # Draw text
+    #
 
     img_pil = Image.fromarray(img_anno)
     draw = ImageDraw.Draw(img_pil)
@@ -470,6 +511,31 @@ def _annotate_object(img, obj, annotation_config):
                 (atxttlx, atxttly), attrs_str, font=font, fill=text_color)
 
     return np.asarray(img_pil)
+
+
+def _draw_object_mask(
+        img, obj, color, border_thickness=None, border_alpha=None,
+        fill_alpha=None):
+    mask, offset = etai.render_instance_mask(obj, img=img, as_bool=False)
+    contours, _ = cv2.findContours(
+        mask, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE, offset=offset)
+
+    img_anno = img.copy()
+
+    if fill_alpha is not None and fill_alpha > 0:
+        img_mask = img_anno.copy()
+        cv2.drawContours(img_mask, contours, -1, color, cv2.FILLED)
+        img_anno = cv2.addWeighted(
+            img_mask, fill_alpha, img_anno, 1 - fill_alpha, 0)
+
+    if (border_thickness is not None and border_thickness > 0 and
+            border_alpha is not None and border_alpha > 0):
+        img_border = img_anno.copy()
+        cv2.drawContours(img_border, contours, -1, color, border_thickness)
+        img_anno = cv2.addWeighted(
+            img_border, border_alpha, img_anno, 1 - border_alpha, 0)
+
+    return img_anno
 
 
 _DEFAULT_ANNOTATION_CONFIG = AnnotationConfig.default()

@@ -9,3 +9,4 @@ Brian Moore, brian@voxel51.com
 
 # Import all detectors into the `eta.detectors` namespace
 from .tfmodels_detectors import TFModelsDetector, TFModelsDetectorConfig
+from .tfmodels_segmenters import TFModelsSegmenter, TFModelsSegmenterConfig
