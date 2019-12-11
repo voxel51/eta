@@ -444,8 +444,8 @@ def export_frozen_inference_graph(
             raise ValueError(
                 "Must provide a `labels_map_path` when `num_classes` is not "
                 "specified")
-        else:
-            num_classes = len(etal.load_labels_map(labels_map_path))
+
+        num_classes = len(etal.load_labels_map(labels_map_path))
 
     output_name = _DEFAULT_OUTPUT_NAMES.get(network_name, None)
     if output_name is None:
