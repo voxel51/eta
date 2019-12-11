@@ -1,0 +1,27 @@
+{
+    "pipeline": "object_detector",
+    "inputs": {
+        "video": "../data/people.mp4"
+    },
+    "outputs": {
+        "labels": "out/people-labels.json",
+        "annotated_video": "out/people-annotated.mp4"
+    },
+    "parameters": {
+        "apply_object_detector.detector": {
+            "type": "eta.detectors.TFModelsSegmenter",
+            "config": {
+                "model_name": "mask-rcnn-resnet101-atrous-coco"
+            }
+        },
+        "apply_object_detector.objects": [
+            {
+                "labels": ["person"],
+                "threshold": 0.3
+            }
+        ],
+        "visualize_labels.annotation_config": {
+            "show_all_confidences": true
+        }
+    }
+}
