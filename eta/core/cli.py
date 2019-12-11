@@ -613,7 +613,8 @@ def _print_google_credentials_info():
 def _print_aws_credentials_info():
     credentials, path = etas.NeedsAWSCredentials.load_credentials()
     contents = []
-    for key, value in iteritems(credentials):
+    for key in sorted(credentials):
+        value = credentials[key]
         contents.append((key.lower().replace("_", " "), value))
 
     if path:
