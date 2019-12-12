@@ -167,7 +167,7 @@ class TFSlimClassifier(etal.ImageClassifier, etat.UsesTFSession):
 
         # Load graph
         self._prefix = "main"
-        self._graph = self._build_graph(model_path, prefix=self._prefix)
+        self._graph = etat.load_graph(model_path, prefix=self._prefix)
         self._sess = self.make_tf_session(graph=self._graph)
 
         # Load labels map
@@ -303,16 +303,6 @@ class TFSlimClassifier(etal.ImageClassifier, etat.UsesTFSession):
         label = self.labels_map[idx]
         confidence = probs[idx]
         return self._package_attr(label, confidence)
-
-    @staticmethod
-    def _build_graph(model_path, prefix=""):
-        graph = tf.Graph()
-        with graph.as_default():
-            graph_def = tf.GraphDef()
-            with tf.gfile.GFile(model_path, "rb") as f:
-                graph_def.ParseFromString(f.read())
-                tf.import_graph_def(graph_def, name=prefix)
-        return graph
 
     def _make_preprocessing_fcn(self, network_name, preprocessing_fcn):
         # Use user-specified pre-processing, if provided

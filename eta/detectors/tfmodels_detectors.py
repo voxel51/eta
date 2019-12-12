@@ -31,7 +31,7 @@ from eta.core.geometry import BoundingBox, RelativePoint
 from eta.core.learning import ObjectDetector, HasDefaultDeploymentConfig
 import eta.core.models as etam
 from eta.core.objects import DetectedObject, DetectedObjectContainer
-from eta.core.tfutils import UsesTFSession
+import eta.core.tfutils as etat
 import eta.core.utils as etau
 
 sys.path.append(os.path.join(etac.TF_OBJECT_DETECTION_DIR, "utils"))
@@ -100,7 +100,7 @@ class TFModelsDetectorConfig(Config, HasDefaultDeploymentConfig):
                 "Either `model_name` or `model_path` must be provided")
 
 
-class TFModelsDetector(ObjectDetector, UsesTFSession):
+class TFModelsDetector(ObjectDetector, etat.UsesTFSession):
     '''Interface to the TF-Models object detection library at
     https://github.com/tensorflow/models/tree/master/research/object_detection.
 
@@ -118,7 +118,7 @@ class TFModelsDetector(ObjectDetector, UsesTFSession):
             config: a TFModelsDetectorConfig instance
         '''
         self.config = config
-        UsesTFSession.__init__(self)
+        etat.UsesTFSession.__init__(self)
 
         if self.config.model_name:
             # Downloads the published model, if necessary
@@ -127,7 +127,7 @@ class TFModelsDetector(ObjectDetector, UsesTFSession):
             model_path = self.config.model_path
 
         # Load model
-        self._graph = self._build_graph(model_path)
+        self._graph = etat.load_graph(model_path)
         self._sess = self.make_tf_session(graph=self._graph)
 
         # Load labels
@@ -180,20 +180,9 @@ class TFModelsDetector(ObjectDetector, UsesTFSession):
         ]
         return DetectedObjectContainer(objects=objects)
 
-    @staticmethod
-    def _build_graph(model_path, prefix=""):
-        tf_graph = tf.Graph()
-        with tf_graph.as_default():
-            graph_def = tf.GraphDef()
-            with tf.gfile.GFile(model_path, "rb") as f:
-                graph_def.ParseFromString(f.read())
-                tf.import_graph_def(graph_def, name=prefix)
-        return tf_graph
-
 
 def export_frozen_inference_graph(
-        checkpoint_path, pipeline_config_path, output_dir,
-        include_features=False):
+        checkpoint_path, pipeline_config_path, output_dir):
     '''Exports the given TF-Models checkpoint as a frozen inference graph
     suitable for running inference.
 

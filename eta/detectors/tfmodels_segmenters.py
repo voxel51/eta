@@ -32,7 +32,7 @@ from eta.core.geometry import BoundingBox, RelativePoint
 from eta.core.learning import ObjectDetector, HasDefaultDeploymentConfig
 import eta.core.models as etam
 from eta.core.objects import DetectedObject, DetectedObjectContainer
-from eta.core.tfutils import UsesTFSession
+import eta.core.tfutils as etat
 import eta.core.utils as etau
 
 sys.path.append(os.path.join(etac.TF_OBJECT_DETECTION_DIR, "utils"))
@@ -109,7 +109,7 @@ class TFModelsSegmenterConfig(Config, HasDefaultDeploymentConfig):
                 "Either `model_name` or `model_path` must be provided")
 
 
-class TFModelsSegmenter(ObjectDetector, UsesTFSession):
+class TFModelsSegmenter(ObjectDetector, etat.UsesTFSession):
     '''Interface to the instance segmentation models from the TF-Models
     detection library at
     https://github.com/tensorflow/models/tree/master/research/object_detection.
@@ -128,7 +128,7 @@ class TFModelsSegmenter(ObjectDetector, UsesTFSession):
             config: a TFModelsSegmenterConfig instance
         '''
         self.config = config
-        UsesTFSession.__init__(self)
+        etat.UsesTFSession.__init__(self)
 
         if self.config.model_name:
             # Downloads the published model, if necessary
@@ -137,7 +137,7 @@ class TFModelsSegmenter(ObjectDetector, UsesTFSession):
             model_path = self.config.model_path
 
         # Load model
-        self._graph = self._build_graph(model_path)
+        self._graph = etat.load_graph(model_path)
         self._sess = self.make_tf_session(graph=self._graph)
 
         # Load labels
@@ -194,16 +194,6 @@ class TFModelsSegmenter(ObjectDetector, UsesTFSession):
                 s > self.config.confidence_thresh)
         ]
         return DetectedObjectContainer(objects=objects)
-
-    @staticmethod
-    def _build_graph(model_path, prefix=""):
-        tf_graph = tf.Graph()
-        with tf_graph.as_default():
-            graph_def = tf.GraphDef()
-            with tf.gfile.GFile(model_path, "rb") as f:
-                graph_def.ParseFromString(f.read())
-                tf.import_graph_def(graph_def, name=prefix)
-        return tf_graph
 
 
 def _to_detected_object(
