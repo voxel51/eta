@@ -433,7 +433,7 @@ def export_frozen_inference_graph(
             determine the number of output classes. Must be provided if
             `num_classes` is not provided
         output_name: the name of the `tf.Operation` from which to extract the
-            output  predictions. By default, this value is loaded from
+            output predictions. By default, this value is loaded from
             `_DEFAULT_OUTPUT_NAMES`
     '''
     if num_classes is None:
