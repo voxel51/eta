@@ -190,8 +190,6 @@ def export_frozen_inference_graph(
         checkpoint_path: path to the training checkpoint to export
         pipeline_config_path: path to the pipeline config file for the
         output_dir: the directory in which to write the frozen inference graph
-        include_features: whether to include the `detection_features` node in
-            the frozen graph. By default, this is False
     '''
     # Import here because they are sooooo slow
     sys.path.append(etac.TF_OBJECT_DETECTION_DIR)
@@ -204,17 +202,10 @@ def export_frozen_inference_graph(
     with tf.gfile.GFile(pipeline_config_path, "r") as f:
         text_format.Merge(f.read(), pipeline_config)
 
-    # Include detection features in graph, if requested
-    if include_features:
-        additional_outputs = ["detection_features:0"]
-    else:
-        additional_outputs = None
-
     # Export inference graph
     exporter.export_inference_graph(
         "image_tensor", pipeline_config, checkpoint_path, output_dir,
-        input_shape=None, write_inference_graph=True,
-        additional_output_tensor_names=additional_outputs)
+        input_shape=None)
 
 
 def _to_detected_object(box, score, class_id, label_map):
