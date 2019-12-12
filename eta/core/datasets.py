@@ -2215,7 +2215,8 @@ class Balancer(DatasetTransformer):
     ]
 
     def __init__(
-            self, attribute_name=None, object_label=None, labels_schema=None,
+            self, attribute_name=None, object_label=None,
+            balance_by_object_label=False, labels_schema=None,
             target_quantile=0.25, negative_power=5, target_count=None,
             target_hard_min=False, algorithm="greedy"):
         '''Creates a Balancer instance.
@@ -2225,6 +2226,8 @@ class Balancer(DatasetTransformer):
             object_label: the name of the object label that the attribute_name
                 must be nested under. If this is None, it is assumed that the
                 attributes are Image/Frame level attrs
+            balance_by_object_label: if True, the dataset is balanced by object
+                label instead of attributes.
             labels_schema: an ImageLabelsSchema or VideoLabelsSchema that
                 indicates which attributes, object labels, etc. should be used
                 for balancing. This can be specified as an alternative to
@@ -2254,6 +2257,7 @@ class Balancer(DatasetTransformer):
         '''
         self.attr_name = attribute_name
         self.object_label = object_label
+        self.balance_by_object_label = balance_by_object_label
         self.labels_schema = labels_schema
         self.target_quantile = target_quantile
         self.negative_power = negative_power
@@ -2302,34 +2306,40 @@ class Balancer(DatasetTransformer):
         specified = {
             "attribute_name": self.attr_name is not None,
             "object_label": self.object_label is not None,
-            "labels_schema": self.labels_schema is not None
+            "labels_schema": self.labels_schema is not None,
+            "balance_by_object_label": self.balance_by_object_label
         }
 
-        # The following two patterns of null/non-null arguments are acceptable
+        acceptable_patterns = [
+            # balance attribute
+            {
+                "attribute_name": True,
+                "balance_by_object_label": False,
+                "labels_schema": False
+            },
+            # balance object label
+            {
+                "attribute_name": False,
+                "object_label": False,
+                "balance_by_object_label": True,
+                "labels_schema": False
+            },
+            # balance schema
+            {
+                "attribute_name": False,
+                "object_label": False,
+                "balance_by_object_label": False,
+                "labels_schema": True
+            }
+        ]
 
-        if specified["attribute_name"] and not specified["labels_schema"]:
-            return
-
-        if (not specified["attribute_name"] and not specified["object_label"]
-                and specified["labels_schema"]):
-            return
-
-        # Anything else is unacceptable. Raise a ValueError with the
-        # appropriate message.
-
-        if not any(itervalues(specified)):
-            raise ValueError("Must specify attribute_name or labels_schema")
-
-        if specified["attribute_name"] and specified["labels_schema"]:
+        if not any(
+                all(specified[k] == v for k, v in iteritems(pattern))
+                for pattern in acceptable_patterns):
             raise ValueError(
-                "Specify only one of attribute_name and labels_schema")
-
-        if not specified["attribute_name"] and specified["object_label"]:
-            raise ValueError(
-                "Cannot specify object_label without specifying "
-                "attribute_name")
-
-        raise AssertionError("Internal logic error")
+                "Pattern of variables specified not allowed: %s\n"
+                "Allowed patterns: %s" % (specified, acceptable_patterns)
+            )
 
     def _get_occurrence_matrix(self, records):
         '''Compute occurrence of each attribute value for each class
@@ -2397,6 +2407,9 @@ class Balancer(DatasetTransformer):
         if self.attr_name is not None:
             return self._to_helper_list_attr_name(records)
 
+        if self.balance_by_object_label:
+            return self._to_helper_list_object_label(records)
+
         return self._to_helper_list_schema(records)
 
     def _to_helper_list_attr_name(self, records):
@@ -2410,6 +2423,22 @@ class Balancer(DatasetTransformer):
             if self.object_label:
                 return self._to_helper_list_video_objects(records)
             return self._to_helper_list_video(records)
+
+        raise DatasetTransformerError(
+            "Unknown record type: {}".format(
+                etau.get_class_name(records[0])
+            )
+        )
+
+    def _to_helper_list_object_label(self, records):
+        '''Balancer._to_helper_list when `self.object_label` is specified
+        and `self'attr_name` is None
+        '''
+        if isinstance(records[0], BuilderImageRecord):
+            return self._to_helper_obj_label_list_image(records)
+
+        if isinstance(records[0], BuilderVideoRecord):
+            return self._to_helper_obj_label_list_video(records)
 
         raise DatasetTransformerError(
             "Unknown record type: {}".format(
@@ -2456,6 +2485,22 @@ class Balancer(DatasetTransformer):
                     if attr.name == self.attr_name:
                         helper[1].append(attr.value)
                         break
+
+            if len(helper[1]):
+                helper_list.append(helper)
+
+        return helper_list
+
+    def _to_helper_obj_label_list_image(self, records):
+        '''Balancer._to_helper_list for image object labels'''
+        helper_list = []
+
+        for i, record in enumerate(records):
+            labels = record.get_labels()
+            helper = (i, [])
+
+            for detected_object in labels.objects:
+                helper[1].append(detected_object.label)
 
             if len(helper[1]):
                 helper_list.append(helper)
@@ -2517,6 +2562,42 @@ class Balancer(DatasetTransformer):
                             helper_dict[obj_idx].add(attr.value)
 
                             break
+
+            # At this point, the keys of helper dict are unique
+            # object indices for objects of type self.object_label.
+            # The values are unique attribute values for self.attr_name.
+
+            if len(helper_dict):
+                helper = (i, [])
+                for s in helper_dict.values():
+                    helper[1].extend(s)
+                helper_list.append(helper)
+
+        return helper_list
+
+    def _to_helper_obj_label_list_video(self, records):
+        '''Balancer._to_helper_list for object attributes in videos'''
+        helper_list = []
+
+        for i, record in enumerate(records):
+            labels = record.get_labels()
+            NO_ID = 'NO_ID'
+            helper_dict = defaultdict(set)
+
+            for frame_no in labels:
+                if (frame_no < record.clip_start_frame
+                        or frame_no >= record.clip_end_frame):
+                    continue
+
+                frame = labels[frame_no]
+                for detected_object in frame.objects:
+                    obj_idx = (
+                        detected_object.index
+                        if detected_object.index is not None
+                        else NO_ID
+                    )
+
+                    helper_dict[obj_idx].add(detected_object.label)
 
             # At this point, the keys of helper dict are unique
             # object indices for objects of type self.object_label.
