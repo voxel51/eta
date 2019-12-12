@@ -2306,47 +2306,40 @@ class Balancer(DatasetTransformer):
         specified = {
             "attribute_name": self.attr_name is not None,
             "object_label": self.object_label is not None,
-            "labels_schema": self.labels_schema is not None
+            "labels_schema": self.labels_schema is not None,
+            "balance_by_object_label": self.balance_by_object_label
         }
 
-        # The following two patterns of null/non-null arguments are acceptable
+        acceptable_patterns = [
+            # balance attribute
+            {
+                "attribute_name": True,
+                "balance_by_object_label": False,
+                "labels_schema": False
+            },
+            # balance object label
+            {
+                "attribute_name": False,
+                "object_label": False,
+                "balance_by_object_label": True,
+                "labels_schema": False
+            },
+            # balance schema
+            {
+                "attribute_name": False,
+                "object_label": False,
+                "balance_by_object_label": False,
+                "labels_schema": True
+            }
+        ]
 
-        # balance attribute
-        if (specified["attribute_name"]
-                and not self.balance_by_object_label
-                and not specified["labels_schema"]):
-            return
-
-        # balance object label
-        if (not specified["attribute_name"]
-                and not specified["object_label"]
-                and self.balance_by_object_label
-                and not specified["labels_schema"]):
-            return
-
-        # balance schema
-        if (not specified["attribute_name"]
-                and not specified["object_label"]
-                and not self.balance_by_object_label
-                and specified["labels_schema"]):
-            return
-
-        # Anything else is unacceptable. Raise a ValueError with the
-        # appropriate message.
-
-        if not any(itervalues(specified)):
-            raise ValueError("Must specify attribute_name or labels_schema")
-
-        if specified["attribute_name"] and specified["labels_schema"]:
+        if not any(
+                all(specified[k] == v for k, v in iteritems(pattern))
+                for pattern in acceptable_patterns):
             raise ValueError(
-                "Specify only one of attribute_name and labels_schema")
-
-        if not specified["attribute_name"] and specified["object_label"]:
-            raise ValueError(
-                "Cannot specify object_label without specifying "
-                "attribute_name")
-
-        raise AssertionError("Internal logic error")
+                "Pattern of variables specified not allowed: %s\n"
+                "Allowed patterns: %s" % (specified, acceptable_patterns)
+            )
 
     def _get_occurrence_matrix(self, records):
         '''Compute occurrence of each attribute value for each class
