@@ -31,12 +31,63 @@ import tensorflow as tf
 import eta
 import eta.core.image as etai
 import eta.core.models as etam
+import eta.core.utils as etau
 
 
 logger = logging.getLogger(__name__)
 
 
 TF_RECORD_EXTENSIONS = [".record", ".tfrecord"]
+
+
+def load_graph(model_path, prefix=""):
+    '''Loads the TF graph from the given `.pb` file.
+
+    Args:
+        model_path: the `.pb` file to load
+        prefix: an optional prefix to prepend when importing the graph
+
+    Returns:
+        the loaded `tf.Graph`
+    '''
+    graph = tf.Graph()
+    with graph.as_default():
+        graph_def = tf.GraphDef()
+        with tf.gfile.GFile(model_path, "rb") as f:
+            graph_def.ParseFromString(f.read())
+            tf.import_graph_def(graph_def, name=prefix)
+    return graph
+
+
+def visualize_frozen_graph(model_path, log_dir=None, port=None):
+    '''Visualizes the TF graph from the given `.pb` file via TensorBoard.
+
+    Specifically, this script performs the following actions:
+        - load the graph
+        - populates a TensorBoard log directory for the graph
+        - launches a TensorBoard instance to visualize the graph
+
+    Args:
+        model_path: the `.pb` file to load
+        log_dir: an optional log directory in which to write the TensorBoard
+            files. By default, a temp directory is created
+        port: an optional port on which to launch TensorBoard
+    '''
+    if log_dir is None:
+        log_dir = etau.make_temp_dir()
+
+    graph = load_graph(model_path, prefix="import")
+    writer = tf.summary.FileWriter(log_dir)
+    writer.add_graph(graph)
+    logger.info("Model imported to '%s'", log_dir)
+
+    args = ["tensorboard", "--logdir", log_dir]
+    if port:
+        args.append(["--port", str(port)])
+
+    logger.info(
+        "Launching TensorBoard via the command:\n    %s\n", " ".join(args))
+    etau.call(args)
 
 
 class TFModelCheckpoint(etam.PublishedModel):
