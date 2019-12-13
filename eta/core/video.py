@@ -59,12 +59,14 @@ logger = logging.getLogger(__name__)
 # extension of a video provided to a pipeline at build time.
 #
 # This list was taken from https://en.wikipedia.org/wiki/Video_file_format
+# with additions from other places on an ad-hoc basis
 #
 SUPPORTED_VIDEO_FILE_FORMATS = {
     ".3g2", ".3gp", ".m2ts", ".mts", ".amv", ".avi", ".f4a", ".f4b", ".f4p",
     ".f4v", ".flv", ".m2v", ".m4p", ".m4v", ".mkv", ".mov", ".mp2", ".mp4",
-    ".mpe", ".mpeg", ".mpg", ".mpv", ".nsv", ".ogg", ".ogv", ".qt", ".rm",
-    ".rmvb", ".svi", ".vob", ".webm", ".wmv", ".yuv"
+    ".mpe", ".mpeg", ".mpg", ".mpv", ".m2ts", ".mts", ".nsv", ".ogg", ".ogv",
+    ".qt", ".rm", ".rmvb", ".svi", ".ts", ".tsv", ".tsa", ".vob", ".webm",
+    ".wmv", ".yuv"
 }
 
 
