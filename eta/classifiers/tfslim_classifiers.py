@@ -279,7 +279,7 @@ class TFSlimClassifier(
                 img, [self._output_op, self._features_op])
             self._last_features = fvec
         else:
-            probs = self._evaluate(img, [self._output_op])
+            probs = self._evaluate(img, [self._output_op])[0]
 
         return self._parse_prediction(probs)
 
