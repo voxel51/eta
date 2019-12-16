@@ -19,6 +19,7 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+import logging
 import os
 import sys
 
@@ -36,6 +37,9 @@ import eta.core.utils as etau
 
 sys.path.append(os.path.join(etac.TF_OBJECT_DETECTION_DIR, "utils"))
 import label_map_util as gool
+
+
+logger = logging.getLogger(__name__)
 
 
 class TFModelsDetectorConfig(Config, etal.HasDefaultDeploymentConfig):
