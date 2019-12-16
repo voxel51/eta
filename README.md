@@ -107,8 +107,7 @@ standard analytics exposed by the ETA library. In addition, the relative paths
 to support the typical directory structure that we adopt for our custom
 projects.
 
-
-## The `eta` command-line utility
+### The ETA CLI
 
 When you installed ETA, an `eta` command-line utility was added to your path.
 This utility provides access to many usefuel features of ETA, including
@@ -122,9 +121,13 @@ eta --help
 ```
 
 
-## Testing your installation
+## Quickstart
 
-To test your installation, run some of [these examples](examples/README.md).
+Get your feet wet with ETA by running some of examples in the
+[examples folder](https://github.com/voxel51/eta/tree/develop/examples).
+
+Also, see the [docs folder](https://github.com/voxel51/eta/tree/develop/docs)
+for more documentation about the various components of the ETA library.
 
 
 ## Organization
@@ -139,6 +142,10 @@ the [docs folder](https://github.com/voxel51/eta/tree/develop/docs).
 with images, videos, embeddings, and much more.
 
 - `eta/detectors/`: interfaces for common detectors
+
+- `eta/docs/`: documentation about the ETA library
+
+- `eta/examples/`: examples of using the ETA library
 
 - `eta/models/`: library of ML models. The `manifest.json` file in this
 folder enumerates the models, which are downloaded to this folder as needed.
