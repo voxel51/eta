@@ -83,7 +83,7 @@ def visualize_frozen_graph(model_path, log_dir=None, port=None):
 
     args = ["tensorboard", "--logdir", log_dir]
     if port:
-        args.append(["--port", str(port)])
+        args.extend(["--port", str(port)])
 
     logger.info(
         "Launching TensorBoard via the command:\n    %s\n", " ".join(args))
