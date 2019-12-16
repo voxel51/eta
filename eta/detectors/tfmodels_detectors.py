@@ -130,13 +130,15 @@ class TFModelsDetector(
         self.config = config
         etat.UsesTFSession.__init__(self)
 
-        if self.config.model_name:
+        # Get path to model
+        if self.config.model_path:
+            model_path = self.config.model_path
+        else:
             # Downloads the published model, if necessary
             model_path = etam.download_model(self.config.model_name)
-        else:
-            model_path = self.config.model_path
 
         # Load model
+        logger.info("Loading graph from '%s'", model_path)
         self._graph = etat.load_graph(model_path)
         self._sess = self.make_tf_session(graph=self._graph)
 
@@ -336,13 +338,15 @@ class TFModelsSegmenter(
         self.config = config
         etat.UsesTFSession.__init__(self)
 
-        if self.config.model_name:
+        # Get path to model
+        if self.config.model_path:
+            model_path = self.config.model_path
+        else:
             # Downloads the published model, if necessary
             model_path = etam.download_model(self.config.model_name)
-        else:
-            model_path = self.config.model_path
 
         # Load model
+        logger.info("Loading graph from '%s'", model_path)
         self._graph = etat.load_graph(model_path)
         self._sess = self.make_tf_session(graph=self._graph)
 
