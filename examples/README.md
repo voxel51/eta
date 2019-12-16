@@ -20,18 +20,24 @@ Perform some image manipulation:
 python demo_image_manipulation/demo_images.py
 ```
 
-Run a pre-configued video processing pipeline:
-
-```shell
-eta run demo_video_pipeline/pipeline.json
-```
-
 Build and run pipelines from requests:
 
 ```shell
 eta build -r demo_video_formatter/request.json --run-now
 eta build -r demo_video_clipper/request.json --run-now
 ```
+
+Run a pre-configued instance of a pipeline:
+
+```shell
+eta run demo_video_pipeline/pipeline.json
+```
+
+Note that the best practice is to formally define pipelines and then build and
+run instances of them via pipeline requests (as demonstrated in the
+`demo_video_formatter` and `demo_video_clipper` examples), rather than manually
+instantiating your own pipelines (as demonstrated in the `demo_video_pipeline`
+example).
 
 
 ## Image classification
