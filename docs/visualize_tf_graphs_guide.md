@@ -12,25 +12,21 @@ exporting TensorFlow graphs for inference.
 Run the commands below to launch a tensorboard session for a frozen graph of
 your choice:
 
-```shell
+```py
+import eta.core.tfutils as etat
+
 # The frozen inference graph to load
-MODEL_PATH=models/frozen_inference_graph.pb
+model_path = "/path/to/frozen_inference_graph.pb"
 
-# The path to the root directory of your TF installation
-TFDIR=$(dirname "$(python -c "import tensorflow as tf; print(tf.__file__)")")
+# An optional log directory in which to write the TensorBoard files. By
+# default, a temp directory is created
+log_dir = None
 
-# Load the frozen graph in `TFDIR`
-LOGDIR=/tmp/tflogdir
-python "${TFDIR}/python/tools/import_pb_to_tensorboard.py" \
-    --model_dir ${MODEL_PATH} \
-    --log_dir ${LOGDIR}
-
-# Launch tensorboard on `TFDIR`
-tensorboard --port 8000 --logdir=${LOGDIR}
+etat.visualize_frozen_graph(model_path, log_dir=log_dir, port=8000)
 ```
 
-View TensorBoard by opening [http://localhost:8000](http://localhost:8000) in
-your browser.
+The command will print the URL that you should open in your browser to view
+TensorBoard.
 
 
 ## Copyright
