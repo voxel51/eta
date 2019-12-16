@@ -61,7 +61,7 @@ First, choose a model of interest from the zoo:
 
 ```shell
 #
-# Choose any model that outputs boxes from
+# Choose any model from
 # https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/detection_model_zoo.md
 #
 MODEL=ssd_resnet50_v1_fpn_shared_box_predictor_640x640_coco14_sync_2018_07_03
