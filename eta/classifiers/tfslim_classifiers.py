@@ -190,13 +190,13 @@ class TFSlimClassifier(
         self._input_op = self._graph.get_operation_by_name(
             self._prefix + "/" + self.config.input_name)
 
-        # Get feature operation, if available
-        if self.config.features_name:
-            features_name = self.config.features_name
-        elif network_name in _DEFAULT_FEATURES_NAMES:
-            features_name = _DEFAULT_FEATURES_NAMES[network_name]
-        else:
-            features_name = None
+        # Get feature operation, if necessary
+        features_name = None
+        if self.config.generate_features:
+            if self.config.features_name:
+                features_name = self.config.features_name
+            elif network_name in _DEFAULT_FEATURES_NAMES:
+                features_name = _DEFAULT_FEATURES_NAMES[network_name]
         if features_name is not None:
             self._features_op = self._graph.get_operation_by_name(
                 self._prefix + "/" + features_name)
@@ -233,7 +233,7 @@ class TFSlimClassifier(
     @property
     def generates_features(self):
         '''Whether this classifier generates features for its predictions.'''
-        return self._features_op is not None and self.config.generate_features
+        return self._features_op is not None
 
     @property
     def features_dim(self):

@@ -161,7 +161,7 @@ class TFModelsDetector(
             self.config.scores_name)
         self._classes_op = self._graph.get_operation_by_name(
             self.config.classes_name)
-        if self.config.features_name:
+        if self.config.generate_features and self.config.features_name:
             self._features_op = self._graph.get_operation_by_name(
                 self.config.features_name)
         else:
@@ -179,7 +179,7 @@ class TFModelsDetector(
     @property
     def generates_features(self):
         '''Whether this detector generates features for its detections.'''
-        return self._features_op is not None and self.config.generate_features
+        return self._features_op is not None
 
     @property
     def features_dim(self):
@@ -371,7 +371,7 @@ class TFModelsSegmenter(
             self.config.classes_name)
         self._masks_op = self._graph.get_operation_by_name(
             self.config.masks_name)
-        if self.config.features_name:
+        if self.config.generate_features and self.config.features_name:
             self._features_op = self._graph.get_operation_by_name(
                 self.config.features_name)
         else:
@@ -389,7 +389,7 @@ class TFModelsSegmenter(
     @property
     def generates_features(self):
         '''Whether this detector generates features for its detections.'''
-        return self._features_op is not None and self.config.generate_features
+        return self._features_op is not None
 
     @property
     def features_dim(self):
