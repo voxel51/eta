@@ -363,7 +363,7 @@ class ImageClassifier(Classifier):
     `ImageClassifier`s may output single or multiple labels per image.
 
     Subclasses of `ImageClassifier` must implement the `predict()` method, and
-    they can optionally provide custom (efficient) implementations of the
+    they can optionally provide a custom (efficient) implementation of the
     `predict_all()` method.
 
     Subclasses can optionally implement the context manager interface to
@@ -543,7 +543,7 @@ class ObjectDetector(Detector):
     `ObjectDetector`s may output single or multiple detections per image.
 
     Subclasses of `ObjectDetector` must implement the `detect()` method, and
-    they can optionally provide custom (efficient) implementations of the
+    they can optionally provide a custom (efficient) implementation of the
     `detect_all()` method.
 
     Subclasses can optionally implement the context manager interface to
