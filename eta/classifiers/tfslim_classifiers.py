@@ -351,7 +351,12 @@ class TFSlimClassifier(
 
 class TFSlimFeaturizerConfig(TFSlimClassifierConfig):
     '''Configuration settings for a TFSlimFeaturizer.'''
-    pass
+
+    def __init__(self, d):
+        # Featurizers always need to generate features!
+        d["generate_features"] = True
+
+        super(TFSlimFeaturizerConfig, self).__init__(d)
 
 
 class TFSlimFeaturizer(ImageFeaturizer):
