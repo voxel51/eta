@@ -676,6 +676,7 @@ class PipelineMetadata(Configurable, HasBlockDiagram):
             PipelineMetadataError: if the pipeline definition was invalid
         '''
         self.validate(config)
+        self.config = config
 
         self.info = None
         self.inputs = {}

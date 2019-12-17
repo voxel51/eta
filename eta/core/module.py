@@ -566,6 +566,7 @@ class ModuleMetadata(Configurable, HasBlockDiagram):
             ModuleMetadataError: if the module definition was invalid
         '''
         self.validate(config)
+        self.config = config
 
         self.info = None
         self.inputs = OrderedDict()
