@@ -224,7 +224,7 @@ class TFModelsDetector(
         if self.generates_features:
             output_ops.append(self._features_op)
             boxes, scores, classes, features = self._evaluate(img, output_ops)
-            self._last_features = features
+            self._last_features = _avg_pool_features(features)
         else:
             boxes, scores, classes = self._evaluate(img, output_ops)
 
@@ -440,7 +440,7 @@ class TFModelsSegmenter(
             output_ops.append(self._features_op)
             boxes, scores, classes, masks, features = self._evaluate(
                 img, output_ops)
-            self._last_features = features
+            self._last_features = _avg_pool_features(features)
         else:
             boxes, scores, classes, masks = self._evaluate(img, output_ops)
 
@@ -488,6 +488,14 @@ def export_frozen_inference_graph(
     exporter.export_inference_graph(
         "image_tensor", pipeline_config, checkpoint_path, output_dir,
         input_shape=None)
+
+
+def _avg_pool_features(features):
+    axes = tuple(range(1, features.ndim - 1))
+    if axes:
+        return features.mean(axis=axes, keepdims=False)
+
+    return features
 
 
 def _to_detected_object(
