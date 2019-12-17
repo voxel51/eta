@@ -121,6 +121,18 @@ class TFModelsDetector(
     This class uses `eta.core.tfutils.UsesTFSession` to create TF sessions, so
     it automatically applies settings in your `eta.config.tf_config`.
 
+    This class implements the `eta.core.learning.FeaturizingDetector` mixin, so
+    it can generate features for its detections, if appropriately configured.
+    Unfortunately, none of the pre-trained models available in ETA support
+    featurization because the frozen graphs do not contain the expected
+    `detection_features` nodes. In July 2019, the `tensorflow/models`
+    repository was upgraded (https://github.com/tensorflow/models/pull/7208)
+    to support a `detection_features` node that generates features for all
+    models. It was also discovered that pre-trained models from the TF Models
+    Zoo must be re-exported in order for this node to be populated
+    (https://stackoverflow.com/a/57536793). Unfortunately, as of December 2019,
+    this re-export process only seemed to work for Faster R-CNN models.
+
     Instances of this class must either use the context manager interface or
     manually call `close()` when finished to release memory.
     '''
@@ -332,6 +344,18 @@ class TFModelsSegmenter(
 
     This class uses `eta.core.tfutils.UsesTFSession` to create TF sessions, so
     it automatically applies settings in your `eta.config.tf_config`.
+
+    This class implements the `eta.core.learning.FeaturizingDetector` mixin, so
+    it can generate features for its detections, if appropriately configured.
+    Unfortunately, none of the pre-trained models available in ETA support
+    featurization because the frozen graphs do not contain the expected
+    `detection_features` nodes. In July 2019, the `tensorflow/models`
+    repository was upgraded (https://github.com/tensorflow/models/pull/7208)
+    to support a `detection_features` node that generates features for all
+    models. It was also discovered that pre-trained models from the TF Models
+    Zoo must be re-exported in order for this node to be populated
+    (https://stackoverflow.com/a/57536793). Unfortunately, as of December 2019,
+    this re-export process only seemed to work for Faster R-CNN models.
 
     Instances of this class must either use the context manager interface or
     manually call `close()` when finished to release memory.
