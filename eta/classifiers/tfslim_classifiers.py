@@ -30,6 +30,7 @@ from tensorflow.python.tools import freeze_graph
 import eta.constants as etac
 from eta.core.config import Config, ConfigError
 import eta.core.data as etad
+from eta.core.features import ImageFeaturizer
 import eta.core.learning as etal
 import eta.core.models as etam
 import eta.core.tfutils as etat
@@ -43,17 +44,6 @@ from nets import nets_factory
 logger = logging.getLogger(__name__)
 
 
-# Networks for which we provide default `output_name`s
-_DEFAULT_OUTPUT_NAMES = {
-    "resnet_v1_50": "resnet_v1_50/predictions/Reshape_1",
-    "resnet_v2_50": "resnet_v2_50/predictions/Reshape_1",
-    "mobilenet_v1_025": "MobilenetV1/Predictions/Reshape_1",
-    "mobilenet_v2": "MobilenetV2/Predictions/Reshape_1",
-    "inception_v3": "InceptionV3/Predictions/Reshape_1",
-    "inception_v4": "InceptionV4/Logits/Predictions",
-    "inception_resnet_v2": "InceptionResnetV2/Logits/Predictions"
-}
-
 # Networks for which we provide pre-processing implemented in numpy
 _NUMPY_PREPROC_FUNCTIONS = {
     "resnet_v1_50": etat.vgg_preprocessing_numpy,
@@ -62,6 +52,26 @@ _NUMPY_PREPROC_FUNCTIONS = {
     "inception_v3": etat.inception_preprocessing_numpy,
     "inception_v4": etat.inception_preprocessing_numpy,
     "inception_resnet_v2": etat.inception_preprocessing_numpy,
+}
+
+# Networks for which we provicde default `features_name`s
+_DEFAULT_FEATURES_NAMES = {
+    "resnet_v1_50": "resnet_v1_50/pool5",
+    "resnet_v2_50": "resnet_v2_50/pool5",
+    "mobilenet_v2": "MobilenetV2/Logits/AvgPool",
+    "inception_v4": "InceptionV4/Logits/PreLogitsFlatten/flatten",
+    "inception_resnet_v2": "InceptionResnetV2/Logits/Dropout/Identity",
+}
+
+# Networks for which we provide default `output_name`s
+_DEFAULT_OUTPUT_NAMES = {
+    "resnet_v1_50": "resnet_v1_50/predictions/Reshape_1",
+    "resnet_v2_50": "resnet_v2_50/predictions/Reshape_1",
+    "mobilenet_v1_025": "MobilenetV1/Predictions/Reshape_1",
+    "mobilenet_v2": "MobilenetV2/Predictions/Reshape_1",
+    "inception_v3": "InceptionV3/Predictions/Reshape_1",
+    "inception_v4": "InceptionV4/Logits/Predictions",
+    "inception_resnet_v2": "InceptionResnetV2/Logits/Predictions",
 }
 
 
@@ -90,12 +100,16 @@ class TFSlimClassifierConfig(Config, etal.HasDefaultDeploymentConfig):
         preprocessing_fcn: the fully-qualified name of a pre-processing
             function to use. If omitted, the default pre-processing for the
             specified network architecture is used
-        input_name: the name of the graph node to use as input. If omitted,
-            the name "input" is used
-        output_name: the name of the graph node to use as output. If omitted,
-            the `_DEFAULT_OUTPUT_NAMES` is checked for a default value to use
+        input_name: the name of the `tf.Operation` to use as input. If omitted,
+            the default value "input" is used
+        features_name: the name of the `tf.Operation` to use to extract
+            features for predictions. If omitted, the default value is loaded
+            from `_DEFAULT_FEATURES_NAMES`
+        output_name: the name of the `tf.Operation` to use as output. If
+            omitted, the default value is loaded from `_DEFAULT_OUTPUT_NAMES`
         confidence_thresh: a confidence threshold to apply to candidate
             predictions
+        generate_features: whether to generate features for predictions
     '''
 
     def __init__(self, d):
@@ -113,9 +127,13 @@ class TFSlimClassifierConfig(Config, etal.HasDefaultDeploymentConfig):
         self.preprocessing_fcn = self.parse_string(
             d, "preprocessing_fcn", default=None)
         self.input_name = self.parse_string(d, "input_name", default="input")
+        self.features_name = self.parse_string(
+            d, "features_name", default=None)
         self.output_name = self.parse_string(d, "output_name", default=None)
         self.confidence_thresh = self.parse_number(
             d, "confidence_thresh", default=None)
+        self.generate_features = self.parse_bool(
+            d, "generate_features", default=False)
 
         self._validate()
 
@@ -125,7 +143,8 @@ class TFSlimClassifierConfig(Config, etal.HasDefaultDeploymentConfig):
                 "Either `model_name` or `model_path` must be provided")
 
 
-class TFSlimClassifier(etal.ImageClassifier, etat.UsesTFSession):
+class TFSlimClassifier(
+        etal.ImageClassifier, etal.FeaturizingClassifier, etat.UsesTFSession):
     '''Interface for the TF-Slim image classification library at
     https://github.com/tensorflow/models/tree/master/research/slim.
 
@@ -145,14 +164,17 @@ class TFSlimClassifier(etal.ImageClassifier, etat.UsesTFSession):
         self.config = config
         etat.UsesTFSession.__init__(self)
 
-        if self.config.model_name:
+        # Get path to model
+        if self.config.model_path:
+            model_path = self.config.model_path
+        else:
             # Downloads the published model, if necessary
             model_path = etam.download_model(self.config.model_name)
-        else:
-            model_path = self.config.model_path
 
-        # Load graph
-        self._graph = self._build_graph(model_path)
+        # Load model
+        logger.info("Loading graph from '%s'", model_path)
+        self._prefix = "main"
+        self._graph = etat.load_graph(model_path, prefix=self._prefix)
         self._sess = self.make_tf_session(graph=self._graph)
 
         # Load labels map
@@ -164,22 +186,34 @@ class TFSlimClassifier(etal.ImageClassifier, etat.UsesTFSession):
             network_name, num_classes=len(self.labels_map), is_training=False)
         self.img_size = network_fn.default_image_size
 
-        # Parse input name
-        self.input_name = self.config.input_name
+        # Get input operation
         self._input_op = self._graph.get_operation_by_name(
-            "prefix/" + self.input_name)
+            self._prefix + "/" + self.config.input_name)
 
-        # Parse output name
-        if self.config.output_name:
-            self.output_name = self.config.output_name
+        # Get feature operation, if necessary
+        features_name = None
+        if self.config.generate_features:
+            if self.config.features_name:
+                features_name = self.config.features_name
+            elif network_name in _DEFAULT_FEATURES_NAMES:
+                features_name = _DEFAULT_FEATURES_NAMES[network_name]
+        if features_name is not None:
+            self._features_op = self._graph.get_operation_by_name(
+                self._prefix + "/" + features_name)
         else:
-            self.output_name = _DEFAULT_OUTPUT_NAMES.get(network_name, None)
-            if self.output_name is None:
+            self._features_op = None
+
+        # Get output operation
+        if self.config.output_name:
+            output_name = self.config.output_name
+        else:
+            output_name = _DEFAULT_OUTPUT_NAMES.get(network_name, None)
+            if output_name is None:
                 raise ValueError(
                     "`output_name` was not provided and network `%s` was not "
                     "found in default outputs map" % network_name)
         self._output_op = self._graph.get_operation_by_name(
-            "prefix/" + self.output_name)
+            self._prefix + "/" + output_name)
 
         # Setup pre-processing
         self._preprocessing_fcn = None
@@ -187,11 +221,47 @@ class TFSlimClassifier(etal.ImageClassifier, etat.UsesTFSession):
         self.preprocessing_fcn = self._make_preprocessing_fcn(
             network_name, self.config.preprocessing_fcn)
 
+        # Feature vector for the last prediction
+        self._last_features = None
+
     def __enter__(self):
         return self
 
     def __exit__(self, *args):
         self.close()
+
+    @property
+    def generates_features(self):
+        '''Whether this classifier generates features for its predictions.'''
+        return self._features_op is not None
+
+    @property
+    def features_dim(self):
+        '''The dimension of the features extracted by this classifier, or None
+        if it cannot generate features.
+        '''
+        if not self.generates_features:
+            return None
+
+        dim = self._features_op.outputs[0].get_shape().as_list()[-1]
+        if dim is None:
+            logger.warning(
+                "Unable to statically get feature dimension; returning None")
+
+        return dim
+
+    def get_features(self):
+        '''Gets the features generated by the classifier from its last call to
+        `predict()`.
+
+        Returns:
+            the feature vector, or None if the classifier has not (or cannot)
+                generate features
+        '''
+        if not self.generates_features:
+            return None
+
+        return self._last_features
 
     def predict(self, img):
         '''Peforms prediction on the given image.
@@ -203,29 +273,27 @@ class TFSlimClassifier(etal.ImageClassifier, etat.UsesTFSession):
             an `eta.core.data.AttributeContainer` instance containing the
                 predictions
         '''
-        # Perform pre-processing
-        network_inputs = self.preprocessing_fcn([img])
+        if self.generates_features:
+            probs, fvec = self._evaluate(
+                img, [self._output_op, self._features_op])
+            self._last_features = fvec
+        else:
+            probs = self._evaluate(img, [self._output_op])[0]
 
-        probs = self._sess.run(
-            self._output_op.outputs[0],
-            {self._input_op.outputs[0]: network_inputs})
+        return self._parse_prediction(probs)
 
-        probs = probs[0, :]
+    def _evaluate(self, img, ops):
+        imgs = self.preprocessing_fcn([img])
+        in_tensor = self._input_op.outputs[0]
+        out_tensors = [op.outputs[0] for op in ops]
+        results = self._sess.run(out_tensors, feed_dict={in_tensor: imgs})
+        return map(np.squeeze, results)
+
+    def _parse_prediction(self, probs):
         idx = np.argmax(probs)
         label = self.labels_map[idx]
         confidence = probs[idx]
-
         return self._package_attr(label, confidence)
-
-    @staticmethod
-    def _build_graph(model_path):
-        graph = tf.Graph()
-        with graph.as_default():
-            graph_def = tf.GraphDef()
-            with tf.gfile.GFile(model_path, "rb") as f:
-                graph_def.ParseFromString(f.read())
-                tf.import_graph_def(graph_def, name="prefix")
-        return graph
 
     def _make_preprocessing_fcn(self, network_name, preprocessing_fcn):
         # Use user-specified pre-processing, if provided
@@ -280,10 +348,69 @@ class TFSlimClassifier(etal.ImageClassifier, etat.UsesTFSession):
         return attrs
 
 
+class TFSlimFeaturizerConfig(TFSlimClassifierConfig):
+    '''Configuration settings for a TFSlimFeaturizer.'''
+
+    def __init__(self, d):
+        # Featurizers always need to generate features!
+        d["generate_features"] = True
+
+        super(TFSlimFeaturizerConfig, self).__init__(d)
+
+
+class TFSlimFeaturizer(ImageFeaturizer):
+    '''Featurizer that embeds images into the feature space of a TF-Slim
+    classifier.
+    '''
+
+    def __init__(self, config):
+        '''Creates a TFSlimFeaturizer instance.
+
+        Args:
+            config: a TFSlimFeaturizer instance
+        '''
+        super(TFSlimFeaturizer, self).__init__()
+        self.config = config
+        self.validate(self.config)
+        self._classifier = None
+
+    def dim(self):
+        '''The dimension of the features extracted by this Featurizer.'''
+        if self._classifier is None:
+            with self:
+                return self._classifier.features_dim
+
+        return self._classifier.features_dim
+
+    def _start(self):
+        '''Starts a TensorFlow session and loads the network.'''
+        if self._classifier is None:
+            self._classifier = TFSlimClassifier(self.config)
+            self._classifier.__enter__()
+
+    def _stop(self):
+        '''Closes the TensorFlow session and frees up the network.'''
+        if self._classifier:
+            self._classifier.__exit__()
+            self._classifier = None
+
+    def _featurize(self, img):
+        '''Featurizes the input image.
+
+        Args:
+            img: the input image
+
+        Returns:
+            the feature vector (a 1D array)
+        '''
+        self._classifier.predict(img)
+        return self._classifier.get_features()
+
+
 def export_frozen_inference_graph(
         checkpoint_path, network_name, output_path, num_classes=None,
         labels_map_path=None, output_name=None):
-    '''Exports the given TF-Slim model checkpoint as a frozen inference graph
+    '''Exports the given TF-Slim checkpoint as a frozen inference graph
     suitable for running inference.
 
     Either `num_classes` or `labels_map_path` must be provided.
@@ -298,8 +425,8 @@ def export_frozen_inference_graph(
         labels_map_path: the path to the labels map for the classifier; used to
             determine the number of output classes. Must be provided if
             `num_classes` is not provided
-        output_name: the name of the output node from which to extract
-            predictions. By default, this value is loaded from
+        output_name: the name of the `tf.Operation` from which to extract the
+            output predictions. By default, this value is loaded from
             `_DEFAULT_OUTPUT_NAMES`
     '''
     if num_classes is None:
@@ -307,8 +434,8 @@ def export_frozen_inference_graph(
             raise ValueError(
                 "Must provide a `labels_map_path` when `num_classes` is not "
                 "specified")
-        else:
-            num_classes = len(etal.load_labels_map(labels_map_path))
+
+        num_classes = len(etal.load_labels_map(labels_map_path))
 
     output_name = _DEFAULT_OUTPUT_NAMES.get(network_name, None)
     if output_name is None:

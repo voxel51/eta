@@ -1,26 +1,6 @@
 {
     "models": [
         {
-            "base_name": "faster-rcnn-inception-resnet-atrous-v2-coco",
-            "base_filename": "faster-rcnn-inception-resnet-atrous-v2-coco.pb",
-            "version": null,
-            "description": "A Faster-RCNN Atrous Inception ResNet object detector trained on COCO",
-            "manager": {
-                "type": "eta.core.models.ETAModelManager",
-                "config": {
-                    "google_drive_id": "1tbDgXKYWBKazY6U6whRHhR4OsxZS9LOP"
-                }
-            },
-            "default_deployment_config_dict": {
-                "type": "eta.detectors.TFModelsDetector",
-                "config": {
-                    "model_name": "faster-rcnn-inception-resnet-atrous-v2-coco",
-                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_label_map.pbtxt"
-                }
-            },
-            "date_created": "2018-12-23 14:37:38"
-        },
-        {
             "base_name": "faster-rcnn-inception-v2-coco",
             "base_filename": "faster-rcnn-inception-v2-coco.pb",
             "version": null,
@@ -38,7 +18,7 @@
                     "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_label_map.pbtxt"
                 }
             },
-            "date_created": "2019-04-11 13:30:53"
+            "date_created": "2019-12-17 08:25:51"
         },
         {
             "base_name": "faster-rcnn-resnet50-coco",
@@ -58,7 +38,7 @@
                     "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_label_map.pbtxt"
                 }
             },
-            "date_created": "2019-04-11 13:30:53"
+            "date_created": "2019-12-17 08:25:51"
         },
         {
             "base_name": "faster-rcnn-resnet50-lowproposals-coco",
@@ -78,7 +58,7 @@
                     "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_label_map.pbtxt"
                 }
             },
-            "date_created": "2019-04-11 12:56:53"
+            "date_created": "2019-12-17 08:25:51"
         },
         {
             "base_name": "faster-rcnn-resnet101-coco",
@@ -98,7 +78,67 @@
                     "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_label_map.pbtxt"
                 }
             },
-            "date_created": "2018-12-23 14:37:42"
+            "date_created": "2019-12-17 08:25:51"
+        },
+        {
+            "base_name": "faster-rcnn-resnet101-lowproposals-coco",
+            "base_filename": "faster-rcnn-resnet101-lowproposals-coco.pb",
+            "version": null,
+            "description": "A Faster-RCNN low-proposal object detector with ResNet101 backbone trained on COCO",
+            "manager": {
+                "type": "eta.core.models.ETAModelManager",
+                "config": {
+                    "google_drive_id": "1poAw-ZTwEXNfP3NTqlpBxGcQUR5Y7A7D"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "eta.detectors.TFModelsDetector",
+                "config": {
+                    "model_name": "faster-rcnn-resnet101-lowproposals-coco",
+                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_label_map.pbtxt"
+                }
+            },
+            "date_created": "2019-12-17 08:25:51"
+        },
+        {
+            "base_name": "faster-rcnn-inception-resnet-atrous-v2-coco",
+            "base_filename": "faster-rcnn-inception-resnet-atrous-v2-coco.pb",
+            "version": null,
+            "description": "A Faster-RCNN Atrous Inception ResNet object detector trained on COCO",
+            "manager": {
+                "type": "eta.core.models.ETAModelManager",
+                "config": {
+                    "google_drive_id": "1tbDgXKYWBKazY6U6whRHhR4OsxZS9LOP"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "eta.detectors.TFModelsDetector",
+                "config": {
+                    "model_name": "faster-rcnn-inception-resnet-atrous-v2-coco",
+                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_label_map.pbtxt"
+                }
+            },
+            "date_created": "2019-12-17 08:25:51"
+        },
+        {
+            "base_name": "faster-rcnn-inception-resnet-atrous-v2-lowproposals-coco",
+            "base_filename": "faster-rcnn-inception-resnet-atrous-v2-lowproposals-coco.pb",
+            "version": null,
+            "description": "A Faster-RCNN low-proposal Atrous Inception ResNet object detector trained on COCO",
+            "manager": {
+                "type": "eta.core.models.ETAModelManager",
+                "config": {
+                    "google_drive_id": "17bR21aOsS8AoxMuGjTbHIUaXWYo7sz9X"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "eta.detectors.TFModelsDetector",
+                "config": {
+                    "model_name": "faster-rcnn-inception-resnet-atrous-v2-lowproposals-coco",
+                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_label_map.pbtxt"
+                }
+            },
+            "date_created": "2019-12-17 08:25:51"
         },
         {
             "base_name": "inception-resnet-v2-imagenet",

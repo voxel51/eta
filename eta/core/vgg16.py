@@ -519,11 +519,12 @@ class VGG16Featurizer(ImageFeaturizer):
         '''Starts a TensorFlow session and loads the network.'''
         if self.vgg16 is None:
             self.vgg16 = VGG16(self.config)
+            self.vgg16.__enter__()
 
     def _stop(self):
         '''Closes the TensorFlow session and frees up the network.'''
         if self.vgg16:
-            self.vgg16.close()
+            self.vgg16.__exit__()
             self.vgg16 = None
 
     def _featurize(self, img):
