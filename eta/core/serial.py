@@ -1614,7 +1614,7 @@ class Container(Serializable):
         return self.__class__()
 
     def add(self, element):
-        '''Adds an element to the container.
+        '''Appends an element to the container.
 
         Args:
             element: an instance of `_ELE_CLS`
@@ -1622,7 +1622,7 @@ class Container(Serializable):
         self.__elements__.append(element)
 
     def add_container(self, container):
-        '''Adds the elements in the given container to this container.
+        '''Appends the elements in the given container to this container.
 
         Args:
             container: a Container instance
@@ -1630,7 +1630,7 @@ class Container(Serializable):
         self.__elements__.extend(container.__elements__)
 
     def add_iterable(self, elements):
-        '''Adds the elements in the given iterable to the container.
+        '''Appends the elements in the given iterable to the container.
 
         Args:
             elements: an iterable of `_ELE_CLS` objects
@@ -1644,6 +1644,8 @@ class Container(Serializable):
     def filter_elements(self, filters, match=any):
         '''Removes elements that don't match the given filters from the
         container.
+
+        The order of the remaining elements in the container are preserved.
 
         Args:
             filters: a list of functions that accept elements and return
@@ -1659,6 +1661,8 @@ class Container(Serializable):
     def delete_inds(self, inds):
         '''Deletes the elements from the container with the given indices.
 
+        The order of the remaining elements in the container are preserved.
+
         Args:
             inds: an iterable of indices of the elements to delete
         '''
@@ -1667,6 +1671,8 @@ class Container(Serializable):
 
     def keep_inds(self, inds):
         '''Keeps only the elements in the container with the given indices.
+
+        The order of the remaining elements in the container are preserved.
 
         Args:
             inds: an iterable of indices of the elements to keep
@@ -1678,7 +1684,8 @@ class Container(Serializable):
         '''Creates a new container having only the elements with the given
         indices.
 
-        The elements are passed by reference, not copied.
+        The elements are passed by reference, not copied. The order of the
+        elements in the returned container matches the input indices.
 
         Args:
             inds: an iterable of indices of the elements to keep
@@ -1712,7 +1719,8 @@ class Container(Serializable):
     def get_matches(self, filters, match=any):
         '''Gets elements matching the given filters.
 
-        The elements are passed by reference, not copied.
+        The elements are passed by reference, not copied. The order of the
+        elements in the input container is preserved.
 
         Args:
             filters: a list of functions that accept elements and return
@@ -1732,6 +1740,8 @@ class Container(Serializable):
 
     def get_matching_inds(self, filters, match=any):
         '''Gets the indices of the elements matching the given filters.
+
+        The indices are returned in ascending order.
 
         Args:
             filters: a list of functions that accept elements and return
@@ -1983,7 +1993,7 @@ class BigContainer(BigMixin, Container):
         return etau.get_class(cls_name)
 
     def add_by_path(self, path):
-        '''Add an element via its path on disk.
+        '''Appends an element to the container via its path on disk.
 
         No validation is done. Subclasses may choose to implement this method
         for suchs purposes, etc.
@@ -2007,7 +2017,7 @@ class BigContainer(BigMixin, Container):
         return self.container_cls()
 
     def add(self, element):
-        '''Adds an element to the container.
+        '''Appends an element to the container.
 
         Args:
             element: an instance of `_ELE_CLS`
@@ -2016,7 +2026,7 @@ class BigContainer(BigMixin, Container):
         self[-1] = element
 
     def add_container(self, container):
-        '''Adds the given container's elements to the container.
+        '''Appends the given container's elements to the container.
 
         Args:
             container: a Container of `_ELE_CLS` objects
@@ -2029,7 +2039,7 @@ class BigContainer(BigMixin, Container):
             self.add_iterable(container)
 
     def add_iterable(self, elements):
-        '''Adds the elements in the given iterable to the container.
+        '''Appends the elements in the given iterable to the container.
 
         Args:
             elements: an iterable of `_ELE_CLS` objects
@@ -2040,6 +2050,8 @@ class BigContainer(BigMixin, Container):
     def filter_elements(self, filters, match=any):
         '''Removes elements that don't match the given filters from the
         container.
+
+        The order of the remaining elements in the container is preserved.
 
         Args:
             filters: a list of functions that accept elements and return
@@ -2054,6 +2066,8 @@ class BigContainer(BigMixin, Container):
     def keep_inds(self, inds):
         '''Keeps only the elements in the container with the given indices.
 
+        The order of the remaining elements in the container is preserved.
+
         Args:
             inds: an iterable of indices of the elements to keep
         '''
@@ -2061,6 +2075,9 @@ class BigContainer(BigMixin, Container):
 
     def extract_inds(self, inds, big=True, backing_dir=None):
         '''Returns a container having only the elements with the given indices.
+
+        The order of the elements in the returned container matches the input
+        indices.
 
         Args:
             inds: a list of indices of the elements to keep
@@ -2088,6 +2105,8 @@ class BigContainer(BigMixin, Container):
 
     def get_matches(self, filters, match=any, big=True, backing_dir=None):
         '''Returns a container with elements matching the given filters.
+
+        The order of the elements in the container is preserved.
 
         Args:
             filters: a list of functions that accept elements and return
