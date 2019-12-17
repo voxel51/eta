@@ -506,8 +506,14 @@ class PipelinesCommand(Command):
         # List all available pipelines
         eta pipelines --list
 
+        # Search for pipelines whose names contain the given string
+        eta pipelines --search <search-str>
+
         # Find metadata file for pipeline
         eta pipelines --find <pipeline-name>
+
+        # Show metadata for pipeline
+        eta pipelines --info <pipeline-name>
 
         # Generate block diagram for pipeline
         eta pipelines --diagram <pipeline-name>
@@ -519,8 +525,14 @@ class PipelinesCommand(Command):
             "-l", "--list", action="store_true",
             help="list all ETA pipelines on the current search path")
         parser.add_argument(
+            "-s", "--search", metavar="NAME",
+            help="search for pipelines whose names contain the given string")
+        parser.add_argument(
             "-f", "--find", metavar="NAME",
             help="find metadata file for pipeline with the given name")
+        parser.add_argument(
+            "-i", "--info", metavar="NAME",
+            help="show metadata for pipeline with the given name")
         parser.add_argument(
             "-d", "--diagram", metavar="NAME",
             help="generate block diagram for pipeline with the given name")
@@ -531,9 +543,19 @@ class PipelinesCommand(Command):
             pipelines = etap.find_all_metadata()
             logger.info(_render_names_in_dirs_str(pipelines))
 
+        if args.search:
+            pipelines = etap.find_all_metadata()
+            pipelines = {
+                k: v for k, v in iteritems(pipelines) if args.search in k}
+            logger.info(_render_names_in_dirs_str(pipelines))
+
         if args.find:
             metadata_path = etap.find_metadata(args.find)
             logger.info(metadata_path)
+
+        if args.info:
+            metadata = etap.load_metadata(args.info)
+            logger.info(metadata.config)
 
         if args.diagram:
             metadata = etap.load_metadata(args.diagram)
