@@ -316,8 +316,14 @@ class ModelsCommand(Command):
         # List all available models
         eta models --list
 
+        # Search for models whose names contains the given string
+        eta models --search <search-str>
+
         # Find model
         eta models --find <model-name>
+
+        # Print info about model
+        eta models --info <model-name>
 
         # Download model
         eta models --download <model-name>
@@ -341,13 +347,19 @@ class ModelsCommand(Command):
             "-l", "--list", action="store_true",
             help="list all published models on the current search path")
         parser.add_argument(
+            "-s", "--search", metavar="SEARCH",
+            help="search for models whose names contain the given string")
+        parser.add_argument(
             "-f", "--find", metavar="NAME",
             help="find the model with the given name")
+        parser.add_argument(
+            "-i", "--info", metavar="NAME",
+            help="get info about the model with the given name")
         parser.add_argument(
             "-d", "--download", metavar="NAME",
             help="download the model with the given name")
         parser.add_argument(
-            "-i", "--init", metavar="DIR",
+            "--init", metavar="DIR",
             help="initialize the given models directory")
         parser.add_argument(
             "--flush", metavar="NAME",
@@ -363,9 +375,18 @@ class ModelsCommand(Command):
             models = etamode.find_all_models()
             logger.info(_render_names_in_dirs_str(models))
 
+        if args.search:
+            models = etamode.find_all_models()
+            models = {k: v for k, v in iteritems(models) if args.search in k}
+            logger.info(_render_names_in_dirs_str(models))
+
         if args.find:
             model_path = etamode.find_model(args.find)
             logger.info(model_path)
+
+        if args.info:
+            model = etamode.get_model(args.info)
+            logger.info(model)
 
         if args.download:
             etamode.download_model(args.download)
