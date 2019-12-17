@@ -259,7 +259,10 @@ def _append_index_if_necessary(dataset, data_path, labels_path):
         if match is not None:
             existing_indices.append(int(match.group(1)))
 
-    new_index = max(existing_indices, default=0) + 1
+    if existing_indices:
+        new_index = max(existing_indices) + 1
+    else:
+        new_index = 1
     return (
         os.path.join(os.path.dirname(data_path),
                      "%s-%d%s" % (data_basename, new_index, data_ext)),
