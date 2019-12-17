@@ -411,8 +411,17 @@ class ModulesCommand(Command):
         # List all available modules
         eta modules --list
 
+        # Search for modules whose names contain the given string
+        eta modules --search <search-str>
+
         # Find metadata file for module
         eta modules --find <module-name>
+
+        # Find executable file for module
+        eta modules --find-exe <module-name>
+
+        # Show metadata for module
+        eta modules --info <module-name>
 
         # Generate block diagram for module
         eta modules --diagram <module-name>
@@ -430,8 +439,17 @@ class ModulesCommand(Command):
             "-l", "--list", action="store_true",
             help="list all modules on search path")
         parser.add_argument(
+            "-s", "--search", metavar="SEARCH",
+            help="search for modules whose names contain the given string")
+        parser.add_argument(
             "-f", "--find", metavar="NAME",
             help="find metadata file for module with the given name")
+        parser.add_argument(
+            "-e", "--find-exe", metavar="NAME",
+            help="find the module executable for module with the given name")
+        parser.add_argument(
+            "-i", "--info", metavar="NAME",
+            help="show metadata for module with the given name")
         parser.add_argument(
             "-d", "--diagram", metavar="NAME",
             help="generate block diagram for module with the given name")
@@ -448,9 +466,22 @@ class ModulesCommand(Command):
             modules = etamodu.find_all_metadata()
             logger.info(_render_names_in_dirs_str(modules))
 
+        if args.search:
+            modules = etamodu.find_all_metadata()
+            modules = {k: v for k, v in iteritems(modules) if args.search in k}
+            logger.info(_render_names_in_dirs_str(modules))
+
         if args.find:
             metadata_path = etamodu.find_metadata(args.find)
             logger.info(metadata_path)
+
+        if args.find_exe:
+            exe_path = etamodu.find_exe(args.find_exe)
+            logger.info(exe_path)
+
+        if args.info:
+            metadata = etamodu.load_metadata(args.info)
+            logger.info(metadata.config)
 
         if args.diagram:
             metadata = etamodu.load_metadata(args.diagram)
