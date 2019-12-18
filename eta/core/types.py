@@ -672,6 +672,38 @@ class DualFileSet(AbstractData):
             return False
 
 
+class FileSetSequence(AbstractData):
+    '''The abstract data type describing a collection of files indexed by one
+    string parameter and one numeric parameter.
+    '''
+
+    @staticmethod
+    def is_valid_path(path):
+        if not String.is_valid_value(path):
+            return False
+        try:
+            _ = path % ("a", 1)
+            return True
+        except TypeError:
+            return False
+
+
+class FileSequenceSet(AbstractData):
+    '''The abstract data type describing a collection of files indexed by one
+    numeric parameter and one string parameter.
+    '''
+
+    @staticmethod
+    def is_valid_path(path):
+        if not String.is_valid_value(path):
+            return False
+        try:
+            _ = path % (1, "a")
+            return True
+        except TypeError:
+            return False
+
+
 class Directory(ConcreteData):
     '''The base type for directories that contain data.
 
@@ -871,26 +903,6 @@ class NpzFile(File, ConcreteData):
     @staticmethod
     def is_valid_path(path):
         return File.is_valid_path(path) and etau.has_extension(path, ".npz")
-
-
-class NpzFileSequence(FileSequence, ConcreteData):
-    '''A collection of .npz files indexed by one numeric parameter.
-
-    Examples:
-        /path/to/data/%05d.npz
-    '''
-
-    @staticmethod
-    def gen_path(basedir, params):
-        return os.path.join(
-            basedir, "{name}", "{idx}.npz").format(**params)
-
-    @staticmethod
-    def is_valid_path(path):
-        return (
-            FileSequence.is_valid_path(path) and
-            etau.has_extension(path, ".npz")
-        )
 
 
 class NpzFileDirectory(Directory):
@@ -1243,13 +1255,30 @@ class VideoSetLabels(JSONFile):
     pass
 
 
-class ImageFeature(NpzFile):
+class ImageFeature(File):
     '''A feature vector for an image.
 
     Examples:
         /path/to/feature.npz
     '''
     pass
+
+
+class ImageObjectsFeatures(FileSequence, ConcreteData):
+    '''A sequence of features for the objects in an image indexed by one
+    numeric parameter.
+
+    Examples:
+        /path/to/features/%05d.npz
+    '''
+
+    @staticmethod
+    def gen_path(basedir, params):
+        return os.path.join(basedir, "{name}", "{idx}.npz").format(**params)
+
+    @staticmethod
+    def is_valid_path(path):
+        return FileSequence.is_valid_path(path)
 
 
 class ImageSetFeatures(FileSet, ConcreteData):
@@ -1262,15 +1291,28 @@ class ImageSetFeatures(FileSet, ConcreteData):
 
     @staticmethod
     def gen_path(basedir, params):
-        return os.path.join(
-            basedir, "{name}", "%s.npz").format(**params)
+        return os.path.join(basedir, "{name}", "%s.npz").format(**params)
 
     @staticmethod
     def is_valid_path(path):
-        return (
-            FileSet.is_valid_path(path) and
-            etau.has_extension(path, ".npz")
-        )
+        return FileSet.is_valid_path(path)
+
+
+class ImageSetObjectsFeatures(FileSetSequence, ConcreteData):
+    '''A collection of features for the objects in a set of images indexed by
+    one string parameter and one index parameter.
+
+    Examples:
+        /path/to/features/%s-%05d.npz
+    '''
+
+    @staticmethod
+    def gen_path(basedir, params):
+        return os.path.join(basedir, "{name}", "%s-{idx}.npz").format(**params)
+
+    @staticmethod
+    def is_valid_path(path):
+        return FileSetSequence.is_valid_path(path)
 
 
 class VideoFramesFeatures(FileSequence, ConcreteData):
@@ -1283,15 +1325,11 @@ class VideoFramesFeatures(FileSequence, ConcreteData):
 
     @staticmethod
     def gen_path(basedir, params):
-        return os.path.join(
-            basedir, "{name}", "{idx}.npz").format(**params)
+        return os.path.join(basedir, "{name}", "{idx}.npz").format(**params)
 
     @staticmethod
     def is_valid_path(path):
-        return (
-            FileSequence.is_valid_path(path) and
-            etau.has_extension(path, ".npz")
-        )
+        return FileSequence.is_valid_path(path)
 
 
 class VideoObjectsFeatures(DualFileSequence, ConcreteData):
@@ -1309,10 +1347,7 @@ class VideoObjectsFeatures(DualFileSequence, ConcreteData):
 
     @staticmethod
     def is_valid_path(path):
-        return (
-            DualFileSequence.is_valid_path(path) and
-            etau.has_extension(path, ".npz")
-        )
+        return DualFileSequence.is_valid_path(path)
 
 
 class VideoDirectory(Directory):
@@ -1362,8 +1397,19 @@ class DualFileSetDirectory(Directory):
     pass
 
 
+class FileSetSequenceDirectory(Directory):
+    '''A directory containing a set of sequences of files indexed by one string
+    parameter and one numeric parameter.
+
+    Examples:
+        /path/to/dir
+    '''
+    pass
+
+
 class ImageSequenceDirectory(FileSequenceDirectory):
-    '''A directory containing a sequence of images.
+    '''A directory containing a sequence of images indexed by one numeric
+    parameter.
 
     Examples:
         /path/to/images
@@ -1410,9 +1456,29 @@ class DetectedObjectsSequenceDirectory(JSONSequenceDirectory):
     pass
 
 
+class ImageObjectsFeaturesDirectory(FileSequenceDirectory):
+    '''A directory containing features for the objects in an image indexed by
+    one numeric parameter.
+
+    Examples:
+        /path/to/features
+    '''
+    pass
+
+
 class ImageSetFeaturesDirectory(FileSetDirectory):
     '''A directory containing features for a set of images indexed by one
     string parameter.
+
+    Examples:
+        /path/to/features
+    '''
+    pass
+
+
+class ImageSetObjectsFeaturesDirectory(FileSetSequenceDirectory):
+    '''A directory containing features for the objects in a set of images
+    indexed by one string parameter and one numeric parameter.
 
     Examples:
         /path/to/features
