@@ -640,6 +640,38 @@ class DualFileSequence(AbstractData):
             return False
 
 
+class FileSet(AbstractData):
+    '''The abstract data type describing a collection of files indexed by one
+    string parameter.
+    '''
+
+    @staticmethod
+    def is_valid_path(path):
+        if not String.is_valid_value(path):
+            return False
+        try:
+            _ = path % "a"
+            return True
+        except TypeError:
+            return False
+
+
+class DualFileSet(AbstractData):
+    '''The abstract data type describing a collection of files indexed by two
+    string parameters.
+    '''
+
+    @staticmethod
+    def is_valid_path(path):
+        if not String.is_valid_value(path):
+            return False
+        try:
+            _ = path % ("a", "b")
+            return True
+        except TypeError:
+            return False
+
+
 class Directory(ConcreteData):
     '''The base type for directories that contain data.
 
@@ -1211,8 +1243,39 @@ class VideoSetLabels(JSONFile):
     pass
 
 
-class Features(FileSequence, ConcreteData):
-    '''A sequence of features indexed by one numeric parameter.
+class ImageFeature(NpzFile):
+    '''A feature vector for an image.
+
+    Examples:
+        /path/to/feature.npz
+    '''
+    pass
+
+
+class ImageSetFeatures(FileSet, ConcreteData):
+    '''A sequence of features for a set of images indexed by one string
+    parameter.
+
+    Examples:
+        /path/to/features/%s.npz
+    '''
+
+    @staticmethod
+    def gen_path(basedir, params):
+        return os.path.join(
+            basedir, "{name}", "%s.npz").format(**params)
+
+    @staticmethod
+    def is_valid_path(path):
+        return (
+            FileSet.is_valid_path(path) and
+            etau.has_extension(path, ".npz")
+        )
+
+
+class VideoFramesFeatures(FileSequence, ConcreteData):
+    '''A sequence of features for the frames of a video indexed by one numeric
+    parameter.
 
     Examples:
         /path/to/features/%05d.npz
@@ -1261,7 +1324,45 @@ class VideoDirectory(Directory):
     pass
 
 
-class ImageSequenceDirectory(Directory):
+class FileSequenceDirectory(Directory):
+    '''A directory containing a sequence of files indexed by one numeric
+    parameter.
+
+    Examples:
+        /path/to/dir
+    '''
+    pass
+
+
+class DualFileSequenceDirectory(Directory):
+    '''A directory containing a sequence of files indexed by two numeric
+    parameters.
+
+    Examples:
+        /path/to/dir
+    '''
+    pass
+
+
+class FileSetDirectory(Directory):
+    '''A directory containing a set of files indexed by one string parameter.
+
+    Examples:
+        /path/to/dir
+    '''
+    pass
+
+
+class DualFileSetDirectory(Directory):
+    '''A directory containing a set of files indexed by two string parameters.
+
+    Examples:
+        /path/to/dir
+    '''
+    pass
+
+
+class ImageSequenceDirectory(FileSequenceDirectory):
     '''A directory containing a sequence of images.
 
     Examples:
@@ -1270,7 +1371,7 @@ class ImageSequenceDirectory(Directory):
     pass
 
 
-class DualImageSequenceDirectory(Directory):
+class DualImageSequenceDirectory(DualFileSequenceDirectory):
     '''A directory containing a sequence of images indexed by two numeric
     parameters.
 
@@ -1281,7 +1382,7 @@ class DualImageSequenceDirectory(Directory):
 
 
 class JSONDirectory(Directory):
-    '''A directory containing a sequence of JSON files.
+    '''A directory of JSON files.
 
     Examples:
         /path/to/jsons
@@ -1289,8 +1390,19 @@ class JSONDirectory(Directory):
     pass
 
 
-class DetectedObjectsSequenceDirectory(JSONDirectory):
-    '''A directory containing a sequence of DetectedObjects JSON files.
+class JSONSequenceDirectory(FileSequenceDirectory, JSONDirectory):
+    '''A directory containing a sequence of JSON files indexed by one numeric
+    parameter.
+
+    Examples:
+        /path/to/jsons
+    '''
+    pass
+
+
+class DetectedObjectsSequenceDirectory(JSONSequenceDirectory):
+    '''A directory containing a sequence of DetectedObjects JSON files indexed
+    by one numeric parameter.
 
     Examples:
         /path/to/detected_objects
@@ -1298,7 +1410,27 @@ class DetectedObjectsSequenceDirectory(JSONDirectory):
     pass
 
 
-class VideoObjectsFeaturesDirectory(Directory):
+class ImageSetFeaturesDirectory(FileSetDirectory):
+    '''A directory containing features for a set of images indexed by one
+    string parameter.
+
+    Examples:
+        /path/to/features
+    '''
+    pass
+
+
+class VideoFramesFeaturesDirectory(FileSequenceDirectory):
+    '''A directory containing a sequence of features for the frames of a video
+    indexed by one numeric parameter.
+
+    Examples:
+        /path/to/features
+    '''
+    pass
+
+
+class VideoObjectsFeaturesDirectory(DualFileSequenceDirectory):
     '''A directory containing a sequence of features of objects-in-frames
     indexed by two numeric parameters.
 
@@ -1362,7 +1494,7 @@ class ZippedDualImageSequenceDirectory(ZippedDirectory):
 
 
 class ZippedJSONDirectory(ZippedDirectory):
-    '''A zipped directory containing JSON files.
+    '''A zipped directory of JSON files.
 
     Examples:
         /path/to/jsons.zip
@@ -1391,7 +1523,7 @@ class ZippedVideoObjectsFeaturesDirectory(ZippedDirectory):
 
 
 class DataRecordsDirectory(JSONDirectory):
-    '''A directory containing a sequence of DataRecords JSON files.
+    '''A directoryof DataRecords JSON files.
 
     Examples:
         /path/to/data_records_jsons
