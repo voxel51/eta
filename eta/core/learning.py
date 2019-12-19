@@ -153,9 +153,9 @@ class HasDefaultDeploymentConfig(object):
                 "Model '%s' has no default deployment config; returning the "
                 "input dict", model_name)
             return d
-        else:
-            logger.info(
-                "Loaded default deployment config for model '%s'", model_name)
+
+        logger.info(
+            "Loaded default deployment config for model '%s'", model_name)
 
         dd = deploy_config_dict["config"]
         dd.update(d)
