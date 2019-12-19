@@ -1255,7 +1255,7 @@ class VideoSetLabels(JSONFile):
     pass
 
 
-class ImageFeature(File):
+class ImageFeature(File, ConcreteData):
     '''A feature vector for an image.
 
     Examples:
