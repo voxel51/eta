@@ -15,11 +15,11 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
-import six
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+from glob import glob
 import logging
 import os
 import tempfile
@@ -372,6 +372,469 @@ class RandFeaturizer(ImageFeaturizer, VideoFramesFeaturizer, VideoFeaturizer):
 
     def _featurize(self, _):
         return np.random.rand(self._dim)
+
+
+class FeaturesHandler(object):
+    '''Base class for handling the reading and writing features to disk.
+
+    The features are stored on disk in `features_dir` in .npy format with the
+    following pattern:
+
+        `<features_dir>/<features_patt>`
+
+    where `features_patt` is a pattern like `%08d.npy`, `%s.npy`,
+    `%08d-%08d.npy`, `%s-%08d.npy`, etc. that defines how to construct the
+    filenames for the features.
+
+    FeaturesHandler also supports reading/writing sequences of features with
+    **1-based** indices.
+
+    Attributes:
+        features_dir: the backing directory for the features
+    '''
+
+    def __init__(self, features_dir, features_patt, glob_sequence_patt=None):
+        '''Initializes the base FeaturesHandler.
+
+        Args:
+            features_dir: the backing directory in which to read/write features
+            features_patt: the pattern to generate filenames for features
+            glob_sequence_patt: an optional glob pattern for matching a
+                sequence of features. If omitted, sequences of features cannot
+                be read or written
+        '''
+        self.features_dir = features_dir
+        self._features_patt = features_patt
+        self._glob_sequence_patt = glob_sequence_patt
+        etau.ensure_dir(self.features_dir)
+
+    def _load_feature(self, *args):
+        path = self._get_feature_path(*args)
+        try:
+            return self._load_feature_from_path(path)
+        except IOError:
+            raise FeatureNotFoundError(path)
+
+    def _load_features_sequence(self, *args):
+        paths = self._get_feature_sequence_paths(*args)
+        if not paths:
+            return None
+
+        v = self._load_feature_from_path(paths[0])
+        features = np.empty((len(paths), v.size))
+        features[0] = v
+        for idx, path in enumerate(paths[1:], 1):
+            features[idx] = self._load_feature_from_path(path)
+
+        return features
+
+    def _write_feature(self, v, *args):
+        path = self._get_feature_path(*args)
+        self._write_feature_to_path(v, path)
+
+    def _write_features_sequence(self, features, *args):
+        for idx, v in enumerate(features, 1):
+            self._write_feature(v, *args, idx)
+
+    def _get_feature_path(self, *args):
+        filename = self._features_patt % tuple(args)
+        return os.path.join(self.features_dir, filename)
+
+    def _get_feature_sequence_paths(self, *args):
+        filename_patt = self._glob_sequence_patt % tuple(args)
+        sequence_patt = os.path.join(self.features_dir, filename_patt)
+        return sorted(glob(sequence_patt))
+
+    @staticmethod
+    def _load_feature_from_path(path):
+        return np.load(path)
+
+    @staticmethod
+    def _write_feature_to_path(v, path):
+        np.save(path, v)
+
+
+class FeatureNotFoundError(IOError):
+    '''Exception raised when a feature is not found on disk.'''
+
+    def __init__(self, path):
+        super(FeatureNotFoundError, self).__init__(
+            "Feature not found at '%s'" % path)
+
+
+class ImageFeaturesHandler(FeaturesHandler):
+    '''Class that handles reading and writing features to disk corresponding
+    to an image.
+
+    The features are stored on disk in `features_dir` in .npy format with the
+    following pattern:
+
+        `<features_dir>/%s.npy`
+
+    where the string parameter holds the name of the image.
+
+    Attributes:
+        features_dir: the backing directory for the features
+    '''
+
+    FEATURES_PATT = "%s.npy"
+
+    def __init__(self, features_dir):
+        '''Creates a ImageFeaturesHandler instance.
+
+        Args:
+            features_dir: the backing directory in which to read/write features
+        '''
+        super(ImageFeaturesHandler, self).__init__(
+            features_dir, self.FEATURES_PATT)
+
+    def load_feature(self, image_name):
+        '''Load the feature for the given object.
+
+        Args:
+            image_name: the image name
+
+        Returns:
+            the feature vector
+
+        Raises:
+            FeatureNotFoundError: if the feature is not found on disk
+        '''
+        return self._load_feature(image_name)
+
+    def write_feature(self, v, image_name):
+        '''Writes the feature vector to disk.
+
+        Args:
+            v: the feature vector
+            image_name: the image name
+        '''
+        return self._write_feature(v, image_name)
+
+
+class ImageObjectsFeaturesHandler(FeaturesHandler):
+    '''Class that handles reading and writing features to disk corresponding to
+    objects in an image.
+
+    The features are stored on disk in `features_dir` in .npy format with the
+    following pattern:
+
+        `<features_dir>/%08d.npy`
+
+    where the numeric parameter holds the object number.
+
+    By convention, object numbers passed to this handler should be **1-based**
+    indices corresponding to the ordering of the objects in the corresponding
+    `eta.core.objects.DetectedObjectContainer` instance.
+
+    Attributes:
+        features_dir: the backing directory for the features
+    '''
+
+    FEATURES_PATT = "%08d.npy"
+
+    def __init__(self, features_dir):
+        '''Creates a ImageObjectsFeaturesHandler instance.
+
+        Args:
+            features_dir: the backing directory in which to read/write features
+        '''
+        super(ImageObjectsFeaturesHandler, self).__init__(
+            features_dir, self.FEATURES_PATT)
+
+    def load_feature(self, object_number):
+        '''Load the feature for the given object.
+
+        Args:
+            object_number: the object number
+
+        Returns:
+            the feature vector
+
+        Raises:
+            FeatureNotFoundError: if the feature is not found on disk
+        '''
+        return self._load_feature(object_number)
+
+    def write_feature(self, v, object_number):
+        '''Writes the feature vector to disk.
+
+        Args:
+            v: the feature vector
+            object_number: the object number
+        '''
+        return self._write_feature(v, object_number)
+
+
+class ImageSetFeaturesHandler(FeaturesHandler):
+    '''Class that handles reading and writing features to disk corresponding to
+    images in a set.
+
+    The features are stored on disk in `features_dir` in .npy format with the
+    following pattern:
+
+        `<features_dir>/%s.npy`
+
+    where the string parameter holds the name of the image.
+
+    By convention, image name strings passed to this handler should correspond
+    to the keys of the images in the corresponding
+    `eta.core.image.ImageSetLabels` instance.
+
+    Attributes:
+        features_dir: the backing directory for the features
+    '''
+
+    FEATURES_PATT = "%s.npy"
+
+    def __init__(self, features_dir):
+        '''Creates a ImageSetFeaturesHandler instance.
+
+        Args:
+            features_dir: the backing directory in which to read/write features
+        '''
+        super(ImageSetFeaturesHandler, self).__init__(
+            features_dir, self.FEATURES_PATT)
+
+    def load_feature(self, image_name):
+        '''Load the feature for the given image.
+
+        Args:
+            image_name: the image name
+
+        Returns:
+            the feature vector
+
+        Raises:
+            FeatureNotFoundError: if the feature is not found on disk
+        '''
+        return self._load_feature(image_name)
+
+    def write_feature(self, v, image_name):
+        '''Writes the feature vector to disk.
+
+        Args:
+            v: the feature vector
+            image_name: the image name
+        '''
+        return self._write_feature(v, image_name)
+
+
+class ImageSetObjectsFeaturesHandler(FeaturesHandler):
+    '''Class that handles reading and writing features to disk corresponding to
+    detected objects in a set of images.
+
+    The features are stored on disk in `features_dir` in .npy format with the
+    following pattern:
+
+        `<features_dir>/%s-%08d.npy`
+
+    where the string parameter holds the name of the image, and the numeric
+    parameter holds the object number.
+
+    By convention, image name strings passed to this handler should correspond
+    to the keys of the images in the corresponding
+    `eta.core.image.ImageSetLabels` instance, and object numbers passed to this
+    handler should be **1-based** indices corresponding to the ordering of the
+    objects in the corresponding `eta.core.objects.DetectedObjectContainer`
+    instance.
+
+    Attributes:
+        features_dir: the backing directory for the features
+    '''
+
+    FEATURES_PATT = "%s-%08d.npy"
+    IMAGE_OBJECTS_GLOB_PATT = "%s-*.npy"
+
+    def __init__(self, features_dir):
+        '''Creates a ImageSetObjectsFeaturesHandler instance.
+
+        Args:
+            features_dir: the backing directory in which to read/write features
+        '''
+        super(ImageSetObjectsFeaturesHandler, self).__init__(
+            features_dir, self.FEATURES_PATT,
+            glob_sequence_patt=self.IMAGE_OBJECTS_GLOB_PATT)
+
+    def load_feature(self, image_name, object_number):
+        '''Load the feature for the given object from the given image.
+
+        Args:
+            image_name: the image name
+            object_number: the object number
+
+        Returns:
+            the feature vector
+
+        Raises:
+            FeatureNotFoundError: if the feature is not found on disk
+        '''
+        return self._load_feature(image_name, object_number)
+
+    def load_features(self, image_name):
+        '''Loads the features for all objects in the given image.
+
+        Args:
+            image_name: the image name
+
+        Returns:
+            an `num_objects x dim` array of features
+
+        Raises:
+            FeatureNotFoundError: if a feature is not found on disk
+        '''
+        return self._load_features_sequence(image_name)
+
+    def write_feature(self, v, image_name, object_number):
+        '''Writes the feature vector to disk.
+
+        Args:
+            v: the feature vector
+            image_name: the image name
+            object_number: the object number
+        '''
+        return self._write_feature(v, image_name, object_number)
+
+    def write_features(self, features, image_name):
+        '''Writes the feature vectors for the objects to disk.
+
+        Args:
+            features: a `num_objects x dim` array of feature vectors
+            image_name: the image name
+        '''
+        return self._write_features_sequence(features, image_name)
+
+
+class VideoFramesFeaturesHandler(FeaturesHandler):
+    '''Class that handles reading and writing features to disk corresponding to
+    the frames of a video.
+
+    The features are stored on disk in `features_dir` in .npy format with the
+    following pattern:
+
+        `<features_dir>/%08d.npy`
+
+    where the numeric parameter holds the frame number.
+
+    Attributes:
+        features_dir: the backing directory for the features
+    '''
+
+    FEATURES_PATT = "%08d.npy"
+
+    def __init__(self, features_dir):
+        '''Creates a VideoFramesFeaturesHandler instance.
+
+        Args:
+            features_dir: the backing directory in which to read/write features
+        '''
+        super(VideoFramesFeaturesHandler, self).__init__(
+            features_dir, self.FEATURES_PATT)
+
+    def load_feature(self, frame_number):
+        '''Load the feature for the given frame.
+
+        Args:
+            frame_number: the frame number
+
+        Returns:
+            the feature vector
+
+        Raises:
+            FeatureNotFoundError: if the feature is not found on disk
+        '''
+        return self._load_feature(frame_number)
+
+    def write_feature(self, v, frame_number):
+        '''Writes the feature vector to disk.
+
+        Args:
+            v: the feature vector
+            frame_number: the frame number
+        '''
+        return self._write_feature(v, frame_number)
+
+
+class VideoObjectsFeaturesHandler(FeaturesHandler):
+    '''Class that handles reading and writing features to disk corresponding to
+    detected objects in the frames of a video.
+
+    The features are stored on disk in `features_dir` in .npy format with the
+    following pattern:
+
+        `<features_dir>/%08d-%08d.npy`
+
+    where the first numeric parameter holds the frame number, and the second
+    numeric parameter holds the object number.
+
+    By convention, object numbers passed to this handler should be **1-based**
+    indices corresponding to the ordering of the objects in the corresponding
+    `eta.core.objects.DetectedObjectContainer` instance.
+
+    Attributes:
+        features_dir: the backing directory for the features
+    '''
+
+    FEATURES_PATT = "%08d-%08d.npy"
+    FRAME_OBJECTS_GLOB_PATT = "%08d-*.npy"
+
+    def __init__(self, features_dir):
+        '''Creates a VideoObjectsFeaturesHandler instance.
+
+        Args:
+            features_dir: the backing directory in which to read/write features
+        '''
+        super(VideoObjectsFeaturesHandler, self).__init__(
+            features_dir, self.FEATURES_PATT,
+            glob_sequence_patt=self.FRAME_OBJECTS_GLOB_PATT)
+
+    def load_feature(self, frame_number, object_number):
+        '''Load the feature for the given object from the given frame.
+
+        Args:
+            frame_number: the frame number
+            object_number: the object number
+
+        Returns:
+            the feature vector
+
+        Raises:
+            FeatureNotFoundError: if the feature is not found on disk
+        '''
+        return self._load_feature(frame_number, object_number)
+
+    def load_features(self, frame_number):
+        '''Loads the features for all objects in the given frame.
+
+        Args:
+            frame_number: the frame number
+
+        Returns:
+            an `num_objects x dim` array of features
+
+        Raises:
+            FeatureNotFoundError: if a feature is not found on disk
+        '''
+        return self._load_features_sequence(frame_number)
+
+    def write_feature(self, v, frame_number, object_number):
+        '''Writes the feature vector to disk.
+
+        Args:
+            v: the feature vector
+            frame_number: the frame number
+            object_number: the object number
+        '''
+        return self._write_feature(v, frame_number, object_number)
+
+    def write_features(self, features, frame_number):
+        '''Writes the feature vectors for the objects to disk.
+
+        Args:
+            features: a `num_objects x dim` array of feature vectors
+            frame_number: the frame number
+        '''
+        return self._write_features_sequence(features, frame_number)
 
 
 class BackingManagerConfig(Config):
