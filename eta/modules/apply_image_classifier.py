@@ -30,6 +30,7 @@ import sys
 
 from eta.core.config import Config, ConfigError
 import eta.core.image as etai
+import eta.core.features as etaf
 import eta.core.learning as etal
 import eta.core.module as etam
 import eta.core.utils as etau
@@ -165,16 +166,14 @@ class ParametersConfig(Config):
 def _build_attribute_filter(threshold):
     if threshold is None:
         logger.info("Predicting all attributes")
-        filter_fcn = lambda attrs: attrs
-    else:
-        logger.info("Returning predictions with confidence >= %f", threshold)
-        attr_filters = [
-            lambda attr: attr.confidence is None
-            or attr.confidence > float(threshold)
-        ]
-        filter_fcn = lambda attrs: attrs.get_matches(attr_filters)
+        return lambda attrs: attrs
 
-    return filter_fcn
+    logger.info("Returning predictions with confidence >= %f", threshold)
+    attr_filters = [
+        lambda attr: attr.confidence is None
+        or attr.confidence > float(threshold)
+    ]
+    return lambda attrs: attrs.get_matches(attr_filters)
 
 
 def _apply_image_classifier(config):
@@ -200,21 +199,13 @@ def _apply_image_classifier(config):
                 _process_images_dir(data, classifier, attr_filter)
 
 
-def _ensure_featurizing_classifier(classifier):
-    if not isinstance(classifier, etal.FeaturizingClassifier):
-        raise ConfigError(
-            "Features are requested, but %s does not implement the %s "
-            "mixin" % (type(classifier), etal.FeaturizingClassifier))
-
-    if not classifier.generates_features:
-        raise ConfigError(
-            "Features are requested, but the provided classifier, an instance "
-            "of %s, cannot generate features" % type(classifier))
-
-
 def _process_video(data, classifier, attr_filter):
-    if data.video_features_dir:
-        _ensure_featurizing_classifier(classifier)
+    write_features = data.video_features_dir is not None
+
+    if write_features:
+        etal.FeaturizingClassifier.ensure_can_generate_features(classifier)
+        features_handler = etaf.VideoFramesFeaturesHandler(
+            data.video_features_dir)
 
     if data.input_labels_path:
         logger.info(
@@ -230,6 +221,13 @@ def _process_video(data, classifier, attr_filter):
 
             # Classify frame
             attrs = attr_filter(classifier.predict(img))
+
+            # Write features, if necessary
+            if write_features:
+                fvec = classifier.get_features()
+                features_handler.write_feature(fvec, vr.frame_number)
+
+            # Record predictions
             video_labels.add_frame_attributes(attrs, vr.frame_number)
 
     logger.info("Writing labels to '%s'", data.output_labels_path)
@@ -237,8 +235,11 @@ def _process_video(data, classifier, attr_filter):
 
 
 def _process_image(data, classifier, attr_filter):
-    if data.image_features:
-        _ensure_featurizing_classifier(classifier)
+    write_features = data.image_features is not None
+
+    if write_features:
+        etal.FeaturizingClassifier.ensure_can_generate_features(classifier)
+        features_handler = etaf.ImageFeaturesHandler()
 
     if data.input_image_labels_path:
         logger.info(
@@ -250,6 +251,13 @@ def _process_image(data, classifier, attr_filter):
     # Classsify image
     img = etai.read(data.image_path)
     attrs = attr_filter(classifier.predict(img))
+
+    # Write features, if necessary
+    if write_features:
+        fvec = classifier.get_features()
+        features_handler.write_feature(fvec)
+
+    # Record predictions
     image_labels.add_image_attributes(attrs)
 
     logger.info("Writing labels to '%s'", data.output_image_labels_path)
@@ -257,8 +265,12 @@ def _process_image(data, classifier, attr_filter):
 
 
 def _process_images_dir(data, classifier, attr_filter):
-    if data.image_set_features_dir:
-        _ensure_featurizing_classifier(classifier)
+    write_features = data.image_set_features_dir is not None
+
+    if write_features:
+        etal.FeaturizingClassifier.ensure_can_generate_features(classifier)
+        features_handler = etaf.ImageSetFeaturesHandler(
+            data.image_set_features_dir)
 
     if data.input_image_set_labels_path:
         logger.info(
@@ -277,6 +289,13 @@ def _process_images_dir(data, classifier, attr_filter):
         # Classify image
         img = etai.read(inpath)
         attrs = attr_filter(classifier.predict(img))
+
+        # Write features, if necessary
+        if write_features:
+            fvec = classifier.get_features()
+            features_handler.write_feature(fvec, filename)
+
+        # Record predictions
         image_set_labels[filename].add_image_attributes(attrs)
 
     logger.info("Writing labels to '%s'", data.output_image_set_labels_path)
