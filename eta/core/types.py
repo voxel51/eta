@@ -1259,9 +1259,16 @@ class ImageFeature(File):
     '''A feature vector for an image.
 
     Examples:
-        /path/to/feature.npz
+        /path/to/feature.npy
     '''
-    pass
+
+    @staticmethod
+    def gen_path(basedir, params):
+        return os.path.join(basedir, "{name}.npy").format(**params)
+
+    @staticmethod
+    def is_valid_path(path):
+        return File.is_valid_path(path)
 
 
 class ImageObjectsFeatures(FileSequence, ConcreteData):
@@ -1269,12 +1276,12 @@ class ImageObjectsFeatures(FileSequence, ConcreteData):
     numeric parameter.
 
     Examples:
-        /path/to/features/%05d.npz
+        /path/to/features/%05d.npy
     '''
 
     @staticmethod
     def gen_path(basedir, params):
-        return os.path.join(basedir, "{name}", "{idx}.npz").format(**params)
+        return os.path.join(basedir, "{name}", "{idx}.npy").format(**params)
 
     @staticmethod
     def is_valid_path(path):
@@ -1286,12 +1293,12 @@ class ImageSetFeatures(FileSet, ConcreteData):
     parameter.
 
     Examples:
-        /path/to/features/%s.npz
+        /path/to/features/%s.npy
     '''
 
     @staticmethod
     def gen_path(basedir, params):
-        return os.path.join(basedir, "{name}", "%s.npz").format(**params)
+        return os.path.join(basedir, "{name}", "%s.npy").format(**params)
 
     @staticmethod
     def is_valid_path(path):
@@ -1303,12 +1310,12 @@ class ImageSetObjectsFeatures(FileSetSequence, ConcreteData):
     one string parameter and one index parameter.
 
     Examples:
-        /path/to/features/%s-%05d.npz
+        /path/to/features/%s-%05d.npy
     '''
 
     @staticmethod
     def gen_path(basedir, params):
-        return os.path.join(basedir, "{name}", "%s-{idx}.npz").format(**params)
+        return os.path.join(basedir, "{name}", "%s-{idx}.npy").format(**params)
 
     @staticmethod
     def is_valid_path(path):
@@ -1320,12 +1327,12 @@ class VideoFramesFeatures(FileSequence, ConcreteData):
     parameter.
 
     Examples:
-        /path/to/features/%05d.npz
+        /path/to/features/%05d.npy
     '''
 
     @staticmethod
     def gen_path(basedir, params):
-        return os.path.join(basedir, "{name}", "{idx}.npz").format(**params)
+        return os.path.join(basedir, "{name}", "{idx}.npy").format(**params)
 
     @staticmethod
     def is_valid_path(path):
@@ -1337,13 +1344,13 @@ class VideoObjectsFeatures(DualFileSequence, ConcreteData):
     parameters.
 
     Examples:
-        /path/to/features/%05d-%05d.npz
+        /path/to/features/%05d-%05d.npy
     '''
 
     @staticmethod
     def gen_path(basedir, params):
         return os.path.join(
-            basedir, "{name}", "{idx}-{idx}.npz").format(**params)
+            basedir, "{name}", "{idx}-{idx}.npy").format(**params)
 
     @staticmethod
     def is_valid_path(path):
