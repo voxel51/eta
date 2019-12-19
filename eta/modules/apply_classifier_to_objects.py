@@ -30,6 +30,7 @@ import sys
 
 from eta.core.config import Config, ConfigError
 import eta.core.image as etai
+import eta.core.features as etaf
 import eta.core.learning as etal
 import eta.core.module as etam
 import eta.core.utils as etau
@@ -202,16 +203,14 @@ def _build_object_filter(labels):
 def _build_attribute_filter(threshold):
     if threshold is None:
         logger.info("Predicting all attributes")
-        filter_fcn = lambda attrs: attrs
-    else:
-        logger.info("Returning predictions with confidence >= %f", threshold)
-        attr_filters = [
-            lambda attr: attr.confidence is None
-            or attr.confidence > float(threshold)
-        ]
-        filter_fcn = lambda attrs: attrs.get_matches(attr_filters)
+        return lambda attrs: attrs
 
-    return filter_fcn
+    logger.info("Returning predictions with confidence >= %f", threshold)
+    attr_filters = [
+        lambda attr: attr.confidence is None
+        or attr.confidence > float(threshold)
+    ]
+    return lambda attrs: attrs.get_matches(attr_filters)
 
 
 def _apply_classifier_to_objects(config):
@@ -242,21 +241,15 @@ def _apply_classifier_to_objects(config):
                     data, classifier, object_filter, attr_filter, parameters)
 
 
-def _ensure_featurizing_classifier(classifier):
-    if not isinstance(classifier, etal.FeaturizingClassifier):
-        raise ConfigError(
-            "Features are requested, but %s does not implement the %s "
-            "mixin" % (type(classifier), etal.FeaturizingClassifier))
-
-    if not classifier.generates_features:
-        raise ConfigError(
-            "Features are requested, but the provided classifier, an instance "
-            "of %s, cannot generate features" % type(classifier))
-
-
 def _process_video(data, classifier, object_filter, attr_filter, parameters):
-    if data.video_features_dir:
-        _ensure_featurizing_classifier(classifier)
+    write_features = data.video_features_dir is not None
+
+    if write_features:
+        etal.FeaturizingClassifier.ensure_can_generate_features(classifier)
+        features_handler = etaf.VideoObjectsFeaturesHandler(
+            data.video_features_dir)
+    else:
+        save_feature_fcn = None
 
     logger.info("Reading labels from '%s'", data.input_labels_path)
     labels = etav.VideoLabels.from_json(data.input_labels_path)
@@ -266,27 +259,42 @@ def _process_video(data, classifier, object_filter, attr_filter, parameters):
         for img in vr:
             logger.debug("Processing frame %d", vr.frame_number)
 
+            # Build function for writing features for this frame, if necessary
+            if write_features:
+                def save_feature_fcn(fvec, idx):
+                    features_handler.write_feature(fvec, vr.frame_number, idx)
+
             # Classify objects in frame
             frame_labels = labels.get_frame(vr.frame_number)
             _classify_objects(
                 classifier, img, frame_labels, object_filter, attr_filter,
-                parameters)
+                parameters, save_feature_fcn=save_feature_fcn)
 
     logger.info("Writing labels to '%s'", data.output_labels_path)
     labels.write_json(data.output_labels_path)
 
 
 def _process_image(data, classifier, object_filter, attr_filter, parameters):
-    if data.image_features_dir:
-        _ensure_featurizing_classifier(classifier)
+    write_features = data.image_features_dir is not None
+
+    if write_features:
+        etal.FeaturizingClassifier.ensure_can_generate_features(classifier)
+        features_handler = etaf.ImageObjectsFeaturesHandler(
+            data.image_features_dir)
+
+        def save_feature_fcn(fvec, idx):
+            features_handler.write_feature(fvec, idx)
+    else:
+        save_feature_fcn = None
 
     logger.info("Reading labels from '%s'", data.input_image_labels_path)
     image_labels = etai.ImageLabels.from_json(data.input_image_labels_path)
 
-    # Classify objects in image
+    # Classify objects in imagev
     img = etai.read(data.image_path)
     _classify_objects(
-        classifier, img, image_labels, object_filter, attr_filter, parameters)
+        classifier, img, image_labels, object_filter, attr_filter, parameters,
+        save_feature_fcn=save_feature_fcn)
 
     logger.info("Writing labels to '%s'", data.output_image_labels_path)
     image_labels.write_json(data.output_image_labels_path)
@@ -294,8 +302,14 @@ def _process_image(data, classifier, object_filter, attr_filter, parameters):
 
 def _process_images_dir(
         data, classifier, object_filter, attr_filter, parameters):
-    if data.image_set_features_dir:
-        _ensure_featurizing_classifier(classifier)
+    write_features = data.image_set_features_dir is not None
+
+    if write_features:
+        etal.FeaturizingClassifier.ensure_can_generate_features(classifier)
+        features_handler = etaf.ImageSetObjectsFeaturesHandler(
+            data.image_set_features_dir)
+    else:
+        save_feature_fcn = None
 
     # Load labels
     logger.info("Reading labels from '%s'", data.input_image_set_labels_path)
@@ -307,12 +321,17 @@ def _process_images_dir(
         inpath = os.path.join(data.images_dir, filename)
         logger.info("Processing image '%s'", inpath)
 
+        # Build function for writing features for this image, if necessary
+        if write_features:
+            def save_feature_fcn(fvec, idx):
+                features_handler.write_feature(fvec, filename, idx)
+
         # Classify objects in image
         img = etai.read(inpath)
         image_labels = image_set_labels[filename]
         _classify_objects(
             classifier, img, image_labels, object_filter, attr_filter,
-            parameters)
+            parameters, save_feature_fcn=save_feature_fcn)
 
     logger.info("Writing labels to '%s'", data.output_image_set_labels_path)
     image_set_labels.write_json(data.output_image_set_labels_path)
@@ -320,7 +339,7 @@ def _process_images_dir(
 
 def _classify_objects(
         classifier, img, image_or_frame_labels, object_filter, attr_filter,
-        parameters):
+        parameters, save_feature_fcn=None):
     # Parse parameters
     bb_padding = parameters.bb_padding
     force_square = parameters.force_square
@@ -330,7 +349,7 @@ def _classify_objects(
     objects = object_filter(image_or_frame_labels.objects)
 
     # Classify objects
-    for obj in objects:
+    for idx, obj in enumerate(objects, 1):
         # Extract object chip
         bbox = obj.bounding_box
         if bb_padding:
@@ -346,6 +365,13 @@ def _classify_objects(
 
         # Classify object
         attrs = attr_filter(classifier.predict(obj_img))
+
+        # Write features, if requested
+        if save_feature_fcn is not None:
+            fvec = classifier.get_features()
+            save_feature_fcn(fvec, idx)
+
+        # Record predictions
         obj.add_attributes(attrs)
 
 
