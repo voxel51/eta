@@ -466,33 +466,19 @@ class ImageFeaturesHandler(FeaturesHandler):
     '''Class that handles reading and writing features to disk corresponding
     to an image.
 
-    The features are stored on disk in `features_dir` in .npy format with the
-    following pattern:
-
-        `<features_dir>/%s.npy`
-
-    where the string parameter holds the name of the image.
-
-    Attributes:
-        features_dir: the backing directory for the features
+    Unlike other feature handlers, `ImageFeaturesHandler` simply stores the
+    features on disk (in .npy format) via a directly specified path.
     '''
 
-    FEATURES_PATT = "%s.npy"
+    def __init__(self):
+        '''Creates a ImageFeaturesHandler instance.'''
+        pass
 
-    def __init__(self, features_dir):
-        '''Creates a ImageFeaturesHandler instance.
-
-        Args:
-            features_dir: the backing directory in which to read/write features
-        '''
-        super(ImageFeaturesHandler, self).__init__(
-            features_dir, self.FEATURES_PATT)
-
-    def load_feature(self, image_name):
-        '''Load the feature for the given object.
+    def load_feature(self, feature_path):
+        '''Load the feature from the given path.
 
         Args:
-            image_name: the image name
+            feature_path: the feature path
 
         Returns:
             the feature vector
@@ -500,16 +486,17 @@ class ImageFeaturesHandler(FeaturesHandler):
         Raises:
             FeatureNotFoundError: if the feature is not found on disk
         '''
-        return self._load_feature(image_name)
+        return self._load_feature_from_path(feature_path)
 
-    def write_feature(self, v, image_name):
+    def write_feature(self, v, feature_path):
         '''Writes the feature vector to disk.
 
         Args:
             v: the feature vector
-            image_name: the image name
+            feature_path: the feature path
         '''
-        return self._write_feature(v, image_name)
+        etau.ensure_basedir(feature_path)
+        return self._write_feature_to_path(v, feature_path)
 
 
 class ImageObjectsFeaturesHandler(FeaturesHandler):
@@ -532,6 +519,7 @@ class ImageObjectsFeaturesHandler(FeaturesHandler):
     '''
 
     FEATURES_PATT = "%08d.npy"
+    IMAGE_OBJECTS_GLOB_PATT = "*.npy"
 
     def __init__(self, features_dir):
         '''Creates a ImageObjectsFeaturesHandler instance.
@@ -540,7 +528,8 @@ class ImageObjectsFeaturesHandler(FeaturesHandler):
             features_dir: the backing directory in which to read/write features
         '''
         super(ImageObjectsFeaturesHandler, self).__init__(
-            features_dir, self.FEATURES_PATT)
+            features_dir, self.FEATURES_PATT,
+            glob_sequence_patt=self.IMAGE_OBJECTS_GLOB_PATT)
 
     def load_feature(self, object_number):
         '''Load the feature for the given object.
@@ -556,6 +545,17 @@ class ImageObjectsFeaturesHandler(FeaturesHandler):
         '''
         return self._load_feature(object_number)
 
+    def load_features(self):
+        '''Loads the features for all objects in the image.
+
+        Returns:
+            an `num_objects x dim` array of features
+
+        Raises:
+            FeatureNotFoundError: if a feature is not found on disk
+        '''
+        return self._load_features_sequence()
+
     def write_feature(self, v, object_number):
         '''Writes the feature vector to disk.
 
@@ -564,6 +564,14 @@ class ImageObjectsFeaturesHandler(FeaturesHandler):
             object_number: the object number
         '''
         return self._write_feature(v, object_number)
+
+    def write_features(self, features):
+        '''Writes the feature vectors for the objects to disk.
+
+        Args:
+            features: a `num_objects x dim` array of feature vectors
+        '''
+        return self._write_features_sequence(features)
 
 
 class ImageSetFeaturesHandler(FeaturesHandler):
