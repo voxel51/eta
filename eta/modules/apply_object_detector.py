@@ -30,6 +30,7 @@ import sys
 
 from eta.core.config import Config, ConfigError
 import eta.core.image as etai
+import eta.core.features as etaf
 import eta.core.learning as etal
 import eta.core.module as etam
 import eta.core.utils as etau
@@ -201,12 +202,18 @@ def _build_object_filter(labels, threshold):
 def _build_detection_filter(objects_config):
     if objects_config is None:
         # Return all detections
-        return lambda objs: objs
+        return lambda objects: (objects, list(range(len(objects))))
 
     # Parse object filter
     obj_filters = [
         _build_object_filter(oc.labels, oc.threshold) for oc in objects_config]
-    return lambda objs: objs.get_matches(obj_filters)
+
+    def object_filter(objects):
+        inds = objects.get_matching_inds(obj_filters)
+        objects.keep_inds(inds)
+        return objects, inds
+
+    return object_filter
 
 
 def _apply_object_detector(config):
@@ -231,21 +238,13 @@ def _apply_object_detector(config):
                 _process_images_dir(data, detector, object_filter)
 
 
-def _ensure_featurizing_detector(detector):
-    if not isinstance(detector, etal.FeaturizingDetector):
-        raise ConfigError(
-            "Features are requested, but %s does not implement the %s "
-            "mixin" % (type(detector), etal.FeaturizingDetector))
-
-    if not detector.generates_features:
-        raise ConfigError(
-            "Features are requested, but the provided detector, an instance "
-            "of %s, cannot generate features" % type(detector))
-
-
 def _process_video(data, detector, object_filter):
-    if data.video_features_dir:
-        _ensure_featurizing_detector(detector)
+    write_features = data.video_features_dir is not None
+
+    if write_features:
+        etal.FeaturizingDetector.ensure_can_generate_features(detector)
+        features_handler = etaf.VideoObjectsFeaturesHandler(
+            data.video_features_dir)
 
     if data.input_labels_path:
         logger.info(
@@ -260,7 +259,16 @@ def _process_video(data, detector, object_filter):
             logger.debug("Processing frame %d", vr.frame_number)
 
             # Detect objects in frame
-            objects = object_filter(detector.detect(img))
+            objects = detector.detect(img)
+            objects, inds = object_filter(objects)
+
+            # Write features, if necessary
+            if write_features:
+                features = detector.get_features()
+                features = features[inds, :]
+                features_handler.write_features(features, vr.frame_number)
+
+            # Record objects
             for obj in objects:
                 obj.frame_number = vr.frame_number
                 video_labels.add_object(obj, vr.frame_number)
@@ -270,8 +278,12 @@ def _process_video(data, detector, object_filter):
 
 
 def _process_image(data, detector, object_filter):
-    if data.image_features_dir:
-        _ensure_featurizing_detector(detector)
+    write_features = data.image_features_dir is not None
+
+    if write_features:
+        etal.FeaturizingDetector.ensure_can_generate_features(detector)
+        features_handler = etaf.ImageObjectsFeaturesHandler(
+            data.image_features_dir)
 
     if data.input_image_labels_path:
         logger.info(
@@ -282,7 +294,16 @@ def _process_image(data, detector, object_filter):
 
     # Detect objects in image
     img = etai.read(data.image_path)
-    objects = object_filter(detector.detect(img))
+    objects = detector.detect(img)
+    objects, inds = object_filter(objects)
+
+    # Write features, if necessary
+    if write_features:
+        features = detector.get_features()
+        features = features[inds, :]
+        features_handler.write_features(features)
+
+    # Record objects
     image_labels.add_objects(objects)
 
     logger.info("Writing labels to '%s'", data.output_image_labels_path)
@@ -290,8 +311,12 @@ def _process_image(data, detector, object_filter):
 
 
 def _process_images_dir(data, detector, object_filter):
-    if data.image_set_features_dir:
-        _ensure_featurizing_detector(detector)
+    write_features = data.image_set_features_dir is not None
+
+    if write_features:
+        etal.FeaturizingDetector.ensure_can_generate_features(detector)
+        features_handler = etaf.ImageSetObjectsFeaturesHandler(
+            data.image_set_features_dir)
 
     if data.input_image_set_labels_path:
         logger.info(
@@ -302,14 +327,23 @@ def _process_images_dir(data, detector, object_filter):
     else:
         image_set_labels = etai.ImageSetLabels()
 
-    # Classify images in directory
+    # Detect objects in images in directory
     for filename in etau.list_files(data.images_dir):
         inpath = os.path.join(data.images_dir, filename)
         logger.info("Processing image '%s'", inpath)
 
-        # Classify image
+        # Detect objects in image
         img = etai.read(inpath)
-        objects = object_filter(detector.detect(img))
+        objects = detector.detect(img)
+        objects, inds = object_filter(objects)
+
+        # Write features, if necessary
+        if write_features:
+            features = detector.get_features()
+            features = features[inds, :]
+            features_handler.write_features(features, filename)
+
+        # Record objects
         image_set_labels[filename].add_objects(objects)
 
     logger.info("Writing labels to '%s'", data.output_image_set_labels_path)
