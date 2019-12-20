@@ -6,7 +6,12 @@
         "description": "A pipeline for classifying and detecting objects in images"
     },
     "inputs": ["images_dir"],
-    "outputs": ["image_set_labels", "annotated_images_dir"],
+    "outputs": [
+        "image_set_labels",
+        "detector_features_dir",
+        "classifier_features_dir",
+        "annotated_images_dir"
+    ],
     "modules": {
         "apply_object_detector": {
             "name": "apply_object_detector",
@@ -38,12 +43,20 @@
             "sink": "visualize_image_labels.images_dir"
         },
         {
+            "source": "apply_object_detector.image_set_features_dir",
+            "sink": "OUTPUT.detector_features_dir"
+        },
+        {
             "source": "apply_object_detector.output_image_set_labels_path",
             "sink": "apply_image_classifier.input_image_set_labels_path"
         },
         {
             "source": "apply_image_classifier.output_image_set_labels_path",
             "sink": "visualize_image_labels.image_set_labels_path"
+        },
+        {
+            "source": "apply_image_classifier.image_set_features_dir",
+            "sink": "OUTPUT.classifier_features_dir"
         },
         {
             "source": "apply_image_classifier.output_image_set_labels_path",
