@@ -434,7 +434,7 @@ class FeaturesHandler(object):
 
     def _write_features_sequence(self, features, *args):
         for idx, v in enumerate(features, 1):
-            self._write_feature(v, *args, idx)
+            self._write_feature(v, *(args + (idx,)))
 
     def _get_feature_path(self, *args):
         filename = self._features_patt % tuple(args)
