@@ -5,8 +5,8 @@ https://github.com/tensorflow/models/tree/master/research/slim.
 Copyright 2017-2019 Voxel51, Inc.
 voxel51.com
 
-Yash Bhalgat, yash@voxel51.com
 Brian Moore, brian@voxel51.com
+Yash Bhalgat, yash@voxel51.com
 '''
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
