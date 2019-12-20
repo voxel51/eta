@@ -54,7 +54,10 @@ MobileNet v2.
 
 ```shell
 cd demo_image_classifier
-eta build -r classify-images-tfslim-template.json --patterns {{model}}=mobilenet-v2-imagenet --run-now
+
+eta build -r classify-images-tfslim-template.json \
+    --patterns {{model}}=mobilenet-v2-imagenet --run-now
+
 cd ..
 ```
 
@@ -64,14 +67,16 @@ directory to inspect the output of the pipeline.
 
 ## Object detection
 
-The following code runs an object detection pipeline on video.
+The following code runs two object detection pipelines on video.
 
 See [this README](demo_object_detector/README.md) for more information.
 
 ```shell
 cd demo_object_detector
+
 eta build -r detect-people.json --run-now
 eta build -r detect-vehicles.json --run-now
+
 cd ..
 ```
 
@@ -82,14 +87,16 @@ inspect the output of the pipelines.
 
 ## Instance segmentation
 
-The following code runs an instance segmentation pipeline on video.
+The following code runs two instance segmentation pipelines on video.
 
 See [this README](demo_instance_segmentation/README.md) for more information.
 
 ```shell
 cd demo_instance_segmentation
+
 eta build -r segment-people.json --run-now
 eta build -r segment-vehicles.json --run-now
+
 cd ..
 ```
 
@@ -107,7 +114,9 @@ See [this README](demo_cats/README.md) for more information.
 
 ```shell
 cd demo_cats
+
 eta build -r detect-classify-cats.json --run-now
+
 cd ..
 ```
 
