@@ -20,7 +20,7 @@ from future.utils import iteritems
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-import copy
+from copy import copy
 import logging
 import os
 import re
@@ -204,10 +204,10 @@ def make_tf_config(config_proto=None):
     Returns:
         a tf.ConfigProto
     '''
-    config = copy.copy(config_proto) if config_proto else tf.ConfigProto()
+    config = copy(config_proto) if config_proto else tf.ConfigProto()
 
     if eta.config.tf_config:
-        tf_config = copy.copy(eta.config.tf_config)
+        tf_config = copy(eta.config.tf_config)
         if not is_gpu_available():
             # Remove GPU options, just for clarity
             tf_config = {
