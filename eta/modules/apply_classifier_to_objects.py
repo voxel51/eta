@@ -290,7 +290,7 @@ def _process_image(data, classifier, object_filter, attr_filter, parameters):
     logger.info("Reading labels from '%s'", data.input_image_labels_path)
     image_labels = etai.ImageLabels.from_json(data.input_image_labels_path)
 
-    # Classify objects in imagev
+    # Classify objects in image
     img = etai.read(data.image_path)
     _classify_objects(
         classifier, img, image_labels, object_filter, attr_filter, parameters,
