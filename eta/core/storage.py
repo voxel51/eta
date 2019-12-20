@@ -1890,6 +1890,7 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
         '''
         # List folder contents
         files, folders = self._list_folder_contents(folder_id)
+        files = [self._parse_file_metadata(f) for f in files]
 
         if recursive:
             # Recursively traverse subfolders
@@ -1901,7 +1902,7 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
                     f["name"] = os.path.join(folder["name"], f["name"])
                     files.append(f)
 
-        return [self._parse_file_metadata(f) for f in files]
+        return files
 
     def upload_files_in_folder(
             self, local_dir, folder_id, skip_failures=False,
