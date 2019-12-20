@@ -21,20 +21,40 @@
             "date_created": "2019-12-17 08:25:51"
         },
         {
-            "base_name": "faster_rcnn_nas_coco_2018_01_28",
-            "base_filename": "faster_rcnn_nas_coco_2018_01_28.pb",
+            "base_name": "faster-rcnn-nas-coco",
+            "base_filename": "faster-rcnn-nas-coco.pb",
             "version": null,
             "description": "A Faster-RCNN object detector with NAS-net backbone trained on COCO",
             "manager": {
                 "type": "eta.core.models.ETAModelManager",
                 "config": {
-                    "google_drive_id": "1Fnyty18gQyzeECqdAaVdaQnmDz6monGK"
+                    "google_drive_id": "?????"
                 }
             },
             "default_deployment_config_dict": {
                 "type": "eta.detectors.TFModelsDetector",
                 "config": {
-                    "model_name": "faster_rcnn_nas_coco_2018_01_28",
+                    "model_name": "faster-rcnn-nas-coco",
+                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_label_map.pbtxt"
+                }
+            },
+            "date_created": "2019-12-18 12:07:00"
+        },
+        {
+            "base_name": "faster-rcnn-nas-lowproposals-coco",
+            "base_filename": "faster-rcnn-nas-lowproposals-coco.pb",
+            "version": null,
+            "description": "A Faster-RCNN low-proposal object detector with NAS-net backbone trained on COCO.",
+            "manager": {
+                "type": "eta.core.models.ETAModelManager",
+                "config": {
+                    "google_drive_id": "?????"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "eta.detectors.TFModelsDetector",
+                "config": {
+                    "model_name": "faster-rcnn-nas-lowproposals-coco",
                     "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_label_map.pbtxt"
                 }
             },
