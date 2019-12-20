@@ -6,7 +6,11 @@
         "description": "A pipeline for classifying images"
     },
     "inputs": ["images_dir"],
-    "outputs": ["image_set_labels", "annotated_images_dir"],
+    "outputs": [
+        "image_set_labels",
+        "image_set_features_dir",
+        "annotated_images_dir"
+    ],
     "modules": {
         "apply_image_classifier": {
             "name": "apply_image_classifier",
@@ -31,6 +35,10 @@
         {
             "source": "apply_image_classifier.output_image_set_labels_path",
             "sink": "visualize_image_labels.image_set_labels_path"
+        },
+        {
+            "source": "apply_image_classifier.image_set_features_dir",
+            "sink": "OUTPUT.image_set_features_dir"
         },
         {
             "source": "apply_image_classifier.output_image_set_labels_path",
