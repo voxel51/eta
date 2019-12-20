@@ -94,6 +94,7 @@ class ETACommand(Command):
         _register_command(subparsers, "modules", ModulesCommand)
         _register_command(subparsers, "pipelines", PipelinesCommand)
         _register_command(subparsers, "constants", ConstantsCommand)
+        _register_command(subparsers, "config", ConfigCommand)
         _register_command(subparsers, "auth", AuthCommand)
         _register_command(subparsers, "s3", S3Command)
         _register_command(subparsers, "gcs", GCSCommand)
@@ -600,6 +601,34 @@ def _print_constants_table(d):
     table_str = tabulate(
         contents, headers=["constant", "value"], tablefmt=TABLE_FORMAT)
     logger.info(table_str)
+
+
+class ConfigCommand(Command):
+    '''Tools for working with your ETA config.
+
+    Examples:
+        # Print your entire ETA config
+        eta config --print
+
+        # Print a specific config field
+        eta config --print <field>
+    '''
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "field", nargs="?", metavar="FIELD", help="a config field")
+        parser.add_argument(
+            "-p", "--print", action="store_true", help="print your ETA config")
+
+    @staticmethod
+    def run(args):
+        if args.print:
+            if args.field:
+                field = getattr(eta.config, args.field)
+                logger.info(json_to_str(field))
+            else:
+                logger.info(eta.config)
 
 
 class AuthCommand(Command):
