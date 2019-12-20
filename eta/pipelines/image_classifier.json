@@ -8,7 +8,7 @@
     "inputs": ["images_dir"],
     "outputs": [
         "image_set_labels",
-        "image_set_features_dir",
+        "features_dir",
         "annotated_images_dir"
     ],
     "modules": {
@@ -38,7 +38,7 @@
         },
         {
             "source": "apply_image_classifier.image_set_features_dir",
-            "sink": "OUTPUT.image_set_features_dir"
+            "sink": "OUTPUT.features_dir"
         },
         {
             "source": "apply_image_classifier.output_image_set_labels_path",
