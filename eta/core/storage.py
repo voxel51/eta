@@ -1690,20 +1690,28 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
                     "Failed to delete '%s' from '%s'; skipping",
                     f["name"], folder_id)
 
-    def get_file_metadata(self, file_id):
+    def get_file_metadata(self, file_id, include_path=False):
         '''Gets metadata about the file with the given ID.
 
         Args:
             file_id: the ID of the file
+            include_path: whether to include information about the absolute
+                path to the file. By default, this is False
 
         Returns:
             a dictionary containing the available metadata about the file,
                 including its `id`, `name`, `size`, `mime_type`, and
-                `last_modified`
+                `last_modified`. When `include_path == True`, additional fields
+                `drive_id`, `drive_name`, and `path` are included
         '''
         fields = ["id", "name", "size", "mimeType", "modifiedTime"]
-        metadata = self._get_file_metadata(file_id, fields=fields)
-        return self._parse_file_metadata(metadata)
+        _meta = self._get_file_metadata(file_id, fields=fields)
+        metadata = self._parse_file_metadata(_meta)
+
+        if include_path:
+            metadata.update(self._get_filepath_metadata(file_id))
+
+        return metadata
 
     def get_folder_metadata(self, folder_id):
         '''Returns metadata about the given folder.
@@ -1717,11 +1725,14 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
 
         Returns:
             a dictionary containing metadata about the folder, including its
-                `drive`, `path`, `num_files`, `size`, and `last_modified`
+                `folder_id`, `drive_id`, `drive_name`, `path`, `num_files`,
+                `size`, and `last_modified`
         '''
-        drive, path = self.get_filepath(folder_id)
-        files = self.list_files_in_folder(folder_id, recursive=True)
+        # Get folder path metadata
+        metadata = self._get_filepath_metadata(folder_id)
 
+        # Compute (at great cost) metadata about folder contents
+        files = self.list_files_in_folder(folder_id, recursive=True)
         if files:
             num_files = len(files)
             size = sum(f["size"] for f in files)
@@ -1732,8 +1743,10 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
             last_modified = "-"
 
         return {
-            "drive": drive,
-            "path": path,
+            "folder_id": folder_id,
+            "drive_id": metadata["drive_id"],
+            "drive_name": metadata["drive_name"],
+            "path": metadata["path"],
             "num_files": num_files,
             "size": size,
             "last_modified": last_modified,
@@ -1759,6 +1772,26 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
 
         raise GoogleDriveStorageClientError("Team Drive '%s' not found" % name)
 
+    def get_team_drive_name(self, drive_id):
+        '''Gets the name of the Team Drive with the given ID.
+
+        Args:
+            drive_id: the ID of the Team Drive
+
+        Returns:
+            the name of the Team Drive
+
+        Raises:
+            GoogleDriveStorageClientError: if the Team Drive was not found
+        '''
+        try:
+            response = self._service.teamdrives().get(
+                teamDriveId=drive_id).execute()
+            return response["name"]
+        except:
+            raise GoogleDriveStorageClientError(
+                "Team Drive with ID '%s' not found", drive_id)
+
     def get_root_team_drive_id(self, file_id):
         '''Returns the ID of the root Team Drive in which this file lives.
 
@@ -1771,27 +1804,6 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
         '''
         metadata = self._get_file_metadata(file_id, ["teamDriveId"])
         return metadata.get("teamDriveId", None)
-
-    def get_filepath(self, file_id):
-        '''Returns the filepath to the given file.
-
-        Args:
-            file_id: the ID of the file (or folder)
-
-        Returns:
-            a ("<drive>", "path/to/file") tuple
-        '''
-        parts = []
-        while True:
-            metadata = self._get_file_metadata(file_id, ["name", "parents"])
-            if "parents" in metadata:
-                parts.append(metadata["name"])
-                file_id = metadata["parents"][0]
-            else:
-                drive = metadata["name"]
-                break
-
-        return drive, "/".join(reversed(parts))
 
     def is_folder(self, file_id):
         '''Determines whether the file with the given ID is a folder.
@@ -2198,6 +2210,30 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
 
         return self._service.files().get(
             fileId=file_id, fields=fields, supportsTeamDrives=True).execute()
+
+    def _get_filepath_metadata(self, file_id):
+        parts = []
+        drive_id = None
+        part_id = file_id
+        while True:
+            metadata = self._get_file_metadata(part_id, ["name", "parents"])
+            if "parents" in metadata:
+                parts.append(metadata["name"])
+                part_id = metadata["parents"][0]
+            else:
+                drive_id = part_id
+                break
+
+        try:
+            drive_name = self.get_team_drive_name(drive_id)
+        except:
+            drive_name = ""
+
+        return {
+            "drive_id": drive_id,
+            "drive_name": drive_name,
+            "path": "/".join(reversed(parts)),
+        }
 
     @staticmethod
     def _parse_file_metadata(metadata):
