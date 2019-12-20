@@ -6,7 +6,11 @@
         "description": "A pipeline for detecting objects in videos"
     },
     "inputs": ["video"],
-    "outputs": ["labels", "annotated_video"],
+    "outputs": [
+        "labels",
+        "features_dir",
+        "annotated_video"
+    ],
     "modules": {
         "format_videos": {
             "name": "format_videos",
@@ -39,6 +43,10 @@
         {
             "source": "apply_object_detector.output_labels_path",
             "sink": "OUTPUT.labels"
+        },
+        {
+            "source": "apply_object_detector.video_features_dir",
+            "sink": "OUTPUT.features_dir"
         },
         {
             "source": "format_videos.output_video_path",
