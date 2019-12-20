@@ -441,6 +441,11 @@ class FeaturesHandler(object):
         return os.path.join(self.features_dir, filename)
 
     def _get_feature_sequence_paths(self, *args):
+        if self._glob_sequence_patt is None:
+            raise ValueError(
+                "Cannot read a sequence of features when `glob_sequence_patt "
+                "== None`")
+
         filename_patt = self._glob_sequence_patt % tuple(args)
         sequence_patt = os.path.join(self.features_dir, filename_patt)
         return sorted(glob(sequence_patt))
