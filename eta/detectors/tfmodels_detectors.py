@@ -484,7 +484,7 @@ class TFModelsSegmenter(
         in_tensor = self._input_op.outputs[0]
         out_tensors = [op.outputs[0] for op in ops]
         results = self._sess.run(out_tensors, feed_dict={in_tensor: imgs})
-        return map(np.squeeze, results)
+        return list(map(np.squeeze, results))
 
 
 def export_frozen_inference_graph(
