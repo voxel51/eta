@@ -1839,7 +1839,7 @@ class GoogleDriveDownloadCommand(Command):
         eta gdrive download <file-id> --print
 
         # Download file with link sharing turned on (no credentials required)
-        eta gdrive download --public <file-id>
+        eta gdrive download --public <file-id> <local-path>
     '''
 
     @staticmethod
