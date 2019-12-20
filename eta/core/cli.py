@@ -2590,10 +2590,10 @@ def _print_gcs_folder_info_table(metadata):
 
 def _print_google_drive_file_info_table(metadata):
     records = [(
-            m["drive_name"], m["path"], _render_bytes(m["size"]),
-            _parse_google_drive_mime_type(m["mime_type"]),
-            _render_datetime(m["last_modified"]))
-        for m in metadata]
+        m["drive_name"], m["path"], _render_bytes(m["size"]),
+        _parse_google_drive_mime_type(m["mime_type"]),
+        _render_datetime(m["last_modified"])
+    ) for m in metadata]
 
     table_str = tabulate(
         records,
