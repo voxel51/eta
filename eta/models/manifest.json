@@ -28,7 +28,7 @@
             "manager": {
                 "type": "eta.core.models.ETAModelManager",
                 "config": {
-                    "google_drive_id": "?????"
+                    "google_drive_id": "1GSHaIQh_kJ0YU4qqulEY67mufwslk5u9"
                 }
             },
             "default_deployment_config_dict": {
@@ -48,7 +48,7 @@
             "manager": {
                 "type": "eta.core.models.ETAModelManager",
                 "config": {
-                    "google_drive_id": "?????"
+                    "google_drive_id": "1dpsLJRTcHyso78OmMSHQtz_2SUlHAt0l"
                 }
             },
             "default_deployment_config_dict": {
