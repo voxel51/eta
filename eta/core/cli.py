@@ -94,6 +94,7 @@ class ETACommand(Command):
         _register_command(subparsers, "modules", ModulesCommand)
         _register_command(subparsers, "pipelines", PipelinesCommand)
         _register_command(subparsers, "constants", ConstantsCommand)
+        _register_command(subparsers, "config", ConfigCommand)
         _register_command(subparsers, "auth", AuthCommand)
         _register_command(subparsers, "s3", S3Command)
         _register_command(subparsers, "gcs", GCSCommand)
@@ -600,6 +601,34 @@ def _print_constants_table(d):
     table_str = tabulate(
         contents, headers=["constant", "value"], tablefmt=TABLE_FORMAT)
     logger.info(table_str)
+
+
+class ConfigCommand(Command):
+    '''Tools for working with your ETA config.
+
+    Examples:
+        # Print your entire ETA config
+        eta config --print
+
+        # Print a specific config field
+        eta config --print <field>
+    '''
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "field", nargs="?", metavar="FIELD", help="a config field")
+        parser.add_argument(
+            "-p", "--print", action="store_true", help="print your ETA config")
+
+    @staticmethod
+    def run(args):
+        if args.print:
+            if args.field:
+                field = getattr(eta.config, args.field)
+                logger.info(json_to_str(field))
+            else:
+                logger.info(eta.config)
 
 
 class AuthCommand(Command):
@@ -1613,7 +1642,9 @@ class GoogleDriveInfoCommand(Command):
             _print_google_drive_folder_info_table(metadata)
             return
 
-        metadata = [client.get_file_metadata(fid) for fid in args.ids]
+        metadata = [
+            client.get_file_metadata(fid, include_path=True)
+            for fid in args.ids]
         _print_google_drive_file_info_table(metadata)
 
 
@@ -1750,7 +1781,7 @@ class GoogleDriveListCommand(Command):
             metadata, args.limit, args.search, args.sort_by, args.ascending,
             _GOOGLE_DRIVE_SEARCH_FIELDS_MAP)
 
-        _print_google_drive_file_info_table(metadata, show_count=args.count)
+        _print_google_drive_list_files_table(metadata, show_count=args.count)
 
 
 class GoogleDriveUploadCommand(Command):
@@ -2586,7 +2617,38 @@ def _print_gcs_folder_info_table(metadata):
     logger.info(table_str)
 
 
-def _print_google_drive_file_info_table(metadata, show_count=False):
+def _print_google_drive_file_info_table(metadata):
+    records = [(
+        m["drive_name"], m["path"], _render_bytes(m["size"]),
+        _parse_google_drive_mime_type(m["mime_type"]),
+        _render_datetime(m["last_modified"])
+    ) for m in metadata]
+
+    table_str = tabulate(
+        records,
+        headers=["drive name", "path", "size", "type", "last modified"],
+        tablefmt=TABLE_FORMAT)
+
+    logger.info(table_str)
+
+
+def _print_google_drive_folder_info_table(metadata):
+    records = [(
+        m["drive_id"], m["drive_name"], m["path"], m["num_files"],
+        _render_bytes(m["size"]), _render_datetime(m["last_modified"])
+    ) for m in metadata]
+
+    table_str = tabulate(
+        records,
+        headers=[
+            "drive id", "drive name", "path", "num files", "size",
+            "last modified"],
+        tablefmt=TABLE_FORMAT)
+
+    logger.info(table_str)
+
+
+def _print_google_drive_list_files_table(metadata, show_count=False):
     records = [(
         m["id"], _render_name(m["name"]), _render_bytes(m["size"]),
         _parse_google_drive_mime_type(m["mime_type"]),
@@ -2602,20 +2664,6 @@ def _print_google_drive_file_info_table(metadata, show_count=False):
     if show_count:
         total_size = _render_bytes(sum(m["size"] for m in metadata))
         logger.info("\nShowing %d files, %s\n", len(records), total_size)
-
-
-def _print_google_drive_folder_info_table(metadata):
-    records = [(
-        m["drive"], m["path"], m["num_files"], _render_bytes(m["size"]),
-        _render_datetime(m["last_modified"])
-    ) for m in metadata]
-
-    table_str = tabulate(
-        records,
-        headers=["drive", "path", "num files", "size", "last modified"],
-        tablefmt=TABLE_FORMAT)
-
-    logger.info(table_str)
 
 
 def _parse_google_drive_mime_type(mime_type):
