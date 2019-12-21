@@ -207,7 +207,7 @@ def make_tf_config(config_proto=None):
     config = copy(config_proto) if config_proto else tf.ConfigProto()
 
     if eta.config.tf_config:
-        tf_config = copy(eta.config.tf_config)
+        tf_config = eta.config.tf_config
         if not is_gpu_available():
             # Remove GPU options, just for clarity
             tf_config = {
