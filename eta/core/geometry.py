@@ -135,11 +135,39 @@ class BoundingBox(Serializable):
 
         return BoundingBox(RelativePoint(tlx, tly), RelativePoint(brx, bry))
 
+    def height(self):
+        '''Computes the height of the bounding box, in [0, 1].
+
+        Returns:
+            the height
+        '''
+        return self.bottom_right.y - self.top_left.y
+
+    def width(self):
+        '''Computes the width of the bounding box, in [0, 1].
+
+        Returns:
+            the width
+        '''
+        return self.bottom_right.x - self.top_left.x
+
     def area(self):
-        '''Computes the area of the bounding box, in [0, 1].'''
-        w = self.bottom_right.x - self.top_left.x
-        h = self.bottom_right.y - self.top_left.y
-        return w * h
+        '''Computes the area of the bounding box, in [0, 1].
+
+        Returns:
+            the area
+        '''
+        return self.width() * self.height()\
+
+    def centroid(self):
+        '''Computes the cenroid of the bounding box.
+
+        Returns:
+            a RelativePoint
+        '''
+        xc = 0.5 * (self.top_left.x + self.bottom_right.x)
+        yc = 0.5 * (self.top_left.y + self.bottom_right.y)
+        return RelativePoint(xc, yc)
 
     def get_intersection(self, bbox):
         '''Returns the bounding box describing the intersection of this
