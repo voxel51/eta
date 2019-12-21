@@ -1596,7 +1596,7 @@ class ZippedVideoObjectsFeaturesDirectory(ZippedDirectory):
 
 
 class DataRecordsDirectory(JSONDirectory):
-    '''A directoryof DataRecords JSON files.
+    '''A directory of DataRecords JSON files.
 
     Examples:
         /path/to/data_records_jsons
