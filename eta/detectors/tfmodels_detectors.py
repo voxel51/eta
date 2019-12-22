@@ -114,15 +114,16 @@ class TFModelsDetectorConfig(Config, etal.HasDefaultDeploymentConfig):
 
 
 class TFModelsDetector(
-        etal.ObjectDetector, etal.FeaturizingDetector, etat.UsesTFSession):
+        etal.ObjectDetector, etal.ExposesFeatures, etat.UsesTFSession):
     '''Interface to the TF-Models object detection library at
     https://github.com/tensorflow/models/tree/master/research/object_detection.
 
     This class uses `eta.core.tfutils.UsesTFSession` to create TF sessions, so
     it automatically applies settings in your `eta.config.tf_config`.
 
-    This class implements the `eta.core.learning.FeaturizingDetector` mixin, so
-    it can generate features for its detections, if appropriately configured.
+    This class implements the `eta.core.learning.ExposesFeatures` mixin, so
+    it can expose features for its detections, if appropriately configured.
+
     Unfortunately, none of the pre-trained models available in ETA support
     featurization because the frozen graphs do not contain the expected
     `detection_features` nodes. In July 2019, the `tensorflow/models`
@@ -189,8 +190,8 @@ class TFModelsDetector(
         self.close()
 
     @property
-    def generates_features(self):
-        '''Whether this detector generates features for its detections.'''
+    def exposes_features(self):
+        '''Whether this detector exposes features for its detections.'''
         return self._features_op is not None
 
     @property
@@ -198,7 +199,7 @@ class TFModelsDetector(
         '''The dimension of the features extracted by this detector, or None
         if it cannot generate features.
         '''
-        if not self.generates_features:
+        if not self.exposes_features:
             return None
 
         dim = self._features_op.outputs[0].get_shape().as_list()[-1]
@@ -216,7 +217,7 @@ class TFModelsDetector(
             a list of feature vectors, or None if the detector has not (or
                 cannot) generate features
         '''
-        if not self.generates_features:
+        if not self.exposes_features:
             return None
 
         return self._last_features
@@ -233,7 +234,7 @@ class TFModelsDetector(
         '''
         output_ops = [self._boxes_op, self._scores_op, self._classes_op]
 
-        if self.generates_features:
+        if self.exposes_features:
             output_ops.append(self._features_op)
             boxes, scores, classes, features = self._evaluate(img, output_ops)
             self._last_features = _avg_pool_features(features)
@@ -337,7 +338,7 @@ class TFModelsSegmenterConfig(Config, etal.HasDefaultDeploymentConfig):
 
 
 class TFModelsSegmenter(
-        etal.ObjectDetector, etal.FeaturizingDetector, etat.UsesTFSession):
+        etal.ObjectDetector, etal.ExposesFeatures, etat.UsesTFSession):
     '''Interface to the instance segmentation models from the TF-Models
     detection library at
     https://github.com/tensorflow/models/tree/master/research/object_detection.
@@ -345,8 +346,9 @@ class TFModelsSegmenter(
     This class uses `eta.core.tfutils.UsesTFSession` to create TF sessions, so
     it automatically applies settings in your `eta.config.tf_config`.
 
-    This class implements the `eta.core.learning.FeaturizingDetector` mixin, so
-    it can generate features for its detections, if appropriately configured.
+    This class implements the `eta.core.learning.ExposesFeatures` mixin, so
+    it can expose features for its detections, if appropriately configured.
+
     Unfortunately, none of the pre-trained models available in ETA support
     featurization because the frozen graphs do not contain the expected
     `detection_features` nodes. In July 2019, the `tensorflow/models`
@@ -415,16 +417,16 @@ class TFModelsSegmenter(
         self.close()
 
     @property
-    def generates_features(self):
-        '''Whether this detector generates features for its detections.'''
+    def exposes_features(self):
+        '''Whether this detector exposes features for its detections.'''
         return self._features_op is not None
 
     @property
     def features_dim(self):
         '''The dimension of the features extracted by this detector, or None
-        if it cannot generate features.
+        if it does not expose features.
         '''
-        if not self.generates_features:
+        if not self.exposes_features:
             return None
 
         dim = self._features_op.outputs[0].get_shape().as_list()[-1]
@@ -439,10 +441,10 @@ class TFModelsSegmenter(
         `detect()`.
 
         Returns:
-            a list of feature vectors, or None if the detector has not (or
-                cannot) generate features
+            a `num_images x features_dim` array of features, or None if the
+                detector has not (or does not) generate features
         '''
-        if not self.generates_features:
+        if not self.exposes_features:
             return None
 
         return self._last_features
@@ -460,7 +462,7 @@ class TFModelsSegmenter(
         output_ops = [
             self._boxes_op, self._scores_op, self._classes_op, self._masks_op]
 
-        if self.generates_features:
+        if self.exposes_features:
             output_ops.append(self._features_op)
             boxes, scores, classes, masks, features = self._evaluate(
                 img, output_ops)
