@@ -82,6 +82,18 @@ def write_labels_map(labels_map, outpath):
             f.write("%s:%s\n" % (idx, labels_map[idx]))
 
 
+def get_class_labels(labels_map):
+    '''Returns the list of class labels from the given labels map.
+
+    Args:
+        a dictionary mapping indexes to label strings
+
+    Returns:
+        a list of class labels
+    '''
+    return [labels_map[k] for k in sorted(labels_map.keys())]
+
+
 def has_default_deployment_model(model_name):
     '''Determines whether the model with the given name has a default
     deployment.
