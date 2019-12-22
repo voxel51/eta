@@ -402,7 +402,7 @@ class ImageClassifier(Classifier):
         default, this method simply iterates over the images and predicts each.
 
         Args:
-            imgs: a list (or d x ny x nx x 3 tensor) of images to classify
+            imgs: a list (or n x h x w x 3 tensor) of images to classify
 
         Returns:
             a list of `eta.core.data.AttributeContainer` instances describing
@@ -446,7 +446,7 @@ class VideoFramesClassifier(Classifier):
         images.
 
         Args:
-            imgs: a list (or d x ny x nx x 3 tensor) of images defining the
+            imgs: a list (or n x h x w x 3 tensor) of images defining the
                 video to classify
 
         Returns:
@@ -582,7 +582,7 @@ class ObjectDetector(Detector):
         default, this method simply iterates over the images and detects each.
 
         Args:
-            imgs: a list (or d x ny x nx x 3 tensor) of images to detect
+            imgs: a list (or n x h x w x 3 tensor) of images to detect
 
         Returns:
             a list of `eta.core.objects.DetectedObjectContainer` instances
@@ -626,7 +626,7 @@ class VideoFramesObjectDetector(Detector):
         images.
 
         Args:
-            imgs: a list (or d x ny x nx x 3 tensor) of images defining the
+            imgs: a list (or n x h x w x 3 tensor) of images defining the
                 video to detect
 
         Returns:
