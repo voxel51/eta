@@ -108,6 +108,7 @@ class VGG16(Configurable, UsesTFSession):
 
         labels_map = etal.load_labels_map(self.config.labels_map)
         self._class_labels = [labels_map[k] for k in sorted(labels_map.keys())]
+        self._num_classes = len(self._class_labels)
 
         self._build_conv_layers()
         self._build_fc_layers()
@@ -132,6 +133,11 @@ class VGG16(Configurable, UsesTFSession):
             img = img[:, :, :3]
 
         return etai.resize(img, 224, 224)
+
+    @property
+    def num_classes(self):
+        '''The number of classes for the model.'''
+        return self._num_classes
 
     @property
     def class_labels(self):
