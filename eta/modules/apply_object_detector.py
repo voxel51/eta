@@ -242,7 +242,7 @@ def _process_video(data, detector, object_filter):
     write_features = data.video_features_dir is not None
 
     if write_features:
-        etal.FeaturizingDetector.ensure_can_generate_features(detector)
+        etal.ExposesFeatures.ensure_exposes_features(detector)
         features_handler = etaf.VideoObjectsFeaturesHandler(
             data.video_features_dir)
 
@@ -281,7 +281,7 @@ def _process_image(data, detector, object_filter):
     write_features = data.image_features_dir is not None
 
     if write_features:
-        etal.FeaturizingDetector.ensure_can_generate_features(detector)
+        etal.ExposesFeatures.ensure_exposes_features(detector)
         features_handler = etaf.ImageObjectsFeaturesHandler(
             data.image_features_dir)
 
@@ -314,7 +314,7 @@ def _process_images_dir(data, detector, object_filter):
     write_features = data.image_set_features_dir is not None
 
     if write_features:
-        etal.FeaturizingDetector.ensure_can_generate_features(detector)
+        etal.ExposesFeatures.ensure_exposes_features(detector)
         features_handler = etaf.ImageSetObjectsFeaturesHandler(
             data.image_set_features_dir)
 
