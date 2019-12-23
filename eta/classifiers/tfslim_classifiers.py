@@ -334,6 +334,7 @@ class TFSlimClassifier(
             features = None
             probs = self._evaluate(imgs, [self._output_op])[0]
 
+        # @todo filter out probs for predictions that are omitted
         preds = [self._parse_prediction(p) for p in probs]
 
         return features, probs, preds
