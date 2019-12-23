@@ -244,8 +244,8 @@ class TFModelsDetector(
         `detect()`.
 
         Returns:
-            a list of feature vectors, or None if the detector has not (or
-                cannot) generate features
+            an array of features, or None if the detector has not (or does not)
+                generate features
         '''
         if not self.exposes_features:
             return None
@@ -257,9 +257,8 @@ class TFModelsDetector(
         last call to `detect()`.
 
         Returns:
-            a `num_objects x num_classes` array of class probabilities, or
-                None if the detector has not (or does not) generated
-                probabilities
+            an array of class probabilities, or None if the detector has not
+                (or does not) generated probabilities
         '''
         if not self.exposes_probabilities:
             return None
@@ -319,7 +318,7 @@ class TFModelsDetector(
         if features is not None:
             features = _avg_pool_features(features)
 
-        # @todo filter out features/probs for detections that are omitted below
+        # @todo filter out features/probs for detections that are omitted
         detections = []
         for b, s, c in zip(boxes, scores, classes):
             objects = DetectedObjectContainer()
@@ -553,8 +552,8 @@ class TFModelsSegmenter(
         `detect()`.
 
         Returns:
-            a `num_images x features_dim` array of features, or None if the
-                detector has not (or does not) generate features
+            an array of features, or None if the detector has not (or does not)
+                generate features
         '''
         if not self.exposes_features:
             return None
@@ -566,9 +565,8 @@ class TFModelsSegmenter(
         last call to `detect()`.
 
         Returns:
-            a `num_objects x num_classes` array of class probabilities, or
-                None if the detector has not (or does not) generated
-                probabilities
+            an array of class probabilities, or None if the detector has not
+                (or does not) generated probabilities
         '''
         if not self.exposes_probabilities:
             return None
@@ -631,7 +629,7 @@ class TFModelsSegmenter(
         if features is not None:
             features = _avg_pool_features(features)
 
-        # @todo filter out features/probs for detections that are omitted below
+        # @todo filter out features/probs for detections that are omitted
         detections = []
         for b, s, c, m in zip(boxes, scores, classes, masks):
             objects = DetectedObjectContainer()
