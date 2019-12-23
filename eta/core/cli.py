@@ -329,6 +329,9 @@ class ModelsCommand(Command):
         # Download model
         eta models --download <model-name>
 
+        # Visualize the TF graph for model
+        eta models --visualize-graph <model-name>
+
         # Initialize new models directory
         eta models --init <models-dir>
 
@@ -359,6 +362,9 @@ class ModelsCommand(Command):
         parser.add_argument(
             "-d", "--download", metavar="NAME",
             help="download the model with the given name")
+        parser.add_argument(
+            "--visualize-graph", metavar="NAME",
+            help="visualize the TF graph for the model with the given name")
         parser.add_argument(
             "--init", metavar="DIR",
             help="initialize the given models directory")
@@ -391,6 +397,12 @@ class ModelsCommand(Command):
 
         if args.download:
             etamode.download_model(args.download)
+
+        if args.visualize_graph:
+            # Do this locally to avoid importing TF unless absolutely necessary
+            import eta.core.tfutils as etat
+            model_path = etamode.find_model(args.visualize_graph)
+            etat.visualize_frozen_graph(model_path)
 
         if args.init:
             etamode.init_models_dir(args.init)
