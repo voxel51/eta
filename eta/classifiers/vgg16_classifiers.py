@@ -62,8 +62,8 @@ class VGG16Classifier(
         self.config = config or VGG16ClassifierConfig.default()
         self._vgg16 = VGG16(config=config.config)
 
-        self._last_probs = None
         self._last_features = None
+        self._last_probs = None
 
     def __enter__(self):
         return self
