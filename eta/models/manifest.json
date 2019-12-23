@@ -21,6 +21,46 @@
             "date_created": "2019-12-17 08:25:51"
         },
         {
+            "base_name": "faster-rcnn-nas-coco",
+            "base_filename": "faster-rcnn-nas-coco.pb",
+            "version": null,
+            "description": "A Faster-RCNN object detector with NAS-net backbone trained on COCO",
+            "manager": {
+                "type": "eta.core.models.ETAModelManager",
+                "config": {
+                    "google_drive_id": "1GSHaIQh_kJ0YU4qqulEY67mufwslk5u9"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "eta.detectors.TFModelsDetector",
+                "config": {
+                    "model_name": "faster-rcnn-nas-coco",
+                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_label_map.pbtxt"
+                }
+            },
+            "date_created": "2019-12-18 12:07:00"
+        },
+        {
+            "base_name": "faster-rcnn-nas-lowproposals-coco",
+            "base_filename": "faster-rcnn-nas-lowproposals-coco.pb",
+            "version": null,
+            "description": "A Faster-RCNN low-proposal object detector with NAS-net backbone trained on COCO.",
+            "manager": {
+                "type": "eta.core.models.ETAModelManager",
+                "config": {
+                    "google_drive_id": "1dpsLJRTcHyso78OmMSHQtz_2SUlHAt0l"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "eta.detectors.TFModelsDetector",
+                "config": {
+                    "model_name": "faster-rcnn-nas-lowproposals-coco",
+                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_label_map.pbtxt"
+                }
+            },
+            "date_created": "2019-12-18 12:07:00"
+        },
+        {
             "base_name": "faster-rcnn-resnet50-coco",
             "base_filename": "faster-rcnn-resnet50-coco.pb",
             "version": null,
