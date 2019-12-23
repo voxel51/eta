@@ -157,7 +157,7 @@ class BoundingBox(Serializable):
         Returns:
             the area
         '''
-        return self.width() * self.height()\
+        return self.width() * self.height()
 
     def centroid(self):
         '''Computes the cenroid of the bounding box.
