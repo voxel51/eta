@@ -271,7 +271,7 @@ class ImageModel(Model):
         '''Generates labels for the given image.
 
         Args:
-            img: the image to process
+            img: an image
 
         Returns:
             an `eta.core.image.ImageLabels` instance containing the labels
@@ -309,7 +309,7 @@ class VideoModel(Model):
         '''Generates labels for the given video.
 
         Args:
-            video_path: the path to the video
+            video_path: the path to a video
 
         Returns:
             an `eta.core.video.VideoLabels` instance containing the labels
@@ -346,7 +346,7 @@ class Classifier(Model):
         '''Peforms prediction on the given argument.
 
         Args:
-            arg: the data to classify
+            arg: the data to process
 
         Returns:
             an `eta.core.data.AttributeContainer` describing the predictions
@@ -387,7 +387,7 @@ class ImageClassifier(Classifier):
         '''Peforms prediction on the given image.
 
         Args:
-            img: the image to classify
+            img: an image
 
         Returns:
             an `eta.core.data.AttributeContainer` instance containing the
@@ -402,7 +402,7 @@ class ImageClassifier(Classifier):
         default, this method simply iterates over the images and predicts each.
 
         Args:
-            imgs: a list (or n x h x w x 3 tensor) of images to classify
+            imgs: a list (or n x h x w x 3 tensor) of images
 
         Returns:
             a list of `eta.core.data.AttributeContainer` instances describing
@@ -446,8 +446,7 @@ class VideoFramesClassifier(Classifier):
         images.
 
         Args:
-            imgs: a list (or n x h x w x 3 tensor) of images defining the
-                video to classify
+            imgs: a list (or n x h x w x 3 tensor) of images
 
         Returns:
             an `eta.core.data.AttributeContainer` instance describing
@@ -488,7 +487,7 @@ class VideoClassifier(Classifier):
         '''Peforms prediction on the given video.
 
         Args:
-            video_path: the path to the video
+            video_path: the path to a video
 
         Returns:
             an `eta.core.data.AttributeContainer` instance containing the
@@ -525,7 +524,7 @@ class Detector(Model):
         '''Peforms detection on the given argument.
 
         Args:
-            arg: the data to detect
+            arg: the data to process
 
         Returns:
             an `eta.core.objects.DetectedObjectContainer` describing the
@@ -582,7 +581,7 @@ class ObjectDetector(Detector):
         default, this method simply iterates over the images and detects each.
 
         Args:
-            imgs: a list (or n x h x w x 3 tensor) of images to detect
+            imgs: a list (or n x h x w x 3 tensor) of images
 
         Returns:
             a list of `eta.core.objects.DetectedObjectContainer` instances
@@ -626,8 +625,7 @@ class VideoFramesObjectDetector(Detector):
         images.
 
         Args:
-            imgs: a list (or n x h x w x 3 tensor) of images defining the
-                video to detect
+            imgs: a list (or n x h x w x 3 tensor) of images
 
         Returns:
             an `eta.core.objects.DetectedObjectContainer` instance describing
@@ -667,7 +665,7 @@ class VideoObjectDetector(Detector):
         '''Peforms detection on the given video.
 
         Args:
-            video_path: the path to the video
+            video_path: the path to a video
 
         Returns:
             an `eta.core.objects.DetectedObjectContainer` instance describing
