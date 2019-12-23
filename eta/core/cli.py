@@ -326,11 +326,11 @@ class ModelsCommand(Command):
         # Print info about model
         eta models --info <model-name>
 
-        # Download model
+        # Download model, if necessary
         eta models --download <model-name>
 
-        # Visualize the TF graph for model
-        eta models --visualize-graph <model-name>
+        # Visualize graph for model in TensorBoard (TF models only)
+        eta models --visualize-tf-graph <model-name>
 
         # Initialize new models directory
         eta models --init <models-dir>
@@ -363,7 +363,7 @@ class ModelsCommand(Command):
             "-d", "--download", metavar="NAME",
             help="download the model with the given name")
         parser.add_argument(
-            "--visualize-graph", metavar="NAME",
+            "--visualize-tf-graph", metavar="NAME",
             help="visualize the TF graph for the model with the given name")
         parser.add_argument(
             "--init", metavar="DIR",
@@ -398,10 +398,10 @@ class ModelsCommand(Command):
         if args.download:
             etamode.download_model(args.download)
 
-        if args.visualize_graph:
+        if args.visualize_tf_graph:
             # Do this locally to avoid importing TF unless absolutely necessary
             import eta.core.tfutils as etat
-            model_path = etamode.find_model(args.visualize_graph)
+            model_path = etamode.download_model(args.visualize_tf_graph)
             etat.visualize_frozen_graph(model_path)
 
         if args.init:
