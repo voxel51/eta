@@ -224,8 +224,8 @@ class TFSlimClassifier(
         self.preprocessing_fcn = self._make_preprocessing_fcn(
             network_name, self.config.preprocessing_fcn)
 
-        self._last_probs = None
         self._last_features = None
+        self._last_probs = None
 
     def __enter__(self):
         return self
@@ -298,45 +298,45 @@ class TFSlimClassifier(
         '''Peforms prediction on the given image.
 
         Args:
-            img: the image to classify
+            img: an image
 
         Returns:
             an `eta.core.data.AttributeContainer` instance containing the
                 predictions
         '''
-        imgs = self.preprocessing_fcn([img])
-
-        if self.exposes_features:
-            probs, features = self._evaluate(
-                imgs, [self._output_op, self._features_op])
-            self._last_features = np.squeeze(features)
-        else:
-            probs = self._evaluate(imgs, [self._output_op])[0]
-
+        features, probs, preds = self._predict([img])
+        self._last_features = features[0]
         self._last_probs = probs[0]
-        return self._parse_prediction(self._last_probs)
+        return preds[0]
 
     def predict_all(self, imgs):
         '''Performs prediction on the given tensor of images.
 
         Args:
-            imgs: a list (or n x h x w x 3 tensor) of images to classify
+            imgs: a list (or n x h x w x 3 tensor) of images
 
         Returns:
             a list of `eta.core.data.AttributeContainer` instances describing
                 the predictions for each image
         '''
+        features, probs, preds = self._predict(imgs)
+        self._last_features = features
+        self._last_probs = probs
+        return preds
+
+    def _predict(self, imgs):
         imgs = self.preprocessing_fcn(imgs)
 
         if self.exposes_features:
-            all_probs, all_features = self._evaluate(
-                imgs, [self._output_op, self._features_op])
-            self._last_features = all_features
+            features, probs = self._evaluate(
+                imgs, [self._features_op, self._output_op])
         else:
-            all_probs = self._evaluate(imgs, [self._output_op])[0]
+            features = None
+            probs = self._evaluate(imgs, [self._output_op])[0]
 
-        self._last_probs = all_probs
-        return [self._parse_prediction(probs) for probs in all_probs]
+        preds = [self._parse_prediction(p) for p in probs]
+
+        return features, probs, preds
 
     def _evaluate(self, imgs, ops):
         in_tensor = self._input_op.outputs[0]
