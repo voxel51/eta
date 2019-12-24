@@ -28,10 +28,21 @@ class BoundingBox(Serializable):
 
     The bounding box is represented as two RelativePoint instances describing
     the top-left and bottom-right corners of the box, respectively.
+
+    ETA follows the convention that the top-left corner of the image is [0, 0]
+    and the bottom-right corner of the image is [1, 1]. Thus, proper bounding
+    boxes satisfy the convention that their bottom-right coordinates are always
+    greater than their top-left coordinates.
     '''
 
     def __init__(self, top_left, bottom_right):
-        '''Constructs a BoundingBox from two RelativePoint instances.'''
+        '''Creates a BoundingBox instance.
+
+        Args:
+            top_left: a RelativePoint describing the top-left corner of the box
+            bottom_right: a RelativePoint describing the bottom-right corner of
+                the box
+        '''
         self.top_left = top_left
         self.bottom_right = bottom_right
 
@@ -55,7 +66,7 @@ class BoundingBox(Serializable):
             img: the image itself
 
         Returns:
-            box: a (top-left-x, top-left-y, width, height) tuple describing the
+            a (top-left-x, top-left-y, width, height) tuple describing the
                 bounding box
         '''
         tl = self.top_left.coords_in(
@@ -110,10 +121,10 @@ class BoundingBox(Serializable):
 
         Args:
             alpha: the desired padding relative to the size of this
-                bounding box; a float in [-1, \inf)
+                bounding box; a float in [-1, \\inf)
 
         Returns:
-            the padded bounding box
+            the padded BoundingBox
         '''
         w = self.bottom_right.x - self.top_left.x
         h = self.bottom_right.y - self.top_left.y
@@ -129,11 +140,39 @@ class BoundingBox(Serializable):
 
         return BoundingBox(RelativePoint(tlx, tly), RelativePoint(brx, bry))
 
+    def height(self):
+        '''Computes the height of the bounding box, in [0, 1].
+
+        Returns:
+            the height
+        '''
+        return self.bottom_right.y - self.top_left.y
+
+    def width(self):
+        '''Computes the width of the bounding box, in [0, 1].
+
+        Returns:
+            the width
+        '''
+        return self.bottom_right.x - self.top_left.x
+
     def area(self):
-        '''Computes the area of the bounding box, in [0, 1].'''
-        w = self.bottom_right.x - self.top_left.x
-        h = self.bottom_right.y - self.top_left.y
-        return w * h
+        '''Computes the area of the bounding box, in [0, 1].
+
+        Returns:
+            the area
+        '''
+        return self.width() * self.height()
+
+    def centroid(self):
+        '''Computes the cenroid of the bounding box.
+
+        Returns:
+            a RelativePoint
+        '''
+        xc = 0.5 * (self.top_left.x + self.bottom_right.x)
+        yc = 0.5 * (self.top_left.y + self.bottom_right.y)
+        return RelativePoint(xc, yc)
 
     def get_intersection(self, bbox):
         '''Returns the bounding box describing the intersection of this
@@ -190,7 +229,12 @@ class BoundingBox(Serializable):
 
     @classmethod
     def empty(cls):
-        '''Returns an empty bounding box.'''
+        '''Returns a BoundingBox whose top-left and bottom-right corners are
+        both at the origin.
+
+        Returns:
+            a BoundingBox
+        '''
         return cls(RelativePoint.origin(), RelativePoint.origin())
 
     @classmethod
@@ -217,7 +261,14 @@ class BoundingBox(Serializable):
 
     @classmethod
     def from_dict(cls, d):
-        '''Constructs a BoundingBox from a JSON dictionary.'''
+        '''Constructs a BoundingBox from a JSON dictionary.
+
+        Args:
+            d: a JSON dictionary
+
+        Returns:
+            a BoundingBox
+        '''
         return cls(
             RelativePoint.from_dict(d["top_left"]),
             RelativePoint.from_dict(d["bottom_right"]))
@@ -240,7 +291,7 @@ class RelativePoint(Serializable):
     '''A point in an image, represented as (x, y) coordinates in [0, 1].'''
 
     def __init__(self, x, y):
-        '''Construct a relative point from (x, y) coordinates.
+        '''Constructs a RelativePoint instance.
 
         Args:
             x: a number in [0, 1]
@@ -270,14 +321,22 @@ class RelativePoint(Serializable):
             img: the image itself
 
         Returns:
-            (x, y): the absolute x and y coordinates of this point
+            the absolute (x, y) coordinates of this point
         '''
         w, h = _to_frame_size(frame_size=frame_size, shape=shape, img=img)
         return int(w * 1.0 * self.x), int(h * 1.0 * self.y)
 
     @staticmethod
     def clamp(x, y):
-        '''Clamps the (x, y) coordinates to [0, 1].'''
+        '''Clamps the (x, y) coordinates to [0, 1].
+
+        Args:
+            x: x coordinate
+            y: y coordinate
+
+        Returns:
+            (x, y) clamped to [0, 1] x [0, 1]
+        '''
         return max(0, min(x, 1)), max(0, min(y, 1))
 
     def to_tuple(self):
@@ -309,25 +368,31 @@ class RelativePoint(Serializable):
 
     @classmethod
     def origin(cls):
-        '''Returns a relative point at the origin.'''
+        '''Returns a relative point at the origin.
+
+        Returns:
+            a RelativePoint at (0, 0)
+        '''
         return cls(0, 0)
 
     @classmethod
     def from_dict(cls, d):
-        '''Constructs a RelativePoint from a JSON dictionary.'''
+        '''Constructs a RelativePoint from a JSON dictionary.
+
+        Args:
+            d: a JSON dictionary
+
+        Returns:
+            a RelativePoint
+        '''
         return cls(d["x"], d["y"])
 
 
 class LabeledPoint(Serializable):
-    '''A relative point that has an associated label.
-
-    Attributes:
-        label: object label
-        relative_point: a RelativePoint instance
-    '''
+    '''A RelativePoint with an associated label.'''
 
     def __init__(self, label, relative_point):
-        '''Constructs a LabeledPoint.
+        '''Constructs a LabeledPoint instance.
 
         Args:
             label: label string
@@ -338,11 +403,15 @@ class LabeledPoint(Serializable):
 
     @classmethod
     def from_dict(cls, d):
-        '''Constructs a LabeledPoint from a JSON dictionary.'''
-        return cls(
-            d["label"],
-            RelativePoint.from_dict(d["relative_point"]),
-        )
+        '''Constructs a LabeledPoint from a JSON dictionary.
+
+        Args:
+            d: a JSON dictionary
+
+        Returns:
+            a LabeledPoint
+        '''
+        return cls(d["label"], RelativePoint.from_dict(d["relative_point"]))
 
 
 class LabeledPointContainer(Container):
@@ -361,7 +430,6 @@ class BigLabeledPointContainer(LabeledPointContainer, BigContainer):
 
     As a BigContainer, each LabeledPoint is stored individually on disk.
     '''
-
     pass
 
 
@@ -382,7 +450,6 @@ class BigLabeledPointSet(LabeledPointSet, BigSet):
 
     As a BigSet, each LabeledPoint is stored individually on disk.
     '''
-
     pass
 
 
@@ -391,10 +458,9 @@ def _to_frame_size(frame_size=None, shape=None, img=None):
         shape = img.shape
     if shape is not None:
         return shape[1], shape[0]
-    elif frame_size is not None:
+    if frame_size is not None:
         return tuple(frame_size)
-    else:
-        raise TypeError("A valid keyword argument must be provided")
+    raise TypeError("A valid keyword argument must be provided")
 
 
 def _make_square(x, y, w, h):
