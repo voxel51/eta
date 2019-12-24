@@ -71,10 +71,13 @@ def standarize_strs(arg):
         return {
             standarize_strs(k): standarize_strs(v) for k, v in iteritems(arg)
         }
-    elif isinstance(arg, list):
+
+    if isinstance(arg, list):
         return [standarize_strs(e) for e in arg]
-    elif isinstance(arg, six.string_types):
+
+    if isinstance(arg, six.string_types):
         return str(arg)
+
     return arg
 
 
@@ -326,8 +329,8 @@ def communicate_or_die(args, decode=False):
     except EnvironmentError as e:
         if e.errno == errno.ENOENT:
             raise ExecutableNotFoundError(args[0])
-        else:
-            raise
+
+        raise
 
 
 class Timer(object):
@@ -691,7 +694,7 @@ def copy_dir(indir, outdir):
         outdir: the output directory
     '''
     if os.path.isdir(outdir):
-        communicate_or_die(["rm", "-rf",  outdir])
+        communicate_or_die(["rm", "-rf", outdir])
     ensure_dir(outdir)
 
     for filepath in list_files(indir, include_hidden_files=True, sort=False):
@@ -713,7 +716,7 @@ def delete_file(path):
     Args:
         path: the filepath
     '''
-    communicate_or_die(["rm", "-f",  path])
+    communicate_or_die(["rm", "-f", path])
     try:
         os.removedirs(os.path.dirname(path))
     except OSError:
@@ -729,7 +732,7 @@ def delete_dir(dir_):
         dir_: the directory path
     '''
     dir_ = os.path.normpath(dir_)
-    communicate_or_die(["rm", "-rf",  dir_])
+    communicate_or_die(["rm", "-rf", dir_])
     try:
         os.removedirs(os.path.dirname(dir_))
     except OSError:
@@ -978,7 +981,8 @@ def from_human_time_str(time_str):
         can_be_plural = _TIME_PLURALS[idx]
         if time_str.endswith(unit):
             return float(time_str[:-len(unit)]) * _TIME_IN_SECS[idx]
-        elif can_be_plural and time_str.endswith(unit + "s"):
+
+        if can_be_plural and time_str.endswith(unit + "s"):
             return float(time_str[:-(len(unit) + 1)]) * _TIME_IN_SECS[idx]
 
     return float(time_str)
@@ -1836,8 +1840,8 @@ class FileHasher(object):
             if e.errno == errno.ENOENT:
                 logger.debug("No hash record '%s'", self.record_path)
                 return None
-            else:
-                raise
+
+            raise
 
     def write(self):
         '''Writes the current hash record.'''
