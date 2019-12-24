@@ -287,7 +287,7 @@ class TFSlimClassifier(
 
         Returns:
             an array of class probabilities, or None if the classifier has not
-                (or does not) generated probabilities
+                (or does not) generate probabilities
         '''
         if not self.exposes_probabilities:
             return None
