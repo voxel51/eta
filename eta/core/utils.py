@@ -1463,7 +1463,34 @@ def get_pattern_matches(patt):
     Returns:
         a list of file paths that match the pattern `patt`
     '''
-    return [file_path for file_path, _, _ in _iter_pattern_matches(patt)]
+    return [path for path, _, _ in _iter_pattern_matches(patt)]
+
+
+def fill_partial_pattern(patt, vals):
+    '''Partially fills a pattern with the given values.
+
+    Only supports integer ("%05d", "%4d", or "%d") and string ("%s") patterns.
+
+    Args:
+        patt: a pattern with one or more numeric or string sequences like
+            "/path/to/features/%05d.npy" or "/path/to/features/%s-%d.npy"
+        vals: a tuple of values whose length matches the number of patterns in
+            `patt`, with Nones as placeholders for patterns that should not be
+            filled
+
+    Returns:
+        the partially filled pattern
+    '''
+    if not vals:
+        return patt
+
+    exp = re.compile(r"(%[0-9]*[ds])")
+    chunks = re.split(exp, patt)
+    for i, j in enumerate(range(1, len(chunks), 2)):
+        if vals[i] is not None:
+            chunks[j] = chunks[j] % vals[i]
+
+    return "".join(chunks)
 
 
 def _iter_pattern_matches(patt):
