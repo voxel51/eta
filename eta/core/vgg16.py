@@ -116,24 +116,6 @@ class VGG16(Configurable, UsesTFSession):
 
         self._load_model(self.config.model_name)
 
-    @staticmethod
-    def preprocess_image(img):
-        '''Pre-processes the image for evaluation by converting it to a
-        224 x 224 RGB image.
-
-        Args:
-            img: an image
-
-        Returns:
-            224 x 224 RGB image
-        '''
-        if etai.is_gray(img):
-            img = etai.gray_to_rgb(img)
-        elif etai.has_alpha(img):
-            img = img[:, :, :3]
-
-        return etai.resize(img, 224, 224)
-
     @property
     def num_classes(self):
         '''The number of classes for the model.'''
@@ -168,6 +150,24 @@ class VGG16(Configurable, UsesTFSession):
                 each output will be XXXX
         '''
         return self.sess.run(tensors, feed_dict={self.imgs: imgs})
+
+    @staticmethod
+    def preprocess_image(img):
+        '''Pre-processes the image for evaluation by converting it to a
+        224 x 224 RGB image.
+
+        Args:
+            img: an image
+
+        Returns:
+            224 x 224 RGB image
+        '''
+        if etai.is_gray(img):
+            img = etai.gray_to_rgb(img)
+        elif etai.has_alpha(img):
+            img = img[:, :, :3]
+
+        return etai.resize(img, 224, 224)
 
     def _build_conv_layers(self):
         self.parameters = []
