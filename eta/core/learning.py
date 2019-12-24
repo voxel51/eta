@@ -680,16 +680,16 @@ class ExposesFeatures(object):
     By convention, features should be returned in an array whose shape follows
     the pattern below:
 
-    inference type                    features array shape
+    Inference type                    Features array shape
     --------------------------------  -----------------------------------
-    ImageClassifier.predict           features_dim
+    ImageClassifier.predict           1 x features_dim
     ImageClassifier.predict_all       num_images x features_dim
-    VideoFramesClassifier.predict     features_dim
-    VideoClassifier.predict           features_dim
-    ObjectDetector.detect             num_objects x features_dim
+    VideoFramesClassifier.predict     1 x features_dim
+    VideoClassifier.predict           1 x features_dim
+    ObjectDetector.detect             1 x num_objects x features_dim
     ObjectDetector.detect_all         num_images x num_objects x features_dim
-    VideoFramesObjectDetector.detect  num_objects x features_dim
-    VideoObjectDetector.detect        num_objects x features_dim
+    VideoFramesObjectDetector.detect  1 x num_objects x features_dim
+    VideoObjectDetector.detect        1 x num_objects x features_dim
     '''
 
     @property
@@ -746,16 +746,16 @@ class ExposesProbabilities(object):
     By convention, class probabilities should be returned in an array whose
     shape follows the pattern below:
 
-    inference type                    features array shape
+    Inference type                    Features array shape
     --------------------------------  -----------------------------------
-    ImageClassifier.predict           num_preds x num_classes
+    ImageClassifier.predict           1 x num_preds x num_classes
     ImageClassifier.predict_all       num_images x num_preds x num_classes
-    VideoFramesClassifier.predict     num_preds x num_classes
-    VideoClassifier.predict           num_preds x num_classes
-    ObjectDetector.detect             num_objects x num_classes
+    VideoFramesClassifier.predict     1 x num_preds x num_classes
+    VideoClassifier.predict           1 x num_preds x num_classes
+    ObjectDetector.detect             1 x num_objects x num_classes
     ObjectDetector.detect_all         num_images x num_objects x num_classes
-    VideoFramesObjectDetector.detect  num_objects x num_classes
-    VideoObjectDetector.detect        num_objects x num_classes
+    VideoFramesObjectDetector.detect  1 x num_objects x num_classes
+    VideoObjectDetector.detect        1 x num_objects x num_classes
     '''
 
     @property
