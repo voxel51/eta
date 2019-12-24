@@ -20,7 +20,7 @@ from future.utils import iteritems
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-import copy
+from copy import copy
 import logging
 import os
 import re
@@ -38,6 +38,15 @@ logger = logging.getLogger(__name__)
 
 
 TF_RECORD_EXTENSIONS = [".record", ".tfrecord"]
+
+
+def is_gpu_available():
+    '''Determines whether TensorFlow can access a GPU.
+
+    Returns:
+        True/False
+    '''
+    return tf.test.is_gpu_available()
 
 
 def load_graph(model_path, prefix=""):
@@ -195,13 +204,22 @@ def make_tf_config(config_proto=None):
     Returns:
         a tf.ConfigProto
     '''
-    config = copy.copy(config_proto) if config_proto else tf.ConfigProto()
+    config = copy(config_proto) if config_proto else tf.ConfigProto()
 
     if eta.config.tf_config:
-        logger.info(
-            "Applying `tf_config` settings from ETA config: %s",
-            str(eta.config.tf_config))
-        _set_proto_fields(config, eta.config.tf_config)
+        tf_config = eta.config.tf_config
+        if not is_gpu_available():
+            # Remove GPU options, just for clarity
+            tf_config = {
+                k: v for k, v in iteritems(tf_config)
+                if not k.startswith("gpu_options.")
+            }
+
+        if tf_config:
+            logger.info(
+                "Applying `tf_config` settings from ETA config: %s",
+                str(tf_config))
+            _set_proto_fields(config, tf_config)
 
     return config
 
