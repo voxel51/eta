@@ -95,7 +95,7 @@ class TFModelsDetectorConfig(Config, etal.HasDefaultDeploymentConfig):
         self.labels_path = etau.fill_config_patterns(
             self.parse_string(d, "labels_path"))
         self.confidence_thresh = self.parse_number(
-            d, "confidence_thresh", default=None)
+            d, "confidence_thresh", default=0)
         self.input_name = self.parse_number(
             d, "input_name", default="image_tensor")
         self.boxes_name = self.parse_number(
@@ -275,10 +275,7 @@ class TFModelsDetector(
             an `eta.core.objects.DetectedObjectContainer` describing the
                 detections
         '''
-        features, probs, detections = self._detect([img])
-        self._last_features = features[0] if features is not None else None
-        self._last_probs = probs[0] if probs is not None else None
-        return detections[0]
+        return self._detect([img])[0]
 
     def detect_all(self, imgs):
         '''Performs detection on the given tensor of images.
@@ -290,10 +287,7 @@ class TFModelsDetector(
             a list of `eta.core.objects.DetectedObjectContainer`s describing
                 the detections
         '''
-        features, probs, detections = self._detect(imgs)
-        self._last_features = features
-        self._last_probs = probs
-        return detections
+        return self._detect(imgs)
 
     def _detect(self, imgs):
         output_ops = [self._boxes_op, self._scores_op, self._classes_op]
@@ -318,21 +312,46 @@ class TFModelsDetector(
         if features is not None:
             features = _avg_pool_features(features)
 
-        # @todo filter out features/probs for detections that are omitted
+        # Parse detections
+        max_num_objects = 0
         detections = []
-        for b, s, c in zip(boxes, scores, classes):
+        for i, (b, s, c) in enumerate(zip(boxes, scores, classes)):
+            keep = []
             objects = DetectedObjectContainer()
-            for boxi, scorei, classi in zip(b, s, c):
-                if (classi in self._category_index and (
-                        self.config.confidence_thresh is None or
-                        scorei > self.config.confidence_thresh)):
+            for j, (boxj, scorej, classj) in enumerate(zip(b, s, c)):
+                # Filter detections, if necessary
+                if (classj in self._category_index and
+                        scorej > self.config.confidence_thresh):
+                    # Construct DetectecObject for detection
+                    keep.append(j)
                     obj = _to_detected_object(
-                        boxi, scorei, classi, self._category_index)
+                        boxj, scorej, classj, self._category_index)
                     objects.add(obj)
 
+            # Record detections
             detections.append(objects)
 
-        return features, probs, detections
+            # Collect valid detections at beginning of arrays
+            num_objects = len(keep)
+            max_num_objects = max(num_objects, max_num_objects)
+            if self.exposes_features:
+                features[i, :num_objects, :] = features[i, keep, :]
+            if self.exposes_probabilities:
+                probs[i, :num_objects, :] = probs[i, keep, :]
+
+        # Trim unnecessary dimensions
+        if self.exposes_features:
+            features = features[:, :max_num_objects, :]
+        if self.exposes_probabilities:
+            probs = probs[:, :max_num_objects, :]
+
+        # Save data, if necessary
+        if self.exposes_features:
+            self._last_features = features  # n x num_objects x features_dim
+        if self.exposes_probabilities:
+            self._last_probs = probs  # n x num_objects x num_classes
+
+        return detections
 
     def _evaluate(self, imgs, ops):
         in_tensor = self._input_op.outputs[0]
@@ -397,7 +416,7 @@ class TFModelsSegmenterConfig(Config, etal.HasDefaultDeploymentConfig):
         self.labels_path = etau.fill_config_patterns(
             self.parse_string(d, "labels_path"))
         self.confidence_thresh = self.parse_number(
-            d, "confidence_thresh", default=None)
+            d, "confidence_thresh", default=0)
         self.mask_thresh = self.parse_number(d, "mask_thresh", default=0.5)
         self.input_name = self.parse_number(
             d, "input_name", default="image_tensor")
@@ -583,10 +602,7 @@ class TFModelsSegmenter(
             an `eta.core.objects.DetectedObjectContainer` describing the
                 detections
         '''
-        features, probs, detections = self._detect([img])
-        self._last_features = features[0] if features is not None else None
-        self._last_probs = probs[0] if probs is not None else None
-        return detections[0]
+        return self._detect([img])[0]
 
     def detect_all(self, imgs):
         '''Performs detection on the given tensor of images.
@@ -598,15 +614,13 @@ class TFModelsSegmenter(
             a list of `eta.core.objects.DetectedObjectContainer`s describing
                 the detections
         '''
-        features, probs, detections = self._detect(imgs)
-        self._last_features = features
-        self._last_probs = probs
-        return detections
+        return self._detect(imgs)
 
     def _detect(self, imgs):
         output_ops = [
             self._boxes_op, self._scores_op, self._classes_op, self._masks_op]
 
+        # Perform inference
         if self.exposes_features and self.exposes_probabilities:
             output_ops.extend([self._features_op, self._class_probs_op])
             boxes, scores, classes, masks, features, probs = self._evaluate(
@@ -629,22 +643,47 @@ class TFModelsSegmenter(
         if features is not None:
             features = _avg_pool_features(features)
 
-        # @todo filter out features/probs for detections that are omitted
+        # Parse detections
+        max_num_objects = 0
         detections = []
-        for b, s, c, m in zip(boxes, scores, classes, masks):
+        for i, (b, s, c, m) in enumerate(zip(boxes, scores, classes, masks)):
+            keep = []
             objects = DetectedObjectContainer()
-            for boxi, scorei, classi, maski in zip(b, s, c, m):
-                if (classi in self._category_index and (
-                        self.config.confidence_thresh is None or
-                        scorei > self.config.confidence_thresh)):
+            for j, (boxj, scorej, classj, maskj) in enumerate(zip(b, s, c, m)):
+                # Filter detections, if necessary
+                if (classj in self._category_index and
+                        scorej > self.config.confidence_thresh):
+                    # Construct DetectecObject for detection
+                    keep.append(j)
                     obj = _to_detected_object(
-                        boxi, scorei, classi, self._category_index,
-                        mask_probs=maski, mask_thresh=self.config.mask_thresh)
+                        boxj, scorej, classj, self._category_index,
+                        mask_probs=maskj, mask_thresh=self.config.mask_thresh)
                     objects.add(obj)
 
+            # Record detections
             detections.append(objects)
 
-        return features, probs, detections
+            # Collect valid detections at beginning of arrays
+            num_objects = len(keep)
+            max_num_objects = max(num_objects, max_num_objects)
+            if self.exposes_features:
+                features[i, :num_objects, :] = features[i, keep, :]
+            if self.exposes_probabilities:
+                probs[i, :num_objects, :] = probs[i, keep, :]
+
+        # Trim unnecessary dimensions
+        if self.exposes_features:
+            features = features[:, :max_num_objects, :]
+        if self.exposes_probabilities:
+            probs = probs[:, :max_num_objects, :]
+
+        # Save data, if necessary
+        if self.exposes_features:
+            self._last_features = features  # n x num_objects x features_dim
+        if self.exposes_probabilities:
+            self._last_probs = probs  # n x num_objects x num_classes
+
+        return detections
 
     def _evaluate(self, imgs, ops):
         in_tensor = self._input_op.outputs[0]
@@ -688,7 +727,7 @@ def _avg_pool_features(features):
 
 
 def _get_class_labels(category_index):
-    return [k["name"] for k in sorted(category_index.keys())]
+    return [category_index[k]["name"] for k in sorted(category_index.keys())]
 
 
 def _to_detected_object(
