@@ -146,7 +146,7 @@ class WebSessionError(Exception):
 class GoogleDriveSession(WebSession):
     '''Class for downloading Google Drive files.'''
 
-    BASE_URL = "https://drive.google.com/uc?export=download"
+    BASE_URL = "https://drive.google.com/open?export=download"
 
     def get(self, fid):
         return WebSession.get(self, self.BASE_URL, params={"id": fid})
