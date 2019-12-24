@@ -142,18 +142,7 @@ class VGG16Classifier(
             an `eta.core.data.AttributeContainer` instance containing the
                 predictions
         '''
-        imgs = [VGG16.preprocess_image(img)]
-
-        if self.exposes_features:
-            tensors = [self._vgg16.probs, self._vgg16.fc2l]
-            probs, features = self._vgg16.evaluate(imgs, tensors)
-            self._last_features = features[0]
-        else:
-            tensors = [self._vgg16.probs]
-            probs = self._vgg16.evaluate(imgs, tensors)[0]
-
-        self._last_probs = probs[0]
-        return self._process_probs(probs[0])
+        return self._predict([img])[0]
 
     def predict_all(self, imgs):
         '''Performs prediction on the given tensor of images.
@@ -165,20 +154,32 @@ class VGG16Classifier(
             a list of `eta.core.data.AttributeContainer` instances describing
                 the predictions for each image
         '''
+        return self._predict(imgs)
+
+    def _predict(self, imgs):
+        # Perform preprocessing
         imgs = [VGG16.preprocess_image(img) for img in imgs]
 
+        # Perform inference
         if self.exposes_features:
             tensors = [self._vgg16.probs, self._vgg16.fc2l]
-            all_probs, all_features = self._vgg16.evaluate(imgs, tensors)
-            self._last_features = all_features
+            probs, features = self._vgg16.evaluate(imgs, tensors)
         else:
             tensors = [self._vgg16.probs]
-            all_probs = self._vgg16.evaluate(imgs, tensors)[0]
+            probs = self._vgg16.evaluate(imgs, tensors)[0]
+            features = None
 
-        self._last_probs = all_probs
-        return [self._process_probs(probs) for probs in all_probs]
+        # Parse predictions
+        predictions = [self._parse_prediction(p) for p in probs]
 
-    def _process_probs(self, probs):
+        # Save data, if necessary
+        if self.exposes_features:
+            self._last_features = features  # n x features_dim
+        self._last_probs = probs[:, np.newaxis, :]  # n x 1 x num_classes
+
+        return predictions
+
+    def _parse_prediction(self, probs):
         idx = np.argmax(probs)
         label = self.class_labels[idx]
         confidence = probs[idx]
