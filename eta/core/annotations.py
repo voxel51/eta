@@ -430,6 +430,10 @@ def _annotate_object(img, obj, annotation_config):
     colormap = annotation_config.colormap
     font = annotation_config.font
     alpha = annotation_config.alpha
+
+    # @todo(Tyler)
+    alpha = obj.confidence if obj.confidence is not None else alpha
+
     linewidth = annotation_config.linewidth
     pad = annotation_config.object_text_pad_pixels
     text_color = tuple(_parse_hex_color(annotation_config.text_color))
