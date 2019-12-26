@@ -537,16 +537,19 @@ class CachingVideoFeaturizer(Featurizer):
     def frame_preprocessor(self):
         self._frame_preprocessor = None
 
-    def featurize(self, video_path, frames=None):
+    def featurize(self, video_path, backing_dir=None, frames=None):
         '''Featurizes the frames of the input video.
 
         Attributes:
             video_path: the video path
-            frames: an optional frames string to specify the frames of the
-                video to featurize. By default, all frames are featurized
+            backing_dir: an optional backing directory to explicitly use to
+                store the features. If provided, this value will be passed to
+                `set_manual_backing_dir()`
+            frames: an optional subset of frames to featurize. By default,
+                all frames are featurized
         '''
         self.start(warn_on_restart=False, keep_alive=False)
-        self._featurize(video_path, frames)
+        self._featurize(video_path, backing_dir, frames)
         if self._keep_alive is False:
             self.stop()
 
@@ -606,16 +609,25 @@ class CachingVideoFeaturizer(Featurizer):
             logger.info("Deleting backing directory '%s'", self.backing_dir)
             etau.delete_dir(self.backing_dir)
 
-    def _featurize(self, video_path, frames):
-        if frames is None:
-            frames = self.config.frames
-
+    def _featurize(self, video_path, backing_dir, frames):
+        #
         # Get new features handler
-        video_name = os.path.basename(video_path)
-        self._backing_manager.set_task_name(video_name)
+        #
+
+        if backing_dir:
+            self.set_manual_backing_dir(backing_dir)
+        else:
+            video_name = os.path.basename(video_path)
+            self._backing_manager.set_task_name(video_name)
+
+        logger.info(
+            "Writing features to backing directory '%s'", self.backing_dir)
         self._features_handler = VideoFramesFeaturesHandler(self.backing_dir)
 
+        #
         # Featurize frames
+        #
+
         with etav.FFmpegVideoReader(video_path, frames=frames) as vr:
             for img in vr:
                 if self._frame_preprocessor is not None:
