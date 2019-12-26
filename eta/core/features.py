@@ -507,10 +507,15 @@ class CachingVideoFeaturizer(Featurizer):
         Args:
             manual_backing_dir: the manual backing directory to use
         '''
+        logger.info("Using manual backing directory '%s'", manual_backing_dir)
         self._manual_backing_dir = manual_backing_dir
 
     def clear_manual_backing_dir(self):
-        '''Clears the manual backing directory.'''
+        '''Clears the manual backing directory.
+
+        This does not delete the contents of the directory.
+        '''
+        logger.info("Clearing manual backing directory")
         self._manual_backing_dir = None
 
     def dim(self):
