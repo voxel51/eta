@@ -2307,6 +2307,34 @@ def split_video(
     ffmpeg.run(video_path, output_patt)
 
 
+def parse_frame_ranges(frames):
+    '''Parses the given frames quantity into a FrameRanges instance.
+
+    Args:
+        frames: one of the following quantities:
+            - a string like "1-3,6,8-10"
+            - a FrameRange or FrameRanges instance
+            - an iterable, e.g., [1, 2, 3, 6, 8, 9, 10]. The frames do not
+                need to be in sorted order
+
+    Returns:
+        a FrameRanges instance describing the frame ranges
+    '''
+    if isinstance(frames, six.string_types):
+        # Frames string
+        frame_ranges = FrameRanges.from_str(frames)
+    elif isinstance(frames, (FrameRange, FrameRanges)):
+        # FrameRange or FrameRanges
+        frame_ranges = frames
+    elif hasattr(frames, "__iter__"):
+        # Frames iterable
+        frame_ranges = FrameRanges.from_iterable(frames)
+    else:
+        raise ValueError("Invalid frames %s" % frames)
+
+    return frame_ranges
+
+
 class VideoProcessor(object):
     '''Class for reading a video and writing a new video frame-by-frame.
 
@@ -2531,25 +2559,12 @@ class VideoReader(object):
                     need to be in sorted order
         '''
         self.inpath = inpath
-        if frames is None:
-            self.frames = "1-%d" % self.total_frame_count
-            self._ranges = FrameRanges.from_str(self.frames)
-        elif isinstance(frames, six.string_types):
-            # Frames string
-            if frames == "*":
-                frames = "1-%d" % self.total_frame_count
-            self.frames = frames
-            self._ranges = FrameRanges.from_str(frames)
-        elif isinstance(frames, (FrameRange, FrameRanges)):
-            # FrameRange or FrameRanges
-            self._ranges = frames
-            self.frames = frames.to_str()
-        elif hasattr(frames, "__iter__"):
-            # Frames iterable
-            self._ranges = FrameRanges.from_iterable(frames)
-            self.frames = self._ranges.to_str()
-        else:
-            raise VideoReaderError("Invalid frames %s" % frames)
+
+        # Parse frames
+        if frames is None or frames == "*":
+            frames = "1-%d" % self.total_frame_count
+        self._ranges = parse_frame_ranges(frames)
+        self.frames = self._ranges.to_str()
 
     def __enter__(self):
         return self
