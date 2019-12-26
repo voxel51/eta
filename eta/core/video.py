@@ -441,6 +441,21 @@ class VideoFrameLabels(Serializable):
         self.attrs = attrs or AttributeContainer()
         self.objects = objects or DetectedObjectContainer()
 
+    @property
+    def has_frame_attributes(self):
+        '''Whether the frame has at least one frame attribute.'''
+        return bool(self.attrs)
+
+    @property
+    def has_objects(self):
+        '''Whether the frame has at least one DetectedObject.'''
+        return bool(self.objects)
+
+    @property
+    def is_empty(self):
+        '''Whether the frame has no labels of any kind.'''
+        return (not self.has_frame_attributes and not self.has_objects)
+
     def add_frame_attribute(self, frame_attr):
         '''Adds the attribute to the frame.
 
