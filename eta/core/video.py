@@ -704,6 +704,22 @@ class VideoLabels(Serializable):
         '''
         return sorted(self.frames.keys())
 
+    def get_frame_numbers_with_attributes(self):
+        '''Returns a sorted list of frames with one or more frame attributes.
+
+        Returns:
+            a list of frame numbers
+        '''
+        return sorted([fn for fn in self if self[fn].has_frame_attributes])
+
+    def get_frame_numbers_with_objects(self):
+        '''Returns a sorted list of frames with one or more DetectedObjects.
+
+        Returns:
+            a list of frame numbers
+        '''
+        return sorted([fn for fn in self if self[fn].has_objects])
+
     def get_frame_range(self):
         '''Returns the (min, max) frame numbers with VideoFrameLabels.
 
