@@ -1,12 +1,12 @@
 {
     "data": [
         {
-            "backing_dir": "out/eta-backing/embed/1",
-            "video_path": "../data/water-20frames/%05d.png"
+            "video_path": "../data/water-20frames/%05d.png",
+            "backing_dir": "out/eta-backing/embed/1"
         },
         {
-            "backing_dir": "out/eta-backing/embed/2",
-            "video_path": "../data/water-20frames/%05d.png"
+            "video_path": "../data/water-20frames/%05d.png",
+            "backing_dir": "out/eta-backing/embed/2"
         }
     ],
     "parameters": {
