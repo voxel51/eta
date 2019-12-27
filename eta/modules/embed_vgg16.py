@@ -106,11 +106,11 @@ def _embed_vgg16(config):
         .set(type=etau.get_class_name(etav.VGG16Featurizer))
         .set(config=config.parameters.vgg16)
         .validate())
-    config = (etaf.CachingVideoFeaturizerConfig.builder()
-        .set(frame_featurizer=frame_featurizer)
-        .set(delete_backing_directory=False)
-        .build())
-    featurizer = etaf.CachingVideoFeaturizer(config)
+    featurizer = etaf.CachingVideoFeaturizer(
+        etaf.CachingVideoFeaturizerConfig.builder()
+            .set(frame_featurizer=frame_featurizer)
+            .set(delete_backing_directory=False)
+            .build())
 
     # Set crop box, if provided
     if config.parameters.crop_box is not None:
