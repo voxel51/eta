@@ -28,6 +28,11 @@ class BoundingBox(Serializable):
 
     The bounding box is represented as two RelativePoint instances describing
     the top-left and bottom-right corners of the box, respectively.
+
+    ETA follows the convention that the top-left corner of the image is [0, 0]
+    and the bottom-right corner of the image is [1, 1]. Thus, proper bounding
+    boxes satisfy the convention that their bottom-right coordinates are always
+    greater than their top-left coordinates.
     '''
 
     def __init__(self, top_left, bottom_right):
@@ -157,7 +162,7 @@ class BoundingBox(Serializable):
         Returns:
             the area
         '''
-        return self.width() * self.height()\
+        return self.width() * self.height()
 
     def centroid(self):
         '''Computes the cenroid of the bounding box.
