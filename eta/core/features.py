@@ -497,7 +497,7 @@ class CachingVideoFeaturizer(Featurizer):
 
         return self._features_handler
 
-    def set_manual_backing_dir(self, manual_backing_dir):
+    def set_manual_backing_dir(self, backing_dir):
         '''Manually sets the backing directory.
 
         If a manual backing directory is set, it will take precedence over the
@@ -505,10 +505,10 @@ class CachingVideoFeaturizer(Featurizer):
         `clear_manual_backing_dir()`.
 
         Args:
-            manual_backing_dir: the manual backing directory to use
+            backing_dir: the manual backing directory to use
         '''
-        logger.info("Using manual backing directory '%s'", manual_backing_dir)
-        self._manual_backing_dir = manual_backing_dir
+        logger.info("Using manual backing directory '%s'", backing_dir)
+        self._manual_backing_dir = backing_dir
 
     def clear_manual_backing_dir(self):
         '''Clears the manual backing directory.
