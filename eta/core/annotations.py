@@ -61,8 +61,8 @@ class AnnotationConfig(Config):
         linewidth: the linewidth, in pixels, of the object bounding boxes
         alpha: the transparency of the object bounding boxes and frame
             attributes
-        alpha_equals_confidence: True will set the transparency equal to the
-            object confidence
+        confidence_scaled_alpha: True will scale `alpha` and `mask_fill_alpha`
+            by the object confidence
         text_color: the annotation text color
         object_text_pad_pixels: the padding, in pixels, around the text in the
             object labels
@@ -102,8 +102,8 @@ class AnnotationConfig(Config):
         self.font_size = self.parse_number(d, "font_size", default=16)
         self.linewidth = self.parse_number(d, "linewidth", default=2)
         self.alpha = self.parse_number(d, "alpha", default=0.75)
-        self.alpha_equals_confidence = self.parse_bool(
-            d, "alpha_equals_confidence", default=False)
+        self.confidence_scaled_alpha = self.parse_bool(
+            d, "confidence_scaled_alpha", default=False)
         self.text_color = self.parse_string(d, "text_color", default="#FFFFFF")
         self.object_text_pad_pixels = self.parse_number(
             d, "object_text_pad_pixels", default=2)
@@ -434,15 +434,16 @@ def _annotate_object(img, obj, annotation_config):
     colormap = annotation_config.colormap
     font = annotation_config.font
     alpha = annotation_config.alpha
-    alpha_equals_confidence = annotation_config.alpha_equals_confidence
+    confidence_scaled_alpha = annotation_config.confidence_scaled_alpha
     linewidth = annotation_config.linewidth
     pad = annotation_config.object_text_pad_pixels
     text_color = tuple(_parse_hex_color(annotation_config.text_color))
     mask_border_thickness = annotation_config.mask_border_thickness
     mask_fill_alpha = annotation_config.mask_fill_alpha
 
-    if alpha_equals_confidence and obj.confidence is not None:
-        alpha = obj.confidence
+    if confidence_scaled_alpha and obj.confidence is not None:
+        alpha *= obj.confidence
+        mask_fill_alpha *= obj.confidence
 
     # Construct label string
     label_str, label_hash = _render_object_label(
