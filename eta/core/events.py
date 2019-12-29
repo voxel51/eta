@@ -1,16 +1,20 @@
 '''
 Core data structures for working with events in videos.
 
-@todo generalize to allow frame ranges.
+This module has two "layers" of events.
+1.  The "primitive" layer of events includes Event, EventSeries, and
+EventDetection.  These are basic ways of representing asemantic ranges of
+content.
+2.  The "semantic" layer of events, includes DetectedEvent and
+DetectedEventContainer.  These include capabilities of discontiguous events,
+multi-class/attribute-based events and capture metadata of an event.  These use
+the primitive layer's elements.
 
-@todo generalize to allow multi-class event detections/series.
-
-@todo add ability to store metadata inside an event
-
-Copyright 2017, Voxel51, Inc.
+Copyright 2017, 2019 Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
+Jason Corso, jason@voxel51.com
 '''
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
@@ -27,7 +31,194 @@ from builtins import *
 import numpy as np
 
 from eta.core.config import Config, Configurable
-from eta.core.serial import Serializable
+from eta.core.data import AttributeContainer
+from eta.core.serial import Container, Serializable
+
+
+class DetectedEvent(Serializable):
+    '''A detected event in a video.
+
+    Attributes:
+        label: the event label
+        event_series: the EventSeries (discontiguous temporal) range of the
+            event
+        confidence: (optional) the detection confidence in [0, 1]
+        index: (optional) an index assigned to the event
+        score: (optional) a score assigned to the event
+        attrs: (optional) an AttributeContainer describing additional
+            attributes of the event
+    '''
+
+    def __init__(self, label, event_series, confidence=None, index=None,
+                 score=None, attrs=None):
+        '''Creates a DetectedEvent instance.
+
+        Args:
+            label: the event label
+            event_series: the EventSeries (discontiguous temporal) range of the
+                event
+            confidence: (optional) the detection confidence in [0, 1]
+            index: (optional) an index assigned to the event
+            score: (optional) a score assigned to the event
+            attrs: (optional) an AttributeContainer describing additional
+                attributes of the event
+        '''
+        self.label = label
+        self.event_series = event_series
+        self.confidence = confidence
+        self.index = index
+        self.score = score
+        self.attrs = attrs or AttributeContainer()
+
+    @property
+    def has_attributes(self):
+        '''Returns True/False if this event has attributes.'''
+        return bool(self.attrs)
+
+    def clear_attributes(self):
+        '''Removes all attributes from the event.'''
+        self.attrs = AttributeContainer()
+
+    def add_attribute(self, attr):
+        '''Adds the Attribute to the event.'''
+        self.attrs.add(attr)
+
+    def add_attributes(self, attrs):
+        '''Adds the AttributeContainer of attributes to the event.'''
+        self.attrs.add_container(attrs)
+
+    def get_event_series(self):
+        '''Returns the event series for the event.'''
+        return self.event_series
+
+    def is_contiguous(self):
+        '''Returns true/false on whether the event is contiguous.
+
+        It does this simply by checking if there is only one element in the
+        event series, which forces it to be contiguous.  If false, then this
+        could be contiguous, but it is not likely.
+        '''
+        return len(self.event_series.events) == 1
+
+    def attributes(self):
+        '''Returns the list of attributes to serialize.'''
+        _attrs = ["label", "event_series"]
+        _optional_attrs = ["confidence", "index", "score"]
+        _attrs.extend(
+            [a for a in _optional_attrs if getattr(self, a) is not None])
+        if self.attrs:
+            _attrs.append("attrs")
+        return _attrs
+
+    def to_frames(self):
+        '''Creates a simple string representation of the temporal extent of the
+        `DetectedEvent`.
+
+        The output representation may not be contiguous and it be overlap in
+        certain events.  No checking is performed to this effect.
+        '''
+        return self.event_series.to_str()
+
+    @staticmethod
+    def build_simple(start, stop, label, confidence=None, index=None):
+        '''Static factory that creates a simple contiguous `DetectedEvent`
+        that has a label and optional confidence and index.
+
+        Args:
+            start: the starting frame of the event
+            stop: the last frame of the event
+            label: the event label
+            confidence: (optional) the detection confidence in [0, 1]
+            index: (optional) an index assigned to the event
+        '''
+        event = Event(start, stop)
+        series = EventSeries([event])
+        return DetectedEvent(label, series, confidence, index)
+
+    @classmethod
+    def from_dict(cls, d):
+        '''Constructs a DetectedEvent from a JSON dictionary.'''
+        attrs = d.get("attrs", None)
+        if attrs is not None:
+            attrs = AttributeContainer.from_dict(attrs)
+
+        return cls(
+            d["label"],
+            EventSeries.from_dict(d["event_series"]),
+            confidence=d.get("confidence", None),
+            index=d.get("index", None),
+            score=d.get("score", None),
+            attrs=attrs,
+        )
+
+
+class DetectedEventContainer(Container):
+    '''Base class for containers that store lists of `DetectedEvent`s.'''
+
+    _ELE_CLS = DetectedEvent
+    _ELE_CLS_FIELD = "_EVENT_CLS"
+    _ELE_ATTR = "events"
+
+    def get_labels(self):
+        '''Returns a set containing the labels of the DetectedEvents.'''
+        return set(event.label for event in self)
+
+    def sort_by_confidence(self, reverse=False):
+        '''Sorts the event list by confidence.
+
+        Events whose confidence is None are always put last.
+
+        Args:
+            reverse: whether to sort in descending order. The default is False
+        '''
+        self.sort_by("confidence", reverse=reverse)
+
+    def sort_by_index(self, reverse=False):
+        '''Sorts the event list by index.
+
+        Events whose index is None are always put last.
+
+        Args:
+            reverse: whether to sort in descending order. The default is False
+        '''
+        self.sort_by("index", reverse=reverse)
+
+    def sort_by_score(self, reverse=False):
+        '''Sorts the event list by score.
+
+        Events whose score is None are always put last.
+
+        Args:
+            reverse: whether to sort in descending order. The default is False
+        '''
+        self.sort_by("score", reverse=reverse)
+
+    def filter_by_schema(self, schema):
+        '''Filters the events/attributes from this container that are not
+        compliant with the given schema.
+
+        Args:
+            schema: an ImageLabelsSchema or VideoLabelsSchema
+        '''
+        filter_func = lambda event: event.label in schema.events
+        self.filter_elements([filter_func])
+        for event in self:
+            if event.has_attributes:
+                event.attrs.filter_by_schema(schema.events[event.label])
+
+    def remove_events_without_attrs(self, labels=None):
+        '''Filters the events from this container that do not have attributes.
+
+        Args:
+            labels: an optional list of DetectedEvent label strings to which
+                to restrict attention when filtering. By default, all event
+                are processed
+        '''
+        filter_func = lambda event: (
+            (labels is not None and event.label not in labels)
+            or event.has_attributes
+        )
+        self.filter_elements([filter_func])
 
 
 class Event(Serializable):
