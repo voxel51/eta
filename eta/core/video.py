@@ -43,6 +43,7 @@ import numpy as np
 from eta.core.data import AttributeContainer, AttributeContainerSchema
 import eta.core.gps as etag
 import eta.core.image as etai
+from eta.core.events import DetectedEventContainer
 from eta.core.objects import DetectedObjectContainer
 from eta.core.serial import load_json, Serializable, Set, BigSet
 import eta.core.utils as etau
