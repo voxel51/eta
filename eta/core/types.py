@@ -533,6 +533,26 @@ class VideoObjectDetector(Detector):
             return False
 
 
+class VideoEventDetector(Detector):
+    '''Type definition for an `eta.core.learning.VideoEventDetector`.
+
+    This type interface is implemented in  by the
+    `eta.core.learning.VideoEventDetectorConfig` class.
+    '''
+
+    @staticmethod
+    def is_valid_value(val):
+        try:
+            logger.info(val)
+            etal.VideoEventDetectorConfig(val)
+            return True
+        except Exception as e:
+            logger.error(
+                "An error occurred while parsing the VideoEventDetector value")
+            logger.error(e, exc_info=True)
+            return False
+
+
 ###### Data types #############################################################
 
 
@@ -1133,6 +1153,30 @@ class DetectedObjectsSequence(JSONFileSequence):
 
     Examples:
         /path/to/detected_objects/%05d.json
+    '''
+    pass
+
+
+class DetectedEvent(JSONFile):
+    '''A detected event in a video.
+
+    This type interface is implemented in ETA by the
+    `eta.core.events.DetectedEvent` class.
+
+    Examples:
+        /path/to/detected_event.json
+    '''
+    pass
+
+
+class DetectedEvents(JSONFile):
+    '''A list of detected events in a video.
+
+    This type interface is implemented in ETA by the
+    `eta.core.events.DetectedEventContainer` class.
+
+    Examples:
+        /path/to/detected_events.json
     '''
     pass
 
