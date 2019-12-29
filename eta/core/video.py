@@ -553,10 +553,16 @@ class VideoLabels(Serializable):
     Note that any falsey fields of this class will be omitted during
     serialization.
 
-    Note that when VideoLabels objects are serialized, the keys of the `frames`
-    dict will be converted to strings, because all JSON object keys _must_ be
+    Note that when VideoLabels objects are serialized, any integer keys or
+    fields will be converted to strings and then back to integers upon
+    deserialization.  For example, the keys of the `frames` dict will be
+    converted to strings, because all JSON object keys _must_ be
     strings. The `from_dict` method of this class handles converting the keys
     back to integers when VideoLabels instances are loaded.
+
+    Frames are the primary representation-mechanism for VideoLabels.  So, when
+    using VideoLabels in a dict-like fashion, frames are retrieved, not
+    attributes and not events.
 
     Attributes:
         filename: the filename of the video
@@ -564,12 +570,13 @@ class VideoLabels(Serializable):
         attrs: an AttributeContainer containing video attributes
         frames: a dictionary mapping frame number strings to VideoFrameLabels
             instances
+        events: a DetectedEventContainer containing events
         schema: a VideoLabelsSchema describing the schema of the video labels
     '''
 
     def __init__(
             self, filename=None, metadata=None, attrs=None, frames=None,
-            schema=None):
+            events=None, schema=None):
         '''Constructs a VideoLabels instance.
 
         Args:
@@ -582,6 +589,8 @@ class VideoLabels(Serializable):
             frames: an optional dictionary mapping frame numbers to
                 VideoFrameLabels instances. By default, an empty dictionary
                 is created
+            events: an optional DetectedEventContainer of detected video
+                events. By default, an empty DetectedEventContainer is created
             schema: an optional VideoLabelsSchema to enforce on the object.
                 By default, no schema is enforced
         '''
@@ -589,6 +598,7 @@ class VideoLabels(Serializable):
         self.metadata = metadata
         self.attrs = attrs or AttributeContainer()
         self.frames = frames or {}
+        self.events = events or DetectedEventContainer()
         self.schema = schema
 
     def __getitem__(self, frame_number):
@@ -630,6 +640,17 @@ class VideoLabels(Serializable):
         return False
 
     @property
+    def has_event_attributes(self):
+        '''Returns True/False whether the container has at least one event
+        attribute.
+        '''
+        for event in self.events:
+            if event.attrs:
+                return True
+
+        return False
+
+    @property
     def has_objects(self):
         '''Returns True/False whether the container has at least one
         DetectedObject.
@@ -641,11 +662,22 @@ class VideoLabels(Serializable):
         return False
 
     @property
+    def has_events(self):
+        '''Returns True/False whether the container has at least one
+        `DetectedEvent`.
+        '''
+        if self.events:
+            return True
+
+        return False
+
+    @property
     def is_empty(self):
         '''Returns True if the container has no labels of any kind.'''
         return (not self.has_video_attributes
                 and not self.has_frame_attributes
-                and not self.has_objects)
+                and not self.has_objects
+                and not self.has_events)
 
     @property
     def has_schema(self):
@@ -680,11 +712,20 @@ class VideoLabels(Serializable):
         fns = self.get_frame_numbers()
         return (fns[0], fns[-1]) if fns else (None, None)
 
+    def get_event(self, index):
+        '''Returns the event at the `index`.'''
+        return self.events[index]
+
+    def get_events(self):
+        '''Returns the whole events container.'''
+        return self.events
+
     def merge_video_labels(self, video_labels):
         '''Merges the given VideoLabels into this labels.'''
         self.attrs.add_container(video_labels.attrs)
         for frame_number in video_labels:
             self.add_frame(video_labels[frame_number], overwrite=False)
+        self.add_events(video_labels.get_events())
 
     def add_video_attribute(self, video_attr):
         '''Adds the given video attribute to the video.
@@ -778,6 +819,20 @@ class VideoLabels(Serializable):
             obj.frame_number = frame_number
             self.frames[frame_number].add_object(obj)
 
+    def add_event(self, event):
+        '''Adds the event to the `VideoLabels` instance.'''
+        if self.has_schema:
+            self._validate_event(event)
+        self.events.add(event)
+
+    def add_events(self, events):
+        '''Adds the events to the `VideoLabels` instance.'''
+        if self.has_schema:
+            for event in events:
+                self._validate_event(event)
+        for event in events:
+            self.add_event(event)
+
     def clear_frame_attributes(self):
         '''Removes all frame attributes from the instance.'''
         for frame_number in self:
@@ -787,6 +842,10 @@ class VideoLabels(Serializable):
         '''Removes all objects from the instance.'''
         for frame_number in self:
             self[frame_number].clear_objects()
+
+    def clear_events(self):
+        '''Removes all events from the instance.'''
+        self.events.clear()
 
     def get_schema(self):
         '''Gets the current enforced schema for the video, or None if no schema
@@ -845,6 +904,17 @@ class VideoLabels(Serializable):
         for frame_labels in itervalues(self.frames):
             frame_labels.remove_objects_without_attrs(labels=labels)
 
+    def remove_events_without_attrs(self, labels=None):
+        '''Removes `DetectedEvent`s from the instance that do not have
+        attributes.
+
+        Args:
+            labels: an optional list of DetectedEvent label strings to which
+                to restrict attention when filtering. By default, all events
+                are processed
+        '''
+        self.events.remove_events_without_attrs(labels=labels)
+
     def freeze_schema(self):
         '''Sets the enforced schema for the video to the current active
         schema.
@@ -868,6 +938,8 @@ class VideoLabels(Serializable):
             _attrs.append("attrs")
         if self.frames:
             _attrs.append("frames")
+        if self.events:
+            _attrs.append("events")
         return _attrs
 
     def _validate_video_attribute(self, video_attr):
@@ -892,6 +964,10 @@ class VideoLabels(Serializable):
     def _validate_object(self, obj):
         if self.has_schema:
             self.schema.validate_object(obj)
+
+    def _validate_event(self, event):
+        if self.has_schema:
+            self.schema.validate_event(event)
 
     def _validate_schema(self):
         if self.has_schema:
@@ -918,6 +994,20 @@ class VideoLabels(Serializable):
         return labels
 
     @classmethod
+    def from_detected_events(cls, events):
+        '''Builds a `VideoLabels` instance from a `DetectedEventContainer.`
+
+        Args:
+            events: a `DetectedEventContainer`
+
+        Returns:
+            a `VideoLabels` instance
+        '''
+        labels = cls()
+        labels.add_events(events)
+        return labels
+
+    @classmethod
     def from_dict(cls, d):
         '''Constructs a VideoLabels from a JSON dictionary.'''
         filename = d.get("filename", None)
@@ -929,6 +1019,10 @@ class VideoLabels(Serializable):
         attrs = d.get("attrs", None)
         if attrs is not None:
             attrs = AttributeContainer.from_dict(attrs)
+
+        events = d.get("events", None)
+        if events is not None:
+            events = DetectedEventContainer.from_dict(events)
 
         frames = d.get("frames", None)
         if frames is not None:
@@ -943,7 +1037,7 @@ class VideoLabels(Serializable):
 
         return cls(
             filename=filename, metadata=metadata, attrs=attrs, frames=frames,
-            schema=schema)
+            events=events, schema=schema)
 
 
 class VideoLabelsSchema(Serializable):
@@ -956,9 +1050,11 @@ class VideoLabelsSchema(Serializable):
                 of the video
         objects: a dictionary mapping object labels to AttributeContainerSchema
             instances describing the object attributes of each object class
+        events: a dictionary mapping event labels to AttributeContainerSchema
+            instances describing the event attributes of each event class
     '''
 
-    def __init__(self, attrs=None, frames=None, objects=None):
+    def __init__(self, attrs=None, frames=None, objects=None, events=None):
         '''Creates a VideoLabelsSchema instance.
 
         Args:
@@ -969,12 +1065,18 @@ class VideoLabelsSchema(Serializable):
             objects: a dictionary mapping object labels to
                 AttributeContainerSchema instances describing the object
                 attributes of each object class
+            events: a dictionary mapping event labels to
+                AttributeContainerSchema instances describing the event
+                attributes of each event class
         '''
         self.attrs = attrs or AttributeContainerSchema()
         self.frames = frames or AttributeContainerSchema()
         self.objects = defaultdict(lambda: AttributeContainerSchema())
         if objects is not None:
             self.objects.update(objects)
+        self.events = defaultdict(lambda: AttributeContainerSchema())
+        if events is not None:
+            self.events.update(events)
 
     def has_video_attribute(self, video_attr_name):
         '''Returns True/False if the schema has a video attribute with the
@@ -1021,6 +1123,27 @@ class VideoLabelsSchema(Serializable):
         self.validate_object_label(label)
         return self.objects[label].get_attribute_class(obj_attr_name)
 
+    def has_event_label(self, label):
+        '''Returns True/False if the schema has an event with the given
+        label.
+        '''
+        return label in self.events
+
+    def has_event_attribute(self, label, event_attr_name):
+        '''Returns True/False if the schema has an event attribute of the
+        given name for event with the given label.
+        '''
+        if not self.has_event_label(label):
+            return False
+        return self.events[label].has_attribute(event_attr_name)
+
+    def get_event_attribute_class(self, label, event_attr_name):
+        '''Gets the Attribute class for the attribute of the given name for
+        the event with the given label.
+        '''
+        self.validate_event_label(label)
+        return self.events[label].get_attribute_class(event_attr_name)
+
     def add_video_attribute(self, video_attr):
         '''Incorporates the given video attribute into the schema.
 
@@ -1055,7 +1178,7 @@ class VideoLabelsSchema(Serializable):
 
     def add_object_label(self, label):
         '''Incorporates the given object label into the schema.'''
-        self.objects[label]  # adds key to defaultdict
+        self.objects[label]  # adds key to defaultdict #pylint: disable=W0104
 
     def add_object_attribute(self, label, obj_attr):
         '''Incorporates the Attribute for the object with the given label
@@ -1068,6 +1191,22 @@ class VideoLabelsSchema(Serializable):
         label into the schema.
         '''
         self.objects[label].add_attributes(obj_attrs)
+
+    def add_event_label(self, label):
+        '''Incorporates the given event label into the schema.'''
+        self.events[label]  # adds key to defaultdict #pylint: disable=W0104
+
+    def add_event_attribute(self, label, event_attr):
+        '''Incorporates the Attribute for the event with the given label
+        into the schema.
+        '''
+        self.events[label].add_attribute(event_attr)
+
+    def add_event_attributes(self, label, event_attrs):
+        '''Incorporates the AttributeContainer for the event with the given
+        label into the schema.
+        '''
+        self.events[label].add_attributes(event_attrs)
 
     def merge_schema(self, schema):
         '''Merges the given VideoLabelsSchema into this schema.'''
@@ -1122,6 +1261,36 @@ class VideoLabelsSchema(Serializable):
         '''
         try:
             self.validate_object(obj)
+            return True
+        except:
+            return False
+
+    def is_valid_event_label(self, label):
+        '''Returns True/False if the event label is compliant with the
+        schema.
+        '''
+        try:
+            self.validate_event_label(label)
+            return True
+        except:
+            return False
+
+    def is_valid_event_attribute(self, label, event_attr):
+        '''Returns True/False if the event attribute for the given label is
+        compliant with the schema.
+        '''
+        try:
+            self.validate_event_attribute(label, event_attr)
+            return True
+        except:
+            return False
+
+    def is_valid_event(self, event):
+        '''Returns True/False if the DetectedEvent is compliant with the
+        schema.
+        '''
+        try:
+            self.validate_event(event)
             return True
         except:
             return False
@@ -1192,9 +1361,53 @@ class VideoLabelsSchema(Serializable):
             for obj_attr in obj.attrs:
                 self.validate_object_attribute(obj.label, obj_attr)
 
+    def validate_event_label(self, label):
+        '''Validates that the event label is compliant with the schema.
+
+        Args:
+            label: an event label
+
+        Raises:
+            VideoLabelsSchemaError: if the event label violates the schema
+        '''
+        if label not in self.events:
+            raise VideoLabelsSchemaError(
+                "Event label '%s' is not allowed by the schema" % label)
+
+    def validate_event_attribute(self, label, event_attr):
+        '''Validates that the event attribute for the given label is compliant
+        with the schema.
+
+        Args:
+            label: an event label
+            event_attr: an Attribute
+
+        Raises:
+            AttributeContainerSchemaError: if the event attribute violates
+                the schema
+        '''
+        event_schema = self.events[label]
+        event_schema.validate_attribute(event_attr)
+
+    def validate_event(self, event):
+        '''Validates that the detected event is compliant with the schema.
+
+        Args:
+            event: a DetectedEvent
+
+        Raises:
+            VideoLabelsSchemaError: if the event's label violates the schema
+            AttributeContainerSchemaError: if any attributes of the
+                DetectedEvent violate the schema
+        '''
+        self.validate_event_label(event.label)
+        if event.has_attributes:
+            for event_attr in event.attrs:
+                self.validate_event_attribute(event.label, event_attr)
+
     def attributes(self):
         '''Returns the list of class attributes that will be serialized.'''
-        return ["attrs", "frames", "objects"]
+        return ["attrs", "frames", "objects", "events"]
 
     @classmethod
     def build_active_schema_for_frame(cls, frame_labels):
@@ -1220,6 +1433,11 @@ class VideoLabelsSchema(Serializable):
         for frame_labels in itervalues(video_labels.frames):
             schema.merge_schema(
                 VideoLabelsSchema.build_active_schema_for_frame(frame_labels))
+        for event in video_labels.get_events():
+            if event.has_attributes:
+                schema.add_event_attributes(event.label, event.attrs)
+            else:
+                schema.add_event_label(event.label)
         return schema
 
     @classmethod
@@ -1240,7 +1458,14 @@ class VideoLabelsSchema(Serializable):
                 for k, v in iteritems(objects)
             }
 
-        return cls(attrs=attrs, frames=frames, objects=objects)
+        events = d.get("events", None)
+        if events is not None:
+            events = {
+                k: AttributeContainerSchema.from_dict(v)
+                for k, v in iteritems(events)
+            }
+
+        return cls(attrs=attrs, frames=frames, objects=objects, events=events)
 
 
 class VideoLabelsSchemaError(Exception):
