@@ -543,7 +543,6 @@ class VideoEventDetector(Detector):
     @staticmethod
     def is_valid_value(val):
         try:
-            logger.info(val)
             etal.VideoEventDetectorConfig(val)
             return True
         except Exception as e:
