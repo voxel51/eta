@@ -40,7 +40,7 @@ logger = logging.getLogger(__name__)
 
 
 def embed_image(impath):
-    '''Embeds the image using VGG-16 and stores the embeddeding as an .npz file
+    '''Embeds the image using VGG-16 and stores the embeddeding as an .npy file
     on disk.
 
     Args:
@@ -50,14 +50,14 @@ def embed_image(impath):
     rimg = etai.resize(img, 224, 224)
 
     vgg16 = etav.VGG16()
-    embedded_vector = vgg16.evaluate([rimg], layer=vgg16.fc2l)[0]
+    embedding = vgg16.evaluate([rimg], [vgg16.fc2l])[0][0]
 
-    logger.info("Image embedded to vector of length %d", len(embedded_vector))
-    logger.info("%s", embedded_vector)
+    logger.info("Image embedded to vector of length %d", len(embedding))
+    logger.info("%s", embedding)
 
-    outpath = _abspath("out/result_embed_image.npz")
+    outpath = _abspath("out/result_embed_image.npy")
     etau.ensure_basedir(outpath)
-    np.savez_compressed(outpath, v=embedded_vector)
+    np.save(outpath, embedding)
     logger.info("Result saved to '%s'", outpath)
 
 

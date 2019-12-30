@@ -106,28 +106,23 @@ def _embed_vgg16(config):
         .set(type=etau.get_class_name(etav.VGG16Featurizer))
         .set(config=config.parameters.vgg16)
         .validate())
-    backing_manager = (etaf.BackingManagerConfig.builder()
-        .set(type=etau.get_class_name(etaf.ManualBackingManager))
-        .set(config=etaf.ManualBackingManagerConfig.default())
-        .validate())
-    cvfc = (etaf.CachingVideoFeaturizerConfig.builder()
-        .set(frame_featurizer=frame_featurizer)
-        .set(backing_manager=backing_manager)
-        .set(delete_backing_directory=False)
-        .build())
-    cvf = etaf.CachingVideoFeaturizer(cvfc)
+    featurizer = etaf.CachingVideoFeaturizer(
+        etaf.CachingVideoFeaturizerConfig.builder()
+            .set(frame_featurizer=frame_featurizer)
+            .set(delete_backing_directory=False)
+            .build())
 
     # Set crop box, if provided
     if config.parameters.crop_box is not None:
-        cvf.frame_preprocessor = _crop(config.parameters.crop_box)
+        featurizer.frame_preprocessor = _crop(config.parameters.crop_box)
 
-    with cvf:
+    with featurizer:
         for data in config.data:
             # Manually set backing directory for each video
-            cvf._backing_manager.config.backing_dir = data.backing_dir
+            featurizer.set_manual_backing_dir(data.backing_dir)
 
             logger.info("Featurizing video '%s'", data.video_path)
-            cvf.featurize(data.video_path)
+            featurizer.featurize(data.video_path)
 
 
 def _crop(crop_box):
