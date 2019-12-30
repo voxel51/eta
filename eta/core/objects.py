@@ -40,12 +40,14 @@ class DetectedObject(Serializable, HasBoundingBox):
         attrs: (optional) an AttributeContainer describing additional
             attributes of the object
         eval_type: (optional) an EvaluationType value
+        group_index: (optional) an index of a group of objects to which the
+            object is assigned
     '''
 
     def __init__(
             self, label, bounding_box, mask=None, confidence=None, index=None,
             score=None, frame_number=None, index_in_frame=None, attrs=None,
-            eval_type=None):
+            eval_type=None, group_index=None):
         '''Creates a DetectedObject instance.
 
         Args:
@@ -63,6 +65,8 @@ class DetectedObject(Serializable, HasBoundingBox):
             attrs: (optional) an AttributeContainer describing additional
                 attributes of the object
             eval_type: (optional) an EvaluationType value
+            group_index: (optional) an index of a group of objects to which the
+                object is assigned
         '''
         self.label = label
         self.bounding_box = bounding_box
@@ -73,6 +77,7 @@ class DetectedObject(Serializable, HasBoundingBox):
         self.frame_number = frame_number
         self.index_in_frame = index_in_frame
         self.eval_type = eval_type
+        self.group_index = group_index
         self.attrs = attrs or AttributeContainer()
         self._meta = None  # Usable by clients to store temporary metadata
 
@@ -136,6 +141,7 @@ class DetectedObject(Serializable, HasBoundingBox):
             index_in_frame=d.get("index_in_frame", None),
             attrs=attrs,
             eval_type=d.get("eval_type", None),
+            group_index=d.get("group_index", None)
         )
 
 
