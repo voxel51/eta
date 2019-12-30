@@ -112,7 +112,7 @@ class DetectedObject(Serializable, HasBoundingBox):
         _attrs = ["label", "bounding_box"]
         _optional_attrs = [
             "mask", "confidence", "index", "score", "frame_number",
-            "index_in_frame", "eval_type"]
+            "index_in_frame", "eval_type", "group_index"]
         _attrs.extend(
             [a for a in _optional_attrs if getattr(self, a) is not None])
         if self.attrs:
