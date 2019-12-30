@@ -668,7 +668,7 @@ class VideoObjectDetector(Detector):
 
 class VideoEventDetectorConfig(DetectorConfig):
     '''Configuration class that encapsulates the name of a `VideoEventDetector`
-        and an instance of its associated Config class.
+    and an instance of its associated Config class.
 
     Attributes:
         type: the fully-qualified class name of the `VideoEventDetector`

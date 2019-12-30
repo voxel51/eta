@@ -534,9 +534,9 @@ class VideoObjectDetector(Detector):
 
 
 class VideoEventDetector(Detector):
-    '''Type definition for an `eta.core.learning.VideoEventDetector`.
+    '''Configuration for an `eta.core.learning.VideoEventDetector`.
 
-    This type interface is implemented in  by the
+    This type interface is implemented in ETA by the
     `eta.core.learning.VideoEventDetectorConfig` class.
     '''
 
