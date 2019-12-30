@@ -441,6 +441,21 @@ class VideoFrameLabels(Serializable):
         self.attrs = attrs or AttributeContainer()
         self.objects = objects or DetectedObjectContainer()
 
+    @property
+    def has_frame_attributes(self):
+        '''Whether the frame has at least one frame attribute.'''
+        return bool(self.attrs)
+
+    @property
+    def has_objects(self):
+        '''Whether the frame has at least one DetectedObject.'''
+        return bool(self.objects)
+
+    @property
+    def is_empty(self):
+        '''Whether the frame has no labels of any kind.'''
+        return (not self.has_frame_attributes and not self.has_objects)
+
     def add_frame_attribute(self, frame_attr):
         '''Adds the attribute to the frame.
 
@@ -613,54 +628,60 @@ class VideoLabels(Serializable):
 
     @property
     def has_video_attributes(self):
-        '''Returns True/False whether the container has at least one video
-        attribute.
-        '''
+        '''Whether the container has at least one video attribute.'''
         return bool(self.attrs)
 
     @property
     def has_frame_attributes(self):
-        '''Returns True/False whether the container has at least one frame
-        attribute.
-        '''
+        '''Whether the container has at least one frame attribute.'''
         for frame_number in self:
-            if self[frame_number].attrs:
+            if self[frame_number].has_frame_attributes:
                 return True
 
         return False
 
     @property
     def has_objects(self):
-        '''Returns True/False whether the container has at least one
-        DetectedObject.
-        '''
+        '''Whether the container has at least one DetectedObject.'''
         for frame_number in self:
-            if self[frame_number].objects:
+            if self[frame_number].has_objects:
                 return True
 
         return False
 
     @property
     def is_empty(self):
-        '''Returns True if the container has no labels of any kind.'''
-        return (not self.has_video_attributes
-                and not self.has_frame_attributes
-                and not self.has_objects)
+        '''Whether the container has no labels of any kind.'''
+        return (
+            not self.has_video_attributes and not self.has_frame_attributes
+            and not self.has_objects)
 
     @property
     def has_schema(self):
-        '''Returns True/False whether the container has an enforced schema.'''
+        '''Whether the container has an enforced schema.'''
         return self.schema is not None
 
     def has_frame(self, frame_number):
-        '''Returns True/False whether this object contains a VideoFrameLabels
-        for the given frame number.
+        '''Determines whether this object contains a VideoFrameLabels for the
+        given frame number.
+
+        Args:
+            frame_number: the frame number
+
+        Returns:
+            True/False
         '''
         return frame_number in self.frames
 
     def get_frame(self, frame_number):
         '''Gets the VideoFrameLabels for the given frame number, or an empty if
         VideoFrameLabels if the frame has no labels.
+
+        Args:
+            frame_number: the frame number
+
+        Returns:
+            a VideoFrameLabels
         '''
         try:
             return self.frames[frame_number]
@@ -668,20 +689,52 @@ class VideoLabels(Serializable):
             return VideoFrameLabels(frame_number)
 
     def delete_frame(self, frame_number):
-        '''Deletes the VideoFrameLabels for the given frame number.'''
+        '''Deletes the VideoFrameLabels for the given frame number.
+
+        Args:
+            frame_number: the frame number
+        '''
         del self.frames[frame_number]
 
     def get_frame_numbers(self):
-        '''Returns a sorted list of all frames with VideoFrameLabels.'''
+        '''Returns a sorted list of all frames with VideoFrameLabels.
+
+        Returns:
+            a list of frame numbers
+        '''
         return sorted(self.frames.keys())
 
+    def get_frame_numbers_with_attributes(self):
+        '''Returns a sorted list of frames with one or more frame attributes.
+
+        Returns:
+            a list of frame numbers
+        '''
+        return sorted([fn for fn in self if self[fn].has_frame_attributes])
+
+    def get_frame_numbers_with_objects(self):
+        '''Returns a sorted list of frames with one or more DetectedObjects.
+
+        Returns:
+            a list of frame numbers
+        '''
+        return sorted([fn for fn in self if self[fn].has_objects])
+
     def get_frame_range(self):
-        '''Returns the (min, max) frame numbers with VideoFrameLabels.'''
+        '''Returns the (min, max) frame numbers with VideoFrameLabels.
+
+        Returns:
+            the (min, max) frame numbers
+        '''
         fns = self.get_frame_numbers()
         return (fns[0], fns[-1]) if fns else (None, None)
 
     def merge_video_labels(self, video_labels):
-        '''Merges the given VideoLabels into this labels.'''
+        '''Merges the given VideoLabels into this labels.
+
+        Args:
+            video_labels: a VideoLabels instance
+        '''
         self.attrs.add_container(video_labels.attrs)
         for frame_number in video_labels:
             self.add_frame(video_labels[frame_number], overwrite=False)
@@ -2254,6 +2307,34 @@ def split_video(
     ffmpeg.run(video_path, output_patt)
 
 
+def parse_frame_ranges(frames):
+    '''Parses the given frames quantity into a FrameRanges instance.
+
+    Args:
+        frames: one of the following quantities:
+            - a string like "1-3,6,8-10"
+            - a FrameRange or FrameRanges instance
+            - an iterable, e.g., [1, 2, 3, 6, 8, 9, 10]. The frames do not
+                need to be in sorted order
+
+    Returns:
+        a FrameRanges instance describing the frame ranges
+    '''
+    if isinstance(frames, six.string_types):
+        # Frames string
+        frame_ranges = FrameRanges.from_str(frames)
+    elif isinstance(frames, (FrameRange, FrameRanges)):
+        # FrameRange or FrameRanges
+        frame_ranges = frames
+    elif hasattr(frames, "__iter__"):
+        # Frames iterable
+        frame_ranges = FrameRanges.from_iterable(frames)
+    else:
+        raise ValueError("Invalid frames %s" % frames)
+
+    return frame_ranges
+
+
 class VideoProcessor(object):
     '''Class for reading a video and writing a new video frame-by-frame.
 
@@ -2478,25 +2559,12 @@ class VideoReader(object):
                     need to be in sorted order
         '''
         self.inpath = inpath
-        if frames is None:
-            self.frames = "1-%d" % self.total_frame_count
-            self._ranges = FrameRanges.from_str(self.frames)
-        elif isinstance(frames, six.string_types):
-            # Frames string
-            if frames == "*":
-                frames = "1-%d" % self.total_frame_count
-            self.frames = frames
-            self._ranges = FrameRanges.from_str(frames)
-        elif isinstance(frames, (FrameRange, FrameRanges)):
-            # FrameRange or FrameRanges
-            self._ranges = frames
-            self.frames = frames.to_str()
-        elif hasattr(frames, "__iter__"):
-            # Frames iterable
-            self._ranges = FrameRanges.from_iterable(frames)
-            self.frames = self._ranges.to_str()
-        else:
-            raise VideoReaderError("Invalid frames %s" % frames)
+
+        # Parse frames
+        if frames is None or frames == "*":
+            frames = "1-%d" % self.total_frame_count
+        self._ranges = parse_frame_ranges(frames)
+        self.frames = self._ranges.to_str()
 
     def __enter__(self):
         return self

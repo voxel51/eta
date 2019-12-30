@@ -7,7 +7,7 @@ peoples in videos.
 
 ## Instructions
 
-To run the `object_segmenter` pipeline, simply execute the following commands:
+To run the `object_detector` pipeline, simply execute the following commands:
 
 ```
 # segment people

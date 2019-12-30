@@ -138,24 +138,19 @@ class VGG16(Configurable, UsesTFSession):
             self._labels_map = etal.load_labels_map(self.config.labels_map)
         return self._labels_map[idx]
 
-    def evaluate(self, imgs, layer=None):
+    def evaluate(self, imgs, tensors):
         '''Feed-forward evaluation through the network.
 
         Args:
             imgs: an array of size [XXXX, 224, 224, 3] containing image(s) to
                 feed into the network
-            layer: an optional layer whose output to return. By default, the
-                output softmax layer (i.e., the class probabilities) is
-                returned
+            tensors: a list of tensors to evaluate
 
         Returns:
-            an array of same size as the requested layer. The first dimension
-                will always be XXXX
+            a list of outputs for the requested tensors. The first dimension of
+                each output will be XXXX
         '''
-        if layer is None:
-            layer = self.probs
-
-        return self.sess.run(layer, feed_dict={self.imgs: imgs})
+        return self.sess.run(tensors, feed_dict={self.imgs: imgs})
 
     def _build_conv_layers(self):
         self.parameters = []
@@ -539,4 +534,6 @@ class VGG16Featurizer(ImageFeaturizer):
             the feature vector, a 1D array of length 4096
         '''
         imgs = [VGG16.preprocess_image(img)]
-        return self.vgg16.evaluate(imgs, layer=self.vgg16.fc2l)[0]
+        tensors = [self.vgg16.fc2l]
+        output = self.vgg16.evaluate(imgs, tensors)[0]
+        return output[0]

@@ -153,9 +153,9 @@ class HasDefaultDeploymentConfig(object):
                 "Model '%s' has no default deployment config; returning the "
                 "input dict", model_name)
             return d
-        else:
-            logger.info(
-                "Loaded default deployment config for model '%s'", model_name)
+
+        logger.info(
+            "Loaded default deployment config for model '%s'", model_name)
 
         dd = deploy_config_dict["config"]
         dd.update(d)
@@ -696,6 +696,26 @@ class FeaturizingClassifier(object):
         '''
         raise NotImplementedError("subclasses must implement get_features()")
 
+    @classmethod
+    def ensure_can_generate_features(cls, classifier):
+        '''Ensures that the given classifier can generate features.
+
+        Args:
+            classifier: a Classifier
+
+        Raises:
+            ValueError: if `classifier` cannot generate features
+        '''
+        if not isinstance(classifier, cls):
+            raise ValueError(
+                "Expected %s to implement the %s mixin, but it does not" %
+                (type(classifier), cls))
+
+        if not classifier.generates_features:
+            raise ValueError(
+                "Expected %s to be able to generate features, but it cannot" %
+                type(classifier))
+
 
 class FeaturizingDetector(object):
     '''Mixin for `Detector` subclasses that can generate features for their
@@ -728,3 +748,23 @@ class FeaturizingDetector(object):
                 cannot) generate features
         '''
         raise NotImplementedError("subclasses must implement get_features()")
+
+    @classmethod
+    def ensure_can_generate_features(cls, detector):
+        '''Ensures that the given detector can generate features.
+
+        Args:
+            detector: a Detector
+
+        Raises:
+            ValueError: if `detector` cannot generate features
+        '''
+        if not isinstance(detector, cls):
+            raise ValueError(
+                "Expected %s to implement the %s mixin, but it does not" %
+                (type(detector), cls))
+
+        if not detector.generates_features:
+            raise ValueError(
+                "Expected %s to be able to generate features, but it cannot" %
+                type(detector))
