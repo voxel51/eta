@@ -652,13 +652,10 @@ class VideoLabels(Serializable):
         return False
 
     @property
-    def has_event_attributes(self):
-        '''Returns True/False whether the container has at least one event
-        attribute.
-        '''
-        for event in self.events:
-            if event.attrs:
-                return True
+    def has_events(self):
+        '''Whether the container has at least one DetectedEvent.'''
+        if self.events:
+            return True
 
         return False
 
@@ -672,12 +669,23 @@ class VideoLabels(Serializable):
         return False
 
     @property
-    def has_events(self):
-        '''Returns True/False whether the container has at least one
-        `DetectedEvent`.
+    def has_event_attributes(self):
+        '''Whether the container has at least one event attribute.'''
+        for event in self.events:
+            if event.attrs:
+                return True
+
+        return False
+
+    @property
+    def has_object_attributes(self):
+        '''Whether the container has at least one DetectedObject with an
+        attribute.
         '''
-        if self.events:
-            return True
+        for frame_number in self:
+            for obj in self[frame_number].objects:
+                if obj.has_attributes:
+                    return True
 
         return False
 
