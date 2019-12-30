@@ -77,7 +77,7 @@ class DetectedObject(Serializable, HasBoundingBox):
         self.frame_number = frame_number
         self.index_in_frame = index_in_frame
         self.eval_type = eval_type
-        self.event_indices = event_indices
+        self.event_indices = set(event_indices)
         self.attrs = attrs or AttributeContainer()
         self._meta = None  # Usable by clients to store temporary metadata
 
