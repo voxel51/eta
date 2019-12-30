@@ -821,16 +821,21 @@ class VideoLabels(Serializable):
             self.frames[frame_number].add_object(obj)
 
     def add_event(self, event):
-        '''Adds the event to the `VideoLabels` instance.'''
+        '''Adds the event to the video.
+
+        Args:
+            event: a DetectedEvent
+        '''
         if self.has_schema:
             self._validate_event(event)
         self.events.add(event)
 
     def add_events(self, events):
-        '''Adds the events to the `VideoLabels` instance.'''
-        if self.has_schema:
-            for event in events:
-                self._validate_event(event)
+        '''Adds the events to the video.
+
+        Args:
+            events: a DetectedEventContainer
+        '''
         for event in events:
             self.add_event(event)
 
