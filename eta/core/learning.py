@@ -153,9 +153,9 @@ class HasDefaultDeploymentConfig(object):
                 "Model '%s' has no default deployment config; returning the "
                 "input dict", model_name)
             return d
-        else:
-            logger.info(
-                "Loaded default deployment config for model '%s'", model_name)
+
+        logger.info(
+            "Loaded default deployment config for model '%s'", model_name)
 
         dd = deploy_config_dict["config"]
         dd.update(d)
@@ -516,8 +516,9 @@ class Detector(Model):
             arg: the data to detect
 
         Returns:
-            an `eta.core.objects.DetectedObjectContainer` describing the
-                detections
+            an instance of a subclass of `eta.core.serial.Container` describing
+            the detections, with the specific sub-class depending on the type
+            of detection (e.g., objects or events)
         '''
         raise NotImplementedError("subclasses must implement detect()")
 
@@ -538,9 +539,10 @@ class ObjectDetectorConfig(DetectorConfig):
 
 
 class ObjectDetector(Detector):
-    '''Base class for detectors that operate on single images.
+    '''Base class for object detectors that operate on single images.
 
-    `ObjectDetector`s may output single or multiple detections per image.
+    `ObjectDetector`s may output single or multiple object detections per
+    image.
 
     Subclasses of `ObjectDetector` must implement the `detect()` method, and
     they can optionally provide a custom (efficient) implementation of the
@@ -664,6 +666,43 @@ class VideoObjectDetector(Detector):
         raise NotImplementedError("subclasses must implement detect()")
 
 
+class VideoEventDetectorConfig(DetectorConfig):
+    '''Configuration class that encapsulates the name of a `VideoEventDetector`
+    and an instance of its associated Config class.
+
+    Attributes:
+        type: the fully-qualified class name of the `VideoEventDetector`
+        config: an instance of the Config class associated with the specified
+            `VideoEventDetector`
+    '''
+
+    def __init__(self, d):
+        super(VideoEventDetectorConfig, self).__init__(d)
+        self._validate_type(VideoEventDetector)
+
+
+class VideoEventDetector(Detector):
+    '''Base class for event detectors that operate on individual videos.
+
+    `VideoEventDetector`s may output single or multiple detections per video;
+    these detections may cover the entire video or may not.
+
+    Subclasses of `VideoEventDetector` must implement the `detect()` method.
+    '''
+
+    def detect(self, video_path):
+        '''Detects events in the given video.
+
+        Args:
+            video_path: the path to the video
+
+        Returns:
+            an `eta.core.events.DetectedEventContainer` instance describing
+                the detections for the video
+        '''
+        raise NotImplementedError("subclass must implement detect()")
+
+
 class FeaturizingClassifier(object):
     '''Mixin for `Classifier` subclasses that can generate features for their
     predictions.
@@ -695,6 +734,26 @@ class FeaturizingClassifier(object):
                 generate features
         '''
         raise NotImplementedError("subclasses must implement get_features()")
+
+    @classmethod
+    def ensure_can_generate_features(cls, classifier):
+        '''Ensures that the given classifier can generate features.
+
+        Args:
+            classifier: a Classifier
+
+        Raises:
+            ValueError: if `classifier` cannot generate features
+        '''
+        if not isinstance(classifier, cls):
+            raise ValueError(
+                "Expected %s to implement the %s mixin, but it does not" %
+                (type(classifier), cls))
+
+        if not classifier.generates_features:
+            raise ValueError(
+                "Expected %s to be able to generate features, but it cannot" %
+                type(classifier))
 
 
 class FeaturizingDetector(object):
@@ -728,3 +787,23 @@ class FeaturizingDetector(object):
                 cannot) generate features
         '''
         raise NotImplementedError("subclasses must implement get_features()")
+
+    @classmethod
+    def ensure_can_generate_features(cls, detector):
+        '''Ensures that the given detector can generate features.
+
+        Args:
+            detector: a Detector
+
+        Raises:
+            ValueError: if `detector` cannot generate features
+        '''
+        if not isinstance(detector, cls):
+            raise ValueError(
+                "Expected %s to implement the %s mixin, but it does not" %
+                (type(detector), cls))
+
+        if not detector.generates_features:
+            raise ValueError(
+                "Expected %s to be able to generate features, but it cannot" %
+                type(detector))
