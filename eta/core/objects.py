@@ -110,13 +110,16 @@ class DetectedObject(Serializable, HasBoundingBox):
     def attributes(self):
         '''Returns the list of attributes to serialize.'''
         _attrs = ["label", "bounding_box"]
+
         _optional_attrs = [
             "mask", "confidence", "index", "score", "frame_number",
-            "index_in_frame", "eval_type", "event_indices"]
+            "index_in_frame", "eval_type"]
         _attrs.extend(
             [a for a in _optional_attrs if getattr(self, a) is not None])
-        if self.attrs:
-            _attrs.append("attrs")
+
+        _iff_attrs = ["event_indices", "attrs"]
+        _attrs.extend([a for a in _iff_attrs if getattr(self, a)])
+
         return _attrs
 
     @classmethod
