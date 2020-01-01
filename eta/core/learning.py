@@ -693,11 +693,12 @@ class VideoEventDetector(Detector):
     Subclasses of `VideoEventDetector` must implement the `detect()` method.
     '''
 
-    def detect(self, video_path):
+    def detect(self, video_reader):
         '''Detects events in the given video.
 
         Args:
-            video_path: the path to the video
+            video_reader: an `eta.core.video.VideoReader` that can be used to
+                read the video
 
         Returns:
             an `eta.core.events.DetectedEventContainer` instance describing
