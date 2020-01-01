@@ -26,7 +26,6 @@ import logging
 import operator
 import os
 import re
-import sys
 
 import dateutil.parser
 from tabulate import tabulate
