@@ -293,11 +293,12 @@ class VideoModel(Model):
     does not fit any of the concrete classifier/detector interfaces.
     '''
 
-    def process(self, video_path):
+    def process(self, video_reader):
         '''Generates labels for the given video.
 
         Args:
-            video_path: the path to the video
+            video_reader: an `eta.core.video.VideoReader` that can be used to
+                read the video
 
         Returns:
             an `eta.core.video.VideoLabels` instance containing the labels
@@ -472,11 +473,12 @@ class VideoClassifier(Classifier):
     that featurizes the frames of the input video.
     '''
 
-    def predict(self, video_path):
+    def predict(self, video_reader):
         '''Peforms prediction on the given video.
 
         Args:
-            video_path: the path to the video
+            video_reader: an `eta.core.video.VideoReader` that can be used to
+                read the video
 
         Returns:
             an `eta.core.data.AttributeContainer` instance containing the
@@ -651,11 +653,12 @@ class VideoObjectDetector(Detector):
     that featurizes the frames of the input video.
     '''
 
-    def detect(self, video_path):
+    def detect(self, video_reader):
         '''Peforms detection on the given video.
 
         Args:
-            video_path: the path to the video
+            video_reader: an `eta.core.video.VideoReader` that can be used to
+                read the video
 
         Returns:
             an `eta.core.objects.DetectedObjectContainer` instance describing
