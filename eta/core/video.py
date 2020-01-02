@@ -2537,7 +2537,7 @@ class VideoProcessor(object):
 
 
 class VideoProcessorError(Exception):
-    '''Exception raised when an error occurs within a VideoProcessor.'''
+    '''Exception raised when a problem with a VideoProcessor is encountered.'''
     pass
 
 
@@ -2655,7 +2655,7 @@ class VideoReader(object):
 
 
 class VideoReaderError(Exception):
-    '''Exception raised when an error occured while reading a video.'''
+    '''Exception raised when a problem with a VideoReader is encountered.'''
     pass
 
 
@@ -3036,8 +3036,21 @@ class OpenCVVideoReader(VideoReader):
             raise StopIteration
 
 
+class OpenCVVideoReaderError(VideoReaderError):
+    '''Error raised when a problem with an OpenCVVideoReader is encountered.'''
+    pass
+
+
 class VideoWriter(object):
-    '''Base class for writing videos.'''
+    '''Base class for writing videos.
+
+    This class declares the following conventions:
+
+        (a) `VideoWriter`s implement the context manager interface. This means
+            that subclasses can optionally use context to perform any necessary
+            setup and teardown, and so any code that uses a `VideoWriter`
+            should use the `with` syntax
+    '''
 
     def __enter__(self):
         return self
@@ -3054,12 +3067,12 @@ class VideoWriter(object):
         raise NotImplementedError("subclass must implement write()")
 
     def close(self):
-        '''Closes the video writer.'''
-        raise NotImplementedError("subclass must implement close()")
+        '''Closes the VideoWriter.'''
+        pass
 
 
 class VideoWriterError(Exception):
-    '''Exception raised when a VideoWriter encounters an error.'''
+    '''Exception raised when a problem with a VideoWriter is encountered.'''
     pass
 
 
@@ -3101,7 +3114,7 @@ class FFmpegVideoWriter(VideoWriter):
         self._ffmpeg.stream(img.tostring())
 
     def close(self):
-        '''Closes the video writer.'''
+        '''Closes the FFmpegVideoWriter.'''
         self._ffmpeg.close()
 
 
@@ -3121,7 +3134,7 @@ class OpenCVVideoWriter(VideoWriter):
             size: the (width, height) of each frame
 
         Raises:
-            VideoWriterError: if the writer failed to open
+            OpenCVVideoWriterError: if the writer failed to open
         '''
         self.outpath = outpath
         self.fps = fps
@@ -3131,7 +3144,7 @@ class OpenCVVideoWriter(VideoWriter):
         etau.ensure_path(self.outpath)
         self._writer.open(self.outpath, -1, self.fps, self.size, True)
         if not self._writer.isOpened():
-            raise VideoWriterError("Unable to open '%s'" % self.outpath)
+            raise OpenCVVideoWriterError("Unable to open '%s'" % self.outpath)
 
     def write(self, img):
         '''Appends the image to the output video.
@@ -3145,6 +3158,13 @@ class OpenCVVideoWriter(VideoWriter):
         '''Closes the video writer.'''
         # self._writer.release()  # warns to use a separate thread
         threading.Thread(target=self._writer.release, args=()).start()
+
+
+class OpenCVVideoWriterError(VideoWriterError):
+    '''Exception raised when a problem with an OpenCVVideoWriter is
+    encountered.
+    '''
+    pass
 
 
 class FFprobe(object):
