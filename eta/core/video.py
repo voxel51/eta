@@ -454,7 +454,7 @@ class VideoFrameLabels(Serializable):
     @property
     def is_empty(self):
         '''Whether the frame has no labels of any kind.'''
-        return (not self.has_frame_attributes and not self.has_objects)
+        return not self.has_frame_attributes and not self.has_objects
 
     def add_frame_attribute(self, frame_attr):
         '''Adds the attribute to the frame.
@@ -2027,12 +2027,12 @@ def _sample_select_frames_fast(
 
             if exception_if_incomplete:
                 raise SampleSelectFramesError(msg)
-            else:
-                # Analogous to FFmpegVideoReader, our approach here is to
-                # gracefully fail and just give the user however many frames we
-                # can...
-                logger.warning(msg)
-                frames = frames[:num_frames]
+
+            # Analogous to FFmpegVideoReader, our approach here is to
+            # gracefully fail and just give the user however many frames we
+            # can...
+            logger.warning(msg)
+            frames = frames[:num_frames]
 
         if output_patt is not None:
             # Move frames into place with correct output names
@@ -3225,8 +3225,8 @@ class FFprobe(object):
         except EnvironmentError as e:
             if e.errno == errno.ENOENT:
                 raise etau.ExecutableNotFoundError("ffprobe")
-            else:
-                raise
+
+            raise
 
         out, err = self._p.communicate()
         if self._p.returncode != 0:
@@ -3378,8 +3378,8 @@ class FFmpeg(object):
         except EnvironmentError as e:
             if e.errno == errno.ENOENT:
                 raise etau.ExecutableNotFoundError("ffmpeg")
-            else:
-                raise
+
+            raise
 
         # Run non-streaming jobs immediately
         if not (self.is_input_streaming or self.is_output_streaming):
