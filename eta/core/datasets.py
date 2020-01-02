@@ -541,12 +541,6 @@ class LabeledDataset(object):
     `self.add_file()`.) Thus it may desirable to use the
     `self.write_manifest()` method to write the internal state to a manifest
     JSON file on disk, at some point after using these methods.
-
-    Attributes:
-        dataset_index: a `LabeledDatasetIndex` containing the paths of data
-            and labels files in the dataset
-        data_dir: the top level directory for the dataset, which would contain
-            manifest.json files
     '''
 
     _DATA_SUBDIR = "data"
@@ -575,7 +569,9 @@ class LabeledDataset(object):
 
     @property
     def dataset_dir(self):
-        '''The directory where the dataset is contained.'''
+        '''The top level directory for the dataset, which would contain
+        manifest.json files.
+        '''
         return os.path.dirname(self._manifest_path)
 
     @property
@@ -590,7 +586,9 @@ class LabeledDataset(object):
 
     @property
     def dataset_index(self):
-        '''The LabeledDatasetIndex object defining this dataset.'''
+        '''A `LabeledDatasetIndex` object containing the paths of data and
+        labels files in the dataset.
+        '''
         return self._dataset_index
 
     def __iter__(self):
