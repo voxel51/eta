@@ -2928,13 +2928,25 @@ class OpenCVVideoReader(VideoReader):
                     need to be in sorted order
 
         Raises:
-            VideoReaderError: if the input video could not be opened.
+            OpenCVVideoReaderError: if the input video could not be opened
         '''
-        self._cap = cv2.VideoCapture(inpath)
-        if not self._cap.isOpened():
-            raise VideoReaderError("Unable to open '%s'" % inpath)
-
         super(OpenCVVideoReader, self).__init__(inpath, frames)
+        self._cap = None
+        self.reset()
+
+    def close(self):
+        '''Closes the OpenCVVideoReader.'''
+        if self._cap is not None:
+            self._cap.release()
+            self._cap = None
+
+    def reset(self):
+        '''Resets the OpenCVVideoReader.'''
+        self.close()
+        self._reset()
+        self._cap = cv2.VideoCapture(self.inpath)
+        if not self._cap.isOpened():
+            raise OpenCVVideoReaderError("Unable to open '%s'" % self.inpath)
 
     @property
     def encoding_str(self):
@@ -3004,10 +3016,6 @@ class OpenCVVideoReader(VideoReader):
                     self.frame_number)
                 raise StopIteration
         return self._retrieve()
-
-    def close(self):
-        '''Closes the video reader.'''
-        self._cap.release()
 
     def _grab(self):
         try:
