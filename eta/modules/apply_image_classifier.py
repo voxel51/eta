@@ -185,11 +185,13 @@ def _apply_image_classifier(config):
     classifier = config.parameters.classifier.build()
     logger.info("Loaded classifier %s", type(classifier))
 
+    record_top_k_probs = config.parameters.record_top_k_probs
+    if record_top_k_probs:
+        etal.ExposesProbabilities.ensure_exposes_probabilities(classifier)
+
     # Build attribute filter
     attr_filter = _build_attribute_filter(
         config.parameters.confidence_threshold)
-
-    record_top_k_probs = config.parameters.record_top_k_probs
 
     # Process data
     with classifier:
@@ -215,9 +217,6 @@ def _process_video(data, classifier, attr_filter, record_top_k_probs):
         etal.ExposesFeatures.ensure_exposes_features(classifier)
         features_handler = etaf.VideoFramesFeaturesHandler(
             data.video_features_dir)
-
-    if record_top_k_probs:
-        etal.ExposesProbabilities.ensure_exposes_probabilities(classifier)
 
     if data.input_labels_path:
         logger.info(
@@ -254,9 +253,6 @@ def _process_image(data, classifier, attr_filter, record_top_k_probs):
         etal.ExposesFeatures.ensure_exposes_features(classifier)
         features_handler = etaf.ImageFeaturesHandler()
 
-    if record_top_k_probs:
-        etal.ExposesProbabilities.ensure_exposes_probabilities(classifier)
-
     if data.input_image_labels_path:
         logger.info(
             "Reading existing labels from '%s'", data.input_image_labels_path)
@@ -287,9 +283,6 @@ def _process_images_dir(data, classifier, attr_filter, record_top_k_probs):
         etal.ExposesFeatures.ensure_exposes_features(classifier)
         features_handler = etaf.ImageSetFeaturesHandler(
             data.image_set_features_dir)
-
-    if record_top_k_probs:
-        etal.ExposesProbabilities.ensure_exposes_probabilities(classifier)
 
     if data.input_image_set_labels_path:
         logger.info(
@@ -323,6 +316,7 @@ def _process_images_dir(data, classifier, attr_filter, record_top_k_probs):
 
 
 def _classify_image(img, classifier, attr_filter, record_top_k_probs):
+    # Perform prediction
     attrs = classifier.predict(img)
 
     # Record top-k classes, if necessary
