@@ -232,21 +232,13 @@ def _process_video(data, classifier, attr_filter, record_top_k_probs):
             logger.debug("Processing frame %d", vr.frame_number)
 
             # Classify frame
-            attrs = classifier.predict(img)
-
-            # Record top-k classes, if necessary
-            if record_top_k_probs:
-                all_top_k_probs = classifier.get_top_k_classes()
-                for attr, top_k_probs in zip(attrs, all_top_k_probs):
-                    attr.top_k_probs = top_k_probs
+            attrs = _classify_image(
+                img, classifier, attr_filter, record_top_k_probs)
 
             # Write features, if necessary
             if write_features:
                 fvec = classifier.get_features()
                 features_handler.write_feature(fvec, vr.frame_number)
-
-            # Filter predictions
-            attrs = attr_filter(attrs)
 
             # Record predictions
             video_labels.add_frame_attributes(attrs, vr.frame_number)
@@ -274,21 +266,12 @@ def _process_image(data, classifier, attr_filter, record_top_k_probs):
 
     # Classsify image
     img = etai.read(data.image_path)
-    attrs = classifier.predict(img)
-
-    # Record top-k classes, if necessary
-    if record_top_k_probs:
-        all_top_k_probs = classifier.get_top_k_classes()
-        for attr, top_k_probs in zip(attrs, all_top_k_probs):
-            attr.top_k_probs = top_k_probs
+    attrs = _classify_image(img, classifier, attr_filter, record_top_k_probs)
 
     # Write features, if necessary
     if write_features:
         fvec = classifier.get_features()
         features_handler.write_feature(fvec, data.image_features)
-
-    # Filter predictions
-    attrs = attr_filter(attrs)
 
     # Record predictions
     image_labels.add_image_attributes(attrs)
@@ -324,27 +307,34 @@ def _process_images_dir(data, classifier, attr_filter, record_top_k_probs):
 
         # Classify image
         img = etai.read(inpath)
-        attrs = classifier.predict(img)
-
-        # Record top-k classes, if necessary
-        if record_top_k_probs:
-            all_top_k_probs = classifier.get_top_k_classes()
-            for attr, top_k_probs in zip(attrs, all_top_k_probs):
-                attr.top_k_probs = top_k_probs
+        attrs = _classify_image(
+            img, classifier, attr_filter, record_top_k_probs)
 
         # Write features, if necessary
         if write_features:
             fvec = classifier.get_features()
             features_handler.write_feature(fvec, filename)
 
-        # Filter predictions
-        attrs = attr_filter(attrs)
-
         # Record predictions
         image_set_labels[filename].add_image_attributes(attrs)
 
     logger.info("Writing labels to '%s'", data.output_image_set_labels_path)
     image_set_labels.write_json(data.output_image_set_labels_path)
+
+
+def _classify_image(img, classifier, attr_filter, record_top_k_probs):
+    attrs = classifier.predict(img)
+
+    # Record top-k classes, if necessary
+    if record_top_k_probs:
+        all_top_k_probs = classifier.get_top_k_classes()
+        for attr, top_k_probs in zip(attrs, all_top_k_probs):
+            attr.top_k_probs = top_k_probs
+
+    # Filter predictions
+    attrs = attr_filter(attrs)
+
+    return attrs
 
 
 def run(config_path, pipeline_config_path=None):
