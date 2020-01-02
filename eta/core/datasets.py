@@ -579,7 +579,7 @@ class LabeledDataset(object):
         '''Deprecated! Use `dataset_dir` instead.'''
         class_name = etau.get_class_name(self)
         logger.warning("%s.data_dir is deprecated. Use %s.dataset_dir"
-                       " instead.", [class_name, class_name])
+                       " instead.", class_name, class_name)
         return self.dataset_dir
 
     @property
@@ -755,7 +755,8 @@ class LabeledDataset(object):
         data_file = os.path.basename(data_path)
         return data_file in self._data_to_labels_map
 
-    def _parse_file_methods(self, file_method):
+    @staticmethod
+    def _parse_file_methods(file_method):
         if isinstance(file_method, tuple) and len(file_method) == 2:
             data_method, labels_method = file_method
         else:
@@ -1928,6 +1929,7 @@ class BuilderDataRecord(BaseDataRecord):
             data_path: path to data file
             labels_path: path to labels json
         '''
+        super(BuilderDataRecord, self).__init__()
         self._data_path = data_path
         self._labels_path = labels_path
         self._new_data_path = None
@@ -2156,9 +2158,6 @@ class BuilderDataset(DataRecords):
     '''A BuilderDataset is managed by a LabeledDatasetBuilder.
     DatasetTransformers operate on BuilderDatasets.
     '''
-
-    def __init__(self, record_cls):
-        super(BuilderDataset, self).__init__(record_cls)
 
 
 class BuilderImageDataset(BuilderDataset):
@@ -2597,7 +2596,8 @@ class Balancer(DatasetTransformer):
 
         return helper_list
 
-    def _to_helper_obj_label_list_video(self, records):
+    @staticmethod
+    def _to_helper_obj_label_list_video(records):
         '''Balancer._to_helper_list for object attributes in videos'''
         helper_list = []
 
