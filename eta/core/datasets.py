@@ -578,8 +578,8 @@ class LabeledDataset(object):
     def data_dir(self):
         '''Deprecated! Use `dataset_dir` instead.'''
         class_name = etau.get_class_name(self)
-        logger.warning("%s.data_dir is deprecated."
-                       " Use %s.dataset_dir instead.", [class_name, class_name])
+        logger.warning("%s.data_dir is deprecated. Use %s.dataset_dir"
+                       " instead.", [class_name, class_name])
         return self.dataset_dir
 
     @property
@@ -947,8 +947,8 @@ class LabeledDataset(object):
 
         self.dataset_index.write_json(dataset_path)
 
-        type = etau.get_class_name(self)
-        cls = etau.get_class(type)
+        class_name = etau.get_class_name(self)
+        cls = etau.get_class(class_name)
         return cls(dataset_path)
 
     def merge(self, labeled_dataset_or_path, merged_dataset_path,
@@ -1314,8 +1314,8 @@ class LabeledDataset(object):
         raise NotImplementedError("subclasses must implement _write_labels()")
 
     def _parse_dataset(self, labeled_dataset_or_path):
-        type = etau.get_class_name(self)
-        cls = etau.get_class(type)
+        cls_name = etau.get_class_name(self)
+        cls = etau.get_class(cls_name)
         if isinstance(labeled_dataset_or_path, six.string_types):
             labeled_dataset = cls(labeled_dataset_or_path)
         else:
@@ -1324,7 +1324,7 @@ class LabeledDataset(object):
         if not isinstance(labeled_dataset, cls):
             raise TypeError(
                 "'%s' is not an instance of '%s'" %
-                (etau.get_class_name(labeled_dataset), type))
+                (etau.get_class_name(labeled_dataset), cls_name))
 
         return labeled_dataset
 
@@ -1774,7 +1774,6 @@ class LabeledDataRecord(BaseDataRecord):
 
 class LabeledDatasetError(Exception):
     '''Exception raised when there is an error reading a LabeledDataset'''
-    pass
 
 
 class LabeledDatasetBuilder(object):
@@ -1974,6 +1973,7 @@ class BuilderDataRecord(BaseDataRecord):
 
     @property
     def new_labels_path(self):
+        '''The labels path to be written to.'''
         if self._new_labels_path is not None:
             return self._new_labels_path
         return self._labels_path
@@ -2108,7 +2108,7 @@ class BuilderVideoRecord(BuilderDataRecord):
         '''Returns a list of attributes that are optionally included in the
         data record if they are present in the data dictionary.
         '''
-        return super(BuilderDataRecord, cls).required() + [
+        return super(BuilderVideoRecord, cls).required() + [
             "clip_start_frame",
             "clip_end_frame",
             "duration",
@@ -2512,7 +2512,8 @@ class Balancer(DatasetTransformer):
 
         return helper_list
 
-    def _to_helper_obj_label_list_image(self, records):
+    @staticmethod
+    def _to_helper_obj_label_list_image(records):
         '''Balancer._to_helper_list for image object labels'''
         helper_list = []
 
@@ -2759,7 +2760,7 @@ class Balancer(DatasetTransformer):
         This problem can be posed as:
 
             ```
-            minimize \|Ax - b\|
+            minimize |Ax - b|
             subject to:
                 x[i] is an element of [0, 1]
             ```
@@ -2850,7 +2851,8 @@ class Balancer(DatasetTransformer):
 
         return best_x
 
-    def _simple(self, A, b):
+    @staticmethod
+    def _simple(A, b):
         '''This algorithm for finding the indices to omit just goes through
         each class and adds records minimally such that the class has count
         equal to the target.
@@ -3249,4 +3251,3 @@ class FilterByPath(DatasetTransformer):
 
 class DatasetTransformerError(Exception):
     '''Exception raised when there is an error in a DatasetTransformer'''
-    pass
