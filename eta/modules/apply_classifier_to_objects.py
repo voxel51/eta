@@ -372,7 +372,7 @@ def _classify_objects(
             continue
 
         # Classify object
-        attrs = _classify_image(
+        attrs = _classify_object(
             obj_img, classifier, attr_filter, record_top_k_probs)
 
         # Write features, if requested
@@ -384,7 +384,7 @@ def _classify_objects(
         obj.add_attributes(attrs)
 
 
-def _classify_image(img, classifier, attr_filter, record_top_k_probs):
+def _classify_object(img, classifier, attr_filter, record_top_k_probs):
     # Perform prediction
     attrs = classifier.predict(img)
 
