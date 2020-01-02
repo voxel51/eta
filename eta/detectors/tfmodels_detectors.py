@@ -727,16 +727,16 @@ def _parse_labels_map(labels_path):
     Returns:
         (category_index, class_labels), where `category_index` is a dict
             mapping IDs to names, and `class_labels` is a list of class names
-            for all IDs sequentially from `min(1, min(category_index.keys()))`
-            to `max(category_index.keys())`
+            for all IDs sequentially from `min(1, min(category_index))` to
+            `max(category_index)`
     '''
     labels_map = gool.load_labelmap(labels_path)
     categories = gool.convert_label_map_to_categories(
         labels_map, float("inf"), use_display_name=True)
     category_index = {c["id"]: c["name"] for c in categories}
 
-    mini = min(1, min(category_index.keys()))
-    maxi = max(category_index.keys())
+    mini = min(1, min(category_index))
+    maxi = max(category_index)
     class_labels = [
         category_index.get(i, "class %d" % i) for i in range(mini, maxi + 1)]
 
