@@ -154,6 +154,8 @@ class ParametersConfig(Config):
             `eta.core.learning.ImageClassifier` to use
         confidence_threshold (eta.core.types.Number): [None] a confidence
             threshold to use when assigning labels
+        record_top_k_probs (eta.core.types.Boolean): [False] whether to record
+            top-k class probabilities for the predictions
     '''
 
     def __init__(self, d):
@@ -161,6 +163,8 @@ class ParametersConfig(Config):
             d, "classifier", etal.ImageClassifierConfig)
         self.confidence_threshold = self.parse_number(
             d, "confidence_threshold", default=None)
+        self.record_top_k_probs = self.parse_bool(
+            d, "record_top_k_probs", default=False)
 
 
 def _build_attribute_filter(threshold):
@@ -185,27 +189,35 @@ def _apply_image_classifier(config):
     attr_filter = _build_attribute_filter(
         config.parameters.confidence_threshold)
 
+    record_top_k_probs = config.parameters.record_top_k_probs
+
     # Process data
     with classifier:
         for data in config.data:
             if data.video_path:
                 logger.info("Processing video '%s'", data.video_path)
-                _process_video(data, classifier, attr_filter)
+                _process_video(
+                    data, classifier, attr_filter, record_top_k_probs)
             if data.image_path:
                 logger.info("Processing image '%s'", data.image_path)
-                _process_image(data, classifier, attr_filter)
+                _process_image(
+                    data, classifier, attr_filter, record_top_k_probs)
             if data.images_dir:
                 logger.info("Processing image directory '%s'", data.images_dir)
-                _process_images_dir(data, classifier, attr_filter)
+                _process_images_dir(
+                    data, classifier, attr_filter, record_top_k_probs)
 
 
-def _process_video(data, classifier, attr_filter):
+def _process_video(data, classifier, attr_filter, record_top_k_probs):
     write_features = data.video_features_dir is not None
 
     if write_features:
         etal.ExposesFeatures.ensure_exposes_features(classifier)
         features_handler = etaf.VideoFramesFeaturesHandler(
             data.video_features_dir)
+
+    if record_top_k_probs:
+        etal.ExposesProbabilities.ensure_exposes_probabilities(classifier)
 
     if data.input_labels_path:
         logger.info(
@@ -220,12 +232,21 @@ def _process_video(data, classifier, attr_filter):
             logger.debug("Processing frame %d", vr.frame_number)
 
             # Classify frame
-            attrs = attr_filter(classifier.predict(img))
+            attrs = classifier.predict(img)
+
+            # Record top-k classes, if necessary
+            if record_top_k_probs:
+                all_top_k_probs = classifier.get_top_k_classes()
+                for attr, top_k_probs in zip(attrs, all_top_k_probs):
+                    attr.top_k_probs = top_k_probs
 
             # Write features, if necessary
             if write_features:
                 fvec = classifier.get_features()
                 features_handler.write_feature(fvec, vr.frame_number)
+
+            # Filter predictions
+            attrs = attr_filter(attrs)
 
             # Record predictions
             video_labels.add_frame_attributes(attrs, vr.frame_number)
@@ -234,12 +255,15 @@ def _process_video(data, classifier, attr_filter):
     video_labels.write_json(data.output_labels_path)
 
 
-def _process_image(data, classifier, attr_filter):
+def _process_image(data, classifier, attr_filter, record_top_k_probs):
     write_features = data.image_features is not None
 
     if write_features:
         etal.ExposesFeatures.ensure_exposes_features(classifier)
         features_handler = etaf.ImageFeaturesHandler()
+
+    if record_top_k_probs:
+        etal.ExposesProbabilities.ensure_exposes_probabilities(classifier)
 
     if data.input_image_labels_path:
         logger.info(
@@ -250,7 +274,13 @@ def _process_image(data, classifier, attr_filter):
 
     # Classsify image
     img = etai.read(data.image_path)
-    attrs = attr_filter(classifier.predict(img))
+    attrs = classifier.predict(img)
+
+    # Record top-k classes, if necessary
+    if record_top_k_probs:
+        all_top_k_probs = classifier.get_top_k_classes()
+        for attr, top_k_probs in zip(attrs, all_top_k_probs):
+            attr.top_k_probs = top_k_probs
 
     # Write features, if necessary
     if write_features:
@@ -267,13 +297,16 @@ def _process_image(data, classifier, attr_filter):
     image_labels.write_json(data.output_image_labels_path)
 
 
-def _process_images_dir(data, classifier, attr_filter):
+def _process_images_dir(data, classifier, attr_filter, record_top_k_probs):
     write_features = data.image_set_features_dir is not None
 
     if write_features:
         etal.ExposesFeatures.ensure_exposes_features(classifier)
         features_handler = etaf.ImageSetFeaturesHandler(
             data.image_set_features_dir)
+
+    if record_top_k_probs:
+        etal.ExposesProbabilities.ensure_exposes_probabilities(classifier)
 
     if data.input_image_set_labels_path:
         logger.info(
@@ -291,12 +324,21 @@ def _process_images_dir(data, classifier, attr_filter):
 
         # Classify image
         img = etai.read(inpath)
-        attrs = attr_filter(classifier.predict(img))
+        attrs = classifier.predict(img)
+
+        # Record top-k classes, if necessary
+        if record_top_k_probs:
+            all_top_k_probs = classifier.get_top_k_classes()
+            for attr, top_k_probs in zip(attrs, all_top_k_probs):
+                attr.top_k_probs = top_k_probs
 
         # Write features, if necessary
         if write_features:
             fvec = classifier.get_features()
             features_handler.write_feature(fvec, filename)
+
+        # Filter predictions
+        attrs = attr_filter(attrs)
 
         # Record predictions
         image_set_labels[filename].add_image_attributes(attrs)
