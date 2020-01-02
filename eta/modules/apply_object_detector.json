@@ -95,6 +95,13 @@
             "description": "an array of objects describing the labels and confidence thresholds of objects to detect. If omitted, all detections emitted by the detector are used",
             "required": false,
             "default": null
+        },
+        {
+            "name": "record_top_k_probs",
+            "type": "eta.core.types.Boolean",
+            "description": "whether to record top-k class probabilities for the detections",
+            "required": false,
+            "default": false
         }
     ]
 }
