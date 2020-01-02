@@ -87,13 +87,19 @@ def write_labels_map(labels_map, outpath):
 def get_class_labels(labels_map):
     '''Returns the list of class labels from the given labels map.
 
+    The class labels are returned for indexes sequentially from
+    `min(1, min(labels_map))` to `max(labels_map)`. Any missing indices are
+    given the label "class <index>".
+
     Args:
         a dictionary mapping indexes to label strings
 
     Returns:
         a list of class labels
     '''
-    return [labels_map[k] for k in sorted(labels_map.keys())]
+    mini = min(1, min(labels_map))
+    maxi = max(labels_map)
+    return [labels_map.get(i, "class %d" % i) for i in range(mini, maxi + 1)]
 
 
 def has_default_deployment_model(model_name):
