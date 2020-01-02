@@ -368,7 +368,7 @@ def _detect_objects(img, detector, object_filter, record_top_k_probs):
     # Record top-k classes, if necessary
     if record_top_k_probs:
         all_top_k_probs = detector.get_top_k_classes(record_top_k_probs)
-        for obj, top_k_probs in zip(objects, all_top_k_probs):
+        for obj, top_k_probs in zip(objects, all_top_k_probs.flatten()):
             obj.top_k_probs = top_k_probs
 
     # Filter detections
