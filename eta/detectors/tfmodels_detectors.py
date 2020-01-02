@@ -168,11 +168,8 @@ class TFModelsDetector(
         self._sess = self.make_tf_session(graph=self._graph)
 
         # Load labels
-        label_map = gool.load_labelmap(self.config.labels_path)
-        categories = gool.convert_label_map_to_categories(
-            label_map, float("inf"), use_display_name=True)
-        self._category_index = gool.create_category_index(categories)
-        self._class_labels = _get_class_labels(self._category_index)
+        self._category_index, self._class_labels = _parse_labels_map(
+            self.config.labels_path)
         self._num_classes = len(self._class_labels)
 
         # Get operations
@@ -492,11 +489,8 @@ class TFModelsSegmenter(
         self._sess = self.make_tf_session(graph=self._graph)
 
         # Load labels
-        label_map = gool.load_labelmap(self.config.labels_path)
-        categories = gool.convert_label_map_to_categories(
-            label_map, float("inf"), use_display_name=True)
-        self._category_index = gool.create_category_index(categories)
-        self._class_labels = _get_class_labels(self._category_index)
+        self._category_index, self._class_labels = _parse_labels_map(
+            self.config.labels_path)
         self._num_classes = len(self._class_labels)
 
         # Get operations
@@ -724,8 +718,29 @@ def _avg_pool_features(features):
     return features
 
 
-def _get_class_labels(category_index):
-    return [category_index[k]["name"] for k in sorted(category_index.keys())]
+def _parse_labels_map(labels_path):
+    '''Loads a labels map via the `label_map_util` from the TF-Models library.
+
+    Args:
+        labels_path: path to a labels map in `.pbtxt` format
+
+    Returns:
+        (category_index, class_labels), where `category_index` is a dict
+            mapping IDs to names, and `class_labels` is a list of class names
+            for all IDs sequentially from `min(1, min(category_index.keys()))`
+            to `max(category_index.keys())`
+    '''
+    labels_map = gool.load_labelmap(labels_path)
+    categories = gool.convert_label_map_to_categories(
+        labels_map, float("inf"), use_display_name=True)
+    category_index = {c["id"]: c["name"] for c in categories}
+
+    mini = min(1, min(category_index.keys()))
+    maxi = max(category_index.keys())
+    class_labels = [
+        category_index.get(i, "class %d" % i) for i in range(mini, maxi + 1)]
+
+    return category_index, class_labels
 
 
 def _to_detected_object(
@@ -737,7 +752,7 @@ def _to_detected_object(
         box: [ymin, xmin, ymax, xmax]
         score: confidence score
         class_id: predicted class ID
-        category_index: index of class categories
+        category_index: dictionary mapping class IDs to class names
         mask_probs: an optional numpy array containing the mask probabilities,
             if supported by the model
         mask_thresh: an optional threshold to use when computing the instance
@@ -746,7 +761,7 @@ def _to_detected_object(
     Returns:
         a DetectedObject describing the detection
     '''
-    label = category_index[class_id]["name"]
+    label = category_index[class_id]
 
     bounding_box = BoundingBox(
         RelativePoint(box[1], box[0]),
