@@ -562,7 +562,7 @@ class LabeledDataset(object):
             LabeledDatasetError: if the class reading the dataset is not a
                 subclass of the dataset class recorded in the manifest
         '''
-        self.dataset_index = LabeledDatasetIndex.from_json(manifest_path)
+        self._dataset_index = LabeledDatasetIndex.from_json(manifest_path)
         if not isinstance(self, etau.get_class(self.dataset_index.type)):
             raise LabeledDatasetError(
                 "Tried to read dataset of type '%s', from location '%s', "
@@ -575,16 +575,23 @@ class LabeledDataset(object):
 
     @property
     def dataset_dir(self):
+        '''The directory where the dataset is contained.'''
         return os.path.dirname(self._manifest_path)
 
     @property
     def data_dir(self):
+        '''Deprecated! Use `dataset_dir` instead.'''
         logger.warning(
             "{0}.data_dir is deprecated. Use {0}.dataset_dir instead.".format(
                 etau.get_class_name(self)
             )
         )
         return self.dataset_dir
+
+    @property
+    def dataset_index(self):
+        '''The LabeledDatasetIndex object defining this dataset.'''
+        return self._dataset_index
 
     def __iter__(self):
         '''Iterates over the samples in the dataset.
