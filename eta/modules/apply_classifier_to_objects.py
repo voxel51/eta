@@ -174,6 +174,8 @@ class ParametersConfig(Config):
             in pixels, for a bounding box to be classified
         confidence_threshold (eta.core.types.Number): [None] the minimum
             confidence required for a label to be saved
+        record_top_k_probs (eta.core.types.Boolean): [False] whether to record
+            top-k class probabilities for the predictions
     '''
 
     def __init__(self, d):
@@ -186,6 +188,8 @@ class ParametersConfig(Config):
             d, "min_height_pixels", default=None)
         self.confidence_threshold = self.parse_number(
             d, "confidence_threshold", default=None)
+        self.record_top_k_probs = self.parse_bool(
+            d, "record_top_k_probs", default=False)
 
 
 def _build_object_filter(labels):
@@ -219,6 +223,9 @@ def _apply_classifier_to_objects(config):
     # Build classifier
     classifier = parameters.classifier.build()
     logger.info("Loaded classifier %s", type(classifier))
+
+    if parameters.record_top_k_probs:
+        etal.ExposesProbabilities.ensure_exposes_probabilities(classifier)
 
     # Build filters
     object_filter = _build_object_filter(parameters.labels)
@@ -344,6 +351,7 @@ def _classify_objects(
     bb_padding = parameters.bb_padding
     force_square = parameters.force_square
     min_height = parameters.min_height_pixels
+    record_top_k_probs = parameters.record_top_k_probs
 
     # Get objects
     objects = object_filter(image_or_frame_labels.objects)
@@ -364,7 +372,8 @@ def _classify_objects(
             continue
 
         # Classify object
-        attrs = attr_filter(classifier.predict(obj_img))
+        attrs = _classify_image(
+            obj_img, classifier, attr_filter, record_top_k_probs)
 
         # Write features, if requested
         if save_feature_fcn is not None:
@@ -373,6 +382,22 @@ def _classify_objects(
 
         # Record predictions
         obj.add_attributes(attrs)
+
+
+def _classify_image(img, classifier, attr_filter, record_top_k_probs):
+    # Perform prediction
+    attrs = classifier.predict(img)
+
+    # Record top-k classes, if necessary
+    if record_top_k_probs:
+        all_top_k_probs = classifier.get_top_k_classes()
+        for attr, top_k_probs in zip(attrs, all_top_k_probs):
+            attr.top_k_probs = top_k_probs
+
+    # Filter predictions
+    attrs = attr_filter(attrs)
+
+    return attrs
 
 
 def run(config_path, pipeline_config_path=None):
