@@ -552,26 +552,39 @@ class LabeledDataset(object):
     _DATA_SUBDIR = "data"
     _LABELS_SUBDIR = "labels"
 
-    def __init__(self, dataset_path):
+    def __init__(self, manifest_path):
         '''Creates a LabeledDataset instance.
 
         Args:
-            dataset_path: the path to the `manifest.json` file for the dataset
+            manifest_path: the path to the `manifest.json` file for the dataset
 
         Raises:
             LabeledDatasetError: if the class reading the dataset is not a
                 subclass of the dataset class recorded in the manifest
         '''
-        self.dataset_index = LabeledDatasetIndex.from_json(dataset_path)
+        self.dataset_index = LabeledDatasetIndex.from_json(manifest_path)
         if not isinstance(self, etau.get_class(self.dataset_index.type)):
             raise LabeledDatasetError(
                 "Tried to read dataset of type '%s', from location '%s', "
                 "but manifest is of type '%s'" % (
-                    etau.get_class_name(self), dataset_path,
+                    etau.get_class_name(self), manifest_path,
                     self.dataset_index.type))
-        self.data_dir = os.path.dirname(dataset_path)
+        self._manifest_path = manifest_path
 
         self._build_index_map()
+
+    @property
+    def dataset_dir(self):
+        return os.path.dirname(self._manifest_path)
+
+    @property
+    def data_dir(self):
+        logger.warning(
+            "{0}.data_dir is deprecated. Use {0}.dataset_dir instead.".format(
+                etau.get_class_name(self)
+            )
+        )
+        return self.dataset_dir
 
     def __iter__(self):
         '''Iterates over the samples in the dataset.
@@ -605,7 +618,7 @@ class LabeledDataset(object):
             iterator: iterator over paths to data files
         '''
         for record in self.dataset_index:
-            yield os.path.join(self.data_dir, record.data)
+            yield os.path.join(self.dataset_dir, record.data)
 
     def iter_labels(self):
         '''Iterates over the labels in the dataset.
@@ -624,7 +637,7 @@ class LabeledDataset(object):
             iterator: iterator over paths to labels files
         '''
         for record in self.dataset_index:
-            yield os.path.join(self.data_dir, record.labels)
+            yield os.path.join(self.dataset_dir, record.labels)
 
     def iter_paths(self):
         '''Iterates over the data and labels paths tuple in the dataset.
@@ -656,14 +669,14 @@ class LabeledDataset(object):
 
         Args:
             filename: the name of a new manifest file to be written in
-                self.data_dir
+                self.dataset_dir
             description: optional description for the new manifest. If not
                 specified, the existing description is retained.
         '''
         if description is not None:
             self.set_description(description)
 
-        out_path = os.path.join(self.data_dir, filename)
+        out_path = os.path.join(self.dataset_dir, filename)
         self.dataset_index.write_json(out_path)
 
     def sample(self, k):
@@ -794,12 +807,12 @@ class LabeledDataset(object):
         data_method, labels_method = self._parse_file_methods(file_method)
 
         new_data_path = os.path.join(
-            self.data_dir, self._DATA_SUBDIR, new_data_filename)
+            self.dataset_dir, self._DATA_SUBDIR, new_data_filename)
         if data_path != new_data_path:
             data_method(data_path, new_data_path)
 
         new_labels_path = os.path.join(
-            self.data_dir, self._LABELS_SUBDIR, new_labels_filename)
+            self.dataset_dir, self._LABELS_SUBDIR, new_labels_filename)
         if labels_path != new_labels_path:
             labels_method(labels_path, new_labels_path)
 
@@ -848,9 +861,9 @@ class LabeledDataset(object):
                              % os.path.basename(data_filename))
 
         data_path = os.path.join(
-            self.data_dir, self._DATA_SUBDIR, data_filename)
+            self.dataset_dir, self._DATA_SUBDIR, data_filename)
         labels_path = os.path.join(
-            self.data_dir, self._LABELS_SUBDIR, labels_filename)
+            self.dataset_dir, self._LABELS_SUBDIR, labels_filename)
 
         self._write_data(data, data_path)
         self._write_labels(labels, labels_path)
@@ -946,11 +959,11 @@ class LabeledDataset(object):
                 dataset. If `in_place` is False, the containing directory
                 must either not exist or be empty. If `in_place` is True,
                 either the containing directory must be equal to
-                `self.data_dir`, or `merged_dataset_path` is just a filename
-                of a new `manifest.json` to write in `self.data_dir`.
+                `self.dataset_dir`, or `merged_dataset_path` is just a filename
+                of a new `manifest.json` to write in `self.dataset_dir`.
             in_place: whether or not to write the merged dataset to a new
                 directory. If not, the data from `labeled_dataset_or_path`
-                will be added into `self.data_dir`.
+                will be added into `self.dataset_dir`.
             description: optional description for the manifest of the merged
                 dataset. If not specified, the existing description is used.
             file_method: how to add the files to the dataset. One of "copy",
@@ -968,17 +981,17 @@ class LabeledDataset(object):
         data_filenames_to_merge = self._get_filenames_for_merge(
             labeled_dataset)
 
-        output_data_dir = os.path.dirname(merged_dataset_path)
-        if not output_data_dir:
-            output_data_dir = self.data_dir
+        output_dataset_dir = os.path.dirname(merged_dataset_path)
+        if not output_dataset_dir:
+            output_dataset_dir = self.dataset_dir
             merged_dataset_path = os.path.join(
-                output_data_dir, merged_dataset_path)
+                output_dataset_dir, merged_dataset_path)
 
-        if in_place and output_data_dir != self.data_dir:
+        if in_place and output_dataset_dir != self.dataset_dir:
             raise ValueError(
                 "If merging datasets in place, merged_dataset_path should be "
                 "within original base directory '%s', but got '%s'" %
-                (self.data_dir, output_data_dir))
+                (self.dataset_dir, output_dataset_dir))
 
         if in_place:
             merged_dataset = self
@@ -1024,7 +1037,7 @@ class LabeledDataset(object):
 
         self.dataset_index.cull_with_function(
             lambda record: os.path.join(
-                self.data_dir, record.data) not in data_paths_remove)
+                self.dataset_dir, record.data) not in data_paths_remove)
 
         self._build_index_map()
 
@@ -1046,12 +1059,12 @@ class LabeledDataset(object):
             data_filenames.add(os.path.basename(data_path))
             labels_filenames.add(os.path.basename(labels_path))
 
-        data_subdir = os.path.join(self.data_dir, self._DATA_SUBDIR)
+        data_subdir = os.path.join(self.dataset_dir, self._DATA_SUBDIR)
         for filename in etau.list_files(data_subdir):
             if filename not in data_filenames:
                 etau.delete_file(os.path.join(data_subdir, filename))
 
-        labels_subdir = os.path.join(self.data_dir, self._LABELS_SUBDIR)
+        labels_subdir = os.path.join(self.dataset_dir, self._LABELS_SUBDIR)
         for filename in etau.list_files(labels_subdir):
             if filename not in labels_filenames:
                 etau.delete_file(os.path.join(labels_subdir, filename))
@@ -1857,8 +1870,9 @@ class LabeledDatasetBuilder(object):
         )
 
         dataset = self.dataset_cls.create_empty_dataset(path, description)
-        data_subdir = os.path.join(dataset.data_dir, dataset._DATA_SUBDIR)
-        labels_subdir = os.path.join(dataset.data_dir, dataset._LABELS_SUBDIR)
+        data_subdir = os.path.join(dataset.dataset_dir, dataset._DATA_SUBDIR)
+        labels_subdir = os.path.join(
+            dataset.dataset_dir, dataset._LABELS_SUBDIR)
 
         did_warn_duplicate_name = False
         for record in self._dataset:
