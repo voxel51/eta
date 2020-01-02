@@ -18,7 +18,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
-from future.utils import iteritems, itervalues
+from future.utils import iteritems
 import six
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
@@ -577,11 +577,9 @@ class LabeledDataset(object):
     @property
     def data_dir(self):
         '''Deprecated! Use `dataset_dir` instead.'''
-        logger.warning(
-            "{0}.data_dir is deprecated. Use {0}.dataset_dir instead.".format(
-                etau.get_class_name(self)
-            )
-        )
+        class_name = etau.get_class_name(self)
+        logger.warning("%s.data_dir is deprecated."
+                       " Use %s.dataset_dir instead.", [class_name, class_name])
         return self.dataset_dir
 
     @property
@@ -1739,7 +1737,7 @@ class LabeledDatasetIndex(Serializable):
                 split_indices, descriptions)]
 
     @classmethod
-    def from_dict(cls, d):
+    def from_dict(cls, d, *args, **kwargs):
         '''Constructs a LabeledDatasetIndex object from a JSON dictionary.'''
         type = d["type"]
         index = d.get("index", None)
@@ -1969,6 +1967,7 @@ class BuilderDataRecord(BaseDataRecord):
 
     @property
     def new_data_path(self):
+        '''The data path to be written to.'''
         if self._new_data_path is not None:
             return self._new_data_path
         return self._data_path
