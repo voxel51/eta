@@ -2805,9 +2805,6 @@ class FFmpegVideoReader(VideoReader):
 class SampledFramesVideoReader(VideoReader):
     '''Class for reading video stored as sampled frames on disk.
 
-    A frames string like "1-5,10-15" can optionally be passed to only read
-    certain frame ranges.
-
     This class uses 1-based indexing for all frame operations.
     '''
 
@@ -2826,16 +2823,22 @@ class SampledFramesVideoReader(VideoReader):
                 - an iterable, e.g., [1, 2, 3, 6, 8, 9, 10]. The frames do not
                     need to be in sorted order
         '''
-        self._frames_dir = None
-        self._frames_patt = None
-        self._frame_size = None
-        self._total_frame_count = None
-
+        # Parse args
         all_frames = self._init_for_frames_dir(frames_dir)
         if frames is None or frames == "*":
             frames = all_frames
 
         super(SampledFramesVideoReader, self).__init__(frames_dir, frames)
+
+        self._frames_dir = None
+        self._frames_patt = None
+        self._frame_size = None
+        self._total_frame_count = None
+
+    def reset(self):
+        '''Resets the SampledFramesVideoReader.'''
+        self.close()
+        self._reset()
 
     @property
     def encoding_str(self):
