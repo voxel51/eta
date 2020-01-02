@@ -14,7 +14,8 @@
     "modules": {
         "apply_image_classifier": {
             "name": "apply_image_classifier",
-            "tunable_parameters": ["classifier", "confidence_threshold"],
+            "tunable_parameters": [
+                "classifier", "confidence_threshold", "record_top_k_probs"],
             "set_parameters": {}
         },
         "visualize_image_labels": {
