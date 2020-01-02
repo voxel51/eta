@@ -2698,6 +2698,8 @@ class FFmpegVideoReader(VideoReader):
         else:
             in_opts = None
 
+        super(FFmpegVideoReader, self).__init__(inpath, frames)
+
         self._stream_info = VideoStreamInfo.build_for(inpath)
         self._ffmpeg = FFmpeg(
             in_opts=in_opts,
@@ -2708,10 +2710,20 @@ class FFmpegVideoReader(VideoReader):
                 "-pix_fmt", "rgb24",        # pixel format
             ],
         )
-        self._ffmpeg.run(inpath, "-")
         self._raw_frame = None
 
-        super(FFmpegVideoReader, self).__init__(inpath, frames)
+        self.reset()
+
+    def close(self):
+        '''Closes the FFmpegVideoReader.'''
+        self._ffmpeg.close()
+
+    def reset(self):
+        '''Resets the FFmpegVideoReader.'''
+        self.close()
+        self._reset()
+        self._ffmpeg.run(self.inpath, "-")
+        self._raw_frame = None
 
     @property
     def encoding_str(self):
@@ -2756,10 +2768,6 @@ class FFmpegVideoReader(VideoReader):
                     self.frame_number)
                 raise StopIteration
         return self._retrieve()
-
-    def close(self):
-        '''Closes the video reader.'''
-        self._ffmpeg.close()
 
     def _grab(self):
         try:
