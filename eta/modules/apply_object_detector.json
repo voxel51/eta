@@ -98,10 +98,10 @@
         },
         {
             "name": "record_top_k_probs",
-            "type": "eta.core.types.Boolean",
-            "description": "whether to record top-k class probabilities for the detections",
+            "type": "eta.core.types.Number",
+            "description": "top-k class probabilities to record for the detections",
             "required": false,
-            "default": false
+            "default": null
         }
     ]
 }

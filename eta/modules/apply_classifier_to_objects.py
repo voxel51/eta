@@ -174,8 +174,8 @@ class ParametersConfig(Config):
             in pixels, for a bounding box to be classified
         confidence_threshold (eta.core.types.Number): [None] the minimum
             confidence required for a label to be saved
-        record_top_k_probs (eta.core.types.Boolean): [False] whether to record
-            top-k class probabilities for the predictions
+        record_top_k_probs (eta.core.types.Number): [None] top-k class
+            probabilities to record for the predictions
     '''
 
     def __init__(self, d):
@@ -188,8 +188,8 @@ class ParametersConfig(Config):
             d, "min_height_pixels", default=None)
         self.confidence_threshold = self.parse_number(
             d, "confidence_threshold", default=None)
-        self.record_top_k_probs = self.parse_bool(
-            d, "record_top_k_probs", default=False)
+        self.record_top_k_probs = self.parse_number(
+            d, "record_top_k_probs", default=None)
 
 
 def _build_object_filter(labels):
@@ -390,7 +390,7 @@ def _classify_image(img, classifier, attr_filter, record_top_k_probs):
 
     # Record top-k classes, if necessary
     if record_top_k_probs:
-        all_top_k_probs = classifier.get_top_k_classes()
+        all_top_k_probs = classifier.get_top_k_classes(record_top_k_probs)
         for attr, top_k_probs in zip(attrs, all_top_k_probs):
             attr.top_k_probs = top_k_probs
 

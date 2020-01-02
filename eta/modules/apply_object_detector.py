@@ -156,8 +156,8 @@ class ParametersConfig(Config):
             describing the labels and confidence thresholds of objects to
             detect. If omitted, all detections emitted by the detector are
             used
-        record_top_k_probs (eta.core.types.Boolean): [False] whether to record
-            top-k class probabilities for the detections
+        record_top_k_probs (eta.core.types.Number): [None] top-k class
+            probabilities to record for the detections
     '''
 
     def __init__(self, d):
@@ -165,8 +165,8 @@ class ParametersConfig(Config):
             d, "detector", etal.ObjectDetectorConfig)
         self.objects = self.parse_object_array(
             d, "objects", ObjectsConfig, default=None)
-        self.record_top_k_probs = self.parse_bool(
-            d, "record_top_k_probs", default=False)
+        self.record_top_k_probs = self.parse_number(
+            d, "record_top_k_probs", default=None)
 
 
 class ObjectsConfig(Config):
@@ -367,7 +367,7 @@ def _detect_objects(img, detector, object_filter, record_top_k_probs):
 
     # Record top-k classes, if necessary
     if record_top_k_probs:
-        all_top_k_probs = detector.get_top_k_classes()
+        all_top_k_probs = detector.get_top_k_classes(record_top_k_probs)
         for obj, top_k_probs in zip(objects, all_top_k_probs):
             obj.top_k_probs = top_k_probs
 
