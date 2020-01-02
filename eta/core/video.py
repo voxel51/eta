@@ -3534,6 +3534,7 @@ class FrameRanges(object):
         self._ranges = []
         self._started = False
 
+        # Parse args
         end = -1
         for first, last in ranges:
             if first <= end:
@@ -3558,11 +3559,21 @@ class FrameRanges(object):
 
         return frame
 
+    def reset(self):
+        '''Resets the FrameRanges instance so that the next frame will be the
+        first.
+        '''
+        for r in self._ranges[:(self._idx + 1)]:
+            r.reset()
+
+        self._started = False
+        self._idx = 0
+
     @property
     def frame(self):
         '''The current frame number, or -1 if no frames have been read.'''
         if self._started:
-            return self._ranges[self._idx].idx
+            return self._ranges[self._idx].frame
 
         return -1
 
@@ -3662,31 +3673,46 @@ class FrameRange(object):
         Raises:
             FrameRangeError: if last < first
         '''
+        # Parse args
         if last < first:
             raise FrameRangeError(
                 "Expected first:%d <= last:%d" % (first, last))
 
         self.first = first
         self.last = last
-        self.idx = -1
+        self._frame = -1
 
     def __iter__(self):
         return self
 
-    @property
-    def is_first_frame(self):
-        '''Whether the current frame is first in the range.'''
-        return self.idx == self.first
-
     def __next__(self):
-        if self.idx < 0:
-            self.idx = self.first
-        elif self.idx < self.last:
-            self.idx += 1
+        if self._frame < 0:
+            self._frame = self.first
+        elif self._frame < self.last:
+            self._frame += 1
         else:
             raise StopIteration
 
-        return self.idx
+        return self._frame
+
+    def reset(self):
+        '''Resets the FrameRange instance so that the next frame will be the
+        first.
+        '''
+        self._frame = -1
+
+    @property
+    def frame(self):
+        '''The current frame number, or -1 if no frames have been read.'''
+        if self._frame < 0:
+            return -1
+
+        return self._frame
+
+    @property
+    def is_first_frame(self):
+        '''Whether the current frame is first in the range.'''
+        return self._frame == self.first
 
     def to_list(self):
         '''Returns the list of frames in the range.
