@@ -2931,7 +2931,9 @@ class OpenCVVideoReader(VideoReader):
         Raises:
             OpenCVVideoReaderError: if the input video could not be opened
         '''
-        self._cap = self._open_capture(inpath)
+        self._cap = None
+
+        self._open_stream(inpath)
         super(OpenCVVideoReader, self).__init__(inpath, frames)
 
     def close(self):
@@ -2944,7 +2946,7 @@ class OpenCVVideoReader(VideoReader):
         '''Resets the OpenCVVideoReader.'''
         self.close()
         self._reset()
-        self._cap = self._open_capture(self.inpath)
+        self._open_stream(self.inpath)
 
     @property
     def encoding_str(self):
@@ -3033,13 +3035,10 @@ class OpenCVVideoReader(VideoReader):
                 self.frame_number)
             raise StopIteration
 
-    @staticmethod
-    def _open_capture(inpath):
-        cap = cv2.VideoCapture(inpath)
-        if not cap.isOpened():
+    def _open_stream(self, inpath):
+        self._cap = cv2.VideoCapture(inpath)
+        if not self._cap.isOpened():
             raise OpenCVVideoReaderError("Unable to open '%s'" % inpath)
-
-        return cap
 
 
 class OpenCVVideoReaderError(VideoReaderError):
