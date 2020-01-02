@@ -802,8 +802,9 @@ class ExposesProbabilities(object):
             top_k: the number of top classes
 
         Returns:
-            a dictionary mapping class labels to probabilities, or None if the
-                model has not (or does not) expose probabilities
+            a `num_images x num_preds/objects` array of dictionaries mapping
+                class labels to probabilities, or None if the model has not
+                (or does not) expose probabilities
         '''
         if not self.exposes_probabilities:
             return None
@@ -813,8 +814,18 @@ class ExposesProbabilities(object):
             return None
 
         probs = np.asarray(probs)
-        inds = np.argsort(probs)[-top_k:]
-        return dict(zip(np.asarray(self.class_labels)[inds], probs[inds]))
+        labels = np.asarray(self.class_labels)
+
+        inds = np.argsort(probs, axis=2)
+
+        top_k_probs = np.empty_like(inds, dtype=dict)
+        for i in range(inds.shape[0]):
+            for j in range(inds.shape[1]):
+                probsij = probs[i, j, :]
+                indsij = inds[i, j, :][-top_k:]
+                top_k_probs[i, j] = dict(zip(labels[indsij], probsij[indsij]))
+
+        return top_k_probs
 
     @staticmethod
     def ensure_exposes_probabilities(model):
