@@ -366,13 +366,11 @@ class TFSlimClassifier(
         attrs = etad.AttributeContainer()
         keep = (confidence > self.config.confidence_thresh)
         if keep:
-            attrs.add(self._package_attr(label, confidence))
+            attrs.add(
+                etad.CategoricalAttribute(
+                    self.config.attr_name, label, confidence=confidence))
 
         return attrs, keep
-
-    def _package_attr(self, label, confidence):
-        return etad.CategoricalAttribute(
-            self.config.attr_name, label, confidence=confidence)
 
     def _make_preprocessing_fcn(self, network_name, preprocessing_fcn):
         # Use user-specified pre-processing, if provided
