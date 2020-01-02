@@ -255,7 +255,10 @@ def _process_image(data, classifier, attr_filter):
     # Write features, if necessary
     if write_features:
         fvec = classifier.get_features()
-        features_handler.write_feature(fvec)
+        features_handler.write_feature(fvec, data.image_features)
+
+    # Filter predictions
+    attrs = attr_filter(attrs)
 
     # Record predictions
     image_labels.add_image_attributes(attrs)
