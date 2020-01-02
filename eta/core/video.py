@@ -2542,7 +2542,18 @@ class VideoProcessorError(Exception):
 
 
 class VideoReader(object):
-    '''Base class for reading videos.'''
+    '''Base class for reading videos.
+
+    This class declares the following conventions:
+
+        (a) `VideoReader`s implement the context manager interface. This means
+            that models can optionally use context to perform any necessary
+            setup and teardown, and so any code that uses a `VideoReader`
+            should use the `with` syntax
+
+        (b) `VideoReader`s support a `reset()` method that allows them to be
+            reset back to their first frame, on demand
+    '''
 
     def __init__(self, inpath, frames):
         '''Initializes a VideoReader base instance.
@@ -2579,8 +2590,23 @@ class VideoReader(object):
         return self.read()
 
     def close(self):
-        '''Closes the VideoReader.'''
+        '''Closes the VideoReader.
+
+        Subclasses can override this method if necessary.
+        '''
         pass
+
+    def reset(self):
+        '''Resets the VideoReader so that the next call to `read()` will return
+        the first frame.
+        '''
+        raise NotImplementedError("subclass must implement reset()")
+
+    def _reset(self):
+        '''Base VideoReader implementation of `reset()`. Subclasses must call
+        this method internally within `reset()`.
+        '''
+        self._ranges.reset()
 
     @property
     def frame_number(self):
