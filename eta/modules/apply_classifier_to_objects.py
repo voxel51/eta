@@ -391,7 +391,7 @@ def _classify_image(img, classifier, attr_filter, record_top_k_probs):
     # Record top-k classes, if necessary
     if record_top_k_probs:
         all_top_k_probs = classifier.get_top_k_classes(record_top_k_probs)
-        for attr, top_k_probs in zip(attrs, all_top_k_probs.flattern()):
+        for attr, top_k_probs in zip(attrs, all_top_k_probs.flatten()):
             attr.top_k_probs = top_k_probs
 
     # Filter predictions
