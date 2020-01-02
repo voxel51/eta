@@ -121,9 +121,43 @@ class Attribute(Serializable):
 class CategoricalAttribute(Attribute):
     '''Class encapsulating categorical attributes.'''
 
+    def __init__(self, name, value, confidence=None, top_k_probs=None):
+        '''Constructs a CategoricalAttribute instance.
+
+        Args:
+            name: the attribute name
+            value: the attribute value
+            confidence: an optional confidence of the value, in [0, 1]. By
+                default, no confidence is stored
+            top_k_probs: an optional dictionary mapping values to
+                probabilities. By default, no probabilities are stored
+        '''
+        super(CategoricalAttribute, self).__init__(
+            name, value, confidence=confidence)
+        self.top_k_probs = top_k_probs
+
     @classmethod
     def parse_value(cls, value):
+        '''Parses the attribute value.'''
         return value
+
+    def attributes(self):
+        '''Returns the list of attributes to serialize.
+
+        Optional attributes that were not provided (i.e., are None) are omitted
+        from this list.
+        '''
+        _attrs = super(CategoricalAttribute, self).attributes()
+        if self.top_k_probs is not None:
+            _attrs.append("top_k_probs")
+        return _attrs
+
+    @classmethod
+    def from_dict(cls, d):
+        '''Constructs a CategoricalAttribute from a JSON dictionary.'''
+        attr = super(CategoricalAttribute, cls).from_dict(d)
+        attr.top_k_probs = d.get("top_k_probs", None)
+        return attr
 
 
 class NumericAttribute(Attribute):
@@ -131,6 +165,7 @@ class NumericAttribute(Attribute):
 
     @classmethod
     def parse_value(cls, value):
+        '''Parses the attribute value.'''
         return float(value)
 
 
@@ -139,6 +174,7 @@ class BooleanAttribute(Attribute):
 
     @classmethod
     def parse_value(cls, value):
+        '''Parses the attribute value.'''
         return bool(value)
 
 
