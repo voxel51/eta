@@ -748,7 +748,7 @@ class ExposesProbabilities(object):
     By convention, class probabilities should be returned in an array whose
     shape follows the pattern below:
 
-    Inference type                    Features array shape
+    Inference type                    Probabilities array shape
     --------------------------------  -----------------------------------
     ImageClassifier.predict           1 x num_preds x num_classes
     ImageClassifier.predict_all       num_images x num_preds x num_classes
