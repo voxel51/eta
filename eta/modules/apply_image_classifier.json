@@ -95,6 +95,13 @@
             "description": "a confidence threshold to use when assigning labels",
             "required": false,
             "default": null
+        },
+        {
+            "name": "record_top_k_probs",
+            "type": "eta.core.types.Boolean",
+            "description": "whether to record top-k class probabilities for the predictions",
+            "required": false,
+            "default": false
         }
     ]
 }
