@@ -2698,8 +2698,6 @@ class FFmpegVideoReader(VideoReader):
         else:
             in_opts = None
 
-        super(FFmpegVideoReader, self).__init__(inpath, frames)
-
         self._stream_info = VideoStreamInfo.build_for(inpath)
         self._ffmpeg = FFmpeg(
             in_opts=in_opts,
@@ -2712,7 +2710,8 @@ class FFmpegVideoReader(VideoReader):
         )
         self._raw_frame = None
 
-        self.reset()
+        self._open_stream(inpath)
+        super(FFmpegVideoReader, self).__init__(inpath, frames)
 
     def close(self):
         '''Closes the FFmpegVideoReader.'''
@@ -2722,8 +2721,7 @@ class FFmpegVideoReader(VideoReader):
         '''Resets the FFmpegVideoReader.'''
         self.close()
         self._reset()
-        self._ffmpeg.run(self.inpath, "-")
-        self._raw_frame = None
+        self._open_stream(self.inpath)
 
     @property
     def encoding_str(self):
@@ -2801,6 +2799,10 @@ class FFmpegVideoReader(VideoReader):
                 self.frame_number)
             raise StopIteration
 
+    def _open_stream(self, inpath):
+        self._ffmpeg.run(inpath, "-")
+        self._raw_frame = None
+
 
 class SampledFramesVideoReader(VideoReader):
     '''Class for reading video stored as sampled frames on disk.
@@ -2823,17 +2825,16 @@ class SampledFramesVideoReader(VideoReader):
                 - an iterable, e.g., [1, 2, 3, 6, 8, 9, 10]. The frames do not
                     need to be in sorted order
         '''
-        # Parse args
+        self._frames_dir = None
+        self._frames_patt = None
+        self._frame_size = None
+        self._total_frame_count = None
+
         all_frames = self._init_for_frames_dir(frames_dir)
         if frames is None or frames == "*":
             frames = all_frames
 
         super(SampledFramesVideoReader, self).__init__(frames_dir, frames)
-
-        self._frames_dir = None
-        self._frames_patt = None
-        self._frame_size = None
-        self._total_frame_count = None
 
     def reset(self):
         '''Resets the SampledFramesVideoReader.'''
@@ -2930,9 +2931,8 @@ class OpenCVVideoReader(VideoReader):
         Raises:
             OpenCVVideoReaderError: if the input video could not be opened
         '''
+        self._cap = self._open_capture(inpath)
         super(OpenCVVideoReader, self).__init__(inpath, frames)
-        self._cap = None
-        self.reset()
 
     def close(self):
         '''Closes the OpenCVVideoReader.'''
@@ -2944,9 +2944,7 @@ class OpenCVVideoReader(VideoReader):
         '''Resets the OpenCVVideoReader.'''
         self.close()
         self._reset()
-        self._cap = cv2.VideoCapture(self.inpath)
-        if not self._cap.isOpened():
-            raise OpenCVVideoReaderError("Unable to open '%s'" % self.inpath)
+        self._cap = self._open_capture(self.inpath)
 
     @property
     def encoding_str(self):
@@ -3034,6 +3032,14 @@ class OpenCVVideoReader(VideoReader):
                 "Unable to parse frame %d; Raising StopIteration now",
                 self.frame_number)
             raise StopIteration
+
+    @staticmethod
+    def _open_capture(inpath):
+        cap = cv2.VideoCapture(inpath)
+        if not cap.isOpened():
+            raise OpenCVVideoReaderError("Unable to open '%s'" % inpath)
+
+        return cap
 
 
 class OpenCVVideoReaderError(VideoReaderError):
