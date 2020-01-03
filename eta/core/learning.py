@@ -823,10 +823,12 @@ class ExposesProbabilities(object):
         labels = np.asarray(self.class_labels)
 
         inds = np.argsort(probs, axis=2)
+        num_images = inds.shape[0]
+        num_preds = inds.shape[1]
 
-        top_k_probs = np.empty_like(inds, dtype=dict)
-        for i in range(inds.shape[0]):
-            for j in range(inds.shape[1]):
+        top_k_probs = np.empty((num_images, num_preds), dtype=dict)
+        for i in range(num_images):
+            for j in range(num_preds):
                 probsij = probs[i, j, :]
                 indsij = inds[i, j, :][-top_k:]
                 top_k_probs[i, j] = dict(zip(labels[indsij], probsij[indsij]))
