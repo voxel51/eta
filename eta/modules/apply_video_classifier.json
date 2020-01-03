@@ -11,7 +11,13 @@
             "name": "video_path",
             "type": "eta.core.types.Video",
             "description": "the input video",
-            "required": true
+            "required": false
+        },
+        {
+            "name": "video_frames_dir",
+            "type": "eta.core.types.ImageSequenceDirectory",
+            "description": "a directory containing the frames of the video",
+            "required": false
         },
         {
             "name": "input_labels_path",
@@ -30,17 +36,17 @@
     ],
     "parameters": [
         {
+            "name": "classifier",
+            "type": "eta.core.types.VideoClassifier",
+            "description": "an eta.core.learning.VideoClassifierConfig describing the eta.core.learning.VideoClassifier to use",
+            "required": true
+        },
+        {
             "name": "confidence_threshold",
             "type": "eta.core.types.Number",
             "description": "a confidence threshold to use when assigning labels",
             "required": false,
             "default": null
-        },
-        {
-            "name": "classifier",
-            "type": "eta.core.types.VideoClassifier",
-            "description": "an eta.core.learning.VideoClassifierConfig describing the eta.core.learning.VideoClassifier to use",
-            "required": true
         }
     ]
 }
