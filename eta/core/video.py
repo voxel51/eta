@@ -454,7 +454,7 @@ class VideoFrameLabels(Serializable):
     @property
     def is_empty(self):
         '''Whether the frame has no labels of any kind.'''
-        return (not self.has_frame_attributes and not self.has_objects)
+        return not self.has_frame_attributes and not self.has_objects
 
     def add_frame_attribute(self, frame_attr):
         '''Adds the attribute to the frame.
@@ -2027,12 +2027,12 @@ def _sample_select_frames_fast(
 
             if exception_if_incomplete:
                 raise SampleSelectFramesError(msg)
-            else:
-                # Analogous to FFmpegVideoReader, our approach here is to
-                # gracefully fail and just give the user however many frames we
-                # can...
-                logger.warning(msg)
-                frames = frames[:num_frames]
+
+            # Analogous to FFmpegVideoReader, our approach here is to
+            # gracefully fail and just give the user however many frames we
+            # can...
+            logger.warning(msg)
+            frames = frames[:num_frames]
 
         if output_patt is not None:
             # Move frames into place with correct output names
@@ -2537,12 +2537,23 @@ class VideoProcessor(object):
 
 
 class VideoProcessorError(Exception):
-    '''Exception raised when an error occurs within a VideoProcessor.'''
+    '''Exception raised when a problem with a VideoProcessor is encountered.'''
     pass
 
 
 class VideoReader(object):
-    '''Base class for reading videos.'''
+    '''Base class for reading videos.
+
+    This class declares the following conventions:
+
+        (a) `VideoReader`s implement the context manager interface. This means
+            that models can optionally use context to perform any necessary
+            setup and teardown, and so any code that uses a `VideoReader`
+            should use the `with` syntax
+
+        (b) `VideoReader`s support a `reset()` method that allows them to be
+            reset back to their first frame, on demand
+    '''
 
     def __init__(self, inpath, frames):
         '''Initializes a VideoReader base instance.
@@ -2579,8 +2590,23 @@ class VideoReader(object):
         return self.read()
 
     def close(self):
-        '''Closes the VideoReader.'''
+        '''Closes the VideoReader.
+
+        Subclasses can override this method if necessary.
+        '''
         pass
+
+    def reset(self):
+        '''Resets the VideoReader so that the next call to `read()` will return
+        the first frame.
+        '''
+        raise NotImplementedError("subclass must implement reset()")
+
+    def _reset(self):
+        '''Base VideoReader implementation of `reset()`. Subclasses must call
+        this method internally within `reset()`.
+        '''
+        self._ranges.reset()
 
     @property
     def frame_number(self):
@@ -2629,7 +2655,7 @@ class VideoReader(object):
 
 
 class VideoReaderError(Exception):
-    '''Exception raised when an error occured while reading a video.'''
+    '''Exception raised when a problem with a VideoReader is encountered.'''
     pass
 
 
@@ -2682,10 +2708,20 @@ class FFmpegVideoReader(VideoReader):
                 "-pix_fmt", "rgb24",        # pixel format
             ],
         )
-        self._ffmpeg.run(inpath, "-")
         self._raw_frame = None
 
+        self._open_stream(inpath)
         super(FFmpegVideoReader, self).__init__(inpath, frames)
+
+    def close(self):
+        '''Closes the FFmpegVideoReader.'''
+        self._ffmpeg.close()
+
+    def reset(self):
+        '''Resets the FFmpegVideoReader.'''
+        self.close()
+        self._reset()
+        self._open_stream(self.inpath)
 
     @property
     def encoding_str(self):
@@ -2731,10 +2767,6 @@ class FFmpegVideoReader(VideoReader):
                 raise StopIteration
         return self._retrieve()
 
-    def close(self):
-        '''Closes the video reader.'''
-        self._ffmpeg.close()
-
     def _grab(self):
         try:
             width, height = self.frame_size
@@ -2767,12 +2799,13 @@ class FFmpegVideoReader(VideoReader):
                 self.frame_number)
             raise StopIteration
 
+    def _open_stream(self, inpath):
+        self._ffmpeg.run(inpath, "-")
+        self._raw_frame = None
+
 
 class SampledFramesVideoReader(VideoReader):
     '''Class for reading video stored as sampled frames on disk.
-
-    A frames string like "1-5,10-15" can optionally be passed to only read
-    certain frame ranges.
 
     This class uses 1-based indexing for all frame operations.
     '''
@@ -2802,6 +2835,11 @@ class SampledFramesVideoReader(VideoReader):
             frames = all_frames
 
         super(SampledFramesVideoReader, self).__init__(frames_dir, frames)
+
+    def reset(self):
+        '''Resets the SampledFramesVideoReader.'''
+        self.close()
+        self._reset()
 
     @property
     def encoding_str(self):
@@ -2891,13 +2929,24 @@ class OpenCVVideoReader(VideoReader):
                     need to be in sorted order
 
         Raises:
-            VideoReaderError: if the input video could not be opened.
+            OpenCVVideoReaderError: if the input video could not be opened
         '''
-        self._cap = cv2.VideoCapture(inpath)
-        if not self._cap.isOpened():
-            raise VideoReaderError("Unable to open '%s'" % inpath)
+        self._cap = None
 
+        self._open_stream(inpath)
         super(OpenCVVideoReader, self).__init__(inpath, frames)
+
+    def close(self):
+        '''Closes the OpenCVVideoReader.'''
+        if self._cap is not None:
+            self._cap.release()
+            self._cap = None
+
+    def reset(self):
+        '''Resets the OpenCVVideoReader.'''
+        self.close()
+        self._reset()
+        self._open_stream(self.inpath)
 
     @property
     def encoding_str(self):
@@ -2968,10 +3017,6 @@ class OpenCVVideoReader(VideoReader):
                 raise StopIteration
         return self._retrieve()
 
-    def close(self):
-        '''Closes the video reader.'''
-        self._cap.release()
-
     def _grab(self):
         try:
             return self._cap.grab()
@@ -2990,9 +3035,27 @@ class OpenCVVideoReader(VideoReader):
                 self.frame_number)
             raise StopIteration
 
+    def _open_stream(self, inpath):
+        self._cap = cv2.VideoCapture(inpath)
+        if not self._cap.isOpened():
+            raise OpenCVVideoReaderError("Unable to open '%s'" % inpath)
+
+
+class OpenCVVideoReaderError(VideoReaderError):
+    '''Error raised when a problem with an OpenCVVideoReader is encountered.'''
+    pass
+
 
 class VideoWriter(object):
-    '''Base class for writing videos.'''
+    '''Base class for writing videos.
+
+    This class declares the following conventions:
+
+        (a) `VideoWriter`s implement the context manager interface. This means
+            that subclasses can optionally use context to perform any necessary
+            setup and teardown, and so any code that uses a `VideoWriter`
+            should use the `with` syntax
+    '''
 
     def __enter__(self):
         return self
@@ -3009,12 +3072,12 @@ class VideoWriter(object):
         raise NotImplementedError("subclass must implement write()")
 
     def close(self):
-        '''Closes the video writer.'''
-        raise NotImplementedError("subclass must implement close()")
+        '''Closes the VideoWriter.'''
+        pass
 
 
 class VideoWriterError(Exception):
-    '''Exception raised when a VideoWriter encounters an error.'''
+    '''Exception raised when a problem with a VideoWriter is encountered.'''
     pass
 
 
@@ -3056,7 +3119,7 @@ class FFmpegVideoWriter(VideoWriter):
         self._ffmpeg.stream(img.tostring())
 
     def close(self):
-        '''Closes the video writer.'''
+        '''Closes the FFmpegVideoWriter.'''
         self._ffmpeg.close()
 
 
@@ -3076,7 +3139,7 @@ class OpenCVVideoWriter(VideoWriter):
             size: the (width, height) of each frame
 
         Raises:
-            VideoWriterError: if the writer failed to open
+            OpenCVVideoWriterError: if the writer failed to open
         '''
         self.outpath = outpath
         self.fps = fps
@@ -3086,7 +3149,7 @@ class OpenCVVideoWriter(VideoWriter):
         etau.ensure_path(self.outpath)
         self._writer.open(self.outpath, -1, self.fps, self.size, True)
         if not self._writer.isOpened():
-            raise VideoWriterError("Unable to open '%s'" % self.outpath)
+            raise OpenCVVideoWriterError("Unable to open '%s'" % self.outpath)
 
     def write(self, img):
         '''Appends the image to the output video.
@@ -3100,6 +3163,13 @@ class OpenCVVideoWriter(VideoWriter):
         '''Closes the video writer.'''
         # self._writer.release()  # warns to use a separate thread
         threading.Thread(target=self._writer.release, args=()).start()
+
+
+class OpenCVVideoWriterError(VideoWriterError):
+    '''Exception raised when a problem with an OpenCVVideoWriter is
+    encountered.
+    '''
+    pass
 
 
 class FFprobe(object):
@@ -3160,8 +3230,8 @@ class FFprobe(object):
         except EnvironmentError as e:
             if e.errno == errno.ENOENT:
                 raise etau.ExecutableNotFoundError("ffprobe")
-            else:
-                raise
+
+            raise
 
         out, err = self._p.communicate()
         if self._p.returncode != 0:
@@ -3313,8 +3383,8 @@ class FFmpeg(object):
         except EnvironmentError as e:
             if e.errno == errno.ENOENT:
                 raise etau.ExecutableNotFoundError("ffmpeg")
-            else:
-                raise
+
+            raise
 
         # Run non-streaming jobs immediately
         if not (self.is_input_streaming or self.is_output_streaming):
@@ -3489,6 +3559,7 @@ class FrameRanges(object):
         self._ranges = []
         self._started = False
 
+        # Parse args
         end = -1
         for first, last in ranges:
             if first <= end:
@@ -3513,11 +3584,21 @@ class FrameRanges(object):
 
         return frame
 
+    def reset(self):
+        '''Resets the FrameRanges instance so that the next frame will be the
+        first.
+        '''
+        for r in self._ranges[:(self._idx + 1)]:
+            r.reset()
+
+        self._started = False
+        self._idx = 0
+
     @property
     def frame(self):
         '''The current frame number, or -1 if no frames have been read.'''
         if self._started:
-            return self._ranges[self._idx].idx
+            return self._ranges[self._idx].frame
 
         return -1
 
@@ -3617,31 +3698,46 @@ class FrameRange(object):
         Raises:
             FrameRangeError: if last < first
         '''
+        # Parse args
         if last < first:
             raise FrameRangeError(
                 "Expected first:%d <= last:%d" % (first, last))
 
         self.first = first
         self.last = last
-        self.idx = -1
+        self._frame = -1
 
     def __iter__(self):
         return self
 
-    @property
-    def is_first_frame(self):
-        '''Whether the current frame is first in the range.'''
-        return self.idx == self.first
-
     def __next__(self):
-        if self.idx < 0:
-            self.idx = self.first
-        elif self.idx < self.last:
-            self.idx += 1
+        if self._frame < 0:
+            self._frame = self.first
+        elif self._frame < self.last:
+            self._frame += 1
         else:
             raise StopIteration
 
-        return self.idx
+        return self._frame
+
+    def reset(self):
+        '''Resets the FrameRange instance so that the next frame will be the
+        first.
+        '''
+        self._frame = -1
+
+    @property
+    def frame(self):
+        '''The current frame number, or -1 if no frames have been read.'''
+        if self._frame < 0:
+            return -1
+
+        return self._frame
+
+    @property
+    def is_first_frame(self):
+        '''Whether the current frame is first in the range.'''
+        return self._frame == self.first
 
     def to_list(self):
         '''Returns the list of frames in the range.
