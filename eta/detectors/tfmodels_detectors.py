@@ -730,10 +730,8 @@ def _parse_labels_map(labels_path):
             for all IDs sequentially from `min(1, min(category_index))` to
             `max(category_index)`
     '''
-    labels_map = gool.load_labelmap(labels_path)
-    categories = gool.convert_label_map_to_categories(
-        labels_map, float("inf"), use_display_name=True)
-    category_index = {c["id"]: c["name"] for c in categories}
+    labelmap = gool.load_labelmap(labels_path)
+    category_index = _parse_labelmap_proto(labelmap)
 
     mini = min(1, min(category_index))
     maxi = max(category_index)
@@ -741,6 +739,30 @@ def _parse_labels_map(labels_path):
         category_index.get(i, "class %d" % i) for i in range(mini, maxi + 1)]
 
     return category_index, class_labels
+
+
+def _parse_labelmap_proto(labelmap):
+    '''Converts a labelmap proto into a category index.
+
+    Adapted from
+    `tensorflow/models/research/object_detection/utils/label_map_util.py`.
+
+    Args:
+        a StringIntLabelMapProto
+
+    Returns:
+        a dictionary mapping class IDs to class names
+    '''
+    category_index = {}
+    for item in labelmap.item:
+        if item.HasField("display_name"):
+            name = item.display_name
+        else:
+            name = item.name
+
+        category_index[item.id] = name
+
+    return category_index
 
 
 def _to_detected_object(
