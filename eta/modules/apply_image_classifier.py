@@ -154,8 +154,8 @@ class ParametersConfig(Config):
             `eta.core.learning.ImageClassifier` to use
         confidence_threshold (eta.core.types.Number): [None] a confidence
             threshold to use when assigning labels
-        record_top_k_probs (eta.core.types.Number): [None] top-k class
-            probabilities to record for the predictions
+        record_top_k_probs (eta.core.types.Number): [None] the number of top-k
+            class probabilities to record for the predictions
     '''
 
     def __init__(self, d):

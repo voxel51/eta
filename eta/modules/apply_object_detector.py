@@ -156,8 +156,8 @@ class ParametersConfig(Config):
             describing the labels and confidence thresholds of objects to
             detect. If omitted, all detections emitted by the detector are
             used
-        record_top_k_probs (eta.core.types.Number): [None] top-k class
-            probabilities to record for the detections
+        record_top_k_probs (eta.core.types.Number): [None] the number of top-k
+            class probabilities to record for the predictions
     '''
 
     def __init__(self, d):

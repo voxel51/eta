@@ -174,8 +174,8 @@ class ParametersConfig(Config):
             in pixels, for a bounding box to be classified
         confidence_threshold (eta.core.types.Number): [None] the minimum
             confidence required for a label to be saved
-        record_top_k_probs (eta.core.types.Number): [None] top-k class
-            probabilities to record for the predictions
+        record_top_k_probs (eta.core.types.Number): [None] the number of top-k
+            class probabilities to record for the predictions
     '''
 
     def __init__(self, d):

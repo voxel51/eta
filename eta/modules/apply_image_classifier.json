@@ -99,7 +99,7 @@
         {
             "name": "record_top_k_probs",
             "type": "eta.core.types.Number",
-            "description": "top-k class probabilities to record for the predictions",
+            "description": "the number of top-k class probabilities to record for the predictions",
             "required": false,
             "default": null
         }
