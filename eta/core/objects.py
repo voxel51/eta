@@ -31,6 +31,7 @@ class DetectedObject(Serializable, HasBoundingBox):
         bounding_box: a BoundingBox around the object
         mask: (optional) a mask for the object within its bounding box
         confidence: (optional) the detection confidence, in [0, 1]
+        top_k_probs: (optional) dictionary mapping labels to probabilities
         index: (optional) an index assigned to the object
         score: (optional) an optional score for the object
         frame_number: (optional) the frame number in which this object was
@@ -45,9 +46,10 @@ class DetectedObject(Serializable, HasBoundingBox):
     '''
 
     def __init__(
-            self, label, bounding_box, mask=None, confidence=None, index=None,
-            score=None, frame_number=None, index_in_frame=None, attrs=None,
-            eval_type=None, event_indices=set()):
+            self, label, bounding_box, mask=None, confidence=None,
+            top_k_probs=None, index=None, score=None, frame_number=None,
+            index_in_frame=None, attrs=None, eval_type=None,
+            event_indices=set()):
         '''Creates a DetectedObject instance.
 
         Args:
@@ -56,6 +58,7 @@ class DetectedObject(Serializable, HasBoundingBox):
             mask: (optional) a numpy array describing the mask for the object
                 within its bounding box
             confidence: (optional) the detection confidence, in [0, 1]
+            top_k_probs: (optional) dictionary mapping labels to probabilities
             index: (optional) an index assigned to the object
             score: (optional) an optional score for the object
             frame_number: (optional) the frame number in which this object was
@@ -72,6 +75,7 @@ class DetectedObject(Serializable, HasBoundingBox):
         self.bounding_box = bounding_box
         self.mask = mask
         self.confidence = confidence
+        self.top_k_probs = top_k_probs
         self.index = index
         self.score = score
         self.frame_number = frame_number
@@ -112,8 +116,8 @@ class DetectedObject(Serializable, HasBoundingBox):
         _attrs = ["label", "bounding_box"]
 
         _optional_attrs = [
-            "mask", "confidence", "index", "score", "frame_number",
-            "index_in_frame", "eval_type"]
+            "mask", "confidence", "top_k_probs", "index", "score",
+            "frame_number", "index_in_frame", "eval_type"]
         _attrs.extend(
             [a for a in _optional_attrs if getattr(self, a) is not None])
 
@@ -138,6 +142,7 @@ class DetectedObject(Serializable, HasBoundingBox):
             BoundingBox.from_dict(d["bounding_box"]),
             mask=mask,
             confidence=d.get("confidence", None),
+            top_k_probs=d.get("top_k_probs", None),
             index=d.get("index", None),
             score=d.get("score", None),
             frame_number=d.get("frame_number", None),

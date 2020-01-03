@@ -22,7 +22,8 @@
         },
         "apply_object_detector": {
             "name": "apply_object_detector",
-            "tunable_parameters": ["detector", "objects"],
+            "tunable_parameters": [
+                "detector", "objects", "record_top_k_probs"],
             "set_parameters": {}
         },
         "visualize_labels": {
