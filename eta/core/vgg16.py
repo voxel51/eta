@@ -106,13 +106,50 @@ class VGG16(Configurable, UsesTFSession):
         self.sess = sess
         self.imgs = imgs
 
-        self._labels_map = None
+        labels_map = etal.load_labels_map(self.config.labels_map)
+        self._class_labels = [labels_map[k] for k in sorted(labels_map.keys())]
+        self._num_classes = len(self._class_labels)
 
         self._build_conv_layers()
         self._build_fc_layers()
         self._build_output_layer()
 
         self._load_model(self.config.model_name)
+
+    @property
+    def num_classes(self):
+        '''The number of classes for the model.'''
+        return self._num_classes
+
+    @property
+    def class_labels(self):
+        '''The list of class labels for the model.'''
+        return self._class_labels
+
+    def get_label(self, idx):
+        '''Gets the label for the given output index.
+
+        Args:
+            idx: the zero-based output index
+
+        Returns:
+            the class label string
+        '''
+        return self.class_labels[idx]
+
+    def evaluate(self, imgs, tensors):
+        '''Feed-forward evaluation through the network.
+
+        Args:
+            imgs: an array of size [XXXX, 224, 224, 3] containing image(s) to
+                feed into the network
+            tensors: a list of tensors to evaluate
+
+        Returns:
+            a list of outputs for the requested tensors. The first dimension of
+                each output will be XXXX
+        '''
+        return self.sess.run(tensors, feed_dict={self.imgs: imgs})
 
     @staticmethod
     def preprocess_image(img):
@@ -131,26 +168,6 @@ class VGG16(Configurable, UsesTFSession):
             img = img[:, :, :3]
 
         return etai.resize(img, 224, 224)
-
-    def get_label(self, idx):
-        '''Gets the label for the given output index of the model.'''
-        if self._labels_map is None:
-            self._labels_map = etal.load_labels_map(self.config.labels_map)
-        return self._labels_map[idx]
-
-    def evaluate(self, imgs, tensors):
-        '''Feed-forward evaluation through the network.
-
-        Args:
-            imgs: an array of size [XXXX, 224, 224, 3] containing image(s) to
-                feed into the network
-            tensors: a list of tensors to evaluate
-
-        Returns:
-            a list of outputs for the requested tensors. The first dimension of
-                each output will be XXXX
-        '''
-        return self.sess.run(tensors, feed_dict={self.imgs: imgs})
 
     def _build_conv_layers(self):
         self.parameters = []

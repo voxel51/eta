@@ -15,7 +15,7 @@
                 "type": "eta.detectors.TFModelsDetector",
                 "config": {
                     "model_name": "faster-rcnn-inception-v2-coco",
-                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_label_map.pbtxt"
+                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
                 }
             },
             "date_created": "2019-12-17 08:25:51"
@@ -35,7 +35,7 @@
                 "type": "eta.detectors.TFModelsDetector",
                 "config": {
                     "model_name": "faster-rcnn-nas-coco",
-                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_label_map.pbtxt"
+                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
                 }
             },
             "date_created": "2019-12-18 12:07:00"
@@ -55,7 +55,7 @@
                 "type": "eta.detectors.TFModelsDetector",
                 "config": {
                     "model_name": "faster-rcnn-nas-lowproposals-coco",
-                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_label_map.pbtxt"
+                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
                 }
             },
             "date_created": "2019-12-18 12:07:00"
@@ -75,7 +75,7 @@
                 "type": "eta.detectors.TFModelsDetector",
                 "config": {
                     "model_name": "faster-rcnn-resnet50-coco",
-                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_label_map.pbtxt"
+                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
                 }
             },
             "date_created": "2019-12-17 08:25:51"
@@ -95,7 +95,7 @@
                 "type": "eta.detectors.TFModelsDetector",
                 "config": {
                     "model_name": "faster-rcnn-resnet50-lowproposals-coco",
-                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_label_map.pbtxt"
+                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
                 }
             },
             "date_created": "2019-12-17 08:25:51"
@@ -115,7 +115,7 @@
                 "type": "eta.detectors.TFModelsDetector",
                 "config": {
                     "model_name": "faster-rcnn-resnet101-coco",
-                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_label_map.pbtxt"
+                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
                 }
             },
             "date_created": "2019-12-17 08:25:51"
@@ -135,7 +135,7 @@
                 "type": "eta.detectors.TFModelsDetector",
                 "config": {
                     "model_name": "faster-rcnn-resnet101-lowproposals-coco",
-                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_label_map.pbtxt"
+                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
                 }
             },
             "date_created": "2019-12-17 08:25:51"
@@ -155,7 +155,7 @@
                 "type": "eta.detectors.TFModelsDetector",
                 "config": {
                     "model_name": "faster-rcnn-inception-resnet-atrous-v2-coco",
-                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_label_map.pbtxt"
+                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
                 }
             },
             "date_created": "2019-12-17 08:25:51"
@@ -175,7 +175,7 @@
                 "type": "eta.detectors.TFModelsDetector",
                 "config": {
                     "model_name": "faster-rcnn-inception-resnet-atrous-v2-lowproposals-coco",
-                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_label_map.pbtxt"
+                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
                 }
             },
             "date_created": "2019-12-17 08:25:51"
@@ -239,7 +239,7 @@
                 "type": "eta.detectors.TFModelsSegmenter",
                 "config": {
                     "model_name": "mask-rcnn-inception-resnet-v2-atrous-coco",
-                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_label_map.pbtxt",
+                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
                     "mask_thresh": 0.5
                 }
             },
@@ -260,7 +260,7 @@
                 "type": "eta.detectors.TFModelsSegmenter",
                 "config": {
                     "model_name": "mask-rcnn-inception-v2-coco",
-                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_label_map.pbtxt",
+                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
                     "mask_thresh": 0.5
                 }
             },
@@ -281,7 +281,7 @@
                 "type": "eta.detectors.TFModelsSegmenter",
                 "config": {
                     "model_name": "mask-rcnn-resnet50-atrous-coco",
-                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_label_map.pbtxt",
+                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
                     "mask_thresh": 0.5
                 }
             },
@@ -302,7 +302,7 @@
                 "type": "eta.detectors.TFModelsSegmenter",
                 "config": {
                     "model_name": "mask-rcnn-resnet101-atrous-coco",
-                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_label_map.pbtxt",
+                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
                     "mask_thresh": 0.5
                 }
             },
@@ -389,7 +389,7 @@
                 "type": "eta.detectors.TFModelsDetector",
                 "config": {
                     "model_name": "rfcn-resnet101-coco",
-                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_label_map.pbtxt"
+                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
                 }
             },
             "date_created": "2018-12-23 14:37:47"
@@ -409,7 +409,7 @@
                 "type": "eta.detectors.TFModelsDetector",
                 "config": {
                     "model_name": "ssd-inception-v2-coco",
-                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_label_map.pbtxt"
+                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
                 }
             },
             "date_created": "2018-12-23 14:34:09"
@@ -429,7 +429,7 @@
                 "type": "eta.detectors.TFModelsDetector",
                 "config": {
                     "model_name": "ssd-resnet50-fpn-coco",
-                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_label_map.pbtxt"
+                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
                 }
             },
             "date_created": "2019-04-11 12:01:29"
@@ -449,7 +449,7 @@
                 "type": "eta.detectors.TFModelsDetector",
                 "config": {
                     "model_name": "ssd-mobilenet-v1-coco",
-                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_label_map.pbtxt"
+                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
                 }
             },
             "date_created": "2018-12-23 14:34:05"
@@ -469,7 +469,7 @@
                 "type": "eta.detectors.TFModelsDetector",
                 "config": {
                     "model_name": "ssd-mobilenet-v1-fpn-coco",
-                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_label_map.pbtxt"
+                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
                 }
             },
             "date_created": "2019-04-11 12:25:44"

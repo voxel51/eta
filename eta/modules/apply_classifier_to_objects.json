@@ -123,6 +123,13 @@
             "description": "the minimum confidence required for a label to be saved",
             "required": false,
             "default": null
+        },
+        {
+            "name": "record_top_k_probs",
+            "type": "eta.core.types.Number",
+            "description": "the number of top-k class probabilities to record for the predictions",
+            "required": false,
+            "default": null
         }
     ]
 }
