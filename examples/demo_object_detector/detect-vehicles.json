@@ -11,7 +11,8 @@
         "apply_object_detector.detector": {
             "type": "eta.detectors.TFModelsDetector",
             "config": {
-                "model_name": "faster-rcnn-resnet50-coco"
+                "model_name": "faster-rcnn-resnet50-coco",
+                "generate_class_probs": true
             }
         },
         "apply_object_detector.objects": [
@@ -20,6 +21,7 @@
                 "threshold": 0.5
             }
         ],
+        "apply_object_detector.record_top_k_probs": 5,
         "visualize_labels.annotation_config": {
             "show_all_confidences": true
         }
