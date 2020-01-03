@@ -744,8 +744,8 @@ def _parse_labels_map(labels_path):
 def _parse_labelmap_proto(labelmap):
     '''Converts a labelmap proto into a category index.
 
-    Adapted from
-    `tensorflow/models/research/object_detection/utils/label_map_util.py`.
+    Adapted from `tensorflow/models/research/object_detection/utils/label_map_util.py`,
+    which was necessary to properly include `id == 0` in the index, if present.
 
     Args:
         a StringIntLabelMapProto
