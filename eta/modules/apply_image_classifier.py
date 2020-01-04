@@ -29,6 +29,7 @@ import os
 import sys
 
 from eta.core.config import Config, ConfigError
+import eta.core.datasets as etad
 import eta.core.image as etai
 import eta.core.features as etaf
 import eta.core.learning as etal
@@ -298,6 +299,25 @@ def _process_image(data, classifier, attr_filter, record_top_k_probs):
 
 
 def _process_images_dir(data, classifier, attr_filter, record_top_k_probs):
+    # get paths to all images in directory
+    filenames = etau.list_files(data.images_dir)
+    inpaths = [os.path.join(data.images_dir, fn) for fn in filenames]
+
+    _process_image_path_list(
+        data, classifier, attr_filter, record_top_k_probs, inpaths)
+
+
+def _process_image_dataset(data, classifier, attr_filter, record_top_k_probs):
+    # get paths to all images in dataset
+    dataset = etad.LabeledImageDataset(data.image_dataset_path)
+    inpaths = list(dataset.iter_data_paths())
+
+    _process_image_path_list(
+        data, classifier, attr_filter, record_top_k_probs, inpaths)
+
+
+def _process_image_path_list(
+        data, classifier, attr_filter, record_top_k_probs, inpaths):
     write_features = data.image_set_features_dir is not None
 
     if write_features:
@@ -315,9 +335,9 @@ def _process_images_dir(data, classifier, attr_filter, record_top_k_probs):
         image_set_labels = etai.ImageSetLabels()
 
     # Classify images in directory
-    for filename in etau.list_files(data.images_dir):
-        inpath = os.path.join(data.images_dir, filename)
+    for inpath in inpaths:
         logger.info("Processing image '%s'", inpath)
+        filename = os.path.basename(inpath)
 
         # Classify image
         img = etai.read(inpath)
@@ -332,17 +352,9 @@ def _process_images_dir(data, classifier, attr_filter, record_top_k_probs):
         # Record predictions
         image_set_labels[filename].add_image_attributes(attrs)
 
+
     logger.info("Writing labels to '%s'", data.output_image_set_labels_path)
     image_set_labels.write_json(data.output_image_set_labels_path)
-
-
-def _process_image_dataset(data, classifier, attr_filter, record_top_k_probs):
-    print(data.image_dataset_path)
-    raise NotImplementedError("TODO(Tyler)")
-
-
-def _process_image_path_list(data, classifier, attr_filter, record_top_k_probs):
-    raise NotImplementedError("TODO(Tyler)")
 
 
 def _classify_image(img, classifier, attr_filter, record_top_k_probs):
