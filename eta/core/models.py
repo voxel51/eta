@@ -26,6 +26,7 @@ from collections import defaultdict
 from distutils.version import LooseVersion
 import logging
 import os
+import sys
 
 import numpy as np
 
@@ -33,6 +34,7 @@ import eta
 import eta.constants as etac
 from eta.core.config import Config, Configurable
 from eta.core.serial import read_pickle, Serializable
+import eta.core.storage as etas
 import eta.core.utils as etau
 import eta.core.web as etaw
 
@@ -1068,10 +1070,24 @@ class ETAModelManager(ModelManager):
     def _download_model(self, model_path):
         if self.config.google_drive_id:
             gid = self.config.google_drive_id
-            logger.info(
-                "Downloading model from Google Drive ID '%s' to '%s'",
-                gid, model_path)
-            etaw.download_google_drive_file(gid, path=model_path)
+            try:
+                logger.info(
+                    "Downloading model from Google Drive ID '%s' to '%s'",
+                    gid, model_path)
+                etaw.download_google_drive_file(gid, path=model_path)
+            except etaw.WebSessionError as e:
+                logger.error("***** FAILED TO DOWNLOAD '%s' *****", gid)
+                logger.error(e, exc_info=sys.exc_info())
+
+                #
+                # Fallback to downloading via GoogleDriveStorageClient, which
+                # will only work for folks with credentials to the Drive
+                #
+                logger.warning("Trying GoogleDriveStorageClient instead...")
+                client = etas.GoogleDriveStorageClient()
+                client.download(gid, model_path)
+                logger.warning("Bandage applied")
+
         elif self.config.url:
             url = self.config.url
             logger.info(
