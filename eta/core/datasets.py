@@ -2127,7 +2127,7 @@ class BuilderVideoRecord(BuilderDataRecord):
         else:
             args = (
                 self.data_path,
-                etav.FrameRanges([(start_frame, end_frame)])
+                etav.FrameRanges.build_simple(start_frame, end_frame)
             )
             with etav.VideoProcessor(*args, out_video_path=data_path) as p:
                 for img in p:
