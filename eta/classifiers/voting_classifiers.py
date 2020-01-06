@@ -64,7 +64,7 @@ class VideoFramesVotingClassifier(etal.VideoFramesClassifier):
         images.
 
         Args:
-            imgs: a list (or d x ny x nx x 3 tensor) of images defining the
+            imgs: a list (or n x h x w x 3 tensor) of images defining the
                 video to classify
 
         Returns:

@@ -20,6 +20,8 @@ from builtins import *
 
 import logging
 
+import numpy as np
+
 from eta.core.config import Config, ConfigError, Configurable
 import eta.core.models as etam
 import eta.core.utils as etau
@@ -80,6 +82,24 @@ def write_labels_map(labels_map, outpath):
     with open(outpath, "w") as f:
         for idx in sorted(labels_map):
             f.write("%s:%s\n" % (idx, labels_map[idx]))
+
+
+def get_class_labels(labels_map):
+    '''Returns the list of class labels from the given labels map.
+
+    The class labels are returned for indexes sequentially from
+    `min(1, min(labels_map))` to `max(labels_map)`. Any missing indices are
+    given the label "class <index>".
+
+    Args:
+        a dictionary mapping indexes to label strings
+
+    Returns:
+        a list of class labels
+    '''
+    mini = min(1, min(labels_map))
+    maxi = max(labels_map)
+    return [labels_map.get(i, "class %d" % i) for i in range(mini, maxi + 1)]
 
 
 def has_default_deployment_model(model_name):
@@ -259,7 +279,7 @@ class ImageModel(Model):
         '''Generates labels for the given image.
 
         Args:
-            img: the image to process
+            img: an image
 
         Returns:
             an `eta.core.image.ImageLabels` instance containing the labels
@@ -293,11 +313,12 @@ class VideoModel(Model):
     does not fit any of the concrete classifier/detector interfaces.
     '''
 
-    def process(self, video_path):
+    def process(self, video_reader):
         '''Generates labels for the given video.
 
         Args:
-            video_path: the path to the video
+            video_reader: an `eta.core.video.VideoReader` that can be used to
+                read the video
 
         Returns:
             an `eta.core.video.VideoLabels` instance containing the labels
@@ -334,7 +355,7 @@ class Classifier(Model):
         '''Peforms prediction on the given argument.
 
         Args:
-            arg: the data to classify
+            arg: the data to process
 
         Returns:
             an `eta.core.data.AttributeContainer` describing the predictions
@@ -375,7 +396,7 @@ class ImageClassifier(Classifier):
         '''Peforms prediction on the given image.
 
         Args:
-            img: the image to classify
+            img: an image
 
         Returns:
             an `eta.core.data.AttributeContainer` instance containing the
@@ -390,7 +411,7 @@ class ImageClassifier(Classifier):
         default, this method simply iterates over the images and predicts each.
 
         Args:
-            imgs: a list (or d x ny x nx x 3 tensor) of images to classify
+            imgs: a list (or n x h x w x 3 tensor) of images
 
         Returns:
             a list of `eta.core.data.AttributeContainer` instances describing
@@ -434,8 +455,7 @@ class VideoFramesClassifier(Classifier):
         images.
 
         Args:
-            imgs: a list (or d x ny x nx x 3 tensor) of images defining the
-                video to classify
+            imgs: a list (or n x h x w x 3 tensor) of images
 
         Returns:
             an `eta.core.data.AttributeContainer` instance describing
@@ -472,11 +492,12 @@ class VideoClassifier(Classifier):
     that featurizes the frames of the input video.
     '''
 
-    def predict(self, video_path):
+    def predict(self, video_reader):
         '''Peforms prediction on the given video.
 
         Args:
-            video_path: the path to the video
+            video_reader: an `eta.core.video.VideoReader` that can be used to
+                read the video
 
         Returns:
             an `eta.core.data.AttributeContainer` instance containing the
@@ -513,7 +534,7 @@ class Detector(Model):
         '''Peforms detection on the given argument.
 
         Args:
-            arg: the data to detect
+            arg: the data to process
 
         Returns:
             an `eta.core.objects.DetectedObjectContainer` describing the
@@ -570,7 +591,7 @@ class ObjectDetector(Detector):
         default, this method simply iterates over the images and detects each.
 
         Args:
-            imgs: a list (or d x ny x nx x 3 tensor) of images to detect
+            imgs: a list (or n x h x w x 3 tensor) of images
 
         Returns:
             a list of `eta.core.objects.DetectedObjectContainer` instances
@@ -614,8 +635,7 @@ class VideoFramesObjectDetector(Detector):
         images.
 
         Args:
-            imgs: a list (or d x ny x nx x 3 tensor) of images defining the
-                video to detect
+            imgs: a list (or n x h x w x 3 tensor) of images
 
         Returns:
             an `eta.core.objects.DetectedObjectContainer` instance describing
@@ -651,11 +671,12 @@ class VideoObjectDetector(Detector):
     that featurizes the frames of the input video.
     '''
 
-    def detect(self, video_path):
+    def detect(self, video_reader):
         '''Peforms detection on the given video.
 
         Args:
-            video_path: the path to the video
+            video_reader: an `eta.core.video.VideoReader` that can be used to
+                read the video
 
         Returns:
             an `eta.core.objects.DetectedObjectContainer` instance describing
@@ -664,107 +685,175 @@ class VideoObjectDetector(Detector):
         raise NotImplementedError("subclasses must implement detect()")
 
 
-class FeaturizingClassifier(object):
-    '''Mixin for `Classifier` subclasses that can generate features for their
+class ExposesFeatures(object):
+    '''Mixin for `Model` subclasses that expose features for their predictions.
+
+    By convention, features should be returned in an array whose shape follows
+    the pattern below:
+
+    Inference type                    Features array shape
+    --------------------------------  -----------------------------------
+    ImageClassifier.predict           1 x features_dim
+    ImageClassifier.predict_all       num_images x features_dim
+    VideoFramesClassifier.predict     1 x features_dim
+    VideoClassifier.predict           1 x features_dim
+    ObjectDetector.detect             1 x num_objects x features_dim
+    ObjectDetector.detect_all         num_images x num_objects x features_dim
+    VideoFramesObjectDetector.detect  1 x num_objects x features_dim
+    VideoObjectDetector.detect        1 x num_objects x features_dim
+    '''
+
+    @property
+    def exposes_features(self):
+        '''Whether this model exposes features for its predictions.
+
+        This property allows for the possibility that some, but not all
+        instances of a `Model` are capable of exposing features.
+        '''
+        raise NotImplementedError(
+            "subclasses must implement exposes_features")
+
+    @property
+    def features_dim(self):
+        '''The dimension of the features generated by this model, or None
+        if it does not expose features.
+        '''
+        raise NotImplementedError("subclasses must implement features_dim")
+
+    def get_features(self):
+        '''Gets the features generated by the model from its last prediction.
+
+        Returns:
+            the features array, or None if the model has not (or does not)
+                generated features
+        '''
+        raise NotImplementedError("subclasses must implement get_features()")
+
+    @staticmethod
+    def ensure_exposes_features(model):
+        '''Ensures that the given model exposes features.
+
+        Args:
+            model: a Model
+
+        Raises:
+            ValueError: if the model does not expose features
+        '''
+        if not isinstance(model, ExposesFeatures):
+            raise ValueError(
+                "Expected %s to implement the %s mixin, but it does not" %
+                (type(model), ExposesFeatures))
+
+        if not model.exposes_features:
+            raise ValueError(
+                "Expected %s to expose features, but it does not" %
+                type(model))
+
+
+class ExposesProbabilities(object):
+    '''Mixin for `Model` subclasses that expose probabilities for their
     predictions.
+
+    By convention, class probabilities should be returned in an array whose
+    shape follows the pattern below:
+
+    Inference type                    Probabilities array shape
+    --------------------------------  -----------------------------------
+    ImageClassifier.predict           1 x num_preds x num_classes
+    ImageClassifier.predict_all       num_images x num_preds x num_classes
+    VideoFramesClassifier.predict     1 x num_preds x num_classes
+    VideoClassifier.predict           1 x num_preds x num_classes
+    ObjectDetector.detect             1 x num_objects x num_classes
+    ObjectDetector.detect_all         num_images x num_objects x num_classes
+    VideoFramesObjectDetector.detect  1 x num_objects x num_classes
+    VideoObjectDetector.detect        1 x num_objects x num_classes
     '''
 
     @property
-    def generates_features(self):
-        '''Whether this classifier generates features for its predictions.
+    def exposes_probabilities(self):
+        '''Whether this model exposes probabilities for its predictions.
 
         This property allows for the possibility that some, but not all
-        instances of a `Classifier` are capable of generating features.
+        instances of a `Model` are capable of exposing probabilities.
         '''
         raise NotImplementedError(
-            "subclasses must implement generates_features")
+            "subclasses must implement exposes_probabilities")
 
     @property
-    def features_dim(self):
-        '''The dimension of the features extracted by this classifier, or None
-        if it cannot generate features.
-        '''
-        raise NotImplementedError("subclasses must implement features_dim")
+    def num_classes(self):
+        '''The number of classes for the model.'''
+        raise NotImplementedError("subclasses must implement num_classes")
 
-    def get_features(self):
-        '''Gets the features generated by the classifier from its last call to
-        `predict()`.
+    @property
+    def class_labels(self):
+        '''The list of class labels for the model.'''
+        raise NotImplementedError("subclasses must implement class_labels")
+
+    def get_probabilities(self):
+        '''Gets the class probabilities generated by the model from its last
+        prediction.
 
         Returns:
-            the feature vector, or None if the classifier has not (or cannot)
-                generate features
-        '''
-        raise NotImplementedError("subclasses must implement get_features()")
-
-    @classmethod
-    def ensure_can_generate_features(cls, classifier):
-        '''Ensures that the given classifier can generate features.
-
-        Args:
-            classifier: a Classifier
-
-        Raises:
-            ValueError: if `classifier` cannot generate features
-        '''
-        if not isinstance(classifier, cls):
-            raise ValueError(
-                "Expected %s to implement the %s mixin, but it does not" %
-                (type(classifier), cls))
-
-        if not classifier.generates_features:
-            raise ValueError(
-                "Expected %s to be able to generate features, but it cannot" %
-                type(classifier))
-
-
-class FeaturizingDetector(object):
-    '''Mixin for `Detector` subclasses that can generate features for their
-    detections.
-    '''
-
-    @property
-    def generates_features(self):
-        '''Whether this detector generates features for its detections.
-
-        This property allows for the possibility that some, but not all
-        instances of a `Detector` are capable of generating features.
+            the class probabilities, or None if the model has not (or does not)
+                generated probabilities
         '''
         raise NotImplementedError(
-            "subclasses must implement generates_features")
+            "subclasses must implement get_probabilities()")
 
-    @property
-    def features_dim(self):
-        '''The dimension of the features extracted by this detector, or None
-        if it cannot generate features.
-        '''
-        raise NotImplementedError("subclasses must implement features_dim")
+    def get_top_k_classes(self, top_k):
+        '''Gets the probabilities for the top-k classes generated by the model
+        from its last prediction.
 
-    def get_features(self):
-        '''Gets the features generated by the detector from its last call to
-        `detect()`.
-
-        Returns:
-            a list of feature vectors, or None if the detector has not (or
-                cannot) generate features
-        '''
-        raise NotImplementedError("subclasses must implement get_features()")
-
-    @classmethod
-    def ensure_can_generate_features(cls, detector):
-        '''Ensures that the given detector can generate features.
+        Subclasses can override this method, but, by default, this information
+        is extracted via `get_probabilities()` and `class_labels`.
 
         Args:
-            detector: a Detector
+            top_k: the number of top classes
+
+        Returns:
+            a `num_images x num_preds/objects` array of dictionaries mapping
+                class labels to probabilities, or None if the model has not
+                (or does not) expose probabilities
+        '''
+        if not self.exposes_probabilities:
+            return None
+
+        probs = self.get_probabilities()
+        if probs is None:
+            return None
+
+        probs = np.asarray(probs)
+        labels = np.asarray(self.class_labels)
+
+        inds = np.argsort(probs, axis=2)
+        num_images = inds.shape[0]
+        num_preds = inds.shape[1]
+
+        top_k_probs = np.empty((num_images, num_preds), dtype=dict)
+        for i in range(num_images):
+            for j in range(num_preds):
+                probsij = probs[i, j, :]
+                indsij = inds[i, j, :][-top_k:]
+                top_k_probs[i, j] = dict(zip(labels[indsij], probsij[indsij]))
+
+        return top_k_probs
+
+    @staticmethod
+    def ensure_exposes_probabilities(model):
+        '''Ensures that the given model exposes probabilities.
+
+        Args:
+            model: a Model
 
         Raises:
-            ValueError: if `detector` cannot generate features
+            ValueError: if the model does not expose probabilities
         '''
-        if not isinstance(detector, cls):
+        if not isinstance(model, ExposesProbabilities):
             raise ValueError(
                 "Expected %s to implement the %s mixin, but it does not" %
-                (type(detector), cls))
+                (type(model), ExposesProbabilities))
 
-        if not detector.generates_features:
+        if not model.exposes_probabilities:
             raise ValueError(
-                "Expected %s to be able to generate features, but it cannot" %
-                type(detector))
+                "Expected %s to expose probabilities, but it does not" %
+                type(model))

@@ -156,6 +156,8 @@ class ParametersConfig(Config):
             describing the labels and confidence thresholds of objects to
             detect. If omitted, all detections emitted by the detector are
             used
+        record_top_k_probs (eta.core.types.Number): [None] the number of top-k
+            class probabilities to record for the predictions
     '''
 
     def __init__(self, d):
@@ -163,6 +165,8 @@ class ParametersConfig(Config):
             d, "detector", etal.ObjectDetectorConfig)
         self.objects = self.parse_object_array(
             d, "objects", ObjectsConfig, default=None)
+        self.record_top_k_probs = self.parse_number(
+            d, "record_top_k_probs", default=None)
 
 
 class ObjectsConfig(Config):
@@ -221,6 +225,10 @@ def _apply_object_detector(config):
     detector = config.parameters.detector.build()
     logger.info("Loaded detector %s", type(detector))
 
+    record_top_k_probs = config.parameters.record_top_k_probs
+    if record_top_k_probs:
+        etal.ExposesProbabilities.ensure_exposes_probabilities(detector)
+
     # Build object filter
     object_filter = _build_detection_filter(config.parameters.objects)
 
@@ -229,20 +237,23 @@ def _apply_object_detector(config):
         for data in config.data:
             if data.video_path:
                 logger.info("Processing video '%s'", data.video_path)
-                _process_video(data, detector, object_filter)
+                _process_video(
+                    data, detector, object_filter, record_top_k_probs)
             if data.image_path:
                 logger.info("Processing image '%s'", data.image_path)
-                _process_image(data, detector, object_filter)
+                _process_image(
+                    data, detector, object_filter, record_top_k_probs)
             if data.images_dir:
                 logger.info("Processing image directory '%s'", data.images_dir)
-                _process_images_dir(data, detector, object_filter)
+                _process_images_dir(
+                    data, detector, object_filter, record_top_k_probs)
 
 
-def _process_video(data, detector, object_filter):
+def _process_video(data, detector, object_filter, record_top_k_probs):
     write_features = data.video_features_dir is not None
 
     if write_features:
-        etal.FeaturizingDetector.ensure_can_generate_features(detector)
+        etal.ExposesFeatures.ensure_exposes_features(detector)
         features_handler = etaf.VideoObjectsFeaturesHandler(
             data.video_features_dir)
 
@@ -258,9 +269,9 @@ def _process_video(data, detector, object_filter):
         for img in vr:
             logger.debug("Processing frame %d", vr.frame_number)
 
-            # Detect objects in frame
-            objects = detector.detect(img)
-            objects, inds = object_filter(objects)
+            # Detect objects
+            objects, inds = _detect_objects(
+                img, detector, object_filter, record_top_k_probs)
 
             # Write features, if necessary
             if write_features:
@@ -277,11 +288,11 @@ def _process_video(data, detector, object_filter):
     video_labels.write_json(data.output_labels_path)
 
 
-def _process_image(data, detector, object_filter):
+def _process_image(data, detector, object_filter, record_top_k_probs):
     write_features = data.image_features_dir is not None
 
     if write_features:
-        etal.FeaturizingDetector.ensure_can_generate_features(detector)
+        etal.ExposesFeatures.ensure_exposes_features(detector)
         features_handler = etaf.ImageObjectsFeaturesHandler(
             data.image_features_dir)
 
@@ -292,10 +303,10 @@ def _process_image(data, detector, object_filter):
     else:
         image_labels = etai.ImageLabels()
 
-    # Detect objects in image
+    # Detect objects
     img = etai.read(data.image_path)
-    objects = detector.detect(img)
-    objects, inds = object_filter(objects)
+    objects, inds = _detect_objects(
+        img, detector, object_filter, record_top_k_probs)
 
     # Write features, if necessary
     if write_features:
@@ -310,11 +321,11 @@ def _process_image(data, detector, object_filter):
     image_labels.write_json(data.output_image_labels_path)
 
 
-def _process_images_dir(data, detector, object_filter):
+def _process_images_dir(data, detector, object_filter, record_top_k_probs):
     write_features = data.image_set_features_dir is not None
 
     if write_features:
-        etal.FeaturizingDetector.ensure_can_generate_features(detector)
+        etal.ExposesFeatures.ensure_exposes_features(detector)
         features_handler = etaf.ImageSetObjectsFeaturesHandler(
             data.image_set_features_dir)
 
@@ -332,10 +343,10 @@ def _process_images_dir(data, detector, object_filter):
         inpath = os.path.join(data.images_dir, filename)
         logger.info("Processing image '%s'", inpath)
 
-        # Detect objects in image
+        # Detect objects
         img = etai.read(inpath)
-        objects = detector.detect(img)
-        objects, inds = object_filter(objects)
+        objects, inds = _detect_objects(
+            img, detector, object_filter, record_top_k_probs)
 
         # Write features, if necessary
         if write_features:
@@ -348,6 +359,22 @@ def _process_images_dir(data, detector, object_filter):
 
     logger.info("Writing labels to '%s'", data.output_image_set_labels_path)
     image_set_labels.write_json(data.output_image_set_labels_path)
+
+
+def _detect_objects(img, detector, object_filter, record_top_k_probs):
+    # Perform detection
+    objects = detector.detect(img)
+
+    # Record top-k classes, if necessary
+    if record_top_k_probs:
+        all_top_k_probs = detector.get_top_k_classes(record_top_k_probs)
+        for obj, top_k_probs in zip(objects, all_top_k_probs.flatten()):
+            obj.top_k_probs = top_k_probs
+
+    # Filter detections
+    objects, inds = object_filter(objects)
+
+    return objects, inds
 
 
 def run(config_path, pipeline_config_path=None):

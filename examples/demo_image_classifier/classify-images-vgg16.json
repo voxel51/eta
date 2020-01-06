@@ -15,6 +15,7 @@
             }
         },
         "apply_image_classifier.confidence_threshold": null,
+        "apply_image_classifier.record_top_k_probs": 5,
         "visualize_image_labels.annotation_config": {
             "show_all_confidences": true,
             "font_size": 12,

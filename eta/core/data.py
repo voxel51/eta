@@ -111,19 +111,63 @@ class Attribute(Serializable):
         return _attrs
 
     @classmethod
+    def _from_dict(cls, d):
+        '''Internal implementation of `from_dict()`.
+
+        Subclasses MUST implement this method, NOT `from_dict()`, if they
+        contain custom fields. Moreover, such implementations must internally
+        call this super method to ensure that the base `Attribute` is properly
+        initialized.
+        '''
+        confidence = d.get("confidence", None)
+        return cls(d["name"], d["value"], confidence=confidence)
+
+    @classmethod
     def from_dict(cls, d):
         '''Constructs an Attribute from a JSON dictionary.'''
         attr_cls = etau.get_class(d["type"])
-        return attr_cls(
-            d["name"], d["value"], confidence=d.get("confidence", None))
+        return attr_cls._from_dict(d)
 
 
 class CategoricalAttribute(Attribute):
     '''Class encapsulating categorical attributes.'''
 
+    def __init__(self, name, value, confidence=None, top_k_probs=None):
+        '''Constructs a CategoricalAttribute instance.
+
+        Args:
+            name: the attribute name
+            value: the attribute value
+            confidence: an optional confidence of the value, in [0, 1]. By
+                default, no confidence is stored
+            top_k_probs: an optional dictionary mapping values to
+                probabilities. By default, no probabilities are stored
+        '''
+        super(CategoricalAttribute, self).__init__(
+            name, value, confidence=confidence)
+        self.top_k_probs = top_k_probs
+
     @classmethod
     def parse_value(cls, value):
+        '''Parses the attribute value.'''
         return value
+
+    def attributes(self):
+        '''Returns the list of attributes to serialize.
+
+        Optional attributes that were not provided (i.e., are None) are omitted
+        from this list.
+        '''
+        _attrs = super(CategoricalAttribute, self).attributes()
+        if self.top_k_probs is not None:
+            _attrs.append("top_k_probs")
+        return _attrs
+
+    @classmethod
+    def _from_dict(cls, d):
+        attr = super(CategoricalAttribute, cls)._from_dict(d)
+        attr.top_k_probs = d.get("top_k_probs", None)
+        return attr
 
 
 class NumericAttribute(Attribute):
@@ -131,6 +175,7 @@ class NumericAttribute(Attribute):
 
     @classmethod
     def parse_value(cls, value):
+        '''Parses the attribute value.'''
         return float(value)
 
 
@@ -139,6 +184,7 @@ class BooleanAttribute(Attribute):
 
     @classmethod
     def parse_value(cls, value):
+        '''Parses the attribute value.'''
         return bool(value)
 
 

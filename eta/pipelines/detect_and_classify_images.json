@@ -15,12 +15,14 @@
     "modules": {
         "apply_object_detector": {
             "name": "apply_object_detector",
-            "tunable_parameters": ["detector", "objects"],
+            "tunable_parameters": [
+                "detector", "objects", "record_top_k_probs"],
             "set_parameters": {}
         },
         "apply_image_classifier": {
             "name": "apply_image_classifier",
-            "tunable_parameters": ["classifier", "confidence_threshold"],
+            "tunable_parameters": [
+                "classifier", "confidence_threshold", "record_top_k_probs"],
             "set_parameters": {}
         },
         "visualize_image_labels": {

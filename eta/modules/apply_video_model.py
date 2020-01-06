@@ -26,7 +26,7 @@ from builtins import *
 import logging
 import sys
 
-from eta.core.config import Config
+from eta.core.config import Config, ConfigError
 import eta.core.learning as etal
 import eta.core.module as etam
 import eta.core.video as etav
@@ -53,7 +53,9 @@ class DataConfig(Config):
     '''Data configuration settings.
 
     Inputs:
-        video_path (eta.core.types.Video): the input video
+        video_path (eta.core.types.Video): [None] the input video
+        video_frames_dir (eta.core.types.ImageSequenceDirectory): [None] a
+            directory containing the frames of the video
         input_labels_path (eta.core.types.VideoLabels): [None] an optional
             input VideoLabels file to which to add the predictions
 
@@ -63,7 +65,9 @@ class DataConfig(Config):
     '''
 
     def __init__(self, d):
-        self.video_path = self.parse_string(d, "video_path")
+        self.video_path = self.parse_string(d, "video_path", default=None)
+        self.video_frames_dir = self.parse_string(
+            d, "video_frames_dir", default=None)
         self.input_labels_path = self.parse_string(
             d, "input_labels_path", default=None)
         self.output_labels_path = self.parse_string(d, "output_labels_path")
@@ -102,8 +106,20 @@ def _process_video(data, model):
     else:
         labels = etav.VideoLabels()
 
-    logger.info("Applying model to video '%s'", data.video_path)
-    new_labels = model.process(data.video_path)
+    # Construct VideoReader
+    if data.video_path:
+        logger.info("Applying model to video '%s'", data.video_path)
+        video_reader = etav.FFmpegVideoReader(data.video_path)
+    elif data.video_frames_dir:
+        logger.info("Applying model to frames in '%s'", data.video_frames_dir)
+        video_reader = etav.SampledFramesVideoReader(data.video_frames_dir)
+    else:
+        raise ConfigError(
+            "Either `video_path` or `video_frames_dir` must be provided")
+
+    with video_reader:
+        new_labels = model.process(video_reader)
+
     labels.merge_video_labels(new_labels)
 
     logger.info("Writing labels to '%s'", data.output_labels_path)
