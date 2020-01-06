@@ -10,7 +10,7 @@ DetectedEventContainer.  These include capabilities of discontiguous events,
 multi-class/attribute-based events and capture metadata of an event.  These use
 the primitive layer's elements.
 
-Copyright 2017, 2019 Voxel51, Inc.
+Copyright 2017-2019 Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
