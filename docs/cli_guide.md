@@ -10,8 +10,9 @@ This document provides an overview of using the CLI.
 
 ## Quickstart
 
-To see the available top-level commands, type `eta --help`. You can learn more
-about any available subcommand via `eta <command> --help`.
+To see the available top-level commands, type `eta --help`.
+
+You can learn more about any available subcommand via `eta <command> --help`.
 
 For example, to see your current ETA config, you can `eta config --print`.
 
