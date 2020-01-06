@@ -2330,8 +2330,8 @@ def parse_frame_ranges(frames):
         a FrameRanges instance describing the frame ranges
     '''
     if isinstance(frames, six.string_types):
-        # Frames string
-        frame_ranges = FrameRanges.from_str(frames)
+        # Human-readable frames string
+        frame_ranges = FrameRanges.from_human_str(frames)
     elif isinstance(frames, (FrameRange, FrameRanges)):
         # FrameRange or FrameRanges
         frame_ranges = frames
@@ -2584,7 +2584,7 @@ class VideoReader(object):
         if frames is None or frames == "*":
             frames = "1-%d" % self.total_frame_count
         self._ranges = parse_frame_ranges(frames)
-        self.frames = self._ranges.to_str()
+        self.frames = self._ranges.to_human_str()
 
     def __enter__(self):
         return self
@@ -3754,7 +3754,7 @@ class FrameRanges(Serializable):
         ranges = []
         for r in frames_str.split(","):
             if r:
-                fr = FrameRange.from_str(r)
+                fr = FrameRange.from_human_str(r)
                 ranges.append((fr.first, fr.last))
 
         return cls(ranges)
