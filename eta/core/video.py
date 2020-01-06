@@ -3609,7 +3609,10 @@ class FrameRanges(Serializable):
 
     @property
     def limits(self):
-        '''A (first, last) tuple describing the limits of the frame ranges.'''
+        '''A (first, last) tuple describing the limits of the frame ranges.
+
+        Returns (None, None) if the instance is empty.
+        '''
         if not bool(self):
             return (None, None)
 
