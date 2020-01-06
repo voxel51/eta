@@ -620,6 +620,15 @@ class VideoLabels(Serializable):
         # Always iterate over the keys in sorted order
         return iter(sorted(self.frames))
 
+    def iter_frames(self):
+        '''Returns an iterator that yields VideoFrameLabels for each frame in
+        the container.
+
+        Returns:
+            an iterator over VideoFrameLabels
+        '''
+        return itervalues(self.frames)
+
     def __len__(self):
         return len(self.frames)
 

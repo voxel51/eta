@@ -159,6 +159,40 @@ def parse_kvps(kvps_str):
     return kvps
 
 
+def parse_categorical_string(value, choices, ignore_case=True):
+    '''Parses a categorical string value, which must take a value from among
+    the given choices.
+
+    Args:
+        value: the string to parse
+        choices: either an iterable of possible values or an enum-like class
+            whose attributes define the possible values
+        ignore_case: whether to perform case insensitive matches. By default,
+            this is True
+
+    Returns:
+        the raw (untouched) value of the given field
+
+    Raises:
+        ValueError: if the value was not an allowed choice
+    '''
+    if inspect.isclass(choices):
+        choices = set(
+            v for k, v in iteritems(vars(choices)) if not k.startswith("_"))
+
+    orig_value = value
+    orig_choices = choices
+    if ignore_case:
+        value = value.lower()
+        choices = set(c.lower() for c in choices)
+
+    if value not in choices:
+        raise ValueError(
+            "Unsupported value '%s'; choices are %s" % (orig_value, orig_choices))
+
+    return orig_value
+
+
 def get_class_name(cls_or_obj):
     '''Returns the fully-qualified class name for the given input, which can
     be a class or class instance.
