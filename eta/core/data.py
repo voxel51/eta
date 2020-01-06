@@ -111,11 +111,22 @@ class Attribute(Serializable):
         return _attrs
 
     @classmethod
+    def _from_dict(cls, d):
+        '''Internal implementation of `from_dict()`.
+
+        Subclasses MUST implement this method, NOT `from_dict()`, if they
+        contain custom fields. Moreover, such implementations must internally
+        call this super method to ensure that the base `Attribute` is properly
+        initialized.
+        '''
+        confidence = d.get("confidence", None)
+        return cls(d["name"], d["value"], confidence=confidence)
+
+    @classmethod
     def from_dict(cls, d):
         '''Constructs an Attribute from a JSON dictionary.'''
         attr_cls = etau.get_class(d["type"])
-        return attr_cls(
-            d["name"], d["value"], confidence=d.get("confidence", None))
+        return attr_cls._from_dict(d)
 
 
 class CategoricalAttribute(Attribute):
@@ -153,9 +164,8 @@ class CategoricalAttribute(Attribute):
         return _attrs
 
     @classmethod
-    def from_dict(cls, d):
-        '''Constructs a CategoricalAttribute from a JSON dictionary.'''
-        attr = super(CategoricalAttribute, cls).from_dict(d)
+    def _from_dict(cls, d):
+        attr = super(CategoricalAttribute, cls)._from_dict(d)
         attr.top_k_probs = d.get("top_k_probs", None)
         return attr
 
