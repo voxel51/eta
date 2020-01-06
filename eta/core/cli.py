@@ -317,6 +317,9 @@ class ModelsCommand(Command):
         # List all available models
         eta models --list
 
+        # List all downloaded models
+        eta models --list-downloaded
+
         # Search for models whose names contains the given string
         eta models --search <search-str>
 
@@ -328,6 +331,9 @@ class ModelsCommand(Command):
 
         # Download model, if necessary
         eta models --download <model-name>
+
+        # Force download model
+        eta models --force-download <model-name>
 
         # Visualize graph for model in TensorBoard (TF models only)
         eta models --visualize-tf-graph <model-name>
@@ -351,6 +357,9 @@ class ModelsCommand(Command):
             "-l", "--list", action="store_true",
             help="list all published models on the current search path")
         parser.add_argument(
+            "--list-downloaded", action="store_true",
+            help="list all downloaded models on the current search path")
+        parser.add_argument(
             "-s", "--search", metavar="SEARCH",
             help="search for models whose names contain the given string")
         parser.add_argument(
@@ -361,7 +370,10 @@ class ModelsCommand(Command):
             help="get info about the model with the given name")
         parser.add_argument(
             "-d", "--download", metavar="NAME",
-            help="download the model with the given name")
+            help="download the model with the given name, if necessary")
+        parser.add_argument(
+            "--force-download", metavar="NAME",
+            help="force download the model with the given name")
         parser.add_argument(
             "--visualize-tf-graph", metavar="NAME",
             help="visualize the TF graph for the model with the given name")
@@ -372,7 +384,9 @@ class ModelsCommand(Command):
             "--flush", metavar="NAME",
             help="flush the model with the given name")
         parser.add_argument(
-            "--flush-old", action="store_true", help="flush all old models")
+            "--flush-old", action="store_true", help="flush all old models, "
+            "i.e., those models for which the number of versions stored on "
+            "disk exceeds `eta.config.max_model_versions_to_keep`")
         parser.add_argument(
             "--flush-all", action="store_true", help="flush all models")
 
@@ -380,6 +394,10 @@ class ModelsCommand(Command):
     def run(parser, args):
         if args.list:
             models = etamode.find_all_models()
+            print(_render_names_in_dirs_str(models))
+
+        if args.list_downloaded:
+            models = etamode.find_all_models(downloaded_only=True)
             print(_render_names_in_dirs_str(models))
 
         if args.search:
@@ -397,6 +415,9 @@ class ModelsCommand(Command):
 
         if args.download:
             etamode.download_model(args.download)
+
+        if args.force_download:
+            etamode.download_model(args.force_download, force=True)
 
         if args.visualize_tf_graph:
             # Do this locally to avoid importing TF unless absolutely necessary
