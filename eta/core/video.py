@@ -2569,8 +2569,8 @@ def parse_frame_ranges(frames):
         a FrameRanges instance describing the frame ranges
     '''
     if isinstance(frames, six.string_types):
-        # Frames string
-        frame_ranges = FrameRanges.from_str(frames)
+        # Human-readable frames string
+        frame_ranges = FrameRanges.from_human_str(frames)
     elif isinstance(frames, (FrameRange, FrameRanges)):
         # FrameRange or FrameRanges
         frame_ranges = frames
@@ -2823,7 +2823,7 @@ class VideoReader(object):
         if frames is None or frames == "*":
             frames = "1-%d" % self.total_frame_count
         self._ranges = parse_frame_ranges(frames)
-        self.frames = self._ranges.to_str()
+        self.frames = self._ranges.to_human_str()
 
     def __enter__(self):
         return self
@@ -3787,37 +3787,51 @@ class FOURCC(object):
                chr((i & 0xFF000000) >> 24)
 
 
-class FrameRanges(object):
+class FrameRanges(Serializable):
     '''Class representing a monotonically increasing and disjoint series of
     frames.
     '''
 
-    def __init__(self, ranges):
+    def __init__(self, ranges=None):
         '''Creates a FrameRanges instance.
 
         Args:
-            ranges: an iterable of (first, last) tuples, which must be disjoint
-                and monotonically increasing
+            ranges: an optional iterable of (first, last) tuples, which must be
+                disjoint and monotonically increasing. By default, an empty
+                instance is created
 
         Raises:
             FrameRangesError: if the series is not disjoint and monotonically
                 increasing
         '''
-        self._idx = 0
+        self.ranges = []
         self._ranges = []
+        self._idx = 0
         self._started = False
 
-        # Parse args
-        end = -1
-        for first, last in ranges:
-            if first <= end:
-                raise FrameRangesError(
-                    "Expected first:%d > last:%d" % (first, end))
+        if ranges is not None:
+            for new_range in ranges:
+                self._ingest_range(new_range)
 
-            self._ranges.append(FrameRange(first, last))
-            end = last
+    def _ingest_range(self, new_range):
+        first, last = new_range
+        end = self.limits[1]
+
+        if end is not None and first <= end:
+            raise FrameRangesError(
+                "Expected first:%d > end:%d" % (first, end))
+
+        self.ranges.append((first, last))
+        self._ranges.append(FrameRange(first, last))
+
+    def __len__(self):
+        return sum(len(r) for r in self._ranges)
+
+    def __bool__(self):
+        return bool(self._ranges)
 
     def __iter__(self):
+        self.reset()
         return self
 
     def __next__(self):
@@ -3832,15 +3846,23 @@ class FrameRanges(object):
 
         return frame
 
-    def reset(self):
-        '''Resets the FrameRanges instance so that the next frame will be the
-        first.
-        '''
-        for r in self._ranges[:(self._idx + 1)]:
-            r.reset()
+    @property
+    def limits(self):
+        '''A (first, last) tuple describing the limits of the frame ranges.
 
-        self._started = False
-        self._idx = 0
+        Returns (None, None) if the instance is empty.
+        '''
+        if not bool(self):
+            return (None, None)
+
+        first = self._ranges[0].limits[0]
+        last = self._ranges[-1].limits[1]
+        return (first, last)
+
+    @property
+    def num_ranges(self):
+        '''The number of `FrameRange`s in this object.'''
+        return len(self._ranges)
 
     @property
     def frame(self):
@@ -3868,6 +3890,62 @@ class FrameRanges(object):
 
         return False
 
+    def reset(self):
+        '''Resets the FrameRanges instance so that the next frame will be the
+        first.
+        '''
+        for r in self._ranges[:(self._idx + 1)]:
+            r.reset()
+
+        self._started = False
+        self._idx = 0
+
+    def clear(self):
+        '''Clears the FrameRanges instance.'''
+        self.ranges = []
+        self._ranges = []
+        self.reset()
+
+    def add_range(self, new_range):
+        '''Adds the given frame range to the instance.
+
+        Args:
+            new_range: a (first, last) tuple describing the range
+
+        Raises:
+            FrameRangesError: if the new range is not disjoint and
+                monotonically increasing
+        '''
+        self._ingest_range(new_range)
+
+    def simplify(self):
+        '''Simplifies the FrameRanges, if possible, by merging any adjacent
+        ranges into a single range.
+
+        This operation will `reset()` the instance.
+        '''
+        if not self:
+            return
+
+        did_something = False
+        last_range = list(self.ranges[0])
+        new_ranges = [last_range]
+        for old_range in self.ranges[1:]:
+            if old_range[0] <= last_range[1] + 1:
+                did_something = True
+                last_range[1] = old_range[1]
+            else:
+                last_range = list(old_range)
+                new_ranges.append(last_range)
+
+        if not did_something:
+            self.reset()
+            return
+
+        self.clear()
+        for new_range in new_ranges:
+            self.add_range(new_range)
+
     def to_list(self):
         '''Returns the list of frames, in sorted order, described by this
         object.
@@ -3881,20 +3959,33 @@ class FrameRanges(object):
 
         return frames
 
-    def to_str(self):
-        '''Returns a string representation of this object.
+    def to_human_str(self):
+        '''Returns a human-readable string representation of this object.
 
         Returns:
             a string like "1-3,6,8-10" describing the frame ranges
         '''
-        return ",".join([r.to_str() for r in self._ranges])
+        return ",".join([fr.to_human_str() for fr in self._ranges])
 
-    @classmethod
-    def from_str(cls, frames_str):
-        '''Constructs a FrameRanges object from a frames string.
+    @staticmethod
+    def build_simple(first, last):
+        '''Builds a FrameRanges from a simple [first, last] range.
 
         Args:
-            frames_str: a frames string like "1-3,6,8-10"
+            first: the first frame
+            last: the last frame
+
+        Returns:
+            a FrameRanges instance
+        '''
+        return FrameRanges(ranges=[(first, last)])
+
+    @classmethod
+    def from_human_str(cls, frames_str):
+        '''Constructs a FrameRanges object from a human-readable frames string.
+
+        Args:
+            frames_str: a human-readable frames string like "1-3,6,8-10"
 
         Returns:
             a FrameRanges instance
@@ -3905,7 +3996,7 @@ class FrameRanges(object):
         ranges = []
         for r in frames_str.split(","):
             if r:
-                fr = FrameRange.from_str(r)
+                fr = FrameRange.from_human_str(r)
                 ranges.append((fr.first, fr.last))
 
         return cls(ranges)
@@ -3927,13 +4018,30 @@ class FrameRanges(object):
         '''
         return cls(_iterable_to_ranges(frames))
 
+    @classmethod
+    def from_dict(cls, d):
+        '''Constructs a FrameRanges from a JSON dictionary.
+
+        Args:
+            d: a JSON dictionary
+
+        Returns:
+            a FrameRanges instance
+        '''
+        ranges = []
+        for frd in d.get("ranges", []):
+            frame_range = FrameRange.from_dict(frd)
+            ranges.append(frame_range.limits)
+
+        return cls(ranges=ranges)
+
 
 class FrameRangesError(Exception):
     '''Exception raised when an invalid FrameRanges is encountered.'''
     pass
 
 
-class FrameRange(object):
+class FrameRange(Serializable):
     '''An iterator over a range of frames.'''
 
     def __init__(self, first, last):
@@ -3946,16 +4054,29 @@ class FrameRange(object):
         Raises:
             FrameRangeError: if last < first
         '''
-        # Parse args
-        if last < first:
-            raise FrameRangeError(
-                "Expected first:%d <= last:%d" % (first, last))
-
         self.first = first
         self.last = last
         self._frame = -1
 
+        self._validate_range(first, last)
+
+    @staticmethod
+    def _validate_range(first, last):
+        if first < 1:
+            raise FrameRangeError("Expected first:%d >= 1" % first)
+
+        if last < first:
+            raise FrameRangeError(
+                "Expected first:%d <= last:%d" % (first, last))
+
+    def __len__(self):
+        return self.last + 1 - self.first
+
+    def __bool__(self):
+        return True
+
     def __iter__(self):
+        self.reset()
         return self
 
     def __next__(self):
@@ -3983,6 +4104,11 @@ class FrameRange(object):
         return self._frame
 
     @property
+    def limits(self):
+        '''A (first, last) tuple describing the frame range.'''
+        return (self.first, self.last)
+
+    @property
     def is_first_frame(self):
         '''Whether the current frame is first in the range.'''
         return self._frame == self.first
@@ -3995,8 +4121,8 @@ class FrameRange(object):
         '''
         return list(range(self.first, self.last + 1))
 
-    def to_str(self):
-        '''Returns a string representation of the range.
+    def to_human_str(self):
+        '''Returns a human-readable string representation of the range.
 
         Returns:
             a string like "1-5"
@@ -4007,11 +4133,11 @@ class FrameRange(object):
         return "%d-%d" % (self.first, self.last)
 
     @classmethod
-    def from_str(cls, frames_str):
-        '''Constructs a FrameRange object from a string.
+    def from_human_str(cls, frames_str):
+        '''Constructs a FrameRange object from a human-readable string.
 
         Args:
-            frames_str: a frames string like "1-5"
+            frames_str: a human-readable frames string like "1-5"
 
         Returns:
             a FrameRange instance
@@ -4047,6 +4173,18 @@ class FrameRange(object):
             raise FrameRangeError("Invalid frame range list %s" % frames)
 
         return cls(*ranges[0])
+
+    @classmethod
+    def from_dict(cls, d):
+        '''Constructs a FrameRange from a JSON dictionary.
+
+        Args:
+            d: a JSON dictionary
+
+        Returns:
+            a FrameRange instance
+        '''
+        return cls(d["first"], d["last"])
 
 
 class FrameRangeError(Exception):
