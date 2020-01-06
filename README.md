@@ -107,18 +107,15 @@ standard analytics exposed by the ETA library. In addition, the relative paths
 to support the typical directory structure that we adopt for our custom
 projects.
 
-### The ETA CLI
+### CLI
 
-When you installed ETA, an `eta` command-line utility was added to your path.
-This utility provides access to many usefuel features of ETA, including
-building pipelines from requests, running pipelines, and generating module
-metadata files.
+Installing ETA automatically installs `eta`, a command-line interface (CLI) for
+interacting with the ETA Library. This utility provides access to many useful
+features of ETA, including building and running pipelines, downloading models,
+and interacting with remote storage.
 
-To learn more about the supported operations and their syntaxes, type
-
-```
-eta --help
-```
+To explore the CLI, type `eta --help`, and see the
+[CLI Guide](docs/cli_guide.md) for complete information.
 
 
 ## Quickstart
