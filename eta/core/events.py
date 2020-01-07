@@ -33,46 +33,56 @@ import numpy as np
 from eta.core.config import Config, Configurable
 from eta.core.data import AttributeContainer
 from eta.core.serial import Container, Serializable
+import eta.core.video as etav
 
 
 class DetectedEvent(Serializable):
     '''A detected event in a video.
 
     Attributes:
-        label: the event label
-        event_series: the EventSeries (discontiguous temporal) range of the
-            event
+        label: event label
+        frame_ranges: a FrameRanges instance describing the frames in the event
         confidence: (optional) the detection confidence in [0, 1]
         index: (optional) an index assigned to the event
         score: (optional) a score assigned to the event
-        attrs: (optional) an AttributeContainer describing additional
+        attrs: (optional) an AttributeContainer of attributes for the event
             attributes of the event
     '''
 
-    def __init__(self, label, event_series, confidence=None, index=None,
-                 score=None, attrs=None):
+    def __init__(
+            self, label, frame_ranges, confidence=None, index=None, score=None,
+            attrs=None):
         '''Creates a DetectedEvent instance.
 
         Args:
             label: the event label
-            event_series: the EventSeries (discontiguous temporal) range of the
-                event
+            frame_ranges: a FrameRanges instance describing the frame numbers
+                in the event
             confidence: (optional) the detection confidence in [0, 1]
             index: (optional) an index assigned to the event
             score: (optional) a score assigned to the event
-            attrs: (optional) an AttributeContainer describing additional
-                attributes of the event
+            attrs: (optional) an AttributeContainer of attributes for the event
         '''
         self.label = label
-        self.event_series = event_series
+        self.frame_ranges = frame_ranges
         self.confidence = confidence
         self.index = index
         self.score = score
         self.attrs = attrs or AttributeContainer()
 
     @property
+    def is_contiguous(self):
+        '''Whether the event is contiguous, i.e., whether it consists of a
+        single `FrameRange`.
+
+        If you want to ensure that the event does not contain trivial adjacent
+        `FrameRange`s, then call `self.frame_ranges.simplify()` first.
+        '''
+        return self.frame_ranges.is_contiguous
+
+    @property
     def has_attributes(self):
-        '''Returns True/False if this event has attributes.'''
+        '''Whether the event has attributes.'''
         return bool(self.attrs)
 
     def clear_attributes(self):
@@ -80,29 +90,28 @@ class DetectedEvent(Serializable):
         self.attrs = AttributeContainer()
 
     def add_attribute(self, attr):
-        '''Adds the Attribute to the event.'''
+        '''Adds the Attribute to the event.
+
+        Args:
+            attr: an Attribute
+        '''
         self.attrs.add(attr)
 
     def add_attributes(self, attrs):
-        '''Adds the AttributeContainer of attributes to the event.'''
+        '''Adds the AttributeContainer of attributes to the event.
+
+        Args:
+            attrs: an AttributeContainer
+        '''
         self.attrs.add_container(attrs)
 
-    def get_event_series(self):
-        '''Returns the event series for the event.'''
-        return self.event_series
-
-    def is_contiguous(self):
-        '''Returns true/false on whether the event is contiguous.
-
-        It does this simply by checking if there is only one element in the
-        event series, which forces it to be contiguous.  If false, then this
-        could be contiguous, but it is not likely.
-        '''
-        return len(self.event_series.events) == 1
-
     def attributes(self):
-        '''Returns the list of attributes to serialize.'''
-        _attrs = ["label", "event_series"]
+        '''Returns the list of attributes to serialize.
+
+        Returns:
+            a list of attrinutes
+        '''
+        _attrs = ["label", "frame_ranges"]
         _optional_attrs = ["confidence", "index", "score"]
         _attrs.extend(
             [a for a in _optional_attrs if getattr(self, a) is not None])
@@ -110,41 +119,42 @@ class DetectedEvent(Serializable):
             _attrs.append("attrs")
         return _attrs
 
-    def to_frames(self):
-        '''Creates a simple string representation of the temporal extent of the
-        `DetectedEvent`.
-
-        The output representation may not be contiguous and it be overlap in
-        certain events.  No checking is performed to this effect.
-        '''
-        return self.event_series.to_str()
-
     @staticmethod
-    def build_simple(start, stop, label, confidence=None, index=None):
-        '''Static factory that creates a simple contiguous `DetectedEvent`
-        that has a label and optional confidence and index.
+    def build_simple(first, last, label, confidence=None, index=None):
+        '''Creates a simple contiguous `DetectedEvent` that has a label and
+        optional confidence and index.
 
         Args:
-            start: the starting frame of the event
-            stop: the last frame of the event
+            first: the first frame of the event
+            last: the last frame of the event
             label: the event label
-            confidence: (optional) the detection confidence in [0, 1]
-            index: (optional) an index assigned to the event
+            confidence: (optional) confidence in [0, 1]
+            index: (optional) index for the event
+
+        Returns:
+             a DetectedEvent
         '''
-        event = Event(start, stop)
-        series = EventSeries([event])
-        return DetectedEvent(label, series, confidence, index)
+        frame_ranges = etav.FrameRanges.build_simple(first, last)
+        return DetectedEvent(
+            label, frame_ranges, confidence=confidence, index=index)
 
     @classmethod
     def from_dict(cls, d):
-        '''Constructs a DetectedEvent from a JSON dictionary.'''
+        '''Constructs a DetectedEvent from a JSON dictionary.
+
+        Args:
+            d: a JSON dictionary
+
+        Returns:
+            a DetectedEvent
+        '''
         attrs = d.get("attrs", None)
         if attrs is not None:
             attrs = AttributeContainer.from_dict(attrs)
 
         return cls(
             d["label"],
-            EventSeries.from_dict(d["event_series"]),
+            etav.FrameRanges.from_dict(d["frame_ranges"]),
             confidence=d.get("confidence", None),
             index=d.get("index", None),
             score=d.get("score", None),
@@ -160,13 +170,17 @@ class DetectedEventContainer(Container):
     _ELE_ATTR = "events"
 
     def get_labels(self):
-        '''Returns a set containing the labels of the DetectedEvents.'''
+        '''Returns a set containing the labels of the DetectedEvents.
+
+        Returns:
+            a set of labels
+        '''
         return set(event.label for event in self)
 
     def sort_by_confidence(self, reverse=False):
-        '''Sorts the event list by confidence.
+        '''Sorts the `DetectedEvent`s by confidence.
 
-        Events whose confidence is None are always put last.
+        `DetectedEvent`s whose confidence is None are always put last.
 
         Args:
             reverse: whether to sort in descending order. The default is False
@@ -174,9 +188,9 @@ class DetectedEventContainer(Container):
         self.sort_by("confidence", reverse=reverse)
 
     def sort_by_index(self, reverse=False):
-        '''Sorts the event list by index.
+        '''Sorts the `DetectedEvent`s by index.
 
-        Events whose index is None are always put last.
+        `DetectedEvent`s whose index is None are always put last.
 
         Args:
             reverse: whether to sort in descending order. The default is False
@@ -184,9 +198,9 @@ class DetectedEventContainer(Container):
         self.sort_by("index", reverse=reverse)
 
     def sort_by_score(self, reverse=False):
-        '''Sorts the event list by score.
+        '''Sorts the `DetectedEvent`s by score.
 
-        Events whose score is None are always put last.
+        `DetectedEvent`s whose score is None are always put last.
 
         Args:
             reverse: whether to sort in descending order. The default is False
@@ -198,7 +212,7 @@ class DetectedEventContainer(Container):
         compliant with the given schema.
 
         Args:
-            schema: an ImageLabelsSchema or VideoLabelsSchema
+            schema: a VideoLabelsSchema
         '''
         filter_func = lambda event: event.label in schema.events
         self.filter_elements([filter_func])
