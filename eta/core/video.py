@@ -3651,6 +3651,19 @@ class FrameRanges(Serializable):
 
         return False
 
+    @property
+    def is_contiguous(self):
+        '''Determines whether the frame range is contiguous, i.e., whether it
+        consists of a single `FrameRange`.
+
+        If you want to ensure that this instance does not contain trivial
+        adjacent `FrameRange`s, then call `simplify()` first.
+
+        Returns:
+            True/False
+        '''
+        return self.num_ranges == 1
+
     def reset(self):
         '''Resets the FrameRanges instance so that the next frame will be the
         first.
@@ -3680,8 +3693,8 @@ class FrameRanges(Serializable):
         self._ingest_range(new_range)
 
     def simplify(self):
-        '''Simplifies the FrameRanges, if possible, by merging any adjacent
-        ranges into a single range.
+        '''Simplifies the frame ranges, if possible, by merging any adjacent
+        `FrameRange` instances into a single range.
 
         This operation will `reset()` the instance.
         '''
