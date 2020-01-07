@@ -69,7 +69,6 @@ confidence=
 
 disable=too-few-public-methods,too-many-instance-attributes,too-many-arguments,too-many-locals,too-many-lines,non-iterator-returned,too-many-statements,useless-object-inheritance,abstract-method,too-many-ancestors,too-many-branches,unnecessary-pass,too-many-public-methods
 
-
 [REPORTS]
 
 # Set the output format. Available formats are text, parseable, colorized, msvs
