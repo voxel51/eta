@@ -29,7 +29,7 @@ class DetectedEvent(Serializable):
 
     Attributes:
         label: event label
-        frame_ranges: a FrameRanges instance describing the frames in the event
+        frames: a FrameRanges instance describing the frames in the event
         confidence: (optional) the detection confidence in [0, 1]
         index: (optional) an index assigned to the event
         score: (optional) a score assigned to the event
@@ -38,21 +38,20 @@ class DetectedEvent(Serializable):
     '''
 
     def __init__(
-            self, label, frame_ranges, confidence=None, index=None, score=None,
+            self, label, frames, confidence=None, index=None, score=None,
             attrs=None):
         '''Creates a DetectedEvent instance.
 
         Args:
             label: the event label
-            frame_ranges: a FrameRanges instance describing the frame numbers
-                in the event
+            frames: a FrameRanges instance describing the frames in the event
             confidence: (optional) the detection confidence in [0, 1]
             index: (optional) an index assigned to the event
             score: (optional) a score assigned to the event
             attrs: (optional) an AttributeContainer of attributes for the event
         '''
         self.label = label
-        self.frame_ranges = frame_ranges
+        self.frames = frames
         self.confidence = confidence
         self.index = index
         self.score = score
@@ -64,9 +63,9 @@ class DetectedEvent(Serializable):
         single `FrameRange`.
 
         If you want to ensure that the event does not contain trivial adjacent
-        `FrameRange`s, then call `self.frame_ranges.simplify()` first.
+        `FrameRange`s, then call `self.frames.simplify()` first.
         '''
-        return self.frame_ranges.is_contiguous
+        return self.frames.is_contiguous
 
     @property
     def has_attributes(self):
@@ -99,7 +98,7 @@ class DetectedEvent(Serializable):
         Returns:
             a list of attrinutes
         '''
-        _attrs = ["label", "frame_ranges"]
+        _attrs = ["label", "frames"]
         _optional_attrs = ["confidence", "index", "score"]
         _attrs.extend(
             [a for a in _optional_attrs if getattr(self, a) is not None])
@@ -122,9 +121,9 @@ class DetectedEvent(Serializable):
         Returns:
              a DetectedEvent
         '''
-        frame_ranges = etaf.FrameRanges.build_simple(first, last)
+        frames = etaf.FrameRanges.build_simple(first, last)
         return DetectedEvent(
-            label, frame_ranges, confidence=confidence, index=index)
+            label, frames, confidence=confidence, index=index)
 
     @classmethod
     def from_dict(cls, d):
@@ -142,7 +141,7 @@ class DetectedEvent(Serializable):
 
         return cls(
             d["label"],
-            etaf.FrameRanges.from_dict(d["frame_ranges"]),
+            etaf.FrameRanges.from_dict(d["frames"]),
             confidence=d.get("confidence", None),
             index=d.get("index", None),
             score=d.get("score", None),
