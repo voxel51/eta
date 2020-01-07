@@ -1103,31 +1103,40 @@ class LabeledFileRecord(BaseDataRecord):
     '''A simple DataRecord for a labeled file.
 
     Attributes:
-        filename: the path to the file
+        file_path: the path to the file
         label: the label of the file
     '''
 
-    def __init__(self, filename, label):
+    def __init__(self, file_path, label):
         '''Creates a new LabeledFileRecord instance.
 
         Args:
-            filename: the path to the file
+            file_path: the path to the file
             label: the label of the file
         '''
-        self.filename = filename
+        self.file_path = file_path
         self.label = label
         super(LabeledFileRecord, self).__init__()
 
+    @property
+    def filename(self):
+        '''Property to support older member access.
+
+        @deprecated Use `file_path` instead
+        '''
+        logger.info("Deprecated use of filename property.")
+        return self.file_path
+
     @classmethod
     def required(cls):
-        return ["filename", "label"]
+        return ["file_path", "label"]
 
 
-class LabeledVideoRecord(BaseDataRecord):
+class LabeledVideoRecord(LabeledFileRecord):
     '''A simple, reusable DataRecord for a labeled video.
 
     Args:
-        video_path: the path to the video
+        file_path (video_path): the path to the video
         label: the label of the video
         group: an optional group attribute that provides additional information
             about the video. For example, if multiple video clips were sampled
@@ -1137,18 +1146,17 @@ class LabeledVideoRecord(BaseDataRecord):
 
     def __init__(self, video_path, label, group=no_default):
         '''Creates a new LabeledVideoRecord instance.'''
-        self.video_path = video_path
-        self.label = label
+        super(LabeledVideoRecord, self).__init__(video_path, label)
         self.group = group
-        super(LabeledVideoRecord, self).__init__()
+
+    @property
+    def video_path(self):
+        '''Convenience accessor to refer to the file_path.'''
+        return self.file_path
 
     @classmethod
     def optional(cls):
         return ["group"]
-
-    @classmethod
-    def required(cls):
-        return ["video_path", "label"]
 
 
 class LabeledFeatures(NpzWriteable):
