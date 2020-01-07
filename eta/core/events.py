@@ -19,9 +19,6 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-import numpy as np
-
-from eta.core.config import Config, Configurable
 from eta.core.data import AttributeContainer
 from eta.core.serial import Container, Serializable
 import eta.core.video as etav
@@ -224,61 +221,3 @@ class DetectedEventContainer(Container):
             or event.has_attributes
         )
         self.filter_elements([filter_func])
-
-
-class EventDetection(Serializable):
-    '''A per-frame binary event detection.'''
-
-    def __init__(self, bools=None):
-        '''Constructs an EventDetection instance from a list of per-frame
-        detections.
-
-        Args:
-            bools: an optional list (or 1D numpy array) of per-frame
-                detections. The values can be any type convertable to boolean
-                via bool()
-        '''
-        if bools is None:
-            bools = []
-        self.bools = [bool(b) for b in list(bools)]
-
-    def add(self, b):
-        '''Adds a detection to the series.'''
-        self.bools.append(bool(b))
-
-    def serialize(self, reflective=False):
-        '''Serializes the EventDetection into a dictionary.
-
-        Args:
-            reflective: whether to include reflective attributes when
-                serializing the object. By default, this is False
-
-        Returns:
-            a JSON dictionary representation of the object
-        '''
-        d = self._prepare_serial_dict(reflective)
-        for idx, b in enumerate(self.bools, 1):
-            d["%d" % idx] = b
-        return d
-
-    def to_series(self):
-        '''Converts the EventDetection into an EventSeries.'''
-        events = EventSeries()
-        start = None
-        in_event = False
-        for idx, b in enumerate(self.bools, 1):
-            if in_event:
-                if not b:
-                    events.add(Event(start, idx - 1))
-                    in_event = False
-            elif b:
-                start = idx
-                in_event = True
-        if in_event:
-            events.add(Event(start, len(self.bools)))
-        return events
-
-    @classmethod
-    def from_dict(cls, d):
-        '''Constructs a EventDetection from a JSON dictionary.'''
-        return cls(bools=[bool(d[k]) for k in sorted(d.keys(), key=int)])

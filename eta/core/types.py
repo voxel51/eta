@@ -1188,18 +1188,6 @@ class DetectedObjectsSequence(JSONFileSequence):
     pass
 
 
-class EventDetection(JSONFile):
-    '''A per-frame binary event detection.
-
-    This type is implemented in ETA by the `eta.core.events.EventDetection`
-    class.
-
-    Examples:
-        /path/to/event_detection.json
-    '''
-    pass
-
-
 class DetectedEvent(JSONFile):
     '''A detected event in a video.
 
