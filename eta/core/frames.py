@@ -207,7 +207,7 @@ class FrameRanges(Serializable):
 
         Returns (None, None) if the instance is empty.
         '''
-        if not bool(self):
+        if not self:
             return (None, None)
 
         first = self._ranges[0].limits[0]
@@ -627,7 +627,7 @@ class FrameRangeError(Exception):
 
 
 def _iterable_to_ranges(vals):
-    # This will convert numpy arrays to list, and its important to do this
+    # This will convert numpy arrays to list, and it's important to do this
     # before checking for falseness below, since numpy arrays don't support it
     vals = sorted(vals)
 
