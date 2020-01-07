@@ -1006,25 +1006,13 @@ class VideoStreamInfo(JSONFile):
     pass
 
 
-class EventDetection(JSONFile):
-    '''A per-frame binary event detection.
+class FrameRanges(JSONFile):
+    '''A a monotonically increasing and disjoint series of frame ranges.
 
-    This type is implemented in ETA by the `eta.core.events.EventDetection`
-    class.
-
-    Examples:
-        /path/to/event_detection.json
-    '''
-    pass
-
-
-class EventSeries(JSONFile):
-    '''A series of events in a video.
-
-    This type is implemented in ETA by the `eta.core.events.EventSeries` class.
+    This type is implemented in ETA by the `eta.core.video.FrameRanges` class.
 
     Examples:
-        /path/to/event_series.json
+        /path/to/frame_ranges.json
     '''
     pass
 
@@ -1196,6 +1184,18 @@ class DetectedObjectsSequence(JSONFileSequence):
 
     Examples:
         /path/to/detected_objects/%05d.json
+    '''
+    pass
+
+
+class EventDetection(JSONFile):
+    '''A per-frame binary event detection.
+
+    This type is implemented in ETA by the `eta.core.events.EventDetection`
+    class.
+
+    Examples:
+        /path/to/event_detection.json
     '''
     pass
 
