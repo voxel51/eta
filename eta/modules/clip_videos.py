@@ -27,6 +27,7 @@ import logging
 import sys
 
 from eta.core.config import Config
+import eta.core.frames as etaf
 import eta.core.image as etai
 import eta.core.module as etam
 import eta.core.video as etav
@@ -107,7 +108,7 @@ def _clip_videos(clip_config):
 
 def _get_frames(data, parameters):
     if data.frame_ranges_path:
-        return etav.FrameRanges.from_json(data.frame_ranges_path)
+        return etaf.FrameRanges.from_json(data.frame_ranges_path)
 
     return parameters.frames
 
