@@ -24,8 +24,8 @@ import eta.core.frames as etaf
 from eta.core.serial import Container, Serializable
 
 
-class DetectedEvent(Serializable):
-    '''A detected event in a video.
+class Event(Serializable):
+    '''An event in a video.
 
     Attributes:
         label: event label
@@ -40,7 +40,7 @@ class DetectedEvent(Serializable):
     def __init__(
             self, label, frames, confidence=None, index=None, score=None,
             attrs=None):
-        '''Creates a DetectedEvent instance.
+        '''Creates an Event instance.
 
         Args:
             label: the event label
@@ -108,8 +108,7 @@ class DetectedEvent(Serializable):
 
     @staticmethod
     def build_simple(first, last, label, confidence=None, index=None):
-        '''Creates a simple contiguous `DetectedEvent` that has a label and
-        optional confidence and index.
+        '''Creates a simple contiguous `Event`.
 
         Args:
             first: the first frame of the event
@@ -119,21 +118,20 @@ class DetectedEvent(Serializable):
             index: (optional) index for the event
 
         Returns:
-             a DetectedEvent
+             an Event
         '''
         frames = etaf.FrameRanges.build_simple(first, last)
-        return DetectedEvent(
-            label, frames, confidence=confidence, index=index)
+        return Event(label, frames, confidence=confidence, index=index)
 
     @classmethod
     def from_dict(cls, d):
-        '''Constructs a DetectedEvent from a JSON dictionary.
+        '''Constructs an Event from a JSON dictionary.
 
         Args:
             d: a JSON dictionary
 
         Returns:
-            a DetectedEvent
+            an Event
         '''
         attrs = d.get("attrs", None)
         if attrs is not None:
@@ -149,15 +147,15 @@ class DetectedEvent(Serializable):
         )
 
 
-class DetectedEventContainer(Container):
-    '''Base class for containers that store lists of `DetectedEvent`s.'''
+class EventContainer(Container):
+    '''Base class for containers that store lists of `Event`s.'''
 
-    _ELE_CLS = DetectedEvent
+    _ELE_CLS = Event
     _ELE_CLS_FIELD = "_EVENT_CLS"
     _ELE_ATTR = "events"
 
     def get_labels(self):
-        '''Returns a set containing the labels of the DetectedEvents.
+        '''Returns a set containing the labels of the `Event`s.
 
         Returns:
             a set of labels
@@ -165,9 +163,9 @@ class DetectedEventContainer(Container):
         return set(event.label for event in self)
 
     def sort_by_confidence(self, reverse=False):
-        '''Sorts the `DetectedEvent`s by confidence.
+        '''Sorts the `Event`s by confidence.
 
-        `DetectedEvent`s whose confidence is None are always put last.
+        `Event`s whose confidence is None are always put last.
 
         Args:
             reverse: whether to sort in descending order. The default is False
@@ -175,9 +173,9 @@ class DetectedEventContainer(Container):
         self.sort_by("confidence", reverse=reverse)
 
     def sort_by_index(self, reverse=False):
-        '''Sorts the `DetectedEvent`s by index.
+        '''Sorts the `Event`s by index.
 
-        `DetectedEvent`s whose index is None are always put last.
+        `Event`s whose index is None are always put last.
 
         Args:
             reverse: whether to sort in descending order. The default is False
@@ -185,9 +183,9 @@ class DetectedEventContainer(Container):
         self.sort_by("index", reverse=reverse)
 
     def sort_by_score(self, reverse=False):
-        '''Sorts the `DetectedEvent`s by score.
+        '''Sorts the `Event`s by score.
 
-        `DetectedEvent`s whose score is None are always put last.
+        `Event`s whose score is None are always put last.
 
         Args:
             reverse: whether to sort in descending order. The default is False
@@ -211,7 +209,7 @@ class DetectedEventContainer(Container):
         '''Filters the events from this container that do not have attributes.
 
         Args:
-            labels: an optional list of DetectedEvent label strings to which
+            labels: an optional list of Event label strings to which
                 to restrict attention when filtering. By default, all event
                 are processed
         '''

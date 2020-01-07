@@ -719,8 +719,8 @@ class VideoEventDetector(Detector):
                 read the video
 
         Returns:
-            an `eta.core.events.DetectedEventContainer` instance describing
-                the detections for the video
+            an `eta.core.events.EventContainer` instance describing the events
+                for the video
         '''
         raise NotImplementedError("subclass must implement detect()")
 

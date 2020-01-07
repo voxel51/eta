@@ -1188,26 +1188,26 @@ class DetectedObjectsSequence(JSONFileSequence):
     pass
 
 
-class DetectedEvent(JSONFile):
-    '''A detected event in a video.
+class Event(JSONFile):
+    '''An event in a video.
 
-    This type interface is implemented in ETA by the
-    `eta.core.events.DetectedEvent` class.
+    This type interface is implemented in ETA by the `eta.core.events.Event`
+    class.
 
     Examples:
-        /path/to/detected_event.json
+        /path/to/event.json
     '''
     pass
 
 
-class DetectedEvents(JSONFile):
-    '''A list of detected events in a video.
+class Events(JSONFile):
+    '''A list of events in a video.
 
     This type interface is implemented in ETA by the
-    `eta.core.events.DetectedEventContainer` class.
+    `eta.core.events.EventContainer` class.
 
     Examples:
-        /path/to/detected_events.json
+        /path/to/events.json
     '''
     pass
 

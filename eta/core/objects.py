@@ -39,8 +39,8 @@ class DetectedObject(Serializable, HasBoundingBox):
         index_in_frame: (optional) the index of the object in the frame where
             it was detected
         eval_type: (optional) an EvaluationType value
-        event_indices: (optional) a set of a DetectedEvent indices to which
-            the object belongs
+        event_indices: (optional) a set of a Event indices to which the object
+            belongs
         attrs: (optional) an AttributeContainer of attributes for the object
     '''
 
@@ -65,8 +65,8 @@ class DetectedObject(Serializable, HasBoundingBox):
             index_in_frame: (optional) the index of the object in the frame
                 where it was detected
             eval_type: (optional) an EvaluationType value
-            event_indices: (optional) a set of indices indicating
-                `DetectedEvents` to which the object belongs
+            event_indices: (optional) a set of indices indicating `Events` to
+                which the object belongs
             attrs: (optional) an AttributeContainer of attributes for the
                 object
         '''
