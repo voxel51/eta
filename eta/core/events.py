@@ -226,50 +226,6 @@ class DetectedEventContainer(Container):
         self.filter_elements([filter_func])
 
 
-class Event(Serializable):
-    '''An event in a video.'''
-
-    def __init__(self, start, stop):
-        '''Initializes an Event.'''
-        self.start = start
-        self.stop = stop
-
-    def to_str(self):
-        '''Converts the Event to a string.'''
-        return "%d-%d" % (self.start, self.stop)
-
-    @classmethod
-    def from_dict(cls, d):
-        '''Constructs an Event from a JSON dictionary.'''
-
-        return cls(d["start"], d["stop"])
-
-
-class EventSeries(Serializable):
-    '''A series of events in a video.'''
-
-    def __init__(self, events=None):
-        '''Initializes an EventSeries.
-
-        Args:
-            events: optional list of events in the video.
-        '''
-        self.events = events or []
-
-    def add(self, event):
-        '''Adds an Event to the series.'''
-        self.events.append(event)
-
-    def to_str(self):
-        '''Converts the EventSeries to a string.'''
-        return ",".join([e.to_str() for e in self.events])
-
-    @classmethod
-    def from_dict(cls, d):
-        '''Constructs an EventSeries from a JSON dictionary.'''
-        return cls(events=[Event.from_dict(de) for de in d["events"]])
-
-
 class EventDetection(Serializable):
     '''A per-frame binary event detection.'''
 
