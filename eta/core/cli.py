@@ -27,6 +27,7 @@ import operator
 import os
 import re
 
+import argcomplete
 import dateutil.parser
 from tabulate import tabulate
 from tzlocal import get_localzone
@@ -2810,6 +2811,7 @@ def _register_main_command(command, version=None):
             "--all-help", action=_RecursiveHelpAction,
             help="show help recurisvely and exit")
 
+    argcomplete.autocomplete(parser)
     return parser
 
 
