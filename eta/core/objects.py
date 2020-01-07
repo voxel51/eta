@@ -33,23 +33,22 @@ class DetectedObject(Serializable, HasBoundingBox):
         confidence: (optional) the detection confidence, in [0, 1]
         top_k_probs: (optional) dictionary mapping labels to probabilities
         index: (optional) an index assigned to the object
-        score: (optional) an optional score for the object
-        frame_number: (optional) the frame number in which this object was
+        score: (optional) a multipurpose score for the object
+        frame_number: (optional) the frame number in which the object was
             detected
-        index_in_frame: (optional) the index of this object in the frame
-            where it was detected
-        attrs: (optional) an AttributeContainer describing additional
-            attributes of the object
+        index_in_frame: (optional) the index of the object in the frame where
+            it was detected
         eval_type: (optional) an EvaluationType value
         event_indices: (optional) a set of a DetectedEvent indices to which
             the object belongs
+        attrs: (optional) an AttributeContainer of attributes for the object
     '''
 
     def __init__(
             self, label, bounding_box, mask=None, confidence=None,
             top_k_probs=None, index=None, score=None, frame_number=None,
-            index_in_frame=None, attrs=None, eval_type=None,
-            event_indices=set()):
+            index_in_frame=None, eval_type=None, event_indices=None,
+            attrs=None):
         '''Creates a DetectedObject instance.
 
         Args:
@@ -61,15 +60,15 @@ class DetectedObject(Serializable, HasBoundingBox):
             top_k_probs: (optional) dictionary mapping labels to probabilities
             index: (optional) an index assigned to the object
             score: (optional) an optional score for the object
-            frame_number: (optional) the frame number in which this object was
+            frame_number: (optional) the frame number in the this object was
                 detected
-            index_in_frame: (optional) the index of this object in the frame
+            index_in_frame: (optional) the index of the object in the frame
                 where it was detected
-            attrs: (optional) an AttributeContainer describing additional
-                attributes of the object
             eval_type: (optional) an EvaluationType value
-            event_indices: (optional) a set of a DetectedEvent indices to which
-                the object belongs
+            event_indices: (optional) a set of indices indicating
+                `DetectedEvents` to which the object belongs
+            attrs: (optional) an AttributeContainer of attributes for the
+                object
         '''
         self.label = label
         self.bounding_box = bounding_box
@@ -81,18 +80,18 @@ class DetectedObject(Serializable, HasBoundingBox):
         self.frame_number = frame_number
         self.index_in_frame = index_in_frame
         self.eval_type = eval_type
-        self.event_indices = set(event_indices)
+        self.event_indices = set(event_indices or [])
         self.attrs = attrs or AttributeContainer()
         self._meta = None  # Usable by clients to store temporary metadata
 
     @property
     def has_attributes(self):
-        '''Returns True/False if this object has attributes.'''
+        '''Whether this object has attributes.'''
         return bool(self.attrs)
 
     @property
     def has_mask(self):
-        '''Returns True/False if this object has a segmentation mask.'''
+        '''Whether this object has a segmentation mask.'''
         return self.mask is not None
 
     def clear_attributes(self):
@@ -100,19 +99,35 @@ class DetectedObject(Serializable, HasBoundingBox):
         self.attrs = AttributeContainer()
 
     def add_attribute(self, attr):
-        '''Adds the Attribute to the object.'''
+        '''Adds the Attribute to the object.
+
+        Args:
+            attr: and Attribute
+        '''
         self.attrs.add(attr)
 
     def add_attributes(self, attrs):
-        '''Adds the AttributeContainer of attributes to the object.'''
+        '''Adds the AttributeContainer of attributes to the object.
+
+        Args:
+            attrs: an AttributeContainer
+        '''
         self.attrs.add_container(attrs)
 
     def get_bounding_box(self):
-        '''Returns the bounding box for the object.'''
+        '''Returns the BoundingBox for the object.
+
+        Returns:
+             a BoundingBox
+        '''
         return self.bounding_box
 
     def attributes(self):
-        '''Returns the list of attributes to serialize.'''
+        '''Returns the list of attributes to serialize.
+
+        Returns:
+            a list of attribute names
+        '''
         _attrs = ["label", "bounding_box"]
 
         _optional_attrs = [
@@ -121,14 +136,23 @@ class DetectedObject(Serializable, HasBoundingBox):
         _attrs.extend(
             [a for a in _optional_attrs if getattr(self, a) is not None])
 
-        _iff_attrs = ["event_indices", "attrs"]
-        _attrs.extend([a for a in _iff_attrs if getattr(self, a)])
+        if self.event_indices:
+            _attrs.append("event_indices")
+        if self.attrs:
+            _attrs.append("attrs")
 
         return _attrs
 
     @classmethod
     def from_dict(cls, d):
-        '''Constructs a DetectedObject from a JSON dictionary.'''
+        '''Constructs a DetectedObject from a JSON dictionary.
+
+        Args:
+            d: a JSON dictionary
+
+        Returns:
+            a DetectedObject
+        '''
         attrs = d.get("attrs", None)
         if attrs is not None:
             attrs = AttributeContainer.from_dict(attrs)
@@ -161,13 +185,17 @@ class DetectedObjectContainer(Container):
     _ELE_ATTR = "objects"
 
     def get_labels(self):
-        '''Returns a set containing the labels of the DetectedObjects.'''
+        '''Returns a set containing the labels of the DetectedObjects.
+
+        Returns:
+            a set of labels
+        '''
         return set(obj.label for obj in self)
 
     def sort_by_confidence(self, reverse=False):
-        '''Sorts the object list by confidence.
+        '''Sorts the `DetectedObject`s by confidence.
 
-        Objects whose confidence is None are always put last.
+        `DetectedObject`s whose confidence is None are always put last.
 
         Args:
             reverse: whether to sort in descending order. The default is False
@@ -175,9 +203,9 @@ class DetectedObjectContainer(Container):
         self.sort_by("confidence", reverse=reverse)
 
     def sort_by_index(self, reverse=False):
-        '''Sorts the object list by index.
+        '''Sorts the `DetectedObject`s by index.
 
-        Objects whose index is None are always put last.
+        `DetectedObject`s whose index is None are always put last.
 
         Args:
             reverse: whether to sort in descending order. The default is False
@@ -185,9 +213,9 @@ class DetectedObjectContainer(Container):
         self.sort_by("index", reverse=reverse)
 
     def sort_by_score(self, reverse=False):
-        '''Sorts the object list by score.
+        '''Sorts the `DetectedObject`s by score.
 
-        Objects whose score is None are always put last.
+        `DetectedObject`s whose score is None are always put last.
 
         Args:
             reverse: whether to sort in descending order. The default is False
@@ -195,9 +223,9 @@ class DetectedObjectContainer(Container):
         self.sort_by("score", reverse=reverse)
 
     def sort_by_frame_number(self, reverse=False):
-        '''Sorts the object list by frame number
+        '''Sorts the `DetectedObject`s by frame number
 
-        Objects whose frame number is None are always put last.
+        `DetectedObject`s whose frame number is None are always put last.
 
         Args:
             reverse: whether to sort in descending order. The default is False
@@ -236,12 +264,25 @@ class ObjectCount(Serializable):
     '''The number of instances of an object found in an image.'''
 
     def __init__(self, label, count):
+        '''Creates an ObjectCount instance.
+
+        Args:
+            label: the label
+            count: the count
+        '''
         self.label = label
         self.count = count
 
     @classmethod
     def from_dict(cls, d):
-        '''Constructs an ObjectCount from a JSON dictionary.'''
+        '''Constructs an ObjectCount from a JSON dictionary.
+
+        Args:
+            d: a JSON dictionary
+
+        Returns:
+            an ObjectCount
+        '''
         return ObjectCount(d["label"], d["count"])
 
 
