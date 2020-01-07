@@ -5,7 +5,6 @@ Copyright 2017-2019 Voxel51, Inc.
 voxel51.com
 
 Matthew Lightman, matthew@voxel51.com
-Brian Moore, brian@voxel51.com
 Jason Corso, jason@voxel51.com
 Ben Kane, ben@voxel51.com
 Tyler Ganter, tyler@voxel51.com
@@ -18,7 +17,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
-from future.utils import iteritems, itervalues
+from future.utils import iteritems
 import six
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
@@ -36,6 +35,7 @@ import numpy as np
 
 import eta.core.annotations as etaa
 from eta.core.data import BaseDataRecord, DataRecords
+import eta.core.frames as etaf
 import eta.core.image as etai
 from eta.core.serial import Serializable
 import eta.core.utils as etau
@@ -747,7 +747,7 @@ class LabeledDataset(object):
 
         if (data_method not in FILE_METHODS
                 or labels_method not in FILE_METHODS):
-            raise ValueError("invalid file_method: %s", str(file_method))
+            raise ValueError("invalid file_method: %s" % str(file_method))
 
         return _FILE_METHODS_MAP[data_method], _FILE_METHODS_MAP[labels_method]
 
@@ -1839,7 +1839,7 @@ class LabeledDatasetBuilder(object):
             a LabeledDataset
         '''
         if data_method not in FILE_METHODS:
-            raise ValueError("invalid file_method: %s", str(data_method))
+            raise ValueError("invalid file_method: %s" % str(data_method))
 
         logger.info("Applying transformations to dataset")
 
@@ -1853,8 +1853,7 @@ class LabeledDatasetBuilder(object):
             return None
 
         logger.info(
-            "Building dataset with %d elements" % len(self.builder_dataset)
-        )
+            "Building dataset with %d elements", len(self.builder_dataset))
 
         dataset = self.dataset_cls.create_empty_dataset(path, description)
         data_subdir = os.path.join(dataset.data_dir, dataset._DATA_SUBDIR)
@@ -1871,9 +1870,9 @@ class LabeledDatasetBuilder(object):
             data_path, labels_path = _append_index_if_necessary(
                 dataset, data_path, labels_path)
             if data_path != old_data_path and not did_warn_duplicate_name:
-                logger.warn(
+                logger.warning(
                     "Duplicate data filenames found in dataset being built. "
-                    "Appending indices to names as necessary.")
+                    "Appending indices to names as necessary")
                 did_warn_duplicate_name = True
 
             record.build(
@@ -2116,7 +2115,7 @@ class BuilderVideoRecord(BuilderDataRecord):
             self, clip_end_frame, duration, total_frame_count):
         metadata = etav.VideoMetadata.build_for(self.data_path)
         self.total_frame_count = (
-                total_frame_count or metadata.total_frame_count)
+            total_frame_count or metadata.total_frame_count)
         self.duration = duration or metadata.duration
         self.clip_end_frame = clip_end_frame or metadata.total_frame_count
 
@@ -2127,7 +2126,7 @@ class BuilderVideoRecord(BuilderDataRecord):
         else:
             args = (
                 self.data_path,
-                etav.FrameRanges.build_simple(start_frame, end_frame)
+                etaf.FrameRanges.build_simple(start_frame, end_frame)
             )
             with etav.VideoProcessor(*args, out_video_path=data_path) as p:
                 for img in p:
