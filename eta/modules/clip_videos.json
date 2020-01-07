@@ -8,25 +8,25 @@
     },
     "inputs": [
         {
-            "name": "event_detection_path",
-            "type": "eta.core.types.EventDetection",
-            "description": "Per-frame binary labels defining the clips to generate",
-            "required": false
-        },
-        {
-            "name": "event_series_path",
-            "type": "eta.core.types.EventSeries",
-            "description": "An EventSeries specifying the clips to generate",
-            "required": false
-        },
-        {
             "name": "input_path",
             "type": "eta.core.types.Video",
             "description": "The input video",
             "required": true
+        },
+        {
+            "name": "frame_ranges_path",
+            "type": "eta.core.types.FrameRanges",
+            "description": "A FrameRanges instance specifying the clips to generate",
+            "required": false
         }
     ],
     "outputs": [
+        {
+            "name": "output_video_clips_path",
+            "type": "eta.core.types.VideoClips",
+            "description": "The output video clips",
+            "required": false
+        },
         {
             "name": "output_frames_dir",
             "type": "eta.core.types.ImageSequenceDirectory",
@@ -37,12 +37,6 @@
             "name": "output_frames_path",
             "type": "eta.core.types.ImageSequence",
             "description": "The output sampled frames",
-            "required": false
-        },
-        {
-            "name": "output_video_clips_path",
-            "type": "eta.core.types.VideoClips",
-            "description": "The output video clips",
             "required": false
         }
     ],
