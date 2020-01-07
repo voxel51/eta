@@ -70,13 +70,16 @@ class Accumulator(object):
         self._weights = defaultdict(float)
         self._counts = defaultdict(int)
 
-    def add(self, thing, weight=1):
+    def add(self, thing, weight=None):
         '''Add `thing` to the accumulator.
 
         Args:
             thing: anything hashable
             weight: an optional weight. By default, this is 1
         '''
+        if weight is None:
+            weight = 1
+
         self._weights[thing] += weight
         self._counts[thing] += 1
 
@@ -85,7 +88,8 @@ class Accumulator(object):
 
         Args:
             things: an iterable of things
-            weights: an optional iteratable of weights
+            weights: an optional iteratable of weights. By default, each thing
+                is given a weight of 1
         '''
         if weights:
             for thing, weight in zip(things, weights):
