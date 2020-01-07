@@ -4015,6 +4015,32 @@ class FrameRanges(Serializable):
         '''
         return ",".join([fr.to_human_str() for fr in self._ranges])
 
+    def to_bools(self, total_frame_count=None):
+        '''Returns a boolean array indicating the frames described by this
+        object.
+
+        Note that the boolean array uses 0-based indexing. Thus, the returned
+        array satisfies `bools[idx] == True` iff frame `idx + 1` is in this
+        object.
+
+        Args:
+            total_frame_count: an optional total frame count. Can be less or
+                greater than the maximum frame in this object, if desired. By
+                default, `self.limits[1]` is used.
+
+        Returns:
+            a boolean numpy array of length `total_frame_count`
+        '''
+        if total_frame_count is None:
+            total_frame_count = self.limits[1]
+
+        bools = np.zeros(total_frame_count, dtype=bool)
+
+        inds = [i - 1 for i in self.to_list() if i <= total_frame_count]
+        bools[inds] = True
+
+        return bools
+
     @staticmethod
     def build_simple(first, last):
         '''Builds a FrameRanges from a simple [first, last] range.
@@ -4027,6 +4053,23 @@ class FrameRanges(Serializable):
             a FrameRanges instance
         '''
         return FrameRanges(ranges=[(first, last)])
+
+    @classmethod
+    def from_bools(cls, bools):
+        '''Constructs a FrameRanges object from a boolean array describing the
+        frames in the ranges.
+
+        Note that the 0-based indexes in the boolean array are converted to
+        1-based frame numbers. In other words, the returned FrameRanges
+        contains `frame` iff `bools[frame - 1] == True`.
+
+        Args:
+            bools: a boolean array
+
+        Returns:
+            a FrameRanges instance
+        '''
+        return cls.from_iterable(1 + np.flatnonzero(bools))
 
     @classmethod
     def from_human_str(cls, frames_str):
@@ -4240,10 +4283,13 @@ class FrameRangeError(Exception):
 
 
 def _iterable_to_ranges(vals):
+    # This will convert numpy arrays to list, and its important to do this
+    # before checking for falseness below, since numpy arrays don't support it
+    vals = sorted(vals)
+
     if not vals:
         return
 
-    vals = sorted(vals)
     first = last = vals[0]
     for val in vals[1:]:
         if val == last + 1:
