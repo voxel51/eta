@@ -67,11 +67,12 @@ class BoundingBox(Serializable):
 
     @property
     def corners(self):
-        '''Returns all four RelativePoint corners in clockwise order starting with
-        the top left corner.
-        
+        '''Returns all four RelativePoint corners in clockwise order starting
+        with the top left corner.
+
         Returns:
-            a 4-tuple of RelativePoints
+            (top_left, top_right, bottom_right, bottom_left) tuple of
+            RelativePoints
         '''
         return (
             self.top_left, self.top_right, self.bottom_right, self.bottom_left)
