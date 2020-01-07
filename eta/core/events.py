@@ -20,8 +20,8 @@ from builtins import *
 # pragma pylint: enable=wildcard-import
 
 from eta.core.data import AttributeContainer
+import eta.core.frames as etaf
 from eta.core.serial import Container, Serializable
-import eta.core.video as etav
 
 
 class DetectedEvent(Serializable):
@@ -122,7 +122,7 @@ class DetectedEvent(Serializable):
         Returns:
              a DetectedEvent
         '''
-        frame_ranges = etav.FrameRanges.build_simple(first, last)
+        frame_ranges = etaf.FrameRanges.build_simple(first, last)
         return DetectedEvent(
             label, frame_ranges, confidence=confidence, index=index)
 
@@ -142,7 +142,7 @@ class DetectedEvent(Serializable):
 
         return cls(
             d["label"],
-            etav.FrameRanges.from_dict(d["frame_ranges"]),
+            etaf.FrameRanges.from_dict(d["frame_ranges"]),
             confidence=d.get("confidence", None),
             index=d.get("index", None),
             score=d.get("score", None),
