@@ -30,7 +30,6 @@ import six
 # pragma pylint: enable=wildcard-import
 
 from collections import defaultdict, OrderedDict
-import dateutil.parser
 import errno
 import logging
 import os
@@ -38,6 +37,7 @@ from subprocess import Popen, PIPE
 import threading
 
 import cv2
+import dateutil.parser
 import numpy as np
 
 from eta.core.data import AttributeContainer, AttributeContainerSchema
@@ -3816,7 +3816,7 @@ class FrameRangesError(Exception):
 
 
 class FrameRange(Serializable):
-    '''An iterator over a range of frames.'''
+    '''Class representing a range of frames.'''
 
     def __init__(self, first, last):
         '''Creates a FrameRange instance.
@@ -3824,9 +3824,6 @@ class FrameRange(Serializable):
         Args:
             first: the first frame in the range (inclusive)
             last: the last frame in the range (inclusive)
-
-        Raises:
-            FrameRangeError: if last < first
         '''
         self.first = first
         self.last = last
