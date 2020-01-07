@@ -159,6 +159,9 @@ class FrameRanges(Serializable):
             for new_range in ranges:
                 self._ingest_range(new_range)
 
+    def __str__(self):
+        return self.to_human_str()
+
     def __len__(self):
         return sum(len(r) for r in self._ranges)
 
@@ -502,6 +505,9 @@ class FrameRange(Serializable):
         if last < first:
             raise FrameRangeError(
                 "Expected first:%d <= last:%d" % (first, last))
+
+    def __str__(self):
+        return self.to_human_str()
 
     def __len__(self):
         return self.last + 1 - self.first
