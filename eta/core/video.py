@@ -988,8 +988,6 @@ class VideoLabels(Serializable):
             # no indices to reindex
             return
 
-        min_index = min(self_object_indices)
-
         input_object_indices = [
             getattr(obj, variable_name) for frame_number in video_labels
             for obj in video_labels[frame_number].objects
@@ -999,6 +997,7 @@ class VideoLabels(Serializable):
             # no indices in input, so no need to reindex
             return
 
+        min_index = min(self_object_indices)
         new_min_index = max(input_object_indices) + 1
         offset = new_min_index - min_index
 
