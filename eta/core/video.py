@@ -738,18 +738,16 @@ class VideoLabels(Serializable):
         fns = self.get_frame_numbers()
         return (fns[0], fns[-1]) if fns else (None, None)
 
-    def merge_video_labels(self, video_labels, reindex_objs=False):
+    def merge_video_labels(self, video_labels, reindex=False):
         '''Merges the given VideoLabels into this labels.
 
         Args:
             video_labels: a VideoLabels instance
-            reindex_objs: whether to reindex objects in `self` before merging
-                so that all indices are different than indices in
-                `video_labels`
+            reindex: whether to reindex objects in `video_labels` before
+                merging so that all indices are unique
         '''
-        if reindex_objs:
-            self._reindex_objs(video_labels, "index")
-            self._reindex_objs(video_labels, "index_in_frame")
+        if reindex:
+            self._reindex_objects(video_labels)
 
         self.attrs.add_container(video_labels.attrs)
         for frame_number in video_labels:
@@ -969,44 +967,31 @@ class VideoLabels(Serializable):
             for frame_labels in itervalues(self.frames):
                 self._validate_frame_labels(frame_labels)
 
-    def _reindex_objs(self, video_labels, variable_name):
-        '''Reindexes objects in `self` so that all indices are different than
-        indices in the input.
-
-        Args:
-            video_labels: a VideoLabels instance
-            variable_name: the name of the member variable of `DetectedObject`
-                that contains the index. The value of this variable is assumed
-                to be an integer.
-        '''
-        self_object_indices = [
-            getattr(obj, variable_name) for frame_number in self
-            for obj in self[frame_number].objects
-            if getattr(obj, variable_name) is not None
-        ]
-        if not self_object_indices:
-            # no indices to reindex
+    def _reindex_objects(self, video_labels):
+        self_indices = self._get_object_indices(self)
+        if not self_indices:
             return
 
-        input_object_indices = [
-            getattr(obj, variable_name) for frame_number in video_labels
-            for obj in video_labels[frame_number].objects
-            if getattr(obj, variable_name) is not None
-        ]
-        if not input_object_indices:
-            # no indices in input, so no need to reindex
+        new_indices = self._get_object_indices(video_labels)
+        if not new_indices:
             return
 
-        min_index = min(self_object_indices)
-        new_min_index = max(input_object_indices) + 1
-        offset = new_min_index - min_index
+        offset = max(self_indices) + 1 - min(new_indices)
 
-        # reindex
-        for frame_number in self:
-            for obj in self[frame_number].objects:
-                index = getattr(obj, variable_name)
-                if index is not None:
-                    setattr(obj, variable_name, index + offset)
+        for frame_labels in video_labels.iter_frames():
+            for obj in frame_labels.objects:
+                if obj.index is not None:
+                    obj.index += offset
+
+    @staticmethod
+    def _get_object_indices(video_labels):
+        obj_indices = set()
+        for frame_labels in video_labels.iter_frames():
+            for obj in frame_labels.objects:
+                if obj.index is not None:
+                    obj_indices.add(obj.index)
+
+        return obj_indices
 
     @classmethod
     def from_detected_objects(cls, objects):
