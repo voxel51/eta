@@ -3557,33 +3557,21 @@ class FrameRanges(Serializable):
         '''Creates a FrameRanges instance.
 
         Args:
-            ranges: an optional iterable of (first, last) tuples, which must be
-                disjoint and monotonically increasing. By default, an empty
+            ranges: can either be a human-readable frames string like
+                "1-3,6,8-10" or an iterable of (first, last) tuples, which must
+                be disjoint and monotonically increasing. By default, an empty
                 instance is created
-
-        Raises:
-            FrameRangesError: if the series is not disjoint and monotonically
-                increasing
         '''
-        self.ranges = []
         self._ranges = []
         self._idx = 0
         self._started = False
 
         if ranges is not None:
+            if isinstance(ranges, six.string_types):
+                ranges = self._parse_frames_str(ranges)
+
             for new_range in ranges:
                 self._ingest_range(new_range)
-
-    def _ingest_range(self, new_range):
-        first, last = new_range
-        end = self.limits[1]
-
-        if end is not None and first <= end:
-            raise FrameRangesError(
-                "Expected first:%d > end:%d" % (first, end))
-
-        self.ranges.append((first, last))
-        self._ranges.append(FrameRange(first, last))
 
     def __len__(self):
         return sum(len(r) for r in self._ranges)
@@ -3606,6 +3594,26 @@ class FrameRanges(Serializable):
             raise StopIteration
 
         return frame
+
+    @staticmethod
+    def _parse_frames_str(frames_str):
+        ranges = []
+        for r in frames_str.split(","):
+            if r:
+                fr = FrameRange.from_human_str(r)
+                ranges.append((fr.first, fr.last))
+
+        return ranges
+
+    def _ingest_range(self, new_range):
+        first, last = new_range
+        end = self.limits[1]
+
+        if end is not None and first <= end:
+            raise FrameRangesError(
+                "Expected first:%d > end:%d" % (first, end))
+
+        self._ranges.append(FrameRange(first, last))
 
     @property
     def limits(self):
@@ -3632,6 +3640,13 @@ class FrameRanges(Serializable):
             return self._ranges[self._idx].frame
 
         return -1
+
+    @property
+    def ranges(self):
+        '''A serialized string representation of this object.'''
+        # This controls how `FrameRanges` instances are serialized
+        #return self.to_range_tuples()  # can be used if strings aren't liked
+        return self.to_human_str()
 
     @property
     def frame_range(self):
@@ -3676,7 +3691,6 @@ class FrameRanges(Serializable):
 
     def clear(self):
         '''Clears the FrameRanges instance.'''
-        self.ranges = []
         self._ranges = []
         self.reset()
 
@@ -3702,14 +3716,15 @@ class FrameRanges(Serializable):
             return
 
         did_something = False
-        last_range = list(self.ranges[0])
+        last_range = list(self._ranges[0].limits)
         new_ranges = [last_range]
-        for old_range in self.ranges[1:]:
-            if old_range[0] <= last_range[1] + 1:
+        for old_range in self._ranges[1:]:
+            ofirst, olast = old_range.limits
+            if ofirst <= last_range[1] + 1:
                 did_something = True
-                last_range[1] = old_range[1]
+                last_range[1] = olast
             else:
-                last_range = list(old_range)
+                last_range = [ofirst, olast]
                 new_ranges.append(last_range)
 
         if not did_something:
@@ -3719,6 +3734,23 @@ class FrameRanges(Serializable):
         self.clear()
         for new_range in new_ranges:
             self.add_range(new_range)
+
+    def attributes(self):
+        '''Returns the list of class attributes that will be serialized.
+
+        Returns:
+            a list of attributes
+        '''
+        return ["ranges"]
+
+    def to_range_tuples(self):
+        '''Returns the list of (first, last) tuples defining the frame ranges
+        in this instance.
+
+        Returns:
+            a list of (first, last) tuples
+        '''
+        return [r.limits for r in self._ranges]
 
     def to_list(self):
         '''Returns the list of frames, in sorted order, described by this
@@ -3767,13 +3799,7 @@ class FrameRanges(Serializable):
         Raises:
             FrameRangesError: if the frames string is invalid
         '''
-        ranges = []
-        for r in frames_str.split(","):
-            if r:
-                fr = FrameRange.from_human_str(r)
-                ranges.append((fr.first, fr.last))
-
-        return cls(ranges)
+        return cls(ranges=frames_str)
 
     @classmethod
     def from_iterable(cls, frames):
@@ -3790,7 +3816,19 @@ class FrameRanges(Serializable):
         Raises:
             FrameRangesError: if the frames list is invalid
         '''
-        return cls(_iterable_to_ranges(frames))
+        return cls(ranges=_iterable_to_ranges(frames))
+
+    @classmethod
+    def from_frame_range(cls, frame_range):
+        '''Constructs a FrameRanges instance from a FrameRange instance.
+
+        Args:
+            frame_range: a FrameRange instance
+
+        Returns:
+            a FrameRanges instance
+        '''
+        return cls(ranges=[(frame_range.first, frame_range.last)])
 
     @classmethod
     def from_dict(cls, d):
@@ -3802,11 +3840,7 @@ class FrameRanges(Serializable):
         Returns:
             a FrameRanges instance
         '''
-        ranges = []
-        for frd in d.get("ranges", []):
-            frame_range = FrameRange.from_dict(frd)
-            ranges.append(frame_range.limits)
-
+        ranges = d.get("ranges", None)
         return cls(ranges=ranges)
 
 
