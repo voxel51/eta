@@ -1099,6 +1099,30 @@ class BaseDataRecord(Serializable):
         return []
 
 
+class LabeledFileRecord(BaseDataRecord):
+    '''A simple DataRecord for a labeled file.
+
+    Attributes:
+        filename: the path to the file
+        label: the label of the file
+    '''
+
+    def __init__(self, filename, label):
+        '''Creates a new LabeledFileRecord instance.
+
+        Args:
+            filename: the path to the file
+            label: the label of the file
+        '''
+        self.filename = filename
+        self.label = label
+        super(LabeledFileRecord, self).__init__()
+
+    @classmethod
+    def required(cls):
+        return ["filename", "label"]
+
+
 class LabeledVideoRecord(BaseDataRecord):
     '''A simple, reusable DataRecord for a labeled video.
 
