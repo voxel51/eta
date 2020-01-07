@@ -55,6 +55,27 @@ class BoundingBox(Serializable):
             self.bottom_right == bbox.bottom_right
         )
 
+    @property
+    def top_right(self):
+        '''Returns a top right RelativePoint'''
+        return RelativePoint(self.bottom_right.x, self.top_left.y)
+
+    @property
+    def bottom_left(self):
+        '''Returns a bottom left RelativePoint'''
+        return RelativePoint(self.top_left.x, self.bottom_right.y)
+
+    @property
+    def corners(self):
+        '''Returns all four RelativePoint corners in clockwise order starting with
+        the top left corner.
+        
+        Returns:
+            a 4-tuple of RelativePoints
+        '''
+        return (
+            self.top_left, self.top_right, self.bottom_right, self.bottom_left)
+
     def coords_in(self, frame_size=None, shape=None, img=None):
         '''Returns the coordinates of the bounding box in the specified image.
 
