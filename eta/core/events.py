@@ -1,15 +1,6 @@
 '''
 Core data structures for working with events in videos.
 
-This module has two "layers" of events.
-1.  The "primitive" layer of events includes Event, EventSeries, and
-EventDetection.  These are basic ways of representing asemantic ranges of
-content.
-2.  The "semantic" layer of events, includes DetectedEvent and
-DetectedEventContainer.  These include capabilities of discontiguous events,
-multi-class/attribute-based events and capture metadata of an event.  These use
-the primitive layer's elements.
-
 Copyright 2017-2019 Voxel51, Inc.
 voxel51.com
 
