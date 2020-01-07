@@ -230,6 +230,22 @@ class BoundingBox(Serializable):
         '''
         return self.get_intersection(bbox) == bbox
 
+    def compute_overlap(self, bbox):
+        '''Computes the proportion of this bounding box that overlaps the given
+        bounding box.
+
+        Args:
+            bbox: a BoundingBox
+
+        Returns:
+            the overlap, in [0, 1]
+        '''
+        try:
+            inter_area = self.get_intersection(bbox).area()
+            return inter_area / self.area()
+        except ZeroDivisionError:
+            return 0.0
+
     def compute_iou(self, bbox):
         '''Computes the IoU (intersection over union) of the bounding boxes.
 
