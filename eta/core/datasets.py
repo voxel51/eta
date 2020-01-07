@@ -198,8 +198,17 @@ def _split_in_order(item_list, split_fractions):
     return sample_lists
 
 
-def _validate_split_fractions(split_fractions):
-    if split_fractions is None:
+def _validate_split_fractions(split_fractions=None):
+    '''Validate the `split_fractions` are non-negative and sum to one.
+
+    @todo Function currently assumes a two-class setting when generating a
+    split fraction if one does not exist.
+
+    @todo Improve Function Contract -- "validate" implies the function will
+    only check the inputted data, not generate one if none are given.
+    '''
+    # bool is used here to allow for both None and empty-list inputs
+    if not bool(split_fractions):
         split_fractions = [0.5, 0.5]
 
     negative = [frac for frac in split_fractions if frac < 0]
