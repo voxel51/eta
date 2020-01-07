@@ -2327,13 +2327,16 @@ def parse_frame_ranges(frames):
                 need to be in sorted order
 
     Returns:
-        a FrameRanges instance describing the frame ranges
+        a FrameRanges instance describing the frames
     '''
     if isinstance(frames, six.string_types):
         # Human-readable frames string
         frame_ranges = FrameRanges.from_human_str(frames)
-    elif isinstance(frames, (FrameRange, FrameRanges)):
-        # FrameRange or FrameRanges
+    elif isinstance(frames, FrameRange):
+        # FrameRange
+        frame_ranges = FrameRanges.from_frame_range(frames)
+    elif isinstance(frames, FrameRanges):
+        # FrameRanges
         frame_ranges = frames
     elif hasattr(frames, "__iter__"):
         # Frames iterable
