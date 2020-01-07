@@ -27,7 +27,6 @@ import logging
 import sys
 
 from eta.core.config import Config
-import eta.core.events as etae
 import eta.core.image as etai
 import eta.core.module as etam
 import eta.core.video as etav
@@ -49,26 +48,14 @@ class ClipConfig(etam.BaseModuleConfig):
         self.data = self.parse_object_array(d, "data", DataConfig)
         self.parameters = self.parse_object(d, "parameters", ParametersConfig)
 
-        self._validate()
-
-    def _validate(self):
-        for data in self.data:
-            Config.parse_mutually_exclusive_fields({
-                "event_detection_path": data.event_detection_path,
-                "event_series_path": data.event_series_path,
-                "frames": self.parameters.frames,
-            })
-
 
 class DataConfig(Config):
     '''Data configuration settings.
 
     Inputs:
         input_path (eta.core.types.Video): The input video
-        event_detection_path (eta.core.types.EventDetection): [None] Per-frame
-            binary labels defining the clips to generate
-        event_series_path (eta.core.types.EventSeries): [None] An EventSeries
-            specifying the clips to generate
+        frame_ranges_path (eta.core.types.FrameRanges): [None] A FrameRanges
+            instance specifying the clips to generate
 
     Outputs:
         output_video_clips_path (eta.core.types.VideoClips): [None] The output
@@ -81,10 +68,8 @@ class DataConfig(Config):
 
     def __init__(self, d):
         self.input_path = self.parse_string(d, "input_path")
-        self.event_detection_path = self.parse_string(
-            d, "event_detection_path", default=None)
-        self.event_series_path = self.parse_string(
-            d, "event_series_path", default=None)
+        self.frame_ranges_path = self.parse_string(
+            d, "frame_ranges_path", default=None)
         self.output_video_clips_path = self.parse_string(
             d, "output_video_clips_path", default=None)
         self.output_frames_dir = self.parse_string(
@@ -121,19 +106,10 @@ def _clip_videos(clip_config):
 
 
 def _get_frames(data, parameters):
-    if data.event_detection_path:
-        # Get frames from per-frame detections
-        detections = etae.EventDetection.from_json(data.event_detection_path)
-        frames = detections.to_series().to_str()
-    elif data.event_series_path:
-        # Get frames from clip series
-        series = etae.EventSeries.from_json(data.event_series_path)
-        frames = series.to_str()
-    else:
-        # Manually specified frames
-        frames = parameters.frames
+    if data.frame_ranges_path:
+        return etav.FrameRanges.from_json(data.frame_ranges_path)
 
-    return frames
+    return parameters.frames
 
 
 def _clip_video(data, frames):
