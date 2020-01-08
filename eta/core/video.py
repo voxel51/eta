@@ -562,9 +562,9 @@ class VideoLabels(Serializable):
         return self.get_frame(frame_number)
 
     def __setitem__(self, frame_number, frame_labels):
-        '''Sets the frame labels for the given frame.
+        '''Sets the VideoFrameLabels for the given frame.
 
-        Any existing labels for the frame are overwritten.
+        Any existing VideoFrameLabels for the frame are overwritten.
 
         Args:
             frame_number: the frame number
@@ -632,10 +632,7 @@ class VideoLabels(Serializable):
     @property
     def has_events(self):
         '''Whether the container has at least one Event.'''
-        if self.events:
-            return True
-
-        return False
+        return bool(self.events)
 
     @property
     def has_objects(self):
@@ -965,7 +962,7 @@ class VideoLabels(Serializable):
         self.set_schema(self.get_active_schema())
 
     def remove_schema(self):
-        '''Removes the enforced schema from the video, if any.'''
+        '''Removes the enforced schema from the video.'''
         self.schema = None
 
     def attributes(self):
