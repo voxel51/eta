@@ -1034,9 +1034,9 @@ class VideoLabels(Serializable):
         if not new_indices:
             return
 
-        offset = max(self_indices) + 1 - min(new_indices)
+        offset = max(new_indices) + 1 - min(self_indices)
 
-        for frame_labels in video_labels.iter_frames():
+        for frame_labels in self.iter_frames():
             for obj in frame_labels.objects:
                 if obj.index is not None:
                     obj.index += offset
