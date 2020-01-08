@@ -533,6 +533,25 @@ class VideoObjectDetector(Detector):
             return False
 
 
+class VideoEventDetector(Detector):
+    '''Configuration for an `eta.core.learning.VideoEventDetector`.
+
+    This type interface is implemented in ETA by the
+    `eta.core.learning.VideoEventDetectorConfig` class.
+    '''
+
+    @staticmethod
+    def is_valid_value(val):
+        try:
+            etal.VideoEventDetectorConfig(val)
+            return True
+        except Exception as e:
+            logger.error(
+                "An error occurred while parsing the VideoEventDetector value")
+            logger.error(e, exc_info=True)
+            return False
+
+
 ###### Data types #############################################################
 
 
@@ -987,25 +1006,13 @@ class VideoStreamInfo(JSONFile):
     pass
 
 
-class EventDetection(JSONFile):
-    '''A per-frame binary event detection.
+class FrameRanges(JSONFile):
+    '''A a monotonically increasing and disjoint series of frame ranges.
 
-    This type is implemented in ETA by the `eta.core.events.EventDetection`
-    class.
-
-    Examples:
-        /path/to/event_detection.json
-    '''
-    pass
-
-
-class EventSeries(JSONFile):
-    '''A series of events in a video.
-
-    This type is implemented in ETA by the `eta.core.events.EventSeries` class.
+    This type is implemented in ETA by the `eta.core.frames.FrameRanges` class.
 
     Examples:
-        /path/to/event_series.json
+        /path/to/frame_ranges.json
     '''
     pass
 
@@ -1177,6 +1184,30 @@ class DetectedObjectsSequence(JSONFileSequence):
 
     Examples:
         /path/to/detected_objects/%05d.json
+    '''
+    pass
+
+
+class Event(JSONFile):
+    '''An event in a video.
+
+    This type interface is implemented in ETA by the `eta.core.events.Event`
+    class.
+
+    Examples:
+        /path/to/event.json
+    '''
+    pass
+
+
+class Events(JSONFile):
+    '''A list of events in a video.
+
+    This type interface is implemented in ETA by the
+    `eta.core.events.EventContainer` class.
+
+    Examples:
+        /path/to/events.json
     '''
     pass
 
