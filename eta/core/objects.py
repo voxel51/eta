@@ -102,7 +102,7 @@ class DetectedObject(Serializable, HasBoundingBox):
         '''Adds the Attribute to the object.
 
         Args:
-            attr: and Attribute
+            attr: an Attribute
         '''
         self.attrs.add(attr)
 
