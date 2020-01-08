@@ -543,7 +543,11 @@ class AttributeContainer(Container):
             boolean indicating whether or not the container contains an
                 Attribute with the given name
         '''
-        return bool(self.get_attrs_with_name(name))
+        for attr in self:
+            if attr.name == name:
+                return True
+
+        return False
 
     def get_attrs_with_name(self, name):
         '''Get all attributes with a given name
@@ -556,11 +560,13 @@ class AttributeContainer(Container):
         '''
         return self.get_matches([lambda attr: attr.name == name])
 
-    def get_attr_with_name(self, name):
+    def get_attr_with_name(self, name, default=no_default):
         '''Get the single attribute with a given name
 
         Args:
             name: the Attribute name
+            default: the value to be returned if there is no Attribute with
+                the given name. By default, an error is raised in this case.
 
         Returns:
             the Attribute
@@ -570,6 +576,10 @@ class AttributeContainer(Container):
             `name`
         '''
         attrs = self.get_attrs_with_name(name)
+
+        if len(attrs) == 0 and default is not no_default:
+            return default
+
         if len(attrs) != 1:
             raise ValueError("Expected 1 attr with name '%s' but there are %d"
                              % (name, len(attrs)))
@@ -586,11 +596,13 @@ class AttributeContainer(Container):
         '''
         return [attr.value for attr in self.get_attrs_with_name(name)]
 
-    def get_attr_value_with_name(self, name):
+    def get_attr_value_with_name(self, name, default=no_default):
         '''Get the value of the single attribute with a given name
 
         Args:
             name: the Attribute name
+            default: the value to be returned if there is no Attribute with
+                the given name. By default, an error is raised in this case.
 
         Returns:
             the Attribute value
@@ -599,7 +611,14 @@ class AttributeContainer(Container):
             ValueError if there is not exactly one Attribute with the name
             `name`
         '''
-        return self.get_attr_with_name(name).value
+        values = self.get_attr_values_with_name(name)
+        if len(values) == 0 and default is not no_default:
+            return default
+
+        if len(values) != 1:
+            raise ValueError("Expected 1 attr with name '%s' but there are %d"
+                             % (name, len(values)))
+        return values[0]
 
     def attributes(self):
         '''Returns the list of class attributes that will be serialized.'''
