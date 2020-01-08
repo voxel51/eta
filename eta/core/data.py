@@ -531,6 +531,58 @@ class AttributeContainer(Container):
         '''Removes the enforced schema from the container.'''
         self.schema = None
 
+    def get_attrs_with_name(self, name):
+        '''Get a list of all attributes with a given name
+
+        Args:
+            name: the Attribute name
+        Returns:
+            a list of attributes with the given name
+        '''
+        return [attr for attr in self if attr.name == name]
+
+    def get_attr_with_name(self, name):
+        '''Get the single attribute with a given name
+
+        Args:
+            name: the Attribute name
+        Returns:
+            the Attribute
+        Raises:
+            ValueError if there is not exactly one Attribute with the name
+            `name`
+        '''
+        attrs = self.get_attrs_with_name(name)
+        if len(attrs) != 1:
+            raise ValueError("Expected 1 attr with name '%s' but there are %d"
+                             % (name, len(attrs)))
+        return attrs[0]
+
+    def get_attr_values_with_name(self, name):
+        '''Get a list of values for all attributes with a given name
+
+        Args:
+            name: the Attribute name
+        Returns:
+            a list of attributes values with the given name
+        '''
+        return [attr.value for attr in self.get_attrs_with_name(name)]
+
+    def get_attr_value_with_name(self, name):
+        '''Get the value of the single attribute with a given name
+
+        Args:
+            name: the Attribute name
+        Returns:
+            the Attribute value
+        Raises:
+            ValueError if there is not exactly one Attribute with the name
+            `name`
+        '''
+        return self.get_attr_with_name(name).value
+
+    def get_values(self, name):
+
     def attributes(self):
         '''Returns the list of class attributes that will be serialized.'''
         _attrs = []
