@@ -581,8 +581,6 @@ class AttributeContainer(Container):
         '''
         return self.get_attr_with_name(name).value
 
-    def get_values(self, name):
-
     def attributes(self):
         '''Returns the list of class attributes that will be serialized.'''
         _attrs = []
