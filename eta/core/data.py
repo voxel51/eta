@@ -538,9 +538,12 @@ class AttributeContainer(Container):
         Args:
             name: the Attribute name
         Returns:
-            a list of attributes with the given name
+            an AttributeContainer of attributes with the given name
         '''
-        return [attr for attr in self if attr.name == name]
+        kwargs = {
+            self._ELE_ATTR: [attr for attr in self if attr.name == name]
+        }
+        return self.__class__(**kwargs)
 
     def get_attr_with_name(self, name):
         '''Get the single attribute with a given name
