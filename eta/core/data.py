@@ -532,11 +532,25 @@ class AttributeContainer(Container):
         '''Removes the enforced schema from the container.'''
         self.schema = None
 
+    def has_attr_with_name(self, name):
+        '''Returns whether or not the container contains an Attribute with the
+        give name.
+
+        Args:
+            name: the Attribute name
+
+        Returns:
+            boolean indicating whether or not the container contains an
+                Attribute with the given name
+        '''
+        return bool(self.get_attrs_with_name(name))
+
     def get_attrs_with_name(self, name):
         '''Get a list of all attributes with a given name
 
         Args:
             name: the Attribute name
+
         Returns:
             a list of attributes with the given name
         '''
@@ -547,8 +561,10 @@ class AttributeContainer(Container):
 
         Args:
             name: the Attribute name
+
         Returns:
             the Attribute
+
         Raises:
             ValueError if there is not exactly one Attribute with the name
             `name`
@@ -564,6 +580,7 @@ class AttributeContainer(Container):
 
         Args:
             name: the Attribute name
+
         Returns:
             a list of attributes values with the given name
         '''
@@ -574,8 +591,10 @@ class AttributeContainer(Container):
 
         Args:
             name: the Attribute name
+
         Returns:
             the Attribute value
+
         Raises:
             ValueError if there is not exactly one Attribute with the name
             `name`
