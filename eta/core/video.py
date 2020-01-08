@@ -41,10 +41,10 @@ import dateutil.parser
 import numpy as np
 
 from eta.core.data import AttributeContainer, AttributeContainerSchema
+from eta.core.events import EventContainer
 import eta.core.frames as etaf
 import eta.core.gps as etag
 import eta.core.image as etai
-from eta.core.events import EventContainer
 from eta.core.objects import DetectedObjectContainer
 from eta.core.serial import load_json, Serializable, Set, BigSet
 import eta.core.utils as etau
