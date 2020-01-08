@@ -249,14 +249,13 @@ class DetectedObjectContainer(Container):
         '''Filters the objects from this container that do not have attributes.
 
         Args:
-            labels: an optional list of DetectedObject label strings to which
-                to restrict attention when filtering. By default, all objects
-                are processed
+            labels: an optional list of object `label` strings to which to
+                restrict attention when filtering. By default, all objects are
+                processed
         '''
         filter_func = lambda obj: (
             (labels is not None and obj.label not in labels)
-            or obj.has_attributes
-        )
+            or obj.has_attributes)
         self.filter_elements([filter_func])
 
 

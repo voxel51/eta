@@ -209,12 +209,11 @@ class EventContainer(Container):
         '''Filters the events from this container that do not have attributes.
 
         Args:
-            labels: an optional list of Event label strings to which
-                to restrict attention when filtering. By default, all event
-                are processed
+            labels: an optional list of event `label` strings to which to
+                restrict attention when filtering. By default, all event are
+                processed
         '''
         filter_func = lambda event: (
             (labels is not None and event.label not in labels)
-            or event.has_attributes
-        )
+            or event.has_attributes)
         self.filter_elements([filter_func])
