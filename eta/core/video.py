@@ -221,7 +221,10 @@ class VideoMetadata(Serializable):
             the timestamp (in seconds) in the video
         '''
         if world_time is not None:
-            return etaf.timestamp_to_frame_number(world_time, self.start_time)
+            timestamp = etaf.world_time_to_timestamp(
+                world_time, self.start_time)
+            return etaf.timestamp_to_frame_number(
+                timestamp, self.duration, self.total_frame_count)
 
         return etaf.frame_number_to_timestamp(
             frame_number, self.total_frame_count, self.duration)
