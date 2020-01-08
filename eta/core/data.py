@@ -543,7 +543,11 @@ class AttributeContainer(Container):
             boolean indicating whether or not the container contains an
                 Attribute with the given name
         '''
-        return bool(self.get_attrs_with_name(name))
+        for attr in self:
+            if attr.name == name:
+                return True
+
+        return False
 
     def get_attrs_with_name(self, name):
         '''Get a list of all attributes with a given name
