@@ -547,8 +547,10 @@ class AttributeContainer(Container):
 
         Args:
             name: the Attribute name
+
         Returns:
             the Attribute
+
         Raises:
             ValueError if there is not exactly one Attribute with the name
             `name`
@@ -564,6 +566,7 @@ class AttributeContainer(Container):
 
         Args:
             name: the Attribute name
+
         Returns:
             a list of attributes values with the given name
         '''
@@ -574,8 +577,10 @@ class AttributeContainer(Container):
 
         Args:
             name: the Attribute name
+
         Returns:
             the Attribute value
+
         Raises:
             ValueError if there is not exactly one Attribute with the name
             `name`
