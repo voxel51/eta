@@ -1,0 +1,45 @@
+{
+    "info": {
+        "name": "apply_video_event_detector",
+        "type": "eta.core.types.Module",
+        "version": "0.1.0",
+        "description": "A module that uses an eta.core.learning.VideoEventDetector to detect events\nin a video",
+        "exe": "apply_video_event_detector.py"
+    },
+    "inputs": [
+        {
+            "name": "video_path",
+            "type": "eta.core.types.Video",
+            "description": "the input video",
+            "required": false
+        },
+        {
+            "name": "video_frames_dir",
+            "type": "eta.core.types.ImageSequenceDirectory",
+            "description": "a directory containing the frames of the video",
+            "required": false
+        },
+        {
+            "name": "input_labels_path",
+            "type": "eta.core.types.VideoLabels",
+            "description": "an optional input VideoLabels file to which to add the detections",
+            "required": false
+        }
+    ],
+    "outputs": [
+        {
+            "name": "output_labels_path",
+            "type": "eta.core.types.VideoLabels",
+            "description": "a VideoLabels file containing the detections",
+            "required": true
+        }
+    ],
+    "parameters": [
+        {
+            "name": "detector",
+            "type": "eta.core.types.VideoEventDetector",
+            "description": "an eta.core.learning.VideoEventDetectorConfig describing the VideoEventDetector to use",
+            "required": true
+        }
+    ]
+}

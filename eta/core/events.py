@@ -1,16 +1,11 @@
 '''
 Core data structures for working with events in videos.
 
-@todo generalize to allow frame ranges.
-
-@todo generalize to allow multi-class event detections/series.
-
-@todo add ability to store metadata inside an event
-
-Copyright 2017, Voxel51, Inc.
+Copyright 2017-2019, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
+Jason Corso, jason@voxel51.com
 '''
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
@@ -24,161 +19,201 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-import numpy as np
-
-from eta.core.config import Config, Configurable
-from eta.core.serial import Serializable
+from eta.core.data import AttributeContainer
+import eta.core.frames as etaf
+from eta.core.serial import Container, Serializable
 
 
 class Event(Serializable):
-    '''An event in a video.'''
+    '''An event in a video.
 
-    def __init__(self, start, stop):
-        '''Initializes an Event.'''
-        self.start = start
-        self.stop = stop
+    Attributes:
+        label: event label
+        frames: a FrameRanges instance describing the frames in the event
+        confidence: (optional) the detection confidence in [0, 1]
+        index: (optional) an index assigned to the event
+        score: (optional) a score assigned to the event
+        attrs: (optional) an AttributeContainer of attributes for the event
+            attributes of the event
+    '''
 
-    def to_str(self):
-        '''Converts the Event to a string.'''
-        return "%d-%d" % (self.start, self.stop)
-
-    @classmethod
-    def from_dict(cls, d):
-        '''Constructs an Event from a JSON dictionary.'''
-
-        return cls(d["start"], d["stop"])
-
-
-class EventSeries(Serializable):
-    '''A series of events in a video.'''
-
-    def __init__(self, events=None):
-        '''Initializes an EventSeries.
+    def __init__(
+            self, label, frames, confidence=None, index=None, score=None,
+            attrs=None):
+        '''Creates an Event instance.
 
         Args:
-            events: optional list of events in the video.
+            label: the event label
+            frames: a FrameRanges instance describing the frames in the event
+            confidence: (optional) the detection confidence in [0, 1]
+            index: (optional) an index assigned to the event
+            score: (optional) a score assigned to the event
+            attrs: (optional) an AttributeContainer of attributes for the event
         '''
-        self.events = events or []
+        self.label = label
+        self.frames = frames
+        self.confidence = confidence
+        self.index = index
+        self.score = score
+        self.attrs = attrs or AttributeContainer()
 
-    def add(self, event):
-        '''Adds an Event to the series.'''
-        self.events.append(event)
+    @property
+    def is_contiguous(self):
+        '''Whether the event is contiguous, i.e., whether it consists of a
+        single `FrameRange`.
 
-    def to_str(self):
-        '''Converts the EventSeries to a string.'''
-        return ",".join([e.to_str() for e in self.events])
-
-    @classmethod
-    def from_dict(cls, d):
-        '''Constructs an EventSeries from a JSON dictionary.'''
-        return cls(events=[Event.from_dict(de) for de in d["events"]])
-
-
-class EventDetection(Serializable):
-    '''A per-frame binary event detection.'''
-
-    def __init__(self, bools=None):
-        '''Constructs an EventDetection instance from a list of per-frame
-        detections.
-
-        Args:
-            bools: an optional list (or 1D numpy array) of per-frame
-                detections. The values can be any type convertable to boolean
-                via bool()
+        If you want to ensure that the event does not contain trivial adjacent
+        `FrameRange`s, then call `self.frames.simplify()` first.
         '''
-        if bools is None:
-            bools = []
-        self.bools = [bool(b) for b in list(bools)]
+        return self.frames.is_contiguous
 
-    def add(self, b):
-        '''Adds a detection to the series.'''
-        self.bools.append(bool(b))
+    @property
+    def has_attributes(self):
+        '''Whether the event has attributes.'''
+        return bool(self.attrs)
 
-    def serialize(self, reflective=False):
-        '''Serializes the EventDetection into a dictionary.
+    def clear_attributes(self):
+        '''Removes all attributes from the event.'''
+        self.attrs = AttributeContainer()
+
+    def add_attribute(self, attr):
+        '''Adds the Attribute to the event.
 
         Args:
-            reflective: whether to include reflective attributes when
-                serializing the object. By default, this is False
+            attr: an Attribute
+        '''
+        self.attrs.add(attr)
+
+    def add_attributes(self, attrs):
+        '''Adds the AttributeContainer of attributes to the event.
+
+        Args:
+            attrs: an AttributeContainer
+        '''
+        self.attrs.add_container(attrs)
+
+    def attributes(self):
+        '''Returns the list of attributes to serialize.
 
         Returns:
-            a JSON dictionary representation of the object
+            a list of attrinutes
         '''
-        d = self._prepare_serial_dict(reflective)
-        for idx, b in enumerate(self.bools, 1):
-            d["%d" % idx] = b
-        return d
+        _attrs = ["label", "frames"]
+        _optional_attrs = ["confidence", "index", "score"]
+        _attrs.extend(
+            [a for a in _optional_attrs if getattr(self, a) is not None])
+        if self.attrs:
+            _attrs.append("attrs")
+        return _attrs
 
-    def to_series(self):
-        '''Converts the EventDetection into an EventSeries.'''
-        events = EventSeries()
-        start = None
-        in_event = False
-        for idx, b in enumerate(self.bools, 1):
-            if in_event:
-                if not b:
-                    events.add(Event(start, idx - 1))
-                    in_event = False
-            elif b:
-                start = idx
-                in_event = True
-        if in_event:
-            events.add(Event(start, len(self.bools)))
-        return events
+    @staticmethod
+    def build_simple(first, last, label, confidence=None, index=None):
+        '''Creates a simple contiguous `Event`.
+
+        Args:
+            first: the first frame of the event
+            last: the last frame of the event
+            label: the event label
+            confidence: (optional) confidence in [0, 1]
+            index: (optional) index for the event
+
+        Returns:
+             an Event
+        '''
+        frames = etaf.FrameRanges.build_simple(first, last)
+        return Event(label, frames, confidence=confidence, index=index)
 
     @classmethod
     def from_dict(cls, d):
-        '''Constructs a EventDetection from a JSON dictionary.'''
-        return cls(bools=[bool(d[k]) for k in sorted(d.keys(), key=int)])
+        '''Constructs an Event from a JSON dictionary.
+
+        Args:
+            d: a JSON dictionary
+
+        Returns:
+            an Event
+        '''
+        attrs = d.get("attrs", None)
+        if attrs is not None:
+            attrs = AttributeContainer.from_dict(attrs)
+
+        return cls(
+            d["label"],
+            etaf.FrameRanges.from_dict(d["frames"]),
+            confidence=d.get("confidence", None),
+            index=d.get("index", None),
+            score=d.get("score", None),
+            attrs=attrs,
+        )
 
 
-class FilterConfig(Config):
-    '''Detection filter configuration settings.'''
+class EventContainer(Container):
+    '''Base class for containers that store lists of `Event`s.'''
 
-    def __init__(self, d):
-        self.type = self.parse_string(d, "type")
-        self._filter_cls, _config_cls = Configurable.parse(self.type)
-        self.config = self.parse_object(d, "config", _config_cls)
+    _ELE_CLS = Event
+    _ELE_CLS_FIELD = "_EVENT_CLS"
+    _ELE_ATTR = "events"
 
-    def build(self):
-        return self._filter_cls(self.config)
+    def get_labels(self):
+        '''Returns a set containing the labels of the `Event`s.
 
+        Returns:
+            a set of labels
+        '''
+        return set(event.label for event in self)
 
-class Filter(Configurable):
-    '''Interface for detection filters.'''
+    def sort_by_confidence(self, reverse=False):
+        '''Sorts the `Event`s by confidence.
 
-    def apply(self, detection):
-        raise NotImplementedError("subclass must implement apply()")
+        `Event`s whose confidence is None are always put last.
 
+        Args:
+            reverse: whether to sort in descending order. The default is False
+        '''
+        self.sort_by("confidence", reverse=reverse)
 
-class HysteresisFilterConfig(Config):
-    '''Configuration settings for a HysteresisFilter.'''
+    def sort_by_index(self, reverse=False):
+        '''Sorts the `Event`s by index.
 
-    def __init__(self, d):
-        self.start_window = int(self.parse_number(d, "start_window"))
-        self.start_density = float(self.parse_number(d, "start_density"))
-        self.stop_window = int(self.parse_number(d, "stop_window"))
-        self.stop_density = float(self.parse_number(d, "stop_density"))
+        `Event`s whose index is None are always put last.
 
+        Args:
+            reverse: whether to sort in descending order. The default is False
+        '''
+        self.sort_by("index", reverse=reverse)
 
-class HysteresisFilter(Filter):
-    '''A simple hysteresis filter.'''
+    def sort_by_score(self, reverse=False):
+        '''Sorts the `Event`s by score.
 
-    def __init__(self, config):
-        self.validate(config)
-        self.config = config
+        `Event`s whose score is None are always put last.
 
-    def apply(self, detection):
-        '''Filters the EventDetection.'''
-        vals = np.array(detection.bools, dtype=float)
-        filt = np.zeros_like(vals, dtype=bool)
-        in_event = False
-        for idx in range(len(vals)):
-            if in_event:
-                vi = vals[idx:(idx + self.config.stop_window)]
-                in_event = (vi.mean() >= self.config.stop_density)
-            else:
-                vi = vals[idx:(idx + self.config.start_window)]
-                in_event = (vi.mean() >= self.config.start_density)
-            filt[idx] = in_event
-        return EventDetection(bools=filt)
+        Args:
+            reverse: whether to sort in descending order. The default is False
+        '''
+        self.sort_by("score", reverse=reverse)
+
+    def filter_by_schema(self, schema):
+        '''Filters the events/attributes from this container that are not
+        compliant with the given schema.
+
+        Args:
+            schema: a VideoLabelsSchema
+        '''
+        filter_func = lambda event: event.label in schema.events
+        self.filter_elements([filter_func])
+        for event in self:
+            if event.has_attributes:
+                event.attrs.filter_by_schema(schema.events[event.label])
+
+    def remove_events_without_attrs(self, labels=None):
+        '''Filters the events from this container that do not have attributes.
+
+        Args:
+            labels: an optional list of event `label` strings to which to
+                restrict attention when filtering. By default, all event are
+                processed
+        '''
+        filter_func = lambda event: (
+            (labels is not None and event.label not in labels)
+            or event.has_attributes)
+        self.filter_elements([filter_func])
