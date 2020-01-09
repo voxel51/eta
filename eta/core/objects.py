@@ -685,9 +685,9 @@ class ObjectContainerSchema(Serializable):
             obj: an Object or DetectedObject
         '''
         if isinstance(obj, Object):
-            self._validate_object(obj, allow_none_label)
+            self._add_object(obj)
         else:
-            self._validate_detected_object(obj, allow_none_label)
+            self._add_detected_object(obj)
 
     def add_objects(self, objects):
         '''Adds the ObjectContainer or DetectedObjectContainer to the schema.
@@ -840,7 +840,8 @@ class ObjectContainerSchema(Serializable):
         schema = d.get("schema", None)
         if schema is not None:
             schema = {
-                k: AttributeSchema.from_dict(v) for k, v in iteritems(schema)
+                k: AttributeContainerSchema.from_dict(v)
+                for k, v in iteritems(schema)
             }
         return cls(schema=schema)
 
@@ -855,7 +856,7 @@ class ObjectContainerSchema(Serializable):
 
     def _add_object(self, obj):
         # Add label
-        self.schema.add_object_label(obj.label)
+        self.add_object_label(obj.label)
 
         # Add attributes
         self.add_object_attributes(obj.label, obj.attrs)
