@@ -958,10 +958,12 @@ class VideoLabelsSchema(Serializable):
         '''
         self.attrs = attrs or AttributeContainerSchema()
         self.frames = frames or AttributeContainerSchema()
-        self.objects = defaultdict(lambda: AttributeContainerSchema())
+
+        self.objects = defaultdict(AttributeContainerSchema)
         if objects is not None:
             self.objects.update(objects)
-        self.events = defaultdict(lambda: AttributeContainerSchema())
+
+        self.events = defaultdict(AttributeContainerSchema)
         if events is not None:
             self.events.update(events)
 
