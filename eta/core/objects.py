@@ -19,7 +19,9 @@ from future.utils import iteritems, itervalues
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-from eta.core.data import AttributeContainer
+from collections import defaultdict
+
+from eta.core.data import AttributeContainer, AttributeContainerSchema
 from eta.core.frames import FrameRanges
 from eta.core.geometry import BoundingBox, HasBoundingBox
 from eta.core.serial import Container, Serializable, deserialize_numpy_array
@@ -583,6 +585,308 @@ class ObjectContainer(Container):
             (labels is not None and obj.label not in labels)
             or obj.has_attributes)
         self.filter_elements([filter_func])
+
+
+class ObjectContainerSchema(Serializable):
+    '''A schema for `ObjectContainer`s and `DetectedObjectContainer`s.'''
+
+    def __init__(self, schema=None):
+        '''Creates an ObjectContainerSchema instance.
+
+        Args:
+            schema: a dictionary mapping object labels to
+                AttributeContainerSchema instances. By default, an empty schema
+                is created
+        '''
+        self.schema = defaultdict(AttributeContainerSchema)
+        if schema is not None:
+            self.schema.update(schema)
+
+    def has_object_label(self, label):
+        '''Whether the schema has an object with the given label.
+
+        Args:
+            label: the object label
+
+        Returns:
+            True/False
+        '''
+        return label in self.schema
+
+    def has_object_attribute(self, label, obj_attr_name):
+        '''Whether the schema has an object with the given label with an
+        attribute of the given name.
+
+        Args:
+            label: the object label
+            obj_attr_name: the name of the object attribute
+
+        Returns:
+            True/False
+        '''
+        if not self.has_object_label(label):
+            return False
+
+        return self.schema[label].has_attribute(obj_attr_name)
+
+    def get_object_attribute_class(self, label, obj_attr_name):
+        '''Gets the `Attribute` class for the attribute of the given name for
+        the object with the given label.
+
+        Args:
+            label: the object label
+            obj_attr_name: the name of the object attribute
+
+        Returns:
+            the Attribute subclass
+        '''
+        self.validate_object_label(label)
+        return self.schema[label].get_attribute_class(obj_attr_name)
+
+    def add_object_label(self, label):
+        '''Adds the given object label to the schema.
+
+        ArgsL:
+            label: an object label
+        '''
+        self.schema[label]  # adds key to defaultdict #pylint: disable=W0104
+
+    def add_object_attribute(self, label, obj_attr):
+        '''Adds the Attribute for the object with the given label to the
+        schema.
+
+        Args:
+            label: an object label
+            obj_attr: an Attribute
+        '''
+        self.schema[label].add_attribute(obj_attr)
+
+    def add_object_attributes(self, label, obj_attrs):
+        '''Adds the AttributeContainer for the object with the given label to
+        the schema.
+
+        Args:
+            label: an object label
+            obj_attrs: an AttributeContainer
+        '''
+        self.schema[label].add_attributes(obj_attrs)
+
+    def add_object(self, obj):
+        '''Adds the Object or DetectedObject to the schema.
+
+        Args:
+            obj: an Object or DetectedObject
+        '''
+        if isinstance(obj, Object):
+            self._validate_object(obj, allow_none_label)
+        else:
+            self._validate_detected_object(obj, allow_none_label)
+
+    def add_objects(self, objects):
+        '''Adds the ObjectContainer or DetectedObjectContainer to the schema.
+
+        Args:
+            objects: an ObjectContainer or DetectedObjectContainer
+        '''
+        for obj in objects:
+            self.add_object(obj)
+
+    def merge_schema(self, schema):
+        '''Merges the given ObjectContainerSchema into this schema.
+
+        Args:
+            schema: an ObjectContainerSchema
+        '''
+        for k, v in iteritems(schema.schema):
+            self.schema[k].merge_schema(v)
+
+    def is_valid_object_label(self, label):
+        '''Whether the object label is compliant with the schema.
+
+        Args:
+            label: an object label
+
+        Returns:
+            True/False
+        '''
+        try:
+            self.validate_object_label(label)
+            return True
+        except:
+            return False
+
+    def is_valid_object_attribute(self, label, obj_attr):
+        '''Whether the object attribute for the object with the given label is
+        compliant with the schema.
+
+        Args:
+            label: an object label
+            obj_attr: an Attribute
+
+        Returns:
+            True/False
+        '''
+        try:
+            self.validate_object_attribute(label, obj_attr)
+            return True
+        except:
+            return False
+
+    def is_valid_object(self, obj):
+        '''Whether the `Object` or `DetectedObject` is compliant with the
+        schema.
+
+        Args:
+            obj: an Object or DetectedObject
+
+        Returns:
+            True/False
+        '''
+        try:
+            self.validate_object(obj)
+            return True
+        except:
+            return False
+
+    def validate_object_label(self, label, allow_none_label=False):
+        '''Validates that the object label is compliant with the schema.
+
+        Args:
+            label: an object label
+            allow_none: whether to allow `label == None`. By default, this is
+                False
+
+        Raises:
+            ObjectContainerSchemaError: if the object label violates the schema
+        '''
+        if label is None and not allow_none_label:
+            raise ObjectContainerSchemaError(
+                "None object label is not allowed by the schema")
+
+        if label not in self.schema:
+            raise ObjectContainerSchemaError(
+                "Object label '%s' is not allowed by the schema" % label)
+
+    def validate_object_attribute(self, label, obj_attr):
+        '''Validates that the object attribute for the given label is compliant
+        with the schema.
+
+        Args:
+            label: an object label
+            obj_attr: an Attribute
+
+        Raises:
+            ObjectContainerSchemaError: if the object label violates the schema
+            AttributeContainerSchemaError: if the object attribute violates
+                the schema
+        '''
+        self.validate_object_label(label)
+        self.schema[label].validate_attribute(obj_attr)
+
+    def validate_object(self, obj, allow_none_label=False):
+        '''Validates that the `Object` or `DetectedObject` is compliant with
+        the schema.
+
+        Args:
+            obj: an Object or DetectedObject
+            allow_none: whether to allow `label == None`. By default, this is
+                False. Objects with a top-level label are always allowed to
+                have detections with no label set
+
+        Raises:
+            ObjectContainerSchemaError: if the object's label violates the
+                schema
+            AttributeContainerSchemaError: if any attributes of the object
+                violate the schema
+        '''
+        if isinstance(obj, Object):
+            self._validate_object(obj, allow_none_label)
+        else:
+            self._validate_detected_object(obj, allow_none_label)
+
+    @classmethod
+    def build_active_schema(cls, objects):
+        '''Builds an ObjectContainerSchemaError that describes the active
+        schema of the objects.
+
+        Args:
+            objects: an ObjectContainer or DetectedObjectContainer
+
+        Returns:
+            an ObjectContainerSchemaError describing the active schema of the
+                objects
+        '''
+        schema = cls()
+        schema.add_objects(objects)
+        return schema
+
+    @classmethod
+    def from_dict(cls, d):
+        '''Constructs an ObjectContainerSchemaError from a JSON dictionary.
+
+        Args:
+            d: a JSON dictionary
+
+        Returns:
+            an ObjectContainerSchema
+        '''
+        schema = d.get("schema", None)
+        if schema is not None:
+            schema = {
+                k: AttributeSchema.from_dict(v) for k, v in iteritems(schema)
+            }
+        return cls(schema=schema)
+
+    def _add_detected_object(self, dobj, label=None):
+        # Add label
+        if dobj.label is not None:
+            label = dobj.label
+            self.add_object_label(dobj.label)
+
+        # Add attributes
+        self.add_object_attributes(label, dobj.attrs)
+
+    def _add_object(self, obj):
+        # Add label
+        self.schema.add_object_label(obj.label)
+
+        # Add attributes
+        self.add_object_attributes(obj.label, obj.attrs)
+
+        # Add DetectedObjects
+        for dobj in obj.iter_detections():
+            self._add_detected_object(dobj, label=obj.label)
+
+    def _validate_detected_object(self, dobj, allow_none_label):
+        # Validate label
+        self.validate_object_label(
+            dobj.label, allow_none_label=allow_none_label)
+
+        # Validate attributes
+        for obj_attr in dobj.attrs:
+            self.validate_object_attribute(dobj.label, obj_attr)
+
+    def _validate_object(self, obj, allow_none_label):
+        # Validate label
+        self.validate_object_label(
+            obj.label, allow_none_label=allow_none_label)
+
+        # Validate attributes
+        for obj_attr in obj.attrs:
+            self.validate_object_attribute(obj.label, obj_attr)
+
+        # If the `Object` has a top-level `label`, its okay for the
+        # `DetectedObject`s to have no `label`
+        allow_none_label |= obj.label is not None
+
+        # Validate DetectedObjects
+        for dobj in obj.iter_detections():
+            self._validate_detected_object(dobj, allow_none_label)
+
+
+class ObjectContainerSchemaError(Exception):
+    '''Error raised when an ObjectContainerSchema is violated.'''
+    pass
 
 
 class ObjectCount(Serializable):
