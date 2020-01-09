@@ -931,8 +931,8 @@ class VideoLabelsSchema(Serializable):
     '''A schema for a VideoLabels instance.
 
     Attributes:
-        attrs: an AttributeContainerSchema describing the video attributes of
-            the video
+        attrs: an AttributeContainerSchema describing the video-level
+            attributes of the video
         frames: an AttributeContainerSchema describing the frame attributes
                 of the video
         objects: a dictionary mapping object labels to AttributeContainerSchema
@@ -945,8 +945,8 @@ class VideoLabelsSchema(Serializable):
         '''Creates a VideoLabelsSchema instance.
 
         Args:
-            attrs: an AttributeContainerSchema describing the video attributes
-                of the video
+            attrs: an AttributeContainerSchema describing the video-level
+                attributes of the video
             frames: an AttributeContainerSchema describing the frame attributes
                 of the video
             objects: a dictionary mapping object labels to
@@ -966,10 +966,10 @@ class VideoLabelsSchema(Serializable):
             self.events.update(events)
 
     def has_video_attribute(self, video_attr_name):
-        '''Whether the schema has a video attribute with the given name.
+        '''Whether the schema has a video-level attribute with the given name.
 
         Args:
-            video_attr_name: the name of the video attribute
+            video_attr_name: the name of the video-level attribute
 
         Returns:
             True/False
@@ -977,11 +977,11 @@ class VideoLabelsSchema(Serializable):
         return self.attrs.has_attribute(video_attr_name)
 
     def get_video_attribute_class(self, video_attr_name):
-        '''Gets the Attribute class for the video attribute with the given
-        name.
+        '''Gets the Attribute class for the video-level attribute with the
+        given name.
 
         Args:
-            video_attr_name: the name of the video attribute
+            video_attr_name: the name of the video-level attribute
 
         Returns:
             an Attribute subclass
@@ -1092,7 +1092,7 @@ class VideoLabelsSchema(Serializable):
         return self.events[label].get_attribute_class(event_attr_name)
 
     def add_video_attribute(self, video_attr):
-        '''Adds the given video attribute to the schema.
+        '''Adds the given video-level attribute to the schema.
 
         Args:
             video_attr: an Attribute
@@ -1100,7 +1100,7 @@ class VideoLabelsSchema(Serializable):
         self.attrs.add_attribute(video_attr)
 
     def add_video_attributes(self, video_attrs):
-        '''Adds the given video attributes to the schema.
+        '''Adds the given video-level attributes to the schema.
 
         Args:
             video_attrs: an AttributeContainer
@@ -1190,7 +1190,7 @@ class VideoLabelsSchema(Serializable):
             self.objects[k].merge_schema(v)
 
     def is_valid_video_attribute(self, video_attr):
-        '''Whether the video attribute is compliant with the schema.
+        '''Whether the video-level attribute is compliant with the schema.
 
         Args:
             video_attr: an Attribute
@@ -1314,7 +1314,8 @@ class VideoLabelsSchema(Serializable):
             return False
 
     def validate_video_attribute(self, video_attr):
-        '''Validates that the video attribute is compliant with the schema.
+        '''Validates that the video-level attribute is compliant with the
+        schema.
 
         Args:
             video_attr: an Attribute
@@ -1585,7 +1586,7 @@ class VideoSetLabels(Set):
 
     @property
     def has_schema(self):
-        '''Whether the container has an enforced schema.'''
+        '''Whether the video set has an enforced schema.'''
         return self.schema is not None
 
     def empty(self):
