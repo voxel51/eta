@@ -129,6 +129,21 @@ class ImageLabels(Serializable):
         self.attrs = attrs or AttributeContainer()
         self.objects = objects or DetectedObjectContainer()
 
+    @property
+    def has_image_attributes(self):
+        '''Whether the image has at least one image attribute.'''
+        return bool(self.attrs)
+
+    @property
+    def has_objects(self):
+        '''Whether the image has at least one DetectedObject.'''
+        return bool(self.objects)
+
+    @property
+    def is_empty(self):
+        '''Whether the image has no labels of any kind.'''
+        return not self.has_image_attributes and not self.has_objects
+
     def add_image_attribute(self, attr):
         '''Adds the attribute to the image.
 
@@ -161,8 +176,13 @@ class ImageLabels(Serializable):
         '''
         self.objects.add_container(objs)
 
-    def clear_frame_attributes(self):
-        '''Removes all frame attributes from the instance.'''
+    def clear(self):
+        '''Removes all labels from the instance.'''
+        self.clear_image_attributes()
+        self.clear_objects()
+
+    def clear_image_attributes(self):
+        '''Removes all image attributes from the instance.'''
         self.attrs = AttributeContainer()
 
     def clear_objects(self):
@@ -198,21 +218,6 @@ class ImageLabels(Serializable):
                 are processed
         '''
         self.objects.remove_objects_without_attrs(labels=labels)
-
-    @property
-    def has_attributes(self):
-        '''Whether the container has at least one attribute.'''
-        return bool(self.attrs)
-
-    @property
-    def has_objects(self):
-        '''Whether the container has at least one object.'''
-        return bool(self.objects)
-
-    @property
-    def is_empty(self):
-        '''Whether the container has no labels of any kind.'''
-        return not self.has_attributes and not self.has_objects
 
     def attributes(self):
         '''Returns the list of class attributes that will be serialized.
