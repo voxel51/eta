@@ -14,23 +14,31 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
+from future.utils import iteritems, itervalues
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
 from eta.core.data import AttributeContainer
+from eta.core.frames import FrameRanges
 from eta.core.geometry import BoundingBox, HasBoundingBox
 from eta.core.serial import Container, Serializable, deserialize_numpy_array
 
 
 class DetectedObject(Serializable, HasBoundingBox):
-    '''A detected object in an image.
+    '''A detected object in an image or frame of a video.
+
+    `DetectedObject`s are spatial concepts that describe information about an
+    object in a particular image or a particular frame of a video.
+    `DetectedObject`s can have labels with confidences, bounding boxes,
+    instance masks, and one or more additional attributes describing their
+    properties.
 
     Attributes:
-        label: object label
-        bounding_box: a BoundingBox around the object
+        label: (optional) object label
+        bounding_box: (optional) a BoundingBox around the object
         mask: (optional) a mask for the object within its bounding box
-        confidence: (optional) the detection confidence, in [0, 1]
+        confidence: (optional) the label confidence, in [0, 1]
         top_k_probs: (optional) dictionary mapping labels to probabilities
         index: (optional) an index assigned to the object
         score: (optional) a multipurpose score for the object
@@ -45,18 +53,18 @@ class DetectedObject(Serializable, HasBoundingBox):
     '''
 
     def __init__(
-            self, label, bounding_box, mask=None, confidence=None,
+            self, label=None, bounding_box=None, mask=None, confidence=None,
             top_k_probs=None, index=None, score=None, frame_number=None,
             index_in_frame=None, eval_type=None, event_indices=None,
             attrs=None):
         '''Creates a DetectedObject instance.
 
         Args:
-            label: object label string
-            bounding_box: a BoundingBox around the object
+            label: (optional) object label
+            bounding_box: (optional) a BoundingBox around the object
             mask: (optional) a numpy array describing the mask for the object
                 within its bounding box
-            confidence: (optional) the detection confidence, in [0, 1]
+            confidence: (optional) the label confidence, in [0, 1]
             top_k_probs: (optional) dictionary mapping labels to probabilities
             index: (optional) an index assigned to the object
             score: (optional) an optional score for the object
@@ -128,13 +136,13 @@ class DetectedObject(Serializable, HasBoundingBox):
         Returns:
             a list of attribute names
         '''
-        _attrs = ["label", "bounding_box"]
+        _attrs = []
 
-        _optional_attrs = [
-            "mask", "confidence", "top_k_probs", "index", "score",
-            "frame_number", "index_in_frame", "eval_type"]
+        _noneable_attrs = [
+            "label", "bounding_box", "mask", "confidence", "top_k_probs",
+            "index", "score", "frame_number", "index_in_frame", "eval_type"]
         _attrs.extend(
-            [a for a in _optional_attrs if getattr(self, a) is not None])
+            [a for a in _noneable_attrs if getattr(self, a) is not None])
 
         if self.event_indices:
             _attrs.append("event_indices")
@@ -153,17 +161,21 @@ class DetectedObject(Serializable, HasBoundingBox):
         Returns:
             a DetectedObject
         '''
-        attrs = d.get("attrs", None)
-        if attrs is not None:
-            attrs = AttributeContainer.from_dict(attrs)
+        bounding_box = d.get("bounding_box", None)
+        if bounding_box is not None:
+            bounding_box = BoundingBox.from_dict(bounding_box)
 
         mask = d.get("mask", None)
         if mask is not None:
             mask = deserialize_numpy_array(mask)
 
+        attrs = d.get("attrs", None)
+        if attrs is not None:
+            attrs = AttributeContainer.from_dict(attrs)
+
         return cls(
-            d["label"],
-            BoundingBox.from_dict(d["bounding_box"]),
+            label=d.get("label", None),
+            bounding_box=bounding_box,
             mask=mask,
             confidence=d.get("confidence", None),
             top_k_probs=d.get("top_k_probs", None),
@@ -178,7 +190,7 @@ class DetectedObject(Serializable, HasBoundingBox):
 
 
 class DetectedObjectContainer(Container):
-    '''Base class for containers that store lists of `DetectedObject`s.'''
+    '''A `Container` of `DetectedObjects`.'''
 
     _ELE_CLS = DetectedObject
     _ELE_CLS_FIELD = "_OBJ_CLS"
