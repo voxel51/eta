@@ -928,7 +928,7 @@ class VideoLabels(Serializable):
 
 
 class VideoLabelsSchema(Serializable):
-    '''A schema for a VideoLabels instance.
+    '''Schema for `VideoLabels`.
 
     Attributes:
         attrs: an AttributeContainerSchema describing the video-level
@@ -977,7 +977,7 @@ class VideoLabelsSchema(Serializable):
         return self.attrs.has_attribute(video_attr_name)
 
     def get_video_attribute_class(self, video_attr_name):
-        '''Gets the Attribute class for the video-level attribute with the
+        '''Gets the `Attribute` class for the video-level attribute with the
         given name.
 
         Args:
@@ -1000,7 +1000,7 @@ class VideoLabelsSchema(Serializable):
         return self.frames.has_attribute(frame_attr_name)
 
     def get_frame_attribute_class(self, frame_attr_name):
-        '''Gets the Attribute class for the frame attribute with the given
+        '''Gets the `Attribute` class for the frame attribute with the given
         name.
 
         Args:
@@ -1035,10 +1035,11 @@ class VideoLabelsSchema(Serializable):
         '''
         if not self.has_object_label(label):
             return False
+
         return self.objects[label].has_attribute(obj_attr_name)
 
     def get_object_attribute_class(self, label, obj_attr_name):
-        '''Gets the Attribute class for the attribute of the given name for
+        '''Gets the `Attribute` class for the attribute of the given name for
         the object with the given label.
 
         Args:
