@@ -189,14 +189,14 @@ class ImageLabels(Serializable):
         '''Removes all objects from the instance.'''
         self.objects = DetectedObjectContainer()
 
-    def merge_labels(self, image_labels):
-        '''Merges the ImageLabels into this object.
+    def merge_labels(self, labels):
+        '''Merges the ImageLabels or FrameLabels into this object.
 
         Args:
-            image_labels: an ImageLabels instance
+            labels: an ImageLabels or FrameLabels instance
         '''
-        self.add_image_attributes(image_labels.attrs)
-        self.add_objects(image_labels.objects)
+        self.add_image_attributes(labels.attrs)
+        self.add_objects(labels.objects)
 
     def filter_by_schema(self, schema):
         '''Removes objects/attributes from this object that are not compliant
@@ -237,12 +237,11 @@ class ImageLabels(Serializable):
         return _attrs
 
     @classmethod
-    def from_video_frame_labels(
-            cls, video_frame_labels, filename=None, metadata=None):
-        '''Constructs an ImageLabels from a VideoFrameLabels.
+    def from_frame_labels(cls, frame_labels, filename=None, metadata=None):
+        '''Constructs an ImageLabels from a FrameLabels.
 
         Args:
-            video_frame_labels: a VideoFrameLabels instance
+            frame_labels: a FrameLabels instance
             filename: an optional filename for the image
             metadata: an optional ImageMetadata instance for the image
 
@@ -250,8 +249,8 @@ class ImageLabels(Serializable):
             an ImageLabels instance
         '''
         return cls(
-            filename=filename, metadata=metadata,
-            attrs=video_frame_labels.attrs, objects=video_frame_labels.objects)
+            filename=filename, metadata=metadata, attrs=frame_labels.attrs,
+            objects=frame_labels.objects)
 
     @classmethod
     def from_dict(cls, d):
