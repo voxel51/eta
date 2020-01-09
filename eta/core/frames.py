@@ -21,7 +21,173 @@ import six
 
 import numpy as np
 
+from eta.core.data import AttributeContainer
+from eta.core.objects import DetectedObjectContainer
 from eta.core.serial import Serializable
+
+
+class FrameLabels(Serializable):
+    '''Class encapsulating labels for a specific frame.
+
+    Attributes:
+        frame_number: frame number
+        attrs: AttributeContainer describing attributes of the frame
+        objects: DetectedObjectContainer describing detected objects in the
+            frame
+    '''
+
+    def __init__(self, frame_number, attrs=None, objects=None):
+        '''Constructs a FrameLabels instance.
+
+        Args:
+            frame_number: the frame number
+            attrs: (optional) AttributeContainer of attributes for the frame.
+                By default, an empty AttributeContainer is created
+            objects: (optional) DetectedObjectContainer of detected objects for
+                the frame. By default, an empty DetectedObjectContainer is
+                created
+        '''
+        self.frame_number = frame_number
+        self.attrs = attrs or AttributeContainer()
+        self.objects = objects or DetectedObjectContainer()
+
+    @property
+    def has_frame_attributes(self):
+        '''Whether the frame has at least one frame attribute.'''
+        return bool(self.attrs)
+
+    @property
+    def has_objects(self):
+        '''Whether the frame has at least one DetectedObject.'''
+        return bool(self.objects)
+
+    @property
+    def is_empty(self):
+        '''Whether the frame has no labels of any kind.'''
+        return not self.has_frame_attributes and not self.has_objects
+
+    def add_frame_attribute(self, frame_attr):
+        '''Adds the attribute to the frame.
+
+        Args:
+            frame_attr: an Attribute
+        '''
+        self.attrs.add(frame_attr)
+
+    def add_frame_attributes(self, frame_attrs):
+        '''Adds the attributes to the frame.
+
+        Args:
+            frame_attrs: an AttributeContainer
+        '''
+        self.attrs.add_container(frame_attrs)
+
+    def add_object(self, obj):
+        '''Adds the object to the frame.
+
+        Args:
+            obj: a DetectedObject
+        '''
+        self.objects.add(obj)
+
+    def add_objects(self, objs):
+        '''Adds the objects to the frame.
+
+        Args:
+            objs: a DetectedObjectContainer
+        '''
+        self.objects.add_container(objs)
+
+    def clear(self):
+        '''Removes all labels from the frame.'''
+        self.clear_frame_attributes()
+        self.clear_objects()
+
+    def clear_frame_attributes(self):
+        '''Removes all frame attributes from the frame.'''
+        self.attrs = AttributeContainer()
+
+    def clear_objects(self):
+        '''Removes all objects from the frame.'''
+        self.objects = DetectedObjectContainer()
+
+    def merge_frame_labels(self, frame_labels):
+        '''Merges the labels into the frame.
+
+        Args:
+            frame_labels: a FrameLabels
+        '''
+        self.add_frame_attributes(frame_labels.attrs)
+        self.add_objects(frame_labels.objects)
+
+    def filter_by_schema(self, schema):
+        '''Removes objects/attributes from this object that are not compliant
+        with the given schema.
+
+        Args:
+            schema: a VideoLabelsSchema
+        '''
+        self.attrs.filter_by_schema(schema.frames)
+        self.objects.filter_by_schema(schema)
+
+    def remove_objects_without_attrs(self, labels=None):
+        '''Removes `DetectedObject`s from the frame that do not have
+        attributes.
+
+        Args:
+            labels: an optional list of DetectedObject label strings to which
+                to restrict attention when filtering. By default, all objects
+                are processed
+        '''
+        self.objects.remove_objects_without_attrs(labels=labels)
+
+    def attributes(self):
+        '''Returns the list of class attributes that will be serialized.
+
+        Returns:
+            a list of attribute names
+        '''
+        _attrs = ["frame_number"]
+        if self.attrs:
+            _attrs.append("attrs")
+        if self.objects:
+            _attrs.append("objects")
+        return _attrs
+
+    @classmethod
+    def from_image_labels(cls, image_labels, frame_number):
+        '''Constructs a FrameLabels from an ImageLabels.
+
+        Args:
+            image_labels: an ImageLabels instance
+            frame_number: the frame number
+
+        Returns:
+            a FrameLabels instance
+        '''
+        return cls(
+            frame_number, attrs=image_labels.attrs,
+            objects=image_labels.objects)
+
+    @classmethod
+    def from_dict(cls, d):
+        '''Constructs a FrameLabels from a JSON dictionary.
+
+        Args:
+            d: a JSON dictionary
+
+        Returns:
+            a FrameLabels
+        '''
+        attrs = d.get("attrs", None)
+        if attrs is not None:
+            attrs = AttributeContainer.from_dict(attrs)
+
+        objects = d.get("objects", None)
+        if objects is not None:
+            objects = DetectedObjectContainer.from_dict(objects)
+
+        return cls(d["frame_number"], attrs=attrs, objects=objects)
 
 
 def frame_number_to_timestamp(frame_number, total_frame_count, duration):

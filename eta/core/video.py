@@ -29,7 +29,7 @@ import six
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-from collections import defaultdict, OrderedDict
+from collections import defaultdict
 import errno
 import logging
 import os
@@ -45,7 +45,6 @@ from eta.core.events import EventContainer
 import eta.core.frames as etaf
 import eta.core.gps as etag
 import eta.core.image as etai
-from eta.core.objects import DetectedObjectContainer
 from eta.core.serial import load_json, Serializable, Set, BigSet
 import eta.core.utils as etau
 
@@ -342,161 +341,16 @@ class VideoMetadata(Serializable):
             gps_waypoints=gps_waypoints)
 
 
-class VideoFrameLabels(Serializable):
-    '''Class encapsulating labels for a specific frame of a video.
+class VideoFrameLabels(etaf.FrameLabels):
+    '''FrameLabels for a specific frame of a video.
 
     Attributes:
-        frame_number: the frame number
-        attrs: an AttributeContainer describing the attributes of the frame
-        objects: a DetectedObjectContainer describing the detected objects in
-            the frame
+        frame_number: frame number
+        attrs: AttributeContainer describing attributes of the frame
+        objects: DetectedObjectContainer describing detected objects in the
+            frame
     '''
-
-    def __init__(self, frame_number, attrs=None, objects=None):
-        '''Constructs a VideoFrameLabels instance.
-
-        Args:
-            frame_number: the frame number of the video
-            attrs: an optional AttributeContainer of attributes for the frame.
-                By default, an empty AttributeContainer is created
-            objects: an optional DetectedObjectContainer of detected objects
-                for the frame. By default, an empty DetectedObjectContainer is
-                created
-        '''
-        self.frame_number = frame_number
-        self.attrs = attrs or AttributeContainer()
-        self.objects = objects or DetectedObjectContainer()
-
-    @property
-    def has_frame_attributes(self):
-        '''Whether the frame has at least one frame attribute.'''
-        return bool(self.attrs)
-
-    @property
-    def has_objects(self):
-        '''Whether the frame has at least one DetectedObject.'''
-        return bool(self.objects)
-
-    @property
-    def is_empty(self):
-        '''Whether the frame has no labels of any kind.'''
-        return not self.has_frame_attributes and not self.has_objects
-
-    def add_frame_attribute(self, frame_attr):
-        '''Adds the attribute to the frame.
-
-        Args:
-            frame_attr: an Attribute
-        '''
-        self.attrs.add(frame_attr)
-
-    def add_frame_attributes(self, frame_attrs):
-        '''Adds the attributes to the frame.
-
-        Args:
-            frame_attrs: an AttributeContainer
-        '''
-        self.attrs.add_container(frame_attrs)
-
-    def add_object(self, obj):
-        '''Adds the object to the frame.
-
-        Args:
-            obj: a DetectedObject
-        '''
-        self.objects.add(obj)
-
-    def add_objects(self, objs):
-        '''Adds the objects to the frame.
-
-        Args:
-            objs: a DetectedObjectContainer
-        '''
-        self.objects.add_container(objs)
-
-    def clear_frame_attributes(self):
-        '''Removes all frame attributes from the instance.'''
-        self.attrs = AttributeContainer()
-
-    def clear_objects(self):
-        '''Removes all objects from the instance.'''
-        self.objects = DetectedObjectContainer()
-
-    def merge_frame_labels(self, frame_labels):
-        '''Merges the labels into the frame.
-
-        Args:
-            frame_labels: a VideoFrameLabels
-        '''
-        self.add_frame_attributes(frame_labels.attrs)
-        self.add_objects(frame_labels.objects)
-
-    def filter_by_schema(self, schema):
-        '''Removes objects/attributes from this object that are not compliant
-        with the given schema.
-
-        Args:
-            schema: a VideoLabelsSchema
-        '''
-        self.attrs.filter_by_schema(schema.frames)
-        self.objects.filter_by_schema(schema)
-
-    def remove_objects_without_attrs(self, labels=None):
-        '''Removes DetectedObjects from the VideoFrameLabels that do not have
-        attributes.
-
-        Args:
-            labels: an optional list of DetectedObject label strings to which
-                to restrict attention when filtering. By default, all objects
-                are processed
-        '''
-        self.objects.remove_objects_without_attrs(labels=labels)
-
-    def attributes(self):
-        '''Returns the list of class attributes that will be serialized.
-
-        Returns:
-            a list of attribute names
-        '''
-        _attrs = ["frame_number"]
-        if self.attrs:
-            _attrs.append("attrs")
-        if self.objects:
-            _attrs.append("objects")
-        return _attrs
-
-    @classmethod
-    def from_image_labels(cls, image_labels, frame_number):
-        '''Constructs a VideoFrameLabels from an ImageLabels.
-
-        Args:
-            image_labels: an ImageLabels instance
-            frame_number: the frame number
-
-        Returns:
-            a VideoFrameLabels instance
-        '''
-        return cls(frame_number, image_labels.attrs, image_labels.objects)
-
-    @classmethod
-    def from_dict(cls, d):
-        '''Constructs a VideoFrameLabels from a JSON dictionary.
-
-        Args:
-            d: a JSON dictionary
-
-        Returns:
-            a VideoFrameLabels
-        '''
-        attrs = d.get("attrs", None)
-        if attrs is not None:
-            attrs = AttributeContainer.from_dict(attrs)
-
-        objects = d.get("objects", None)
-        if objects is not None:
-            objects = DetectedObjectContainer.from_dict(objects)
-
-        return cls(d["frame_number"], attrs=attrs, objects=objects)
+    pass
 
 
 class VideoLabels(Serializable):
