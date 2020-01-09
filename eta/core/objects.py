@@ -284,7 +284,7 @@ class Object(Serializable):
     apply to individual frames, and child objects.
 
     Attributes:
-        label: the object label
+        label: (optional) the object label
         confidence: (optional) label confidence in [0, 1]
         support: a FrameRanges instance describing the frames for which the
             object exists
@@ -298,12 +298,12 @@ class Object(Serializable):
     '''
 
     def __init__(
-            self, label, confidence=None, support=None, index=None, uuid=None,
-            attrs=None, frames=None, child_objects=None):
+            self, label=None, confidence=None, support=None, index=None,
+            uuid=None, attrs=None, frames=None, child_objects=None):
         '''Creates an Object instance.
 
         Args:
-            label: the object label
+            label: (optional) the object label
             confidence: (optional) the label confidence in [0, 1]
             support: (optional) a FrameRanges instance describing the frames
                 for which the object exists. If omitted, the support is
@@ -339,7 +339,7 @@ class Object(Serializable):
 
         return FrameRanges.from_iterable(self.frames.keys())
 
-    def iter_frames(self):
+    def iter_detections(self):
         '''Returns an iterator over the DetectedObjects in the object.
 
         Returns:
@@ -358,9 +358,14 @@ class Object(Serializable):
         return bool(self.attrs)
 
     @property
+    def has_detections(self):
+        '''Whether the object has frame-level detections.'''
+        return bool(self.frames)
+
+    @property
     def has_frame_attributes(self):
         '''Whether the object has frame-level attributes.'''
-        for obj in self.iter_frames():
+        for obj in self.iter_detections():
             if obj.has_attributes:
                 return True
 
@@ -377,7 +382,7 @@ class Object(Serializable):
 
     def clear_frame_attributes(self):
         '''Removes all frame-level attributes from the object.'''
-        for obj in self.iter_frames():
+        for obj in self.iter_detections():
             obj.clear_attributes()
 
     def add_object_attribute(self, attr):
@@ -446,7 +451,9 @@ class Object(Serializable):
         Returns:
             a list of attrinutes
         '''
-        _attrs = ["label"]
+        _attrs = []
+        if self.label is not None:
+            _attrs.append("label")
         if self.confidence is not None:
             _attrs.append("confidence")
         _attrs.append("support")
@@ -489,7 +496,7 @@ class Object(Serializable):
             }
 
         return cls(
-            d["label"],
+            label=d.get("label", None),
             confidence=d.get("confidence", None),
             support=support,
             index=d.get("index", None),
