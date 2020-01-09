@@ -1,5 +1,5 @@
 '''
-Core utilities for working with frame numbers of videos.
+Core tools and data structures for working with frames of videos.
 
 Copyright 2017-2019, Voxel51, Inc.
 voxel51.com
