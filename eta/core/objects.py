@@ -258,7 +258,321 @@ class DetectedObjectContainer(Container):
                 obj.attrs.filter_by_schema(schema.objects[obj.label])
 
     def remove_objects_without_attrs(self, labels=None):
-        '''Filters the objects from this container that do not have attributes.
+        '''Filters the `DetectedObject`s from this container that do not have
+        attributes.
+
+        Args:
+            labels: an optional list of object `label` strings to which to
+                restrict attention when filtering. By default, all objects are
+                processed
+        '''
+        filter_func = lambda obj: (
+            (labels is not None and obj.label not in labels)
+            or obj.has_attributes)
+        self.filter_elements([filter_func])
+
+
+class Object(Serializable):
+    '''A spatiotemporal object in a video.
+
+    `Object`s are spatiotemporal concepts that describe information about an
+    object over multiple frames in a video. `Object`s can have labels with
+    confidences, object-level attributes that apply to the object over all
+    frames, frame-level attributes such as bounding boxes and attributes that
+    apply to individual frames, and child objects.
+
+    Attributes:
+        label: the object label
+        confidence: (optional) label confidence in [0, 1]
+        support: a FrameRanges instance describing the frames for which the
+            object exists
+        index: (optional) an index assigned to the object
+        uuid: (optional) a UUID assigned to the object
+        attrs: (optional) AttributeContainer of object-level attributes of the
+            object
+        frames: dictionary mapping frame numbers to DetectedObject instances
+            describing the frame-level attributes of the object
+        child_objects: (optional) a set of UUIDs of child `Object`s
+    '''
+
+    def __init__(
+            self, label, confidence=None, support=None, index=None, uuid=None,
+            attrs=None, frames=None, child_objects=None):
+        '''Creates an Object instance.
+
+        Args:
+            label: the object label
+            confidence: (optional) the label confidence in [0, 1]
+            support: (optional) a FrameRanges instance describing the frames
+                for which the object exists. If omitted, the support is
+                inferred from the frames and children of the object
+            index: (optional) an index assigned to the object
+            uuid: (optional) a UUID assigned to the object
+            attrs: (optional) an AttributeContainer of object-level attributes
+            frames: (optional) dictionary mapping frame numbers to
+                DetectedObject instances
+            child_objects: (optional) a set of UUIDs of child `Object`s
+        '''
+        self.label = label
+        self.confidence = confidence
+        self.index = index
+        self.uuid = uuid
+        self.attrs = attrs or AttributeContainer()
+        self.frames = frames or {}
+        self.child_objects = set(child_objects or [])
+
+        self._support = support
+
+    @property
+    def support(self):
+        '''A FrameRanges instance describing the frames for which this object
+        exists.
+
+        If the object has an explicit `support`, it is returned. Otherwise, the
+        support is inferred from the frames with DetectedObjects. Note that
+        the latter excludes child objects.
+        '''
+        if self._support is not None:
+            return self._support
+
+        return FrameRanges.from_iterable(self.frames.keys())
+
+    def iter_frames(self):
+        '''Returns an iterator over the DetectedObjects in the object.
+
+        Returns:
+            an iterator over DetectedObjects
+        '''
+        return itervalues(self.frames)
+
+    @property
+    def has_attributes(self):
+        '''Whether the object has attributes of any kind.'''
+        return self.has_object_attributes or self.has_frame_attributes
+
+    @property
+    def has_object_attributes(self):
+        '''Whether the object has object-level attributes.'''
+        return bool(self.attrs)
+
+    @property
+    def has_frame_attributes(self):
+        '''Whether the object has frame-level attributes.'''
+        for obj in self.iter_frames():
+            if obj.has_attributes:
+                return True
+
+        return False
+
+    def clear_attributes(self):
+        '''Removes all attributes of any kind from the object.'''
+        self.clear_object_attributes()
+        self.clear_frame_attributes()
+
+    def clear_object_attributes(self):
+        '''Removes all object-level attributes from the object.'''
+        self.attrs = AttributeContainer()
+
+    def clear_frame_attributes(self):
+        '''Removes all frame-level attributes from the object.'''
+        for obj in self.iter_frames():
+            obj.clear_attributes()
+
+    def add_object_attribute(self, attr):
+        '''Adds the object-level attribute to the object.
+
+        Args:
+            attr: an Attribute
+        '''
+        self.attrs.add(attr)
+
+    def add_object_attributes(self, attrs):
+        '''Adds the AttributeContainer of object-level attributes to the
+        object.
+
+        Args:
+            attrs: an AttributeContainer
+        '''
+        self.attrs.add_container(attrs)
+
+    def add_detection(self, obj, frame_number=None):
+        '''Adds the DetectedObject to the object.
+
+        Args:
+            obj: a DetectedObject
+            frame_number: an optional frame number. If omitted,
+                `obj.frame_number` will be used
+        '''
+        if frame_number is not None:
+            obj.frame_number = frame_number
+        elif obj.frame_number is None:
+            raise ValueError(
+                "Expected `frame_number` or the DetectedObject to have its "
+                "`frame_number` set")
+
+        self.frames[obj.frame_number] = obj
+
+    def add_detections(self, objects):
+        '''Adds the DetectedObjects to the video.
+
+        The DetectedObjects must have their `frame_number`s set.
+
+        Args:
+            objects: a DetectedObjectContainer
+        '''
+        for obj in objects:
+            self.add_detection(obj)
+
+    def add_child_object(self, obj):
+        '''Adds the Object as a child of this object.
+
+        Args:
+            obj: an Object, which must have its `uuid` set
+        '''
+        if obj.uuid is None:
+            raise ValueError("Object must have its `uuid` set")
+
+        self.child_objects.add(obj.uuid)
+
+    def clear_child_objects(self):
+        '''Removes all child objects from the event.'''
+        self.child_objects = set()
+
+    def attributes(self):
+        '''Returns the list of attributes to serialize.
+
+        Returns:
+            a list of attrinutes
+        '''
+        _attrs = ["label"]
+        if self.confidence is not None:
+            _attrs.append("confidence")
+        _attrs.append("support")
+        if self.index is not None:
+            _attrs.append("index")
+        if self.uuid is not None:
+            _attrs.append("uuid")
+        if self.attrs:
+            _attrs.append("attrs")
+        if self.frames:
+            _attrs.append("frames")
+        if self.child_objects:
+            _attrs.append("child_objects")
+
+        return _attrs
+
+    @classmethod
+    def from_dict(cls, d):
+        '''Constructs an Object from a JSON dictionary.
+
+        Args:
+            d: a JSON dictionary
+
+        Returns:
+            an Object
+        '''
+        support = d.get("support", None)
+        if support is not None:
+            support = FrameRanges.from_dict(support)
+
+        attrs = d.get("attrs", None)
+        if attrs is not None:
+            attrs = AttributeContainer.from_dict(attrs)
+
+        frames = d.get("frames", None)
+        if frames is not None:
+            frames = {
+                int(fn): DetectedObject.from_dict(do)
+                for fn, do in iteritems(frames)
+            }
+
+        return cls(
+            d["label"],
+            confidence=d.get("confidence", None),
+            support=support,
+            index=d.get("index", None),
+            uuid=d.get("uuid", None),
+            frames=frames,
+            attrs=attrs,
+            child_objects=d.get("child_objects", None),
+        )
+
+
+class ObjectContainer(Container):
+    '''A `Container` of `Object`s.'''
+
+    _ELE_CLS = Object
+    _ELE_CLS_FIELD = "_OBJ_CLS"
+    _ELE_ATTR = "objects"
+
+    def get_labels(self):
+        '''Returns a set containing the labels of the `Object`s.
+
+        Returns:
+            a set of labels
+        '''
+        return set(obj.label for obj in self)
+
+    def sort_by_confidence(self, reverse=False):
+        '''Sorts the `Object`s by confidence.
+
+        `Object`s whose confidence is None are always put last.
+
+        Args:
+            reverse: whether to sort in descending order. The default is False
+        '''
+        self.sort_by("confidence", reverse=reverse)
+
+    def sort_by_index(self, reverse=False):
+        '''Sorts the `Object`s by index.
+
+        `Object`s whose index is None are always put last.
+
+        Args:
+            reverse: whether to sort in descending order. The default is False
+        '''
+        self.sort_by("index", reverse=reverse)
+
+    def filter_by_schema(self, schema):
+        '''Filters the objects/attributes from this container that are not
+        compliant with the given schema.
+
+        Args:
+            schema: a VideoLabelsSchema
+        '''
+        # Filter by `Object` label
+        filter_func = lambda obj: obj.label in schema.objects
+        self.filter_elements([filter_func])
+
+        # Iterate over `Object`s
+        for obj in self:
+            # Filter static attributes
+            if obj.has_object_attributes:
+                obj.attrs.filter_by_schema(schema.objects[obj.label])
+
+            # Iterate over `DetectedObject`s
+            del_frames = set()
+            for frame_number, dobj in iteritems(obj.frames):
+                if dobj.label is not None and dobj.label not in schema.objects:
+                    # This `DetectedObject` has a disallowed `label`, delete it
+                    del_frames.add(frame_number)
+                elif dobj.has_attributes:
+                    # Filter dynamic attributes
+                    dlabel = (
+                        dobj.label if dobj.label is not None
+                        else obj.label)
+                    dobj.attrs.filter_by_schema(schema.objects[dlabel])
+
+            # Delete `DetectedObject`s with disallowed labels
+            if del_frames:
+                obj.frames = {
+                    fn: obj for fn, obj in iteritems(obj.frames)
+                    if fn not in del_frames
+                }
+
+    def remove_objects_without_attrs(self, labels=None):
+        '''Filters the `Object`s from this container that do not have
+        attributes.
 
         Args:
             labels: an optional list of object `label` strings to which to
