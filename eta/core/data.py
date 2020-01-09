@@ -1,11 +1,12 @@
 '''
 Core data structures for representing data and containers of data.
 
-Copyright 2017-2018, Voxel51, Inc.
+Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
 Jason Corso, jason@voxel51.com
+Tyler Ganter, tyler@voxel51.com
 '''
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
@@ -530,6 +531,94 @@ class AttributeContainer(Container):
     def remove_schema(self):
         '''Removes the enforced schema from the container.'''
         self.schema = None
+
+    def has_attr_with_name(self, name):
+        '''Returns whether or not the container contains an Attribute with the
+        give name.
+
+        Args:
+            name: the Attribute name
+
+        Returns:
+            boolean indicating whether or not the container contains an
+                Attribute with the given name
+        '''
+        for attr in self:
+            if attr.name == name:
+                return True
+
+        return False
+
+    def get_attrs_with_name(self, name):
+        '''Get all attributes with a given name
+
+        Args:
+            name: the Attribute name
+
+        Returns:
+            an AttributeContainer of attributes with the given name
+        '''
+        return self.get_matches([lambda attr: attr.name == name])
+
+    def get_attr_with_name(self, name, default=no_default):
+        '''Get the single attribute with a given name
+
+        Args:
+            name: the Attribute name
+            default: the value to be returned if there is no Attribute with
+                the given name. By default, an error is raised in this case.
+
+        Returns:
+            the Attribute
+
+        Raises:
+            ValueError if there is not exactly one Attribute with the name
+            `name`
+        '''
+        attrs = self.get_attrs_with_name(name)
+
+        if len(attrs) == 0 and default is not no_default:
+            return default
+
+        if len(attrs) != 1:
+            raise ValueError("Expected 1 attr with name '%s' but there are %d"
+                             % (name, len(attrs)))
+        return attrs[0]
+
+    def get_attr_values_with_name(self, name):
+        '''Get a list of values for all attributes with a given name
+
+        Args:
+            name: the Attribute name
+
+        Returns:
+            a list of attributes values with the given name
+        '''
+        return [attr.value for attr in self.get_attrs_with_name(name)]
+
+    def get_attr_value_with_name(self, name, default=no_default):
+        '''Get the value of the single attribute with a given name
+
+        Args:
+            name: the Attribute name
+            default: the value to be returned if there is no Attribute with
+                the given name. By default, an error is raised in this case.
+
+        Returns:
+            the Attribute value
+
+        Raises:
+            ValueError if there is not exactly one Attribute with the name
+            `name`
+        '''
+        values = self.get_attr_values_with_name(name)
+        if len(values) == 0 and default is not no_default:
+            return default
+
+        if len(values) != 1:
+            raise ValueError("Expected 1 attr with name '%s' but there are %d"
+                             % (name, len(values)))
+        return values[0]
 
     def attributes(self):
         '''Returns the list of class attributes that will be serialized.'''
