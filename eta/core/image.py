@@ -390,7 +390,7 @@ class ImageLabelsSchema(Serializable):
         Args:
             label: an object label
         '''
-        self.objects[label]  # adds key to defaultdict
+        self.objects[label]  # adds key to defaultdict #pylint: disable=W0104
 
     def add_object_attribute(self, label, obj_attr):
         '''Adds the Attribute for the object with the given label to the
