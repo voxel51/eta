@@ -1,5 +1,5 @@
 '''
-Core data structures for working with events in videos.
+Core tools and data structures for working with events in videos.
 
 Copyright 2017-2019, Voxel51, Inc.
 voxel51.com
