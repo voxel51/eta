@@ -72,6 +72,11 @@ class Attribute(Serializable):
     This class assumes the convention that attribute class `<AttributeClass>`
     defines an associated schema class `<AttributeClass>Schema` in the same
     module.
+
+    Attributes:
+        name: the name of the attribute
+        value: the value of the attribute
+        confidence: (optional) the confidence of the attribute, in [0, 1]
     '''
 
     def __init__(self, name, value, confidence=None):
@@ -90,20 +95,31 @@ class Attribute(Serializable):
 
     @classmethod
     def get_schema_cls(cls):
-        '''Gets the schema class for this attribute.'''
+        '''Gets the schema class for this attribute.
+
+        Returns:
+            the schema class
+        '''
         class_name = etau.get_class_name(cls)
         return etau.get_class(class_name + "Schema")
 
     @classmethod
     def parse_value(cls, value):
-        '''Parses the attribute value.'''
+        '''Parses the attribute value.
+
+        Args:
+            value: the value
+
+        Returns:
+            the parsed value
+        '''
         raise NotImplementedError("subclass must implement parse_value()")
 
     def attributes(self):
         '''Returns the list of attributes to serialize.
 
-        Optional attributes that were not provided (i.e., are None) are omitted
-        from this list.
+        Returns:
+            a list of attribute names
         '''
         _attrs = ["type", "name", "value"]
         if self.confidence is not None:
@@ -118,19 +134,40 @@ class Attribute(Serializable):
         contain custom fields. Moreover, such implementations must internally
         call this super method to ensure that the base `Attribute` is properly
         initialized.
+
+        Args:
+            d: a JSON dictionary
+
+        Returns:
+            an Attribute
         '''
         confidence = d.get("confidence", None)
         return cls(d["name"], d["value"], confidence=confidence)
 
     @classmethod
     def from_dict(cls, d):
-        '''Constructs an Attribute from a JSON dictionary.'''
+        '''Constructs an Attribute from a JSON dictionary.
+
+        Args:
+            d: a JSON dictionary
+
+        Returns:
+            an Attribute
+        '''
         attr_cls = etau.get_class(d["type"])
         return attr_cls._from_dict(d)
 
 
 class CategoricalAttribute(Attribute):
-    '''Class encapsulating categorical attributes.'''
+    '''Class encapsulating categorical attributes.
+
+    Attributes:
+        name: the name of the attribute
+        value: the value of the attribute
+        confidence: (optional) the confidence of the attribute, in [0, 1]
+        top_k_probs: (optional) an optional dictionary mapping values to
+            probabilities
+    '''
 
     def __init__(self, name, value, confidence=None, top_k_probs=None):
         '''Constructs a CategoricalAttribute instance.
@@ -149,14 +186,21 @@ class CategoricalAttribute(Attribute):
 
     @classmethod
     def parse_value(cls, value):
-        '''Parses the attribute value.'''
+        '''Parses the attribute value.
+
+        Args:
+            value: the value
+
+        Returns:
+            the parsed value
+        '''
         return value
 
     def attributes(self):
         '''Returns the list of attributes to serialize.
 
-        Optional attributes that were not provided (i.e., are None) are omitted
-        from this list.
+        Returns:
+            the list of attribute names
         '''
         _attrs = super(CategoricalAttribute, self).attributes()
         if self.top_k_probs is not None:
@@ -171,29 +215,59 @@ class CategoricalAttribute(Attribute):
 
 
 class NumericAttribute(Attribute):
-    '''Class encapsulating numeric attributes.'''
+    '''Class encapsulating numeric attributes.
+
+    Attributes:
+        name: the name of the attribute
+        value: the value of the attribute
+        confidence: (optional) the confidence of the attribute, in [0, 1]
+    '''
 
     @classmethod
     def parse_value(cls, value):
-        '''Parses the attribute value.'''
+        '''Parses the attribute value.
+
+        Args:
+            value: the value
+
+        Returns:
+            the parsed value
+        '''
         return float(value)
 
 
 class BooleanAttribute(Attribute):
-    '''Class encapsulating boolean attributes.'''
+    '''Class encapsulating boolean attributes.
+
+    Attributes:
+        name: the name of the attribute
+        value: the value of the attribute
+        confidence: (optional) the confidence of the attribute, in [0, 1]
+    '''
 
     @classmethod
     def parse_value(cls, value):
-        '''Parses the attribute value.'''
+        '''Parses the attribute value.
+
+        Args:
+            value: the value
+
+        Returns:
+            the parsed value
+        '''
         return bool(value)
 
 
 class AttributeSchema(Serializable):
-    '''Base class for attribute schemas.
+    '''Base class for `Attribute` schemas.
 
     This class assumes the convention that attribute class `<AttributeClass>`
     defines an associated schema class `<AttributeClass>Schema` in the same
     module.
+
+    Attributes:
+        name: the name of the Attribute
+        type: the fully-qualified name of the Attribute class
     '''
 
     def __init__(self, name):
@@ -208,7 +282,11 @@ class AttributeSchema(Serializable):
         self._attr_cls = etau.get_class(self.type)
 
     def get_attribute_class(self):
-        '''Gets the Attribute class associated with this schema.'''
+        '''Gets the Attribute class associated with this schema.
+
+        Returns:
+            the Attribute class
+        '''
         return self._attr_cls
 
     def validate_type(self, attr):
@@ -248,7 +326,7 @@ class AttributeSchema(Serializable):
                 "schema " % (attr.value, attr.name))
 
     def is_valid_attribute(self, attr):
-        '''Returns True/False if the attribute is compliant with the schema.
+        '''Whether the attribute is compliant with the schema.
 
         Args:
             attr: an Attribute
@@ -263,21 +341,42 @@ class AttributeSchema(Serializable):
             return False
 
     def is_valid_value(self, value):
-        '''Returns True/False if value is valid for the attribute.'''
+        '''Whether value is valid for the attribute.
+
+        Args:
+            value: the value
+
+        Returns:
+            True/False
+        '''
         raise NotImplementedError("subclass must implement is_valid_value()")
 
     def add_attribute(self, attr):
-        '''Incorporates the given Attribute into the schema.'''
+        '''Incorporates the given Attribute into the schema.
+
+        Args:
+            attr: an Attribute
+        '''
         raise NotImplementedError("subclass must implement add_attribute()")
 
     def merge_schema(self, schema):
-        '''Incorporates the given AttributeSchema into the schema.'''
+        '''Incorporates the given AttributeSchema into the schema.
+
+        Args:
+            schema: an AttributeSchema
+        '''
         raise NotImplementedError("subclass must implement merge_schema()")
 
     @staticmethod
     def get_kwargs(d):
         '''Extracts the relevant keyword arguments for this schema from the
         JSON dictionary.
+
+        Args:
+            d: a JSON dictionary
+
+        Returns:
+            a dictionary of parsed keyword arguments
         '''
         raise NotImplementedError("subclass must implement get_kwargs()")
 
@@ -287,6 +386,12 @@ class AttributeSchema(Serializable):
 
         Note that this function reflectively parses the schema type from the
         dictionary, so subclasses do not need to implement this method.
+
+        Args:
+            d: a JSON dictionary
+
+        Returns:
+            an Attribute
         '''
         attr_cls = etau.get_class(d["type"])
         schema_cls = attr_cls.get_schema_cls()
@@ -299,42 +404,75 @@ class AttributeSchemaError(Exception):
 
 
 class CategoricalAttributeSchema(AttributeSchema):
-    '''Class that encapsulates the schema of categorical attributes.'''
+    '''Schema for `CategoricalAttribute`s.
+
+    Attributes:
+        name: the name of the CategoricalAttribute
+        type: the fully-qualified name of the CategoricalAttribute class
+        categories: the set of valid values for the attribute
+    '''
 
     def __init__(self, name, categories=None):
         '''Creates a CategoricalAttributeSchema instance.
 
         Args:
             name: the name of the attribute
-            categories: a set of valid categories for the attribute. By
-                default, an empty set is used
+            categories: a set of valid values for the attribute. By default, an
+                empty set is used
         '''
         super(CategoricalAttributeSchema, self).__init__(name)
         self.categories = set(categories or [])
 
     def is_valid_value(self, value):
-        '''Returns True/False if value is valid for the attribute.'''
+        '''Whether value is valid for the attribute.
+
+        Args:
+            value: the value
+
+        Returns:
+            True/False
+        '''
         return value in self.categories
 
     def add_attribute(self, attr):
-        '''Incorporates the given CategoricalAttribute into the schema.'''
+        '''Incorporates the given CategoricalAttribute into the schema.
+
+        Args:
+            attr: a CategoricalAttribute
+        '''
         self.validate_type(attr)
         self.categories.add(attr.value)
 
     def merge_schema(self, schema):
-        '''Merges the given CategoricalAttributeSchema into this schema.'''
+        '''Merges the given CategoricalAttributeSchema into this schema.
+
+        Args:
+            schema: a CategoricalAttributeSchema
+        '''
         self.categories.update(schema.categories)
 
     @staticmethod
     def get_kwargs(d):
         '''Extracts the relevant keyword arguments for this schema from the
         JSON dictionary.
+
+        Args:
+            d: a JSON dictionary
+
+        Returns:
+            a dictioanry of parsed keyword arguments
         '''
         return {"categories": d.get("categories", None)}
 
 
 class NumericAttributeSchema(AttributeSchema):
-    '''Class that encapsulates the schema of numeric attributes.'''
+    '''Schema for `NumericAttribute`s.
+
+    Attributes:
+        name: the name of the NumericAttribute
+        type: the fully-qualified name of the NumericAttribute class
+        range: the (min, max) range for the attribute
+    '''
 
     def __init__(self, name, range=None):
         '''Creates a NumericAttributeSchema instance.
@@ -347,13 +485,24 @@ class NumericAttributeSchema(AttributeSchema):
         self.range = tuple(range or [])
 
     def is_valid_value(self, value):
-        '''Returns True/False if value is valid for the attribute.'''
+        '''Whether value is valid for the attribute.
+
+        Args:
+            value: the value
+
+        Returns:
+            True/False
+        '''
         if not self.range:
             return False
         return value >= self.range[0] and value <= self.range[1]
 
     def add_attribute(self, attr):
-        '''Incorporates the given NumericAttribute into the schema.'''
+        '''Incorporates the given NumericAttribute into the schema.
+
+        Args:
+            attr: a NumericAttribute
+        '''
         self.validate_type(attr)
         value = attr.value
         if not self.range:
@@ -362,7 +511,11 @@ class NumericAttributeSchema(AttributeSchema):
             self.range = min(self.range[0], value), max(self.range[1], value)
 
     def merge_schema(self, schema):
-        '''Merges the given NumericAttributeSchema into this schema.'''
+        '''Merges the given NumericAttributeSchema into this schema.
+
+        Args:
+            schema: a NumericAttributeSchema
+        '''
         if not self.range:
             self.range = schema.range
         else:
@@ -375,12 +528,23 @@ class NumericAttributeSchema(AttributeSchema):
     def get_kwargs(d):
         '''Extracts the relevant keyword arguments for this schema from the
         JSON dictionary.
+
+        Args:
+            d: a JSON dictionary
+
+        Returns:
+            a dictionary of parsed keyword arguments
         '''
         return {"range": d.get("range", None)}
 
 
 class BooleanAttributeSchema(AttributeSchema):
-    '''Class that encapsulates the schema of boolean attributes.'''
+    '''Schema for `BooleanAttributeSchema`s.
+
+    Attributes:
+        name: the name of the BooleanAttribute
+        type: the fully-qualified name of the BooleanAttribute class
+    '''
 
     def __init__(self, name):
         '''Creates a BooleanAttributeSchema instance.
@@ -391,21 +555,42 @@ class BooleanAttributeSchema(AttributeSchema):
         super(BooleanAttributeSchema, self).__init__(name)
 
     def is_valid_value(self, value):
-        '''Returns True/False if value is valid for the attribute.'''
+        '''Whether value is valid for the attribute.
+
+        Args:
+            value: the value
+
+        Returns:
+            True/False
+        '''
         return isinstance(value, bool)
 
     def add_attribute(self, attr):
-        '''Incorporates the given BooleanAttribute into the schema.'''
+        '''Incorporates the given BooleanAttribute into the schema.
+
+        Args:
+            attr: a BooleanAttribute
+        '''
         self.validate_type(attr)
 
     def merge_schema(self, schema):
-        '''Merges the given BooleanAttributeSchema into this schema.'''
+        '''Merges the given BooleanAttributeSchema into this schema.
+
+        Args:
+            schema: a BooleanAttributeSchema
+        '''
         pass
 
     @staticmethod
     def get_kwargs(d):
         '''Extracts the relevant keyword arguments for this schema from the
         JSON dictionary.
+
+        Args:
+            d: a JSON dictionary
+
+        Returns:
+            a dictionary of parsed keyword arguments
         '''
         return {}
 
@@ -437,7 +622,7 @@ class AttributeContainer(Container):
 
     @property
     def has_schema(self):
-        '''Returns True/False whether the container has an enforced schema.'''
+        '''Whether the container has an enforced schema.'''
         return self.schema is not None
 
     def add(self, attr):
@@ -488,14 +673,20 @@ class AttributeContainer(Container):
         self.filter_elements([filter_func])
 
     def get_schema(self):
-        '''Gets the current enforced schema for the container, or None if
-        no schema is enforced.
+        '''Gets the current enforced schema for the container, or None if no
+        schema is enforced.
+
+        Returns:
+            an AttributeContainerSchema
         '''
         return self.schema
 
     def get_active_schema(self):
         '''Returns an AttributeContainerSchema describing the active schema of
         the container.
+
+        Returns:
+            an AttributeContainerSchema
         '''
         return AttributeContainerSchema.build_active_schema(self)
 
@@ -532,7 +723,11 @@ class AttributeContainer(Container):
         self.schema = None
 
     def attributes(self):
-        '''Returns the list of class attributes that will be serialized.'''
+        '''Returns the list of class attributes that will be serialized.
+
+        Returns:
+            a list of attribute names
+        '''
         _attrs = []
         if self.has_schema:
             _attrs.append("schema")
@@ -550,7 +745,14 @@ class AttributeContainer(Container):
 
     @classmethod
     def from_dict(cls, d):
-        '''Constructs an AttributeContainer from a JSON dictionary.'''
+        '''Constructs an AttributeContainer from a JSON dictionary.
+
+        Args:
+            d: a JSON dictionary
+
+        Returns:
+            an AttributeContainer
+        '''
         container = super(AttributeContainer, cls).from_dict(d)
         schema = d.get("schema", None)
         if schema is not None:
@@ -559,7 +761,12 @@ class AttributeContainer(Container):
 
 
 class AttributeContainerSchema(Serializable):
-    '''A schema for an AttributeContainer.'''
+    '''Schema for an `AttributeContainer`.
+
+    Attributes:
+        schema: a dictionary mapping attribute names to AttributeSchema
+            instances
+    '''
 
     def __init__(self, schema=None):
         '''Creates an AttributeContainerSchema instance.
@@ -571,11 +778,24 @@ class AttributeContainerSchema(Serializable):
         self.schema = schema or {}
 
     def has_attribute(self, name):
-        '''Returns True/False if the schema has an attribute `name`.'''
+        '''Whether the schema has an attribute with the given name.
+
+        Args:
+            name: the name
+
+        Returns:
+            True/False
+        '''
         return name in self.schema
 
     def get_attribute_class(self, name):
         '''Gets the class of the Attribute with the given name.
+
+        Args:
+            name: the name
+
+        Returns:
+            the Attribute class
 
         Raises:
             AttributeContainerSchemaError: if the schema does not have an
@@ -587,7 +807,11 @@ class AttributeContainerSchema(Serializable):
         return self.schema[name].get_attribute_class()
 
     def add_attribute(self, attr):
-        '''Incorporates the given Attribute into the schema.'''
+        '''Incorporates the given Attribute into the schema.
+
+        Args:
+            attr: an Attribute
+        '''
         name = attr.name
         if name not in self.schema:
             schema_cls = attr.get_schema_cls()
@@ -595,12 +819,20 @@ class AttributeContainerSchema(Serializable):
         self.schema[name].add_attribute(attr)
 
     def add_attributes(self, attrs):
-        '''Incorporates the given AttributeContainer into the schema.'''
+        '''Incorporates the given AttributeContainer into the schema.
+
+        Args:
+            attrs: an AttributeContainer
+        '''
         for attr in attrs:
             self.add_attribute(attr)
 
     def merge_schema(self, schema):
-        '''Merges the given AttributeContainerSchema into the schema.'''
+        '''Merges the given AttributeContainerSchema into the schema.
+
+        Args:
+            schema: an AttributeContainerSchema
+        '''
         for name, attr_schema in iteritems(schema.schema):
             if name not in self.schema:
                 self.schema[name] = attr_schema
@@ -627,7 +859,14 @@ class AttributeContainerSchema(Serializable):
             raise AttributeContainerSchemaError(e)
 
     def is_valid_attribute(self, attr):
-        '''Returns True/False if the Attribute is compliant with the schema.'''
+        '''Whether the Attribute is compliant with the schema.
+
+        Args:
+            attr: an Attribute
+
+        Returns:
+            True/False
+        '''
         return (
             self.has_attribute(attr.name) and
             self.schema[attr.name].is_valid_attribute(attr))
@@ -650,12 +889,20 @@ class AttributeContainerSchema(Serializable):
 
     @classmethod
     def from_dict(cls, d):
-        '''Constructs an AttributeContainerSchema from a JSON dictionary.'''
+        '''Constructs an AttributeContainerSchema from a JSON dictionary.
+
+        Args:
+            d: a JSON dictionary
+
+        Returns:
+            an AttributeContainerSchema
+        '''
         schema = d.get("schema", None)
         if schema is not None:
             schema = {
                 k: AttributeSchema.from_dict(v) for k, v in iteritems(schema)
             }
+
         return cls(schema=schema)
 
 
