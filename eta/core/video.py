@@ -367,13 +367,12 @@ class VideoLabels(Serializable):
     instances are loaded.
 
     Attributes:
-        filename: the filename of the video
-        metadata: a VideoMetadata describing metadata about the video
-        attrs: an AttributeContainer containing video attributes
-        frames: a dictionary mapping frame number strings to VideoFrameLabels
-            instances
-        events: an EventContainer containing events
-        schema: a VideoLabelsSchema describing the schema of the labels
+        filename: (optional) filename of the video
+        metadata: (optional) VideoMetadata describing metadata about the video
+        attrs: AttributeContainer of video-level attributes
+        frames: dictionary mapping frame numbers to VideoFrameLabels
+        events: an EventContainer of events
+        schema: (optional) VideoLabelsSchema describing the schema of the video
     '''
 
     def __init__(
@@ -382,19 +381,18 @@ class VideoLabels(Serializable):
         '''Constructs a VideoLabels instance.
 
         Args:
-            filename: an optional filename for the video. By default, no
+            filename: (optional) filename for the video. By default, no
                 filename is stored
-            metadata: an optional VideoMetadata instance describing metadata
-                about the video. By default, no metadata is stored
-            attrs: an optional AttributeContainer of video attributes. By
+            metadata: (optional) VideoMetadata describing metadata about the
+                video. By default, no metadata is stored
+            attrs: (optional) AttributeContainer of video-level attributes. By
                 default, an empty AttributeContainer is created
-            frames: an optional dictionary mapping frame numbers to
-                VideoFrameLabels instances. By default, an empty dictionary
-                is created
-            events: an optional EventContainer of events. By default, an empty
+            frames: (optional) dictionary mapping frame numbers to
+                VideoFrameLabels. By default, an empty dictionary is created
+            events: (optional) EventContainer of events. By default, an empty
                 EventContainer is created
-            schema: an optional VideoLabelsSchema to enforce on the object.
-                By default, no schema is enforced
+            schema: (optional) VideoLabelsSchema to enforce on the video. By
+                default, no schema is enforced
         '''
         self.filename = filename
         self.metadata = metadata
@@ -446,7 +444,7 @@ class VideoLabels(Serializable):
         return iter(sorted(self.frames))
 
     def iter_frames(self):
-        '''Returns an iterator over the VideoFrameLabels in the container.
+        '''Returns an iterator over the VideoFrameLabels in the video.
 
         Returns:
             an iterator over VideoFrameLabels
@@ -454,7 +452,7 @@ class VideoLabels(Serializable):
         return itervalues(self.frames)
 
     def iter_events(self):
-        '''Returns an iterator over the Events in the container.
+        '''Returns an iterator over the Events in the video.
 
         Returns:
             an iterator over Events
@@ -462,21 +460,21 @@ class VideoLabels(Serializable):
         return iter(self.events)
 
     def __len__(self):
-        '''The number of frames in the container with VideoFrameLabels.'''
+        '''The number of frames in the video with VideoFrameLabels.'''
         return len(self.frames)
 
     def __bool__(self):
-        '''Whether the container has labels of any kind.'''
+        '''Whether the video has labels of any kind.'''
         return not self.is_empty
 
     @property
     def has_video_attributes(self):
-        '''Whether the container has at least one video attribute.'''
+        '''Whether the video has at least one video-level attribute.'''
         return bool(self.attrs)
 
     @property
     def has_frame_attributes(self):
-        '''Whether the container has at least one frame attribute.'''
+        '''Whether the video has at least one frame attribute.'''
         for frame_number in self:
             if self[frame_number].has_frame_attributes:
                 return True
@@ -485,21 +483,21 @@ class VideoLabels(Serializable):
 
     @property
     def has_events(self):
-        '''Whether the container has at least one Event.'''
+        '''Whether the video has at least one Event.'''
         return bool(self.events)
 
     @property
     def has_objects(self):
-        '''Whether the container has at least one DetectedObject.'''
-        for frame_number in self:
-            if self[frame_number].has_objects:
+        '''Whether the video has at least one DetectedObject.'''
+        for frame_labels in self.iter_frames():
+            if frame_labels.has_objects:
                 return True
 
         return False
 
     @property
     def has_event_attributes(self):
-        '''Whether the container has at least one event attribute.'''
+        '''Whether the video has at least one event attribute.'''
         for event in self.events:
             if event.attrs:
                 return True
@@ -508,11 +506,11 @@ class VideoLabels(Serializable):
 
     @property
     def has_object_attributes(self):
-        '''Whether the container has at least one DetectedObject with an
+        '''Whether the video has at least one DetectedObject with an
         attribute.
         '''
-        for frame_number in self:
-            for obj in self[frame_number].objects:
+        for frame_labels in self.iter_frames():
+            for obj in frame_labels.objects:
                 if obj.has_attributes:
                     return True
 
@@ -520,7 +518,7 @@ class VideoLabels(Serializable):
 
     @property
     def is_empty(self):
-        '''Whether the container has no labels of any kind.'''
+        '''Whether the video has no labels of any kind.'''
         return (not self.has_video_attributes
                 and not self.has_frame_attributes
                 and not self.has_objects
@@ -528,7 +526,7 @@ class VideoLabels(Serializable):
 
     @property
     def has_schema(self):
-        '''Whether the container has an enforced schema.'''
+        '''Whether the video has an enforced schema.'''
         return self.schema is not None
 
     def has_frame(self, frame_number):
@@ -600,7 +598,7 @@ class VideoLabels(Serializable):
         return (fns[0], fns[-1]) if fns else (None, None)
 
     def add_video_attribute(self, video_attr):
-        '''Adds the given video attribute to the video.
+        '''Adds the given video-level attribute to the video.
 
         Args:
             video_attr: an Attribute
@@ -611,7 +609,7 @@ class VideoLabels(Serializable):
         self.attrs.add(video_attr)
 
     def add_video_attributes(self, video_attrs):
-        '''Adds the given video attributes to the video.
+        '''Adds the given video-level attributes to the video.
 
         Args:
             video_attrs: an AttributeContainer
@@ -720,7 +718,7 @@ class VideoLabels(Serializable):
         '''Merges the given VideoLabels into this labels.
 
         Args:
-            video_labels: a VideoLabels instance
+            video_labels: a VideoLabels
         '''
         self.add_video_attributes(video_labels.attrs)
         self.add_events(video_labels.events)
@@ -728,17 +726,17 @@ class VideoLabels(Serializable):
             self.add_frame(frame_labels, overwrite=False)
 
     def clear_frame_attributes(self):
-        '''Removes all frame attributes from the instance.'''
-        for frame_number in self:
-            self[frame_number].clear_frame_attributes()
+        '''Removes all frame attributes from the video.'''
+        for frame_labels in self.iter_frames():
+            frame_labels.clear_frame_attributes()
 
     def clear_objects(self):
-        '''Removes all objects from the instance.'''
-        for frame_number in self:
-            self[frame_number].clear_objects()
+        '''Removes all DetectedObjects from the video.'''
+        for frame_labels in self.iter_frames():
+            frame_labels.clear_objects()
 
     def clear_events(self):
-        '''Removes all events from the instance.'''
+        '''Removes all events from the video.'''
         self.events.clear()
 
     def get_schema(self):
@@ -786,7 +784,7 @@ class VideoLabels(Serializable):
             schema: a VideoLabelsSchema
         '''
         self.attrs.filter_by_schema(schema.attrs)
-        for frame_labels in itervalues(self.frames):
+        for frame_labels in self.iter_frames():
             frame_labels.filter_by_schema(schema)
 
     def remove_objects_without_attrs(self, labels=None):
@@ -798,21 +796,11 @@ class VideoLabels(Serializable):
                 to restrict attention when filtering. By default, all objects
                 are processed
         '''
-        for frame_labels in itervalues(self.frames):
+        for frame_labels in self.iter_frames():
             frame_labels.remove_objects_without_attrs(labels=labels)
 
-    def remove_events_without_attrs(self, labels=None):
-        '''Removes Events from the instance that do not have attributes.
-
-        Args:
-            labels: an optional list of Event label strings to which to
-                restrict attention when filtering. By default, all events are
-                processed
-        '''
-        self.events.remove_events_without_attrs(labels=labels)
-
     def freeze_schema(self):
-        '''Sets the schema for the container to the current active schema.'''
+        '''Sets the schema for the video to the current active schema.'''
         self.set_schema(self.get_active_schema())
 
     def remove_schema(self):
@@ -871,7 +859,7 @@ class VideoLabels(Serializable):
         if self.has_schema:
             for video_attr in self.attrs:
                 self._validate_video_attribute(video_attr)
-            for frame_labels in itervalues(self.frames):
+            for frame_labels in self.iter_frames():
                 self._validate_frame_labels(frame_labels)
 
     @classmethod
@@ -884,7 +872,7 @@ class VideoLabels(Serializable):
             objects: a DetectedObjectContainer
 
         Returns:
-            a VideoLabels instance
+            a VideoLabels
         '''
         labels = cls()
         for obj in objects:
@@ -900,7 +888,7 @@ class VideoLabels(Serializable):
             events: an EventContainer
 
         Returns:
-            a VideoLabels instance
+            a VideoLabels
         '''
         labels = cls()
         labels.add_events(events)
@@ -925,10 +913,10 @@ class VideoLabels(Serializable):
 
         frames = d.get("frames", None)
         if frames is not None:
-            frames = OrderedDict(
-                (int(fn), VideoFrameLabels.from_dict(vfl))
+            frames = {
+                int(fn): VideoFrameLabels.from_dict(vfl)
                 for fn, vfl in iteritems(frames)
-            )
+            }
 
         schema = d.get("schema", None)
         if schema is not None:
