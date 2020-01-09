@@ -281,7 +281,7 @@ class ImageLabels(Serializable):
 
 
 class ImageLabelsSchema(Serializable):
-    '''A schema for ImageLabels instance(s).
+    '''A schema for `ImageLabels`.
 
     Attributes:
         attrs: an AttributeContainerSchema describing the attributes of the
