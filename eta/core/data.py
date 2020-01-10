@@ -750,13 +750,13 @@ class AttributeContainer(Container):
         Returns:
             an AttributeContainer
         '''
-        container = super(AttributeContainer, cls).from_dict(d)
+        attrs = super(AttributeContainer, cls).from_dict(d)
 
         schema = d.get("schema", None)
         if schema is not None:
-            container.set_schema(AttributeContainerSchema.from_dict(schema))
+            attrs.set_schema(AttributeContainerSchema.from_dict(schema))
 
-        return container
+        return attrs
 
 
 class AttributeContainerSchema(Serializable):
@@ -856,8 +856,8 @@ class AttributeContainerSchema(Serializable):
             name: the name
 
         Raises:
-            AttributeContainerSchemaError: if the attribute violates the
-                schema
+            AttributeContainerSchemaError: if the schema does not contain the
+                attribute
         '''
         if not self.has_attribute(name):
             raise AttributeContainerSchemaError(
