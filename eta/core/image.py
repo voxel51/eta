@@ -203,7 +203,7 @@ class ImageLabels(Serializable):
             schema: an ImageLabelsSchema
         '''
         self.attrs.filter_by_schema(schema.attrs)
-        self.objects.filter_by_schema(schema)
+        self.objects.filter_by_schema(schema.objects)
 
     def remove_objects_without_attrs(self, labels=None):
         '''Removes DetectedObjects from this instance that do not have
@@ -783,8 +783,10 @@ class ImageSetLabels(Set):
             a list of attribute names
         '''
         _attrs = super(ImageSetLabels, self).attributes()
+
         if self.has_schema:
             return ["schema"] + _attrs
+
         return _attrs
 
     def _validate_labels(self, image_labels):
@@ -833,7 +835,7 @@ class ImageSetLabels(Set):
         Returns:
             an ImageSetLabels
         '''
-        schema = d.get("schema", None)
+        schema = d.pop("schema", None)
         if schema is not None:
             schema = ImageLabelsSchema.from_dict(schema)
 
