@@ -1017,22 +1017,34 @@ class VideoLabelsSchema(Serializable):
         '''Whether the schema has a video-level attribute with the given name.
 
         Args:
-            video_attr_name: the name of the video-level attribute
+            video_attr_name: the name
 
         Returns:
             True/False
         '''
         return self.attrs.has_attribute(video_attr_name)
 
-    def get_video_attribute_class(self, video_attr_name):
-        '''Gets the `Attribute` class for the video-level attribute with the
+    def get_video_attribute_schema(self, video_attr_name):
+        '''Gets the AttributeSchema for the video-level attribute with the
         given name.
 
         Args:
-            video_attr_name: the name of the video-level attribute
+            video_attr_name: the name
 
         Returns:
-            an Attribute subclass
+            an AttributeContainerSchema
+        '''
+        return self.attrs.get_attribute_schema(video_attr_name)
+
+    def get_video_attribute_class(self, video_attr_name):
+        '''Gets the Attribute class for the video-level attribute with the
+        given name.
+
+        Args:
+            video_attr_name: the name
+
+        Returns:
+            an Attribute
         '''
         return self.attrs.get_attribute_class(video_attr_name)
 
@@ -1047,15 +1059,27 @@ class VideoLabelsSchema(Serializable):
         '''
         return self.frames.has_attribute(frame_attr_name)
 
+    def get_frame_attribute_schema(self, frame_attr_name):
+        '''Gets the AttributeSchema for the frame attribute with the given
+        name.
+
+        Args:
+            frame_attr_name: the name
+
+        Returns:
+            an AttributeContainerSchema
+        '''
+        return self.frames.get_attribute_schema(frame_attr_name)
+
     def get_frame_attribute_class(self, frame_attr_name):
-        '''Gets the `Attribute` class for the frame attribute with the given
+        '''Gets the Attribute class for the frame attribute with the given
         name.
 
         Args:
             frame_attr_name: the name of the frame attribute
 
         Returns:
-            an Attribute subclass
+            an Attribute
         '''
         return self.frames.get_attribute_class(frame_attr_name)
 
@@ -1083,9 +1107,34 @@ class VideoLabelsSchema(Serializable):
         '''
         return self.objects.has_object_attribute(label, obj_attr_name)
 
+    def get_object_schema(self, label):
+        '''Gets the AttributeContainerSchema for the object with the given
+        label.
+
+        Args:
+            label: the object label
+
+        Returns:
+            an AttributeContainerSchema
+        '''
+        return self.objects.get_object_schema(label)
+
+    def get_object_attribute_schema(self, label, obj_attr_name):
+        '''Gets the AttributeSchema for the attribute of the given name for the
+        object with the given label.
+
+        Args:
+            label: the object label
+            obj_attr_name: the name of the object attribute
+
+        Returns:
+            the AttributeSchema
+        '''
+        return self.objects.get_object_attribute_schema(label, obj_attr_name)
+
     def get_object_attribute_class(self, label, obj_attr_name):
-        '''Gets the `Attribute` class for the attribute of the given name for
-        the object with the given label.
+        '''Gets the Attribute class for the attribute of the given name for the
+        object with the given label.
 
         Args:
             label: the object label
@@ -1119,6 +1168,31 @@ class VideoLabelsSchema(Serializable):
             True/False
         '''
         return self.events.has_event_attribute(label, event_attr_name)
+
+    def get_event_schema(self, label):
+        '''Gets the AttributeContainerSchema for the event with the given
+        label.
+
+        Args:
+            label: the event label
+
+        Returns:
+            an AttributeContainerSchema
+        '''
+        return self.events.get_event_schema(label)
+
+    def get_event_attribute_schema(self, label, event_attr_name):
+        '''Gets the AttributeSchema for the attribute of the given name for the
+        event with the given label.
+
+        Args:
+            label: the event label
+            event_attr_name: the name of the event attribute
+
+        Returns:
+            the AttributeSchema
+        '''
+        return self.events.get_event_attribute_schema(label, event_attr_name)
 
     def get_event_attribute_class(self, label, event_attr_name):
         '''Gets the Attribute class for the attribute of the given name for
@@ -1271,6 +1345,7 @@ class VideoLabelsSchema(Serializable):
         for frame_labels in video_labels.iter_frames():
             self.add_frame_labels(frame_labels)
 
+        self.add_objects(video_labels.objects)
         self.add_events(video_labels.events)
 
     def merge_schema(self, schema):
@@ -1376,6 +1451,19 @@ class VideoLabelsSchema(Serializable):
         '''
         return self.events.is_valid_event(event)
 
+    def validate_video_attribute_name(self, video_attr_name):
+        '''Validates that the schema contains a video-level attribute with the
+        given name.
+
+        Args:
+            video_attr_name: the name
+
+        Raises:
+            AttributeContainerSchemaError: if the schema does not contain the
+                attribute
+        '''
+        self.attrs.validate_attribute_name(video_attr_name)
+
     def validate_video_attribute(self, video_attr):
         '''Validates that the video-level attribute is compliant with the
         schema.
@@ -1387,6 +1475,19 @@ class VideoLabelsSchema(Serializable):
             AttributeContainerSchemaError: if the attribute violates the schema
         '''
         self.attrs.validate_attribute(video_attr)
+
+    def validate_frame_attribute_name(self, frame_attr_name):
+        '''Validates that the schema contains a frame attribute with the given
+        name.
+
+        Args:
+            frame_attr_name: the name
+
+        Raises:
+            AttributeContainerSchemaError: if the schema does not contain the
+                attribute
+        '''
+        self.frames.validate_attribute_name(frame_attr_name)
 
     def validate_frame_attribute(self, frame_attr):
         '''Validates that the frame attribute is compliant with the schema.
@@ -1808,8 +1909,10 @@ class VideoSetLabels(Set):
             a list of attribute names
         '''
         _attrs = super(VideoSetLabels, self).attributes()
+
         if self.has_schema:
             return ["schema"] + _attrs
+
         return _attrs
 
     def _apply_schema_to_video(self, video_labels):
