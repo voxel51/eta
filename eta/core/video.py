@@ -747,6 +747,7 @@ class VideoLabels(Serializable):
         '''
         if reindex:
             self._reindex_objects(video_labels)
+            self._reindex_events(video_labels)
 
         self.add_video_attributes(video_labels.attrs)
         for frame_labels in video_labels.iter_frames():
@@ -920,15 +921,69 @@ class VideoLabels(Serializable):
                 if obj.index is not None:
                     obj.index += offset
 
+        for obj in self.iter_objects():
+            if obj.index is not None:
+                obj.index += offset
+
+            for dobj in obj.iter_detections():
+                if dobj.index is not None:
+                    dobj.index += offset
+
+        for event in self.iter_events():
+            for frame_labels in event.iter_frames():
+                for obj in frame_labels.objects:
+                    if obj.index is not None:
+                        obj.index += offset
+
     @staticmethod
     def _get_object_indices(video_labels):
         obj_indices = set()
+
         for frame_labels in video_labels.iter_frames():
             for obj in frame_labels.objects:
                 if obj.index is not None:
                     obj_indices.add(obj.index)
 
+        for obj in video_labels.iter_objects():
+            if obj.index is not None:
+                obj_indices.add(obj.index)
+
+            for dobj in obj.iter_detections():
+                if dobj.index is not None:
+                    obj_indices.add(dobj.index)
+
+        for event in video_labels.iter_events():
+            for frame_labels in event.iter_frames():
+                for obj in frame_labels.objects:
+                    if obj.index is not None:
+                        obj_indices.add(obj.index)
+
         return obj_indices
+
+    def _reindex_events(self, video_labels):
+        self_indices = self._get_event_indices(self)
+        if not self_indices:
+            return
+
+        new_indices = self._get_event_indices(video_labels)
+        if not new_indices:
+            return
+
+        offset = max(new_indices) + 1 - min(self_indices)
+
+        for event in self.iter_events():
+            if event.index is not None:
+                event.index += offset
+
+    @staticmethod
+    def _get_event_indices(video_labels):
+        event_indices = set()
+
+        for event in video_labels.iter_events():
+            if event.index is not None:
+                event_indices.add(event.index)
+
+        return event_indices
 
     @classmethod
     def from_detected_objects(cls, objects):
