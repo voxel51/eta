@@ -317,8 +317,7 @@ class DetectedObjectContainer(Container):
                 obj.attrs.filter_by_schema(obj_schema)
 
     def remove_objects_without_attrs(self, labels=None):
-        '''Filters the `DetectedObject`s from this container that do not have
-        attributes.
+        '''Removes objects from this container that do not have attributes.
 
         Args:
             labels: an optional list of object `label` strings to which to
@@ -776,8 +775,7 @@ class ObjectContainer(Container):
                 }
 
     def remove_objects_without_attrs(self, labels=None):
-        '''Filters the `Object`s from this container that do not have
-        attributes.
+        '''Removes objects from this container that do not have attributes.
 
         Args:
             labels: an optional list of object `label` strings to which to
