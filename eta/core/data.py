@@ -812,7 +812,7 @@ class AttributeContainerSchema(Serializable):
             AttributeContainerSchemaError: if the schema does not have an
                 attribute with the given name
         '''
-        self.validate_attribute_name(attr.name)
+        self.validate_attribute_name(name)
         return self.schema[name].get_attribute_class()
 
     def add_attribute(self, attr):
