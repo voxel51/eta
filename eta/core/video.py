@@ -29,7 +29,6 @@ import six
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-from collections import defaultdict
 import errno
 import logging
 import os
