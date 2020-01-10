@@ -108,7 +108,7 @@ class Event(Serializable):
         '''Returns an iterator over the EventFrameLabels in the event.
 
         Returns:
-            an iterator over DetectedObjects
+            an iterator over EventFrameLabels
         '''
         return itervalues(self.frames)
 
