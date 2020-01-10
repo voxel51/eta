@@ -198,6 +198,59 @@ class DetectedObjectContainer(Container):
     _ELE_CLS_FIELD = "_OBJ_CLS"
     _ELE_ATTR = "objects"
 
+    def __init__(self, schema=None, **kwargs):
+        '''Creates a DetectedObjectContainer instance.
+
+        Args:
+            schema: an optional ObjectContainerSchema to enforce on the objects
+                in this container. By default, no schema is enforced
+            **kwargs: valid keyword arguments for Container()
+
+        Raises:
+            ObjectContainerSchemaError: if a schema was provided but the
+                objects added to the container violate it
+        '''
+        super(DetectedObjectContainer, self).__init__(**kwargs)
+        self.schema = None
+        if schema is not None:
+            self.set_schema(schema)
+
+    @property
+    def has_schema(self):
+        '''Whether the container has an enforced schema.'''
+        return self.schema is not None
+
+    def add(self, obj):
+        '''Adds an object to the container.
+
+        Args:
+            obj: a DetectedObject
+
+        Raises:
+            ObjectContainerSchemaError: if this container has a schema enforced
+                and the given object violates it
+        '''
+        if self.has_schema:
+            self._validate_object(obj)
+
+        super(DetectedObjectContainer, self).add(obj)
+
+    def add_container(self, objects):
+        '''Adds the objects in the given container to this container.
+
+        Args:
+            objects: a DetectedObjectContainer instance
+
+        Raises:
+            ObjectContainerSchemaError: if this container has a schema enforced
+                and an object in the given container violates it
+        '''
+        if self.has_schema:
+            for obj in objects:
+                self._validate_object(obj)
+
+        super(DetectedObjectContainer, self).add_container(objects)
+
     def get_labels(self):
         '''Returns a set containing the labels of the DetectedObjects.
 
@@ -251,13 +304,17 @@ class DetectedObjectContainer(Container):
         compliant with the given schema.
 
         Args:
-            schema: an ImageLabelsSchema or VideoLabelsSchema
+            schema: an ObjectContainerSchema
         '''
-        filter_func = lambda obj: obj.label in schema.objects
+        # Filter by object label
+        filter_func = lambda obj: schema.has_object_label(obj.label)
         self.filter_elements([filter_func])
+
+        # Filter object attributes
         for obj in self:
             if obj.has_attributes:
-                obj.attrs.filter_by_schema(schema.objects[obj.label])
+                obj_schema = schema.get_object_schema(obj.label)
+                obj.attrs.filter_by_schema(obj_schema)
 
     def remove_objects_without_attrs(self, labels=None):
         '''Filters the `DetectedObject`s from this container that do not have
@@ -272,6 +329,91 @@ class DetectedObjectContainer(Container):
             (labels is not None and obj.label not in labels)
             or obj.has_attributes)
         self.filter_elements([filter_func])
+
+    def get_schema(self):
+        '''Gets the current enforced schema for the container, or None if no
+        schema is enforced.
+
+        Returns:
+            an ObjectContainerSchema
+        '''
+        return self.schema
+
+    def get_active_schema(self):
+        '''Returns an ObjectContainerSchema describing the active schema of the
+        container.
+
+        Returns:
+            an ObjectContainerSchema
+        '''
+        return ObjectContainerSchema.build_active_schema(self)
+
+    def set_schema(self, schema, filter_by_schema=False):
+        '''Sets the enforced schema to the given ObjectContainerSchema.
+
+        Args:
+            schema: the ObjectContainerSchema to use
+            filter_by_schema: whether to filter any invalid values from the
+                container after changing the schema. By default, this is False
+                and thus the container must already meet the new schema
+        '''
+        self.schema = schema
+        if not self.has_schema:
+            return
+
+        if filter_by_schema:
+            self.filter_by_schema(self.schema)
+        else:
+            self._validate_schema()
+
+    def freeze_schema(self):
+        '''Sets the enforced schema for the container to the current active
+        schema.
+        '''
+        self.set_schema(self.get_active_schema())
+
+    def remove_schema(self):
+        '''Removes the enforced schema from the container.'''
+        self.schema = None
+
+    def attributes(self):
+        '''Returns the list of class attributes that will be serialized.
+
+        Returns:
+            a list of attribute names
+        '''
+        _attrs = []
+        if self.has_schema:
+            _attrs.append("schema")
+        _attrs += super(DetectedObjectContainer, self).attributes()
+        return _attrs
+
+    def _validate_object(self, obj):
+        if self.has_schema:
+            self.schema.validate_object(obj)
+
+    def _validate_schema(self):
+        if self.has_schema:
+            for obj in self:
+                self._validate_object(obj)
+
+    @classmethod
+    def from_dict(cls, d):
+        '''Constructs a DetectedObjectContainer from a JSON dictionary.
+
+        Args:
+            d: a JSON dictionary
+
+        Returns:
+            a DetectedObjectContainer
+        '''
+        objects = super(DetectedObjectContainer, cls).from_dict(d)
+
+        schema = d.get("schema", None)
+        if schema is not None:
+            objects.set_schema(ObjectContainerSchema.from_dict(schema))
+
+        return objects
 
 
 class Object(Serializable):
