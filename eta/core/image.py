@@ -39,7 +39,7 @@ import numpy as np
 import eta
 from eta.core.data import AttributeContainer, AttributeContainerSchema, \
     AttributeContainerSchemaError
-from eta.core.objects import DetectedObjectContainer
+from eta.core.objects import DetectedObjectContainer, ObjectContainerSchema
 from eta.core.serial import Serializable, Set, BigSet
 import eta.core.utils as etau
 import eta.core.web as etaw
@@ -281,29 +281,26 @@ class ImageLabels(Serializable):
 
 
 class ImageLabelsSchema(Serializable):
-    '''A schema for `ImageLabels`.
+    '''Schema for `ImageLabels`.
 
     Attributes:
         attrs: an AttributeContainerSchema describing the attributes of the
             image(s)
-        objects: a dictionary mapping object labels to AttributeContainerSchema
-            instances describing the object attributes of each object class
+        objects: an ObjectContainerSchema describing the objects of the
+            image(s)
     '''
 
     def __init__(self, attrs=None, objects=None):
         '''Creates an ImageLabelsSchema instance.
 
         Args:
-            attrs: an AttributeContainerSchema describing the attributes of the
-                image(s)
-            objects: a dictionary mapping object labels to
-                AttributeContainerSchema instances describing the object
-                attributes of each object class
+            attrs: (optional) an AttributeContainerSchema describing the
+                attributes of the image(s)
+            objects: (optional) an ObjectContainerSchema describing the objects
+                of the image(s)
         '''
         self.attrs = attrs or AttributeContainerSchema()
-        self.objects = defaultdict(AttributeContainerSchema)
-        if objects is not None:
-            self.objects.update(objects)
+        self.objects = objects or ObjectContainerSchema()
 
     def has_image_attribute(self, image_attr_name):
         '''Whether the schema has an image attribute with the given name.
@@ -337,7 +334,7 @@ class ImageLabelsSchema(Serializable):
         Returns:
             True/False
         '''
-        return label in self.objects
+        return self.objects.has_object_label(label)
 
     def has_object_attribute(self, label, obj_attr_name):
         '''Whether the schema has an object with the given label with an
@@ -350,9 +347,7 @@ class ImageLabelsSchema(Serializable):
         Returns:
             True/False
         '''
-        if not self.has_object_label(label):
-            return False
-        return self.objects[label].has_attribute(obj_attr_name)
+        return self.objects.has_object_attribute(label, obj_attr_name)
 
     def get_object_attribute_class(self, label, obj_attr_name):
         '''Gets the Attribute class for the attribute of the given name for the
@@ -365,8 +360,7 @@ class ImageLabelsSchema(Serializable):
         Returns:
             an Attribute subclass
         '''
-        self.validate_object_label(label)
-        return self.objects[label].get_attribute_class(obj_attr_name)
+        return self.objects.get_object_attribute_class(label, obj_attr_name)
 
     def add_image_attribute(self, image_attr):
         '''Adds the given image attribute to the schema.
@@ -390,7 +384,7 @@ class ImageLabelsSchema(Serializable):
         Args:
             label: an object label
         '''
-        self.objects[label]  # adds key to defaultdict #pylint: disable=W0104
+        self.objects.add_object_label(label)
 
     def add_object_attribute(self, label, obj_attr):
         '''Adds the Attribute for the object with the given label to the
@@ -400,7 +394,7 @@ class ImageLabelsSchema(Serializable):
             label: an object label
             obj_attr: an Attribute
         '''
-        self.objects[label].add_attribute(obj_attr)
+        self.objects.add_object_attribute(label, obj_attr)
 
     def add_object_attributes(self, label, obj_attrs):
         '''Adds the AttributeContainer for the object with the given label to
@@ -410,7 +404,32 @@ class ImageLabelsSchema(Serializable):
             label: an object label
             obj_attrs: an AttributeContainer
         '''
-        self.objects[label].add_attributes(obj_attrs)
+        self.objects.add_object_attributes(label, obj_attrs)
+
+    def add_object(self, obj):
+        '''Adds the etectedObject to the schema.
+
+        Args:
+            obj: a DetectedObject
+        '''
+        self.objects.add_object(obj)
+
+    def add_objects(self, objects):
+        '''Adds the DetectedObjectContainer to the schema.
+
+        Args:
+            objects: a DetectedObjectContainer
+        '''
+        self.objects.add_objects(objects)
+
+    def add_image_labels(self, image_labels):
+        '''Adds the ImageLabels to the schema.
+
+        Args:
+            image_labels: an ImageLabels
+        '''
+        self.add_image_attributes(image_labels.attrs)
+        self.add_objects(image_labels.objects)
 
     def merge_schema(self, schema):
         '''Merges the given ImageLabelsSchema into this schema.
@@ -419,8 +438,7 @@ class ImageLabelsSchema(Serializable):
             schema: an ImageLabelsSchema
         '''
         self.attrs.merge_schema(schema.attrs)
-        for k, v in iteritems(schema.objects):
-            self.objects[k].merge_schema(v)
+        self.objects.merge_schema(schema.objects)
 
     def is_valid_image_attribute(self, image_attr):
         '''Whether the image attribute is compliant with the schema.
@@ -431,11 +449,7 @@ class ImageLabelsSchema(Serializable):
         Returns:
             True/False
         '''
-        try:
-            self.validate_image_attribute(image_attr)
-            return True
-        except AttributeContainerSchemaError:
-            return False
+        return self.attrs.is_valid_attribute(image_attr)
 
     def is_valid_object_label(self, label):
         '''Whether the object label is compliant with the schema.
@@ -446,11 +460,7 @@ class ImageLabelsSchema(Serializable):
         Returns:
             True/False
         '''
-        try:
-            self.validate_object_label(label)
-            return True
-        except ImageLabelsSchemaError:
-            return False
+        return self.objects.is_valid_attribute(label)
 
     def is_valid_object_attribute(self, label, obj_attr):
         '''Whether the object attribute for the object with the given label is
@@ -463,11 +473,7 @@ class ImageLabelsSchema(Serializable):
         Returns:
             True/False
         '''
-        try:
-            self.validate_object_attribute(label, obj_attr)
-            return True
-        except AttributeContainerSchemaError:
-            return False
+        return self.objects.is_valid_object_attribute(label, obj_attr)
 
     def is_valid_object(self, obj):
         '''Whether the given DetectedObject is compliant with the schema.
@@ -478,11 +484,7 @@ class ImageLabelsSchema(Serializable):
         Returns:
             True/False
         '''
-        try:
-            self.validate_object(obj)
-            return True
-        except (ImageLabelsSchemaError, AttributeContainerSchemaError):
-            return False
+        return self.objects.is_valid_object(obj)
 
     def validate_image_attribute(self, image_attr):
         '''Validates that the image attribute is compliant with the schema.
@@ -504,9 +506,7 @@ class ImageLabelsSchema(Serializable):
         Raises:
             ImageLabelsSchemaError: if the object label violates the schema
         '''
-        if label not in self.objects:
-            raise ImageLabelsSchemaError(
-                "Object label '%s' is not allowed by the schema" % label)
+        self.objects.validate_object_label(label)
 
     def validate_object_attribute(self, label, obj_attr):
         '''Validates that the object attribute for the given label is compliant
@@ -520,8 +520,7 @@ class ImageLabelsSchema(Serializable):
             AttributeContainerSchemaError: if the object attribute violates
                 the schema
         '''
-        obj_schema = self.objects[label]
-        obj_schema.validate_attribute(obj_attr)
+        self.objects.validate_object_attribute(label, obj_attr)
 
     def validate_object(self, obj):
         '''Validates that the detected object is compliant with the schema.
@@ -530,14 +529,12 @@ class ImageLabelsSchema(Serializable):
             obj: a DetectedObject
 
         Raises:
-            ImageLabelsSchemaError: if the object's label violates the schema
-            AttributeContainerSchemaError: if any attributes of the
-                DetectedObject violate the schema
+            ObjectContainerSchemaError: if the object's label violates the
+                schema
+            AttributeContainerSchemaError: if any attributes of the object
+                violate the schema
         '''
-        self.validate_object_label(obj.label)
-        if obj.has_attributes:
-            for obj_attr in obj.attrs:
-                self.validate_object_attribute(obj.label, obj_attr)
+        self.objects.validate_object(obj)
 
     def attributes(self):
         '''Returns the list of class attributes that will be serialized.
@@ -559,12 +556,7 @@ class ImageLabelsSchema(Serializable):
             an ImageLabelsSchema
         '''
         schema = cls()
-        schema.add_image_attributes(image_labels.attrs)
-        for obj in image_labels.objects:
-            if obj.has_attributes:
-                schema.add_object_attributes(obj.label, obj.attrs)
-            else:
-                schema.add_object_label(obj.label)
+        schema.add_image_labels(image_labels)
         return schema
 
     @classmethod
@@ -583,10 +575,7 @@ class ImageLabelsSchema(Serializable):
 
         objects = d.get("objects", None)
         if objects is not None:
-            objects = {
-                k: AttributeContainerSchema.from_dict(v)
-                for k, v in iteritems(objects)
-            }
+            objects = ObjectContainerSchema.from_dict(objects)
 
         return cls(attrs=attrs, objects=objects)
 
