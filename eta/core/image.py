@@ -21,12 +21,10 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
-from future.utils import iteritems
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-from collections import defaultdict
 import colorsys
 import errno
 import os
@@ -37,8 +35,7 @@ import cv2
 import numpy as np
 
 import eta
-from eta.core.data import AttributeContainer, AttributeContainerSchema, \
-    AttributeContainerSchemaError
+from eta.core.data import AttributeContainer, AttributeContainerSchema
 from eta.core.objects import DetectedObjectContainer, ObjectContainerSchema
 from eta.core.serial import Serializable, Set, BigSet
 import eta.core.utils as etau
@@ -1219,7 +1216,7 @@ def expand(img, width=None, height=None, *args, **kwargs):
         oh = height
 
     if (ow > iw) or (oh > ih):
-        img = resize(img, width=ow, height=oh)
+        img = resize(img, width=ow, height=oh, *args, **kwargs)
 
     return img
 
