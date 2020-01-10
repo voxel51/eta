@@ -744,7 +744,7 @@ class LabeledDataset(object):
         dataset_copy = copy.deepcopy(self)
         dataset_list = []
         for dataset_index in dataset_indices:
-            dataset_copy.dataset_index = dataset_index
+            dataset_copy._dataset_index = dataset_index
             dataset_copy._build_index_map()
             dataset_list.append(copy.deepcopy(dataset_copy))
 
