@@ -917,6 +917,33 @@ class ObjectContainerSchema(Serializable):
 
         return self.schema[label].has_attribute(obj_attr_name)
 
+    def get_object_schema(self, label):
+        '''Gets the AttributeContainerSchema for the object with the given
+        label.
+
+        Args:
+            label: the object label
+
+        Returns:
+            an AttributeContainerSchema
+        '''
+        self.validate_object_label(label)
+        return self.schema[label]
+
+    def get_object_attribute_schema(self, label, obj_attr_name):
+        '''Gets the AttributeSchema for the attribute of the given name for the
+        object with the given label.
+
+        Args:
+            label: the object label
+            obj_attr_name: the name of the object attribute
+
+        Returns:
+            the AttributeSchema
+        '''
+        obj_attrs_schema = self.get_object_schema(label)
+        return obj_attrs_schema.get_attribute_schema(obj_attr_name)
+
     def get_object_attribute_class(self, label, obj_attr_name):
         '''Gets the `Attribute` class for the attribute of the given name for
         the object with the given label.
@@ -926,7 +953,7 @@ class ObjectContainerSchema(Serializable):
             obj_attr_name: the name of the object attribute
 
         Returns:
-            the Attribute subclass
+            the Attribute
         '''
         self.validate_object_label(label)
         return self.schema[label].get_attribute_class(obj_attr_name)
