@@ -24,7 +24,6 @@ from collections import defaultdict
 
 from eta.core.data import AttributeContainer, AttributeContainerSchema
 from eta.core.frames import FrameLabels, FrameRanges
-from eta.core.objects import ObjectContainer
 from eta.core.serial import Container, Serializable
 
 
