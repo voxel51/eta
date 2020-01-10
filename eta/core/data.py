@@ -595,7 +595,7 @@ class BooleanAttributeSchema(AttributeSchema):
 
 
 class AttributeContainer(Container):
-    '''A container for attributes.'''
+    '''A `Container` of `Attribute`s.'''
 
     _ELE_CLS = Attribute
     _ELE_CLS_FIELD = "_ATTR_CLS"
@@ -639,21 +639,21 @@ class AttributeContainer(Container):
 
         super(AttributeContainer, self).add(attr)
 
-    def add_container(self, container):
+    def add_container(self, attrs):
         '''Adds the attributes in the given container to this container.
 
         Args:
-            container: an AttributeContainer instance
+            attrs: an AttributeContainer instance
 
         Raises:
             AttributeContainerSchemaError: if this container has a schema
                 enforced and an attribute in the given container violates it
         '''
         if self.has_schema:
-            for attr in container:
+            for attr in attrs:
                 self._validate_attribute(attr)
 
-        super(AttributeContainer, self).add_container(container)
+        super(AttributeContainer, self).add_container(attrs)
 
     def sort_by_name(self, reverse=False):
         '''Sorts the attributes in the container by name.
@@ -698,11 +698,7 @@ class AttributeContainer(Container):
             schema: the AttributeContainerSchema to use
             filter_by_schema: whether to filter any invalid values from the
                 container after changing the schema. By default, this is False
-
-        Raises:
-            AttributeContainerSchemaError: if `filter_by_schema` was False and
-                the container contains values that are not compliant with the
-                schema
+                and thus the container must already meet the new schema
         '''
         self.schema = schema
         if not self.has_schema:
@@ -755,6 +751,7 @@ class AttributeContainer(Container):
             an AttributeContainer
         '''
         container = super(AttributeContainer, cls).from_dict(d)
+
         schema = d.get("schema", None)
         if schema is not None:
             container.set_schema(AttributeContainerSchema.from_dict(schema))
