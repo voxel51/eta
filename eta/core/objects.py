@@ -467,7 +467,6 @@ class Object(Serializable):
             _attrs.append("frames")
         if self.child_objects:
             _attrs.append("child_objects")
-
         return _attrs
 
     @classmethod
@@ -595,7 +594,7 @@ class ObjectContainer(Container):
 
 
 class ObjectContainerSchema(Serializable):
-    '''A schema for `ObjectContainer`s and `DetectedObjectContainer`s.'''
+    '''Schema for `ObjectContainer`s and `DetectedObjectContainer`s.'''
 
     def __init__(self, schema=None):
         '''Creates an ObjectContainerSchema instance.
@@ -813,15 +812,14 @@ class ObjectContainerSchema(Serializable):
 
     @classmethod
     def build_active_schema(cls, objects):
-        '''Builds an ObjectContainerSchemaError that describes the active
-        schema of the objects.
+        '''Builds an ObjectContainerSchema that describes the active schema of
+        the objects.
 
         Args:
             objects: an ObjectContainer or DetectedObjectContainer
 
         Returns:
-            an ObjectContainerSchemaError describing the active schema of the
-                objects
+            an ObjectContainerSchema
         '''
         schema = cls()
         schema.add_objects(objects)
@@ -829,7 +827,7 @@ class ObjectContainerSchema(Serializable):
 
     @classmethod
     def from_dict(cls, d):
-        '''Constructs an ObjectContainerSchemaError from a JSON dictionary.
+        '''Constructs an ObjectContainerSchema from a JSON dictionary.
 
         Args:
             d: a JSON dictionary
@@ -843,6 +841,7 @@ class ObjectContainerSchema(Serializable):
                 k: AttributeContainerSchema.from_dict(v)
                 for k, v in iteritems(schema)
             }
+
         return cls(schema=schema)
 
     def _add_detected_object(self, dobj, label=None):
