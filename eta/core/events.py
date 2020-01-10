@@ -233,6 +233,17 @@ class Event(Serializable):
         for frame_labels in self.iter_frames():
             frame_labels.clear_objects()
 
+    def remove_objects_without_attrs(self, labels=None):
+        '''Removes objects that do not have attributes from this container.
+
+        Args:
+            labels: an optional list of object `label` strings to which to
+                restrict attention when filtering. By default, all objects are
+                processed
+        '''
+        for frame_labels in self.iter_frames():
+            frame_labels.remove_objects_without_attrs(labels=labels)
+
     def add_child_object(self, obj):
         '''Adds the Object as a child of this event.
 
@@ -359,6 +370,59 @@ class EventContainer(Container):
     _ELE_CLS_FIELD = "_EVENT_CLS"
     _ELE_ATTR = "events"
 
+    def __init__(self, schema=None, **kwargs):
+        '''Creates an EventContainer instance.
+
+        Args:
+            schema: an optional EventContainerSchema to enforce on the events
+                in this container. By default, no schema is enforced
+            **kwargs: valid keyword arguments for Container()
+
+        Raises:
+            EventContainerSchemaError: if a schema was provided but the events
+                added to the container violate it
+        '''
+        super(EventContainer, self).__init__(**kwargs)
+        self.schema = None
+        if schema is not None:
+            self.set_schema(schema)
+
+    @property
+    def has_schema(self):
+        '''Whether the container has an enforced schema.'''
+        return self.schema is not None
+
+    def add(self, event):
+        '''Adds an event to the container.
+
+        Args:
+            event: an Event
+
+        Raises:
+            EventContainerSchemaError: if this container has a schema enforced
+                and the given event violates it
+        '''
+        if self.has_schema:
+            self._validate_event(event)
+
+        super(EventContainer, self).add(event)
+
+    def add_container(self, events):
+        '''Adds the events in the given container to this container.
+
+        Args:
+            events: an EventContainer instance
+
+        Raises:
+            EventContainerSchemaError: if this container has a schema enforced
+                and an event in the given container violates it
+        '''
+        if self.has_schema:
+            for event in events:
+                self._validate_event(event)
+
+        super(EventContainer, self).add_container(events)
+
     def get_labels(self):
         '''Returns a set containing the labels of the `Event`s.
 
@@ -392,13 +456,114 @@ class EventContainer(Container):
         compliant with the given schema.
 
         Args:
-            schema: a VideoLabelsSchema
+            schema: an EventContainerSchema
         '''
-        filter_func = lambda event: event.label in schema.events
+        # Filter by event label
+        filter_func = lambda event: schema.has_event_label(event.label)
         self.filter_elements([filter_func])
+
+        # Filter event attributes
         for event in self:
             if event.has_attributes:
-                event.attrs.filter_by_schema(schema.events[event.label])
+                event_schema = schema.get_event_schema(event.label)
+                event.attrs.filter_by_schema(event_schema)
+
+    def remove_objects_without_attrs(self, labels=None):
+        '''Removes objects that do not have attributes from all events in this
+        container.
+
+        Args:
+            labels: an optional list of object `label` strings to which to
+                restrict attention when filtering. By default, all objects are
+                processed
+        '''
+        for event in self:
+            event.remove_objects_without_attrs(labels=labels)
+
+    def get_schema(self):
+        '''Gets the current enforced schema for the container, or None if no
+        schema is enforced.
+
+        Returns:
+            an EventContainerSchema
+        '''
+        return self.schema
+
+    def get_active_schema(self):
+        '''Returns an EventContainerSchema describing the active schema of the
+        container.
+
+        Returns:
+            an EventContainerSchema
+        '''
+        return EventContainerSchema.build_active_schema(self)
+
+    def set_schema(self, schema, filter_by_schema=False):
+        '''Sets the enforced schema to the given EventContainerSchema.
+
+        Args:
+            schema: the EventContainerSchema to use
+            filter_by_schema: whether to filter any invalid values from the
+                container after changing the schema. By default, this is False
+                and thus the container must already meet the new schema
+        '''
+        self.schema = schema
+        if not self.has_schema:
+            return
+
+        if filter_by_schema:
+            self.filter_by_schema(self.schema)
+        else:
+            self._validate_schema()
+
+    def freeze_schema(self):
+        '''Sets the enforced schema for the container to the current active
+        schema.
+        '''
+        self.set_schema(self.get_active_schema())
+
+    def remove_schema(self):
+        '''Removes the enforced schema from the container.'''
+        self.schema = None
+
+    def attributes(self):
+        '''Returns the list of class attributes that will be serialized.
+
+        Returns:
+            a list of attribute names
+        '''
+        _attrs = []
+        if self.has_schema:
+            _attrs.append("schema")
+        _attrs += super(EventContainer, self).attributes()
+        return _attrs
+
+    def _validate_event(self, event):
+        if self.has_schema:
+            self.schema.validate_event(event)
+
+    def _validate_schema(self):
+        if self.has_schema:
+            for event in self:
+                self._validate_event(event)
+
+    @classmethod
+    def from_dict(cls, d):
+        '''Constructs an EventContainer from a JSON dictionary.
+
+        Args:
+            d: a JSON dictionary
+
+        Returns:
+            an EventContainer
+        '''
+        events = super(EventContainer, cls).from_dict(d)
+
+        schema = d.get("schema", None)
+        if schema is not None:
+            events.set_schema(EventContainerSchema.from_dict(schema))
+
+        return events
 
 
 class EventContainerSchema(Serializable):
@@ -442,6 +607,33 @@ class EventContainerSchema(Serializable):
             return False
 
         return self.schema[label].has_attribute(event_attr_name)
+
+    def get_event_schema(self, label):
+        '''Gets the AttributeContainerSchema for the event with the given
+        label.
+
+        Args:
+            label: the object event
+
+        Returns:
+            an AttributeContainerSchema
+        '''
+        self.validate_event_label(label)
+        return self.schema[label]
+
+    def get_event_attribute_schema(self, label, event_attr_name):
+        '''Gets the AttributeSchema for the attribute of the given name for the
+        event with the given label.
+
+        Args:
+            label: the event label
+            event_attr_name: the name of the event attribute
+
+        Returns:
+            the AttributeSchema
+        '''
+        event_attrs_schema = self.get_event_schema(label)
+        return event_attrs_schema.get_attribute_schema(event_attr_name)
 
     def get_event_attribute_class(self, label, event_attr_name):
         '''Gets the `Attribute` class for the attribute of the given name for
@@ -620,7 +812,7 @@ class EventContainerSchema(Serializable):
 
     @classmethod
     def from_dict(cls, d):
-        '''Constructs an EventContainerSchemaError from a JSON dictionary.
+        '''Constructs an EventContainerSchema from a JSON dictionary.
 
         Args:
             d: a JSON dictionary
