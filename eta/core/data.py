@@ -521,8 +521,7 @@ class NumericAttributeSchema(AttributeSchema):
         else:
             self.range = (
                 min(self.range[0], schema.range[0]),
-                max(self.range[1], schema.range[1])
-            )
+                max(self.range[1], schema.range[1]))
 
     @staticmethod
     def get_kwargs(d):
@@ -637,6 +636,7 @@ class AttributeContainer(Container):
         '''
         if self.has_schema:
             self._validate_attribute(attr)
+
         super(AttributeContainer, self).add(attr)
 
     def add_container(self, container):
@@ -652,6 +652,7 @@ class AttributeContainer(Container):
         if self.has_schema:
             for attr in container:
                 self._validate_attribute(attr)
+
         super(AttributeContainer, self).add_container(container)
 
     def sort_by_name(self, reverse=False):
@@ -757,6 +758,7 @@ class AttributeContainer(Container):
         schema = d.get("schema", None)
         if schema is not None:
             container.set_schema(AttributeContainerSchema.from_dict(schema))
+
         return container
 
 
@@ -772,8 +774,8 @@ class AttributeContainerSchema(Serializable):
         '''Creates an AttributeContainerSchema instance.
 
         Args:
-            schema: a dictionary mapping attribute names to AttributeSchema
-                instances. By default, an empty schema is created
+            schema: (optional) a dictionary mapping attribute names to
+                AttributeSchema instances
         '''
         self.schema = schema or {}
 
@@ -804,6 +806,7 @@ class AttributeContainerSchema(Serializable):
         if not self.has_attribute(name):
             raise AttributeContainerSchemaError(
                 "Attribute '%s' is not allowed by the schema" % name)
+
         return self.schema[name].get_attribute_class()
 
     def add_attribute(self, attr):
@@ -816,6 +819,7 @@ class AttributeContainerSchema(Serializable):
         if name not in self.schema:
             schema_cls = attr.get_schema_cls()
             self.schema[name] = schema_cls(name)
+
         self.schema[name].add_attribute(attr)
 
     def add_attributes(self, attrs):
