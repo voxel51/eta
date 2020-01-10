@@ -787,6 +787,18 @@ class AttributeContainerSchema(Serializable):
         '''
         return name in self.schema
 
+    def get_attribute_schema(self, name):
+        '''Gets the AttributeSchema for the attribute with the given name.
+
+        Args:
+            name: the name
+
+        Returns:
+            an AttributeSchema
+        '''
+        self.validate_attribute_name(name)
+        return self.schema[name]
+
     def get_attribute_class(self, name):
         '''Gets the class of the Attribute with the given name.
 
@@ -800,10 +812,7 @@ class AttributeContainerSchema(Serializable):
             AttributeContainerSchemaError: if the schema does not have an
                 attribute with the given name
         '''
-        if not self.has_attribute(name):
-            raise AttributeContainerSchemaError(
-                "Attribute '%s' is not allowed by the schema" % name)
-
+        self.validate_attribute_name(attr.name)
         return self.schema[name].get_attribute_class()
 
     def add_attribute(self, attr):
@@ -840,6 +849,20 @@ class AttributeContainerSchema(Serializable):
             else:
                 self.schema[name].merge_schema(attr_schema)
 
+    def validate_attribute_name(self, name):
+        '''Validates that the schema has an attribute with the given name.
+
+        Args:
+            name: the name
+
+        Raises:
+            AttributeContainerSchemaError: if the attribute violates the
+                schema
+        '''
+        if not self.has_attribute(name):
+            raise AttributeContainerSchemaError(
+                "Attribute '%s' is not allowed by the schema" % name)
+
     def validate_attribute(self, attr):
         '''Validates that the attribute is compliant with the schema.
 
@@ -850,10 +873,7 @@ class AttributeContainerSchema(Serializable):
             AttributeContainerSchemaError: if the attribute violates the
                 schema
         '''
-        if not self.has_attribute(attr.name):
-            raise AttributeContainerSchemaError(
-                "Attribute '%s' is not allowed by the schema" % attr.name)
-
+        self.validate_attribute_name(attr.name)
         try:
             self.schema[attr.name].validate_attribute(attr)
         except AttributeSchemaError as e:
