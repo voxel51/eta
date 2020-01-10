@@ -20,8 +20,11 @@ from future.utils import iteritems, itervalues
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-from eta.core.data import AttributeContainer
+from collections import defaultdict
+
+from eta.core.data import AttributeContainer, AttributeContainerSchema
 from eta.core.frames import FrameLabels, FrameRanges
+from eta.core.objects import ObjectContainer
 from eta.core.serial import Container, Serializable
 
 
@@ -46,7 +49,7 @@ class Event(Serializable):
     attributes and object detections, as well as child objects and events.
 
     Attributes:
-        label: the event label
+        label: (optional) the event label
         confidence: (optional) the label confidence in [0, 1]
         support: a FrameRanges instance describing the frames in the event
         index: (optional) an index assigned to the event
@@ -58,12 +61,13 @@ class Event(Serializable):
     '''
 
     def __init__(
-            self, label, confidence=None, support=None, index=None, uuid=None,
-            attrs=None, frames=None, child_objects=None, child_events=None):
+            self, label=None, confidence=None, support=None, index=None,
+            uuid=None, attrs=None, frames=None, child_objects=None,
+            child_events=None):
         '''Creates an Event instance.
 
         Args:
-            label: the event label
+            label: (optional) the event label
             confidence: (optional) the label confidence in [0, 1]
             support: (optional) a FrameRanges instance describing the frames in
                 the event. If omitted, the support is inferred from the frames
@@ -212,7 +216,7 @@ class Event(Serializable):
             self.add_detected_object(obj)
 
     def clear_attributes(self):
-        '''Removes all attributes of any kind from the object.'''
+        '''Removes all attributes of any kind from the event.'''
         self.clear_event_attributes()
         self.clear_frame_attributes()
 
@@ -266,7 +270,9 @@ class Event(Serializable):
         Returns:
             a list of attrinutes
         '''
-        _attrs = ["label"]
+        _attrs = []
+        if self.label is not None:
+            _attrs.append("label")
         if self.confidence is not None:
             _attrs.append("confidence")
         _attrs.append("support")
@@ -282,7 +288,6 @@ class Event(Serializable):
             _attrs.append("child_objects")
         if self.child_events:
             _attrs.append("child_events")
-
         return _attrs
 
     @staticmethod
@@ -303,7 +308,7 @@ class Event(Serializable):
         '''
         support = FrameRanges.build_simple(first, last)
         return Event(
-            label, confidence=confidence, support=support, index=index,
+            label=label, confidence=confidence, support=support, index=index,
             uuid=uuid)
 
     @classmethod
@@ -332,7 +337,7 @@ class Event(Serializable):
             }
 
         return cls(
-            d["label"],
+            label=d.get("label", None),
             confidence=d.get("confidence", None),
             support=support,
             index=d.get("index", None),
@@ -395,3 +400,245 @@ class EventContainer(Container):
         for event in self:
             if event.has_attributes:
                 event.attrs.filter_by_schema(schema.events[event.label])
+
+
+class EventContainerSchema(Serializable):
+    '''Schema for `EventContainers`s.'''
+
+    def __init__(self, schema=None):
+        '''Creates an EventContainerSchema instance.
+
+        Args:
+            schema: a dictionary mapping event labels to
+                AttributeContainerSchema instances. By default, an empty schema
+                is created
+        '''
+        self.schema = defaultdict(AttributeContainerSchema)
+        if schema is not None:
+            self.schema.update(schema)
+
+    def has_event_label(self, label):
+        '''Whether the schema has an event with the given label.
+
+        Args:
+            label: the event label
+
+        Returns:
+            True/False
+        '''
+        return label in self.schema
+
+    def has_event_attribute(self, label, event_attr_name):
+        '''Whether the schema has an event with the given label with an
+        attribute of the given name.
+
+        Args:
+            label: the event label
+            event_attr_name: the name of the event attribute
+
+        Returns:
+            True/False
+        '''
+        if not self.has_event_label(label):
+            return False
+
+        return self.schema[label].has_attribute(event_attr_name)
+
+    def get_event_attribute_class(self, label, event_attr_name):
+        '''Gets the `Attribute` class for the attribute of the given name for
+        the event with the given label.
+
+        Args:
+            label: the event label
+            event_attr_name: the name of the event attribute
+
+        Returns:
+            the Attribute subclass
+        '''
+        self.validate_event_label(label)
+        return self.schema[label].get_attribute_class(event_attr_name)
+
+    def add_event_label(self, label):
+        '''Adds the given event label to the schema.
+
+        ArgsL:
+            label: an event label
+        '''
+        self.schema[label]  # adds key to defaultdict #pylint: disable=W0104
+
+    def add_event_attribute(self, label, event_attr):
+        '''Adds the Attribute for the event with the given label to the
+        schema.
+
+        Args:
+            label: an event label
+            event_attr: an Attribute
+        '''
+        self.schema[label].add_attribute(event_attr)
+
+    def add_event_attributes(self, label, event_attrs):
+        '''Adds the AttributeContainer for the event with the given label to
+        the schema.
+
+        Args:
+            label: an event label
+            event_attrs: an AttributeContainer
+        '''
+        self.schema[label].add_attributes(event_attrs)
+
+    def add_event(self, event):
+        '''Adds the Event to the schema.
+
+        Args:
+            event: an Event
+        '''
+        self.add_event_label(event.label)
+        self.add_event_attributes(event.label, event.attrs)
+
+    def add_events(self, events):
+        '''Adds the EventContainer to the schema.
+
+        Args:
+            events: an EventContainer
+        '''
+        for event in events:
+            self.add_event(event)
+
+    def merge_schema(self, schema):
+        '''Merges the given EventContainerSchema into this schema.
+
+        Args:
+            schema: an EventContainerSchema
+        '''
+        for k, v in iteritems(schema.schema):
+            self.schema[k].merge_schema(v)
+
+    def is_valid_event_label(self, label):
+        '''Whether the event label is compliant with the schema.
+
+        Args:
+            label: an event label
+
+        Returns:
+            True/False
+        '''
+        try:
+            self.validate_event_label(label)
+            return True
+        except:
+            return False
+
+    def is_valid_event_attribute(self, label, event_attr):
+        '''Whether the event attribute for the event with the given label is
+        compliant with the schema.
+
+        Args:
+            label: an event label
+            event_attr: an Attribute
+
+        Returns:
+            True/False
+        '''
+        try:
+            self.validate_event_attribute(label, event_attr)
+            return True
+        except:
+            return False
+
+    def is_valid_event(self, event):
+        '''Whether the `Event` is compliant with the schema.
+
+        Args:
+            event: an Event
+
+        Returns:
+            True/False
+        '''
+        try:
+            self.validate_event(event)
+            return True
+        except:
+            return False
+
+    def validate_event_label(self, label):
+        '''Validates that the event label is compliant with the schema.
+
+        Args:
+            label: an event label
+
+        Raises:
+            EventContainerSchemaError: if the event label violates the schema
+        '''
+        if label not in self.schema:
+            raise EventContainerSchemaError(
+                "Object label '%s' is not allowed by the schema" % label)
+
+    def validate_event_attribute(self, label, event_attr):
+        '''Validates that the event attribute for the given label is compliant
+        with the schema.
+
+        Args:
+            label: an event label
+            event_attr: an Attribute
+
+        Raises:
+            EventContainerSchemaError: if the event label violates the schema
+            AttributeContainerSchemaError: if the event attribute violates the
+                schema
+        '''
+        self.validate_event_label(label)
+        self.schema[label].validate_attribute(event_attr)
+
+    def validate_event(self, event):
+        '''Validates that the `Event` is compliant with the schema.
+
+        Args:
+            event: an Event
+
+        Raises:
+            EventContainerSchemaError: if the event's label violates the schema
+            AttributeContainerSchemaError: if any attributes of the event
+                violate the schema
+        '''
+        self.validate_event_label(event.label)
+        for event_attr in event.attrs:
+            self.validate_event_attribute(event.label, event_attr)
+
+    @classmethod
+    def build_active_schema(cls, events):
+        '''Builds an EventContainerSchema that describes the active schema of
+        the events.
+
+        Args:
+            events: an EventContainer
+
+        Returns:
+            an EventContainerSchema
+        '''
+        schema = cls()
+        schema.add_events(events)
+        return schema
+
+    @classmethod
+    def from_dict(cls, d):
+        '''Constructs an EventContainerSchemaError from a JSON dictionary.
+
+        Args:
+            d: a JSON dictionary
+
+        Returns:
+            an EventContainerSchema
+        '''
+        schema = d.get("schema", None)
+        if schema is not None:
+            schema = {
+                k: AttributeContainerSchema.from_dict(v)
+                for k, v in iteritems(schema)
+            }
+
+        return cls(schema=schema)
+
+
+class EventContainerSchemaError(Exception):
+    '''Error raised when an EventContainerSchema is violated.'''
+    pass
