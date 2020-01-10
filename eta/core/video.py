@@ -356,13 +356,10 @@ class VideoFrameLabels(etaf.FrameLabels):
 class VideoLabels(Serializable):
     '''Class encapsulating labels for a video.
 
-    Note that any falsey fields of this class will be omitted during
-    serialization.
-
     Note that when VideoLabels objects are serialized, any integer keys will be
     converted to strings and then back to integers upon deserialization. For
     example, the keys of the `frames` dict will be converted to strings,
-    because all JSON object keys _must_ be strings. The `from_dict` method of
+    because all JSON object keys *must* be strings. The `from_dict` method of
     this class handles converting the keys back to integers when VideoLabels
     instances are loaded.
 
@@ -728,6 +725,7 @@ class VideoLabels(Serializable):
         '''
         if self.has_schema:
             self._validate_event(event)
+
         self.events.add(event)
 
     def add_events(self, events):
