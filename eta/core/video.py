@@ -737,12 +737,17 @@ class VideoLabels(Serializable):
         for event in events:
             self.add_event(event)
 
-    def merge_video_labels(self, video_labels):
+    def merge_video_labels(self, video_labels, reindex=False):
         '''Merges the given VideoLabels into this labels.
 
         Args:
             video_labels: a VideoLabels
+            reindex: whether to reindex objects in `video_labels` before
+                merging so that all indices are unique
         '''
+        if reindex:
+            self._reindex_objects(video_labels)
+
         self.add_video_attributes(video_labels.attrs)
         for frame_labels in video_labels.iter_frames():
             self.add_frame(frame_labels, overwrite=False)
@@ -898,6 +903,32 @@ class VideoLabels(Serializable):
                 self._validate_event(event)
             for frame_labels in self.iter_frames():
                 self._validate_frame_labels(frame_labels)
+
+    def _reindex_objects(self, video_labels):
+        self_indices = self._get_object_indices(self)
+        if not self_indices:
+            return
+
+        new_indices = self._get_object_indices(video_labels)
+        if not new_indices:
+            return
+
+        offset = max(new_indices) + 1 - min(self_indices)
+
+        for frame_labels in self.iter_frames():
+            for obj in frame_labels.objects:
+                if obj.index is not None:
+                    obj.index += offset
+
+    @staticmethod
+    def _get_object_indices(video_labels):
+        obj_indices = set()
+        for frame_labels in video_labels.iter_frames():
+            for obj in frame_labels.objects:
+                if obj.index is not None:
+                    obj_indices.add(obj.index)
+
+        return obj_indices
 
     @classmethod
     def from_detected_objects(cls, objects):
