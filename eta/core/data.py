@@ -1,5 +1,5 @@
 '''
-Core data structures for representing data and containers of data.
+Core tools and data structures for working with data.
 
 Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
