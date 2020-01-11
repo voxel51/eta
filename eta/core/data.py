@@ -496,6 +496,7 @@ class NumericAttributeSchema(AttributeSchema):
         '''
         if not self.range:
             return False
+
         return value >= self.range[0] and value <= self.range[1]
 
     def add_attribute(self, attr):
@@ -728,8 +729,7 @@ class AttributeContainer(Container):
             name: the Attribute name
 
         Returns:
-            boolean indicating whether or not the container contains an
-                Attribute with the given name
+            True/False
         '''
         for attr in self:
             if attr.name == name:
@@ -738,7 +738,7 @@ class AttributeContainer(Container):
         return False
 
     def get_attrs_with_name(self, name):
-        '''Get all attributes with a given name
+        '''Gets all attributes with a given name.
 
         Args:
             name: the Attribute name
@@ -749,19 +749,19 @@ class AttributeContainer(Container):
         return self.get_matches([lambda attr: attr.name == name])
 
     def get_attr_with_name(self, name, default=no_default):
-        '''Get the single attribute with a given name
+        '''Gets the single attribute with a given name.
 
         Args:
             name: the Attribute name
             default: the value to be returned if there is no Attribute with
-                the given name. By default, an error is raised in this case.
+                the given name. By default, an error is raised in this case
 
         Returns:
             the Attribute
 
         Raises:
-            ValueError if there is not exactly one Attribute with the name
-            `name`
+            ValueError: if there is not exactly one Attribute with the given
+                name
         '''
         attrs = self.get_attrs_with_name(name)
 
@@ -769,12 +769,14 @@ class AttributeContainer(Container):
             return default
 
         if len(attrs) != 1:
-            raise ValueError("Expected 1 attr with name '%s' but there are %d"
-                             % (name, len(attrs)))
+            raise ValueError(
+                "Expected one attribute with name '%s' but found %d"
+                % (name, len(attrs)))
+
         return attrs[0]
 
     def get_attr_values_with_name(self, name):
-        '''Get a list of values for all attributes with a given name
+        '''Gets a list of values for all attributes with a given name.
 
         Args:
             name: the Attribute name
