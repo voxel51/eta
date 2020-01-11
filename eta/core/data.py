@@ -798,17 +798,11 @@ class AttributeContainer(Container):
             the Attribute value
 
         Raises:
-            ValueError if there is not exactly one Attribute with the name
-            `name`
+            ValueError: if there is not exactly one Attribute with the given
+                name
         '''
-        values = self.get_attr_values_with_name(name)
-        if len(values) == 0 and default is not no_default:
-            return default
-
-        if len(values) != 1:
-            raise ValueError("Expected 1 attr with name '%s' but there are %d"
-                             % (name, len(values)))
-        return values[0]
+        attr = self.get_attr_with_name(name, default=default)
+        return attr.value
 
     def attributes(self):
         '''Returns the list of class attributes that will be serialized.
