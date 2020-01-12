@@ -301,8 +301,7 @@ class AttributeSchema(Serializable):
             attr: an Attribute
 
         Raises:
-            AttributeSchemaError: if the attribute is not of the class expected
-                by the schema
+            AttributeSchemaError: if the attribute violates the schema
         '''
         if not isinstance(attr, self._attr_cls):
             raise AttributeSchemaError(
@@ -316,8 +315,7 @@ class AttributeSchema(Serializable):
             attr: an Attribute
 
         Raises:
-            AttributeSchemaError: if the attribute is not compliant with the
-                schema
+            AttributeSchemaError: if the attribute violates the schema
         '''
         if attr.name != self.name:
             raise AttributeSchemaError(
