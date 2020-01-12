@@ -22,6 +22,7 @@ from future.utils import iteritems
 # pragma pylint: enable=wildcard-import
 
 from collections import defaultdict
+import logging
 import os
 
 import numpy as np
@@ -30,6 +31,9 @@ from eta.core.config import no_default
 import eta.core.numutils as etan
 from eta.core.serial import Container, NpzWriteable, Serializable
 import eta.core.utils as etau
+
+
+logger = logging.getLogger(__name__)
 
 
 def majority_vote_categorical_attrs(attrs, confidence_weighted=False):
@@ -1473,11 +1477,11 @@ class LabeledFileRecord(BaseDataRecord):
 
     @property
     def filename(self):
-        '''Property to support older member access.
+        '''The filename of the record.
 
-        @deprecated Use `file_path` instead
+        @deprecated Use `file_path` instead.
         '''
-        logger.info("Deprecated use of filename property.")
+        logger.warning("`filename` is deprecated; use `file_path` instead")
         return self.file_path
 
     @classmethod
