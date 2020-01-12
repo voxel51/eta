@@ -128,7 +128,7 @@ class FrameLabels(Serializable):
             schema: a VideoLabelsSchema
         '''
         self.attrs.filter_by_schema(schema.frames)
-        self.objects.filter_by_schema(schema)
+        self.objects.filter_by_schema(schema.objects)
 
     def remove_objects_without_attrs(self, labels=None):
         '''Removes `DetectedObject`s from the frame that do not have
