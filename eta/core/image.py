@@ -318,7 +318,7 @@ class ImageLabelsSchema(Serializable):
             image_attr_name: an image attribute name
 
         Returns:
-            an Attribute
+            the Attribute class
         '''
         return self.attrs.get_attribute_class(image_attr_name)
 
@@ -333,6 +333,17 @@ class ImageLabelsSchema(Serializable):
         '''
         return self.objects.has_object_label(label)
 
+    def get_object_schema(self, label):
+        '''Gets the ObjectSchema for the object with the given label.
+
+        Args:
+            label: the object label
+
+        Returns:
+            the ObjectSchema
+        '''
+        return self.objects.get_object_schema(label)
+
     def has_object_attribute(self, label, obj_attr_name):
         '''Whether the schema has an object with the given label with an
         attribute with the given name.
@@ -346,6 +357,19 @@ class ImageLabelsSchema(Serializable):
         '''
         return self.objects.has_object_attribute(label, obj_attr_name)
 
+    def get_object_attribute_schema(self, label, obj_attr_name):
+        '''Gets the AttributeSchema for the attribute of the given name for the
+        object with the given label.
+
+        Args:
+            label: the object label
+            obj_attr_name: the name of the object attribute
+
+        Returns:
+            the AttributeSchema
+        '''
+        return self.objects.get_object_attribute_schema(label, obj_attr_name)
+
     def get_object_attribute_class(self, label, obj_attr_name):
         '''Gets the Attribute class for the attribute of the given name for the
         object with the given label.
@@ -355,7 +379,7 @@ class ImageLabelsSchema(Serializable):
             obj_attr_name: an object attribute name
 
         Returns:
-            an Attribute subclass
+            the Attribute class
         '''
         return self.objects.get_object_attribute_class(label, obj_attr_name)
 
@@ -457,7 +481,7 @@ class ImageLabelsSchema(Serializable):
         Returns:
             True/False
         '''
-        return self.objects.is_valid_attribute(label)
+        return self.objects.is_valid_object_label(label)
 
     def is_valid_object_attribute(self, label, obj_attr):
         '''Whether the object attribute for the object with the given label is
@@ -501,7 +525,7 @@ class ImageLabelsSchema(Serializable):
             label: an object label
 
         Raises:
-            ImageLabelsSchemaError: if the object label violates the schema
+            ObjectContainerSchemaError: if the object label violates the schema
         '''
         self.objects.validate_object_label(label)
 
@@ -514,8 +538,9 @@ class ImageLabelsSchema(Serializable):
             obj_attr: an Attribute
 
         Raises:
-            AttributeContainerSchemaError: if the object attribute violates
-                the schema
+            ObjectContainerSchemaError: if the object label violates the schema
+            AttributeContainerSchemaError: if the object attribute violates the
+                schema
         '''
         self.objects.validate_object_attribute(label, obj_attr)
 
@@ -526,8 +551,7 @@ class ImageLabelsSchema(Serializable):
             obj: a DetectedObject
 
         Raises:
-            ObjectContainerSchemaError: if the object's label violates the
-                schema
+            ObjectContainerSchemaError: if the object label violates the schema
             AttributeContainerSchemaError: if any attributes of the object
                 violate the schema
         '''
