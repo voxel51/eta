@@ -19,8 +19,6 @@ from future.utils import iteritems, itervalues
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-from collections import defaultdict
-
 from eta.core.data import AttributeContainer, AttributeContainerSchema
 from eta.core.frames import FrameRanges
 from eta.core.geometry import BoundingBox, HasBoundingBox
@@ -131,6 +129,30 @@ class DetectedObject(Serializable, HasBoundingBox):
              a BoundingBox
         '''
         return self.bounding_box
+
+    def filter_by_schema(self, schema, allow_none_label=False):
+        '''Filters the object by the given schema.
+
+        The `label` of the `DetectedObject` must match the provided schema. Or,
+        it can be `None` when `allow_none_label == True`.
+
+        Args:
+            schema: an ObjectSchema
+            allow_none_label: whether to allow the object label to be `None`.
+                By default, this is False
+
+        Raises:
+            ObjectSchemaError: if the object label does not match the schema
+        '''
+        if self.label is None and not allow_none_label:
+            raise ObjectSchemaError(
+                "None object label is not allowed by the schema")
+
+        if self.label != schema.get_label():
+            raise ObjectSchemaError(
+                "Label '%s' does not match object schema" % self.label)
+
+        self.attrs.filter_by_schema(schema.attrs)
 
     def attributes(self):
         '''Returns the list of attributes to serialize.
@@ -306,15 +328,14 @@ class DetectedObjectContainer(Container):
         Args:
             schema: an ObjectContainerSchema
         '''
-        # Filter by object label
+        # Remove objects with invalid labels
         filter_func = lambda obj: schema.has_object_label(obj.label)
         self.filter_elements([filter_func])
 
-        # Filter object attributes
+        # Filter objects by their schemas
         for obj in self:
-            if obj.has_attributes:
-                obj_schema = schema.get_object_schema(obj.label)
-                obj.attrs.filter_by_schema(obj_schema)
+            obj_schema = schema.get_object_schema(obj.label)
+            obj.filter_by_schema(obj_schema)
 
     def remove_objects_without_attrs(self, labels=None):
         '''Removes objects from this container that do not have attributes.
@@ -546,6 +567,8 @@ class Object(Serializable):
     def add_detection(self, obj, frame_number=None):
         '''Adds the DetectedObject to the object.
 
+        Note that the `label` field of the `DetectedObject` is set to `None`.
+
         Args:
             obj: a DetectedObject
             frame_number: an optional frame number. If omitted,
@@ -558,12 +581,14 @@ class Object(Serializable):
                 "Expected `frame_number` or the DetectedObject to have its "
                 "`frame_number` set")
 
+        obj.label = None
         self.frames[obj.frame_number] = obj
 
     def add_detections(self, objects):
         '''Adds the DetectedObjects to the video.
 
-        The DetectedObjects must have their `frame_number`s set.
+        The DetectedObjects must have their `frame_number`s set. Also, the
+        `label` field of the `DetectedObject`s are set to `None`.
 
         Args:
             objects: a DetectedObjectContainer
@@ -585,6 +610,30 @@ class Object(Serializable):
     def clear_child_objects(self):
         '''Removes all child objects from the event.'''
         self.child_objects = set()
+
+    def filter_by_schema(self, schema):
+        '''Filters the object by the given schema.
+
+        The label of the Object must match the provided schema. Any
+        DetectedObjects whose labels are non-None and do not match the schema
+        are deleted.
+
+        Args:
+            schema: an ObjectSchema
+
+        Raises:
+            ObjectSchemaError: if the object label does not match the schema
+        '''
+        if self.label != schema.get_label():
+            raise ObjectSchemaError(
+                "Label '%s' does not match object schema" % self.label)
+
+        # Filter static attributes
+        self.attrs.filter_by_schema(schema.attrs)
+
+        # Filter `DetectedObject`s
+        for dobj in itervalues(self.frames):
+            dobj.filter_by_schema(schema, allow_none_label=True)
 
     def attributes(self):
         '''Returns the list of attributes to serialize.
@@ -742,37 +791,14 @@ class ObjectContainer(Container):
         Args:
             schema: an ObjectContainerSchema
         '''
-        # Filter by `Object` label
+        # Remove objects with invalid labels
         filter_func = lambda obj: schema.has_object_label(obj.label)
         self.filter_elements([filter_func])
 
-        # Iterate over `Object`s
+        # Filter objects by their schemas
         for obj in self:
-            # Filter static attributes
-            if obj.has_object_attributes:
-                obj_schema = schema.get_object_schema(obj.label)
-                obj.attrs.filter_by_schema(obj_schema)
-
-            # Iterate over `DetectedObject`s
-            del_frames = set()
-            for frame_number, dobj in iteritems(obj.frames):
-                if dobj.label is not None and dobj.label not in schema.objects:
-                    # This `DetectedObject` has a disallowed `label`, delete it
-                    del_frames.add(frame_number)
-                elif dobj.has_attributes:
-                    # Filter dynamic attributes
-                    dlabel = (
-                        dobj.label if dobj.label is not None
-                        else obj.label)
-                    obj_schema = schema.get_object_schema(dlabel)
-                    dobj.attrs.filter_by_schema(obj_schema)
-
-            # Delete `DetectedObject`s with disallowed labels
-            if del_frames:
-                obj.frames = {
-                    fn: obj for fn, obj in iteritems(obj.frames)
-                    if fn not in del_frames
-                }
+            obj_schema = schema.get_object_schema(obj.label)
+            obj.filter_by_schema(obj_schema)
 
     def remove_objects_without_attrs(self, labels=None):
         '''Removes objects from this container that do not have attributes.
@@ -873,20 +899,315 @@ class ObjectContainer(Container):
         return objects
 
 
+class ObjectSchema(Serializable):
+    '''Schema for `Object`s and `DetectedObject`s.
+
+    Attributes:
+        label: the object label
+        attrs: an AttributeContainerSchema describing the attributes of the
+            object
+    '''
+
+    def __init__(self, label, attrs=None):
+        '''Creates an ObjectSchema instance.
+
+        Args:
+            label: the object label
+            attrs: (optional) an AttributeContainerSchema describing the
+                attributes of the object
+        '''
+        self.label = label
+        self.attrs = attrs or AttributeContainerSchema()
+
+    def has_label(self, label):
+        '''Whether the schema has the given object label.
+
+        Args:
+            label: the object label
+
+        Returns:
+            True/False
+        '''
+        return label == self.label
+
+    def get_label(self):
+        '''Gets the object label for the schema.
+
+        Returns:
+            the object label
+        '''
+        return self.label
+
+    def has_attribute(self, attr_name):
+        '''Whether the schema has an attribute of the given name.
+
+        Args:
+            attr_name: the name of the object attribute
+
+        Returns:
+            True/False
+        '''
+        return self.attrs.has_attribute(attr_name)
+
+    def get_attribute_schema(self, attr_name):
+        '''Gets the AttributeSchema for the attribute of the given name.
+
+        Args:
+            attr_name: the name of the object attribute
+
+        Returns:
+            the AttributeSchema
+        '''
+        return self.attrs.get_attribute_schema(attr_name)
+
+    def get_attribute_class(self, attr_name):
+        '''Gets the `Attribute` class for the attribute of the given name.
+
+        Args:
+            attr_name: the name of the object attribute
+
+        Returns:
+            the Attribute
+        '''
+        return self.attrs.get_attribute_class(attr_name)
+
+    def add_attribute(self, attr):
+        '''Adds the Attribute to the schema.
+
+        Args:
+            attr: an Attribute
+        '''
+        self.attrs.add_attribute(attr)
+
+    def add_attributes(self, attrs):
+        '''Adds the AttributeContainer to the schema.
+
+        Args:
+            attrs: an AttributeContainer
+        '''
+        self.attrs.add_attributes(attrs)
+
+    def add_object(self, obj):
+        '''Adds the Object or DetectedObject to the schema.
+
+        Args:
+            obj: an Object or DetectedObject
+        '''
+        if isinstance(obj, Object):
+            self._add_object(obj)
+        else:
+            self._add_detected_object(obj)
+
+    def add_objects(self, objects):
+        '''Adds the ObjectContainer or DetectedObjectContainer to the schema.
+
+        Args:
+            objects: an ObjectContainer or DetectedObjectContainer
+        '''
+        for obj in objects:
+            self.add_object(obj)
+
+    def merge_schema(self, schema):
+        '''Merges the given ObjectSchema into this schema.
+
+        Args:
+            schema: an ObjectSchema
+        '''
+        self.validate_label(schema.label)
+        self.attrs.merge_schema(schema.attrs)
+
+    def is_valid_label(self, label):
+        '''Whether the object label is compliant with the schema.
+
+        Args:
+            label: an object label
+
+        Returns:
+            True/False
+        '''
+        try:
+            self.validate_label(label)
+            return True
+        except:
+            return False
+
+    def is_valid_attribute(self, attr):
+        '''Whether the attribute is compliant with the schema.
+
+        Args:
+            attr: an Attribute
+
+        Returns:
+            True/False
+        '''
+        try:
+            self.validate_attribute(attr)
+            return True
+        except:
+            return False
+
+    def is_valid_object(self, obj):
+        '''Whether the `Object` or `DetectedObject` is compliant with the
+        schema.
+
+        Args:
+            obj: an Object or DetectedObject
+
+        Returns:
+            True/False
+        '''
+        try:
+            self.validate_object(obj)
+            return True
+        except:
+            return False
+
+    def validate_label(self, label, allow_none=False):
+        '''Validates that the object label is compliant with the schema.
+
+        Args:
+            label: the label
+            allow_none: whether to allow `label == None`. By default, this is
+                False
+
+        Raises:
+            ObjectSchemaError: if the label violates the schema
+        '''
+        if label is None and not allow_none:
+            raise ObjectSchemaError(
+                "None object label is not allowed by the schema")
+
+        if label != self.label:
+            raise ObjectSchemaError(
+                "Label '%s' does not match object schema" % label)
+
+    def validate_attribute(self, attr):
+        '''Validates that the attribute is compliant with the schema.
+
+        Args:
+            attr: an Attribute
+
+        Raises:
+            AttributeContainerSchemaError: if the attribute violates the schema
+        '''
+        self.attrs.validate_attribute(attr)
+
+    def validate_object(self, obj, allow_none_label=False):
+        '''Validates that the `Object` or `DetectedObject` is compliant with
+        the schema.
+
+        Args:
+            obj: an Object or DetectedObject
+            allow_none: whether to allow `label == None`. By default, this is
+                False. Objects with a top-level label are always allowed to
+                have detections with no label set
+
+        Raises:
+            ObjectSchemaError: if the object label violates the schema
+            AttributeContainerSchemaError: if any attributes of the object
+                violate the schema
+        '''
+        if isinstance(obj, Object):
+            self._validate_object(obj, allow_none_label)
+        else:
+            self._validate_detected_object(obj, allow_none_label)
+
+    def attributes(self):
+        '''Returns the list of class attributes that will be serialized.
+
+        Args:
+            a list of attribute names
+        '''
+        return ["label", "attrs"]
+
+    @classmethod
+    def build_active_schema(cls, obj):
+        '''Builds an ObjectSchema that describes the active schema of the
+        object.
+
+        Args:
+            obj: an Object or DetectedObject
+
+        Returns:
+            an ObjectSchema
+        '''
+        schema = cls(obj.label)
+        schema.add_object(obj)
+        return schema
+
+    @classmethod
+    def from_dict(cls, d):
+        '''Constructs an ObjectSchema from a JSON dictionary.
+
+        Args:
+            d: a JSON dictionary
+
+        Returns:
+            an ObjectSchema
+        '''
+        attrs = d.get("attrs", None)
+        if attrs is not None:
+            attrs = AttributeContainerSchema.from_dict(attrs)
+
+        return cls(d["label"], attrs=attrs)
+
+    def _add_detected_object(self, dobj, ignore_none_label=False):
+        if dobj.label or not ignore_none_label:
+            self.validate_label(dobj.label)
+
+        self.add_attributes(dobj.attrs)
+
+    def _add_object(self, obj):
+        self.validate_label(obj.label)
+        self.add_attributes(obj.attrs)
+        for dobj in obj.iter_detections():
+            self._add_detected_object(dobj, ignore_none_label=True)
+
+    def _validate_detected_object(self, dobj, allow_none_label):
+        # Validate label
+        self.validate_label(dobj.label, allow_none=allow_none_label)
+
+        # Validate attributes
+        for attr in dobj.attrs:
+            self.validate_attribute(attr)
+
+    def _validate_object(self, obj, allow_none_label):
+        # Validate label
+        self.validate_label(obj.label, allow_none=allow_none_label)
+
+        # Validate attributes
+        for attr in obj.attrs:
+            self.validate_attribute(attr)
+
+        # If the `Object` has a top-level `label`, it's always okay for the
+        # `DetectedObject`s to have no `label`
+        allow_none_label |= obj.label is not None
+
+        # Validate DetectedObjects
+        for dobj in obj.iter_detections():
+            self._validate_detected_object(dobj, allow_none_label)
+
+
+class ObjectSchemaError(Exception):
+    '''Error raised when an ObjectSchema is violated.'''
+    pass
+
+
 class ObjectContainerSchema(Serializable):
-    '''Schema for `ObjectContainer`s and `DetectedObjectContainer`s.'''
+    '''Schema for `ObjectContainer`s and `DetectedObjectContainer`s.
+
+    Attributes:
+        schema: a dictionary mapping object labels to ObjectSchema instances
+    '''
 
     def __init__(self, schema=None):
         '''Creates an ObjectContainerSchema instance.
 
         Args:
-            schema: a dictionary mapping object labels to
-                AttributeContainerSchema instances. By default, an empty schema
-                is created
+            schema: a dictionary mapping object labels to ObjectSchema
+                instances. By default, an empty schema is created
         '''
-        self.schema = defaultdict(AttributeContainerSchema)
-        if schema is not None:
-            self.schema.update(schema)
+        self.schema = schema or {}
 
     def has_object_label(self, label):
         '''Whether the schema has an object with the given label.
@@ -898,6 +1219,18 @@ class ObjectContainerSchema(Serializable):
             True/False
         '''
         return label in self.schema
+
+    def get_object_schema(self, label):
+        '''Gets the ObjectSchema for the object with the given label.
+
+        Args:
+            label: the object label
+
+        Returns:
+            an ObjectSchema
+        '''
+        self.validate_object_label(label)
+        return self.schema[label]
 
     def has_object_attribute(self, label, obj_attr_name):
         '''Whether the schema has an object with the given label with an
@@ -915,19 +1248,6 @@ class ObjectContainerSchema(Serializable):
 
         return self.schema[label].has_attribute(obj_attr_name)
 
-    def get_object_schema(self, label):
-        '''Gets the AttributeContainerSchema for the object with the given
-        label.
-
-        Args:
-            label: the object label
-
-        Returns:
-            an AttributeContainerSchema
-        '''
-        self.validate_object_label(label)
-        return self.schema[label]
-
     def get_object_attribute_schema(self, label, obj_attr_name):
         '''Gets the AttributeSchema for the attribute of the given name for the
         object with the given label.
@@ -939,8 +1259,8 @@ class ObjectContainerSchema(Serializable):
         Returns:
             the AttributeSchema
         '''
-        obj_attrs_schema = self.get_object_schema(label)
-        return obj_attrs_schema.get_attribute_schema(obj_attr_name)
+        obj_schema = self.get_object_schema(label)
+        return obj_schema.get_attribute_schema(obj_attr_name)
 
     def get_object_attribute_class(self, label, obj_attr_name):
         '''Gets the `Attribute` class for the attribute of the given name for
@@ -959,10 +1279,10 @@ class ObjectContainerSchema(Serializable):
     def add_object_label(self, label):
         '''Adds the given object label to the schema.
 
-        ArgsL:
+        Args:
             label: an object label
         '''
-        self.schema[label]  # adds key to defaultdict #pylint: disable=W0104
+        self._ensure_has_object_label(label)
 
     def add_object_attribute(self, label, obj_attr):
         '''Adds the Attribute for the object with the given label to the
@@ -972,6 +1292,7 @@ class ObjectContainerSchema(Serializable):
             label: an object label
             obj_attr: an Attribute
         '''
+        self._ensure_has_object_label(label)
         self.schema[label].add_attribute(obj_attr)
 
     def add_object_attributes(self, label, obj_attrs):
@@ -982,6 +1303,7 @@ class ObjectContainerSchema(Serializable):
             label: an object label
             obj_attrs: an AttributeContainer
         '''
+        self._ensure_has_object_label(label)
         self.schema[label].add_attributes(obj_attrs)
 
     def add_object(self, obj):
@@ -1010,8 +1332,9 @@ class ObjectContainerSchema(Serializable):
         Args:
             schema: an ObjectContainerSchema
         '''
-        for k, v in iteritems(schema.schema):
-            self.schema[k].merge_schema(v)
+        for label, obj_schema in iteritems(schema.schema):
+            self._ensure_has_object_label(label)
+            self.schema[label].merge_schema(obj_schema)
 
     def is_valid_object_label(self, label):
         '''Whether the object label is compliant with the schema.
@@ -1061,7 +1384,7 @@ class ObjectContainerSchema(Serializable):
         except:
             return False
 
-    def validate_object_label(self, label, allow_none_label=False):
+    def validate_object_label(self, label, allow_none=False):
         '''Validates that the object label is compliant with the schema.
 
         Args:
@@ -1072,7 +1395,7 @@ class ObjectContainerSchema(Serializable):
         Raises:
             ObjectContainerSchemaError: if the object label violates the schema
         '''
-        if label is None and not allow_none_label:
+        if label is None and not allow_none:
             raise ObjectContainerSchemaError(
                 "None object label is not allowed by the schema")
 
@@ -1090,8 +1413,8 @@ class ObjectContainerSchema(Serializable):
 
         Raises:
             ObjectContainerSchemaError: if the object label violates the schema
-            AttributeContainerSchemaError: if the object attribute violates
-                the schema
+            AttributeContainerSchemaError: if the object attribute violates the
+                schema
         '''
         self.validate_object_label(label)
         self.schema[label].validate_attribute(obj_attr)
@@ -1102,13 +1425,12 @@ class ObjectContainerSchema(Serializable):
 
         Args:
             obj: an Object or DetectedObject
-            allow_none: whether to allow `label == None`. By default, this is
-                False. Objects with a top-level label are always allowed to
-                have detections with no label set
+            allow_none_label: whether to allow `label == None`. By default,
+                this is False. Objects with a top-level label are always
+                allowed to have detections with no label set
 
         Raises:
-            ObjectContainerSchemaError: if the object's label violates the
-                schema
+            ObjectContainerSchemaError: if the object label violates the schema
             AttributeContainerSchemaError: if any attributes of the object
                 violate the schema
         '''
@@ -1145,11 +1467,15 @@ class ObjectContainerSchema(Serializable):
         schema = d.get("schema", None)
         if schema is not None:
             schema = {
-                k: AttributeContainerSchema.from_dict(v)
-                for k, v in iteritems(schema)
+                label: ObjectSchema.from_dict(osd)
+                for label, osd in iteritems(schema)
             }
 
         return cls(schema=schema)
+
+    def _ensure_has_object_label(self, label):
+        if not self.has_object_label(label):
+            self.schema[label] = ObjectSchema(label)
 
     def _add_detected_object(self, dobj, label=None):
         # Add label
@@ -1172,28 +1498,26 @@ class ObjectContainerSchema(Serializable):
             self._add_detected_object(dobj, label=obj.label)
 
     def _validate_detected_object(self, dobj, allow_none_label):
-        # Validate label
-        self.validate_object_label(
-            dobj.label, allow_none_label=allow_none_label)
+        # Validate object label
+        self.validate_object_label(dobj.label, allow_none=allow_none_label)
 
-        # Validate attributes
+        # Validate object attributes
         for obj_attr in dobj.attrs:
             self.validate_object_attribute(dobj.label, obj_attr)
 
     def _validate_object(self, obj, allow_none_label):
-        # Validate label
-        self.validate_object_label(
-            obj.label, allow_none_label=allow_none_label)
+        # Validate object label
+        self.validate_object_label(obj.label, allow_none=allow_none_label)
 
-        # Validate attributes
+        # Validate object attributes
         for obj_attr in obj.attrs:
             self.validate_object_attribute(obj.label, obj_attr)
 
-        # If the `Object` has a top-level `label`, its okay for the
+        # If the `Object` has a top-level `label`, it's always okay for the
         # `DetectedObject`s to have no `label`
         allow_none_label |= obj.label is not None
 
-        # Validate DetectedObjects
+        # Validate frame-level DetectedObjects
         for dobj in obj.iter_detections():
             self._validate_detected_object(dobj, allow_none_label)
 
