@@ -1625,7 +1625,7 @@ class Container(Serializable):
         '''Appends the elements in the given container to this container.
 
         Args:
-            container: a Container instance
+            container: a Container of `_ELE_CLS` objects
         '''
         self.__elements__.extend(container.__elements__)
 
