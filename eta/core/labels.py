@@ -36,6 +36,15 @@ class Labels(Serializable):
     #
     _SCHEMA_CLS = None
 
+    @classmethod
+    def get_schema_cls(cls):
+        '''Gets the schema class for the labels.
+
+        Returns:
+            the LabelsSchema class
+        '''
+        return cls._SCHEMA_CLS
+
     def filter_by_schema(self, schema):
         '''Filters the labels by the given schema.
 
@@ -55,6 +64,15 @@ class LabelsSchema(Serializable):
     # Subclasses MUST set this field
     #
     _LABELS_CLS = None
+
+    @classmethod
+    def get_labels_cls(cls):
+        '''Gets the Labels class for the schema.
+
+        Returns:
+            the Labels class
+        '''
+        return cls._LABELS_CLS
 
     def merge_schema(self, schema):
         '''Merges the given LabelsSchema into this schema.
@@ -196,7 +214,8 @@ class LabelsContainer(Labels, Container):
         Returns:
             a LabelsContainerSchema
         '''
-        return self._SCHEMA_CLS.build_active_schema(self)
+        schema_cls = self.get_schema_cls()
+        return schema_cls.build_active_schema(self)
 
     def set_schema(self, schema, filter_by_schema=False):
         '''Sets the enforced schema to the given LabelsContainerSchema.
