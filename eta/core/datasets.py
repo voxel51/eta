@@ -598,6 +598,20 @@ class LabeledDataset(object):
         '''
         return self._dataset_index
 
+    @dataset_index.setter
+    def dataset_index(self, dataset_index):
+        '''Sets the `LabeledDatasetIndex` of the `LabeledDataset`
+
+        Args:
+            dataset_index: a `LabeledDatasetIndex`
+        '''
+        if not isinstance(dataset_index, LabeledDatasetIndex):
+            raise ValueError(
+                "expected type %s but got type %s" %
+                (type(LabeledDatasetIndex), type(dataset_index)))
+
+        self._dataset_index = dataset_index
+
     def __iter__(self):
         '''Iterates over the samples in the dataset.
 
@@ -744,7 +758,7 @@ class LabeledDataset(object):
         dataset_copy = copy.deepcopy(self)
         dataset_list = []
         for dataset_index in dataset_indices:
-            dataset_copy._dataset_index = dataset_index
+            dataset_copy.dataset_index = dataset_index
             dataset_copy._build_index_map()
             dataset_list.append(copy.deepcopy(dataset_copy))
 
