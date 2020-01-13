@@ -167,26 +167,40 @@ class HasLabelsSchema(object):
         '''
         return self.schema
 
-    def set_schema(self, schema, filter_by_schema=False):
+    def set_schema(self, schema, filter_by_schema=False, validate=False):
         '''Sets the enforced schema to the given `LabelsSchema`.
 
         Args:
             schema: a LabelsSchema to assign
             filter_by_schema: whether to filter labels that are not compliant
-                with the schema. By default, this is False and thus the labels
-                must already meet the new schema
+                with the schema. By default, this is False
+            validate: whether to validate that the labels (after filtering, if
+                applicable) are compliant with the new schema. By default, this
+                is False
 
         Raises:
-            LabelsSchemaError: if `filter_by_schema` was False and this object
+            LabelsSchemaError: if `validate` was `True` and this object
                 contains labels that are not compliant with the schema
         '''
         self.schema = schema
+        if not self.has_schema:
+            return
 
-        if filter_by_schema and self.has_schema:
+        if filter_by_schema:
             self.filter_by_schema(self.schema)  # pylint: disable=no-member
 
-        validate = self.has_schema and not filter_by_schema
-        self._set_schema(validate=validate)
+        if validate:
+            self.validate_schema()
+
+    def validate_schema(self):
+        '''Validates that the labels are compliant with the current schema.
+
+        Raises:
+            LabelsSchemaError: if this object contains labels that are not
+                compliant with the schema
+        '''
+        if self.has_schema:
+            self.schema.validate(self)
 
     def freeze_schema(self):
         '''Sets the schema for the labels to the current active schema.'''
@@ -194,12 +208,7 @@ class HasLabelsSchema(object):
 
     def remove_schema(self):
         '''Removes the enforced schema from the labels.'''
-        self.schema = None
-        self._set_schema(validate=False)
-
-    def _set_schema(self, validate=True):
-        if validate and self.has_schema:
-            self.schema.validate(self)
+        self.set_schema(None)
 
 
 class LabelsContainer(Labels, HasLabelsSchema, Container):
@@ -307,8 +316,14 @@ class LabelsContainer(Labels, HasLabelsSchema, Container):
 
         return super(LabelsContainer, cls).from_dict(d, schema=schema)
 
-    def _set_schema(self, validate=True):
-        if validate and self.has_schema:
+    def validate_schema(self):
+        '''Validates that the labels are compliant with the current schema.
+
+        Raises:
+            LabelsContainerSchemaError: if the container has labels that are
+                not compliant with the schema
+        '''
+        if self.has_schema:
             for labels in self:
                 self._validate_labels(labels)
 
@@ -508,6 +523,26 @@ class LabelsSet(Labels, HasLabelsSchema, Set):
         for labels in self:
             labels.filter_by_schema(schema)
 
+    def set_schema(self, schema, filter_by_schema=False, validate=False):
+        '''Sets the enforced schema to the given `LabelsSchema`.
+
+        Args:
+            schema: a LabelsSchema to assign
+            filter_by_schema: whether to filter labels that are not compliant
+                with the schema. By default, this is False
+            validate: whether to validate that the labels (after filtering, if
+                applicable) are compliant with the new schema. By default, this
+                is False
+
+        Raises:
+            LabelsSchemaError: if `validate` was `True` and this object
+                contains labels that are not compliant with the schema
+        '''
+        self.schema = schema
+        for labels in self:
+            labels.set_schema(
+                schema, filter_by_schema=filter_by_schema, validate=validate)
+
     def attributes(self):
         '''Returns the list of class attributes that will be serialized.
 
@@ -555,8 +590,15 @@ class LabelsSet(Labels, HasLabelsSchema, Set):
 
         return labels_set
 
-    def _set_schema(self, validate=True):
-        if validate and self.has_schema:
+    def validate_schema(self):
+        '''Validates that the labels in the set are compliant with the current
+        schema.
+
+        Raises:
+            LabelsSchemaError: if the set has labels that are not compliant
+                with the schema
+        '''
+        if self.has_schema:
             for labels in self:
                 self._validate_labels(labels)
 
