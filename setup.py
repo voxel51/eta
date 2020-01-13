@@ -20,6 +20,7 @@ setup(
     url="https://github.com/voxel51/eta",
     license="BSD 4-clause",
     packages=find_packages(),
+    include_package_data=True,
     classifiers=[
         "Operating System :: MacOS :: MacOS X",
         "Operating System :: POSIX :: Linux",
