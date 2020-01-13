@@ -1812,13 +1812,6 @@ class VideoSetLabels(etal.LabelsSet):
         '''
         return cls.from_labels_patt(video_labels_patt)
 
-    def _apply_schema_to_video(self, video_labels):
-        video_labels.schema = self.get_schema()
-
-    def _set_schema(self, **kwargs):
-        for video_labels in self:
-            self._apply_schema_to_video(video_labels)
-
 
 class BigVideoSetLabels(VideoSetLabels, BigSet):
     '''A BigSet of VideoLabels.
@@ -1877,6 +1870,28 @@ class BigVideoSetLabels(VideoSetLabels, BigSet):
             video_labels.filter_by_schema(schema)
             self[key] = video_labels
 
+    def set_schema(self, schema, filter_by_schema=False, validate=False):
+        '''Sets the enforced schema to the given `VideoLabelsSchema`.
+
+        Args:
+            schema: a VideoLabelsSchema to assign
+            filter_by_schema: whether to filter labels that are not compliant
+                with the schema. By default, this is False
+            validate: whether to validate that the labels (after filtering, if
+                applicable) are compliant with the new schema. By default, this
+                is False
+
+        Raises:
+            LabelsSchemaError: if `validate` was `True` and this set contains
+                labels that are not compliant with the schema
+        '''
+        self.schema = schema
+        for key in self.keys():
+            video_labels = self[key]
+            video_labels.set_schema(
+                schema, filter_by_schema=filter_by_schema, validate=validate)
+            self[key] = video_labels
+
     def remove_objects_without_attrs(self, labels=None):
         '''Removes `DetectedObject`s from the `BigVideoSetLabels` that do not
         have attributes.
@@ -1889,12 +1904,6 @@ class BigVideoSetLabels(VideoSetLabels, BigSet):
         for key in self.keys():
             video_labels = self[key]
             video_labels.remove_objects_without_attrs(labels=labels)
-            self[key] = video_labels
-
-    def _set_schema(self, **kwargs):
-        for key in self.keys():
-            video_labels = self[key]
-            self._apply_schema_to_video(video_labels)
             self[key] = video_labels
 
 
