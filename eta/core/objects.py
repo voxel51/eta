@@ -22,10 +22,11 @@ from future.utils import iteritems, itervalues
 from eta.core.data import AttributeContainer, AttributeContainerSchema
 from eta.core.frames import FrameRanges
 from eta.core.geometry import BoundingBox, HasBoundingBox
+import eta.core.labels as etal
 from eta.core.serial import Container, Serializable, deserialize_numpy_array
 
 
-class DetectedObject(Serializable, HasBoundingBox):
+class DetectedObject(etal.Labels, HasBoundingBox):
     '''A detected object in an image or frame of a video.
 
     `DetectedObject`s are spatial concepts that describe information about an
@@ -92,6 +93,15 @@ class DetectedObject(Serializable, HasBoundingBox):
         self.attrs = attrs or AttributeContainer()
         self._meta = None  # Usable by clients to store temporary metadata
 
+    @classmethod
+    def get_schema_cls(cls):
+        '''Gets the schema class for `DetectedObject`s.
+
+        Returns:
+            the LabelsSchema class
+        '''
+        return ObjectSchema
+
     @property
     def has_attributes(self):
         '''Whether this object has attributes.'''
@@ -107,7 +117,7 @@ class DetectedObject(Serializable, HasBoundingBox):
         self.attrs = AttributeContainer()
 
     def add_attribute(self, attr):
-        '''Adds the Attribute to the object.
+        '''Adds the `Attribute` to the object.
 
         Args:
             attr: an Attribute
@@ -115,7 +125,7 @@ class DetectedObject(Serializable, HasBoundingBox):
         self.attrs.add(attr)
 
     def add_attributes(self, attrs):
-        '''Adds the AttributeContainer of attributes to the object.
+        '''Adds the `AttributeContainer` of attributes to the object.
 
         Args:
             attrs: an AttributeContainer
@@ -123,7 +133,7 @@ class DetectedObject(Serializable, HasBoundingBox):
         self.attrs.add_container(attrs)
 
     def get_bounding_box(self):
-        '''Returns the BoundingBox for the object.
+        '''Returns the `BoundingBox` for the object.
 
         Returns:
              a BoundingBox
@@ -177,7 +187,7 @@ class DetectedObject(Serializable, HasBoundingBox):
 
     @classmethod
     def from_dict(cls, d):
-        '''Constructs a DetectedObject from a JSON dictionary.
+        '''Constructs a `DetectedObject` from a JSON dictionary.
 
         Args:
             d: a JSON dictionary
@@ -213,68 +223,15 @@ class DetectedObject(Serializable, HasBoundingBox):
         )
 
 
-class DetectedObjectContainer(Container):
-    '''A `Container` of `DetectedObjects`.'''
+class DetectedObjectContainer(etal.LabelsContainer):
+    '''An `eta.core.serial.Container` of `DetectedObjects`.'''
 
     _ELE_CLS = DetectedObject
     _ELE_CLS_FIELD = "_OBJ_CLS"
     _ELE_ATTR = "objects"
 
-    def __init__(self, schema=None, **kwargs):
-        '''Creates a DetectedObjectContainer instance.
-
-        Args:
-            schema: an optional ObjectContainerSchema to enforce on the objects
-                in this container. By default, no schema is enforced
-            **kwargs: valid keyword arguments for Container()
-
-        Raises:
-            ObjectContainerSchemaError: if a schema was provided but the
-                objects added to the container violate it
-        '''
-        super(DetectedObjectContainer, self).__init__(**kwargs)
-        self.schema = None
-        if schema is not None:
-            self.set_schema(schema)
-
-    @property
-    def has_schema(self):
-        '''Whether the container has an enforced schema.'''
-        return self.schema is not None
-
-    def add(self, obj):
-        '''Adds an object to the container.
-
-        Args:
-            obj: a DetectedObject
-
-        Raises:
-            ObjectContainerSchemaError: if this container has a schema enforced
-                and the given object violates it
-        '''
-        if self.has_schema:
-            self._validate_object(obj)
-
-        super(DetectedObjectContainer, self).add(obj)
-
-    def add_container(self, objects):
-        '''Adds the objects in the given container to this container.
-
-        Args:
-            objects: a DetectedObjectContainer instance
-
-        Raises:
-            ObjectContainerSchemaError: if this container has a schema enforced
-                and an object in the given container violates it
-        '''
-        if self.has_schema:
-            for obj in objects:
-                self._validate_object(obj)
-
-        super(DetectedObjectContainer, self).add_container(objects)
-
     def get_labels(self):
-        '''Returns a set containing the labels of the DetectedObjects.
+        '''Returns a set containing the labels of the `DetectedObject`s.
 
         Returns:
             a set of labels
@@ -350,93 +307,8 @@ class DetectedObjectContainer(Container):
             or obj.has_attributes)
         self.filter_elements([filter_func])
 
-    def get_schema(self):
-        '''Gets the current enforced schema for the container, or None if no
-        schema is enforced.
 
-        Returns:
-            an ObjectContainerSchema
-        '''
-        return self.schema
-
-    def get_active_schema(self):
-        '''Returns an ObjectContainerSchema describing the active schema of the
-        container.
-
-        Returns:
-            an ObjectContainerSchema
-        '''
-        return ObjectContainerSchema.build_active_schema(self)
-
-    def set_schema(self, schema, filter_by_schema=False):
-        '''Sets the enforced schema to the given ObjectContainerSchema.
-
-        Args:
-            schema: the ObjectContainerSchema to use
-            filter_by_schema: whether to filter any invalid values from the
-                container after changing the schema. By default, this is False
-                and thus the container must already meet the new schema
-        '''
-        self.schema = schema
-        if not self.has_schema:
-            return
-
-        if filter_by_schema:
-            self.filter_by_schema(self.schema)
-        else:
-            self._validate_schema()
-
-    def freeze_schema(self):
-        '''Sets the enforced schema for the container to the current active
-        schema.
-        '''
-        self.set_schema(self.get_active_schema())
-
-    def remove_schema(self):
-        '''Removes the enforced schema from the container.'''
-        self.schema = None
-
-    def attributes(self):
-        '''Returns the list of class attributes that will be serialized.
-
-        Returns:
-            a list of attribute names
-        '''
-        _attrs = []
-        if self.has_schema:
-            _attrs.append("schema")
-        _attrs += super(DetectedObjectContainer, self).attributes()
-        return _attrs
-
-    def _validate_object(self, obj):
-        if self.has_schema:
-            self.schema.validate_object(obj)
-
-    def _validate_schema(self):
-        if self.has_schema:
-            for obj in self:
-                self._validate_object(obj)
-
-    @classmethod
-    def from_dict(cls, d):
-        '''Constructs a DetectedObjectContainer from a JSON dictionary.
-
-        Args:
-            d: a JSON dictionary
-
-        Returns:
-            a DetectedObjectContainer
-        '''
-        objects = super(DetectedObjectContainer, cls).from_dict(d)
-
-        schema = d.get("schema", None)
-        if schema is not None:
-            objects.set_schema(ObjectContainerSchema.from_dict(schema))
-
-        return objects
-
-
-class Object(Serializable):
+class Object(etal.Labels):
     '''A spatiotemporal object in a video.
 
     `Object`s are spatiotemporal concepts that describe information about an
@@ -696,65 +568,12 @@ class Object(Serializable):
         )
 
 
-class ObjectContainer(Container):
-    '''A `Container` of `Object`s.'''
+class ObjectContainer(etal.LabelsContainer):
+    '''An `eta.core.serial.Container` of `Object`s.'''
 
     _ELE_CLS = Object
     _ELE_CLS_FIELD = "_OBJ_CLS"
     _ELE_ATTR = "objects"
-
-    def __init__(self, schema=None, **kwargs):
-        '''Creates an ObjectContainer instance.
-
-        Args:
-            schema: an optional ObjectContainerSchema to enforce on the objects
-                in this container. By default, no schema is enforced
-            **kwargs: valid keyword arguments for Container()
-
-        Raises:
-            ObjectContainerSchemaError: if a schema was provided but the
-                objects added to the container violate it
-        '''
-        super(ObjectContainer, self).__init__(**kwargs)
-        self.schema = None
-        if schema is not None:
-            self.set_schema(schema)
-
-    @property
-    def has_schema(self):
-        '''Whether the container has an enforced schema.'''
-        return self.schema is not None
-
-    def add(self, obj):
-        '''Adds an object to the container.
-
-        Args:
-            obj: an Object
-
-        Raises:
-            ObjectContainerSchemaError: if this container has a schema enforced
-                and the given object violates it
-        '''
-        if self.has_schema:
-            self._validate_object(obj)
-
-        super(ObjectContainer, self).add(obj)
-
-    def add_container(self, objects):
-        '''Adds the objects in the given container to this container.
-
-        Args:
-            objects: an ObjectContainer instance
-
-        Raises:
-            ObjectContainerSchemaError: if this container has a schema enforced
-                and an object in the given container violates it
-        '''
-        if self.has_schema:
-            for obj in objects:
-                self._validate_object(obj)
-
-        super(ObjectContainer, self).add_container(objects)
 
     def get_labels(self):
         '''Returns a set containing the labels of the `Object`s.
@@ -813,93 +632,8 @@ class ObjectContainer(Container):
             or obj.has_attributes)
         self.filter_elements([filter_func])
 
-    def get_schema(self):
-        '''Gets the current enforced schema for the container, or None if no
-        schema is enforced.
 
-        Returns:
-            an ObjectContainerSchema
-        '''
-        return self.schema
-
-    def get_active_schema(self):
-        '''Returns an ObjectContainerSchema describing the active schema of the
-        container.
-
-        Returns:
-            an ObjectContainerSchema
-        '''
-        return ObjectContainerSchema.build_active_schema(self)
-
-    def set_schema(self, schema, filter_by_schema=False):
-        '''Sets the enforced schema to the given ObjectContainerSchema.
-
-        Args:
-            schema: the ObjectContainerSchema to use
-            filter_by_schema: whether to filter any invalid values from the
-                container after changing the schema. By default, this is False
-                and thus the container must already meet the new schema
-        '''
-        self.schema = schema
-        if not self.has_schema:
-            return
-
-        if filter_by_schema:
-            self.filter_by_schema(self.schema)
-        else:
-            self._validate_schema()
-
-    def freeze_schema(self):
-        '''Sets the enforced schema for the container to the current active
-        schema.
-        '''
-        self.set_schema(self.get_active_schema())
-
-    def remove_schema(self):
-        '''Removes the enforced schema from the container.'''
-        self.schema = None
-
-    def attributes(self):
-        '''Returns the list of class attributes that will be serialized.
-
-        Returns:
-            a list of attribute names
-        '''
-        _attrs = []
-        if self.has_schema:
-            _attrs.append("schema")
-        _attrs += super(ObjectContainer, self).attributes()
-        return _attrs
-
-    def _validate_object(self, obj):
-        if self.has_schema:
-            self.schema.validate_object(obj)
-
-    def _validate_schema(self):
-        if self.has_schema:
-            for obj in self:
-                self._validate_object(obj)
-
-    @classmethod
-    def from_dict(cls, d):
-        '''Constructs an ObjectContainer from a JSON dictionary.
-
-        Args:
-            d: a JSON dictionary
-
-        Returns:
-            a ObjectContainer
-        '''
-        objects = super(ObjectContainer, cls).from_dict(d)
-
-        schema = d.get("schema", None)
-        if schema is not None:
-            objects.set_schema(ObjectContainerSchema.from_dict(schema))
-
-        return objects
-
-
-class ObjectSchema(Serializable):
+class ObjectSchema(etal.LabelsSchema):
     '''Schema for `Object`s and `DetectedObject`s.
 
     Attributes:
@@ -939,7 +673,7 @@ class ObjectSchema(Serializable):
         return self.label
 
     def has_attribute(self, attr_name):
-        '''Whether the schema has an attribute of the given name.
+        '''Whether the schema has an `Attribute` of the given name.
 
         Args:
             attr_name: the name of the object attribute
@@ -950,7 +684,7 @@ class ObjectSchema(Serializable):
         return self.attrs.has_attribute(attr_name)
 
     def get_attribute_schema(self, attr_name):
-        '''Gets the AttributeSchema for the attribute of the given name.
+        '''Gets the `AttributeSchema` for the attribute of the given name.
 
         Args:
             attr_name: the name of the object attribute
@@ -972,7 +706,7 @@ class ObjectSchema(Serializable):
         return self.attrs.get_attribute_class(attr_name)
 
     def add_attribute(self, attr):
-        '''Adds the Attribute to the schema.
+        '''Adds the `Attribute` to the schema.
 
         Args:
             attr: an Attribute
@@ -980,7 +714,7 @@ class ObjectSchema(Serializable):
         self.attrs.add_attribute(attr)
 
     def add_attributes(self, attrs):
-        '''Adds the AttributeContainer to the schema.
+        '''Adds the `AttributeContainer` to the schema.
 
         Args:
             attrs: an AttributeContainer
@@ -988,7 +722,7 @@ class ObjectSchema(Serializable):
         self.attrs.add_attributes(attrs)
 
     def add_object(self, obj):
-        '''Adds the Object or DetectedObject to the schema.
+        '''Adds the `Object` or `DetectedObject` to the schema.
 
         Args:
             obj: an Object or DetectedObject
@@ -999,22 +733,14 @@ class ObjectSchema(Serializable):
             self._add_detected_object(obj)
 
     def add_objects(self, objects):
-        '''Adds the ObjectContainer or DetectedObjectContainer to the schema.
+        '''Adds the `ObjectContainer` or `DetectedObjectContainer` to the
+        schema.
 
         Args:
             objects: an ObjectContainer or DetectedObjectContainer
         '''
         for obj in objects:
             self.add_object(obj)
-
-    def merge_schema(self, schema):
-        '''Merges the given ObjectSchema into this schema.
-
-        Args:
-            schema: an ObjectSchema
-        '''
-        self.validate_label(schema.label)
-        self.attrs.merge_schema(schema.attrs)
 
     def is_valid_label(self, label):
         '''Whether the object label is compliant with the schema.
@@ -1028,11 +754,11 @@ class ObjectSchema(Serializable):
         try:
             self.validate_label(label)
             return True
-        except:
+        except etal.LabelsSchemaError:
             return False
 
     def is_valid_attribute(self, attr):
-        '''Whether the attribute is compliant with the schema.
+        '''Whether the `Attribute` is compliant with the schema.
 
         Args:
             attr: an Attribute
@@ -1043,7 +769,7 @@ class ObjectSchema(Serializable):
         try:
             self.validate_attribute(attr)
             return True
-        except:
+        except etal.LabelsSchemaError:
             return False
 
     def is_valid_object(self, obj):
@@ -1059,7 +785,7 @@ class ObjectSchema(Serializable):
         try:
             self.validate_object(obj)
             return True
-        except:
+        except etal.LabelsSchemaError:
             return False
 
     def validate_label(self, label, allow_none=False):
@@ -1107,22 +833,40 @@ class ObjectSchema(Serializable):
             AttributeContainerSchemaError: if any attributes of the object
                 violate the schema
         '''
+        self.validate(obj, allow_none_label=allow_none_label)
+
+    def validate(self, obj, allow_none_label=False):
+        '''Validates that the `Object` or `DetectedObject` is compliant with
+        the schema.
+
+        Args:
+            obj: an Object or DetectedObject
+            allow_none: whether to allow `label == None`. By default, this is
+                False. Objects with a top-level label are always allowed to
+                have detections with no label set
+
+        Raises:
+            ObjectSchemaError: if the object label violates the schema
+            AttributeContainerSchemaError: if any attributes of the object
+                violate the schema
+        '''
         if isinstance(obj, Object):
             self._validate_object(obj, allow_none_label)
         else:
             self._validate_detected_object(obj, allow_none_label)
 
-    def attributes(self):
-        '''Returns the list of class attributes that will be serialized.
+    def merge_schema(self, schema):
+        '''Merges the given `ObjectSchema` into this schema.
 
         Args:
-            a list of attribute names
+            schema: an ObjectSchema
         '''
-        return ["label", "attrs"]
+        self.validate_label(schema.label)
+        self.attrs.merge_schema(schema.attrs)
 
     @classmethod
     def build_active_schema(cls, obj):
-        '''Builds an ObjectSchema that describes the active schema of the
+        '''Builds an `ObjectSchema` that describes the active schema of the
         object.
 
         Args:
@@ -1134,6 +878,14 @@ class ObjectSchema(Serializable):
         schema = cls(obj.label)
         schema.add_object(obj)
         return schema
+
+    def attributes(self):
+        '''Returns the list of class attributes that will be serialized.
+
+        Args:
+            a list of attribute names
+        '''
+        return ["label", "attrs"]
 
     @classmethod
     def from_dict(cls, d):
@@ -1188,12 +940,12 @@ class ObjectSchema(Serializable):
             self._validate_detected_object(dobj, allow_none_label)
 
 
-class ObjectSchemaError(Exception):
-    '''Error raised when an ObjectSchema is violated.'''
+class ObjectSchemaError(etal.LabelsSchemaError):
+    '''Error raised when an `ObjectSchema` is violated.'''
     pass
 
 
-class ObjectContainerSchema(Serializable):
+class ObjectContainerSchema(etal.LabelsContainerSchema):
     '''Schema for `ObjectContainer`s and `DetectedObjectContainer`s.
 
     Attributes:
@@ -1221,7 +973,7 @@ class ObjectContainerSchema(Serializable):
         return label in self.schema
 
     def get_object_schema(self, label):
-        '''Gets the ObjectSchema for the object with the given label.
+        '''Gets the `ObjectSchema` for the object with the given label.
 
         Args:
             label: the object label
@@ -1249,8 +1001,8 @@ class ObjectContainerSchema(Serializable):
         return self.schema[label].has_attribute(obj_attr_name)
 
     def get_object_attribute_schema(self, label, obj_attr_name):
-        '''Gets the AttributeSchema for the attribute of the given name for the
-        object with the given label.
+        '''Gets the `AttributeSchema` for the attribute of the given name for
+        the object with the given label.
 
         Args:
             label: the object label
@@ -1285,7 +1037,7 @@ class ObjectContainerSchema(Serializable):
         self._ensure_has_object_label(label)
 
     def add_object_attribute(self, label, obj_attr):
-        '''Adds the Attribute for the object with the given label to the
+        '''Adds the `Attribute` for the object with the given label to the
         schema.
 
         Args:
@@ -1296,7 +1048,7 @@ class ObjectContainerSchema(Serializable):
         self.schema[label].add_attribute(obj_attr)
 
     def add_object_attributes(self, label, obj_attrs):
-        '''Adds the AttributeContainer for the object with the given label to
+        '''Adds the `AttributeContainer` for the object with the given label to
         the schema.
 
         Args:
@@ -1307,7 +1059,7 @@ class ObjectContainerSchema(Serializable):
         self.schema[label].add_attributes(obj_attrs)
 
     def add_object(self, obj):
-        '''Adds the Object or DetectedObject to the schema.
+        '''Adds the `Object` or `DetectedObject` to the schema.
 
         Args:
             obj: an Object or DetectedObject
@@ -1318,23 +1070,14 @@ class ObjectContainerSchema(Serializable):
             self._add_detected_object(obj)
 
     def add_objects(self, objects):
-        '''Adds the ObjectContainer or DetectedObjectContainer to the schema.
+        '''Adds the `ObjectContainer` or `DetectedObjectContainer` to the
+        schema.
 
         Args:
             objects: an ObjectContainer or DetectedObjectContainer
         '''
         for obj in objects:
             self.add_object(obj)
-
-    def merge_schema(self, schema):
-        '''Merges the given ObjectContainerSchema into this schema.
-
-        Args:
-            schema: an ObjectContainerSchema
-        '''
-        for label, obj_schema in iteritems(schema.schema):
-            self._ensure_has_object_label(label)
-            self.schema[label].merge_schema(obj_schema)
 
     def is_valid_object_label(self, label):
         '''Whether the object label is compliant with the schema.
@@ -1348,11 +1091,11 @@ class ObjectContainerSchema(Serializable):
         try:
             self.validate_object_label(label)
             return True
-        except:
+        except etal.LabelsSchemaError:
             return False
 
     def is_valid_object_attribute(self, label, obj_attr):
-        '''Whether the object attribute for the object with the given label is
+        '''Whether the `Attribute` for the object with the given label is
         compliant with the schema.
 
         Args:
@@ -1365,7 +1108,7 @@ class ObjectContainerSchema(Serializable):
         try:
             self.validate_object_attribute(label, obj_attr)
             return True
-        except:
+        except etal.LabelsSchemaError:
             return False
 
     def is_valid_object(self, obj):
@@ -1381,7 +1124,7 @@ class ObjectContainerSchema(Serializable):
         try:
             self.validate_object(obj)
             return True
-        except:
+        except etal.LabelsSchemaError:
             return False
 
     def validate_object_label(self, label, allow_none=False):
@@ -1404,8 +1147,8 @@ class ObjectContainerSchema(Serializable):
                 "Object label '%s' is not allowed by the schema" % label)
 
     def validate_object_attribute(self, label, obj_attr):
-        '''Validates that the object attribute for the given label is compliant
-        with the schema.
+        '''Validates that the `Attribute` for the object with the given label
+        is compliant with the schema.
 
         Args:
             label: an object label
@@ -1439,10 +1182,38 @@ class ObjectContainerSchema(Serializable):
         else:
             self._validate_detected_object(obj, allow_none_label)
 
+    def validate(self, objects, allow_none_label=False):
+        '''Validates that the `ObjectContainer` or `DetectedObjectContainer` is
+        compliant with the schema.
+
+        Args:
+            objects: an ObjectContainer or DetectedObjectContainer
+            allow_none_label: whether to allow `label == None`. By default,
+                this is False. Objects with a top-level label are always
+                allowed to have detections with no label set
+
+        Raises:
+            ObjectContainerSchemaError: if the object label violates the schema
+            AttributeContainerSchemaError: if any attributes of the object
+                violate the schema
+        '''
+        for obj in objects:
+            self.validate_object(obj, allow_none_label=allow_none_label)
+
+    def merge_schema(self, schema):
+        '''Merges the given `ObjectContainerSchema` into this schema.
+
+        Args:
+            schema: an ObjectContainerSchema
+        '''
+        for label, obj_schema in iteritems(schema.schema):
+            self._ensure_has_object_label(label)
+            self.schema[label].merge_schema(obj_schema)
+
     @classmethod
     def build_active_schema(cls, objects):
-        '''Builds an ObjectContainerSchema that describes the active schema of
-        the objects.
+        '''Builds an `ObjectContainerSchema` that describes the active schema
+        of the objects.
 
         Args:
             objects: an ObjectContainer or DetectedObjectContainer
@@ -1456,7 +1227,7 @@ class ObjectContainerSchema(Serializable):
 
     @classmethod
     def from_dict(cls, d):
-        '''Constructs an ObjectContainerSchema from a JSON dictionary.
+        '''Constructs an `ObjectContainerSchema` from a JSON dictionary.
 
         Args:
             d: a JSON dictionary
@@ -1522,8 +1293,8 @@ class ObjectContainerSchema(Serializable):
             self._validate_detected_object(dobj, allow_none_label)
 
 
-class ObjectContainerSchemaError(Exception):
-    '''Error raised when an ObjectContainerSchema is violated.'''
+class ObjectContainerSchemaError(etal.LabelsContainerSchemaError):
+    '''Error raised when an `ObjectContainerSchema` is violated.'''
     pass
 
 
