@@ -262,7 +262,7 @@ class Event(etal.Labels):
 
         if objects:
             for uuid in self.child_objects:
-                obj = objecs.get(uuid, None)
+                obj = objects.get(uuid, None)
                 if obj:
                     obj.filter_by_schema(schema.objects)
 
