@@ -36,8 +36,9 @@ import numpy as np
 
 import eta
 from eta.core.data import AttributeContainer, AttributeContainerSchema
+import eta.core.labels as etal
 from eta.core.objects import DetectedObjectContainer, ObjectContainerSchema
-from eta.core.serial import Serializable, Set, BigSet
+from eta.core.serial import Serializable, BigSet
 import eta.core.utils as etau
 import eta.core.web as etaw
 
@@ -97,7 +98,7 @@ def make_image_sequence_patt(basedir, basename="", patt=None, ext=None):
 ###### Image Labels ###########################################################
 
 
-class ImageLabels(Serializable):
+class ImageLabels(etal.Labels):
     '''Class encapsulating labels for an image.
 
     Attributes:
@@ -133,7 +134,7 @@ class ImageLabels(Serializable):
 
     @property
     def has_objects(self):
-        '''Whether the image has at least one DetectedObject.'''
+        '''Whether the image has at least one object.'''
         return bool(self.objects)
 
     @property
@@ -187,7 +188,7 @@ class ImageLabels(Serializable):
         self.objects = DetectedObjectContainer()
 
     def merge_labels(self, labels):
-        '''Merges the ImageLabels or FrameLabels into this object.
+        '''Merges the `ImageLabels` or `FrameLabels` into this object.
 
         Args:
             labels: an ImageLabels or FrameLabels instance
@@ -206,8 +207,7 @@ class ImageLabels(Serializable):
         self.objects.filter_by_schema(schema.objects)
 
     def remove_objects_without_attrs(self, labels=None):
-        '''Removes DetectedObjects from this instance that do not have
-        attributes.
+        '''Removes objects from this instance that do not have attributes.
 
         Args:
             labels: an optional list of DetectedObject label strings to which
@@ -235,7 +235,7 @@ class ImageLabels(Serializable):
 
     @classmethod
     def from_frame_labels(cls, frame_labels, filename=None, metadata=None):
-        '''Constructs an ImageLabels from a FrameLabels.
+        '''Constructs an `ImageLabels` from a `FrameLabels`.
 
         Args:
             frame_labels: a FrameLabels instance
@@ -251,7 +251,7 @@ class ImageLabels(Serializable):
 
     @classmethod
     def from_dict(cls, d):
-        '''Constructs an ImageLabels from a JSON dictionary.
+        '''Constructs an `ImageLabels` from a JSON dictionary.
 
         Args:
             d: a JSON dictionary
@@ -277,7 +277,7 @@ class ImageLabels(Serializable):
             filename=filename, metadata=metadata, attrs=attrs, objects=objects)
 
 
-class ImageLabelsSchema(Serializable):
+class ImageLabelsSchema(etal.LabelsSchema):
     '''Schema for `ImageLabels`.
 
     Attributes:
@@ -288,7 +288,7 @@ class ImageLabelsSchema(Serializable):
     '''
 
     def __init__(self, attrs=None, objects=None):
-        '''Creates an ImageLabelsSchema instance.
+        '''Creates an `ImageLabelsSchema` instance.
 
         Args:
             attrs: (optional) an AttributeContainerSchema describing the
@@ -311,7 +311,7 @@ class ImageLabelsSchema(Serializable):
         return self.attrs.has_attribute(image_attr_name)
 
     def get_image_attribute_class(self, image_attr_name):
-        '''Gets the Attribute class for the image attribute with the given
+        '''Gets the `Attribute` class for the image attribute with the given
         name.
 
         Args:
@@ -334,7 +334,7 @@ class ImageLabelsSchema(Serializable):
         return self.objects.has_object_label(label)
 
     def get_object_schema(self, label):
-        '''Gets the ObjectSchema for the object with the given label.
+        '''Gets the `ObjectSchema` for the object with the given label.
 
         Args:
             label: the object label
@@ -358,8 +358,8 @@ class ImageLabelsSchema(Serializable):
         return self.objects.has_object_attribute(label, obj_attr_name)
 
     def get_object_attribute_schema(self, label, obj_attr_name):
-        '''Gets the AttributeSchema for the attribute of the given name for the
-        object with the given label.
+        '''Gets the `AttributeSchema` for the attribute of the given name for
+        the object with the given label.
 
         Args:
             label: the object label
@@ -371,8 +371,8 @@ class ImageLabelsSchema(Serializable):
         return self.objects.get_object_attribute_schema(label, obj_attr_name)
 
     def get_object_attribute_class(self, label, obj_attr_name):
-        '''Gets the Attribute class for the attribute of the given name for the
-        object with the given label.
+        '''Gets the `Attribute` class for the attribute of the given name for
+        the object with the given label.
 
         Args:
             label: an object label
@@ -408,7 +408,7 @@ class ImageLabelsSchema(Serializable):
         self.objects.add_object_label(label)
 
     def add_object_attribute(self, label, obj_attr):
-        '''Adds the Attribute for the object with the given label to the
+        '''Adds the attribute for the object with the given label to the
         schema.
 
         Args:
@@ -418,8 +418,8 @@ class ImageLabelsSchema(Serializable):
         self.objects.add_object_attribute(label, obj_attr)
 
     def add_object_attributes(self, label, obj_attrs):
-        '''Adds the AttributeContainer for the object with the given label to
-        the schema.
+        '''Adds the attributes for the object with the given label to the
+        schema.
 
         Args:
             label: an object label
@@ -428,7 +428,7 @@ class ImageLabelsSchema(Serializable):
         self.objects.add_object_attributes(label, obj_attrs)
 
     def add_object(self, obj):
-        '''Adds the etectedObject to the schema.
+        '''Adds the object to the schema.
 
         Args:
             obj: a DetectedObject
@@ -436,7 +436,7 @@ class ImageLabelsSchema(Serializable):
         self.objects.add_object(obj)
 
     def add_objects(self, objects):
-        '''Adds the DetectedObjectContainer to the schema.
+        '''Adds the objects to the schema.
 
         Args:
             objects: a DetectedObjectContainer
@@ -444,22 +444,13 @@ class ImageLabelsSchema(Serializable):
         self.objects.add_objects(objects)
 
     def add_image_labels(self, image_labels):
-        '''Adds the ImageLabels to the schema.
+        '''Adds the `ImageLabels` to the schema.
 
         Args:
             image_labels: an ImageLabels
         '''
         self.add_image_attributes(image_labels.attrs)
         self.add_objects(image_labels.objects)
-
-    def merge_schema(self, schema):
-        '''Merges the given ImageLabelsSchema into this schema.
-
-        Args:
-            schema: an ImageLabelsSchema
-        '''
-        self.attrs.merge_schema(schema.attrs)
-        self.objects.merge_schema(schema.objects)
 
     def is_valid_image_attribute(self, image_attr):
         '''Whether the image attribute is compliant with the schema.
@@ -484,7 +475,7 @@ class ImageLabelsSchema(Serializable):
         return self.objects.is_valid_object_label(label)
 
     def is_valid_object_attribute(self, label, obj_attr):
-        '''Whether the object attribute for the object with the given label is
+        '''Whether the attribute for the object with the given label is
         compliant with the schema.
 
         Args:
@@ -497,7 +488,7 @@ class ImageLabelsSchema(Serializable):
         return self.objects.is_valid_object_attribute(label, obj_attr)
 
     def is_valid_object(self, obj):
-        '''Whether the given DetectedObject is compliant with the schema.
+        '''Whether the given object is compliant with the schema.
 
         Args:
             obj: a DetectedObject
@@ -530,8 +521,8 @@ class ImageLabelsSchema(Serializable):
         self.objects.validate_object_label(label)
 
     def validate_object_attribute(self, label, obj_attr):
-        '''Validates that the object attribute for the given label is compliant
-        with the schema.
+        '''Validates that the attribute for the object with the given label is
+        compliant with the schema.
 
         Args:
             label: an object label
@@ -545,7 +536,7 @@ class ImageLabelsSchema(Serializable):
         self.objects.validate_object_attribute(label, obj_attr)
 
     def validate_object(self, obj):
-        '''Validates that the detected object is compliant with the schema.
+        '''Validates that the object is compliant with the schema.
 
         Args:
             obj: a DetectedObject
@@ -557,18 +548,36 @@ class ImageLabelsSchema(Serializable):
         '''
         self.objects.validate_object(obj)
 
-    def attributes(self):
-        '''Returns the list of class attributes that will be serialized.
+    def validate(self, image_labels):
+        '''Validates that the ImageLabels are compliant with the schema.
 
-        Returns:
-            a list of attribute names
+        Args:
+            image_labels: an ImageLabels instance
+
+        Raises:
+            AttributeContainerSchemaError: if an image/object attribute
+                violates the schema
+            ObjectContainerSchemaError: if an object label violates the schema
         '''
-        return ["attrs", "objects"]
+        for image_attr in image_labels.attrs:
+            self.validate_image_attribute(image_attr)
+
+        for obj in image_labels.objects:
+            self.validate_object(obj)
+
+    def merge_schema(self, schema):
+        '''Merges the given `ImageLabelsSchema` into this schema.
+
+        Args:
+            schema: an ImageLabelsSchema
+        '''
+        self.attrs.merge_schema(schema.attrs)
+        self.objects.merge_schema(schema.objects)
 
     @classmethod
     def build_active_schema(cls, image_labels):
-        '''Builds an ImageLabelsSchema that describes the active schema of
-        the given ImageLabels.
+        '''Builds an `ImageLabelsSchema` that describes the active schema of
+        the given `ImageLabels`.
 
         Args:
             image_labels: an ImageLabels
@@ -580,9 +589,17 @@ class ImageLabelsSchema(Serializable):
         schema.add_image_labels(image_labels)
         return schema
 
+    def attributes(self):
+        '''Returns the list of class attributes that will be serialized.
+
+        Returns:
+            a list of attribute names
+        '''
+        return ["attrs", "objects"]
+
     @classmethod
     def from_dict(cls, d):
-        '''Constructs an ImageLabelsSchema from a JSON dictionary.
+        '''Constructs an `ImageLabelsSchema` from a JSON dictionary.
 
         Args:
             d: a JSON dictionary
@@ -601,12 +618,12 @@ class ImageLabelsSchema(Serializable):
         return cls(attrs=attrs, objects=objects)
 
 
-class ImageLabelsSchemaError(Exception):
-    '''Error raised when an ImageLabelsSchema is violated.'''
+class ImageLabelsSchemaError(etal.LabelsSchemaError):
+    '''Error raised when an `ImageLabelsSchema` is violated.'''
     pass
 
 
-class ImageSetLabels(Set):
+class ImageSetLabels(etal.LabelsSet):
     '''Class encapsulating labels for a set of images.
 
     ImageSetLabels support item indexing by the `filename` of the ImageLabels
@@ -628,150 +645,38 @@ class ImageSetLabels(Set):
     _ELE_CLS = ImageLabels
     _ELE_CLS_FIELD = "_LABELS_CLS"
 
-    def __init__(self, images=None, schema=None):
-        '''Constructs an ImageSetLabels instance.
+    def sort_by_filename(self, reverse=False):
+        '''Sorts the `ImageLabels` in this instance by filename.
+
+        `ImageLabels` without filenames are always put at the end of the set.
 
         Args:
-            images: an optional iterable of ImageLabels. By default, an empty
-                set is created
-            schema: an optional ImageLabelsSchema to enforce on the object.
-                By default, no schema is enforced
+            reverse: whether to sort in reverse order. By default, this is
+                False
         '''
-        self.schema = schema
-        super(ImageSetLabels, self).__init__(images=images)
-
-    def __getitem__(self, filename):
-        '''Gets the ImageLabels for the given filename.
-
-        If the filename is not found, an empty ImageLabels is created for it,
-        and returned.
-
-        Args:
-            filename: the image name
-
-        Returns:
-            an ImageLabels
-        '''
-        if filename not in self:
-            image_labels = ImageLabels(filename=filename)
-            self.add(image_labels)
-
-        return super(ImageSetLabels, self).__getitem__(filename)
-
-    def __setitem__(self, filename, image_labels):
-        '''Sets the labels for the image with the given filename.
-
-        Any existing labels are overwritten.
-
-        Args:
-            filename: the image name
-            image_labels: an ImageLabels
-        '''
-        if self.has_schema:
-            self._validate_labels(image_labels)
-
-        return super(ImageSetLabels, self).__setitem__(filename, image_labels)
-
-    @property
-    def has_schema(self):
-        '''Whether this instance has an enforced schema.'''
-        return self.schema is not None
-
-    def empty(self):
-        '''Returns an empty copy of the ImageSetLabels.
-
-        The schema of the set is preserved, if applicable.
-
-        Returns:
-            an empty ImageSetLabels
-        '''
-        return self.__class__(schema=self.schema)
-
-    def add(self, image_labels):
-        '''Adds the ImageLabels to the set.
-
-        Args:
-            image_labels: an ImageLabels instance
-        '''
-        if self.has_schema:
-            self._validate_labels(image_labels)
-
-        super(ImageSetLabels, self).add(image_labels)
+        self.sort_by("filename", reverse=reverse)
 
     def clear_frame_attributes(self):
-        '''Removes all frame attributes from all ImageLabels in the set.'''
+        '''Removes all frame attributes from all `ImageLabels` in the set.'''
         for image_labels in self:
             image_labels.clear_frame_attributes()
 
     def clear_objects(self):
-        '''Removes all objects from all ImageLabels in the set.'''
+        '''Removes all `DetectedObject`s from all `ImageLabels` in the set.'''
         for image_labels in self:
             image_labels.clear_objects()
 
     def get_filenames(self):
-        '''Returns the set of filenames of ImageLabels in the set.
+        '''Returns the set of filenames of `ImageLabels` in the set.
 
         Returns:
             the set of filenames
         '''
         return set(il.filename for il in self if il.filename)
 
-    def get_schema(self):
-        '''Gets the schema for the set, or None if no schema is enforced.
-
-        Returns:
-            an ImageLabelsSchema, or None
-        '''
-        return self.schema
-
-    def get_active_schema(self):
-        '''Gets the ImageLabelsSchema describing the active schema of the set.
-
-        Returns:
-            an ImageLabelsSchema
-        '''
-        schema = ImageLabelsSchema()
-        for image_labels in self:
-            schema.merge_schema(
-                ImageLabelsSchema.build_active_schema(image_labels))
-        return schema
-
-    def set_schema(self, schema, filter_by_schema=False):
-        '''Sets the schema to the given ImageLabelsSchema.
-
-        Args:
-            schema: the ImageLabelsSchema to use
-            filter_by_schema: whether to filter any invalid objects/attributes
-                from the set after changing the schema. By default, this is
-                False
-
-        Raises:
-            ImageLabelsSchemaError: if `filter_by_schema` was False and the
-                set contains attributes/objects that are not compliant with the
-                schema
-        '''
-        self.schema = schema
-        if not self.has_schema:
-            return
-
-        if filter_by_schema:
-            self.filter_by_schema(self.schema)
-        else:
-            self._validate_schema()
-
-    def filter_by_schema(self, schema):
-        '''Removes objects/attributes from the ImageLabels in the set that are
-        not compliant with the given schema.
-
-        Args:
-            schema: an ImageLabelsSchema
-        '''
-        for image_labels in self:
-            image_labels.filter_by_schema(schema)
-
     def remove_objects_without_attrs(self, labels=None):
-        '''Removes DetectedObjects from the ImageLabels in the set that do not
-        have attributes.
+        '''Removes `DetectedObjects` from the `ImageLabels` in the set that do
+        not have attributes.
 
         Args:
             labels: an optional list of DetectedObject label strings to which
@@ -781,102 +686,31 @@ class ImageSetLabels(Set):
         for image_labels in self:
             image_labels.remove_objects_without_attrs(labels=labels)
 
-    def freeze_schema(self):
-        '''Sets the schema for the set to the current active schema.'''
-        self.set_schema(self.get_active_schema())
-
-    def remove_schema(self):
-        '''Removes the schema from the set.'''
-        self.schema = None
-
-    def sort_by_filename(self, reverse=False):
-        '''Sorts the ImageLabels in this instance by filename.
-
-        ImageLabels without filenames are always put at the end of the set.
-
-        Args:
-            reverse: whether to sort in reverse order. By default, this is
-                False
-        '''
-        self.sort_by("filename", reverse=reverse)
-
-    def attributes(self):
-        '''Returns the list of class attributes that will be serialized.
-
-        Returns:
-            a list of attribute names
-        '''
-        _attrs = super(ImageSetLabels, self).attributes()
-
-        if self.has_schema:
-            return ["schema"] + _attrs
-
-        return _attrs
-
-    def _validate_labels(self, image_labels):
-        if self.has_schema:
-            for image_attr in image_labels.attrs:
-                self._validate_image_attribute(image_attr)
-            for obj in image_labels.objects:
-                self._validate_object(obj)
-
-    def _validate_image_attribute(self, image_attr):
-        if self.has_schema:
-            self.schema.validate_image_attribute(image_attr)
-
-    def _validate_object(self, obj):
-        if self.has_schema:
-            self.schema.validate_object(obj)
-
-    def _validate_schema(self):
-        if self.has_schema:
-            for image_labels in self:
-                self._validate_labels(image_labels)
-
     @classmethod
     def from_image_labels_patt(cls, image_labels_patt):
-        '''Creates an instance of `cls` from a pattern of `_ELE_CLS` files.
+        '''Creates an `ImageSetLabels` from a pattern of `ImageLabels` files.
 
         Args:
-             image_labels_patt: a pattern with one or more numeric sequences:
-                example: "/path/to/labels/%05d.json"
+             image_labels_patt: a pattern with one or more numeric sequences
+                for ImageLabels files on disk
 
         Returns:
-            a `cls` instance
+            an ImageSetLabels instance
         '''
-        image_set_labels = cls()
-        for labels_path in etau.get_pattern_matches(image_labels_patt):
-            image_set_labels.add(cls._ELE_CLS.from_json(labels_path))
-        return image_set_labels
-
-    @classmethod
-    def from_dict(cls, d):
-        '''Constructs an ImageSetLabels from a JSON dictionary.
-
-        Args:
-            d: a JSON dictionary
-
-        Returns:
-            an ImageSetLabels
-        '''
-        schema = d.pop("schema", None)
-        if schema is not None:
-            schema = ImageLabelsSchema.from_dict(schema)
-
-        return super(ImageSetLabels, cls).from_dict(d, schema=schema)
+        return cls.from_labels_patt(image_labels_patt)
 
 
 class BigImageSetLabels(ImageSetLabels, BigSet):
-    '''A BigSet of ImageLabels.
+    '''An `eta.core.serial.BigSet` of `ImageLabels`.
 
-    Behaves identically to ImageSetLabels except that each ImageLabels is
+    Behaves identically to `ImageSetLabels` except that each `ImageLabels` is
     stored on disk.
 
-    BigImageSetLabels store a `backing_dir` attribute that specifies the path
+    `BigImageSetLabels` store a `backing_dir` attribute that specifies the path
     on disk to the serialized elements. If a backing directory is explicitly
-    provided, the directory will be maintained after the BigImageSetLabels
+    provided, the directory will be maintained after the `BigImageSetLabels`
     object is deleted; if no backing directory is specified, a temporary
-    backing directory is used and is deleted when the BigImageSetLabels
+    backing directory is used and is deleted when the `BigImageSetLabels`
     instance is garbage collected.
 
     Attributes:
@@ -888,7 +722,7 @@ class BigImageSetLabels(ImageSetLabels, BigSet):
     '''
 
     def __init__(self, images=None, schema=None, backing_dir=None):
-        '''Creates a BigImageSetLabels instance.
+        '''Creates a `BigImageSetLabels` instance.
 
         Args:
             images: an optional dictionary or list of (key, uuid) tuples for
@@ -903,8 +737,8 @@ class BigImageSetLabels(ImageSetLabels, BigSet):
         BigSet.__init__(self, backing_dir=backing_dir, images=images)
 
     def empty_set(self):
-        '''Returns an empty in-memory ImageSetLabels version of this
-        BigImageSetLabels.
+        '''Returns an empty in-memory `ImageSetLabels` version of this
+        `BigImageSetLabels`.
 
         Returns:
             an empty ImageSetLabels
@@ -912,8 +746,8 @@ class BigImageSetLabels(ImageSetLabels, BigSet):
         return ImageSetLabels(schema=self.schema)
 
     def filter_by_schema(self, schema):
-        '''Removes objects/attributes from the ImageLabels in the set that are
-        not compliant with the given schema.
+        '''Removes objects/attributes from the `ImageLabels` in the set that
+        are not compliant with the given schema.
 
         Args:
             schema: an ImageLabelsSchema
@@ -924,8 +758,8 @@ class BigImageSetLabels(ImageSetLabels, BigSet):
             self[key] = image_labels
 
     def remove_objects_without_attrs(self, labels=None):
-        '''Removes DetectedObjects from the ImageLabels in the set that do not
-        have attributes.
+        '''Removes `DetectedObject`s from the `ImageLabels` in the set that do
+        not have attributes.
 
         Args:
             labels: an optional list of DetectedObject label strings to which
