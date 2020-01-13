@@ -18,32 +18,41 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-from eta.core.serial import Container, Serializable
+from eta.core.serial import Container, Serializable, Set
+import eta.core.utils as etau
 
 
 class Labels(Serializable):
     '''Base class for `eta.core.serial.Serializable` classes that hold labels
     representing attributes, objects, frames, events, images, videos, etc.
 
-    Labels classes have associated `eta.core.labels.Schema` classes that
-    describe the ontologies over the labels class.
+    Labels classes have associated `Schema` classes that describe the
+    ontologies over the labels class.
     '''
-
-    #
-    # The `LabelsSchema` class for this labels class
-    #
-    # Subclasses MUST set this field
-    #
-    _SCHEMA_CLS = None
 
     @classmethod
     def get_schema_cls(cls):
-        '''Gets the schema class for the labels.
+        '''Gets the `LabelsSchema` class for the labels.
+
+        Subclasses can override this method, but, by default, this
+        implementation assumes the convention that labels class `<Labels>` has
+        associated schema class `<Labels>Schema` defined in the same module.
 
         Returns:
             the LabelsSchema class
         '''
-        return cls._SCHEMA_CLS
+        class_name = etau.get_class_name(cls)
+        return etau.get_class(class_name + "Schema")
+
+    def get_active_schema(self):
+        '''Returns a `LabelsSchema` that describes the active schema of the
+        labels.
+
+        Returns:
+            a LabelsSchema
+        '''
+        schema_cls = self.get_schema_cls()
+        return schema_cls.build_active_schema(self)
 
     def filter_by_schema(self, schema):
         '''Filters the labels by the given schema.
@@ -56,45 +65,28 @@ class Labels(Serializable):
 
 
 class LabelsSchema(Serializable):
-    '''Base class for schemas of `eta.core.labels.Labels` classes.'''
+    '''Base class for schemas of `Labels` classes.'''
 
-    #
-    # The `Labels` class for this schema
-    #
-    # Subclasses MUST set this field
-    #
-    _LABELS_CLS = None
-
-    @classmethod
-    def get_labels_cls(cls):
-        '''Gets the Labels class for the schema.
-
-        Returns:
-            the Labels class
-        '''
-        return cls._LABELS_CLS
-
-    def merge_schema(self, schema):
-        '''Merges the given LabelsSchema into this schema.
+    def add(self, labels):
+        '''Incorporates the `Labels` into the schema.
 
         Args:
-            schema: a LabelsSchema
+            label: a Labels instance
         '''
-        raise NotImplementedError("subclasses must implement `merge_schema()`")
+        labels_schema = self.build_active_schema(labels)
+        self.merge_schema(labels_schema)
 
-    def is_valid(self, labels):
-        '''Whether the Labels are compliant with the schema.
+    def add_iterable(self, iterable):
+        '''Incorporates the given iterable of `Labels` into the schema.
 
         Args:
-            labels: a Labels instance
-
-        Returns:
-            True/False
+            iterable: an iterable of Labels
         '''
-        raise NotImplementedError("subclasses must implement `is_valid()`")
+        for labels in iterable:
+            self.add(labels)
 
     def validate(self, labels):
-        '''Validates that the labels are compliant with the schema.
+        '''Validates that the `Labels` are compliant with the schema.
 
         Args:
             labels: a Labels instance
@@ -104,9 +96,24 @@ class LabelsSchema(Serializable):
         '''
         raise NotImplementedError("subclasses must implement `validate()`")
 
+    def is_valid(self, labels):
+        '''Whether the `Labels` are compliant with the schema.
+
+        Args:
+            labels: a Labels instance
+
+        Returns:
+            True/False
+        '''
+        try:
+            self.validate(labels)
+            return True
+        except LabelsSchemaError:
+            return False
+
     @classmethod
     def build_active_schema(cls, labels):
-        '''Builds an LabelsSchema that describes the active schema of the
+        '''Builds a `LabelsSchema` that describes the active schema of the
         labels.
 
         Args:
@@ -118,132 +125,157 @@ class LabelsSchema(Serializable):
         raise NotImplementedError(
             "subclasses must implement `build_active_schema()`")
 
+    def merge_schema(self, schema):
+        '''Merges the given `LabelsSchema` into this schema.
+
+        Args:
+            schema: a LabelsSchema
+        '''
+        raise NotImplementedError("subclasses must implement `merge_schema()`")
+
 
 class LabelsSchemaError(Exception):
     '''Error raisesd when a `LabelsSchema` is violated.'''
     pass
 
 
-class LabelsContainer(Labels, Container):
-    '''Base class for `eta.core.serial.Container`s of
-    `eta.core.labels.Labels`.
+class HasLabelsSchema(object):
+    '''Mixin for `Label` classes that can optionally store and enforce
+    `LabelsSchema`s on their labels.
     '''
 
-    def __init__(self, schema=None, **kwargs):
-        '''Creates LabelsContainer instance.
+    def __init__(self, schema=None):
+        '''Initializes the `HasLabelsSchema` mixin.
 
         Args:
-            schema: an optional LabelsContainerSchema to enforce on the
-                elements in this container. By default, no schema is enforced
-            **kwargs: valid keyword arguments for `eta.core.serial.Container()`
-
-        Raises:
-            LabelsContainerSchemaError: if a schema was provided but the
-                elements added to the container violate it
+            schema: (optional) an optional LabelsSchema to enforce on the
+                labels. By default, no schema is enforced
         '''
-        super(LabelsContainer, self).__init__(**kwargs)
-        self.schema = None
-        if schema is not None:
-            self.set_schema(schema)
+        self.schema = schema
 
     @property
     def has_schema(self):
-        '''Whether the container has an enforced schema.'''
+        '''Whether the labels have an enforced schema.'''
         return self.schema is not None
 
-    def add(self, element):
-        '''Appends the element to the container.
-
-        Args:
-            element: an instance of `_ELE_CLS`
-
-        Raises:
-            LabelsContainerSchemaError: if this container has a schema enforced
-                and the element violates it
-        '''
-        if self.has_schema:
-            self._validate_element(element)
-
-        super(LabelsContainer, self).add(element)
-
-    def add_container(self, container):
-        '''Appends the given container's elements to the container.
-
-        Args:
-            elements: a Container of `_ELE_CLS` objects
-
-        Raises:
-            LabelsContainerSchemaError: if this container has a schema enforced
-                and an element in the container violates it
-        '''
-        if self.has_schema:
-            for element in container:
-                self._validate_element(element)
-
-        super(LabelsContainer, self).add_container(container)
-
-    def add_iterable(self, elements):
-        '''Appends the elements in the given iterable to the container.
-
-        Args:
-            elements: an iterable of `_ELE_CLS` objects
-
-        Raises:
-            LabelsContainerSchemaError: if this container has a schema enforced
-                and an element in the container violates it
-        '''
-        if self.has_schema:
-            for element in elements:
-                self._validate_element(element)
-
-        super(LabelsContainer, self).add_iterable(elements)
-
     def get_schema(self):
-        '''Gets the current enforced schema for the container, or None if no
+        '''Gets the current enforced schema for the labels, or None if no
         schema is enforced.
 
         Returns:
-            a LabelsContainerSchema
+            a LabelsSchema, or None
         '''
         return self.schema
 
-    def get_active_schema(self):
-        '''Returns a LabelsContainerSchema describing the active schema of the
-        container.
-
-        Returns:
-            a LabelsContainerSchema
-        '''
-        schema_cls = self.get_schema_cls()
-        return schema_cls.build_active_schema(self)
-
     def set_schema(self, schema, filter_by_schema=False):
-        '''Sets the enforced schema to the given LabelsContainerSchema.
+        '''Sets the enforced schema to the given `LabelsSchema`.
 
         Args:
-            schema: the LabelsContainerSchema
-            filter_by_schema: whether to filter any invalid values from the
-                container after changing the schema. By default, this is False
-                and thus the container must already meet the new schema
+            schema: a LabelsSchema to assign
+            filter_by_schema: whether to filter labels that are not compliant
+                with the schema. By default, this is False and thus the labels
+                must already meet the new schema
+
+        Raises:
+            LabelsSchemaError: if `filter_by_schema` was False and this object
+                contains labels that are not compliant with the schema
         '''
         self.schema = schema
-        if not self.has_schema:
-            return
 
-        if filter_by_schema:
-            self.filter_by_schema(self.schema)
-        else:
-            self._validate_schema()
+        if filter_by_schema and self.has_schema:
+            self.filter_by_schema(self.schema)  # pylint: disable=no-member
+
+        validate = self.has_schema and not filter_by_schema
+        self._set_schema(validate=validate)
 
     def freeze_schema(self):
-        '''Sets the enforced schema for the container to the current active
-        schema.
-        '''
-        self.set_schema(self.get_active_schema())
+        '''Sets the schema for the labels to the current active schema.'''
+        self.set_schema(self.get_active_schema())  # pylint: disable=no-member
 
     def remove_schema(self):
-        '''Removes the enforced schema from the container.'''
+        '''Removes the enforced schema from the labels.'''
         self.schema = None
+        self._set_schema(validate=False)
+
+    def _set_schema(self, validate=True):
+        if validate and self.has_schema:
+            self.schema.validate(self)
+
+
+class LabelsContainer(Labels, HasLabelsSchema, Container):
+    '''Base class for `eta.core.serial.Container`s of `Labels`.
+
+    `LabelsContainer`s can optionally store a `LabelsContainerSchema` instance
+    that governs the schema of the labels in the container.
+    '''
+
+    def __init__(self, schema=None, **kwargs):
+        '''Creates a `LabelsContainer` instance.
+
+        Args:
+            schema: an optional LabelsContainerSchema to enforce on the labels
+                in this container. By default, no schema is enforced
+            **kwargs: valid keyword arguments for `eta.core.serial.Container()`
+
+        Raises:
+            LabelsContainerSchemaError: if a schema was provided but the labels
+                added to the container violate it
+        '''
+        HasLabelsSchema.__init__(self, schema=schema)
+        Container.__init__(self, **kwargs)
+
+    def add(self, labels):
+        '''Appends the `Labels` to the container.
+
+        Args:
+            labels: a Labels instance
+
+        Raises:
+            LabelsContainerSchemaError: if this container has a schema enforced
+                and the labels violate it
+        '''
+        if self.has_schema:
+            self._validate_labels(labels)
+
+        super(LabelsContainer, self).add(labels)
+
+    def add_container(self, container):
+        '''Appends the labels in the given `LabelContainer` to the container.
+
+        Args:
+            container: a LabelsContainer
+
+        Raises:
+            LabelsContainerSchemaError: if this container has a schema enforced
+                and any labels in the container violate it
+        '''
+        self.add_iterable(container)
+
+    def add_iterable(self, iterable):
+        '''Appends the labels in the given iterable to the container.
+
+        Args:
+            iterable: an iterable of Labels
+
+        Raises:
+            LabelsContainerSchemaError: if this container has a schema enforced
+                and any labels in the container violate it
+        '''
+        if self.has_schema:
+            for labels in iterable:
+                self._validate_labels(labels)
+
+        super(LabelsContainer, self).add_iterable(iterable)
+
+    def filter_by_schema(self, schema):
+        '''Removes labels from this container that are not compliant with the
+        given schema.
+
+        Args:
+            schema: a LabelsContainerSchema
+        '''
+        filter_func = schema.is_valid
+        self.filter_elements([filter_func])
 
     def attributes(self):
         '''Returns the list of class attributes that will be serialized.
@@ -258,32 +290,276 @@ class LabelsContainer(Labels, Container):
         _attrs += super(LabelsContainer, self).attributes()
         return _attrs
 
-    def _validate_element(self, element):
-        if self.has_schema:
-            self.schema.validate_element(element)
+    @classmethod
+    def from_dict(cls, d):
+        '''Constructs a LabelsContainer from a JSON dictionary.
 
-    def _validate_schema(self):
+        Args:
+            d: a JSON dictionary
+
+        Returns:
+            a LabelsContainer
+        '''
+        schema = d.get("schema", None)
+        if schema is not None:
+            schema_cls = cls.get_schema_cls()
+            schema = schema_cls.from_dict(schema)
+
+        return super(LabelsContainer, cls).from_dict(d, schema=schema)
+
+    def _set_schema(self, validate=True):
+        if validate and self.has_schema:
+            for labels in self:
+                self._validate_labels(labels)
+
+    def _validate_labels(self, labels):
         if self.has_schema:
-            for element in self:
-                self._validate_element(element)
+            self.schema.validate(labels)
 
 
 class LabelsContainerSchema(LabelsSchema):
-    '''Base class for schemas of `eta.core.labels.LabelsContainer`s.'''
+    '''Base class for schemas of `LabelsContainer`s.'''
 
-    def validate_element(self, element):
-        '''Validates that the element is compliant with the schema.
+    def add(self, labels):
+        '''Incorporates the `Labels` into the schema.
 
         Args:
-            element: an `_LABELS_CLS._ELE_CLS` instance
-
-        Raises:
-            LabelsContainerSchemaError: if the element violates the schema
+            label: a Labels instance
         '''
-        raise NotImplementedError(
-            "subclasses must implement `validate_element()`")
+        self.merge_schema(labels.get_active_schema())
+
+    def add_container(self, container):
+        '''Incorporates the given `LabelsContainer`s elements into the schema.
+
+        Args:
+            container: a LabelsContainer
+        '''
+        self.add_iterable(container)
+
+    def add_iterable(self, iterable):
+        '''Incorporates the given iterable of `Labels` into the schema.
+
+        Args:
+            iterable: an iterable of Labels
+        '''
+        for labels in iterable:
+            self.add(labels)
+
+    @classmethod
+    def build_active_schema(cls, container):
+        '''Builds a `LabelsContainerSchema` describing the active schema of
+        the `LabelsContainer`.
+
+        Args:
+            container: a LabelsContainer
+
+        Returns:
+            a LabelsContainerSchema
+        '''
+        schema = cls()
+        for labels in container:
+            schema.add(labels.get_active_schema())
+
+        return schema
 
 
-class LabelsContainerSchemaError(Exception):
+class LabelsContainerSchemaError(LabelsSchemaError):
     '''Error raisesd when a `LabelsContainerSchema` is violated.'''
     pass
+
+
+class LabelsSet(Labels, HasLabelsSchema, Set):
+    '''Base class for `eta.core.serial.Set`s of `Labels`.
+
+    `LabelsSet`s can optionally store a `LabelsSchema` instance that governs
+    the schemas of the `Labels` in the set.
+    '''
+
+    def __init__(self, schema=None, **kwargs):
+        '''Creates a `LabelsSet` instance.
+
+        Args:
+            schema: an optional LabelsSchema to enforce on each element of the
+                set. By default, no schema is enforced
+            **kwargs: valid keyword arguments for `eta.core.serial.Set()`
+
+        Raises:
+            LabelsContainerSchemaError: if a schema was provided but the labels
+                added to the container violate it
+        '''
+        HasLabelsSchema.__init__(self, schema=schema)
+        Set.__init__(self, **kwargs)
+
+    def __getitem__(self, key):
+        '''Gets the `Labels` for the given key.
+
+        If the key is not found, an empty `Labels` is created for it, and
+        returned.
+
+        Args:
+            key: the key
+
+        Returns:
+            a Labels instance
+        '''
+        if key not in self:
+            # pylint: disable=not-callable
+            labels = self._ELE_CLS(**{self._ELE_KEY_ATTR: key})
+            self.add(labels)
+
+        return super(LabelsSet, self).__getitem__(key)
+
+    def __setitem__(self, key, labels):
+        '''Sets the labels for the given key.
+
+        Any existing labels are overwritten.
+
+        Args:
+            key: the image name
+            image_labels: an ImageLabels
+        '''
+        if self.has_schema:
+            self._validate_labels(labels)
+
+        return super(LabelsSet, self).__setitem__(key, labels)
+
+    @classmethod
+    def get_schema_cls(cls):
+        '''Gets the schema class for the `Labels` in the set.
+
+        Returns:
+            the LabelsSchema class
+        '''
+        return cls._ELE_CLS.get_schema_cls()
+
+    def empty(self):
+        '''Returns an empty copy of the `LabelsSet`.
+
+        The schema of the set is preserved, if applicable.
+
+        Returns:
+            an empty LabelsSet
+        '''
+        return self.__class__(schema=self.schema)
+
+    def add(self, labels):
+        '''Adds the `Labels` to the set.
+
+        Args:
+            labels: a Labels instance
+
+        Raises:
+            LabelsSchemaError: if this set has a schema enforced and the labels
+                violate it
+        '''
+        if self.has_schema:
+            self._validate_labels(labels)
+
+        super(LabelsSet, self).add(labels)
+
+    def add_set(self, labels_set):
+        '''Adds the labels in the given `LabelSet` to the set.
+
+        Args:
+            labels_set: a LabelsSet
+
+        Raises:
+            LabelsSchemaError: if this set has a schema enforced and any labels
+                in the set violate it
+        '''
+        self.add_iterable(labels_set)
+
+    def add_iterable(self, iterable):
+        '''Adds the labels in the given iterable to the set.
+
+        Args:
+            iterable: an iterable of Labels
+
+        Raises:
+            LabelsContainerSchemaError: if this container has a schema enforced
+                and any labels in the container violate it
+        '''
+        if self.has_schema:
+            for labels in iterable:
+                self._validate_labels(labels)
+
+        super(LabelsSet, self).add_iterable(iterable)
+
+    def get_active_schema(self):
+        '''Gets the `LabelsSchema` describing the active schema of the set.
+
+        Returns:
+            a `LabelsSchema`
+        '''
+        schema_cls = self.get_schema_cls()
+        schema = schema_cls()
+        for labels in self:
+            schema.merge_schema(schema_cls.build_active_schema(labels))
+
+        return schema
+
+    def filter_by_schema(self, schema):
+        '''Removes labels from the set that are not compliant with the given
+        schema.
+
+        Args:
+            schema: a LabelsSchema
+        '''
+        for labels in self:
+            labels.filter_by_schema(schema)
+
+    def attributes(self):
+        '''Returns the list of class attributes that will be serialized.
+
+        Returns:
+            a list of attribute names
+        '''
+        _attrs = []
+        if self.has_schema:
+            _attrs.append("schema")
+
+        _attrs += super(LabelsSet, self).attributes()
+        return _attrs
+
+    @classmethod
+    def from_dict(cls, d):
+        '''Constructs a `LabelsSet` from a JSON dictionary.
+
+        Args:
+            d: a JSON dictionary
+
+        Returns:
+            a LabelsSet
+        '''
+        schema = d.get("schema", None)
+        if schema is not None:
+            schema_cls = cls.get_schema_cls()
+            schema = schema_cls.from_dict(schema)
+
+        return super(LabelsSet, cls).from_dict(d, schema=schema)
+
+    @classmethod
+    def from_labels_patt(cls, labels_patt):
+        '''Creates a `LabelsSet` from a pattern of `Labels` files on disk.
+
+        Args:
+             labels_patt: a pattern with one or more numeric sequences for
+                Labels files on disk
+
+        Returns:
+            a LabelsSet
+        '''
+        labels_set = cls()
+        for labels_path in etau.get_pattern_matches(labels_patt):
+            labels_set.add(cls._ELE_CLS.from_json(labels_path))
+
+        return labels_set
+
+    def _set_schema(self, validate=True):
+        if validate and self.has_schema:
+            for labels in self:
+                self._validate_labels(labels)
+
+    def _validate_labels(self, labels):
+        if self.has_schema:
+            self.schema.validate(labels)
