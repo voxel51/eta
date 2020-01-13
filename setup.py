@@ -10,7 +10,7 @@ Brian Moore, brian@voxel51.com
 from setuptools import setup, find_packages
 
 
-# @note the version info below should be kept in-sync with `eta/version.json`
+# @note version info should be kept in-sync with `eta/version.json`
 setup(
     name="ETA",
     version="0.1.0",
@@ -18,7 +18,7 @@ setup(
     author="Voxel51, Inc.",
     author_email="info@voxel51.com",
     url="https://github.com/voxel51/eta",
-    license="BSD 4-clause",
+    license="BSD-4-Clause",
     packages=find_packages(),
     include_package_data=True,
     classifiers=[
@@ -28,4 +28,5 @@ setup(
         "Programming Language :: Python :: 3",
     ],
     scripts=["eta/eta"],
+    python_requires=">=2.7",
 )
