@@ -796,7 +796,7 @@ class VideoLabels(etal.Labels, etal.HasLabelsSchema):
             frame_labels.filter_by_schema(schema)
 
         self.objects.filter_by_schema(schema.objects)
-        self.events.filter_by_schema(schema.events)
+        self.events.filter_by_schema(schema.events, objects=self.objects)
 
     def remove_objects_without_attrs(self, labels=None):
         '''Removes objects from the `VideoLabels` that do not have attributes.
