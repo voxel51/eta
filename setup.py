@@ -10,6 +10,7 @@ Brian Moore, brian@voxel51.com
 from setuptools import setup, find_packages
 
 setup(
+    include_package_data=True,
     name="ETA",
     version="0.1.0",
     description="Extensible Toolkit for Analytics",
