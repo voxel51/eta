@@ -9,25 +9,14 @@ Brian Moore, brian@voxel51.com
 '''
 from setuptools import setup, find_packages
 
-#import eta.constants as etac
-
-
-
 setup(
-    # name=etac.NAME,
-    # version=etac.VERSION,
-    # description=etac.DESCRIPTION,
-    # author=etac.AUTHOR,
-    # author_email=etac.CONTACT,
-    # url=etac.URL,
-    # license=etac.LICENSE,
-    name='ETA',
-    version='0.01',
-    description='bla',
-    author="test",
-    author_email="test",
-    url="test",
-    license="test",
+    name="ETA",
+    version="0.1.0",
+    description="Extensible Toolkit for Analytics",
+    author="Voxel51, Inc.",
+    contact="support@voxel51.com",
+    url="https://github.com/voxel51/eta",
+    license="BSD 4-clause",
     packages=find_packages(),
     classifiers=[
         "Operating System :: MacOS :: MacOS X",
