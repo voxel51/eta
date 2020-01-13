@@ -37,7 +37,7 @@ class FrameLabels(Serializable):
     '''
 
     def __init__(self, frame_number, attrs=None, objects=None):
-        '''Constructs a FrameLabels instance.
+        '''Constructs a `FrameLabels` instance.
 
         Args:
             frame_number: the frame number
@@ -58,7 +58,7 @@ class FrameLabels(Serializable):
 
     @property
     def has_objects(self):
-        '''Whether the frame has at least one DetectedObject.'''
+        '''Whether the frame has at least one object.'''
         return bool(self.objects)
 
     @property
@@ -121,8 +121,7 @@ class FrameLabels(Serializable):
         self.add_objects(frame_labels.objects)
 
     def remove_objects_without_attrs(self, labels=None):
-        '''Removes `DetectedObject`s from the frame that do not have
-        attributes.
+        '''Removes objects from the frame that do not have attributes.
 
         Args:
             labels: an optional list of DetectedObject label strings to which
@@ -146,7 +145,7 @@ class FrameLabels(Serializable):
 
     @classmethod
     def from_image_labels(cls, image_labels, frame_number):
-        '''Constructs a FrameLabels from an ImageLabels.
+        '''Constructs a `FrameLabels` from an `ImageLabels`.
 
         Args:
             image_labels: an ImageLabels instance
@@ -161,7 +160,7 @@ class FrameLabels(Serializable):
 
     @classmethod
     def from_dict(cls, d):
-        '''Constructs a FrameLabels from a JSON dictionary.
+        '''Constructs a `FrameLabels` from a JSON dictionary.
 
         Args:
             d: a JSON dictionary
