@@ -243,16 +243,28 @@ class Event(etal.Labels):
         for frame_labels in self.iter_frames():
             frame_labels.clear_objects()
 
-    def filter_by_schema(self, schema):
+    def filter_by_schema(self, schema, objects=None):
         '''Removes objects/attributes from this event that are not compliant
         with the given schema.
 
         Args:
             schema: an EventSchema
+            objects: an optional dictionary mapping uuids to Objects. If
+                provided, the schema will be applied to the child objects of
+                this event
+            events: an optional dictionary mapping uuids to Events. If
+                provided, the schema will be applied to the child events of
+                this event
         '''
         self.attrs.filter_by_schema(schema.attrs)
         for frame_labels in self.iter_frames():
             frame_labels.filter_by_schema(schema)
+
+        if objects:
+            for uuid in self.child_objects:
+                obj = objecs.get(uuid, None)
+                if obj:
+                    obj.filter_by_schema(schema.objects)
 
     def remove_objects_without_attrs(self, labels=None):
         '''Removes objects that do not have attributes from this container.
