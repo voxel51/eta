@@ -1688,7 +1688,17 @@ class VideoLabelsSchema(etal.LabelsSchema):
         Args:
             a list of attribute names
         '''
-        return ["attrs", "frames", "objects", "events"]
+        _attrs = []
+        if self.attrs:
+            _attrs.append("attrs")
+        if self.frames:
+            _attrs.append("frames")
+        if self.objects:
+            _attrs.append("objects")
+        if self.events:
+            _attrs.append("events")
+
+        return _attrs
 
     @classmethod
     def from_dict(cls, d):

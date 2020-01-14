@@ -1056,7 +1056,13 @@ class EventSchema(etal.LabelsSchema):
         Args:
             a list of attribute names
         '''
-        _attrs = ["label", "attrs", "frames", "objects"]
+        _attrs = ["label"]
+        if self.attrs:
+            _attrs.append("attrs")
+        if self.frames:
+            _attrs.append("frames")
+        if self.objects:
+            _attrs.append("objects")
         if self.child_events:
             _attrs.append("child_events")
 

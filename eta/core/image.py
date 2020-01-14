@@ -595,7 +595,13 @@ class ImageLabelsSchema(etal.LabelsSchema):
         Returns:
             a list of attribute names
         '''
-        return ["attrs", "objects"]
+        _attrs = []
+        if self.attrs:
+            _attrs.append("attrs")
+        if self.objects:
+            _attrs.append("objects")
+
+        return _attrs
 
     @classmethod
     def from_dict(cls, d):

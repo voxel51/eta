@@ -178,8 +178,8 @@ class DetectedObject(etal.Labels, HasBoundingBox):
         _attrs.extend(
             [a for a in _noneable_attrs if getattr(self, a) is not None])
 
-        if self.event_indices:
-            _attrs.append("event_indices")
+        if self.event_uuids:
+            _attrs.append("event_uuids")
         if self.attrs:
             _attrs.append("attrs")
 
@@ -981,7 +981,9 @@ class ObjectSchema(etal.LabelsSchema):
         Args:
             a list of attribute names
         '''
-        _attrs = ["label", "attrs"]
+        _attrs = ["label"]
+        if self.attrs:
+            _attrs.append("attrs")
         if self.child_objects:
             _attrs.append("child_objects")
 
