@@ -25,5 +25,14 @@ setup(
         "Programming Language :: Python :: 2.7",
         "Programming Language :: Python :: 3",
     ],
+    extras_require={
+        "aws": [
+            "boto3",
+        ],
+        "gcp": [
+            "google-api-python-client",
+            "google-cloud-storage",
+        ],
+    },
     scripts=["eta/eta"],
 )
