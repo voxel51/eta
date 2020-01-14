@@ -617,12 +617,15 @@ class ObjectContainer(etal.LabelsContainer):
         '''
         self.sort_by("index", reverse=reverse)
 
-    def filter_by_schema(self, schema):
+    def filter_by_schema(self, schema, objects=None):
         '''Filters the objects/attributes from this container that are not
         compliant with the given schema.
 
         Args:
             schema: an ObjectContainerSchema
+            objects: an optional dictionary mapping uuids to Objects. If
+                provided, the schema will be applied to the child objects of
+                the objects in the container
         '''
         # Remove objects with invalid labels
         filter_func = lambda obj: schema.has_object_label(obj.label)
@@ -631,7 +634,7 @@ class ObjectContainer(etal.LabelsContainer):
         # Filter objects by their schemas
         for obj in self:
             obj_schema = schema.get_object_schema(obj.label)
-            obj.filter_by_schema(obj_schema)
+            obj.filter_by_schema(obj_schema, objects=objects)
 
     def remove_objects_without_attrs(self, labels=None):
         '''Removes objects from this container that do not have attributes.
