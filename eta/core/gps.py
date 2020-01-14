@@ -22,8 +22,6 @@ from builtins import *
 import datetime
 import math
 
-import scipy.interpolate as spi
-
 from eta.core.serial import Serializable
 
 
@@ -95,6 +93,12 @@ class GPSWaypoints(Serializable):
 
     @staticmethod
     def _make_interp(x, y):
+        #
+        # @note Import `scipy` here so that we avoid the dependency unless
+        # absolutely necessary
+        #
+        import scipy.interpolate as spi
+
         return spi.interp1d(
             x, y, kind="nearest", bounds_error=False, fill_value="extrapolate")
 
