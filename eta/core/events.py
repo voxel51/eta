@@ -24,7 +24,6 @@ from eta.core.data import AttributeContainer, AttributeContainerSchema
 from eta.core.frames import FrameLabels, FrameRanges
 import eta.core.labels as etal
 from eta.core.objects import ObjectContainerSchema
-from eta.core.serial import Serializable
 
 
 class EventFrameLabels(FrameLabels):
@@ -396,7 +395,7 @@ class Event(etal.Labels):
             self.frames[frame_number] = EventFrameLabels(frame_number)
 
 
-class EventSchema(Serializable):
+class EventSchema(etal.LabelsSchema):
     '''Schema for `Event`s.
 
     Attributes:
