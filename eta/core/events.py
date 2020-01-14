@@ -223,6 +223,28 @@ class Event(etal.Labels):
         for obj in objects:
             self.add_detected_object(obj)
 
+    def add_child_object(self, obj):
+        '''Adds the `Object` as a child of this event.
+
+        Args:
+            obj: an Object, which must have its `uuid` set
+        '''
+        if obj.uuid is None:
+            raise ValueError("Object must have its `uuid` set")
+
+        self.child_objects.add(obj.uuid)
+
+    def add_child_event(self, event):
+        '''Adds the `Event` as a child of this event.
+
+        Args:
+            event: an Event, which must have its `uuid` set
+        '''
+        if event.uuid is None:
+            raise ValueError("Event must have its `uuid` set")
+
+        self.child_events.add(event.uuid)
+
     def clear_attributes(self):
         '''Removes all attributes of any kind from the event.'''
         self.clear_event_attributes()
@@ -242,7 +264,15 @@ class Event(etal.Labels):
         for frame_labels in self.iter_frames():
             frame_labels.clear_objects()
 
-    def filter_by_schema(self, schema, objects=None):
+    def clear_child_objects(self):
+        '''Removes all child objects from the event.'''
+        self.child_objects = set()
+
+    def clear_child_events(self):
+        '''Removes all child events from the event.'''
+        self.child_events = set()
+
+    def filter_by_schema(self, schema, objects=None, events=None):
         '''Removes objects/attributes from this event that are not compliant
         with the given schema.
 
@@ -254,16 +284,41 @@ class Event(etal.Labels):
             events: an optional dictionary mapping uuids to Events. If
                 provided, the schema will be applied to the child events of
                 this event
+
+        Raises:
+            EventSchemaError: if the event label does not match the schema
         '''
+        # Validate event label
+        schema.validate_label(self.label)
+
+        # Filter event-level attributes
         self.attrs.filter_by_schema(schema.attrs)
+
+        # Filter frame labels
         for frame_labels in self.iter_frames():
             frame_labels.filter_by_schema(schema)
 
+        # Filter child objects
         if objects:
             for uuid in self.child_objects:
-                obj = objects.get(uuid, None)
-                if obj:
-                    obj.filter_by_schema(schema.objects)
+                if uuid in objects:
+                    child_obj = objects[uuid]
+                    if not schema.has_object_label(child_obj.label):
+                        self.child_objects.remove(uuid)
+                    else:
+                        child_obj.filter_by_schema(
+                            schema.get_object_schema(child_obj.label))
+
+        # Filter child events
+        if events:
+            for uuid in self.child_events:
+                if uuid in events:
+                    child_event = events[uuid]
+                    if not schema.has_child_event_label(child_event.label):
+                        self.child_events.remove(uuid)
+                    else:
+                        child_event.filter_by_schema(
+                            schema.get_child_event_schema(child_event.label))
 
     def remove_objects_without_attrs(self, labels=None):
         '''Removes objects that do not have attributes from this container.
@@ -275,36 +330,6 @@ class Event(etal.Labels):
         '''
         for frame_labels in self.iter_frames():
             frame_labels.remove_objects_without_attrs(labels=labels)
-
-    def add_child_object(self, obj):
-        '''Adds the `Object` as a child of this event.
-
-        Args:
-            obj: an Object, which must have its `uuid` set
-        '''
-        if obj.uuid is None:
-            raise ValueError("Object must have its `uuid` set")
-
-        self.child_objects.add(obj.uuid)
-
-    def clear_child_objects(self):
-        '''Removes all child objects from the event.'''
-        self.child_objects = set()
-
-    def add_child_event(self, event):
-        '''Adds the `Event` as a child of this event.
-
-        Args:
-            event: an Event, which must have its `uuid` set
-        '''
-        if event.uuid is None:
-            raise ValueError("Event must have its `uuid` set")
-
-        self.child_events.add(event.uuid)
-
-    def clear_child_events(self):
-        '''Removes all child events from the event.'''
-        self.child_events = set()
 
     def attributes(self):
         '''Returns the list of attributes to serialize.
@@ -405,9 +430,13 @@ class EventSchema(etal.LabelsSchema):
         frames: an AttributeContainerSchema describing the frame-level
             attributes of the event
         objects: an ObjectContainerSchema describing the objects of the event
+        child_events: an EventContainerSchema describing the child events of
+            the event
     '''
 
-    def __init__(self, label, attrs=None, frames=None, objects=None):
+    def __init__(
+            self, label, attrs=None, frames=None, objects=None,
+            child_events=None):
         '''Creates an `EventSchema` instance.
 
         Args:
@@ -418,11 +447,14 @@ class EventSchema(etal.LabelsSchema):
                 attributes of the event
             objects: (optional) an ObjectContainerSchema describing the objects
                 of the event
+            child_events: (optional) an EventContainerSchema describing the
+                child events of the events
         '''
         self.label = label
         self.attrs = attrs or AttributeContainerSchema()
         self.frames = frames or AttributeContainerSchema()
         self.objects = objects or ObjectContainerSchema()
+        self.child_events = child_events or EventContainerSchema()
 
     def has_label(self, label):
         '''Whether the schema has the given event label.
@@ -574,6 +606,28 @@ class EventSchema(etal.LabelsSchema):
         '''
         return self.objects.get_object_attribute_class(label, obj_attr_name)
 
+    def has_child_event_label(self, label):
+        '''Whether the schema has a child event with the given label.
+
+        Args:
+            label: the child event label
+
+        Returns:
+            True/False
+        '''
+        return self.child_events.has_event_label(label)
+
+    def get_child_event_schema(self, label):
+        '''Gets the `EventSchema` for the child event with the given label.
+
+        Args:
+            label: the child event label
+
+        Returns:
+            the EventSchema
+        '''
+        return self.child_events.get_event_schema(label)
+
     def add_event_attribute(self, event_attr):
         '''Adds the given event-level attribute to the schema.
 
@@ -680,6 +734,22 @@ class EventSchema(etal.LabelsSchema):
         for event in events:
             self.add_event(event)
 
+    def add_child_event(self, event):
+        '''Adds the child `Event` to the schema.
+
+        Args:
+            event: the child Event
+        '''
+        return self.child_events.add_event(event)
+
+    def add_child_events(self, events):
+        '''Adds the `EventContainer` of child events to the schema.
+
+        Args:
+            events: an EventContainer of child events
+        '''
+        return self.child_events.add_events(events)
+
     def is_valid_event_attribute(self, event_attr):
         '''Whether the event-level attribute is compliant with the schema.
 
@@ -737,6 +807,36 @@ class EventSchema(etal.LabelsSchema):
             True/False
         '''
         return self.objects.is_valid_object(obj)
+
+    def is_valid_event(self, event):
+        '''Whether the `Event` is compliant with the schema.
+
+        Args:
+            event: an Event
+
+        Returns:
+            True/False
+        '''
+        try:
+            self.validate_event(event)
+            return True
+        except etal.LabelsSchemaError:
+            return False
+
+    def is_valid_child_event(self, event):
+        '''Whether the child `Event` is compliant with the schema.
+
+        Args:
+            event: a child Event
+
+        Returns:
+            True/False
+        '''
+        try:
+            self.validate_child_event(event)
+            return True
+        except etal.LabelsSchemaError:
+            return False
 
     def validate_label(self, label):
         '''Validates that the event label is compliant with the schema.
@@ -853,6 +953,20 @@ class EventSchema(etal.LabelsSchema):
         '''
         self.validate(event)
 
+    def validate_child_event(self, event):
+        '''Validates that the child `Event` is compliant with the schema.
+
+        Args:
+            event: a child Event
+
+        Raises:
+            EventContainerSchemaError: if the event label violates the schema
+            ObjectContainerSchemaError: if an object label violates the schema
+            AttributeContainerSchemaError: if any event/frame/object attribute
+                violates the schema
+        '''
+        self.child_events.validate_event(event)
+
     def validate(self, event):
         '''Validates that the `Event` is compliant with the schema.
 
@@ -882,6 +996,14 @@ class EventSchema(etal.LabelsSchema):
             for obj in frame_labels.objects:
                 self.validate_object(obj)
 
+        # Validate child objects
+        for obj in event.child_objects:
+            self.validate_object(obj)
+
+        # Validate child events
+        for child_event in event.child_events:
+            self.validate_child_event(child_event)
+
     def merge_schema(self, schema):
         '''Merges the given `EventSchema` into this schema.
 
@@ -892,20 +1014,40 @@ class EventSchema(etal.LabelsSchema):
         self.attrs.merge_schema(schema.attrs)
         self.frames.merge_schema(schema.frames)
         self.objects.merge_schema(schema.objects)
+        self.child_events.merge_schema(schema.child_events)
 
     @classmethod
-    def build_active_schema(cls, event):
+    def build_active_schema(cls, event, objects=None, events=None):
         '''Builds an `EventSchema` that describes the active schema of the
         given `Event`.
 
         Args:
             event: an Event
+            objects: an optional dictionary mapping uuids to Objects. If
+                provided, the child objects of this event will be incorporated
+                into the schema
+            events: an optional dictionary mapping uuids to Events. If
+                provided, the child events of this event will be incorporated
+                into the schema
 
         Returns:
             an EventSchema
         '''
         schema = cls(event.label)
         schema.add_event(event)
+
+        # Child objects
+        if objects:
+            for uuid in event.child_objects:
+                if uuid in objects:
+                    schema.add_object(objects[uuid])
+
+        # Child events
+        if events:
+            for uuid in event.child_events:
+                if uuid in events:
+                    schema.add_child_event(events[uuid])
+
         return schema
 
     def attributes(self):
@@ -914,7 +1056,11 @@ class EventSchema(etal.LabelsSchema):
         Args:
             a list of attribute names
         '''
-        return ["label", "attrs", "frames", "objects"]
+        _attrs = ["label", "attrs", "frames", "objects"]
+        if self.child_events:
+            _attrs.append("child_events")
+
+        return _attrs
 
     @classmethod
     def from_dict(cls, d):
@@ -938,7 +1084,13 @@ class EventSchema(etal.LabelsSchema):
         if objects is not None:
             objects = ObjectContainerSchema.from_dict(objects)
 
-        return cls(d["label"], attrs=attrs, frames=frames, objects=objects)
+        child_events = d.get("child_events", None)
+        if child_events is not None:
+            child_events = EventContainerSchema.from_dict(child_events)
+
+        return cls(
+            d["label"], attrs=attrs, frames=frames, objects=objects,
+            child_events=child_events)
 
 
 class EventSchemaError(etal.LabelsSchemaError):
