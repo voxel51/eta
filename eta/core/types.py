@@ -1650,8 +1650,12 @@ class TFRecord(File, ConcreteData):
 
     @staticmethod
     def is_valid_path(path):
-        # Do this locally to avoid importing TF unless absolutely necessary
+        #
+        # @note(lite) import this locally to avoid importing `tensorflow`
+        # unless absolutely necessary
+        #
         import eta.core.tfutils as etat
+
         return File.is_valid_path(path) and etat.is_valid_tf_record_path(path)
 
 

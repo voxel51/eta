@@ -94,8 +94,8 @@ class GPSWaypoints(Serializable):
     @staticmethod
     def _make_interp(x, y):
         #
-        # @note Import `scipy` here so that we avoid the dependency unless
-        # absolutely necessary
+        # @note(lite) Import `scipy` here so that we avoid the dependency
+        # unless absolutely necessary
         #
         import scipy.interpolate as spi
 
