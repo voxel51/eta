@@ -791,12 +791,21 @@ class VideoLabels(etal.Labels, etal.HasLabelsSchema):
         Args:
             schema: a VideoLabelsSchema
         '''
+        # Filter video-level attributes
         self.attrs.filter_by_schema(schema.attrs)
+
+        # Filter frame-level attributes
         for frame_labels in self.iter_frames():
             frame_labels.filter_by_schema(schema)
 
-        self.objects.filter_by_schema(schema.objects)
-        self.events.filter_by_schema(schema.events, objects=self.objects)
+        # Filter objects
+        # @todo must convert to dictionary with UUID keys
+        self.objects.filter_by_schema(schema.objects, objects=self.objects)
+
+        # Filter events
+        # @todo must convert to dictionary with UUID keys
+        self.events.filter_by_schema(
+            schema.events, objects=self.objects, events=self.events)
 
     def remove_objects_without_attrs(self, labels=None):
         '''Removes objects from the `VideoLabels` that do not have attributes.
