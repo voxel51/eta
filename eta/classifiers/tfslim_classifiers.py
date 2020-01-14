@@ -419,6 +419,9 @@ class TFSlimFeaturizerConfig(TFSlimClassifierConfig):
     '''Configuration settings for a TFSlimFeaturizer.'''
 
     def __init__(self, d):
+        # Featurizers don't care what attribute name the classifier uses
+        d["attr_name"] = ""
+
         # Featurizers always need to generate features!
         d["generate_features"] = True
 
