@@ -1027,6 +1027,9 @@ class EventContainerSchema(etal.LabelsContainerSchema):
         '''
         self.schema = schema or {}
 
+    def __bool__(self):
+        return bool(self.schema)
+
     def has_event_label(self, label):
         '''Whether the schema has an event with the given label.
 

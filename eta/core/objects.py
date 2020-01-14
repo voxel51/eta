@@ -961,6 +961,9 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
         '''
         self.schema = schema or {}
 
+    def __bool__(self):
+        return bool(self.schema)
+
     def has_object_label(self, label):
         '''Whether the schema has an object with the given label.
 

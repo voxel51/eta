@@ -769,6 +769,9 @@ class AttributeContainerSchema(etal.LabelsContainerSchema):
         '''
         self.schema = schema or {}
 
+    def __bool__(self):
+        return bool(self.schema)
+
     def has_attribute(self, name):
         '''Whether the schema has an `Attribute` with the given name.
 
