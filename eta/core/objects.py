@@ -405,19 +405,10 @@ class Object(etal.Labels):
 
         return False
 
-    def clear_attributes(self):
-        '''Removes all attributes of any kind from the object.'''
-        self.clear_object_attributes()
-        self.clear_frame_attributes()
-
-    def clear_object_attributes(self):
-        '''Removes all object-level attributes from the object.'''
-        self.attrs = AttributeContainer()
-
-    def clear_frame_attributes(self):
-        '''Removes all frame-level attributes from the object.'''
-        for obj in self.iter_detections():
-            obj.clear_attributes()
+    @property
+    def has_child_objects(self):
+        '''Whether the object has at least one child `Object`.'''
+        return bool(self.child_objects)
 
     def add_object_attribute(self, attr):
         '''Adds the object-level attribute to the object.
@@ -479,26 +470,38 @@ class Object(etal.Labels):
 
         self.child_objects.add(obj.uuid)
 
+    def clear_attributes(self):
+        '''Removes all attributes of any kind from the object.'''
+        self.clear_object_attributes()
+        self.clear_frame_attributes()
+
+    def clear_object_attributes(self):
+        '''Removes all object-level attributes from the object.'''
+        self.attrs = AttributeContainer()
+
+    def clear_frame_attributes(self):
+        '''Removes all frame-level attributes from the object.'''
+        for obj in self.iter_detections():
+            obj.clear_attributes()
+
     def clear_child_objects(self):
         '''Removes all child objects from the event.'''
         self.child_objects = set()
 
-    def filter_by_schema(self, schema):
+    def filter_by_schema(self, schema, objects=None):
         '''Filters the object by the given schema.
-
-        The label of the Object must match the provided schema. Any
-        DetectedObjects whose labels are non-None and do not match the schema
-        are deleted.
 
         Args:
             schema: an ObjectSchema
+            objects: an optional dictionary mapping uuids to Objects. If
+                provided, the schema will be applied to the child objects of
+                this object
 
         Raises:
             ObjectSchemaError: if the object label does not match the schema
         '''
-        if self.label != schema.get_label():
-            raise ObjectSchemaError(
-                "Label '%s' does not match object schema" % self.label)
+        # Validate object label
+        schema.validate_label(self.label)
 
         # Filter static attributes
         self.attrs.filter_by_schema(schema.attrs)
@@ -506,6 +509,17 @@ class Object(etal.Labels):
         # Filter `DetectedObject`s
         for dobj in itervalues(self.frames):
             dobj.filter_by_schema(schema, allow_none_label=True)
+
+        # Filter child objects
+        if objects:
+            for uuid in self.child_objects:
+                if uuid in objects:
+                    child_obj = objects[uuid]
+                    if not schema.has_child_object_label(child_obj.label):
+                        self.child_objects.remove(uuid)
+                    else:
+                        child_obj.filter_by_schema(
+                            schema.get_child_object_schema(child_obj.label))
 
     def attributes(self):
         '''Returns the list of attributes to serialize.
@@ -640,18 +654,23 @@ class ObjectSchema(etal.LabelsSchema):
         label: the object label
         attrs: an AttributeContainerSchema describing the attributes of the
             object
+        child_objects: an ObjectContainerSchema describing the child objects
+            of the object
     '''
 
-    def __init__(self, label, attrs=None):
+    def __init__(self, label, attrs=None, child_objects=None):
         '''Creates an ObjectSchema instance.
 
         Args:
             label: the object label
             attrs: (optional) an AttributeContainerSchema describing the
                 attributes of the object
+            child_objects: (optional) an ObjectContainerSchema describing the
+                child objects of the object
         '''
         self.label = label
         self.attrs = attrs or AttributeContainerSchema()
+        self.child_objects = child_objects or ObjectContainerSchema()
 
     def has_label(self, label):
         '''Whether the schema has the given object label.
@@ -705,6 +724,28 @@ class ObjectSchema(etal.LabelsSchema):
         '''
         return self.attrs.get_attribute_class(attr_name)
 
+    def has_child_object_label(self, label):
+        '''Whether the schema has a child object with the given label.
+
+        Args:
+            label: the child object label
+
+        Returns:
+            True/False
+        '''
+        return self.child_objects.has_object_label(label)
+
+    def get_child_object_schema(self, label):
+        '''Gets the `ObjectSchema` for the child object with the given label.
+
+        Args:
+            label: the child object label
+
+        Returns:
+            the ObjectSchema
+        '''
+        return self.child_objects.get_object_schema(label)
+
     def add_attribute(self, attr):
         '''Adds the `Attribute` to the schema.
 
@@ -741,6 +782,22 @@ class ObjectSchema(etal.LabelsSchema):
         '''
         for obj in objects:
             self.add_object(obj)
+
+    def add_child_object(self, obj):
+        '''Adds the child `Object` to the schema.
+
+        Args:
+            obj: the child Object
+        '''
+        return self.child_objects.add_object(obj)
+
+    def add_child_objects(self, objects):
+        '''Adds the `ObjectContainer` of child objects to the schema.
+
+        Args:
+            objects: an ObjectContainer of child objects
+        '''
+        return self.child_objects.add_objects(objects)
 
     def is_valid_label(self, label):
         '''Whether the object label is compliant with the schema.
@@ -784,6 +841,21 @@ class ObjectSchema(etal.LabelsSchema):
         '''
         try:
             self.validate_object(obj)
+            return True
+        except etal.LabelsSchemaError:
+            return False
+
+    def is_valid_child_object(self, obj):
+        '''Whether the child `Object` is compliant with the schema.
+
+        Args:
+            obj: a child Object
+
+        Returns:
+            True/False
+        '''
+        try:
+            self.validate_child_object(obj)
             return True
         except etal.LabelsSchemaError:
             return False
@@ -835,6 +907,19 @@ class ObjectSchema(etal.LabelsSchema):
         '''
         self.validate(obj, allow_none_label=allow_none_label)
 
+    def validate_child_object(self, obj):
+        '''Validates that the child `Object` is compliant with the schema.
+
+        Args:
+            obj: a child Object
+
+        Raises:
+            ObjectContainerSchemaError: if an object label violates the schema
+            AttributeContainerSchemaError: if any attributes of the object
+                violate the schema
+        '''
+        self.child_objects.validate_object(obj)
+
     def validate(self, obj, allow_none_label=False):
         '''Validates that the `Object` or `DetectedObject` is compliant with
         the schema.
@@ -863,20 +948,31 @@ class ObjectSchema(etal.LabelsSchema):
         '''
         self.validate_label(schema.label)
         self.attrs.merge_schema(schema.attrs)
+        self.child_objects.merge_schema(schema.child_objects)
 
     @classmethod
-    def build_active_schema(cls, obj):
+    def build_active_schema(cls, obj, objects=None):
         '''Builds an `ObjectSchema` that describes the active schema of the
         object.
 
         Args:
             obj: an Object or DetectedObject
+            objects: an optional dictionary mapping uuids to Objects. If
+                provided, the child objects of this object will be incorporated
+                into the schema
 
         Returns:
             an ObjectSchema
         '''
         schema = cls(obj.label)
         schema.add_object(obj)
+
+        # Child objects
+        if objects:
+            for uuid in obj.child_objects:
+                if uuid in objects:
+                    schema.add_child_object(objects[uuid])
+
         return schema
 
     def attributes(self):
@@ -885,7 +981,11 @@ class ObjectSchema(etal.LabelsSchema):
         Args:
             a list of attribute names
         '''
-        return ["label", "attrs"]
+        _attrs = ["label", "attrs"]
+        if self.child_objects:
+            _attrs.append("child_objects")
+
+        return _attrs
 
     @classmethod
     def from_dict(cls, d):
@@ -901,7 +1001,11 @@ class ObjectSchema(etal.LabelsSchema):
         if attrs is not None:
             attrs = AttributeContainerSchema.from_dict(attrs)
 
-        return cls(d["label"], attrs=attrs)
+        child_objects = d.get("child_objects", None)
+        if child_objects is not None:
+            child_objects = ObjectContainerSchema.from_dict(child_objects)
+
+        return cls(d["label"], attrs=attrs, child_objects=child_objects)
 
     def _add_detected_object(self, dobj, ignore_none_label=False):
         if dobj.label or not ignore_none_label:
