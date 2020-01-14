@@ -48,7 +48,7 @@ class DetectedObject(etal.Labels, HasBoundingBox):
         index_in_frame: (optional) the index of the object in the frame where
             it was detected
         eval_type: (optional) an EvaluationType value
-        event_indices: (optional) a set of a Event indices to which the object
+        event_uuids: (optional) a set of a Event uuids to which the object
             belongs
         attrs: (optional) an AttributeContainer of attributes for the object
     '''
@@ -56,7 +56,7 @@ class DetectedObject(etal.Labels, HasBoundingBox):
     def __init__(
             self, label=None, bounding_box=None, mask=None, confidence=None,
             top_k_probs=None, index=None, score=None, frame_number=None,
-            index_in_frame=None, eval_type=None, event_indices=None,
+            index_in_frame=None, eval_type=None, event_uuids=None,
             attrs=None):
         '''Creates a DetectedObject instance.
 
@@ -74,8 +74,8 @@ class DetectedObject(etal.Labels, HasBoundingBox):
             index_in_frame: (optional) the index of the object in the frame
                 where it was detected
             eval_type: (optional) an EvaluationType value
-            event_indices: (optional) a set of indices indicating `Events` to
-                which the object belongs
+            event_uuids: (optional) a set of Event uuids to which the object
+                belongs
             attrs: (optional) an AttributeContainer of attributes for the
                 object
         '''
@@ -89,7 +89,7 @@ class DetectedObject(etal.Labels, HasBoundingBox):
         self.frame_number = frame_number
         self.index_in_frame = index_in_frame
         self.eval_type = eval_type
-        self.event_indices = set(event_indices or [])
+        self.event_uuids = set(event_uuids or [])
         self.attrs = attrs or AttributeContainer()
         self._meta = None  # Usable by clients to store temporary metadata
 
@@ -219,7 +219,7 @@ class DetectedObject(etal.Labels, HasBoundingBox):
             index_in_frame=d.get("index_in_frame", None),
             attrs=attrs,
             eval_type=d.get("eval_type", None),
-            event_indices=set(d.get("event_indices", []))
+            event_uuids=set(d.get("event_uuids", []))
         )
 
 
