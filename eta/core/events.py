@@ -150,12 +150,12 @@ class Event(etal.Labels):
 
     @property
     def has_child_objects(self):
-        '''Whether the event has at least one child Object.'''
+        '''Whether the event has at least one child `Object`.'''
         return bool(self.child_objects)
 
     @property
     def has_child_events(self):
-        '''Whether the event has at least one child Event.'''
+        '''Whether the event has at least one child `Event`.'''
         return bool(self.child_events)
 
     def add_event_attribute(self, event_attr):
