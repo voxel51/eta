@@ -31,6 +31,7 @@ import six
 
 from collections import defaultdict, OrderedDict
 import errno
+import glob
 import logging
 import os
 from subprocess import Popen, PIPE
@@ -1933,6 +1934,22 @@ class VideoSetLabels(Set):
         '''
         image_set_labels = cls()
         for labels_path in etau.get_pattern_matches(video_labels_patt):
+            image_set_labels.add(cls._ELE_CLS.from_json(labels_path))
+        return image_set_labels
+
+    @classmethod
+    def from_video_labels_glob_patt(cls, video_labels_patt):
+        '''Creates an instance of `cls` from a pattern of `_ELE_CLS` files.
+
+        Args:
+             video_labels_patt: a glob pattern:
+                example: "/path/to/labels/*.json"
+
+        Returns:
+            a `cls` instance
+        '''
+        image_set_labels = cls()
+        for labels_path in glob.glob(video_labels_patt):
             image_set_labels.add(cls._ELE_CLS.from_json(labels_path))
         return image_set_labels
 
