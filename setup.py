@@ -10,7 +10,6 @@ Brian Moore, brian@voxel51.com
 from setuptools import setup, find_packages
 
 
-# @note version info should be kept in-sync with `eta/version.json`
 setup(
     name="ETA",
     version="0.1.0",
