@@ -842,7 +842,7 @@ class Set(Serializable):
             a `cls` instance
         '''
         parse_method = etau.get_pattern_matches
-        return cls._from_element_patt(pattern, parse_method, *args, *kwargs)
+        return cls._from_element_patt(pattern, parse_method, *args, **kwargs)
 
     @classmethod
     def from_glob_patt(cls, pattern, *args, **kwargs):
@@ -861,7 +861,7 @@ class Set(Serializable):
             a `cls` instance
         '''
         parse_method = glob.glob
-        return cls._from_element_patt(pattern, parse_method, *args, *kwargs)
+        return cls._from_element_patt(pattern, parse_method, *args, **kwargs)
 
     @classmethod
     def _from_element_patt(cls, pattern, parse_method, *args, **kwargs):
@@ -1882,7 +1882,7 @@ class Container(Serializable):
             a `cls` instance
         '''
         parse_method = etau.get_pattern_matches
-        return cls._from_element_patt(pattern, parse_method, *args, *kwargs)
+        return cls._from_element_patt(pattern, parse_method, *args, **kwargs)
 
     @classmethod
     def from_glob_patt(cls, pattern, *args, **kwargs):
@@ -1901,7 +1901,7 @@ class Container(Serializable):
             a `cls` instance
         '''
         parse_method = glob.glob
-        return cls._from_element_patt(pattern, parse_method, *args, *kwargs)
+        return cls._from_element_patt(pattern, parse_method, *args, **kwargs)
 
     @classmethod
     def _from_element_patt(cls, pattern, parse_method, *args, **kwargs):
