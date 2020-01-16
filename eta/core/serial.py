@@ -836,7 +836,7 @@ class Set(Serializable):
         return cls(**etau.join_dicts({cls._ELE_ATTR: elements}, kwargs))
 
     @classmethod
-    def from_element_patt(cls, pattern, pattern_type=NUMERIC):
+    def from_element_patt(cls, pattern, pattern_type=NUMERIC, *args, **kwargs):
         '''Creates an instance of `cls` from a pattern of `_ELE_CLS` files.
 
         Args:
@@ -846,6 +846,9 @@ class Set(Serializable):
                     GLOB:    "/path/to/labels/*.json"
             pattern_type: one of the PATTERN_TYPES enums (NUMERIC, GLOB, ...)
                 specifying how to parse the pattern
+            *args: optional positional arguments for `cls.from_json()`
+            **kwargs: optional keyword arguments for `cls.from_json()`
+
 
         Returns:
             a `cls` instance
@@ -862,7 +865,7 @@ class Set(Serializable):
 
         instance = cls()
         for element_path in parse_method(pattern):
-            instance.add(cls._ELE_CLS.from_json(element_path))
+            instance.add(cls._ELE_CLS.from_json(element_path, *args, **kwargs))
         return instance
 
     def _get_elements(self, keys):
