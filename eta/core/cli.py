@@ -2845,6 +2845,6 @@ _ADD_RECURSIVE_HELP_FLAGS = True
 
 def main():
     '''Executes the `eta` tool with the given command-line args.'''
-    parser = _register_main_command(ETACommand, version=eta.version)
+    parser = _register_main_command(ETACommand, version=etac.VERSION_LONG)
     args = parser.parse_args()
     args.run(args)
