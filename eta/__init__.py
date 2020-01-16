@@ -155,6 +155,9 @@ def is_python3():
     return sys.version_info[0] == 3
 
 
+# Version string
+version = "%s v%s, %s" % (etac.NAME, etac.VERSION, etac.AUTHOR)
+
 # Default logging behavior
 etal.basic_setup()
 
