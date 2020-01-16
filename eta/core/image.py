@@ -29,7 +29,7 @@ from future.utils import iteritems
 from collections import defaultdict
 import colorsys
 import errno
-import glob
+import logging
 import os
 import operator
 from subprocess import Popen, PIPE
@@ -42,8 +42,12 @@ from eta.core.data import AttributeContainer, AttributeContainerSchema, \
     AttributeContainerSchemaError
 from eta.core.objects import DetectedObjectContainer
 from eta.core.serial import Serializable, Set, BigSet
+import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.web as etaw
+
+
+logger = logging.getLogger(__name__)
 
 
 #
@@ -829,26 +833,10 @@ class ImageSetLabels(Set):
         Returns:
             a `cls` instance
         '''
-        image_set_labels = cls()
-        for labels_path in etau.get_pattern_matches(image_labels_patt):
-            image_set_labels.add(cls._ELE_CLS.from_json(labels_path))
-        return image_set_labels
-
-    @classmethod
-    def from_image_labels_glob_patt(cls, image_labels_patt):
-        '''Creates an instance of `cls` from a pattern of `_ELE_CLS` files.
-
-        Args:
-             image_labels_patt: a glob pattern:
-                example: "/path/to/labels/*.json"
-
-        Returns:
-            a `cls` instance
-        '''
-        image_set_labels = cls()
-        for labels_path in glob.glob(image_labels_patt):
-            image_set_labels.add(cls._ELE_CLS.from_json(labels_path))
-        return image_set_labels
+        logger.warning("Using deprecated method `from_image_labels_patt`. Use"
+                       " `from_element_patt` instead.")
+        return cls.from_element_patt(
+            image_labels_patt, pattern_type=etas.NUMERIC)
 
     @classmethod
     def from_dict(cls, d):

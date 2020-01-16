@@ -31,7 +31,6 @@ import six
 
 from collections import defaultdict, OrderedDict
 import errno
-import glob
 import logging
 import os
 from subprocess import Popen, PIPE
@@ -48,6 +47,7 @@ import eta.core.gps as etag
 import eta.core.image as etai
 from eta.core.objects import DetectedObjectContainer
 from eta.core.serial import load_json, Serializable, Set, BigSet
+import eta.core.serial as etas
 import eta.core.utils as etau
 
 
@@ -1932,26 +1932,10 @@ class VideoSetLabels(Set):
         Returns:
             a `cls` instance
         '''
-        image_set_labels = cls()
-        for labels_path in etau.get_pattern_matches(video_labels_patt):
-            image_set_labels.add(cls._ELE_CLS.from_json(labels_path))
-        return image_set_labels
-
-    @classmethod
-    def from_video_labels_glob_patt(cls, video_labels_patt):
-        '''Creates an instance of `cls` from a pattern of `_ELE_CLS` files.
-
-        Args:
-             video_labels_patt: a glob pattern:
-                example: "/path/to/labels/*.json"
-
-        Returns:
-            a `cls` instance
-        '''
-        video_set_labels = cls()
-        for labels_path in glob.glob(video_labels_patt):
-            video_set_labels.add(cls._ELE_CLS.from_json(labels_path))
-        return video_set_labels
+        logger.warning("Using deprecated method `from_video_labels_patt`. Use"
+                       " `from_element_patt` instead.")
+        return cls.from_element_patt(
+            video_labels_patt, pattern_type=etas.NUMERIC)
 
     @classmethod
     def from_dict(cls, d):

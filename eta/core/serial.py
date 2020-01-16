@@ -31,6 +31,7 @@ from collections import OrderedDict
 import copy
 import datetime as dt
 import dill as pickle
+import glob
 import io
 import json
 import logging
@@ -47,6 +48,16 @@ import eta.core.utils as etau
 
 
 logger = logging.getLogger(__name__)
+
+
+# Pattern type enums and helpers
+NUMERIC = "numeric"
+GLOB = "glob"
+PATTERN_TYPES = {NUMERIC, GLOB}
+_PATTERN_METHODS_MAP = {
+    NUMERIC: etau.get_pattern_matches,
+    GLOB: glob.glob
+}
 
 
 def load_json(path_or_str):
@@ -823,6 +834,36 @@ class Set(Serializable):
         cls = cls._validate_dict(d)
         elements = [cls._ELE_CLS.from_dict(dd) for dd in d[cls._ELE_ATTR]]
         return cls(**etau.join_dicts({cls._ELE_ATTR: elements}, kwargs))
+
+    @classmethod
+    def from_element_patt(cls, pattern, pattern_type=NUMERIC):
+        '''Creates an instance of `cls` from a pattern of `_ELE_CLS` files.
+
+        Args:
+             pattern: a pattern with one or more `pattern_type` sequences:
+                examples:
+                    NUMERIC: "/path/to/labels/%05d.json"
+                    GLOB:    "/path/to/labels/*.json"
+            pattern_type: one of the PATTERN_TYPES enums (NUMERIC, GLOB, ...)
+                specifying how to parse the pattern
+
+        Returns:
+            a `cls` instance
+        '''
+        if pattern_type not in PATTERN_TYPES:
+            raise ValueError("Invalid `pattern_type` '%s'" % pattern_type)
+
+        if not isinstance(cls.get_element_class(), Serializable):
+            raise TypeError(
+                "Element class '%s' is not serializable and cannot be loaded"
+                " via the 'from_json' method." % cls.get_element_class_name())
+
+        parse_method = _PATTERN_METHODS_MAP[pattern_type]
+
+        instance = cls()
+        for element_path in parse_method(pattern):
+            instance.add(cls._ELE_CLS.from_json(element_path))
+        return instance
 
     def _get_elements(self, keys):
         if isinstance(keys, six.string_types):
