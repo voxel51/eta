@@ -58,6 +58,8 @@ class AnnotationConfig(Config):
             default, this is `True`
         show_object_masks: whether to show object segmentation masks, if
             available
+        hide_attr_values: an optional list of video/frame/object attribute
+            values to NOT RENDER if they appear
         font_path: the path to the `PIL.ImageFont` to use
         font_size: the font size to use
         linewidth: the linewidth, in pixels, of the object bounding boxes
@@ -100,6 +102,8 @@ class AnnotationConfig(Config):
             d, "show_object_indices", default=True)
         self.show_object_masks = self.parse_bool(
             d, "show_object_masks", default=True)
+        self.hide_attr_values = self.parse_string_array(
+            d, "hide_attr_values", default=None)
 
         self.font_path = self.parse_string(
             d, "font_path", default=etac.DEFAULT_FONT_PATH)
@@ -358,24 +362,33 @@ def _annotate_image(img, labels, more_attrs, annotation_config):
     for obj in labels.objects:
         img = _annotate_object(img, obj, annotation_config)
 
-    # Render frame attributes, if necessary
+    attr_strs = []
+
+    # Render more attributes
     show_frame_attr_confidences = (
         annotation_config.show_frame_attr_confidences or
         annotation_config.show_all_confidences)
     if more_attrs is not None:
-        attr_strs = [
+        for attr in more_attrs:
+            if annotation_config.hide_attr_values is not None:
+                if attr.value in annotation_config.hide_attr_values:
+                    continue
+
+            attr_strs.append(
+                _render_attr_name_value(
+                    attr, show_confidence=show_frame_attr_confidences))
+
+    # Render frame attributes
+    labels.attrs.sort_by_name()  # alphabetize
+    for attr in labels.attrs:
+        if annotation_config.hide_attr_values is not None:
+            if attr.value in annotation_config.hide_attr_values:
+                continue
+
+        attr_strs.append(
             _render_attr_name_value(
-                a, show_confidence=show_frame_attr_confidences)
-            for a in more_attrs
-        ]
-    else:
-        attr_strs = []
-    labels.attrs.sort_by_name()
-    attr_strs.extend([
-        _render_attr_name_value(
-            a, show_confidence=show_frame_attr_confidences)
-        for a in labels.attrs
-    ])
+                attr, show_confidence=show_frame_attr_confidences))
+
     if attr_strs:
         logger.debug("Rendering %d frame attributes", len(attr_strs))
         img = _annotate_attrs(img, attr_strs, annotation_config)
@@ -436,6 +449,7 @@ def _annotate_object(img, obj, annotation_config):
         annotation_config.show_all_confidences)
     show_object_indices = annotation_config.show_object_indices
     show_object_masks = annotation_config.show_object_masks
+    hide_attr_values = annotation_config.hide_attr_values
     colormap = annotation_config.colormap
     font = annotation_config.font
     alpha = annotation_config.alpha
@@ -511,14 +525,20 @@ def _annotate_object(img, obj, annotation_config):
 
     # Add attributes, if necessary
     if obj.has_attributes:
-        # Alphabetize attributes by name
-        obj.attrs.sort_by_name()
-        attrs_str = ", ".join([
-            _render_attr_value(a, show_confidence=show_object_attr_confidences)
-            for a in obj.attrs
-        ])
+        obj.attrs.sort_by_name()  # alphabetize by name
+
+        attr_strs = []
+        for attr in obj.attrs:
+            if hide_attr_values is not None:
+                if attr.value in hide_attr_values:
+                    continue
+
+            attr_strs.append(
+                _render_attr_value(
+                    a, show_confidence=show_object_attr_confidences))
 
         # Draw attributes
+        attrs_str = ", ".join(attr_strs)
         if attrs_str:
             atxttlx = objtlx + linewidth + pad
             atxttly = objtly - 1 + pad
