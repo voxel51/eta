@@ -833,8 +833,10 @@ class Set(Serializable):
         Args:
              pattern: a pattern with one or more numeric sequences
                 example: "/path/to/labels/%05d.json"
-            *args: optional positional arguments for `cls.from_json()`
-            **kwargs: optional keyword arguments for `cls.from_json()`
+            *args: optional positional arguments for
+                `cls.get_element_class().from_json()`
+            **kwargs: optional keyword arguments for
+                `cls.get_element_class().from_json()`
 
         Returns:
             a `cls` instance
@@ -850,8 +852,10 @@ class Set(Serializable):
         Args:
              pattern: a glob pattern
                 example: "/path/to/labels/*.json"
-            *args: optional positional arguments for `cls.from_json()`
-            **kwargs: optional keyword arguments for `cls.from_json()`
+            *args: optional positional arguments for
+                `cls.get_element_class().from_json()`
+            **kwargs: optional keyword arguments for
+                `cls.get_element_class().from_json()`
 
         Returns:
             a `cls` instance
@@ -1868,8 +1872,10 @@ class Container(Serializable):
         Args:
              pattern: a pattern with one or more numeric sequences
                 example: "/path/to/labels/%05d.json"
-            *args: optional positional arguments for `cls.from_json()`
-            **kwargs: optional keyword arguments for `cls.from_json()`
+            *args: optional positional arguments for
+                `cls.get_element_class().from_json()`
+            **kwargs: optional keyword arguments for
+                `cls.get_element_class().from_json()`
 
         Returns:
             a `cls` instance
@@ -1885,8 +1891,10 @@ class Container(Serializable):
         Args:
              pattern: a glob pattern
                 example: "/path/to/labels/*.json"
-            *args: optional positional arguments for `cls.from_json()`
-            **kwargs: optional keyword arguments for `cls.from_json()`
+            *args: optional positional arguments for
+                `cls.get_element_class().from_json()`
+            **kwargs: optional keyword arguments for
+                `cls.get_element_class().from_json()`
 
         Returns:
             a `cls` instance

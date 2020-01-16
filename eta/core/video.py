@@ -1933,7 +1933,7 @@ class VideoSetLabels(Set):
             a `cls` instance
         '''
         logger.warning("Using deprecated method `from_video_labels_patt`. Use"
-                       " `from_element_numeric_patt` instead.")
+                       " `from_numeric_patt` instead.")
         return cls.from_numeric_patt(video_labels_patt)
 
     @classmethod
