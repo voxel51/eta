@@ -867,7 +867,8 @@ class Set(Serializable):
     def _from_element_patt(cls, pattern, parse_method, *args, **kwargs):
         instance = cls()
         for element_path in parse_method(pattern):
-            instance.add(cls._ELE_CLS.from_json(element_path, *args, **kwargs))
+            instance.add(cls.get_element_class().from_json(
+                element_path, *args, **kwargs))
         return instance
 
     def _get_elements(self, keys):
@@ -1906,7 +1907,8 @@ class Container(Serializable):
     def _from_element_patt(cls, pattern, parse_method, *args, **kwargs):
         instance = cls()
         for element_path in parse_method(pattern):
-            instance.add(cls._ELE_CLS.from_json(element_path, *args, **kwargs))
+            instance.add(cls.get_element_class().from_json(
+                element_path, *args, **kwargs))
         return instance
 
     def _get_elements(self, inds):
