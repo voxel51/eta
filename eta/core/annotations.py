@@ -535,7 +535,7 @@ def _annotate_object(img, obj, annotation_config):
 
             attr_strs.append(
                 _render_attr_value(
-                    a, show_confidence=show_object_attr_confidences))
+                    attr, show_confidence=show_object_attr_confidences))
 
         # Draw attributes
         attrs_str = ", ".join(attr_strs)
