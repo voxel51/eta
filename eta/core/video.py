@@ -1948,10 +1948,10 @@ class VideoSetLabels(Set):
         Returns:
             a `cls` instance
         '''
-        image_set_labels = cls()
+        video_set_labels = cls()
         for labels_path in glob.glob(video_labels_patt):
-            image_set_labels.add(cls._ELE_CLS.from_json(labels_path))
-        return image_set_labels
+            video_set_labels.add(cls._ELE_CLS.from_json(labels_path))
+        return video_set_labels
 
     @classmethod
     def from_dict(cls, d):
