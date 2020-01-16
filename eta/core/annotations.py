@@ -54,6 +54,8 @@ class AnnotationConfig(Config):
             confidences, if available
         show_all_confidences: whether to show all confidences, if available.
             If set to `True`, the other confidence-rendering flags are ignored
+        show_object_indices: whether to show object indices, if available. By
+            default, this is `True`
         show_object_masks: whether to show object segmentation masks, if
             available
         font_path: the path to the `PIL.ImageFont` to use
@@ -94,6 +96,8 @@ class AnnotationConfig(Config):
             d, "show_frame_attr_confidences", default=False)
         self.show_all_confidences = self.parse_bool(
             d, "show_all_confidences", default=False)
+        self.show_object_indices = self.parse_bool(
+            d, "show_object_indices", default=True)
         self.show_object_masks = self.parse_bool(
             d, "show_object_masks", default=True)
 
@@ -430,6 +434,7 @@ def _annotate_object(img, obj, annotation_config):
     show_object_attr_confidences = (
         annotation_config.show_object_attr_confidences or
         annotation_config.show_all_confidences)
+    show_object_indices = annotation_config.show_object_indices
     show_object_masks = annotation_config.show_object_masks
     colormap = annotation_config.colormap
     font = annotation_config.font
@@ -447,7 +452,8 @@ def _annotate_object(img, obj, annotation_config):
 
     # Construct label string
     label_str, label_hash = _render_object_label(
-        obj, show_confidence=show_object_confidences)
+        obj, show_index=show_object_indices,
+        show_confidence=show_object_confidences)
 
     # Get box color
     box_color = _parse_hex_color(colormap.get_color(label_hash))
@@ -581,14 +587,16 @@ def _render_attr_name_value(attr, show_confidence=True):
     return attr_str
 
 
-def _render_object_label(obj, show_confidence=True):
+def _render_object_label(obj, show_index=True, show_confidence=True):
+    add_confidence = show_confidence and obj.confidence is not None
+    add_index = show_index and obj.index is not None
+
     label_str = _clean(obj.label).upper()
 
-    add_confidence = show_confidence and obj.confidence is not None
     if add_confidence:
         label_str += " (%.2f)"
 
-    if obj.index is not None:
+    if add_index:
         label_str += "     %d" % obj.index
 
     # Compute hash before rendering confidence so it doesn't affect coloring
