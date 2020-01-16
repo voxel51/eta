@@ -50,15 +50,6 @@ import eta.core.utils as etau
 logger = logging.getLogger(__name__)
 
 
-# Pattern type enums and helpers
-NUMERIC = "numeric"
-GLOB = "glob"
-PATTERN_TYPES = {NUMERIC, GLOB}
-_PATTERN_METHODS_MAP = {
-    NUMERIC: etau.get_pattern_matches,
-    GLOB: glob.glob
-}
-
 
 def load_json(path_or_str):
     '''Loads JSON from the input argument.
@@ -836,16 +827,13 @@ class Set(Serializable):
         return cls(**etau.join_dicts({cls._ELE_ATTR: elements}, kwargs))
 
     @classmethod
-    def from_element_patt(cls, pattern, pattern_type=NUMERIC, *args, **kwargs):
-        '''Creates an instance of `cls` from a pattern of `_ELE_CLS` files.
+    def from_element_numeric_patt(cls, pattern, *args, **kwargs):
+        '''Creates an instance of `cls` from a numeric pattern of `_ELE_CLS`
+        files.
 
         Args:
-             pattern: a pattern with one or more `pattern_type` sequences:
-                examples:
-                    NUMERIC: "/path/to/labels/%05d.json"
-                    GLOB:    "/path/to/labels/*.json"
-            pattern_type: one of the PATTERN_TYPES enums (NUMERIC, GLOB, ...)
-                specifying how to parse the pattern
+             pattern: a pattern with one or more numeric sequences
+                example: "/path/to/labels/%05d.json"
             *args: optional positional arguments for `cls.from_json()`
             **kwargs: optional keyword arguments for `cls.from_json()`
 
@@ -853,16 +841,29 @@ class Set(Serializable):
         Returns:
             a `cls` instance
         '''
-        if pattern_type not in PATTERN_TYPES:
-            raise ValueError("Invalid `pattern_type` '%s'" % pattern_type)
+        parse_method = etau.get_pattern_matches
+        return cls._from_element_patt(pattern, parse_method, *args, *kwargs)
 
-        if not issubclass(cls.get_element_class(), Serializable):
-            raise TypeError(
-                "Element class '%s' is not serializable and cannot be loaded"
-                " via the 'from_json' method." % cls.get_element_class_name())
+    @classmethod
+    def from_element_glob_patt(cls, pattern, *args, **kwargs):
+        '''Creates an instance of `cls` from a numeric pattern of `_ELE_CLS`
+        files.
 
-        parse_method = _PATTERN_METHODS_MAP[pattern_type]
+        Args:
+             pattern: a glob pattern
+                example: "/path/to/labels/*.json"
+            *args: optional positional arguments for `cls.from_json()`
+            **kwargs: optional keyword arguments for `cls.from_json()`
 
+
+        Returns:
+            a `cls` instance
+        '''
+        parse_method = glob.glob
+        return cls._from_element_patt(pattern, parse_method, *args, *kwargs)
+
+    @classmethod
+    def _from_element_patt(cls, pattern, parse_method, *args, **kwargs):
         instance = cls()
         for element_path in parse_method(pattern):
             instance.add(cls._ELE_CLS.from_json(element_path, *args, **kwargs))

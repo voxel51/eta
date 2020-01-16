@@ -834,9 +834,8 @@ class ImageSetLabels(Set):
             a `cls` instance
         '''
         logger.warning("Using deprecated method `from_image_labels_patt`. Use"
-                       " `from_element_patt` instead.")
-        return cls.from_element_patt(
-            image_labels_patt, pattern_type=etas.NUMERIC)
+                       " `from_element_numeric_patt` instead.")
+        return cls.from_element_numeric_patt(image_labels_patt)
 
     @classmethod
     def from_dict(cls, d):

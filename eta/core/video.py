@@ -1933,9 +1933,8 @@ class VideoSetLabels(Set):
             a `cls` instance
         '''
         logger.warning("Using deprecated method `from_video_labels_patt`. Use"
-                       " `from_element_patt` instead.")
-        return cls.from_element_patt(
-            video_labels_patt, pattern_type=etas.NUMERIC)
+                       " `from_element_numeric_patt` instead.")
+        return cls.from_element_numeric_patt(video_labels_patt)
 
     @classmethod
     def from_dict(cls, d):
