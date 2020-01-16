@@ -853,7 +853,7 @@ class Set(Serializable):
         if pattern_type not in PATTERN_TYPES:
             raise ValueError("Invalid `pattern_type` '%s'" % pattern_type)
 
-        if not isinstance(cls.get_element_class(), Serializable):
+        if not issubclass(cls.get_element_class(), Serializable):
             raise TypeError(
                 "Element class '%s' is not serializable and cannot be loaded"
                 " via the 'from_json' method." % cls.get_element_class_name())
