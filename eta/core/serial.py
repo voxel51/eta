@@ -827,7 +827,7 @@ class Set(Serializable):
         return cls(**etau.join_dicts({cls._ELE_ATTR: elements}, kwargs))
 
     @classmethod
-    def from_element_numeric_patt(cls, pattern, *args, **kwargs):
+    def from_numeric_patt(cls, pattern, *args, **kwargs):
         '''Creates an instance of `cls` from a numeric pattern of `_ELE_CLS`
         files.
 
@@ -845,7 +845,7 @@ class Set(Serializable):
         return cls._from_element_patt(pattern, parse_method, *args, *kwargs)
 
     @classmethod
-    def from_element_glob_patt(cls, pattern, *args, **kwargs):
+    def from_glob_patt(cls, pattern, *args, **kwargs):
         '''Creates an instance of `cls` from a numeric pattern of `_ELE_CLS`
         files.
 
