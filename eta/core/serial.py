@@ -50,7 +50,6 @@ import eta.core.utils as etau
 logger = logging.getLogger(__name__)
 
 
-
 def load_json(path_or_str):
     '''Loads JSON from the input argument.
 
