@@ -47,6 +47,7 @@ import eta.core.gps as etag
 import eta.core.image as etai
 from eta.core.objects import DetectedObjectContainer
 from eta.core.serial import load_json, Serializable, Set, BigSet
+import eta.core.serial as etas
 import eta.core.utils as etau
 
 
@@ -1931,10 +1932,9 @@ class VideoSetLabels(Set):
         Returns:
             a `cls` instance
         '''
-        image_set_labels = cls()
-        for labels_path in etau.get_pattern_matches(video_labels_patt):
-            image_set_labels.add(cls._ELE_CLS.from_json(labels_path))
-        return image_set_labels
+        logger.warning("Using deprecated method `from_video_labels_patt`. Use"
+                       " `from_numeric_patt` instead.")
+        return cls.from_numeric_patt(video_labels_patt)
 
     @classmethod
     def from_dict(cls, d):

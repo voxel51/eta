@@ -29,6 +29,7 @@ from future.utils import iteritems
 from collections import defaultdict
 import colorsys
 import errno
+import logging
 import os
 import operator
 from subprocess import Popen, PIPE
@@ -41,8 +42,12 @@ from eta.core.data import AttributeContainer, AttributeContainerSchema, \
     AttributeContainerSchemaError
 from eta.core.objects import DetectedObjectContainer
 from eta.core.serial import Serializable, Set, BigSet
+import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.web as etaw
+
+
+logger = logging.getLogger(__name__)
 
 
 #
@@ -828,10 +833,9 @@ class ImageSetLabels(Set):
         Returns:
             a `cls` instance
         '''
-        image_set_labels = cls()
-        for labels_path in etau.get_pattern_matches(image_labels_patt):
-            image_set_labels.add(cls._ELE_CLS.from_json(labels_path))
-        return image_set_labels
+        logger.warning("Using deprecated method `from_image_labels_patt`. Use"
+                       " `from_numeric_patt` instead.")
+        return cls.from_numeric_patt(image_labels_patt)
 
     @classmethod
     def from_dict(cls, d):
