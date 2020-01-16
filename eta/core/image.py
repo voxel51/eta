@@ -27,6 +27,7 @@ from builtins import *
 
 import colorsys
 import errno
+import logging
 import os
 import operator
 from subprocess import Popen, PIPE
@@ -41,6 +42,9 @@ from eta.core.objects import DetectedObjectContainer, ObjectContainerSchema
 from eta.core.serial import Serializable, BigSet
 import eta.core.utils as etau
 import eta.core.web as etaw
+
+
+logger = logging.getLogger(__name__)
 
 
 #

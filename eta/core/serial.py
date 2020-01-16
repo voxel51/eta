@@ -31,6 +31,7 @@ from collections import OrderedDict
 import copy
 import datetime as dt
 import dill as pickle
+import glob
 import io
 import json
 import logging
@@ -823,6 +824,52 @@ class Set(Serializable):
         cls = cls._validate_dict(d)
         elements = [cls._ELE_CLS.from_dict(dd) for dd in d[cls._ELE_ATTR]]
         return cls(**etau.join_dicts({cls._ELE_ATTR: elements}, kwargs))
+
+    @classmethod
+    def from_numeric_patt(cls, pattern, *args, **kwargs):
+        '''Creates an instance of `cls` from a numeric pattern of `_ELE_CLS`
+        files.
+
+        Args:
+             pattern: a pattern with one or more numeric sequences
+                example: "/path/to/labels/%05d.json"
+            *args: optional positional arguments for
+                `cls.get_element_class().from_json()`
+            **kwargs: optional keyword arguments for
+                `cls.get_element_class().from_json()`
+
+        Returns:
+            a `cls` instance
+        '''
+        parse_method = etau.get_pattern_matches
+        return cls._from_element_patt(pattern, parse_method, *args, *kwargs)
+
+    @classmethod
+    def from_glob_patt(cls, pattern, *args, **kwargs):
+        '''Creates an instance of `cls` from a numeric pattern of `_ELE_CLS`
+        files.
+
+        Args:
+             pattern: a glob pattern
+                example: "/path/to/labels/*.json"
+            *args: optional positional arguments for
+                `cls.get_element_class().from_json()`
+            **kwargs: optional keyword arguments for
+                `cls.get_element_class().from_json()`
+
+        Returns:
+            a `cls` instance
+        '''
+        parse_method = glob.glob
+        return cls._from_element_patt(pattern, parse_method, *args, *kwargs)
+
+    @classmethod
+    def _from_element_patt(cls, pattern, parse_method, *args, **kwargs):
+        instance = cls()
+        for element_path in parse_method(pattern):
+            instance.add(cls.get_element_class().from_json(
+                element_path, *args, **kwargs))
+        return instance
 
     def _get_elements(self, keys):
         if isinstance(keys, six.string_types):
@@ -1817,6 +1864,52 @@ class Container(Serializable):
         cls = cls._validate_dict(d)
         elements = [cls._ELE_CLS.from_dict(dd) for dd in d[cls._ELE_ATTR]]
         return cls(**etau.join_dicts({cls._ELE_ATTR: elements}, kwargs))
+
+    @classmethod
+    def from_numeric_patt(cls, pattern, *args, **kwargs):
+        '''Creates an instance of `cls` from a numeric pattern of `_ELE_CLS`
+        files.
+
+        Args:
+             pattern: a pattern with one or more numeric sequences
+                example: "/path/to/labels/%05d.json"
+            *args: optional positional arguments for
+                `cls.get_element_class().from_json()`
+            **kwargs: optional keyword arguments for
+                `cls.get_element_class().from_json()`
+
+        Returns:
+            a `cls` instance
+        '''
+        parse_method = etau.get_pattern_matches
+        return cls._from_element_patt(pattern, parse_method, *args, *kwargs)
+
+    @classmethod
+    def from_glob_patt(cls, pattern, *args, **kwargs):
+        '''Creates an instance of `cls` from a numeric pattern of `_ELE_CLS`
+        files.
+
+        Args:
+             pattern: a glob pattern
+                example: "/path/to/labels/*.json"
+            *args: optional positional arguments for
+                `cls.get_element_class().from_json()`
+            **kwargs: optional keyword arguments for
+                `cls.get_element_class().from_json()`
+
+        Returns:
+            a `cls` instance
+        '''
+        parse_method = glob.glob
+        return cls._from_element_patt(pattern, parse_method, *args, *kwargs)
+
+    @classmethod
+    def _from_element_patt(cls, pattern, parse_method, *args, **kwargs):
+        instance = cls()
+        for element_path in parse_method(pattern):
+            instance.add(cls.get_element_class().from_json(
+                element_path, *args, **kwargs))
+        return instance
 
     def _get_elements(self, inds):
         if isinstance(inds, numbers.Integral):
