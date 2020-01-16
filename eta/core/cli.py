@@ -421,8 +421,12 @@ class ModelsCommand(Command):
             etamode.download_model(args.force_download, force=True)
 
         if args.visualize_tf_graph:
-            # Do this locally to avoid importing TF unless absolutely necessary
+            #
+            # @note(lite) import this locally to avoid importing `tensorflow`
+            # unless absolutely necessary
+            #
             import eta.core.tfutils as etat
+
             model_path = etamode.download_model(args.visualize_tf_graph)
             etat.visualize_frozen_graph(model_path)
 
@@ -2841,6 +2845,6 @@ _ADD_RECURSIVE_HELP_FLAGS = True
 
 def main():
     '''Executes the `eta` tool with the given command-line args.'''
-    parser = _register_main_command(ETACommand, version=eta.version)
+    parser = _register_main_command(ETACommand, version=etac.VERSION_LONG)
     args = parser.parse_args()
     args.run(args)

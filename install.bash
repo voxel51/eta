@@ -224,7 +224,7 @@ else
 fi
 
 
-# Handle lite installation
+# @note(lite) handle lite installation
 if [[ ${LITE_INSTALL} = true ]]; then
     EXIT "LITE INSTALLATION COMPLETE"
 fi

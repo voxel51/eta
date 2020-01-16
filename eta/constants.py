@@ -1,9 +1,7 @@
 '''
 ETA package-wide constants.
 
-IMPORTANT: this module should not import any ETA modules!
-
-Copyright 2017-2019, Voxel51, Inc.
+Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
@@ -20,8 +18,12 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-import json
 import os
+
+try:
+    from importlib.metadata import metadata  # Python 3.8
+except ModuleNotFoundError:
+    from importlib_metadata import metadata  # Python < 3.8
 
 
 # Directories
@@ -38,20 +40,19 @@ TF_SLIM_DIR = os.path.join(TF_RESEARCH_DIR, "slim")
 
 # Paths
 CONFIG_JSON_PATH = os.path.join(BASE_DIR, "config.json")
-VERSION_JSON_PATH = os.path.join(ETA_DIR, "version.json")
 ASCII_ART_PATH = os.path.join(RESOURCES_DIR, "eta-ascii.txt")
 DEFAULT_FONT_PATH = os.path.join(RESOURCES_DIR, "lato-regular.ttf")
 DEFAULT_LOGO_CONFIG_PATH = os.path.join(
     RESOURCES_DIR, "default-logo-config.json")
 
 
-# Version
-with open(VERSION_JSON_PATH, "rt") as f:
-    _VER = json.load(f)
-NAME = _VER["name"]
-VERSION = _VER["version"]
-DESCRIPTION = _VER["description"]
-AUTHOR = _VER["author"]
-CONTACT = _VER["contact"]
-URL = _VER["url"]
-LICENSE = _VER["license"]
+# Package metadata
+_META = metadata("ETA")
+NAME = _META["name"]
+VERSION = _META["version"]
+DESCRIPTION = _META["description"]
+AUTHOR = _META["author"]
+CONTACT = _META["contact"]
+URL = _META["url"]
+LICENSE = _META["license"]
+VERSION_LONG = "%s v%s, %s" % (NAME, VERSION, AUTHOR)

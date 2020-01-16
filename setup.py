@@ -1,26 +1,25 @@
 #!/usr/bin/env python
 '''
-Installs the ETA package.
+Installs ETA.
 
-Copyright 2017-2019, Voxel51, Inc.
+Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
 '''
 from setuptools import setup, find_packages
 
-import eta.constants as etac
-
 
 setup(
-    name=etac.NAME,
-    version=etac.VERSION,
-    description=etac.DESCRIPTION,
-    author=etac.AUTHOR,
-    author_email=etac.CONTACT,
-    url=etac.URL,
-    license=etac.LICENSE,
+    name="ETA",
+    version="0.1.0",
+    description="Extensible Toolkit for Analytics",
+    author="Voxel51, Inc.",
+    author_email="info@voxel51.com",
+    url="https://github.com/voxel51/eta",
+    license="BSD-4-Clause",
     packages=find_packages(),
+    include_package_data=True,
     classifiers=[
         "Operating System :: MacOS :: MacOS X",
         "Operating System :: POSIX :: Linux",
@@ -28,4 +27,5 @@ setup(
         "Programming Language :: Python :: 3",
     ],
     scripts=["eta/eta"],
+    python_requires=">=2.7",
 )
