@@ -68,8 +68,7 @@ class AnnotationConfig(Config):
         font_path: the path to the `PIL.ImageFont` to use
         font_size: the font size to use
         linewidth: the linewidth, in pixels, of the object bounding boxes
-        alpha: the transparency of the object bounding boxes and frame
-            attributes
+        alpha: the transparency of the object bounding boxes
         confidence_scaled_alpha: True will scale `alpha` and `mask_fill_alpha`
             by the object confidence
         text_color: the annotation text color
@@ -77,6 +76,8 @@ class AnnotationConfig(Config):
         object_text_pad_pixels: the padding, in pixels, around the text in the
             object labels
         attrs_bg_color: the background color for attributes boxes
+        attrs_bg_alpha: the transparency of the video/frame/object attributes
+            panel boxes
         attrs_box_gap: the gap between the frame attributes box and the upper
             left corner of the image
         attrs_text_pad_pixels: the padding, in pixels, around the text in the
@@ -122,6 +123,7 @@ class AnnotationConfig(Config):
         self.font_size = self.parse_number(d, "font_size", default=16)
         self.linewidth = self.parse_number(d, "linewidth", default=2)
         self.alpha = self.parse_number(d, "alpha", default=0.75)
+
         self.confidence_scaled_alpha = self.parse_bool(
             d, "confidence_scaled_alpha", default=False)
         self.text_color = self.parse_string(d, "text_color", default="#FFFFFF")
@@ -131,6 +133,8 @@ class AnnotationConfig(Config):
             d, "object_text_pad_pixels", default=2)
         self.attrs_bg_color = self.parse_string(
             d, "attrs_bg_color", default="#000000")
+        self.attrs_bg_alpha = self.parse_number(
+            d, "attrs_bg_alpha", default=0.5)
         self.attrs_box_gap = self.parse_string(
             d, "attrs_box_gap", default="1%")
         self.attrs_text_pad_pixels = self.parse_number(
@@ -563,12 +567,12 @@ def _annotate_object(img, obj, annotation_config):
 def _draw_attrs_panel(img, attr_strs, top_left_coords, annotation_config):
     # Parse config
     font = annotation_config.font
-    alpha = annotation_config.alpha
     box_pad = annotation_config.attrs_text_pad_pixels
     line_gap = annotation_config.attrs_text_line_spacing_pixels
     text_size = _compute_max_text_size(font, attr_strs)  # width, height
     text_color = tuple(_parse_hex_color(annotation_config.text_color))
     bg_color = _parse_hex_color(annotation_config.attrs_bg_color)
+    bg_alpha = annotation_config.attrs_bg_alpha
     num_attrs = len(attr_strs)
 
     overlay = img.copy()
@@ -582,7 +586,7 @@ def _draw_attrs_panel(img, attr_strs, top_left_coords, annotation_config):
     cv2.rectangle(overlay, (bgtlx, bgtly), (bgbrx, bgbry), bg_color, -1)
 
     # Overlay translucent box
-    img_anno = cv2.addWeighted(overlay, alpha, img, 1 - alpha, 0)
+    img_anno = cv2.addWeighted(overlay, bg_alpha, img, 1 - bg_alpha, 0)
 
     img_pil = Image.fromarray(img_anno)
     draw = ImageDraw.Draw(img_pil)
