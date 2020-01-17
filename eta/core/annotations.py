@@ -1,7 +1,7 @@
 '''
 Core utilities for rendering annotations on media.
 
-Copyright 2017-2019, Voxel51, Inc.
+Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
@@ -94,7 +94,6 @@ class AnnotationConfig(Config):
     def __init__(self, d):
         self.colormap_config = self.parse_object(
             d, "colormap_config", ColormapConfig, default=None)
-
         self.show_object_boxes = self.parse_bool(
             d, "show_object_boxes", default=True)
         self.show_object_confidences = self.parse_bool(
@@ -117,13 +116,11 @@ class AnnotationConfig(Config):
             d, "hide_attr_values", default=None)
         self.hide_false_boolean_attrs = self.parse_bool(
             d, "hide_false_boolean_attrs", default=False)
-
         self.font_path = self.parse_string(
             d, "font_path", default=etac.DEFAULT_FONT_PATH)
         self.font_size = self.parse_number(d, "font_size", default=16)
         self.linewidth = self.parse_number(d, "linewidth", default=2)
         self.alpha = self.parse_number(d, "alpha", default=0.75)
-
         self.confidence_scaled_alpha = self.parse_bool(
             d, "confidence_scaled_alpha", default=False)
         self.text_color = self.parse_string(d, "text_color", default="#FFFFFF")
