@@ -20,7 +20,6 @@ from builtins import *
 
 import logging
 import random
-import sys
 
 import cv2
 import numpy as np
@@ -29,6 +28,7 @@ from PIL import Image, ImageDraw, ImageFont
 import eta
 import eta.constants as etac
 from eta.core.config import Config, Configurable
+import eta.core.data as etad
 import eta.core.image as etai
 import eta.core.logo as etal
 import eta.core.video as etav
@@ -50,7 +50,7 @@ class AnnotationConfig(Config):
             available
         show_object_attr_confidences: whether to show object attribute
             confidences, if available
-        show_frame_attr_confidences: whether to show frame/video attribute
+        show_frame_attr_confidences: whether to show video/frame attribute
             confidences, if available
         show_all_confidences: whether to show all confidences, if available.
             If set to `True`, the other confidence-rendering flags are ignored
@@ -58,8 +58,13 @@ class AnnotationConfig(Config):
             default, this is `True`
         show_object_masks: whether to show object segmentation masks, if
             available
+        occluded_object_attr: the name of the boolean attribute indicating
+            whether an object is occluded
+        hide_occluded_objects: whether to hide objects when they are occluded
         hide_attr_values: an optional list of video/frame/object attribute
             values to NOT RENDER if they appear
+        hide_false_boolean_attrs: whether to hide video/frame/object attributes
+            when they are False
         font_path: the path to the `PIL.ImageFont` to use
         font_size: the font size to use
         linewidth: the linewidth, in pixels, of the object bounding boxes
@@ -68,9 +73,10 @@ class AnnotationConfig(Config):
         confidence_scaled_alpha: True will scale `alpha` and `mask_fill_alpha`
             by the object confidence
         text_color: the annotation text color
+        object_attrs_render_method: the method used to render object attributes
         object_text_pad_pixels: the padding, in pixels, around the text in the
             object labels
-        attrs_bg_color: the background color for the frame attributes box
+        attrs_bg_color: the background color for attributes boxes
         attrs_box_gap: the gap between the frame attributes box and the upper
             left corner of the image
         attrs_text_pad_pixels: the padding, in pixels, around the text in the
@@ -102,8 +108,14 @@ class AnnotationConfig(Config):
             d, "show_object_indices", default=True)
         self.show_object_masks = self.parse_bool(
             d, "show_object_masks", default=True)
-        self.hide_attr_values = self.parse_string_array(
+        self.occluded_object_attr = self.parse_string(
+            d, "occluded_object_attr", default="occluded")
+        self.hide_occluded_objects = self.parse_bool(
+            d, "hide_occluded_objects", default=False)
+        self.hide_attr_values = self.parse_array(
             d, "hide_attr_values", default=None)
+        self.hide_false_boolean_attrs = self.parse_bool(
+            d, "hide_false_boolean_attrs", default=False)
 
         self.font_path = self.parse_string(
             d, "font_path", default=etac.DEFAULT_FONT_PATH)
@@ -113,6 +125,8 @@ class AnnotationConfig(Config):
         self.confidence_scaled_alpha = self.parse_bool(
             d, "confidence_scaled_alpha", default=False)
         self.text_color = self.parse_string(d, "text_color", default="#FFFFFF")
+        self.object_attrs_render_method = self.parse_categorical(
+            d, "object_attrs_render_method", ["list", "panel"], default="list")
         self.object_text_pad_pixels = self.parse_number(
             d, "object_text_pad_pixels", default=2)
         self.attrs_bg_color = self.parse_string(
@@ -352,6 +366,15 @@ def annotate_image(img, image_labels, annotation_config=None):
 
 
 def _annotate_image(img, labels, more_attrs, annotation_config):
+    # Parse config
+    hide_attr_values = annotation_config.hide_attr_values
+    hide_false_boolean_attrs = annotation_config.hide_false_boolean_attrs
+    show_frame_attr_confidences = (
+        annotation_config.show_frame_attr_confidences or
+        annotation_config.show_all_confidences)
+    add_logo = annotation_config.add_logo
+    logo = annotation_config.logo
+
     #
     # Assumption: labels has `objects` and `attrs` members. This covers both
     # ImageLabels and VideoFrameLabels
@@ -364,78 +387,41 @@ def _annotate_image(img, labels, more_attrs, annotation_config):
 
     attr_strs = []
 
-    # Render more attributes
-    show_frame_attr_confidences = (
-        annotation_config.show_frame_attr_confidences or
-        annotation_config.show_all_confidences)
+    # Render `more_attrs`
     if more_attrs is not None:
-        for attr in more_attrs:
-            if annotation_config.hide_attr_values is not None:
-                if attr.value in annotation_config.hide_attr_values:
-                    continue
-
-            attr_strs.append(
-                _render_attr_name_value(
-                    attr, show_confidence=show_frame_attr_confidences))
+        attr_strs.extend(
+            _render_attrs(
+                more_attrs, hide_attr_values, hide_false_boolean_attrs,
+                show_frame_attr_confidences))
 
     # Render frame attributes
     labels.attrs.sort_by_name()  # alphabetize
-    for attr in labels.attrs:
-        if annotation_config.hide_attr_values is not None:
-            if attr.value in annotation_config.hide_attr_values:
-                continue
+    attr_strs.extend(
+        labels.attrs, hide_attr_values, hide_false_boolean_attrs,
+        show_frame_attr_confidences)
 
-        attr_strs.append(
-            _render_attr_name_value(
-                attr, show_confidence=show_frame_attr_confidences))
-
+    # Draw attributes panel
     if attr_strs:
-        logger.debug("Rendering %d frame attributes", len(attr_strs))
-        img = _annotate_attrs(img, attr_strs, annotation_config)
+        img = _annotate_frame_attrs(img, attr_strs, annotation_config)
 
     # Add logo
-    if annotation_config.add_logo:
-        img = annotation_config.logo.apply(img)
+    if add_logo:
+        img = logo.apply(img)
 
     return img
 
 
-def _annotate_attrs(img, attr_strs, annotation_config):
-    # Parse config
-    font = annotation_config.font
-    alpha = annotation_config.alpha
-    box_pad = annotation_config.attrs_text_pad_pixels
-    line_gap = annotation_config.attrs_text_line_spacing_pixels
-    text_size = _compute_max_text_size(font, attr_strs)  # width, height
-    box_gap = etai.Width(annotation_config.attrs_box_gap).render_for(img=img)
-    text_color = tuple(_parse_hex_color(annotation_config.text_color))
-    bg_color = _parse_hex_color(annotation_config.attrs_bg_color)
-    num_attrs = len(attr_strs)
+def _annotate_frame_attrs(img, attr_strs, annotation_config):
+    logger.debug("Rendering %d frame attributes", len(attr_strs))
 
-    overlay = img.copy()
+    # Compute upper-left corner of attrs panel
+    offset = etai.Width(annotation_config.attrs_box_gap).render_for(img=img)
+    top_left_coords = (offset, offset)
 
-    # Draw attribute background
-    bgtlx = box_gap
-    bgtly = box_gap
-    bgbrx = bgtlx + text_size[0] + 2 * (box_pad + _DX)
-    bgbry = (
-        bgtly + num_attrs * text_size[1] + (num_attrs - 1) * line_gap +
-        2 * box_pad)
-    cv2.rectangle(overlay, (bgtlx, bgtly), (bgbrx, bgbry), bg_color, -1)
+    img_anno = _draw_attrs_panel(
+        img, attr_strs, top_left_coords, annotation_config)
 
-    # Overlay translucent box
-    img_anno = cv2.addWeighted(overlay, alpha, img, 1 - alpha, 0)
-
-    img_pil = Image.fromarray(img_anno)
-    draw = ImageDraw.Draw(img_pil)
-
-    # Draw attributes
-    for idx, attr_str in enumerate(attr_strs):
-        txttlx = bgtlx + box_pad + _DX
-        txttly = bgtly + box_pad + idx * line_gap + idx * text_size[1] - 1
-        draw.text((txttlx, txttly), attr_str, font=font, fill=text_color)
-
-    return np.asarray(img_pil)
+    return img_anno
 
 
 def _annotate_object(img, obj, annotation_config):
@@ -448,18 +434,30 @@ def _annotate_object(img, obj, annotation_config):
         annotation_config.show_object_attr_confidences or
         annotation_config.show_all_confidences)
     show_object_indices = annotation_config.show_object_indices
+    occluded_object_attr = annotation_config.occluded_object_attr
+    hide_occluded_objects = annotation_config.hide_occluded_objects
     show_object_masks = annotation_config.show_object_masks
     hide_attr_values = annotation_config.hide_attr_values
+    hide_false_boolean_attrs = annotation_config.hide_false_boolean_attrs
     colormap = annotation_config.colormap
     font = annotation_config.font
     alpha = annotation_config.alpha
     confidence_scaled_alpha = annotation_config.confidence_scaled_alpha
     linewidth = annotation_config.linewidth
+    attrs_render_method = annotation_config.object_attrs_render_method
     pad = annotation_config.object_text_pad_pixels
     text_color = tuple(_parse_hex_color(annotation_config.text_color))
     mask_border_thickness = annotation_config.mask_border_thickness
     mask_fill_alpha = annotation_config.mask_fill_alpha
 
+    # Check for occluded objects
+    if hide_occluded_objects:
+        for attr in obj.attrs:
+            if attr.name == occluded_object_attr and attr.value:
+                # Skip occluded object
+                return img
+
+    # Scale alpha by confidence, if requested
     if confidence_scaled_alpha and obj.confidence is not None:
         alpha *= obj.confidence
         mask_fill_alpha *= obj.confidence
@@ -469,9 +467,7 @@ def _annotate_object(img, obj, annotation_config):
         obj, show_index=show_object_indices,
         show_confidence=show_object_confidences)
 
-    # Get box color
-    box_color = _parse_hex_color(colormap.get_color(label_hash))
-
+    box_color = _parse_hex_color(colormap.get_color(label_hash))  # box color
     label_text_size = font.getsize(label_str)  # width, height
 
     img_anno = img.copy()
@@ -500,6 +496,10 @@ def _annotate_object(img, obj, annotation_config):
     cv2.rectangle(
         overlay, (objtlx, objtly), (objbrx, objbry), box_color, linewidth)
 
+    #
+    # Draw object label
+    #
+
     # Label background
     bgtlx = objtlx - linewidth + 1
     bgbry = objtly - linewidth + 1
@@ -510,10 +510,6 @@ def _annotate_object(img, obj, annotation_config):
     # Overlay
     img_anno = cv2.addWeighted(overlay, alpha, img_anno, 1 - alpha, 0)
 
-    #
-    # Draw text
-    #
-
     img_pil = Image.fromarray(img_anno)
     draw = ImageDraw.Draw(img_pil)
 
@@ -523,27 +519,78 @@ def _annotate_object(img, obj, annotation_config):
         txttly = bgtly + pad - 1
         draw.text((txttlx, txttly), label_str, font=font, fill=text_color)
 
-    # Add attributes, if necessary
-    if obj.has_attributes:
-        obj.attrs.sort_by_name()  # alphabetize by name
+    #
+    # Render object attributes
+    #
 
-        attr_strs = []
-        for attr in obj.attrs:
-            if hide_attr_values is not None:
-                if attr.value in hide_attr_values:
-                    continue
+    if not obj.has_attributes:
+        return np.asarray(img_pil)
 
-            attr_strs.append(
-                _render_attr_value(
-                    attr, show_confidence=show_object_attr_confidences))
+    # Render object attribute strings
+    obj.attrs.sort_by_name()  # alphabetize by name
+    attr_strs = _render_attrs(
+        obj.attrs, hide_attr_values, hide_false_boolean_attrs,
+        show_object_attr_confidences)
+    if not attr_strs:
+        return np.asarray(img_pil)
 
-        # Draw attributes
+    logger.debug("Rendering %d object attributes", len(attr_strs))
+
+    # Method 1: draw attributes as list
+    if attrs_render_method == "list":
+        atxttlx = objtlx + linewidth + pad
+        atxttly = objtly - 1 + pad
         attrs_str = ", ".join(attr_strs)
-        if attrs_str:
-            atxttlx = objtlx + linewidth + pad
-            atxttly = objtly - 1 + pad
-            draw.text(
-                (atxttlx, atxttly), attrs_str, font=font, fill=text_color)
+        draw.text(
+            (atxttlx, atxttly), attrs_str, font=font, fill=text_color)
+
+    img_anno = np.asarray(img_pil)
+
+    # Method 2: draw attributes as panel
+    if attrs_render_method == "panel":
+        # Compute upper-left corner of attrs panel
+        atxttlx = objtlx + linewidth
+        atxttly = objtly - 1
+        top_left_coords = (atxttlx, atxttly)
+
+        img_anno = _draw_attrs_panel(
+            img_anno, attr_strs, top_left_coords, annotation_config)
+
+    return img_anno
+
+
+def _draw_attrs_panel(img, attr_strs, top_left_coords, annotation_config):
+    # Parse config
+    font = annotation_config.font
+    alpha = annotation_config.alpha
+    box_pad = annotation_config.attrs_text_pad_pixels
+    line_gap = annotation_config.attrs_text_line_spacing_pixels
+    text_size = _compute_max_text_size(font, attr_strs)  # width, height
+    text_color = tuple(_parse_hex_color(annotation_config.text_color))
+    bg_color = _parse_hex_color(annotation_config.attrs_bg_color)
+    num_attrs = len(attr_strs)
+
+    overlay = img.copy()
+
+    # Draw attribute background
+    bgtlx, bgtly = top_left_coords
+    bgbrx = bgtlx + text_size[0] + 2 * (box_pad + _DX)
+    bgbry = (
+        bgtly + num_attrs * text_size[1] + (num_attrs - 1) * line_gap +
+        2 * box_pad)
+    cv2.rectangle(overlay, (bgtlx, bgtly), (bgbrx, bgbry), bg_color, -1)
+
+    # Overlay translucent box
+    img_anno = cv2.addWeighted(overlay, alpha, img, 1 - alpha, 0)
+
+    img_pil = Image.fromarray(img_anno)
+    draw = ImageDraw.Draw(img_pil)
+
+    # Draw attributes
+    for idx, attr_str in enumerate(attr_strs):
+        txttlx = bgtlx + box_pad + _DX
+        txttly = bgtly + box_pad + idx * line_gap + idx * text_size[1] - 1
+        draw.text((txttlx, txttly), attr_str, font=font, fill=text_color)
 
     return np.asarray(img_pil)
 
@@ -589,6 +636,25 @@ def _compute_max_text_size(font, text_strs):
     sizes = [font.getsize(s) for s in text_strs]
     width, height = np.max(sizes, axis=0)
     return width, height
+
+
+def _render_attrs(
+        attrs, hide_attr_values, hide_false_boolean_attrs, show_confidence):
+    attr_strs = []
+    for attr in attrs:
+        if hide_attr_values is not None and attr.value in hide_attr_values:
+            # Hide this attribute
+            continue
+
+        if (hide_false_boolean_attrs and
+                isinstance(attr, etad.BooleanAttribute) and not attr.value):
+            # Hide false boolean attribute
+            continue
+
+        attr_strs.append(
+            _render_attr_name_value(attr, show_confidence=show_confidence))
+
+    return attr_strs
 
 
 def _render_attr_value(attr, show_confidence=True):
