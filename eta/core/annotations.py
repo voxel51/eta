@@ -550,8 +550,8 @@ def _annotate_object(img, obj, annotation_config):
     # Method 2: draw attributes as panel
     if attrs_render_method == "panel":
         # Compute upper-left corner of attrs panel
-        atxttlx = objtlx + linewidth
-        atxttly = objtly - 1
+        atxttlx = objtlx + 2 * linewidth
+        atxttly = objtly + 2 * linewidth - 1
         top_left_coords = (atxttlx, atxttly)
 
         img_anno = _draw_attrs_panel(
