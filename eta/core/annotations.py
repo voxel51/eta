@@ -397,8 +397,9 @@ def _annotate_image(img, labels, more_attrs, annotation_config):
     # Render frame attributes
     labels.attrs.sort_by_name()  # alphabetize
     attr_strs.extend(
-        labels.attrs, hide_attr_values, hide_false_boolean_attrs,
-        show_frame_attr_confidences)
+        _render_attrs(
+            labels.attrs, hide_attr_values, hide_false_boolean_attrs,
+            show_frame_attr_confidences))
 
     # Draw attributes panel
     if attr_strs:
