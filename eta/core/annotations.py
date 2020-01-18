@@ -62,8 +62,9 @@ class AnnotationConfig(Config):
         occluded_object_attr: the name of the boolean attribute indicating
             whether an object is occluded
         hide_occluded_objects: whether to hide objects when they are occluded
+        hide_object_labels: an optional list of object labels to NOT RENDER
         hide_attr_values: an optional list of video/frame/object attribute
-            values to NOT RENDER if they appear
+            values to NOT RENDER
         hide_false_boolean_attrs: whether to hide video/frame/object attributes
             when they are False
         font_path: the path to the `PIL.ImageFont` to use
@@ -115,6 +116,8 @@ class AnnotationConfig(Config):
             d, "occluded_object_attr", default="occluded")
         self.hide_occluded_objects = self.parse_bool(
             d, "hide_occluded_objects", default=False)
+        self.hide_object_labels = self.parse_array(
+            d, "hide_object_labels", default=None)
         self.hide_attr_values = self.parse_array(
             d, "hide_attr_values", default=None)
         self.hide_false_boolean_attrs = self.parse_bool(
@@ -443,6 +446,7 @@ def _annotate_object(img, obj, annotation_config):
     show_object_indices = annotation_config.show_object_indices
     occluded_object_attr = annotation_config.occluded_object_attr
     hide_occluded_objects = annotation_config.hide_occluded_objects
+    hide_object_labels = annotation_config.hide_object_labels
     show_object_masks = annotation_config.show_object_masks
     hide_attr_values = annotation_config.hide_attr_values
     hide_false_boolean_attrs = annotation_config.hide_false_boolean_attrs
@@ -456,6 +460,10 @@ def _annotate_object(img, obj, annotation_config):
     text_color = tuple(_parse_hex_color(annotation_config.text_color))
     mask_border_thickness = annotation_config.mask_border_thickness
     mask_fill_alpha = annotation_config.mask_fill_alpha
+
+    # Check for hidden labels
+    if hide_object_labels is not None and obj.label in hide_object_labels:
+        return img
 
     # Check for occluded objects
     if hide_occluded_objects:
