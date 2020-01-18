@@ -46,7 +46,7 @@ class AnnotationConfig(Config):
             render the annotation boxes
         show_object_boxes: whether to show object bounding boxes, if available.
             If this is false, all attributes, confidences, etc. are also hidden
-        show_object_attrs: whether to show object attributes, if available.
+        show_object_attrs: whether to show object attributes, if available
         show_object_confidences: whether to show object label confidences, if
             available
         show_object_attr_confidences: whether to show object attribute
@@ -128,7 +128,8 @@ class AnnotationConfig(Config):
             d, "confidence_scaled_alpha", default=False)
         self.text_color = self.parse_string(d, "text_color", default="#FFFFFF")
         self.object_attrs_render_method = self.parse_categorical(
-            d, "object_attrs_render_method", ["list", "panel"], default="list")
+            d, "object_attrs_render_method", ["list", "panel"],
+            default="panel")
         self.object_text_pad_pixels = self.parse_number(
             d, "object_text_pad_pixels", default=2)
         self.attrs_bg_color = self.parse_string(
