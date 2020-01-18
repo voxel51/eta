@@ -665,18 +665,29 @@ def _render_attrs(
 
 
 def _render_attr_value(attr, show_confidence=True):
-    attr_str = _clean(attr.value)
+    if isinstance(attr, etad.NumericAttribute):
+        attr_str = _render_numeric_attr_value(attr)
+    else:
+        attr_str = _clean_str(attr.value)
+
     if show_confidence and attr.confidence is not None:
         attr_str += " (%.2f)" % attr.confidence
+
     return attr_str
 
 
 def _render_attr_name_value(attr, show_confidence=True):
-    name = _clean(attr.name)
-    value = _clean(attr.value)
+    name = _clean_str(attr.name)
+
+    if isinstance(attr, etad.NumericAttribute):
+        value = _render_numeric_attr_value(attr)
+    else:
+        value = _clean_str(attr.value)
+
     attr_str = "%s: %s" % (name, value)
     if show_confidence and attr.confidence is not None:
         attr_str += " (%.2f)" % attr.confidence
+
     return attr_str
 
 
@@ -684,7 +695,7 @@ def _render_object_label(obj, show_index=True, show_confidence=True):
     add_confidence = show_confidence and obj.confidence is not None
     add_index = show_index and obj.index is not None
 
-    label_str = _clean(obj.label).upper()
+    label_str = _clean_str(obj.label).upper()
 
     if add_confidence:
         label_str += " (%.2f)"
@@ -701,5 +712,9 @@ def _render_object_label(obj, show_index=True, show_confidence=True):
     return label_str, label_hash
 
 
-def _clean(s):
+def _render_numeric_attr_value(attr):
+    return "%.2f" % attr.value
+
+
+def _clean_str(s):
     return str(s).lower().replace("_", " ")
