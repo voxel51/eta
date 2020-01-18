@@ -1268,7 +1268,7 @@ def has_alpha(img):
     Returns:
         True/False
     '''
-    return not is_gray(img) and img.shape[2] == 4
+    return img.ndim == 4
 
 
 def is_gray(img):
@@ -1280,7 +1280,19 @@ def is_gray(img):
     Returns:
         True/False
     '''
-    return len(img.shape) == 2
+    return img.ndim == 2
+
+
+def is_color(img):
+    '''Checks if the image is color, i.e., has at least three channels.
+
+    Args:
+        img: an image
+
+    Returns:
+        True/False
+    '''
+    return img.ndim > 2
 
 
 def to_frame_size(frame_size=None, shape=None, img=None):
