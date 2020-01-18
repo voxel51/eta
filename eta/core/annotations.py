@@ -713,6 +713,9 @@ def _render_object_label(obj, show_index=True, show_confidence=True):
 
 
 def _render_numeric_attr_value(attr):
+    if isinstance(attr.value, int):
+        return "%d" % attr.value
+
     return "%.2f" % attr.value
 
 
