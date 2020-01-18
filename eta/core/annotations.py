@@ -46,6 +46,7 @@ class AnnotationConfig(Config):
             render the annotation boxes
         show_object_boxes: whether to show object bounding boxes, if available.
             If this is false, all attributes, confidences, etc. are also hidden
+        show_object_attrs: whether to show object attributes, if available.
         show_object_confidences: whether to show object label confidences, if
             available
         show_object_attr_confidences: whether to show object attribute
@@ -96,6 +97,8 @@ class AnnotationConfig(Config):
             d, "colormap_config", ColormapConfig, default=None)
         self.show_object_boxes = self.parse_bool(
             d, "show_object_boxes", default=True)
+        self.show_object_attrs = self.parse_bool(
+            d, "show_object_attrs", default=True)
         self.show_object_confidences = self.parse_bool(
             d, "show_object_confidences", default=False)
         self.show_object_attr_confidences = self.parse_bool(
@@ -429,6 +432,7 @@ def _annotate_frame_attrs(img, attr_strs, annotation_config):
 def _annotate_object(img, obj, annotation_config):
     # Parse config
     show_object_boxes = annotation_config.show_object_boxes
+    show_object_attrs = annotation_config.show_object_attrs
     show_object_confidences = (
         annotation_config.show_object_confidences or
         annotation_config.show_all_confidences)
@@ -525,7 +529,7 @@ def _annotate_object(img, obj, annotation_config):
     # Render object attributes
     #
 
-    if not obj.has_attributes:
+    if not show_object_attrs or not obj.has_attributes:
         return np.asarray(img_pil)
 
     # Render object attribute strings
