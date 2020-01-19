@@ -71,6 +71,9 @@ class AnnotationConfig(Config):
         font_path: the path to the `PIL.ImageFont` to use
         font_size: the font size to use
         linewidth: the linewidth, in pixels, of the object bounding boxes
+        scale_by_media_height: whether to scale the `font_size` and `linewidth`
+            according to the height of the media (relative to a height of 720
+            pixels)
         alpha: the transparency of the object bounding boxes
         confidence_scaled_alpha: True will scale `alpha` and `mask_fill_alpha`
             by the object confidence
@@ -92,9 +95,6 @@ class AnnotationConfig(Config):
         mask_fill_alpha: the transparency of the segmentation mask
         add_logo: whether to add a logo to the output video
         logo_config: the `eta.core.logo.LogoConfig` describing the logo to use
-        scale_by_media_height: if True, annotations (font size and linewidth)
-            are scaled relative to the height of the media. Scaling is relative
-            to a height of 720px.
     '''
 
     def __init__(self, d):
@@ -129,7 +129,9 @@ class AnnotationConfig(Config):
         self.font_path = self.parse_string(
             d, "font_path", default=etac.DEFAULT_FONT_PATH)
         self.font_size = self.parse_number(d, "font_size", default=16)
-        self._linewidth = self.parse_number(d, "linewidth", default=2)
+        self.linewidth = self.parse_number(d, "linewidth", default=2)
+        self.scale_by_media_height = self.parse_bool(
+            d, "scale_by_media_height", default=True)
         self.alpha = self.parse_number(d, "alpha", default=0.75)
         self.confidence_scaled_alpha = self.parse_bool(
             d, "confidence_scaled_alpha", default=False)
@@ -156,57 +158,83 @@ class AnnotationConfig(Config):
         self.add_logo = self.parse_bool(d, "add_logo", default=True)
         self.logo_config = self.parse_object(
             d, "logo_config", etal.LogoConfig, default=None)
-        self.scale_by_media_height = self.parse_object(
-            d, "scale_by_media_height", etal.LogoConfig, default=True)
+
+        self._media_height = None
+        self._logo = None
+        self._font = None
+        self._box_linewidth = None
+        self.set_media_size(frame_size=(1280, 720))
+
+        #
+        # Load Logo _after_ setting media size to avoid unnecessary rendering
+        # of the logo
+        #
+        if self.logo_config is not None:
+            self._logo = etal.Logo(self.logo_config)
+        elif self.add_logo:
+            self._logo = etal.Logo.load_default()
 
         if self.colormap_config is not None:
             self._colormap = self.colormap_config.build()
         else:
             self._colormap = Colormap.load_default()
 
-        self._font = ImageFont.truetype(self.font_path, self.font_size)
-
-        if self.logo_config is not None:
-            self._logo = etal.Logo(self.logo_config)
-        elif self.add_logo:
-            self._logo = etal.Logo.load_default()
-        else:
-            self._logo = None
-
-        # default media height to scale by if not set
-        self._media_height = 720
-
-    @property
-    def media_height(self):
-        return self._media_height
-
-    @media_height.setter
-    def media_height(self, media_height):
-        self._media_height = media_height
-
-    def _get_media_scale_factor(self):
-        return self.media_height / 720
-
     @property
     def colormap(self):
         return self._colormap
 
     @property
+    def media_height(self):
+        return self._media_height
+
+    @property
     def font(self):
-        if self.scale_by_media_height:
-            font_size = int(self.font_size * self._get_media_scale_factor())
-            return ImageFont.truetype(self.font_path, font_size)
         return self._font
 
     @property
-    def linewidth(self):
-        if self.scale_by_media_height:
-            return int(self._linewidth * self._get_media_scale_factor())
-        return self._linewidth
+    def box_linewidth(self):
+        return self._box_linewidth
 
     @property
     def logo(self):
         return self._logo
+
+    def set_media_size(self, frame_size=None, shape=None, img=None):
+        '''Sets the size of the media to the given value. This allows for
+        optimizing font sizes, linewidths, and logo resolutions to suit the
+        dimensions of the media being annotated.
+
+        Exactly *one* keyword argument must be provided.
+
+        Args:
+            frame_size: the (width, height) of the image/video frame
+            shape: the (height, width, ...) of the image/video frame, e.g. from
+                img.shape
+            img: an example image/video frame
+        '''
+        frame_size = etai.to_frame_size(
+            frame_size=frame_size, shape=shape, img=img)
+
+        # Set media height
+        self._media_height = frame_size[1]
+
+        # Render logo, if necessary
+        if self.add_logo and self.logo is not None:
+            self._logo.render_for(frame_size=frame_size)
+
+        # Render font
+        font_size = int(self.font_size * self._get_media_scale_factor())
+        self._font = ImageFont.truetype(self.font_path, font_size)
+
+        # Render linewidth
+        self._box_linewidth = int(
+            self.linewidth * self._get_media_scale_factor())
+
+    def _get_media_scale_factor(self):
+        if self.scale_by_media_height:
+            return self.media_height / 720.0
+
+        return 1.0
 
 
 class ColormapConfig(Config):
@@ -336,9 +364,8 @@ def annotate_video(
 
     # Annotate video
     with etav.VideoProcessor(input_path, out_video_path=output_path) as p:
-        # Render logo for video, if necessary
-        if annotation_config.add_logo:
-            annotation_config.logo.render_for(frame_size=p.output_frame_size)
+        # Set media size
+        annotation_config.set_media_size(frame_size=p.output_frame_size)
 
         # Get video-level attributes
         if video_labels.attrs:
@@ -351,32 +378,17 @@ def annotate_video(
         for img in p:
             logger.debug("Annotating frame %d", p.frame_number)
             frame_labels = video_labels[p.frame_number]
-            img_anno = annotate_video_frame(
+            img_anno = _annotate_video_frame(
                 img, frame_labels, video_attrs=video_attrs,
                 annotation_config=annotation_config)
             p.write(img_anno)
 
 
-def annotate_video_frame(
+def _annotate_video_frame(
         img, frame_labels, video_attrs=None, annotation_config=None):
-    '''Annotates the video frame with the given labels.
-
-    Args:
-        img: the video frame to annotate
-        frame_labels: an `eta.core.video.VideoFrameLabels` instance describing
-            the content to annotate
-        video_attrs: an optional `eta.core.data.AttributeContainer` of video
-            level attributes
-        annotation_config: an optional AnnotationConfig specifying how to
-            render the annotations. If omitted, the default config is used
-
-    Returns:
-        the annotated image
-    '''
     if annotation_config is None:
         annotation_config = _DEFAULT_ANNOTATION_CONFIG
-        if annotation_config.add_logo:
-            annotation_config.logo.render_for(img=img)
+        annotation_config.set_media_size(img=img)
 
     return _annotate_image(img, frame_labels, video_attrs, annotation_config)
 
@@ -396,16 +408,14 @@ def annotate_image(img, image_labels, annotation_config=None):
     '''
     if annotation_config is None:
         annotation_config = _DEFAULT_ANNOTATION_CONFIG
-        if annotation_config.add_logo:
-            annotation_config.logo.render_for(img=img)
+
+    # Set media size
+    annotation_config.set_media_size(img=img)
 
     return _annotate_image(img, image_labels, None, annotation_config)
 
 
 def _annotate_image(img, labels, more_attrs, annotation_config):
-    # Set the config media height for the current image
-    annotation_config.media_height = img.shape[0]
-
     # Parse config
     hide_attr_values = annotation_config.hide_attr_values
     hide_false_boolean_attrs = annotation_config.hide_false_boolean_attrs
@@ -486,7 +496,7 @@ def _annotate_object(img, obj, annotation_config):
     font = annotation_config.font
     alpha = annotation_config.alpha
     confidence_scaled_alpha = annotation_config.confidence_scaled_alpha
-    linewidth = annotation_config.linewidth
+    linewidth = annotation_config.box_linewidth
     attrs_render_method = annotation_config.object_attrs_render_method
     pad = annotation_config.object_text_pad_pixels
     text_color = tuple(_parse_hex_color(annotation_config.text_color))
