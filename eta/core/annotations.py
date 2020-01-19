@@ -340,8 +340,7 @@ class ShuffledHLSColormap(Colormap):
         hues = np.linspace(0, 1, num_hues + 1)[:-1]
         colors = [
             etai.hls_to_hex(hue, self.config.lightness, self.config.saturation)
-            for hue in hues
-        ]
+            for hue in hues]
         rng = random.Random(self.config.seed)
         rng.shuffle(colors)
         return colors
