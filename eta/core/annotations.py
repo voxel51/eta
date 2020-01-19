@@ -91,6 +91,9 @@ class AnnotationConfig(Config):
         mask_fill_alpha: the transparency of the segmentation mask
         add_logo: whether to add a logo to the output video
         logo_config: the `eta.core.logo.LogoConfig` describing the logo to use
+        scale_by_media_height: if True, annotations (font size and linewidth)
+            are scaled relative to the height of the media. Scaling is relative
+            to a height of 720px.
     '''
 
     def __init__(self, d):
@@ -125,7 +128,7 @@ class AnnotationConfig(Config):
         self.font_path = self.parse_string(
             d, "font_path", default=etac.DEFAULT_FONT_PATH)
         self.font_size = self.parse_number(d, "font_size", default=16)
-        self.linewidth = self.parse_number(d, "linewidth", default=2)
+        self._linewidth = self.parse_number(d, "linewidth", default=2)
         self.alpha = self.parse_number(d, "alpha", default=0.75)
         self.confidence_scaled_alpha = self.parse_bool(
             d, "confidence_scaled_alpha", default=False)
@@ -152,6 +155,8 @@ class AnnotationConfig(Config):
         self.add_logo = self.parse_bool(d, "add_logo", default=True)
         self.logo_config = self.parse_object(
             d, "logo_config", etal.LogoConfig, default=None)
+        self.scale_by_media_height = self.parse_object(
+            d, "scale_by_media_height", etal.LogoConfig, default=True)
 
         if self.colormap_config is not None:
             self._colormap = self.colormap_config.build()
@@ -167,13 +172,36 @@ class AnnotationConfig(Config):
         else:
             self._logo = None
 
+        # default media height to scale by if not set
+        self._media_height = 720
+
+    @property
+    def media_height(self):
+        return self._media_height
+
+    @media_height.setter
+    def media_height(self, media_height):
+        self._media_height = media_height
+
+    def _get_media_scale_factor(self):
+        return self.media_height / 720
+
     @property
     def colormap(self):
         return self._colormap
 
     @property
     def font(self):
+        if self.scale_by_media_height:
+            font_size = int(self.font_size * self._get_media_scale_factor())
+            return ImageFont.truetype(self.font_path, font_size)
         return self._font
+
+    @property
+    def linewidth(self):
+        if self.scale_by_media_height:
+            return int(self._linewidth * self._get_media_scale_factor())
+        return self._linewidth
 
     @property
     def logo(self):
@@ -374,6 +402,9 @@ def annotate_image(img, image_labels, annotation_config=None):
 
 
 def _annotate_image(img, labels, more_attrs, annotation_config):
+    # Set the config media height for the current image
+    annotation_config.media_height = img.shape[0]
+
     # Parse config
     hide_attr_values = annotation_config.hide_attr_values
     hide_false_boolean_attrs = annotation_config.hide_false_boolean_attrs
