@@ -2219,8 +2219,7 @@ class SFTPUploadCommand(Command):
         parser.add_argument("--user", metavar="USER", help="the username")
         parser.add_argument("--host", metavar="HOST", help="the hostname")
         parser.add_argument(
-            "-p", "--port", metavar="PORT", help="the port to use "
-            "(default = 22)")
+            "-p", "--port", metavar="PORT", help="the port to use")
 
     @staticmethod
     def run(parser, args):
@@ -2253,8 +2252,7 @@ class SFTPUploadDirCommand(Command):
         parser.add_argument("--user", metavar="USER", help="the username")
         parser.add_argument("--host", metavar="HOST", help="the hostname")
         parser.add_argument(
-            "-p", "--port", metavar="PORT", help="the port to use "
-            "(default = 22)")
+            "-p", "--port", metavar="PORT", help="the port to use")
 
     @staticmethod
     def run(parser, args):
@@ -2291,8 +2289,7 @@ class SFTPDownloadCommand(Command):
         parser.add_argument("--user", metavar="USER", help="the username")
         parser.add_argument("--host", metavar="HOST", help="the hostname")
         parser.add_argument(
-            "-p", "--port", metavar="PORT", help="the port to use "
-            "(default = 22)")
+            "-p", "--port", metavar="PORT", help="the port to use")
         parser.add_argument(
             "--print", action="store_true", help="whether to print the "
             "download to stdout. If true, a file is NOT written to disk")
@@ -2332,8 +2329,7 @@ class SFTPDownloadDirCommand(Command):
         parser.add_argument("--user", metavar="USER", help="the username")
         parser.add_argument("--host", metavar="HOST", help="the hostname")
         parser.add_argument(
-            "-p", "--port", metavar="PORT", help="the port to use "
-            "(default = 22)")
+            "-p", "--port", metavar="PORT", help="the port to use")
 
     @staticmethod
     def run(parser, args):
@@ -2363,8 +2359,7 @@ class SFTPDeleteCommand(Command):
         parser.add_argument("--user", metavar="USER", help="the username")
         parser.add_argument("--host", metavar="HOST", help="the hostname")
         parser.add_argument(
-            "-p", "--port", metavar="PORT", help="the port to use "
-            "(default = 22)")
+            "-p", "--port", metavar="PORT", help="the port to use")
 
     @staticmethod
     def run(parser, args):
@@ -2394,8 +2389,7 @@ class SFTPDeleteDirCommand(Command):
         parser.add_argument("--user", metavar="USER", help="the username")
         parser.add_argument("--host", metavar="HOST", help="the hostname")
         parser.add_argument(
-            "-p", "--port", metavar="PORT", help="the port to use "
-            "(default = 22)")
+            "-p", "--port", metavar="PORT", help="the port to use")
 
     @staticmethod
     def run(parser, args):
