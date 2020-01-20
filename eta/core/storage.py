@@ -2625,7 +2625,7 @@ class SFTPStorageClient(StorageClient, NeedsSSHCredentials):
     '''
 
     def __init__(
-            self, hostname, username, private_key_path=None, port=22,
+            self, hostname, username, private_key_path=None, port=None,
             keep_open=False,
         ):
         '''Creates an SFTPStorageClient instance.
@@ -2645,7 +2645,7 @@ class SFTPStorageClient(StorageClient, NeedsSSHCredentials):
         self.username = username
         self.private_key_path = self.get_private_key_path(
             private_key_path=private_key_path)
-        self.port = port
+        self.port = port or 22
         self.keep_open = keep_open
 
         self._connection = _SFTPConnection(
