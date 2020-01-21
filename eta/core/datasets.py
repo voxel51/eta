@@ -627,6 +627,15 @@ class LabeledDataset(object):
         '''Returns the number of data elements in the dataset'''
         return len(self.dataset_index)
 
+    def __getitem__(self, key):
+        '''Returns a LabeledDataRecord from `self.dataset_index` with the
+        given key.
+
+        Args:
+            key: an integer index into `self.dataset_index`
+        '''
+        return self.dataset_index[key]
+
     def iter_data(self):
         '''Iterates over the data in the dataset.
 
@@ -1686,6 +1695,9 @@ class LabeledDatasetIndex(Serializable):
 
     def __len__(self):
         return len(self.index)
+
+    def __getitem__(self, key):
+        return self.index[key]
 
     def append(self, labeled_data_record):
         '''Appends an entry to the index.
