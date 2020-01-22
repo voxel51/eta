@@ -9,7 +9,7 @@ Info:
     type: eta.core.types.Module
     version: 0.1.0
 
-Copyright 2017-2019, Voxel51, Inc.
+Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
@@ -33,7 +33,7 @@ import sys
 import numpy as np
 
 import eta
-from eta.core.config import Config, ConfigError
+from eta.core.config import Config
 import eta.core.image as etai
 import eta.core.module as etam
 import eta.core.utils as etau
@@ -44,7 +44,7 @@ logger = logging.getLogger(__name__)
 
 
 class SampleVideosConfig(etam.BaseModuleConfig):
-    '''Formatter configuration settings.
+    '''Sample videos configuration settings.
 
     Attributes:
         data (DataConfig)
@@ -126,8 +126,9 @@ def _sample_videos(config):
 def _process_video(input_path, output_frames_dir, parameters):
     stream_info = etav.VideoStreamInfo.build_for(input_path)
 
-    _check_input_video_size(stream_info, parameters.max_video_file_size,
-                            parameters.max_video_duration)
+    _check_input_video_size(
+        stream_info, parameters.max_video_file_size,
+        parameters.max_video_duration)
 
     ifps = stream_info.frame_rate
     isize = stream_info.frame_size
@@ -154,6 +155,7 @@ def _process_video(input_path, output_frames_dir, parameters):
                 "rate (%g)" % (fps, ifps))
 
         accel = ifps / fps
+
     if max_fps is not None and max_fps > 0:
         min_accel = ifps / max_fps
         if accel is None or accel < min_accel:
@@ -202,18 +204,16 @@ def _check_input_video_size(
     if (max_video_file_size is not None
             and stream_info.size_bytes > max_video_file_size):
         raise ValueError(
-            "Input video file size must be less than {}; found {}".format(
+            "Input video file size must be less than %s; found %s" % (
                 etau.to_human_bytes_str(max_video_file_size),
-                etau.to_human_bytes_str(stream_info.size_bytes))
-        )
+                etau.to_human_bytes_str(stream_info.size_bytes)))
 
     if (max_video_duration is not None
             and stream_info.duration > max_video_duration):
         raise ValueError(
-            ("Input video duration must be less than {} seconds;"
-             " found {} seconds").format(
-                max_video_duration, stream_info.duration)
-        )
+            "Input video duration must be less than %s; found %s" % (
+                etau.to_human_time_str(max_video_duration),
+                etau.to_human_time_str(stream_info.duration)))
 
 
 def run(config_path, pipeline_config_path=None):
