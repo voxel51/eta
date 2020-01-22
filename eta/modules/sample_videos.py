@@ -104,7 +104,7 @@ class ParametersConfig(Config):
     '''
 
     def __init__(self, d):
-        self.accel = self.parse_number(d, "accel", default=1.0)
+        self.accel = self.parse_number(d, "accel", default=None)
         self.fps = self.parse_number(d, "fps", default=None)
         self.size = self.parse_array(d, "size", default=None)
         self.max_fps = self.parse_number(d, "max_fps", default=None)
@@ -164,8 +164,9 @@ def _process_video(input_path, output_frames_dir, parameters):
                 "setting `accel = %g` now", max_fps, min_accel, min_accel)
 
             accel = min_accel
+
     if accel is None:
-        raise ConfigError("One of (accel, fps, max_fps) must be specified")
+        accel = 1.0
 
     # Determine frames to sample
     sample_pts = np.arange(1, iframe_count, accel)
