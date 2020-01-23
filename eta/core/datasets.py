@@ -627,6 +627,15 @@ class LabeledDataset(object):
         '''Returns the number of data elements in the dataset'''
         return len(self.dataset_index)
 
+    def __getitem__(self, key):
+        '''Returns a LabeledDataRecord from `self.dataset_index` with the
+        given key.
+
+        Args:
+            key: an integer index into `self.dataset_index`
+        '''
+        return self.dataset_index[key]
+
     def iter_data(self):
         '''Iterates over the data in the dataset.
 
@@ -1206,6 +1215,26 @@ class LabeledDataset(object):
         raise NotImplementedError(
             "subclasses must implement write_annotated_data()")
 
+    def add_metadata_to_labels(self, overwrite=False):
+        '''Adds metadata about each data file into its labels file.
+
+        Args:
+            overwrite: whether to overwrite metadata already present in the
+                labels file
+        '''
+        for data_path, labels, labels_path in zip(
+                self.iter_data_paths(), self.iter_labels(),
+                self.iter_labels_paths()):
+            if not hasattr(labels, "metadata"):
+                raise TypeError(
+                    "'%s' has no 'metadata' attribute" % etau.get_class_name(
+                        labels)
+                )
+
+            if overwrite or labels.metadata is None:
+                labels.metadata = self._build_metadata(data_path)
+                labels.write_json(labels_path)
+
     @classmethod
     def create_empty_dataset(cls, dataset_path, description=None):
         '''Creates a new empty labeled dataset.
@@ -1297,6 +1326,9 @@ class LabeledDataset(object):
 
         Args:
             path: path to a data file in the dataset
+
+        Returns:
+            a data object in the particular format for the subclass
         '''
         raise NotImplementedError("subclasses must implement _read_data()")
 
@@ -1308,6 +1340,9 @@ class LabeledDataset(object):
 
         Args:
             path: path to a labels file in the dataset
+
+        Returns:
+            a labels object in the particular format for the subclass
         '''
         raise NotImplementedError("subclasses must implement _read_labels()")
 
@@ -1336,6 +1371,23 @@ class LabeledDataset(object):
             path: path to write the labels JSON file
         '''
         raise NotImplementedError("subclasses must implement _write_labels()")
+
+    def _build_metadata(self, path):
+        '''Reads metadata from a data file at the given path and builds an
+        instance of the metadata class associated with the data type.
+
+        Subclasses must implement this based on the particular metadata format
+        for the subclass.
+
+        Args:
+            path: path to a data file in the dataset
+
+        Returns:
+            an instance of the metadata class associated with the data format
+                for the subclass
+        '''
+        raise NotImplementedError(
+            "subclasses must implement _build_metadata()")
 
     def _parse_dataset(self, labeled_dataset_or_path):
         cls_name = etau.get_class_name(self)
@@ -1527,6 +1579,9 @@ class LabeledVideoDataset(LabeledDataset):
     def _write_labels(self, labels, path):
         labels.write_json(path)
 
+    def _build_metadata(self, path):
+        return etav.VideoMetadata.build_for(path)
+
 
 class LabeledImageDataset(LabeledDataset):
     '''Core class for interacting with a labeled dataset of images.
@@ -1638,6 +1693,9 @@ class LabeledImageDataset(LabeledDataset):
     def _write_labels(self, labels, path):
         labels.write_json(path)
 
+    def _build_metadata(self, path):
+        return etai.ImageMetadata.build_for(path)
+
 
 class LabeledDatasetIndex(Serializable):
     '''A class that encapsulates the manifest of a `LabeledDataset`.
@@ -1686,6 +1744,9 @@ class LabeledDatasetIndex(Serializable):
 
     def __len__(self):
         return len(self.index)
+
+    def __getitem__(self, key):
+        return self.index[key]
 
     def append(self, labeled_data_record):
         '''Appends an entry to the index.
