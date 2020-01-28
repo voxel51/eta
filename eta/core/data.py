@@ -740,12 +740,14 @@ class AttributeContainerSchema(Serializable):
         for name, attr_schema in iteritems(schema.schema):
             if name not in self.schema:
                 diff[name] = attr_schema
-            if name not in schema.schema:
-                diff[name] = schema.schema
             else:
                 attr_diff = self.schema[name].diff_schema(attr_schema)
                 if attr_diff:
                     diff[name] = attr_dif
+
+        for name, attr_schema in iteritems(self.schema):
+            if name not in diff:
+                diff[name] = attr_schema
 
         return AttributeContainerSchema(diff) if diff else None
 
