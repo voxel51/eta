@@ -597,6 +597,135 @@ class ImageLabelsSchemaError(Exception):
     pass
 
 
+class ImageLabelsSchemaCheckerError(Exception):
+    '''Error raised when a ImageLabelsSchemaChecker is violated.'''
+    pass
+
+
+class ImageLabelsSchemaChecker(object):
+
+    _SCHEMA_CLS = ImageLabelsSchema
+    _LABELS_CLS = ImageLabels
+    _ERROR_CLS = ImageLabelsSchemaCheckerError
+
+    def __init__(self, target_schema, audit_only=True):
+        self._validate_type(target_schema, self._SCHEMA_CLS)
+
+        self._target_schema = target_schema
+        self._audit_only = bool(audit_only)
+
+        self.clear_state()
+
+    @property
+    def audit_only(self):
+        return self._audit_only
+
+    @property
+    def target_schema(self):
+        return self._target_schema
+
+    @property
+    def fixable_schema(self):
+        return self._fixable_schema
+
+    @property
+    def unfixable_schema(self):
+        return self._unfixable_schema
+
+    def clear_state(self):
+        self._fixable_schema = self._SCHEMA_CLS()
+        self._unfixable_schema = self._SCHEMA_CLS()
+
+    def check(self, labels):
+        self._was_modified = False
+        self._validate_type(labels, self._LABELS_CLS)
+        self._check(labels)
+        return self._was_modified
+
+    def _check(self, labels):
+        self._check_attrs(labels)
+        self._check_objects(labels.objects)
+
+    def _check_attrs(self, labels):
+        # `eta.core.data.AttributeContainerSchema`
+        target_attr_schema = self.target_schema.attrs
+
+        for attr in labels.attrs:
+            # @todo(Tyler)
+            raise NotImplementedError("@todo(Tyler)")
+
+    def _check_objects(self, object_container):
+        for obj in object_container:
+            self._check_object_label(obj)
+            # obj.attrs
+            # @todo(Tyler) check object attributes
+
+    def _check_object_label(self, obj):
+        # `collections.defaultdict`
+        target_obj_labels = self.target_schema.objects
+
+        # Is the object label in the target schema?
+        if self.target_schema.has_object_label(obj.label):
+            return
+
+        # Is the object label in the fixable schema?
+        if self.fixable_schema.has_object_label(obj.label):
+            if not self.audit_only:
+                target_mapped_obj_label = self._map_to_target(
+                    obj.label, target_obj_labels.keys())
+
+                if target_mapped_obj_label is None:
+                    raise self._ERROR_CLS("Woah this is bad!")
+
+                self._was_modified = True
+                obj.label = target_mapped_obj_label
+
+            return
+
+        # Is the object label in the unfixable schema?
+        if self.unfixable_schema.has_object_label(obj.label):
+            return
+
+        target_mapped_obj_label = self._map_to_target(
+            obj.label, target_obj_labels.keys())
+
+        if target_mapped_obj_label is not None:
+            self.fixable_schema.add_object_label(obj.label)
+            if not self.audit_only:
+                self._was_modified = True
+                obj.label = target_mapped_obj_label
+
+        else:
+            self.unfixable_schema.add_object_label(obj.label)
+
+    def _map_to_target(self, value, target_iterable):
+        # @todo(Tyler) perhaps make this more efficient (store globally)
+        std_value = self._standardize(value)
+        std_to_target_map = {self._standardize(x): x for x in target_iterable}
+
+        if std_value in std_to_target_map:
+            return std_to_target_map[std_value]
+
+        return None
+
+    def _standardize(self, value):
+        self._validate_type(value, str)
+        return value.lower().replace("_", " ")
+
+    def _validate_type(self, obj, expected_type):
+        if expected_type == str:
+            valid = etau.is_str(obj)
+        else:
+            valid = isinstance(obj, expected_type)
+
+        if not valid:
+            raise ValueError(
+                "Invalid input type: '%s'. Expected: '%s'"
+                % (etau.get_class_name(obj),
+                   etau.get_class_name(expected_type))
+            )
+
+
 class ImageSetLabels(Set):
     '''Class encapsulating labels for a set of images.
 

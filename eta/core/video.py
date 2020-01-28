@@ -1707,56 +1707,26 @@ class VideoLabelsSchemaError(Exception):
     pass
 
 
-class VideoLabelsSchemaChecker(object):
+class VideoLabelsSchemaCheckerError(Exception):
+    '''Error raised when a VideoLabelsSchemaChecker is violated.'''
+    pass
 
-    def __init__(self, target_schema, audit_only=True):
-        self._validate_type(target_schema, VideoLabelsSchema)
 
-        self._target_schema = target_schema
-        self._audit_only = bool(audit_only)
+class VideoLabelsSchemaChecker(etai.ImageLabelsSchemaChecker):
 
-        self.clear_state()
+    _SCHEMA_CLS = VideoLabelsSchema
+    _LABELS_CLS = VideoLabels
+    _ERROR_CLS = VideoLabelsSchemaCheckerError
 
-    @property
-    def audit_only(self):
-        return self._audit_only
-
-    @property
-    def target_schema(self):
-        return self._target_schema
-
-    @property
-    def fixable_schema(self):
-        return self._fixable_schema
-
-    @property
-    def unfixable_schema(self):
-        return self._unfixable_schema
-
-    def clear_state(self):
-        self._fixable_schema = VideoLabelsSchema()
-        self._unfixable_schema = VideoLabelsSchema()
-
-    def check(self, labels):
-        self._was_modified = False
-        self._validate_type(labels, VideoLabels)
+    def _check(self, labels):
         self._check_attrs(labels)
         self._check_frames(labels)
         self._check_events(labels)
-        return self._was_modified
-
-    def _check_attrs(self, labels):
-        # `eta.core.data.AttributeContainerSchema`
-        target_attr_schema = self.target_schema.attrs
-
-        for attr in labels.attrs:
-            # @todo(Tyler)
-            raise NotImplementedError("@todo(Tyler)")
 
     def _check_frames(self, labels):
         for frame in labels.iter_frames():
             self._check_frame_attrs(frame)
-            self._check_frame_objects(frame)
+            self._check_objects(frame.objects)
 
     def _check_frame_attrs(self, frame):
         # `eta.core.data.AttributeContainerSchema`
@@ -1766,50 +1736,6 @@ class VideoLabelsSchemaChecker(object):
             # @todo(Tyler)
             raise NotImplementedError("@todo(Tyler)")
 
-    def _check_frame_objects(self, frame):
-        for obj in frame.objects:
-            self._check_frame_object_labels(obj)
-            # obj.attrs
-            # @todo(Tyler) check object attributes
-
-    def _check_frame_object_labels(self, obj):
-        # `collections.defaultdict`
-        target_obj_labels = self.target_schema.objects
-
-        # Is the object label in the target schema?
-        if self.target_schema.has_object_label(obj.label):
-            return
-
-        # Is the object label in the fixable schema?
-        if self.fixable_schema.has_object_label(obj.label):
-            if not self.audit_only:
-                target_mapped_obj_label = self._map_to_target(
-                    obj.label, target_obj_labels.keys())
-
-                if target_mapped_obj_label is None:
-                    raise VideoLabelsCheckerError("Woah this is bad!")
-
-                self._was_modified = True
-                obj.label = target_mapped_obj_label
-
-            return
-
-        # Is the object label in the unfixable schema?
-        if self.unfixable_schema.has_object_label(obj.label):
-            return
-
-        target_mapped_obj_label = self._map_to_target(
-            obj.label, target_obj_labels.keys())
-
-        if target_mapped_obj_label is not None:
-            self.fixable_schema.add_object_label(obj.label)
-            if not self.audit_only:
-                self._was_modified = True
-                obj.label = target_mapped_obj_label
-
-        else:
-            self.unfixable_schema.add_object_label(obj.label)
-
     def _check_events(self, labels):
         # `collections.defaultdict`
         target_events_schema = self.target_schema.events
@@ -1817,38 +1743,6 @@ class VideoLabelsSchemaChecker(object):
         for event in labels.events:
             # @todo(Tyler)
             raise NotImplementedError("@todo(Tyler)")
-
-    def _map_to_target(self, value, target_iterable):
-        # @todo(Tyler) perhaps make this more efficient (store globally)
-        std_value = self._standardize(value)
-        std_to_target_map = {self._standardize(x): x for x in target_iterable}
-
-        if std_value in std_to_target_map:
-            return std_to_target_map[std_value]
-
-        return None
-
-    def _standardize(self, value):
-        self._validate_type(value, str)
-        return value.lower().replace("_", " ")
-
-    def _validate_type(self, obj, expected_type):
-        if expected_type == str:
-            valid = etau.is_str(obj)
-        else:
-            valid = isinstance(obj, expected_type)
-
-        if not valid:
-            raise ValueError(
-                "Invalid input type: '%s'. Expected: '%s'"
-                % (etau.get_class_name(obj),
-                   etau.get_class_name(expected_type))
-            )
-
-
-class VideoLabelsCheckerError(Exception):
-    '''Error raised when a VideoLabelsChecker is violated.'''
-    pass
 
 
 class VideoSetLabels(Set):
