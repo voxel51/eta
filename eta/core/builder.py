@@ -391,6 +391,22 @@ class PipelineBuilder(object):
 
         return etap.run(self.pipeline_config_path)
 
+    def get_status(self):
+        '''Gets the PipelineStatus for the last run pipeline.
+
+        Returns:
+            a PipelineStatus instance
+
+        Raises:
+            PipelineBuilderError: if the pipeline hasn't been built and run
+        '''
+        if not os.path.exists(self.pipeline_status_path):
+            raise PipelineBuilderError(
+                "No pipeline status found; you must build and run the "
+                "pipeline before getting its status")
+
+        return etas.PipelineStatus.from_json(self.pipeline_status_path)
+
     def cleanup(self):
         '''Cleans up the configs and output files generated when the pipeline
         was run, if necessary. Published outputs are NOT deleted.
