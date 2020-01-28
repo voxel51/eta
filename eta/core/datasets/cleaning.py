@@ -65,7 +65,10 @@ def check_labels_filename_property(dataset, audit_only=True):
     missing_count = 0
     mismatch_count = 0
 
-    for data_path, labels_path in dataset.iter_paths():
+    for idx, (data_path, labels_path) in enumerate(dataset.iter_paths()):
+        if idx % 20 == 0:
+            logger.info("%4d/%4d" % (idx, len(dataset)))
+
         data_filename = os.path.basename(data_path)
         labels = dataset.read_labels(labels_path)
 
