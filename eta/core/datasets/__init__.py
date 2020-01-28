@@ -12,3 +12,4 @@ from .labeled_datasets import *
 from .split_methods import *
 from .transformers import *
 from .utils import *
+from .video2image import *
