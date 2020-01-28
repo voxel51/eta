@@ -4,7 +4,7 @@ Core module infrastructure.
 See `docs/modules_dev_guide.md` for detailed information about the design and
 usage of ETA modules.
 
-Copyright 2017-2019, Voxel51, Inc.
+Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
@@ -38,8 +38,8 @@ import eta.core.utils as etau
 logger = logging.getLogger(__name__)
 
 
-def run(module_name, module_config_path):
-    '''Runs the specified module with the given ModuleConfig.
+def run(module_name, module_config_or_path):
+    '''Runs the specified module with the given config.
 
     This is a convenience function for running modules programmatically. This
     function is not used directly by pipelines when running modules, and, as
@@ -47,11 +47,25 @@ def run(module_name, module_config_path):
 
     Args:
         module_name: the name of the module
-        module_config_path: path to a ModuleConfig to run
+        module_config_or_path: a ModuleConfig or path to one on disk. If a
+            ModuleConfig is provided in-memory, it is written to a temporary
+            directory on disk while the module executes
 
     Returns:
         True/False whether the module completed successfully
     '''
+    if etau.is_str(module_config_or_path):
+        # Found a path to a module config on disk
+        return _run(module_name, module_config_or_path)
+
+    # Found an in-memory module config
+    with etau.TempDir() as d:
+        module_config_path = os.path.join(d, "config.json")
+        module_config_or_path.write_json(module_config_path)
+        return _run(module_name, module_config_path)
+
+
+def _run(module_name, module_config_path):
     module_exe = find_exe(module_name)
     args = ["python", module_exe, module_config_path]
     return etau.call(args)
