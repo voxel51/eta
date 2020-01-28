@@ -474,8 +474,10 @@ class PipelineParameter(object):
             raise PipelineMetadataError(
                 "Pipeline parameter '%s' is required, so it has no default "
                 "value" % self.param_str)
-        elif self.has_set_value:
+
+        if self.has_set_value:
             return self.set_value
+
         return self.param.default_value
 
     @property
