@@ -1,7 +1,7 @@
 '''
 Core pipeline building system.
 
-Copyright 2018, Voxel51, Inc.
+Copyright 2018-2020, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
@@ -32,6 +32,7 @@ import eta.core.job as etaj
 import eta.core.logging as etal
 import eta.core.module as etam
 import eta.core.pipeline as etap
+import eta.core.status as etas
 import eta.core.types as etat
 import eta.core.utils as etau
 
@@ -118,6 +119,19 @@ def cleanup_all_pipelines():
     '''Cleans up all built pipelines.'''
     for pipeline_config_path in find_all_built_pipelines():
         cleanup_pipeline(pipeline_config_path)
+
+
+class ModuleConfig(etam.BaseModuleConfig):
+    '''Module configuration class.
+
+    This generic class is used by `PipelineBuilder` to build module
+    configuration files of any type.
+    '''
+
+    def __init__(self, d):
+        super(ModuleConfig, self).__init__(d)
+        self.data = self.parse_array(d, "data", default=[])
+        self.parameters = self.parse_dict(d, "parameters", default={})
 
 
 class PipelineBuildRequestConfig(Config):
@@ -531,7 +545,7 @@ class PipelineBuilder(object):
             # Build module config
             data = etau.join_dicts(
                 self.module_inputs[module], self.module_outputs[module])
-            module_config = (etam.GenericModuleConfig.builder()
+            module_config = (ModuleConfig.builder()
                 .set(data=[data])
                 .set(parameters=self.module_parameters[module])
                 .validate())

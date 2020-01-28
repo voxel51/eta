@@ -257,18 +257,6 @@ class BaseModuleConfigSettings(Config):
             default=etal.LoggingConfig.default())
 
 
-class GenericModuleConfig(Config):
-    '''Generic module configuration class.
-
-    This class is used by `eta.core.builder.PipelineBuilder` to build
-    module configuration files.
-    '''
-
-    def __init__(self, d):
-        self.data = self.parse_array(d, "data", default=[])
-        self.parameters = self.parse_dict(d, "parameters", default={})
-
-
 class ModuleMetadataConfig(Config):
     '''Module metadata configuration class.'''
 
