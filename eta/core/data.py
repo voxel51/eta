@@ -275,6 +275,11 @@ class AttributeSchema(Serializable):
         '''Incorporates the given AttributeSchema into the schema.'''
         raise NotImplementedError("subclass must implement merge_schema()")
 
+    def diff_schema(self, schema):
+        '''Constructs a schema containing the set difference of the source and 
+        target schema.'''
+        raise NotImplementedError("sublcass must implement diff_schema()")
+
     @staticmethod
     def get_kwargs(d):
         '''Extracts the relevant keyword arguments for this schema from the
@@ -326,6 +331,14 @@ class CategoricalAttributeSchema(AttributeSchema):
         '''Merges the given CategoricalAttributeSchema into this schema.'''
         self.categories.update(schema.categories)
 
+    def diff_schema(self, schema):
+        '''Constructs a schema containing the set difference of the source and 
+        target schema.
+        '''
+        diff = self.categories.difference(schema)
+        diff.update(schema.schema.difference(self.categories))
+        return CategoricalAttributeSchema(self.name, diff) if bool(diff) else None
+
     @staticmethod
     def get_kwargs(d):
         '''Extracts the relevant keyword arguments for this schema from the
@@ -372,6 +385,25 @@ class NumericAttributeSchema(AttributeSchema):
                 max(self.range[1], schema.range[1])
             )
 
+    def diff_schema(self, schema):
+        '''Constructs a schema containing the set difference of the source and 
+        target schema.
+        '''
+        if not self.range:
+            diff = schema.range
+        elif not schema.range:
+            diff = self.range
+        elif self.range == schema.range:
+            diff = None
+        else:
+            diff = (
+                max(self.range[0], schema.range[0]),
+                min(self.range[1], schema.range[1])
+            )
+        
+        return NumericAttributeSchema(self.name, diff) if diff else None
+
+
     @staticmethod
     def get_kwargs(d):
         '''Extracts the relevant keyword arguments for this schema from the
@@ -402,6 +434,11 @@ class BooleanAttributeSchema(AttributeSchema):
     def merge_schema(self, schema):
         '''Merges the given BooleanAttributeSchema into this schema.'''
         pass
+
+    def diff_schema(self, schema):
+        '''Constructs a schema containing the set difference of the source and 
+        target schema.'''
+        return None
 
     @staticmethod
     def get_kwargs(d):
@@ -695,6 +732,22 @@ class AttributeContainerSchema(Serializable):
                 self.schema[name] = attr_schema
             else:
                 self.schema[name].merge_schema(attr_schema)
+
+    def diff_schema(self, schema):
+        '''Constructs a schema containing the set difference of the source and 
+        target schema.'''
+        diff = {}
+        for name, attr_schema in iteritems(schema.schema):
+            if name not in self.schema:
+                diff[name] = attr_schema
+            if name not in schema.schema:
+                diff[name] = schema.schema
+            else:
+                attr_diff = self.schema[name].diff_schema(attr_schema)
+                if attr_diff:
+                    diff[name] = attr_dif
+
+        return AttributeContainerSchema(diff) if diff else None
 
     def validate_attribute(self, attr):
         '''Validates that the attribute is compliant with the schema.

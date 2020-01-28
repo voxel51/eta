@@ -1379,6 +1379,45 @@ class VideoLabelsSchema(Serializable):
         for k, v in iteritems(schema.objects):
             self.objects[k].merge_schema(v)
 
+    def diff_schema(self, schema):
+        '''Constructs a schema computed from the difference between self and 
+        the target VideoLabelsSchema object.
+            
+        Args:
+            target: an VideoLabelsSchema
+
+        Returns:
+            an VideoLabelsSchema or None
+        '''
+        attrs = self.attrs.diff_schema(schema.attrs)
+        frames = self.frames.diff_schema(schema.frames)
+        objects = defaultdict(lambda: AttributeContainerSchema())
+        events = defaultdict(lambda: AttributeContainerSchema())
+
+        # Objects
+        for k, v in iteritems(schema.objects):
+            if k in self.objects:
+                objects[k] = self.objects[k].diff_schema(schema.objects[k])
+            else:
+                objects[k].merge_schema(v)
+
+        for k, v in iteritems(self.objects):
+            if k not in objects:
+                objects[k].merge_schema(v)
+
+        # Events
+        for k, v in iteritems(schema.events):
+            if k in self.events:
+                events[k] = self.events[k].diff_schema(schema.events[k])
+            else:
+                events[k].merge_schema(v)
+
+        for k, v in iteritems(self.events):
+            if k not in events:
+                events[k].merge_schema(v)
+        
+        return VideoLabelsSchema(attrs, frames, objects, events)
+
     def is_valid_video_attribute(self, video_attr):
         '''Whether the video attribute is compliant with the schema.
 

@@ -423,6 +423,31 @@ class ImageLabelsSchema(Serializable):
         for k, v in iteritems(schema.objects):
             self.objects[k].merge_schema(v)
 
+    def diff_schema(self, schema):
+        '''Constructs a schema computed from the difference between self and 
+        the target ImageLabelsSchema object.
+            
+        Args:
+            target: an ImageLabelsSchema
+
+        Returns:
+            an ImageLabelsSchema or None
+        '''
+        attrs = self.attrs.diff_schema(schema.attrs)
+        objects = defaultdict(lambda: AttributeContainerSchema())
+
+        for k, v in iteritems(schema.objects):
+            if k in self.objects:
+                objects[k] = self.objects[k].diff_schema(schema.objects[k])
+            else:
+                objects[k].merge_schema(v)
+
+        for k, v in iteritems(self.objects):
+            if k not in objects:
+                objects[k].merge_schema(v)
+
+        return ImageLabelsSchema(attrs, objects)
+
     def is_valid_image_attribute(self, image_attr):
         '''Whether the image attribute is compliant with the schema.
 
