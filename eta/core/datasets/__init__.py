@@ -8,6 +8,7 @@ Tyler Ganter, tyler@voxel51.com
 '''
 
 from .builders import *
+from .cleaning import *
 from .labeled_datasets import *
 from .split_methods import *
 from .transformers import *
