@@ -204,8 +204,8 @@ class LabeledDataset(object):
 
         Returns:
             iterator: iterator over (data, labels) pairs, where data is an
-                object returned by self._read_data() and labels is an object
-                returned by self._read_labels() from the respective paths
+                object returned by self.read_data() and labels is an object
+                returned by self.read_labels() from the respective paths
                 of a data file and corresponding labels file
         '''
         return zip(self.iter_data(), self.iter_labels())
@@ -227,11 +227,11 @@ class LabeledDataset(object):
         '''Iterates over the data in the dataset.
 
         Returns:
-            iterator: iterator over objects returned by self._read_data()
+            iterator: iterator over objects returned by self.read_data()
                 from the paths to data files
         '''
         for data_path in self.iter_data_paths():
-            yield self._read_data(data_path)
+            yield self.read_data(data_path)
 
     def iter_data_paths(self):
         '''Iterates over the paths to data files in the dataset.
@@ -246,11 +246,11 @@ class LabeledDataset(object):
         '''Iterates over the labels in the dataset.
 
         Returns:
-            iterator: iterator over objects returned by self._read_labels()
+            iterator: iterator over objects returned by self.read_labels()
                 from the paths to labels files
         '''
         for labels_path in self.iter_labels_paths():
-            yield self._read_labels(labels_path)
+            yield self.read_labels(labels_path)
 
     def iter_labels_paths(self):
         '''Iterates over the paths to labels files in the dataset.
@@ -441,9 +441,9 @@ class LabeledDataset(object):
 
         # Update the filename attribute in the labels JSON if necessary
         if new_data_filename != os.path.basename(data_path):
-            labels_ = self._read_labels(new_labels_path)
+            labels_ = self.read_labels(new_labels_path)
             labels_.filename = new_data_filename
-            self._write_labels(labels_, new_labels_path)
+            self.write_labels(labels_, new_labels_path)
 
         # First remove any other records with the same data filename
         self.dataset_index.cull_with_function(
@@ -466,9 +466,9 @@ class LabeledDataset(object):
 
         Args:
             data: input data in a format that can be passed to
-                self._write_data()
+                self.write_data()
             labels: input labels in a format that can be passed to
-                self._write_labels()
+                self.write_labels()
             data_filename: filename for the data in the dataset
             labels_filename: filename for the labels in the dataset
             error_on_duplicates: whether to raise an error if a data file
@@ -488,8 +488,8 @@ class LabeledDataset(object):
         labels_path = os.path.join(
             self.dataset_dir, self._LABELS_SUBDIR, labels_filename)
 
-        self._write_data(data, data_path)
-        self._write_labels(labels, labels_path)
+        self.write_data(data, data_path)
+        self.write_labels(labels, labels_path)
 
         # First remove any other records with the same data filename
         self.dataset_index.cull_with_function(
@@ -700,14 +700,14 @@ class LabeledDataset(object):
 
         Args:
             func: function that takes in a data element in the format
-                returned by `self._read_data()` and outputs transformed
+                returned by `self.read_data()` and outputs transformed
                 data in the same format
 
         Returns:
             self
         '''
         for data, path in zip(self.iter_data(), self.iter_data_paths()):
-            self._write_data(func(data), path)
+            self.write_data(func(data), path)
 
         return self
 
@@ -734,7 +734,7 @@ class LabeledDataset(object):
 
         Args:
             func: function that takes in a labels object in the format
-                returned by `self._read_labels()` and outputs transformed
+                returned by `self.read_labels()` and outputs transformed
                 labels in the same format
 
         Returns:
@@ -742,7 +742,7 @@ class LabeledDataset(object):
         '''
         for labels, path in zip(
                 self.iter_labels(), self.iter_labels_paths()):
-            self._write_labels(func(labels), path)
+            self.write_labels(func(labels), path)
 
         return self
 
@@ -905,7 +905,7 @@ class LabeledDataset(object):
                     data_file)
             self._data_to_labels_map[data_file] = labels_file
 
-    def _read_data(self, path):
+    def read_data(self, path):
         '''Reads data from a data file at the given path.
 
         Subclasses must implement this based on the particular data format for
@@ -917,9 +917,9 @@ class LabeledDataset(object):
         Returns:
             a data object in the particular format for the subclass
         '''
-        raise NotImplementedError("subclasses must implement _read_data()")
+        raise NotImplementedError("subclasses must implement read_data()")
 
-    def _read_labels(self, path):
+    def read_labels(self, path):
         '''Reads a labels object from a labels JSON file at the given path.
 
         Subclasses must implement this based on the particular labels format
@@ -931,33 +931,33 @@ class LabeledDataset(object):
         Returns:
             a labels object in the particular format for the subclass
         '''
-        raise NotImplementedError("subclasses must implement _read_labels()")
+        raise NotImplementedError("subclasses must implement read_labels()")
 
-    def _write_data(self, data, path):
+    def write_data(self, data, path):
         '''Writes data to a data file at the given path.
 
         Subclasses must implement this based on the particular data format for
         the subclass.  The method should accept input `data` of the same type
-        as output by `self._read_data()`.
+        as output by `self.read_data()`.
 
         Args:
             data: a data element to be written to a file
             path: path to write the data
         '''
-        raise NotImplementedError("subclasses must implement _write_data()")
+        raise NotImplementedError("subclasses must implement write_data()")
 
-    def _write_labels(self, labels, path):
+    def write_labels(self, labels, path):
         '''Writes a labels object to a labels JSON file at the given path.
 
         Subclasses must implement this based on the particular labels format
         for the subclass.  The method should accept input `labels` of the same
-        type as output by `self._read_labels()`.
+        type as output by `self.read_labels()`.
 
         Args:
             labels: a labels object to be written to a file
             path: path to write the labels JSON file
         '''
-        raise NotImplementedError("subclasses must implement _write_labels()")
+        raise NotImplementedError("subclasses must implement write_labels()")
 
     def _build_metadata(self, path):
         '''Reads metadata from a data file at the given path and builds an
@@ -1151,19 +1151,19 @@ class LabeledVideoDataset(LabeledDataset):
 
         return np.mean(video_durations)
 
-    def _read_data(self, path):
+    def read_data(self, path):
         return etav.FFmpegVideoReader(path)
 
-    def _read_labels(self, path):
+    def read_labels(self, path):
         return etav.VideoLabels.from_json(path)
 
-    def _write_data(self, data, path):
+    def write_data(self, data, path):
         with etav.FFmpegVideoWriter(
                 path, data.frame_rate, data.frame_size) as writer:
             for img in data:
                 writer.write(img)
 
-    def _write_labels(self, labels, path):
+    def write_labels(self, labels, path):
         labels.write_json(path)
 
     def _build_metadata(self, path):
@@ -1235,7 +1235,7 @@ class LabeledImageDataset(LabeledDataset):
                 img, image_labels, annotation_config=annotation_config)
             output_path = os.path.join(
                 output_dir_path, os.path.basename(image_path))
-            self._write_data(img_annotated, output_path)
+            self.write_data(img_annotated, output_path)
 
     @classmethod
     def validate_dataset(cls, dataset_path):
@@ -1268,16 +1268,16 @@ class LabeledImageDataset(LabeledDataset):
             if not os.path.isfile(labels_path):
                 raise LabeledDatasetError("File not found: %s" % labels_path)
 
-    def _read_data(self, path):
+    def read_data(self, path):
         return etai.read(path)
 
-    def _read_labels(self, path):
+    def read_labels(self, path):
         return etai.ImageLabels.from_json(path)
 
-    def _write_data(self, data, path):
+    def write_data(self, data, path):
         etai.write(data, path)
 
-    def _write_labels(self, labels, path):
+    def write_labels(self, labels, path):
         labels.write_json(path)
 
     def _build_metadata(self, path):
