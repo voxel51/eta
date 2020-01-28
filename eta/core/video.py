@@ -1397,7 +1397,9 @@ class VideoLabelsSchema(Serializable):
         # Objects
         for k, v in iteritems(schema.objects):
             if k in self.objects:
-                objects[k] = self.objects[k].diff_schema(schema.objects[k])
+                diff = self.objects[k].diff_schema(schema.objects[k])
+                if diff:
+                    objects[k] = diff
             else:
                 objects[k].merge_schema(v)
 
@@ -1408,7 +1410,9 @@ class VideoLabelsSchema(Serializable):
         # Events
         for k, v in iteritems(schema.events):
             if k in self.events:
-                events[k] = self.events[k].diff_schema(schema.events[k])
+                diff = self.events[k].diff_schema(schema.events[k])
+                if diff:
+                    events[k] = diff
             else:
                 events[k].merge_schema(v)
 

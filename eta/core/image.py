@@ -438,7 +438,9 @@ class ImageLabelsSchema(Serializable):
 
         for k, v in iteritems(schema.objects):
             if k in self.objects:
-                objects[k] = self.objects[k].diff_schema(schema.objects[k])
+                diff = self.objects[k].diff_schema(schema.objects[k])
+                if diff:
+                    objects[k] = diff
             else:
                 objects[k].merge_schema(v)
 
