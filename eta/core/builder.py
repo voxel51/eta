@@ -60,7 +60,7 @@ def find_last_built_pipeline():
     if not builds:
         return None
 
-    config_dir = max(builds, key=lambda b: os.path.basename(b))
+    config_dir = max(builds, key=os.path.basename)
     return os.path.join(config_dir, PIPELINE_CONFIG_FILE)
 
 
@@ -301,7 +301,22 @@ class PipelineBuilder(object):
             request: a PipelineBuildRequest instance
         '''
         self.request = request
+
+        self.optimized = None
+        self.timestamp = None
+        self.config_dir = None
+        self.output_dir = None
+        self.pipeline_config_path = None
+        self.pipeline_status_path = None
+        self.pipeline_logfile_path = None
+        self.execution_order = None
+        self.module_inputs = None
+        self.module_outputs = None
+        self.module_parameters = None
+        self.pipeline_outputs = None
+
         self._concrete_data_params = etat.ConcreteDataParams()
+
         self.reset()
 
     def reset(self):
@@ -371,9 +386,9 @@ class PipelineBuilder(object):
         '''
         if not self.pipeline_config_path:
             raise PipelineBuilderError(
-                "You must build the pipeline before running it")
+                "No pipeline config found; you must build the pipeline before "
+                "running it")
 
-        # Run pipeline
         return etap.run(self.pipeline_config_path)
 
     def cleanup(self):
@@ -587,8 +602,7 @@ class PipelineBuilder(object):
 
 
 class PipelineBuilderError(Exception):
-    '''Exception raised when an invalid action is taken with a
-    PipelineBuilder.
+    '''Exception raised when an invalid action is taken with a PipelineBuilder.
     '''
     pass
 
