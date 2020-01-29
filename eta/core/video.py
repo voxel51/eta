@@ -1722,7 +1722,7 @@ class VideoLabelsSchemaChecker(etai.ImageLabelsSchemaChecker):
         '''Override of etai.ImageLabelsSchemaChecker._check'''
         self._check_video_attrs(labels)
         self._check_frames(labels)
-        # self._check_events(labels)
+        self._check_events(labels)
 
     def _check_video_attrs(self, labels):
         def valid_in_schema(schema, thing):
@@ -1765,8 +1765,8 @@ class VideoLabelsSchemaChecker(etai.ImageLabelsSchemaChecker):
             self._check_thing(attr, valid_in_schema, add_to_schema,
                               get_target_iterable, assign_mapped_value)
 
-    def _check_events(self, event_container):
-        for event in event_container:
+    def _check_events(self, labels):
+        for event in labels.iter_events():
             self._check_event_label(event)
             self._check_event_attrs(event)
 
