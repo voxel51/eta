@@ -1,7 +1,7 @@
 '''
-Core interfaces, data structures, and methods for working with datasets
+Tools for standardizing datasets by automated means
 
-Copyright 2017-2019 Voxel51, Inc.
+Copyright 2017-2020 Voxel51, Inc.
 voxel51.com
 
 Tyler Ganter, tyler@voxel51.com
@@ -14,40 +14,32 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
-import six
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-import copy
-import glob
 import logging
 import os
-import random
 
-import numpy as np
-
-import eta.core.annotations as etaa
-from eta.core.data import BaseDataRecord
 import eta.core.image as etai
-from eta.core.serial import Serializable
 import eta.core.utils as etau
 import eta.core.video as etav
 
-from .labeled_datasets import LabeledDatasetError
+from .labeled_datasets import LabeledDatasetError, LabeledImageDataset, \
+    LabeledVideoDataset
 
 
 logger = logging.getLogger(__name__)
 
 
-def check_labels_filename_property(dataset, audit_only=True):
+def ensure_labels_filename_property(dataset, audit_only=True):
     '''Audit labels.filename's for each record in a dataset and optionally
     populate this field.
 
     Args:
         dataset: a `LabeledDataset` instance
         audit_only: If False, modifies the labels in place to populate the
-            filename attribute.
+            filename attribute
 
     Returns:
         a tuple of:
@@ -94,26 +86,50 @@ def check_labels_filename_property(dataset, audit_only=True):
     return missing_count, mismatch_count
 
 
+def check_dataset_syntax(dataset, target_schema, audit_only=True):
+    '''Audit labels.filename's for each record in a dataset and optionally
+    populate this field.
 
-'''
+    Args:
+        dataset: a `LabeledDataset` instance
+        target_schema: an `ImageLabelsSchema` or `VideoLabelsSchema` matching
+            the dataset type
+        audit_only: If False, modifies the labels in place to fix syntax
 
-duplicate equivalent attrs:
-    input: labels
-    output: schema of duplicate labels
-    in place: remove one of the two duplicates
+    Returns:
+        a tuple of:
+            fixable_schema: schema of values that can be (or were) substituted
+                with target_schema syntax
+            unfixable_schema: schema of values that cannot be mapped to
+                the target_schema
+    '''
+    logger.info("Checking consistent syntax for labeled dataset...")
 
-duplicate different attrs:
-    input: labels
-    output: pairs of attrs (schema with values joined by `:`?)
-    in place: raise error
+    if isinstance(dataset, LabeledImageDataset):
+        checker = etai.ImageLabelsSyntaxChecker(target_schema)
+    elif isinstance(dataset, LabeledVideoDataset):
+        checker = etav.VideoLabelsSyntaxChecker(target_schema)
+    else:
+        raise ValueError(
+            "Unexpected input type: `%s`" % etau.get_class_name(dataset))
 
+    modified_count = 0
 
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    for idx, labels_path in enumerate(dataset.iter_labels_paths()):
+        if idx % 20 == 0:
+            logger.info("%4d/%4d" % (idx, len(dataset)))
 
+        labels = dataset.read_labels(labels_path)
 
-duplicate samples:
-    inputs: list of files; dataset(s)
-    outputs: list of list of duplicates
+        was_modified = checker.check(labels)
 
+        modified_count += int(was_modified)
+        if not audit_only and was_modified:
+            labels.write_json(labels_path)
 
-'''
+    logger.info(
+        "Complete: %d/%d files %supdated"
+        % (modified_count, len(dataset), "can be " if audit_only else "")
+    )
+
+    return checker.fixable_schema, checker.unfixable_schema
