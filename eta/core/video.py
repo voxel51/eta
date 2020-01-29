@@ -1707,19 +1707,19 @@ class VideoLabelsSchemaError(Exception):
     pass
 
 
-class VideoLabelsSchemaCheckerError(Exception):
-    '''Error raised when a VideoLabelsSchemaChecker is violated.'''
+class VideoLabelsSyntaxCheckerError(etai.ImageLabelsSyntaxCheckerError):
+    '''Error raised when a VideoLabelsSyntaxCheckerError is violated.'''
     pass
 
 
-class VideoLabelsSchemaChecker(etai.ImageLabelsSchemaChecker):
+class VideoLabelsSyntaxChecker(etai.ImageLabelsSyntaxChecker):
 
     _SCHEMA_CLS = VideoLabelsSchema
     _LABELS_CLS = VideoLabels
-    _ERROR_CLS = VideoLabelsSchemaCheckerError
+    _ERROR_CLS = VideoLabelsSyntaxCheckerError
 
     def _check(self, labels):
-        '''Override of etai.ImageLabelsSchemaChecker._check'''
+        '''Override of etai.ImageLabelsSyntaxChecker._check'''
         self._check_video_attrs(labels)
         self._check_frames(labels)
         self._check_events(labels)

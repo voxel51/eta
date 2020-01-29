@@ -597,13 +597,13 @@ class ImageLabelsSchemaError(Exception):
     pass
 
 
-class ImageLabelsSchemaCheckerError(Exception):
-    '''Error raised when a ImageLabelsSchemaChecker is violated.'''
+class ImageLabelsSyntaxCheckerError(Exception):
+    '''Error raised when a ImageLabelsSyntaxChecker is violated.'''
     pass
 
 
 def _skip_non_categorical_attrs(func):
-    '''decorator for `ImageLabelsSchemaChecker._check_thing` that ensures only
+    '''decorator for `ImageLabelsSyntaxChecker._check_thing` that ensures only
     categorical attributes are checked
     '''
 
@@ -626,7 +626,7 @@ def _skip_non_categorical_attrs(func):
 
 
 def _map_attrs_to_and_from_strings(func):
-    ''' decorator for `ImageLabelsSchemaChecker_map_to_target` that joins attr
+    ''' decorator for `ImageLabelsSyntaxChecker_map_to_target` that joins attr
     name and value before checking mapping and parses to a CategoricalAttribute
     after receiving the result.
     '''
@@ -658,9 +658,12 @@ def _map_attrs_to_and_from_strings(func):
     return wrapper
 
 
-class ImageLabelsSchemaChecker(object):
+class ImageLabelsSyntaxChecker(object):
     '''Tool that checks ImageLabels against an ImageLabelsSchema and
     makes capitalization and underscores versus spaces consistent.
+
+    e.g. assuming the target_schema contains "road sign", map "Road Sign" and
+    "road_sign" in an ImageLabels object to "road sign"
 
     The Checker is initialized with a schema, then any number of ImageLabels
     can be checked with it. The Checker modifies the labels in place but does
@@ -670,7 +673,7 @@ class ImageLabelsSchemaChecker(object):
 
     Example usage:
         ```
-        checker = ImageLabelsSchemaChecker(schema)
+        checker = ImageLabelsSyntaxChecker(schema)
         was_modified = checker.check(labels)
         if was_modified:
             print("Was modified!")
@@ -693,9 +696,15 @@ class ImageLabelsSchemaChecker(object):
 
     _SCHEMA_CLS = ImageLabelsSchema
     _LABELS_CLS = ImageLabels
-    _ERROR_CLS = ImageLabelsSchemaCheckerError
+    _ERROR_CLS = ImageLabelsSyntaxCheckerError
 
     def __init__(self, target_schema):
+        '''Creates an ImageLabelsSyntaxChecker instance.
+
+        Args:
+            target_schema: a _SCHEMA_CLS object with the target (desired) schema
+                to check labels against
+        '''
         self._validate_type(target_schema, self._SCHEMA_CLS)
 
         self._target_schema = target_schema
@@ -704,21 +713,50 @@ class ImageLabelsSchemaChecker(object):
 
     @property
     def target_schema(self):
+        '''The target (desired) _SCHEMA_CLS instance'''
         return self._target_schema
 
     @property
     def fixable_schema(self):
+        '''The fixable _SCHEMA_CLS instance
+
+        If for example:
+            - checked labels have object label "Road_Sign"
+            - `target_schema` has object label "road sign"
+        then `fixable_schema` will contain object label "Road_Sign"
+
+        This schema accumulates from all calls to `check()`
+        '''
         return self._fixable_schema
 
     @property
     def unfixable_schema(self):
+        '''The un-fixable _SCHEMA_CLS instance containing anything not in the
+        target_schema and cannot be mapped to the target_schema by
+        capitalization and spaces/underscores.
+
+        This schema accumulates from all calls to `check()`
+        '''
         return self._unfixable_schema
 
     def clear_state(self):
+        '''Clear the `fixable_schema` and `unfixable_schema` of any accumulated
+        data.
+        '''
         self._fixable_schema = self._SCHEMA_CLS()
         self._unfixable_schema = self._SCHEMA_CLS()
 
     def check(self, labels):
+        '''Check a labels object against the target_schema and modify in-place
+        any "fixable" values.
+
+        Args:
+            labels - a _LABELS_CLS instance
+
+        Returns:
+            True if the labels were modified (implying at least one fixable
+                label was found)
+        '''
         self._was_modified = False
         self._validate_type(labels, self._LABELS_CLS)
         self._check(labels)
@@ -824,7 +862,6 @@ class ImageLabelsSchemaChecker(object):
 
     @_map_attrs_to_and_from_strings
     def _map_to_target(self, value, target_iterable):
-        # @todo(Tyler) perhaps make this more efficient (store globally)
         std_value = self._standardize(value)
         std_to_target_map = {self._standardize(x): x for x in target_iterable}
 
