@@ -629,6 +629,68 @@ class AttributeContainer(Container):
                              % (name, len(values)))
         return values[0]
 
+    def check_for_duplicates(self, multi_value_names=None):
+        '''Check for duplicate attributes in the container
+
+        Args:
+            multi_value_names: list of attr name strings that the container is
+                allowed to have multiple DIFFERENT values for
+
+        Raises:
+            ValueError if:
+                - multiple types for an attr name
+                - multiple values for an attr name *not in multi_value_names*
+                - duplicate values for an attr name
+        '''
+        types_map, values_map = self._accumulate_attrs()
+
+        self._check_multiple_types(types_map)
+
+        self._check_multiple_values(values_map, multi_value_names)
+
+    def _accumulate_attrs(self):
+        types_map = defaultdict(list)
+        values_map = defaultdict(list)
+        for attr in self:
+            types_map[attr.name].append(attr.type)
+            values_map[attr.name].append(attr.value)
+        return types_map, values_map
+
+    def _check_multiple_types(self, types_map):
+        '''ensure only one TYPE per attr name'''
+        for attr_name, types in types_map.items():
+            types_set = set(types)
+
+            if len(types_set) > 1:
+                raise ValueError("Multiple types found for attr '%s':\n\t%s"
+                                 % (attr_name, types_set))
+
+    def _check_multiple_values(self, values_map, multi_value_names):
+        '''ensure only one VALUE per attr name'''
+        for attr_name, values in values_map.items():
+            if len(values) == 1:
+                # only one value
+                continue
+
+            values_set = set(values)
+
+            if len(values_set) == len(values):
+                # no duplicate values
+
+                if multi_value_names and attr_name in multi_value_names:
+                    # it's okay for this attr name to have multiple values
+                    continue
+
+                if len(values_set) != 1:
+                    raise ValueError(
+                        "Multiple different values found for attr '%s':\n\t%s"
+                        % (attr_name, values_set))
+            else:
+                # duplicate values!
+                raise ValueError(
+                    "Duplicate same values found for attr '%s':\n\t%s"
+                    % (attr_name, values_set))
+
     def attributes(self):
         '''Returns the list of class attributes that will be serialized.'''
         _attrs = []
