@@ -1719,54 +1719,28 @@ class VideoLabelsSchemaChecker(etai.ImageLabelsSchemaChecker):
     _ERROR_CLS = VideoLabelsSchemaCheckerError
 
     def _check(self, labels):
+        '''Override of etai.ImageLabelsSchemaChecker._check'''
         self._check_video_attrs(labels)
         self._check_frames(labels)
-        self._check_events(labels)
+        # self._check_events(labels)
 
     def _check_video_attrs(self, labels):
+        def valid_in_schema(schema, thing):
+            return schema.is_valid_video_attribute(thing)
+
+        def add_to_schema(schema, thing):
+            schema.add_video_attribute(thing)
+
+        def get_target_iterable():
+            return self.target_schema.attrs
+
+        def assign_mapped_value(thing, mapped_thing):
+            thing.name = mapped_thing.name
+            thing.value = mapped_thing.value
+
         for attr in labels.attrs:
-            self._check_video_attr(attr)
-            # self._check_thing(
-            #     "has_video_attribute",
-            #     "add_video_attribute",
-            #     attr,
-            #     "value",
-            #     self.target_schema.attrs[attr.value].categories
-            # )
-
-    @etai._skip_non_categorical_attrs
-    def _check_video_attr(self, attr):
-        # Is the value in the target schema?
-        if self.target_schema.is_valid_video_attribute(attr):
-            return
-
-        # Is the value in the fixable schema?
-        if self.fixable_schema.is_valid_video_attribute(attr):
-            mapped_attr = self._map_to_target(attr, self.target_schema.attrs)
-
-            if mapped_attr is None:
-                raise self._ERROR_CLS("Woah this is bad!")
-
-            self._was_modified = True
-            attr.name = mapped_attr.name
-            attr.value = mapped_attr.value
-
-            return
-
-        # Is the value in the unfixable schema?
-        if self.unfixable_schema.is_valid_video_attribute(attr):
-            return
-
-        mapped_attr = self._map_to_target(attr, self.target_schema.attrs)
-
-        if mapped_attr is not None:
-            self.fixable_schema.add_video_attribute(attr)
-            self._was_modified = True
-            attr.name = mapped_attr.name
-            attr.value = mapped_attr.value
-
-        else:
-            self.unfixable_schema.add_video_attribute(attr)
+            self._check_thing(attr, valid_in_schema, add_to_schema,
+                              get_target_iterable, assign_mapped_value)
 
     def _check_frames(self, labels):
         for frame in labels.iter_frames():
@@ -1774,20 +1748,64 @@ class VideoLabelsSchemaChecker(etai.ImageLabelsSchemaChecker):
             self._check_objects(frame.objects)
 
     def _check_frame_attrs(self, frame):
-        # `eta.core.data.AttributeContainerSchema`
-        target_frames_schema = self.target_schema.frames
+        def valid_in_schema(schema, thing):
+            return schema.is_valid_frame_attribute(thing)
+
+        def add_to_schema(schema, thing):
+            schema.add_frame_attribute(thing)
+
+        def get_target_iterable():
+            return self.target_schema.frames
+
+        def assign_mapped_value(thing, mapped_thing):
+            thing.name = mapped_thing.name
+            thing.value = mapped_thing.value
 
         for attr in frame.attrs:
-            # @todo(Tyler)
-            raise NotImplementedError("@todo(Tyler)")
+            self._check_thing(attr, valid_in_schema, add_to_schema,
+                              get_target_iterable, assign_mapped_value)
 
-    def _check_events(self, labels):
-        # `collections.defaultdict`
-        target_events_schema = self.target_schema.events
+    def _check_events(self, event_container):
+        for event in event_container:
+            self._check_event_label(event)
+            self._check_event_attrs(event)
 
-        for event in labels.events:
-            # @todo(Tyler)
-            raise NotImplementedError("@todo(Tyler)")
+    def _check_event_label(self, event):
+        def valid_in_schema(schema, thing):
+            return schema.is_valid_event_label(thing)
+
+        def add_to_schema(schema, thing):
+            schema.add_event_label(thing)
+
+        def get_target_iterable():
+            return self.target_schema.events.keys()
+
+        def assign_mapped_value(thing, mapped_thing):
+            event.label = mapped_thing
+
+        self._check_thing(event.label, valid_in_schema, add_to_schema,
+                          get_target_iterable, assign_mapped_value)
+
+    def _check_event_attrs(self, event):
+        if not self.target_schema.is_valid_event_label(event.label):
+            return
+
+        def valid_in_schema(schema, thing):
+            return schema.is_valid_event_attribute(event.label, thing)
+
+        def add_to_schema(schema, thing):
+            schema.add_event_attribute(event.label, thing)
+
+        def get_target_iterable():
+            return self.target_schema.events[event.label]
+
+        def assign_mapped_value(thing, mapped_thing):
+            thing.name = mapped_thing.name
+            thing.value = mapped_thing.value
+
+        for attr in event.attrs:
+            self._check_thing(attr, valid_in_schema, add_to_schema,
+                              get_target_iterable, assign_mapped_value)
 
 
 class VideoSetLabels(Set):
