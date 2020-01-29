@@ -326,6 +326,15 @@ class CategoricalAttributeSchema(AttributeSchema):
         '''Merges the given CategoricalAttributeSchema into this schema.'''
         self.categories.update(schema.categories)
 
+    def iter_name_values(self):
+        '''Iterate over all pairs of (attr.name, attr.value)
+
+        Returns:
+            generator that yields (attr.name, attr.value) tuples
+        '''
+        for value in self.categories:
+            yield self.name, value
+
     @staticmethod
     def get_kwargs(d):
         '''Extracts the relevant keyword arguments for this schema from the

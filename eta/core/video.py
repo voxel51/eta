@@ -41,13 +41,13 @@ import dateutil.parser
 import numpy as np
 
 from eta.core.data import AttributeContainer, AttributeContainerSchema
+import eta.core.data as etad
 from eta.core.events import EventContainer
 import eta.core.frames as etaf
 import eta.core.gps as etag
 import eta.core.image as etai
 from eta.core.objects import DetectedObjectContainer
 from eta.core.serial import load_json, Serializable, Set, BigSet
-import eta.core.serial as etas
 import eta.core.utils as etau
 
 
@@ -1719,9 +1719,54 @@ class VideoLabelsSchemaChecker(etai.ImageLabelsSchemaChecker):
     _ERROR_CLS = VideoLabelsSchemaCheckerError
 
     def _check(self, labels):
-        self._check_attrs(labels)
+        self._check_video_attrs(labels)
         self._check_frames(labels)
         self._check_events(labels)
+
+    def _check_video_attrs(self, labels):
+        for attr in labels.attrs:
+            self._check_video_attr(attr)
+            # self._check_thing(
+            #     "has_video_attribute",
+            #     "add_video_attribute",
+            #     attr,
+            #     "value",
+            #     self.target_schema.attrs[attr.value].categories
+            # )
+
+    @etai._skip_non_categorical_attrs
+    def _check_video_attr(self, attr):
+        # Is the value in the target schema?
+        if self.target_schema.is_valid_video_attribute(attr):
+            return
+
+        # Is the value in the fixable schema?
+        if self.fixable_schema.is_valid_video_attribute(attr):
+            mapped_attr = self._map_to_target(attr, self.target_schema.attrs)
+
+            if mapped_attr is None:
+                raise self._ERROR_CLS("Woah this is bad!")
+
+            self._was_modified = True
+            attr.name = mapped_attr.name
+            attr.value = mapped_attr.value
+
+            return
+
+        # Is the value in the unfixable schema?
+        if self.unfixable_schema.is_valid_video_attribute(attr):
+            return
+
+        mapped_attr = self._map_to_target(attr, self.target_schema.attrs)
+
+        if mapped_attr is not None:
+            self.fixable_schema.add_video_attribute(attr)
+            self._was_modified = True
+            attr.name = mapped_attr.name
+            attr.value = mapped_attr.value
+
+        else:
+            self.unfixable_schema.add_video_attribute(attr)
 
     def _check_frames(self, labels):
         for frame in labels.iter_frames():

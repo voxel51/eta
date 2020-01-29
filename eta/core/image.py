@@ -40,9 +40,9 @@ import numpy as np
 import eta
 from eta.core.data import AttributeContainer, AttributeContainerSchema, \
     AttributeContainerSchemaError
+import eta.core.data as etad
 from eta.core.objects import DetectedObjectContainer
 from eta.core.serial import Serializable, Set, BigSet
-import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.web as etaw
 
@@ -317,18 +317,6 @@ class ImageLabelsSchema(Serializable):
         '''
         return self.attrs.has_attribute(image_attr_name)
 
-    def get_image_attribute_class(self, image_attr_name):
-        '''Gets the Attribute class for the image attribute with the given
-        name.
-
-        Args:
-            image_attr_name: an image attribute name
-
-        Returns:
-            an Attribute
-        '''
-        return self.attrs.get_attribute_class(image_attr_name)
-
     def has_object_label(self, label):
         '''Whether the schema has an object with the given label.
 
@@ -354,6 +342,18 @@ class ImageLabelsSchema(Serializable):
         if not self.has_object_label(label):
             return False
         return self.objects[label].has_attribute(obj_attr_name)
+
+    def get_image_attribute_class(self, image_attr_name):
+        '''Gets the Attribute class for the image attribute with the given
+        name.
+
+        Args:
+            image_attr_name: an image attribute name
+
+        Returns:
+            an Attribute
+        '''
+        return self.attrs.get_attribute_class(image_attr_name)
 
     def get_object_attribute_class(self, label, obj_attr_name):
         '''Gets the Attribute class for the attribute of the given name for the
@@ -602,6 +602,55 @@ class ImageLabelsSchemaCheckerError(Exception):
     pass
 
 
+def _skip_non_categorical_attrs(func):
+
+    def wrapper(self, thing, *args, **kwargs):
+        if isinstance(thing, etad.Attribute):
+            # We only care about checking the value for categorical attributes
+            if isinstance(thing, etad.BooleanAttribute):
+                return
+
+            if isinstance(thing, etad.NumericAttribute):
+                return
+
+            if not isinstance(thing, etad.CategoricalAttribute):
+                raise self._ERROR_CLS(
+                    "Unexpected attribute type: '%s'" % thing.type)
+
+        return func(self, thing, *args, **kwargs)
+
+    return wrapper
+
+
+def _map_attrs_to_and_from_strings(func):
+
+    def wrapper(self, attr, attr_container_schema, *args, **kwargs):
+        if isinstance(attr, etad.Attribute):
+            self._validate_type(
+                attr_container_schema, etad.AttributeContainerSchema)
+
+            value = "%s:%s" % (attr.name, attr.value)
+            target_iterable = [
+                "%s:%s" % (attr_name, attr_value)
+                for attr_schema in attr_container_schema.schema.values()
+                for attr_name, attr_value in attr_schema.iter_name_values()
+            ]
+
+            result = func(self, value, target_iterable, *args, **kwargs)
+
+            if result:
+                attr_name, attr_value = result.split(":")
+                return etad.CategoricalAttribute(attr_name, attr_value)
+            else:
+                return result
+
+        else:
+            return func(self, attr, attr_container_schema, *args, **kwargs)
+
+
+    return wrapper
+
+
 class ImageLabelsSchemaChecker(object):
 
     _SCHEMA_CLS = ImageLabelsSchema
@@ -643,61 +692,131 @@ class ImageLabelsSchemaChecker(object):
         return self._was_modified
 
     def _check(self, labels):
-        self._check_attrs(labels)
+        self._check_image_attrs(labels)
         self._check_objects(labels.objects)
 
-    def _check_attrs(self, labels):
-        # `eta.core.data.AttributeContainerSchema`
-        target_attr_schema = self.target_schema.attrs
-
+    def _check_image_attrs(self, labels):
         for attr in labels.attrs:
             # @todo(Tyler)
-            raise NotImplementedError("@todo(Tyler)")
+            self._check_thing(
+                "has_image_attribute",
+                "add_image_attribute",
+                attr,
+                "value",
+                self.target_schema.attrs[attr.value].categories
+            )
 
     def _check_objects(self, object_container):
         for obj in object_container:
             self._check_object_label(obj)
-            # obj.attrs
-            # @todo(Tyler) check object attributes
+            self._check_object_attrs(obj)
 
     def _check_object_label(self, obj):
-        # `collections.defaultdict`
-        target_obj_labels = self.target_schema.objects
+        # # `collections.defaultdict`
+        # target_obj_labels = self.target_schema.objects
+        #
+        # # Is the object label in the target schema?
+        # if self.target_schema.is_valid_object_label(obj.label):
+        #     return
+        #
+        # # Is the object label in the fixable schema?
+        # if self.fixable_schema.is_valid_object_label(obj.label):
+        #     target_mapped_obj_label = self._map_to_target(
+        #         obj.label, target_obj_labels.keys())
+        #
+        #     if target_mapped_obj_label is None:
+        #         raise self._ERROR_CLS("Woah this is bad!")
+        #
+        #     self._was_modified = True
+        #     obj.label = target_mapped_obj_label
+        #
+        #     return
+        #
+        # # Is the object label in the unfixable schema?
+        # if self.unfixable_schema.is_valid_object_label(obj.label):
+        #     return
+        #
+        # target_mapped_obj_label = self._map_to_target(
+        #     obj.label, target_obj_labels.keys())
+        #
+        # if target_mapped_obj_label is not None:
+        #     self.fixable_schema.add_object_label(obj.label)
+        #     self._was_modified = True
+        #     obj.label = target_mapped_obj_label
+        #
+        # else:
+        #     self.unfixable_schema.add_object_label(obj.label)
 
-        # Is the object label in the target schema?
-        if self.target_schema.has_object_label(obj.label):
+        def valid_in_schema(schema, thing):
+            return schema.is_valid_object_label(thing)
+
+        def add_to_schema(schema, thing):
+            schema.add_object_label(thing)
+
+        def get_target_iterable():
+            return self.target_schema.objects.keys()
+
+        def assign_mapped_value(thing, mapped_thing):
+            obj.label = mapped_thing
+
+        self._check_thing(obj.label, valid_in_schema, add_to_schema,
+                          get_target_iterable, assign_mapped_value)
+
+    def _check_object_attrs(self, obj):
+        if not self.target_schema.is_valid_object_label(obj.label):
             return
 
-        # Is the object label in the fixable schema?
-        if self.fixable_schema.has_object_label(obj.label):
-            if not self.audit_only:
-                target_mapped_obj_label = self._map_to_target(
-                    obj.label, target_obj_labels.keys())
+        def valid_in_schema(schema, thing):
+            return schema.is_valid_object_attribute(obj.label, thing)
 
-                if target_mapped_obj_label is None:
-                    raise self._ERROR_CLS("Woah this is bad!")
+        def add_to_schema(schema, thing):
+            schema.add_object_attribute(obj.label, thing)
 
-                self._was_modified = True
-                obj.label = target_mapped_obj_label
+        def get_target_iterable():
+            return self.target_schema.objects[obj.label]
+
+        def assign_mapped_value(thing, mapped_thing):
+            thing.name = mapped_thing.name
+            thing.value = mapped_thing.value
+
+        for attr in obj.attrs:
+            self._check_thing(attr, valid_in_schema, add_to_schema,
+                              get_target_iterable, assign_mapped_value)
+
+    @_skip_non_categorical_attrs
+    def _check_thing(self, thing, valid_in_schema, add_to_schema,
+                     get_target_iterable, assign_mapped_value):
+        # Is the value in the target schema?
+        if valid_in_schema(self.target_schema, thing):
+            return
+
+        # Is the value in the fixable schema?
+        if valid_in_schema(self.fixable_schema, thing):
+            mapped_value = self._map_to_target(thing, get_target_iterable())
+
+            if mapped_value is None:
+                raise self._ERROR_CLS("Woah this is bad!")
+
+            self._was_modified = True
+            assign_mapped_value(thing, mapped_value)
 
             return
 
-        # Is the object label in the unfixable schema?
-        if self.unfixable_schema.has_object_label(obj.label):
+        # Is the value in the unfixable schema?
+        if valid_in_schema(self.unfixable_schema, thing):
             return
 
-        target_mapped_obj_label = self._map_to_target(
-            obj.label, target_obj_labels.keys())
+        mapped_value = self._map_to_target(thing, get_target_iterable())
 
-        if target_mapped_obj_label is not None:
-            self.fixable_schema.add_object_label(obj.label)
-            if not self.audit_only:
-                self._was_modified = True
-                obj.label = target_mapped_obj_label
+        if mapped_value is not None:
+            add_to_schema(self.fixable_schema, thing)
+            self._was_modified = True
+            assign_mapped_value(thing, mapped_value)
 
         else:
-            self.unfixable_schema.add_object_label(obj.label)
+            add_to_schema(self.unfixable_schema, thing)
 
+    @_map_attrs_to_and_from_strings
     def _map_to_target(self, value, target_iterable):
         # @todo(Tyler) perhaps make this more efficient (store globally)
         std_value = self._standardize(value)
@@ -709,22 +828,15 @@ class ImageLabelsSchemaChecker(object):
         return None
 
     def _standardize(self, value):
-        self._validate_type(value, str)
-        return value.lower().replace("_", " ")
+        return str(value).lower().replace("_", " ")
 
     def _validate_type(self, obj, expected_type):
-        if expected_type == str:
-            valid = etau.is_str(obj)
-        else:
-            valid = isinstance(obj, expected_type)
-
-        if not valid:
+        if not isinstance(obj, expected_type):
             raise ValueError(
                 "Invalid input type: '%s'. Expected: '%s'"
                 % (etau.get_class_name(obj),
                    etau.get_class_name(expected_type))
             )
-
 
 class ImageSetLabels(Set):
     '''Class encapsulating labels for a set of images.
