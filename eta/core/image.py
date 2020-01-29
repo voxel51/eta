@@ -659,6 +659,37 @@ def _map_attrs_to_and_from_strings(func):
 
 
 class ImageLabelsSchemaChecker(object):
+    '''Tool that checks ImageLabels against an ImageLabelsSchema and
+    makes capitalization and underscores versus spaces consistent.
+
+    The Checker is initialized with a schema, then any number of ImageLabels
+    can be checked with it. The Checker modifies the labels in place but does
+    NOT write them to disk. The Checker also accumulates fixable and un-fixable
+    schemas. Un-fixable labels cannot be inferred and should be fixed by another
+    means.
+
+    Example usage:
+        ```
+        checker = ImageLabelsSchemaChecker(schema)
+        was_modified = checker.check(labels)
+        if was_modified:
+            print("Was modified!")
+            labels.write_json(labels_path)
+
+        print(checker.fixable_schema)
+        print(checker.unfixable_schema)
+        ```
+
+    Into the weeds:
+        This class has one main "worker" function: `_check_thing`, which can
+        check strings and attributes against a schema. The other private
+        helpers such as:
+            `_check_image_attrs`
+            `_check_object_label`
+            `_check_object_attrs`
+        just specify functions used by `_check_thing` for their respective
+        tasks.
+    '''
 
     _SCHEMA_CLS = ImageLabelsSchema
     _LABELS_CLS = ImageLabels
