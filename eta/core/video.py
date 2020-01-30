@@ -1715,7 +1715,7 @@ class VideoLabelsSchema(Serializable):
     def attributes(self):
         '''Returns the list of class attributes that will be serialized.
 
-        Args:
+        Returns:
             a list of attribute names
         '''
         return ["attrs", "frames", "objects", "events"]
