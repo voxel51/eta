@@ -1,7 +1,7 @@
 '''
 Core system and file I/O utilities.
 
-Copyright 2017-2019, Voxel51, Inc.
+Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
@@ -22,7 +22,8 @@ import six
 # pragma pylint: enable=wildcard-import
 
 from collections import defaultdict
-import datetime
+from datetime import datetime
+import dateutil.parser
 import errno
 import glob
 import glob2
@@ -82,8 +83,24 @@ def standarize_strs(arg):
 
 
 def get_isotime():
-    '''Gets the local time in ISO 8601 format: "YYYY-MM-DD HH:MM:SS".'''
-    return str(datetime.datetime.now().replace(microsecond=0))
+    '''Gets the local time in "YYYY-MM-DD HH:MM:SS" format.
+
+    Returns:
+        an "YYYY-MM-DD HH:MM:SS" string
+    '''
+    return str(datetime.now().replace(microsecond=0))
+
+
+def parse_isotime(isotime_str):
+    '''Parses the ISO time string into a datetime.
+
+    Args:
+        isotime_str: an ISO time string like "YYYY-MM-DD HH:MM:SS"
+
+    Returns:
+        a datetime
+    '''
+    return dateutil.parser.parse(isotime_str)
 
 
 def get_eta_rev():
@@ -105,6 +122,20 @@ def has_gpu():
     except OSError:
         # couldn't find lspci command...
         return False
+
+
+def get_int_pattern_with_capacity(max_number):
+    '''Gets a zero-padded integer pattern like "%%02d" or "%%03d" with
+    sufficient capacity for the given number.
+
+    Args:
+        max_number: the maximum number you intend to pass to the pattern
+
+    Returns:
+        a zero-padded integer formatting pattern
+    '''
+    num_digits = max(1, math.ceil(math.log10(1 + max_number)))
+    return "%%0%dd" % num_digits
 
 
 def fill_patterns(string, patterns):
