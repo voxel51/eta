@@ -41,7 +41,6 @@ import dateutil.parser
 import numpy as np
 
 from eta.core.data import AttributeContainer, AttributeContainerSchema
-import eta.core.data as etad
 from eta.core.events import EventContainer
 import eta.core.frames as etaf
 import eta.core.gps as etag
@@ -1730,6 +1729,15 @@ class VideoLabelsSchema(Serializable):
         self.frames.merge_schema(schema.frames)
         for k, v in iteritems(schema.objects):
             self.objects[k].merge_schema(v)
+
+    def cast_as_image_labels_schema(self):
+        '''Create ImageLabelsSchema from VideoLabelsSchema, using frame attrs
+        as image attrs
+
+        Returns:
+            an ImageLabelsSchema instance
+        '''
+        return etai.ImageLabelsSchema.from_video_labels_schema(self)
 
     @classmethod
     def build_active_schema_for_frame(cls, frame_labels):
