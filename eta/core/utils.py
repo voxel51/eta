@@ -22,7 +22,8 @@ import six
 # pragma pylint: enable=wildcard-import
 
 from collections import defaultdict
-import datetime
+from datetime import datetime
+import dateutil.parser
 import errno
 import glob
 import glob2
@@ -82,8 +83,24 @@ def standarize_strs(arg):
 
 
 def get_isotime():
-    '''Gets the local time in ISO 8601 format: "YYYY-MM-DD HH:MM:SS".'''
-    return str(datetime.datetime.now().replace(microsecond=0))
+    '''Gets the local time in "YYYY-MM-DD HH:MM:SS" format.
+
+    Returns:
+        an "YYYY-MM-DD HH:MM:SS" string
+    '''
+    return str(datetime.now().replace(microsecond=0))
+
+
+def parse_isotime(isotime_str):
+    '''Parses the ISO time string into a datetime.
+
+    Args:
+        isotime_str: an ISO time string like "YYYY-MM-DD HH:MM:SS"
+
+    Returns:
+        a datetime
+    '''
+    return dateutil.parser.parse(isotime_str)
 
 
 def get_eta_rev():
