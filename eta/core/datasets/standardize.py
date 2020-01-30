@@ -189,14 +189,13 @@ def check_duplicate_attrs(dataset, video_attr_multi_value_names=None,
     return dup_attrs_count
 
 def check_dataset_schema(dataset, target_schema):
-    '''Audit labels.filename's for each record in a dataset and optionally
-    populate this field.
+    '''Check each labels in the dataset against the target_schema and report
+    counts of invalid labels & attributes
 
     Args:
         dataset: a `LabeledDataset` instance
         target_schema: an `ImageLabelsSchema` or `VideoLabelsSchema` matching
             the dataset type
-        audit_only: If False, modifies the labels in place to fix syntax
 
     Returns:
         a tuple of:
