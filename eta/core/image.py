@@ -498,6 +498,17 @@ class ImageLabelsSchema(Serializable):
 
         return invalid_counts
 
+    def is_valid_labels(self, invalid_counts):
+        '''Check if a ImageLabels is valid with this schema
+
+        Args:
+            invalid_counts - dictionary output from `count_invalid_labels`
+
+        Returns:
+            True if ImageLabels conforms to this schema
+        '''
+        return max(invalid_counts.values()) == 0
+
     def is_valid_image_attribute(self, image_attr):
         '''Whether the image attribute is compliant with the schema.
 

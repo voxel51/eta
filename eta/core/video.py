@@ -1481,6 +1481,17 @@ class VideoLabelsSchema(Serializable):
 
         return invalid_counts
 
+    def is_valid_labels(self, invalid_counts):
+        '''Check if a VideoLabels is valid with this schema
+
+        Args:
+            invalid_counts - dictionary output from `count_invalid_labels`
+
+        Returns:
+            True if VideoLabels conforms to this schema
+        '''
+        return max(invalid_counts.values()) == 0
+
     def is_valid_video_attribute(self, video_attr):
         '''Whether the video attribute is compliant with the schema.
 

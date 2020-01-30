@@ -206,7 +206,7 @@ def check_dataset_schema(dataset, target_schema):
                     "video attrs", "frame attrs", "image attrs",
                     "objects", "events"
     '''
-    logger.info("Checking for duplicate attrs for labeled dataset...")
+    logger.info("Checking for schema mismatches for labeled dataset...")
 
     labels_count = 0
     invalid_counts = defaultdict(int)
@@ -219,7 +219,7 @@ def check_dataset_schema(dataset, target_schema):
 
         cur_counts = target_schema.count_invalid_labels(labels)
 
-        labels_count += int(max(cur_counts.values()) > 0)
+        labels_count += int(target_schema.is_valid_labels(cur_counts))
 
         for k, v in cur_counts.items():
             invalid_counts[k] += v
