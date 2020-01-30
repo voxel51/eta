@@ -105,7 +105,11 @@ def parse_isotime(isotime_str):
 
 def get_eta_rev():
     '''Returns the hash of the last commit to the current ETA branch or "" if
-    something went wrong with git.'''
+    something went wrong with git.
+
+    Returns:
+        the current ETA revision hash
+    '''
     with WorkingDir(etac.ETA_DIR):
         success, rev, _ = communicate(
             ["git", "rev-parse", "HEAD"], decode=True)
@@ -113,7 +117,11 @@ def get_eta_rev():
 
 
 def has_gpu():
-    '''Determine if the current device has a GPU'''
+    '''Determine if the current device has a GPU.
+
+    Returns:
+        True/False
+    '''
     if sys.platform == "darwin":
         # No GPU on mac
         return False
@@ -219,7 +227,8 @@ def parse_categorical_string(value, choices, ignore_case=True):
 
     if value not in choices:
         raise ValueError(
-            "Unsupported value '%s'; choices are %s" % (orig_value, orig_choices))
+            "Unsupported value '%s'; choices are %s" %
+            (orig_value, orig_choices))
 
     return orig_value
 
