@@ -463,6 +463,41 @@ class ImageLabelsSchema(Serializable):
         for k, v in iteritems(schema.objects):
             self.objects[k].merge_schema(v)
 
+    def count_invalid_labels(self, labels):
+        '''Count the number of "things" in an ImageLabels not conforming to this
+        schema
+
+        Args:
+            labels - an instance of `ImageLabels`
+
+        Returns:
+            a dictionary of the format:
+                {
+                    "image attrs": <# of invalid image attrs>
+                    "objects":     <# of invalid objects>
+                }
+        '''
+        if not isinstance(labels, ImageLabels):
+            raise ValueError("Unexpected input type '%s' expected '%s'"
+                             % (etau.get_class_name(labels),
+                                etau.get_class_name(ImageLabels)))
+
+        # intentionally not using defaultdict so that 0 counts are still here
+        invalid_counts = {
+            "image attrs": 0,
+            "objects": 0
+        }
+
+        for attr in labels.attrs:
+            is_valid = self.is_valid_image_attribute(attr)
+            invalid_counts["image attrs"] += int(not is_valid)
+
+        for obj in labels.objects:
+            is_valid = self.is_valid_object(obj)
+            invalid_counts["objects"] += int(not is_valid)
+
+        return invalid_counts
+
     def is_valid_image_attribute(self, image_attr):
         '''Whether the image attribute is compliant with the schema.
 

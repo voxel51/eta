@@ -18,6 +18,7 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+from collections import defaultdict
 import logging
 import os
 
@@ -186,3 +187,46 @@ def check_duplicate_attrs(dataset, video_attr_multi_value_names=None,
     )
 
     return dup_attrs_count
+
+def check_dataset_schema(dataset, target_schema):
+    '''Audit labels.filename's for each record in a dataset and optionally
+    populate this field.
+
+    Args:
+        dataset: a `LabeledDataset` instance
+        target_schema: an `ImageLabelsSchema` or `VideoLabelsSchema` matching
+            the dataset type
+        audit_only: If False, modifies the labels in place to fix syntax
+
+    Returns:
+        a tuple of:
+            labels_count: integer number of labels files that don't match schema
+            invalid_counts: dictionary of counts per "thing" not matching the
+                schema, "thing" meaning:
+                    "video attrs", "frame attrs", "image attrs",
+                    "objects", "events"
+    '''
+    logger.info("Checking for duplicate attrs for labeled dataset...")
+
+    labels_count = 0
+    invalid_counts = defaultdict(int)
+
+    for idx, labels_path in enumerate(dataset.iter_labels_paths()):
+        if idx % 20 == 0:
+            logger.info("%4d/%4d" % (idx, len(dataset)))
+
+        labels = dataset.read_labels(labels_path)
+
+        cur_counts = target_schema.count_invalid_labels(labels)
+
+        labels_count += int(max(cur_counts.values()) > 0)
+
+        for k, v in cur_counts.items():
+            invalid_counts[k] += v
+
+    logger.info("Complete: %d/%d labels files not conforming to schema"
+                % (labels_count, len(dataset)))
+    for thing, count in invalid_counts.items():
+        logger.info("\t%s: %d" % (thing, count))
+
+    return labels_count, invalid_counts
