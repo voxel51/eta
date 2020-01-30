@@ -463,12 +463,38 @@ class ImageLabelsSchema(Serializable):
         for k, v in iteritems(schema.objects):
             self.objects[k].merge_schema(v)
 
-    def count_invalid_labels(self, labels):
-        '''Count the number of "things" in an ImageLabels not conforming to this
-        schema
+    def is_valid_labels(self, image_labels):
+        '''Whether the given ImageLabels is compliant with the schema.
 
         Args:
-            labels - an instance of `ImageLabels`
+            image_labels: an ImageLabels
+
+        Returns:
+            True/False
+        '''
+        try:
+            self.validate_labels(image_labels)
+            return True
+        except (ImageLabelsSchemaError, AttributeContainerSchemaError):
+            return False
+
+    def validate_labels(self, image_labels):
+        '''Validates that the ImageLabels is compliant with the schema.
+
+        Args:
+            image_labels: an ImageLabels
+
+        Raises:
+            ImageLabelsSchemaError: if ImageLabels violates the schema
+        '''
+        self._count_invalid_labels(image_labels, raise_error=True)
+
+    def count_invalid_labels(self, image_labels):
+        '''Count the number of "things" in an ImageLabels not conforming to the
+        schema.
+
+        Args:
+            image_labels: an ImageLabels
 
         Returns:
             a dictionary of the format:
@@ -477,37 +503,7 @@ class ImageLabelsSchema(Serializable):
                     "objects":     <# of invalid objects>
                 }
         '''
-        if not isinstance(labels, ImageLabels):
-            raise ValueError("Unexpected input type '%s' expected '%s'"
-                             % (etau.get_class_name(labels),
-                                etau.get_class_name(ImageLabels)))
-
-        # intentionally not using defaultdict so that 0 counts are still here
-        invalid_counts = {
-            "image attrs": 0,
-            "objects": 0
-        }
-
-        for attr in labels.attrs:
-            is_valid = self.is_valid_image_attribute(attr)
-            invalid_counts["image attrs"] += int(not is_valid)
-
-        for obj in labels.objects:
-            is_valid = self.is_valid_object(obj)
-            invalid_counts["objects"] += int(not is_valid)
-
-        return invalid_counts
-
-    def is_valid_labels(self, invalid_counts):
-        '''Check if a ImageLabels is valid with this schema
-
-        Args:
-            invalid_counts - dictionary output from `count_invalid_labels`
-
-        Returns:
-            True if ImageLabels conforms to this schema
-        '''
-        return max(invalid_counts.values()) == 0
+        return self._count_invalid_labels(image_labels, raise_error=False)
 
     def is_valid_image_attribute(self, image_attr):
         '''Whether the image attribute is compliant with the schema.
@@ -677,6 +673,34 @@ class ImageLabelsSchema(Serializable):
 
         return cls(attrs=attrs, objects=objects)
 
+    def _count_invalid_labels(self, labels, raise_error=False):
+        if not isinstance(labels, ImageLabels):
+            raise ValueError("Unexpected input type '%s' expected '%s'"
+                             % (etau.get_class_name(labels),
+                                etau.get_class_name(ImageLabels)))
+
+        # intentionally not using defaultdict so that 0 counts are still here
+        invalid_counts = {
+            "image attrs": 0,
+            "objects": 0
+        }
+
+        for attr in labels.attrs:
+            is_valid = self.is_valid_image_attribute(attr)
+            if raise_error and not is_valid:
+                raise ImageLabelsSchemaError(
+                    "Invalid image attr:\n%s" % attr.to_str())
+            invalid_counts["image attrs"] += int(not is_valid)
+
+        for obj in labels.objects:
+            is_valid = self.is_valid_object(obj)
+            if raise_error and not is_valid:
+                raise ImageLabelsSchemaError(
+                    "Invalid object:\n%s" % obj.to_str())
+            invalid_counts["objects"] += int(not is_valid)
+
+        return invalid_counts
+
 
 class ImageLabelsSchemaError(Exception):
     '''Error raised when an ImageLabelsSchema is violated.'''
@@ -837,7 +861,7 @@ class ImageLabelsSyntaxChecker(object):
         any "fixable" values.
 
         Args:
-            labels - a _LABELS_CLS instance
+            labels: a _LABELS_CLS instance
 
         Returns:
             True if the labels were modified (implying at least one fixable

@@ -1433,12 +1433,38 @@ class VideoLabelsSchema(Serializable):
         for k, v in iteritems(schema.objects):
             self.objects[k].merge_schema(v)
 
-    def count_invalid_labels(self, labels):
-        '''Count the number of "things" in a VideoLabels not conforming to this
-        schema
+    def is_valid_labels(self, video_labels):
+        '''Whether the given VideoLabels is compliant with the schema.
 
         Args:
-            labels - an instance of `VideoLabels`
+            video_labels: a VideoLabels
+
+        Returns:
+            True/False
+        '''
+        try:
+            self.validate_labels(video_labels)
+            return True
+        except:
+            return False
+
+    def validate_labels(self, video_labels):
+        '''Validates that the VideoLabels is compliant with the schema.
+
+        Args:
+            video_labels: an VideoLabels
+
+        Raises:
+            VideoLabelsSchemaError: if VideoLabels violates the schema
+        '''
+        self._count_invalid_labels(video_labels, raise_error=True)
+
+    def count_invalid_labels(self, video_labels):
+        '''Count the number of "things" in a VideoLabels not conforming to the
+        schema.
+
+        Args:
+            video_labels: a VideoLabels
 
         Returns:
             a dictionary of the format:
@@ -1449,48 +1475,7 @@ class VideoLabelsSchema(Serializable):
                     "events":      <# of invalid events>
                 }
         '''
-        if not isinstance(labels, VideoLabels):
-            raise ValueError("Unexpected input type '%s' expected '%s'"
-                             % (etau.get_class_name(labels),
-                                etau.get_class_name(VideoLabels)))
-
-        # intentionally not using defaultdict so that 0 counts are still here
-        invalid_counts = {
-            "video attrs": 0,
-            "frame attrs": 0,
-            "objects": 0,
-            "events": 0
-        }
-
-        for attr in labels.attrs:
-            is_valid = self.is_valid_video_attribute(attr)
-            invalid_counts["video attrs"] += int(not is_valid)
-
-        for frame in labels.iter_frames():
-            for attr in frame.attrs:
-                is_valid = self.is_valid_frame_attribute(attr)
-                invalid_counts["frame attrs"] += int(not is_valid)
-
-            for obj in frame.objects:
-                is_valid = self.is_valid_object(obj)
-                invalid_counts["objects"] += int(not is_valid)
-
-        for event in labels.iter_events():
-            is_valid = self.is_valid_object(event)
-            invalid_counts["events"] += int(not is_valid)
-
-        return invalid_counts
-
-    def is_valid_labels(self, invalid_counts):
-        '''Check if a VideoLabels is valid with this schema
-
-        Args:
-            invalid_counts - dictionary output from `count_invalid_labels`
-
-        Returns:
-            True if VideoLabels conforms to this schema
-        '''
-        return max(invalid_counts.values()) == 0
+        return self._count_invalid_labels(video_labels, raise_error=False)
 
     def is_valid_video_attribute(self, video_attr):
         '''Whether the video attribute is compliant with the schema.
@@ -1813,6 +1798,51 @@ class VideoLabelsSchema(Serializable):
             }
 
         return cls(attrs=attrs, frames=frames, objects=objects, events=events)
+
+    def _count_invalid_labels(self, labels, raise_error=False):
+        if not isinstance(labels, VideoLabels):
+            raise ValueError("Unexpected input type '%s' expected '%s'"
+                             % (etau.get_class_name(labels),
+                                etau.get_class_name(VideoLabels)))
+
+        # intentionally not using defaultdict so that 0 counts are still here
+        invalid_counts = {
+            "video attrs": 0,
+            "frame attrs": 0,
+            "objects": 0,
+            "events": 0
+        }
+
+        for attr in labels.attrs:
+            is_valid = self.is_valid_video_attribute(attr)
+            if raise_error and not is_valid:
+                raise VideoLabelsSchemaError(
+                    "Invalid video attr:\n%s" % attr.to_str())
+            invalid_counts["video attrs"] += int(not is_valid)
+
+        for frame in labels.iter_frames():
+            for attr in frame.attrs:
+                is_valid = self.is_valid_frame_attribute(attr)
+                if raise_error and not is_valid:
+                    raise VideoLabelsSchemaError(
+                        "Invalid frame attr:\n%s" % attr.to_str())
+                invalid_counts["frame attrs"] += int(not is_valid)
+
+            for obj in frame.objects:
+                is_valid = self.is_valid_object(obj)
+                if raise_error and not is_valid:
+                    raise VideoLabelsSchemaError(
+                        "Invalid object:\n%s" % obj.to_str())
+                invalid_counts["objects"] += int(not is_valid)
+
+        for event in labels.iter_events():
+            is_valid = self.is_valid_event(event)
+            if raise_error and not is_valid:
+                raise VideoLabelsSchemaError(
+                    "Invalid event:\n%s" % event.to_str())
+            invalid_counts["events"] += int(not is_valid)
+
+        return invalid_counts
 
 
 class VideoLabelsSchemaError(Exception):
