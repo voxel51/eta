@@ -729,6 +729,7 @@ class AttributeContainerSchema(Serializable):
                 instances. By default, an empty schema is created
         '''
         self.schema = schema or {}
+        self._validate()
 
     def has_attribute(self, name):
         '''Returns True/False if the schema has an attribute `name`.'''
@@ -817,6 +818,13 @@ class AttributeContainerSchema(Serializable):
                 k: AttributeSchema.from_dict(v) for k, v in iteritems(schema)
             }
         return cls(schema=schema)
+
+    def _validate(self):
+        for attr_name, attr_schema in self.schema.items():
+            if attr_schema.name != attr_name:
+                raise AttributeContainerSchemaError(
+                    "Inconsistent attr name:\n\tschema key: %s\n\tAttributeSch"
+                    "ema.name: %s" % (attr_schema.name, attr_name))
 
 
 class AttributeContainerSchemaError(Exception):
