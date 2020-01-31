@@ -197,15 +197,25 @@ class AttributeSchema(Serializable):
     module.
     '''
 
-    def __init__(self, name):
+    def __init__(self, name, exclusive=no_default, constant=no_default):
         '''Initializes the AttributeSchema. All subclasses should call this
         constructor.
 
         Args:
             name: the name of the attribute
+            exclusive: boolean specifying that if True, any attribute container
+                should only include one instance of this attribute.
+                e.g. person:sex is exclusive but person:item is not
+            constant:  boolean specifying that if True, any label with this
+                attribute should remain constant over time
+                e.g. vehicle:color is constant but vehicle:pose is not
         '''
         self.name = name
         self.type = etau.get_class_name(self)[:-6]  # removes "Schema"
+        if exclusive != no_default:
+            self.exclusive = bool(exclusive)
+        if constant != no_default:
+            self.constant = bool(constant)
         self._attr_cls = etau.get_class(self.type)
 
     def get_attribute_class(self):
@@ -275,6 +285,10 @@ class AttributeSchema(Serializable):
         '''Incorporates the given AttributeSchema into the schema.'''
         raise NotImplementedError("subclass must implement merge_schema()")
 
+    @classmethod
+    def optional(cls):
+        return ["exclusive", "constant"]
+
     @staticmethod
     def get_kwargs(d):
         '''Extracts the relevant keyword arguments for this schema from the
@@ -291,7 +305,10 @@ class AttributeSchema(Serializable):
         '''
         attr_cls = etau.get_class(d["type"])
         schema_cls = attr_cls.get_schema_cls()
-        return schema_cls(d["name"], **schema_cls.get_kwargs(d))
+        constant = d.get("constant", no_default)
+        exclusive = d.get("exclusive", no_default)
+        return schema_cls(d["name"], exclusive=exclusive, constant=constant,
+                          **schema_cls.get_kwargs(d))
 
 
 class AttributeSchemaError(Exception):
@@ -302,7 +319,7 @@ class AttributeSchemaError(Exception):
 class CategoricalAttributeSchema(AttributeSchema):
     '''Class that encapsulates the schema of categorical attributes.'''
 
-    def __init__(self, name, categories=None):
+    def __init__(self, name, categories=None, *args, **kwargs):
         '''Creates a CategoricalAttributeSchema instance.
 
         Args:
@@ -310,7 +327,7 @@ class CategoricalAttributeSchema(AttributeSchema):
             categories: a set of valid categories for the attribute. By
                 default, an empty set is used
         '''
-        super(CategoricalAttributeSchema, self).__init__(name)
+        super(CategoricalAttributeSchema, self).__init__(name, *args, **kwargs)
         self.categories = set(categories or [])
 
     def is_valid_value(self, value):
@@ -337,14 +354,14 @@ class CategoricalAttributeSchema(AttributeSchema):
 class NumericAttributeSchema(AttributeSchema):
     '''Class that encapsulates the schema of numeric attributes.'''
 
-    def __init__(self, name, range=None):
+    def __init__(self, name, range=None, *args, **kwargs):
         '''Creates a NumericAttributeSchema instance.
 
         Args:
             name: the name of the attribute
             range: the (min, max) range for the attribute
         '''
-        super(NumericAttributeSchema, self).__init__(name)
+        super(NumericAttributeSchema, self).__init__(name, *args, **kwargs)
         self.range = tuple(range or [])
 
     def is_valid_value(self, value):
@@ -383,13 +400,13 @@ class NumericAttributeSchema(AttributeSchema):
 class BooleanAttributeSchema(AttributeSchema):
     '''Class that encapsulates the schema of boolean attributes.'''
 
-    def __init__(self, name):
+    def __init__(self, name, *args, **kwargs):
         '''Creates a BooleanAttributeSchema instance.
 
         Args:
             name: the name of the attribute
         '''
-        super(BooleanAttributeSchema, self).__init__(name)
+        super(BooleanAttributeSchema, self).__init__(name, *args, **kwargs)
 
     def is_valid_value(self, value):
         '''Returns True/False if value is valid for the attribute.'''
