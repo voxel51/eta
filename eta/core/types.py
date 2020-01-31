@@ -970,6 +970,40 @@ class JSONFileSequence(FileSequence, ConcreteData):
         )
 
 
+class CSVFile(File, ConcreteData):
+    '''The base type for csv files.
+
+    Examples:
+        /path/to/data.csv
+    '''
+
+    @staticmethod
+    def gen_path(basedir, params):
+        return os.path.join(basedir, "{name}.csv").format(**params)
+
+    @staticmethod
+    def is_valid_path(path):
+        return File.is_valid_path(path) and etau.has_extension(path, ".csv")
+
+
+class ExcelFile(File, ConcreteData):
+    '''The base type for Excel spreadsheets (.xls or .xlsx).
+
+    Examples:
+        /path/to/data.json
+    '''
+
+    @staticmethod
+    def gen_path(basedir, params):
+        return os.path.join(basedir, "{name}.xlsx").format(**params)
+
+    @staticmethod
+    def is_valid_path(path):
+        return (
+            File.is_valid_path(path) and
+            etau.has_extension(path, ".xls", ".xlsx"))
+
+
 class DataRecords(JSONFile):
     '''A container of BaseDataRecords instane each having a certain set of
     fields.
