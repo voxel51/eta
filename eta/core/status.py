@@ -1,7 +1,7 @@
 '''
 Core status infrastructure for pipelines and jobs.
 
-Copyright 2017-2018, Voxel51, Inc.
+Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
@@ -18,6 +18,7 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+from datetime import datetime
 import logging
 
 from eta.core.serial import Serializable
@@ -57,7 +58,7 @@ class PipelineStatus(Serializable):
     def __init__(
             self, name=None, state=PipelineState.READY, start_time=None,
             complete_time=None, fail_time=None, messages=None, jobs=None):
-        '''Construct a new PipelineStatus instance.
+        '''Creates a PipelineStatus instance.
 
         Args:
             name: the name of the pipeline
@@ -114,7 +115,11 @@ class PipelineStatus(Serializable):
         return self._active_job
 
     def add_message(self, message):
-        '''Add the given message to the messages list.'''
+        '''Add the given message to the messages list.
+
+        Args:
+            message: the message string
+        '''
         status_message = StatusMessage(message)
         self.messages.append(status_message)
         return status_message.time
@@ -123,6 +128,9 @@ class PipelineStatus(Serializable):
         '''Mark the pipeline as started and record the given message.
 
         If the pipeline is already started, no action is taken.
+
+        Args:
+            message: an optional message string
         '''
         if self.state == PipelineState.RUNNING:
             return
@@ -134,6 +142,9 @@ class PipelineStatus(Serializable):
         '''Mark the pipelne as complete and record the given message.
 
         If the pipeline is already complete, no action is taken.
+
+        Args:
+            message: an optional message string
         '''
         if self.state == PipelineState.COMPLETE:
             return
@@ -145,6 +156,9 @@ class PipelineStatus(Serializable):
         '''Mark the pipelne as failed and record the given message.
 
         If the pipeline is already failed, no action is taken.
+
+        Args:
+            message: an optional message string
         '''
         if self.state == PipelineState.FAILED:
             return
@@ -153,14 +167,25 @@ class PipelineStatus(Serializable):
         self.state = PipelineState.FAILED
 
     def attributes(self):
-        '''Returns a list of class attributes to be serialized.'''
+        '''Returns a list of class attributes to be serialized.
+
+        Returns:
+            a list of attributes
+        '''
         return [
             "name", "state", "start_time", "complete_time", "fail_time",
             "messages", "jobs"]
 
     @classmethod
     def from_dict(cls, d):
-        '''Constructs a PipelineStatus instance from a JSON dictionary.'''
+        '''Constructs a PipelineStatus instance from a JSON dictionary.
+
+        Args:
+            d: a JSON dictionary
+
+        Returns:
+            a PipelineStatus instance
+        '''
         name = d["name"]
         state = d["state"]
         start_time = d["start_time"]
@@ -200,7 +225,7 @@ class JobStatus(Serializable):
     '''
 
     def __init__(self, name):
-        '''Construct a new JobStatus instance.
+        '''Creates a JobStatus instance.
 
         Args:
             name: the name of the job
@@ -213,40 +238,71 @@ class JobStatus(Serializable):
         self.messages = []
 
     def add_message(self, message):
-        '''Add the given message to the messages list.'''
+        '''Add the given message to the messages list.
+
+        Args:
+            message: the message string
+        '''
         status_message = StatusMessage(message)
         self.messages.append(status_message)
         return status_message.time
 
     def skip(self, message="Job skipped"):
-        '''Mark the job as skipped and record the given message.'''
+        '''Mark the job as skipped and record the given message.
+
+        Args:
+            message: an optional message
+        '''
         self.add_message(message)
         self.state = JobState.SKIPPED
 
     def start(self, message="Job started"):
-        '''Mark the job as started and record the given message.'''
+        '''Mark the job as started and record the given message.
+
+        Args:
+            message: an optional message
+        '''
         self.start_time = self.add_message(message)
         self.state = JobState.RUNNING
 
     def complete(self, message="Job completed"):
-        '''Mark the job as complete and record the given message.'''
+        '''Mark the job as complete and record the given message.
+
+        Args:
+            message: an optional message
+        '''
         self.complete_time = self.add_message(message)
         self.state = JobState.COMPLETE
 
     def fail(self, message="Job failed"):
-        '''Mark the job as failed and record the given message.'''
+        '''Mark the job as failed and record the given message.
+
+        Args:
+            message: an optional message
+        '''
         self.fail_time = self.add_message(message)
         self.state = JobState.FAILED
 
     def attributes(self):
+        '''Returns the list of attributes to serialize.
+
+        Returns:
+            the list of attributes
+        '''
         return [
             "name", "state", "start_time", "complete_time", "fail_time",
-            "messages",
-        ]
+            "messages"]
 
     @classmethod
     def from_dict(cls, d):
-        '''Constructs a JobStatus instance from a JSON dictionary.'''
+        '''Constructs a JobStatus instance from a JSON dictionary.
+
+        Args:
+            d: a JSON dictionary
+
+        Returns:
+            a JobStatus instance
+        '''
         job_status = JobStatus(d["name"])
         job_status.state = d["state"]
         job_status.start_time = d["start_time"]
@@ -262,24 +318,40 @@ class StatusMessage(Serializable):
 
     Attributes:
         message: the message string
-        time: the string recording the message time
+        time: a datetime recording the message time
     '''
 
     def __init__(self, message, time=None):
-        '''Creates a new StatusMessage instance.
+        '''Creates a StatusMessage instance.
 
         Args:
             message: a message string
-            time: an optional time string. If not provided, the current time in
-                 ISO 8601 format is used
+            time: an optional datetime for the message. By default, the current
+                time is used
         '''
         self.message = message
-        self.time = time or etau.get_isotime()
+        self.time = time or datetime.now()
 
     def attributes(self):
+        '''Returns the list of attributes to serialize.
+
+        Returns:
+            the list of attributes
+        '''
         return ["message", "time"]
 
     @classmethod
     def from_dict(cls, d):
-        '''Constructs a StatusMessage instance from a JSON dictionary.'''
-        return StatusMessage(d["message"], time=d["time"])
+        '''Constructs a StatusMessage instance from a JSON dictionary.
+
+        Args:
+            d: a JSON dictionary
+
+        Returns:
+            a StatusMessage instance
+        '''
+        time = d.get("time", None)
+        if time is not None:
+            time = etau.parse_isotime(time)
+
+        return StatusMessage(d["message"], time=time)
