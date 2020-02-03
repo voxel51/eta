@@ -1,7 +1,7 @@
 '''
 Core pipeline building system.
 
-Copyright 2018, Voxel51, Inc.
+Copyright 2018-2020, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
@@ -32,6 +32,7 @@ import eta.core.job as etaj
 import eta.core.logging as etal
 import eta.core.module as etam
 import eta.core.pipeline as etap
+import eta.core.status as etas
 import eta.core.types as etat
 import eta.core.utils as etau
 
@@ -59,7 +60,7 @@ def find_last_built_pipeline():
     if not builds:
         return None
 
-    config_dir = max(builds, key=lambda b: os.path.basename(b))
+    config_dir = max(builds, key=os.path.basename)
     return os.path.join(config_dir, PIPELINE_CONFIG_FILE)
 
 
@@ -118,6 +119,19 @@ def cleanup_all_pipelines():
     '''Cleans up all built pipelines.'''
     for pipeline_config_path in find_all_built_pipelines():
         cleanup_pipeline(pipeline_config_path)
+
+
+class ModuleConfig(etam.BaseModuleConfig):
+    '''Module configuration class.
+
+    This generic class is used by `PipelineBuilder` to build module
+    configuration files of any type.
+    '''
+
+    def __init__(self, d):
+        super(ModuleConfig, self).__init__(d)
+        self.data = self.parse_array(d, "data", default=[])
+        self.parameters = self.parse_dict(d, "parameters", default={})
 
 
 class PipelineBuildRequestConfig(Config):
@@ -287,7 +301,22 @@ class PipelineBuilder(object):
             request: a PipelineBuildRequest instance
         '''
         self.request = request
+
+        self.optimized = None
+        self.timestamp = None
+        self.config_dir = None
+        self.output_dir = None
+        self.pipeline_config_path = None
+        self.pipeline_status_path = None
+        self.pipeline_logfile_path = None
+        self.execution_order = None
+        self.module_inputs = None
+        self.module_outputs = None
+        self.module_parameters = None
+        self.pipeline_outputs = None
+
         self._concrete_data_params = etat.ConcreteDataParams()
+
         self.reset()
 
     def reset(self):
@@ -357,10 +386,26 @@ class PipelineBuilder(object):
         '''
         if not self.pipeline_config_path:
             raise PipelineBuilderError(
-                "You must build the pipeline before running it")
+                "No pipeline config found; you must build the pipeline before "
+                "running it")
 
-        # Run pipeline
         return etap.run(self.pipeline_config_path)
+
+    def get_status(self):
+        '''Gets the PipelineStatus for the last run pipeline.
+
+        Returns:
+            a PipelineStatus instance
+
+        Raises:
+            PipelineBuilderError: if the pipeline hasn't been built and run
+        '''
+        if not os.path.exists(self.pipeline_status_path):
+            raise PipelineBuilderError(
+                "No pipeline status found; you must build and run the "
+                "pipeline before getting its status")
+
+        return etas.PipelineStatus.from_json(self.pipeline_status_path)
 
     def cleanup(self):
         '''Cleans up the configs and output files generated when the pipeline
@@ -531,7 +576,7 @@ class PipelineBuilder(object):
             # Build module config
             data = etau.join_dicts(
                 self.module_inputs[module], self.module_outputs[module])
-            module_config = (etam.GenericModuleConfig.builder()
+            module_config = (ModuleConfig.builder()
                 .set(data=[data])
                 .set(parameters=self.module_parameters[module])
                 .validate())
@@ -573,8 +618,7 @@ class PipelineBuilder(object):
 
 
 class PipelineBuilderError(Exception):
-    '''Exception raised when an invalid action is taken with a
-    PipelineBuilder.
+    '''Exception raised when an invalid action is taken with a PipelineBuilder.
     '''
     pass
 

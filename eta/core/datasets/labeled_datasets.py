@@ -788,6 +788,16 @@ class LabeledDataset(object):
         raise NotImplementedError(
             "subclasses must implement get_labels_set()")
 
+    def get_active_schema(self):
+        '''Returns a LabelsSchema-type object describing the active schema of
+        the dataset.
+
+        Returns:
+            an ImageLabelsSchema or VideoLabelsSchema
+        '''
+        raise NotImplementedError(
+            "subclasses must implement get_active_schema()")
+
     def write_annotated_data(self, output_dir_path, annotation_config=None):
         '''Annotates the data with its labels, and outputs the
         annotated data to the specified directory.
@@ -1090,6 +1100,20 @@ class LabeledVideoDataset(LabeledDataset):
 
         return etav.VideoSetLabels(videos=list(self.iter_labels()))
 
+    def get_active_schema(self):
+        '''Returns a VideoLabelsSchema describing the active schema of the
+        dataset.
+
+        Returns:
+            a VideoLabelsSchema
+        '''
+        schema = etav.VideoLabelsSchema()
+        for video_labels in self.iter_labels():
+            schema.merge_schema(
+                etav.VideoLabelsSchema.build_active_schema(video_labels))
+
+        return schema
+
     def write_annotated_data(self, output_dir_path, annotation_config=None):
         '''Annotates the data with its labels, and outputs the
         annotated data to the specified directory.
@@ -1217,6 +1241,20 @@ class LabeledImageDataset(LabeledDataset):
             return image_set_labels
 
         return etai.ImageSetLabels(images=list(self.iter_labels()))
+
+    def get_active_schema(self):
+        '''Returns the ImageLabelsSchema describing the active schema of the
+        dataset.
+
+        Returns:
+            an ImageLabelsSchema
+        '''
+        schema = etai.ImageLabelsSchema()
+        for image_labels in self.iter_labels():
+            schema.merge_schema(
+                etai.ImageLabelsSchema.build_active_schema(image_labels))
+
+        return schema
 
     def write_annotated_data(self, output_dir_path, annotation_config=None):
         '''Annotates the data with its labels, and outputs the
