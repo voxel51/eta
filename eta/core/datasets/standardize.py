@@ -299,3 +299,9 @@ class DuplicateFiles(etas.Serializable):
                 file_path_list += list(dataset.iter_data_paths())
 
         return file_path_list
+
+    @classmethod
+    def from_dict(cls, d, *args, **kwargs):
+        '''Constructs a DuplicateFiles object from a JSON dictionary.'''
+        duplicates = d["duplicates"]
+        return cls(duplicates=duplicates)
