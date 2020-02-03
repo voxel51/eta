@@ -189,6 +189,7 @@ def check_duplicate_attrs(dataset, video_attr_multi_value_names=None,
 
     return dup_attrs_count
 
+
 def check_dataset_schema(dataset, target_schema):
     '''Check each labels in the dataset against the target_schema and report
     counts of invalid labels & attributes
