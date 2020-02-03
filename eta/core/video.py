@@ -41,13 +41,13 @@ import dateutil.parser
 import numpy as np
 
 from eta.core.data import AttributeContainer, AttributeContainerSchema
+import eta.core.data as etad
 from eta.core.events import EventContainer
 import eta.core.frames as etaf
 import eta.core.gps as etag
 import eta.core.image as etai
 from eta.core.objects import DetectedObjectContainer
 from eta.core.serial import load_json, Serializable, Set, BigSet
-import eta.core.serial as etas
 import eta.core.utils as etau
 
 
@@ -1705,6 +1705,107 @@ class VideoLabelsSchema(Serializable):
 class VideoLabelsSchemaError(Exception):
     '''Error raised when a VideoLabelsSchema is violated.'''
     pass
+
+
+class VideoLabelsSyntaxCheckerError(etai.ImageLabelsSyntaxCheckerError):
+    '''Error raised when a VideoLabelsSyntaxCheckerError is violated.'''
+    pass
+
+
+class VideoLabelsSyntaxChecker(etai.ImageLabelsSyntaxChecker):
+
+    _SCHEMA_CLS = VideoLabelsSchema
+    _LABELS_CLS = VideoLabels
+    _ERROR_CLS = VideoLabelsSyntaxCheckerError
+
+    def _check(self, labels):
+        '''Override of etai.ImageLabelsSyntaxChecker._check'''
+        self._check_video_attrs(labels)
+        self._check_frames(labels)
+        self._check_events(labels)
+
+    def _check_video_attrs(self, labels):
+        def valid_in_schema(schema, thing):
+            return schema.is_valid_video_attribute(thing)
+
+        def add_to_schema(schema, thing):
+            schema.add_video_attribute(thing)
+
+        def get_target_iterable():
+            return self.target_schema.attrs
+
+        def assign_mapped_value(thing, mapped_thing):
+            thing.name = mapped_thing.name
+            thing.value = mapped_thing.value
+
+        for attr in labels.attrs:
+            self._check_thing(attr, valid_in_schema, add_to_schema,
+                              get_target_iterable, assign_mapped_value)
+
+    def _check_frames(self, labels):
+        for frame in labels.iter_frames():
+            self._check_frame_attrs(frame)
+            self._check_objects(frame.objects)
+
+    def _check_frame_attrs(self, frame):
+        def valid_in_schema(schema, thing):
+            return schema.is_valid_frame_attribute(thing)
+
+        def add_to_schema(schema, thing):
+            schema.add_frame_attribute(thing)
+
+        def get_target_iterable():
+            return self.target_schema.frames
+
+        def assign_mapped_value(thing, mapped_thing):
+            thing.name = mapped_thing.name
+            thing.value = mapped_thing.value
+
+        for attr in frame.attrs:
+            self._check_thing(attr, valid_in_schema, add_to_schema,
+                              get_target_iterable, assign_mapped_value)
+
+    def _check_events(self, labels):
+        for event in labels.iter_events():
+            self._check_event_label(event)
+            self._check_event_attrs(event)
+
+    def _check_event_label(self, event):
+        def valid_in_schema(schema, thing):
+            return schema.is_valid_event_label(thing)
+
+        def add_to_schema(schema, thing):
+            schema.add_event_label(thing)
+
+        def get_target_iterable():
+            return self.target_schema.events.keys()
+
+        def assign_mapped_value(thing, mapped_thing):
+            event.label = mapped_thing
+
+        self._check_thing(event.label, valid_in_schema, add_to_schema,
+                          get_target_iterable, assign_mapped_value)
+
+    def _check_event_attrs(self, event):
+        if not self.target_schema.is_valid_event_label(event.label):
+            return
+
+        def valid_in_schema(schema, thing):
+            return schema.is_valid_event_attribute(event.label, thing)
+
+        def add_to_schema(schema, thing):
+            schema.add_event_attribute(event.label, thing)
+
+        def get_target_iterable():
+            return self.target_schema.events[event.label]
+
+        def assign_mapped_value(thing, mapped_thing):
+            thing.name = mapped_thing.name
+            thing.value = mapped_thing.value
+
+        for attr in event.attrs:
+            self._check_thing(attr, valid_in_schema, add_to_schema,
+                              get_target_iterable, assign_mapped_value)
 
 
 class VideoSetLabels(Set):
