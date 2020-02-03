@@ -346,6 +346,8 @@ class ImageLabelsSchema(Serializable):
         if objects is not None:
             self.objects.update(objects)
 
+    # HAS
+
     def has_image_attribute(self, image_attr_name):
         '''Whether the schema has an image attribute with the given name.
 
@@ -383,6 +385,8 @@ class ImageLabelsSchema(Serializable):
             return False
         return self.objects[label].has_attribute(obj_attr_name)
 
+    # GET ATTR CLASS
+
     def get_image_attribute_class(self, image_attr_name):
         '''Gets the Attribute class for the image attribute with the given
         name.
@@ -408,6 +412,8 @@ class ImageLabelsSchema(Serializable):
         '''
         self.validate_object_label(label)
         return self.objects[label].get_attribute_class(obj_attr_name)
+
+    # ADD
 
     def add_image_attribute(self, image_attr):
         '''Adds the given image attribute to the schema.
@@ -453,15 +459,38 @@ class ImageLabelsSchema(Serializable):
         '''
         self.objects[label].add_attributes(obj_attrs)
 
-    def merge_schema(self, schema):
-        '''Merges the given ImageLabelsSchema into this schema.
+    # CHECK & COUNT VALID
+
+    def is_valid_labels(self, image_labels):
+        '''Whether the given ImageLabels is compliant with the schema.
 
         Args:
-            schema: an ImageLabelsSchema
+            image_labels: an ImageLabels
+
+        Returns:
+            True/False
         '''
-        self.attrs.merge_schema(schema.attrs)
-        for k, v in iteritems(schema.objects):
-            self.objects[k].merge_schema(v)
+        try:
+            self.validate_labels(image_labels)
+            return True
+        except (ImageLabelsSchemaError, AttributeContainerSchemaError):
+            return False
+
+    def count_invalid_labels(self, image_labels):
+        '''Count the number of "things" in an ImageLabels not conforming to the
+        schema.
+
+        Args:
+            image_labels: an ImageLabels
+
+        Returns:
+            a dictionary of the format:
+                {
+                    "image attrs": <# of invalid image attrs>
+                    "objects":     <# of invalid objects>
+                }
+        '''
+        return self._count_invalid_labels(image_labels, raise_error=False)
 
     def is_valid_image_attribute(self, image_attr):
         '''Whether the image attribute is compliant with the schema.
@@ -525,6 +554,19 @@ class ImageLabelsSchema(Serializable):
         except (ImageLabelsSchemaError, AttributeContainerSchemaError):
             return False
 
+    # VALIDATE
+
+    def validate_labels(self, image_labels):
+        '''Validates that the ImageLabels is compliant with the schema.
+
+        Args:
+            image_labels: an ImageLabels
+
+        Raises:
+            ImageLabelsSchemaError: if ImageLabels violates the schema
+        '''
+        self._count_invalid_labels(image_labels, raise_error=True)
+
     def validate_image_attribute(self, image_attr):
         '''Validates that the image attribute is compliant with the schema.
 
@@ -580,6 +622,8 @@ class ImageLabelsSchema(Serializable):
             for obj_attr in obj.attrs:
                 self.validate_object_attribute(obj.label, obj_attr)
 
+    # OTHER
+
     def attributes(self):
         '''Returns the list of class attributes that will be serialized.
 
@@ -587,6 +631,16 @@ class ImageLabelsSchema(Serializable):
             a list of attribute names
         '''
         return ["attrs", "objects"]
+
+    def merge_schema(self, schema):
+        '''Merges the given ImageLabelsSchema into this schema.
+
+        Args:
+            schema: an ImageLabelsSchema
+        '''
+        self.attrs.merge_schema(schema.attrs)
+        for k, v in iteritems(schema.objects):
+            self.objects[k].merge_schema(v)
 
     @classmethod
     def build_active_schema(cls, image_labels):
@@ -630,6 +684,44 @@ class ImageLabelsSchema(Serializable):
             }
 
         return cls(attrs=attrs, objects=objects)
+
+    # PRIVATE
+
+    def _count_invalid_labels(self, labels, raise_error=False):
+        if not isinstance(labels, ImageLabels):
+            raise ValueError("Unexpected input type '%s' expected '%s'"
+                             % (etau.get_class_name(labels),
+                                etau.get_class_name(ImageLabels)))
+
+        # intentionally not using defaultdict so that 0 counts are still here
+        invalid_counts = {
+            "image attrs": 0,
+            "objects": 0
+        }
+
+        #
+        # image attrs
+        #
+
+        for attr in labels.attrs:
+            is_valid = self.is_valid_image_attribute(attr)
+            if raise_error and not is_valid:
+                raise ImageLabelsSchemaError(
+                    "Invalid image attr:\n%s" % attr.to_str())
+            invalid_counts["image attrs"] += int(not is_valid)
+
+        #
+        # objects
+        #
+
+        for obj in labels.objects:
+            is_valid = self.is_valid_object(obj)
+            if raise_error and not is_valid:
+                raise ImageLabelsSchemaError(
+                    "Invalid object:\n%s" % obj.to_str())
+            invalid_counts["objects"] += int(not is_valid)
+
+        return invalid_counts
 
 
 class ImageLabelsSchemaError(Exception):
@@ -791,7 +883,7 @@ class ImageLabelsSyntaxChecker(object):
         any "fixable" values.
 
         Args:
-            labels - a _LABELS_CLS instance
+            labels: a _LABELS_CLS instance
 
         Returns:
             True if the labels were modified (implying at least one fixable
