@@ -93,6 +93,7 @@ class ConcreteDataParams(object):
     '''
 
     def __init__(self):
+        '''Creates a ConcreteDataParams instance.'''
         self._params = {
             "name": None,
             "idx": eta.config.default_sequence_idx,
@@ -102,11 +103,7 @@ class ConcreteDataParams(object):
 
     @property
     def default(self):
-        '''Returns the default parameters
-
-        Returns:
-            the default params dict
-        '''
+        '''The default parameters dictionary.'''
         return self._params
 
     def render_for(self, name, hint=None):
