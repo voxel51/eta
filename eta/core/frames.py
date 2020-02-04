@@ -19,6 +19,8 @@ import six
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+import pytz
+
 import numpy as np
 
 from eta.core.serial import Serializable
@@ -76,6 +78,9 @@ def timestamp_str_to_seconds(timestamp):
 def world_time_to_timestamp(world_time, start_time):
     '''Converts the given world time to a timestamp in a video.
 
+    If one (but not both) of the datetimes are timezone-aware, the other
+    datetime is assumed to be expressed in UTC time
+
     Args:
         world_time: a datetime describing a time of interest
         start_time: a datetime indicating the start time of the video
@@ -83,7 +88,44 @@ def world_time_to_timestamp(world_time, start_time):
     Returns:
         the corresponding timestamp (in seconds) in the video
     '''
-    return (world_time - start_time).total_seconds()
+    try:
+        return (world_time - start_time).total_seconds()
+    except (TypeError, ValueError):
+        world_time = add_utc_timezone_if_necessary(world_time)
+        start_time = add_utc_timezone_if_necessary(start_time)
+        return (world_time - start_time).total_seconds()
+
+
+def add_local_timezone_if_necessary(dt):
+    '''Makes the datetime timezone-aware, if necessary, by setting its timezone
+    to the local timezone.
+
+    Args:
+        dt: a datetime
+
+    Returns:
+        a timezone-aware datetime
+    '''
+    if dt.tzinfo is None:
+        dt = dt.astimezone()  # empty ==> local timezone
+
+    return dt
+
+
+def add_utc_timezone_if_necessary(dt):
+    '''Makes the datetime timezone-aware, if necessary, by setting its timezone
+    to UTC.
+
+    Args:
+        dt: a datetime
+
+    Returns:
+        a timezone-aware datetime
+    '''
+    if dt.tzinfo is None:
+        dt = dt.astimezone(pytz.utc)
+
+    return dt
 
 
 def world_time_to_frame_number(
