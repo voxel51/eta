@@ -20,16 +20,18 @@ from builtins import *
 # pragma pylint: enable=wildcard-import
 
 import datetime
+import dateutil.parser
 import math
 
-from eta.core.serial import Serializable
+import eta.core.frames as etaf
+import eta.core.serial as etas
 
 
 EARTH_RADIUS_MILES = 3959
 EARTH_RADIUS_METERS = 6378000
 
 
-class GPSWaypoints(Serializable):
+class GPSWaypoints(etas.Serializable):
     '''Class encapsulating GPS waypoints for a video.
 
     Attributes:
@@ -108,7 +110,14 @@ class GPSWaypoints(Serializable):
 
     @classmethod
     def from_dict(cls, d):
-        '''Constructs a GPSWaypoints from a JSON dictionary.'''
+        '''Constructs a GPSWaypoints from a JSON dictionary.
+
+        Args:
+            d: a JSON dictionary
+
+        Returns:
+            a GPSWaypoints instance
+        '''
         points = d.get("points", None)
         if points is not None:
             points = [GPSWaypoint.from_dict(p) for p in points]
@@ -116,7 +125,7 @@ class GPSWaypoints(Serializable):
         return cls(points=points)
 
 
-class GPSWaypoint(Serializable):
+class GPSWaypoint(etas.Serializable):
     '''Class encapsulating a GPS waypoint in a video.
 
     Attributes:
@@ -174,16 +183,142 @@ def lat_lon_distance(lat1, lon1, lat2, lon2, in_miles=False):
     return EARTH_RADIUS_MILES * c if in_miles else EARTH_RADIUS_METERS * c
 
 
+def parse_gopro_gps5(gps5_path, video_metadata):
+    '''Constructs a GPSWaypoints from a GoPro GPS5 JSON file.
+
+    This implementation assumes that the input JSON file follows the schema
+    below:
+
+    ```
+    {
+        "1": {
+            "streams": {
+                "GPS5": {
+                    "samples": [
+                        {
+                            "value": [<lat-degrees>, <lon-degrees>, ...],
+                            "cts": <ms-since-first-frame>,
+                            ...
+                        },
+                        ...
+                    ]
+                }
+            }
+        }
+    }
+    ```
+
+    Args:
+        gps5_path: the path to a GoPro GPS5 JSON file
+        video_metadata: a VideoMetadata for the video
+
+    Returns:
+        a GPSWaypoints instance
+    '''
+    # Load GPS5 data
+    g = etas.load_json(gps5_path)
+    samples = g["1"]["streams"]["GPS5"]["samples"]
+
+    # Convert to GPSWaypoints
+    points = []
+    for sample in samples:
+        lat = sample["value"][0]
+        lon = sample["value"][1]
+
+        timestamp = sample["cts"] / 1000.0  # cts = ms since first frame
+        frame_number = etaf.timestamp_to_frame_number(
+            timestamp, video_metadata.duration,
+            video_metadata.total_frame_count)
+
+        points.append(GPSWaypoint(lat, lon, frame_number))
+
+    return GPSWaypoints(points=points)
+
+
+def parse_gopro_geojson(geojson_path, video_metadata):
+    '''Constructs a GPSWaypoints from a GoPro GeoJSON file.
+
+    This implementation assumes that the input JSON file follows the schema
+    below:
+
+    ```
+    {
+        "type": "Feature",
+        "geometry": {
+            "type": "LineString",
+            "coordinates": [
+                [<lon-degrees>, <lat-degrees>, ...],
+                ...
+            ]
+        },
+        "properties": {
+            "RelativeMicroSec": [<ms-since-first-frame>, ...],
+            ...
+        }
+    }
+    ```
+
+    Args:
+        geojson_path: the path to a GeoJSON file
+        video_metadata: a VideoMetadata for the video
+
+    Returns:
+        a GPSWaypoints instance
+    '''
+    # Load GeoJSON
+    g = etas.load_json(geojson_path)
+    coordinates = g["geometry"]["coordinates"]
+    # Note that, despite `MicroSec` in the name, this seems to actually
+    # be expressed in millisecones...
+    timestamps = g["properties"]["RelativeMicroSec"]
+
+    # Convert to GPSWaypoints
+    points = []
+    for coords, timestamp in zip(coordinates, timestamps):
+        lat = coords[1]
+        lon = coords[0]
+
+        timestamp /= 1000.0  # convert to seconds
+        frame_number = etaf.timestamp_to_frame_number(
+            timestamp, video_metadata.duration,
+            video_metadata.total_frame_count)
+
+        points.append(GPSWaypoint(lat, lon, frame_number))
+
+    return GPSWaypoints(points=points)
+
+
 def degrees_to_radians(deg):
-    '''Converts degrees to radians.'''
+    '''Converts degrees to radians.
+
+    Args:
+        deg: degrees
+
+    Returns:
+        radians
+    '''
     return deg * math.pi / 180
 
 
 def seconds_since_epoch_to_datetime(secs):
-    '''Converts seconds since the epoch to a datetime.'''
+    '''Converts seconds since the epoch to a datetime.
+
+    Args:
+        secs: seconds since the epoch
+
+    Returns:
+        a datetime
+    '''
     return datetime.datetime.fromtimestamp(secs)
 
 
-def ms_since_epoch_to_datetime(ms):
-    '''Converts milliseconds since the epoch to a datetime.'''
+def milliseconds_since_epoch_to_datetime(ms):
+    '''Converts milliseconds since the epoch to a datetime.
+
+    Args:
+        ms: milliseconds since the epoch
+
+    Returns:
+        a datetime
+    '''
     return seconds_since_epoch_to_datetime(ms / 1000.0)
