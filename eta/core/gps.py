@@ -276,8 +276,8 @@ def parse_gopro_geojson(geojson_path, video_metadata):
     # Load GeoJSON
     g = etas.load_json(geojson_path)
     coordinates = g["geometry"]["coordinates"]
-    # Note that, despite `MicroSec` in the name, this seems to actually
-    # be expressed in millisecones...
+    # Note that, despite `MicroSec` in the name, this seems to be expressed in
+    # milliseconds...
     timestamps = g["properties"]["RelativeMicroSec"]
 
     # Convert to GPSWaypoints
