@@ -23,6 +23,7 @@ from future.utils import iteritems
 
 from collections import defaultdict
 import os
+import logging
 
 import numpy as np
 
@@ -30,6 +31,9 @@ from eta.core.config import no_default
 import eta.core.numutils as etan
 from eta.core.serial import Container, NpzWriteable, Serializable
 import eta.core.utils as etau
+
+
+logger = logging.getLogger(__name__)
 
 
 def majority_vote_categorical_attrs(attrs, confidence_weighted=False):
@@ -466,6 +470,14 @@ class AttributeContainer(Container):
     def has_schema(self):
         '''Returns True/False whether the container has an enforced schema.'''
         return self.schema is not None
+
+    def iter_attrs(self, attr_name="*", attr_value="*"):
+        for attr in self:
+            if attr_name != "*" and attr.name != attr_name:
+                continue
+            if attr_value != "*" and attr.value != attr_value:
+                continue
+            yield attr
 
     def add(self, attr):
         '''Adds an attribute to the container.

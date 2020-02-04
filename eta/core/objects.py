@@ -184,6 +184,17 @@ class DetectedObjectContainer(Container):
     _ELE_CLS_FIELD = "_OBJ_CLS"
     _ELE_ATTR = "objects"
 
+    def iter_objects(self, label="*"):
+        for obj in self:
+            if label != "*" and obj.label != label:
+                continue
+            yield obj
+
+    def iter_object_attrs(self, label="*", attr_name="*", attr_value="*"):
+        for obj in self.iter_objects(label):
+            for attr in obj.attrs.iter_attrs(attr_name, attr_value):
+                yield attr
+
     def get_labels(self):
         '''Returns a set containing the labels of the DetectedObjects.
 

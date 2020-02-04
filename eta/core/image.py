@@ -134,6 +134,29 @@ class ImageLabels(Serializable):
         self.attrs = attrs or AttributeContainer()
         self.objects = objects or DetectedObjectContainer()
 
+    def iter_matches(self, pattern):
+        IMAGE_ATTR = "<image attr>"
+        OBJECT = "<object>"
+
+        pattern_parts = pattern.split(":")
+
+        qualifier = pattern_parts.pop(0)
+
+        if qualifier == IMAGE_ATTR:
+            for attr in self.attrs.iter_attrs(*pattern_parts):
+                yield attr
+
+        elif qualifier == OBJECT:
+            if len(pattern_parts) == 1:
+                for obj in self.objects.iter_objects(*pattern_parts):
+                    yield obj
+            else:
+                for attr in self.objects.iter_object_attrs(*pattern_parts):
+                    yield attr
+
+        else:
+            raise ValueError("Invalid qualifier: %s" % qualifier)
+
     def add_image_attribute(self, attr):
         '''Adds the attribute to the image.
 

@@ -615,6 +615,59 @@ class VideoLabels(Serializable):
         '''Whether the container has labels of any kind.'''
         return not self.is_empty
 
+    def iter_matches(self, pattern):
+        VIDEO_ATTR = "<video attr>"
+        FRAME_ATTR = "<frame attr>"
+        OBJECT = "<object>"
+        EVENT = "<event>"
+
+        pattern_parts = pattern.split(":")
+
+        qualifier = pattern_parts.pop(0)
+
+        if qualifier == VIDEO_ATTR:
+            for attr in self.attrs.iter_attrs(*pattern_parts):
+                yield attr
+
+        elif qualifier == FRAME_ATTR:
+            for attr in self._iter_frame_attrs(*pattern_parts):
+                yield attr
+
+        elif qualifier == OBJECT:
+            if len(pattern_parts) == 1:
+                for obj in self._iter_objects(*pattern_parts):
+                    yield obj
+            else:
+                for attr in self._iter_object_attrs(*pattern_parts):
+                    yield attr
+
+        elif qualifier == EVENT:
+            if len(pattern_parts) == 1:
+                for event in self.events.iter_events(*pattern_parts):
+                    yield event
+            else:
+                for attr in self.events.iter_event_attrs(*pattern_parts):
+                    yield attr
+
+        else:
+            raise ValueError("Invalid qualifier: %s" % qualifier)
+
+    def _iter_frame_attrs(self, attr_name="*", attr_value="*"):
+        for frame in self.iter_frames():
+            for attr in frame.attrs.iter_attrs(attr_name, attr_value):
+                yield attr
+
+    def _iter_objects(self, label="*"):
+        for frame in self.iter_frames():
+            for obj in frame.objects.iter_objects(label):
+                yield obj
+
+    def _iter_object_attrs(self, label="*", attr_name="*", attr_value="*"):
+        for frame in self.iter_frames():
+            for attr in frame.objects.iter_object_attrs(
+                    label, attr_name, attr_value):
+                yield attr
+
     @property
     def has_video_attributes(self):
         '''Whether the container has at least one video attribute.'''
