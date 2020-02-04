@@ -2,7 +2,7 @@
 '''
 Core utilities for working with GPS coordinates.
 
-Copyright 2019, Voxel51, Inc.
+Copyright 2019-2020, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
@@ -50,6 +50,14 @@ class GPSWaypoints(etas.Serializable):
         self._flat = None
         self._flon = None
         self._init_gps()
+
+    def __len__(self):
+        '''The number of waypoints in this instance.'''
+        return len(self.points)
+
+    def __bool__(self):
+        '''Whether this instance contains any waypoints.'''
+        return bool(self.points)
 
     @property
     def has_points(self):
