@@ -18,7 +18,7 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-from datetime import datetime
+import datetime
 import logging
 
 from eta.core.serial import Serializable
@@ -40,20 +40,7 @@ class PipelineState(object):
 
 
 class PipelineStatus(Serializable):
-    '''Class for recording the status of a pipeline.
-
-    Attributes:
-        name: the name of the pipeline
-        state: the current state of the pipeline
-        start_time: the time the pipeline was started, or None if not started
-        complete_time: the time the pipeline was completed, or None if not
-            completed
-        fail_time: the time the pipeline failed, or None if not failed
-        messages: a list of StatusMessage objects listing the status updates
-            for the pipeline
-        jobs: a list of JobStatus objects describing the status of the jobs
-            that make up the pipeline
-    '''
+    '''Class for recording the status of a pipeline.'''
 
     def __init__(
             self, name=None, state=PipelineState.READY, start_time=None,
@@ -61,12 +48,13 @@ class PipelineStatus(Serializable):
         '''Creates a PipelineStatus instance.
 
         Args:
-            name: the name of the pipeline
-            state: an optional PipelineState of the pipeline. The default is
-                PipelineState.READY
-            start_time: the time the pipeline started, if applicable
-            complete_time: the time the pipeline completed, if applicable
-            fail_time: the time the pipeline failed, if applicable
+            name: a name for the pipeline run
+            state: the state of the pipeline. The default is
+                `PipelineState.READY`
+            start_time: the start time of the pipeline, or None if not started
+            complete_time: the completion time of the pipeline, or None if not
+                completed
+            fail_time: the fail time the pipeline, or None if not failed
             messages: an optional list of StatusMessage instances
             jobs: an optional list of JobStatus instances
         '''
@@ -186,15 +174,31 @@ class PipelineStatus(Serializable):
         Returns:
             a PipelineStatus instance
         '''
-        name = d["name"]
-        state = d["state"]
-        start_time = d["start_time"]
-        complete_time = d["complete_time"]
-        fail_time = d["fail_time"]
-        messages = [StatusMessage.from_dict(sd) for sd in d["messages"]]
-        jobs = [JobStatus.from_dict(jd) for jd in d.get("jobs", [])]
+        name = d.get("name", None)
+        state = d.get("state", None)
+
+        start_time = d.get("start_time", None)
+        if start_time is not None:
+            start_time = etau.parse_isotime(start_time)
+
+        complete_time = d.get("complete_time", None)
+        if complete_time is not None:
+            complete_time = etau.parse_isotime(complete_time)
+
+        fail_time = d.get("fail_time", None)
+        if fail_time is not None:
+            fail_time = etau.parse_isotime(fail_time)
+
+        messages = d.get("messages", None)
+        if messages:
+            messages = [StatusMessage.from_dict(sd) for sd in messages]
+
+        jobs = d.get("jobs", None)
+        if jobs:
+            jobs = [JobStatus.from_dict(jd) for jd in jobs]
+
         return cls(
-            name, state=state, start_time=start_time,
+            name=name, state=state, start_time=start_time,
             complete_time=complete_time, fail_time=fail_time,
             messages=messages, jobs=jobs)
 
@@ -215,12 +219,12 @@ class JobStatus(Serializable):
     '''Class for recording the status of a job.'''
 
     def __init__(
-            self, name, state=JobState.READY, start_time=None,
+            self, name=None, state=JobState.READY, start_time=None,
             complete_time=None, fail_time=None, messages=None):
         '''Creates a JobStatus instance.
 
         Args:
-            name: the name of the job
+            name: a name for the job
             state: the current state of the job. The default is
                 `JobState.READY`
             start_time: the start time of the job, or None if not started
@@ -230,7 +234,7 @@ class JobStatus(Serializable):
             messages: a list of StatusMessage objects listing the status
                 updates for the job
         '''
-        self.name = name
+        self.name = name or ""
         self.state = state
         self.start_time = start_time
         self.complete_time = complete_time
@@ -303,6 +307,8 @@ class JobStatus(Serializable):
         Returns:
             a JobStatus instance
         '''
+        name = d.get("name", None)
+
         start_time = d.get("start_time", None)
         if start_time is not None:
             start_time = etau.parse_isotime(start_time)
@@ -320,7 +326,7 @@ class JobStatus(Serializable):
             messages = [StatusMessage.from_dict(md) for md in messages]
 
         return cls(
-            d["name"], start_time=start_time, complete_time=complete_time,
+            name=name, start_time=start_time, complete_time=complete_time,
             fail_time=fail_time, messages=messages)
 
 
@@ -341,7 +347,7 @@ class StatusMessage(Serializable):
                 time is used
         '''
         self.message = message
-        self.time = time or datetime.now()
+        self.time = time or datetime.datetime.now()
 
     def attributes(self):
         '''Returns the list of attributes to serialize.
