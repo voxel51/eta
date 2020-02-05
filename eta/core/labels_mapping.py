@@ -26,10 +26,12 @@ import logging
 import os
 from subprocess import Popen, PIPE
 import threading
+from typing import Any, Optional, Union
 
 import cv2
 import dateutil.parser
 import numpy as np
+from typeguard import typechecked
 
 from eta.core.config import Config, ConfigBuilder, ConfigError, Configurable
 from eta.core.data import AttributeContainer, AttributeContainerSchema
@@ -38,7 +40,7 @@ import eta.core.frames as etaf
 import eta.core.gps as etag
 import eta.core.image as etai
 from eta.core.objects import DetectedObjectContainer
-from eta.core.serial import load_json, Serializable, Set, BigSet
+from eta.core.serial import Serializable, Container
 import eta.core.utils as etau
 import eta.core.data as etad
 
@@ -75,28 +77,10 @@ d = {
     "<object>:<categorical>:road object:type:compost bin": "<object>:<categorical>:road object:type:bin compost"
 }
 
-ANY = "*"
-
-VIDEO_ATTR = "<video attr>"
-FRAME_ATTR = "<frame attr>"
-IMAGE_ATTR = "<image attr>"
-OBJECT = "<object>"
-EVENT = "<event>"
-
-DELETE = "<delete>"
-
-BOOLEAN_ATTR = "<boolean>"
-CATEGORICAL_ATTR = "<categorical>"
-NUMERIC_ATTR = "<numeric>"
-
-attr_type_map = {
-    BOOLEAN_ATTR:     etau.get_class_name(etad.BooleanAttribute),
-    CATEGORICAL_ATTR: etau.get_class_name(etad.CategoricalAttribute),
-    NUMERIC_ATTR:     etau.get_class_name(etad.NumericAttribute)
-}
+MATCHANY = "*"
 
 
-class LabelsFilter(Serializable):
+class SchemaFilter(Serializable):
 
     @property
     def type(self):
@@ -105,7 +89,18 @@ class LabelsFilter(Serializable):
     def __init__(self):
         self._type = etau.get_class_name(self)
 
-class AttrFilter(LabelsFilter):
+    def iter_matches(self, labels):
+        raise NotImplementedError("Subclass must implement")
+
+    def attributes(self):
+        return super(SchemaFilter, self).attributes() + ["type"]
+
+    @classmethod
+    def from_dict(cls, d, *args, **kwargs):
+        attr_cls = etau.get_class(d["type"])
+        return attr_cls._from_dict(d)
+
+class AttrFilter(SchemaFilter):
 
     @property
     def attr_type(self):
@@ -119,38 +114,76 @@ class AttrFilter(LabelsFilter):
     def attr_value(self):
         return self._attr_value
 
-    def __init__(self, attr_type=ANY, attr_name=ANY, attr_value=ANY):
+    @typechecked
+    def __init__(self, attr_type: str = MATCHANY, attr_name: str = MATCHANY,
+                 attr_value=MATCHANY):
         super(AttrFilter, self).__init__()
         self._attr_type = attr_type
         self._attr_name = attr_name
         self._attr_value = attr_value
 
+    def attributes(self):
+        return super(AttrFilter, self).attributes() \
+               + ["attr_type", "attr_name", "attr_value"]
+
+    @classmethod
+    def _from_dict(cls, d):
+        attr_type = d.get("attr_type", MATCHANY)
+        attr_name = d.get("attr_name", MATCHANY)
+        attr_value = d.get("attr_value", MATCHANY)
+
+        return cls(attr_type=attr_type, attr_name=attr_name,
+                   attr_value=attr_value)
+
 class VideoAttrFilter(AttrFilter):
-    pass
+
+    def iter_matches(self, labels):
+        for attr in labels.iter_video_attrs(
+                attr_type=self.attr_type,
+                attr_name=self.attr_name,
+                attr_value=self.attr_value
+        ):
+            yield attr
 
 class FrameAttrFilter(AttrFilter):
-    pass
+
+    def iter_matches(self, labels):
+        for attr in labels.iter_frame_attrs(
+                attr_type=self.attr_type,
+                attr_name=self.attr_name,
+                attr_value=self.attr_value
+        ):
+            yield attr
 
 class ImageAttrFilter(AttrFilter):
     pass
 
-class _ThingWithLabelFilter(LabelsFilter):
+class ThingWithLabelFilter(SchemaFilter):
 
     @property
     def label(self):
         return self._label
 
-    def __init__(self, label=ANY):
-        super(_ThingWithLabelFilter, self).__init__()
+    def __init__(self, label=MATCHANY):
+        super(ThingWithLabelFilter, self).__init__()
         self._label = label
 
-class ObjectFilter(_ThingWithLabelFilter):
+    def attributes(self):
+        return super(ThingWithLabelFilter, self).attributes() + ["label"]
+
+    @classmethod
+    def _from_dict(cls, d):
+        label = d.get("label", MATCHANY)
+
+        return cls(label=label)
+
+class ObjectFilter(ThingWithLabelFilter):
     pass
 
-class EventFilter(_ThingWithLabelFilter):
+class EventFilter(ThingWithLabelFilter):
     pass
 
-class _AttrOfThingWithLabelFilter(LabelsFilter):
+class AttrOfThingWithLabelFilter(SchemaFilter):
 
     @property
     def label(self):
@@ -168,15 +201,32 @@ class _AttrOfThingWithLabelFilter(LabelsFilter):
     def attr_value(self):
         return self._attr_value
 
-    def __init__(self, label=ANY, attr_type=ANY, attr_name=ANY, attr_value=ANY):
-        super(_AttrOfThingWithLabelFilter, self).__init__()
+    def __init__(self, label=MATCHANY, attr_type=MATCHANY, attr_name=MATCHANY,
+                 attr_value=MATCHANY):
+        super(AttrOfThingWithLabelFilter, self).__init__()
         self._label = label
         self._attr_type = attr_type
         self._attr_name = attr_name
         self._attr_value = attr_value
 
+    def attributes(self):
+        return super(AttrOfThingWithLabelFilter, self).attributes() \
+               + ["label", "attr_type", "attr_name", "attr_value"]
+
     @classmethod
-    def from_filters(cls, thing_with_label_filter, attr_filter):
+    def _from_dict(cls, d):
+        label = d.get("label", MATCHANY)
+        attr_type = d.get("attr_type", MATCHANY)
+        attr_name = d.get("attr_name", MATCHANY)
+        attr_value = d.get("attr_value", MATCHANY)
+
+        return cls(label=label, attr_type=attr_type, attr_name=attr_name,
+                   attr_value=attr_value)
+
+    @classmethod
+    @typechecked
+    def from_filters(cls, thing_with_label_filter: ThingWithLabelFilter,
+                     attr_filter: AttrFilter):
         return cls(
             label=thing_with_label_filter.label,
             attr_type=attr_filter.attr_type,
@@ -184,146 +234,152 @@ class _AttrOfThingWithLabelFilter(LabelsFilter):
             attr_value=attr_filter.attr_value
         )
 
-class ObjectAttrFilter(_AttrOfThingWithLabelFilter):
+class ObjectAttrFilter(AttrOfThingWithLabelFilter):
     pass
 
-class EventAttrFilter(_AttrOfThingWithLabelFilter):
+class EventAttrFilter(AttrOfThingWithLabelFilter):
     pass
 
+class SchemaMap(Serializable):
+
+    @property
+    def filter(self):
+        return self._filter
+
+    @property
+    def output_map(self):
+        return self._output_map
+
+    @typechecked
+    def __init__(self, filter: SchemaFilter,
+                 output_map: Union[SchemaFilter, None]=None):
+        self._filter = filter
+        self._output_map = output_map
+
+    def attributes(self):
+        return super(SchemaMap, self).attributes() + ["filter", "output_map"]
+
+    @classmethod
+    def from_dict(cls, d, *args, **kwargs):
+        '''Constructs a VideoLabels from a JSON dictionary.'''
+        filter_dict = d.get("filter", None)
+        filter = SchemaFilter.from_dict(filter_dict) if filter_dict else None
+        if filter is None:
+            raise ValueError("Missing field dict field 'filter'")
+
+        output_map_dict = d.get("output_map", None)
+        output_map = (SchemaFilter.from_dict(output_map_dict)
+                      if output_map_dict else None)
+
+        return cls(filter=filter, output_map=output_map)
+
+class SchemaMapContainer(Container):
+    _ELE_CLS = SchemaMap
+    _ELE_CLS_FIELD = "_MAP_CLS"
+    _ELE_ATTR = "maps"
 
 
-
-class LabelsMapperConfig(Config):
+class LabelsMapper():
     '''TODO'''
 
-    def __init__(self, d):
-        self.maps = d
+    _FRAME_ATTRS = "frame attrs"
+    _VIDEO_ATTRS = "video attrs"
 
+    @property
+    def maps(self):
+        return self._maps.maps
 
-class LabelsMapper(Configurable):
-    '''TODO'''
+    @typechecked
+    def __init__(self, maps: SchemaMapContainer):
+        self._maps = maps
 
-    def __init__(self, config):
-        self.config = config
-
-    def _clear_state(self, map_in=None, map_out=None):
-        # TODO TEMP
-        map_in =  "<frame attr>:<categorical>:time of day"
-        map_out = "<video attr>:<categorical>:time of day"
-
-        self._cur_map_in = map_in
+    def _clear_state(self, filter=None, map_out=None):
+        self._cur_filter = filter
         self._cur_map_out = map_out
         self._to_remove = {
-            "video attrs": [],
-            "frame attrs": []
+            self._VIDEO_ATTRS: [],
+            self._FRAME_ATTRS: []
         }
         self._to_add = {
-            "video attrs": [],
-            "frame attrs": []
+            self._VIDEO_ATTRS: [],
+            self._FRAME_ATTRS: []
         }
 
     def map_labels(self, labels):
-        for map_in, map_out in self.config.maps.items():
-            self._clear_state(map_in, map_out)
+        for schema_map in self.maps:
+            self._clear_state(schema_map.filter, schema_map.output_map)
             self._map_labels(labels)
-            break
 
     def _map_labels(self, labels):
-        pattern_parts = self._cur_map_in.split(":")
-        qualifier = pattern_parts.pop(0)
-
-        if qualifier == VIDEO_ATTR:
-            if pattern_parts:
-                pattern_parts[0] = (
-                    pattern_parts[0]
-                    if pattern_parts[0] == "*"
-                    else attr_type_map[pattern_parts[0]]
-                )
-            for video_attr in labels.iter_video_attrs(*pattern_parts):
+        if isinstance(self._cur_filter, VideoAttrFilter):
+            for video_attr in self._cur_filter.iter_matches(labels):
                 self._process_video_attr(video_attr)
-        elif qualifier == FRAME_ATTR:
-            if pattern_parts:
-                pattern_parts[0] = (
-                    pattern_parts[0]
-                    if pattern_parts[0] == "*"
-                    else attr_type_map[pattern_parts[0]]
-                )
-            for frame_attr in labels.iter_frame_attrs(*pattern_parts):
+        if isinstance(self._cur_filter, FrameAttrFilter):
+            for frame_attr in self._cur_filter.iter_matches(labels):
                 self._process_frame_attr(frame_attr)
-        elif qualifier == OBJECT:
+        elif isinstance(self._cur_filter, ObjectFilter):
             raise NotImplementedError("TODO")
-        elif qualifier == EVENT:
+        elif isinstance(self._cur_filter, EventFilter):
+            raise NotImplementedError("TODO")
+        elif isinstance(self._cur_filter, ObjectAttrFilter):
+            raise NotImplementedError("TODO")
+        elif isinstance(self._cur_filter, EventAttrFilter):
             raise NotImplementedError("TODO")
         else:
-            raise ValueError("Invalid pattern qualifier %s" % qualifier)
+            raise ValueError("Invalid filter %s"
+                             % etau.get_class_name(self._cur_filter))
 
         self._add_and_remove(labels)
 
     def _process_video_attr(self, video_attr):
         raise NotImplementedError("TODO")
 
-    def _process_frame_attr(self, frame_attr):
-        if self._cur_map_out == DELETE:
-            self._to_remove["frame attrs"].append(frame_attr)
+    @typechecked
+    def _process_frame_attr(self, frame_attr: etad.Attribute):
+        if self._cur_map_out is None:
+            self._to_remove[self._FRAME_ATTRS].append(frame_attr)
             return
 
-        pattern_parts = self._cur_map_out.split(":")
+        # Map Type
 
-        # Qualifier
-
-        qualifier = pattern_parts.pop(0)
-
-        if qualifier == VIDEO_ATTR:
-            self._to_remove["frame attrs"].append(frame_attr)
-            self._to_add["video attrs"].append(frame_attr)
-        elif qualifier != FRAME_ATTR:
+        if isinstance(self._cur_map_out, VideoAttrFilter):
+            self._to_remove[self._FRAME_ATTRS].append(frame_attr)
+            self._to_add[self._VIDEO_ATTRS].append(frame_attr)
+        elif not isinstance(self._cur_map_out, FrameAttrFilter):
             raise ValueError(
-                "Cannot map from %s to %s" % (FRAME_ATTR, qualifier))
-
-        if not pattern_parts:
-            return
+                "Cannot map from %s to %s" % (
+                    etau.get_class_name(self._cur_map_out),
+                    etau.get_class_name(FrameAttrFilter))
+            )
 
         # Attribute Type
 
-        attr_type = pattern_parts.pop(0)
-        if attr_type != "*":
-            try:
-                new_type = attr_type_map[attr_type]
-            except KeyError:
-                raise KeyError("Invalid attr type '%s'" % attr_type)
-
+        if self._cur_map_out.attr_type != MATCHANY:
             frame_attr.value = self._map_attr_value(
-                frame_attr.type, new_type, frame_attr.value)
-            frame_attr.type = new_type
-
-        if not pattern_parts:
-            return
+                frame_attr.type, self._cur_map_out.attr_type, frame_attr.value)
+            frame_attr.type = self._cur_map_out.attr_type
 
         # Attribute Name
 
-        attr_name = pattern_parts.pop(0)
-        if attr_name != "*":
-            frame_attr.name = attr_name
-
-        if not pattern_parts:
-            return
+        if self._cur_map_out.attr_name != MATCHANY:
+            frame_attr.name = self._cur_map_out.attr_name
 
         # Attribute Value
 
-        attr_value = pattern_parts.pop(0)
-        if attr_value != "*":
-            if frame_attr.type == attr_type_map[BOOLEAN_ATTR]:
-                attr_value = is_true(attr_value)
-            elif frame_attr.type == attr_type_map[NUMERIC_ATTR]:
-                attr_value = float(attr_value)
-            frame_attr.value = attr_value
+        if self._cur_map_out.attr_value != MATCHANY:
+            if frame_attr.type == etau.get_class_name(etad.BooleanAttribute):
+                frame_attr.value = is_true(self._cur_map_out.attr_value)
+            elif frame_attr.type == etau.get_class_name(etad.BooleanAttribute):
+                frame_attr.value = float(self._cur_map_out.attr_value)
+            else:
+                frame_attr.value = self._cur_map_out.attr_value
 
     def _map_attr_value(self, prev_type, new_type, value):
         if prev_type == new_type:
             return value
-        if new_type == attr_type_map[BOOLEAN_ATTR]:
+        if new_type == etau.get_class_name(etad.BooleanAttribute):
             return is_true(value)
-        if new_type == attr_type_map[NUMERIC_ATTR]:
+        if new_type == etau.get_class_name(etad.NumericAttribute):
             try:
                 return float(value)
             except ValueError:
