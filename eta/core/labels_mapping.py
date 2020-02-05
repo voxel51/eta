@@ -113,6 +113,15 @@ class AttrFilter(SchemaFilter):
         self._attr_name = attr_name
         self._attr_value = attr_value
 
+    def create_attr(self):
+        if any(x == MATCHANY for x in
+               (self.attr_type, self.attr_name, self.attr_value)):
+            raise ValueError("Cannot create attribute if all fields are not"
+                             "explicit")
+
+        return etau.get_class(self.attr_type)(name=self.attr_name,
+                                              value=self.attr_value)
+
     def attributes(self):
         return super(AttrFilter, self).attributes() \
                + ["attr_type", "attr_name", "attr_value"]
@@ -203,6 +212,15 @@ class AttrOfThingWithLabelFilter(SchemaFilter):
         self._attr_name = attr_name
         self._attr_value = attr_value
 
+    def create_attr(self):
+        if any(x == MATCHANY for x in
+               (self.attr_type, self.attr_name, self.attr_value)):
+            raise ValueError("Cannot create attribute if all fields are not"
+                             "explicit")
+
+        return etau.get_class(self.attr_type)(name=self.attr_name,
+                                              value=self.attr_value)
+
     def attributes(self):
         return super(AttrOfThingWithLabelFilter, self).attributes() \
                + ["label", "attr_type", "attr_name", "attr_value"]
@@ -285,8 +303,9 @@ class SchemaMapper(Serializable):
 
     '''
 
-    _FRAME_ATTRS = "frame attrs"
     _VIDEO_ATTRS = "video attrs"
+    _FRAME_ATTRS = "frame attrs"
+    _OBJECTS = "objects"
 
     _VALID_CLASS_MAPS = {
         VideoAttrFilter: [FrameAttrFilter],
@@ -379,7 +398,8 @@ class SchemaMapper(Serializable):
     def _clear_state(self):
         self._to_remove = {
             self._VIDEO_ATTRS: [],
-            self._FRAME_ATTRS: []
+            self._FRAME_ATTRS: [],
+            self._OBJECTS: []
         }
         self._to_add = {
             self._VIDEO_ATTRS: [],
@@ -425,22 +445,49 @@ class SchemaMapper(Serializable):
 
     @typechecked
     def _process_object(self, obj: etao.DetectedObject):
-        print(obj)
-        assert False, "DFKDF"
+        if self.output_map is None:
+            self._to_remove[self._OBJECTS].append(obj)
+            return
+
+        # Map Type (create attribute)
+
+        if isinstance(self.output_map, ObjectAttrFilter):
+            obj.add_attribute(self.output_map.create_attr())
+
+        # Object Label
+
+        if self.output_map.label != MATCHANY:
+            obj.label = self.output_map.label
 
     def _add_and_remove(self, labels):
+        self._remove_video_attrs(labels)
+        self._remove_frame_attrs(labels)
+        self._remove_objects(labels)
+        self._add_video_attrs(labels)
+        self._add_frame_attrs(labels)
+
+    def _remove_video_attrs(self, labels):
         labels.attrs.filter_elements(filters=[
             lambda el: el not in self._to_remove[self._VIDEO_ATTRS]
         ])
 
+    def _remove_frame_attrs(self, labels):
         for frame in labels.iter_frames():
             frame.attrs.filter_elements(filters=[
                 lambda el: el not in self._to_remove[self._FRAME_ATTRS]
             ])
 
+    def _remove_objects(self, labels):
+        for frame in labels.iter_frames():
+            frame.objects.filter_elements(filters=[
+                lambda el: el not in self._to_remove[self._OBJECTS]
+            ])
+
+    def _add_video_attrs(self, labels):
         for attr in self._to_add[self._VIDEO_ATTRS]:
             labels.attrs.add(attr)
 
+    def _add_frame_attrs(self, labels):
         for attr in self._to_add[self._FRAME_ATTRS]:
             for frame in labels.iter_frames():
                 frame.attrs.add(attr)
@@ -467,6 +514,9 @@ class SchemaMapperContainer(Container):
     _ELE_CLS_FIELD = "_MAP_CLS"
     _ELE_ATTR = "maps"
 
+    def map_labels(self, labels):
+        for mapper in self:
+            mapper.map_labels(labels)
 
 def is_true(thing_to_test):
     '''Cast an arg from client to native boolean'''
