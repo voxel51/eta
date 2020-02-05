@@ -305,3 +305,39 @@ class DuplicateFiles(etas.Serializable):
         '''Constructs a DuplicateFiles object from a JSON dictionary.'''
         duplicates = d["duplicates"]
         return cls(duplicates=duplicates)
+
+
+def get_video_mismatch_schema(dataset, target_schema):
+    if not isinstance(target_schema, etav.VideoLabelsSchema):
+        raise ValueError("target_schema must be of type '%s'"
+                         % etau.get_class_name(etav.VideoLabelsSchema))
+
+    mismatch_schema = etav.VideoLabelsSchema()
+
+    for labels in dataset.iter_labels():
+        for attr in labels.attrs:
+            if not target_schema.is_valid_video_attribute(attr):
+                mismatch_schema.add_video_attribute(attr)
+
+        for frame in labels.iter_frames():
+            for attr in frame.attrs:
+                if not target_schema.is_valid_frame_attribute(attr):
+                    mismatch_schema.add_frame_attribute(attr)
+
+            for obj in frame.objects:
+                if not target_schema.is_valid_object_label(obj.label):
+                    mismatch_schema.add_object_label(obj.label)
+                for attr in obj.attrs:
+                    if not target_schema.is_valid_object_attribute(
+                            obj.label, attr):
+                        mismatch_schema.add_object_attribute(obj.label, attr)
+
+        for event in labels.iter_events():
+            if not target_schema.is_valid_event_label(event.label):
+                mismatch_schema.add_event_label(event.label)
+            for attr in event.attrs:
+                if not target_schema.is_valid_event_attribute(
+                        event.label, attr):
+                    mismatch_schema.add_event_attribute(event.label, attr)
+
+    return mismatch_schema

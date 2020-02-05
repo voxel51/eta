@@ -471,8 +471,10 @@ class AttributeContainer(Container):
         '''Returns True/False whether the container has an enforced schema.'''
         return self.schema is not None
 
-    def iter_attrs(self, attr_name="*", attr_value="*"):
+    def iter_attrs(self, attr_type="*", attr_name="*", attr_value="*"):
         for attr in self:
+            if attr_type != "*" and attr.type != attr_type:
+                continue
             if attr_name != "*" and attr.name != attr_name:
                 continue
             if attr_value != "*" and attr.value != attr_value:

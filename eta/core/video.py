@@ -599,14 +599,6 @@ class VideoLabels(Serializable):
         '''
         return itervalues(self.frames)
 
-    def iter_events(self):
-        '''Returns an iterator over the Events in the container.
-
-        Returns:
-            an iterator over Events
-        '''
-        return iter(self.events)
-
     def __len__(self):
         '''The number of frames in the container with VideoFrameLabels.'''
         return len(self.frames)
@@ -615,58 +607,35 @@ class VideoLabels(Serializable):
         '''Whether the container has labels of any kind.'''
         return not self.is_empty
 
-    def iter_matches(self, pattern):
-        VIDEO_ATTR = "<video attr>"
-        FRAME_ATTR = "<frame attr>"
-        OBJECT = "<object>"
-        EVENT = "<event>"
+    def iter_video_attrs(self, attr_type="*", attr_name="*", attr_value="*"):
+        for attr in self.attrs.iter_attrs(attr_type, attr_name, attr_value):
+            yield attr
 
-        pattern_parts = pattern.split(":")
-
-        qualifier = pattern_parts.pop(0)
-
-        if qualifier == VIDEO_ATTR:
-            for attr in self.attrs.iter_attrs(*pattern_parts):
-                yield attr
-
-        elif qualifier == FRAME_ATTR:
-            for attr in self._iter_frame_attrs(*pattern_parts):
-                yield attr
-
-        elif qualifier == OBJECT:
-            if len(pattern_parts) == 1:
-                for obj in self._iter_objects(*pattern_parts):
-                    yield obj
-            else:
-                for attr in self._iter_object_attrs(*pattern_parts):
-                    yield attr
-
-        elif qualifier == EVENT:
-            if len(pattern_parts) == 1:
-                for event in self.events.iter_events(*pattern_parts):
-                    yield event
-            else:
-                for attr in self.events.iter_event_attrs(*pattern_parts):
-                    yield attr
-
-        else:
-            raise ValueError("Invalid qualifier: %s" % qualifier)
-
-    def _iter_frame_attrs(self, attr_name="*", attr_value="*"):
+    def iter_frame_attrs(self, attr_type="*", attr_name="*", attr_value="*"):
         for frame in self.iter_frames():
-            for attr in frame.attrs.iter_attrs(attr_name, attr_value):
+            for attr in frame.attrs.iter_attrs(
+                    attr_type, attr_name, attr_value):
                 yield attr
 
-    def _iter_objects(self, label="*"):
+    def iter_objects(self, label="*"):
         for frame in self.iter_frames():
             for obj in frame.objects.iter_objects(label):
                 yield obj
 
-    def _iter_object_attrs(self, label="*", attr_name="*", attr_value="*"):
+    def iter_object_attrs(self, label="*", attr_name="*", attr_value="*"):
         for frame in self.iter_frames():
-            for attr in frame.objects.iter_object_attrs(
+            for obj, attr in frame.objects.iter_object_attrs(
                     label, attr_name, attr_value):
-                yield attr
+                yield obj, attr
+
+    def iter_events(self, label="*"):
+        for event in self.events.iter_events(label):
+            yield event
+
+    def iter_event_attrs(self, label="*", attr_name="*", attr_value="*"):
+        for event, attr in self.events.iter_event_attrs(
+                label, attr_name, attr_value):
+            yield event, attr
 
     @property
     def has_video_attributes(self):

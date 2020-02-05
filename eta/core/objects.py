@@ -193,7 +193,7 @@ class DetectedObjectContainer(Container):
     def iter_object_attrs(self, label="*", attr_name="*", attr_value="*"):
         for obj in self.iter_objects(label):
             for attr in obj.attrs.iter_attrs(attr_name, attr_value):
-                yield attr
+                yield obj, attr
 
     def get_labels(self):
         '''Returns a set containing the labels of the DetectedObjects.
