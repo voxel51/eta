@@ -75,6 +75,8 @@ d = {
     "<object>:<categorical>:road object:type:compost bin": "<object>:<categorical>:road object:type:bin compost"
 }
 
+ANY = "*"
+
 VIDEO_ATTR = "<video attr>"
 FRAME_ATTR = "<frame attr>"
 IMAGE_ATTR = "<image attr>"
@@ -92,6 +94,102 @@ attr_type_map = {
     CATEGORICAL_ATTR: etau.get_class_name(etad.CategoricalAttribute),
     NUMERIC_ATTR:     etau.get_class_name(etad.NumericAttribute)
 }
+
+
+class LabelsFilter(Serializable):
+
+    @property
+    def type(self):
+        return self._type
+
+    def __init__(self):
+        self._type = etau.get_class_name(self)
+
+class AttrFilter(LabelsFilter):
+
+    @property
+    def attr_type(self):
+        return self._attr_type
+
+    @property
+    def attr_name(self):
+        return self._attr_name
+
+    @property
+    def attr_value(self):
+        return self._attr_value
+
+    def __init__(self, attr_type=ANY, attr_name=ANY, attr_value=ANY):
+        super(AttrFilter, self).__init__()
+        self._attr_type = attr_type
+        self._attr_name = attr_name
+        self._attr_value = attr_value
+
+class VideoAttrFilter(AttrFilter):
+    pass
+
+class FrameAttrFilter(AttrFilter):
+    pass
+
+class ImageAttrFilter(AttrFilter):
+    pass
+
+class _ThingWithLabelFilter(LabelsFilter):
+
+    @property
+    def label(self):
+        return self._label
+
+    def __init__(self, label=ANY):
+        super(_ThingWithLabelFilter, self).__init__()
+        self._label = label
+
+class ObjectFilter(_ThingWithLabelFilter):
+    pass
+
+class EventFilter(_ThingWithLabelFilter):
+    pass
+
+class _AttrOfThingWithLabelFilter(LabelsFilter):
+
+    @property
+    def label(self):
+        return self._label
+
+    @property
+    def attr_type(self):
+        return self._attr_type
+
+    @property
+    def attr_name(self):
+        return self._attr_name
+
+    @property
+    def attr_value(self):
+        return self._attr_value
+
+    def __init__(self, label=ANY, attr_type=ANY, attr_name=ANY, attr_value=ANY):
+        super(_AttrOfThingWithLabelFilter, self).__init__()
+        self._label = label
+        self._attr_type = attr_type
+        self._attr_name = attr_name
+        self._attr_value = attr_value
+
+    @classmethod
+    def from_filters(cls, thing_with_label_filter, attr_filter):
+        return cls(
+            label=thing_with_label_filter.label,
+            attr_type=attr_filter.attr_type,
+            attr_name=attr_filter.attr_name,
+            attr_value=attr_filter.attr_value
+        )
+
+class ObjectAttrFilter(_AttrOfThingWithLabelFilter):
+    pass
+
+class EventAttrFilter(_AttrOfThingWithLabelFilter):
+    pass
+
 
 
 
