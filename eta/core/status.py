@@ -212,30 +212,30 @@ class JobState(object):
 
 
 class JobStatus(Serializable):
-    '''Class for recording the status of a job.
+    '''Class for recording the status of a job.'''
 
-    Attributes:
-        name: the name of the job
-        state: the current state of the job
-        start_time: the time the job was started, or None if not started
-        complete_time: the time the job was completed, or None if not completed
-        fail_time: the time the job failed, or None if not failed
-        messages: a list of StatusMessage objects listing the status updates
-            for the job
-    '''
-
-    def __init__(self, name):
+    def __init__(
+            self, name, state=JobState.READY, start_time=None,
+            complete_time=None, fail_time=None, messages=None):
         '''Creates a JobStatus instance.
 
         Args:
             name: the name of the job
+            state: the current state of the job. The default is
+                `JobState.READY`
+            start_time: the start time of the job, or None if not started
+            complete_time: the time the job was completed, or None if not
+                completed
+            fail_time: the time the job failed, or None if not failed
+            messages: a list of StatusMessage objects listing the status
+                updates for the job
         '''
         self.name = name
-        self.state = JobState.READY
-        self.start_time = None
-        self.complete_time = None
-        self.fail_time = None
-        self.messages = []
+        self.state = state
+        self.start_time = start_time
+        self.complete_time = complete_time
+        self.fail_time = fail_time
+        self.messages = messages or []
 
     def add_message(self, message):
         '''Add the given message to the messages list.
@@ -303,14 +303,25 @@ class JobStatus(Serializable):
         Returns:
             a JobStatus instance
         '''
-        job_status = JobStatus(d["name"])
-        job_status.state = d["state"]
-        job_status.start_time = d["start_time"]
-        job_status.complete_time = d["complete_time"]
-        job_status.fail_time = d["fail_time"]
-        job_status.messages = [
-            StatusMessage.from_dict(sd) for sd in d["messages"]]
-        return job_status
+        start_time = d.get("start_time", None)
+        if start_time is not None:
+            start_time = etau.parse_isotime(start_time)
+
+        complete_time = d.get("complete_time", None)
+        if complete_time is not None:
+            complete_time = etau.parse_isotime(complete_time)
+
+        fail_time = d.get("fail_time", None)
+        if fail_time is not None:
+            fail_time = etau.parse_isotime(fail_time)
+
+        messages = d.get("messages", None)
+        if messages is not None:
+            messages = [StatusMessage.from_dict(md) for md in messages]
+
+        return cls(
+            d["name"], start_time=start_time, complete_time=complete_time,
+            fail_time=fail_time, messages=messages)
 
 
 class StatusMessage(Serializable):
