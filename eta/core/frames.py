@@ -1,7 +1,7 @@
 '''
 Core utilities for working with frame numbers of videos.
 
-Copyright 2017-2019, Voxel51, Inc.
+Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
@@ -19,11 +19,10 @@ import six
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-import pytz
-
 import numpy as np
 
 from eta.core.serial import Serializable
+import eta.core.utils as etau
 
 
 def frame_number_to_timestamp(frame_number, total_frame_count, duration):
@@ -88,44 +87,7 @@ def world_time_to_timestamp(world_time, start_time):
     Returns:
         the corresponding timestamp (in seconds) in the video
     '''
-    try:
-        return (world_time - start_time).total_seconds()
-    except (TypeError, ValueError):
-        world_time = add_utc_timezone_if_necessary(world_time)
-        start_time = add_utc_timezone_if_necessary(start_time)
-        return (world_time - start_time).total_seconds()
-
-
-def add_local_timezone_if_necessary(dt):
-    '''Makes the datetime timezone-aware, if necessary, by setting its timezone
-    to the local timezone.
-
-    Args:
-        dt: a datetime
-
-    Returns:
-        a timezone-aware datetime
-    '''
-    if dt.tzinfo is None:
-        dt = dt.astimezone()  # empty ==> local timezone
-
-    return dt
-
-
-def add_utc_timezone_if_necessary(dt):
-    '''Makes the datetime timezone-aware, if necessary, by setting its timezone
-    to UTC.
-
-    Args:
-        dt: a datetime
-
-    Returns:
-        a timezone-aware datetime
-    '''
-    if dt.tzinfo is None:
-        dt = dt.astimezone(pytz.utc)
-
-    return dt
+    return etau.datetime_delta_seconds(start_time, world_time)
 
 
 def world_time_to_frame_number(
