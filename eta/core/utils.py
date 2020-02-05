@@ -94,12 +94,17 @@ def get_isotime():
 def parse_isotime(isotime_str):
     '''Parses the ISO time string into a datetime.
 
+    If the input is falsey, None is returned.
+
     Args:
         isotime_str: an ISO time string like "YYYY-MM-DD HH:MM:SS"
 
     Returns:
-        a datetime
+        a datetime, or None if the input was empty
     '''
+    if not isotime_str:
+        return None
+
     return dateutil.parser.parse(isotime_str)
 
 

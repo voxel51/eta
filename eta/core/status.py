@@ -176,18 +176,9 @@ class PipelineStatus(Serializable):
         '''
         name = d.get("name", None)
         state = d.get("state", None)
-
-        start_time = d.get("start_time", None)
-        if start_time is not None:
-            start_time = etau.parse_isotime(start_time)
-
-        complete_time = d.get("complete_time", None)
-        if complete_time is not None:
-            complete_time = etau.parse_isotime(complete_time)
-
-        fail_time = d.get("fail_time", None)
-        if fail_time is not None:
-            fail_time = etau.parse_isotime(fail_time)
+        start_time = etau.parse_isotime(d.get("start_time", None))
+        complete_time = etau.parse_isotime(d.get("complete_time", None))
+        fail_time = etau.parse_isotime(d.get("fail_time", None))
 
         messages = d.get("messages", None)
         if messages:
@@ -308,18 +299,9 @@ class JobStatus(Serializable):
             a JobStatus instance
         '''
         name = d.get("name", None)
-
-        start_time = d.get("start_time", None)
-        if start_time is not None:
-            start_time = etau.parse_isotime(start_time)
-
-        complete_time = d.get("complete_time", None)
-        if complete_time is not None:
-            complete_time = etau.parse_isotime(complete_time)
-
-        fail_time = d.get("fail_time", None)
-        if fail_time is not None:
-            fail_time = etau.parse_isotime(fail_time)
+        start_time = etau.parse_isotime(d.get("start_time", None))
+        complete_time = etau.parse_isotime(d.get("complete_time", None))
+        fail_time = etau.parse_isotime(d.get("fail_time", None))
 
         messages = d.get("messages", None)
         if messages is not None:
@@ -367,8 +349,5 @@ class StatusMessage(Serializable):
         Returns:
             a StatusMessage instance
         '''
-        time = d.get("time", None)
-        if time is not None:
-            time = etau.parse_isotime(time)
-
+        time = etau.parse_isotime(d.get("time", None))
         return StatusMessage(d["message"], time=time)
