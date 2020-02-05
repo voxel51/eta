@@ -39,23 +39,13 @@ from eta.core.events import EventContainer
 import eta.core.frames as etaf
 import eta.core.gps as etag
 import eta.core.image as etai
-from eta.core.objects import DetectedObjectContainer
+import eta.core.objects as etao
 from eta.core.serial import Serializable, Container
 import eta.core.utils as etau
 import eta.core.data as etad
 
 
 logger = logging.getLogger(__name__)
-
-
-
-
-'''
-find match
-modify in place
-add to "to remove"
-add to "to add"
-'''
 
 
 d = {
@@ -76,6 +66,7 @@ d = {
     # rename string
     "<object>:<categorical>:road object:type:compost bin": "<object>:<categorical>:road object:type:bin compost"
 }
+
 
 MATCHANY = "*"
 
@@ -178,7 +169,10 @@ class ThingWithLabelFilter(SchemaFilter):
         return cls(label=label)
 
 class ObjectFilter(ThingWithLabelFilter):
-    pass
+
+    def iter_matches(self, labels):
+        for obj in labels.iter_objects(label=self.label):
+            yield obj
 
 class EventFilter(ThingWithLabelFilter):
     pass
@@ -240,7 +234,68 @@ class ObjectAttrFilter(AttrOfThingWithLabelFilter):
 class EventAttrFilter(AttrOfThingWithLabelFilter):
     pass
 
-class SchemaMap(Serializable):
+
+class SchemaMapper(Serializable):
+    '''
+
+    Examples:
+        delete attr
+            {
+                "filter": {
+                    "type": "eta.core.labels_mapping.FrameAttrFilter",
+                    "attr_name": "time of day"
+
+                },
+                "output_map": null
+            }
+
+            OR
+
+            {
+                "filter": {
+                    "type": "eta.core.labels_mapping.FrameAttrFilter",
+                    "attr_name": "time of day"
+
+                }
+            }
+
+        frame attr -> video attr
+            {
+                "filter": {
+                    "type": "eta.core.labels_mapping.FrameAttrFilter",
+                    "attr_name": "time of day"
+
+                },
+                "output_map": {
+                    "type": "eta.core.labels_mapping.VideoAttrFilter"
+                }
+            }
+
+        video attr -> frame attr
+            {
+                "filter": {
+                    "type": "eta.core.labels_mapping.VideoAttrFilter",
+                    "attr_name": "time of day"
+
+                },
+                "output_map": {
+                    "type": "eta.core.labels_mapping.FrameAttrFilter"
+                }
+            }
+
+    '''
+
+    _FRAME_ATTRS = "frame attrs"
+    _VIDEO_ATTRS = "video attrs"
+
+    _VALID_CLASS_MAPS = {
+        VideoAttrFilter: [FrameAttrFilter],
+        FrameAttrFilter: [VideoAttrFilter],
+        ObjectFilter: [ObjectAttrFilter],
+        EventFilter: [EventAttrFilter],
+        ObjectAttrFilter: [ObjectFilter],
+        EventAttrFilter: [EventFilter]
+    }
 
     @property
     def filter(self):
@@ -256,8 +311,34 @@ class SchemaMap(Serializable):
         self._filter = filter
         self._output_map = output_map
 
+        self._validate_map()
+
+    def map_labels(self, labels):
+        self._clear_state()
+
+        if isinstance(self.filter, VideoAttrFilter):
+            for video_attr in self.filter.iter_matches(labels):
+                self._process_video_attr(video_attr)
+        if isinstance(self.filter, FrameAttrFilter):
+            for frame_attr in self.filter.iter_matches(labels):
+                self._process_frame_attr(frame_attr)
+        elif isinstance(self.filter, ObjectFilter):
+            for obj in self.filter.iter_matches(labels):
+                self._process_object(obj)
+        elif isinstance(self.filter, EventFilter):
+            raise NotImplementedError("TODO")
+        elif isinstance(self.filter, ObjectAttrFilter):
+            raise NotImplementedError("TODO")
+        elif isinstance(self.filter, EventAttrFilter):
+            raise NotImplementedError("TODO")
+        else:
+            raise ValueError("Invalid filter %s"
+                             % etau.get_class_name(self.filter))
+
+        self._add_and_remove(labels)
+
     def attributes(self):
-        return super(SchemaMap, self).attributes() + ["filter", "output_map"]
+        return super(SchemaMapper, self).attributes() + ["filter", "output_map"]
 
     @classmethod
     def from_dict(cls, d, *args, **kwargs):
@@ -273,29 +354,29 @@ class SchemaMap(Serializable):
 
         return cls(filter=filter, output_map=output_map)
 
-class SchemaMapContainer(Container):
-    _ELE_CLS = SchemaMap
-    _ELE_CLS_FIELD = "_MAP_CLS"
-    _ELE_ATTR = "maps"
+    # PRIVATE
 
+    def _validate_map(self):
+        if self.output_map is None:
+            # anything can be deleted
+            return
 
-class LabelsMapper():
-    '''TODO'''
+        if self.filter.type == self.output_map.type:
+            # anything can be mapped to the same type
+            return
 
-    _FRAME_ATTRS = "frame attrs"
-    _VIDEO_ATTRS = "video attrs"
+        filter_map_cls = etau.get_class(self.filter.type)
+        output_map_cls = etau.get_class(self.output_map.type)
 
-    @property
-    def maps(self):
-        return self._maps.maps
+        valid_classes = self._VALID_CLASS_MAPS[filter_map_cls]
 
-    @typechecked
-    def __init__(self, maps: SchemaMapContainer):
-        self._maps = maps
+        if not any(issubclass(output_map_cls, cls) for cls in valid_classes):
+            raise ValueError(
+                "Invalid schema map from %s to %s"
+                % (self.filter.type, self.output_map.type)
+            )
 
-    def _clear_state(self, filter=None, map_out=None):
-        self._cur_filter = filter
-        self._cur_map_out = map_out
+    def _clear_state(self):
         self._to_remove = {
             self._VIDEO_ATTRS: [],
             self._FRAME_ATTRS: []
@@ -305,76 +386,67 @@ class LabelsMapper():
             self._FRAME_ATTRS: []
         }
 
-    def map_labels(self, labels):
-        for schema_map in self.maps:
-            self._clear_state(schema_map.filter, schema_map.output_map)
-            self._map_labels(labels)
-
-    def _map_labels(self, labels):
-        if isinstance(self._cur_filter, VideoAttrFilter):
-            for video_attr in self._cur_filter.iter_matches(labels):
-                self._process_video_attr(video_attr)
-        if isinstance(self._cur_filter, FrameAttrFilter):
-            for frame_attr in self._cur_filter.iter_matches(labels):
-                self._process_frame_attr(frame_attr)
-        elif isinstance(self._cur_filter, ObjectFilter):
-            raise NotImplementedError("TODO")
-        elif isinstance(self._cur_filter, EventFilter):
-            raise NotImplementedError("TODO")
-        elif isinstance(self._cur_filter, ObjectAttrFilter):
-            raise NotImplementedError("TODO")
-        elif isinstance(self._cur_filter, EventAttrFilter):
-            raise NotImplementedError("TODO")
-        else:
-            raise ValueError("Invalid filter %s"
-                             % etau.get_class_name(self._cur_filter))
-
-        self._add_and_remove(labels)
-
     def _process_video_attr(self, video_attr):
         raise NotImplementedError("TODO")
 
     @typechecked
     def _process_frame_attr(self, frame_attr: etad.Attribute):
-        if self._cur_map_out is None:
+        if self.output_map is None:
             self._to_remove[self._FRAME_ATTRS].append(frame_attr)
             return
 
         # Map Type
 
-        if isinstance(self._cur_map_out, VideoAttrFilter):
+        if isinstance(self.output_map, VideoAttrFilter):
             self._to_remove[self._FRAME_ATTRS].append(frame_attr)
             self._to_add[self._VIDEO_ATTRS].append(frame_attr)
-        elif not isinstance(self._cur_map_out, FrameAttrFilter):
-            raise ValueError(
-                "Cannot map from %s to %s" % (
-                    etau.get_class_name(self._cur_map_out),
-                    etau.get_class_name(FrameAttrFilter))
-            )
 
         # Attribute Type
 
-        if self._cur_map_out.attr_type != MATCHANY:
+        if self.output_map.attr_type != MATCHANY:
             frame_attr.value = self._map_attr_value(
-                frame_attr.type, self._cur_map_out.attr_type, frame_attr.value)
-            frame_attr.type = self._cur_map_out.attr_type
+                frame_attr.type, self.output_map.attr_type, frame_attr.value)
+            frame_attr.type = self.output_map.attr_type
 
         # Attribute Name
 
-        if self._cur_map_out.attr_name != MATCHANY:
-            frame_attr.name = self._cur_map_out.attr_name
+        if self.output_map.attr_name != MATCHANY:
+            frame_attr.name = self.output_map.attr_name
 
         # Attribute Value
 
-        if self._cur_map_out.attr_value != MATCHANY:
+        if self.output_map.attr_value != MATCHANY:
             if frame_attr.type == etau.get_class_name(etad.BooleanAttribute):
-                frame_attr.value = is_true(self._cur_map_out.attr_value)
+                frame_attr.value = is_true(self.output_map.attr_value)
             elif frame_attr.type == etau.get_class_name(etad.BooleanAttribute):
-                frame_attr.value = float(self._cur_map_out.attr_value)
+                frame_attr.value = float(self.output_map.attr_value)
             else:
-                frame_attr.value = self._cur_map_out.attr_value
+                frame_attr.value = self.output_map.attr_value
 
-    def _map_attr_value(self, prev_type, new_type, value):
+    @typechecked
+    def _process_object(self, obj: etao.DetectedObject):
+        print(obj)
+        assert False, "DFKDF"
+
+    def _add_and_remove(self, labels):
+        labels.attrs.filter_elements(filters=[
+            lambda el: el not in self._to_remove[self._VIDEO_ATTRS]
+        ])
+
+        for frame in labels.iter_frames():
+            frame.attrs.filter_elements(filters=[
+                lambda el: el not in self._to_remove[self._FRAME_ATTRS]
+            ])
+
+        for attr in self._to_add[self._VIDEO_ATTRS]:
+            labels.attrs.add(attr)
+
+        for attr in self._to_add[self._FRAME_ATTRS]:
+            for frame in labels.iter_frames():
+                frame.attrs.add(attr)
+
+    @staticmethod
+    def _map_attr_value(prev_type, new_type, value):
         if prev_type == new_type:
             return value
         if new_type == etau.get_class_name(etad.BooleanAttribute):
@@ -387,22 +459,13 @@ class LabelsMapper():
                                  % prev_type, new_type)
         return value
 
-    def _add_and_remove(self, labels):
-        labels.attrs.filter_elements(filters=[
-            lambda el: el not in self._to_remove["video attrs"]
-        ])
 
-        for frame in labels.iter_frames():
-            frame.attrs.filter_elements(filters=[
-                lambda el: el not in self._to_remove["frame attrs"]
-            ])
 
-        for attr in self._to_add["video attrs"]:
-            labels.attrs.add(attr)
 
-        for attr in self._to_add["frame attrs"]:
-            for frame in labels.iter_frames():
-                frame.attrs.add(attr)
+class SchemaMapperContainer(Container):
+    _ELE_CLS = SchemaMapper
+    _ELE_CLS_FIELD = "_MAP_CLS"
+    _ELE_ATTR = "maps"
 
 
 def is_true(thing_to_test):
