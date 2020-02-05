@@ -160,9 +160,11 @@ class EventContainer(Container):
                 continue
             yield event
 
-    def iter_event_attrs(self, label="*", attr_name="*", attr_value="*"):
+    def iter_event_attrs(self, label="*", attr_type="*", attr_name="*",
+                         attr_value="*"):
         for event in self.iter_events(label):
-            for attr in event.attrs.iter_attrs(attr_name, attr_value):
+            for attr in event.attrs.iter_attrs(
+                    attr_type, attr_name, attr_value):
                 yield event, attr
 
     def get_labels(self):

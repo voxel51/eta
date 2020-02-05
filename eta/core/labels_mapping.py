@@ -247,10 +247,25 @@ class AttrOfThingWithLabelFilter(SchemaFilter):
         )
 
 class ObjectAttrFilter(AttrOfThingWithLabelFilter):
-    pass
+
+    def iter_matches(self, labels):
+        for attr in labels.iter_object_attrs(
+                attr_type=self.attr_type,
+                attr_name=self.attr_name,
+                attr_value=self.attr_value
+        ):
+            yield attr
+
 
 class EventAttrFilter(AttrOfThingWithLabelFilter):
-    pass
+
+    def iter_matches(self, labels):
+        for attr in labels.iter_event_attrs(
+                attr_type=self.attr_type,
+                attr_name=self.attr_name,
+                attr_value=self.attr_value
+        ):
+            yield attr
 
 
 class SchemaMapper(Serializable):
@@ -306,6 +321,7 @@ class SchemaMapper(Serializable):
     _VIDEO_ATTRS = "video attrs"
     _FRAME_ATTRS = "frame attrs"
     _OBJECTS = "objects"
+    _OBJECT_ATTRS = "object attrs"
 
     _VALID_CLASS_MAPS = {
         VideoAttrFilter: [FrameAttrFilter],
@@ -347,7 +363,8 @@ class SchemaMapper(Serializable):
         elif isinstance(self.filter, EventFilter):
             raise NotImplementedError("TODO")
         elif isinstance(self.filter, ObjectAttrFilter):
-            raise NotImplementedError("TODO")
+            for obj, attr in self.filter.iter_matches(labels):
+                self._process_object_attr(obj, attr)
         elif isinstance(self.filter, EventAttrFilter):
             raise NotImplementedError("TODO")
         else:
@@ -399,52 +416,39 @@ class SchemaMapper(Serializable):
         self._to_remove = {
             self._VIDEO_ATTRS: [],
             self._FRAME_ATTRS: [],
-            self._OBJECTS: []
+            self._OBJECTS: [],
+            self._OBJECT_ATTRS: []
         }
         self._to_add = {
             self._VIDEO_ATTRS: [],
             self._FRAME_ATTRS: []
         }
 
-    def _process_video_attr(self, video_attr):
+    def _process_video_attr(self, attr):
         raise NotImplementedError("TODO")
 
     @typechecked
-    def _process_frame_attr(self, frame_attr: etad.Attribute):
+    def _process_frame_attr(self, attr: etad.Attribute):
+        # Delete
+
         if self.output_map is None:
-            self._to_remove[self._FRAME_ATTRS].append(frame_attr)
+            self._to_remove[self._FRAME_ATTRS].append(attr)
             return
 
         # Map Type
 
         if isinstance(self.output_map, VideoAttrFilter):
-            self._to_remove[self._FRAME_ATTRS].append(frame_attr)
-            self._to_add[self._VIDEO_ATTRS].append(frame_attr)
+            self._to_remove[self._FRAME_ATTRS].append(attr)
+            self._to_add[self._VIDEO_ATTRS].append(attr)
 
-        # Attribute Type
+        # Attribute
 
-        if self.output_map.attr_type != MATCHANY:
-            frame_attr.value = self._map_attr_value(
-                frame_attr.type, self.output_map.attr_type, frame_attr.value)
-            frame_attr.type = self.output_map.attr_type
-
-        # Attribute Name
-
-        if self.output_map.attr_name != MATCHANY:
-            frame_attr.name = self.output_map.attr_name
-
-        # Attribute Value
-
-        if self.output_map.attr_value != MATCHANY:
-            if frame_attr.type == etau.get_class_name(etad.BooleanAttribute):
-                frame_attr.value = is_true(self.output_map.attr_value)
-            elif frame_attr.type == etau.get_class_name(etad.BooleanAttribute):
-                frame_attr.value = float(self.output_map.attr_value)
-            else:
-                frame_attr.value = self.output_map.attr_value
+        self._process_attr(attr)
 
     @typechecked
     def _process_object(self, obj: etao.DetectedObject):
+        # Delete
+
         if self.output_map is None:
             self._to_remove[self._OBJECTS].append(obj)
             return
@@ -456,13 +460,65 @@ class SchemaMapper(Serializable):
 
         # Object Label
 
-        if self.output_map.label != MATCHANY:
+        self._process_thing_with_label(obj)
+
+    @typechecked
+    def _process_object_attr(
+            self, obj: etao.DetectedObject, attr: etad.Attribute):
+        # Delete
+
+        if self.output_map is None:
+            self._to_remove[self._OBJECT_ATTRS].append(attr)
+            return
+
+        # Map Type (create attribute)
+
+        if isinstance(self.output_map, ObjectFilter):
+            # set the new object label
             obj.label = self.output_map.label
+
+            # and remove this attribute
+            self._to_remove[self._OBJECT_ATTRS].append(attr)
+
+        # Object Label
+
+        self._process_thing_with_label(obj)
+
+        # Attribute
+
+        self._process_attr(attr)
+
+    def _process_thing_with_label(self, thing_with_label):
+        if (hasattr(self.output_map, "label")
+                and self.output_map.label != MATCHANY):
+            thing_with_label.label = self.output_map.label
+
+    def _process_attr(self, attr: etad.Attribute):
+        # Attribute Type
+
+        if (hasattr(self.output_map, "attr_type")
+                and self.output_map.attr_type != MATCHANY):
+            attr.value = self._map_attr_value(
+                attr.type, self.output_map.attr_type, attr.value)
+            attr.type = self.output_map.attr_type
+
+        # Attribute Name
+
+        if (hasattr(self.output_map, "attr_name")
+                and self.output_map.attr_name != MATCHANY):
+            attr.name = self.output_map.attr_name
+
+        # Attribute Value
+
+        if (hasattr(self.output_map, "attr_value")
+                and self.output_map.attr_value != MATCHANY):
+            attr.value = self.output_map.attr_value
 
     def _add_and_remove(self, labels):
         self._remove_video_attrs(labels)
         self._remove_frame_attrs(labels)
         self._remove_objects(labels)
+        self._remove_object_attrs(labels)
         self._add_video_attrs(labels)
         self._add_frame_attrs(labels)
 
@@ -482,6 +538,13 @@ class SchemaMapper(Serializable):
             frame.objects.filter_elements(filters=[
                 lambda el: el not in self._to_remove[self._OBJECTS]
             ])
+
+    def _remove_object_attrs(self, labels):
+        for frame in labels.iter_frames():
+            for obj in frame.objects:
+                obj.attrs.filter_elements(filters=[
+                    lambda el: el not in self._to_remove[self._OBJECT_ATTRS]
+                ])
 
     def _add_video_attrs(self, labels):
         for attr in self._to_add[self._VIDEO_ATTRS]:
@@ -505,8 +568,6 @@ class SchemaMapper(Serializable):
                 raise ValueError("Failed to convert %s attr to type %s"
                                  % prev_type, new_type)
         return value
-
-
 
 
 class SchemaMapperContainer(Container):
