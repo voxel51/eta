@@ -24,6 +24,10 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+# identifier when matching a value saying that anything should match this value
+MATCH_ANY = "*"
+
+
 def is_true(thing_to_test):
     '''Cast an arg from client to native boolean'''
     if type(thing_to_test) == bool:

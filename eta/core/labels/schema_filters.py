@@ -25,11 +25,10 @@ from typeguard import typechecked
 from eta.core.serial import Serializable
 import eta.core.utils as etau
 
+from .utils import MATCH_ANY
+
 
 logger = logging.getLogger(__name__)
-
-
-MATCH_ANY = "*"
 
 
 class SchemaFilter(Serializable):
@@ -152,7 +151,10 @@ class ObjectFilter(ThingWithLabelFilter):
 
 
 class EventFilter(ThingWithLabelFilter):
-    pass
+
+    def iter_matches(self, labels):
+        for obj in labels.iter_events(label=self.label):
+            yield obj
 
 
 class AttrOfThingWithLabelFilter(SchemaFilter):
