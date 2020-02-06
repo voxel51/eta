@@ -83,30 +83,32 @@ def standarize_strs(arg):
     return arg
 
 
-def get_isotime():
+def get_localtime():
     '''Gets the local time in "YYYY-MM-DD HH:MM:SS" format.
 
     Returns:
-        an "YYYY-MM-DD HH:MM:SS" string
+        "YYYY-MM-DD HH:MM:SS"
     '''
     return str(datetime.now().replace(microsecond=0))
 
 
-def parse_isotime(isotime_str):
+def parse_isotime(isostr_or_none):
     '''Parses the ISO time string into a datetime.
 
+    If the input string has a timezone ("Z" or "+HH:MM"), a timezone-aware
+    datetime will be returned. Otherwise, a naive datetime will be returned.
     If the input is falsey, None is returned.
 
     Args:
-        isotime_str: an ISO time string like "YYYY-MM-DD HH:MM:SS"
+        isostr_or_none: an ISO time string like "YYYY-MM-DD HH:MM:SS", or None
 
     Returns:
         a datetime, or None if the input was empty
     '''
-    if not isotime_str:
+    if not isostr_or_none:
         return None
 
-    return dateutil.parser.parse(isotime_str)
+    return dateutil.parser.parse(isostr_or_none)
 
 
 def datetime_delta_seconds(time1, time2):
