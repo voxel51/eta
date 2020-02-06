@@ -78,7 +78,7 @@ def world_time_to_timestamp(world_time, start_time):
     '''Converts the given world time to a timestamp in a video.
 
     If one (but not both) of the datetimes are timezone-aware, the other
-    datetime is assumed to be expressed in UTC time
+    datetime is assumed to be expressed in UTC time.
 
     Args:
         world_time: a datetime describing a time of interest
