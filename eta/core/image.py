@@ -12,6 +12,7 @@ voxel51.com
 
 Brian Moore, brian@voxel51.com
 Jason Corso, jason@voxel51.com
+Tyler Ganter, tyler@voxel51.com
 '''
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
@@ -43,6 +44,7 @@ from eta.core.data import AttributeContainer, AttributeContainerSchema, \
 import eta.core.data as etad
 from eta.core.objects import DetectedObjectContainer
 from eta.core.serial import Serializable, Set, BigSet
+from eta.core.utils import MATCH_ANY
 import eta.core.utils as etau
 import eta.core.web as etaw
 
@@ -134,28 +136,27 @@ class ImageLabels(Serializable):
         self.attrs = attrs or AttributeContainer()
         self.objects = objects or DetectedObjectContainer()
 
-    def iter_matches(self, pattern):
-        IMAGE_ATTR = "<image attr>"
-        OBJECT = "<object>"
+    def iter_image_attrs(self, attr_type=MATCH_ANY, attr_name=MATCH_ANY,
+                         attr_value=MATCH_ANY):
+        iterator = self.attrs.iter_attrs(
+            attr_type=attr_type, attr_name=attr_name, attr_value=attr_value)
+        for attr in iterator:
+            yield attr
 
-        pattern_parts = pattern.split(":")
+    def iter_objects(self, label=MATCH_ANY):
+        for obj in self.objects.iter_objects(label=label):
+            yield obj
 
-        qualifier = pattern_parts.pop(0)
-
-        if qualifier == IMAGE_ATTR:
-            for attr in self.attrs.iter_attrs(*pattern_parts):
-                yield attr
-
-        elif qualifier == OBJECT:
-            if len(pattern_parts) == 1:
-                for obj in self.objects.iter_objects(*pattern_parts):
-                    yield obj
-            else:
-                for attr in self.objects.iter_object_attrs(*pattern_parts):
-                    yield attr
-
-        else:
-            raise ValueError("Invalid qualifier: %s" % qualifier)
+    def iter_object_attrs(self, label=MATCH_ANY, attr_type=MATCH_ANY,
+                          attr_name=MATCH_ANY, attr_value=MATCH_ANY):
+        iterator = self.objects.iter_object_attrs(
+            label=label,
+            attr_type=attr_type,
+            attr_name=attr_name,
+            attr_value=attr_value
+        )
+        for obj, attr in iterator:
+            yield obj, attr
 
     def add_image_attribute(self, attr):
         '''Adds the attribute to the image.

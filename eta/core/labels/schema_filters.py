@@ -23,9 +23,8 @@ import logging
 from typeguard import typechecked
 
 from eta.core.serial import Serializable
+from eta.core.utils import MATCH_ANY
 import eta.core.utils as etau
-
-from .utils import MATCH_ANY
 
 
 logger = logging.getLogger(__name__)
@@ -120,7 +119,14 @@ class FrameAttrFilter(AttrFilter):
 
 
 class ImageAttrFilter(AttrFilter):
-    pass
+
+    def iter_matches(self, labels):
+        for attr in labels.iter_image_attrs(
+                attr_type=self.attr_type,
+                attr_name=self.attr_name,
+                attr_value=self.attr_value
+        ):
+            yield attr
 
 
 class ThingWithLabelFilter(SchemaFilter):

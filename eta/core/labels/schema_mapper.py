@@ -27,12 +27,13 @@ import eta.core.data as etad
 import eta.core.events as etae
 import eta.core.objects as etao
 import eta.core.serial as etas
+from eta.core.utils import MATCH_ANY
 import eta.core.utils as etau
 
 from .schema_filters import SchemaFilter, VideoAttrFilter, \
     FrameAttrFilter, ObjectFilter, ObjectAttrFilter, EventFilter, \
     EventAttrFilter
-from .utils import MATCH_ANY, is_true
+from .utils import is_true
 
 
 logger = logging.getLogger(__name__)

@@ -52,6 +52,10 @@ import eta.constants as etac
 logger = logging.getLogger(__name__)
 
 
+# identifier when matching a value saying that anything should match this value
+MATCH_ANY = "*"
+
+
 def is_str(val):
     '''Returns True/False whether the given value is a string.'''
     return isinstance(val, six.string_types)

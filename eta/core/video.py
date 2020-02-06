@@ -14,6 +14,7 @@ voxel51.com
 
 Brian Moore, brian@voxel51.com
 Jason Corso, jason@voxel51.com
+Tyler Ganter, tyler@voxel51.com
 '''
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
@@ -47,6 +48,7 @@ import eta.core.gps as etag
 import eta.core.image as etai
 from eta.core.objects import DetectedObjectContainer
 from eta.core.serial import load_json, Serializable, Set, BigSet
+from eta.core.utils import MATCH_ANY
 import eta.core.utils as etau
 
 
@@ -607,26 +609,28 @@ class VideoLabels(Serializable):
         '''Whether the container has labels of any kind.'''
         return not self.is_empty
 
-    def iter_video_attrs(self, attr_type="*", attr_name="*", attr_value="*"):
+    def iter_video_attrs(self, attr_type=MATCH_ANY, attr_name=MATCH_ANY,
+                         attr_value=MATCH_ANY):
         iterator = self.attrs.iter_attrs(
             attr_type=attr_type, attr_name=attr_name, attr_value=attr_value)
         for attr in iterator:
             yield attr
 
-    def iter_frame_attrs(self, attr_type="*", attr_name="*", attr_value="*"):
+    def iter_frame_attrs(self, attr_type=MATCH_ANY, attr_name=MATCH_ANY,
+                         attr_value=MATCH_ANY):
         for frame in self.iter_frames():
             iterator = frame.attrs.iter_attrs(
                 attr_type=attr_type, attr_name=attr_name, attr_value=attr_value)
             for attr in iterator:
                 yield attr
 
-    def iter_objects(self, label="*"):
+    def iter_objects(self, label=MATCH_ANY):
         for frame in self.iter_frames():
             for obj in frame.objects.iter_objects(label=label):
                 yield obj
 
-    def iter_object_attrs(self, label="*", attr_type="*", attr_name="*",
-                          attr_value="*"):
+    def iter_object_attrs(self, label=MATCH_ANY, attr_type=MATCH_ANY,
+                          attr_name=MATCH_ANY, attr_value=MATCH_ANY):
         for frame in self.iter_frames():
             iterator = frame.objects.iter_object_attrs(
                 label=label,
@@ -637,12 +641,12 @@ class VideoLabels(Serializable):
             for obj, attr in iterator:
                 yield obj, attr
 
-    def iter_events(self, label="*"):
+    def iter_events(self, label=MATCH_ANY):
         for event in self.events.iter_events(label=label):
             yield event
 
-    def iter_event_attrs(self, label="*", attr_type="*", attr_name="*",
-                         attr_value="*"):
+    def iter_event_attrs(self, label=MATCH_ANY, attr_type=MATCH_ANY,
+                         attr_name=MATCH_ANY, attr_value=MATCH_ANY):
         iterator = self.events.iter_event_attrs(
             label=label,
             attr_type=attr_type,
