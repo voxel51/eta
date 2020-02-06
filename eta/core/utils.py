@@ -112,8 +112,6 @@ def parse_isotime(isotime_str):
 def datetime_delta_seconds(time1, time2):
     '''Computes the difference between the two datetimes, in seconds.
 
-    If either time is None, a delta of None is returned.
-
     If one (but not both) of the datetimes are timezone-aware, the other
     datetime is assumed to be expressed in UTC time.
 
@@ -124,9 +122,6 @@ def datetime_delta_seconds(time1, time2):
     Returns:
         the time difference, in seconds
     '''
-    if time1 is None or time2 is None:
-        return None
-
     try:
         return (time2 - time1).total_seconds()
     except (TypeError, ValueError):
