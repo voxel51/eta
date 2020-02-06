@@ -40,7 +40,10 @@ class PipelineState(object):
 
 
 class PipelineStatus(Serializable):
-    '''Class for recording the status of a pipeline.'''
+    '''Class for recording the status of a pipeline.
+
+    All naive (no timezone) datetimes are assumed to be UTC.
+    '''
 
     def __init__(
             self, name=None, state=PipelineState.READY, start_time=None,
@@ -176,9 +179,9 @@ class PipelineStatus(Serializable):
         '''
         name = d.get("name", None)
         state = d.get("state", None)
-        start_time = etau.parse_isotime(d.get("start_time", None))
-        complete_time = etau.parse_isotime(d.get("complete_time", None))
-        fail_time = etau.parse_isotime(d.get("fail_time", None))
+        start_time = etau.parse_isotime(d.get("start_time"))
+        complete_time = etau.parse_isotime(d.get("complete_time"))
+        fail_time = etau.parse_isotime(d.get("fail_time"))
 
         messages = d.get("messages", None)
         if messages:
@@ -207,7 +210,10 @@ class JobState(object):
 
 
 class JobStatus(Serializable):
-    '''Class for recording the status of a job.'''
+    '''Class for recording the status of a job.
+
+    All naive (no timezone) datetimes are assumed to be UTC.
+    '''
 
     def __init__(
             self, name=None, state=JobState.READY, start_time=None,
@@ -299,9 +305,9 @@ class JobStatus(Serializable):
             a JobStatus instance
         '''
         name = d.get("name", None)
-        start_time = etau.parse_isotime(d.get("start_time", None))
-        complete_time = etau.parse_isotime(d.get("complete_time", None))
-        fail_time = etau.parse_isotime(d.get("fail_time", None))
+        start_time = etau.parse_isotime(d.get("start_time"))
+        complete_time = etau.parse_isotime(d.get("complete_time"))
+        fail_time = etau.parse_isotime(d.get("fail_time"))
 
         messages = d.get("messages", None)
         if messages is not None:
@@ -315,9 +321,7 @@ class JobStatus(Serializable):
 class StatusMessage(Serializable):
     '''Class encapsulating a status message with a timestamp.
 
-    Attributes:
-        message: the message string
-        time: a datetime recording the message time
+    All naive (no timezone) datetimes are assumed to be UTC.
     '''
 
     def __init__(self, message, time=None):
@@ -329,7 +333,7 @@ class StatusMessage(Serializable):
                 time is used
         '''
         self.message = message
-        self.time = time or datetime.datetime.now()
+        self.time = time or datetime.datetime.utcnow()
 
     def attributes(self):
         '''Returns the list of attributes to serialize.
@@ -349,5 +353,5 @@ class StatusMessage(Serializable):
         Returns:
             a StatusMessage instance
         '''
-        time = etau.parse_isotime(d.get("time", None))
+        time = etau.parse_isotime(d.get("time"))
         return StatusMessage(d["message"], time=time)
