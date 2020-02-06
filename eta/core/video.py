@@ -40,7 +40,7 @@ import cv2
 import dateutil.parser
 import numpy as np
 
-from eta.core.data import AttributeContainer, AttributeContainerSchema
+from eta.core.data import AttributeContainer, AttributeContainerSchema, BooleanAttributeSchema, CategoricalAttributeSchema
 from eta.core.events import EventContainer
 import eta.core.frames as etaf
 import eta.core.gps as etag
@@ -1244,6 +1244,44 @@ class VideoLabelsSchema(Serializable):
         self.events = defaultdict(lambda: AttributeContainerSchema())
         if events is not None:
             self.events.update(events)
+
+
+    def to_csv(self):
+        '''
+         
+        '''
+        headings = "label-class, label-attribute, exclusive, constant, attribute-values"
+        csv = [headings]
+        
+        # Video attributes
+        for attr in self.attrs.schema:
+            line = "attrs, %s, %s, %s, " % (attr, str(self.attrs.schema[attr].exclusive), str(self.attrs.schema[attr].constant))
+            for val in self.attrs.schema[attr].categories:
+                line += "%s; " % val
+            csv.append(line)
+
+        # Frame attributes
+        for attr in self.frames.schema:
+            line = "frames, %s, %s, %s, " % (attr, str(self.frames.schema[attr].exclusive), str(self.frames.schema[attr].constant))
+            for val in self.frames.schema[attr].categories:
+                line += "%s; " % val
+            csv.append(line)
+        
+        # Objects
+        for obj in self.objects:
+            for attr in self.objects[obj].schema:
+                line = "%s, %s, %s, %s, " % (obj, attr, str(self.objects[obj].schema[attr].exclusive), str(self.objects[obj].schema[attr].constant))    
+                if isinstance(self.objects[obj].schema[attr], CategoricalAttributeSchema):
+                    for val in self.objects[obj].schema[attr].categories:
+                        line += "%s; " % val
+                elif isinstance(self.objects[obj].schema[attr], BooleanAttributeSchema):
+                    line += "yes; no;"
+                csv.append(line)
+        
+        for i in range(len(csv)):
+            csv[i] += "\n"
+
+        return csv
 
     # HAS
 
