@@ -146,7 +146,8 @@ def to_naive_local_datetime(dt):
     Returns:
         a naive datetime in local time
     '''
-    return dt.astimezone(pytz.utc).astimezone().replace(tzinfo=None)
+    dt = add_utc_timezone_if_necessary(dt)
+    return dt.astimezone().replace(tzinfo=None)
 
 
 def to_naive_utc_datetime(dt):
@@ -164,6 +165,7 @@ def to_naive_utc_datetime(dt):
     Returns:
         a naive datetime in UTC
     '''
+    dt = add_utc_timezone_if_necessary(dt)
     return dt.astimezone(pytz.utc).replace(tzinfo=None)
 
 
