@@ -196,9 +196,10 @@ def add_utc_timezone_if_necessary(dt):
         a timezone-aware datetime
     '''
     if dt.tzinfo is None:
-        dt = dt.astimezone(pytz.utc)
+        dt = dt.replace(tzinfo=pytz.utc)
 
     return dt
+
 
 def get_eta_rev():
     '''Returns the hash of the last commit to the current ETA branch or "" if
