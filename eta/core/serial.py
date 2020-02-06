@@ -41,7 +41,6 @@ import pickle as _pickle
 import pprint
 from uuid import uuid4
 
-import h5py
 import numpy as np
 
 import eta.core.utils as etau
@@ -201,13 +200,11 @@ def serialize_numpy_array(array):
         the serialized string
     '''
     #
-    # We currently serialize in HDF5 format. Other alternatives considered were
-    # `pickle.dumps(array)` and `np.save(f, array, allow_pickle=False)`
+    # We currently serialize in numpy format. Other alternatives considered
+    # were `pickle.dumps(array)` and HDF5
     #
     with io.BytesIO() as f:
-        with h5py.File(f, "w") as h:
-            h["array"] = array
-
+        np.save(f, array, allow_pickle=False)
         bytes_str = f.getvalue()
 
     return b64encode(bytes_str).decode("ascii")
@@ -223,13 +220,12 @@ def deserialize_numpy_array(numpy_str):
         the numpy array
     '''
     #
-    # We currently serialize in HDF5 format. Other alternatives considered were
-    # `pickle.loads(numpy_str)` and `return np.load(f)`
+    # We currently serialize in numpy format. Other alternatives considered
+    # were `pickle.loads(numpy_str)` and HDF5
     #
     bytes_str = b64decode(numpy_str.encode("ascii"))
     with io.BytesIO(bytes_str) as f:
-        with h5py.File(f, "r") as h:
-            return h[list(h.keys())[0]][()]
+        return np.load(f)
 
 
 class Serializable(object):
