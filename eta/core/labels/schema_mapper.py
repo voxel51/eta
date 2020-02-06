@@ -14,258 +14,27 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
-from future.utils import iteritems, itervalues
-import six
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-from collections import defaultdict, OrderedDict
-import errno
 import logging
-import os
-from subprocess import Popen, PIPE
-import threading
-from typing import Any, Optional, Union
+from typing import Union
 
-import cv2
-import dateutil.parser
-import numpy as np
 from typeguard import typechecked
 
-from eta.core.config import Config, ConfigBuilder, ConfigError, Configurable
-from eta.core.data import AttributeContainer, AttributeContainerSchema
-from eta.core.events import EventContainer
-import eta.core.frames as etaf
-import eta.core.gps as etag
-import eta.core.image as etai
 import eta.core.objects as etao
 from eta.core.serial import Serializable, Container
 import eta.core.utils as etau
 import eta.core.data as etad
 
+from .schema_filters import MATCH_ANY, SchemaFilter, VideoAttrFilter, \
+    FrameAttrFilter, ObjectFilter, ObjectAttrFilter, EventFilter, \
+    EventAttrFilter
+from .utils import is_true
+
 
 logger = logging.getLogger(__name__)
-
-
-d = {
-    # delete attr
-    "<frame attr>:*:asdf": "<delete>",
-
-    # frame attr -> video attr
-    "<frame attr>:*:time of day": "<video attr>:<categorical>:time of day",
-    # video attr -> frame attr
-    "<video attr>:*:scene type": "<frame attr>:<categorical>:scene type",
-
-    # obj label -> new obj label + obj attr value
-    "<object>:bus": "<object>:vehicle:<categorical>:type:bus",
-    # obj label + obj attr value -> new obj label
-    "<object>:vehicle:<categorical>:type:motorcycle": "<object>:motorcycle",
-    # change attr type
-    "<object>:<categorical>:occluded": "<object>:<boolean>:occluded",
-    # rename string
-    "<object>:<categorical>:road object:type:compost bin": "<object>:<categorical>:road object:type:bin compost"
-}
-
-
-MATCHANY = "*"
-
-
-class SchemaFilter(Serializable):
-
-    @property
-    def type(self):
-        return self._type
-
-    def __init__(self):
-        self._type = etau.get_class_name(self)
-
-    def iter_matches(self, labels):
-        raise NotImplementedError("Subclass must implement")
-
-    def attributes(self):
-        return super(SchemaFilter, self).attributes() + ["type"]
-
-    @classmethod
-    def from_dict(cls, d, *args, **kwargs):
-        attr_cls = etau.get_class(d["type"])
-        return attr_cls._from_dict(d)
-
-class AttrFilter(SchemaFilter):
-
-    @property
-    def attr_type(self):
-        return self._attr_type
-
-    @property
-    def attr_name(self):
-        return self._attr_name
-
-    @property
-    def attr_value(self):
-        return self._attr_value
-
-    @typechecked
-    def __init__(self, attr_type: str = MATCHANY, attr_name: str = MATCHANY,
-                 attr_value=MATCHANY):
-        super(AttrFilter, self).__init__()
-        self._attr_type = attr_type
-        self._attr_name = attr_name
-        self._attr_value = attr_value
-
-    def create_attr(self):
-        if any(x == MATCHANY for x in
-               (self.attr_type, self.attr_name, self.attr_value)):
-            raise ValueError("Cannot create attribute if all fields are not"
-                             "explicit")
-
-        return etau.get_class(self.attr_type)(name=self.attr_name,
-                                              value=self.attr_value)
-
-    def attributes(self):
-        return super(AttrFilter, self).attributes() \
-               + ["attr_type", "attr_name", "attr_value"]
-
-    @classmethod
-    def _from_dict(cls, d):
-        attr_type = d.get("attr_type", MATCHANY)
-        attr_name = d.get("attr_name", MATCHANY)
-        attr_value = d.get("attr_value", MATCHANY)
-
-        return cls(attr_type=attr_type, attr_name=attr_name,
-                   attr_value=attr_value)
-
-class VideoAttrFilter(AttrFilter):
-
-    def iter_matches(self, labels):
-        for attr in labels.iter_video_attrs(
-                attr_type=self.attr_type,
-                attr_name=self.attr_name,
-                attr_value=self.attr_value
-        ):
-            yield attr
-
-class FrameAttrFilter(AttrFilter):
-
-    def iter_matches(self, labels):
-        for attr in labels.iter_frame_attrs(
-                attr_type=self.attr_type,
-                attr_name=self.attr_name,
-                attr_value=self.attr_value
-        ):
-            yield attr
-
-class ImageAttrFilter(AttrFilter):
-    pass
-
-class ThingWithLabelFilter(SchemaFilter):
-
-    @property
-    def label(self):
-        return self._label
-
-    def __init__(self, label=MATCHANY):
-        super(ThingWithLabelFilter, self).__init__()
-        self._label = label
-
-    def attributes(self):
-        return super(ThingWithLabelFilter, self).attributes() + ["label"]
-
-    @classmethod
-    def _from_dict(cls, d):
-        label = d.get("label", MATCHANY)
-
-        return cls(label=label)
-
-class ObjectFilter(ThingWithLabelFilter):
-
-    def iter_matches(self, labels):
-        for obj in labels.iter_objects(label=self.label):
-            yield obj
-
-class EventFilter(ThingWithLabelFilter):
-    pass
-
-class AttrOfThingWithLabelFilter(SchemaFilter):
-
-    @property
-    def label(self):
-        return self._label
-
-    @property
-    def attr_type(self):
-        return self._attr_type
-
-    @property
-    def attr_name(self):
-        return self._attr_name
-
-    @property
-    def attr_value(self):
-        return self._attr_value
-
-    def __init__(self, label=MATCHANY, attr_type=MATCHANY, attr_name=MATCHANY,
-                 attr_value=MATCHANY):
-        super(AttrOfThingWithLabelFilter, self).__init__()
-        self._label = label
-        self._attr_type = attr_type
-        self._attr_name = attr_name
-        self._attr_value = attr_value
-
-    def create_attr(self):
-        if any(x == MATCHANY for x in
-               (self.attr_type, self.attr_name, self.attr_value)):
-            raise ValueError("Cannot create attribute if all fields are not"
-                             "explicit")
-
-        return etau.get_class(self.attr_type)(name=self.attr_name,
-                                              value=self.attr_value)
-
-    def attributes(self):
-        return super(AttrOfThingWithLabelFilter, self).attributes() \
-               + ["label", "attr_type", "attr_name", "attr_value"]
-
-    @classmethod
-    def _from_dict(cls, d):
-        label = d.get("label", MATCHANY)
-        attr_type = d.get("attr_type", MATCHANY)
-        attr_name = d.get("attr_name", MATCHANY)
-        attr_value = d.get("attr_value", MATCHANY)
-
-        return cls(label=label, attr_type=attr_type, attr_name=attr_name,
-                   attr_value=attr_value)
-
-    @classmethod
-    @typechecked
-    def from_filters(cls, thing_with_label_filter: ThingWithLabelFilter,
-                     attr_filter: AttrFilter):
-        return cls(
-            label=thing_with_label_filter.label,
-            attr_type=attr_filter.attr_type,
-            attr_name=attr_filter.attr_name,
-            attr_value=attr_filter.attr_value
-        )
-
-class ObjectAttrFilter(AttrOfThingWithLabelFilter):
-
-    def iter_matches(self, labels):
-        for attr in labels.iter_object_attrs(
-                attr_type=self.attr_type,
-                attr_name=self.attr_name,
-                attr_value=self.attr_value
-        ):
-            yield attr
-
-
-class EventAttrFilter(AttrOfThingWithLabelFilter):
-
-    def iter_matches(self, labels):
-        for attr in labels.iter_event_attrs(
-                attr_type=self.attr_type,
-                attr_name=self.attr_name,
-                attr_value=self.attr_value
-        ):
-            yield attr
 
 
 class SchemaMapper(Serializable):
@@ -490,14 +259,14 @@ class SchemaMapper(Serializable):
 
     def _process_thing_with_label(self, thing_with_label):
         if (hasattr(self.output_map, "label")
-                and self.output_map.label != MATCHANY):
+                and self.output_map.label != MATCH_ANY):
             thing_with_label.label = self.output_map.label
 
     def _process_attr(self, attr: etad.Attribute):
         # Attribute Type
 
         if (hasattr(self.output_map, "attr_type")
-                and self.output_map.attr_type != MATCHANY):
+                and self.output_map.attr_type != MATCH_ANY):
             attr.value = self._map_attr_value(
                 attr.type, self.output_map.attr_type, attr.value)
             attr.type = self.output_map.attr_type
@@ -505,13 +274,13 @@ class SchemaMapper(Serializable):
         # Attribute Name
 
         if (hasattr(self.output_map, "attr_name")
-                and self.output_map.attr_name != MATCHANY):
+                and self.output_map.attr_name != MATCH_ANY):
             attr.name = self.output_map.attr_name
 
         # Attribute Value
 
         if (hasattr(self.output_map, "attr_value")
-                and self.output_map.attr_value != MATCHANY):
+                and self.output_map.attr_value != MATCH_ANY):
             attr.value = self.output_map.attr_value
 
     def _add_and_remove(self, labels):
@@ -578,17 +347,3 @@ class SchemaMapperContainer(Container):
     def map_labels(self, labels):
         for mapper in self:
             mapper.map_labels(labels)
-
-def is_true(thing_to_test):
-    '''Cast an arg from client to native boolean'''
-    if type(thing_to_test) == bool:
-        return thing_to_test
-    elif type(thing_to_test) == int or type(thing_to_test) == float:
-        return thing_to_test == 1
-    elif type(thing_to_test) == str:
-        return thing_to_test.lower() == 'true'
-    else:
-        # make a best guess? hopefully you should never get here
-        return bool(thing_to_test)
-
-
