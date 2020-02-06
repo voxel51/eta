@@ -34,6 +34,7 @@ import logging
 import math
 import mimetypes
 import os
+import pytz
 import random
 import re
 import shutil
@@ -107,6 +108,63 @@ def parse_isotime(isotime_str):
 
     return dateutil.parser.parse(isotime_str)
 
+
+def datetime_delta_seconds(time1, time2):
+    '''Computes the difference between the two datetimes, in seconds.
+
+    If either time is None, a delta of None is returned.
+
+    If one (but not both) of the datetimes are timezone-aware, the other
+    datetime is assumed to be expressed in UTC time.
+
+    Args:
+        time1: a datetime
+        time2: a datetime
+
+    Returns:
+        the time difference, in seconds
+    '''
+    if time1 is None or time2 is None:
+        return None
+
+    try:
+        return (time2 - time1).total_seconds()
+    except (TypeError, ValueError):
+        time1 = add_utc_timezone_if_necessary(time1)
+        time2 = add_utc_timezone_if_necessary(time2)
+        return (time2 - time1).total_seconds()
+
+
+def add_local_timezone_if_necessary(dt):
+    '''Makes the datetime timezone-aware, if necessary, by setting its timezone
+    to the local timezone.
+
+    Args:
+        dt: a datetime
+
+    Returns:
+        a timezone-aware datetime
+    '''
+    if dt.tzinfo is None:
+        dt = dt.astimezone()  # empty ==> local timezone
+
+    return dt
+
+
+def add_utc_timezone_if_necessary(dt):
+    '''Makes the datetime timezone-aware, if necessary, by setting its timezone
+    to UTC.
+
+    Args:
+        dt: a datetime
+
+    Returns:
+        a timezone-aware datetime
+    '''
+    if dt.tzinfo is None:
+        dt = dt.astimezone(pytz.utc)
+
+    return dt
 
 def get_eta_rev():
     '''Returns the hash of the last commit to the current ETA branch or "" if
