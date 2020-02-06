@@ -360,7 +360,6 @@ class SchemaMapper(etas.Serializable):
                 and self.output_map.attr_value != MATCH_ANY):
             attr.value = self.output_map.attr_value
 
-    @typechecked
     def _add_and_remove(self, labels):
         if isinstance(labels, ImageLabels):
             self._remove_things(labels, self._IMAGE_ATTRS)
