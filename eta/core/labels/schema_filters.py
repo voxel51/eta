@@ -31,6 +31,7 @@ logger = logging.getLogger(__name__)
 
 
 class SchemaFilter(Serializable):
+    '''@todo(Tyler)'''
 
     @property
     def type(self):
@@ -52,6 +53,9 @@ class SchemaFilter(Serializable):
 
 
 class AttrFilter(SchemaFilter):
+    '''@todo(Tyler)'''
+
+    _iter_func_name = "Subclass must populate"
 
     @property
     def attr_type(self):
@@ -72,6 +76,14 @@ class AttrFilter(SchemaFilter):
         self._attr_type = attr_type
         self._attr_name = attr_name
         self._attr_value = attr_value
+
+    def iter_matches(self, labels):
+        for attr in getattr(labels, self._iter_func_name)(
+                attr_type=self.attr_type,
+                attr_name=self.attr_name,
+                attr_value=self.attr_value
+        ):
+            yield attr
 
     def create_attr(self):
         if any(x == MATCH_ANY for x in
@@ -96,40 +108,24 @@ class AttrFilter(SchemaFilter):
                    attr_value=attr_value)
 
 
-class VideoAttrFilter(AttrFilter):
+class ImageAttrFilter(AttrFilter):
+    '''@todo(Tyler)'''
+    _iter_func_name = "iter_image_attrs"
 
-    def iter_matches(self, labels):
-        for attr in labels.iter_video_attrs(
-                attr_type=self.attr_type,
-                attr_name=self.attr_name,
-                attr_value=self.attr_value
-        ):
-            yield attr
+
+class VideoAttrFilter(AttrFilter):
+    '''@todo(Tyler)'''
+    _iter_func_name = "iter_video_attrs"
 
 
 class FrameAttrFilter(AttrFilter):
-
-    def iter_matches(self, labels):
-        for attr in labels.iter_frame_attrs(
-                attr_type=self.attr_type,
-                attr_name=self.attr_name,
-                attr_value=self.attr_value
-        ):
-            yield attr
-
-
-class ImageAttrFilter(AttrFilter):
-
-    def iter_matches(self, labels):
-        for attr in labels.iter_image_attrs(
-                attr_type=self.attr_type,
-                attr_name=self.attr_name,
-                attr_value=self.attr_value
-        ):
-            yield attr
+    '''@todo(Tyler)'''
+    _iter_func_name = "iter_frame_attrs"
 
 
 class ThingWithLabelFilter(SchemaFilter):
+    '''@todo(Tyler)'''
+    _iter_func_name = "Subclass must populate"
 
     @property
     def label(self):
@@ -138,6 +134,10 @@ class ThingWithLabelFilter(SchemaFilter):
     def __init__(self, label=MATCH_ANY):
         super(ThingWithLabelFilter, self).__init__()
         self._label = label
+
+    def iter_matches(self, labels):
+        for thing in getattr(labels, self._iter_func_name)(label=self.label):
+            yield thing
 
     def attributes(self):
         return super(ThingWithLabelFilter, self).attributes() + ["label"]
@@ -150,20 +150,18 @@ class ThingWithLabelFilter(SchemaFilter):
 
 
 class ObjectFilter(ThingWithLabelFilter):
-
-    def iter_matches(self, labels):
-        for obj in labels.iter_objects(label=self.label):
-            yield obj
+    '''@todo(Tyler)'''
+    _iter_func_name = "iter_objects"
 
 
 class EventFilter(ThingWithLabelFilter):
-
-    def iter_matches(self, labels):
-        for obj in labels.iter_events(label=self.label):
-            yield obj
+    '''@todo(Tyler)'''
+    _iter_func_name = "iter_events"
 
 
 class AttrOfThingWithLabelFilter(SchemaFilter):
+    '''@todo(Tyler)'''
+    _iter_func_name = "Subclass must populate"
 
     @property
     def label(self):
@@ -188,6 +186,14 @@ class AttrOfThingWithLabelFilter(SchemaFilter):
         self._attr_type = attr_type
         self._attr_name = attr_name
         self._attr_value = attr_value
+
+    def iter_matches(self, labels):
+        for attr in getattr(labels, self._iter_func_name)(
+                attr_type=self.attr_type,
+                attr_name=self.attr_name,
+                attr_value=self.attr_value
+        ):
+            yield attr
 
     def create_attr(self):
         if any(x == MATCH_ANY for x in
@@ -225,22 +231,10 @@ class AttrOfThingWithLabelFilter(SchemaFilter):
 
 
 class ObjectAttrFilter(AttrOfThingWithLabelFilter):
-
-    def iter_matches(self, labels):
-        for attr in labels.iter_object_attrs(
-                attr_type=self.attr_type,
-                attr_name=self.attr_name,
-                attr_value=self.attr_value
-        ):
-            yield attr
+    '''@todo(Tyler)'''
+    _iter_func_name = "iter_object_attrs"
 
 
 class EventAttrFilter(AttrOfThingWithLabelFilter):
-
-    def iter_matches(self, labels):
-        for attr in labels.iter_event_attrs(
-                attr_type=self.attr_type,
-                attr_name=self.attr_name,
-                attr_value=self.attr_value
-        ):
-            yield attr
+    '''@todo(Tyler)'''
+    _iter_func_name = "iter_event_attrs"

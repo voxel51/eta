@@ -25,14 +25,16 @@ from typeguard import typechecked
 
 import eta.core.data as etad
 import eta.core.events as etae
+from eta.core.image import ImageLabels
 import eta.core.objects as etao
 import eta.core.serial as etas
 from eta.core.utils import MATCH_ANY
 import eta.core.utils as etau
+from eta.core.video import VideoLabels
 
 from .schema_filters import SchemaFilter, VideoAttrFilter, \
-    FrameAttrFilter, ObjectFilter, ObjectAttrFilter, EventFilter, \
-    EventAttrFilter
+    FrameAttrFilter, ImageAttrFilter, ObjectFilter, ObjectAttrFilter, \
+    EventFilter, EventAttrFilter
 from .utils import is_true
 
 
@@ -40,7 +42,7 @@ logger = logging.getLogger(__name__)
 
 
 class SchemaMapper(etas.Serializable):
-    '''
+    '''@todo(Tyler)
 
     Examples:
         delete attr
@@ -89,6 +91,7 @@ class SchemaMapper(etas.Serializable):
 
     '''
 
+    _IMAGE_ATTRS = "image attrs"
     _VIDEO_ATTRS = "video attrs"
     _FRAME_ATTRS = "frame attrs"
     _OBJECTS = "objects"
@@ -114,31 +117,35 @@ class SchemaMapper(etas.Serializable):
         return self._output_map
 
     @typechecked
-    def __init__(self, filter: SchemaFilter,
-                 output_map: Union[SchemaFilter, None]=None):
+    def __init__(self, filter: SchemaFilter, output_map: SchemaFilter=None):
         self._filter = filter
         self._output_map = output_map
 
         self._validate_map()
 
-    def map_labels(self, labels):
+    @typechecked
+    def map_labels(self, labels: Union[ImageLabels, VideoLabels]):
         self._clear_state()
 
-        if isinstance(self.filter, VideoAttrFilter):
-            for video_attr in self.filter.iter_matches(labels):
-                self._process_video_attr(video_attr)
-        if isinstance(self.filter, FrameAttrFilter):
-            for frame_attr in self.filter.iter_matches(labels):
-                self._process_frame_attr(frame_attr)
+        if isinstance(self.filter, ImageAttrFilter):
+            for image_attr in self.filter.iter_matches(labels):
+                self._process_image_attr(image_attr)
         elif isinstance(self.filter, ObjectFilter):
             for obj in self.filter.iter_matches(labels):
                 self._process_object(obj)
-        elif isinstance(self.filter, EventFilter):
-            for event in self.filter.iter_matches(labels):
-                self._process_event(event)
         elif isinstance(self.filter, ObjectAttrFilter):
             for obj, attr in self.filter.iter_matches(labels):
                 self._process_object_attr(obj, attr)
+
+        elif isinstance(self.filter, VideoAttrFilter):
+            for video_attr in self.filter.iter_matches(labels):
+                self._process_video_attr(video_attr)
+        elif isinstance(self.filter, FrameAttrFilter):
+            for frame_attr in self.filter.iter_matches(labels):
+                self._process_frame_attr(frame_attr)
+        elif isinstance(self.filter, EventFilter):
+            for event in self.filter.iter_matches(labels):
+                self._process_event(event)
         elif isinstance(self.filter, EventAttrFilter):
             for event, attr in self.filter.iter_matches(labels):
                 self._process_event_attr(event, attr)
@@ -201,8 +208,33 @@ class SchemaMapper(etas.Serializable):
             self._FRAME_ATTRS: []
         }
 
+    def _process_image_attr(self, attr):
+        # Delete
+
+        if self.output_map is None:
+            self._to_remove[self._IMAGE_ATTRS].append(attr)
+            return
+
+        # Attribute
+
+        self._process_attr(attr)
+
     def _process_video_attr(self, attr):
-        raise NotImplementedError("TODO")
+        # Delete
+
+        if self.output_map is None:
+            self._to_remove[self._VIDEO_ATTRS].append(attr)
+            return
+
+        # Map Type
+
+        if isinstance(self.output_map, FrameAttrFilter):
+            self._to_remove[self._VIDEO_ATTRS].append(attr)
+            self._to_add[self._FRAME_ATTRS].append(attr)
+
+        # Attribute
+
+        self._process_attr(attr)
 
     @typechecked
     def _process_frame_attr(self, attr: etad.Attribute):
@@ -328,15 +360,21 @@ class SchemaMapper(etas.Serializable):
                 and self.output_map.attr_value != MATCH_ANY):
             attr.value = self.output_map.attr_value
 
+    @typechecked
     def _add_and_remove(self, labels):
-        self._remove_things(labels, self._VIDEO_ATTRS)
-        self._remove_things(labels, self._FRAME_ATTRS)
+        if isinstance(labels, ImageLabels):
+            self._remove_things(labels, self._IMAGE_ATTRS)
+
+        elif isinstance(labels, VideoLabels):
+            self._remove_things(labels, self._VIDEO_ATTRS)
+            self._remove_things(labels, self._FRAME_ATTRS)
+            self._remove_things(labels, self._EVENTS)
+            self._remove_things(labels, self._EVENT_ATTRS)
+            self._add_video_attrs(labels)
+            self._add_frame_attrs(labels)
+
         self._remove_things(labels, self._OBJECTS)
-        self._remove_things(labels, self._EVENTS)
         self._remove_things(labels, self._OBJECT_ATTRS)
-        self._remove_things(labels, self._EVENT_ATTRS)
-        self._add_video_attrs(labels)
-        self._add_frame_attrs(labels)
 
     def _remove_things(self, labels, labels_type):
         for container in self._iterate_containers(labels, labels_type):
@@ -345,25 +383,37 @@ class SchemaMapper(etas.Serializable):
             ])
 
     def _iterate_containers(self, labels, label_type):
-        if label_type == self._VIDEO_ATTRS:
-            yield labels.attrs
-        elif label_type == self._FRAME_ATTRS:
-            for frame in labels.iter_frames():
-                yield frame.attrs
-        elif label_type == self._OBJECTS:
-            for frame in labels.iter_frames():
-                yield frame.objects
-        elif label_type == self._EVENTS:
-            yield labels.events
-        elif label_type == self._OBJECT_ATTRS:
-            for frame in labels.iter_frames():
-                for obj in frame.objects:
+        if isinstance(labels, ImageLabels):
+            if label_type == self._IMAGE_ATTRS:
+                yield labels.attrs
+            elif label_type == self._OBJECTS:
+                yield labels.objects
+            elif label_type == self._OBJECT_ATTRS:
+                for obj in labels.objects:
                     yield obj.attrs
-        elif label_type == self._EVENT_ATTRS:
-            for event in labels.iter_events():
-                yield event.attrs
-        else:
-            raise ValueError("Unexpected label_type '%s'" % label_type)
+            else:
+                raise ValueError("Unexpected label_type '%s'" % label_type)
+
+        elif isinstance(labels, VideoLabels):
+            if label_type == self._VIDEO_ATTRS:
+                yield labels.attrs
+            elif label_type == self._FRAME_ATTRS:
+                for frame in labels.iter_frames():
+                    yield frame.attrs
+            elif label_type == self._OBJECTS:
+                for frame in labels.iter_frames():
+                    yield frame.objects
+            elif label_type == self._EVENTS:
+                yield labels.events
+            elif label_type == self._OBJECT_ATTRS:
+                for frame in labels.iter_frames():
+                    for obj in frame.objects:
+                        yield obj.attrs
+            elif label_type == self._EVENT_ATTRS:
+                for event in labels.iter_events():
+                    yield event.attrs
+            else:
+                raise ValueError("Unexpected label_type '%s'" % label_type)
 
     def _add_video_attrs(self, labels):
         for attr in self._to_add[self._VIDEO_ATTRS]:
@@ -390,10 +440,12 @@ class SchemaMapper(etas.Serializable):
 
 
 class SchemaMapperContainer(etas.Container):
+    '''@todo(Tyler)'''
     _ELE_CLS = SchemaMapper
     _ELE_CLS_FIELD = "_MAP_CLS"
     _ELE_ATTR = "maps"
 
-    def map_labels(self, labels):
+    @typechecked
+    def map_labels(self, labels: Union[ImageLabels, VideoLabels]):
         for mapper in self:
             mapper.map_labels(labels)
