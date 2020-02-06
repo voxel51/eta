@@ -130,6 +130,43 @@ def datetime_delta_seconds(time1, time2):
         return (time2 - time1).total_seconds()
 
 
+def to_naive_local_datetime(dt):
+    '''Converts the datetime to a naive (no timezone) datetime with its time
+    expressed in the local timezone.
+
+    The conversion is performed as follows:
+        (1a) if the input datetime has no timezone, assume it is UTC
+        (1b) if the input datetime has a timezone, convert to UTC
+         (2) convert to local time
+         (3) remove the timezone info
+
+    Args:
+        dt: a datetime
+
+    Returns:
+        a naive datetime in local time
+    '''
+    return dt.astimezone(pytz.utc).astimezone().replace(tzinfo=None)
+
+
+def to_naive_utc_datetime(dt):
+    '''Converts the datetime to a naive (no timezone) datetime with its time
+    expressed in UTC.
+
+    The conversion is performed as follows:
+        (1a) if the input datetime has no timezone, assume it is UTC
+        (1b) if the input datetime has a timezone, convert to UTC
+         (2) remove the timezone info
+
+    Args:
+        dt: a datetime
+
+    Returns:
+        a naive datetime in UTC
+    '''
+    return dt.astimezone(pytz.utc).replace(tzinfo=None)
+
+
 def add_local_timezone_if_necessary(dt):
     '''Makes the datetime timezone-aware, if necessary, by setting its timezone
     to the local timezone.
