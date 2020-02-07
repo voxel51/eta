@@ -20,13 +20,7 @@ import six
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-try:
-    from base64 import encodebytes as b64encode  # Python 3
-    from base64 import decodebytes as b64decode  # Python 3
-except ImportError:
-    from base64 import encodestring as b64encode  # Python 2
-    from base64 import decodestring as b64decode  # Python 2
-
+from base64 import b64encode, b64decode
 from collections import OrderedDict
 import copy
 import datetime as dt
