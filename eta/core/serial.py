@@ -454,15 +454,26 @@ class Serializable(object):
 def _recurse(v, reflective):
     if isinstance(v, Serializable):
         return v.serialize(reflective=reflective)
+
     if isinstance(v, set):
         v = list(v)  # convert sets to lists
+
     if isinstance(v, list):
         return [_recurse(vi, reflective) for vi in v]
+
     if isinstance(v, dict):
         return OrderedDict(
             (ki, _recurse(vi, reflective)) for ki, vi in iteritems(v))
+
     if isinstance(v, np.ndarray):
         return serialize_numpy_array(v)
+
+    if hasattr(v, "serialize") and callable(v.serialize):
+        return v.serialize()
+
+    if hasattr(v, "to_dict") and callable(v.to_dict):
+        return v.to_dict()
+
     return v
 
 
