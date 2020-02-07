@@ -1862,14 +1862,19 @@ class VideoLabelsSchema(Serializable):
         '''
         headings = "label-class, label-attribute, exclusive, constant, attribute-values"
         csv = [headings]
-        
+
         # Video attributes
         for attr in self.attrs.schema:
             line = "attrs, %s, %s, %s, " % (attr, \
                 str(self.attrs.schema[attr].exclusive), \
                 str(self.attrs.schema[attr].constant))
-            for val in self.attrs.schema[attr].categories:
-                line += "%s; " % val
+            if isinstance(self.attrs.schema[attr], CategoricalAttributeSchema):
+                for val in self.attrs.schema[attr].categories:
+                    line += "%s; " % val
+            elif isinstance(self.attrs.schema[attr], BooleanAttributeSchema):
+                line += "yes; no;"
+            elif isinstance(self.attrs.schema[attr], NumericAttributeSchema):
+                line += str(self.attrs.schema[attr].range)
             csv.append(line)
 
         # Frame attributes
@@ -1877,10 +1882,15 @@ class VideoLabelsSchema(Serializable):
             line = "frames, %s, %s, %s, " % (attr, \
                 str(self.frames.schema[attr].exclusive), \
                 str(self.frames.schema[attr].constant))
-            for val in self.frames.schema[attr].categories:
-                line += "%s; " % val
+            if isinstance(self.frames.schema[attr], CategoricalAttributeSchema):
+                for val in self.frames.schema[attr].categories:
+                    line += "%s; " % val
+            elif isinstance(self.frames.schema[attr], CategoricalAttributeSchema):
+                line += "yes; no;"
+            elif isinstance(self.frames.schema[attr], CategoricalAttributeSchema):
+                line += str(self.frames.schema[attr].range)
             csv.append(line)
-        
+
         # Objects
         for obj in self.objects:
             for attr in self.objects[obj].schema:
@@ -1892,14 +1902,16 @@ class VideoLabelsSchema(Serializable):
                         line += "%s; " % val
                 elif isinstance(self.objects[obj].schema[attr], BooleanAttributeSchema):
                     line += "yes; no;"
+                elif isinstance(self.objects[obj].schema[attr], NumericAttributeSchema):
+                    line += str(self.objects[obj].schema[attr].range)
                 csv.append(line)
 
         # Events
         ## TODO
- 
+
         for i in range(len(csv)):
             csv[i] += "\n"
-        
+
         # Write to file
         with open(out_path, "w+") as file_obj:
             file_obj.writelines(csv)
