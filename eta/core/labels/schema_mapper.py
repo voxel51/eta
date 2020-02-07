@@ -172,6 +172,14 @@ class SchemaMapper(etas.Serializable):
 
         return cls(filter=filter, output_map=output_map)
 
+    @classmethod
+    def from_condensed_strings(cls, filter_str, output_map_str):
+        '''@todo(Tyler)'''
+        filter = SchemaFilter.from_condensed_str(filter_str)
+        output_map = (None if output_map_str == "<delete>"
+                      else SchemaFilter.from_condensed_str(output_map_str))
+        return cls(filter=filter, output_map=output_map)
+
     # PRIVATE
 
     def _validate_map(self):
@@ -448,3 +456,22 @@ class SchemaMapperContainer(etas.Container):
     def map_labels(self, labels: Union[ImageLabels, VideoLabels]):
         for mapper in self:
             mapper.map_labels(labels)
+
+    @classmethod
+    def from_condensed_dict(cls, d: dict):
+        '''@todo(Tyler)'''
+        condensed_maps = d.get("maps", {})
+
+        instance = cls()
+
+        for filter_str, output_map_string in condensed_maps.items():
+            mapper = SchemaMapper.from_condensed_strings(
+                filter_str, output_map_string)
+            instance.add(mapper)
+
+        return instance
+
+    @classmethod
+    def from_condensed_json(cls, path, *args, **kwargs):
+        '''@todo(Tyler)'''
+        return cls.from_condensed_dict(etas.read_json(path), *args, **kwargs)

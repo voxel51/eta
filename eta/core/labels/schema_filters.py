@@ -22,9 +22,12 @@ import logging
 
 from typeguard import typechecked
 
+import eta.core.data as etad
 from eta.core.serial import Serializable
 from eta.core.utils import MATCH_ANY
 import eta.core.utils as etau
+
+from .utils import is_true
 
 
 logger = logging.getLogger(__name__)
@@ -48,8 +51,36 @@ class SchemaFilter(Serializable):
 
     @classmethod
     def from_dict(cls, d, *args, **kwargs):
-        attr_cls = etau.get_class(d["type"])
-        return attr_cls._from_dict(d)
+        subcls = etau.get_class(d["type"])
+        if not issubclass(subcls, cls):
+            raise ValueError(
+                "%s not subclass of %s" % (d["type"], etau.get_class_name(cls)))
+        return subcls._from_dict(d)
+
+    @classmethod
+    def from_condensed_str(cls, s: str):
+        '''TODO
+
+        Example inputs:
+            "<object attr>:*:<boolean>:occluded:false"
+        '''
+        parts = s.split(":")
+        subcls = CONDENSED_STRING_CLASS_MAP[parts.pop(0)]
+
+        if not issubclass(subcls, cls):
+            raise ValueError(
+                "%s not subclass of %s"
+                % (etau.get_class_name(subcls), etau.get_class_name(cls)))
+
+        return subcls._from_condensed_strings(*parts)
+
+    @classmethod
+    def _from_dict(cls, d, *args, **kwargs):
+        raise NotImplementedError("Subclass must implement")
+
+    @classmethod
+    def _from_condensed_strings(cls, *args, **kwargs):
+        raise NotImplementedError("Subclass must implement")
 
 
 class AttrFilter(SchemaFilter):
@@ -99,13 +130,24 @@ class AttrFilter(SchemaFilter):
                + ["attr_type", "attr_name", "attr_value"]
 
     @classmethod
-    def _from_dict(cls, d):
+    def _from_dict(cls, d, *args, **kwargs):
         attr_type = d.get("attr_type", MATCH_ANY)
         attr_name = d.get("attr_name", MATCH_ANY)
         attr_value = d.get("attr_value", MATCH_ANY)
 
         return cls(attr_type=attr_type, attr_name=attr_name,
                    attr_value=attr_value)
+
+    @classmethod
+    def _from_condensed_strings(cls, attr_type, attr_name, attr_value):
+        attr_type, attr_value = _convert_attr_type_and_value(
+            attr_type, attr_value)
+
+        return cls(
+            attr_type=attr_type,
+            attr_name=attr_name,
+            attr_value=attr_value
+        )
 
 
 class ImageAttrFilter(AttrFilter):
@@ -143,9 +185,13 @@ class ThingWithLabelFilter(SchemaFilter):
         return super(ThingWithLabelFilter, self).attributes() + ["label"]
 
     @classmethod
-    def _from_dict(cls, d):
+    def _from_dict(cls, d, *args, **kwargs):
         label = d.get("label", MATCH_ANY)
 
+        return cls(label=label)
+
+    @classmethod
+    def _from_condensed_strings(cls, label):
         return cls(label=label)
 
 
@@ -209,7 +255,18 @@ class AttrOfThingWithLabelFilter(SchemaFilter):
                + ["label", "attr_type", "attr_name", "attr_value"]
 
     @classmethod
-    def _from_dict(cls, d):
+    @typechecked
+    def from_filters(cls, thing_with_label_filter: ThingWithLabelFilter,
+                     attr_filter: AttrFilter):
+        return cls(
+            label=thing_with_label_filter.label,
+            attr_type=attr_filter.attr_type,
+            attr_name=attr_filter.attr_name,
+            attr_value=attr_filter.attr_value
+        )
+
+    @classmethod
+    def _from_dict(cls, d, *args, **kwargs):
         label = d.get("label", MATCH_ANY)
         attr_type = d.get("attr_type", MATCH_ANY)
         attr_name = d.get("attr_name", MATCH_ANY)
@@ -219,14 +276,15 @@ class AttrOfThingWithLabelFilter(SchemaFilter):
                    attr_value=attr_value)
 
     @classmethod
-    @typechecked
-    def from_filters(cls, thing_with_label_filter: ThingWithLabelFilter,
-                     attr_filter: AttrFilter):
+    def _from_condensed_strings(cls, label, attr_type, attr_name, attr_value):
+        attr_type, attr_value = _convert_attr_type_and_value(
+            attr_type, attr_value)
+
         return cls(
-            label=thing_with_label_filter.label,
-            attr_type=attr_filter.attr_type,
-            attr_name=attr_filter.attr_name,
-            attr_value=attr_filter.attr_value
+            label=label,
+            attr_type=attr_type,
+            attr_name = attr_name,
+            attr_value = attr_value
         )
 
 
@@ -238,3 +296,42 @@ class ObjectAttrFilter(AttrOfThingWithLabelFilter):
 class EventAttrFilter(AttrOfThingWithLabelFilter):
     '''@todo(Tyler)'''
     _iter_func_name = "iter_event_attrs"
+
+
+CONDENSED_STRING_CLASS_MAP = {
+    "<image attr>": ImageAttrFilter,
+    "<video attr>": VideoAttrFilter,
+    "<frame attr>": FrameAttrFilter,
+    "<object>": ObjectFilter,
+    "<event>": EventFilter,
+    "<object attr>": ObjectAttrFilter,
+    "<event attr>": EventAttrFilter
+}
+
+CONDENSED_STRING_ATTR_TYPE_MAP = {
+    "<categorical>": etau.get_class_name(etad.CategoricalAttribute),
+    "<boolean>": etau.get_class_name(etad.BooleanAttribute),
+    "<numeric>": etau.get_class_name(etad.NumericAttribute)
+}
+
+def _convert_attr_type_and_value(attr_type, attr_value):
+    '''Parse the condensed form of `attr_type` and transform `attr_value`
+    from string to the appropriate type.
+    '''
+    if attr_type != MATCH_ANY:
+        attr_type = CONDENSED_STRING_ATTR_TYPE_MAP[attr_type]
+
+        if attr_value != MATCH_ANY:
+            if issubclass(etau.get_class(attr_type), etad.BooleanAttribute):
+                attr_value = is_true(attr_value)
+
+            elif issubclass(etau.get_class(attr_type), etad.NumericAttribute):
+                attr_value = float(attr_value)
+
+    elif attr_value != MATCH_ANY:
+        # cannot be of form: attr_type="*", attr_value="explicit value"
+        raise ValueError(
+            "attr type must be specified if attr value is not '%s'"
+            % MATCH_ANY)
+
+    return attr_type, attr_value
