@@ -431,6 +431,133 @@ def query_yes_no(question, default=None):
         print("Please respond with 'y[es]' or 'n[o]'")
 
 
+class ProgressBar(object):
+    '''Class for printing a self-updating progress bar to stdout that tracks
+    the progress of an iterative count towards completion (i.e., a total).
+
+    The progress of the bar is updated via `set_iteration()`, and,
+    independently, the progress bar is drawn via `draw()`, which includes a
+    spinning icon to convey that a task is active between changes to its
+    iteration.
+
+    The progress bar can be paused via `pause()`, which allows for other
+    information to be printed to stdout without either overwriting the progress
+    bar or creating duplicate copies of the bar in your terminal.
+
+    Example Usage:
+        ```
+        import time
+        import eta.core.utils as etau
+
+        bar = etau.ProgressBar(123)
+        while not bar.complete:
+            bar.set_iteration(bar.iteration + 1)
+            bar.draw()
+            time.sleep(0.05)
+        ```
+    '''
+
+    def __init__(
+            self, total, prefix=None, suffix=None, num_decimals=1,
+            bar_length=70):
+        '''Creates a ProgressBar instance.
+
+        Args:
+            total: the total number of iterations for the progress bar to
+            prefix: an optional prefix string to prepend to the progress bar
+            suffix: an optional suffix string to append to the progress bar
+            num_decimals: the number of percentage decimals to print. The
+                default is 1
+            bar_length: the length of the bar, in characters. The default is 70
+        '''
+        self._iteration = 0
+        self._total = total
+        self._pctfmt = "%%%d.%df" % (num_decimals + 4, num_decimals)
+        self._bar_len = bar_length
+        self._max_len = 0
+        self._spinner = it.cycle("|/-\\|/-\\")
+        self._prefix = self._parse_prefix(prefix)
+        self._suffix = self._parse_suffix(suffix)
+        self._complete = False
+
+    @property
+    def iteration(self):
+        '''The current iteration.'''
+        return self._iteration
+
+    @property
+    def total(self):
+        '''The total iterations.'''
+        return self._total
+
+    @property
+    def progress(self):
+        '''The current progress, in [0, 1].'''
+        return self.iteration * 1.0 / self.total
+
+    @property
+    def complete(self):
+        '''Whether the progress bar has been drawn at 100%% progress.'''
+        return self._complete
+
+    def set_iteration(self, iteration, prefix=None, suffix=None):
+        '''Sets the current iteration.
+
+        Args:
+            iteration: the new iteration
+            prefix: an optional new prefix string to prepend to the progress
+                bar. By default, the prefix is unchanged
+            suffix: an optional new suffix string to append to the progress
+                bar. By default, the suffix is unchanged
+        '''
+        self._iteration = max(0, min(iteration, self.total))
+        if prefix is not None:
+            self._prefix = self._parse_prefix(prefix)
+
+        if suffix is not None:
+            self._suffix = self._parse_suffix(suffix)
+
+    def pause(self):
+        '''Pauses the progress bar so that other information can be printed.
+
+        This function overwrites the current progress bar with whitespace and
+        appends a carriage return so that any other information that is printed
+        will overwrite the current progress bar.
+        '''
+        sys.stdout.write("\r" + " " * self._max_len + "\r")
+
+    def draw(self):
+        '''Draws the progress bar at its current progress.'''
+        istr = next(self._spinner)
+        plen = int(self._bar_len * self.progress)
+        bstr = u"\u2588" * plen
+        if plen < self._bar_len:
+            bstr += istr + "-" * max(0, self._bar_len - 1 - plen)
+
+        pctstr = self._pctfmt % (100.0 * self.progress)
+        pstr = "%s|%s| %s%%%s " % (self._prefix, bstr, pctstr, self._suffix)
+        len_pstr = len(pstr)
+
+        self._max_len = max(self._max_len, len_pstr)
+        pstr += " " * (self._max_len - len_pstr)
+
+        sys.stdout.write("\r")
+        sys.stdout.write(pstr)
+        if self.iteration >= self.total:
+            self._complete = True
+            sys.stdout.write("\n")
+
+        sys.stdout.flush()
+
+    @staticmethod
+    def _parse_prefix(prefix):
+        return prefix + " " if prefix else ""
+
+    @staticmethod
+    def _parse_suffix(suffix):
+        return " " + suffix if suffix else ""
+
+
 def call(args):
     '''Runs the command via `subprocess.call()`.
 
