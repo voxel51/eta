@@ -29,6 +29,7 @@ import glob
 import glob2
 import hashlib
 import inspect
+import io
 import itertools as it
 import logging
 import math
@@ -441,19 +442,28 @@ class ProgressBar(object):
     iteration.
 
     The progress bar can be paused via `pause()`, which allows for other
-    information to be printed to stdout without either overwriting the progress
-    bar or creating duplicate copies of the bar in your terminal.
+    information to be printed to stdout without creating duplicate copies of
+    the bar in your terminal.
+
+    Alternatively, this class can be invoked via the context manager interface,
+    in which case stdout is automatically cached between calls to `draw()` and
+    flushed each time draw()` without interfering with the progress bar. This
+    obviates the need to call `pause()`.
 
     Example Usage:
+
         ```
         import time
         import eta.core.utils as etau
 
-        bar = etau.ProgressBar(123)
-        while not bar.complete:
-            bar.set_iteration(bar.iteration + 1)
-            bar.draw()
-            time.sleep(0.05)
+        with etau.ProgressBar(100) as bar:
+            while not bar.complete:
+                if bar.iteration in {25, 50, 75}:
+                    print("Progress = %.2f" % bar.progress)
+
+                bar.set_iteration(bar.iteration + 1)
+                bar.draw()
+                time.sleep(0.05)
         ```
     '''
 
@@ -480,6 +490,37 @@ class ProgressBar(object):
         self._suffix = self._parse_suffix(suffix)
         self._complete = False
 
+        self._capturing_stdout = False
+        self._orig_stdout = None
+        self._cache_stdout = None
+
+    def __enter__(self):
+        self._capturing_stdout = True
+        self._start_capture()
+        return self
+
+    def __exit__(self, *args):
+        self._flush_capture()
+        self._capturing_stdout = False
+
+    def _start_capture(self):
+        if self.capturing_stdout:
+            self._orig_stdout = sys.stdout
+            self._cache_stdout = io.StringIO()
+            sys.stdout = self._cache_stdout
+
+    def _flush_capture(self):
+        if self.capturing_stdout:
+            out = self._cache_stdout.getvalue()
+            sys.stdout = self._orig_stdout
+            self.pause()
+            sys.stdout.write(out)
+
+    @property
+    def capturing_stdout(self):
+        '''Whether stdout is being captured between calls to `draw()`.'''
+        return self._capturing_stdout
+
     @property
     def iteration(self):
         '''The current iteration.'''
@@ -497,8 +538,8 @@ class ProgressBar(object):
 
     @property
     def complete(self):
-        '''Whether the progress bar has been drawn at 100%% progress.'''
-        return self._complete
+        '''Whether the task is 100%% complete.'''
+        return self.iteration >= self.total
 
     def set_iteration(self, iteration, prefix=None, suffix=None):
         '''Sets the current iteration.
@@ -527,7 +568,23 @@ class ProgressBar(object):
         sys.stdout.write("\r" + " " * self._max_len + "\r")
 
     def draw(self):
-        '''Draws the progress bar at its current progress.'''
+        '''Draws the progress bar at its current progress.
+
+        If the progress is 100%%, a newline is appended.
+        '''
+        if self.capturing_stdout:
+            self._flush_capture()
+
+        sys.stdout.write("\r" + self._render_progress())
+
+        if self.complete:
+            sys.stdout.write("\n")
+        elif self.capturing_stdout:
+            self._start_capture()
+
+        sys.stdout.flush()
+
+    def _render_progress(self):
         istr = next(self._spinner)
         plen = int(self._bar_len * self.progress)
         bstr = u"\u2588" * plen
@@ -540,14 +597,7 @@ class ProgressBar(object):
 
         self._max_len = max(self._max_len, len_pstr)
         pstr += " " * (self._max_len - len_pstr)
-
-        sys.stdout.write("\r")
-        sys.stdout.write(pstr)
-        if self.iteration >= self.total:
-            self._complete = True
-            sys.stdout.write("\n")
-
-        sys.stdout.flush()
+        return pstr
 
     @staticmethod
     def _parse_prefix(prefix):
