@@ -432,6 +432,70 @@ def query_yes_no(question, default=None):
         print("Please respond with 'y[es]' or 'n[o]'")
 
 
+class CaptureStdout(object):
+    '''Class for temporarily capturing stdout.
+
+    This class works by temporarily redirecting `sys.stdout` (and any stream
+    handlers of the root logger that are streaming to `sys.stdout`) to a
+    string buffer in between calls to `start()` and `stop()`.
+    '''
+
+    def __init__(self):
+        '''Creates a CaptureStdout instance.'''
+        self._root_logger = logging.getLogger()
+        self._orig_stdout = None
+        self._cache_stdout = None
+        self._handler_inds = None
+
+    @property
+    def is_started(self):
+        '''Whether stdout is currently being captured.'''
+        return self._cache_stdout is not None
+
+    def start(self):
+        '''Start capturing stdout.'''
+        if self.is_started:
+            return
+
+        self._orig_stdout = sys.stdout
+        self._cache_stdout = io.StringIO()
+        self._handler_inds = set()
+
+        # Update root logger handlers, if necessary
+        for idx, handler in enumerate(self._root_logger.handlers):
+            if isinstance(handler, logging.StreamHandler):
+                if handler.stream == sys.stdout:
+                    handler.stream = self._cache_stdout
+                    self._handler_inds.add(idx)
+
+        # Update `sys.stdout`
+        sys.stdout = self._cache_stdout
+
+    def stop(self):
+        '''Stop capturing stdout.
+
+        Returns:
+            a string containing the captured stdout
+        '''
+        if not self.is_started:
+            return ""
+
+        out = self._cache_stdout.getvalue()
+        self._cache_stdout.close()
+        self._cache_stdout = None
+
+        # Revert root logger handlers, if necessary
+        for idx in self._handler_inds:
+            self._root_logger.handlers[idx].stream = self._orig_stdout
+
+        self._handler_inds = None
+
+        # Revert `sys.stdout`
+        sys.stdout = self._orig_stdout
+
+        return out
+
+
 class ProgressBar(object):
     '''Class for printing a self-updating progress bar to stdout that tracks
     the progress of an iterative count towards completion (i.e., a total).
@@ -491,30 +555,18 @@ class ProgressBar(object):
         self._complete = False
 
         self._capturing_stdout = False
-        self._orig_stdout = None
-        self._cache_stdout = None
+        self._cap_obj = None
 
     def __enter__(self):
         self._capturing_stdout = True
+        self._cap_obj = CaptureStdout()
         self._start_capture()
         return self
 
     def __exit__(self, *args):
         self._flush_capture()
         self._capturing_stdout = False
-
-    def _start_capture(self):
-        if self.capturing_stdout:
-            self._orig_stdout = sys.stdout
-            self._cache_stdout = io.StringIO()
-            sys.stdout = self._cache_stdout
-
-    def _flush_capture(self):
-        if self.capturing_stdout:
-            out = self._cache_stdout.getvalue()
-            sys.stdout = self._orig_stdout
-            self.pause()
-            sys.stdout.write(out)
+        self._cap_obj = None
 
     @property
     def capturing_stdout(self):
@@ -583,6 +635,17 @@ class ProgressBar(object):
             self._start_capture()
 
         sys.stdout.flush()
+
+    def _start_capture(self):
+        self._cap_obj.start()
+
+    def _flush_capture(self):
+        if not self._cap_obj.is_started:
+            return
+
+        out = self._cap_obj.stop()
+        self.pause()
+        sys.stdout.write(out)
 
     def _render_progress(self):
         istr = next(self._spinner)
