@@ -1858,6 +1858,75 @@ def parse_pattern(patt):
     return inds
 
 
+def get_glob_matches(glob_patt):
+    '''Returns a list of file paths matching the given glob pattern.
+
+    The matches are returned in sorted order.
+
+    Args:
+        glob_patt: a glob pattern like "/path/to/files-*.jpg" or
+            "/path/to/files-*-*.jpg"
+
+    Returns:
+        a list of file paths that match `glob_patt`
+    '''
+    return sorted(glob.glob(glob_patt))
+
+
+def parse_glob_pattern(glob_patt):
+    '''Inspects the files matching the given glob pattern and returns a string
+    pattern version of the glob along with the matching strings.
+
+    Args:
+        glob_patt: a glob pattern like "/path/to/files-*.jpg" or
+            "/path/to/files-*-????.jpg"
+
+    Returns:
+        a tuple containing:
+            - a string pattern version of the glob pattern with "%s" in place
+                of each glob pattern (consecutive globs merged into one)
+            - a list (or list of tuples if the string pattern contains multiple
+                "%s") describing the string patterns matching the glob. If no
+                matches were found, an empty list is returned
+    '''
+    match_chunks = _get_match_chunks(glob_patt)
+
+    matches = []
+    for path in get_glob_matches(glob_patt):
+        matches.append(_get_match_gaps(path, match_chunks))
+
+    str_patt = "%s".join(match_chunks)
+    return str_patt, matches
+
+
+def _get_match_chunks(glob_patt):
+    glob_chunks = re.split(r"(?<!\\)(\*|\?|\[.*\])", glob_patt)
+
+    match_chunks = glob_chunks[:1]
+    for idx in range(2, len(glob_chunks), 2):
+        if glob_chunks[idx]:
+            match_chunks.append(glob_chunks[idx])
+
+    return match_chunks
+
+
+def _get_match_gaps(path, match_chunks):
+    match = []
+
+    len_path = len(path)
+    idx = len(match_chunks[0])
+    for chunk in match_chunks[1:]:
+        last_idx = idx
+        len_chunk = len(chunk)
+        while path[idx:(idx + len_chunk)] != chunk and idx < len_path:
+            idx += 1
+
+        match.append(path[last_idx:idx])
+        idx += len_chunk
+
+    return tuple(match)
+
+
 def get_pattern_matches(patt):
     '''Returns a list of file paths matching the given pattern.
 
@@ -1904,8 +1973,8 @@ def _iter_pattern_matches(patt):
 
     # Use glob to extract approximate matches
     seq_exp = re.compile(r"(%[0-9]*d)")
-    glob_str = re.sub(seq_exp, "*", _glob_escape(patt))
-    files = sorted(glob.glob(glob_str))
+    glob_patt = re.sub(seq_exp, "*", _glob_escape(patt))
+    files = get_glob_matches(glob_patt)
 
     # Create validation functions
     seq_patts = re.findall(seq_exp, patt)
