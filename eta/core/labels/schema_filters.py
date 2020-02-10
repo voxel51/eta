@@ -65,7 +65,7 @@ class SchemaFilter(Serializable):
             "<object attr>:*:<boolean>:occluded:false"
         '''
         parts = s.split(":")
-        subcls = CONDENSED_STRING_CLASS_MAP[parts.pop(0)]
+        subcls = _CONDENSED_STRING_CLASS_MAP[parts.pop(0)]
 
         if not issubclass(subcls, cls):
             raise ValueError(
@@ -298,7 +298,7 @@ class EventAttrFilter(AttrOfThingWithLabelFilter):
     _iter_func_name = "iter_event_attrs"
 
 
-CONDENSED_STRING_CLASS_MAP = {
+_CONDENSED_STRING_CLASS_MAP = {
     "<image attr>": ImageAttrFilter,
     "<video attr>": VideoAttrFilter,
     "<frame attr>": FrameAttrFilter,
@@ -308,7 +308,7 @@ CONDENSED_STRING_CLASS_MAP = {
     "<event attr>": EventAttrFilter
 }
 
-CONDENSED_STRING_ATTR_TYPE_MAP = {
+_CONDENSED_STRING_ATTR_TYPE_MAP = {
     "<categorical>": etau.get_class_name(etad.CategoricalAttribute),
     "<boolean>": etau.get_class_name(etad.BooleanAttribute),
     "<numeric>": etau.get_class_name(etad.NumericAttribute)
@@ -319,7 +319,7 @@ def _convert_attr_type_and_value(attr_type, attr_value):
     from string to the appropriate type.
     '''
     if attr_type != MATCH_ANY:
-        attr_type = CONDENSED_STRING_ATTR_TYPE_MAP[attr_type]
+        attr_type = _CONDENSED_STRING_ATTR_TYPE_MAP[attr_type]
 
         if attr_value != MATCH_ANY:
             if issubclass(etau.get_class(attr_type), etad.BooleanAttribute):
