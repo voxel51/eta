@@ -1761,8 +1761,9 @@ def multiglob(*patterns, **kwargs):
     return it.chain.from_iterable(glob2.iglob(root + p) for p in patterns)
 
 
-def list_files(dir_path, abs_paths=False, recursive=False,
-               include_hidden_files=False, sort=True):
+def list_files(
+        dir_path, abs_paths=False, recursive=False, include_hidden_files=False,
+        sort=True):
     '''Lists the files in the given directory, sorted alphabetically and
     excluding directories and hidden files.
 
@@ -1836,8 +1837,8 @@ def list_subdirs(dir_path, abs_paths=False, recursive=False):
 
 
 def parse_pattern(patt):
-    '''Inspects the files matching the given pattern and returns the numeric
-    indicies of the sequence.
+    '''Inspects the files matching the given numeric pattern and returns the
+    numeric indicies of the sequence.
 
     Args:
         patt: a pattern with a one or more numeric sequences like
@@ -1847,7 +1848,8 @@ def parse_pattern(patt):
         a list (or list of tuples if the pattern contains multiple sequences)
             describing the numeric indices of the files matching the pattern.
             The indices are returned in alphabetical order of their
-            corresponding files
+            corresponding files. If no matches were found, an empty list is
+            returned
     '''
     # Extract indices from exactly matching patterns
     inds = []
@@ -1928,7 +1930,7 @@ def _get_match_gaps(path, match_chunks):
 
 
 def get_pattern_matches(patt):
-    '''Returns a list of file paths matching the given pattern.
+    '''Returns a list of file paths matching the given numeric pattern.
 
     Args:
         patt: a pattern with one or more numeric sequences like
@@ -2029,8 +2031,8 @@ def parse_dir_pattern(dir_path):
             - a list (or list of tuples if the pattern contains multiple
                 numbers) describing the numeric indices in the directory. The
                 indices are returned in alphabetical order of their
-                corresponding filenames. If no files were found or the
-                directory was non-existent, an empty list is returned
+                corresponding filenames. If no files were found, an empty list
+                is returned
     '''
     try:
         files = list_files(dir_path)
