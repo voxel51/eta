@@ -1901,6 +1901,23 @@ def parse_glob_pattern(glob_patt):
     return str_patt, matches
 
 
+def glob_to_str_pattern(glob_patt):
+    '''Converts the glob pattern to a string pattern by replacing glob
+    wildcards with "%s".
+
+    Multiple consecutive glob wildcards are merged into single string patterns.
+
+    Args:
+        glob_patt: a glob pattern like "/path/to/files-*.jpg" or
+            "/path/to/files-*-????.jpg"
+
+    Returns:
+        a string pattern like "/path/to/files-%s.jpg" or
+            "/path/to/files-%s-%s.jpg"
+    '''
+    return "%s".join(_get_match_chunks(glob_patt))
+
+
 def _get_match_chunks(glob_patt):
     glob_chunks = re.split(r"(?<!\\)(\*|\?|\[.*\])", glob_patt)
 
