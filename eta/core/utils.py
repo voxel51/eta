@@ -1920,10 +1920,11 @@ def glob_to_str_pattern(glob_patt):
 
 def _get_match_chunks(glob_patt):
     glob_chunks = re.split(r"(?<!\\)(\*|\?|\[.*\])", glob_patt)
+    len_glob_chunks = len(glob_chunks)
 
     match_chunks = glob_chunks[:1]
-    for idx in range(2, len(glob_chunks), 2):
-        if glob_chunks[idx]:
+    for idx in range(2, len_glob_chunks, 2):
+        if glob_chunks[idx] or idx == len_glob_chunks - 1:
             match_chunks.append(glob_chunks[idx])
 
     return match_chunks
@@ -1937,6 +1938,9 @@ def _get_match_gaps(path, match_chunks):
     for chunk in match_chunks[1:]:
         last_idx = idx
         len_chunk = len(chunk)
+        if not len_chunk:
+            idx = len_path  # on empty match, consume rest of path
+
         while path[idx:(idx + len_chunk)] != chunk and idx < len_path:
             idx += 1
 
