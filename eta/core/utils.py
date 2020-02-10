@@ -586,6 +586,9 @@ class ProgressBar(object):
     @property
     def progress(self):
         '''The current progress, in [0, 1].'''
+        if self.total <= 0:
+            return 1.0
+
         return self.iteration * 1.0 / self.total
 
     @property
