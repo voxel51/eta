@@ -197,7 +197,18 @@ def serialize_numpy_array(array):
     # We currently serialize in numpy format. Other alternatives considered
     # were `pickle.dumps(array)` and HDF5
     #
+    header = None
+    if array.dtype == bool:
+        # pack boolean arrays more efficiently - this destroys size
+        # information, so we store it separately
+        header = b"bool" + np.array(
+            (len(array.shape),) + array.shape, dtype="uint32").tobytes()
+        array = np.packbits(array)
+
     with io.BytesIO() as f:
+        if header is not None:
+            f.write(header)
+
         np.save(f, array, allow_pickle=False)
         bytes_str = f.getvalue()
 
@@ -218,8 +229,26 @@ def deserialize_numpy_array(numpy_str):
     # were `pickle.loads(numpy_str)` and HDF5
     #
     bytes_str = b64decode(numpy_str.encode("ascii"))
+
+    header_length = 0
+    array_shape = None
+    is_boolean_array = (bytes_str[:4] == b"bool")
+    if is_boolean_array:
+        num_dimensions = np.frombuffer(bytes_str[4:8], dtype="uint32")[0]
+        header_length = 8 + (4 * num_dimensions)
+        array_shape = np.frombuffer(bytes_str[8:header_length], dtype="uint32")
+
     with io.BytesIO(bytes_str) as f:
-        return np.load(f)
+        f.seek(header_length)
+        array = np.load(f)
+
+    if array_shape is not None:
+        if is_boolean_array:
+            array = np.unpackbits(array)
+            array.dtype = bool
+        array = array.flatten()[:np.prod(array_shape)].reshape(array_shape)
+
+    return array
 
 
 class Serializable(object):
