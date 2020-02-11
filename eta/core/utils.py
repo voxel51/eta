@@ -34,9 +34,9 @@ try:
     # Although StringIO.StringIO's handling of unicode vs bytes is imperfect,
     # we import it here for use when a text-buffer replacement for `print` in
     # Python 2.X is required
-    from StringIO import _StringIO  # Python 2
+    from StringIO import StringIO as _StringIO  # Python 2
 except ImportError:
-    from io import _StringIO  # Python 3
+    from io import StringIO as _StringIO  # Python 3
 
 import itertools as it
 import logging
