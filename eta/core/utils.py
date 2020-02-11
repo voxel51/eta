@@ -653,7 +653,8 @@ class ProgressBar(object):
     def _render_progress(self):
         istr = next(self._spinner)
         plen = int(self._bar_len * self.progress)
-        bstr = u"\u2588" * plen
+        bstr = "#" * plen
+        #bstr = "\u2588" * plen  # @todo fix unicode errors so we can use this
         if plen < self._bar_len:
             bstr += istr + "-" * max(0, self._bar_len - 1 - plen)
 
