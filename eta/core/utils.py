@@ -105,7 +105,11 @@ def parse_isotime(isotime_str):
 
 def get_eta_rev():
     '''Returns the hash of the last commit to the current ETA branch or "" if
-    something went wrong with git.'''
+    something went wrong with git.
+
+    Returns:
+        the current ETA revision hash
+    '''
     with WorkingDir(etac.ETA_DIR):
         success, rev, _ = communicate(
             ["git", "rev-parse", "HEAD"], decode=True)
@@ -113,7 +117,11 @@ def get_eta_rev():
 
 
 def has_gpu():
-    '''Determine if the current device has a GPU'''
+    '''Determine if the current device has a GPU.
+
+    Returns:
+        True/False
+    '''
     if sys.platform == "darwin":
         # No GPU on mac
         return False
@@ -219,7 +227,8 @@ def parse_categorical_string(value, choices, ignore_case=True):
 
     if value not in choices:
         raise ValueError(
-            "Unsupported value '%s'; choices are %s" % (orig_value, orig_choices))
+            "Unsupported value '%s'; choices are %s" %
+            (orig_value, orig_choices))
 
     return orig_value
 
@@ -398,6 +407,13 @@ def communicate_or_die(args, decode=False):
         raise
 
 
+def _run_system_os_cmd(args):
+    try:
+        communicate_or_die(args)
+    except ExecutableRuntimeError as e:
+        raise OSError(e)
+
+
 class Timer(object):
     '''Class for timing things that supports the context manager interface.
 
@@ -510,13 +526,14 @@ def copy_file(inpath, outpath, check_ext=False):
             paths match. Only applicable if the output path is not a directory
 
     Raises:
-        OSError: if check_ext is True and the input and output paths have
-            different extensions
+        OSError if the copy failed, or if `check_ext == True` and the input and
+            output paths have different extensions
     '''
     if not os.path.isdir(outpath) and check_ext:
         assert_same_extensions(inpath, outpath)
+
     ensure_basedir(outpath)
-    communicate_or_die(["cp", inpath, outpath])
+    _run_system_os_cmd(["cp", inpath, outpath])
 
 
 def link_file(filepath, linkpath, check_ext=False):
@@ -532,14 +549,16 @@ def link_file(filepath, linkpath, check_ext=False):
             directories) of the input and output paths match
 
     Raises:
-        OSError: if check_ext is True and the input and output paths have
-            different extensions
+        OSError if the link failed or if `check_ext == True` and the input and
+            output paths have different extensions
     '''
     if check_ext:
         assert_same_extensions(filepath, linkpath)
+
     ensure_basedir(linkpath)
     if os.path.exists(linkpath):
         delete_file(linkpath)
+
     os.link(os.path.realpath(filepath), linkpath)
 
 
@@ -561,9 +580,11 @@ def symlink_file(filepath, linkpath, check_ext=False):
     '''
     if check_ext:
         assert_same_extensions(filepath, linkpath)
+
     ensure_basedir(linkpath)
     if os.path.exists(linkpath):
         delete_file(linkpath)
+
     os.symlink(os.path.realpath(filepath), linkpath)
 
 
@@ -581,8 +602,8 @@ def move_file(inpath, outpath, check_ext=False):
             paths match. Only applicable if the output path is not a directory
 
     Raises:
-        OSError: if check_ext is True and the input and output paths have
-            different extensions
+        OSError if the move failed, or if `check_ext == True` and the input and
+            output paths have different extensions
     '''
     if not os.path.splitext(outpath)[1]:
         # Output location is a directory
@@ -591,8 +612,10 @@ def move_file(inpath, outpath, check_ext=False):
         # Output location is a file
         if check_ext:
             assert_same_extensions(inpath, outpath)
+
         ensure_basedir(outpath)
-    communicate_or_die(["mv", inpath, outpath])
+
+    _run_system_os_cmd(["mv", inpath, outpath])
 
 
 def move_dir(indir, outdir):
@@ -604,11 +627,15 @@ def move_dir(indir, outdir):
     Args:
         indir: the input directory
         outdir: the output directory to create
+
+    Raises:
+        OSError if the move failed
     '''
     if os.path.isdir(outdir):
         delete_dir(outdir)
+
     ensure_basedir(outdir)
-    communicate_or_die(["mv", indir, outdir])
+    _run_system_os_cmd(["mv", indir, outdir])
 
 
 def partition_files(indir, outdir=None, num_parts=None, dir_size=None):
@@ -659,11 +686,12 @@ def copy_sequence(inpatt, outpatt, check_ext=False):
             sequences match
 
     Raises:
-        OSError: if check_ext is True and the input and output sequences have
-            different extensions
+        OSError if the copy failed or if `check_ext == True` and the input and
+            output sequences have different extensions
     '''
     if check_ext:
         assert_same_extensions(inpatt, outpatt)
+
     for idx in parse_pattern(inpatt):
         copy_file(inpatt % idx, outpatt % idx)
 
@@ -681,11 +709,12 @@ def link_sequence(inpatt, outpatt, check_ext=False):
             sequences match
 
     Raises:
-        OSError: if check_ext is True and the input and output sequences have
-            different extensions
+        OSError if the link failed or if `check_ext == True` and the input and
+        output sequences have different extensions
     '''
     if check_ext:
         assert_same_extensions(inpatt, outpatt)
+
     for idx in parse_pattern(inpatt):
         link_file(inpatt % idx, outpatt % idx)
 
@@ -704,11 +733,12 @@ def symlink_sequence(inpatt, outpatt, check_ext=False):
             sequences match
 
     Raises:
-        OSError: if check_ext is True and the input and output sequences have
-            different extensions
+        OSError if the symlink failed or if `check_ext == True` and the input
+            and output sequences have different extensions
     '''
     if check_ext:
         assert_same_extensions(inpatt, outpatt)
+
     for idx in parse_pattern(inpatt):
         symlink_file(inpatt % idx, outpatt % idx)
 
@@ -726,11 +756,12 @@ def move_sequence(inpatt, outpatt, check_ext=False):
             sequences match
 
     Raises:
-        OSError: if check_ext is True and the input and output sequences have
-            different extensions
+        OSError if the move failed or if `check_ext == True` and the input and
+            output sequences have different extensions
     '''
     if check_ext:
         assert_same_extensions(inpatt, outpatt)
+
     for idx in parse_pattern(inpatt):
         move_file(inpatt % idx, outpatt % idx)
 
@@ -757,9 +788,13 @@ def copy_dir(indir, outdir):
     Args:
         indir: the input directory
         outdir: the output directory
+
+    Raises:
+        OSError if the copy failed
     '''
     if os.path.isdir(outdir):
-        communicate_or_die(["rm", "-rf", outdir])
+        _run_system_os_cmd(["rm", "-rf", outdir])
+
     ensure_dir(outdir)
 
     for filepath in list_files(indir, include_hidden_files=True, sort=False):
@@ -780,8 +815,11 @@ def delete_file(path):
 
     Args:
         path: the filepath
+
+    Raises:
+        OSError if the deletion failed
     '''
-    communicate_or_die(["rm", "-f", path])
+    _run_system_os_cmd(["rm", "-f", path])
     try:
         os.removedirs(os.path.dirname(path))
     except OSError:
@@ -795,9 +833,12 @@ def delete_dir(dir_):
 
     Args:
         dir_: the directory path
+
+    Raises:
+        OSError if the deletion failed
     '''
     dir_ = os.path.normpath(dir_)
-    communicate_or_die(["rm", "-rf", dir_])
+    _run_system_os_cmd(["rm", "-rf", dir_])
     try:
         os.removedirs(os.path.dirname(dir_))
     except OSError:
@@ -920,7 +961,7 @@ def assert_same_extensions(*args):
         *args: filepaths
 
     Raises:
-        OSError: if all input paths did not have the same extension
+        OSError if all input paths did not have the same extension
     '''
     if not have_same_extesions(*args):
         raise OSError("Expected %s to have the same extensions" % str(args))
