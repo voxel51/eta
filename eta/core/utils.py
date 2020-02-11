@@ -29,7 +29,15 @@ import glob
 import glob2
 import hashlib
 import inspect
-import io
+
+try:
+    # Although StringIO.StringIO's handling of unicode vs bytes is imperfect,
+    # we import it here for use when a text-buffer replacement for `print` in
+    # Python 2.X is required
+    from StringIO import _StringIO  # Python 2
+except ImportError:
+    from io import _StringIO  # Python 3
+
 import itertools as it
 import logging
 import math
@@ -458,17 +466,18 @@ class CaptureStdout(object):
             return
 
         self._orig_stdout = sys.stdout
-        self._cache_stdout = io.StringIO()
-        self._handler_inds = set()
+        self._cache_stdout = _StringIO()
+        self._handler_inds = []
 
         # Update root logger handlers, if necessary
         for idx, handler in enumerate(self._root_logger.handlers):
             if isinstance(handler, logging.StreamHandler):
                 if handler.stream == sys.stdout:
                     handler.stream = self._cache_stdout
-                    self._handler_inds.add(idx)
+                    self._handler_inds.append(idx)
 
         # Update `sys.stdout`
+        sys.stdout.flush()
         sys.stdout = self._cache_stdout
 
     def stop(self):
@@ -634,6 +643,7 @@ class ProgressBar(object):
 
         if self.complete:
             sys.stdout.write("\n")
+            sys.stdout.flush()
         elif self.capturing_stdout:
             self._start_capture()
 
@@ -649,12 +659,12 @@ class ProgressBar(object):
         out = self._cap_obj.stop()
         self.pause()
         sys.stdout.write(out)
+        sys.stdout.flush()
 
     def _render_progress(self):
         istr = next(self._spinner)
         plen = int(self._bar_len * self.progress)
-        bstr = "#" * plen
-        #bstr = "\u2588" * plen  # @todo fix unicode errors so we can use this
+        bstr = "\u2588" * plen
         if plen < self._bar_len:
             bstr += istr + "-" * max(0, self._bar_len - 1 - plen)
 
