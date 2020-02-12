@@ -4,7 +4,7 @@ Core pipeline infrastructure.
 See `docs/pipelines_dev_guide.md` for detailed information about the design of
 the ETA pipeline system.
 
-Copyright 2017-2019, Voxel51, Inc.
+Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
@@ -48,12 +48,14 @@ PIPELINE_OUTPUT_NAME = "OUTPUT"
 
 
 def run(
-        pipeline_config_path, pipeline_status=None, mark_as_complete=True,
+        pipeline_config_or_path, pipeline_status=None, mark_as_complete=True,
         handle_failures=True, rotate_logs=True, force_overwrite=False):
     '''Run the pipeline specified by the PipelineConfig.
 
     Args:
-        pipeline_config_path: path to a PipelineConfig file
+        pipeline_config_or_path: a PipelineConfig or a path to one on disk. If
+            a PipelineConfig is provided in-memory, it is written to a
+            temporary directory on disk while the pipeline executes
         pipeline_status: an optional PipelineStatus instance. By default, a
             PipelineStatus object is created that logs its status to the path
             specified in the provided PipelineConfig
@@ -76,8 +78,21 @@ def run(
         PipelineExecutionError: if the pipeline failed and `handle_failures` is
             False
     '''
-    # Load pipeline config
-    pipeline_config = PipelineConfig.from_json(pipeline_config_path)
+    # Parse PipelineConfig
+    if etau.is_str(pipeline_config_or_path):
+        # Found a path to a pipeline config on disk
+        temp_dir = None
+        pipeline_config_path = pipeline_config_or_path
+        pipeline_config = PipelineConfig.from_json(pipeline_config_path)
+    else:
+        # Found an in-memory pipeline config
+        temp_dir = etau.TempDir()
+        pipeline_config_path = os.path.join(
+            temp_dir.__enter__(), "pipeline.json")
+        pipeline_config = pipeline_config_or_path
+        pipeline_config.write_json(pipeline_config_path)
+
+    # Force overwrite, if requested
     if force_overwrite:
         pipeline_config.overwrite = True
 
@@ -96,9 +111,15 @@ def run(
     pipeline_config_path = os.path.abspath(pipeline_config_path)
 
     # Run pipeline
-    return _run(
+    status = _run(
         pipeline_config, pipeline_config_path, pipeline_status,
         mark_as_complete, handle_failures)
+
+    # Cleanup, if necessary
+    if temp_dir is not None:
+        temp_dir.__exit__()
+
+    return status
 
 
 def _make_pipeline_status(pipeline_config):
@@ -453,8 +474,10 @@ class PipelineParameter(object):
             raise PipelineMetadataError(
                 "Pipeline parameter '%s' is required, so it has no default "
                 "value" % self.param_str)
-        elif self.has_set_value:
+
+        if self.has_set_value:
             return self.set_value
+
         return self.param.default_value
 
     @property

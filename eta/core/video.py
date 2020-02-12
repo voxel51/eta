@@ -2285,12 +2285,27 @@ def _make_ffmpeg_select_arg(frames):
 
 
 def sample_select_frames(
-        video_path, frames, output_patt=None, size=None, fast=False,
-        retry_with_slow=True):
+        video_path, frames, output_patt=None, size=None, fast=False):
     '''Samples the specified frames of the video.
 
-    When `fast=False`, this implementation uses `VideoProcessor`. When
-    `fast=True`, this implementation uses ffmpeg's `-vf select` option.
+    This method is *intentionally* designed to be extremely graceful. It will
+    sample whatever frames it can from the video you provide and will
+    gracefully exit rather than raising an error if `ffmpeg` cannot understand
+    some frames of the video you provide.
+
+    When `fast=False`, this implementation uses `VideoProcessor`.
+
+    When `fast=True`, this implementation uses ffmpeg's `-vf select` option.
+    In this case, it may resort to `fast=False` internally if one of the
+    following conditions occur:
+
+        (a) more than 131072 frames are requested. This is a limitation of
+            `subprocess` (cf. https://stackoverflow.com/q/29801975)
+
+        (b) the fast implementation failed to generate at least 90%% of the
+            target frames. This can happen if `ffmpeg -vf select` is confused
+            by the the video it encounters. We have empirically found that
+            `VideoProcessor` may be able to extract more frames such cases
 
     Args:
         video_path: the path to a video
@@ -2303,19 +2318,18 @@ def sample_select_frames(
         fast: whether to use a native ffmpeg method to perform the extraction.
             While faster, this may be inconsistent with other video processing
             methods in ETA. By default, this is False
-        retry_with_slow: whether to retry in slow mode if the fast native
-            ffmpeg method fails to write all of the video frames. If this
-            option is set to `False` and if `fast=True`, the function will just
-            return whichever frames the function succeeds in writing out. By
-            default, this is True.
 
     Returns:
-        a list of the sampled frames if output_patt is None, and None otherwise
+        If `output_patt != None`, this function returns None.
+        If `output_patt == None`, this method returns an (imgs, frames) tuple
+        where `imgs` is the list of sampled frames, and `frames` is the list
+        of frames that were succesfully sampled. If no errors were encountered,
+        the output `frames` will match the input `frames`
     '''
     if fast:
         try:
             return _sample_select_frames_fast(
-                video_path, frames, output_patt, size, retry_with_slow)
+                video_path, frames, output_patt, size)
         except SampleSelectFramesError as e:
             logger.warning("Select frames fast mode failed: '%s'", e)
             logger.info("Reverting to `fast=False`")
@@ -2330,10 +2344,9 @@ class SampleSelectFramesError(Exception):
     pass
 
 
-def _sample_select_frames_fast(
-        video_path, frames, output_patt, size, exception_if_incomplete):
+def _sample_select_frames_fast(video_path, frames, output_patt, size):
     #
-    # As per https://stackoverflow.com/questions/29801975, one cannot pass an
+    # As per https://stackoverflow.com/q/29801975, one cannot pass an
     # argument of length > 131072 to subprocess. So, we have to make sure the
     # user isn't requesting too many frames to handle
     #
@@ -2345,67 +2358,94 @@ def _sample_select_frames_fast(
     # If reading into memory, use `png` to ensure lossless-ness
     ext = os.path.splitext(output_patt)[1] if output_patt else ".png"
 
+    #
+    # Analogous to FFmpegVideoReader, our approach here is to gracefully
+    # fail and just give the user however many frames we can...
+    #
+
     with etau.TempDir() as d:
         # Sample frames to disk temporarily
-        tmp_patt = os.path.join(d, "frame-%d" + ext)
+        tmp_patt = os.path.join(d, "frame-%06d" + ext)
         ffmpeg = FFmpeg(
             size=size, out_opts=["-vf", select_arg_str, "-vsync", "0"])
 
         try:
             ffmpeg.run(video_path, tmp_patt)
-        except etau.ExecutableRuntimeError:
-            #
-            # Sometimes ffmpeg can't decode frames in video.
-            #
+        except etau.ExecutableRuntimeError as e:
+            # Graceful failure if frames couldn't be sampled
+            logger.warning(e, exc_info=True)
+            logger.warning(
+                "A sampling error occured; attempting to gracefully continue")
 
-            num_frames = len(etau.parse_pattern(tmp_patt))
-            msg = "Only %d of %d expected frames were sampled" % (
-                num_frames, len(frames))
+        sampled_frames = etau.parse_pattern(tmp_patt)
+        out_frames = [frames[i - 1] for i in sampled_frames]
+        num_frames = len(sampled_frames)
+        num_target_frames = len(frames)
 
-            if exception_if_incomplete:
-                raise SampleSelectFramesError(msg)
+        # Warn user if not all frames were sampled
+        if num_frames < num_target_frames:
+            logger.warning(
+                "Only %d/%d expected frames were sampled", num_frames,
+                num_target_frames)
 
-            # Analogous to FFmpegVideoReader, our approach here is to
-            # gracefully fail and just give the user however many frames we
-            # can...
-            logger.warning(msg)
-            frames = frames[:num_frames]
+        #
+        # If an insufficient number of frames were succesfully sampled, revert
+        # to slow mode
+        #
+        target_percent_complete = 0.9  # warning: magic number
+        percent_complete = num_frames / num_target_frames
+        if percent_complete < target_percent_complete:
+            raise SampleSelectFramesError(
+                "We only managed to sample %.1f%% of the frames; this is "
+                "below our target of %.1f%%, so let's try slow mode" % (
+                100 * percent_complete, 100 * target_percent_complete))
 
+        # Move frames into place with correct output names
         if output_patt is not None:
-            # Move frames into place with correct output names
-            for idx, fn in enumerate(frames, 1):
-                etau.move_file(tmp_patt % idx, output_patt % fn)
+            for sample_idx, frame_number in zip(sampled_frames, out_frames):
+                tmp_path = tmp_patt % sample_idx
+                outpath = output_patt % frame_number
+                etau.move_file(tmp_path, outpath)
+
             return
 
-        # Read frames into memory
+        # Return frames into memory
         imgs = []
-        for idx in range(1, len(frames) + 1):
-            imgs.append(etai.read(tmp_patt % idx))
+        for sample_idx in sampled_frames:
+            imgs.append(etai.read(tmp_patt % sample_idx))
 
-        return imgs
+        return imgs, out_frames
 
 
 def _sample_select_frames_slow(video_path, frames, output_patt, size):
     # Parse parameters
     resize_images = size is not None
 
+    # Sample frames to disk via VideoProcessor
     if output_patt:
-        # Sample frames to disk via VideoProcessor
         p = VideoProcessor(
             video_path, frames=frames, out_images_path=output_patt)
         with p:
             for img in p:
                 if resize_images:
                     img = etai.resize(img, *size)
+
                 p.write(img)
+
         return None
 
     # Sample frames in memory via FFmpegVideoReader
+    imgs = []
+    out_frames = []
     with FFmpegVideoReader(video_path, frames=frames) as r:
-        if resize_images:
-            return [etai.resize(img, *size) for img in r]
+        for img in r:
+            if resize_images:
+                img = etai.resize(img, *size)
 
-        return [img for img in r]
+            imgs.append(img)
+            out_frames.append(r.frame_number)
+
+    return imgs, out_frames
 
 
 def sample_first_frames(imgs_or_video_path, k, stride=1, size=None):
