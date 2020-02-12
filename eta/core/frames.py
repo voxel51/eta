@@ -1,7 +1,7 @@
 '''
 Core utilities for working with frame numbers of videos.
 
-Copyright 2017-2019, Voxel51, Inc.
+Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
@@ -22,6 +22,7 @@ import six
 import numpy as np
 
 from eta.core.serial import Serializable
+import eta.core.utils as etau
 
 
 def frame_number_to_timestamp(frame_number, total_frame_count, duration):
@@ -76,6 +77,9 @@ def timestamp_str_to_seconds(timestamp):
 def world_time_to_timestamp(world_time, start_time):
     '''Converts the given world time to a timestamp in a video.
 
+    If one (but not both) of the datetimes are timezone-aware, the other
+    datetime is assumed to be expressed in UTC time.
+
     Args:
         world_time: a datetime describing a time of interest
         start_time: a datetime indicating the start time of the video
@@ -83,7 +87,7 @@ def world_time_to_timestamp(world_time, start_time):
     Returns:
         the corresponding timestamp (in seconds) in the video
     '''
-    return (world_time - start_time).total_seconds()
+    return etau.datetime_delta_seconds(start_time, world_time)
 
 
 def world_time_to_frame_number(
