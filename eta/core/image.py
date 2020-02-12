@@ -810,6 +810,7 @@ def _map_attrs_to_and_from_strings(func):
             target_iterable = [
                 ":".join((attr_name, attr_value))
                 for attr_schema in attr_container_schema.schema.values()
+                if isinstance(attr_schema, etad.CategoricalAttributeSchema)
                 for attr_name, attr_value in attr_schema.iter_name_values()
             ]
 
