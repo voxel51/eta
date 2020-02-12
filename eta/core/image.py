@@ -7,11 +7,12 @@ Notes:
         produced outside of this library must be converted to RGB. This
         conversion can be done via `eta.core.image.bgr_to_rgb()`
 
-Copyright 2017-2019, Voxel51, Inc.
+Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
 Jason Corso, jason@voxel51.com
+Ian Timmis, ian@voxel51.com
 '''
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
@@ -484,6 +485,32 @@ class ImageLabelsSchema(Serializable):
             return True
         except (ImageLabelsSchemaError, AttributeContainerSchemaError):
             return False
+
+    def is_valid_subset_schema(self, schema):
+        '''Validates that the provided schema is a subset of self
+        
+        Args:
+            schema: an ImageLabelsSchema
+        Returns:
+            True/False
+        '''
+
+        # Validate frame attributes
+        for attr in schema.attrs:
+            if not self.is_valid_image_attribute(attr):
+                return False
+
+        # Validate objects
+        for obj in schema.objects:
+            if not self.is_valid_object_label(obj):
+                return False
+
+            # Validate object attributes
+            for attr in schema.objecs[obj].schema
+                if not self.is_valid_object_attribute(attr):
+                    return False
+
+        return True
 
     def validate_image_attribute(self, image_attr):
         '''Validates that the image attribute is compliant with the schema.
