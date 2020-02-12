@@ -9,11 +9,12 @@ Notes:
         produced outside of this library must be converted to RGB. This
         conversion can be done via `eta.core.image.bgr_to_rgb()`
 
-Copyright 2017-2019, Voxel51, Inc.
+Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
 Jason Corso, jason@voxel51.com
+Ian Timmis, ian@voxel51.com
 '''
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
@@ -1502,6 +1503,48 @@ class VideoLabelsSchema(Serializable):
             return True
         except:
             return False
+
+    def is_valid_subset_schema(self, schema):
+        '''Validates that the provided schema is a subset of self
+        
+        Args:
+            schema: a VideoLabelsSchema
+
+        Returns:
+            True/False
+        '''
+
+        # Validate video attributes
+        for attr in schema.attrs:
+            if not self.is_valid_video_attribute(attr):
+                return False
+
+        # Validate frame attributes
+        for attr in schema.frames:
+            if not self.is_valid_frame_attribute(attr):
+                return False
+
+        # Validate objects
+        for obj in schema.objects:
+            if not self.is_valid_object_label(obj):
+                return False
+
+            # Validate object attributes
+            for attr in schema.objecs[obj].schema
+                if not self.is_valid_object_attribute(attr):
+                    return False
+
+        # Validate events
+        for event in schema.events:
+            if not self.is_valid_event_label(event):
+                return False
+
+            # Validate event attributes
+            for attr in schema.events[event].schema:
+                if not self.is_valid_event_attribute(attr):
+                    return False
+
+        return True
 
     def validate_video_attribute(self, video_attr):
         '''Validates that the video attribute is compliant with the schema.
