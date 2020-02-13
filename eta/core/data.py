@@ -16,7 +16,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
-from future.utils import iteritems
+from future.utils import iteritems, itervalues
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
@@ -264,17 +264,27 @@ class AttributeSchema(etal.LabelsSchema):
     Attributes:
         name: the name of the Attribute
         type: the fully-qualified name of the Attribute class
+        exclusive: whether at most one attribute with this name may appear in
+            an AttributeContainer
     '''
 
-    def __init__(self, name):
+    def __init__(self, name, exclusive):
         '''Initializes the base AttributeSchema instance.
 
         Args:
             name: the name of the attribute
+            exclusive: whether at most one attribute with this name may appear
+                in an AttributeContainer
         '''
         self.name = name
         self.type = etau.get_class_name(self)[:-len("Schema")]
+        self.exclusive = exclusive
         self._attr_cls = etau.get_class(self.type)
+
+    @property
+    def is_exclusive(self):
+        '''Whether this attribute is exclusive.'''
+        return self.exclusive
 
     def get_attribute_class(self):
         '''Gets the `Attribute` class associated with this schema.
@@ -407,7 +417,11 @@ class AttributeSchema(etal.LabelsSchema):
         '''
         attr_cls = etau.get_class(d["type"])
         schema_cls = attr_cls.get_schema_cls()
-        return schema_cls(d["name"], **schema_cls.get_kwargs(d))
+
+        name = d["name"]
+        exclusive = d.get("exclusive", False)
+        return schema_cls(
+            name, exclusive=exclusive, **schema_cls.get_kwargs(d))
 
 
 class AttributeSchemaError(etal.LabelsSchemaError):
@@ -422,17 +436,21 @@ class CategoricalAttributeSchema(AttributeSchema):
         name: the name of the CategoricalAttribute
         type: the fully-qualified name of the CategoricalAttribute class
         categories: the set of valid values for the attribute
+        exclusive: whether at most one attribute with this name may appear in
+            an AttributeContainer
     '''
 
-    def __init__(self, name, categories=None):
+    def __init__(self, name, categories=None, exclusive=False):
         '''Creates a CategoricalAttributeSchema instance.
 
         Args:
             name: the name of the attribute
             categories: a set of valid values for the attribute. By default, an
                 empty set is used
+            exclusive: whether at most one attribute with this name may appear
+                in an AttributeContainer. By default, this is False
         '''
-        super(CategoricalAttributeSchema, self).__init__(name)
+        super(CategoricalAttributeSchema, self).__init__(name, exclusive)
         self.categories = set(categories or [])
 
     @property
@@ -481,6 +499,7 @@ class CategoricalAttributeSchema(AttributeSchema):
         '''
         self.validate_schema(schema)
         self.categories.update(schema.categories)
+        self.exclusive |= schema.exclusive
 
     @staticmethod
     def get_kwargs(d):
@@ -503,16 +522,20 @@ class NumericAttributeSchema(AttributeSchema):
         name: the name of the NumericAttribute
         type: the fully-qualified name of the NumericAttribute class
         range: the (min, max) range for the attribute
+        exclusive: whether at most one attribute with this name may appear in
+            an AttributeContainer
     '''
 
-    def __init__(self, name, range=None):
+    def __init__(self, name, range=None, exclusive=False):
         '''Creates a NumericAttributeSchema instance.
 
         Args:
             name: the name of the attribute
             range: the (min, max) range for the attribute
+            exclusive: whether at most one attribute with this name may appear
+                in an AttributeContainer. By default, this is False
         '''
-        super(NumericAttributeSchema, self).__init__(name)
+        super(NumericAttributeSchema, self).__init__(name, exclusive)
         self.range = tuple(range or [])
 
     @property
@@ -575,6 +598,8 @@ class NumericAttributeSchema(AttributeSchema):
                 min(self.range[0], schema.range[0]),
                 max(self.range[1], schema.range[1]))
 
+        self.exclusive |= schema.exclusive
+
     @staticmethod
     def get_kwargs(d):
         '''Extracts the relevant keyword arguments for this schema from the
@@ -596,17 +621,21 @@ class BooleanAttributeSchema(AttributeSchema):
         name: the name of the BooleanAttribute
         type: the fully-qualified name of the BooleanAttribute class
         values: the set of valid boolean values for the attribute
+        exclusive: whether at most one attribute with this name may appear in
+            an AttributeContainer
     '''
 
-    def __init__(self, name, values=None):
+    def __init__(self, name, values=None, exclusive=False):
         '''Creates a BooleanAttributeSchema instance.
 
         Args:
             name: the name of the attribute
             values: a set of valid boolean values for the attribute. By
                 default, an empty set is used
+            exclusive: whether at most one attribute with this name may appear
+                in an AttributeContainer. By default, this is False
         '''
-        super(BooleanAttributeSchema, self).__init__(name)
+        super(BooleanAttributeSchema, self).__init__(name, exclusive)
         self.values = set(values or [])
 
     @property
@@ -655,6 +684,7 @@ class BooleanAttributeSchema(AttributeSchema):
         '''
         self.validate_schema(schema)
         self.values.update(schema.values)
+        self.exclusive |= schema.exclusive
 
     @staticmethod
     def get_kwargs(d):
@@ -769,6 +799,44 @@ class AttributeContainer(etal.LabelsContainer):
         attr = self.get_attr_with_name(name, default=default)
         return attr.value
 
+    def filter_by_schema(self, schema):
+        '''Removes labels from this container that are not compliant with the
+        given schema.
+
+        Only the first observation of each exclusive attribute is kept (if
+        applicable).
+
+        Args:
+            schema: an AttributeContainerSchema
+        '''
+        super(AttributeContainer, self).filter_by_schema(schema)
+
+        # Enforce attribute exclusivity, if necessary
+        if schema.has_exclusive_attributes:
+            del_inds = set()
+            found_names = set()
+            for idx, attr in enumerate(self):
+                name = attr.name
+                if name in found_names and schema.is_exclusive_attribute(name):
+                    del_inds.add(idx)
+                else:
+                    found_names.add(name)
+
+            self.delete_inds(del_inds)
+
+    def get_attribute_counts(self):
+        '''Returns a dictionary mapping attribute names to their counts in this
+        container.
+
+        Returns:
+            a dict mapping attribute names to counts
+        '''
+        counts = defaultdict(int)
+        for attr in self:
+            counts[attr.name] += 1
+
+        return dict(counts)
+
 
 class AttributeContainerSchema(etal.LabelsContainerSchema):
     '''Schema for an `AttributeContainer`.
@@ -793,6 +861,11 @@ class AttributeContainerSchema(etal.LabelsContainerSchema):
         '''Whether this schema has no labels of any kind.'''
         return not bool(self.schema)
 
+    @property
+    def has_exclusive_attributes(self):
+        '''Whether this schema contains at least one exclusive attribute.'''
+        return any(schema.exclusive for schema in itervalues(self.schema))
+
     def has_attribute(self, name):
         '''Whether the schema has an `Attribute` with the given name.
 
@@ -803,6 +876,10 @@ class AttributeContainerSchema(etal.LabelsContainerSchema):
             True/False
         '''
         return name in self.schema
+
+    def is_exclusive_attribute(self, name):
+        '''Whether the `Attribute` with the given name is exclusive.'''
+        return self.get_attribute_schema(name).is_exclusive
 
     def get_attribute_schema(self, name):
         '''Gets the `AttributeSchema` for the `Attribute` with the given name.
@@ -921,11 +998,22 @@ class AttributeContainerSchema(etal.LabelsContainerSchema):
 
         Raises:
             AttributeContainerSchemaError: if the schema doesn't contain an
-                attribute of a given name
+                attribute of a given name or the exclusivity of an attribute is
+                violated
             AttributeSchemaError: if an attribute violates its schema
         '''
+        # Validate attributes
         for attr in attrs:
             self.validate_attribute(attr)
+
+        # Enforce attribute exclusivity, if necessary
+        if self.has_exclusive_attributes:
+            counts = attrs.get_attribute_counts()
+            for name, count in iteritems(counts):
+                if count > 1 and self.is_exclusive_attribute(name):
+                    raise AttributeContainerSchemaError(
+                        "Attribute '%s' is exclusive but appears %d times in "
+                        "this container" % (name, count))
 
     def merge_schema(self, schema):
         '''Merges the given `AttributeContainerSchema` into the schema.
