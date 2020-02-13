@@ -486,6 +486,10 @@ class VideoLabels(etal.Labels, etal.HasLabelsSchema):
         self.events = events or etae.EventContainer()
         etal.HasLabelsSchema.__init__(self, schema=schema)
 
+    def __len__(self):
+        '''The number of frames in the video with `VideoFrameLabels`.'''
+        return len(self.frames)
+
     def __getitem__(self, frame_number):
         '''Gets the `VideoFrameLabels` for the given frame number, or an empty
         if `VideoFrameLabels` if the frame has no labels.
@@ -551,14 +555,6 @@ class VideoLabels(etal.Labels, etal.HasLabelsSchema):
             an iterator over Events
         '''
         return iter(self.events)
-
-    def __len__(self):
-        '''The number of frames in the video with `VideoFrameLabels`.'''
-        return len(self.frames)
-
-    def __bool__(self):
-        '''Whether the video has labels of any kind.'''
-        return not self.is_empty
 
     @property
     def has_video_attributes(self):
@@ -1115,6 +1111,34 @@ class VideoLabelsSchema(etal.LabelsSchema):
         self.frames = frames or etad.AttributeContainerSchema()
         self.objects = objects or etao.ObjectContainerSchema()
         self.events = events or etae.EventContainerSchema()
+
+    @property
+    def has_video_attributes(self):
+        '''Whether the schema has at least one video-level AttributeSchema.'''
+        return bool(self.attrs)
+
+    @property
+    def has_frame_attributes(self):
+        '''Whether the schema has at least one frame-level AttributeSchema.'''
+        return bool(self.frames)
+
+    @property
+    def has_objects(self):
+        '''Whether the schema has at least one ObjectSchema.'''
+        return bool(self.objects)
+
+    @property
+    def has_events(self):
+        '''Whether the schema has at least one EventSchema.'''
+        return bool(self.events)
+
+    @property
+    def is_empty(self):
+        '''Whether the schema has no labels of any kind.'''
+        return (not self.has_video_attributes
+                and not self.has_frame_attributes
+                and not self.has_objects
+                and not self.has_events)
 
     def has_video_attribute(self, attr_name):
         '''Whether the schema has a video-level attribute with the given name.
