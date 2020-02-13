@@ -18,11 +18,11 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-from eta.core.serial import Container, Serializable, Set
+import eta.core.serial as etas
 import eta.core.utils as etau
 
 
-class Labels(Serializable):
+class Labels(etas.Serializable):
     '''Base class for `eta.core.serial.Serializable` classes that hold labels
     representing attributes, objects, frames, events, images, videos, etc.
 
@@ -64,7 +64,7 @@ class Labels(Serializable):
             "subclasses must implement `filter_by_schema()`")
 
 
-class LabelsSchema(Serializable):
+class LabelsSchema(etas.Serializable):
     '''Base class for schemas of `Labels` classes.'''
 
     def add(self, labels):
@@ -211,7 +211,7 @@ class HasLabelsSchema(object):
         self.set_schema(None)
 
 
-class LabelsContainer(Labels, HasLabelsSchema, Container):
+class LabelsContainer(Labels, HasLabelsSchema, etas.Container):
     '''Base class for `eta.core.serial.Container`s of `Labels`.
 
     `LabelsContainer`s can optionally store a `LabelsContainerSchema` instance
@@ -231,7 +231,7 @@ class LabelsContainer(Labels, HasLabelsSchema, Container):
                 added to the container violate it
         '''
         HasLabelsSchema.__init__(self, schema=schema)
-        Container.__init__(self, **kwargs)
+        etas.Container.__init__(self, **kwargs)
 
     def add(self, labels):
         '''Appends the `Labels` to the container.
@@ -383,7 +383,7 @@ class LabelsContainerSchemaError(LabelsSchemaError):
     pass
 
 
-class LabelsSet(Labels, HasLabelsSchema, Set):
+class LabelsSet(Labels, HasLabelsSchema, etas.Set):
     '''Base class for `eta.core.serial.Set`s of `Labels`.
 
     `LabelsSet`s can optionally store a `LabelsSchema` instance that governs
@@ -403,7 +403,7 @@ class LabelsSet(Labels, HasLabelsSchema, Set):
                 added to the container violate it
         '''
         HasLabelsSchema.__init__(self, schema=schema)
-        Set.__init__(self, **kwargs)
+        etas.Set.__init__(self, **kwargs)
 
     def __getitem__(self, key):
         '''Gets the `Labels` for the given key.
