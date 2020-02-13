@@ -30,7 +30,7 @@ import numpy as np
 from eta.core.config import no_default
 import eta.core.labels as etal
 import eta.core.numutils as etan
-from eta.core.serial import Container, NpzWriteable, Serializable
+import eta.core.serial as etas
 import eta.core.utils as etau
 
 
@@ -57,7 +57,7 @@ def majority_vote_categorical_attrs(attrs, confidence_weighted=False):
     if not isinstance(attrs, list):
         attrs = [attrs]
 
-    accums = defaultdict(lambda: etan.Accumulator())
+    accums = defaultdict(etan.Accumulator)
     for _attrs in attrs:
         for attr in _attrs:
             accums[attr.name].add(attr.value, weight=attr.confidence or 0.0)
@@ -76,6 +76,7 @@ class Attribute(etal.Labels):
     '''Base class for attributes.
 
     Attributes:
+        type: the fully-qualified class name of the attribute
         name: the name of the attribute
         value: the value of the attribute
         confidence: (optional) the confidence of the attribute, in [0, 1]
@@ -131,10 +132,7 @@ class Attribute(etal.Labels):
     def _from_dict(cls, d):
         '''Internal implementation of `from_dict()`.
 
-        Subclasses MUST implement this method, NOT `from_dict()`, if they
-        contain custom fields. Moreover, such implementations must internally
-        call this super method to ensure that the base `Attribute` is properly
-        initialized.
+        Subclasses should implement this method, NOT `from_dict()`.
 
         Args:
             d: a JSON dictionary
@@ -711,7 +709,7 @@ class AttributeContainer(etal.LabelsContainer):
         '''
         attrs = self.get_attrs_with_name(name)
 
-        if len(attrs) == 0 and default is not no_default:
+        if not attrs and default is not no_default:
             return default
 
         if len(attrs) != 1:
@@ -959,7 +957,7 @@ class AttributeContainerSchemaError(etal.LabelsContainerSchemaError):
     pass
 
 
-class DataFileSequence(Serializable):
+class DataFileSequence(etas.Serializable):
     '''Class representing a sequence of data files on disk.
 
     When a DataFileSequence is created, it must correspond to actual files on
@@ -1111,7 +1109,7 @@ class DataFileSequenceError(Exception):
     pass
 
 
-class DataRecords(Container):
+class DataRecords(etas.Container):
     '''Container class for data records.
 
     `DataRecords` is a generic container of records each having a value for
@@ -1306,7 +1304,7 @@ class DataRecordsError(Exception):
 DEFAULT_DATA_RECORDS_FILENAME = "records.json"
 
 
-class BaseDataRecord(Serializable):
+class BaseDataRecord(etas.Serializable):
     '''Base class for all data records.
 
     Data records are flexible containers that function as dictionary-like
@@ -1454,7 +1452,7 @@ class LabeledVideoRecord(LabeledFileRecord):
         return ["group"]
 
 
-class LabeledFeatures(NpzWriteable):
+class LabeledFeatures(etas.NpzWriteable):
     '''Class representing a feature array `X` and corresponding labels `y`.
 
     `X` is an n x d array whose rows contain features
