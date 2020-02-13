@@ -102,6 +102,11 @@ class Event(etal.Labels):
         self._support = support
 
     @property
+    def is_empty(self):
+        '''Whether this instance has no labels of any kind.'''
+        return False
+
+    @property
     def support(self):
         '''A `FrameRanges` instance describing the frames in which this event
         exists.
@@ -477,6 +482,11 @@ class EventSchema(etal.LabelsSchema):
         self.frames = frames or etad.AttributeContainerSchema()
         self.objects = objects or etao.ObjectContainerSchema()
         self.child_events = child_events or EventContainerSchema()
+
+    @property
+    def is_empty(self):
+        '''Whether this schema has no labels of any kind.'''
+        return False
 
     def has_label(self, label):
         '''Whether the schema has the given event label.
@@ -1294,8 +1304,10 @@ class EventContainerSchema(etal.LabelsContainerSchema):
         '''
         self.schema = schema or {}
 
-    def __bool__(self):
-        return bool(self.schema)
+    @property
+    def is_empty(self):
+        '''Whether this schema has no labels of any kind.'''
+        return not bool(self.schema)
 
     def has_event_label(self, label):
         '''Whether the schema has an event with the given label.
