@@ -864,7 +864,7 @@ class AttributeContainerSchema(etal.LabelsContainerSchema):
     @property
     def has_exclusive_attributes(self):
         '''Whether this schema contains at least one exclusive attribute.'''
-        return any(schema.exclusive for schema in itervalues(self.schema))
+        return any(schema.is_exclusive for schema in itervalues(self.schema))
 
     def has_attribute(self, name):
         '''Whether the schema has an `Attribute` with the given name.
