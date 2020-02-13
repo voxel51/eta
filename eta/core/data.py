@@ -585,15 +585,24 @@ class BooleanAttributeSchema(AttributeSchema):
     Attributes:
         name: the name of the BooleanAttribute
         type: the fully-qualified name of the BooleanAttribute class
+        values: the set of valid boolean values for the attribute
     '''
 
-    def __init__(self, name):
+    def __init__(self, name, values=None):
         '''Creates a BooleanAttributeSchema instance.
 
         Args:
             name: the name of the attribute
+            values: a set of valid boolean values for the attribute. By
+                default, an empty set is used
         '''
         super(BooleanAttributeSchema, self).__init__(name)
+        self.values = set(values or [])
+
+    @property
+    def is_empty(self):
+        '''Whether this schema has no labels of any kind.'''
+        return not bool(self.values)
 
     def is_valid_value(self, value):
         '''Whether value is valid for the attribute.
@@ -604,20 +613,21 @@ class BooleanAttributeSchema(AttributeSchema):
         Returns:
             True/False
         '''
-        return isinstance(value, bool)
+        return value in self.values
 
     def add(self, attr):
-        '''Incorporates the `BooleanAttribute` into the schema.
+        '''Incorporates the given `BooleanAttribute` into the schema.
 
         Args:
             attr: a BooleanAttribute
         '''
         self.validate_type(attr)
+        self.values.add(attr.value)
 
     @classmethod
     def build_active_schema(cls, attr):
-        '''Builds a `BooleanAttributeSchema` that describes the active schema
-        of the `BooleanAttribute`.
+        '''Builds a `BooleanAttributeSchema` that describes the active
+        schema of the `BooleanAttribute`.
 
         Args:
             attr: a BooleanAttribute
@@ -625,7 +635,7 @@ class BooleanAttributeSchema(AttributeSchema):
         Returns:
             a BooleanAttributeSchema
         '''
-        return cls(attr.name)
+        return cls(attr.name, values={attr.value})
 
     def merge_schema(self, schema):
         '''Merges the given BooleanAttributeSchema into this schema.
@@ -634,6 +644,7 @@ class BooleanAttributeSchema(AttributeSchema):
             schema: a BooleanAttributeSchema
         '''
         self.validate_schema(schema)
+        self.values.update(schema.values)
 
     @staticmethod
     def get_kwargs(d):
@@ -644,9 +655,9 @@ class BooleanAttributeSchema(AttributeSchema):
             d: a JSON dictionary
 
         Returns:
-            a dictionary of parsed keyword arguments
+            a dictioanry of parsed keyword arguments
         '''
-        return {}
+        return {"values": d.get("values", None)}
 
 
 class AttributeContainer(etal.LabelsContainer):
