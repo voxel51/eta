@@ -529,8 +529,8 @@ class ProgressBar(object):
 
     Alternatively, this class can be invoked via the context manager interface,
     in which case stdout is automatically cached between calls to `draw()` and
-    flushed each time draw()` without interfering with the progress bar. This
-    obviates the need to call `pause()`.
+    flushed each time `draw()` is called without interfering with the progress
+    bar. This obviates the need to call `pause()`.
 
     Example Usage:
 
