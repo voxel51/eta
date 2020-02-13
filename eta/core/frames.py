@@ -196,6 +196,11 @@ class FrameLabelsSchema(etal.LabelsSchema):
         self.attrs = attrs or etad.AttributeContainerSchema()
         self.objects = objects or etao.ObjectContainerSchema()
 
+    @property
+    def is_empty(self):
+        '''Whether this schema has no labels of any kind.'''
+        return not bool(self.attrs) and not bool(self.objects)
+
     def has_attribute(self, attr_name):
         '''Whether the schema has an attribute with the given name.
 
