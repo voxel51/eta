@@ -501,6 +501,18 @@ class CategoricalAttributeSchema(AttributeSchema):
         self.categories.update(schema.categories)
         self.exclusive |= schema.exclusive
 
+    def attributes(self):
+        '''Returns the list of attributes to be serialized.
+
+        Returns:
+            the list of attributes
+        '''
+        _attrs = ["name", "type", "categories"]
+        if self.exclusive:
+            _attrs.append("exclusive")
+
+        return _attrs
+
     @staticmethod
     def get_kwargs(d):
         '''Extracts the relevant keyword arguments for this schema from the
@@ -600,6 +612,18 @@ class NumericAttributeSchema(AttributeSchema):
 
         self.exclusive |= schema.exclusive
 
+    def attributes(self):
+        '''Returns the list of attributes to be serialized.
+
+        Returns:
+            the list of attributes
+        '''
+        _attrs = ["name", "type", "range"]
+        if self.exclusive:
+            _attrs.append("exclusive")
+
+        return _attrs
+
     @staticmethod
     def get_kwargs(d):
         '''Extracts the relevant keyword arguments for this schema from the
@@ -685,6 +709,18 @@ class BooleanAttributeSchema(AttributeSchema):
         self.validate_schema(schema)
         self.values.update(schema.values)
         self.exclusive |= schema.exclusive
+
+    def attributes(self):
+        '''Returns the list of attributes to be serialized.
+
+        Returns:
+            the list of attributes
+        '''
+        _attrs = ["name", "type", "values"]
+        if self.exclusive:
+            _attrs.append("exclusive")
+
+        return _attrs
 
     @staticmethod
     def get_kwargs(d):
