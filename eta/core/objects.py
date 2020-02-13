@@ -162,11 +162,11 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
         Raises:
             ObjectSchemaError: if the object label does not match the schema
         '''
-        if self.label is None and not allow_none_label:
-            raise ObjectSchemaError(
-                "None object label is not allowed by the schema")
-
-        if self.label != schema.get_label():
+        if self.label is None:
+            if not allow_none_label:
+                raise ObjectSchemaError(
+                    "None object label is not allowed by the schema")
+        elif self.label != schema.get_label():
             raise ObjectSchemaError(
                 "Label '%s' does not match object schema" % self.label)
 
@@ -1008,11 +1008,11 @@ class ObjectSchema(etal.LabelsSchema):
         Raises:
             ObjectSchemaError: if the label violates the schema
         '''
-        if label is None and not allow_none:
-            raise ObjectSchemaError(
-                "None object label is not allowed by the schema")
-
-        if label != self.label:
+        if label is None:
+            if not allow_none:
+                raise ObjectSchemaError(
+                    "None object label is not allowed by the schema")
+        elif label != self.label:
             raise ObjectSchemaError(
                 "Label '%s' does not match object schema" % label)
 
@@ -1493,11 +1493,11 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
         Raises:
             ObjectContainerSchemaError: if the object label violates the schema
         '''
-        if label is None and not allow_none:
-            raise ObjectContainerSchemaError(
-                "None object label is not allowed by the schema")
-
-        if label not in self.schema:
+        if label is None:
+            if not allow_none:
+                raise ObjectContainerSchemaError(
+                    "None object label is not allowed by the schema")
+        elif label not in self.schema:
             raise ObjectContainerSchemaError(
                 "Object label '%s' is not allowed by the schema" % label)
 
