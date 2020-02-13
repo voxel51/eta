@@ -30,6 +30,15 @@ class Labels(etas.Serializable):
     ontologies over the labels class.
     '''
 
+    def __bool__(self):
+        '''Whether this instance has labels of any kind.'''
+        return not self.is_empty
+
+    @property
+    def is_empty(self):
+        '''Whether this instance has no labels of any kind.'''
+        raise NotImplementedError("subclasses must implement is_empty")
+
     @classmethod
     def get_schema_cls(cls):
         '''Gets the `LabelsSchema` class for the labels.
@@ -66,6 +75,15 @@ class Labels(etas.Serializable):
 
 class LabelsSchema(etas.Serializable):
     '''Base class for schemas of `Labels` classes.'''
+
+    def __bool__(self):
+        '''Whether this schema has labels of any kind.'''
+        return not self.is_empty
+
+    @property
+    def is_empty(self):
+        '''Whether this schema has no labels of any kind.'''
+        raise NotImplementedError("subclasses must implement is_empty")
 
     def add(self, labels):
         '''Incorporates the `Labels` into the schema.
@@ -232,6 +250,14 @@ class LabelsContainer(Labels, HasLabelsSchema, etas.Container):
         '''
         HasLabelsSchema.__init__(self, schema=schema)
         etas.Container.__init__(self, **kwargs)
+
+    def __bool__(self):
+        etas.Container.__bool__(self)
+
+    @property
+    def is_empty(self):
+        '''Whether this container has no labels.'''
+        etas.Container.is_empty(self)
 
     def add(self, labels):
         '''Appends the `Labels` to the container.
@@ -404,6 +430,14 @@ class LabelsSet(Labels, HasLabelsSchema, etas.Set):
         '''
         HasLabelsSchema.__init__(self, schema=schema)
         etas.Set.__init__(self, **kwargs)
+
+    def __bool__(self):
+        etas.Set.__bool__(self)
+
+    @property
+    def is_empty(self):
+        '''Whether this set has no labels.'''
+        etas.Set.is_empty(self)
 
     def __getitem__(self, key):
         '''Gets the `Labels` for the given key.
