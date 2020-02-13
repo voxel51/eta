@@ -252,12 +252,12 @@ class LabelsContainer(Labels, HasLabelsSchema, etas.Container):
         etas.Container.__init__(self, **kwargs)
 
     def __bool__(self):
-        etas.Container.__bool__(self)
+        return etas.Container.__bool__(self)
 
     @property
     def is_empty(self):
         '''Whether this container has no labels.'''
-        etas.Container.is_empty(self)
+        return etas.Container.is_empty(self)
 
     def add(self, labels):
         '''Appends the `Labels` to the container.
@@ -432,12 +432,12 @@ class LabelsSet(Labels, HasLabelsSchema, etas.Set):
         etas.Set.__init__(self, **kwargs)
 
     def __bool__(self):
-        etas.Set.__bool__(self)
+        return etas.Set.__bool__(self)
 
     @property
     def is_empty(self):
         '''Whether this set has no labels.'''
-        etas.Set.is_empty(self)
+        return etas.Set.is_empty(self)
 
     def __getitem__(self, key):
         '''Gets the `Labels` for the given key.
