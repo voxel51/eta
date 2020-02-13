@@ -1890,8 +1890,7 @@ class Container(Serializable):
         files.
 
         Args:
-             pattern: a glob pattern
-                example: "/path/to/labels/*.json"
+             pattern: a glob pattern, e.g., "/path/to/labels/*.json"
             *args: optional positional arguments for
                 `cls.get_element_class().from_json()`
             **kwargs: optional keyword arguments for
