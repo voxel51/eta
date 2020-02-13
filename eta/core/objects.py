@@ -96,6 +96,11 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
         self.attrs = attrs or etad.AttributeContainer()
         self._meta = None  # Usable by clients to store temporary metadata
 
+    @property
+    def is_empty(self):
+        '''Whether this instance has no labels of any kind.'''
+        return False
+
     @classmethod
     def get_schema_cls(cls):
         '''Gets the schema class for `DetectedObject`s.
@@ -382,6 +387,11 @@ class Object(etal.Labels):
         self.child_objects = set(child_objects or [])
 
         self._support = support
+
+    @property
+    def is_empty(self):
+        '''Whether this instance has no labels of any kind.'''
+        return False
 
     @property
     def support(self):
@@ -722,6 +732,11 @@ class ObjectSchema(etal.LabelsSchema):
         self.attrs = attrs or etad.AttributeContainerSchema()
         self.frames = frames or etad.AttributeContainerSchema()
         self.child_objects = child_objects or ObjectContainerSchema()
+
+    @property
+    def is_empty(self):
+        '''Whether this schema has no labels of any kind.'''
+        return False
 
     def has_label(self, label):
         '''Whether the schema has the given object label.
@@ -1213,8 +1228,10 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
         '''
         self.schema = schema or {}
 
-    def __bool__(self):
-        return bool(self.schema)
+    @property
+    def is_empty(self):
+        '''Whether this schema has no labels of any kind.'''
+        return not bool(self.schema)
 
     def has_object_label(self, label):
         '''Whether the schema has an object with the given label.
