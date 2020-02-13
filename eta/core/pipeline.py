@@ -710,7 +710,28 @@ class PipelineMetadata(Configurable, HasBlockDiagram):
         self.nodes = []
         self.connections = []
 
+        self._concrete_data_params = etat.ConcreteDataParams()
         self._parse_metadata(config)
+
+    @property
+    def num_inputs(self):
+        '''Returns the number of inputs for the pipeline.'''
+        return len(self.inputs)
+
+    @property
+    def num_outputs(self):
+        '''Returns the number of outputs for the pipeline.'''
+        return len(self.outputs)
+
+    @property
+    def num_parameters(self):
+        '''Returns the number of active parameters for the pipeline.'''
+        return len(self.parameters)
+
+    @property
+    def num_modules(self):
+        '''Returns the number of modules in the pipeline.'''
+        return len(self.modules)
 
     def has_input(self, name):
         '''Returns True/False if the pipeline has an input `name`.'''
@@ -730,8 +751,25 @@ class PipelineMetadata(Configurable, HasBlockDiagram):
         '''
         return (
             param_str in self.parameters and
-            self.parameters[param_str].is_tunable
-        )
+            self.parameters[param_str].is_tunable)
+
+    def get_input_type(self, name):
+        '''Returns the `eta.core.types.Type` of input `name`.'''
+        #
+        # @todo propertly support pipeline input types, rather than simply
+        # returning the type of the first connected module input
+        #
+        return self.inputs[name].inputs[0].type
+
+    def get_output_type(self, name):
+        '''Returns the `eta.core.types.Type` of output `name`.'''
+        return self.outputs[name].output.type
+
+    def recommend_output_filename(self, name):
+        '''Returns a recommended filename for output `name`.'''
+        output_type = self.get_output_type(name)
+        params = self._concrete_data_params.render_for(name)
+        return os.path.basename(output_type.gen_path("", params))
 
     def is_valid_input(self, name, path):
         '''Returns True/False if `path` is a valid path for input `name`.'''
