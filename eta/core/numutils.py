@@ -54,6 +54,22 @@ def round_to_even(x):
     return int(round(x / 2.0) * 2)
 
 
+def safe_divide(num, denom):
+    '''Divides the two numbers, avoiding ZeroDivisionError.
+
+    Args:
+        num: numerator
+        denom: demoninator
+
+    Returns:
+        the quotient, or 0 if the demoninator is 0
+    '''
+    try:
+        return num / denom
+    except ZeroDivisionError:
+        return 0
+
+
 class Accumulator(object):
     '''A histogram-like class that supports counting arbitrary hashable
     objects.
