@@ -120,13 +120,23 @@ class FrameLabels(etal.Labels):
         self.add_attributes(frame_labels.attrs)
         self.add_objects(frame_labels.objects)
 
+    def filter_by_schema(self, schema):
+        '''Removes objects/attributes from this object that are not compliant
+        with the given schema.
+
+        Args:
+            schema: a FrameLabelsSchema
+        '''
+        self.attrs.filter_by_schema(schema.attrs)
+        self.objects.filter_by_schema(schema.objects)
+
     def remove_objects_without_attrs(self, labels=None):
         '''Removes objects from the frame that do not have attributes.
 
         Args:
-            labels: an optional list of DetectedObject label strings to which
-                to restrict attention when filtering. By default, all objects
-                are processed
+            labels: an optional list of object `label` strings to which to
+                restrict attention when filtering. By default, all objects are
+                processed
         '''
         self.objects.remove_objects_without_attrs(labels=labels)
 
@@ -455,7 +465,7 @@ class FrameLabelsSchema(etal.LabelsSchema):
         '''Merges the given FrameLabelsSchema into this schema.
 
         Args:
-            schema: an FrameLabelsSchema
+            schema: a FrameLabelsSchema
         '''
         self.attrs.merge_schema(schema.attrs)
         self.objects.merge_schema(schema.objects)
@@ -497,7 +507,7 @@ class FrameLabelsSchema(etal.LabelsSchema):
             d: a JSON dictionary
 
         Returns:
-            an FrameLabelsSchema
+            a FrameLabelsSchema
         '''
         attrs = d.get("attrs", None)
         if attrs is not None:
