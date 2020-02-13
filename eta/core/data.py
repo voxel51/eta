@@ -435,6 +435,11 @@ class CategoricalAttributeSchema(AttributeSchema):
         super(CategoricalAttributeSchema, self).__init__(name)
         self.categories = set(categories or [])
 
+    @property
+    def is_empty(self):
+        '''Whether this schema has no labels of any kind.'''
+        return not bool(self.categories)
+
     def is_valid_value(self, value):
         '''Whether value is valid for the attribute.
 
@@ -509,6 +514,11 @@ class NumericAttributeSchema(AttributeSchema):
         '''
         super(NumericAttributeSchema, self).__init__(name)
         self.range = tuple(range or [])
+
+    @property
+    def is_empty(self):
+        '''Whether this schema has no labels of any kind.'''
+        return not bool(self.range)
 
     def is_valid_value(self, value):
         '''Whether value is valid for the attribute.
@@ -778,8 +788,10 @@ class AttributeContainerSchema(etal.LabelsContainerSchema):
         '''
         self.schema = schema or {}
 
-    def __bool__(self):
-        return bool(self.schema)
+    @property
+    def is_empty(self):
+        '''Whether this schema has no labels of any kind.'''
+        return not bool(self.schema)
 
     def has_attribute(self, name):
         '''Whether the schema has an `Attribute` with the given name.
