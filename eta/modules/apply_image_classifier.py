@@ -293,7 +293,7 @@ def _process_image(data, classifier, attr_filter, record_top_k_probs):
         features_handler.write_feature(fvec, data.image_features)
 
     # Record predictions
-    image_labels.add_image_attributes(attrs)
+    image_labels.add_attributes(attrs)
 
     logger.info("Writing labels to '%s'", data.output_image_labels_path)
     image_labels.write_json(data.output_image_labels_path)
@@ -351,7 +351,7 @@ def _process_image_path_list(
             features_handler.write_feature(fvec, filename)
 
         # Record predictions
-        image_set_labels[filename].add_image_attributes(attrs)
+        image_set_labels[filename].add_attributes(attrs)
 
 
     logger.info("Writing labels to '%s'", data.output_image_set_labels_path)

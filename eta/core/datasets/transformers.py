@@ -534,7 +534,7 @@ class Balancer(DatasetTransformer):
             helper = (i, [])
 
             for attr in labels.attrs:
-                if self.labels_schema.is_valid_image_attribute(attr):
+                if self.labels_schema.is_valid_attribute(attr):
                     helper[1].append(
                         ("image_attribute", attr.name, attr.value)
                     )
