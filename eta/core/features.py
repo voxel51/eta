@@ -27,7 +27,7 @@ import cv2
 import numpy as np
 
 from eta.core.config import Config, Configurable, ConfigError
-import eta.core.frames as etaf
+import eta.core.frameutils as etaf
 import eta.core.image as etai
 import eta.core.utils as etau
 import eta.core.video as etav

@@ -21,13 +21,14 @@ from future.utils import iteritems, itervalues
 # pragma pylint: enable=wildcard-import
 
 import eta.core.data as etad
-import eta.core.frames as etaf
+from eta.core.frames import FrameLabels
+from eta.core.frameutils import FrameRanges
 import eta.core.labels as etal
 import eta.core.objects as etao
 import eta.core.utils as etau
 
 
-class EventFrameLabels(etaf.FrameLabels):
+class EventFrameLabels(FrameLabels):
     '''FrameLabels for a specific frame of an event.
 
     Attributes:
@@ -73,7 +74,7 @@ class Event(etal.Labels):
             self, label=None, confidence=None, support=None, index=None,
             uuid=None, attrs=None, frames=None, child_objects=None,
             child_events=None):
-        '''Creates an `Event` instance.
+        '''Creates an Event instance.
 
         Args:
             label: (optional) the event label
@@ -108,7 +109,7 @@ class Event(etal.Labels):
 
     @property
     def support(self):
-        '''A `FrameRanges` instance describing the frames in which this event
+        '''A FrameRanges instance describing the frames in which this event
         exists.
 
         If the event has an explicit `support`, it is returned. Otherwise, the
@@ -118,10 +119,10 @@ class Event(etal.Labels):
         if self._support is not None:
             return self._support
 
-        return etaf.FrameRanges.from_iterable(self.frames.keys())
+        return FrameRanges.from_iterable(self.frames.keys())
 
     def iter_frames(self):
-        '''Returns an iterator over the `EventFrameLabels` in this event.
+        '''Returns an iterator over the EventFrameLabels in this event.
 
         Returns:
             an iterator over EventFrameLabels
@@ -149,7 +150,7 @@ class Event(etal.Labels):
 
     @property
     def has_detected_objects(self):
-        '''Whether the event has at least one `DetectedObject`.'''
+        '''Whether the event has at least one DetectedObject.'''
         for frame_labels in self.iter_frames():
             if frame_labels.has_objects:
                 return True
@@ -158,12 +159,12 @@ class Event(etal.Labels):
 
     @property
     def has_child_objects(self):
-        '''Whether the event has at least one child `Object`.'''
+        '''Whether the event has at least one child Object.'''
         return bool(self.child_objects)
 
     @property
     def has_child_events(self):
-        '''Whether the event has at least one child `Event`.'''
+        '''Whether the event has at least one child Event.'''
         return bool(self.child_events)
 
     def add_event_attribute(self, attr):
@@ -175,8 +176,7 @@ class Event(etal.Labels):
         self.attrs.add(attr)
 
     def add_event_attributes(self, attrs):
-        '''Adds the `AttributeContainer` of event-level attributes to the
-        event.
+        '''Adds the AttributeContainer of event-level attributes to the event.
 
         Args:
             attrs: an AttributeContainer of event-level attributes
@@ -204,7 +204,7 @@ class Event(etal.Labels):
         self.frames[frame_number].add_frame_attributes(attrs)
 
     def add_detected_object(self, obj, frame_number=None):
-        '''Adds the `DetectedObject` to the event.
+        '''Adds the DetectedObject to the event.
 
         Args:
             obj: a DetectedObject
@@ -232,7 +232,7 @@ class Event(etal.Labels):
             self.add_detected_object(obj)
 
     def add_child_object(self, obj):
-        '''Adds the `Object` as a child of this event.
+        '''Adds the Object as a child of this event.
 
         Args:
             obj: an Object, which must have its `uuid` set
@@ -243,7 +243,7 @@ class Event(etal.Labels):
         self.child_objects.add(obj.uuid)
 
     def add_child_event(self, event):
-        '''Adds the `Event` as a child of this event.
+        '''Adds the Event as a child of this event.
 
         Args:
             event: an Event, which must have its `uuid` set
@@ -368,7 +368,7 @@ class Event(etal.Labels):
     @staticmethod
     def build_simple(
             first, last, label, confidence=None, index=None, uuid=None):
-        '''Builds a simple contiguous `Event`.
+        '''Builds a simple contiguous Event.
 
         Args:
             first: the first frame of the event
@@ -381,7 +381,7 @@ class Event(etal.Labels):
         Returns:
              an Event
         '''
-        support = etaf.FrameRanges.build_simple(first, last)
+        support = FrameRanges.build_simple(first, last)
         return Event(
             label=label, confidence=confidence, support=support, index=index,
             uuid=uuid)
@@ -400,7 +400,7 @@ class Event(etal.Labels):
         '''
         support = d.get("support", None)
         if support is not None:
-            support = etaf.FrameRanges.from_dict(support)
+            support = FrameRanges.from_dict(support)
 
         attrs = d.get("attrs", None)
         if attrs is not None:
@@ -427,7 +427,7 @@ class Event(etal.Labels):
 
     @classmethod
     def from_dict(cls, d):
-        '''Constructs an `Event` from a JSON dictionary.
+        '''Constructs an Event from a JSON dictionary.
 
         Args:
             d: a JSON dictionary
@@ -464,7 +464,7 @@ class EventSchema(etal.LabelsSchema):
     def __init__(
             self, label, attrs=None, frames=None, objects=None,
             child_events=None):
-        '''Creates an `EventSchema` instance.
+        '''Creates an EventSchema instance.
 
         Args:
             label: the event label
@@ -519,7 +519,7 @@ class EventSchema(etal.LabelsSchema):
         return self.attrs.has_attribute(attr_name)
 
     def get_event_attribute_schema(self, attr_name):
-        '''Gets the `AttributeSchema` for the event-level attribute with the
+        '''Gets the AttributeSchema for the event-level attribute with the
         given name.
 
         Args:
@@ -531,7 +531,7 @@ class EventSchema(etal.LabelsSchema):
         return self.attrs.get_attribute_schema(attr_name)
 
     def get_event_attribute_class(self, attr_name):
-        '''Gets the `Attribute` class for the event-level attribute with the
+        '''Gets the Attribute class for the event-level attribute with the
         given name.
 
         Args:
@@ -554,7 +554,7 @@ class EventSchema(etal.LabelsSchema):
         return self.frames.has_attribute(attr_name)
 
     def get_frame_attribute_schema(self, attr_name):
-        '''Gets the `AttributeSchema` for the frame-level attribute with the
+        '''Gets the AttributeSchema for the frame-level attribute with the
         given name.
 
         Args:
@@ -566,7 +566,7 @@ class EventSchema(etal.LabelsSchema):
         return self.frames.get_attribute_schema(attr_name)
 
     def get_frame_attribute_class(self, attr_name):
-        '''Gets the `Attribute` class for the frame-level attribute with the
+        '''Gets the Attribute class for the frame-level attribute with the
         given name.
 
         Args:
@@ -615,7 +615,7 @@ class EventSchema(etal.LabelsSchema):
         return self.objects.has_frame_attribute(label, attr_name)
 
     def get_object_schema(self, label):
-        '''Gets the `ObjectSchema` for the object with the given label.
+        '''Gets the ObjectSchema for the object with the given label.
 
         Args:
             label: the object label
@@ -626,7 +626,7 @@ class EventSchema(etal.LabelsSchema):
         return self.objects.get_object_schema(label)
 
     def get_object_attribute_schema(self, label, attr_name):
-        '''Gets the `AttributeSchema` for the object-level attribute of the
+        '''Gets the AttributeSchema for the object-level attribute of the
         given name for the object with the given label.
 
         Args:
@@ -639,7 +639,7 @@ class EventSchema(etal.LabelsSchema):
         return self.objects.get_object_attribute_schema(label, attr_name)
 
     def get_object_frame_attribute_schema(self, label, attr_name):
-        '''Gets the `AttributeSchema` for the frame-level attribute of the
+        '''Gets the AttributeSchema for the frame-level attribute of the
         given name for the object with the given label.
 
         Args:
@@ -652,7 +652,7 @@ class EventSchema(etal.LabelsSchema):
         return self.objects.get_frame_attribute_schema(label, attr_name)
 
     def get_object_attribute_class(self, label, attr_name):
-        '''Gets the `Attribute` class for the object-level attribute of the
+        '''Gets the Attribute class for the object-level attribute of the
         given name for the object with the given label.
 
         Args:
@@ -665,7 +665,7 @@ class EventSchema(etal.LabelsSchema):
         return self.objects.get_object_attribute_class(label, attr_name)
 
     def get_object_frame_attribute_class(self, label, attr_name):
-        '''Gets the `Attribute` class for the frame-level attribute of the
+        '''Gets the Attribute class for the frame-level attribute of the
         given name for the object with the given label.
 
         Args:
@@ -689,7 +689,7 @@ class EventSchema(etal.LabelsSchema):
         return self.child_events.has_event_label(label)
 
     def get_child_event_schema(self, label):
-        '''Gets the `EventSchema` for the child event with the given label.
+        '''Gets the EventSchema for the child event with the given label.
 
         Args:
             label: the child event label
@@ -740,7 +740,7 @@ class EventSchema(etal.LabelsSchema):
         self.objects.add_object_label(label)
 
     def add_object_attribute(self, label, attr):
-        '''Adds the object-level `Attribute` for the object with the given
+        '''Adds the object-level Attribute for the object with the given
         label to the schema.
 
         Args:
@@ -750,7 +750,7 @@ class EventSchema(etal.LabelsSchema):
         self.objects.add_object_attribute(label, attr)
 
     def add_object_frame_attribute(self, label, attr):
-        '''Adds the frame-level `Attribute` for the object with the given label
+        '''Adds the frame-level Attribute for the object with the given label
         to the schema.
 
         Args:
@@ -760,7 +760,7 @@ class EventSchema(etal.LabelsSchema):
         self.objects.add_frame_attribute(label, attr)
 
     def add_object_attributes(self, label, attrs):
-        '''Adds the `AttributeContainer` of object-level attributes for the
+        '''Adds the AttributeContainer of object-level attributes for the
         object with the given label to the schema.
 
         Args:
@@ -770,8 +770,8 @@ class EventSchema(etal.LabelsSchema):
         self.objects.add_object_attributes(label, attrs)
 
     def add_object_frame_attributes(self, label, attrs):
-        '''Adds the `AttributeContainer` of frame-level attributes for the
-        object with the given label to the schema.
+        '''Adds the AttributeContainer of frame-level attributes for the object
+        with the given label to the schema.
 
         Args:
             label: an object label
@@ -780,7 +780,7 @@ class EventSchema(etal.LabelsSchema):
         self.objects.add_frame_attributes(label, attrs)
 
     def add_object(self, obj):
-        '''Adds the `Object` or `DetectedObject` to the schema.
+        '''Adds the Object or DetectedObject to the schema.
 
         Args:
             obj: an Object or DetectedObject
@@ -788,8 +788,7 @@ class EventSchema(etal.LabelsSchema):
         self.objects.add_object(obj)
 
     def add_objects(self, objects):
-        '''Adds the `ObjectContainer` or `DetectedObjectContainer` to the
-        schema.
+        '''Adds the ObjectContainer or DetectedObjectContainer to the schema.
 
         Args:
             objects: an ObjectContainer or DetectedObjectContainer
@@ -797,7 +796,7 @@ class EventSchema(etal.LabelsSchema):
         self.objects.add_objects(objects)
 
     def add_frame_labels(self, frame_labels):
-        '''Adds the `FrameLabels` to the schema.
+        '''Adds the FrameLabels to the schema.
 
         Args:
             frame_labels: a FrameLabels
@@ -806,7 +805,7 @@ class EventSchema(etal.LabelsSchema):
         self.add_objects(frame_labels.objects)
 
     def add_event(self, event):
-        '''Adds the `Event` to the schema.
+        '''Adds the Event to the schema.
 
         Args:
             event: an Event
@@ -817,7 +816,7 @@ class EventSchema(etal.LabelsSchema):
             self.add_frame_labels(frame_labels)
 
     def add_events(self, events):
-        '''Adds the `EventContainer` to the schema.
+        '''Adds the EventContainer to the schema.
 
         Args:
             events: an EventContainer
@@ -826,7 +825,7 @@ class EventSchema(etal.LabelsSchema):
             self.add_event(event)
 
     def add_child_event(self, event):
-        '''Adds the child `Event` to the schema.
+        '''Adds the child Event to the schema.
 
         Args:
             event: the child Event
@@ -834,7 +833,7 @@ class EventSchema(etal.LabelsSchema):
         return self.child_events.add_event(event)
 
     def add_child_events(self, events):
-        '''Adds the `EventContainer` of child events to the schema.
+        '''Adds the EventContainer of child events to the schema.
 
         Args:
             events: an EventContainer of child events
@@ -901,8 +900,7 @@ class EventSchema(etal.LabelsSchema):
         return self.objects.is_valid_frame_attribute(label, attr)
 
     def is_valid_object(self, obj):
-        '''Whether the `Object` or `DetectedObject` is compliant with the
-        schema.
+        '''Whether the Object or DetectedObject is compliant with the schema.
 
         Args:
             obj: an Object or DetectedObject
@@ -913,7 +911,7 @@ class EventSchema(etal.LabelsSchema):
         return self.objects.is_valid_object(obj)
 
     def is_valid_event(self, event):
-        '''Whether the `Event` is compliant with the schema.
+        '''Whether the Event is compliant with the schema.
 
         Args:
             event: an Event
@@ -928,7 +926,7 @@ class EventSchema(etal.LabelsSchema):
             return False
 
     def is_valid_child_event(self, event):
-        '''Whether the child `Event` is compliant with the schema.
+        '''Whether the child Event is compliant with the schema.
 
         Args:
             event: a child Event
@@ -1060,7 +1058,7 @@ class EventSchema(etal.LabelsSchema):
         self.objects.validate_object(obj)
 
     def validate_event(self, event):
-        '''Validates that the `Event` is compliant with the schema.
+        '''Validates that the Event is compliant with the schema.
 
         Args:
             event: an Event
@@ -1074,7 +1072,7 @@ class EventSchema(etal.LabelsSchema):
         self.validate(event)
 
     def validate_child_event(self, event):
-        '''Validates that the child `Event` is compliant with the schema.
+        '''Validates that the child Event is compliant with the schema.
 
         Args:
             event: a child Event
@@ -1088,7 +1086,7 @@ class EventSchema(etal.LabelsSchema):
         self.child_events.validate_event(event)
 
     def validate(self, event):
-        '''Validates that the `Event` is compliant with the schema.
+        '''Validates that the Event is compliant with the schema.
 
         Args:
             event: an Event
@@ -1125,7 +1123,7 @@ class EventSchema(etal.LabelsSchema):
             self.validate_child_event(child_event)
 
     def merge_schema(self, schema):
-        '''Merges the given `EventSchema` into this schema.
+        '''Merges the given EventSchema into this schema.
 
         Args:
             schema: an EventSchema
@@ -1138,8 +1136,8 @@ class EventSchema(etal.LabelsSchema):
 
     @classmethod
     def build_active_schema(cls, event, objects=None, events=None):
-        '''Builds an `EventSchema` that describes the active schema of the
-        given `Event`.
+        '''Builds an EventSchema that describes the active schema of the given
+        Event.
 
         Args:
             event: an Event
@@ -1190,7 +1188,7 @@ class EventSchema(etal.LabelsSchema):
 
     @classmethod
     def from_dict(cls, d):
-        '''Constructs an `EventSchema` from a JSON dictionary.
+        '''Constructs an EventSchema from a JSON dictionary.
 
         Args:
             d: a JSON dictionary
@@ -1220,7 +1218,7 @@ class EventSchema(etal.LabelsSchema):
 
 
 class EventSchemaError(etal.LabelsSchemaError):
-    '''Error raised when an `EventSchema` is violated.'''
+    '''Error raised when an EventSchema is violated.'''
     pass
 
 
@@ -1296,7 +1294,7 @@ class EventContainerSchema(etal.LabelsContainerSchema):
     '''
 
     def __init__(self, schema=None):
-        '''Creates an `EventContainerSchema` instance.
+        '''Creates an EventContainerSchema instance.
 
         Args:
             schema: a dictionary mapping event labels to EventSchema instances.
@@ -1321,7 +1319,7 @@ class EventContainerSchema(etal.LabelsContainerSchema):
         return label in self.schema
 
     def get_event_schema(self, label):
-        '''Gets the `EventSchema` for the event with the given label.
+        '''Gets the EventSchema for the event with the given label.
 
         Args:
             label: the object event
@@ -1349,7 +1347,7 @@ class EventContainerSchema(etal.LabelsContainerSchema):
         return self.schema[label].has_event_attribute(attr_name)
 
     def get_event_attribute_schema(self, label, attr_name):
-        '''Gets the `AttributeSchema` for the event-level attribute of the
+        '''Gets the AttributeSchema for the event-level attribute of the
         given name for the event with the given label.
 
         Args:
@@ -1363,7 +1361,7 @@ class EventContainerSchema(etal.LabelsContainerSchema):
         return event_schema.get_event_attribute_schema(attr_name)
 
     def get_event_attribute_class(self, label, attr_name):
-        '''Gets the `Attribute` class for the event-level attribute of the
+        '''Gets the Attribute class for the event-level attribute of the
         given name for the event with the given label.
 
         Args:
@@ -1393,7 +1391,7 @@ class EventContainerSchema(etal.LabelsContainerSchema):
         return self.schema[label].has_frame_attribute(attr_name)
 
     def get_frame_attribute_schema(self, label, attr_name):
-        '''Gets the `AttributeSchema` for the frame-level attribute of the
+        '''Gets the AttributeSchema for the frame-level attribute of the
         given name for the event with the given label.
 
         Args:
@@ -1407,7 +1405,7 @@ class EventContainerSchema(etal.LabelsContainerSchema):
         return event_schema.get_frame_attribute_schema(attr_name)
 
     def get_frame_attribute_class(self, label, attr_name):
-        '''Gets the `Attribute` class for the frame-level attribute of the
+        '''Gets the Attribute class for the frame-level attribute of the
         given name for the event with the given label.
 
         Args:
@@ -1467,7 +1465,7 @@ class EventContainerSchema(etal.LabelsContainerSchema):
             obj_label, attr_name)
 
     def get_object_schema(self, event_label, obj_label):
-        '''Gets the `ObjectSchema` for the object with the given label from the
+        '''Gets the ObjectSchema for the object with the given label from the
         event with the given label.
 
         Args:
@@ -1481,7 +1479,7 @@ class EventContainerSchema(etal.LabelsContainerSchema):
         return self.schema[event_label].get_object_schema(obj_label)
 
     def get_object_attribute_schema(self, event_label, obj_label, attr_name):
-        '''Gets the `AttributeSchema` for the object-level attribute of the
+        '''Gets the AttributeSchema for the object-level attribute of the
         given name for the object with the given label from the event with the
         given label.
 
@@ -1499,7 +1497,7 @@ class EventContainerSchema(etal.LabelsContainerSchema):
 
     def get_object_frame_attribute_schema(
             self, event_label, obj_label, attr_name):
-        '''Gets the `AttributeSchema` for the frame-level attribute of the
+        '''Gets the AttributeSchema for the frame-level attribute of the
         given name for the object with the given label from the event with the
         given label.
 
@@ -1516,7 +1514,7 @@ class EventContainerSchema(etal.LabelsContainerSchema):
             obj_label, attr_name)
 
     def get_object_attribute_class(self, event_label, obj_label, attr_name):
-        '''Gets the `Attribute` class for the object-level attribute of the
+        '''Gets the Attribute class for the object-level attribute of the
         given name for the object with the given label from the event with the
         given label.
 
@@ -1534,7 +1532,7 @@ class EventContainerSchema(etal.LabelsContainerSchema):
 
     def get_object_frame_attribute_class(
             self, event_label, obj_label, attr_name):
-        '''Gets the `Attribute` class for the frame-level attribute of the
+        '''Gets the Attribute class for the frame-level attribute of the
         given name for the object with the given label from the event with the
         given label.
 
@@ -1570,7 +1568,7 @@ class EventContainerSchema(etal.LabelsContainerSchema):
         self.schema[label].add_event_attribute(attr)
 
     def add_event_attributes(self, label, attrs):
-        '''Adds the `AttributeContainer` of event-level attributes for the
+        '''Adds the AttributeContainer of event-level attributes for the
         event with the given label to the schema.
 
         Args:
@@ -1592,7 +1590,7 @@ class EventContainerSchema(etal.LabelsContainerSchema):
         self.schema[label].add_frame_attribute(attr)
 
     def add_frame_attributes(self, label, attrs):
-        '''Adds the `AttributeContainer` of frame-level attributes for the
+        '''Adds the AttributeContainer of frame-level attributes for the
         event with the given label to the schema.
 
         Args:
@@ -1638,7 +1636,7 @@ class EventContainerSchema(etal.LabelsContainerSchema):
         self.schema[event_label].add_object_frame_attribute(obj_label, attr)
 
     def add_object_attributes(self, event_label, obj_label, attrs):
-        '''Adds the `AttributeContainer` of object-level attributes for the
+        '''Adds the AttributeContainer of object-level attributes for the
         object with the given label to the event with the given label to the
         schema.
 
@@ -1651,7 +1649,7 @@ class EventContainerSchema(etal.LabelsContainerSchema):
         self.schema[event_label].add_object_attributes(obj_label, attrs)
 
     def add_object_frame_attributes(self, event_label, obj_label, attrs):
-        '''Adds the `AttributeContainer` of frame-level attributes for the
+        '''Adds the AttributeContainer of frame-level attributes for the
         object with the given label to the event with the given label to the
         schema.
 
@@ -1664,7 +1662,7 @@ class EventContainerSchema(etal.LabelsContainerSchema):
         self.schema[event_label].add_object_frame_attributes(obj_label, attrs)
 
     def add_object(self, event_label, obj):
-        '''Adds the `Object` or `DetectedObject` to the event with the given
+        '''Adds the Object or DetectedObject to the event with the given
         label to the schema.
 
         Args:
@@ -1675,7 +1673,7 @@ class EventContainerSchema(etal.LabelsContainerSchema):
         self.schema[event_label].add_object(obj)
 
     def add_objects(self, event_label, objects):
-        '''Adds the `ObjectContainer` or `DetectedObjectContainer` to the event
+        '''Adds the ObjectContainer or DetectedObjectContainer to the event
         with the given label to the schema.
 
         Args:
@@ -1686,7 +1684,7 @@ class EventContainerSchema(etal.LabelsContainerSchema):
         self.schema[event_label].add_objects(objects)
 
     def add_event(self, event):
-        '''Adds the `Event` to the schema.
+        '''Adds the Event to the schema.
 
         Args:
             event: an Event
@@ -1695,7 +1693,7 @@ class EventContainerSchema(etal.LabelsContainerSchema):
         self.schema[event.label].add_event(event)
 
     def add_events(self, events):
-        '''Adds the `EventContainer` to the schema.
+        '''Adds the EventContainer to the schema.
 
         Args:
             events: an EventContainer
@@ -1811,7 +1809,7 @@ class EventContainerSchema(etal.LabelsContainerSchema):
 
         Args:
             event_label: an event label
-            obj: an `Object` or `DetectedObject`
+            obj: an Object or DetectedObject
 
         Returns:
             True/False
@@ -1823,7 +1821,7 @@ class EventContainerSchema(etal.LabelsContainerSchema):
             return False
 
     def is_valid_event(self, event):
-        '''Whether the `Event` is compliant with the schema.
+        '''Whether the Event is compliant with the schema.
 
         Args:
             event: an Event
@@ -1954,7 +1952,7 @@ class EventContainerSchema(etal.LabelsContainerSchema):
         self.schema[event_label].validate_object(obj)
 
     def validate_event(self, event):
-        '''Validates that the `Event` is compliant with the schema.
+        '''Validates that the Event is compliant with the schema.
 
         Args:
             event: an Event
@@ -1968,7 +1966,7 @@ class EventContainerSchema(etal.LabelsContainerSchema):
         self.validate(event)
 
     def validate(self, event):
-        '''Validates that the `Event` is compliant with the schema.
+        '''Validates that the Event is compliant with the schema.
 
         Args:
             event: an Event
@@ -1983,7 +1981,7 @@ class EventContainerSchema(etal.LabelsContainerSchema):
         self.schema[event.label].validate_event(event)
 
     def merge_schema(self, schema):
-        '''Merges the given `EventContainerSchema` into this schema.
+        '''Merges the given EventContainerSchema into this schema.
 
         Args:
             schema: an EventContainerSchema
@@ -1994,7 +1992,7 @@ class EventContainerSchema(etal.LabelsContainerSchema):
 
     @classmethod
     def build_active_schema(cls, events):
-        '''Builds an `EventContainerSchema` that describes the active schema of
+        '''Builds an EventContainerSchema that describes the active schema of
         the events.
 
         Args:
@@ -2009,7 +2007,7 @@ class EventContainerSchema(etal.LabelsContainerSchema):
 
     @classmethod
     def from_dict(cls, d):
-        '''Constructs an `EventContainerSchema` from a JSON dictionary.
+        '''Constructs an EventContainerSchema from a JSON dictionary.
 
         Args:
             d: a JSON dictionary
@@ -2032,5 +2030,5 @@ class EventContainerSchema(etal.LabelsContainerSchema):
 
 
 class EventContainerSchemaError(etal.LabelsContainerSchemaError):
-    '''Error raised when an `EventContainerSchema` is violated.'''
+    '''Error raised when an EventContainerSchema is violated.'''
     pass

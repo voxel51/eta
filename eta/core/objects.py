@@ -20,7 +20,7 @@ from future.utils import iteritems, itervalues
 # pragma pylint: enable=wildcard-import
 
 import eta.core.data as etad
-import eta.core.frames as etaf
+import eta.core.frameutils as etaf
 import eta.core.geometry as etag
 import eta.core.labels as etal
 import eta.core.serial as etas

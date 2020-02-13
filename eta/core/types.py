@@ -1040,7 +1040,8 @@ class VideoStreamInfo(JSONFile):
 class FrameRanges(JSONFile):
     '''A a monotonically increasing and disjoint series of frame ranges.
 
-    This type is implemented in ETA by the `eta.core.frames.FrameRanges` class.
+    This type is implemented in ETA by the `eta.core.frameutils.FrameRanges`
+    class.
 
     Examples:
         /path/to/frame_ranges.json

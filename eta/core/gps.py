@@ -23,7 +23,7 @@ import datetime
 import dateutil.parser
 import math
 
-import eta.core.frames as etaf
+import eta.core.frameutils as etaf
 import eta.core.serial as etas
 
 

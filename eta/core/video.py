@@ -41,7 +41,8 @@ import numpy as np
 
 import eta.core.data as etad
 import eta.core.events as etae
-import eta.core.frames as etaf
+from eta.core.frames import FrameLabels
+import eta.core.frameutils as etaf
 import eta.core.gps as etag
 import eta.core.image as etai
 import eta.core.labels as etal
@@ -342,7 +343,7 @@ class VideoMetadata(etas.Serializable):
             gps_waypoints=gps_waypoints)
 
 
-class VideoFrameLabels(etaf.FrameLabels):
+class VideoFrameLabels(FrameLabels):
     '''FrameLabels for a specific frame of a video.
 
     Attributes:
@@ -3099,8 +3100,8 @@ class VideoReader(object):
                 - None (all frames)
                 - "*" (all frames)
                 - a string like "1-3,6,8-10"
-                - an `eta.core.frames.FrameRange` instance
-                - an `eta.core.frames.FrameRanges` instance
+                - an `eta.core.frameutils.FrameRange` instance
+                - an `eta.core.frameutils.FrameRanges` instance
                 - an iterable, e.g., [1, 2, 3, 6, 8, 9, 10]. The frames do not
                     need to be in sorted order
         '''
@@ -3220,8 +3221,8 @@ class FFmpegVideoReader(VideoReader):
                 - None (all frames - the default)
                 - "*" (all frames)
                 - a string like "1-3,6,8-10"
-                - an `eta.core.frames.FrameRange` instance
-                - an `eta.core.frames.FrameRanges` instance
+                - an `eta.core.frameutils.FrameRange` instance
+                - an `eta.core.frameutils.FrameRanges` instance
                 - an iterable, e.g., [1, 2, 3, 6, 8, 9, 10]. The frames do not
                     need to be in sorted order
             keyframes_only: whether to only read keyframes. By default, this
@@ -3357,8 +3358,8 @@ class SampledFramesVideoReader(VideoReader):
                 - None (all frames - the default)
                 - "*" (all frames)
                 - a string like "1-3,6,8-10"
-                - an `eta.core.frames.FrameRange` instance
-                - an `eta.core.frames.FrameRanges` instance
+                - an `eta.core.frameutils.FrameRange` instance
+                - an `eta.core.frameutils.FrameRanges` instance
                 - an iterable, e.g., [1, 2, 3, 6, 8, 9, 10]. The frames do not
                     need to be in sorted order
         '''
@@ -3461,8 +3462,8 @@ class OpenCVVideoReader(VideoReader):
                 - None (all frames - the default)
                 - "*" (all frames)
                 - a string like "1-3,6,8-10"
-                - an `eta.core.frames.FrameRange` instance
-                - an `eta.core.frames.FrameRanges` instance
+                - an `eta.core.frameutils.FrameRange` instance
+                - an `eta.core.frameutils.FrameRanges` instance
                 - an iterable, e.g., [1, 2, 3, 6, 8, 9, 10]. The frames do not
                     need to be in sorted order
 
