@@ -4,8 +4,9 @@ theta.modules.filter_labels
     -> schema filter (KEEP or DELETE)
 
 '''
-from collections import OrderedDict
+from collections import OrderedDict, Counter, defaultdict
 
+import eta.core.data as etad
 import eta.core.datasets as etads
 import eta.core.utils as etau
 
@@ -108,6 +109,8 @@ class LabelsTransformManager():
             labels = dataset.read_labels(labels_path)
 
             self.transform_labels(labels, labels_path=labels_path)
+
+            # break # @todo(Tyler) TEMP
 
 
 
@@ -213,14 +216,81 @@ class CheckExclusiveAttributes(LabelsTransform):
             "male", "female"
             delete both, or raise error
     '''
-    def __init__(self, schema):
+    @property
+    def attrs_voted(self):
+        return self._attrs_voted
+
+    @property
+    def attrs_removed(self):
+        return self._attrs_removed
+
+    @property
+    def min_agreement(self):
+        return self._min_agreement
+
+    @property
+    def report(self):
+        d = super(CheckExclusiveAttributes, self).report
+        d["attrs_voted"] = self.attrs_voted
+        d["attrs_removed"] = self.attrs_removed
+        return d
+
+    def __init__(self, schema, min_agreement=0):
         super(CheckExclusiveAttributes, self).__init__()
         self._schema = schema
+
+        if min_agreement < 0 or min_agreement > 1:
+            raise ValueError("min_agreement outside bounds [0, 1]")
+        self._min_agreement = min_agreement
+
+    def clear_state(self):
+        super(CheckExclusiveAttributes, self).clear_state()
+        self._attrs_voted = defaultdict(int)
+        self._attrs_removed = defaultdict(int)
 
     def transform(self, labels, labels_path=None):
         super(CheckExclusiveAttributes, self).transform(
             labels, labels_path=labels_path)
-        # raise NotImplementedError("TODO TYLER")
+
+        for attrs_schema, attrs in self._schema.iter_attr_containers(labels):
+            self._transform_container(attrs, attrs_schema)
+
+    def _transform_container(
+            self, attrs: etad.AttributeContainer,
+            schema: etad.AttributeContainerSchema,
+    ):
+        for attr_schema in schema.schema.values():
+            self._transform_attr(attrs, attr_schema)
+
+    def _transform_attr(
+            self, attrs: etad.AttributeContainer,
+            schema: etad.AttributeSchema,
+    ):
+        if not schema.exclusive:
+            return
+
+        matching_attrs = attrs.get_attrs_with_name(schema.name)
+
+        if len(matching_attrs) <= 1:
+            return
+
+        counter = Counter(x.value for x in matching_attrs)
+        most_common_val, count = counter.most_common(1)[0]
+
+        if count / len(matching_attrs) > self._min_agreement:
+            self._attrs_voted[schema.name] += 1
+            for attr in matching_attrs:
+                if attr.value == most_common_val:
+                    keep = attr
+                    break
+        else:
+            self._attrs_removed[schema.name] += 1
+            keep = None
+
+        attrs.filter_elements(filters=[
+            lambda el: el == keep or el not in matching_attrs
+        ])
+
 
 '''
 

@@ -370,6 +370,17 @@ class ImageLabelsSchema(Serializable):
         if objects is not None:
             self.objects.update(objects)
 
+    def iter_attr_containers(self, labels):
+        if not isinstance(labels, ImageLabels):
+            raise ValueError("Unexpected input type %s" % type(labels))
+
+        # image attrs
+        yield self.attrs, labels.attrs
+
+        # detected object attrs
+        for obj in labels.objects:
+            yield self.objects[obj.label], obj.attrs
+
     # HAS
 
     def has_image_attribute(self, image_attr_name):

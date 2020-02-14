@@ -1249,6 +1249,26 @@ class VideoLabelsSchema(Serializable):
         if events is not None:
             self.events.update(events)
 
+    def iter_attr_containers(self, labels: VideoLabels):
+        if not isinstance(labels, VideoLabels):
+            raise ValueError("Unexpected input type %s" % type(labels))
+
+        # video attrs
+        yield self.attrs, labels.attrs
+
+        # frame attrs
+        for frame in labels.iter_frames():
+            yield self.frames, frame.attrs
+
+        # detected object attrs
+        for frame in labels.iter_frames():
+            for obj in frame.objects:
+                yield self.objects[obj.label], obj.attrs
+
+        # event attrs
+        for event in labels.iter_events():
+            yield self.events[event.label], event.attrs
+
     # HAS
 
     def has_video_attribute(self, video_attr_name):
