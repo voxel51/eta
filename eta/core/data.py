@@ -836,8 +836,8 @@ class AttributeContainer(etal.LabelsContainer):
         return attr.value
 
     def filter_by_schema(self, schema):
-        '''Removes labels from this container that are not compliant with the
-        given schema.
+        '''Removes attributes from this container that are not compliant with
+        the given schema.
 
         Only the first observation of each exclusive attribute is kept (if
         applicable).
@@ -845,7 +845,14 @@ class AttributeContainer(etal.LabelsContainer):
         Args:
             schema: an AttributeContainerSchema
         '''
-        super(AttributeContainer, self).filter_by_schema(schema)
+        # Remove attributes with invalid names
+        filter_func = lambda attr: schema.has_attribute(attr.name)
+        self.filter_elements([filter_func])
+
+        # Filter objects by their schemas
+        for attr in self:
+            attr_schema = schema.get_attribute_schema(attr.name)
+            attr.filter_by_schema(attr_schema)
 
         # Enforce attribute exclusivity, if necessary
         if schema.has_exclusive_attributes:

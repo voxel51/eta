@@ -275,16 +275,6 @@ class LabelsContainer(Labels, HasLabelsSchema, etas.Container):
         '''
         self.add_iterable(container)
 
-    def filter_by_schema(self, schema):
-        '''Removes labels from this container that are not compliant with the
-        given schema.
-
-        Args:
-            schema: a LabelsContainerSchema
-        '''
-        filter_func = schema.is_valid
-        self.filter_elements([filter_func])
-
     def attributes(self):
         '''Returns the list of class attributes that will be serialized.
 
