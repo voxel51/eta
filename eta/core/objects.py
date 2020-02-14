@@ -687,7 +687,8 @@ class ObjectContainer(etal.LabelsContainer):
         # Filter objects by their schemas
         for obj in self:
             obj_schema = schema.get_object_schema(obj.label)
-            obj.filter_by_schema(obj_schema, objects=objects)
+            # @todo support child objects
+            obj.filter_by_schema(obj_schema)
 
     def remove_objects_without_attrs(self, labels=None):
         '''Removes objects from this container that do not have attributes.

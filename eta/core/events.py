@@ -1373,6 +1373,7 @@ class EventContainer(etal.LabelsContainer):
         # Filter events
         for event in self:
             event_schema = schema.get_event_schema(event.label)
+            # @todo support for child objects/events
             event.filter_by_schema(event_schema)
 
     def remove_objects_without_attrs(self, labels=None):

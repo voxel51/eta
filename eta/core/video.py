@@ -840,13 +840,12 @@ class VideoLabels(etal.Labels, etal.HasLabelsSchema):
             frame_labels.filter_by_schema(schema)
 
         # Filter objects
-        # @todo must convert to dictionary with UUID keys
-        self.objects.filter_by_schema(schema.objects, objects=self.objects)
+        # @todo support child objects
+        self.objects.filter_by_schema(schema.objects)
 
         # Filter events
-        # @todo must convert to dictionary with UUID keys
-        self.events.filter_by_schema(
-            schema.events, objects=self.objects, events=self.events)
+        # @todo support child objects/events
+        self.events.filter_by_schema(schema.events)
 
     def remove_objects_without_attrs(self, labels=None):
         '''Removes objects from the VideoLabels that do not have attributes.
