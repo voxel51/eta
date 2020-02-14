@@ -389,6 +389,28 @@ class AttributeSchema(etal.LabelsSchema):
                 "Value '%s' of attribute '%s' is not allowed by the "
                 "schema " % (attr.value, attr.name))
 
+    def validate_subset_of_schema(self, schema):
+        '''Validates that the base type and attributes of this schema are a
+        subset of the given schema.
+
+        Args:
+            schema: an AttributeSchema
+
+        Raises:
+            AttributeSchemaError: if this schema's attributes do not match the
+                given schema's
+        '''
+        self.validate_schema_type(schema)
+
+        if self.name != schema.name:
+            raise AttributeSchemaError(
+                "Expected name '%s'; found '%s'" % (schema.name, self.name))
+
+        if self.exclusive != schema.exclusive:
+            raise AttributeSchemaError(
+                "Expected exclusive '%s'; found '%s'" %
+                (schema.exclusive, self.exclusive))
+
     @staticmethod
     def get_kwargs(d):
         '''Extracts the relevant keyword arguments for this schema from the
@@ -477,6 +499,24 @@ class CategoricalAttributeSchema(AttributeSchema):
         '''
         self.validate_type(attr)
         self.categories.add(attr.value)
+
+    def validate_subset_of_schema(self, schema):
+        '''Validates that this schema is a subset of the given schema.
+
+        Args:
+            schema: a CategoricalAttributeSchema
+
+        Raises:
+            AttributeSchemaError: if this schema is not a subset of the given
+                schema
+        '''
+        super(CategoricalAttributeSchema, self).validate_subset_of_schema(
+            schema)
+
+        if not self.categories.issubset(schema.categories):
+            raise AttributeSchemaError(
+                "Categories %s are not a subset of %s" %
+                (self.categories, schema.categories))
 
     @classmethod
     def build_active_schema(cls, attr):
@@ -581,6 +621,25 @@ class NumericAttributeSchema(AttributeSchema):
             self.range = (value, value)
         else:
             self.range = min(self.range[0], value), max(self.range[1], value)
+
+    def validate_subset_of_schema(self, schema):
+        '''Validates that this schema is a subset of the given schema.
+
+        Args:
+            schema: a NumericAttributeSchema
+
+        Raises:
+            AttributeSchemaError: if this schema is not a subset of the given
+                schema
+        '''
+        super(NumericAttributeSchema, self).validate_subset_of_schema(schema)
+
+        if (self.range and (
+                not schema.range
+                or self.range[0] < schema.range[0]
+                or self.range[1] > schema.range[1])):
+            raise AttributeSchemaError(
+                "Range %s is not a subset of %s" % (self.range, schema.range))
 
     @classmethod
     def build_active_schema(cls, attr):
@@ -687,10 +746,27 @@ class BooleanAttributeSchema(AttributeSchema):
         self.validate_type(attr)
         self.values.add(attr.value)
 
+    def validate_subset_of_schema(self, schema):
+        '''Validates that this schema is a subset of the given schema.
+
+        Args:
+            schema: a BooleanAttributeSchema
+
+        Raises:
+            AttributeSchemaError: if this schema is not a subset of the given
+                schema
+        '''
+        super(BooleanAttributeSchema, self).validate_subset_of_schema(schema)
+
+        if not self.values.issubset(schema.values):
+            raise AttributeSchemaError(
+                "Values %s are not a subset of %s" %
+                (self.values, schema.values))
+
     @classmethod
     def build_active_schema(cls, attr):
-        '''Builds a `BooleanAttributeSchema` that describes the active
-        schema of the `BooleanAttribute`.
+        '''Builds a `BooleanAttributeSchema` that describes the active schema
+        of the `BooleanAttribute`.
 
         Args:
             attr: a BooleanAttribute
@@ -989,20 +1065,6 @@ class AttributeContainerSchema(etal.LabelsContainerSchema):
         except etal.LabelsSchemaError:
             return False
 
-    def validate_attribute_name(self, name):
-        '''Validates that the schema has an `Attribute` with the given name.
-
-        Args:
-            name: the name
-
-        Raises:
-            AttributeContainerSchemaError: if the schema doesn't contain an
-                attribute of the given name
-        '''
-        if not self.has_attribute(name):
-            raise AttributeContainerSchemaError(
-                "Attribute '%s' is not allowed by the schema" % name)
-
     def is_valid_attribute(self, attr):
         '''Whether the `Attribute` is compliant with the schema.
 
@@ -1017,6 +1079,20 @@ class AttributeContainerSchema(etal.LabelsContainerSchema):
             return True
         except etal.LabelsSchemaError:
             return False
+
+    def validate_attribute_name(self, name):
+        '''Validates that the schema has an `Attribute` with the given name.
+
+        Args:
+            name: the name
+
+        Raises:
+            AttributeContainerSchemaError: if the schema doesn't contain an
+                attribute of the given name
+        '''
+        if not self.has_attribute(name):
+            raise AttributeContainerSchemaError(
+                "Attribute '%s' is not allowed by the schema" % name)
 
     def validate_attribute(self, attr):
         '''Validates that the `Attribute` is compliant with the schema.
@@ -1057,6 +1133,32 @@ class AttributeContainerSchema(etal.LabelsContainerSchema):
                     raise AttributeContainerSchemaError(
                         "Attribute '%s' is exclusive but appears %d times in "
                         "this container" % (name, count))
+
+    def validate_subset_of_schema(self, schema):
+        '''Validates that this schema is a subset of the given schema.
+
+        Args:
+            schema: an AttributeContainerSchema
+
+        Raises:
+            AttributeSchemaError: if this schema is not a subset of the given
+                schema
+        '''
+        self.validate_schema_type(schema)
+
+        for other_name in schema.schema:
+            if not self.has_attribute(other_name):
+                raise AttributeSchemaError(
+                    "`self` schema does not contain attribute '%s'"
+                    % other_name)
+
+        for name, attr_schema in iteritems(self.schema):
+            if not schema.has_attribute(name):
+                raise AttributeSchemaError(
+                    "Attribute '%s' does not appear in schema" % name)
+
+            other_schema = schema.get_attribute_schema(name)
+            attr_schema.validate_subset_of_schema(other_schema)
 
     def merge_schema(self, schema):
         '''Merges the given `AttributeContainerSchema` into the schema.
