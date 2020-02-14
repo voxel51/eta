@@ -960,21 +960,6 @@ class EventSchema(etal.LabelsSchema):
         '''
         return self.objects.is_valid_object(obj)
 
-    def is_valid_event(self, event):
-        '''Whether the Event is compliant with the schema.
-
-        Args:
-            event: an Event
-
-        Returns:
-            True/False
-        '''
-        try:
-            self.validate_event(event)
-            return True
-        except etal.LabelsSchemaError:
-            return False
-
     def is_valid_child_event(self, event):
         '''Whether the child Event is compliant with the schema.
 
@@ -1160,20 +1145,6 @@ class EventSchema(etal.LabelsSchema):
                 violate the schema
         '''
         self.objects.validate_object(obj)
-
-    def validate_event(self, event):
-        '''Validates that the Event is compliant with the schema.
-
-        Args:
-            event: an Event
-
-        Raises:
-            EventSchemaError: if the event label violates the schema
-            ObjectContainerSchemaError: if an object label violates the schema
-            AttributeContainerSchemaError: if any event/frame/object attribute
-                violates the schema
-        '''
-        self.validate(event)
 
     def validate_child_event(self, event):
         '''Validates that the child Event is compliant with the schema.
@@ -2210,22 +2181,23 @@ class EventContainerSchema(etal.LabelsContainerSchema):
             AttributeContainerSchemaError: if any event/frame/object attribute
                 violates the schema
         '''
-        self.validate(event)
+        self.validate_event_label(event.label)
+        self.schema[event.label].validate_event(event)
 
-    def validate(self, event):
-        '''Validates that the Event is compliant with the schema.
+    def validate(self, events):
+        '''Validates that the EventContainer is compliant with the schema.
 
         Args:
-            event: an Event
+            events: an EventContainer
 
         Raises:
-            EventContainerSchemaError: if the event label violates the schema
+            EventContainerSchemaError: if an event label violates the schema
             ObjectContainerSchemaError: if an object label violates the schema
             AttributeContainerSchemaError: if any event/frame/object attribute
                 violates the schema
         '''
-        self.validate_event_label(event.label)
-        self.schema[event.label].validate_event(event)
+        for event in events:
+            self.validate_event(event)
 
     def merge_schema(self, schema):
         '''Merges the given EventContainerSchema into this schema.

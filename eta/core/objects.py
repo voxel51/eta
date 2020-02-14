@@ -997,21 +997,6 @@ class ObjectSchema(etal.LabelsSchema):
         except etal.LabelsSchemaError:
             return False
 
-    def is_valid_object(self, obj):
-        '''Whether the Object or DetectedObject is compliant with the schema.
-
-        Args:
-            obj: an Object or DetectedObject
-
-        Returns:
-            True/False
-        '''
-        try:
-            self.validate_object(obj)
-            return True
-        except etal.LabelsSchemaError:
-            return False
-
     def is_valid_child_object(self, obj):
         '''Whether the child Object is compliant with the schema.
 
@@ -1087,20 +1072,6 @@ class ObjectSchema(etal.LabelsSchema):
             AttributeContainerSchemaError: if the attributes violate the schema
         '''
         self.frames.validate(attrs)
-
-    def validate_object(self, obj):
-        '''Validates that the Object or DetectedObject is compliant with the
-        schema.
-
-        Args:
-            obj: an Object or DetectedObject
-
-        Raises:
-            ObjectSchemaError: if the object label violates the schema
-            AttributeContainerSchemaError: if any attributes of the object
-                violate the schema
-        '''
-        self.validate(obj)
 
     def validate_child_object(self, obj):
         '''Validates that the child Object is compliant with the schema.
@@ -1326,8 +1297,8 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
         return self.schema[label]
 
     def get_object_attribute_schema(self, label, attr_name):
-        '''Gets the AttributeSchema for the object-level attribute of the
-        given name for the object with the given label.
+        '''Gets the AttributeSchema for the object-level attribute of the given
+        name for the object with the given label.
 
         Args:
             label: the object label
@@ -1340,8 +1311,8 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
         return obj_schema.get_object_attribute_schema(attr_name)
 
     def get_frame_attribute_schema(self, label, attr_name):
-        '''Gets the AttributeSchema for the frame-level attribute of the
-        given name for the object with the given label.
+        '''Gets the AttributeSchema for the frame-level attribute of the given
+        name for the object with the given label.
 
         Args:
             label: the object label
@@ -1354,8 +1325,8 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
         return obj_schema.get_frame_attribute_schema(attr_name)
 
     def get_object_attribute_class(self, label, attr_name):
-        '''Gets the Attribute class for the object-level attribute of the
-        given name for the object with the given label.
+        '''Gets the Attribute class for the object-level attribute of the given
+        name for the object with the given label.
 
         Args:
             label: the object label
@@ -1368,8 +1339,8 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
         return self.schema[label].get_object_attribute_class(attr_name)
 
     def get_frame_attribute_class(self, label, attr_name):
-        '''Gets the Attribute class for the frame-level attribute of the
-        given name for the object with the given label.
+        '''Gets the Attribute class for the frame-level attribute of the given
+        name for the object with the given label.
 
         Args:
             label: the object label
@@ -1390,8 +1361,8 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
         self._ensure_has_object_label(label)
 
     def add_object_attribute(self, label, attr):
-        '''Adds the object-level Attribute for the object with the given
-        label to the schema.
+        '''Adds the object-level Attribute for the object with the given label
+        to the schema.
 
         Args:
             label: an object label
@@ -1401,8 +1372,8 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
         self.schema[label].add_object_attribute(attr)
 
     def add_frame_attribute(self, label, attr):
-        '''Adds the frame-level Attribute for the object with the given
-        label to the schema.
+        '''Adds the frame-level Attribute for the object with the given label
+        to the schema.
 
         Args:
             label: an object label
@@ -1423,8 +1394,8 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
         self.schema[label].add_object_attributes(attrs)
 
     def add_frame_attributes(self, label, attrs):
-        '''Adds the AttributeContainer of frame-level attributes for the
-        object with the given label to the schema.
+        '''Adds the AttributeContainer of frame-level attributes for the object
+        with the given label to the schema.
 
         Args:
             label: an object label
@@ -1445,8 +1416,7 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
             self._add_detected_object(obj)
 
     def add_objects(self, objects):
-        '''Adds the ObjectContainer or DetectedObjectContainer to the
-        schema.
+        '''Adds the ObjectContainer or DetectedObjectContainer to the schema.
 
         Args:
             objects: an ObjectContainer or DetectedObjectContainer
@@ -1538,8 +1508,7 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
             return False
 
     def is_valid_object(self, obj):
-        '''Whether the Object or DetectedObject is compliant with the
-        schema.
+        '''Whether the Object or DetectedObject is compliant with the schema.
 
         Args:
             obj: an Object or DetectedObject
