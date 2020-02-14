@@ -160,6 +160,10 @@ class LabelsSchemaError(Exception):
 class HasLabelsSchema(object):
     '''Mixin for `Label` classes that can optionally store and enforce
     `LabelsSchema`s on their labels.
+
+    For efficiency, schemas are not automatically enforced when new labels are
+    added to `HasLabelsSchema` instances. Rather, users must manually call
+    `validate_schema()` when they would like to validate the schema.
     '''
 
     def __init__(self, schema=None):
@@ -259,21 +263,6 @@ class LabelsContainer(Labels, HasLabelsSchema, etas.Container):
         '''Whether this container has no labels.'''
         return etas.Container.is_empty(self)
 
-    def add(self, labels):
-        '''Appends the `Labels` to the container.
-
-        Args:
-            labels: a Labels instance
-
-        Raises:
-            LabelsContainerSchemaError: if this container has a schema enforced
-                and the labels violate it
-        '''
-        if self.has_schema:
-            self._validate_labels(labels)
-
-        super(LabelsContainer, self).add(labels)
-
     def add_container(self, container):
         '''Appends the labels in the given `LabelContainer` to the container.
 
@@ -285,22 +274,6 @@ class LabelsContainer(Labels, HasLabelsSchema, etas.Container):
                 and any labels in the container violate it
         '''
         self.add_iterable(container)
-
-    def add_iterable(self, iterable):
-        '''Appends the labels in the given iterable to the container.
-
-        Args:
-            iterable: an iterable of Labels
-
-        Raises:
-            LabelsContainerSchemaError: if this container has a schema enforced
-                and any labels in the container violate it
-        '''
-        if self.has_schema:
-            for labels in iterable:
-                self._validate_labels(labels)
-
-        super(LabelsContainer, self).add_iterable(iterable)
 
     def filter_by_schema(self, schema):
         '''Removes labels from this container that are not compliant with the
@@ -458,20 +431,6 @@ class LabelsSet(Labels, HasLabelsSchema, etas.Set):
 
         return super(LabelsSet, self).__getitem__(key)
 
-    def __setitem__(self, key, labels):
-        '''Sets the labels for the given key.
-
-        Any existing labels are overwritten.
-
-        Args:
-            key: the image name
-            image_labels: an ImageLabels
-        '''
-        if self.has_schema:
-            self._validate_labels(labels)
-
-        return super(LabelsSet, self).__setitem__(key, labels)
-
     @classmethod
     def get_schema_cls(cls):
         '''Gets the schema class for the `Labels` in the set.
@@ -491,21 +450,6 @@ class LabelsSet(Labels, HasLabelsSchema, etas.Set):
         '''
         return self.__class__(schema=self.schema)
 
-    def add(self, labels):
-        '''Adds the `Labels` to the set.
-
-        Args:
-            labels: a Labels instance
-
-        Raises:
-            LabelsSchemaError: if this set has a schema enforced and the labels
-                violate it
-        '''
-        if self.has_schema:
-            self._validate_labels(labels)
-
-        super(LabelsSet, self).add(labels)
-
     def add_set(self, labels_set):
         '''Adds the labels in the given `LabelSet` to the set.
 
@@ -517,22 +461,6 @@ class LabelsSet(Labels, HasLabelsSchema, etas.Set):
                 in the set violate it
         '''
         self.add_iterable(labels_set)
-
-    def add_iterable(self, iterable):
-        '''Adds the labels in the given iterable to the set.
-
-        Args:
-            iterable: an iterable of Labels
-
-        Raises:
-            LabelsContainerSchemaError: if this container has a schema enforced
-                and any labels in the container violate it
-        '''
-        if self.has_schema:
-            for labels in iterable:
-                self._validate_labels(labels)
-
-        super(LabelsSet, self).add_iterable(iterable)
 
     def get_active_schema(self):
         '''Gets the `LabelsSchema` describing the active schema of the set.
