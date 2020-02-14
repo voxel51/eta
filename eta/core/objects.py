@@ -1026,22 +1026,16 @@ class ObjectSchema(etal.LabelsSchema):
         except etal.LabelsSchemaError:
             return False
 
-    def validate_label(self, label, allow_none=False):
+    def validate_label(self, label):
         '''Validates that the object label is compliant with the schema.
 
         Args:
             label: the label
-            allow_none: whether to allow `label == None`. By default, this is
-                False
 
         Raises:
             ObjectSchemaError: if the label violates the schema
         '''
-        if label is None:
-            if not allow_none:
-                raise ObjectSchemaError(
-                    "None object label is not allowed by the schema")
-        elif label != self.label:
+        if label != self.label:
             raise ObjectSchemaError(
                 "Label '%s' does not match object schema" % label)
 
@@ -1093,22 +1087,19 @@ class ObjectSchema(etal.LabelsSchema):
         '''
         self.frames.validate(attrs)
 
-    def validate_object(self, obj, allow_none_label=False):
-        '''Validates that the Object or DetectedObject is compliant with
-        the schema.
+    def validate_object(self, obj):
+        '''Validates that the Object or DetectedObject is compliant with the
+        schema.
 
         Args:
             obj: an Object or DetectedObject
-            allow_none: whether to allow `label == None`. By default, this is
-                False. Objects with a top-level label are always allowed to
-                have detections with no label set
 
         Raises:
             ObjectSchemaError: if the object label violates the schema
             AttributeContainerSchemaError: if any attributes of the object
                 violate the schema
         '''
-        self.validate(obj, allow_none_label=allow_none_label)
+        self.validate(obj)
 
     def validate_child_object(self, obj):
         '''Validates that the child Object is compliant with the schema.
@@ -1123,15 +1114,12 @@ class ObjectSchema(etal.LabelsSchema):
         '''
         self.child_objects.validate_object(obj)
 
-    def validate(self, obj, allow_none_label=False):
-        '''Validates that the Object or DetectedObject is compliant with
-        the schema.
+    def validate(self, obj):
+        '''Validates that the Object or DetectedObject is compliant with the
+        schema.
 
         Args:
             obj: an Object or DetectedObject
-            allow_none: whether to allow `label == None`. By default, this is
-                False. Objects with a top-level label are always allowed to
-                have detections with no label set
 
         Raises:
             ObjectSchemaError: if the object label violates the schema
@@ -1139,9 +1127,9 @@ class ObjectSchema(etal.LabelsSchema):
                 violate the schema
         '''
         if isinstance(obj, Object):
-            self._validate_object(obj, allow_none_label)
+            self._validate_object(obj)
         else:
-            self._validate_detected_object(obj, allow_none_label)
+            self._validate_detected_object(obj)
 
     def merge_schema(self, schema):
         '''Merges the given ObjectSchema into this schema.
@@ -1221,8 +1209,8 @@ class ObjectSchema(etal.LabelsSchema):
             d["label"], attrs=attrs, frames=frames,
             child_objects=child_objects)
 
-    def _add_detected_object(self, dobj, ignore_none_label=False):
-        if dobj.label or not ignore_none_label:
+    def _add_detected_object(self, dobj, validate_label=True):
+        if validate_label:
             self.validate_label(dobj.label)
 
         self.add_object_attributes(dobj.attrs)
@@ -1233,29 +1221,26 @@ class ObjectSchema(etal.LabelsSchema):
         self.add_object_attributes(obj.attrs)
         self.add_frame_attributes(obj.frames)
         for dobj in obj.iter_detections():
-            self._add_detected_object(dobj, ignore_none_label=True)
+            self._add_detected_object(dobj, validate_label=False)
 
-    def _validate_detected_object(self, dobj, allow_none_label):
+    def _validate_detected_object(self, dobj, validate_label=True):
         # Validate label
-        self.validate_label(dobj.label, allow_none=allow_none_label)
+        if validate_label:
+            self.validate_label(dobj.label)
 
         # Validate frame-level attributes
         self.validate_frame_attributes(dobj.attrs)
 
-    def _validate_object(self, obj, allow_none_label):
+    def _validate_object(self, obj):
         # Validate label
-        self.validate_label(obj.label, allow_none=allow_none_label)
+        self.validate_label(obj.label)
 
         # Validate object-level attributes
         self.validate_object_attributes(obj.attrs)
 
-        # If the Object has a top-level `label`, it's always okay for the
-        # DetectedObjects to have no `label`
-        allow_none_label |= obj.label is not None
-
         # Validate DetectedObjects
         for dobj in obj.iter_detections():
-            self._validate_detected_object(dobj, allow_none_label)
+            self._validate_detected_object(dobj, validate_label=False)
 
 
 class ObjectSchemaError(etal.LabelsSchemaError):
@@ -1567,22 +1552,16 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
         except etal.LabelsSchemaError:
             return False
 
-    def validate_object_label(self, label, allow_none=False):
+    def validate_object_label(self, label):
         '''Validates that the object label is compliant with the schema.
 
         Args:
             label: an object label
-            allow_none: whether to allow `label == None`. By default, this is
-                False
 
         Raises:
             ObjectContainerSchemaError: if the object label violates the schema
         '''
-        if label is None:
-            if not allow_none:
-                raise ObjectContainerSchemaError(
-                    "None object label is not allowed by the schema")
-        elif label not in self.schema:
+        if label not in self.schema:
             raise ObjectContainerSchemaError(
                 "Object label '%s' is not allowed by the schema" % label)
 
@@ -1650,15 +1629,12 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
         self.validate_object_label(label)
         self.schema[label].validate_frame_attributes(attrs)
 
-    def validate_object(self, obj, allow_none_label=False):
-        '''Validates that the Object or DetectedObject is compliant with
-        the schema.
+    def validate_object(self, obj):
+        '''Validates that the Object or DetectedObject is compliant with the
+        schema.
 
         Args:
             obj: an Object or DetectedObject
-            allow_none_label: whether to allow `label == None`. By default,
-                this is False. Objects with a top-level label are always
-                allowed to have detections with no label set
 
         Raises:
             ObjectContainerSchemaError: if the object label violates the schema
@@ -1666,27 +1642,24 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
                 violate the schema
         '''
         if isinstance(obj, Object):
-            self._validate_object(obj, allow_none_label)
+            self._validate_object(obj)
         else:
-            self._validate_detected_object(obj, allow_none_label)
+            self._validate_detected_object(obj)
 
-    def validate(self, objects, allow_none_label=False):
+    def validate(self, objects):
         '''Validates that the ObjectContainer or DetectedObjectContainer is
         compliant with the schema.
 
         Args:
             objects: an ObjectContainer or DetectedObjectContainer
-            allow_none_label: whether to allow `label == None`. By default,
-                this is False. Objects with a top-level label are always
-                allowed to have detections with no label set
 
         Raises:
-            ObjectContainerSchemaError: if the object label violates the schema
-            AttributeContainerSchemaError: if any attributes of the object
+            ObjectContainerSchemaError: if an object label violates the schema
+            AttributeContainerSchemaError: if any attributes of the objects
                 violate the schema
         '''
         for obj in objects:
-            self.validate_object(obj, allow_none_label=allow_none_label)
+            self.validate_object(obj)
 
     def merge_schema(self, schema):
         '''Merges the given ObjectContainerSchema into this schema.
@@ -1756,27 +1729,28 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
         for dobj in obj.iter_detections():
             self._add_detected_object(dobj, label=obj.label)
 
-    def _validate_detected_object(self, dobj, allow_none_label):
+    def _validate_detected_object(self, dobj, label=None):
+        if label is None:
+            label = dobj.label
+
         # Validate object label
-        self.validate_object_label(dobj.label, allow_none=allow_none_label)
+        self.validate_object_label(label)
 
         # Validate frame-level attributes
-        self.validate_frame_attributes(dobj.label, dobj.attrs)
+        self.validate_frame_attributes(label, dobj.attrs)
 
-    def _validate_object(self, obj, allow_none_label):
+    def _validate_object(self, obj):
+        label = obj.label
+
         # Validate object label
-        self.validate_object_label(obj.label, allow_none=allow_none_label)
+        self.validate_object_label(label)
 
         # Validate object-level attributes
-        self.validate_object_attributes(obj.label, obj.attrs)
-
-        # If the Object has a top-level `label`, it's always okay for the
-        # DetectedObjects to have no `label`
-        allow_none_label |= obj.label is not None
+        self.validate_object_attributes(label, obj.attrs)
 
         # Validate DetectedObjects
         for dobj in obj.iter_detections():
-            self._validate_detected_object(dobj, allow_none_label)
+            self._validate_detected_object(dobj, label=label)
 
 
 class ObjectContainerSchemaError(etal.LabelsContainerSchemaError):
