@@ -61,21 +61,21 @@ class FrameLabels(etal.Labels):
         '''Whether the frame has no labels of any kind.'''
         return not self.has_attributes and not self.has_objects
 
-    def add_attribute(self, frame_attr):
-        '''Adds the attribute to the frame.
+    def add_attribute(self, attr):
+        '''Adds the frame-level attribute to the frame.
 
         Args:
-            frame_attr: an Attribute
+            attr: an Attribute
         '''
-        self.attrs.add(frame_attr)
+        self.attrs.add(attr)
 
-    def add_attributes(self, frame_attrs):
-        '''Adds the attributes to the frame.
+    def add_attributes(self, attrs):
+        '''Adds the frame-level attributes to the frame.
 
         Args:
-            frame_attrs: an AttributeContainer
+            attrs: an AttributeContainer
         '''
-        self.attrs.add_container(frame_attrs)
+        self.attrs.add_container(attrs)
 
     def add_object(self, obj):
         '''Adds the object to the frame.
@@ -99,7 +99,7 @@ class FrameLabels(etal.Labels):
         self.clear_objects()
 
     def clear_attributes(self):
-        '''Removes all attributes from the frame.'''
+        '''Removes all frame-level attributes from the frame.'''
         self.attrs = etad.AttributeContainer()
 
     def clear_objects(self):
@@ -197,7 +197,7 @@ class FrameLabelsSchema(etal.LabelsSchema):
         return not bool(self.attrs) and not bool(self.objects)
 
     def has_attribute(self, attr_name):
-        '''Whether the schema has an attribute with the given name.
+        '''Whether the schema has a frame-level attribute with the given name.
 
         Args:
             attr_name: an attribute name
@@ -208,7 +208,8 @@ class FrameLabelsSchema(etal.LabelsSchema):
         return self.attrs.has_attribute(attr_name)
 
     def get_attribute_class(self, attr_name):
-        '''Gets the `Attribute` class for the attribute with the given name.
+        '''Gets the `Attribute` class for the frame-level attribute with the
+        given name.
 
         Args:
             attr_name: an attribute name
@@ -280,7 +281,7 @@ class FrameLabelsSchema(etal.LabelsSchema):
         return self.objects.get_frame_attribute_class(label, attr_name)
 
     def add_attribute(self, attr):
-        '''Adds the given attribute to the schema.
+        '''Adds the given frame-level attribute to the schema.
 
         Args:
             attr: an Attribute
@@ -288,7 +289,7 @@ class FrameLabelsSchema(etal.LabelsSchema):
         self.attrs.add_attribute(attr)
 
     def add_attributes(self, attrs):
-        '''Adds the given attributes to the schema.
+        '''Adds the given frame-level attributes to the schema.
 
         Args:
             attrs: an AttributeContainer
@@ -349,7 +350,7 @@ class FrameLabelsSchema(etal.LabelsSchema):
         self.add_objects(frame_labels.objects)
 
     def is_valid_attribute(self, attr):
-        '''Whether the attribute is compliant with the schema.
+        '''Whether the frame-level attribute is compliant with the schema.
 
         Args:
             attr: an Attribute
@@ -358,6 +359,18 @@ class FrameLabelsSchema(etal.LabelsSchema):
             True/False
         '''
         return self.attrs.is_valid_attribute(attr)
+
+    def is_valid_attributes(self, attrs):
+        '''Whether the AttributeContainer of frame-level attributes is
+        compliant with the schema.
+
+        Args:
+            attrs: an AttributeContainer
+
+        Returns:
+            True/False
+        '''
+        return self.attrs.is_valid_attributes(attrs)
 
     def is_valid_object_label(self, label):
         '''Whether the object label is compliant with the schema.
@@ -383,6 +396,19 @@ class FrameLabelsSchema(etal.LabelsSchema):
         '''
         return self.objects.is_valid_frame_attribute(label, attr)
 
+    def is_valid_object_attributes(self, label, attrs):
+        '''Whether the AttributeContainer of frame-level attributes for the
+        object with the given label is compliant with the schema.
+
+        Args:
+            label: an object label
+            attrs: an AttributeContainer of frame-level attributes
+
+        Returns:
+            True/False
+        '''
+        return self.objects.is_valid_frame_attributes(label, attrs)
+
     def is_valid_object(self, obj):
         '''Whether the given object is compliant with the schema.
 
@@ -395,7 +421,8 @@ class FrameLabelsSchema(etal.LabelsSchema):
         return self.objects.is_valid_object(obj)
 
     def validate_attribute(self, attr):
-        '''Validates that the attribute is compliant with the schema.
+        '''Validates that the frame-level attribute is compliant with the
+        schema.
 
         Args:
             attr: an Attribute
@@ -404,6 +431,18 @@ class FrameLabelsSchema(etal.LabelsSchema):
             AttributeContainerSchemaError: if the attribute violates the schema
         '''
         self.attrs.validate_attribute(attr)
+
+    def validate_attributes(self, attrs):
+        '''Validates that the AttributeContainer of frame-level attributes is
+        compliant with the schema.
+
+        Args:
+            attrs: an AttributeContainer
+
+        Raises:
+            AttributeContainerSchemaError: if the attributes violate the schema
+        '''
+        self.attrs.validate(attrs)
 
     def validate_object_label(self, label):
         '''Validates that the object label is compliant with the schema.
@@ -431,6 +470,21 @@ class FrameLabelsSchema(etal.LabelsSchema):
         '''
         self.objects.validate_frame_attribute(label, attr)
 
+    def validate_object_attributes(self, label, attrs):
+        '''Validates that the AttributeContainer of frame-level attributes for
+        the object with the given label is compliant with the schema.
+
+        Args:
+            label: an object label
+            attrs: an AttributeContainer of frame-level attributes
+
+        Raises:
+            ObjectContainerSchemaError: if the object label violates the schema
+            AttributeContainerSchemaError: if the frame-level attributes
+                violate the schema
+        '''
+        self.objects.validate_frame_attributes(label, attrs)
+
     def validate_object(self, obj):
         '''Validates that the object is compliant with the schema.
 
@@ -455,9 +509,10 @@ class FrameLabelsSchema(etal.LabelsSchema):
                 violates the schema
             ObjectContainerSchemaError: if an object label violates the schema
         '''
-        for attr in frame_labels.attrs:
-            self.validate_attribute(attr)
+        # Validate frame-level attributes
+        self.validate_attributes(frame_labels.attrs)
 
+        # Validate DetectedObjects
         for obj in frame_labels.objects:
             self.validate_object(obj)
 
