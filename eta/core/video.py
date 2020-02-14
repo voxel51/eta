@@ -1690,7 +1690,7 @@ class VideoLabelsSchema(etal.LabelsSchema):
         Raises:
             AttributeContainerSchemaError: if the attributes violate the schema
         '''
-        self.attrs.validate_attributes(attrs)
+        self.attrs.validate(attrs)
 
     def validate_frame_attribute_name(self, attr_name):
         '''Validates that the schema contains a frame-level attribute with the
@@ -1727,7 +1727,7 @@ class VideoLabelsSchema(etal.LabelsSchema):
         Raises:
             AttributeContainerSchemaError: if the attributes violate the schema
         '''
-        self.frames.validate_attributes(attrs)
+        self.frames.validate(attrs)
 
     def validate_object_label(self, label):
         '''Validates that the object label is compliant with the schema.
