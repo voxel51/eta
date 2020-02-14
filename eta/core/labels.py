@@ -114,6 +114,35 @@ class LabelsSchema(etas.Serializable):
         '''
         raise NotImplementedError("subclasses must implement `validate()`")
 
+    def validate_subset_of_schema(self, schema):
+        '''Validates that this schema is a subset of the given LabelsSchema.
+
+        Args:
+            schema: a LabelsSchema
+
+        Raises:
+            LabelsSchemaError: if this schema is not a subset of the given
+                schema
+        '''
+        raise NotImplementedError(
+            "subclasses must implement `validate_subset_of_schema()`")
+
+    def validate_schema_type(self, schema):
+        '''Validates that this schema is an instance of same type as the given
+        schema.
+
+        Args:
+            schema: a LabelsSchema
+
+        Raises:
+            LabelsSchemaError: if this schema is not an instance of the given
+                schema's type
+        '''
+        if not isinstance(self, type(schema)):
+            raise LabelsSchemaError(
+                "Expected `self` to match schema type %s; found %s" %
+                (type(self), type(schema)))
+
     def is_valid(self, labels):
         '''Whether the `Labels` are compliant with the schema.
 
@@ -125,6 +154,21 @@ class LabelsSchema(etas.Serializable):
         '''
         try:
             self.validate(labels)
+            return True
+        except LabelsSchemaError:
+            return False
+
+    def is_subset_of_schema(self, schema):
+        '''Whether this schema is a subset of the given schema.
+
+        Args:
+            schema: a LabelsSchema
+
+        Returns:
+            True/False
+        '''
+        try:
+            self.validate_subset_of_schema(schema)
             return True
         except LabelsSchemaError:
             return False
