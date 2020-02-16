@@ -985,6 +985,23 @@ class AttributeContainerSchema(etal.LabelsContainerSchema):
         '''Whether this schema contains at least one exclusive attribute.'''
         return any(schema.is_exclusive for schema in itervalues(self.schema))
 
+    def iter_attribute_names(self):
+        '''Returns an iterator over the attribute names in this schema.
+
+        Returns:
+            an iterator over attribute names
+        '''
+        return iter(self.schema)
+
+    def iter_attributes(self):
+        '''Returns an iterator over the (name, AttributeSchema) pairs in this
+        schema.
+
+        Returns:
+            an iterator over (name, AttributeSchema) pairs
+        '''
+        return iteritems(self.schema)
+
     def has_attribute(self, name):
         '''Whether the schema has an `Attribute` with the given name.
 
@@ -1141,19 +1158,19 @@ class AttributeContainerSchema(etal.LabelsContainerSchema):
         '''
         self.validate_schema_type(schema)
 
-        for other_name in schema.schema:
+        for other_name in schema.iter_attribute_names():
             if not self.has_attribute(other_name):
-                raise AttributeSchemaError(
+                raise AttributeContainerSchemaError(
                     "`self` schema does not contain attribute '%s'"
                     % other_name)
 
         for name, attr_schema in iteritems(self.schema):
             if not schema.has_attribute(name):
-                raise AttributeSchemaError(
+                raise AttributeContainerSchemaError(
                     "Attribute '%s' does not appear in schema" % name)
 
-            other_schema = schema.get_attribute_schema(name)
-            attr_schema.validate_subset_of_schema(other_schema)
+            other_attr_schema = schema.get_attribute_schema(name)
+            attr_schema.validate_subset_of_schema(other_attr_schema)
 
     def merge_schema(self, schema):
         '''Merges the given `AttributeContainerSchema` into the schema.
@@ -1161,7 +1178,7 @@ class AttributeContainerSchema(etal.LabelsContainerSchema):
         Args:
             schema: an AttributeContainerSchema
         '''
-        for name, attr_schema in iteritems(schema.schema):
+        for name, attr_schema in schema.iter_attributes():
             if name not in self.schema:
                 self.schema[name] = attr_schema
             else:
