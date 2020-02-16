@@ -1662,8 +1662,7 @@ class VideoLabelsSchema(etal.LabelsSchema):
             attr_name: the name
 
         Raises:
-            AttributeContainerSchemaError: if the schema does not contain the
-                attribute
+            LabelsSchemaError: if the schema does not contain the attribute
         '''
         self.attrs.validate_attribute_name(attr_name)
 
@@ -1675,7 +1674,7 @@ class VideoLabelsSchema(etal.LabelsSchema):
             attr: an Attribute
 
         Raises:
-            AttributeContainerSchemaError: if the attribute violates the schema
+            LabelsSchemaError: if the attribute violates the schema
         '''
         self.attrs.validate_attribute(attr)
 
@@ -1687,7 +1686,7 @@ class VideoLabelsSchema(etal.LabelsSchema):
             attrs: an AttributeContainer
 
         Raises:
-            AttributeContainerSchemaError: if the attributes violate the schema
+            LabelsSchemaError: if the attributes violate the schema
         '''
         self.attrs.validate(attrs)
 
@@ -1699,8 +1698,7 @@ class VideoLabelsSchema(etal.LabelsSchema):
             attr_name: the name
 
         Raises:
-            AttributeContainerSchemaError: if the schema does not contain the
-                attribute
+            LabelsSchemaError: if the schema does not contain the attribute
         '''
         self.frames.validate_attribute_name(attr_name)
 
@@ -1712,7 +1710,7 @@ class VideoLabelsSchema(etal.LabelsSchema):
             attr: an Attribute
 
         Raises:
-            AttributeContainerSchemaError: if the attribute violates the schema
+            LabelsSchemaError: if the attribute violates the schema
         '''
         self.frames.validate_attribute(attr)
 
@@ -1724,7 +1722,7 @@ class VideoLabelsSchema(etal.LabelsSchema):
             attrs: an AttributeContainer
 
         Raises:
-            AttributeContainerSchemaError: if the attributes violate the schema
+            LabelsSchemaError: if the attributes violate the schema
         '''
         self.frames.validate(attrs)
 
@@ -1735,7 +1733,7 @@ class VideoLabelsSchema(etal.LabelsSchema):
             label: an object label
 
         Raises:
-            ObjectContainerSchemaError: if the object label violates the schema
+            LabelsSchemaError: if the object label violates the schema
         '''
         self.objects.validate_object_label(label)
 
@@ -1748,9 +1746,7 @@ class VideoLabelsSchema(etal.LabelsSchema):
             attr: an object-level Attribute
 
         Raises:
-            ObjectContainerSchemaError: if the object label violates the schema
-            AttributeContainerSchemaError: if the object-level attribute
-                violates the schema
+            LabelsSchemaError: if the attribute violates the schema
         '''
         self.objects.validate_object_attribute(label, attr)
 
@@ -1763,9 +1759,7 @@ class VideoLabelsSchema(etal.LabelsSchema):
             attrs: an AttributeContainer of object-level attributes
 
         Raises:
-            ObjectContainerSchemaError: if the object label violates the schema
-            AttributeContainerSchemaError: if the object-level attributes
-                violate the schema
+            LabelsSchemaError: if the attributes violate the schema
         '''
         self.objects.validate_object_attributes(label, attrs)
 
@@ -1778,9 +1772,7 @@ class VideoLabelsSchema(etal.LabelsSchema):
             attr: a frame-level Attribute
 
         Raises:
-            ObjectContainerSchemaError: if the object label violates the schema
-            AttributeContainerSchemaError: if the frame-level object attribute
-                violates the schema
+            LabelsSchemaError: if the attribute violates the schema
         '''
         self.objects.validate_object_attribute(label, attr)
 
@@ -1793,9 +1785,7 @@ class VideoLabelsSchema(etal.LabelsSchema):
             attrs: an AttributeContainer of frame-level attributes
 
         Raises:
-            ObjectContainerSchemaError: if the object label violates the schema
-            AttributeContainerSchemaError: if the frame-level object attributes
-                violate the schema
+            LabelsSchemaError: if the attributes violate the schema
         '''
         self.objects.validate_object_attributes(label, attrs)
 
@@ -1806,9 +1796,7 @@ class VideoLabelsSchema(etal.LabelsSchema):
             obj: an Object or DetectedObject
 
         Raises:
-            ObjectContainerSchemaError: if the object label violates the schema
-            AttributeContainerSchemaError: if any attributes of the object
-                violate the schema
+            LabelsSchemaError: if the object violates the schema
         '''
         self.objects.validate_object(obj)
 
@@ -1819,7 +1807,7 @@ class VideoLabelsSchema(etal.LabelsSchema):
             label: an event label
 
         Raises:
-            EventContainerSchemaError: if the event label violates the schema
+            LabelsSchemaError: if the event violates the schema
         '''
         self.events.validate_event_label(label)
 
@@ -1832,8 +1820,7 @@ class VideoLabelsSchema(etal.LabelsSchema):
             attr: an Attribute
 
         Raises:
-            AttributeContainerSchemaError: if the event attribute violates the
-                schema
+            LabelsSchemaError: if the attribute violates the schema
         '''
         self.events.validate_event_attribute(label, attr)
 
@@ -1846,8 +1833,7 @@ class VideoLabelsSchema(etal.LabelsSchema):
             attrs: an AttributeContainer
 
         Raises:
-            AttributeContainerSchemaError: if the event-level attributes
-                violate the schema
+            LabelsSchemaError: if the attributes violate the schema
         '''
         self.events.validate_event_attributes(label, attrs)
 
@@ -1858,9 +1844,7 @@ class VideoLabelsSchema(etal.LabelsSchema):
             event: an Event
 
         Raises:
-            EventContainerSchemaError: if the event label violates the schema
-            AttributeContainerSchemaError: if any attributes of the event
-                violate the schema
+            LabelsSchemaError: if the event violates the schema
         '''
         self.events.validate_event(event)
 
@@ -1871,9 +1855,7 @@ class VideoLabelsSchema(etal.LabelsSchema):
             frame_labels: a FrameLabels
 
         Raises:
-            ObjectContainerSchemaError: if an object label violates the schema
-            AttributeContainerSchemaError: if any frame/object attributes of
-                the object violate the schema
+            LabelsSchemaError: if the frame labels violate the schema
         '''
         self.validate_frame_attributes(frame_labels.attrs)
 
@@ -1887,9 +1869,7 @@ class VideoLabelsSchema(etal.LabelsSchema):
             video_labels: a VideoLabels
 
         Raises:
-            EventContainerSchemaError: if the event label violates the schema
-            AttributeContainerSchemaError: if any attributes of the event
-                violate the schema
+            LabelsSchemaError: if the VideoLabels violate the schema
         '''
         # Validate video-level attributes
         self.validate_video_attributes(video_labels.attrs)
@@ -2301,7 +2281,7 @@ class VideoStreamInfo(etas.Serializable):
         '''The frame rate of the video.
 
         Raises:
-            VideoStreamInfoError if the frame rate could not be determined
+            VideoStreamInfoError: if the frame rate could not be determined
         '''
         try:
             try:
