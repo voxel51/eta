@@ -1177,6 +1177,27 @@ class EventSchema(etal.LabelsSchema):
         for child_event in event.child_events:
             self.validate_child_event(child_event)
 
+    def validate_subset_of_schema(self, schema):
+        '''Validates that this schema is a subset of the given schema.
+
+        Args:
+            schema: an EventSchema
+
+        Raises:
+            LabelsSchemaError: if this schema is not a subset of the given
+                schema
+        '''
+        self.validate_schema_type(schema)
+
+        if self.label != schema.label:
+            raise EventSchemaError(
+                "Expected event label '%s'; found '%s'" %
+                (schema.label, self.label))
+
+        self.attrs.validate_subset_of_schema(schema.attrs)
+        self.frames.validate_subset_of_schema(schema.frames)
+        self.objects.validate_subset_of_schema(schema.objects)
+
     def merge_schema(self, schema):
         '''Merges the given EventSchema into this schema.
 
@@ -1362,6 +1383,23 @@ class EventContainerSchema(etal.LabelsContainerSchema):
     def is_empty(self):
         '''Whether this schema has no labels of any kind.'''
         return not bool(self.schema)
+
+    def iter_event_labels(self):
+        '''Returns an iterator over the event labels in this schema.
+
+        Returns:
+            an iterator over event labels
+        '''
+        return iter(self.schema)
+
+    def iter_events(self):
+        '''Returns an iterator over the (label, EventSchema) pairs in this
+        schema.
+
+        Returns:
+            an iterator over (label, EventSchema) pairs
+        '''
+        return iteritems(self.schema)
 
     def has_event_label(self, label):
         '''Whether the schema has an event with the given label.
@@ -2160,13 +2198,39 @@ class EventContainerSchema(etal.LabelsContainerSchema):
         for event in events:
             self.validate_event(event)
 
+    def validate_subset_of_schema(self, schema):
+        '''Validates that this schema is a subset of the given schema.
+
+        Args:
+            schema: an EventContainerSchema
+
+        Raises:
+            LabelsSchemaError: if this schema is not a subset of the given
+                schema
+        '''
+        self.validate_schema_type(schema)
+
+        for other_label in schema.iter_event_labels():
+            if not self.has_event_label(other_label):
+                raise EventContainerSchemaError(
+                    "`self` schema does not contain event label '%s'"
+                    % other_label)
+
+        for label, event_schema in iteritems(self.schema):
+            if not schema.has_event_label(label):
+                raise EventContainerSchemaError(
+                    "Event label '%s' does not appear in schema" % label)
+
+            other_event_schema = schema.get_event_schema(label)
+            event_schema.validate_subset_of_schema(other_event_schema)
+
     def merge_schema(self, schema):
         '''Merges the given EventContainerSchema into this schema.
 
         Args:
             schema: an EventContainerSchema
         '''
-        for label, event_schema in iteritems(schema.schema):
+        for label, event_schema in schema.iter_events():
             self._ensure_has_event_label(label)
             self.schema[label].merge_schema(event_schema)
 
