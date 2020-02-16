@@ -135,8 +135,8 @@ class LabelsSchema(etas.Serializable):
             schema: a LabelsSchema
 
         Raises:
-            LabelsSchemaError: if this schema is not an instance of the given
-                schema's type
+            LabelsSchemaError: if this schema is not of the same type as the
+                given schema
         '''
         if not isinstance(self, type(schema)):
             raise LabelsSchemaError(
@@ -293,8 +293,8 @@ class LabelsContainer(Labels, HasLabelsSchema, etas.Container):
             **kwargs: valid keyword arguments for `eta.core.serial.Container()`
 
         Raises:
-            LabelsContainerSchemaError: if a schema was provided but the labels
-                added to the container violate it
+            LabelsSchemaError: if a schema was provided but the labels added to
+                the container violate it
         '''
         HasLabelsSchema.__init__(self, schema=schema)
         etas.Container.__init__(self, **kwargs)
@@ -314,8 +314,8 @@ class LabelsContainer(Labels, HasLabelsSchema, etas.Container):
             container: a LabelsContainer
 
         Raises:
-            LabelsContainerSchemaError: if this container has a schema enforced
-                and any labels in the container violate it
+            LabelsSchemaError: if this container has a schema enforced and any
+                labels in the container violate it
         '''
         self.add_iterable(container)
 
@@ -353,8 +353,8 @@ class LabelsContainer(Labels, HasLabelsSchema, etas.Container):
         '''Validates that the labels are compliant with the current schema.
 
         Raises:
-            LabelsContainerSchemaError: if the container has labels that are
-                not compliant with the schema
+            LabelsSchemaError: if the container has labels that are not
+                compliant with the schema
         '''
         if self.has_schema:
             for labels in self:
@@ -432,8 +432,8 @@ class LabelsSet(Labels, HasLabelsSchema, etas.Set):
             **kwargs: valid keyword arguments for `eta.core.serial.Set()`
 
         Raises:
-            LabelsContainerSchemaError: if a schema was provided but the labels
-                added to the container violate it
+            LabelsSchemaError: if a schema was provided but the labels added to
+                the container violate it
         '''
         HasLabelsSchema.__init__(self, schema=schema)
         etas.Set.__init__(self, **kwargs)
