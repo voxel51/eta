@@ -1891,6 +1891,22 @@ class VideoLabelsSchema(etal.LabelsSchema):
         for event in video_labels.events:
             self.validate_event(event)
 
+    def validate_subset_of_schema(self, schema):
+        '''Validates that this schema is a subset of the given schema.
+
+        Args:
+            schema: a VideoLabelsSchema
+
+        Raises:
+            LabelsSchemaError: if this schema is not a subset of the given
+                schema
+        '''
+        self.validate_schema_type(schema)
+        self.attrs.validate_subset_of_schema(schema.attrs)
+        self.frames.validate_subset_of_schema(schema.frames)
+        self.objects.validate_subset_of_schema(schema.objects)
+        self.events.validate_subset_of_schema(schema.events)
+
     def merge_schema(self, schema):
         '''Merges the given VideoLabelsSchema into this schema.
 
