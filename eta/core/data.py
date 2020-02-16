@@ -332,7 +332,7 @@ class AttributeSchema(etal.LabelsSchema):
             schema: an AttributeSchema
 
         Raises:
-            AttributeSchemaError: if the schema does not match this schema
+            LabelsSchemaError: if the schema does not match this schema
         '''
         if type(schema) is not type(self):
             raise AttributeSchemaError(
@@ -351,7 +351,7 @@ class AttributeSchema(etal.LabelsSchema):
             attr: an Attribute
 
         Raises:
-            AttributeSchemaError: if the attribute violates the schema
+            LabelsSchemaError: if the attribute violates the schema
         '''
         if not isinstance(attr, self._attr_cls):
             raise AttributeSchemaError(
@@ -365,7 +365,7 @@ class AttributeSchema(etal.LabelsSchema):
             attr: an Attribute
 
         Raises:
-            AttributeSchemaError: if the attribute violates the schema
+            LabelsSchemaError: if the attribute violates the schema
         '''
         self.validate(attr)
 
@@ -376,7 +376,7 @@ class AttributeSchema(etal.LabelsSchema):
             attr: an Attribute
 
         Raises:
-            AttributeSchemaError: if the attribute violates the schema
+            LabelsSchemaError: if the attribute violates the schema
         '''
         if attr.name != self.name:
             raise AttributeSchemaError(
@@ -397,8 +397,8 @@ class AttributeSchema(etal.LabelsSchema):
             schema: an AttributeSchema
 
         Raises:
-            AttributeSchemaError: if this schema's attributes do not match the
-                given schema's
+            LabelsSchemaError: if this schema is not a subset of the given
+                schema
         '''
         self.validate_schema_type(schema)
 
@@ -507,7 +507,7 @@ class CategoricalAttributeSchema(AttributeSchema):
             schema: a CategoricalAttributeSchema
 
         Raises:
-            AttributeSchemaError: if this schema is not a subset of the given
+            LabelsSchemaError: if this schema is not a subset of the given
                 schema
         '''
         super(CategoricalAttributeSchema, self).validate_subset_of_schema(
@@ -629,7 +629,7 @@ class NumericAttributeSchema(AttributeSchema):
             schema: a NumericAttributeSchema
 
         Raises:
-            AttributeSchemaError: if this schema is not a subset of the given
+            LabelsSchemaError: if this schema is not a subset of the given
                 schema
         '''
         super(NumericAttributeSchema, self).validate_subset_of_schema(schema)
@@ -753,7 +753,7 @@ class BooleanAttributeSchema(AttributeSchema):
             schema: a BooleanAttributeSchema
 
         Raises:
-            AttributeSchemaError: if this schema is not a subset of the given
+            LabelsSchemaError: if this schema is not a subset of the given
                 schema
         '''
         super(BooleanAttributeSchema, self).validate_subset_of_schema(schema)
@@ -1022,8 +1022,8 @@ class AttributeContainerSchema(etal.LabelsContainerSchema):
             the Attribute class
 
         Raises:
-            AttributeContainerSchemaError: if the schema does not have an
-                attribute with the given name
+            LabelsSchemaError: if the schema does not have an attribute with
+                the given name
         '''
         self.validate_attribute_name(name)
         return self.schema[name].get_attribute_class()
@@ -1087,8 +1087,8 @@ class AttributeContainerSchema(etal.LabelsContainerSchema):
             name: the name
 
         Raises:
-            AttributeContainerSchemaError: if the schema doesn't contain an
-                attribute of the given name
+            LabelsSchemaError: if the schema doesn't contain an attribute of
+                the given name
         '''
         if not self.has_attribute(name):
             raise AttributeContainerSchemaError(
@@ -1101,9 +1101,7 @@ class AttributeContainerSchema(etal.LabelsContainerSchema):
             attr: an Attribute
 
         Raises:
-            AttributeContainerSchemaError: if the schema doesn't contain an
-                attribute of the given name
-            AttributeSchemaError: if the attribute violates its schema
+            LabelsSchemaError: if the attribute violates the schema
         '''
         self.validate_attribute_name(attr.name)
         self.schema[attr.name].validate_attribute(attr)
@@ -1116,10 +1114,7 @@ class AttributeContainerSchema(etal.LabelsContainerSchema):
             attrs: an AttributeContainer
 
         Raises:
-            AttributeContainerSchemaError: if the schema doesn't contain an
-                attribute of a given name or the exclusivity of an attribute is
-                violated
-            AttributeSchemaError: if an attribute violates its schema
+            LabelsSchemaError: if the attributes violate the schema
         '''
         # Validate attributes
         for attr in attrs:
@@ -1141,7 +1136,7 @@ class AttributeContainerSchema(etal.LabelsContainerSchema):
             schema: an AttributeContainerSchema
 
         Raises:
-            AttributeSchemaError: if this schema is not a subset of the given
+            LabelsSchemaError: if this schema is not a subset of the given
                 schema
         '''
         self.validate_schema_type(schema)
