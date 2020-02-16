@@ -160,7 +160,7 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
                 By default, this is False
 
         Raises:
-            ObjectSchemaError: if the object label does not match the schema
+            LabelsSchemaError: if the object label does not match the schema
         '''
         if self.label is None:
             if not allow_none_label:
@@ -532,7 +532,7 @@ class Object(etal.Labels):
                 this object
 
         Raises:
-            ObjectSchemaError: if the object label does not match the schema
+            LabelsSchemaError: if the object label does not match the schema
         '''
         # Validate object label
         schema.validate_label(self.label)
@@ -1019,7 +1019,7 @@ class ObjectSchema(etal.LabelsSchema):
             label: the label
 
         Raises:
-            ObjectSchemaError: if the label violates the schema
+            LabelsSchemaError: if the label violates the schema
         '''
         if label != self.label:
             raise ObjectSchemaError(
@@ -1033,7 +1033,7 @@ class ObjectSchema(etal.LabelsSchema):
             attr: an Attribute
 
         Raises:
-            AttributeContainerSchemaError: if the attribute violates the schema
+            LabelsSchemaError: if the attribute violates the schema
         '''
         self.attrs.validate_attribute(attr)
 
@@ -1045,7 +1045,7 @@ class ObjectSchema(etal.LabelsSchema):
             attrs: an AttributeContainer
 
         Raises:
-            AttributeContainerSchemaError: if the attributes violate the schema
+            LabelsSchemaError: if the attributes violate the schema
         '''
         self.attrs.validate(attrs)
 
@@ -1057,7 +1057,7 @@ class ObjectSchema(etal.LabelsSchema):
             attr: an Attribute
 
         Raises:
-            AttributeContainerSchemaError: if the attribute violates the schema
+            LabelsSchemaError: if the attribute violates the schema
         '''
         self.frames.validate_attribute(attr)
 
@@ -1069,7 +1069,7 @@ class ObjectSchema(etal.LabelsSchema):
             attrs: an AttributeContainer
 
         Raises:
-            AttributeContainerSchemaError: if the attributes violate the schema
+            LabelsSchemaError: if the attributes violate the schema
         '''
         self.frames.validate(attrs)
 
@@ -1080,9 +1080,7 @@ class ObjectSchema(etal.LabelsSchema):
             obj: a child Object
 
         Raises:
-            ObjectContainerSchemaError: if an object label violates the schema
-            AttributeContainerSchemaError: if any attributes of the object
-                violate the schema
+            LabelsSchemaError: if the child object violates the schema
         '''
         self.child_objects.validate_object(obj)
 
@@ -1094,9 +1092,7 @@ class ObjectSchema(etal.LabelsSchema):
             obj: an Object or DetectedObject
 
         Raises:
-            ObjectSchemaError: if the object label violates the schema
-            AttributeContainerSchemaError: if any attributes of the object
-                violate the schema
+            LabelsSchemaError: if the object violates the schema
         '''
         if isinstance(obj, Object):
             self._validate_object(obj)
@@ -1529,7 +1525,7 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
             label: an object label
 
         Raises:
-            ObjectContainerSchemaError: if the object label violates the schema
+            LabelsSchemaError: if the object label violates the schema
         '''
         if label not in self.schema:
             raise ObjectContainerSchemaError(
@@ -1544,9 +1540,7 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
             attr: an object-level Attribute
 
         Raises:
-            ObjectContainerSchemaError: if the object label violates the schema
-            AttributeContainerSchemaError: if the object-level attribute
-                violates the schema
+            LabelsSchemaError: if the attribute violates the schema
         '''
         self.validate_object_label(label)
         self.schema[label].validate_object_attribute(attr)
@@ -1560,9 +1554,7 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
             attrs: an AttributeContainer of object-level attributes
 
         Raises:
-            ObjectContainerSchemaError: if the object label violates the schema
-            AttributeContainerSchemaError: if the object-level attributes
-                violate the schema
+            LabelsSchemaError: if the attributes violate the schema
         '''
         self.validate_object_label(label)
         self.schema[label].validate_object_attributes(attrs)
@@ -1576,9 +1568,7 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
             attr: a frame-level Attribute
 
         Raises:
-            ObjectContainerSchemaError: if the object label violates the schema
-            AttributeContainerSchemaError: if the frame-level attribute
-                violates the schema
+            LabelsSchemaError: if the attribute violates the schema
         '''
         self.validate_object_label(label)
         self.schema[label].validate_frame_attribute(attr)
@@ -1592,9 +1582,7 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
             attrs: an AttributeContainer of frame-level attributes
 
         Raises:
-            ObjectContainerSchemaError: if the object label violates the schema
-            AttributeContainerSchemaError: if the frame-level attributes
-                violate the schema
+            LabelsSchemaError: if the attributes violate the schema
         '''
         self.validate_object_label(label)
         self.schema[label].validate_frame_attributes(attrs)
@@ -1607,9 +1595,7 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
             obj: an Object or DetectedObject
 
         Raises:
-            ObjectContainerSchemaError: if the object label violates the schema
-            AttributeContainerSchemaError: if any attributes of the object
-                violate the schema
+            LabelsSchemaError: if the object violates the schema
         '''
         if isinstance(obj, Object):
             self._validate_object(obj)
@@ -1624,9 +1610,7 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
             objects: an ObjectContainer or DetectedObjectContainer
 
         Raises:
-            ObjectContainerSchemaError: if an object label violates the schema
-            AttributeContainerSchemaError: if any attributes of the objects
-                violate the schema
+            LabelsSchemaError: if the objects violate the schema
         '''
         for obj in objects:
             self.validate_object(obj)
