@@ -1099,6 +1099,26 @@ class ObjectSchema(etal.LabelsSchema):
         else:
             self._validate_detected_object(obj)
 
+    def validate_subset_of_schema(self, schema):
+        '''Validates that this schema is a subset of the given schema.
+
+        Args:
+            schema: an ObjectSchema
+
+        Raises:
+            LabelsSchemaError: if this schema is not a subset of the given
+                schema
+        '''
+        self.validate_schema_type(schema)
+
+        if self.label != schema.label:
+            raise ObjectSchemaError(
+                "Expected object label '%s'; found '%s'" %
+                (schema.label, self.label))
+
+        self.attrs.validate_subset_of_schema(schema.attrs)
+        self.frames.validate_subset_of_schema(schema.frames)
+
     def merge_schema(self, schema):
         '''Merges the given ObjectSchema into this schema.
 
@@ -1236,6 +1256,23 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
     def is_empty(self):
         '''Whether this schema has no labels of any kind.'''
         return not bool(self.schema)
+
+    def iter_object_labels(self):
+        '''Returns an iterator over the object labels in this schema.
+
+        Returns:
+            an iterator over object labels
+        '''
+        return iter(self.schema)
+
+    def iter_objects(self):
+        '''Returns an iterator over the (label, ObjectSchema) pairs in this
+        schema.
+
+        Returns:
+            an iterator over (label, ObjectSchema) pairs
+        '''
+        return iteritems(self.schema)
 
     def has_object_label(self, label):
         '''Whether the schema has an object with the given label.
@@ -1615,13 +1652,39 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
         for obj in objects:
             self.validate_object(obj)
 
+    def validate_subset_of_schema(self, schema):
+        '''Validates that this schema is a subset of the given schema.
+
+        Args:
+            schema: an ObjectContainerSchema
+
+        Raises:
+            LabelsSchemaError: if this schema is not a subset of the given
+                schema
+        '''
+        self.validate_schema_type(schema)
+
+        for other_label in schema.iter_object_labels():
+            if not self.has_object_label(other_label):
+                raise ObjectContainerSchemaError(
+                    "`self` schema does not contain object label '%s'"
+                    % other_label)
+
+        for label, obj_schema in iteritems(self.schema):
+            if not schema.has_object_label(label):
+                raise ObjectContainerSchemaError(
+                    "Object label '%s' does not appear in schema" % label)
+
+            other_obj_schema = schema.get_object_schema(label)
+            obj_schema.validate_subset_of_schema(other_obj_schema)
+
     def merge_schema(self, schema):
         '''Merges the given ObjectContainerSchema into this schema.
 
         Args:
             schema: an ObjectContainerSchema
         '''
-        for label, obj_schema in iteritems(schema.schema):
+        for label, obj_schema in schema.iter_objects():
             self._ensure_has_object_label(label)
             self.schema[label].merge_schema(obj_schema)
 
