@@ -516,6 +516,20 @@ class FrameLabelsSchema(etal.LabelsSchema):
         for obj in frame_labels.objects:
             self.validate_object(obj)
 
+    def validate_subset_of_schema(self, schema):
+        '''Validates that this schema is a subset of the given schema.
+
+        Args:
+            schema: a FrameLabelsSchema
+
+        Raises:
+            LabelsSchemaError: if this schema is not a subset of the given
+                schema
+        '''
+        self.validate_schema_type(schema)
+        self.attrs.validate_subset_of_schema(schema.attrs)
+        self.objects.validate_subset_of_schema(schema.objects)
+
     def merge_schema(self, schema):
         '''Merges the given FrameLabelsSchema into this schema.
 
