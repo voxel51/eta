@@ -1261,7 +1261,6 @@ class AttributeContainerSchema(etal.LabelsContainerSchema):
                     "ema.name: %s" % (attr_schema.name, attr_name))
 
 
-
 class AttributeContainerSchemaError(etal.LabelsContainerSchemaError):
     '''Error raised when an `AttributeContainerSchema` is violated.'''
     pass

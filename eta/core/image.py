@@ -12,6 +12,7 @@ voxel51.com
 
 Brian Moore, brian@voxel51.com
 Jason Corso, jason@voxel51.com
+Tyler Ganter, tyler@voxel51.com
 '''
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import

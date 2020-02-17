@@ -5,6 +5,7 @@ Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
+Tyler Ganter, tyler@voxel51.com
 '''
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
@@ -57,6 +58,68 @@ class FrameLabels(etal.Labels):
     def is_empty(self):
         '''Whether the frame has no labels of any kind.'''
         return not self.has_attributes and not self.has_objects
+
+    def iter_attrs(self, attr_type="*", attr_name="*", attr_value="*"):
+        '''Iterate over a subset of attributes in the frame.
+
+        Any search arg with value "*" will match any value, i.e. attr_type="*"
+        will match CategoricalAttribute, BooleanAttribute, NumericAttribute,
+        etc.
+
+        Args:
+            attr_type: the attr to match (such as `NumericAttribute`) or "*"
+            attr_name: the attr name (str) to match or "*"
+            attr_value: the attr value to match or "*"
+
+        Returns:
+            a generator that returns attributes in this frame
+        '''
+        iterator = self.attrs.iter_attrs(
+            attr_type=attr_type,
+            attr_name=attr_name,
+            attr_value=attr_value
+        )
+        for attr in iterator:
+            yield attr
+
+    def iter_detected_objects(self, label="*"):
+        '''Iterate over a subset of detected objects in the frame.
+
+        Args:
+            label: the label value to match or "*". "*" will match any value
+
+        Returns:
+            a generator that returns objects in this frame
+        '''
+        for obj in self.objects.iter_objects(label=label):
+            yield obj
+
+    def iter_detected_object_attrs(self, label="*", attr_type="*",
+                                   attr_name="*", attr_value="*"):
+        '''Iterate over a subset of detected object attributes in the frame.
+
+        Any arg value of "*" will match any value.
+
+        Args:
+            label: the label value to match or "*"
+            attr_type: the attr to match (such as `NumericAttribute`) or "*"
+            attr_name: the attr name (str) to match or "*"
+            attr_value: the attr value to match or "*"
+
+        Returns:
+            a generator that returns tuples:
+                - DetectedObject
+                - Attribute
+            for all attributes in all detected objects in this frame
+        '''
+        iterator = self.objects.iter_object_attrs(
+            label=label,
+            attr_type=attr_type,
+            attr_name=attr_name,
+            attr_value=attr_value
+        )
+        for obj, attr in iterator:
+            yield obj, attr
 
     def add_attribute(self, attr):
         '''Adds the frame-level attribute to the frame.
@@ -192,6 +255,28 @@ class FrameLabelsSchema(etal.LabelsSchema):
     def is_empty(self):
         '''Whether this schema has no labels of any kind.'''
         return not bool(self.attrs) and not bool(self.objects)
+
+    def iter_attr_containers(self, labels):
+        '''Iterate over all attribute containers and their schemas.
+
+        Args:
+            labels: a FrameLabels instance
+
+        Returns:
+            a generator that returns tuples of:
+                - AttributeContainerSchema
+                - AttributeContainer
+            for all attribute containers in the FrameLabels
+        '''
+        if not isinstance(labels, FrameLabels):
+            raise ValueError("Unexpected input type %s" % type(labels))
+
+        # frame attrs
+        yield self.attrs, labels.attrs
+
+        # detected object attrs
+        for obj in labels.objects:
+            yield self.objects[obj.label], obj.attrs
 
     def has_attribute(self, attr_name):
         '''Whether the schema has a frame-level attribute with the given name.
