@@ -93,6 +93,7 @@ class ConcreteDataParams(object):
     '''
 
     def __init__(self):
+        '''Creates a ConcreteDataParams instance.'''
         self._params = {
             "name": None,
             "idx": eta.config.default_sequence_idx,
@@ -102,11 +103,7 @@ class ConcreteDataParams(object):
 
     @property
     def default(self):
-        '''Returns the default parameters
-
-        Returns:
-            the default params dict
-        '''
+        '''The default parameters dictionary.'''
         return self._params
 
     def render_for(self, name, hint=None):
@@ -968,6 +965,40 @@ class JSONFileSequence(FileSequence, ConcreteData):
             FileSequence.is_valid_path(path) and
             etau.has_extension(path, ".json")
         )
+
+
+class CSVFile(File, ConcreteData):
+    '''The base type for csv files.
+
+    Examples:
+        /path/to/data.csv
+    '''
+
+    @staticmethod
+    def gen_path(basedir, params):
+        return os.path.join(basedir, "{name}.csv").format(**params)
+
+    @staticmethod
+    def is_valid_path(path):
+        return File.is_valid_path(path) and etau.has_extension(path, ".csv")
+
+
+class ExcelFile(File, ConcreteData):
+    '''The base type for Excel spreadsheets (.xls or .xlsx).
+
+    Examples:
+        /path/to/data.json
+    '''
+
+    @staticmethod
+    def gen_path(basedir, params):
+        return os.path.join(basedir, "{name}.xlsx").format(**params)
+
+    @staticmethod
+    def is_valid_path(path):
+        return (
+            File.is_valid_path(path) and
+            etau.has_extension(path, ".xls", ".xlsx"))
 
 
 class DataRecords(JSONFile):

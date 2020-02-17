@@ -29,11 +29,21 @@ import glob
 import glob2
 import hashlib
 import inspect
+
+try:
+    # Although StringIO.StringIO's handling of unicode vs bytes is imperfect,
+    # we import it here for use when a text-buffer replacement for `print` in
+    # Python 2.X is required
+    from StringIO import StringIO as _StringIO  # Python 2
+except ImportError:
+    from io import StringIO as _StringIO  # Python 3
+
 import itertools as it
 import logging
 import math
 import mimetypes
 import os
+import pytz
 import random
 import re
 import shutil
@@ -83,30 +93,133 @@ def standarize_strs(arg):
     return arg
 
 
-def get_isotime():
+def get_localtime():
     '''Gets the local time in "YYYY-MM-DD HH:MM:SS" format.
 
     Returns:
-        an "YYYY-MM-DD HH:MM:SS" string
+        "YYYY-MM-DD HH:MM:SS"
     '''
     return str(datetime.now().replace(microsecond=0))
 
 
-def parse_isotime(isotime_str):
+def parse_isotime(isostr_or_none):
     '''Parses the ISO time string into a datetime.
 
+    If the input string has a timezone ("Z" or "+HH:MM"), a timezone-aware
+    datetime will be returned. Otherwise, a naive datetime will be returned.
+    If the input is falsey, None is returned.
+
     Args:
-        isotime_str: an ISO time string like "YYYY-MM-DD HH:MM:SS"
+        isostr_or_none: an ISO time string like "YYYY-MM-DD HH:MM:SS", or None
 
     Returns:
-        a datetime
+        a datetime, or None if the input was empty
     '''
-    return dateutil.parser.parse(isotime_str)
+    if not isostr_or_none:
+        return None
+
+    return dateutil.parser.parse(isostr_or_none)
+
+
+def datetime_delta_seconds(time1, time2):
+    '''Computes the difference between the two datetimes, in seconds.
+
+    If one (but not both) of the datetimes are timezone-aware, the other
+    datetime is assumed to be expressed in UTC time.
+
+    Args:
+        time1: a datetime
+        time2: a datetime
+
+    Returns:
+        the time difference, in seconds
+    '''
+    try:
+        return (time2 - time1).total_seconds()
+    except (TypeError, ValueError):
+        time1 = add_utc_timezone_if_necessary(time1)
+        time2 = add_utc_timezone_if_necessary(time2)
+        return (time2 - time1).total_seconds()
+
+
+def to_naive_local_datetime(dt):
+    '''Converts the datetime to a naive (no timezone) datetime with its time
+    expressed in the local timezone.
+
+    The conversion is performed as follows:
+        (1a) if the input datetime has no timezone, assume it is UTC
+        (1b) if the input datetime has a timezone, convert to UTC
+         (2) convert to local time
+         (3) remove the timezone info
+
+    Args:
+        dt: a datetime
+
+    Returns:
+        a naive datetime in local time
+    '''
+    dt = add_utc_timezone_if_necessary(dt)
+    return dt.astimezone().replace(tzinfo=None)
+
+
+def to_naive_utc_datetime(dt):
+    '''Converts the datetime to a naive (no timezone) datetime with its time
+    expressed in UTC.
+
+    The conversion is performed as follows:
+        (1a) if the input datetime has no timezone, assume it is UTC
+        (1b) if the input datetime has a timezone, convert to UTC
+         (2) remove the timezone info
+
+    Args:
+        dt: a datetime
+
+    Returns:
+        a naive datetime in UTC
+    '''
+    dt = add_utc_timezone_if_necessary(dt)
+    return dt.astimezone(pytz.utc).replace(tzinfo=None)
+
+
+def add_local_timezone_if_necessary(dt):
+    '''Makes the datetime timezone-aware, if necessary, by setting its timezone
+    to the local timezone.
+
+    Args:
+        dt: a datetime
+
+    Returns:
+        a timezone-aware datetime
+    '''
+    if dt.tzinfo is None:
+        dt = dt.astimezone()  # empty ==> local timezone
+
+    return dt
+
+
+def add_utc_timezone_if_necessary(dt):
+    '''Makes the datetime timezone-aware, if necessary, by setting its timezone
+    to UTC.
+
+    Args:
+        dt: a datetime
+
+    Returns:
+        a timezone-aware datetime
+    '''
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=pytz.utc)
+
+    return dt
 
 
 def get_eta_rev():
     '''Returns the hash of the last commit to the current ETA branch or "" if
-    something went wrong with git.'''
+    something went wrong with git.
+
+    Returns:
+        the current ETA revision hash
+    '''
     with WorkingDir(etac.ETA_DIR):
         success, rev, _ = communicate(
             ["git", "rev-parse", "HEAD"], decode=True)
@@ -114,7 +227,11 @@ def get_eta_rev():
 
 
 def has_gpu():
-    '''Determine if the current device has a GPU'''
+    '''Determine if the current device has a GPU.
+
+    Returns:
+        True/False
+    '''
     if sys.platform == "darwin":
         # No GPU on mac
         return False
@@ -220,7 +337,8 @@ def parse_categorical_string(value, choices, ignore_case=True):
 
     if value not in choices:
         raise ValueError(
-            "Unsupported value '%s'; choices are %s" % (orig_value, orig_choices))
+            "Unsupported value '%s'; choices are %s" %
+            (orig_value, orig_choices))
 
     return orig_value
 
@@ -332,6 +450,251 @@ def query_yes_no(question, default=None):
         print("Please respond with 'y[es]' or 'n[o]'")
 
 
+class CaptureStdout(object):
+    '''Class for temporarily capturing stdout.
+
+    This class works by temporarily redirecting `sys.stdout` (and any stream
+    handlers of the root logger that are streaming to `sys.stdout`) to a
+    string buffer in between calls to `start()` and `stop()`.
+    '''
+
+    def __init__(self):
+        '''Creates a CaptureStdout instance.'''
+        self._root_logger = logging.getLogger()
+        self._orig_stdout = None
+        self._cache_stdout = None
+        self._handler_inds = None
+
+    @property
+    def is_started(self):
+        '''Whether stdout is currently being captured.'''
+        return self._cache_stdout is not None
+
+    def start(self):
+        '''Start capturing stdout.'''
+        if self.is_started:
+            return
+
+        self._orig_stdout = sys.stdout
+        self._cache_stdout = _StringIO()
+        self._handler_inds = []
+
+        # Update root logger handlers, if necessary
+        for idx, handler in enumerate(self._root_logger.handlers):
+            if isinstance(handler, logging.StreamHandler):
+                if handler.stream == sys.stdout:
+                    handler.stream = self._cache_stdout
+                    self._handler_inds.append(idx)
+
+        # Update `sys.stdout`
+        sys.stdout.flush()
+        sys.stdout = self._cache_stdout
+
+    def stop(self):
+        '''Stop capturing stdout.
+
+        Returns:
+            a string containing the captured stdout
+        '''
+        if not self.is_started:
+            return ""
+
+        out = self._cache_stdout.getvalue()
+        self._cache_stdout.close()
+        self._cache_stdout = None
+
+        # Revert root logger handlers, if necessary
+        for idx in self._handler_inds:
+            self._root_logger.handlers[idx].stream = self._orig_stdout
+
+        self._handler_inds = None
+
+        # Revert `sys.stdout`
+        sys.stdout = self._orig_stdout
+
+        return out
+
+
+class ProgressBar(object):
+    '''Class for printing a self-updating progress bar to stdout that tracks
+    the progress of an iterative count towards completion (i.e., a total).
+
+    The progress of the bar is updated via `set_iteration()`, and,
+    independently, the progress bar is drawn via `draw()`, which includes a
+    spinning icon to convey that a task is active between changes to its
+    iteration.
+
+    The progress bar can be paused via `pause()`, which allows for other
+    information to be printed to stdout without creating duplicate copies of
+    the bar in your terminal.
+
+    Alternatively, this class can be invoked via the context manager interface,
+    in which case stdout is automatically cached between calls to `draw()` and
+    flushed each time `draw()` is called without interfering with the progress
+    bar. This obviates the need to call `pause()`.
+
+    Example Usage:
+
+        ```
+        import time
+        import eta.core.utils as etau
+
+        with etau.ProgressBar(100) as bar:
+            while not bar.complete:
+                if bar.iteration in {25, 50, 75}:
+                    print("Progress = %.2f" % bar.progress)
+
+                bar.set_iteration(bar.iteration + 1)
+                bar.draw()
+                time.sleep(0.05)
+        ```
+    '''
+
+    def __init__(
+            self, total, prefix=None, suffix=None, num_decimals=1,
+            bar_length=70):
+        '''Creates a ProgressBar instance.
+
+        Args:
+            total: the total number of iterations for the progress bar to
+            prefix: an optional prefix string to prepend to the progress bar
+            suffix: an optional suffix string to append to the progress bar
+            num_decimals: the number of percentage decimals to print. The
+                default is 1
+            bar_length: the length of the bar, in characters. The default is 70
+        '''
+        self._iteration = 0
+        self._total = total
+        self._pctfmt = "%%%d.%df" % (num_decimals + 4, num_decimals)
+        self._bar_len = bar_length
+        self._max_len = 0
+        self._spinner = it.cycle("|/-\\|/-\\")
+        self._prefix = self._parse_prefix(prefix)
+        self._suffix = self._parse_suffix(suffix)
+        self._complete = False
+
+        self._capturing_stdout = False
+        self._cap_obj = None
+
+    def __enter__(self):
+        self._capturing_stdout = True
+        self._cap_obj = CaptureStdout()
+        self._start_capture()
+        return self
+
+    def __exit__(self, *args):
+        self._flush_capture()
+        self._capturing_stdout = False
+        self._cap_obj = None
+
+    @property
+    def capturing_stdout(self):
+        '''Whether stdout is being captured between calls to `draw()`.'''
+        return self._capturing_stdout
+
+    @property
+    def iteration(self):
+        '''The current iteration.'''
+        return self._iteration
+
+    @property
+    def total(self):
+        '''The total iterations.'''
+        return self._total
+
+    @property
+    def progress(self):
+        '''The current progress, in [0, 1].'''
+        if self.total <= 0:
+            return 1.0
+
+        return self.iteration * 1.0 / self.total
+
+    @property
+    def complete(self):
+        '''Whether the task is 100%% complete.'''
+        return self.iteration >= self.total
+
+    def set_iteration(self, iteration, prefix=None, suffix=None):
+        '''Sets the current iteration.
+
+        Args:
+            iteration: the new iteration
+            prefix: an optional new prefix string to prepend to the progress
+                bar. By default, the prefix is unchanged
+            suffix: an optional new suffix string to append to the progress
+                bar. By default, the suffix is unchanged
+        '''
+        self._iteration = max(0, min(iteration, self.total))
+        if prefix is not None:
+            self._prefix = self._parse_prefix(prefix)
+
+        if suffix is not None:
+            self._suffix = self._parse_suffix(suffix)
+
+    def pause(self):
+        '''Pauses the progress bar so that other information can be printed.
+
+        This function overwrites the current progress bar with whitespace and
+        appends a carriage return so that any other information that is printed
+        will overwrite the current progress bar.
+        '''
+        sys.stdout.write("\r" + " " * self._max_len + "\r")
+
+    def draw(self):
+        '''Draws the progress bar at its current progress.
+
+        If the progress is 100%%, a newline is appended.
+        '''
+        if self.capturing_stdout:
+            self._flush_capture()
+
+        sys.stdout.write("\r" + self._render_progress())
+
+        if self.complete:
+            sys.stdout.write("\n")
+            sys.stdout.flush()
+        elif self.capturing_stdout:
+            self._start_capture()
+
+        sys.stdout.flush()
+
+    def _start_capture(self):
+        self._cap_obj.start()
+
+    def _flush_capture(self):
+        if not self._cap_obj.is_started:
+            return
+
+        out = self._cap_obj.stop()
+        self.pause()
+        sys.stdout.write(out)
+        sys.stdout.flush()
+
+    def _render_progress(self):
+        istr = next(self._spinner)
+        plen = int(self._bar_len * self.progress)
+        bstr = "\u2588" * plen
+        if plen < self._bar_len:
+            bstr += istr + "-" * max(0, self._bar_len - 1 - plen)
+
+        pctstr = self._pctfmt % (100.0 * self.progress)
+        pstr = "%s|%s| %s%%%s " % (self._prefix, bstr, pctstr, self._suffix)
+        len_pstr = len(pstr)
+
+        self._max_len = max(self._max_len, len_pstr)
+        pstr += " " * (self._max_len - len_pstr)
+        return pstr
+
+    @staticmethod
+    def _parse_prefix(prefix):
+        return prefix + " " if prefix else ""
+
+    @staticmethod
+    def _parse_suffix(suffix):
+        return " " + suffix if suffix else ""
+
+
 def call(args):
     '''Runs the command via `subprocess.call()`.
 
@@ -397,6 +760,13 @@ def communicate_or_die(args, decode=False):
             raise ExecutableNotFoundError(args[0])
 
         raise
+
+
+def _run_system_os_cmd(args):
+    try:
+        communicate_or_die(args)
+    except ExecutableRuntimeError as e:
+        raise OSError(e)
 
 
 class Timer(object):
@@ -511,13 +881,14 @@ def copy_file(inpath, outpath, check_ext=False):
             paths match. Only applicable if the output path is not a directory
 
     Raises:
-        OSError: if check_ext is True and the input and output paths have
-            different extensions
+        OSError if the copy failed, or if `check_ext == True` and the input and
+            output paths have different extensions
     '''
     if not os.path.isdir(outpath) and check_ext:
         assert_same_extensions(inpath, outpath)
+
     ensure_basedir(outpath)
-    communicate_or_die(["cp", inpath, outpath])
+    _run_system_os_cmd(["cp", inpath, outpath])
 
 
 def link_file(filepath, linkpath, check_ext=False):
@@ -533,14 +904,16 @@ def link_file(filepath, linkpath, check_ext=False):
             directories) of the input and output paths match
 
     Raises:
-        OSError: if check_ext is True and the input and output paths have
-            different extensions
+        OSError if the link failed or if `check_ext == True` and the input and
+            output paths have different extensions
     '''
     if check_ext:
         assert_same_extensions(filepath, linkpath)
+
     ensure_basedir(linkpath)
     if os.path.exists(linkpath):
         delete_file(linkpath)
+
     os.link(os.path.realpath(filepath), linkpath)
 
 
@@ -562,9 +935,11 @@ def symlink_file(filepath, linkpath, check_ext=False):
     '''
     if check_ext:
         assert_same_extensions(filepath, linkpath)
+
     ensure_basedir(linkpath)
     if os.path.exists(linkpath):
         delete_file(linkpath)
+
     os.symlink(os.path.realpath(filepath), linkpath)
 
 
@@ -582,8 +957,8 @@ def move_file(inpath, outpath, check_ext=False):
             paths match. Only applicable if the output path is not a directory
 
     Raises:
-        OSError: if check_ext is True and the input and output paths have
-            different extensions
+        OSError if the move failed, or if `check_ext == True` and the input and
+            output paths have different extensions
     '''
     if not os.path.splitext(outpath)[1]:
         # Output location is a directory
@@ -592,8 +967,10 @@ def move_file(inpath, outpath, check_ext=False):
         # Output location is a file
         if check_ext:
             assert_same_extensions(inpath, outpath)
+
         ensure_basedir(outpath)
-    communicate_or_die(["mv", inpath, outpath])
+
+    _run_system_os_cmd(["mv", inpath, outpath])
 
 
 def move_dir(indir, outdir):
@@ -605,11 +982,15 @@ def move_dir(indir, outdir):
     Args:
         indir: the input directory
         outdir: the output directory to create
+
+    Raises:
+        OSError if the move failed
     '''
     if os.path.isdir(outdir):
         delete_dir(outdir)
+
     ensure_basedir(outdir)
-    communicate_or_die(["mv", indir, outdir])
+    _run_system_os_cmd(["mv", indir, outdir])
 
 
 def partition_files(indir, outdir=None, num_parts=None, dir_size=None):
@@ -660,11 +1041,12 @@ def copy_sequence(inpatt, outpatt, check_ext=False):
             sequences match
 
     Raises:
-        OSError: if check_ext is True and the input and output sequences have
-            different extensions
+        OSError if the copy failed or if `check_ext == True` and the input and
+            output sequences have different extensions
     '''
     if check_ext:
         assert_same_extensions(inpatt, outpatt)
+
     for idx in parse_pattern(inpatt):
         copy_file(inpatt % idx, outpatt % idx)
 
@@ -682,11 +1064,12 @@ def link_sequence(inpatt, outpatt, check_ext=False):
             sequences match
 
     Raises:
-        OSError: if check_ext is True and the input and output sequences have
-            different extensions
+        OSError if the link failed or if `check_ext == True` and the input and
+        output sequences have different extensions
     '''
     if check_ext:
         assert_same_extensions(inpatt, outpatt)
+
     for idx in parse_pattern(inpatt):
         link_file(inpatt % idx, outpatt % idx)
 
@@ -705,11 +1088,12 @@ def symlink_sequence(inpatt, outpatt, check_ext=False):
             sequences match
 
     Raises:
-        OSError: if check_ext is True and the input and output sequences have
-            different extensions
+        OSError if the symlink failed or if `check_ext == True` and the input
+            and output sequences have different extensions
     '''
     if check_ext:
         assert_same_extensions(inpatt, outpatt)
+
     for idx in parse_pattern(inpatt):
         symlink_file(inpatt % idx, outpatt % idx)
 
@@ -727,11 +1111,12 @@ def move_sequence(inpatt, outpatt, check_ext=False):
             sequences match
 
     Raises:
-        OSError: if check_ext is True and the input and output sequences have
-            different extensions
+        OSError if the move failed or if `check_ext == True` and the input and
+            output sequences have different extensions
     '''
     if check_ext:
         assert_same_extensions(inpatt, outpatt)
+
     for idx in parse_pattern(inpatt):
         move_file(inpatt % idx, outpatt % idx)
 
@@ -758,9 +1143,13 @@ def copy_dir(indir, outdir):
     Args:
         indir: the input directory
         outdir: the output directory
+
+    Raises:
+        OSError if the copy failed
     '''
     if os.path.isdir(outdir):
-        communicate_or_die(["rm", "-rf", outdir])
+        _run_system_os_cmd(["rm", "-rf", outdir])
+
     ensure_dir(outdir)
 
     for filepath in list_files(indir, include_hidden_files=True, sort=False):
@@ -781,8 +1170,11 @@ def delete_file(path):
 
     Args:
         path: the filepath
+
+    Raises:
+        OSError if the deletion failed
     '''
-    communicate_or_die(["rm", "-f", path])
+    _run_system_os_cmd(["rm", "-f", path])
     try:
         os.removedirs(os.path.dirname(path))
     except OSError:
@@ -796,9 +1188,12 @@ def delete_dir(dir_):
 
     Args:
         dir_: the directory path
+
+    Raises:
+        OSError if the deletion failed
     '''
     dir_ = os.path.normpath(dir_)
-    communicate_or_die(["rm", "-rf", dir_])
+    _run_system_os_cmd(["rm", "-rf", dir_])
     try:
         os.removedirs(os.path.dirname(dir_))
     except OSError:
@@ -921,7 +1316,7 @@ def assert_same_extensions(*args):
         *args: filepaths
 
     Raises:
-        OSError: if all input paths did not have the same extension
+        OSError if all input paths did not have the same extension
     '''
     if not have_same_extesions(*args):
         raise OSError("Expected %s to have the same extensions" % str(args))
@@ -1422,8 +1817,9 @@ def multiglob(*patterns, **kwargs):
     return it.chain.from_iterable(glob2.iglob(root + p) for p in patterns)
 
 
-def list_files(dir_path, abs_paths=False, recursive=False,
-               include_hidden_files=False, sort=True):
+def list_files(
+        dir_path, abs_paths=False, recursive=False, include_hidden_files=False,
+        sort=True):
     '''Lists the files in the given directory, sorted alphabetically and
     excluding directories and hidden files.
 
@@ -1497,8 +1893,8 @@ def list_subdirs(dir_path, abs_paths=False, recursive=False):
 
 
 def parse_pattern(patt):
-    '''Inspects the files matching the given pattern and returns the numeric
-    indicies of the sequence.
+    '''Inspects the files matching the given numeric pattern and returns the
+    numeric indicies of the sequence.
 
     Args:
         patt: a pattern with a one or more numeric sequences like
@@ -1508,7 +1904,8 @@ def parse_pattern(patt):
         a list (or list of tuples if the pattern contains multiple sequences)
             describing the numeric indices of the files matching the pattern.
             The indices are returned in alphabetical order of their
-            corresponding files
+            corresponding files. If no matches were found, an empty list is
+            returned
     '''
     # Extract indices from exactly matching patterns
     inds = []
@@ -1519,8 +1916,98 @@ def parse_pattern(patt):
     return inds
 
 
+def get_glob_matches(glob_patt):
+    '''Returns a list of file paths matching the given glob pattern.
+
+    The matches are returned in sorted order.
+
+    Args:
+        glob_patt: a glob pattern like "/path/to/files-*.jpg" or
+            "/path/to/files-*-*.jpg"
+
+    Returns:
+        a list of file paths that match `glob_patt`
+    '''
+    return sorted(glob.glob(glob_patt))
+
+
+def parse_glob_pattern(glob_patt):
+    '''Inspects the files matching the given glob pattern and returns a string
+    pattern version of the glob along with the matching strings.
+
+    Args:
+        glob_patt: a glob pattern like "/path/to/files-*.jpg" or
+            "/path/to/files-*-????.jpg"
+
+    Returns:
+        a tuple containing:
+            - a string pattern version of the glob pattern with "%s" in place
+                of each glob pattern (consecutive globs merged into one)
+            - a list (or list of tuples if the string pattern contains multiple
+                "%s") describing the string patterns matching the glob. If no
+                matches were found, an empty list is returned
+    '''
+    match_chunks = _get_match_chunks(glob_patt)
+
+    matches = []
+    for path in get_glob_matches(glob_patt):
+        matches.append(_get_match_gaps(path, match_chunks))
+
+    str_patt = "%s".join(match_chunks)
+    return str_patt, matches
+
+
+def glob_to_str_pattern(glob_patt):
+    '''Converts the glob pattern to a string pattern by replacing glob
+    wildcards with "%s".
+
+    Multiple consecutive glob wildcards are merged into single string patterns.
+
+    Args:
+        glob_patt: a glob pattern like "/path/to/files-*.jpg" or
+            "/path/to/files-*-????.jpg"
+
+    Returns:
+        a string pattern like "/path/to/files-%s.jpg" or
+            "/path/to/files-%s-%s.jpg"
+    '''
+    return "%s".join(_get_match_chunks(glob_patt))
+
+
+def _get_match_chunks(glob_patt):
+    glob_chunks = re.split(r"(?<!\\)(\*|\?|\[.*\])", glob_patt)
+    len_glob_chunks = len(glob_chunks)
+
+    match_chunks = glob_chunks[:1]
+    for idx in range(2, len_glob_chunks, 2):
+        if glob_chunks[idx] or idx == len_glob_chunks - 1:
+            match_chunks.append(glob_chunks[idx])
+
+    return match_chunks
+
+
+def _get_match_gaps(path, match_chunks):
+    match = []
+
+    len_path = len(path)
+    idx = len(match_chunks[0])
+    for chunk in match_chunks[1:]:
+        last_idx = idx
+        len_chunk = len(chunk)
+        if not len_chunk:
+            idx = len_path  # on empty match, consume rest of path
+
+        while path[idx:(idx + len_chunk)] != chunk and idx < len_path:
+            idx += 1
+
+        match.append(path[last_idx:idx])
+        idx += len_chunk
+
+    return tuple(match)
+
+
 def get_pattern_matches(patt):
-    '''Returns a list of file paths matching the given pattern.
+    '''Returns a list of file paths matching the given numeric pattern.
 
     Args:
         patt: a pattern with one or more numeric sequences like
@@ -1565,8 +2052,8 @@ def _iter_pattern_matches(patt):
 
     # Use glob to extract approximate matches
     seq_exp = re.compile(r"(%[0-9]*d)")
-    glob_str = re.sub(seq_exp, "*", _glob_escape(patt))
-    files = sorted(glob.glob(glob_str))
+    glob_patt = re.sub(seq_exp, "*", _glob_escape(patt))
+    files = get_glob_matches(glob_patt)
 
     # Create validation functions
     seq_patts = re.findall(seq_exp, patt)
@@ -1621,8 +2108,8 @@ def parse_dir_pattern(dir_path):
             - a list (or list of tuples if the pattern contains multiple
                 numbers) describing the numeric indices in the directory. The
                 indices are returned in alphabetical order of their
-                corresponding filenames. If no files were found or the
-                directory was non-existent, an empty list is returned
+                corresponding filenames. If no files were found, an empty list
+                is returned
     '''
     try:
         files = list_files(dir_path)

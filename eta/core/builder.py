@@ -138,6 +138,7 @@ class PipelineBuildRequestConfig(Config):
     '''Pipeline build request configuration class.'''
 
     def __init__(self, d):
+        self.name = self.parse_string(d, "name", default=None)
         self.pipeline = self.parse_string(d, "pipeline")
         self.inputs = self.parse_dict(d, "inputs", default={})
         self.outputs = self.parse_dict(d, "outputs", default={})
@@ -163,6 +164,7 @@ class PipelineBuildRequest(Configurable):
     that are `None` must be optional in order for the request to be valid.
 
     Attributes:
+        name: a name for this pipeline run
         pipeline: the name of the pipeline to run
         metadata: the PipelineMetadata instance for the pipeline
         inputs: a dictionary mapping input names to input paths
@@ -185,6 +187,7 @@ class PipelineBuildRequest(Configurable):
         '''
         self.validate(config)
 
+        self.name = config.name
         self.pipeline = config.pipeline
         self.metadata = etap.load_metadata(config.pipeline)
         self.inputs = etau.remove_none_values(config.inputs)
@@ -558,8 +561,9 @@ class PipelineBuilder(object):
                 .validate())
 
         # Build pipeline config
+        name = self.request.name or self.request.pipeline
         pipeline_config = (etap.PipelineConfig.builder()
-            .set(name=self.request.pipeline)
+            .set(name=name)
             .set(status_path=self.pipeline_status_path)
             .set(overwrite=False)
             .set(jobs=jobs)

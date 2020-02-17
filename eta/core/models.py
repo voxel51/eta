@@ -521,7 +521,7 @@ def register_model(name, base_filename, models_dir, manager, description=None):
     # Create model
     logger.info("Creating a new model '%s'", name)
     base_name, version = Model.parse_name(name)
-    date_created = etau.get_isotime()
+    date_created = etau.get_localtime()
     model = Model(
         base_name, base_filename, manager, version=version,
         description=description, date_created=date_created)
@@ -802,7 +802,7 @@ class Model(Serializable):
         default_deployment_config_dict: a dictionary representation of an
             `eta.core.learning.ModelConfig` describing the recommended settings
             for deploying the model
-        date_created: the date that the model was created (if any)
+        date_created: the datetime that the model was created (if any)
     '''
 
     def __init__(
@@ -820,7 +820,7 @@ class Model(Serializable):
             default_deployment_config_dict: (optional) a dictionary
                 representation of an `eta.core.learning.ModelConfig` describing
                 the recommended settings for deploying the model
-            date_created: (optional) the date that the model was created
+            date_created: (optional) the datetime that the model was created
         '''
         self.base_name = base_name
         self.base_filename = base_filename
@@ -907,6 +907,7 @@ class Model(Serializable):
     @classmethod
     def from_dict(cls, d):
         '''Constructs a Model from a JSON dictionary.'''
+        date_created = etau.parse_isotime(d.get("date_created"))
         return cls(
             d["base_name"],
             d["base_filename"],
@@ -915,7 +916,8 @@ class Model(Serializable):
             description=d.get("description", None),
             default_deployment_config_dict=d.get(
                 "default_deployment_config_dict", None),
-            date_created=d.get("date_created", None))
+            date_created=date_created,
+        )
 
 
 class PublishedModel(object):
