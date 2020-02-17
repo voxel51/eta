@@ -2210,12 +2210,6 @@ class EventContainerSchema(etal.LabelsContainerSchema):
         '''
         self.validate_schema_type(schema)
 
-        for other_label in schema.iter_event_labels():
-            if not self.has_event_label(other_label):
-                raise EventContainerSchemaError(
-                    "`self` schema does not contain event label '%s'"
-                    % other_label)
-
         for label, event_schema in iteritems(self.schema):
             if not schema.has_event_label(label):
                 raise EventContainerSchemaError(

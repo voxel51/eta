@@ -1158,12 +1158,6 @@ class AttributeContainerSchema(etal.LabelsContainerSchema):
         '''
         self.validate_schema_type(schema)
 
-        for other_name in schema.iter_attribute_names():
-            if not self.has_attribute(other_name):
-                raise AttributeContainerSchemaError(
-                    "`self` schema does not contain attribute '%s'"
-                    % other_name)
-
         for name, attr_schema in iteritems(self.schema):
             if not schema.has_attribute(name):
                 raise AttributeContainerSchemaError(

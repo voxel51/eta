@@ -1664,12 +1664,6 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
         '''
         self.validate_schema_type(schema)
 
-        for other_label in schema.iter_object_labels():
-            if not self.has_object_label(other_label):
-                raise ObjectContainerSchemaError(
-                    "`self` schema does not contain object label '%s'"
-                    % other_label)
-
         for label, obj_schema in iteritems(self.schema):
             if not schema.has_object_label(label):
                 raise ObjectContainerSchemaError(
