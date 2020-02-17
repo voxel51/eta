@@ -44,7 +44,6 @@ from eta.core.data import AttributeContainer, AttributeContainerSchema, \
 import eta.core.data as etad
 from eta.core.objects import DetectedObjectContainer
 from eta.core.serial import Serializable, Set, BigSet
-from eta.core.utils import MATCH_ANY
 import eta.core.utils as etau
 import eta.core.web as etaw
 
@@ -136,19 +135,19 @@ class ImageLabels(Serializable):
         self.attrs = attrs or AttributeContainer()
         self.objects = objects or DetectedObjectContainer()
 
-    def iter_image_attrs(self, attr_type=MATCH_ANY, attr_name=MATCH_ANY,
-                         attr_value=MATCH_ANY):
+    def iter_image_attrs(self, attr_type="*", attr_name="*",
+                         attr_value="*"):
         iterator = self.attrs.iter_attrs(
             attr_type=attr_type, attr_name=attr_name, attr_value=attr_value)
         for attr in iterator:
             yield attr
 
-    def iter_objects(self, label=MATCH_ANY):
+    def iter_objects(self, label="*"):
         for obj in self.objects.iter_objects(label=label):
             yield obj
 
-    def iter_object_attrs(self, label=MATCH_ANY, attr_type=MATCH_ANY,
-                          attr_name=MATCH_ANY, attr_value=MATCH_ANY):
+    def iter_object_attrs(self, label="*", attr_type="*",
+                          attr_name="*", attr_value="*"):
         iterator = self.objects.iter_object_attrs(
             label=label,
             attr_type=attr_type,

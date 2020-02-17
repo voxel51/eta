@@ -22,7 +22,6 @@ from builtins import *
 from eta.core.data import AttributeContainer
 import eta.core.frames as etaf
 from eta.core.serial import Container, Serializable
-from eta.core.utils import MATCH_ANY
 
 
 class Event(Serializable):
@@ -155,14 +154,14 @@ class EventContainer(Container):
     _ELE_CLS_FIELD = "_EVENT_CLS"
     _ELE_ATTR = "events"
 
-    def iter_events(self, label=MATCH_ANY):
+    def iter_events(self, label="*"):
         for event in self:
-            if label != MATCH_ANY and event.label != label:
+            if label != "*" and event.label != label:
                 continue
             yield event
 
-    def iter_event_attrs(self, label=MATCH_ANY, attr_type=MATCH_ANY,
-                         attr_name=MATCH_ANY, attr_value=MATCH_ANY):
+    def iter_event_attrs(self, label="*", attr_type="*", attr_name="*",
+                         attr_value="*"):
         for event in self.iter_events(label):
             for attr in event.attrs.iter_attrs(
                     attr_type, attr_name, attr_value):

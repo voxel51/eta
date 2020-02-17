@@ -24,7 +24,6 @@ from typeguard import typechecked
 
 import eta.core.data as etad
 from eta.core.serial import Serializable
-from eta.core.utils import MATCH_ANY
 import eta.core.utils as etau
 
 from .utils import is_true
@@ -101,8 +100,8 @@ class AttrFilter(SchemaFilter):
         return self._attr_value
 
     @typechecked
-    def __init__(self, attr_type: str = MATCH_ANY, attr_name: str = MATCH_ANY,
-                 attr_value=MATCH_ANY):
+    def __init__(self, attr_type: str = "*", attr_name: str = "*",
+                 attr_value="*"):
         super(AttrFilter, self).__init__()
         self._attr_type = attr_type
         self._attr_name = attr_name
@@ -117,7 +116,7 @@ class AttrFilter(SchemaFilter):
             yield attr
 
     def create_attr(self):
-        if any(x == MATCH_ANY for x in
+        if any(x == "*" for x in
                (self.attr_type, self.attr_name, self.attr_value)):
             raise ValueError("Cannot create attribute if all fields are not"
                              "explicit")
@@ -131,9 +130,9 @@ class AttrFilter(SchemaFilter):
 
     @classmethod
     def _from_dict(cls, d, *args, **kwargs):
-        attr_type = d.get("attr_type", MATCH_ANY)
-        attr_name = d.get("attr_name", MATCH_ANY)
-        attr_value = d.get("attr_value", MATCH_ANY)
+        attr_type = d.get("attr_type", "*")
+        attr_name = d.get("attr_name", "*")
+        attr_value = d.get("attr_value", "*")
 
         return cls(attr_type=attr_type, attr_name=attr_name,
                    attr_value=attr_value)
@@ -173,7 +172,7 @@ class ThingWithLabelFilter(SchemaFilter):
     def label(self):
         return self._label
 
-    def __init__(self, label=MATCH_ANY):
+    def __init__(self, label="*"):
         super(ThingWithLabelFilter, self).__init__()
         self._label = label
 
@@ -186,7 +185,7 @@ class ThingWithLabelFilter(SchemaFilter):
 
     @classmethod
     def _from_dict(cls, d, *args, **kwargs):
-        label = d.get("label", MATCH_ANY)
+        label = d.get("label", "*")
 
         return cls(label=label)
 
@@ -225,8 +224,8 @@ class AttrOfThingWithLabelFilter(SchemaFilter):
     def attr_value(self):
         return self._attr_value
 
-    def __init__(self, label=MATCH_ANY, attr_type=MATCH_ANY,
-                 attr_name=MATCH_ANY, attr_value=MATCH_ANY):
+    def __init__(self, label="*", attr_type="*",
+                 attr_name="*", attr_value="*"):
         super(AttrOfThingWithLabelFilter, self).__init__()
         self._label = label
         self._attr_type = attr_type
@@ -242,7 +241,7 @@ class AttrOfThingWithLabelFilter(SchemaFilter):
             yield attr
 
     def create_attr(self):
-        if any(x == MATCH_ANY for x in
+        if any(x == "*" for x in
                (self.attr_type, self.attr_name, self.attr_value)):
             raise ValueError("Cannot create attribute if all fields are not"
                              "explicit")
@@ -267,10 +266,10 @@ class AttrOfThingWithLabelFilter(SchemaFilter):
 
     @classmethod
     def _from_dict(cls, d, *args, **kwargs):
-        label = d.get("label", MATCH_ANY)
-        attr_type = d.get("attr_type", MATCH_ANY)
-        attr_name = d.get("attr_name", MATCH_ANY)
-        attr_value = d.get("attr_value", MATCH_ANY)
+        label = d.get("label", "*")
+        attr_type = d.get("attr_type", "*")
+        attr_name = d.get("attr_name", "*")
+        attr_value = d.get("attr_value", "*")
 
         return cls(label=label, attr_type=attr_type, attr_name=attr_name,
                    attr_value=attr_value)
@@ -318,20 +317,20 @@ def _convert_attr_type_and_value(attr_type, attr_value):
     '''Parse the condensed form of `attr_type` and transform `attr_value`
     from string to the appropriate type.
     '''
-    if attr_type != MATCH_ANY:
+    if attr_type != "*":
         attr_type = _CONDENSED_STRING_ATTR_TYPE_MAP[attr_type]
 
-        if attr_value != MATCH_ANY:
+        if attr_value != "*":
             if issubclass(etau.get_class(attr_type), etad.BooleanAttribute):
                 attr_value = is_true(attr_value)
 
             elif issubclass(etau.get_class(attr_type), etad.NumericAttribute):
                 attr_value = float(attr_value)
 
-    elif attr_value != MATCH_ANY:
+    elif attr_value != "*":
         # cannot be of form: attr_type="*", attr_value="explicit value"
         raise ValueError(
             "attr type must be specified if attr value is not '%s'"
-            % MATCH_ANY)
+            % "*")
 
     return attr_type, attr_value

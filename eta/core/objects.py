@@ -22,7 +22,6 @@ from builtins import *
 from eta.core.data import AttributeContainer
 from eta.core.geometry import BoundingBox, HasBoundingBox
 from eta.core.serial import Container, Serializable, deserialize_numpy_array
-from eta.core.utils import MATCH_ANY
 
 
 class DetectedObject(Serializable, HasBoundingBox):
@@ -186,14 +185,14 @@ class DetectedObjectContainer(Container):
     _ELE_CLS_FIELD = "_OBJ_CLS"
     _ELE_ATTR = "objects"
 
-    def iter_objects(self, label=MATCH_ANY):
+    def iter_objects(self, label="*"):
         for obj in self:
-            if label != MATCH_ANY and obj.label != label:
+            if label != "*" and obj.label != label:
                 continue
             yield obj
 
-    def iter_object_attrs(self, label=MATCH_ANY, attr_type=MATCH_ANY,
-                          attr_name=MATCH_ANY, attr_value=MATCH_ANY):
+    def iter_object_attrs(self, label="*", attr_type="*",
+                          attr_name="*", attr_value="*"):
         for obj in self.iter_objects(label):
             for attr in obj.attrs.iter_attrs(attr_type, attr_name, attr_value):
                 yield obj, attr

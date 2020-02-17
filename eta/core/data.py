@@ -30,7 +30,6 @@ import numpy as np
 from eta.core.config import no_default
 import eta.core.numutils as etan
 from eta.core.serial import Container, NpzWriteable, Serializable
-from eta.core.utils import MATCH_ANY
 import eta.core.utils as etau
 
 
@@ -477,14 +476,13 @@ class AttributeContainer(Container):
         '''Returns True/False whether the container has an enforced schema.'''
         return self.schema is not None
 
-    def iter_attrs(self, attr_type=MATCH_ANY, attr_name=MATCH_ANY,
-                   attr_value=MATCH_ANY):
+    def iter_attrs(self, attr_type="*", attr_name="*", attr_value="*"):
         for attr in self:
-            if attr_type != MATCH_ANY and attr.type != attr_type:
+            if attr_type != "*" and attr.type != attr_type:
                 continue
-            if attr_name != MATCH_ANY and attr.name != attr_name:
+            if attr_name != "*" and attr.name != attr_name:
                 continue
-            if attr_value != MATCH_ANY and attr.value != attr_value:
+            if attr_value != "*" and attr.value != attr_value:
                 continue
             yield attr
 

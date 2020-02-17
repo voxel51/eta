@@ -28,7 +28,6 @@ import eta.core.events as etae
 from eta.core.image import ImageLabels
 import eta.core.objects as etao
 import eta.core.serial as etas
-from eta.core.utils import MATCH_ANY
 import eta.core.utils as etau
 from eta.core.video import VideoLabels
 
@@ -344,14 +343,14 @@ class SchemaMapper(etas.Serializable):
 
     def _process_thing_with_label(self, thing_with_label):
         if (hasattr(self.output_map, "label")
-                and self.output_map.label != MATCH_ANY):
+                and self.output_map.label != "*"):
             thing_with_label.label = self.output_map.label
 
     def _process_attr(self, attr: etad.Attribute):
         # Attribute Type
 
         if (hasattr(self.output_map, "attr_type")
-                and self.output_map.attr_type != MATCH_ANY):
+                and self.output_map.attr_type != "*"):
             attr.value = self._map_attr_value(
                 attr.type, self.output_map.attr_type, attr.value)
             attr.type = self.output_map.attr_type
@@ -359,13 +358,13 @@ class SchemaMapper(etas.Serializable):
         # Attribute Name
 
         if (hasattr(self.output_map, "attr_name")
-                and self.output_map.attr_name != MATCH_ANY):
+                and self.output_map.attr_name != "*"):
             attr.name = self.output_map.attr_name
 
         # Attribute Value
 
         if (hasattr(self.output_map, "attr_value")
-                and self.output_map.attr_value != MATCH_ANY):
+                and self.output_map.attr_value != "*"):
             attr.value = self.output_map.attr_value
 
     def _add_and_remove(self, labels):
