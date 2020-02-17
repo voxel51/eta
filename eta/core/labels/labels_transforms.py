@@ -5,10 +5,13 @@ theta.modules.filter_labels
 
 '''
 from collections import OrderedDict, Counter, defaultdict
+from copy import deepcopy
+import logging
 
 import eta.core.data as etad
 import eta.core.datasets as etads
 import eta.core.utils as etau
+import eta.core.video as etav
 
 # rename labels
 rename_labels_config = {
@@ -49,6 +52,9 @@ RAISE = "RAISE"
 SKIP = "SKIP"
 OVERRIDE = "OVERRIDE"
 COLLISION_HANDLE_OPTIONS = {RAISE, SKIP, OVERRIDE}
+
+
+logger = logging.getLogger(__name__)
 
 
 # MANAGER
@@ -94,7 +100,7 @@ class LabelsTransformManager():
             self, set_labels, set_labels_path=None, verbose=20):
         for idx, labels in enumerate(set_labels):
             if verbose and idx % verbose == 0:
-                print("%4d/%4d" % (idx, len(set_labels)))
+                logger.info("%4d/%4d" % (idx, len(set_labels)))
 
             self.transform_labels(labels, labels_path=None)
 
@@ -104,7 +110,7 @@ class LabelsTransformManager():
     def transform_dataset(self, dataset: etads.LabeledDataset, verbose=20):
         for idx, labels_path in enumerate(dataset.iter_labels_paths()):
             if verbose and idx % verbose == 0:
-                print("%4d/%4d" % (idx, len(dataset)))
+                logger.info("%4d/%4d" % (idx, len(dataset)))
 
             labels = dataset.read_labels(labels_path)
 
@@ -128,12 +134,20 @@ class LabelsTransform():
     def __init__(self):
         self.clear_state()
 
+        if type(self) == LabelsTransform:
+            raise TypeError("Cannot instantiate abstract class %s"
+                            % etau.get_class_name(LabelsTransform))
+
     def clear_state(self):
         self._num_labels_transformed = 0
 
     def transform(self, labels, labels_path=None):
         self._num_labels_transformed += 1
 
+
+class LabelsTransformError(Exception):
+    '''Error raised when a LabelsTransform is violated.'''
+    pass
 
 # METADATA
 
@@ -332,7 +346,153 @@ class CheckExclusiveAttributes(LabelsTransform):
 class CheckConstantAttributes(LabelsTransform):
     '''check for attributes that should not vary over time (video attrs,
     constant object attrs, constant event attrs...
+
+    video attrs, check schema and raise error
+    frame attrs, check schema and raise error
+
+    Object attrs, TODO
+
+    DetectedObjectAttrs, TODO
+        collect all detected objects by ID
+        for every constant attr in schema, check objects
+
+    Event Attrs, TODO
+
     '''
+
+    @property
+    def attrs_populated(self):
+        return self._attrs_populated
+
+    @property
+    def attrs_removed(self):
+        return self._attrs_removed
+
+    @property
+    def min_agreement(self):
+        return self._min_agreement
+
+    @property
+    def report(self):
+        d = super(CheckConstantAttributes, self).report
+
+        d["attrs_populated"] = {}
+        for k in sorted(self.attrs_populated.keys()):
+            d["attrs_populated"][k] = self.attrs_populated[k]
+
+        d["attrs_removed"] = {}
+        for k in sorted(self.attrs_removed.keys()):
+            d["attrs_removed"][k] = self.attrs_removed[k]
+
+        return d
+
+    def __init__(self, schema, min_agreement=0.5):
+        if not isinstance(schema, etav.VideoLabelsSchema):
+            raise ValueError("Constant attributes only apply to %s"
+                             % etau.get_class_name(etav.VideoLabelsSchema))
+
+        super(CheckConstantAttributes, self).__init__()
+        self._schema = schema
+
+        if min_agreement < 0 or min_agreement > 1:
+            raise ValueError("min_agreement outside bounds [0, 1]")
+        self._min_agreement = min_agreement
+
+    def clear_state(self):
+        super(CheckConstantAttributes, self).clear_state()
+        self._attrs_populated = defaultdict(int)
+        self._attrs_removed = defaultdict(int)
+
+    def transform(self, labels: etav.VideoLabels, labels_path=None):
+        super(CheckConstantAttributes, self).transform(
+            labels, labels_path=labels_path)
+
+        if not isinstance(labels, etav.VideoLabels):
+            raise ValueError("Constant attributes only apply to %s"
+                             % etau.get_class_name(etav.VideoLabels))
+
+        objects = self._collect_objects(labels.iter_objects())
+
+        for (obj_label, obj_idx), obj_list in objects.items():
+            for attr_schema in self._schema.objects[obj_label].schema.values():
+                if attr_schema.constant:
+                    self._check_constant(attr_schema, obj_list)
+
+    def _collect_objects(self, obj_iterator):
+        objects = defaultdict(list)
+
+        for obj in obj_iterator:
+            if obj.index is not None:
+                objects[(obj.label, obj.index)].append(obj)
+
+        return objects
+
+    def _check_constant(self, schema: etad.AttributeSchema, obj_list):
+        counter = Counter()
+
+        for obj in obj_list:
+            counter.update(
+                set(obj.attrs.get_attr_values_with_name(schema.name)))
+
+        for value, count in counter.most_common(len(counter)):
+            if count / len(obj_list) > self.min_agreement:
+                if count < len(obj_list):
+                    self._populate_missing_attr(schema, value, obj_list)
+            else:
+                self._delete_attr(schema, value, obj_list)
+
+    def _populate_missing_attr(
+            self, schema: etad.AttributeSchema, attr_value, obj_list: list):
+        '''For every DetectedObject in obj_list, add a copy of the attribute
+        with the target attr_value from the nearest adjacent DetectedObject
+        '''
+        key = "%s:%s:%s" % (obj_list[0].label, schema.name, attr_value)
+        self.attrs_populated[key] += 1
+
+        for idx, obj in enumerate(obj_list):
+            attr_vals = obj.attrs.get_attr_values_with_name(schema.name)
+            if attr_value in attr_vals:
+                continue
+
+            left_list = obj_list[idx-1::-1]
+            right_list = obj_list[idx+1::]
+            left_list += [None] * (len(right_list) - len(left_list))
+            right_list += [None] * (len(left_list) - len(right_list))
+            match_obj = None
+
+            for left_obj, right_obj in zip(left_list, right_list):
+                if left_obj:
+                    # check nearest preceding DetectedObject
+                    cur_attr_vals = left_obj.attrs.get_attr_values_with_name(
+                        schema.name)
+                    if attr_value in cur_attr_vals:
+                        match_obj = left_obj
+                        break
+
+                if right_obj:
+                    # check nearest following DetectedObject
+                    cur_attr_vals = right_obj.attrs.get_attr_values_with_name(
+                        schema.name)
+                    if attr_value in cur_attr_vals:
+                        match_obj = right_obj
+                        break
+
+            if match_obj is None:
+                raise LabelsTransformError("This is not good...")
+
+            attr_to_add = \
+                deepcopy(match_obj.attrs.get_attrs_with_name(schema.name)[0])
+
+            obj.add_attribute(attr_to_add)
+
+    def _delete_attr(
+            self, schema: etad.AttributeSchema, attr_value, obj_list: list):
+        key = "%s:%s:%s" % (obj_list[0].label, schema.name, attr_value)
+        self.attrs_removed[key] += 1
+        for obj in obj_list:
+            obj.attrs.filter_elements(filters=[
+                lambda el: el.name != schema.name or el.value != attr_value])
+
 
 
 class CheckAgainstSchema(LabelsTransform):
