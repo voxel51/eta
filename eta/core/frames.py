@@ -34,14 +34,11 @@ class FrameLabels(etal.Labels):
     '''
 
     def __init__(self, attrs=None, objects=None):
-        '''Constructs a FrameLabels instance.
+        '''Creates a FrameLabels instance.
 
         Args:
-            attrs: (optional) AttributeContainer of attributes for the frame.
-                By default, an empty AttributeContainer is created
-            objects: (optional) DetectedObjectContainer of detected objects for
-                the frame. By default, an empty DetectedObjectContainer is
-                created
+            attrs: (optional) an AttributeContainer of attributes
+            objects: (optional) a DetectedObjectContainer of detected objects
         '''
         self.attrs = attrs or etad.AttributeContainer()
         self.objects = objects or etao.DetectedObjectContainer()

@@ -373,7 +373,7 @@ class Object(etal.Labels):
             index: (optional) an index assigned to the object
             uuid: (optional) a UUID assigned to the object
             attrs: (optional) an AttributeContainer of object-level attributes
-            frames: (optional) dictionary mapping frame numbers to
+            frames: (optional) a dictionary mapping frame numbers to
                 DetectedObject instances
             child_objects: (optional) a set of UUIDs of child `Object`s
         '''

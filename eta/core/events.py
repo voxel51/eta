@@ -54,8 +54,8 @@ class Event(etal.Labels):
 
     `Event`s are temporal concepts that describe a collection of information
     about an event in a video. `Event`s can have labels with confidences,
-    event-level attributes that apply to the entire event, frame-level
-    attributes and object detections, as well as child objects and events.
+    event-level attributes, frame-level attributes and object detections, and
+    child objects and events.
 
     Attributes:
         type: the fully-qualified class name of the event

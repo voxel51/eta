@@ -408,8 +408,8 @@ class AttributeSchema(etal.LabelsSchema):
 
         if self.exclusive != schema.exclusive:
             raise AttributeSchemaError(
-                "Expected exclusive '%s'; found '%s'" %
-                (schema.exclusive, self.exclusive))
+                "Expected exclusive '%s' for attribute '%s'; found '%s'" %
+                (schema.exclusive, self.name, self.exclusive))
 
     @staticmethod
     def get_kwargs(d):

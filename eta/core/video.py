@@ -461,23 +461,18 @@ class VideoLabels(etal.Labels, etal.HasLabelsSchema):
     def __init__(
             self, filename=None, metadata=None, attrs=None, frames=None,
             objects=None, events=None, schema=None):
-        '''Constructs a VideoLabels instance.
+        '''Creates a VideoLabels instance.
 
         Args:
-            filename: (optional) filename for the video. By default, no
-                filename is stored
-            metadata: (optional) VideoMetadata describing metadata about the
-                video. By default, no metadata is stored
-            attrs: (optional) AttributeContainer of video-level attributes. By
-                default, an empty AttributeContainer is created
-            frames: (optional) dictionary mapping frame numbers to
-                VideoFrameLabels. By default, an empty dictionary is created
-            objects: (optional) ObjectContainer of objects. By default, an
-                empty ObjectContainer is created
-            events: (optional) EventContainer of events. By default, an empty
-                EventContainer is created
-            schema: (optional) VideoLabelsSchema to enforce on the video. By
-                default, no schema is enforced
+            filename: (optional) the filename of the video
+            metadata: (optional) a VideoMetadata describing metadata about the
+                video
+            attrs: (optional) an AttributeContainer of video-level attributes
+            frames: (optional) a dictionary mapping frame numbers to
+                VideoFrameLabels
+            objects: (optional) an ObjectContainer of objects
+            events: (optional) an EventContainer of events
+            schema: (optional) a VideoLabelsSchema to enforce on the video
         '''
         self.filename = filename
         self.metadata = metadata
