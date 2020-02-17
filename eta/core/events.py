@@ -1323,7 +1323,7 @@ class EventContainer(etal.LabelsContainer):
                          attr_value="*"):
         '''Iterate over a subset of event attributes in the container.
 
-        any arg value of "*" will match any value
+        Any arg value of "*" will match any value.
 
         Args:
             label: the label value to match or "*"
@@ -1332,7 +1332,10 @@ class EventContainer(etal.LabelsContainer):
             attr_value: the attr value to match or "*"
 
         Returns:
-            a generator that returns attributes of events in this container
+            a generator that returns tuples:
+                - Event
+                - Attribute
+            for all attributes in all event in this container
         '''
         for event in self.iter_events(label=label):
             for attr in event.attrs.iter_attrs(

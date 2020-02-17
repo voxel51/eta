@@ -257,6 +257,46 @@ class DetectedObjectContainer(etal.LabelsContainer):
     _ELE_CLS_FIELD = "_OBJ_CLS"
     _ELE_ATTR = "objects"
 
+    def iter_detected_objects(self, label="*"):
+        '''Iterate over a subset of detected objects in the container.
+
+        Args:
+            label: the label value to match or "*". "*" will match any value
+
+        Returns:
+            a generator that returns objects in this container
+        '''
+        for obj in self:
+            if label != "*" and obj.label != label:
+                continue
+            yield obj
+
+    def iter_detected_object_attrs(
+            self, label="*", attr_type="*", attr_name="*", attr_value="*"):
+        '''Iterate over a subset of detected object attributes in the container.
+
+        Any arg value of "*" will match any value.
+
+        Args:
+            label: the label value to match or "*"
+            attr_type: the attr to match (such as `NumericAttribute`) or "*"
+            attr_name: the attr name (str) to match or "*"
+            attr_value: the attr value to match or "*"
+
+        Returns:
+            a generator that returns tuples:
+                - DetectedObject
+                - Attribute
+            for all attributes in all detected objects in this container
+        '''
+        for obj in self.iter_detected_objects(label=label):
+            for attr in obj.attrs.iter_attrs(
+                    attr_type=attr_type,
+                    attr_name=attr_name,
+                    attr_value=attr_value
+            ):
+                yield obj, attr
+
     def get_labels(self):
         '''Returns a set containing the labels of the `DetectedObject`s.
 
@@ -641,6 +681,87 @@ class ObjectContainer(etal.LabelsContainer):
     _ELE_CLS = Object
     _ELE_CLS_FIELD = "_OBJ_CLS"
     _ELE_ATTR = "objects"
+
+    def iter_objects(self, label="*"):
+        '''Iterate over a subset of objects in the container.
+
+        Args:
+            label: the label value to match or "*". "*" will match any value
+
+        Returns:
+            a generator that returns objects in this container
+        '''
+        for obj in self:
+            if label != "*" and obj.label != label:
+                continue
+            yield obj
+
+    def iter_object_attrs(
+            self, label="*", attr_type="*", attr_name="*", attr_value="*"):
+        '''Iterate over a subset of object attributes in the container.
+
+        Any arg value of "*" will match any value.
+
+        Args:
+            label: the label value to match or "*"
+            attr_type: the attr to match (such as `NumericAttribute`) or "*"
+            attr_name: the attr name (str) to match or "*"
+            attr_value: the attr value to match or "*"
+
+        Returns:
+            a generator that returns tuples:
+                - Object
+                - Attribute
+            for all attributes in all objects in this container
+        '''
+        for obj in self.iter_objects(label=label):
+            for attr in obj.attrs.iter_attrs(
+                    attr_type=attr_type,
+                    attr_name=attr_name,
+                    attr_value=attr_value
+            ):
+                yield obj, attr
+
+    def iter_detected_objects(self, label="*"):
+        '''Iterate over a subset of detected objects in objects in the
+        container.
+
+        Args:
+            label: the label value to match or "*". "*" will match any value
+
+        Returns:
+            a generator that returns objects in this container
+        '''
+        for obj in self.iter_objects(label=label):
+            for detobj in obj.child_objects:
+                yield detobj
+
+    def iter_detected_object_attrs(
+            self, label="*", attr_type="*", attr_name="*", attr_value="*"):
+        '''Iterate over a subset of detected object attributes in the container.
+
+        Any arg value of "*" will match any value.
+
+        Args:
+            label: the label value to match or "*"
+            attr_type: the attr to match (such as `NumericAttribute`) or "*"
+            attr_name: the attr name (str) to match or "*"
+            attr_value: the attr value to match or "*"
+
+        Returns:
+            a generator that returns tuples:
+                - DetectedObject
+                - Attribute
+            for all attributes in all detected objects in all objects in this
+            container
+        '''
+        for detobj in self.iter_detected_objects(label=label):
+            for attr in detobj.attrs.iter_attrs(
+                    attr_type=attr_type,
+                    attr_name=attr_name,
+                    attr_value=attr_value
+            ):
+                yield detobj, attr
 
     def get_labels(self):
         '''Returns a set containing the labels of the `Object`s.
