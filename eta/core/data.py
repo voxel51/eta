@@ -553,6 +553,20 @@ class CategoricalAttributeSchema(AttributeSchema):
 
         return _attrs
 
+    def iter_name_values(self):
+        '''Iterate over all pairs of (attr.name, attr.value)
+        Returns:
+            generator that yields (attr.name, attr.value) tuples
+        '''
+        for value in self.categories:
+            yield self.name, value
+
+    def serialize(self, *args, **kwargs):
+        d = super(CategoricalAttributeSchema, self).serialize(*args, **kwargs)
+        if "categories" in d:
+            d["categories"].sort()
+        return d
+
     @staticmethod
     def get_kwargs(d):
         '''Extracts the relevant keyword arguments for this schema from the
@@ -820,6 +834,30 @@ class AttributeContainer(etal.LabelsContainer):
     # Note: we can't use "attributes" here due to `Serializable.attributes()`
     _ELE_ATTR = "attrs"
 
+    def iter_attrs(self, attr_type="*", attr_name="*", attr_value="*"):
+        '''Iterate over a subset of attributes in the container.
+
+        Any search arg with value "*" will match any value, i.e. attr_type="*"
+        will match CategoricalAttribute, BooleanAttribute, NumericAttribute,
+        etc.
+
+        Args:
+            attr_type: the attr to match (such as `NumericAttribute`) or "*"
+            attr_name: the attr name (str) to match or "*"
+            attr_value: the attr value to match or "*"
+
+        Returns:
+            a generator that returns attributes in this container
+        '''
+        for attr in self:
+            if attr_type != "*" and attr.type != attr_type:
+                continue
+            if attr_name != "*" and attr.name != attr_name:
+                continue
+            if attr_value != "*" and attr.value != attr_value:
+                continue
+            yield attr
+
     def sort_by_name(self, reverse=False):
         '''Sorts the `Attribute`s in the container by name.
 
@@ -974,6 +1012,7 @@ class AttributeContainerSchema(etal.LabelsContainerSchema):
                 created
         '''
         self.schema = schema or {}
+        self._validate_schema()
 
     @property
     def is_empty(self):
@@ -1212,6 +1251,15 @@ class AttributeContainerSchema(etal.LabelsContainerSchema):
             }
 
         return cls(schema=schema)
+
+    def _validate_schema(self):
+        '''validate consistency or attribute names with dict keys'''
+        for attr_name, attr_schema in self.schema.items():
+            if attr_schema.name != attr_name:
+                raise AttributeContainerSchemaError(
+                    "Inconsistent attr name:\n\tschema key: %s\n\tAttributeSch"
+                    "ema.name: %s" % (attr_schema.name, attr_name))
+
 
 
 class AttributeContainerSchemaError(etal.LabelsContainerSchemaError):
