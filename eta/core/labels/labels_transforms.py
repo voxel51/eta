@@ -429,13 +429,16 @@ class CheckConstantAttributes(LabelsTransform):
 
     def _check_constant(self, schema: etad.AttributeSchema, obj_list):
         counter = Counter()
-
         for obj in obj_list:
             counter.update(
                 set(obj.attrs.get_attr_values_with_name(schema.name)))
 
-        for value, count in counter.most_common(len(counter)):
-            if count / len(obj_list) > self.min_agreement:
+        for idx, (value, count) in enumerate(counter.most_common(len(counter))):
+            # keep any values with agreement above min
+            keep = count / len(obj_list) > self.min_agreement
+            # but only keep values after the first most common if not exclusive
+            keep &= (idx == 0 or not schema.exclusive)
+            if keep:
                 if count < len(obj_list):
                     self._populate_missing_attr(schema, value, obj_list)
             else:
@@ -482,6 +485,11 @@ class CheckConstantAttributes(LabelsTransform):
 
             attr_to_add = \
                 deepcopy(match_obj.attrs.get_attrs_with_name(schema.name)[0])
+
+            # if exclusive, replace the attr value instead of adding
+            if schema.exclusive:
+                obj.attrs.filter_elements(filters=[
+                    lambda el: el.name != schema.name])
 
             obj.add_attribute(attr_to_add)
 
