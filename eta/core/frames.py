@@ -687,6 +687,18 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         return cls(attrs=attrs, objects=objects)
 
+    @classmethod
+    def from_video_labels_schema(cls, video_labels_schema):
+        '''Create FrameLabelsSchema from VideoLabelsSchema.
+        Args:
+            video_labels_schema: a VideoLabelsSchema instance
+
+        Returns:
+            an cls instance
+        '''
+        return cls(attrs=video_labels_schema.frames,
+                   objects=video_labels_schema.objects)
+
 
 class FrameLabelsSchemaError(etal.LabelsSchemaError):
     '''Error raised when an `FrameLabelsSchema` is violated.'''
