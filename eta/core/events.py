@@ -1305,6 +1305,43 @@ class EventContainer(etal.LabelsContainer):
     _ELE_CLS_FIELD = "_EVENT_CLS"
     _ELE_ATTR = "events"
 
+    def iter_events(self, label="*"):
+        '''Iterate over a subset of events in the container.
+
+        Args:
+            label: the label value to match or "*". "*" will match any value
+
+        Returns:
+            a generator that returns events in this container
+        '''
+        for event in self:
+            if label != "*" and event.label != label:
+                continue
+            yield event
+
+    def iter_event_attrs(self, label="*", attr_type="*", attr_name="*",
+                         attr_value="*"):
+        '''Iterate over a subset of event attributes in the container.
+
+        any arg value of "*" will match any value
+
+        Args:
+            label: the label value to match or "*"
+            attr_type: the attr to match (such as `NumericAttribute`) or "*"
+            attr_name: the attr name (str) to match or "*"
+            attr_value: the attr value to match or "*"
+
+        Returns:
+            a generator that returns attributes of events in this container
+        '''
+        for event in self.iter_events(label=label):
+            for attr in event.attrs.iter_attrs(
+                    attr_type=attr_type,
+                    attr_name=attr_name,
+                    attr_value=attr_value
+            ):
+                yield event, attr
+
     def get_labels(self):
         '''Returns a set containing the labels of the `Event`s.
 
