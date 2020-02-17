@@ -217,6 +217,10 @@ class CheckExclusiveAttributes(LabelsTransform):
             delete both, or raise error
     '''
     @property
+    def attrs_deduplicated(self):
+        return self._attrs_deduplicated
+
+    @property
     def attrs_voted(self):
         return self._attrs_voted
 
@@ -231,6 +235,7 @@ class CheckExclusiveAttributes(LabelsTransform):
     @property
     def report(self):
         d = super(CheckExclusiveAttributes, self).report
+        d["attrs_deduplicated"] = self._attrs_deduplicated
         d["attrs_voted"] = self.attrs_voted
         d["attrs_removed"] = self.attrs_removed
         return d
@@ -245,6 +250,7 @@ class CheckExclusiveAttributes(LabelsTransform):
 
     def clear_state(self):
         super(CheckExclusiveAttributes, self).clear_state()
+        self._attrs_deduplicated = defaultdict(int)
         self._attrs_voted = defaultdict(int)
         self._attrs_removed = defaultdict(int)
 
@@ -260,15 +266,41 @@ class CheckExclusiveAttributes(LabelsTransform):
             schema: etad.AttributeContainerSchema,
     ):
         for attr_schema in schema.schema.values():
-            self._transform_attr(attrs, attr_schema)
+            if attr_schema.exclusive:
+                self._transform_exclusive_attr(attrs, attr_schema)
+            else:
+                self._transform_nonexclusive_attr(attrs, attr_schema)
 
-    def _transform_attr(
+    def _transform_nonexclusive_attr(
             self, attrs: etad.AttributeContainer,
             schema: etad.AttributeSchema,
     ):
-        if not schema.exclusive:
-            return
+        '''this attribute is non-exclusive, but we still want to remove
+        duplicates with the same `name:value` pair
+        '''
+        del_inds = set()
+        found_values = set()
 
+        for idx, attr in enumerate(attrs):
+            if attr.name != schema.name:
+                continue
+
+            if attr.value in found_values:
+                del_inds.add(idx)
+                self._attrs_deduplicated[schema.name] += 1
+
+            else:
+                found_values.add(attr.value)
+
+        attrs.delete_inds(del_inds)
+
+    def _transform_exclusive_attr(
+            self, attrs: etad.AttributeContainer,
+            schema: etad.AttributeSchema,
+    ):
+        '''count all instances of attribute name and vote over values, choosing
+        to keep a value only if there is sufficient "agreement"
+        '''
         matching_attrs = attrs.get_attrs_with_name(schema.name)
 
         if len(matching_attrs) <= 1:
@@ -278,12 +310,14 @@ class CheckExclusiveAttributes(LabelsTransform):
         most_common_val, count = counter.most_common(1)[0]
 
         if count / len(matching_attrs) > self._min_agreement:
+            # find the attr voted to keep
             self._attrs_voted[schema.name] += 1
             for attr in matching_attrs:
                 if attr.value == most_common_val:
                     keep = attr
                     break
         else:
+            # do not keep any attr with this name
             self._attrs_removed[schema.name] += 1
             keep = None
 
