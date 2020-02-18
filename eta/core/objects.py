@@ -366,7 +366,7 @@ class DetectedObjectContainer(etal.LabelsContainer):
         self.filter_elements([filter_func])
 
 
-class Object(etal.Labels, etal.HasLabelsSupport):
+class Object(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
     '''A spatiotemporal object in a video.
 
     `Object`s are spatiotemporal concepts that describe information about an
@@ -479,42 +479,29 @@ class Object(etal.Labels, etal.HasLabelsSupport):
         '''
         self.attrs.add_container(attrs)
 
-    def add_detection(self, obj, frame_number=None):
-        '''Adds the DetectedObject to the object.
-
-        The `label` and `index` fields of the DetectedObject are set to `None`.
+    def add_detection(self, obj, frame_number=None, clean=True):
+        '''Adds the detection to the object.
 
         Args:
             obj: a DetectedObject
             frame_number: a frame number. If omitted, the DetectedObject must
                 have its `frame_number` set
+            clean: whether to set the `label` and `index` fields of the
+                DetectedObject to `None`. By default, this is True
         '''
-        if frame_number is None:
-            if not obj.has_frame_number:
-                raise ValueError(
-                    "Either `frame_number` must be provided or the "
-                    "DetectedObject must have its `frame_number` set")
+        self._add_detected_object(obj, frame_number, clean)
 
-            frame_number = obj.frame_number
-
-        obj.label = None
-        obj.index = None
-        obj.frame_number = frame_number
-        self.frames[frame_number] = obj
-
-    def add_detections(self, objects):
-        '''Adds the `DetectedObject`s to the object.
+    def add_detections(self, objects, clean=True):
+        '''Adds the detections to the object.
 
         The `DetectedObject`s must have their `frame_number`s set.
 
-        The `label` and `index` fields of the `DetectedObject`s are set to
-        `None`.
-
         Args:
             objects: a DetectedObjectContainer
+            clean: whether to set the `label` and `index` fields of the
+                `DetectedObject`s to `None`. By default, this is True
         '''
-        for obj in objects:
-            self.add_detection(obj)
+        self._add_detected_objects(objects, clean)
 
     def add_child_object(self, obj):
         '''Adds the Object as a child of this object.
@@ -546,8 +533,18 @@ class Object(etal.Labels, etal.HasLabelsSupport):
         self.frames = {}
 
     def clear_child_objects(self):
-        '''Removes all child objects from the event.'''
+        '''Removes all child objects from the object.'''
         self.child_objects = set()
+
+    def render_framewise_labels(self):
+        '''Renders a framewise copy of the object.
+
+        Returns:
+            an Object whose labels are all contained in `DetectedObject`s
+        '''
+        renderer = ObjectFrameRenderer(self)
+        frames = renderer.render_all_frames()
+        return Object(frames=frames)
 
     def filter_by_schema(self, schema, objects=None):
         '''Filters the object by the given schema.
@@ -659,6 +656,26 @@ class Object(etal.Labels, etal.HasLabelsSupport):
             obj_cls = cls
 
         return obj_cls._from_dict(d)
+
+    def _add_detected_object(self, obj, frame_number, clean):
+        if frame_number is None:
+            if not obj.has_frame_number:
+                raise ValueError(
+                    "Either `frame_number` must be provided or the "
+                    "DetectedObject must have its `frame_number` set")
+
+            frame_number = obj.frame_number
+
+        if clean:
+            obj.label = None
+            obj.index = None
+
+        obj.frame_number = frame_number
+        self.frames[frame_number] = obj
+
+    def _add_detected_objects(self, objects, clean):
+        for obj in objects:
+            self._add_detected_object(obj, None, clean)
 
     def _compute_support(self):
         return etaf.FrameRanges.from_iterable(self.frames.keys())
@@ -1717,7 +1734,7 @@ class ObjectFrameRenderer(etal.LabelsFrameRenderer):
         if frame_number in self._obj.frames:
             dobj = deepcopy(self._obj.frames[frame_number])
         else:
-            dobj = DetectedObject()
+            dobj = DetectedObject(frame_number=frame_number)
 
         # Render object-level attributes
         if obj_attrs is not None:
