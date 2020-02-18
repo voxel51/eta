@@ -73,7 +73,7 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
             top_k_probs: (optional) dictionary mapping labels to probabilities
             index: (optional) an index assigned to the object
             score: (optional) an optional score for the object
-            frame_number: (optional) the frame number in the this object was
+            frame_number: (optional) the frame number in which this object was
                 detected
             index_in_frame: (optional) the index of the object in the frame
                 where it was detected
@@ -100,8 +100,51 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
 
     @property
     def is_empty(self):
-        '''Whether this instance has no labels of any kind.'''
-        return False
+        '''Whether this object has no labels of any kind.'''
+        return not (
+            self.has_label or self.has_bounding_box or self.has_mask or
+            self.has_confidence or self.has_top_k_probs or self.has_index or
+            self.has_frame_number or self.has_attributes)
+
+    @property
+    def has_label(self):
+        '''Whether this object has a label.'''
+        return self.label is not None
+
+    @property
+    def has_bounding_box(self):
+        '''Whether this object has a bounding box.'''
+        return self.bounding_box is not None
+
+    @property
+    def has_mask(self):
+        '''Whether this object has a segmentation mask.'''
+        return self.mask is not None
+
+    @property
+    def has_confidence(self):
+        '''Whether this object has a confidence.'''
+        return self.confidence is not None
+
+    @property
+    def has_top_k_probs(self):
+        '''Whether this object has top-k probabilities.'''
+        return self.top_k_probs is not None
+
+    @property
+    def has_index(self):
+        '''Whether this object has an index.'''
+        return self.index is not None
+
+    @property
+    def has_frame_number(self):
+        '''Whether this object has a frame number.'''
+        return self.frame_number is not None
+
+    @property
+    def has_attributes(self):
+        '''Whether this object has attributes.'''
+        return bool(self.attrs)
 
     @classmethod
     def get_schema_cls(cls):
@@ -112,36 +155,6 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
         '''
         return ObjectSchema
 
-    @property
-    def has_attributes(self):
-        '''Whether this object has attributes.'''
-        return bool(self.attrs)
-
-    @property
-    def has_mask(self):
-        '''Whether this object has a segmentation mask.'''
-        return self.mask is not None
-
-    def clear_attributes(self):
-        '''Removes all attributes from the object.'''
-        self.attrs = etad.AttributeContainer()
-
-    def add_attribute(self, attr):
-        '''Adds the Attribute to the object.
-
-        Args:
-            attr: an Attribute
-        '''
-        self.attrs.add(attr)
-
-    def add_attributes(self, attrs):
-        '''Adds the AttributeContainer of attributes to the object.
-
-        Args:
-            attrs: an AttributeContainer
-        '''
-        self.attrs.add_container(attrs)
-
     def get_bounding_box(self):
         '''Returns the BoundingBox for the object.
 
@@ -149,6 +162,26 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
              a BoundingBox
         '''
         return self.bounding_box
+
+    def clear_attributes(self):
+        '''Removes all attributes from the object.'''
+        self.attrs = etad.AttributeContainer()
+
+    def add_attribute(self, attr):
+        '''Adds the attribute to the object.
+
+        Args:
+            attr: an Attribute
+        '''
+        self.attrs.add(attr)
+
+    def add_attributes(self, attrs):
+        '''Adds the attributes to the object.
+
+        Args:
+            attrs: an AttributeContainer
+        '''
+        self.attrs.add_container(attrs)
 
     def filter_by_schema(self, schema, allow_none_label=False):
         '''Filters the object by the given schema.
@@ -181,18 +214,15 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
             a list of attribute names
         '''
         _attrs = ["type"]
-
         _noneable_attrs = [
             "label", "bounding_box", "mask", "confidence", "top_k_probs",
             "index", "score", "frame_number", "index_in_frame", "eval_type"]
         _attrs.extend(
             [a for a in _noneable_attrs if getattr(self, a) is not None])
-
         if self.event_uuids:
             _attrs.append("event_uuids")
         if self.attrs:
             _attrs.append("attrs")
-
         return _attrs
 
     @classmethod
@@ -308,8 +338,7 @@ class DetectedObjectContainer(etal.LabelsContainer):
         self.sort_by("frame_number", reverse=reverse)
 
     def filter_by_schema(self, schema):
-        '''Filters the objects/attributes from this container that are not
-        compliant with the given schema.
+        '''Filters the objects in the container by the given schema.
 
         Args:
             schema: an ObjectContainerSchema
