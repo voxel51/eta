@@ -1219,6 +1219,75 @@ class AttributeContainerSchemaError(etal.LabelsContainerSchemaError):
     pass
 
 
+class MaskIndex(etas.Serializable):
+    '''An index of sementics for the values in a mask.'''
+
+    def __init__(self, index=None):
+        '''Creates a MaskIndex instance.
+
+        Args:
+            index: (optional) a dictionary mapping values to `Attribute`s
+                describing the semantics of a mask
+        '''
+        self.index = index or {}
+
+    def __getitem__(self, value):
+        return self.get_attr(value)
+
+    def __setitem__(self, value, attr):
+        self.add_value(value, attr)
+
+    def __delitem__(self, value):
+        self.delete_value(value)
+
+    def get_attr(self, value):
+        '''Gets the attribute for the given mask value.
+
+        Args:
+            value: the mask value
+
+        Returns:
+            an Attribute
+        '''
+        return self.index[value]
+
+    def add_value(self, value, attr):
+        '''Sets the semantics for the given mask value.
+
+        Args:
+            value: the mask value
+            attr: an Attribute
+        '''
+        self.index[value] = attr
+
+    def delete_value(self, value):
+        '''Deteles the given mask value from the index.
+
+        Args:
+            value: the mask value
+        '''
+        del self.index[value]
+
+    @classmethod
+    def from_dict(cls, d):
+        '''Constructs a MaskIndex from a JSON dictionary.
+
+        Args:
+            d: a JSON dictionary
+
+        Returns:
+            a MaskIndex
+        '''
+        index = d.get("index", None)
+        if index is not None:
+            index = {
+                int(value): Attribute.from_dict(ad)
+                for value, ad in iteritems(index)
+            }
+
+        return cls(index=index)
+
+
 class DataFileSequence(etas.Serializable):
     '''Class representing a sequence of data files on disk.
 
