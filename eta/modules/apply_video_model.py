@@ -120,7 +120,7 @@ def _process_video(data, model):
     with video_reader:
         new_labels = model.process(video_reader)
 
-    labels.merge_video_labels(new_labels)
+    labels.merge_labels(new_labels)
 
     logger.info("Writing labels to '%s'", data.output_labels_path)
     labels.write_json(data.output_labels_path)
