@@ -394,7 +394,9 @@ class VideoFrameLabels(FrameLabels):
             objects=frame_labels.objects, events=frame_labels.events)
 
 
-class VideoLabels(etal.Labels, etal.HasLabelsSchema, etal.HasLabelsSupport):
+class VideoLabels(
+        etal.Labels, etal.HasLabelsSchema, etal.HasLabelsSupport,
+        etal.HasFramewiseView):
     '''Class encapsulating labels for a video.
 
     VideoLabels are spatiotemporal concepts that describe the content of a
@@ -754,6 +756,27 @@ class VideoLabels(etal.Labels, etal.HasLabelsSchema, etal.HasLabelsSupport):
         else:
             self.events.add_container(events)
 
+    def clear_video_attributes(self):
+        '''Removes all video-level attributes from the video.'''
+        self.attrs = etad.AttributeContainer()
+
+    def clear_frame_attributes(self):
+        '''Removes all frame-level attributes from the video.'''
+        for frame_labels in self.iter_frames():
+            frame_labels.clear_frame_attributes()
+
+    def clear_objects(self):
+        '''Removes all `Object`s and `DetectedObject`s from the video.'''
+        self.objects = etao.ObjectContainer()
+        for frame_labels in self.iter_frames():
+            frame_labels.clear_objects()
+
+    def clear_events(self):
+        '''Removes all `Event`s and `DetectedEvent`s from the video.'''
+        self.events.clear()
+        for frame_labels in self.iter_frames():
+            frame_labels.clear_events()
+
     def merge_labels(self, video_labels, reindex=False):
         '''Merges the given VideoLabels into this labels.
 
@@ -776,26 +799,15 @@ class VideoLabels(etal.Labels, etal.HasLabelsSchema, etal.HasLabelsSupport):
         for frame_labels in video_labels.iter_frames():
             self.add_frame(frame_labels, overwrite=False)
 
-    def clear_video_attributes(self):
-        '''Removes all video-level attributes from the video.'''
-        self.attrs = etad.AttributeContainer()
+    def render_framewise_labels(self):
+        '''Renders a framewise copy of the labels.
 
-    def clear_frame_attributes(self):
-        '''Removes all frame-level attributes from the video.'''
-        for frame_labels in self.iter_frames():
-            frame_labels.clear_frame_attributes()
-
-    def clear_objects(self):
-        '''Removes all `Object`s and `DetectedObject`s from the video.'''
-        self.objects = etao.ObjectContainer()
-        for frame_labels in self.iter_frames():
-            frame_labels.clear_objects()
-
-    def clear_events(self):
-        '''Removes all `Event`s and `DetectedEvent`s from the video.'''
-        self.events.clear()
-        for frame_labels in self.iter_frames():
-            frame_labels.clear_events()
+        Returns:
+            a VideoLabels whose labels are all contained in `VideoFrameLabels`s
+        '''
+        renderer = VideoLabelsFrameRenderer(self)
+        frames = renderer.render_all_frames()
+        return VideoLabels(frames=frames)
 
     def filter_by_schema(self, schema):
         '''Filters the labels by the given schema.
