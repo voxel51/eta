@@ -22,6 +22,12 @@ import eta.core.data as etad
 import eta.core.events as etae
 import eta.core.labels as etal
 import eta.core.objects as etao
+import eta.core.serial as etas
+
+
+class FrameMaskIndex(etad.MaskIndex):
+    '''An index of semantics for the values in a frame mask.'''
+    pass
 
 
 class FrameLabels(etal.Labels):
@@ -29,35 +35,61 @@ class FrameLabels(etal.Labels):
 
     FrameLabels are spatial concepts that describe a collection of information
     about a specific frame. FrameLabels can have frame-level attributes,
-    object detections, and event detections.
+    object detections, event detections, and segmentation masks.
 
     Attributes:
         frame_number: (optional) the frame number
+        mask: (optional) a segmentation mask for the frame
+        mask_index: (optional) a FrameMaskIndex describing the semantics of the
+            segmentation mask
         attrs: an AttributeContainer of attributes of the frame
         objects: a DetectedObjectContainer of objects in the frame
         events: a DetectedEventContainer of events in the frame
     '''
 
     def __init__(
-            self, frame_number=None, attrs=None, objects=None, events=None):
+            self, frame_number=None, mask=None, mask_index=None, attrs=None,
+            objects=None, events=None):
         '''Creates a FrameLabels instance.
 
         Args:
             frame_number: (optional) a frame number for the labels
+            mask: (optional) a segmentation mask for the frame
+            mask_index: (optional) a FrameMaskIndex describing the semantics of
+                the segmentation mask
             attrs: (optional) an AttributeContainer of attributes for the frame
             objects: (optional) a DetectedObjectContainer of objects for the
                 frame
             events: (optional) a DetectedEventContainer of events for the frame
         '''
         self.frame_number = frame_number
+        self.mask = mask
+        self.mask_index = mask_index
         self.attrs = attrs or etad.AttributeContainer()
         self.objects = objects or etao.DetectedObjectContainer()
         self.events = events or etae.DetectedEventContainer()
 
     @property
+    def is_empty(self):
+        '''Whether the frame has no labels of any kind.'''
+        return not (
+            self.has_mask or self.has_attributes or self.has_objects
+            or self.has_events)
+
+    @property
     def has_frame_number(self):
         '''Whether the frame has a frame number.'''
         return self.frame_number is not None
+
+    @property
+    def has_mask(self):
+        '''Whether this frame has a segmentation mask.'''
+        return self.mask is not None
+
+    @property
+    def has_mask_index(self):
+        '''Whether this frame has a segmentation mask index.'''
+        return self.mask_index is not None
 
     @property
     def has_attributes(self):
@@ -91,11 +123,6 @@ class FrameLabels(etal.Labels):
                 return True
 
         return False
-
-    @property
-    def is_empty(self):
-        '''Whether the frame has no labels of any kind.'''
-        return not (self.has_attributes or self.has_objects or self.has_events)
 
     def add_attribute(self, attr):
         '''Adds the frame-level attribute to the frame.
@@ -176,6 +203,11 @@ class FrameLabels(etal.Labels):
             self._reindex_objects(frame_labels)
             self._reindex_events(frame_labels)
 
+        if frame_labels.has_mask:
+            self.mask = frame_labels.mask
+        if frame_labels.has_mask_index:
+            self.mask_index = frame_labels.mask_index
+
         self.add_attributes(frame_labels.attrs)
         self.add_objects(frame_labels.objects)
         self.add_events(frame_labels.events)
@@ -208,8 +240,12 @@ class FrameLabels(etal.Labels):
             a list of attribute names
         '''
         _attrs = []
-        if self.frame_number:
+        if self.has_frame_number:
             _attrs.append("frame_number")
+        if self.has_mask:
+            _attrs.append("mask")
+        if self.has_mask_index:
+            _attrs.append("mask_index")
         if self.attrs:
             _attrs.append("attrs")
         if self.objects:
@@ -219,16 +255,26 @@ class FrameLabels(etal.Labels):
         return _attrs
 
     @classmethod
-    def from_dict(cls, d):
+    def from_dict(cls, d, **kwargs):
         '''Constructs a FrameLabels from a JSON dictionary.
 
         Args:
             d: a JSON dictionary
+            **kwargs: keyword arguments that have already been parsed by a
+            subclass
 
         Returns:
             a FrameLabels
         '''
         frame_number = d.get("frame_number", None)
+
+        mask = d.get("mask", None)
+        if mask is not None:
+            mask = etas.deserialize_numpy_array(mask)
+
+        mask_index = d.get("mask_index", None)
+        if mask_index is not None:
+            mask_index = FrameMaskIndex.from_dict(mask_index)
 
         attrs = d.get("attrs", None)
         if attrs is not None:
@@ -243,8 +289,8 @@ class FrameLabels(etal.Labels):
             events = etae.DetectedEventContainer.from_dict(events)
 
         return cls(
-            frame_number=frame_number, attrs=attrs, objects=objects,
-            events=events)
+            frame_number=frame_number, mask=mask, mask_index=mask_index,
+            attrs=attrs, objects=objects, events=events, **kwargs)
 
     def _reindex_objects(self, frame_labels):
         self_indices = self._get_object_indices(self)
