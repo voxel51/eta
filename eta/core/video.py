@@ -42,7 +42,7 @@ import numpy as np
 
 import eta.core.data as etad
 import eta.core.events as etae
-from eta.core.frames import FrameLabels
+from eta.core.frames import FrameLabels, FrameMaskIndex
 import eta.core.frameutils as etaf
 import eta.core.gps as etag
 import eta.core.image as etai
@@ -347,8 +347,16 @@ class VideoMetadata(etas.Serializable):
 class VideoFrameLabels(FrameLabels):
     '''FrameLabels for a specific frame of a video.
 
+    VideoFrameLabels are spatial concepts that describe a collection of
+    information about a specific frame in a video. VideoFrameLabels can have
+    frame-level attributes, object detections, event detections, and
+    segmentation masks.
+
     Attributes:
         frame_number: the frame number
+        mask: (optional) a segmentation mask for the frame
+        mask_index: (optional) a FrameMaskIndex describing the semantics of the
+            segmentation mask
         attrs: an AttributeContainer of attributes of the frame
         objects: a DetectedObjectContainer of objects in the frame
         events: a DetectedEventContainer of events in the frame
@@ -376,7 +384,8 @@ class VideoFrameLabels(FrameLabels):
             a VideoFrameLabels
         '''
         return cls(
-            frame_number=frame_number, attrs=image_labels.attrs,
+            frame_number=frame_number, mask=image_labels.mask,
+            mask_index=image_labels.mask_index, attrs=image_labels.attrs,
             objects=image_labels.objects, events=image_labels.events)
 
     @classmethod
@@ -390,7 +399,8 @@ class VideoFrameLabels(FrameLabels):
             a VideoFrameLabels
         '''
         return cls(
-            frame_number=frame_labels.frame_number, attrs=frame_labels.attrs,
+            frame_number=frame_labels.frame_number, mask=frame_labels.mask,
+            mask_index=frame_labels.mask_index, attrs=frame_labels.attrs,
             objects=frame_labels.objects, events=frame_labels.events)
 
 
@@ -408,6 +418,8 @@ class VideoLabels(
         filename: (optional) the filename of the video
         metadata: (optional) a VideoMetadata of metadata about the video
         support: a FrameRanges instance describing the support of the labels
+        mask_index: (optional) a FrameMaskIndex describing the semantics of all
+            frame segmentation masks in the video
         attrs: an AttributeContainer of video-level attributes
         frames: a dictionary mapping frame numbers to VideoFrameLabels
         objects: an ObjectContainer of objects
@@ -416,8 +428,8 @@ class VideoLabels(
     '''
 
     def __init__(
-            self, filename=None, metadata=None, support=None, attrs=None,
-            frames=None, objects=None, events=None, schema=None):
+            self, filename=None, metadata=None, support=None, mask_index=None,
+            attrs=None, frames=None, objects=None, events=None, schema=None):
         '''Creates a VideoLabels instance.
 
         Args:
@@ -425,6 +437,8 @@ class VideoLabels(
             metadata: (optional) a VideoMetadata of metadata about the video
             support: (optional) a FrameRanges instance describing the frozen
                 support of the labels
+            mask_index: (optional) a FrameMaskIndex describing the semantics of
+                all frame segmentation masks in the video
             attrs: (optional) an AttributeContainer of video-level attributes
             frames: (optional) a dictionary mapping frame numbers to
                 VideoFrameLabels
@@ -434,6 +448,7 @@ class VideoLabels(
         '''
         self.filename = filename
         self.metadata = metadata
+        self.mask_index = mask_index
         self.attrs = attrs or etad.AttributeContainer()
         self.frames = frames or {}
         self.objects = objects or etao.ObjectContainer()
@@ -506,6 +521,11 @@ class VideoLabels(
             an iterator over Events
         '''
         return iter(self.events)
+
+    @property
+    def has_mask_index(self):
+        '''Whether the video has a video-wide frame segmentation mask index.'''
+        return self.mask_index is not None
 
     @property
     def has_video_attributes(self):
@@ -851,6 +871,8 @@ class VideoLabels(
             _attrs.append("schema")
         if self.is_support_frozen:
             _attrs.append("support")
+        if self.has_mask_index:
+            _attrs.append("mask_index")
         if self.attrs:
             _attrs.append("attrs")
         if self.frames:
@@ -915,6 +937,10 @@ class VideoLabels(
         if support is not None:
             support = etaf.FrameRanges.from_dict(support)
 
+        mask_index = d.get("mask_index", None)
+        if mask_index is not None:
+            mask_index = FrameMaskIndex.from_dict(mask_index)
+
         attrs = d.get("attrs", None)
         if attrs is not None:
             attrs = etad.AttributeContainer.from_dict(attrs)
@@ -939,8 +965,9 @@ class VideoLabels(
             schema = VideoLabelsSchema.from_dict(schema)
 
         return cls(
-            filename=filename, metadata=metadata, support=support, attrs=attrs,
-            frames=frames, objects=objects, events=events, schema=schema)
+            filename=filename, metadata=metadata, support=support,
+            mask_index=mask_index, attrs=attrs, frames=frames, objects=objects,
+            events=events, schema=schema)
 
     def _ensure_frame(self, frame_number):
         if not self.has_frame(frame_number):
