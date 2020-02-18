@@ -211,14 +211,17 @@ class HasLabelsSchema(object):
     For efficiency, schemas are not automatically enforced when new labels are
     added to `HasLabelsSchema` instances. Rather, users must manually call
     `validate_schema()` when they would like to validate the schema.
+
+    Attributes:
+        schema: the enforced LabelsSchema, or None
     '''
 
     def __init__(self, schema=None):
         '''Initializes the `HasLabelsSchema` mixin.
 
         Args:
-            schema: (optional) an optional LabelsSchema to enforce on the
-                labels. By default, no schema is enforced
+            schema: (optional) a LabelsSchema to enforce on the labels. By
+                default, no schema is enforced
         '''
         self.schema = schema
 
