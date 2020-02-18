@@ -34,6 +34,7 @@ import os
 import pickle as _pickle
 import pprint
 from uuid import uuid4
+import zlib
 
 import numpy as np
 
@@ -199,7 +200,7 @@ def serialize_numpy_array(array):
     #
     with io.BytesIO() as f:
         np.save(f, array, allow_pickle=False)
-        bytes_str = f.getvalue()
+        bytes_str = zlib.compress(f.getvalue())
 
     return b64encode(bytes_str).decode("ascii")
 
@@ -217,7 +218,7 @@ def deserialize_numpy_array(numpy_str):
     # We currently serialize in numpy format. Other alternatives considered
     # were `pickle.loads(numpy_str)` and HDF5
     #
-    bytes_str = b64decode(numpy_str.encode("ascii"))
+    bytes_str = zlib.decompress(b64decode(numpy_str.encode("ascii")))
     with io.BytesIO(bytes_str) as f:
         return np.load(f)
 
