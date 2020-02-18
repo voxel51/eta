@@ -368,6 +368,21 @@ class HasLabelsSupport(object):
             "subclasses must implement _compute_support()")
 
 
+class HasFramewiseView(object):
+    '''Mixin for Label classes that describe videos and can be rendered in
+    a framewise view by a LabelsFrameRenderer.
+    '''
+
+    def render_framewise_labels(self):
+        '''Renders a framewise copy of the labels.
+
+        Returns:
+            an framewise copy of the labels
+        '''
+        raise NotImplementedError(
+            "subclasses must implement render_framewise_labels()")
+
+
 class LabelsContainer(Labels, HasLabelsSchema, etas.Container):
     '''Base class for `eta.core.serial.Container`s of Labels.
 
