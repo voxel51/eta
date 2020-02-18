@@ -366,7 +366,7 @@ class DetectedObjectContainer(etal.LabelsContainer):
         self.filter_elements([filter_func])
 
 
-class Object(etal.Labels):
+class Object(etal.Labels, etal.HasLabelsSupport):
     '''A spatiotemporal object in a video.
 
     `Object`s are spatiotemporal concepts that describe information about an
@@ -379,8 +379,7 @@ class Object(etal.Labels):
         type: the fully-qualified class name of the object
         label: (optional) the object label
         confidence: (optional) label confidence in [0, 1]
-        support: a FrameRanges instance describing the frames for which the
-            object exists
+        support: a FrameRanges instance describing the support of the object
         index: (optional) an index assigned to the object
         uuid: (optional) a UUID assigned to the object
         attrs: (optional) AttributeContainer of object-level attributes of the
@@ -398,9 +397,8 @@ class Object(etal.Labels):
         Args:
             label: (optional) the object label
             confidence: (optional) the label confidence in [0, 1]
-            support: (optional) a FrameRanges instance describing the frames
-                for which the object exists. If omitted, the support is
-                inferred from the frames and children of the object
+            support: (optional) a FrameRanges instance describing the frozen
+                support of the object
             index: (optional) an index assigned to the object
             uuid: (optional) a UUID assigned to the object
             attrs: (optional) an AttributeContainer of object-level attributes
@@ -416,35 +414,12 @@ class Object(etal.Labels):
         self.attrs = attrs or etad.AttributeContainer()
         self.frames = frames or {}
         self.child_objects = set(child_objects or [])
-
-        self._support = support
+        etal.HasLabelsSupport.__init__(self, support=support)
 
     @property
     def is_empty(self):
         '''Whether this instance has no labels of any kind.'''
         return False
-
-    @property
-    def support(self):
-        '''A FrameRanges instance describing the frames for which this object
-        exists.
-
-        If the object has an explicit `support`, it is returned. Otherwise, the
-        support is inferred from the frames with DetectedObjects. Note that
-        the latter excludes child objects.
-        '''
-        if self._support is not None:
-            return self._support
-
-        return etaf.FrameRanges.from_iterable(self.frames.keys())
-
-    def iter_detections(self):
-        '''Returns an iterator over the DetectedObjects in the object.
-
-        Returns:
-            an iterator over DetectedObjects
-        '''
-        return itervalues(self.frames)
 
     @property
     def has_attributes(self):
@@ -474,6 +449,18 @@ class Object(etal.Labels):
     def has_child_objects(self):
         '''Whether the object has at least one child Object.'''
         return bool(self.child_objects)
+
+    def iter_detections(self):
+        '''Returns an iterator over the `DetectedObject`s for each frame of the
+        object.
+
+        The frames are traversed in sorted order.
+
+        Returns:
+            an iterator over `DetectedObject`s
+        '''
+        for frame_number in sorted(self.frames):
+            yield self.frames[frame_number]
 
     def add_object_attribute(self, attr):
         '''Adds the object-level attribute to the object.
