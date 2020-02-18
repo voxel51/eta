@@ -32,15 +32,16 @@ class LabelsTransformerManager():
         List of Labels
     '''
 
-    def __init__(self):
-        self._transforms = OrderedDict()
+    @property
+    def transformers(self):
+        return self._transformers
 
-    def list_transformers(self):
-        return [etau.get_class_name(x) for x in self._transforms]
+    def __init__(self):
+        self._transformers = OrderedDict()
 
     def get_reports(self):
         reports = {}
-        for k, transform in self._transforms.items():
+        for k, transform in self._transformers.items():
             reports[k] = transform.report
         return reports
 
@@ -49,14 +50,14 @@ class LabelsTransformerManager():
             raise ValueError(
                 "Unexpected type: '%s'".format(type(transformer)))
 
-        k = str(len(self._transforms)) + " - " + \
+        k = str(len(self._transformers)) + " - " + \
             etau.get_class_name(transformer)
 
-        self._transforms[k] = transformer
+        self._transformers[k] = transformer
 
     def transform_labels(self, labels, labels_path=None):
-        for transform in self._transforms.values():
-            transform.transform(labels, labels_path=None)
+        for transformer in self._transformers.values():
+            transformer.transform(labels, labels_path=None)
 
         if labels_path:
             labels.write_json(labels_path)
@@ -125,24 +126,6 @@ class LabelsMapper(LabelsTransformer):
 
 
 class SyntaxChecker(LabelsTransformer):
-    pass
-
-
-class SchemaFilter(LabelsTransformer):
-    pass
-
-
-class ConfidenceThresholder(LabelsTransformer):
-    pass
-
-
-# TODO
-
-'''
-1) eta.core.image.ImageLabelsSyntaxChecker
-   eta.core.video.VideoLabelsSyntaxChecker
-'''
-class MatchSyntax(LabelsTransformer):
     '''Using a target schema, match capitalization and underscores versus spaces
     to match the schema
     '''
@@ -159,11 +142,39 @@ class MatchSyntax(LabelsTransformer):
     def unfixable_schema(self):
         return self._unfixable_schema
 
-    def __init__(self, target_schema, inplace=False):
-        super(MatchSyntax, self).__init__(inplace=inplace)
+    @property
+    def report(self):
+        d = super(SyntaxChecker, self).report
+        d["target_schema"] = self.target_schema
+        d["fixable_schema"] = self.fixable_schema
+        d["unfixable_schema"] = self.unfixable_schema
+        return d
+
+    def __init__(self, target_schema):
+        super(SyntaxChecker, self).__init__()
         self._target_schema = target_schema
+
+    def clear_state(self):
+        super(SyntaxChecker, self).clear_state()
         self._fixable_schema = None
         self._unfixable_schema = None
+
+    def transform(self, labels, labels_path=None):
+        super(SyntaxChecker, self).transform(labels, labels_path=labels_path)
+
+        raise NotImplementedError("Yeah Tyler!")
+
+
+
+class SchemaFilter(LabelsTransformer):
+    pass
+
+
+class ConfidenceThresholder(LabelsTransformer):
+    pass
+
+
+# TODO
 
 
 class MapLabels(LabelsTransformer):

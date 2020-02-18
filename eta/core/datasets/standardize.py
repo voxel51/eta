@@ -33,59 +33,6 @@ from .labeled_datasets import LabeledDatasetError, \
 logger = logging.getLogger(__name__)
 
 
-def ensure_labels_filename_property(dataset, audit_only=True):
-    '''Audit labels.filename's for each record in a dataset and optionally
-    populate this field.
-
-    Args:
-        dataset: a `LabeledDataset` instance
-        audit_only: If False, modifies the labels in place to populate the
-            filename attribute
-
-    Returns:
-        a tuple of:
-            missing_count: integer count of labels files without a
-                labels.filename field
-            mismatch_count: integer count of labels files with a labels.filename
-                field inconsistent with the data record filename
-
-    Raises:
-        LabeledDatasetError if audit_only==False and a mismatching filename is
-            found.
-    '''
-    logger.info("Checking labels.filename's for labeled dataset...")
-
-    missing_count = 0
-    mismatch_count = 0
-
-    for idx, (data_path, labels_path) in enumerate(dataset.iter_paths()):
-        if idx % 20 == 0:
-            logger.info("%4d/%4d" % (idx, len(dataset)))
-
-        data_filename = os.path.basename(data_path)
-        labels = dataset.read_labels(labels_path)
-
-        if labels.filename is None:
-            missing_count += 1
-
-            if not audit_only:
-                labels.filename = data_filename
-                dataset.write_labels(labels, labels_path)
-
-        elif labels.filename != data_filename:
-            mismatch_count += 1
-
-            if not audit_only:
-                raise LabeledDatasetError(
-                    "Filename: '%s' in labels file does not match data"
-                    " filename: '%s'." % (labels.filename, data_filename)
-                )
-
-    logger.info("Complete: %d missing filenames and %d mismatched filenames"
-                % (missing_count, mismatch_count))
-
-    return missing_count, mismatch_count
-
 
 def check_dataset_syntax(dataset, target_schema, audit_only=True):
     '''Audit labels.filename's for each record in a dataset and optionally
