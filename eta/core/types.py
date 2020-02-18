@@ -1186,8 +1186,31 @@ class BoundingBox(JSONFile):
     pass
 
 
+class VideoObject(JSONFile):
+    '''A spatiotemporal object in a video.
+
+    This type is implemented in ETA by the `eta.core.objects.Object` class.
+
+    Examples:
+        /path/to/video_object.json
+    '''
+    pass
+
+
+class VideoObjects(JSONFile):
+    '''A list of spatiotemporal objects in a video.
+
+    This type is implemented in ETA by the `eta.core.objects.ObjectContainer`
+    class.
+
+    Examples:
+        /path/to/video_objects.json
+    '''
+    pass
+
+
 class DetectedObject(JSONFile):
-    '''A detected object in an image or video.
+    '''A detected object in an image or video frame.
 
     This type is implemented in ETA by the `eta.core.objects.DetectedObject`
     class.
@@ -1199,7 +1222,7 @@ class DetectedObject(JSONFile):
 
 
 class DetectedObjects(JSONFile):
-    '''A list of detected objects in an image or video.
+    '''A list of detected objects in image(s) or video frame(s).
 
     This type is implemented in ETA by the
     `eta.core.objects.DetectedObjectContainer` class.
@@ -1220,26 +1243,49 @@ class DetectedObjectsSequence(JSONFileSequence):
     pass
 
 
-class Event(JSONFile):
-    '''An event in a video.
+class VideoEvent(JSONFile):
+    '''A spatiotemporal event in a video.
 
-    This type interface is implemented in ETA by the `eta.core.events.Event`
-    class.
+    This type is implemented in ETA by the `eta.core.events.Event` class.
 
     Examples:
-        /path/to/event.json
+        /path/to/video_event.json
     '''
     pass
 
 
-class Events(JSONFile):
-    '''A list of events in a video.
+class VideoEvents(JSONFile):
+    '''A list of spatiotemporal events in a video.
 
-    This type interface is implemented in ETA by the
-    `eta.core.events.EventContainer` class.
+    This type is implemented in ETA by the `eta.core.events.EventContainer`
+    class.
 
     Examples:
-        /path/to/events.json
+        /path/to/video_events.json
+    '''
+    pass
+
+
+class DetectedEvent(JSONFile):
+    '''A detected event in an image or video frame.
+
+    This type is implemented in ETA by the `eta.core.events.DetectedEvent`
+    class.
+
+    Examples:
+        /path/to/detected_event.json
+    '''
+    pass
+
+
+class DetectedEvents(JSONFile):
+    '''A list of detected events in image(s) or video frame(s).
+
+    This type is implemented in ETA by the
+    `eta.core.objects.DetectedEventContainer` class.
+
+    Examples:
+        /path/to/detected_events.json
     '''
     pass
 
