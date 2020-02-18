@@ -999,6 +999,12 @@ class VideoLabels(
         else:
             self.frames[frame_number].merge_labels(frame_labels)
 
+    def _compute_support(self):
+        frame_ranges = etaf.FrameRanges.from_iterable(self.frames.keys())
+        frame_ranges.merge(*[obj.support for obj in self.objects])
+        frame_ranges.merge(*[event.support for event in self.events])
+        return frame_ranges
+
     def _reindex_objects(self, video_labels):
         self_indices = self._get_object_indices(self)
         if not self_indices:
