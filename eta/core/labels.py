@@ -14,9 +14,12 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
+from future.utils import iteritems
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
+
+from collections import defaultdict
 
 import eta.core.serial as etas
 import eta.core.utils as etau
@@ -275,6 +278,91 @@ class HasLabelsSchema(object):
     def remove_schema(self):
         '''Removes the enforced schema from the labels.'''
         self.set_schema(None)
+
+
+class HasLabelsSupport(object):
+    '''Mixin for `Label` classes that describe videos and can keep track of
+    their own support, i.e., the frames for which they contain labels.
+
+    The support is represented via a `eta.core.frameutils.FrameRanges`
+    instance.
+
+    For efficiency, supports should not be automatically updated when new
+    labels are added to `HasLabelsSupport` instances. Rather, the support is
+    dynamically computed when the `support` property is accessed.
+    Alternatively, the current support can be frozen via `freeze_support()`
+    to avoid recomputing it each time `support` is called.
+    '''
+
+    def __init__(self, support=None):
+        '''Initializes the `HasLabelsSupport` mixin.
+
+        Args:
+            support: (optional) a FrameRanges instance describing the frozen
+                support of the labels. By default, the support is not frozen
+        '''
+        self._support = support
+
+    @property
+    def support(self):
+        '''A FrameRanges instance describing the frames for which this instance
+        contains labels.
+
+        If this instance has a frozen support, it is returned. Otherwise, the
+        support is dynamically computed via `_compute_support()`.
+        '''
+        if self.is_support_frozen:
+            return self._support
+
+        return self._compute_support()
+
+    @property
+    def is_support_frozen(self):
+        '''Whether the support is currently frozen.'''
+        return self._support is not None
+
+    def set_support(self, support):
+        '''Sets the support to the given value.
+
+        This action freezes the support for this instance.
+
+        Args:
+            support: a FrameRanges
+        '''
+        self._support = support
+
+    def merge_support(self, support):
+        '''Merges the given support into the current support.
+
+        This action freezes the support for this instance.
+
+        Args:
+            support: a FrameRanges
+        '''
+        new_support = self.support.merge(support)
+        self.set_support(new_support)
+
+    def freeze_support(self):
+        '''Freezes the support to the current `support`.
+
+        This optional optimization is useful to avoid recalculating the support
+        of the labels each time `support` is called.
+        '''
+        if not self.is_support_frozen:
+            self._support = self._compute_support()
+
+    def clear_support(self):
+        '''Clears the frozen support, if necessary.'''
+        self._support = None
+
+    def _compute_support(self):
+        '''Computes the current support of the labels in this instance.
+
+        Returns:
+            a FrameRanges
+        '''
+        raise NotImplementedError(
+            "subclasses must implement _compute_support()")
 
 
 class LabelsContainer(Labels, HasLabelsSchema, etas.Container):
