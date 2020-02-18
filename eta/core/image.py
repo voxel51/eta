@@ -36,11 +36,8 @@ import cv2
 import numpy as np
 
 import eta
-import eta.core.data as etad
-import eta.core.events as etae
 import eta.core.frames as etaf
 import eta.core.labels as etal
-import eta.core.objects as etao
 import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.web as etaw
@@ -109,34 +106,33 @@ class ImageLabels(etaf.FrameLabels):
 
     ImageLabels are spatial concepts that describe a collection of information
     about a specific image. ImageLabels can have frame-level attributes,
-    object detections, and event detections.
+    object detections, event detections, and segmentation masks.
 
     Attributes:
-        filename: the filename of the image
-        metadata: an ImageMetadata describing metadata about the image
+        filename: (optional) the filename of the image
+        metadata: (optional) an ImageMetadata describing metadata about the
+            image
+        mask: (optiona) a segmentation mask for the image
+        mask_index: (optional) a FrameMaskIndex describing the semantics of the
+            segmentation mask
         attrs: an AttributeContainer of attributes of the image
         objects: a DetectedObjectContainer of objects in the image
         events: a DetectedEventContainer of events in the image
     '''
 
-    def __init__(
-            self, filename=None, metadata=None, attrs=None, objects=None,
-            events=None):
+    def __init__(self, filename=None, metadata=None, **kwargs):
         '''Creates an ImageLabels instance.
 
         Args:
             filename: (optional) the filename of the image
             metadata: (optional) an ImageMetadata instance describing metadata
                 about the image
-            attrs: (optional) an AttributeContainer of attributes for the image
-            objects: (optional) a DetectedObjectContainer of objects for the
-                image
-            events: (optional) a DetectedEventContainer of events for the image
+            **kwargs: valid keyword arguments for FrameLabels(**kwargs)
         '''
         self.filename = filename
         self.metadata = metadata
-        super(ImageLabels, self).__init__(
-            attrs=attrs, objects=objects, events=events)
+        kwargs.pop("frame_number", None) # ImageLabels don't use `frame_number`
+        super(ImageLabels, self).__init__(**kwargs)
 
     @classmethod
     def from_frame_labels(cls, frame_labels, filename=None, metadata=None):
@@ -151,7 +147,8 @@ class ImageLabels(etaf.FrameLabels):
             an ImageLabels instance
         '''
         return cls(
-            filename=filename, metadata=metadata, attrs=frame_labels.attrs,
+            filename=filename, metadata=metadata, mask=frame_labels.mask,
+            mask_index=frame_labels.mask_index, attrs=frame_labels.attrs,
             objects=frame_labels.objects, events=frame_labels.events)
 
     def attributes(self):
@@ -184,21 +181,8 @@ class ImageLabels(etaf.FrameLabels):
         if metadata is not None:
             metadata = ImageMetadata.from_dict(metadata)
 
-        attrs = d.get("attrs", None)
-        if attrs is not None:
-            attrs = etad.AttributeContainer.from_dict(attrs)
-
-        objects = d.get("objects", None)
-        if objects is not None:
-            objects = etao.DetectedObjectContainer.from_dict(objects)
-
-        events = d.get("events", None)
-        if events is not None:
-            events = etae.DetectedEventContainer.from_dict(events)
-
-        return cls(
-            filename=filename, metadata=metadata, attrs=attrs, objects=objects,
-            events=events)
+        return super(ImageLabels, cls).from_dict(
+            d, filename=filename, metadata=metadata)
 
 
 class ImageLabelsSchema(etaf.FrameLabelsSchema):
