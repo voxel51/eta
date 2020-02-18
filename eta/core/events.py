@@ -360,7 +360,7 @@ class DetectedEventContainer(etal.LabelsContainer):
             event.remove_objects_without_attrs(labels=labels)
 
 
-class Event(etal.Labels, etal.HasLabelsSupport):
+class Event(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
     '''A spatiotemporal event in a video.
 
     `Event`s are spatiotemporal concepts that describe a collection of
@@ -526,7 +526,7 @@ class Event(etal.Labels, etal.HasLabelsSupport):
         Args:
             obj: an Object or DetectedObject
             frame_number: (DetectedObject only) the frame number. If omitted,
-                the frame number of the object must be set
+                the DetectedObject must have its `frame_number` set
         '''
         if isinstance(obj, etao.DetectedObject):
             self._add_detected_object(obj, frame_number)
@@ -534,43 +534,42 @@ class Event(etal.Labels, etal.HasLabelsSupport):
             self.objects.add(obj)
 
     def add_objects(self, objects, frame_number=None):
-        '''Adds the objects to the video.
+        '''Adds the objects to the event.
 
         Args:
             objects: an ObjectContainer or DetectedObjectContainer
             frame_number: (DetectedObjectContainer only) the frame number. If
-                omitted, the frame numbers of the objects must be set
+                omitted, the `DetectedObject`s must have their `frame_number`s
+                set
         '''
         if isinstance(objects, etao.DetectedObjectContainer):
             self._add_detected_objects(objects, frame_number)
         else:
             self.objects.add_container(objects)
 
-    def add_detection(self, event, frame_number=None):
-        '''Adds the DetectedEvent to the event.
-
-        The `label` and `index` fields of the DetectedObject are set to `None`.
+    def add_detection(self, event, frame_number=None, clean=True):
+        '''Adds the detection to the event.
 
         Args:
             event: a DetectedEvent
             frame_number: a frame number. If omitted, the DetectedEvent must
                 have its `frame_number` set
+            clean: whether to set the `label` and `index` fields of the
+                DetectedEvent to `None`. By default, this is True
         '''
-        self._add_detected_event(event, frame_number)
+        self._add_detected_event(event, frame_number, clean)
 
-    def add_detections(self, events):
-        '''Adds the `DetectedEvent`s to the event.
+    def add_detections(self, events, clean=True):
+        '''Adds the detections to the event.
 
         The `DetectedEvent`s must have their `frame_number`s set.
 
-        The `label` and `index` fields of the `DetectedEvent`s are set to
-        `None`.
-
         Args:
             events: a DetectedEventContainer
+            clean: whether to set the `label` and `index` fields of the
+                `DetectedEvent`s to `None`. By default, this is True
         '''
-        for event in events:
-            self.add_detection(event)
+        self._add_detected_events(events, clean)
 
     def add_child_object(self, obj):
         '''Adds the Object as a child of this event.
@@ -628,6 +627,16 @@ class Event(etal.Labels, etal.HasLabelsSupport):
     def clear_child_events(self):
         '''Removes all child events from the event.'''
         self.child_events = set()
+
+    def render_framewise_labels(self):
+        '''Renders a framewise copy of the event.
+
+        Returns:
+            an Event whose labels are all contained in `DetectedEvent`s
+        '''
+        renderer = EventFrameRenderer(self)
+        frames = renderer.render_all_frames()
+        return Event(frames=frames)
 
     def filter_by_schema(self, schema, objects=None, events=None):
         '''Filters the event by the given schema.
@@ -800,7 +809,8 @@ class Event(etal.Labels, etal.HasLabelsSupport):
 
     def _ensure_frame(self, frame_number):
         if not frame_number in self.frames:
-            self.frames[frame_number] = DetectedEvent()
+            self.frames[frame_number] = DetectedEvent(
+                frame_number=frame_number)
 
     def _add_detected_object(self, obj, frame_number):
         if frame_number is None:
@@ -819,7 +829,7 @@ class Event(etal.Labels, etal.HasLabelsSupport):
         for obj in objects:
             self._add_detected_object(obj, frame_number)
 
-    def _add_detected_event(self, event, frame_number):
+    def _add_detected_event(self, event, frame_number, clean):
         if frame_number is None:
             if not event.has_frame_number:
                 raise ValueError(
@@ -828,10 +838,16 @@ class Event(etal.Labels, etal.HasLabelsSupport):
 
             frame_number = event.frame_number
 
-        event.label = None
-        event.index = None
+        if clean:
+            event.label = None
+            event.index = None
+
         event.frame_number = frame_number
         self.frames[frame_number] = event
+
+    def _add_detected_events(self, events, clean):
+        for event in events:
+            self._add_detected_event(event, None, clean)
 
     def _compute_support(self):
         frame_ranges = etaf.FrameRanges.from_iterable(self.frames.keys())
@@ -2657,7 +2673,7 @@ class EventFrameRenderer(etal.LabelsFrameRenderer):
         if frame_number in self._event.frames:
             devent = deepcopy(self._event.frames[frame_number])
         else:
-            devent = DetectedEvent()
+            devent = DetectedEvent(frame_number=frame_number)
 
         # Render event-level attributes
         if event_attrs is not None:
