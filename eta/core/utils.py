@@ -2390,6 +2390,13 @@ def _diff_paths(path1, path2, content1=None, content2=None):
     return content1 != content2
 
 
+def validate_type(obj, expected_type):
+    if not isinstance(obj, expected_type):
+        raise TypeError(
+            "Unexpected argument type:\n\tExpected: %s\n\tActual: %s"
+            % (get_class_name(expected_type), get_class_name(obj))
+        )
+
 class FileHasher(object):
     '''Base class for file hashers.'''
 

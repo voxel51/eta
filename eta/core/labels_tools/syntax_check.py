@@ -17,27 +17,16 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-import colorsys
-import errno
 import logging
-import os
-import operator
-from subprocess import Popen, PIPE
 
-import cv2
-import numpy as np
-
-import eta
 import eta.core.data as etad
-import eta.core.frames as etaf
-import eta.core.labels as etal
-import eta.core.objects as etao
-import eta.core.serial as etas
+import eta.core.image as etai
 import eta.core.utils as etau
-import eta.core.web as etaw
+import eta.core.video as etav
 
 
 logger = logging.getLogger(__name__)
+
 
 
 class ImageLabelsSyntaxCheckerError(Exception):
@@ -133,8 +122,8 @@ class ImageLabelsSyntaxChecker(object):
         tasks.
     '''
 
-    _SCHEMA_CLS = ImageLabelsSchema
-    _LABELS_CLS = ImageLabels
+    _SCHEMA_CLS = etai.ImageLabelsSchema
+    _LABELS_CLS = etai.ImageLabels
     _ERROR_CLS = ImageLabelsSyntaxCheckerError
 
     def __init__(self, target_schema):
@@ -315,15 +304,15 @@ class ImageLabelsSyntaxChecker(object):
             )
 
 
-class VideoLabelsSyntaxCheckerError(etai.ImageLabelsSyntaxCheckerError):
+class VideoLabelsSyntaxCheckerError(ImageLabelsSyntaxCheckerError):
     '''Error raised when a VideoLabelsSyntaxCheckerError is violated.'''
     pass
 
 
-class VideoLabelsSyntaxChecker(etai.ImageLabelsSyntaxChecker):
+class VideoLabelsSyntaxChecker(ImageLabelsSyntaxChecker):
 
-    _SCHEMA_CLS = VideoLabelsSchema
-    _LABELS_CLS = VideoLabels
+    _SCHEMA_CLS = etav.VideoLabelsSchema
+    _LABELS_CLS = etav.VideoLabels
     _ERROR_CLS = VideoLabelsSyntaxCheckerError
 
     def _check(self, labels):

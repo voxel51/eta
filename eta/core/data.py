@@ -1771,3 +1771,12 @@ class LabeledFeatures(etas.NpzWriteable):
     def __init__(self, X, y):
         self.X = np.asarray(X)
         self.y = np.asarray(y)
+
+
+class AttributeSyntaxChecker(etal.SyntaxChecker):
+    _LABELS_CLS = Attribute
+
+    def transform(self, labels):
+        super(AttributeSyntaxChecker, self).transform(labels)
+
+        raise NotImplementedError("Boo Yah Tyler!")
