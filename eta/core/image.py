@@ -36,8 +36,11 @@ import cv2
 import numpy as np
 
 import eta
+import eta.core.data as etad
+import eta.core.events as etae
 import eta.core.frames as etaf
 import eta.core.labels as etal
+import eta.core.objects as etao
 import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.web as etaw
@@ -181,8 +184,21 @@ class ImageLabels(etaf.FrameLabels):
         if metadata is not None:
             metadata = ImageMetadata.from_dict(metadata)
 
-        return super(ImageLabels, cls).from_dict(
-            d, filename=filename, metadata=metadata)
+        attrs = d.get("attrs", None)
+        if attrs is not None:
+            attrs = etad.AttributeContainer.from_dict(attrs)
+
+        objects = d.get("objects", None)
+        if objects is not None:
+            objects = etao.DetectedObjectContainer.from_dict(objects)
+
+        events = d.get("events", None)
+        if events is not None:
+            events = etae.DetectedEventContainer.from_dict(events)
+
+        return cls(
+            filename=filename, metadata=metadata, attrs=attrs, objects=objects,
+            events=events)
 
 
 class ImageLabelsSchema(etaf.FrameLabelsSchema):
