@@ -1787,7 +1787,7 @@ class ObjectCount(etas.Serializable):
         Returns:
             an ObjectCount
         '''
-        return ObjectCount(d["label"], d["count"])
+        return cls(d["label"], d["count"])
 
 
 class ObjectCounts(etas.Container):
