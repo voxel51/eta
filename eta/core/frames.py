@@ -219,13 +219,11 @@ class FrameLabels(etal.Labels):
         return _attrs
 
     @classmethod
-    def from_dict(cls, d, **kwargs):
+    def from_dict(cls, d):
         '''Constructs a FrameLabels from a JSON dictionary.
 
         Args:
             d: a JSON dictionary
-            **kwargs: optional keyword arguments that have already been parsed
-                by a subclass
 
         Returns:
             a FrameLabels
@@ -246,7 +244,7 @@ class FrameLabels(etal.Labels):
 
         return cls(
             frame_number=frame_number, attrs=attrs, objects=objects,
-            events=events, **kwargs)
+            events=events)
 
     def _reindex_objects(self, frame_labels):
         self_indices = self._get_object_indices(self)
