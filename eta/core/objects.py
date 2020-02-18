@@ -15,10 +15,12 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
-from future.utils import iteritems, itervalues
+from future.utils import iteritems
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
+
+from copy import deepcopy
 
 import eta.core.data as etad
 import eta.core.frameutils as etaf
@@ -72,7 +74,7 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
             top_k_probs: (optional) dictionary mapping labels to probabilities
             index: (optional) an index assigned to the object
             score: (optional) an optional score for the object
-            frame_number: (optional) the frame number in the this object was
+            frame_number: (optional) the frame number in which this object was
                 detected
             index_in_frame: (optional) the index of the object in the frame
                 where it was detected
@@ -99,8 +101,51 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
 
     @property
     def is_empty(self):
-        '''Whether this instance has no labels of any kind.'''
-        return False
+        '''Whether this object has no labels of any kind.'''
+        return not (
+            self.has_label or self.has_bounding_box or self.has_mask or
+            self.has_confidence or self.has_top_k_probs or self.has_index or
+            self.has_frame_number or self.has_attributes)
+
+    @property
+    def has_label(self):
+        '''Whether this object has a label.'''
+        return self.label is not None
+
+    @property
+    def has_bounding_box(self):
+        '''Whether this object has a bounding box.'''
+        return self.bounding_box is not None
+
+    @property
+    def has_mask(self):
+        '''Whether this object has a segmentation mask.'''
+        return self.mask is not None
+
+    @property
+    def has_confidence(self):
+        '''Whether this object has a confidence.'''
+        return self.confidence is not None
+
+    @property
+    def has_top_k_probs(self):
+        '''Whether this object has top-k probabilities.'''
+        return self.top_k_probs is not None
+
+    @property
+    def has_index(self):
+        '''Whether this object has an index.'''
+        return self.index is not None
+
+    @property
+    def has_frame_number(self):
+        '''Whether this object has a frame number.'''
+        return self.frame_number is not None
+
+    @property
+    def has_attributes(self):
+        '''Whether this object has attributes.'''
+        return bool(self.attrs)
 
     @classmethod
     def get_schema_cls(cls):
@@ -111,36 +156,6 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
         '''
         return ObjectSchema
 
-    @property
-    def has_attributes(self):
-        '''Whether this object has attributes.'''
-        return bool(self.attrs)
-
-    @property
-    def has_mask(self):
-        '''Whether this object has a segmentation mask.'''
-        return self.mask is not None
-
-    def clear_attributes(self):
-        '''Removes all attributes from the object.'''
-        self.attrs = etad.AttributeContainer()
-
-    def add_attribute(self, attr):
-        '''Adds the Attribute to the object.
-
-        Args:
-            attr: an Attribute
-        '''
-        self.attrs.add(attr)
-
-    def add_attributes(self, attrs):
-        '''Adds the AttributeContainer of attributes to the object.
-
-        Args:
-            attrs: an AttributeContainer
-        '''
-        self.attrs.add_container(attrs)
-
     def get_bounding_box(self):
         '''Returns the BoundingBox for the object.
 
@@ -148,6 +163,26 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
              a BoundingBox
         '''
         return self.bounding_box
+
+    def clear_attributes(self):
+        '''Removes all attributes from the object.'''
+        self.attrs = etad.AttributeContainer()
+
+    def add_attribute(self, attr):
+        '''Adds the attribute to the object.
+
+        Args:
+            attr: an Attribute
+        '''
+        self.attrs.add(attr)
+
+    def add_attributes(self, attrs):
+        '''Adds the attributes to the object.
+
+        Args:
+            attrs: an AttributeContainer
+        '''
+        self.attrs.add_container(attrs)
 
     def filter_by_schema(self, schema, allow_none_label=False):
         '''Filters the object by the given schema.
@@ -180,18 +215,15 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
             a list of attribute names
         '''
         _attrs = ["type"]
-
         _noneable_attrs = [
             "label", "bounding_box", "mask", "confidence", "top_k_probs",
             "index", "score", "frame_number", "index_in_frame", "eval_type"]
         _attrs.extend(
             [a for a in _noneable_attrs if getattr(self, a) is not None])
-
         if self.event_uuids:
             _attrs.append("event_uuids")
         if self.attrs:
             _attrs.append("attrs")
-
         return _attrs
 
     @classmethod
@@ -347,8 +379,7 @@ class DetectedObjectContainer(etal.LabelsContainer):
         self.sort_by("frame_number", reverse=reverse)
 
     def filter_by_schema(self, schema):
-        '''Filters the objects/attributes from this container that are not
-        compliant with the given schema.
+        '''Filters the objects in the container by the given schema.
 
         Args:
             schema: an ObjectContainerSchema
@@ -376,7 +407,7 @@ class DetectedObjectContainer(etal.LabelsContainer):
         self.filter_elements([filter_func])
 
 
-class Object(etal.Labels):
+class Object(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
     '''A spatiotemporal object in a video.
 
     `Object`s are spatiotemporal concepts that describe information about an
@@ -389,8 +420,7 @@ class Object(etal.Labels):
         type: the fully-qualified class name of the object
         label: (optional) the object label
         confidence: (optional) label confidence in [0, 1]
-        support: a FrameRanges instance describing the frames for which the
-            object exists
+        support: a FrameRanges instance describing the support of the object
         index: (optional) an index assigned to the object
         uuid: (optional) a UUID assigned to the object
         attrs: (optional) AttributeContainer of object-level attributes of the
@@ -408,9 +438,8 @@ class Object(etal.Labels):
         Args:
             label: (optional) the object label
             confidence: (optional) the label confidence in [0, 1]
-            support: (optional) a FrameRanges instance describing the frames
-                for which the object exists. If omitted, the support is
-                inferred from the frames and children of the object
+            support: (optional) a FrameRanges instance describing the frozen
+                support of the object
             index: (optional) an index assigned to the object
             uuid: (optional) a UUID assigned to the object
             attrs: (optional) an AttributeContainer of object-level attributes
@@ -426,35 +455,12 @@ class Object(etal.Labels):
         self.attrs = attrs or etad.AttributeContainer()
         self.frames = frames or {}
         self.child_objects = set(child_objects or [])
-
-        self._support = support
+        etal.HasLabelsSupport.__init__(self, support=support)
 
     @property
     def is_empty(self):
         '''Whether this instance has no labels of any kind.'''
         return False
-
-    @property
-    def support(self):
-        '''A FrameRanges instance describing the frames for which this object
-        exists.
-
-        If the object has an explicit `support`, it is returned. Otherwise, the
-        support is inferred from the frames with DetectedObjects. Note that
-        the latter excludes child objects.
-        '''
-        if self._support is not None:
-            return self._support
-
-        return etaf.FrameRanges.from_iterable(self.frames.keys())
-
-    def iter_detections(self):
-        '''Returns an iterator over the DetectedObjects in the object.
-
-        Returns:
-            an iterator over DetectedObjects
-        '''
-        return itervalues(self.frames)
 
     @property
     def has_attributes(self):
@@ -485,6 +491,18 @@ class Object(etal.Labels):
         '''Whether the object has at least one child Object.'''
         return bool(self.child_objects)
 
+    def iter_detections(self):
+        '''Returns an iterator over the `DetectedObject`s for each frame of the
+        object.
+
+        The frames are traversed in sorted order.
+
+        Returns:
+            an iterator over `DetectedObject`s
+        '''
+        for frame_number in sorted(self.frames):
+            yield self.frames[frame_number]
+
     def add_object_attribute(self, attr):
         '''Adds the object-level attribute to the object.
 
@@ -502,37 +520,29 @@ class Object(etal.Labels):
         '''
         self.attrs.add_container(attrs)
 
-    def add_detection(self, obj, frame_number=None):
-        '''Adds the DetectedObject to the object.
-
-        Note that the `label` field of the DetectedObject is set to `None`.
+    def add_detection(self, obj, frame_number=None, clean=True):
+        '''Adds the detection to the object.
 
         Args:
             obj: a DetectedObject
-            frame_number: an optional frame number. If omitted,
-                `obj.frame_number` will be used
+            frame_number: a frame number. If omitted, the DetectedObject must
+                have its `frame_number` set
+            clean: whether to set the `label` and `index` fields of the
+                DetectedObject to `None`. By default, this is True
         '''
-        if frame_number is not None:
-            obj.frame_number = frame_number
-        elif obj.frame_number is None:
-            raise ValueError(
-                "Expected `frame_number` or the DetectedObject to have its "
-                "`frame_number` set")
+        self._add_detected_object(obj, frame_number, clean)
 
-        obj.label = None
-        self.frames[obj.frame_number] = obj
+    def add_detections(self, objects, clean=True):
+        '''Adds the detections to the object.
 
-    def add_detections(self, objects):
-        '''Adds the DetectedObjects to the video.
-
-        The DetectedObjects must have their `frame_number`s set. Also, the
-        `label` field of the `DetectedObject`s are set to `None`.
+        The `DetectedObject`s must have their `frame_number`s set.
 
         Args:
             objects: a DetectedObjectContainer
+            clean: whether to set the `label` and `index` fields of the
+                `DetectedObject`s to `None`. By default, this is True
         '''
-        for obj in objects:
-            self.add_detection(obj)
+        self._add_detected_objects(objects, clean)
 
     def add_child_object(self, obj):
         '''Adds the Object as a child of this object.
@@ -559,9 +569,23 @@ class Object(etal.Labels):
         for obj in self.iter_detections():
             obj.clear_attributes()
 
+    def clear_detections(self):
+        '''Removes all `DetectedObject`s from the object.'''
+        self.frames = {}
+
     def clear_child_objects(self):
-        '''Removes all child objects from the event.'''
+        '''Removes all child objects from the object.'''
         self.child_objects = set()
+
+    def render_framewise_labels(self):
+        '''Renders a framewise copy of the object.
+
+        Returns:
+            an Object whose labels are all contained in `DetectedObject`s
+        '''
+        renderer = ObjectFrameRenderer(self)
+        frames = renderer.render_all_frames()
+        return Object(frames=frames)
 
     def filter_by_schema(self, schema, objects=None):
         '''Filters the object by the given schema.
@@ -569,32 +593,30 @@ class Object(etal.Labels):
         Args:
             schema: an ObjectSchema
             objects: an optional dictionary mapping uuids to Objects. If
-                provided, the schema will be applied to the child objects of
-                this object
+                provided, child objects will be filtered by their respective
+                schemas
 
         Raises:
             LabelsSchemaError: if the object label does not match the schema
         '''
-        # Validate object label
         schema.validate_label(self.label)
-
-        # Filter object-level attributes
         self.attrs.filter_by_schema(schema.attrs)
-
-        # Filter DetectedObjects
-        for dobj in itervalues(self.frames):
+        for dobj in self.iter_detections():
             dobj.filter_by_schema(schema, allow_none_label=True)
 
+        # @todo children...
+        '''
         # Filter child objects
         if objects:
             for uuid in self.child_objects:
                 if uuid in objects:
                     child_obj = objects[uuid]
-                    if not schema.has_child_object_label(child_obj.label):
+                    if not schema.has_label(child_obj.label):
                         self.child_objects.remove(uuid)
                     else:
                         child_obj.filter_by_schema(
-                            schema.get_child_object_schema(child_obj.label))
+                            schema.get_object_schema(child_obj.label))
+        '''
 
     def attributes(self):
         '''Returns the list of attributes to serialize.
@@ -607,7 +629,8 @@ class Object(etal.Labels):
             _attrs.append("label")
         if self.confidence is not None:
             _attrs.append("confidence")
-        _attrs.append("support")
+        if self.is_support_frozen:
+            _attrs.append("support")
         if self.index is not None:
             _attrs.append("index")
         if self.uuid is not None:
@@ -674,6 +697,29 @@ class Object(etal.Labels):
             obj_cls = cls
 
         return obj_cls._from_dict(d)
+
+    def _add_detected_object(self, obj, frame_number, clean):
+        if frame_number is None:
+            if not obj.has_frame_number:
+                raise ValueError(
+                    "Either `frame_number` must be provided or the "
+                    "DetectedObject must have its `frame_number` set")
+
+            frame_number = obj.frame_number
+
+        if clean:
+            obj.label = None
+            obj.index = None
+
+        obj.frame_number = frame_number
+        self.frames[frame_number] = obj
+
+    def _add_detected_objects(self, objects, clean):
+        for obj in objects:
+            self._add_detected_object(obj, None, clean)
+
+    def _compute_support(self):
+        return etaf.FrameRanges.from_iterable(self.frames.keys())
 
 
 class ObjectContainer(etal.LabelsContainer):
@@ -793,14 +839,13 @@ class ObjectContainer(etal.LabelsContainer):
         self.sort_by("index", reverse=reverse)
 
     def filter_by_schema(self, schema, objects=None):
-        '''Filters the objects/attributes from this container that are not
-        compliant with the given schema.
+        '''Filters the objects in the container by the given schema.
 
         Args:
             schema: an ObjectContainerSchema
             objects: an optional dictionary mapping uuids to Objects. If
-                provided, the schema will be applied to the child objects of
-                the objects in the container
+                provided, child objects will be filtered by their respective
+                schemas
         '''
         # Remove objects with invalid labels
         filter_func = lambda obj: schema.has_object_label(obj.label)
@@ -809,8 +854,7 @@ class ObjectContainer(etal.LabelsContainer):
         # Filter objects by their schemas
         for obj in self:
             obj_schema = schema.get_object_schema(obj.label)
-            # @todo support child objects
-            obj.filter_by_schema(obj_schema)
+            obj.filter_by_schema(obj_schema, objects=objects)
 
     def remove_objects_without_attrs(self, labels=None):
         '''Removes objects from this container that do not have attributes.
@@ -835,11 +879,9 @@ class ObjectSchema(etal.LabelsSchema):
             attributes of the object
         frames: an AttributeContainerSchema describing the frame-level
             attributes of the object
-        child_objects: an ObjectContainerSchema describing the child objects
-            of the object
     '''
 
-    def __init__(self, label, attrs=None, frames=None, child_objects=None):
+    def __init__(self, label, attrs=None, frames=None):
         '''Creates an ObjectSchema instance.
 
         Args:
@@ -848,13 +890,10 @@ class ObjectSchema(etal.LabelsSchema):
                 object-level attributes of the object
             frames: (optional) an AttributeContainerSchema describing the
                 frame-level attributes of the object
-            child_objects: (optional) an ObjectContainerSchema describing the
-                child objects of the object
         '''
         self.label = label
         self.attrs = attrs or etad.AttributeContainerSchema()
         self.frames = frames or etad.AttributeContainerSchema()
-        self.child_objects = child_objects or ObjectContainerSchema()
 
     @property
     def is_empty(self):
@@ -951,28 +990,6 @@ class ObjectSchema(etal.LabelsSchema):
         '''
         return self.frames.get_attribute_class(attr_name)
 
-    def has_child_object_label(self, label):
-        '''Whether the schema has a child object with the given label.
-
-        Args:
-            label: the child object label
-
-        Returns:
-            True/False
-        '''
-        return self.child_objects.has_object_label(label)
-
-    def get_child_object_schema(self, label):
-        '''Gets the ObjectSchema for the child object with the given label.
-
-        Args:
-            label: the child object label
-
-        Returns:
-            the ObjectSchema
-        '''
-        return self.child_objects.get_object_schema(label)
-
     def add_object_attribute(self, attr):
         '''Adds the object-level Attribute to the schema.
 
@@ -1012,10 +1029,10 @@ class ObjectSchema(etal.LabelsSchema):
         Args:
             obj: an Object or DetectedObject
         '''
-        if isinstance(obj, Object):
-            self._add_object(obj)
-        else:
+        if isinstance(obj, DetectedObject):
             self._add_detected_object(obj)
+        else:
+            self._add_object(obj)
 
     def add_objects(self, objects):
         '''Adds the ObjectContainer or DetectedObjectContainer to the schema.
@@ -1025,22 +1042,6 @@ class ObjectSchema(etal.LabelsSchema):
         '''
         for obj in objects:
             self.add_object(obj)
-
-    def add_child_object(self, obj):
-        '''Adds the child Object to the schema.
-
-        Args:
-            obj: the child Object
-        '''
-        return self.child_objects.add_object(obj)
-
-    def add_child_objects(self, objects):
-        '''Adds the ObjectContainer of child objects to the schema.
-
-        Args:
-            objects: an ObjectContainer of child objects
-        '''
-        return self.child_objects.add_objects(objects)
 
     def is_valid_label(self, label):
         '''Whether the object label is compliant with the schema.
@@ -1119,21 +1120,6 @@ class ObjectSchema(etal.LabelsSchema):
         except etal.LabelsSchemaError:
             return False
 
-    def is_valid_child_object(self, obj):
-        '''Whether the child Object is compliant with the schema.
-
-        Args:
-            obj: a child Object
-
-        Returns:
-            True/False
-        '''
-        try:
-            self.validate_child_object(obj)
-            return True
-        except etal.LabelsSchemaError:
-            return False
-
     def validate_label(self, label):
         '''Validates that the object label is compliant with the schema.
 
@@ -1195,17 +1181,6 @@ class ObjectSchema(etal.LabelsSchema):
         '''
         self.frames.validate(attrs)
 
-    def validate_child_object(self, obj):
-        '''Validates that the child Object is compliant with the schema.
-
-        Args:
-            obj: a child Object
-
-        Raises:
-            LabelsSchemaError: if the child object violates the schema
-        '''
-        self.child_objects.validate_object(obj)
-
     def validate(self, obj):
         '''Validates that the Object or DetectedObject is compliant with the
         schema.
@@ -1216,10 +1191,10 @@ class ObjectSchema(etal.LabelsSchema):
         Raises:
             LabelsSchemaError: if the object violates the schema
         '''
-        if isinstance(obj, Object):
-            self._validate_object(obj)
-        else:
+        if isinstance(obj, DetectedObject):
             self._validate_detected_object(obj)
+        else:
+            self._validate_object(obj)
 
     def validate_subset_of_schema(self, schema):
         '''Validates that this schema is a subset of the given schema.
@@ -1250,7 +1225,6 @@ class ObjectSchema(etal.LabelsSchema):
         self.validate_label(schema.label)
         self.attrs.merge_schema(schema.attrs)
         self.frames.merge_schema(schema.frames)
-        self.child_objects.merge_schema(schema.child_objects)
 
     @classmethod
     def build_active_schema(cls, obj, objects=None):
@@ -1269,11 +1243,14 @@ class ObjectSchema(etal.LabelsSchema):
         schema = cls(obj.label)
         schema.add_object(obj)
 
+        # @todo children...
+        '''
         # Child objects
         if objects:
             for uuid in obj.child_objects:
                 if uuid in objects:
-                    schema.add_child_object(objects[uuid])
+                    schema.add_object(objects[uuid])
+        '''
 
         return schema
 
@@ -1288,9 +1265,6 @@ class ObjectSchema(etal.LabelsSchema):
             _attrs.append("attrs")
         if self.frames:
             _attrs.append("frames")
-        if self.child_objects:
-            _attrs.append("child_objects")
-
         return _attrs
 
     @classmethod
@@ -1311,46 +1285,38 @@ class ObjectSchema(etal.LabelsSchema):
         if frames is not None:
             frames = etad.AttributeContainerSchema.from_dict(frames)
 
-        child_objects = d.get("child_objects", None)
-        if child_objects is not None:
-            child_objects = ObjectContainerSchema.from_dict(child_objects)
-
-        return cls(
-            d["label"], attrs=attrs, frames=frames,
-            child_objects=child_objects)
+        return cls(d["label"], attrs=attrs, frames=frames)
 
     def _add_detected_object(self, dobj, validate_label=True):
         if validate_label:
             self.validate_label(dobj.label)
 
-        self.add_object_attributes(dobj.attrs)
-        self.add_frame_attributes(dobj.frames)
+        self.add_frame_attributes(dobj.attrs)
 
     def _add_object(self, obj):
         self.validate_label(obj.label)
         self.add_object_attributes(obj.attrs)
-        self.add_frame_attributes(obj.frames)
         for dobj in obj.iter_detections():
             self._add_detected_object(dobj, validate_label=False)
 
     def _validate_detected_object(self, dobj, validate_label=True):
-        # Validate label
         if validate_label:
             self.validate_label(dobj.label)
 
-        # Validate frame-level attributes
         self.validate_frame_attributes(dobj.attrs)
 
     def _validate_object(self, obj):
-        # Validate label
         self.validate_label(obj.label)
-
-        # Validate object-level attributes
         self.validate_object_attributes(obj.attrs)
-
-        # Validate DetectedObjects
         for dobj in obj.iter_detections():
             self._validate_detected_object(dobj, validate_label=False)
+
+        # @todo children...
+        '''
+        # Validate child objects
+        for child_object in obj.child_objects:
+            self.validate(child_object)
+        '''
 
 
 class ObjectSchemaError(etal.LabelsSchemaError):
@@ -1369,8 +1335,8 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
         '''Creates an ObjectContainerSchema instance.
 
         Args:
-            schema: a dictionary mapping object labels to ObjectSchema
-                instances. By default, an empty schema is created
+            schema: (optional) a dictionary mapping object labels to
+                ObjectSchema instances
         '''
         self.schema = schema or {}
 
@@ -1565,10 +1531,8 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
         Args:
             obj: an Object or DetectedObject
         '''
-        if isinstance(obj, Object):
-            self._add_object(obj)
-        else:
-            self._add_detected_object(obj)
+        self._ensure_has_object_label(obj.label)
+        self.schema[obj.label].add_object(obj)
 
     def add_objects(self, objects):
         '''Adds the ObjectContainer or DetectedObjectContainer to the schema.
@@ -1756,10 +1720,8 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
         Raises:
             LabelsSchemaError: if the object violates the schema
         '''
-        if isinstance(obj, Object):
-            self._validate_object(obj)
-        else:
-            self._validate_detected_object(obj)
+        self.validate_object_label(obj.label)
+        self.schema[obj.label].validate(obj)
 
     def validate(self, objects):
         '''Validates that the ObjectContainer or DetectedObjectContainer is
@@ -1842,53 +1804,86 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
         if not self.has_object_label(label):
             self.schema[label] = ObjectSchema(label)
 
-    def _add_detected_object(self, dobj, label=None):
-        # Add label
-        if dobj.label is not None:
-            label = dobj.label
-            self.add_object_label(dobj.label)
-
-        # Add frame-level attributes
-        self.add_frame_attributes(label, dobj.attrs)
-
-    def _add_object(self, obj):
-        # Add label
-        self.add_object_label(obj.label)
-
-        # Add object-level attributes
-        self.add_object_attributes(obj.label, obj.attrs)
-
-        # Add DetectedObjects
-        for dobj in obj.iter_detections():
-            self._add_detected_object(dobj, label=obj.label)
-
-    def _validate_detected_object(self, dobj, label=None):
-        if label is None:
-            label = dobj.label
-
-        # Validate object label
-        self.validate_object_label(label)
-
-        # Validate frame-level attributes
-        self.validate_frame_attributes(label, dobj.attrs)
-
-    def _validate_object(self, obj):
-        label = obj.label
-
-        # Validate object label
-        self.validate_object_label(label)
-
-        # Validate object-level attributes
-        self.validate_object_attributes(label, obj.attrs)
-
-        # Validate DetectedObjects
-        for dobj in obj.iter_detections():
-            self._validate_detected_object(dobj, label=label)
-
 
 class ObjectContainerSchemaError(etal.LabelsContainerSchemaError):
     '''Error raised when an ObjectContainerSchema is violated.'''
     pass
+
+
+class ObjectFrameRenderer(etal.LabelsFrameRenderer):
+    '''Class for rendering labels for an Object at the frame-level.'''
+
+    def __init__(self, obj):
+        '''Creates an ObjectFrameRenderer instance.
+
+        Args:
+            obj: an Object
+        '''
+        self._obj = obj
+
+    def render_frame(self, frame_number):
+        '''Renders the Object for the given frame.
+
+        Args:
+            frame_number: the frame number
+
+        Returns:
+            a DetectedObject, or None if no labels exist for the given frame
+        '''
+        if frame_number not in self._obj.support:
+            return None
+
+        obj_attrs = self._get_object_attrs()
+        return self._render_frame(frame_number, obj_attrs)
+
+    def render_all_frames(self):
+        '''Renders the Object for all possible frames.
+
+        Returns:
+            a dictionary mapping frame numbers to DetectedObject instances
+        '''
+        obj_attrs = self._get_object_attrs()
+
+        dobjs_map = {}
+        for frame_number in self._obj.support:
+            dobjs_map[frame_number] = self._render_frame(
+                frame_number, obj_attrs)
+
+        return dobjs_map
+
+    def _render_frame(self, frame_number, obj_attrs):
+        # Base DetectedObject
+        if frame_number in self._obj.frames:
+            dobj = deepcopy(self._obj.frames[frame_number])
+        else:
+            dobj = DetectedObject(frame_number=frame_number)
+
+        # Render object-level attributes
+        if obj_attrs is not None:
+            dobj.add_attributes(obj_attrs)
+
+        # Inherit available object-level metadata
+        if self._obj.label is not None:
+            dobj.label = self._obj.label
+        if self._obj.confidence is not None:
+            dobj.confidence = self._obj.confidence
+        if self._obj.index is not None:
+            dobj.index = self._obj.index
+
+        return dobj
+
+    def _get_object_attrs(self):
+        if not self._obj.has_object_attributes:
+            return None
+
+        return deepcopy(self._obj.attrs)
+
+
+class ObjectContainerFrameRenderer(etal.LabelsContainerFrameRenderer):
+    '''Class for rendering labels for an ObjectContainer at the frame-level.'''
+
+    _FRAME_CONTAINER_CLS = DetectedObjectContainer
+    _ELEMENT_RENDERER_CLS = ObjectFrameRenderer
 
 
 class ObjectCount(etas.Serializable):

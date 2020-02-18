@@ -38,6 +38,7 @@ import numpy as np
 
 import eta
 import eta.core.data as etad
+import eta.core.events as etae
 import eta.core.frames as etaf
 import eta.core.labels as etal
 import eta.core.objects as etao
@@ -107,34 +108,40 @@ def make_image_sequence_patt(basedir, basename="", patt=None, ext=None):
 class ImageLabels(etaf.FrameLabels):
     '''Class encapsulating labels for an image.
 
+    ImageLabels are spatial concepts that describe a collection of information
+    about a specific image. ImageLabels can have frame-level attributes,
+    object detections, and event detections.
+
     Attributes:
         filename: the filename of the image
         metadata: an ImageMetadata describing metadata about the image
-        attrs: an AttributeContainer describing the attributes of the image
-        objects: a DetectedObjectContainer describing the detected objects in
-            the image
+        attrs: an AttributeContainer of attributes of the image
+        objects: a DetectedObjectContainer of objects in the image
+        events: a DetectedEventContainer of events in the image
     '''
 
-    def __init__(self, filename=None, metadata=None, attrs=None, objects=None):
-        '''Constructs an ImageLabels instance.
+    def __init__(
+            self, filename=None, metadata=None, attrs=None, objects=None,
+            events=None):
+        '''Creates an ImageLabels instance.
 
         Args:
-            filename: an optional filename of the image
-            metadata: an optional ImageMetadata instance describing metadata
-                about the image. By default, no metadata is stored
-            attrs: an optional AttributeContainer of attributes for the image.
-                By default, an empty AttributeContainer is created
-            objects: an optional DetectedObjectContainer of detected objects
-                for the image. By default, an empty DetectedObjectContainer is
-                created
+            filename: (optional) the filename of the image
+            metadata: (optional) an ImageMetadata instance describing metadata
+                about the image
+            attrs: (optional) an AttributeContainer of attributes for the image
+            objects: (optional) a DetectedObjectContainer of objects for the
+                image
+            events: (optional) a DetectedEventContainer of events for the image
         '''
         self.filename = filename
         self.metadata = metadata
-        super(ImageLabels, self).__init__(attrs=attrs, objects=objects)
+        super(ImageLabels, self).__init__(
+            attrs=attrs, objects=objects, events=events)
 
     @classmethod
     def from_frame_labels(cls, frame_labels, filename=None, metadata=None):
-        '''Constructs an `ImageLabels` from a `FrameLabels`.
+        '''Constructs an ImageLabels from a FrameLabels.
 
         Args:
             frame_labels: a FrameLabels instance
@@ -146,7 +153,7 @@ class ImageLabels(etaf.FrameLabels):
         '''
         return cls(
             filename=filename, metadata=metadata, attrs=frame_labels.attrs,
-            objects=frame_labels.objects)
+            objects=frame_labels.objects, events=frame_labels.events)
 
     def attributes(self):
         '''Returns the list of class attributes that will be serialized.
@@ -164,7 +171,7 @@ class ImageLabels(etaf.FrameLabels):
 
     @classmethod
     def from_dict(cls, d):
-        '''Constructs an `ImageLabels` from a JSON dictionary.
+        '''Constructs an ImageLabels from a JSON dictionary.
 
         Args:
             d: a JSON dictionary
@@ -186,18 +193,24 @@ class ImageLabels(etaf.FrameLabels):
         if objects is not None:
             objects = etao.DetectedObjectContainer.from_dict(objects)
 
+        events = d.get("events", None)
+        if events is not None:
+            events = etae.DetectedEventContainer.from_dict(events)
+
         return cls(
-            filename=filename, metadata=metadata, attrs=attrs, objects=objects)
+            filename=filename, metadata=metadata, attrs=attrs, objects=objects,
+            events=events)
 
 
 class ImageLabelsSchema(etaf.FrameLabelsSchema):
-    '''Schema for `ImageLabels`.
+    '''Schema for ImageLabels.
 
     Attributes:
-        attrs: an AttributeContainerSchema describing the attributes of the
+        attrs: an AttributeContainerSchema describing attributes of the
             image(s)
-        objects: an ObjectContainerSchema describing the objects of the
+        objects: an ObjectContainerSchema describing the objects in the
             image(s)
+        events: an EventContainerSchema describing the events in the image(s)
     '''
     pass
 
@@ -225,9 +238,9 @@ class ImageSetLabels(etal.LabelsSet):
     _ELE_CLS_FIELD = "_LABELS_CLS"
 
     def sort_by_filename(self, reverse=False):
-        '''Sorts the `ImageLabels` in this instance by filename.
+        '''Sorts the ImageLabels in this instance by filename.
 
-        `ImageLabels` without filenames are always put at the end of the set.
+        ImageLabels without filenames are always put at the end of the set.
 
         Args:
             reverse: whether to sort in reverse order. By default, this is
@@ -236,17 +249,17 @@ class ImageSetLabels(etal.LabelsSet):
         self.sort_by("filename", reverse=reverse)
 
     def clear_frame_attributes(self):
-        '''Removes all frame attributes from all `ImageLabels` in the set.'''
+        '''Removes all frame attributes from all ImageLabels in the set.'''
         for image_labels in self:
             image_labels.clear_frame_attributes()
 
     def clear_objects(self):
-        '''Removes all `DetectedObject`s from all `ImageLabels` in the set.'''
+        '''Removes all `DetectedObject`s from all ImageLabels in the set.'''
         for image_labels in self:
             image_labels.clear_objects()
 
     def get_filenames(self):
-        '''Returns the set of filenames of `ImageLabels` in the set.
+        '''Returns the set of filenames of ImageLabels in the set.
 
         Returns:
             the set of filenames
@@ -254,7 +267,7 @@ class ImageSetLabels(etal.LabelsSet):
         return set(il.filename for il in self if il.filename)
 
     def remove_objects_without_attrs(self, labels=None):
-        '''Removes `DetectedObjects` from the `ImageLabels` in the set that do
+        '''Removes `DetectedObject`s from the ImageLabels in the set that do
         not have attributes.
 
         Args:
@@ -267,7 +280,7 @@ class ImageSetLabels(etal.LabelsSet):
 
     @classmethod
     def from_image_labels_patt(cls, image_labels_patt):
-        '''Creates an `ImageSetLabels` from a pattern of `ImageLabels` files.
+        '''Creates an ImageSetLabels from a pattern of ImageLabels files.
 
         Args:
              image_labels_patt: a pattern with one or more numeric sequences
@@ -280,16 +293,16 @@ class ImageSetLabels(etal.LabelsSet):
 
 
 class BigImageSetLabels(ImageSetLabels, etas.BigSet):
-    '''An `eta.core.serial.BigSet` of `ImageLabels`.
+    '''An `eta.core.serial.BigSet` of ImageLabels.
 
-    Behaves identically to `ImageSetLabels` except that each `ImageLabels` is
+    Behaves identically to ImageSetLabels except that each ImageLabels is
     stored on disk.
 
-    `BigImageSetLabels` store a `backing_dir` attribute that specifies the path
+    BigImageSetLabels store a `backing_dir` attribute that specifies the path
     on disk to the serialized elements. If a backing directory is explicitly
-    provided, the directory will be maintained after the `BigImageSetLabels`
+    provided, the directory will be maintained after the BigImageSetLabels
     object is deleted; if no backing directory is specified, a temporary
-    backing directory is used and is deleted when the `BigImageSetLabels`
+    backing directory is used and is deleted when the BigImageSetLabels
     instance is garbage collected.
 
     Attributes:
@@ -301,7 +314,7 @@ class BigImageSetLabels(ImageSetLabels, etas.BigSet):
     '''
 
     def __init__(self, images=None, schema=None, backing_dir=None):
-        '''Creates a `BigImageSetLabels` instance.
+        '''Creates a BigImageSetLabels instance.
 
         Args:
             images: an optional dictionary or list of (key, uuid) tuples for
@@ -316,8 +329,8 @@ class BigImageSetLabels(ImageSetLabels, etas.BigSet):
         etas.BigSet.__init__(self, backing_dir=backing_dir, images=images)
 
     def empty_set(self):
-        '''Returns an empty in-memory `ImageSetLabels` version of this
-        `BigImageSetLabels`.
+        '''Returns an empty in-memory ImageSetLabels version of this
+        BigImageSetLabels.
 
         Returns:
             an empty ImageSetLabels
@@ -325,8 +338,7 @@ class BigImageSetLabels(ImageSetLabels, etas.BigSet):
         return ImageSetLabels(schema=self.schema)
 
     def filter_by_schema(self, schema):
-        '''Removes objects/attributes from the `ImageLabels` in the set that
-        are not compliant with the given schema.
+        '''Filters the labels in the set by the given schema.
 
         Args:
             schema: an ImageLabelsSchema
@@ -337,7 +349,7 @@ class BigImageSetLabels(ImageSetLabels, etas.BigSet):
             self[key] = image_labels
 
     def remove_objects_without_attrs(self, labels=None):
-        '''Removes `DetectedObject`s from the `ImageLabels` in the set that do
+        '''Removes `DetectedObject`s from the ImageLabels in the set that do
         not have attributes.
 
         Args:

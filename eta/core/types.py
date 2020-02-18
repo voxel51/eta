@@ -1,10 +1,10 @@
 '''
-ETA core type system.
+Core type system for ETA modules and pipelines.
 
 More types may be defined in other modules, but they must inherit from the
 base type `eta.core.types.Type` defined here.
 
-Copyright 2017-2019, Voxel51, Inc.
+Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
@@ -1049,7 +1049,30 @@ class FrameRanges(JSONFile):
     pass
 
 
-class Attribute(JSONFile):
+class Labels(JSONFile):
+    '''Base type for labels in images or videos.
+
+    This type is implemented in ETA by the `eta.core.labels.Labels` class.
+
+    Examples:
+        /path/to/labels.json
+    '''
+    pass
+
+
+class LabelsSchema(JSONFile):
+    '''Base type for labels schemas.
+
+    This type is implemented in ETA by the `eta.core.labels.LabelsSchema`
+    class.
+
+    Examples:
+        /path/to/labels_schema.json
+    '''
+    pass
+
+
+class Attribute(Labels):
     '''Base class for attributes of entities in images or video.
 
     This type is implemented in ETA by the `eta.core.data.Attribute` class.
@@ -1060,9 +1083,9 @@ class Attribute(JSONFile):
     pass
 
 
-class AttributeSchema(JSONFile):
-    '''Base class for classes that describe the values or range of values that
-    a particular attribute can take.
+class AttributeSchema(LabelsSchema):
+    '''Base class for classes that describe the values that a particular
+    attribute can take.
 
     This type is implemented in ETA by the `eta.core.data.AttributeSchema`
     class.
@@ -1073,7 +1096,7 @@ class AttributeSchema(JSONFile):
     pass
 
 
-class CategoricalAttribute(JSONFile):
+class CategoricalAttribute(Attribute):
     '''A categorical attribute of an entity in an image or video.
 
     This type is implemented in ETA by the `eta.core.data.CategoricalAttribute`
@@ -1085,7 +1108,7 @@ class CategoricalAttribute(JSONFile):
     pass
 
 
-class CategoricalAttributeSchema(JSONFile):
+class CategoricalAttributeSchema(AttributeSchema):
     '''A schema that defines the set of possible values that a particular
     `CategoricalAttribute` can take.
 
@@ -1098,7 +1121,7 @@ class CategoricalAttributeSchema(JSONFile):
     pass
 
 
-class NumericAttribute(JSONFile):
+class NumericAttribute(Attribute):
     '''A numeric attribute of an entity in an image or video.
 
     This type is implemented in ETA by the `eta.core.data.NumericAttribute`
@@ -1110,7 +1133,7 @@ class NumericAttribute(JSONFile):
     pass
 
 
-class NumericAttributeSchema(JSONFile):
+class NumericAttributeSchema(AttributeSchema):
     '''A schema that defines the range of possible values that a particular
     `NumericAttribute` can take.
 
@@ -1123,7 +1146,7 @@ class NumericAttributeSchema(JSONFile):
     pass
 
 
-class BooleanAttribute(JSONFile):
+class BooleanAttribute(Attribute):
     '''A boolean attribute of an entity in an image or video.
 
     This type is implemented in ETA by the `eta.core.data.BooleanAttribute`
@@ -1135,7 +1158,7 @@ class BooleanAttribute(JSONFile):
     pass
 
 
-class BooleanAttributeSchema(JSONFile):
+class BooleanAttributeSchema(AttributeSchema):
     '''A schema that declares that a given attribute is a `BooleanAttribute`
     and thus must take the values `True` and `False`.
 
@@ -1148,7 +1171,7 @@ class BooleanAttributeSchema(JSONFile):
     pass
 
 
-class Attributes(JSONFile):
+class Attributes(Labels):
     '''A list of `Attribute`s of an entity in an image or video. The list can
     contain attributes with any subtype of `Attribute`.
 
@@ -1161,7 +1184,7 @@ class Attributes(JSONFile):
     pass
 
 
-class AttributesSchema(JSONFile):
+class AttributesSchema(LabelsSchema):
     '''A dictionary of `AttributesSchema`s that define the schemas of a
     collection of `Attribute`s of any type.
 
@@ -1186,8 +1209,31 @@ class BoundingBox(JSONFile):
     pass
 
 
-class DetectedObject(JSONFile):
-    '''A detected object in an image or video.
+class VideoObject(Labels):
+    '''A spatiotemporal object in a video.
+
+    This type is implemented in ETA by the `eta.core.objects.Object` class.
+
+    Examples:
+        /path/to/video_object.json
+    '''
+    pass
+
+
+class VideoObjects(Labels):
+    '''A list of spatiotemporal objects in a video.
+
+    This type is implemented in ETA by the `eta.core.objects.ObjectContainer`
+    class.
+
+    Examples:
+        /path/to/video_objects.json
+    '''
+    pass
+
+
+class DetectedObject(Labels):
+    '''A detected object in an image or video frame.
 
     This type is implemented in ETA by the `eta.core.objects.DetectedObject`
     class.
@@ -1198,8 +1244,8 @@ class DetectedObject(JSONFile):
     pass
 
 
-class DetectedObjects(JSONFile):
-    '''A list of detected objects in an image or video.
+class DetectedObjects(Labels):
+    '''A list of detected objects in image(s) or video frame(s).
 
     This type is implemented in ETA by the
     `eta.core.objects.DetectedObjectContainer` class.
@@ -1220,31 +1266,54 @@ class DetectedObjectsSequence(JSONFileSequence):
     pass
 
 
-class Event(JSONFile):
-    '''An event in a video.
+class VideoEvent(Labels):
+    '''A spatiotemporal event in a video.
 
-    This type interface is implemented in ETA by the `eta.core.events.Event`
+    This type is implemented in ETA by the `eta.core.events.Event` class.
+
+    Examples:
+        /path/to/video_event.json
+    '''
+    pass
+
+
+class VideoEvents(Labels):
+    '''A list of spatiotemporal events in a video.
+
+    This type is implemented in ETA by the `eta.core.events.EventContainer`
     class.
 
     Examples:
-        /path/to/event.json
+        /path/to/video_events.json
     '''
     pass
 
 
-class Events(JSONFile):
-    '''A list of events in a video.
+class DetectedEvent(Labels):
+    '''A detected event in an image or video frame.
 
-    This type interface is implemented in ETA by the
-    `eta.core.events.EventContainer` class.
+    This type is implemented in ETA by the `eta.core.events.DetectedEvent`
+    class.
 
     Examples:
-        /path/to/events.json
+        /path/to/detected_event.json
     '''
     pass
 
 
-class ImageLabels(JSONFile):
+class DetectedEvents(Labels):
+    '''A list of detected events in image(s) or video frame(s).
+
+    This type is implemented in ETA by the
+    `eta.core.objects.DetectedEventContainer` class.
+
+    Examples:
+        /path/to/detected_events.json
+    '''
+    pass
+
+
+class ImageLabels(Labels):
     '''A description of the labeled contents of an image.
 
     This type is implemented in ETA by the `eta.core.image.ImageLabels`
@@ -1256,7 +1325,7 @@ class ImageLabels(JSONFile):
     pass
 
 
-class ImageSetLabels(JSONFile):
+class ImageSetLabels(Labels):
     '''A description of the labeled contents of a set of images.
 
     This type is implemented in ETA by the `eta.core.image.ImageSetLabels`
@@ -1268,7 +1337,7 @@ class ImageSetLabels(JSONFile):
     pass
 
 
-class ImageLabelsSchema(JSONFile):
+class ImageLabelsSchema(LabelsSchema):
     '''A description of the schema of possible labels that can be generated for
     images.
 
@@ -1281,7 +1350,7 @@ class ImageLabelsSchema(JSONFile):
     pass
 
 
-class VideoLabels(JSONFile):
+class VideoLabels(Labels):
     '''A description of the labeled contents of a video.
 
     This type is implemented in ETA by the `eta.core.video.VideoLabels`
@@ -1293,7 +1362,7 @@ class VideoLabels(JSONFile):
     pass
 
 
-class VideoLabelsSchema(JSONFile):
+class VideoLabelsSchema(LabelsSchema):
     '''A description of the schema of possible labels that can be generated for
     a video.
 
@@ -1306,7 +1375,7 @@ class VideoLabelsSchema(JSONFile):
     pass
 
 
-class VideoSetLabels(JSONFile):
+class VideoSetLabels(Labels):
     '''A description of the labeled contents of a set of videos.
 
     This type is implemented in ETA by the `eta.core.video.VideoSetLabels`

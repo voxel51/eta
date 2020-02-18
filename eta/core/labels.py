@@ -14,9 +14,12 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
+from future.utils import iteritems
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
+
+from collections import defaultdict
 
 import eta.core.serial as etas
 import eta.core.utils as etau
@@ -26,7 +29,7 @@ class Labels(etas.Serializable):
     '''Base class for `eta.core.serial.Serializable` classes that hold labels
     representing attributes, objects, frames, events, images, videos, etc.
 
-    Labels classes have associated `Schema` classes that describe the
+    Labels classes have associated Schema classes that describe the
     ontologies over the labels class.
     '''
 
@@ -41,7 +44,7 @@ class Labels(etas.Serializable):
 
     @classmethod
     def get_schema_cls(cls):
-        '''Gets the `LabelsSchema` class for the labels.
+        '''Gets the LabelsSchema class for the labels.
 
         Subclasses can override this method, but, by default, this
         implementation assumes the convention that labels class `<Labels>` has
@@ -54,7 +57,7 @@ class Labels(etas.Serializable):
         return etau.get_class(class_name + "Schema")
 
     def get_active_schema(self):
-        '''Returns a `LabelsSchema` that describes the active schema of the
+        '''Returns a LabelsSchema that describes the active schema of the
         labels.
 
         Returns:
@@ -74,7 +77,7 @@ class Labels(etas.Serializable):
 
 
 class LabelsSchema(etas.Serializable):
-    '''Base class for schemas of `Labels` classes.'''
+    '''Base class for schemas of Labels classes.'''
 
     def __bool__(self):
         '''Whether this schema has labels of any kind.'''
@@ -86,7 +89,7 @@ class LabelsSchema(etas.Serializable):
         raise NotImplementedError("subclasses must implement is_empty")
 
     def add(self, labels):
-        '''Incorporates the `Labels` into the schema.
+        '''Incorporates the Labels into the schema.
 
         Args:
             label: a Labels instance
@@ -95,7 +98,7 @@ class LabelsSchema(etas.Serializable):
         self.merge_schema(labels_schema)
 
     def add_iterable(self, iterable):
-        '''Incorporates the given iterable of `Labels` into the schema.
+        '''Incorporates the given iterable of Labels into the schema.
 
         Args:
             iterable: an iterable of Labels
@@ -104,7 +107,7 @@ class LabelsSchema(etas.Serializable):
             self.add(labels)
 
     def validate(self, labels):
-        '''Validates that the `Labels` are compliant with the schema.
+        '''Validates that the Labels are compliant with the schema.
 
         Args:
             labels: a Labels instance
@@ -144,7 +147,7 @@ class LabelsSchema(etas.Serializable):
                 (type(self), type(schema)))
 
     def is_valid(self, labels):
-        '''Whether the `Labels` are compliant with the schema.
+        '''Whether the Labels are compliant with the schema.
 
         Args:
             labels: a Labels instance
@@ -175,7 +178,7 @@ class LabelsSchema(etas.Serializable):
 
     @classmethod
     def build_active_schema(cls, labels):
-        '''Builds a `LabelsSchema` that describes the active schema of the
+        '''Builds a LabelsSchema that describes the active schema of the
         labels.
 
         Args:
@@ -188,7 +191,7 @@ class LabelsSchema(etas.Serializable):
             "subclasses must implement `build_active_schema()`")
 
     def merge_schema(self, schema):
-        '''Merges the given `LabelsSchema` into this schema.
+        '''Merges the given LabelsSchema into this schema.
 
         Args:
             schema: a LabelsSchema
@@ -197,25 +200,28 @@ class LabelsSchema(etas.Serializable):
 
 
 class LabelsSchemaError(Exception):
-    '''Error raisesd when a `LabelsSchema` is violated.'''
+    '''Error raisesd when a LabelsSchema is violated.'''
     pass
 
 
 class HasLabelsSchema(object):
-    '''Mixin for `Label` classes that can optionally store and enforce
+    '''Mixin for Label classes that can optionally store and enforce
     `LabelsSchema`s on their labels.
 
     For efficiency, schemas are not automatically enforced when new labels are
-    added to `HasLabelsSchema` instances. Rather, users must manually call
+    added to HasLabelsSchema instances. Rather, users must manually call
     `validate_schema()` when they would like to validate the schema.
+
+    Attributes:
+        schema: the enforced LabelsSchema, or None
     '''
 
     def __init__(self, schema=None):
-        '''Initializes the `HasLabelsSchema` mixin.
+        '''Initializes the HasLabelsSchema mixin.
 
         Args:
-            schema: (optional) an optional LabelsSchema to enforce on the
-                labels. By default, no schema is enforced
+            schema: (optional) a LabelsSchema to enforce on the labels. By
+                default, no schema is enforced
         '''
         self.schema = schema
 
@@ -234,7 +240,7 @@ class HasLabelsSchema(object):
         return self.schema
 
     def set_schema(self, schema, filter_by_schema=False, validate=False):
-        '''Sets the enforced schema to the given `LabelsSchema`.
+        '''Sets the enforced schema to the given LabelsSchema.
 
         Args:
             schema: a LabelsSchema to assign
@@ -277,15 +283,115 @@ class HasLabelsSchema(object):
         self.set_schema(None)
 
 
-class LabelsContainer(Labels, HasLabelsSchema, etas.Container):
-    '''Base class for `eta.core.serial.Container`s of `Labels`.
+class HasLabelsSupport(object):
+    '''Mixin for Label classes that describe videos and can keep track of
+    their own support, i.e., the frames for which they contain labels.
 
-    `LabelsContainer`s can optionally store a `LabelsContainerSchema` instance
+    The support is represented via a `eta.core.frameutils.FrameRanges`
+    instance.
+
+    For efficiency, supports should not be automatically updated when new
+    labels are added to HasLabelsSupport instances. Rather, the support is
+    dynamically computed when the `support` property is accessed.
+    Alternatively, the current support can be frozen via `freeze_support()`
+    to avoid recomputing it each time `support` is called.
+    '''
+
+    def __init__(self, support=None):
+        '''Initializes the HasLabelsSupport mixin.
+
+        Args:
+            support: (optional) a FrameRanges instance describing the frozen
+                support of the labels. By default, the support is not frozen
+        '''
+        self._support = support
+
+    @property
+    def support(self):
+        '''A FrameRanges instance describing the frames for which this instance
+        contains labels.
+
+        If this instance has a frozen support, it is returned. Otherwise, the
+        support is dynamically computed via `_compute_support()`.
+        '''
+        if self.is_support_frozen:
+            return self._support
+
+        return self._compute_support()
+
+    @property
+    def is_support_frozen(self):
+        '''Whether the support is currently frozen.'''
+        return self._support is not None
+
+    def set_support(self, support):
+        '''Sets the support to the given value.
+
+        This action freezes the support for this instance.
+
+        Args:
+            support: a FrameRanges
+        '''
+        self._support = support
+
+    def merge_support(self, support):
+        '''Merges the given support into the current support.
+
+        This action freezes the support for this instance.
+
+        Args:
+            support: a FrameRanges
+        '''
+        new_support = self.support.merge(support)
+        self.set_support(new_support)
+
+    def freeze_support(self):
+        '''Freezes the support to the current `support`.
+
+        This optional optimization is useful to avoid recalculating the support
+        of the labels each time `support` is called.
+        '''
+        if not self.is_support_frozen:
+            self._support = self._compute_support()
+
+    def clear_support(self):
+        '''Clears the frozen support, if necessary.'''
+        self._support = None
+
+    def _compute_support(self):
+        '''Computes the current support of the labels in this instance.
+
+        Returns:
+            a FrameRanges
+        '''
+        raise NotImplementedError(
+            "subclasses must implement _compute_support()")
+
+
+class HasFramewiseView(object):
+    '''Mixin for Label classes that describe videos and can be rendered in
+    a framewise view by a LabelsFrameRenderer.
+    '''
+
+    def render_framewise_labels(self):
+        '''Renders a framewise copy of the labels.
+
+        Returns:
+            an framewise copy of the labels
+        '''
+        raise NotImplementedError(
+            "subclasses must implement render_framewise_labels()")
+
+
+class LabelsContainer(Labels, HasLabelsSchema, etas.Container):
+    '''Base class for `eta.core.serial.Container`s of Labels.
+
+    `LabelsContainer`s can optionally store a LabelsContainerSchema instance
     that governs the schema of the labels in the container.
     '''
 
     def __init__(self, schema=None, **kwargs):
-        '''Creates a `LabelsContainer` instance.
+        '''Creates a LabelsContainer instance.
 
         Args:
             schema: an optional LabelsContainerSchema to enforce on the labels
@@ -308,7 +414,7 @@ class LabelsContainer(Labels, HasLabelsSchema, etas.Container):
         return etas.Container.is_empty(self)
 
     def add_container(self, container):
-        '''Appends the labels in the given `LabelContainer` to the container.
+        '''Appends the labels in the given LabelContainer to the container.
 
         Args:
             container: a LabelsContainer
@@ -369,7 +475,7 @@ class LabelsContainerSchema(LabelsSchema):
     '''Base class for schemas of `LabelsContainer`s.'''
 
     def add(self, labels):
-        '''Incorporates the `Labels` into the schema.
+        '''Incorporates the Labels into the schema.
 
         Args:
             label: a Labels instance
@@ -385,7 +491,7 @@ class LabelsContainerSchema(LabelsSchema):
         self.add_iterable(container)
 
     def add_iterable(self, iterable):
-        '''Incorporates the given iterable of `Labels` into the schema.
+        '''Incorporates the given iterable of Labels into the schema.
 
         Args:
             iterable: an iterable of Labels
@@ -395,8 +501,8 @@ class LabelsContainerSchema(LabelsSchema):
 
     @classmethod
     def build_active_schema(cls, container):
-        '''Builds a `LabelsContainerSchema` describing the active schema of
-        the `LabelsContainer`.
+        '''Builds a LabelsContainerSchema describing the active schema of the
+        LabelsContainer.
 
         Args:
             container: a LabelsContainer
@@ -412,19 +518,19 @@ class LabelsContainerSchema(LabelsSchema):
 
 
 class LabelsContainerSchemaError(LabelsSchemaError):
-    '''Error raisesd when a `LabelsContainerSchema` is violated.'''
+    '''Error raisesd when a LabelsContainerSchema is violated.'''
     pass
 
 
 class LabelsSet(Labels, HasLabelsSchema, etas.Set):
-    '''Base class for `eta.core.serial.Set`s of `Labels`.
+    '''Base class for `eta.core.serial.Set`s of Labels.
 
-    `LabelsSet`s can optionally store a `LabelsSchema` instance that governs
-    the schemas of the `Labels` in the set.
+    `LabelsSet`s can optionally store a LabelsSchema instance that governs
+    the schemas of the Labels in the set.
     '''
 
     def __init__(self, schema=None, **kwargs):
-        '''Creates a `LabelsSet` instance.
+        '''Creates a LabelsSet instance.
 
         Args:
             schema: an optional LabelsSchema to enforce on each element of the
@@ -447,10 +553,9 @@ class LabelsSet(Labels, HasLabelsSchema, etas.Set):
         return etas.Set.is_empty(self)
 
     def __getitem__(self, key):
-        '''Gets the `Labels` for the given key.
+        '''Gets the Labels for the given key.
 
-        If the key is not found, an empty `Labels` is created for it, and
-        returned.
+        If the key is not found, an empty Labels is created and returned.
 
         Args:
             key: the key
@@ -467,7 +572,7 @@ class LabelsSet(Labels, HasLabelsSchema, etas.Set):
 
     @classmethod
     def get_schema_cls(cls):
-        '''Gets the schema class for the `Labels` in the set.
+        '''Gets the schema class for the Labels in the set.
 
         Returns:
             the LabelsSchema class
@@ -475,7 +580,7 @@ class LabelsSet(Labels, HasLabelsSchema, etas.Set):
         return cls._ELE_CLS.get_schema_cls()
 
     def empty(self):
-        '''Returns an empty copy of the `LabelsSet`.
+        '''Returns an empty copy of the LabelsSet.
 
         The schema of the set is preserved, if applicable.
 
@@ -485,7 +590,7 @@ class LabelsSet(Labels, HasLabelsSchema, etas.Set):
         return self.__class__(schema=self.schema)
 
     def add_set(self, labels_set):
-        '''Adds the labels in the given `LabelSet` to the set.
+        '''Adds the labels in the given LabelSet to the set.
 
         Args:
             labels_set: a LabelsSet
@@ -497,10 +602,10 @@ class LabelsSet(Labels, HasLabelsSchema, etas.Set):
         self.add_iterable(labels_set)
 
     def get_active_schema(self):
-        '''Gets the `LabelsSchema` describing the active schema of the set.
+        '''Gets the LabelsSchema describing the active schema of the set.
 
         Returns:
-            a `LabelsSchema`
+            a LabelsSchema
         '''
         schema_cls = self.get_schema_cls()
         schema = schema_cls()
@@ -520,7 +625,7 @@ class LabelsSet(Labels, HasLabelsSchema, etas.Set):
             labels.filter_by_schema(schema)
 
     def set_schema(self, schema, filter_by_schema=False, validate=False):
-        '''Sets the enforced schema to the given `LabelsSchema`.
+        '''Sets the enforced schema to the given LabelsSchema.
 
         Args:
             schema: a LabelsSchema to assign
@@ -554,7 +659,7 @@ class LabelsSet(Labels, HasLabelsSchema, etas.Set):
 
     @classmethod
     def from_dict(cls, d):
-        '''Constructs a `LabelsSet` from a JSON dictionary.
+        '''Constructs a LabelsSet from a JSON dictionary.
 
         Args:
             d: a JSON dictionary
@@ -571,7 +676,7 @@ class LabelsSet(Labels, HasLabelsSchema, etas.Set):
 
     @classmethod
     def from_labels_patt(cls, labels_patt):
-        '''Creates a `LabelsSet` from a pattern of `Labels` files on disk.
+        '''Creates a LabelsSet from a pattern of Labels files on disk.
 
         Args:
              labels_patt: a pattern with one or more numeric sequences for
@@ -601,3 +706,100 @@ class LabelsSet(Labels, HasLabelsSchema, etas.Set):
     def _validate_labels(self, labels):
         if self.has_schema:
             self.schema.validate(labels)
+
+
+class LabelsFrameRenderer(object):
+    '''Interface for classes that render Labels at the frame-level.
+
+    `LabelsFrameRenderer`s must follow the strict convention that they do not
+    modify or pass by reference any components of the source Labels that they
+    are rendering. I.e., any labels they produce are deep copies of the source
+    labels.
+    '''
+
+    def render_frame(self, frame_number):
+        '''Renders the labels for the given frame.
+
+        Args:
+            frame_number: the frame number
+
+        Returns:
+            a Labels instance, or None if no labels exist for the given frame
+        '''
+        raise NotImplementedError("subclasses must implement render_frame()")
+
+    def render_all_frames(self):
+        '''Renders the labels for all possible frames.
+
+        Returns:
+            a dictionary mapping frame numbers to Labels instances
+        '''
+        raise NotImplementedError(
+            "subclasses must implement render_all_frames()")
+
+
+class LabelsContainerFrameRenderer(LabelsFrameRenderer):
+    '''Base class for rendering labels for Containers at the frame-level.'''
+
+    #
+    # The Container class in which to store frame elements that are rendered
+    #
+    # Subclasses MUST set this field
+    #
+    _FRAME_CONTAINER_CLS = None
+
+    #
+    # The LabelsFrameRenderer class to use to render elements of the container
+    #
+    # Subclasses MUST set this field
+    #
+    _ELEMENT_RENDERER_CLS = None
+
+    def __init__(self, container):
+        '''Creates an LabelsContainerFrameRenderer instance.
+
+        Args:
+            container: a Container
+        '''
+        self._container = container
+
+    def render_frame(self, frame_number):
+        '''Renders the Container for the given frame.
+
+        Args:
+            frame_number: the frame number
+
+        Returns:
+            a `_FRAME_CONTAINER_CLS` instance, which may be empty if no labels
+                exist for the specified frame
+        '''
+        # pylint: disable=not-callable
+        frame_elements = self._FRAME_CONTAINER_CLS()
+
+        for element in self._container:
+            # pylint: disable=not-callable
+            renderer = self._ELEMENT_RENDERER_CLS(element)
+            frame_element = renderer.render_frame(frame_number)
+            if frame_element is not None:
+                frame_elements.add(frame_element)
+
+        return frame_elements
+
+    def render_all_frames(self):
+        '''Renders the Container for all possible frames.
+
+        Returns:
+            a dictionary mapping frame numbers to `_FRAME_CONTAINER_CLS`
+                instances
+        '''
+        # pylint: disable=not-callable
+        frame_elements_map = defaultdict(self._FRAME_CONTAINER_CLS)
+
+        for element in self._container:
+            # pylint: disable=not-callable
+            renderer = self._ELEMENT_RENDERER_CLS(element)
+            frame_map = renderer.render_all_frames()
+            for frame_number, frame_element in iteritems(frame_map):
+                frame_elements_map[frame_number].add(frame_element)
+
+        return dict(frame_elements_map)

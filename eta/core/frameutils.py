@@ -160,8 +160,7 @@ class FrameRanges(etas.Serializable):
             if isinstance(ranges, six.string_types):
                 ranges = self._parse_frames_str(ranges)
 
-            for new_range in ranges:
-                self._ingest_range(new_range)
+            self._set_ranges(ranges)
 
     def __str__(self):
         return self.to_human_str()
@@ -175,6 +174,13 @@ class FrameRanges(etas.Serializable):
     def __iter__(self):
         self.reset()
         return self
+
+    def __contains__(self, frame):
+        for r in self._ranges:
+            if frame in r:
+                return True
+
+        return False
 
     def __next__(self):
         self._started = True
@@ -197,6 +203,11 @@ class FrameRanges(etas.Serializable):
                 ranges.append((fr.first, fr.last))
 
         return ranges
+
+    def _set_ranges(self, ranges):
+        self.clear()
+        for new_range in ranges:
+            self._ingest_range(new_range)
 
     def _ingest_range(self, new_range):
         first, last = new_range
@@ -237,8 +248,6 @@ class FrameRanges(etas.Serializable):
     @property
     def ranges(self):
         '''A serialized string representation of this object.'''
-        # This controls how `FrameRanges` instances are serialized
-        #return self.to_range_tuples()  # can be used if strings aren't liked
         return self.to_human_str()
 
     @property
@@ -283,7 +292,7 @@ class FrameRanges(etas.Serializable):
         self._idx = 0
 
     def clear(self):
-        '''Clears the FrameRanges instance.'''
+        '''Clears and resets the FrameRanges instance.'''
         self._ranges = []
         self.reset()
 
@@ -295,18 +304,40 @@ class FrameRanges(etas.Serializable):
 
         Raises:
             FrameRangesError: if the new range is not disjoint and
-                monotonically increasing
+                monotonically increasing w.r.t. the existing ranges
         '''
         self._ingest_range(new_range)
+
+    def merge(self, *args):
+        '''Merges the given FrameRange and/or FrameRanges instances into this
+        range.
+
+        Merges are successful regardless of overlap between ranges.
+
+        This operation will reset the instance.
+
+        Args:
+            *args: one or more FrameRange or FrameRanges instances
+        '''
+        new_frames = set(self.to_list())
+        for r in args:
+            new_frames.update(r.to_list())
+
+        new_ranges = _iterable_to_ranges(new_frames)
+        self._set_ranges(new_ranges)
 
     def simplify(self):
         '''Simplifies the frame ranges, if possible, by merging any adjacent
         `FrameRange` instances into a single range.
 
-        This operation will `reset()` the instance.
+        This operation will reset the instance if any simplification was
+        performed.
+
+        Returns:
+            True/False whether any simplification was performed
         '''
         if not self:
-            return
+            return False
 
         did_something = False
         last_range = list(self._ranges[0].limits)
@@ -321,12 +352,10 @@ class FrameRanges(etas.Serializable):
                 new_ranges.append(last_range)
 
         if not did_something:
-            self.reset()
-            return
+            return False
 
-        self.clear()
-        for new_range in new_ranges:
-            self.add_range(new_range)
+        self._set_ranges(new_ranges)
+        return True
 
     def attributes(self):
         '''Returns the list of class attributes that will be serialized.
@@ -441,7 +470,8 @@ class FrameRanges(etas.Serializable):
     def from_iterable(cls, frames):
         '''Constructs a FrameRanges object from an iterable of frames.
 
-        The frames do not need to be in sorted order.
+        The frames do not need to be in sorted order, and they may contain
+        duplicates.
 
         Args:
             frames: an iterable of frames, e.g., [1, 2, 3, 6, 8, 9, 10]
@@ -523,6 +553,9 @@ class FrameRange(etas.Serializable):
         self.reset()
         return self
 
+    def __contains__(self, frame):
+        return self.first <= frame <= self.last
+
     def __next__(self):
         if self._frame < 0:
             self._frame = self.first
@@ -600,8 +633,8 @@ class FrameRange(etas.Serializable):
     def from_iterable(cls, frames):
         '''Constructs a FrameRange object from an iterable of frames.
 
-        The frames do not need to be in sorted order, but they must define a
-        single interval.
+        The frames do not need to be in sorted order, and there may be
+        duplicates. However, the frames must define a single interval.
 
         Args:
             frames: an iterable of frames, e.g., [1, 2, 3, 4, 5]
@@ -639,7 +672,7 @@ class FrameRangeError(Exception):
 def _iterable_to_ranges(vals):
     # This will convert numpy arrays to list, and it's important to do this
     # before checking for falseness below, since numpy arrays don't support it
-    vals = sorted(vals)
+    vals = sorted(set(vals))
 
     if not vals:
         return
