@@ -1014,6 +1014,7 @@ class FrameLabelsSchema(etal.LabelsSchema):
         return cls(attrs=video_labels_schema.frames,
                    objects=video_labels_schema.objects)
 
+
 class FrameLabelsSchemaError(etal.LabelsSchemaError):
     '''Error raised when an `FrameLabelsSchema` is violated.'''
     pass
