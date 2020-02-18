@@ -692,3 +692,100 @@ class LabelsSet(Labels, HasLabelsSchema, etas.Set):
     def _validate_labels(self, labels):
         if self.has_schema:
             self.schema.validate(labels)
+
+
+class LabelsFrameRenderer(object):
+    '''Interface for classes that render `Labels` at the frame-level.
+
+    `LabelsFrameRenderer`s must follow the strict convention that they do not
+    modify or pass by reference any components of the source `Labels` that they
+    are rendering. I.e., any labels they produce are deep copies of the source
+    labels.
+    '''
+
+    def render_frame(self, frame_number):
+        '''Renders the labels for the given frame.
+
+        Args:
+            frame_number: the frame number
+
+        Returns:
+            a Labels instance, or None if no labels exist for the given frame
+        '''
+        raise NotImplementedError("subclasses must implement render_frame()")
+
+    def render_all_frames(self):
+        '''Renders the labels for all possible frames.
+
+        Returns:
+            a dictionary mapping frame numbers to `Labels` instances
+        '''
+        raise NotImplementedError(
+            "subclasses must implement render_all_frames()")
+
+
+class LabelsContainerFrameRenderer(LabelsFrameRenderer):
+    '''Base class for rendering labels for Containers at the frame-level.'''
+
+    #
+    # The Container class in which to store frame elements that are rendered
+    #
+    # Subclasses MUST set this field
+    #
+    _FRAME_CONTAINER_CLS = None
+
+    #
+    # The LabelsFrameRenderer class to use to render elements of the container
+    #
+    # Subclasses MUST set this field
+    #
+    _ELEMENT_RENDERER_CLS = None
+
+    def __init__(self, container):
+        '''Creates an LabelsContainerFrameRenderer instance.
+
+        Args:
+            container: a Container
+        '''
+        self._container = container
+
+    def render_frame(self, frame_number):
+        '''Renders the Container for the given frame.
+
+        Args:
+            frame_number: the frame number
+
+        Returns:
+            a `_FRAME_CONTAINER_CLS` instance, which may be empty if no labels
+                exist for the specified frame
+        '''
+        # pylint: disable=not-callable
+        frame_elements = self._FRAME_CONTAINER_CLS()
+
+        for element in self._container:
+            # pylint: disable=not-callable
+            renderer = self._ELEMENT_RENDERER_CLS(element)
+            frame_element = renderer.render_frame(frame_number)
+            if frame_element is not None:
+                frame_elements.add(frame_element)
+
+        return frame_elements
+
+    def render_all_frames(self):
+        '''Renders the Container for all possible frames.
+
+        Returns:
+            a dictionary mapping frame numbers to `_FRAME_CONTAINER_CLS`
+                instances
+        '''
+        # pylint: disable=not-callable
+        frame_elements_map = defaultdict(self._FRAME_CONTAINER_CLS)
+
+        for element in self._container:
+            # pylint: disable=not-callable
+            renderer = self._ELEMENT_RENDERER_CLS(element)
+            frame_map = renderer.render_all_frames()
+            for frame_number, frame_element in iteritems(frame_map):
+                frame_elements_map[frame_number].add(frame_element)
+
+        return dict(frame_elements_map)
