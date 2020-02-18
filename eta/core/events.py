@@ -1,5 +1,5 @@
 '''
-Core tools and data structures for working with events in videos.
+Core tools and data structures for working with events in images and videos.
 
 Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
@@ -28,34 +28,344 @@ import eta.core.objects as etao
 import eta.core.utils as etau
 
 
-class EventFrameLabels(FrameLabels):
-    '''FrameLabels for a specific frame of an event.
+class DetectedEvent(etal.Labels, etag.HasBoundingBox):
+    '''A detected event in an image or frame of a video.
 
     Attributes:
-        frame_number: frame number
-        attrs: AttributeContainer describing attributes of the frame
-        objects: DetectedObjectContainer describing detected objects in the
+        type: the fully-qualified class name of the event
+        label: (optional) event label
+        bounding_box: (optional) a BoundingBox around the event
+        mask: (optional) a mask for the event within its bounding box
+        confidence: (optional) the label confidence, in [0, 1]
+        top_k_probs: (optional) dictionary mapping labels to probabilities
+        index: (optional) an index assigned to the event
+        frame_number: (optional) the frame number in which the event was
+            detected
+        attrs: (optional) an AttributeContainer describing attributes of the
             frame
+        objects: (optional) a DetectedObjectContainer describing detected
+            objects in the frame
     '''
 
-    def filter_by_schema(self, schema):
-        '''Removes objects/attributes from this frame that are not compliant
-        with the given schema.
+    def __init__(
+            self, label=None, bounding_box=None, mask=None, confidence=None,
+            top_k_probs=None, index=None, frame_number=None, attrs=None,
+            objects=None):
+        '''Creates a DetectedEvent instance.
+
+        Args:
+            label: (optional) event label
+            bounding_box: (optional) a BoundingBox around the event
+            mask: (optional) a numpy array describing the mask for the event
+                within its bounding box
+            confidence: (optional) the label confidence, in [0, 1]
+            top_k_probs: (optional) dictionary mapping labels to probabilities
+            index: (optional) an index assigned to the event
+            frame_number: (optional) the frame number in which this event was
+                detected
+            attrs: (optional) an AttributeContainer of attributes for the frame
+            objects: (optional) a DetectedObjectContainer of detected objects
+                for the frame
+        '''
+        self.type = etau.get_class_name(self)
+        self.label = label
+        self.bounding_box = bounding_box
+        self.mask = mask
+        self.confidence = confidence
+        self.top_k_probs = top_k_probs
+        self.index = index
+        self.frame_number = frame_number
+        self.attrs = attrs or etad.AttributeContainer()
+        self.objects = objects or etao.DetectedObjectContainer()
+
+    @property
+    def is_empty(self):
+        '''Whether this event has no labels of any kind.'''
+        return not (
+            self.has_label or self.has_bounding_box or self.has_mask
+            or self.has_attributes or self.has_objects)
+
+    @property
+    def has_label(self):
+        '''Whether this event has a label.'''
+        return self.label is not None
+
+    @property
+    def has_bounding_box(self):
+        '''Whether this event has a bounding box.'''
+        return self.bounding_box is not None
+
+    @property
+    def has_mask(self):
+        '''Whether this event has a segmentation mask.'''
+        return self.mask is not None
+
+    @property
+    def has_confidence(self):
+        '''Whether this event has a confidence.'''
+        return self.confidence is not None
+
+    @property
+    def has_top_k_probs(self):
+        '''Whether this event has top-k probabilities.'''
+        return self.top_k_probs is not None
+
+    @property
+    def has_index(self):
+        '''Whether this event has an index.'''
+        return self.index is not None
+
+    @property
+    def has_frame_number(self):
+        '''Whether this event has a frame number.'''
+        return self.frame_number is not None
+
+    @property
+    def has_attributes(self):
+        '''Whether this event has attributes.'''
+        return bool(self.attrs)
+
+    @property
+    def has_objects(self):
+        '''Whether this event has at least one object.'''
+        return bool(self.objects)
+
+    @classmethod
+    def get_schema_cls(cls):
+        '''Gets the schema class for `DetectedEvent`s.
+
+        Returns:
+            the LabelsSchema class
+        '''
+        return EventSchema
+
+    def get_bounding_box(self):
+        '''Returns the BoundingBox for the event.
+
+        Returns:
+             a BoundingBox
+        '''
+        return self.bounding_box
+
+    def add_attribute(self, attr):
+        '''Adds the attribute to the event.
+
+        Args:
+            attr: an Attribute
+        '''
+        self.attrs.add(attr)
+
+    def add_attributes(self, attrs):
+        '''Adds the attributes to the event.
+
+        Args:
+            attrs: an AttributeContainer
+        '''
+        self.attrs.add_container(attrs)
+
+    def add_object(self, obj):
+        '''Adds the object to the event.
+
+        Args:
+            obj: a DetectedObject
+        '''
+        self.objects.add(obj)
+
+    def add_objects(self, objs):
+        '''Adds the objects to the event.
+
+        Args:
+            objs: a DetectedObjectContainer
+        '''
+        self.objects.add_container(objs)
+
+    def clear_attributes(self):
+        '''Removes all frame-level attributes from the event.'''
+        self.attrs = etad.AttributeContainer()
+
+    def clear_objects(self):
+        '''Removes all objects from the event.'''
+        self.objects = etao.DetectedObjectContainer()
+
+    def clear_object_attributes(self):
+        '''Removes all object-level attributes from the event.'''
+        for obj in self.objects:
+            obj.clear_attributes()
+
+    def filter_by_schema(self, schema, allow_none_label=False):
+        '''Filters the event by the given schema.
+
+        The `label` of the DetectedEvent must match the provided schema. Or,
+        it can be `None` when `allow_none_label == True`.
 
         Args:
             schema: an EventSchema
+            allow_none_label: whether to allow the event label to be `None`.
+                By default, this is False
+
+        Raises:
+            LabelsSchemaError: if the event label does not match the schema
         '''
+        if self.label is None:
+            if not allow_none_label:
+                raise EventSchemaError(
+                    "None event label is not allowed by the schema")
+        elif self.label != schema.get_label():
+            raise EventSchemaError(
+                "Label '%s' does not match event schema" % self.label)
+
         self.attrs.filter_by_schema(schema.frames)
         self.objects.filter_by_schema(schema.objects)
 
+    def remove_objects_without_attrs(self, labels=None):
+        '''Removes objects from the event that do not have attributes.
 
-class Event(etal.Labels):
-    '''An event in a video.
+        Args:
+            labels: an optional list of object `label` strings to which to
+                restrict attention when filtering. By default, all objects are
+                processed
+        '''
+        self.objects.remove_objects_without_attrs(labels=labels)
 
-    `Event`s are temporal concepts that describe a collection of information
-    about an event in a video. `Event`s can have labels with confidences,
-    event-level attributes, frame-level attributes and object detections, and
-    child objects and events.
+    def attributes(self):
+        '''Returns the list of class attributes that will be serialized.
+
+        Returns:
+            a list of attribute names
+        '''
+        _attrs = ["type"]
+        _noneable_attrs = [
+            "label", "bounding_box", "mask", "confidence", "top_k_probs",
+            "index", "frame_number"]
+        _attrs.extend(
+            [a for a in _noneable_attrs if getattr(self, a) is not None])
+        if self.attrs:
+            _attrs.append("attrs")
+        if self.objects:
+            _attrs.append("objects")
+
+        return _attrs
+
+    @classmethod
+    def from_dict(cls, d):
+        '''Constructs a DetectedEvent from a JSON dictionary.
+
+        Args:
+            d: a JSON dictionary
+
+        Returns:
+            a DetectedEvent
+        '''
+        bounding_box = d.get("bounding_box", None)
+        if bounding_box is not None:
+            bounding_box = etag.BoundingBox.from_dict(bounding_box)
+
+        mask = d.get("mask", None)
+        if mask is not None:
+            mask = etas.deserialize_numpy_array(mask)
+
+        attrs = d.get("attrs", None)
+        if attrs is not None:
+            attrs = etad.AttributeContainer.from_dict(attrs)
+
+        objects = d.get("objects", None)
+        if objects is not None:
+            objects = etao.DetectedObjectContainer.from_dict(objects)
+
+        return cls(
+            label=d.get("label", None),
+            bounding_box=bounding_box,
+            mask=mask,
+            confidence=d.get("confidence", None),
+            top_k_probs=d.get("top_k_probs", None),
+            index=d.get("index", None),
+            frame_number=d.get("frame_number", None),
+            attrs=attrs,
+            objects=objects,
+        )
+
+
+class DetectedEventContainer(etal.LabelsContainer):
+    '''An `eta.core.serial.Container` of `DetectedEvent`s.'''
+
+    _ELE_CLS = DetectedEvent
+    _ELE_CLS_FIELD = "_EVENT_CLS"
+    _ELE_ATTR = "events"
+
+    def get_labels(self):
+        '''Returns a set containing the labels of the `DetectedEvent`s.
+
+        Returns:
+            a set of labels
+        '''
+        return set(obj.label for obj in self)
+
+    def sort_by_confidence(self, reverse=False):
+        '''Sorts the `DetectedEvent`s by confidence.
+
+        `DetectedEvent`s whose confidence is None are always put last.
+
+        Args:
+            reverse: whether to sort in descending order. The default is False
+        '''
+        self.sort_by("confidence", reverse=reverse)
+
+    def sort_by_index(self, reverse=False):
+        '''Sorts the `DetectedEvent`s by index.
+
+        `DetectedEvent`s whose index is None are always put last.
+
+        Args:
+            reverse: whether to sort in descending order. The default is False
+        '''
+        self.sort_by("index", reverse=reverse)
+
+    def sort_by_frame_number(self, reverse=False):
+        '''Sorts the `DetectedEvent`s by frame number
+
+        `DetectedEvent`s whose frame number is None are always put last.
+
+        Args:
+            reverse: whether to sort in descending order. The default is False
+        '''
+        self.sort_by("frame_number", reverse=reverse)
+
+    def filter_by_schema(self, schema):
+        '''Filters the events in the container by the given schema.
+
+        Args:
+            schema: an EventContainerSchema
+        '''
+        # Remove events with invalid labels
+        filter_func = lambda event: schema.has_event_label(event.label)
+        self.filter_elements([filter_func])
+
+        # Filter events by their schemas
+        for event in self:
+            event_schema = schema.get_event_schema(event.label)
+            event.filter_by_schema(event_schema)
+
+    def remove_objects_without_attrs(self, labels=None):
+        '''Removes objects from this container that do not have attributes.
+
+        Args:
+            labels: an optional list of object `label` strings to which to
+                restrict attention when filtering. By default, all objects are
+                processed
+        '''
+        for event in self:
+            event.remove_objects_without_attrs(labels=labels)
+
+
+class Event(etal.Labels, etal.HasLabelsSupport):
+    '''A spatiotemporal event in a video.
+
+    `Event`s are spatiotemporal concepts that describe a collection of
+    information about an event in a video. `Event`s can have labels with
+    confidences, event-level attributes that apply to the event over all
+    frames, spatiotemporal objects, frame-level attributes such as bounding
+    boxes, object detections, and attributes that apply to individual frames,
+    and child objects and events.
 
     Attributes:
         type: the fully-qualified class name of the event
