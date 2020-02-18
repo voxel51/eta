@@ -1038,13 +1038,36 @@ class VideoStreamInfo(JSONFile):
 
 
 class FrameRanges(JSONFile):
-    '''A a monotonically increasing and disjoint series of frame ranges.
+    '''A monotonically increasing and disjoint series of frame ranges.
 
     This type is implemented in ETA by the `eta.core.frameutils.FrameRanges`
     class.
 
     Examples:
         /path/to/frame_ranges.json
+    '''
+    pass
+
+
+class MaskIndex(JSONFile):
+    '''An index of sementics for the values in a mask.
+
+    This type is implemented in ETA by the `eta.core.data.MaskIndex` class.
+
+    Examples:
+        /path/to/mask_index.json
+    '''
+    pass
+
+
+class FrameMaskIndex(MaskIndex):
+    '''An index of semantics for the values in a frame mask.
+
+    This type is implemented in ETA by the `eta.core.frames.FrameMaskIndex`
+    class.
+
+    Examples:
+        /path/to/frame_mask_index.json
     '''
     pass
 
