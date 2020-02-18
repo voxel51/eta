@@ -2147,7 +2147,7 @@ class VideoLabelsFrameRenderer(etal.LabelsFrameRenderer):
         if self._video_labels.has_frame(frame_number):
             frame_labels = deepcopy(self._video_labels.get_frame(frame_number))
         else:
-            frame_labels = VideoFrameLabels()
+            frame_labels = VideoFrameLabels(frame_number=frame_number)
 
         # Render video-level attributes
         if video_attrs is not None:
