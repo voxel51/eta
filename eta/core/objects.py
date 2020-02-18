@@ -1757,7 +1757,7 @@ class ObjectFrameRenderer(etal.LabelsFrameRenderer):
         return deepcopy(self._obj.attrs)
 
 
-class ObjectContainerFrameRenderer(etal.LabelsFrameRenderer):
+class ObjectContainerFrameRenderer(etal.LabelsContainerFrameRenderer):
     '''Class for rendering labels for an ObjectContainer at the frame-level.'''
 
     _FRAME_CONTAINER_CLS = DetectedObjectContainer

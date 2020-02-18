@@ -2714,7 +2714,7 @@ class EventFrameRenderer(etal.LabelsFrameRenderer):
         return r.render_frame(frame_number)
 
 
-class EventContainerFrameRenderer(etal.LabelsFrameRenderer):
+class EventContainerFrameRenderer(etal.LabelsContainerFrameRenderer):
     '''Class for rendering labels for an EventContainer at the frame-level.'''
 
     _FRAME_CONTAINER_CLS = DetectedEventContainer
