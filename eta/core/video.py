@@ -2107,6 +2107,109 @@ class VideoLabelsSchemaError(etal.LabelsSchemaError):
     pass
 
 
+class VideoLabelsFrameRenderer(etal.LabelsFrameRenderer):
+    '''Class for rendering VideoLabels at the frame-level.'''
+
+    def __init__(self, video_labels):
+        '''Creates an VideoLabelsFrameRenderer instance.
+
+        Args:
+            video_labels: a VideoLabels
+        '''
+        self._video_labels = video_labels
+
+    def render_frame(self, frame_number):
+        '''Renders the VideoLabels for the given frame.
+
+        Args:
+            frame_number: the frame number
+
+        Returns:
+            a VideoFrameLabels, or None if no labels exist for the given frame
+        '''
+        if frame_number not in self._video_labels.support:
+            return None
+
+        video_attrs = self._get_video_attrs()
+        dobjs = self._render_object_frame(frame_number)
+        devents = self._render_event_frame(frame_number)
+        return self._render_frame(frame_number, video_attrs, dobjs, devents)
+
+    def render_all_frames(self):
+        '''Renders the VideoLabels for all possible frames.
+
+        Returns:
+            a dictionary mapping frame numbers to VideoFrameLabels instances
+        '''
+        video_attrs = self._get_video_attrs()
+        dobjs_map = self._render_all_object_frames()
+        devents_map = self._render_all_event_frames()
+
+        frame_labels_map = {}
+        for frame_number in self._video_labels.support:
+            dobjs = dobjs_map.get(frame_number, None)
+            devents = devents_map.get(frame_number, None)
+            frame_labels_map[frame_number] = self._render_frame(
+                frame_number, video_attrs, dobjs, devents)
+
+        return frame_labels_map
+
+    def _render_frame(self, frame_number, video_attrs, dobjs, devents):
+        # Base VideoFrameLabels
+        if self._video_labels.has_frame(frame_number):
+            frame_labels = deepcopy(self._video_labels.get_frame(frame_number))
+        else:
+            frame_labels = VideoFrameLabels()
+
+        # Render video-level attributes
+        if video_attrs is not None:
+            frame_labels.add_attributes(video_attrs)
+
+        # Render objects
+        if dobjs is not None:
+            frame_labels.add_objects(dobjs)
+
+        # Render events
+        if devents is not None:
+            frame_labels.add_events(devents)
+
+        return frame_labels
+
+    def _get_video_attrs(self):
+        if not self._video_labels.has_video_attributes:
+            return None
+
+        return deepcopy(self._video_labels.attrs)
+
+    def _render_all_object_frames(self):
+        if not self._video_labels.has_objects:
+            return {}
+
+        r = etao.ObjectContainerFrameRenderer(self._video_labels.objects)
+        return r.render_all_frames()
+
+    def _render_object_frame(self, frame_number):
+        if not self._video_labels.has_objects:
+            return None
+
+        r = etao.ObjectContainerFrameRenderer(self._video_labels.objects)
+        return r.render_frame(frame_number)
+
+    def _render_all_event_frames(self):
+        if not self._video_labels.has_events:
+            return {}
+
+        r = etae.EventContainerFrameRenderer(self._video_labels.events)
+        return r.render_all_frames()
+
+    def _render_event_frame(self, frame_number):
+        if not self._video_labels.has_events:
+            return None
+
+        r = etae.EventContainerFrameRenderer(self._video_labels.events)
+        return r.render_frame(frame_number)
+
+
 class VideoSetLabels(etal.LabelsSet):
     '''Class encapsulating labels for a set of videos.
 
@@ -2773,7 +2876,7 @@ def _sample_select_frames_fast(video_path, frames, output_patt, size):
                 outpath = output_patt % frame_number
                 etau.move_file(tmp_path, outpath)
 
-            return
+            return None
 
         # Return frames into memory
         imgs = []
@@ -2984,7 +3087,8 @@ def extract_keyframes(video_path, output_patt=None):
         with p:
             for img in p:
                 p.write(img)
-        return
+
+        return None
 
     # Load frames into memory via FFmpegVideoReader
     with FFmpegVideoReader(video_path, keyframes_only=True) as r:
