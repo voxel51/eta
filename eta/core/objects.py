@@ -14,10 +14,12 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
-from future.utils import iteritems, itervalues
+from future.utils import iteritems
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
+
+from copy import deepcopy
 
 import eta.core.data as etad
 import eta.core.frameutils as etaf
@@ -1720,53 +1722,86 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
         if not self.has_object_label(label):
             self.schema[label] = ObjectSchema(label)
 
-    def _add_detected_object(self, dobj, label=None):
-        # Add label
-        if dobj.label is not None:
-            label = dobj.label
-            self.add_object_label(dobj.label)
-
-        # Add frame-level attributes
-        self.add_frame_attributes(label, dobj.attrs)
-
-    def _add_object(self, obj):
-        # Add label
-        self.add_object_label(obj.label)
-
-        # Add object-level attributes
-        self.add_object_attributes(obj.label, obj.attrs)
-
-        # Add DetectedObjects
-        for dobj in obj.iter_detections():
-            self._add_detected_object(dobj, label=obj.label)
-
-    def _validate_detected_object(self, dobj, label=None):
-        if label is None:
-            label = dobj.label
-
-        # Validate object label
-        self.validate_object_label(label)
-
-        # Validate frame-level attributes
-        self.validate_frame_attributes(label, dobj.attrs)
-
-    def _validate_object(self, obj):
-        label = obj.label
-
-        # Validate object label
-        self.validate_object_label(label)
-
-        # Validate object-level attributes
-        self.validate_object_attributes(label, obj.attrs)
-
-        # Validate DetectedObjects
-        for dobj in obj.iter_detections():
-            self._validate_detected_object(dobj, label=label)
-
 
 class ObjectContainerSchemaError(etal.LabelsContainerSchemaError):
     '''Error raised when an ObjectContainerSchema is violated.'''
     pass
+
+
+class ObjectFrameRenderer(etal.LabelsFrameRenderer):
+    '''Class for rendering labels for an Object at the frame-level.'''
+
+    def __init__(self, obj):
+        '''Creates an ObjectFrameRenderer instance.
+
+        Args:
+            obj: an Object
+        '''
+        self._obj = obj
+
+    def render_frame(self, frame_number):
+        '''Renders the Object for the given frame.
+
+        Args:
+            frame_number: the frame number
+
+        Returns:
+            a DetectedObject, or None if no labels exist for the given frame
+        '''
+        if frame_number not in self._obj.support:
+            return None
+
+        obj_attrs = self._get_object_attrs()
+        return self._render_frame(frame_number, obj_attrs)
+
+    def render_all_frames(self):
+        '''Renders the Object for all possible frames.
+
+        Returns:
+            a dictionary mapping frame numbers to DetectedObject instances
+        '''
+        obj_attrs = self._get_object_attrs()
+
+        dobjs_map = {}
+        for frame_number in self._obj.support:
+            dobjs_map[frame_number] = self._render_frame(
+                frame_number, obj_attrs)
+
+        return dobjs_map
+
+    def _render_frame(self, frame_number, obj_attrs):
+        # Base DetectedObject
+        if frame_number in self._obj.frames:
+            dobj = deepcopy(self._obj.frames[frame_number])
+        else:
+            dobj = DetectedObject()
+
+        # Render object-level attributes
+        if obj_attrs is not None:
+            dobj.add_attributes(obj_attrs)
+
+        # Inherit available object-level metadata
+        if self._obj.label is not None:
+            dobj.label = self._obj.label
+        if self._obj.confidence is not None:
+            dobj.confidence = self._obj.confidence
+        if self._obj.index is not None:
+            dobj.index = self._obj.index
+
+        return dobj
+
+    def _get_object_attrs(self):
+        if not self._obj.has_object_attributes:
+            return None
+
+        return deepcopy(self._obj.attrs)
+
+
+class ObjectContainerFrameRenderer(etal.LabelsFrameRenderer):
+    '''Class for rendering labels for an ObjectContainer at the frame-level.'''
+
+    _FRAME_CONTAINER_CLS = DetectedObjectContainer
+    _ELEMENT_RENDERER_CLS = ObjectFrameRenderer
 
 
 class ObjectCount(etas.Serializable):
