@@ -393,36 +393,6 @@ class VideoFrameLabels(FrameLabels):
             frame_number=frame_labels.frame_number, attrs=frame_labels.attrs,
             objects=frame_labels.objects, events=frame_labels.events)
 
-    def attributes(self):
-        '''Returns the list of class attributes that will be serialized.
-
-        Returns:
-            a list of attribute names
-        '''
-        _attrs = ["frame_number"]
-        _attrs.extend(super(VideoFrameLabels, self).attributes())
-        return _attrs
-
-    @classmethod
-    def from_dict(cls, d):
-        '''Constructs a VideoFrameLabels from a JSON dictionary.
-
-        Args:
-            d: a JSON dictionary
-
-        Returns:
-            a VideoFrameLabels
-        '''
-        attrs = d.get("attrs", None)
-        if attrs is not None:
-            attrs = etad.AttributeContainer.from_dict(attrs)
-
-        objects = d.get("objects", None)
-        if objects is not None:
-            objects = etao.DetectedObjectContainer.from_dict(objects)
-
-        return cls(d["frame_number"], attrs=attrs, objects=objects)
-
 
 class VideoLabels(etal.Labels, etal.HasLabelsSchema, etal.HasLabelsSupport):
     '''Class encapsulating labels for a video.
