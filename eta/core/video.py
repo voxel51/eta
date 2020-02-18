@@ -507,6 +507,53 @@ class VideoLabels(
         '''
         return iter(self.events)
 
+    def iter_video_attrs(self, attr_type="*", attr_name="*",
+                         attr_value="*"):
+        iterator = self.attrs.iter_attrs(
+            attr_type=attr_type, attr_name=attr_name, attr_value=attr_value)
+        for attr in iterator:
+            yield attr
+
+    def iter_frame_attrs(self, attr_type="*", attr_name="*",
+                         attr_value="*"):
+        for frame in self.iter_frames():
+            iterator = frame.attrs.iter_attrs(
+                attr_type=attr_type, attr_name=attr_name, attr_value=attr_value)
+            for attr in iterator:
+                yield attr
+
+    def iter_detected_objects(self, label="*"):
+        for frame in self.iter_frames():
+            for obj in frame.objects.iter_objects(label=label):
+                yield obj
+
+    def iter_object_attrs(self, label="*", attr_type="*",
+                          attr_name="*", attr_value="*"):
+        for frame in self.iter_frames():
+            iterator = frame.objects.iter_object_attrs(
+                label=label,
+                attr_type=attr_type,
+                attr_name=attr_name,
+                attr_value=attr_value
+            )
+            for obj, attr in iterator:
+                yield obj, attr
+
+    def iter_detected_events(self, label="*"):
+        for event in self.events.iter_events(label=label):
+            yield event
+
+    def iter_detected_event_attrs(self, label="*", attr_type="*",
+                         attr_name="*", attr_value="*"):
+        iterator = self.events.iter_event_attrs(
+            label=label,
+            attr_type=attr_type,
+            attr_name=attr_name,
+            attr_value=attr_value
+        )
+        for event, attr in iterator:
+            yield event, attr
+
     @property
     def has_video_attributes(self):
         '''Whether the video has at least one video-level attribute.'''

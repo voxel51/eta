@@ -19,19 +19,13 @@ import eta.core.utils as etau
 import eta.core.video as etav
 
 
-RAISE = "RAISE"
-SKIP = "SKIP"
-OVERRIDE = "OVERRIDE"
-COLLISION_HANDLE_OPTIONS = {RAISE, SKIP, OVERRIDE}
-
-
 logger = logging.getLogger(__name__)
 
 
 # MANAGER
 
 
-class LabelsTransformManager():
+class LabelsTransformerManager():
     '''
     - keeps track of a series of transforms
     - manages running transforms on Labels, SetLabels, Dataset, Directory or
@@ -41,7 +35,7 @@ class LabelsTransformManager():
     def __init__(self):
         self._transforms = OrderedDict()
 
-    def list_transforms(self):
+    def list_transformers(self):
         return [etau.get_class_name(x) for x in self._transforms]
 
     def get_reports(self):
@@ -50,15 +44,15 @@ class LabelsTransformManager():
             reports[k] = transform.report
         return reports
 
-    def add_transform(self, labels_transform):
-        if not isinstance(labels_transform, LabelsTransform):
+    def add_transformer(self, transformer):
+        if not isinstance(transformer, LabelsTransformer):
             raise ValueError(
-                "Unexpected type: '%s'".format(type(labels_transform)))
+                "Unexpected type: '%s'".format(type(transformer)))
 
         k = str(len(self._transforms)) + " - " + \
-                etau.get_class_name(labels_transform)
+            etau.get_class_name(transformer)
 
-        self._transforms[k] = labels_transform
+        self._transforms[k] = transformer
 
     def transform_labels(self, labels, labels_path=None):
         for transform in self._transforms.values():
@@ -90,8 +84,10 @@ class LabelsTransformManager():
             # break # @todo(Tyler) TEMP
 
 
+# ABSTRACT CLASS
 
-class LabelsTransform():
+
+class LabelsTransformer():
     @property
     def num_labels_transformed(self):
         return self._num_labels_transformed
@@ -105,9 +101,9 @@ class LabelsTransform():
     def __init__(self):
         self.clear_state()
 
-        if type(self) == LabelsTransform:
+        if type(self) == LabelsTransformer:
             raise TypeError("Cannot instantiate abstract class %s"
-                            % etau.get_class_name(LabelsTransform))
+                            % etau.get_class_name(LabelsTransformer))
 
     def clear_state(self):
         self._num_labels_transformed = 0
@@ -116,46 +112,37 @@ class LabelsTransform():
         self._num_labels_transformed += 1
 
 
-class LabelsTransformError(Exception):
-    '''Error raised when a LabelsTransform is violated.'''
+class LabelsTransformerError(Exception):
+    '''Error raised when a LabelsTransformer is violated.'''
     pass
 
-# METADATA
+
+# TRANSFORMERS
 
 
-'''
-1) eta.core.datasets.standardize.ensure_labels_filename_property
-'''
-class EnsureFileName(LabelsTransform):
-    '''Populates the labels.filename'''
-
-    @property
-    def num_populated(self):
-        return self._num_populated
-
-    @property
-    def num_skipped(self):
-        return self._num_skipped
-
-    @property
-    def num_overriden(self):
-        return self._num_overriden
-
-    def __init__(self, dataset, inplace=False, mismatch_handle=RAISE):
-        super(EnsureFileName, self).__init__(inplace=inplace)
-        self._num_populated = 0
-        self._num_skipped = 0
-        self._num_overriden = 0
+class LabelsMapper(LabelsTransformer):
+    pass
 
 
-# SCHEMA COMPARISON
+class SyntaxChecker(LabelsTransformer):
+    pass
 
+
+class SchemaFilter(LabelsTransformer):
+    pass
+
+
+class ConfidenceThresholder(LabelsTransformer):
+    pass
+
+
+# TODO
 
 '''
 1) eta.core.image.ImageLabelsSyntaxChecker
    eta.core.video.VideoLabelsSyntaxChecker
 '''
-class MatchSyntax(LabelsTransform):
+class MatchSyntax(LabelsTransformer):
     '''Using a target schema, match capitalization and underscores versus spaces
     to match the schema
     '''
@@ -179,7 +166,7 @@ class MatchSyntax(LabelsTransform):
         self._unfixable_schema = None
 
 
-class MapLabels(LabelsTransform):
+class MapLabels(LabelsTransformer):
     '''Provided a mapping config, rename from one label string to another'''
 
     def __init__(self, rename_config, inplace=False):
@@ -189,7 +176,7 @@ class MapLabels(LabelsTransform):
 '''
 1) eta.core.datasets.standardize.check_duplicate_attrs
 '''
-class CheckExclusiveAttributes(LabelsTransform):
+class CheckExclusiveAttributes(LabelsTransformer):
     '''duplicate exclusive attributes (exclusive attributes can only have one
     value, such as person:sex
 
@@ -314,7 +301,7 @@ class CheckExclusiveAttributes(LabelsTransform):
 '''
 
 '''
-class CheckConstantAttributes(LabelsTransform):
+class CheckConstantAttributes(LabelsTransformer):
     '''check for attributes that should not vary over time (video attrs,
     constant object attrs, constant event attrs...
 
@@ -452,7 +439,7 @@ class CheckConstantAttributes(LabelsTransform):
                         break
 
             if match_obj is None:
-                raise LabelsTransformError("This is not good...")
+                raise LabelsTransformerError("This is not good...")
 
             attr_to_add = \
                 deepcopy(match_obj.attrs.get_attrs_with_name(schema.name)[0])
@@ -474,7 +461,7 @@ class CheckConstantAttributes(LabelsTransform):
 
 
 
-class CheckAgainstSchema(LabelsTransform):
+class CheckAgainstSchema(LabelsTransformer):
     '''
     - check against everything other than exclusive and constant
     - Filter anything that is not in the schema
