@@ -2606,3 +2606,100 @@ class EventContainerSchema(etal.LabelsContainerSchema):
 class EventContainerSchemaError(etal.LabelsContainerSchemaError):
     '''Error raised when an EventContainerSchema is violated.'''
     pass
+
+
+class EventFrameRenderer(etal.LabelsFrameRenderer):
+    '''Class for rendering labels for an Event at the frame-level.'''
+
+    def __init__(self, event):
+        '''Creates an EventFrameRenderer instance.
+
+        Args:
+            event: an Event
+        '''
+        self._event = event
+
+    def render_frame(self, frame_number):
+        '''Renders the Event for the given frame.
+
+        Args:
+            frame_number: the frame number
+
+        Returns:
+            a DetectedEvent, or None if no labels exist for the given frame
+        '''
+        if frame_number not in self._event.support:
+            return None
+
+        event_attrs = self._get_event_attrs()
+        dobjs = self._render_object_frame(frame_number)
+        return self._render_frame(frame_number, event_attrs, dobjs)
+
+    def render_all_frames(self):
+        '''Renders the Object for all possible frames.
+
+        Returns:
+            a dictionary mapping frame numbers to DetectedEvent instances
+        '''
+        event_attrs = self._get_event_attrs()
+        dobjs_map = self._render_all_object_frames()
+
+        devents_map = {}
+        for frame_number in self._event.support:
+            dobjs = dobjs_map.get(frame_number, None)
+            devents_map[frame_number] = self._render_frame(
+                frame_number, event_attrs, dobjs)
+
+        return devents_map
+
+    def _render_frame(self, frame_number, event_attrs, dobjs):
+        # Base DetectedEvent
+        if frame_number in self._event.frames:
+            devent = deepcopy(self._event.frames[frame_number])
+        else:
+            devent = DetectedEvent()
+
+        # Render event-level attributes
+        if event_attrs is not None:
+            devent.add_attributes(event_attrs)
+
+        # Render objects
+        if dobjs is not None:
+            devent.add_objects(dobjs)
+
+        # Inherit available event-level metadata
+        if self._event.label is not None:
+            devent.label = self._event.label
+        if self._event.confidence is not None:
+            devent.confidence = self._event.confidence
+        if self._event.index is not None:
+            devent.index = self._event.index
+
+        return devent
+
+    def _get_event_attrs(self):
+        if not self._event.has_event_attributes:
+            return None
+
+        return deepcopy(self._event.attrs)
+
+    def _render_all_object_frames(self):
+        if not self._event.has_objects:
+            return {}
+
+        r = etao.ObjectContainerFrameRenderer(self._event.objects)
+        return r.render_all_frames()
+
+    def _render_object_frame(self, frame_number):
+        if not self._event.has_objects:
+            return None
+
+        r = etao.ObjectContainerFrameRenderer(self._event.objects)
+        return r.render_frame(frame_number)
+
+
+class EventContainerFrameRenderer(etal.LabelsFrameRenderer):
+    '''Class for rendering labels for an EventContainer at the frame-level.'''
+
+    _FRAME_CONTAINER_CLS = DetectedEventContainer
+    _ELEMENT_RENDERER_CLS = EventFrameRenderer
