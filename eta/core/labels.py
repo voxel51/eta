@@ -20,13 +20,9 @@ from future.utils import iteritems
 # pragma pylint: enable=wildcard-import
 
 from collections import defaultdict
-import logging
 
 import eta.core.serial as etas
 import eta.core.utils as etau
-
-
-logger = logging.getLogger(__name__)
 
 
 class Labels(etas.Serializable):
