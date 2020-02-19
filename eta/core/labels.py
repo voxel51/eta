@@ -809,6 +809,67 @@ class LabelsContainerFrameRenderer(LabelsFrameRenderer):
         return dict(frame_elements_map)
 
 
+CONDENSED_STRING_CLASS_MAP = {
+    # "<image attr>": ImageAttrFilter,
+    # "<video attr>": VideoAttrFilter,
+    # "<frame attr>": FrameAttrFilter,
+    # "<object>": DetectedObjectFilter,
+    # "<event>": EventFilter,
+    # "<object attr>": DetectedObjectAttrFilter,
+    # "<event attr>": EventAttrFilter
+}
+
+
+class LabelsIterator(etas.Serializable):
+    '''@todo(Tyler)'''
+
+    @property
+    def type(self):
+        return self._type
+
+    def __init__(self):
+        self._type = etau.get_class_name(self)
+
+    def iter_matches(self, labels):
+        raise NotImplementedError("Subclass must implement")
+
+    def attributes(self):
+        return super(LabelsIterator, self).attributes() + ["type"]
+
+    @classmethod
+    def from_dict(cls, d, *args, **kwargs):
+        subcls = etau.get_class(d["type"])
+        if not issubclass(subcls, cls):
+            raise ValueError(
+                "%s not subclass of %s" % (d["type"], etau.get_class_name(cls)))
+        return subcls._from_dict(d)
+
+    @classmethod
+    def from_condensed_str(cls, s: str):
+        '''TODO
+
+        Example inputs:
+            "<object attr>:*:<boolean>:occluded:false"
+        '''
+        parts = s.split(":")
+        subcls = CONDENSED_STRING_CLASS_MAP[parts.pop(0)]
+
+        if not issubclass(subcls, cls):
+            raise ValueError(
+                "%s not subclass of %s"
+                % (etau.get_class_name(subcls), etau.get_class_name(cls)))
+
+        return subcls._from_condensed_strings(*parts)
+
+    @classmethod
+    def _from_dict(cls, d, *args, **kwargs):
+        raise NotImplementedError("Subclass must implement")
+
+    @classmethod
+    def _from_condensed_strings(cls, *args, **kwargs):
+        raise NotImplementedError("Subclass must implement")
+
+
 
 # MANAGER
 
@@ -966,16 +1027,18 @@ class SyntaxChecker(LabelsTransformer):
                 to check labels against
         '''
         etau.validate_type(target_schema, self._SCHEMA_CLS)
-        super(SyntaxChecker, self).__init__()
         self._target_schema = target_schema
+        super(SyntaxChecker, self).__init__()
 
     def clear_state(self):
         '''Clear the `fixable_schema` and `unfixable_schema` of any accumulated
         data.
         '''
         super(SyntaxChecker, self).clear_state()
-        self._fixable_schema = self._SCHEMA_CLS()
-        self._unfixable_schema = self._SCHEMA_CLS()
+
+        # child class must instantiate these schemas
+        self._fixable_schema = None
+        self._unfixable_schema = None
 
     @staticmethod
     def _standardize(s):

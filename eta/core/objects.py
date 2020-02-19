@@ -1934,3 +1934,46 @@ class EvaluationType(object):
 
     RECALL = "RECALL"
     PRECISION = "PRECISION"
+
+
+class DetectedObjectSyntaxChecker(etal.SyntaxChecker):
+    _LABELS_CLS = DetectedObject
+    _SCHEMA_CLS = ObjectContainerSchema
+
+    @property
+    def num_obj_labels_modified(self):
+        return self._num_obj_labels_modified
+
+    @property
+    def report(self):
+        d = super(DetectedObjectSyntaxChecker, self).report
+        d["num_obj_labels_modified"] = self.num_obj_labels_modified
+        return d
+
+    def __init__(self, *args, **kwargs):
+        super(DetectedObjectSyntaxChecker, self).__init__(*args, **kwargs)
+
+        # build the target labels map
+        self._target_obj_labels_map = {
+            self._standardize(label): label
+            for label in self.target_schema.iter_object_labels()
+        }
+
+        # build the AttributeSyntaxCheckers for each object label
+        self._attr_checkers = {}
+        for label, obj_schema in self._target_schema.iter_objects():
+            attrs_schema = deepcopy(obj_schema.attrs)
+            attrs_schema.merge_schema(obj_schema.frames)
+            self._attr_checkers[obj_schema.label] = \
+                etad.AttributeSyntaxChecker(attrs_schema)
+
+    def clear_state(self):
+        super(DetectedObjectSyntaxChecker, self).clear_state()
+        self._fixable_schema = self._SCHEMA_CLS()
+        self._unfixable_schema = self._SCHEMA_CLS()
+        self._num_obj_labels_modified = 0
+
+    def transform(self, det_obj):
+        super(DetectedObjectSyntaxChecker, self).transform(det_obj)
+        raise NotImplementedError("TODO TYLER")
+        # for

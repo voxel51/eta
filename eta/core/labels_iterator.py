@@ -20,19 +20,15 @@ from builtins import *
 
 import logging
 
-from typeguard import typechecked
-
 import eta.core.data as etad
 from eta.core.serial import Serializable
 import eta.core.utils as etau
-
-from .utils import is_true
 
 
 logger = logging.getLogger(__name__)
 
 
-class SchemaFilter(Serializable):
+class LabelsIterator(Serializable):
     '''@todo(Tyler)'''
 
     @property
@@ -46,7 +42,7 @@ class SchemaFilter(Serializable):
         raise NotImplementedError("Subclass must implement")
 
     def attributes(self):
-        return super(SchemaFilter, self).attributes() + ["type"]
+        return super(LabelsIterator, self).attributes() + ["type"]
 
     @classmethod
     def from_dict(cls, d, *args, **kwargs):
@@ -82,7 +78,7 @@ class SchemaFilter(Serializable):
         raise NotImplementedError("Subclass must implement")
 
 
-class AttrFilter(SchemaFilter):
+class AttributeIterator(LabelsIterator):
     '''@todo(Tyler)'''
 
     _iter_func_name = "Subclass must populate"
@@ -99,10 +95,9 @@ class AttrFilter(SchemaFilter):
     def attr_value(self):
         return self._attr_value
 
-    @typechecked
     def __init__(self, attr_type: str = "*", attr_name: str = "*",
                  attr_value="*"):
-        super(AttrFilter, self).__init__()
+        super(AttributeIterator, self).__init__()
         self._attr_type = attr_type
         self._attr_name = attr_name
         self._attr_value = attr_value
@@ -125,7 +120,7 @@ class AttrFilter(SchemaFilter):
                                               value=self.attr_value)
 
     def attributes(self):
-        return super(AttrFilter, self).attributes() \
+        return super(AttributeIterator, self).attributes() \
                + ["attr_type", "attr_name", "attr_value"]
 
     @classmethod
@@ -149,22 +144,22 @@ class AttrFilter(SchemaFilter):
         )
 
 
-class ImageAttrFilter(AttrFilter):
+class ImageAttributeIterator(AttributeIterator):
     '''@todo(Tyler)'''
     _iter_func_name = "iter_image_attrs"
 
 
-class VideoAttrFilter(AttrFilter):
+class VideoAttributeIterator(AttributeIterator):
     '''@todo(Tyler)'''
     _iter_func_name = "iter_video_attrs"
 
 
-class FrameAttrFilter(AttrFilter):
+class FrameAttributeIterator(AttributeIterator):
     '''@todo(Tyler)'''
     _iter_func_name = "iter_frame_attrs"
 
 
-class ThingWithLabelFilter(SchemaFilter):
+class ThingWithLabelIterator(LabelsIterator):
     '''@todo(Tyler)'''
     _iter_func_name = "Subclass must populate"
 
@@ -173,7 +168,7 @@ class ThingWithLabelFilter(SchemaFilter):
         return self._label
 
     def __init__(self, label="*"):
-        super(ThingWithLabelFilter, self).__init__()
+        super(ThingWithLabelIterator, self).__init__()
         self._label = label
 
     def iter_matches(self, labels):
@@ -181,7 +176,7 @@ class ThingWithLabelFilter(SchemaFilter):
             yield thing
 
     def attributes(self):
-        return super(ThingWithLabelFilter, self).attributes() + ["label"]
+        return super(ThingWithLabelIterator, self).attributes() + ["label"]
 
     @classmethod
     def _from_dict(cls, d, *args, **kwargs):
@@ -194,17 +189,17 @@ class ThingWithLabelFilter(SchemaFilter):
         return cls(label=label)
 
 
-class DetectedObjectFilter(ThingWithLabelFilter):
+class DetectedObjectIterator(ThingWithLabelIterator):
     '''@todo(Tyler)'''
     _iter_func_name = "iter_detected_objects"
 
 
-class EventFilter(ThingWithLabelFilter):
+class EventIterator(ThingWithLabelIterator):
     '''@todo(Tyler)'''
     _iter_func_name = "iter_events"
 
 
-class AttrOfThingWithLabelFilter(SchemaFilter):
+class AttrOfThingWithLabelIterator(LabelsIterator):
     '''@todo(Tyler)'''
     _iter_func_name = "Subclass must populate"
 
@@ -225,7 +220,7 @@ class AttrOfThingWithLabelFilter(SchemaFilter):
         return self._attr_value
 
     def __init__(self, label="*", attr_type="*", attr_name="*", attr_value="*"):
-        super(AttrOfThingWithLabelFilter, self).__init__()
+        super(AttrOfThingWithLabelIterator, self).__init__()
         self._label = label
         self._attr_type = attr_type
         self._attr_name = attr_name
@@ -249,13 +244,12 @@ class AttrOfThingWithLabelFilter(SchemaFilter):
                                               value=self.attr_value)
 
     def attributes(self):
-        return super(AttrOfThingWithLabelFilter, self).attributes() \
+        return super(AttrOfThingWithLabelIterator, self).attributes() \
                + ["label", "attr_type", "attr_name", "attr_value"]
 
     @classmethod
-    @typechecked
-    def from_filters(cls, thing_with_label_filter: ThingWithLabelFilter,
-                     attr_filter: AttrFilter):
+    def from_filters(cls, thing_with_label_filter: ThingWithLabelIterator,
+                     attr_filter: AttributeIterator):
         return cls(
             label=thing_with_label_filter.label,
             attr_type=attr_filter.attr_type,
@@ -286,24 +280,24 @@ class AttrOfThingWithLabelFilter(SchemaFilter):
         )
 
 
-class DetectedObjectAttrFilter(AttrOfThingWithLabelFilter):
+class DetectedObjectAttributeIterator(AttrOfThingWithLabelIterator):
     '''@todo(Tyler)'''
     _iter_func_name = "iter_detected_object_attrs"
 
 
-class EventAttrFilter(AttrOfThingWithLabelFilter):
+class EventAttributeIterator(AttrOfThingWithLabelIterator):
     '''@todo(Tyler)'''
     _iter_func_name = "iter_event_attrs"
 
 
 _CONDENSED_STRING_CLASS_MAP = {
-    "<image attr>": ImageAttrFilter,
-    "<video attr>": VideoAttrFilter,
-    "<frame attr>": FrameAttrFilter,
-    "<object>": DetectedObjectFilter,
-    "<event>": EventFilter,
-    "<object attr>": DetectedObjectAttrFilter,
-    "<event attr>": EventAttrFilter
+    "<image attr>": ImageAttributeIterator,
+    "<video attr>": VideoAttributeIterator,
+    "<frame attr>": FrameAttributeIterator,
+    "<object>": DetectedObjectIterator,
+    "<event>": EventIterator,
+    "<object attr>": DetectedObjectAttributeIterator,
+    "<event attr>": EventAttributeIterator
 }
 
 _CONDENSED_STRING_ATTR_TYPE_MAP = {
@@ -321,7 +315,7 @@ def _convert_attr_type_and_value(attr_type, attr_value):
 
         if attr_value != "*":
             if issubclass(etau.get_class(attr_type), etad.BooleanAttribute):
-                attr_value = is_true(attr_value)
+                attr_value = _is_true(attr_value)
 
             elif issubclass(etau.get_class(attr_type), etad.NumericAttribute):
                 attr_value = float(attr_value)
@@ -333,3 +327,15 @@ def _convert_attr_type_and_value(attr_type, attr_value):
             % "*")
 
     return attr_type, attr_value
+
+def _is_true(thing_to_test):
+    '''Cast an arg from client to native boolean'''
+    if type(thing_to_test) == bool:
+        return thing_to_test
+    elif type(thing_to_test) == int or type(thing_to_test) == float:
+        return thing_to_test == 1
+    elif type(thing_to_test) == str:
+        return thing_to_test.lower() == 'true'
+    else:
+        # make a best guess? hopefully you should never get here
+        return bool(thing_to_test)

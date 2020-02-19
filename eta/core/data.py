@@ -1867,12 +1867,12 @@ class AttributeSyntaxChecker(etal.SyntaxChecker):
         # build the target names map
         self._target_names_map = {
             self._standardize(name): name
-            for name in self.target_schema.schema.keys()
+            for name in self.target_schema.iter_attribute_names()
         }
 
         # build the target values map
         self._target_values_map = defaultdict(dict)
-        for name, attr_schema in self.target_schema.schema.items():
+        for name, attr_schema in self.target_schema.iter_attributes():
             if isinstance(attr_schema, CategoricalAttributeSchema):
                 for category in attr_schema.categories:
                     if not etau.is_str(category):
@@ -1882,6 +1882,8 @@ class AttributeSyntaxChecker(etal.SyntaxChecker):
 
     def clear_state(self):
         super(AttributeSyntaxChecker, self).clear_state()
+        self._fixable_schema = self._SCHEMA_CLS()
+        self._unfixable_schema = self._SCHEMA_CLS()
         self._num_attr_names_modified = 0
         self._num_attr_values_modified = 0
 
