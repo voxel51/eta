@@ -1846,59 +1846,129 @@ class AttributeSyntaxChecker(etal.SyntaxChecker):
     _LABELS_CLS = Attribute
     _SCHEMA_CLS = AttributeContainerSchema
 
+    @property
+    def num_attr_names_modified(self):
+        return self._num_attr_names_modified
+
+    @property
+    def num_attr_values_modified(self):
+        return self._num_attr_values_modified
+
+    @property
+    def report(self):
+        d = super(AttributeSyntaxChecker, self).report
+        d["num_attr_names_modified"] = self.num_attr_names_modified
+        d["num_attr_values_modified"] = self.num_attr_values_modified
+        return d
+
+    def __init__(self, *args, **kwargs):
+        super(AttributeSyntaxChecker, self).__init__(*args, **kwargs)
+
+        # build the target names map
+        self._target_names_map = {
+            self._standardize(name): name
+            for name in self.target_schema.schema.keys()
+        }
+
+        # build the target values map
+        self._target_values_map = defaultdict(dict)
+        for name, attr_schema in self.target_schema.schema.items():
+            if isinstance(attr_schema, CategoricalAttributeSchema):
+                for category in attr_schema.categories:
+                    if not etau.is_str(category):
+                        continue
+                    std_category = self._standardize(category)
+                    self._target_values_map[name][std_category] = category
+
+    def clear_state(self):
+        super(AttributeSyntaxChecker, self).clear_state()
+        self._num_attr_names_modified = 0
+        self._num_attr_values_modified = 0
+
     def transform(self, attr):
         super(AttributeSyntaxChecker, self).transform(attr)
+        self._transform_name(attr)
+        self._transform_value(attr)
 
+    def _transform_name(self, attr):
+        # Is the name in the target schema?
+        if self.target_schema.is_valid_attribute_name(attr.name):
+            return
+
+        # Is the name in the fixable schema?
+        if self.fixable_schema.is_valid_attribute_name(attr.name):
+            std_name = self._standardize(attr.name)
+
+            if std_name in self._target_names_map:
+                self._num_attr_names_modified += 1
+                attr.name = self._target_names_map[std_name]
+
+            else:
+                raise self._ERROR_CLS("Woah this is bad!")
+
+            return
+
+        # Is the name in the unfixable schema?
+        if self.unfixable_schema.is_valid_attribute_name(attr.name):
+            return
+
+        # This name hasn't been seen before, so determine if it is fixable
+        std_name = self._standardize(attr.name)
+
+        if std_name in self._target_names_map:
+            # only add the name, because the value may not be fixable
+            self._add_attr_without_value(self.fixable_schema, attr)
+            self._num_attr_names_modified += 1
+            attr.name = self._target_names_map[std_name]
+
+        else:
+            self.unfixable_schema.add_attribute(attr)
+
+    def _transform_value(self, attr):
         # Is the value in the target schema?
         if self.target_schema.is_valid_attribute(attr):
             return
 
+        cur_value_map = self._target_values_map[attr.name]
+
         # Is the value in the fixable schema?
         if self.fixable_schema.is_valid_attribute(attr):
-            if self._map_to_target(attr):
-                self._num_labels_modified += 1
+            std_value = self._standardize(attr.value)
+
+            if std_value in cur_value_map:
+                self._num_attr_values_modified += 1
+                attr.value = cur_value_map[std_value]
+
             else:
                 raise self._ERROR_CLS("Woah this is bad!")
 
             return
 
         # Is the value in the unfixable schema?
-        if self.unfixable_schema.is_valid_attribute(attr):
+        if self.unfixable_schema.is_valid_attribute_name(attr.name):
             return
 
-        if self._map_to_target(attr):
+        # SyntaxChecker can only transforms strings
+        if not etau.is_str(attr.value):
+            self.unfixable_schema.add_attribute(attr)
+            return
+
+        # This value hasn't been seen before, so determine if it is fixable
+        std_value = self._standardize(attr.value)
+
+        if std_value in cur_value_map:
             self.fixable_schema.add_attribute(attr)
-            self._num_labels_modified += 1
+            self._num_attr_values_modified += 1
+            attr.value = cur_value_map[std_value]
 
         else:
             self.unfixable_schema.add_attribute(attr)
 
-    def _map_to_target(self, attr):
-        # Does the name match? if so, modify it
-        # Is it categorical and does the value match? if so, modify it!
-
-
-        mapped_name = self._map_name(attr)
-
-        if mapped_name is not None:
-            attr.name = mapped_name
-
-            mapped_value = self._map_value(attr, mapped_name)
-            if mapped_value is not None:
-                attr.value = mapped_value
-
-        return False
-
-    def _map_name(self, attr):
-        mapped_name = None
-
-        # TODO
-
-        return mapped_name
-
-    def _map_value(self, attr, mapped_name):
-        mapped_value = None
-
-        # TODO
-
-        return mapped_value
+    @staticmethod
+    def _add_attr_without_value(attr_container_schema, attr):
+        '''adds the name to the schema but not the value'''
+        schema = attr_container_schema.schema
+        name = attr.name
+        if name not in schema:
+            schema_cls = attr.get_schema_cls()
+            schema[name] = schema_cls(name)

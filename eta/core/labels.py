@@ -875,9 +875,11 @@ class LabelsTransformerManager():
 
 # ABSTRACT CLASS
 
+
 class LabelsTransformerError(Exception):
     '''Error raised when a LabelsTransformer is violated.'''
     pass
+
 
 class LabelsTransformer():
     _ERROR_CLS = LabelsTransformerError
@@ -911,9 +913,11 @@ class LabelsTransformer():
         etau.validate_type(labels, self.get_labels_cls())
         self._num_labels_transformed += 1
 
+
 class SyntaxCheckerError(Exception):
     '''Error raised when a LabelsTransformer is violated.'''
     pass
+
 
 class SyntaxChecker(LabelsTransformer):
     '''Using a target schema, match capitalization and underscores versus spaces
@@ -921,10 +925,6 @@ class SyntaxChecker(LabelsTransformer):
     '''
     _ERROR_CLS = SyntaxCheckerError
     _SCHEMA_CLS = None
-
-    @property
-    def num_labels_modified(self):
-        return self._num_labels_modified
 
     @property
     def target_schema(self):
@@ -943,6 +943,14 @@ class SyntaxChecker(LabelsTransformer):
         return self._fixable_schema
 
     @property
+    def report(self):
+        d = super(SyntaxChecker, self).report
+        d["target_schema"] = self.target_schema
+        d["fixable_schema"] = self.fixable_schema
+        d["unfixable_schema"] = self.unfixable_schema
+        return d
+
+    @property
     def unfixable_schema(self):
         '''The un-fixable _SCHEMA_CLS instance containing anything not in the
         target_schema and cannot be mapped to the target_schema by
@@ -950,14 +958,6 @@ class SyntaxChecker(LabelsTransformer):
         This schema accumulates from all calls to `check()`
         '''
         return self._unfixable_schema
-
-    @property
-    def report(self):
-        d = super(SyntaxChecker, self).report
-        d["target_schema"] = self.target_schema
-        d["fixable_schema"] = self.fixable_schema
-        d["unfixable_schema"] = self.unfixable_schema
-        return d
 
     def __init__(self, target_schema):
         '''Creates an ImageLabelsSyntaxChecker instance.
@@ -974,6 +974,9 @@ class SyntaxChecker(LabelsTransformer):
         data.
         '''
         super(SyntaxChecker, self).clear_state()
-        self._num_labels_modified = 0
         self._fixable_schema = self._SCHEMA_CLS()
         self._unfixable_schema = self._SCHEMA_CLS()
+
+    @staticmethod
+    def _standardize(s):
+        return str(s).lower().replace("_", " ")
