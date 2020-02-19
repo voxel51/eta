@@ -95,8 +95,7 @@ class AttributeIterator(LabelsIterator):
     def attr_value(self):
         return self._attr_value
 
-    def __init__(self, attr_type: str = "*", attr_name: str = "*",
-                 attr_value="*"):
+    def __init__(self, attr_type="*", attr_name="*", attr_value="*"):
         super(AttributeIterator, self).__init__()
         self._attr_type = attr_type
         self._attr_name = attr_name

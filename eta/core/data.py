@@ -553,14 +553,6 @@ class CategoricalAttributeSchema(AttributeSchema):
 
         return _attrs
 
-    def iter_name_values(self):
-        '''Iterate over all pairs of (attr.name, attr.value)
-        Returns:
-            generator that yields (attr.name, attr.value) tuples
-        '''
-        for value in self.categories:
-            yield self.name, value
-
     def serialize(self, *args, **kwargs):
         d = super(CategoricalAttributeSchema, self).serialize(*args, **kwargs)
         if "categories" in d:
@@ -1012,7 +1004,6 @@ class AttributeContainerSchema(etal.LabelsContainerSchema):
                 created
         '''
         self.schema = schema or {}
-        self._validate_schema()
 
     @property
     def is_empty(self):
@@ -1251,14 +1242,6 @@ class AttributeContainerSchema(etal.LabelsContainerSchema):
             }
 
         return cls(schema=schema)
-
-    def _validate_schema(self):
-        '''validate consistency or attribute names with dict keys'''
-        for attr_name, attr_schema in self.schema.items():
-            if attr_schema.name != attr_name:
-                raise AttributeContainerSchemaError(
-                    "Inconsistent attr name:\n\tschema key: %s\n\tAttributeSch"
-                    "ema.name: %s" % (attr_schema.name, attr_name))
 
 
 class AttributeContainerSchemaError(etal.LabelsContainerSchemaError):
