@@ -827,7 +827,15 @@ class VideoLabels(
         '''
         renderer = VideoLabelsFrameRenderer(self)
         frames = renderer.render_all_frames()
-        return VideoLabels(frames=frames)
+
+        kwargs = {}
+        if self.is_support_frozen:
+            kwargs["support"] = self.support
+
+        return VideoLabels(
+            filename=self.filename, metadata=self.metadata,
+            mask_index=self.mask_index, frames=frames, schema=self.schema,
+            **kwargs)
 
     def filter_by_schema(self, schema):
         '''Filters the labels by the given schema.
