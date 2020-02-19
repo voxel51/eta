@@ -887,10 +887,6 @@ class LabelsTransformer():
     def get_labels_cls(cls):
         return cls._LABELS_CLS
 
-    @classmethod
-    def get_schema_cls(cls):
-        return cls.get_labels_cls().get_schema_cls()
-
     @property
     def num_labels_transformed(self):
         return self._num_labels_transformed
@@ -924,6 +920,11 @@ class SyntaxChecker(LabelsTransformer):
     to match the schema
     '''
     _ERROR_CLS = SyntaxCheckerError
+    _SCHEMA_CLS = None
+
+    @property
+    def num_labels_modified(self):
+        return self._num_labels_modified
 
     @property
     def target_schema(self):
@@ -964,7 +965,7 @@ class SyntaxChecker(LabelsTransformer):
             target_schema: a _SCHEMA_CLS object with the target (desired) schema
                 to check labels against
         '''
-        etau.validate_type(target_schema, self.get_schema_cls())
+        etau.validate_type(target_schema, self._SCHEMA_CLS)
         super(SyntaxChecker, self).__init__()
         self._target_schema = target_schema
 
@@ -973,5 +974,6 @@ class SyntaxChecker(LabelsTransformer):
         data.
         '''
         super(SyntaxChecker, self).clear_state()
-        self._fixable_schema = self.get_schema_cls()()
-        self._unfixable_schema = self.get_schema_cls()()
+        self._num_labels_modified = 0
+        self._fixable_schema = self._SCHEMA_CLS()
+        self._unfixable_schema = self._SCHEMA_CLS()

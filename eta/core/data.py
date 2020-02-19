@@ -1775,8 +1775,61 @@ class LabeledFeatures(etas.NpzWriteable):
 
 class AttributeSyntaxChecker(etal.SyntaxChecker):
     _LABELS_CLS = Attribute
+    _SCHEMA_CLS = AttributeContainerSchema
 
-    def transform(self, labels):
-        super(AttributeSyntaxChecker, self).transform(labels)
+    def transform(self, attr):
+        super(AttributeSyntaxChecker, self).transform(attr)
 
-        raise NotImplementedError("Boo Yah Tyler!")
+        # Is the value in the target schema?
+        if self.target_schema.is_valid_attribute(attr):
+            return
+
+        # Is the value in the fixable schema?
+        if self.fixable_schema.is_valid_attribute(attr):
+            if self._map_to_target(attr):
+                self._num_labels_modified += 1
+            else:
+                raise self._ERROR_CLS("Woah this is bad!")
+
+            return
+
+        # Is the value in the unfixable schema?
+        if self.unfixable_schema.is_valid_attribute(attr):
+            return
+
+        if self._map_to_target(attr):
+            self.fixable_schema.add_attribute(attr)
+            self._num_labels_modified += 1
+
+        else:
+            self.unfixable_schema.add_attribute(attr)
+
+    def _map_to_target(self, attr):
+        # Does the name match? if so, modify it
+        # Is it categorical and does the value match? if so, modify it!
+
+
+        mapped_name = self._map_name(attr)
+
+        if mapped_name is not None:
+            attr.name = mapped_name
+
+            mapped_value = self._map_value(attr, mapped_name)
+            if mapped_value is not None:
+                attr.value = mapped_value
+
+        return False
+
+    def _map_name(self, attr):
+        mapped_name = None
+
+        # TODO
+
+        return mapped_name
+
+    def _map_value(self, attr, mapped_name):
+        mapped_value = None
+
+        # TODO
+
+        return mapped_value
