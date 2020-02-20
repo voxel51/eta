@@ -2257,12 +2257,13 @@ def remove_none_values(d):
     return {k: v for k, v in iteritems(d) if v is not None}
 
 
-def find_duplicate_files(path_list):
+def find_duplicate_files(path_list, verbose=False):
     '''Returns a list of lists of file paths from the input, that have
     identical contents to each other.
 
     Args:
         path_list: list of file paths in which to look for duplicate files
+        verbose: if True, log progress
 
     Returns:
         duplicates: a list of lists, where each list contains a group of
@@ -2270,12 +2271,19 @@ def find_duplicate_files(path_list):
             `path_list` that don't have any duplicates will not appear in
             the output.
     '''
-    hash_buckets = _get_file_hash_buckets(path_list)
+    if verbose:
+        logger.info("Finding duplicates out of %d files..." % len(path_list))
+
+    hash_buckets = _get_file_hash_buckets(path_list, verbose=verbose)
 
     duplicates = []
     for file_group in itervalues(hash_buckets):
         if len(file_group) >= 2:
             duplicates.extend(_find_duplicates_brute_force(file_group))
+
+    if verbose:
+        duplicate_count = sum(len(x) for x in duplicates) - len(duplicates)
+        logger.info("Complete: %d duplicates found" % duplicate_count)
 
     return duplicates
 
@@ -2306,9 +2314,11 @@ def find_matching_file_pairs(path_list1, path_list2):
     return pairs
 
 
-def _get_file_hash_buckets(path_list):
+def _get_file_hash_buckets(path_list, verbose):
     hash_buckets = defaultdict(list)
-    for path in path_list:
+    for idx, path in enumerate(path_list):
+        if verbose and idx % 100 == 0:
+            logger.info("\thashing file %d/%d" % (idx, len(path_list)))
         if not os.path.isfile(path):
             logger.warning(
                 "File '%s' is a directory or does not exist. "
