@@ -717,14 +717,16 @@ def render_frame_mask(
 
 
 def render_instance_mask(
-        obj, frame_size=None, shape=None, img=None, as_bool=True):
-    '''Renders the instance mask for the DetectedObject for an image of the
-    given dimensions.
+        mask, bounding_box, frame_size=None, shape=None, img=None,
+        as_bool=True):
+    '''Renders the given instance mask for an image of the given dimensions
+    such that it can be inscribed in the given bounding box.
 
     One of `frame_size`, `shape`, and `img` must be provided.
 
     Args:
-        obj: a DetectedObject with an instance mask
+        mask: the instance mask
+        bounding_box: the BoundingBox in which to inscribe the mask
         frame_size: the (width, height) of the image
         shape: the (height, width, ...) of the image, e.g. from img.shape
         img: the image itself
@@ -732,32 +734,36 @@ def render_instance_mask(
             uint8 image (False). The default is True
 
     Returns:
-        (obj_mask, offset), where `obj_mask` is a binary image describing
-            the instance mask in its bounding box and `offset = (tlx, tly)`
-            are the coordinates of the top-left corner of the mask within
-            the image
+        (mask, offset), where `mask` is a rendered version of the input mask
+        that can be directly inscribed in the bounding box, and
+        `offset = (tlx, tly)` are the coordinates of the top-left corner of the
+        mask within the image
     '''
-    tlx, tly, width, height = obj.bounding_box.coords_in(
+    tlx, tly, width, height = bounding_box.coords_in(
         frame_size=frame_size, shape=shape, img=img)
     offset = (tlx, tly)
 
-    obj_mask = obj.mask.astype(np.uint8)
+    mask = np.asarray(mask, dtype=np.uint8)
+
     # Can consider using `interpolation=cv2.INTER_NEAREST` here
-    obj_mask = resize(obj_mask, width=width, height=height)
+    mask = resize(mask, width=width, height=height)
 
     if as_bool:
-        obj_mask = obj_mask.astype(bool)
+        mask = mask.astype(bool)
 
-    return obj_mask, offset
+    return mask, offset
 
 
-def render_instance_image(obj, frame_size=None, shape=None, img=None):
-    '''Renders a binary image of the specified size containing the instance
-    mask for the given DetectedObject.
+def render_instance_image(
+        mask, bounding_box, frame_size=None, shape=None, img=None):
+    '''Renders a binary image of the specified size containing the given
+    instance mask inscribed in the given bounding box.
 
     One of `frame_size`, `shape`, and `img` must be provided.
 
     Args:
+        mask: an boolean numpy array defining the instance mask
+        bounding_box: the BoundingBox in which to inscribe the mask
         frame_size: the (width, height) of the image
         shape: the (height, width, ...) of the image, e.g. from img.shape
         img: the image itself
@@ -766,12 +772,13 @@ def render_instance_image(obj, frame_size=None, shape=None, img=None):
         a binary instance mask of the specified size
     '''
     w, h = to_frame_size(frame_size=frame_size, shape=shape, img=img)
-    obj_mask, offset = render_instance_mask(obj, frame_size=(w, h))
+    mask, offset = render_instance_mask(
+        mask, bounding_box, frame_size=(w, h))
     x0, y0 = offset
-    dh, dw = obj_mask.shape
+    dh, dw = mask.shape
 
     img_mask = np.zeros((h, w), dtype=bool)
-    img_mask[y0:(y0 + dh), x0:(x0 + dw)] = obj_mask
+    img_mask[y0:(y0 + dh), x0:(x0 + dw)] = mask
     return img_mask
 
 
