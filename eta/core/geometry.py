@@ -317,6 +317,15 @@ class BoundingBox(Serializable):
         '''
         return cls(RelativePoint.origin(), RelativePoint.origin())
 
+    def to_coords(self):
+        '''Returns a tuple containing the top-left and bottom-right coordinates
+        of the bounding box.
+
+        Returns:
+            a (tlx, tly, brx, bry) tuple
+        '''
+        return self.top_left.to_tuple() + self.bottom_right.to_tuple()
+
     @classmethod
     def from_coords(cls, tlx, tly, brx, bry):
         '''Constructs a BoundingBox from its top-left and bottom-right
