@@ -184,8 +184,8 @@ class BoundingBox(Serializable):
         The coordinates are clamped to [0, 1] x [0, 1] if necessary.
 
         Args:
-            alpha: the desired padding relative to the size of this
-                bounding box; a float in [-1, \\inf)
+            alpha: the desired padding relative to the size of this bounding
+                box; a float in [-1, \\inf)
 
         Returns:
             the padded BoundingBox
@@ -202,7 +202,7 @@ class BoundingBox(Serializable):
         brx, bry = RelativePoint.clamp(
             self.bottom_right.x + wpad, self.bottom_right.y + hpad)
 
-        return BoundingBox(RelativePoint(tlx, tly), RelativePoint(brx, bry))
+        return BoundingBox.from_coords(tlx, tly, brx, bry)
 
     def height(self):
         '''Computes the height of the bounding box, in [0, 1].
@@ -259,7 +259,7 @@ class BoundingBox(Serializable):
         if (brx - tlx < 0) or (bry - tly < 0):
             return BoundingBox.empty()
 
-        return BoundingBox(RelativePoint(tlx, tly), RelativePoint(brx, bry))
+        return BoundingBox.from_coords(tlx, tly, brx, bry)
 
     def contains_box(self, bbox):
         '''Determines if this bounding box contains the given bounding box.
