@@ -684,6 +684,38 @@ def central_crop(img, frame_size=None, shape=None):
     return img[slices]
 
 
+def render_frame_mask(
+        mask, frame_size=None, shape=None, img=None, as_bool=False):
+    '''Renders the given frame mask for an image of the given dimensions.
+
+    The pixel values of the frame mask will be preserved (i.e., no new pixel
+    values will be added).
+
+    One of `frame_size`, `shape`, and `img` must be provided.
+
+    Args:
+        mask: the frame mask
+        frame_size: the (width, height) of the image
+        shape: the (height, width, ...) of the image, e.g. from img.shape
+        img: the image itself
+        as_bool: whether to return the mask as a boolean image (True) or a
+            uint8 image (False). The default is False
+
+    Returns:
+        the resized frame mask
+    '''
+    width, height = to_frame_size(frame_size=frame_size, shape=shape, img=img)
+
+    mask = np.asarray(mask, dtype=np.uint8)
+    mask = resize(
+        mask, width=width, height=height, interpolation=cv2.INTER_NEAREST)
+
+    if as_bool:
+        mask = mask.astype(bool)
+
+    return mask
+
+
 def render_instance_mask(
         obj, frame_size=None, shape=None, img=None, as_bool=True):
     '''Renders the instance mask for the DetectedObject for an image of the
