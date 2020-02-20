@@ -19,6 +19,7 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+from copy import deepcopy
 import logging
 import random
 
@@ -43,75 +44,122 @@ class AnnotationConfig(Config):
     rendered on images/videos.
 
     Attributes:
-        colormap_config: the `eta.core.annotations.ColormapConfig` to use to
-            render the annotation boxes
-        show_object_boxes: whether to show object bounding boxes, if available.
-            If this is false, all attributes, confidences, etc. are also hidden
-        show_object_attrs: whether to show object attributes, if available
-        show_object_confidences: whether to show object label confidences, if
+
+    ##### FRAME ATTRIBUTES #####
+        show_frame_attr_confidences: whether to render video/frame attribute
+            confidences, if available
+        frame_attrs_box_gap: the gap between the frame attributes box and the
+            upper left corner of the image
+
+    ##### OBJECTS #####
+        show_object_boxes: whether to render object bounding boxes, if available.
+            If this is false, labels, confidences, attributes, etc. are also
+            hidden
+        show_object_labels: whether to render object labels, if available
+        show_object_attrs: whether to render object attributes, if available
+        show_object_confidences: whether to render object label confidences, if
             available
-        show_object_attr_confidences: whether to show object attribute
+        show_object_attr_confidences: whether to render object attribute
             confidences, if available
-        show_frame_attr_confidences: whether to show video/frame attribute
-            confidences, if available
-        show_all_confidences: whether to show all confidences, if available.
-            If set to `True`, the other confidence-rendering flags are ignored
-        show_object_indices: whether to show object indices, if available. By
-            default, this is `True`
-        show_object_masks: whether to show object segmentation masks, if
+        show_object_indices: whether to render object indices, if available
+        show_object_masks: whether to render object segmentation masks, if
             available
         occluded_object_attr: the name of the boolean attribute indicating
             whether an object is occluded
         hide_occluded_objects: whether to hide objects when they are occluded
-        hide_object_labels: an optional list of object labels to NOT RENDER
-        hide_attr_values: an optional list of video/frame/object attribute
-            values to NOT RENDER
-        hide_false_boolean_attrs: whether to hide video/frame/object attributes
+        object_labels_whitelist: an optional whitelist of object labels. If
+            provided, only objects with labels in this list will be rendered
+        object_labels_blacklist: an optional blacklist of object labels. If
+            provided, object with labels in this list will not be rendered
+
+    ##### EVENTS #####
+        show_event_boxes: whether to render event bounding boxes, if available.
+            If this is false, all attributes, confidences, etc. are also hidden
+        show_event_labels: whether to render event labels, if available
+        show_event_attrs: whether to render event attributes, if available
+        show_event_confidences: whether to render event label confidences, if
+            available
+        show_event_attr_confidences: whether to render event attribute
+            confidences, if available
+        show_event_indices: whether to render event indices, if available. By
+            default, this is `True`
+        show_event_masks: whether to render event segmentation masks, if
+            available
+        show_event_label_on_objects: whether to render event labels as
+            attributes ob objects that belong to events
+        show_event_objects_in_same_color: whether to render objects that belong
+             to events in the same color as their parent event
+        occluded_event_attr: the name of the boolean attribute indicating
+            whether an event is occluded
+        hide_occluded_events: whether to hide events when they are occluded
+        event_labels_whitelist: an optional whitelist of event labels. If
+            provided, only events with labels in this list will be rendered
+        event_labels_blacklist: an optional blacklist of event labels. If
+            provided, events with labels in this list will not be rendered
+
+    ##### BOUNDING BOXES #####
+        bbox_alpha: the transparency of bounding boxes
+        bbox_label_text_pad_pixels: the padding, in pixels, around the text in
+            bounding box labels
+        bbox_linewidth: the linewidth, in pixels, of bounding boxes
+
+    ##### MASKS #####
+        mask_border_thickness: the thickness, in pixels, to use when drawing
+            the borders of segmentation masks
+        mask_fill_alpha: the transparency of segmentation masks
+
+    ##### ATTRIBUTE BOXES #####
+        attrs_box_render_method: the method used to render object attributes
+        attrs_box_bg_color: the background color for attributes boxes
+        attrs_box_bg_alpha: the transparency of attribute panel boxes
+        attrs_box_text_pad_pixels: the padding, in pixels, around the text in
+            attribute boxes
+        attrs_box_text_line_spacing_pixels: the padding, in pixels, between
+            each line of text in attribute boxes
+
+    ##### ALL LABELS #####
+        show_all_confidences: whether to render all confidences, if available.
+            If set to `True`, this overrides all other confidence flags
+        hide_attr_values: an optional list of attribute values (of any kind)
+            to NOT RENDER
+        hide_false_boolean_attrs: whether to hide attributes (of any kind)
             when they are False
+        confidence_scaled_alpha: whether to scale alpha values of objects
+            and events based on their associated confidences
+
+    ##### FONTS AND COLORS #####
+        colormap_config: the `eta.core.annotations.ColormapConfig` to use to
+            select colors for objects/event boxes
+        text_color: the annotation text color
         font_path: the path to the `PIL.ImageFont` to use
         font_size: the font size to use
-        linewidth: the linewidth, in pixels, of the object bounding boxes
-        scale_by_media_height: whether to scale the `font_size` and `linewidth`
+        scale_by_media_height: whether to scale font sizes and linewidths
             according to the height of the media (relative to a height of 720
             pixels)
-        alpha: the transparency of the object bounding boxes
-        confidence_scaled_alpha: True will scale `alpha` and `mask_fill_alpha`
-            by the object confidence
-        text_color: the annotation text color
-        object_attrs_render_method: the method used to render object attributes
-        object_text_pad_pixels: the padding, in pixels, around the text in the
-            object labels
-        attrs_bg_color: the background color for attributes boxes
-        attrs_bg_alpha: the transparency of the video/frame/object attributes
-            panel boxes
-        attrs_box_gap: the gap between the frame attributes box and the upper
-            left corner of the image
-        attrs_text_pad_pixels: the padding, in pixels, around the text in the
-            frame attributes box
-        attrs_text_line_spacing_pixels: the padding, in pixels, between each
-            line of text in the frame attributes box
-        mask_border_thickness: the thickness, in pixels, to use when drawing
-            the border of segmentation masks
-        mask_fill_alpha: the transparency of the segmentation mask
-        add_logo: whether to add a logo to the output video
+
+    ##### LOGO #####
+        add_logo: whether to add a logo to the video
         logo_config: the `eta.core.logo.LogoConfig` describing the logo to use
     '''
 
     def __init__(self, d):
-        self.colormap_config = self.parse_object(
-            d, "colormap_config", ColormapConfig, default=None)
+        ##### FRAME ATTRIBUTES #####
+        self.show_frame_attr_confidences = self.parse_bool(
+            d, "show_frame_attr_confidences", default=False)
+        self.frame_attrs_box_gap = self.parse_string(
+            d, "frame_attrs_box_gap", default="1%")
+
+        ##### OBJECTS #####
         self.show_object_boxes = self.parse_bool(
             d, "show_object_boxes", default=True)
+        self.show_object_labels = self.parse_bool(
+            d, "show_object_labels", default=True)
         self.show_object_attrs = self.parse_bool(
             d, "show_object_attrs", default=True)
         self.show_object_confidences = self.parse_bool(
             d, "show_object_confidences", default=False)
         self.show_object_attr_confidences = self.parse_bool(
             d, "show_object_attr_confidences", default=False)
-        self.show_frame_attr_confidences = self.parse_bool(
-            d, "show_frame_attr_confidences", default=False)
-        self.show_all_confidences = self.parse_bool(
-            d, "show_all_confidences", default=False)
         self.show_object_indices = self.parse_bool(
             d, "show_object_indices", default=True)
         self.show_object_masks = self.parse_bool(
@@ -120,41 +168,85 @@ class AnnotationConfig(Config):
             d, "occluded_object_attr", default="occluded")
         self.hide_occluded_objects = self.parse_bool(
             d, "hide_occluded_objects", default=False)
-        self.hide_object_labels = self.parse_array(
-            d, "hide_object_labels", default=None)
+        self.object_labels_whitelist = self.parse_array(
+            d, "object_labels_whitelist", default=None)
+        self.object_labels_blacklist = self.parse_array(
+            d, "object_labels_blacklist", default=None)
+
+        ##### EVENTS #####
+        self.show_event_boxes = self.parse_bool(
+            d, "show_event_boxes", default=True)
+        self.show_event_labels = self.parse_bool(
+            d, "show_event_labels", default=True)
+        self.show_event_attrs = self.parse_bool(
+            d, "show_event_attrs", default=True)
+        self.show_event_confidences = self.parse_bool(
+            d, "show_event_confidences", default=False)
+        self.show_event_attr_confidences = self.parse_bool(
+            d, "show_event_attr_confidences", default=False)
+        self.show_event_indices = self.parse_bool(
+            d, "show_event_indices", default=True)
+        self.show_event_masks = self.parse_bool(
+            d, "show_event_masks", default=True)
+        self.show_event_label_on_objects = self.parse_bool(
+            d, "show_event_label_on_objects", default=True)
+        self.show_event_objects_in_same_color = self.parse_bool(
+            d, "show_event_objects_in_same_color", default=True)
+        self.occluded_event_attr = self.parse_string(
+            d, "occluded_event_attr", default="occluded")
+        self.hide_occluded_events = self.parse_bool(
+            d, "hide_occluded_events", default=False)
+        self.event_labels_whitelist = self.parse_array(
+            d, "event_labels_whitelist", default=None)
+        self.event_labels_blacklist = self.parse_array(
+            d, "event_labels_blacklist", default=None)
+
+        ##### BOUNDING BOXES #####
+        self.bbox_alpha = self.parse_number(d, "bbox_alpha", default=0.75)
+        self.bbox_label_text_pad_pixels = self.parse_number(
+            d, "bbox_label_text_pad_pixels", default=2)
+        self.bbox_linewidth = self.parse_number(d, "bbox_linewidth", default=2)
+
+        ##### MASKS #####
+        self.mask_border_thickness = self.parse_number(
+            d, "mask_border_thickness", default=2)
+        self.mask_fill_alpha = self.parse_number(
+            d, "mask_fill_alpha", default=0.7)
+
+        ##### ATTRIBUTE BOXES #####
+        self.attrs_box_render_method = self.parse_categorical(
+            d, "attrs_box_render_method", ["list", "panel"],
+            default="panel")
+        self.attrs_box_bg_color = self.parse_string(
+            d, "attrs_box_bg_color", default="#000000")
+        self.attrs_box_bg_alpha = self.parse_number(
+            d, "attrs_box_bg_alpha", default=0.5)
+        self.attrs_box_text_pad_pixels = self.parse_number(
+            d, "attrs_box_text_pad_pixels", default=5)
+        self.attrs_box_text_line_spacing_pixels = self.parse_number(
+            d, "attrs_box_text_line_spacing_pixels", default=1)
+
+        ##### ALL LABELS #####
+        self.show_all_confidences = self.parse_bool(
+            d, "show_all_confidences", default=False)
         self.hide_attr_values = self.parse_array(
             d, "hide_attr_values", default=None)
         self.hide_false_boolean_attrs = self.parse_bool(
             d, "hide_false_boolean_attrs", default=False)
+        self.confidence_scaled_alpha = self.parse_bool(
+            d, "confidence_scaled_alpha", default=False)
+
+        ##### FONTS AND COLORS #####
+        self.colormap_config = self.parse_object(
+            d, "colormap_config", ColormapConfig, default=None)
+        self.text_color = self.parse_string(d, "text_color", default="#FFFFFF")
         self.font_path = self.parse_string(
             d, "font_path", default=etac.DEFAULT_FONT_PATH)
         self.font_size = self.parse_number(d, "font_size", default=16)
-        self.linewidth = self.parse_number(d, "linewidth", default=2)
         self.scale_by_media_height = self.parse_bool(
             d, "scale_by_media_height", default=True)
-        self.alpha = self.parse_number(d, "alpha", default=0.75)
-        self.confidence_scaled_alpha = self.parse_bool(
-            d, "confidence_scaled_alpha", default=False)
-        self.text_color = self.parse_string(d, "text_color", default="#FFFFFF")
-        self.object_attrs_render_method = self.parse_categorical(
-            d, "object_attrs_render_method", ["list", "panel"],
-            default="panel")
-        self.object_text_pad_pixels = self.parse_number(
-            d, "object_text_pad_pixels", default=2)
-        self.attrs_bg_color = self.parse_string(
-            d, "attrs_bg_color", default="#000000")
-        self.attrs_bg_alpha = self.parse_number(
-            d, "attrs_bg_alpha", default=0.5)
-        self.attrs_box_gap = self.parse_string(
-            d, "attrs_box_gap", default="1%")
-        self.attrs_text_pad_pixels = self.parse_number(
-            d, "attrs_text_pad_pixels", default=5)
-        self.attrs_text_line_spacing_pixels = self.parse_number(
-            d, "attrs_text_line_spacing_pixels", default=1)
-        self.mask_border_thickness = self.parse_number(
-            d, "mask_border_thickness", default=2)
-        self.mask_fill_alpha = self.parse_number(
-            d, "mask_fill_alpha", default=0.5)
+
+        ##### LOGO #####
         self.add_logo = self.parse_bool(d, "add_logo", default=True)
         self.logo_config = self.parse_object(
             d, "logo_config", etal.LogoConfig, default=None)
@@ -162,7 +254,7 @@ class AnnotationConfig(Config):
         self._media_height = None
         self._logo = None
         self._font = None
-        self._box_linewidth = None
+        self._linewidth = None
         self.set_media_size(frame_size=(1280, 720))
 
         #
@@ -192,8 +284,8 @@ class AnnotationConfig(Config):
         return self._font
 
     @property
-    def box_linewidth(self):
-        return self._box_linewidth
+    def linewidth(self):
+        return self._linewidth
 
     @property
     def logo(self):
@@ -227,8 +319,8 @@ class AnnotationConfig(Config):
         self._font = ImageFont.truetype(self.font_path, font_size)
 
         # Render linewidth
-        self._box_linewidth = int(
-            self.linewidth * self._get_media_scale_factor())
+        self._linewidth = int(
+            self.bbox_linewidth * self._get_media_scale_factor())
 
     def _get_media_scale_factor(self):
         if self.scale_by_media_height:
@@ -346,6 +438,30 @@ class ShuffledHLSColormap(Colormap):
         return colors
 
 
+class Draw(object):
+    '''Context manager that allows for convenient, temporary conversion of a
+    numpy image into a `ImageDraw.Draw` instance when inside the context.
+
+    The input numpy array is modified in-place when the context manager exits.
+    '''
+
+    def __init__(self, img):
+        '''Creates a Draw instance.
+
+        Args:
+            img: an numpy image
+        '''
+        self._img = img
+        self._img_pil = None
+
+    def __enter__(self):
+        self._img_pil = Image.fromarray(self._img)
+        return ImageDraw.Draw(self._img_pil)
+
+    def __exit__(self, *args):
+        self._img[:] = np.asarray(self._img_pil)
+
+
 def annotate_video(
         input_path, video_labels, output_path, annotation_config=None):
     '''Annotates the video with the given labels.
@@ -361,44 +477,42 @@ def annotate_video(
     if annotation_config is None:
         annotation_config = _DEFAULT_ANNOTATION_CONFIG
 
+    # Render framewise labels for annotation
+    video_labels = video_labels.render_framewise_labels()
+    mask_index = video_labels.mask_index
+
     # Annotate video
     with etav.VideoProcessor(input_path, out_video_path=output_path) as p:
         # Set media size
         annotation_config.set_media_size(frame_size=p.output_frame_size)
-
-        # Get video-level attributes
-        if video_labels.attrs:
-            video_labels.attrs.sort_by_name()
-            video_attrs = video_labels.attrs
-        else:
-            video_attrs = None
 
         # Annotate frames
         for img in p:
             logger.debug("Annotating frame %d", p.frame_number)
             frame_labels = video_labels[p.frame_number]
             img_anno = _annotate_video_frame(
-                img, frame_labels, video_attrs=video_attrs,
+                img, frame_labels, mask_index=mask_index,
                 annotation_config=annotation_config)
             p.write(img_anno)
 
 
 def _annotate_video_frame(
-        img, frame_labels, video_attrs=None, annotation_config=None):
+        img, frame_labels, mask_index=None, annotation_config=None):
     if annotation_config is None:
         annotation_config = _DEFAULT_ANNOTATION_CONFIG
         annotation_config.set_media_size(img=img)
 
-    return _annotate_image(img, frame_labels, video_attrs, annotation_config)
+    return _annotate_image(
+        img, frame_labels, annotation_config, mask_index=mask_index)
 
 
-def annotate_image(img, image_labels, annotation_config=None):
+def annotate_image(img, frame_labels, annotation_config=None):
     '''Annotates the image with the given labels.
 
     Args:
         img: the image to annotate
-        image_labels: an `eta.core.image.ImageLabels` instance describing
-            the content to annotate
+        frame_labels: a FrameLabels or ImageLabels describing the content to
+            annotate
         annotation_config: an optional AnnotationConfig specifying how to
             render the annotations. If omitted, the default config is used
 
@@ -411,61 +525,108 @@ def annotate_image(img, image_labels, annotation_config=None):
     # Set media size
     annotation_config.set_media_size(img=img)
 
-    return _annotate_image(img, image_labels, None, annotation_config)
+    return _annotate_image(img, frame_labels, annotation_config)
 
 
-def _annotate_image(img, labels, more_attrs, annotation_config):
+def _annotate_image(img, frame_labels, annotation_config, mask_index=None):
     # Parse config
+    mask_fill_alpha = annotation_config.mask_fill_alpha
     hide_attr_values = annotation_config.hide_attr_values
     hide_false_boolean_attrs = annotation_config.hide_false_boolean_attrs
     show_frame_attr_confidences = (
         annotation_config.show_frame_attr_confidences or
         annotation_config.show_all_confidences)
     add_logo = annotation_config.add_logo
-    logo = annotation_config.logo
+
+    # Parse inputs
+    has_mask = frame_labels.has_mask
+    has_events = frame_labels.has_events
+    has_objects = frame_labels.has_objects
+    has_attributes = frame_labels.has_attributes
 
     #
-    # Assumption: labels has `objects` and `attrs` members. This covers both
-    # ImageLabels and VideoFrameLabels
+    # Draw frame mask
     #
 
-    # Render objects, if necessary
-    logger.debug("Rendering %d objects", len(labels.objects))
-    for obj in labels.objects:
-        img = _annotate_object(img, obj, annotation_config)
+    if has_mask:
+        logger.debug("Rendering frame mask")
 
-    attr_strs = []
+        mask = frame_labels.mask
+        colormap = annotation_config.colormap
+        if frame_labels.has_mask_index:
+            mask_index = frame_labels.mask_index
 
-    # Render `more_attrs`
-    if more_attrs is not None:
-        attr_strs.extend(
-            _render_attrs(
-                more_attrs, hide_attr_values, hide_false_boolean_attrs,
-                show_frame_attr_confidences))
+        img = _draw_frame_mask(
+            img, mask, colormap, mask_index=mask_index,
+            fill_alpha=mask_fill_alpha)
 
-    # Render frame attributes
-    labels.attrs.sort_by_name()  # alphabetize
-    attr_strs.extend(
-        _render_attrs(
-            labels.attrs, hide_attr_values, hide_false_boolean_attrs,
-            show_frame_attr_confidences))
+    #
+    # Draw events
+    #
 
+    event_attr_strs = []
+
+    if has_events:
+        logger.debug("Rendering %d events", len(frame_labels.events))
+        for event in frame_labels.events:
+            img, attr_strs = _draw_event(img, event, annotation_config)
+            event_attr_strs.extend(attr_strs)
+
+    #
+    # Draw objects
+    #
+
+    if has_objects:
+        logger.debug("Rendering %d objects", len(frame_labels.objects))
+        for obj in frame_labels.objects:
+            img = _draw_object(img, obj, annotation_config)
+
+    #
     # Draw attributes panel
-    if attr_strs:
-        img = _annotate_frame_attrs(img, attr_strs, annotation_config)
+    #
 
-    # Add logo
+    if has_attributes or event_attr_strs:
+        attr_strs = []
+
+        if has_attributes:
+            # Alphabetize
+            frame_labels.attrs.sort_by_name()
+
+            # Render attributes
+            attr_strs.extend(
+                _render_attrs(
+                    frame_labels.attrs, hide_attr_values,
+                    hide_false_boolean_attrs, show_frame_attr_confidences))
+
+        # Append any event-level attributes
+        # @todo visually separate these from other attributes?
+        attr_strs.extend(event_attr_strs)
+
+        # Draw attributes
+        if attr_strs:
+            logger.debug("Rendering %d frame attributes", len(attr_strs))
+            img = _draw_frame_attrs(img, attr_strs, annotation_config)
+
+    #
+    # Draw logo
+    #
+
     if add_logo:
-        img = logo.apply(img)
+        logger.debug("Rendering logo")
+        img = _draw_logo(img, annotation_config)
 
     return img
 
 
-def _annotate_frame_attrs(img, attr_strs, annotation_config):
-    logger.debug("Rendering %d frame attributes", len(attr_strs))
+def _draw_logo(img, annotation_config):
+    logo = annotation_config.logo
+    return logo.apply(img)
 
+
+def _draw_frame_attrs(img, attr_strs, annotation_config):
     # Compute upper-left corner of attrs panel
-    offset = etai.Width(annotation_config.attrs_box_gap).render_for(img=img)
+    width = etai.Width(annotation_config.frame_attrs_box_gap)
+    offset = width.render_for(img=img)
     top_left_coords = (offset, offset)
 
     img_anno = _draw_attrs_panel(
@@ -474,57 +635,156 @@ def _annotate_frame_attrs(img, attr_strs, annotation_config):
     return img_anno
 
 
-def _annotate_object(img, obj, annotation_config):
+def _draw_event(img, event, annotation_config, color=None):
+    #
+    # Draw event box
+    #
+
     # Parse config
-    show_object_boxes = annotation_config.show_object_boxes
-    show_object_attrs = annotation_config.show_object_attrs
-    show_object_confidences = (
+    show_box = annotation_config.show_event_boxes
+    show_label = annotation_config.show_event_labels
+    show_attrs = annotation_config.show_event_attrs
+    show_confidence = (
+        annotation_config.show_event_confidences or
+        annotation_config.show_all_confidences)
+    show_attr_confidences = (
+        annotation_config.show_event_attr_confidences or
+        annotation_config.show_all_confidences)
+    show_index = annotation_config.show_event_indices
+    occluded_attr = annotation_config.occluded_event_attr
+    hide_occluded = annotation_config.hide_occluded_events
+    labels_whitelist = annotation_config.event_labels_whitelist
+    labels_blacklist = annotation_config.event_labels_blacklist
+    show_mask = annotation_config.show_event_masks
+    show_event_label_on_objects = \
+        annotation_config.show_event_label_on_objects
+    show_event_objects_in_same_color = \
+        annotation_config.show_event_objects_in_same_color
+
+    # If the event has no bounding box, return event attributes for rendering
+    # via another method
+    return_attrs = not event.has_bounding_box
+
+    img_anno, attr_strs, event_color = _draw_bbox_with_attrs(
+        img, event, annotation_config, show_box, show_label, show_attrs,
+        show_confidence, show_attr_confidences, show_index, occluded_attr,
+        hide_occluded, labels_whitelist, labels_blacklist, show_mask,
+        color=color, return_attrs=return_attrs)
+
+    #
+    # Draw event objects
+    #
+
+    if event.has_objects:
+        # Set object color to match event color, if requested
+        if show_event_objects_in_same_color:
+            obj_color = event_color or color
+        else:
+            obj_color = None
+
+        # Add event info to object title, if requested
+        if show_event_label_on_objects:
+            event_attrs = _make_event_attr(event, show_index=show_index)
+        else:
+            event_attrs = None
+
+        for obj in event.objects:
+            img_anno = _draw_object(
+                img_anno, obj, annotation_config, color=obj_color,
+                pre_attrs=event_attrs)
+
+    return img_anno, attr_strs
+
+
+def _draw_object(img, obj, annotation_config, color=None, pre_attrs=None):
+    # Parse config
+    show_box = annotation_config.show_object_boxes
+    show_label = annotation_config.show_object_labels
+    show_attrs = annotation_config.show_object_attrs
+    show_confidence = (
         annotation_config.show_object_confidences or
         annotation_config.show_all_confidences)
-    show_object_attr_confidences = (
+    show_attr_confidences = (
         annotation_config.show_object_attr_confidences or
         annotation_config.show_all_confidences)
-    show_object_indices = annotation_config.show_object_indices
-    occluded_object_attr = annotation_config.occluded_object_attr
-    hide_occluded_objects = annotation_config.hide_occluded_objects
-    hide_object_labels = annotation_config.hide_object_labels
-    show_object_masks = annotation_config.show_object_masks
+    show_index = annotation_config.show_object_indices
+    occluded_attr = annotation_config.occluded_object_attr
+    hide_occluded = annotation_config.hide_occluded_objects
+    labels_whitelist = annotation_config.object_labels_whitelist
+    labels_blacklist = annotation_config.object_labels_blacklist
+    show_mask = annotation_config.show_object_masks
+
+    img_anno, _, _ = _draw_bbox_with_attrs(
+        img, obj, annotation_config, show_box, show_label, show_attrs,
+        show_confidence, show_attr_confidences, show_index, occluded_attr,
+        hide_occluded, labels_whitelist, labels_blacklist, show_mask,
+        color=color, pre_attrs=pre_attrs)
+
+    return img_anno
+
+
+def _draw_bbox_with_attrs(
+        img, obj_or_event, annotation_config, show_box, show_label, show_attrs,
+        show_confidence, show_attr_confidences, show_index, occluded_attr,
+        hide_occluded, labels_whitelist, labels_blacklist, show_mask,
+        color=None, return_attrs=False, pre_attrs=None):
+    # Parse config
     hide_attr_values = annotation_config.hide_attr_values
     hide_false_boolean_attrs = annotation_config.hide_false_boolean_attrs
     colormap = annotation_config.colormap
-    font = annotation_config.font
-    alpha = annotation_config.alpha
+    bbox_alpha = annotation_config.bbox_alpha
     confidence_scaled_alpha = annotation_config.confidence_scaled_alpha
-    linewidth = annotation_config.box_linewidth
-    attrs_render_method = annotation_config.object_attrs_render_method
-    pad = annotation_config.object_text_pad_pixels
-    text_color = tuple(_parse_hex_color(annotation_config.text_color))
     mask_border_thickness = annotation_config.mask_border_thickness
     mask_fill_alpha = annotation_config.mask_fill_alpha
 
-    # Check for hidden labels
-    if hide_object_labels is not None and obj.label in hide_object_labels:
-        return img
+    # Parse inputs
+    has_bounding_box = obj_or_event.has_bounding_box
+    has_mask = obj_or_event.has_mask
+    has_attributes = obj_or_event.has_attributes
 
-    # Check for occluded objects
-    if hide_occluded_objects:
-        for attr in obj.attrs:
-            if attr.name == occluded_object_attr and attr.value:
-                # Skip occluded object
-                return img
+    #
+    # Check for immediate return
+    #
+
+    return_now = False
+
+    # Check labels whitelist
+    if labels_whitelist is not None:
+        if obj_or_event.label not in labels_whitelist:
+            return_now = True
+
+    # Check labels blacklist
+    if labels_blacklist is not None:
+        if obj_or_event.label in labels_blacklist:
+            return_now = True
+
+    # Check for occlusion
+    if has_attributes and hide_occluded:
+        for attr in obj_or_event.attrs:
+            if attr.name == occluded_attr and attr.value:
+                return_now = True
+
+    if return_now:
+        return img, [], None
 
     # Scale alpha by confidence, if requested
-    if confidence_scaled_alpha and obj.confidence is not None:
-        alpha *= obj.confidence
-        mask_fill_alpha *= obj.confidence
+    if confidence_scaled_alpha and obj_or_event.confidence is not None:
+        bbox_alpha *= obj_or_event.confidence
+        mask_fill_alpha *= obj_or_event.confidence
 
-    # Construct label string
-    label_str, label_hash = _render_object_label(
-        obj, show_index=show_object_indices,
-        show_confidence=show_object_confidences)
+    # Render title string
+    title_str, title_hash = _render_bbox_title(
+        obj_or_event, show_label=show_label,
+        show_confidence=show_confidence,
+        show_index=show_index)
 
-    box_color = _parse_hex_color(colormap.get_color(label_hash))  # box color
-    label_text_size = font.getsize(label_str)  # width, height
+    # Choose box color
+    if color:
+        # Use manually specified color
+        bbox_color = color
+    else:
+        # Choose random color based on hash of title
+        bbox_color = _parse_hex_color(colormap.get_color(title_hash))
 
     img_anno = img.copy()
 
@@ -532,85 +792,135 @@ def _annotate_object(img, obj, annotation_config):
     # Draw segmentation mask
     #
 
-    if obj.has_mask and show_object_masks:
-        img_anno = _draw_object_mask(
-            img_anno, obj, box_color, border_thickness=mask_border_thickness,
-            border_alpha=alpha, fill_alpha=mask_fill_alpha)
+    if has_mask and has_bounding_box and show_mask:
+        mask = obj_or_event.mask
+        bounding_box = obj_or_event.bounding_box
+        img_anno = _draw_instance_mask(
+            img_anno, mask, bounding_box, bbox_color,
+            border_thickness=mask_border_thickness, border_alpha=bbox_alpha,
+            fill_alpha=mask_fill_alpha)
 
     #
     # Draw bounding box
     #
 
-    if not show_object_boxes:
-        return img_anno
-
-    overlay = img_anno.copy()
-
-    # Bounding box
-    objtlx, objtly = obj.bounding_box.top_left.coords_in(img=img)
-    objbrx, objbry = obj.bounding_box.bottom_right.coords_in(img=img)
-    cv2.rectangle(
-        overlay, (objtlx, objtly), (objbrx, objbry), box_color, linewidth)
+    if has_bounding_box and show_box:
+        bounding_box = obj_or_event.bounding_box
+        img_anno = _draw_bounding_box(
+            img_anno, bounding_box, title_str, bbox_alpha, bbox_color,
+            annotation_config)
 
     #
-    # Draw object label
+    # Draw attributes
     #
 
-    # Label background
-    bgtlx = objtlx - linewidth + 1
-    bgbry = objtly - linewidth + 1
-    bgbrx = bgtlx + label_text_size[0] + 2 * (pad + _DX)
-    bgtly = bgbry - label_text_size[1] - 2 * pad
-    cv2.rectangle(overlay, (bgtlx, bgtly), (bgbrx, bgbry), box_color, -1)
+    if has_attributes or pre_attrs:
+        # Alphabetize attributes by name
+        obj_or_event.attrs.sort_by_name()
 
-    # Overlay
-    img_anno = cv2.addWeighted(overlay, alpha, img_anno, 1 - alpha, 0)
+        if pre_attrs:
+            attrs = deepcopy(pre_attrs)
+            attrs.add_container(obj_or_event.attrs)
+        else:
+            attrs = obj_or_event.attrs
 
-    img_pil = Image.fromarray(img_anno)
-    draw = ImageDraw.Draw(img_pil)
+        # Render attribute strings
+        attr_strs = _render_attrs(
+            attrs, hide_attr_values, hide_false_boolean_attrs,
+            show_attr_confidences)
 
-    # Draw label
-    if label_str:
-        txttlx = bgtlx + pad + _DX
-        txttly = bgtly + pad - 1
-        draw.text((txttlx, txttly), label_str, font=font, fill=text_color)
+        # Return attributes instead of drawing them, if requested
+        if return_attrs:
+            return img_anno, attr_strs, bbox_color
 
-    #
-    # Render object attributes
-    #
+        # Draw attributes
+        if has_bounding_box and show_attrs and attr_strs:
+            logger.debug("Rendering %d bbox attributes", len(attr_strs))
 
-    if not show_object_attrs or not obj.has_attributes:
-        return np.asarray(img_pil)
+            bounding_box = obj_or_event.bounding_box
+            img_anno = _draw_bbox_attrs(
+                img_anno, bounding_box, attr_strs, annotation_config)
 
-    # Render object attribute strings
-    obj.attrs.sort_by_name()  # alphabetize by name
-    attr_strs = _render_attrs(
-        obj.attrs, hide_attr_values, hide_false_boolean_attrs,
-        show_object_attr_confidences)
-    if not attr_strs:
-        return np.asarray(img_pil)
+    return img_anno, [], bbox_color
 
-    logger.debug("Rendering %d object attributes", len(attr_strs))
 
-    # Method 1: draw attributes as list
+def _draw_bbox_attrs(img, bounding_box, attr_strs, annotation_config):
+    # Parse config
+    font = annotation_config.font
+    linewidth = annotation_config.linewidth
+    attrs_render_method = annotation_config.attrs_box_render_method
+    label_text_pad_pixels = annotation_config.bbox_label_text_pad_pixels
+    text_color = tuple(_parse_hex_color(annotation_config.text_color))
+
+    # Get upper-left corner bounding box
+    boxtlx, boxtly = bounding_box.top_left.coords_in(img=img)
+
+    # Method 1: comma-separated attributes list
     if attrs_render_method == "list":
-        atxttlx = objtlx + linewidth + pad
-        atxttly = objtly - 1 + pad
-        attrs_str = ", ".join(attr_strs)
-        draw.text(
-            (atxttlx, atxttly), attrs_str, font=font, fill=text_color)
+        with Draw(img) as draw:
+            atxttlx = boxtlx + linewidth + label_text_pad_pixels
+            atxttly = boxtly - 1 + label_text_pad_pixels
+            attrs_str = ", ".join(attr_strs)
 
-    img_anno = np.asarray(img_pil)
+            draw.text(
+                (atxttlx, atxttly), attrs_str, font=font, fill=text_color)
 
-    # Method 2: draw attributes as panel
+    # Method 2: attribute panel
     if attrs_render_method == "panel":
-        # Compute upper-left corner of attrs panel
-        atxttlx = objtlx + 2 * linewidth
-        atxttly = objtly + 2 * linewidth - 1
+        # Upper-left corner of attrs panel
+        atxttlx = boxtlx + 2 * linewidth
+        atxttly = boxtly + 2 * linewidth - 1
         top_left_coords = (atxttlx, atxttly)
 
-        img_anno = _draw_attrs_panel(
-            img_anno, attr_strs, top_left_coords, annotation_config)
+        img = _draw_attrs_panel(
+            img, attr_strs, top_left_coords, annotation_config)
+
+    return img
+
+
+def _draw_bounding_box(
+        img, bounding_box, title_str, bbox_alpha, bbox_color,
+        annotation_config):
+    # Parse config
+    font = annotation_config.font
+    linewidth = annotation_config.linewidth
+    label_text_pad_pixels = annotation_config.bbox_label_text_pad_pixels
+    text_color = tuple(_parse_hex_color(annotation_config.text_color))
+
+    overlay = img.copy()
+
+    #
+    # Draw bounding box
+    #
+
+    boxtlx, boxtly = bounding_box.top_left.coords_in(img=img)
+    boxbrx, boxbry = bounding_box.bottom_right.coords_in(img=img)
+    cv2.rectangle(
+        overlay, (boxtlx, boxtly), (boxbrx, boxbry), bbox_color, linewidth)
+
+    #
+    # Draw box title
+    #
+
+    # Title background
+    if title_str:
+        textw, texth = font.getsize(title_str)
+        bgtlx = boxtlx - linewidth + 1
+        bgbry = boxtly - linewidth + 1
+        bgbrx = bgtlx + textw + 2 * (label_text_pad_pixels + _DX)
+        bgtly = bgbry - texth - 2 * label_text_pad_pixels
+        cv2.rectangle(
+            overlay, (bgtlx, bgtly), (bgbrx, bgbry), bbox_color, -1)
+
+    img_anno = cv2.addWeighted(overlay, bbox_alpha, img, 1 - bbox_alpha, 0)
+
+    # Title text
+    if title_str:
+        with Draw(img_anno) as draw:
+            txttlx = bgtlx + label_text_pad_pixels + _DX
+            txttly = bgtly + label_text_pad_pixels - 1
+            draw.text(
+                (txttlx, txttly), title_str, font=font, fill=text_color)
 
     return img_anno
 
@@ -618,12 +928,12 @@ def _annotate_object(img, obj, annotation_config):
 def _draw_attrs_panel(img, attr_strs, top_left_coords, annotation_config):
     # Parse config
     font = annotation_config.font
-    box_pad = annotation_config.attrs_text_pad_pixels
-    line_gap = annotation_config.attrs_text_line_spacing_pixels
+    box_pad = annotation_config.attrs_box_text_pad_pixels
+    line_gap = annotation_config.attrs_box_text_line_spacing_pixels
     text_size = _compute_max_text_size(font, attr_strs)  # width, height
     text_color = tuple(_parse_hex_color(annotation_config.text_color))
-    bg_color = _parse_hex_color(annotation_config.attrs_bg_color)
-    bg_alpha = annotation_config.attrs_bg_alpha
+    bg_color = _parse_hex_color(annotation_config.attrs_box_bg_color)
+    bg_alpha = annotation_config.attrs_box_bg_alpha
     num_attrs = len(attr_strs)
 
     overlay = img.copy()
@@ -651,10 +961,40 @@ def _draw_attrs_panel(img, attr_strs, top_left_coords, annotation_config):
     return np.asarray(img_pil)
 
 
-def _draw_object_mask(
-        img, obj, color, border_thickness=None, border_alpha=None,
-        fill_alpha=None):
-    mask, offset = etai.render_instance_mask(obj, img=img, as_bool=False)
+def _draw_frame_mask(img, mask, colormap, mask_index=None, fill_alpha=None):
+    #
+    # Draw frame mask
+    #
+
+    img_anno = img
+
+    if fill_alpha is not None and fill_alpha > 0:
+        overlay = img.copy()
+
+        mask = etai.render_frame_mask(mask, img=img)
+        for index in np.unique(mask):
+            if index == 0:  # zero is background
+                continue
+
+            color = _parse_hex_color(colormap.get_color(index))
+            overlay[mask == index] = color
+
+        img_anno = cv2.addWeighted(overlay, fill_alpha, img, 1 - fill_alpha, 0)
+
+    #
+    # Render mask semantics
+    #
+
+    # @todo use `mask_index` somehow here?
+
+    return img_anno
+
+
+def _draw_instance_mask(
+        img, mask, bounding_box, color, border_thickness=None,
+        border_alpha=None, fill_alpha=None):
+    mask, offset = etai.render_instance_mask(
+        mask, bounding_box, img=img, as_bool=False)
     contours, _ = cv2.findContours(
         mask, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE, offset=offset)
 
@@ -692,6 +1032,19 @@ def _compute_max_text_size(font, text_strs):
     sizes = [font.getsize(s) for s in text_strs]
     width, height = np.max(sizes, axis=0)
     return width, height
+
+
+def _make_event_attr(event, show_index=True):
+    value = event.label or ""
+    if show_index and event.has_index:
+        value += " %d" % event.index
+    value = value.strip()
+
+    attrs = etad.AttributeContainer()
+    event_attr = etad.CategoricalAttribute(
+        "event", value, confidence=event.confidence)
+    attrs.add(event_attr)
+    return attrs
 
 
 def _render_attrs(
@@ -740,25 +1093,28 @@ def _render_attr_name_value(attr, show_confidence=True):
     return attr_str
 
 
-def _render_object_label(obj, show_index=True, show_confidence=True):
-    add_confidence = show_confidence and obj.confidence is not None
-    add_index = show_index and obj.index is not None
+def _render_bbox_title(
+        obj_or_event, show_label=True, show_confidence=False, show_index=True):
+    label = obj_or_event.label
+    confidence = obj_or_event.confidence
+    index = obj_or_event.index
 
-    label_str = _clean_str(obj.label).upper()
+    title_str = ""
+    title_hash = 0
 
-    if add_confidence:
-        label_str += " (%.2f)"
+    if show_label and label is not None:
+        _label = _clean_str(label).upper()
+        title_str += _label
+        title_hash += _label.__hash__()
 
-    if add_index:
-        label_str += "     %d" % obj.index
+    if show_confidence and confidence is not None:
+        title_str += " (%.2f)" % confidence
 
-    # Compute hash before rendering confidence so it doesn't affect coloring
-    label_hash = label_str.__hash__()
+    if show_index and index is not None:
+        title_str += "     %d" % index
+        title_hash += str(index).__hash__()
 
-    if add_confidence:
-        label_str = label_str % obj.confidence
-
-    return label_str, label_hash
+    return title_str, title_hash
 
 
 def _render_numeric_attr_value(attr):
