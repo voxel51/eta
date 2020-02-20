@@ -1235,7 +1235,8 @@ class BoundingBox(JSONFile):
 class VideoObject(Labels):
     '''A spatiotemporal object in a video.
 
-    This type is implemented in ETA by the `eta.core.objects.Object` class.
+    This type is implemented in ETA by the `eta.core.objects.VideoObject`
+    class.
 
     Examples:
         /path/to/video_object.json
@@ -1246,8 +1247,8 @@ class VideoObject(Labels):
 class VideoObjects(Labels):
     '''A list of spatiotemporal objects in a video.
 
-    This type is implemented in ETA by the `eta.core.objects.ObjectContainer`
-    class.
+    This type is implemented in ETA by the
+    `eta.core.objects.VideoObjectContainer` class.
 
     Examples:
         /path/to/video_objects.json
@@ -1292,7 +1293,7 @@ class DetectedObjectsSequence(JSONFileSequence):
 class VideoEvent(Labels):
     '''A spatiotemporal event in a video.
 
-    This type is implemented in ETA by the `eta.core.events.Event` class.
+    This type is implemented in ETA by the `eta.core.events.VideoEvent` class.
 
     Examples:
         /path/to/video_event.json
@@ -1303,8 +1304,8 @@ class VideoEvent(Labels):
 class VideoEvents(Labels):
     '''A list of spatiotemporal events in a video.
 
-    This type is implemented in ETA by the `eta.core.events.EventContainer`
-    class.
+    This type is implemented in ETA by the
+    `eta.core.events.VideoEventContainer` class.
 
     Examples:
         /path/to/video_events.json

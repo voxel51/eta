@@ -844,7 +844,7 @@ class CachingVideoObjectsFeaturizer(Featurizer):
 
         self._video_labels = video_labels
         if frames is None or frames == "*":
-            frames = video_labels.get_frame_numbers_with_objects()
+            frames = video_labels.get_frame_numbers_with_detected_objects()
             logger.info(
                 "Found %d frames with objects to featurize", len(frames))
         else:

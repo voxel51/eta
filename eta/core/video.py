@@ -422,8 +422,8 @@ class VideoLabels(
             frame segmentation masks in the video
         attrs: an AttributeContainer of video-level attributes
         frames: a dictionary mapping frame numbers to VideoFrameLabels
-        objects: an ObjectContainer of objects
-        events: an EventContainer of events
+        objects: a VideoObjectContainer of objects
+        events: a VideoEventContainer of events
         schema: (optional) a VideoLabelsSchema describing the video's schema
     '''
 
@@ -442,8 +442,8 @@ class VideoLabels(
             attrs: (optional) an AttributeContainer of video-level attributes
             frames: (optional) a dictionary mapping frame numbers to
                 VideoFrameLabels
-            objects: (optional) an ObjectContainer of objects
-            events: (optional) an EventContainer of events
+            objects: (optional) a VideoObjectContainer of objects
+            events: (optional) a VideoEventContainer of events
             schema: (optional) a VideoLabelsSchema to enforce on the video
         '''
         self.filename = filename
@@ -451,8 +451,8 @@ class VideoLabels(
         self.mask_index = mask_index
         self.attrs = attrs or etad.AttributeContainer()
         self.frames = frames or {}
-        self.objects = objects or etao.ObjectContainer()
-        self.events = events or etae.EventContainer()
+        self.objects = objects or etao.VideoObjectContainer()
+        self.events = events or etae.VideoEventContainer()
         etal.HasLabelsSchema.__init__(self, schema=schema)
         etal.HasLabelsSupport.__init__(self, support=support)
 
@@ -506,19 +506,19 @@ class VideoLabels(
         '''
         return iter(self.attrs)
 
-    def iter_objects(self):
-        '''Returns an iterator over the `Object`s in the video.
+    def iter_video_objects(self):
+        '''Returns an iterator over the `VideoObject`s in the video.
 
         Returns:
-            an iterator over `Object`s
+            an iterator over `VideoObject`s
         '''
         return iter(self.objects)
 
-    def iter_events(self):
-        '''Returns an iterator over the `Event`s in the video.
+    def iter_video_events(self):
+        '''Returns an iterator over the `VideoEvent`s in the video.
 
         Returns:
-            an iterator over `Event`s
+            an iterator over `VideoEvent`s
         '''
         return iter(self.events)
 
@@ -550,11 +550,13 @@ class VideoLabels(
         return False
 
     @property
-    def has_objects(self):
-        '''Whether the video has at least one Object or DetectedObject.'''
-        if bool(self.objects):
-            return True
+    def has_video_objects(self):
+        '''Whether the video has at least one VideoObject.'''
+        return bool(self.objects)
 
+    @property
+    def has_detected_objects(self):
+        '''Whether the video has at least one frame-level DetectedObject.'''
         for frame_labels in self.iter_frames():
             if frame_labels.has_objects:
                 return True
@@ -562,44 +564,28 @@ class VideoLabels(
         return False
 
     @property
-    def has_object_attributes(self):
-        '''Whether the video has at least one Object or DetectedObject with an
-        attribute.
-        '''
-        for obj in self.iter_objects():
-            if obj.has_attributes:
-                return True
+    def has_objects(self):
+        '''Whether the video has at least one VideoObject or DetectedObject.'''
+        return self.has_video_objects or self.has_detected_objects
 
+    @property
+    def has_video_events(self):
+        '''Whether the video has at least one VideoEvent.'''
+        return bool(self.events)
+
+    @property
+    def has_detected_events(self):
+        '''Whether the video has at least one frame-level DetectedEvent.'''
         for frame_labels in self.iter_frames():
-            if frame_labels.has_object_attributes:
+            if frame_labels.has_objects:
                 return True
 
         return False
 
     @property
     def has_events(self):
-        '''Whether the video has at least one Event or DetectedEvent.'''
-        if bool(self.events):
-            return True
-
-        for frame_labels in self.iter_frames():
-            if frame_labels.has_events:
-                return True
-
-        return False
-
-    @property
-    def has_event_attributes(self):
-        '''Whether the video has at least one event-level attribute.'''
-        for event in self.events:
-            if event.has_attributes:
-                return True
-
-        for frame_labels in self.iter_frames():
-            if frame_labels.has_event_attributes:
-                return True
-
-        return False
+        '''Whether the video has at least one VideoEvent or DetectedEvent.'''
+        return self.has_video_events or self.has_detected_events
 
     @property
     def has_frame_labels(self):
@@ -611,7 +597,8 @@ class VideoLabels(
         '''Whether the video has no labels of any kind.'''
         return not (
             self.has_video_attributes or self.has_frame_attributes
-            or self.has_objects or self.has_events)
+            or self.has_video_objects or self.has_video_events
+            or self.has_frame_labels)
 
     def has_frame(self, frame_number):
         '''Determines whether this object contains a VideoFrameLabels for the
@@ -665,7 +652,7 @@ class VideoLabels(
         '''
         return sorted([fn for fn in self if self[fn].has_frame_attributes])
 
-    def get_frame_numbers_with_objects(self):
+    def get_frame_numbers_with_detected_objects(self):
         '''Returns a sorted list of frames with one or more `DetectedObject`s.
 
         Returns:
@@ -735,7 +722,7 @@ class VideoLabels(
         '''Adds the object to the video.
 
         Args:
-            obj: an Object or DetectedObject
+            obj: a VideoObject or DetectedObject
             frame_number: (DetectedObject only) the frame number. If omitted,
                 the DetectedObject must have its `frame_number` set
         '''
@@ -748,7 +735,7 @@ class VideoLabels(
         '''Adds the objects to the video.
 
         Args:
-            objects: an ObjectContainer or DetectedObjectContainer
+            objects: a VideoObjectContainer or DetectedObjectContainer
             frame_number: (DetectedObjectContainer only) the frame number. If
                 omitted, the DetectedObjects must have their `frame_number` set
         '''
@@ -761,7 +748,7 @@ class VideoLabels(
         '''Adds the event to the video.
 
         Args:
-            event: an Event or DetectedEvent
+            event: a VideoEvent or DetectedEvent
             frame_number: (DetectedEvent only) the frame number. If omitted,
                 the DetectedEvent must have its `frame_number` set
         '''
@@ -774,7 +761,7 @@ class VideoLabels(
         '''Adds the events to the video.
 
         Args:
-            events: an EventContainer or DetectedEventContainer
+            events: a VideoEventContainer or DetectedEventContainer
             frame_number: (DetectedEventContainer only) the frame number. If
                 omitted, the `DetectedEvent`s must have their `frame_number`s
                 set
@@ -793,17 +780,33 @@ class VideoLabels(
         for frame_labels in self.iter_frames():
             frame_labels.clear_frame_attributes()
 
-    def clear_objects(self):
-        '''Removes all `Object`s and `DetectedObject`s from the video.'''
-        self.objects = etao.ObjectContainer()
+    def clear_video_objects(self):
+        '''Removes all `VideoObject`s from the video.'''
+        self.objects = etao.VideoObjectContainer()
+
+    def clear_detected_objects(self):
+        '''Removes all `DetectedObject`s from the video.'''
         for frame_labels in self.iter_frames():
             frame_labels.clear_objects()
 
-    def clear_events(self):
-        '''Removes all `Event`s and `DetectedEvent`s from the video.'''
-        self.events.clear()
+    def clear_objects(self):
+        '''Removes all `VideoObject`s and `DetectedObject`s from the video.'''
+        self.clear_video_objects()
+        self.clear_detected_objects()
+
+    def clear_video_events(self):
+        '''Removes all `VideoEvent`s from the video.'''
+        self.events = etae.VideoEventContainer()
+
+    def clear_detected_events(self):
+        '''Removes all `DetectedEvent`s from the video.'''
         for frame_labels in self.iter_frames():
             frame_labels.clear_events()
+
+    def clear_events(self):
+        '''Removes all `VideoEvent`s and `DetectedEvent`s from the video.'''
+        self.clear_video_events()
+        self.clear_detected_events()
 
     def merge_labels(self, video_labels, reindex=False):
         '''Merges the given VideoLabels into this labels.
@@ -907,7 +910,7 @@ class VideoLabels(
         have their `frame_number`s set.
 
         Args:
-            objects: an ObjectContainer or DetectedObjectContainer
+            objects: a VideoObjectContainer or DetectedObjectContainer
 
         Returns:
             a VideoLabels
@@ -918,13 +921,13 @@ class VideoLabels(
 
     @classmethod
     def from_events(cls, events):
-        '''Builds a VideoLabels instance from an EventContainer.
+        '''Builds a VideoLabels instance from an event container.
 
         If a DetectedEventContainer is provided, the `DetectedEvent`s must
         have their `frame_number`s set.
 
         Args:
-            events: an EventContainer or DetectedEventContainer
+            events: a VideoEventContainer or DetectedEventContainer
 
         Returns:
             a VideoLabels
@@ -970,11 +973,11 @@ class VideoLabels(
 
         objects = d.get("objects", None)
         if objects is not None:
-            objects = etao.ObjectContainer.from_dict(objects)
+            objects = etao.VideoObjectContainer.from_dict(objects)
 
         events = d.get("events", None)
         if events is not None:
-            events = etae.EventContainer.from_dict(events)
+            events = etae.VideoEventContainer.from_dict(events)
 
         schema = d.get("schema", None)
         if schema is not None:
@@ -1479,7 +1482,7 @@ class VideoLabelsSchema(etal.LabelsSchema):
         '''Adds the object to the schema.
 
         Args:
-            obj: an Object or DetectedObject
+            obj: a VideoObject or DetectedObject
         '''
         self.objects.add_object(obj)
 
@@ -1487,7 +1490,7 @@ class VideoLabelsSchema(etal.LabelsSchema):
         '''Adds the objects to the schema.
 
         Args:
-            objects: an ObjectContainer or DetectedObjectContainer
+            objects: a VideoObjectContainer or DetectedObjectContainer
         '''
         self.objects.add_objects(objects)
 
@@ -1523,7 +1526,7 @@ class VideoLabelsSchema(etal.LabelsSchema):
         '''Adds the event to the schema.
 
         Args:
-            event: an Event or DetectedEvent
+            event: a VideoEvent or DetectedEvent
         '''
         self.events.add_event(event)
 
@@ -1531,7 +1534,7 @@ class VideoLabelsSchema(etal.LabelsSchema):
         '''Adds the events to the schema.
 
         Args:
-            events: an EventContainer or DetectedEventContainer
+            events: a VideoEventContainer or DetectedEventContainer
         '''
         self.events.add_events(events)
 
@@ -1665,10 +1668,10 @@ class VideoLabelsSchema(etal.LabelsSchema):
         return self.objects.is_valid_frame_attributes(label, attrs)
 
     def is_valid_object(self, obj):
-        '''Whether the Object or DetectedObject is compliant with the schema.
+        '''Whether the object is compliant with the schema.
 
         Args:
-            obj: an Object or DetectedObject
+            obj: a VideoObject or DetectedObject
 
         Returns:
             True/False
@@ -1716,7 +1719,7 @@ class VideoLabelsSchema(etal.LabelsSchema):
         '''Whether the event is compliant with the schema.
 
         Args:
-            event: an Event
+            event: a VideoEvent or DetectedEvent
 
         Returns:
             True/False
@@ -1877,7 +1880,7 @@ class VideoLabelsSchema(etal.LabelsSchema):
         '''Validates that the object is compliant with the schema.
 
         Args:
-            obj: an Object or DetectedObject
+            obj: a VideoObject or DetectedObject
 
         Raises:
             LabelsSchemaError: if the object violates the schema
@@ -1925,7 +1928,7 @@ class VideoLabelsSchema(etal.LabelsSchema):
         '''Validates that the event is compliant with the schema.
 
         Args:
-            event: an Event
+            event: a VideoEvent or DetectedEvent
 
         Raises:
             LabelsSchemaError: if the event violates the schema
@@ -2017,7 +2020,7 @@ class VideoLabelsSchema(etal.LabelsSchema):
         given object.
 
         Args:
-            obj: an Object or DetectedObject
+            obj: a VideoObject or DetectedObject
 
         Returns:
             a VideoLabelsSchema
@@ -2032,7 +2035,7 @@ class VideoLabelsSchema(etal.LabelsSchema):
         given objects.
 
         Args:
-            objects: an ObjectContainer or DetectedObjectContainer
+            objects: a VideoObjectContainer or DetectedObjectContainer
 
         Returns:
             a VideoLabelsSchema
@@ -2047,7 +2050,7 @@ class VideoLabelsSchema(etal.LabelsSchema):
         given event.
 
         Args:
-            event: an Event of DetectedEvent
+            event: a VideoEvent or DetectedEvent
 
         Returns:
             a VideoLabelsSchema
@@ -2062,7 +2065,7 @@ class VideoLabelsSchema(etal.LabelsSchema):
         given events.
 
         Args:
-            events: an EventContainer or DetectedEventContainer
+            events: a VideoEventContainer or DetectedEventContainer
 
         Returns:
             a VideoLabelsSchema
@@ -2214,31 +2217,31 @@ class VideoLabelsFrameRenderer(etal.LabelsFrameRenderer):
         return deepcopy(self._video_labels.attrs)
 
     def _render_all_object_frames(self):
-        if not self._video_labels.has_objects:
+        if not self._video_labels.has_video_objects:
             return {}
 
-        r = etao.ObjectContainerFrameRenderer(self._video_labels.objects)
+        r = etao.VideoObjectContainerFrameRenderer(self._video_labels.objects)
         return r.render_all_frames()
 
     def _render_object_frame(self, frame_number):
-        if not self._video_labels.has_objects:
+        if not self._video_labels.has_video_objects:
             return None
 
-        r = etao.ObjectContainerFrameRenderer(self._video_labels.objects)
+        r = etao.VideoObjectContainerFrameRenderer(self._video_labels.objects)
         return r.render_frame(frame_number)
 
     def _render_all_event_frames(self):
-        if not self._video_labels.has_events:
+        if not self._video_labels.has_video_events:
             return {}
 
-        r = etae.EventContainerFrameRenderer(self._video_labels.events)
+        r = etae.VideoEventContainerFrameRenderer(self._video_labels.events)
         return r.render_all_frames()
 
     def _render_event_frame(self, frame_number):
-        if not self._video_labels.has_events:
+        if not self._video_labels.has_video_events:
             return None
 
-        r = etae.EventContainerFrameRenderer(self._video_labels.events)
+        r = etae.VideoEventContainerFrameRenderer(self._video_labels.events)
         return r.render_frame(frame_number)
 
 
@@ -2287,15 +2290,37 @@ class VideoSetLabels(etal.LabelsSet):
         for video_labels in self:
             video_labels.clear_frame_attributes()
 
+    def clear_video_objects(self):
+        '''Removes all `VideoObject`s from all VideoLabels in the set.'''
+        for video_labels in self:
+            video_labels.clear_video_objects()
+
+    def clear_detected_objects(self):
+        '''Removes all `DetectedObject`s from all VideoLabels in the set.'''
+        for video_labels in self:
+            video_labels.clear_detected_objects()
+
     def clear_objects(self):
-        '''Removes all `Object`s and `DetetectedObject`s from all VideoLabels
-        in the set.
+        '''Removes all `VideoObject`s and `DetectedObject`s from all
+        VideoLabels in the set.
         '''
         for video_labels in self:
             video_labels.clear_objects()
 
+    def clear_video_events(self):
+        '''Removes all `VideoEvent`s from all VideoLabels in the set.'''
+        for video_labels in self:
+            video_labels.clear_video_events()
+
+    def clear_detected_events(self):
+        '''Removes all `DetectedEvent`s from all VideoLabels in the set.'''
+        for video_labels in self:
+            video_labels.clear_detected_events()
+
     def clear_events(self):
-        '''Removes all `Event`s from all VideoLabels in the set.'''
+        '''Removes all `VideoEvent`s and `DetectedEvent`s from all VideoLabels
+        in the set.
+        '''
         for video_labels in self:
             video_labels.clear_events()
 
@@ -2308,13 +2333,13 @@ class VideoSetLabels(etal.LabelsSet):
         return set(vl.filename for vl in self if vl.filename)
 
     def remove_objects_without_attrs(self, labels=None):
-        '''Removes `DetectedObject`s from the VideoLabels in the set that do
-        not have attributes.
+        '''Removes objects from the VideoLabels in the set that do not have
+        attributes.
 
         Args:
-            labels: an optional list of DetectedObject label strings to which
-                to restrict attention when filtering. By default, all objects
-                are processed
+            labels: an optional list of object label strings to which to
+                restrict attention when filtering. By default, all objects are
+                processed
         '''
         for video_labels in self:
             video_labels.remove_objects_without_attrs(labels=labels)
@@ -2413,13 +2438,13 @@ class BigVideoSetLabels(VideoSetLabels, etas.BigSet):
             self[key] = video_labels
 
     def remove_objects_without_attrs(self, labels=None):
-        '''Removes `DetectedObject`s from the BigVideoSetLabels that do not
-        have attributes.
+        '''Removes all objects from the BigVideoSetLabels that do not have
+        attributes.
 
         Args:
-            labels: an optional list of DetectedObject label strings to which
-                to restrict attention when filtering. By default, all objects
-                are processed
+            labels: an optional list of object label strings to which to
+                restrict attention when filtering. By default, all objects are
+                processed
         '''
         for key in self.keys():
             video_labels = self[key]
