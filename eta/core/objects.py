@@ -456,7 +456,7 @@ class Object(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
         Returns:
             an iterator over `Attribute`s
         '''
-        return iter(self.events)
+        return iter(self.attrs)
 
     def iter_detections(self):
         '''Returns an iterator over the `DetectedObject`s for each frame of the
