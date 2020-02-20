@@ -124,6 +124,30 @@ class FrameLabels(etal.Labels):
 
         return False
 
+    def iter_attributes(self):
+        '''Returns an iterator over the attributes of the frame.
+
+        Returns:
+            an iterator over `Attribute`s
+        '''
+        return iter(self.attrs)
+
+    def iter_objects(self):
+        '''Returns an iterator over the objects in the frame.
+
+        Returns:
+            an iterator over `DetectedObject`s
+        '''
+        return iter(self.objects)
+
+    def iter_events(self):
+        '''Returns an iterator over the events in the frame.
+
+        Returns:
+            an iterator over `DetectedEvent`s
+        '''
+        return iter(self.events)
+
     def add_attribute(self, attr):
         '''Adds the frame-level attribute to the frame.
 
