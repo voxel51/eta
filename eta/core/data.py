@@ -233,7 +233,7 @@ class NumericAttribute(Attribute):
         Returns:
             the parsed value
         '''
-        return float(value)
+        return value
 
 
 class BooleanAttribute(Attribute):
