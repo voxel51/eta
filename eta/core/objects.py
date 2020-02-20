@@ -450,6 +450,14 @@ class Object(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
         '''Whether the object has at least one child Object.'''
         return bool(self.child_objects)
 
+    def iter_attributes(self):
+        '''Returns an iterator over the object-level attributes of the object.
+
+        Returns:
+            an iterator over `Attribute`s
+        '''
+        return iter(self.events)
+
     def iter_detections(self):
         '''Returns an iterator over the `DetectedObject`s for each frame of the
         object.
