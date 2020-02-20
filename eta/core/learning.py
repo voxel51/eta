@@ -1,7 +1,7 @@
 '''
 Core infrastructure for deploying ML models.
 
-Copyright 2017-2019, Voxel51, Inc.
+Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
@@ -719,8 +719,8 @@ class VideoEventDetector(Detector):
                 read the video
 
         Returns:
-            an `eta.core.events.EventContainer` instance describing the events
-                for the video
+            an `eta.core.events.VideoEventContainer` instance describing the
+                events for the video
         '''
         raise NotImplementedError("subclass must implement detect()")
 
