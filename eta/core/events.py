@@ -142,6 +142,22 @@ class DetectedEvent(etal.Labels, etag.HasBoundingBox):
         '''
         return EventSchema
 
+    def iter_attributes(self):
+        '''Returns an iterator over the attributes of the event.
+
+        Returns:
+            an iterator over `Attribute`s
+        '''
+        return iter(self.attrs)
+
+    def iter_objects(self):
+        '''Returns an iterator over the objects in the event.
+
+        Returns:
+            an iterator over `DetectedObject`s
+        '''
+        return iter(self.objects)
+
     def get_bounding_box(self):
         '''Returns the BoundingBox for the event.
 
@@ -464,11 +480,19 @@ class Event(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
         '''Whether the event has at least one child Event.'''
         return bool(self.child_events)
 
+    def iter_attributes(self):
+        '''Returns an iterator over the event-level attributes of the event.
+
+        Returns:
+            an iterator over `Attribute`s
+        '''
+        return iter(self.attrs)
+
     def iter_objects(self):
         '''Returns an iterator over the `Object`s in the event.
 
         Returns:
-            an iterator over Objects
+            an iterator over `Object`s
         '''
         return iter(self.objects)
 
