@@ -62,7 +62,6 @@ import eta.constants as etac
 logger = logging.getLogger(__name__)
 
 
-
 def is_str(val):
     '''Returns True/False whether the given value is a string.'''
     return isinstance(val, six.string_types)
