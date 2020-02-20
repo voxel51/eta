@@ -491,6 +491,14 @@ class Object(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
         '''Whether the object has at least one child Object.'''
         return bool(self.child_objects)
 
+    def iter_attributes(self):
+        '''Returns an iterator over the object-level attributes of the object.
+
+        Returns:
+            an iterator over `Attribute`s
+        '''
+        return iter(self.events)
+
     def iter_detections(self):
         '''Returns an iterator over the `DetectedObject`s for each frame of the
         object.
@@ -1779,7 +1787,8 @@ class ObjectFrameRenderer(etal.LabelsFrameRenderer):
 
         # Render object-level attributes
         if obj_attrs is not None:
-            dobj.add_attributes(obj_attrs)
+            # Prepend object-level attributes
+            dobj.attrs.prepend_container(obj_attrs)
 
         # Inherit available object-level metadata
         if self._obj.label is not None:

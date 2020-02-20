@@ -498,19 +498,19 @@ class VideoLabels(
         '''
         return iter(sorted(self.frames))
 
-    def iter_frames(self):
-        '''Returns an iterator over the VideoFrameLabels in the video.
+    def iter_attributes(self):
+        '''Returns an iterator over the video-level attributes in the video.
 
         Returns:
-            an iterator over VideoFrameLabels
+            an iterator over `Attribute`s
         '''
-        return itervalues(self.frames)
+        return iter(self.attrs)
 
     def iter_objects(self):
         '''Returns an iterator over the `Object`s in the video.
 
         Returns:
-            an iterator over Objects
+            an iterator over `Object`s
         '''
         return iter(self.objects)
 
@@ -518,9 +518,17 @@ class VideoLabels(
         '''Returns an iterator over the `Event`s in the video.
 
         Returns:
-            an iterator over Events
+            an iterator over `Event`s
         '''
         return iter(self.events)
+
+    def iter_frames(self):
+        '''Returns an iterator over the VideoFrameLabels in the video.
+
+        Returns:
+            an iterator over VideoFrameLabels
+        '''
+        return itervalues(self.frames)
 
     def iter_video_attrs(self, attr_type="*", attr_name="*",
                          attr_value="*"):
@@ -874,7 +882,15 @@ class VideoLabels(
         '''
         renderer = VideoLabelsFrameRenderer(self)
         frames = renderer.render_all_frames()
-        return VideoLabels(frames=frames)
+
+        kwargs = {}
+        if self.is_support_frozen:
+            kwargs["support"] = self.support
+
+        return VideoLabels(
+            filename=self.filename, metadata=self.metadata,
+            mask_index=self.mask_index, frames=frames, schema=self.schema,
+            **kwargs)
 
     def filter_by_schema(self, schema):
         '''Filters the labels by the given schema.
@@ -2225,7 +2241,8 @@ class VideoLabelsFrameRenderer(etal.LabelsFrameRenderer):
 
         # Render video-level attributes
         if video_attrs is not None:
-            frame_labels.add_attributes(video_attrs)
+            # Prepend video-level attributes
+            frame_labels.attrs.prepend_container(video_attrs)
 
         # Render objects
         if dobjs is not None:
