@@ -98,6 +98,27 @@ class BoundingBox(Serializable):
         return (
             self.top_left, self.top_right, self.bottom_right, self.bottom_left)
 
+    @property
+    def is_proper(self):
+        '''Whether the bounding box is proper, i.e., its top-left coordinate
+        lies to the left and above its bottom right coordinate.
+        '''
+        return self.height() >= 0 and self.width() >= 0
+
+    def ensure_proper(self):
+        '''Ensures that the bounding box if proper by swapping its coordinates
+        as necessary.
+        '''
+        if self.height() < 0:
+            tly, bry = self.bottom_right.y, self.top_left.y
+            self.top_left.y = tly
+            self.bottom_right.y = bry
+
+        if self.width() < 0:
+            tlx, brx = self.bottom_right.x, self.top_left.x
+            self.top_left.x = tlx
+            self.bottom_right.x = brx
+
     def coords_in(self, frame_size=None, shape=None, img=None):
         '''Returns the coordinates of the bounding box in the specified image.
 
