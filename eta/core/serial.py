@@ -1697,11 +1697,31 @@ class Container(Serializable):
         Args:
             elements: an iterable of `_ELE_CLS` objects
         '''
-        if isinstance(elements, list):
-            self.__elements__.extend(elements)
-        else:
-            for element in elements:
-                self.add(element)
+        self.__elements__.extend(list(elements))
+
+    def prepend(self, element):
+        '''Prepends an element to the container.
+
+        Args:
+            element: an instance of `_ELE_CLS`
+        '''
+        self.__elements__.insert(0, element)
+
+    def prepend_container(self, container):
+        '''Prepends the elements in the given container to this container.
+
+        Args:
+            container: a Container of `_ELE_CLS` objects
+        '''
+        self.__elements__[0:0] = container.__elements__
+
+    def prepend_iterable(self, elements):
+        '''Prepends the elements in the given iterable to the container.
+
+        Args:
+            elements: an iterable of `_ELE_CLS` objects
+        '''
+        self.__elements__[0:0] = list(elements)
 
     def filter_elements(self, filters, match=any):
         '''Removes elements that don't match the given filters from the
