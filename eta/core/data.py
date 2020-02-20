@@ -547,11 +547,7 @@ class CategoricalAttributeSchema(AttributeSchema):
         Returns:
             the list of attributes
         '''
-        _attrs = ["name", "type", "categories"]
-        if self.exclusive:
-            _attrs.append("exclusive")
-
-        return _attrs
+        return ["name", "type", "categories", "exclusive"]
 
     @staticmethod
     def get_kwargs(d):
@@ -677,11 +673,7 @@ class NumericAttributeSchema(AttributeSchema):
         Returns:
             the list of attributes
         '''
-        _attrs = ["name", "type", "range"]
-        if self.exclusive:
-            _attrs.append("exclusive")
-
-        return _attrs
+        return ["name", "type", "range", "exclusive"]
 
     @staticmethod
     def get_kwargs(d):
@@ -792,11 +784,7 @@ class BooleanAttributeSchema(AttributeSchema):
         Returns:
             the list of attributes
         '''
-        _attrs = ["name", "type", "values"]
-        if self.exclusive:
-            _attrs.append("exclusive")
-
-        return _attrs
+        return ["name", "type", "values", "exclusive"]
 
     @staticmethod
     def get_kwargs(d):
