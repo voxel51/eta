@@ -111,7 +111,7 @@ class AnnotationConfig(Config):
             the borders of segmentation masks
         mask_fill_alpha: the transparency of segmentation masks
         show_frame_mask_semantics: whether to render semantic labels for frame
-            mask regions, when available
+            mask regions, when mask indexes are available
 
     ##### ATTRIBUTE BOXES #####
         attrs_box_render_method: the method used to render object attributes
@@ -218,7 +218,7 @@ class AnnotationConfig(Config):
         self.mask_fill_alpha = self.parse_number(
             d, "mask_fill_alpha", default=0.7)
         self.show_frame_mask_semantics = self.parse_bool(
-            d, "show_frame_mask_semantics", default=False)
+            d, "show_frame_mask_semantics", default=True)
 
         ##### ATTRIBUTE BOXES #####
         self.attrs_box_render_method = self.parse_categorical(
@@ -634,7 +634,7 @@ def _draw_frame_attrs(img, attr_strs, annotation_config):
     top_left_coords = (offset, offset)
 
     img_anno = _draw_attrs_panel(
-        img, attr_strs, top_left_coords, annotation_config)
+        img, attr_strs, annotation_config, top_left_coords=top_left_coords)
 
     return img_anno
 
@@ -877,7 +877,7 @@ def _draw_bbox_attrs(img, bounding_box, attr_strs, annotation_config):
         top_left_coords = (atxttlx, atxttly)
 
         img = _draw_attrs_panel(
-            img, attr_strs, top_left_coords, annotation_config)
+            img, attr_strs, annotation_config, top_left_coords=top_left_coords)
 
     return img
 
@@ -929,7 +929,9 @@ def _draw_bounding_box(
     return img_anno
 
 
-def _draw_attrs_panel(img, attr_strs, top_left_coords, annotation_config):
+def _draw_attrs_panel(
+        img, attr_strs, annotation_config, center_coords=None,
+        top_left_coords=None):
     # Parse config
     font = annotation_config.font
     box_pad = annotation_config.attrs_box_text_pad_pixels
@@ -940,29 +942,36 @@ def _draw_attrs_panel(img, attr_strs, top_left_coords, annotation_config):
     bg_alpha = annotation_config.attrs_box_bg_alpha
     num_attrs = len(attr_strs)
 
-    overlay = img.copy()
+    #
+    # Compute box coordinates
+    #
 
-    # Draw attribute background
+    bgw = text_size[0] + 2 * (box_pad + _DX)
+    bgh = num_attrs * text_size[1] + (num_attrs - 1) * line_gap + 2 * box_pad
+    if center_coords:
+        cx, cy = center_coords
+        top_left_coords = (int(cx - 0.5 * bgw), int(cy - 0.5 * bgh))
+    if not top_left_coords:
+        raise ValueError(
+            "Either `center_coords` or `top_left_coords` must be provided")
+
     bgtlx, bgtly = top_left_coords
-    bgbrx = bgtlx + text_size[0] + 2 * (box_pad + _DX)
-    bgbry = (
-        bgtly + num_attrs * text_size[1] + (num_attrs - 1) * line_gap +
-        2 * box_pad)
-    cv2.rectangle(overlay, (bgtlx, bgtly), (bgbrx, bgbry), bg_color, -1)
+    bgbrx = bgtlx + bgw
+    bgbry = bgtly + bgh
 
-    # Overlay translucent box
+    # Draw background
+    overlay = img.copy()
+    cv2.rectangle(overlay, (bgtlx, bgtly), (bgbrx, bgbry), bg_color, -1)
     img_anno = cv2.addWeighted(overlay, bg_alpha, img, 1 - bg_alpha, 0)
 
-    img_pil = Image.fromarray(img_anno)
-    draw = ImageDraw.Draw(img_pil)
-
     # Draw attributes
-    for idx, attr_str in enumerate(attr_strs):
-        txttlx = bgtlx + box_pad + _DX
-        txttly = bgtly + box_pad + idx * line_gap + idx * text_size[1] - 1
-        draw.text((txttlx, txttly), attr_str, font=font, fill=text_color)
+    with Draw(img_anno) as draw:
+        for idx, attr_str in enumerate(attr_strs):
+            txttlx = bgtlx + box_pad + _DX
+            txttly = bgtly + box_pad + idx * line_gap + idx * text_size[1] - 1
+            draw.text((txttlx, txttly), attr_str, font=font, fill=text_color)
 
-    return np.asarray(img_pil)
+    return img_anno
 
 
 def _draw_frame_mask(img, mask, annotation_config, mask_index=None):
@@ -972,10 +981,12 @@ def _draw_frame_mask(img, mask, annotation_config, mask_index=None):
     show_semantics = annotation_config.show_frame_mask_semantics
 
     # Parse inputs
-    if mask_index is None:
+    has_mask_index = mask_index is not None
+    if not has_mask_index:
         show_semantics = False
 
-    top_left_coords = []
+    # Lists of mask semantics to render
+    center_coords = []
     attr_strs = []
 
     #
@@ -989,33 +1000,38 @@ def _draw_frame_mask(img, mask, annotation_config, mask_index=None):
 
         mask = etai.render_frame_mask(mask, img=img)
         for index in np.unique(mask):
-            if index == 0:  # zero is background
+            if has_mask_index:
+                if index not in mask_index:
+                    # When we have a `mask_index`, skip regions with no value
+                    continue
+            elif index == 0:
+                # When no `mask_index` exists, treat 0 as background
                 continue
 
-            color = _parse_hex_color(colormap.get_color(index * 51))
+            color = _parse_hex_color(colormap.get_color(51 * index))
             maski = (mask == index)
             overlay[maski] = color
 
             if show_semantics and index in mask_index:
-                tlc = _get_region_centroids(maski)
+                coords = _compute_region_centroids(maski)
                 attr_str = mask_index[index].value
-                top_left_coords.extend(tlc)
-                attr_strs.extend([attr_str] * len(tlc))
+                center_coords.extend(coords)
+                attr_strs.extend([attr_str] * len(coords))
 
         img_anno = cv2.addWeighted(overlay, fill_alpha, img, 1 - fill_alpha, 0)
 
     #
-    # Render mask semantics
+    # Draw mask semantics
     #
 
-    if show_semantics and top_left_coords:
+    if show_semantics and center_coords:
         img_anno = _annotate_frame_mask_regions(
-            img_anno, top_left_coords, attr_strs, annotation_config)
+            img_anno, center_coords, attr_strs, annotation_config)
 
     return img_anno
 
 
-def _get_region_centroids(mask):
+def _compute_region_centroids(mask):
     mask = mask.astype(np.uint8)
 
     # Label the largest contour
@@ -1040,9 +1056,10 @@ tly = int(M["m01"] / M["m00"])
 
 
 def _annotate_frame_mask_regions(
-        img, top_left_coords, attr_strs, annotation_config):
-    for tl_coords, attr_str in zip(top_left_coords, attr_strs):
-        img = _draw_attrs_panel(img, [attr_str], tl_coords, annotation_config)
+        img, center_coords, attr_strs, annotation_config):
+    for coords, attr_str in zip(center_coords, attr_strs):
+        img = _draw_attrs_panel(
+            img, [attr_str], annotation_config, center_coords=coords)
 
     return img
 
