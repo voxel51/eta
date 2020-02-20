@@ -2,7 +2,7 @@
 Core data structures for working with geometric concepts like points,
 bounding boxes, etc.
 
-Copyright 2017-2019, Voxel51, Inc.
+Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
@@ -21,6 +21,27 @@ from builtins import *
 
 import eta.core.numutils as etan
 from eta.core.serial import BigContainer, Container, Serializable, Set, BigSet
+
+
+def compute_minimal_covering_box(bounding_box, *args):
+    '''Computes the minimal covering BoundingBox for the given BoundingBoxes.
+
+    Args:
+        bounding_box: a BoundingBox
+        *args: additional `BoundingBox`s
+
+    Returns:
+        the minimal covering BoundingBox
+    '''
+    tlx, tly, brx, bry = bounding_box.to_coords()
+
+    for bbox in args:
+        tlx = min(tlx, bbox.top_left.x)
+        tly = min(tly, bbox.top_left.y)
+        brx = max(brx, bbox.bottom_right.x)
+        bry = max(bry, bbox.bottom_right.y)
+
+    return BoundingBox.from_coords(tlx, tly, brx, bry)
 
 
 class BoundingBox(Serializable):
