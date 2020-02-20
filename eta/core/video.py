@@ -577,7 +577,7 @@ class VideoLabels(
     def has_detected_events(self):
         '''Whether the video has at least one frame-level DetectedEvent.'''
         for frame_labels in self.iter_frames():
-            if frame_labels.has_objects:
+            if frame_labels.has_events:
                 return True
 
         return False
