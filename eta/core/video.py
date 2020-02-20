@@ -2194,10 +2194,8 @@ class VideoLabelsFrameRenderer(etal.LabelsFrameRenderer):
 
         # Render video-level attributes
         if video_attrs is not None:
-            # Preprend video-level attributes
-            attrs = deepcopy(video_attrs)
-            attrs.add_container(frame_labels.attrs)
-            frame_labels.attrs = attrs
+            # Prepend video-level attributes
+            frame_labels.attrs.prepend_container(video_attrs)
 
         # Render objects
         if dobjs is not None:

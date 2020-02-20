@@ -2701,10 +2701,8 @@ class EventFrameRenderer(etal.LabelsFrameRenderer):
 
         # Render event-level attributes
         if event_attrs is not None:
-            # Preprend event-level attributes
-            attrs = deepcopy(event_attrs)
-            attrs.add_container(devent.attrs)
-            devent.attrs = attrs
+            # Prepend event-level attributes
+            devent.attrs.prepend_container(event_attrs)
 
         # Render objects
         if dobjs is not None:

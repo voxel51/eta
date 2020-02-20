@@ -1747,9 +1747,7 @@ class ObjectFrameRenderer(etal.LabelsFrameRenderer):
         # Render object-level attributes
         if obj_attrs is not None:
             # Prepend object-level attributes
-            attrs = deepcopy(obj_attrs)
-            attrs.add_container(dobj.attrs)
-            dobj.attrs = attrs
+            dobj.attrs.prepend_container(obj_attrs)
 
         # Inherit available object-level metadata
         if self._obj.label is not None:
