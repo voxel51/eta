@@ -358,7 +358,8 @@ class CategoricalAttributeSchema(AttributeSchema):
 
     def serialize(self, *args, **kwargs):
         d = super(CategoricalAttributeSchema, self).serialize(*args, **kwargs)
-        d['categories'].sort()
+        if "categories" in d:
+            d["categories"].sort()
         return d
 
     @staticmethod

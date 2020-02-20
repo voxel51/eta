@@ -2258,7 +2258,7 @@ def remove_none_values(d):
     return {k: v for k, v in iteritems(d) if v is not None}
 
 
-def find_duplicate_files(path_list, verbose=True):
+def find_duplicate_files(path_list, verbose=False):
     '''Returns a list of lists of file paths from the input, that have
     identical contents to each other.
 
