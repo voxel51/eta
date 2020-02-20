@@ -1219,6 +1219,9 @@ class MaskIndex(etas.Serializable):
         '''
         self.index = index or {}
 
+    def __contains__(self, value):
+        return value in self.index
+
     def __getitem__(self, value):
         return self.get_attr(value)
 
