@@ -107,6 +107,8 @@ class AnnotationConfig(Config):
         mask_border_thickness: the thickness, in pixels, to use when drawing
             the borders of segmentation masks
         mask_fill_alpha: the transparency of segmentation masks
+        show_frame_mask_semantics: whether to render semantic labels for frame
+            mask regions, when available
 
     ##### ATTRIBUTE BOXES #####
         attrs_box_render_method: the method used to render object attributes
@@ -212,6 +214,8 @@ class AnnotationConfig(Config):
             d, "mask_border_thickness", default=2)
         self.mask_fill_alpha = self.parse_number(
             d, "mask_fill_alpha", default=0.7)
+        self.show_frame_mask_semantics = self.parse_bool(
+            d, "show_frame_mask_semantics", default=False)
 
         ##### ATTRIBUTE BOXES #####
         self.attrs_box_render_method = self.parse_categorical(
@@ -530,7 +534,6 @@ def annotate_image(img, frame_labels, annotation_config=None):
 
 def _annotate_image(img, frame_labels, annotation_config, mask_index=None):
     # Parse config
-    mask_fill_alpha = annotation_config.mask_fill_alpha
     hide_attr_values = annotation_config.hide_attr_values
     hide_false_boolean_attrs = annotation_config.hide_false_boolean_attrs
     show_frame_attr_confidences = (
@@ -552,13 +555,11 @@ def _annotate_image(img, frame_labels, annotation_config, mask_index=None):
         logger.debug("Rendering frame mask")
 
         mask = frame_labels.mask
-        colormap = annotation_config.colormap
         if frame_labels.has_mask_index:
             mask_index = frame_labels.mask_index
 
         img = _draw_frame_mask(
-            img, mask, colormap, mask_index=mask_index,
-            fill_alpha=mask_fill_alpha)
+            img, mask, annotation_config, mask_index=mask_index)
 
     #
     # Draw events
@@ -961,7 +962,19 @@ def _draw_attrs_panel(img, attr_strs, top_left_coords, annotation_config):
     return np.asarray(img_pil)
 
 
-def _draw_frame_mask(img, mask, colormap, mask_index=None, fill_alpha=None):
+def _draw_frame_mask(img, mask, annotation_config, mask_index=None):
+    # Parse config
+    colormap = annotation_config.colormap
+    fill_alpha = annotation_config.mask_fill_alpha
+    show_semantics = annotation_config.show_frame_mask_semantics
+
+    # Parse inputs
+    if mask_index is None:
+        show_semantics = False
+
+    top_left_coords = []
+    attr_strs = []
+
     #
     # Draw frame mask
     #
@@ -976,8 +989,15 @@ def _draw_frame_mask(img, mask, colormap, mask_index=None, fill_alpha=None):
             if index == 0:  # zero is background
                 continue
 
-            color = _parse_hex_color(colormap.get_color(index))
-            overlay[mask == index] = color
+            color = _parse_hex_color(colormap.get_color(index * 51))
+            maski = (mask == index)
+            overlay[maski] = color
+
+            if show_semantics and index in mask_index:
+                tlc = _get_region_centroids(maski)
+                attr_str = mask_index[index].value
+                top_left_coords.extend(tlc)
+                attr_strs.extend([attr_str] * len(tlc))
 
         img_anno = cv2.addWeighted(overlay, fill_alpha, img, 1 - fill_alpha, 0)
 
@@ -985,9 +1005,43 @@ def _draw_frame_mask(img, mask, colormap, mask_index=None, fill_alpha=None):
     # Render mask semantics
     #
 
-    # @todo use `mask_index` somehow here?
+    if show_semantics and top_left_coords:
+        img_anno = _annotate_frame_mask_regions(
+            img_anno, top_left_coords, attr_strs, annotation_config)
 
     return img_anno
+
+
+def _get_region_centroids(mask):
+    mask = mask.astype(np.uint8)
+
+    # Label the largest contour
+    contours, _ = cv2.findContours(
+        mask, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+    c = max(contours, key=cv2.contourArea)
+
+    M = cv2.moments(c)
+    tlx = int(M["m10"] / M["m00"])
+    tly = int(M["m01"] / M["m00"])
+    return [(tlx, tly)]
+
+
+'''
+M = cv2.moments(mask.astype(np.uint8))
+tlx = int(M["m10"] / M["m00"])
+tly = int(M["m01"] / M["m00"])
+
+#tlx = maski.sum(axis=0).argmax()
+#tly = maski.sum(axis=1).argmax()
+'''
+
+
+def _annotate_frame_mask_regions(
+        img, top_left_coords, attr_strs, annotation_config):
+    for tl_coords, attr_str in zip(top_left_coords, attr_strs):
+        img = _draw_attrs_panel(img, [attr_str], tl_coords, annotation_config)
+
+    return img
 
 
 def _draw_instance_mask(
