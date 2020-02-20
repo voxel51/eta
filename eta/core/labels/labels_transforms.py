@@ -149,33 +149,6 @@ class LabelsTransformError(Exception):
     '''Error raised when a LabelsTransform is violated.'''
     pass
 
-# METADATA
-
-
-'''
-1) eta.core.datasets.standardize.ensure_labels_filename_property
-'''
-class EnsureFileName(LabelsTransform):
-    '''Populates the labels.filename'''
-
-    @property
-    def num_populated(self):
-        return self._num_populated
-
-    @property
-    def num_skipped(self):
-        return self._num_skipped
-
-    @property
-    def num_overriden(self):
-        return self._num_overriden
-
-    def __init__(self, dataset, inplace=False, mismatch_handle=RAISE):
-        super(EnsureFileName, self).__init__(inplace=inplace)
-        self._num_populated = 0
-        self._num_skipped = 0
-        self._num_overriden = 0
-
 
 # SCHEMA COMPARISON
 
