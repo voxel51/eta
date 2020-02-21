@@ -1060,18 +1060,6 @@ class MaskIndex(JSONFile):
     pass
 
 
-class FrameMaskIndex(MaskIndex):
-    '''An index of semantics for the values in a frame mask.
-
-    This type is implemented in ETA by the `eta.core.frames.FrameMaskIndex`
-    class.
-
-    Examples:
-        /path/to/frame_mask_index.json
-    '''
-    pass
-
-
 class Labels(JSONFile):
     '''Base type for labels in images or videos.
 

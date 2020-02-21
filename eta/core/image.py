@@ -113,7 +113,7 @@ class ImageLabels(etaf.FrameLabels):
         metadata: (optional) an ImageMetadata describing metadata about the
             image
         mask: (optiona) a segmentation mask for the image
-        mask_index: (optional) a FrameMaskIndex describing the semantics of the
+        mask_index: (optional) a MaskIndex describing the semantics of the
             segmentation mask
         attrs: an AttributeContainer of attributes of the image
         objects: a DetectedObjectContainer of objects in the image

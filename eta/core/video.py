@@ -42,7 +42,7 @@ import numpy as np
 
 import eta.core.data as etad
 import eta.core.events as etae
-from eta.core.frames import FrameLabels, FrameMaskIndex
+from eta.core.frames import FrameLabels
 import eta.core.frameutils as etaf
 import eta.core.gps as etag
 import eta.core.image as etai
@@ -355,7 +355,7 @@ class VideoFrameLabels(FrameLabels):
     Attributes:
         frame_number: the frame number
         mask: (optional) a segmentation mask for the frame
-        mask_index: (optional) a FrameMaskIndex describing the semantics of the
+        mask_index: (optional) a MaskIndex describing the semantics of the
             segmentation mask
         attrs: an AttributeContainer of attributes of the frame
         objects: a DetectedObjectContainer of objects in the frame
@@ -418,8 +418,8 @@ class VideoLabels(
         filename: (optional) the filename of the video
         metadata: (optional) a VideoMetadata of metadata about the video
         support: a FrameRanges instance describing the support of the labels
-        mask_index: (optional) a FrameMaskIndex describing the semantics of all
-            frame segmentation masks in the video
+        mask_index: (optional) a MaskIndex describing the semantics of all
+            segmentation masks in the video
         attrs: an AttributeContainer of video-level attributes
         frames: a dictionary mapping frame numbers to VideoFrameLabels
         objects: a VideoObjectContainer of objects
@@ -437,8 +437,8 @@ class VideoLabels(
             metadata: (optional) a VideoMetadata of metadata about the video
             support: (optional) a FrameRanges instance describing the frozen
                 support of the labels
-            mask_index: (optional) a FrameMaskIndex describing the semantics of
-                all frame segmentation masks in the video
+            mask_index: (optional) a MaskIndex describing the semantics of all
+                segmentation masks in the video
             attrs: (optional) an AttributeContainer of video-level attributes
             frames: (optional) a dictionary mapping frame numbers to
                 VideoFrameLabels
@@ -958,7 +958,7 @@ class VideoLabels(
 
         mask_index = d.get("mask_index", None)
         if mask_index is not None:
-            mask_index = FrameMaskIndex.from_dict(mask_index)
+            mask_index = etad.MaskIndex.from_dict(mask_index)
 
         attrs = d.get("attrs", None)
         if attrs is not None:

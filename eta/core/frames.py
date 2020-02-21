@@ -25,11 +25,6 @@ import eta.core.objects as etao
 import eta.core.serial as etas
 
 
-class FrameMaskIndex(etad.MaskIndex):
-    '''An index of semantics for the values in a frame mask.'''
-    pass
-
-
 class FrameLabels(etal.Labels):
     '''Class encapsulating labels for a frame, i.e., an image or a video frame.
 
@@ -40,7 +35,7 @@ class FrameLabels(etal.Labels):
     Attributes:
         frame_number: (optional) the frame number
         mask: (optional) a segmentation mask for the frame
-        mask_index: (optional) a FrameMaskIndex describing the semantics of the
+        mask_index: (optional) a MaskIndex describing the semantics of the
             segmentation mask
         attrs: an AttributeContainer of attributes of the frame
         objects: a DetectedObjectContainer of objects in the frame
@@ -55,8 +50,8 @@ class FrameLabels(etal.Labels):
         Args:
             frame_number: (optional) a frame number for the labels
             mask: (optional) a segmentation mask for the frame
-            mask_index: (optional) a FrameMaskIndex describing the semantics of
-                the segmentation mask
+            mask_index: (optional) a MaskIndex describing the semantics of the
+                segmentation mask
             attrs: (optional) an AttributeContainer of attributes for the frame
             objects: (optional) a DetectedObjectContainer of objects for the
                 frame
@@ -298,7 +293,7 @@ class FrameLabels(etal.Labels):
 
         mask_index = d.get("mask_index", None)
         if mask_index is not None:
-            mask_index = FrameMaskIndex.from_dict(mask_index)
+            mask_index = etad.MaskIndex.from_dict(mask_index)
 
         attrs = d.get("attrs", None)
         if attrs is not None:
