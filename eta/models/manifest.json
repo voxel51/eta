@@ -236,7 +236,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "eta.detectors.TFModelsSegmenter",
+                "type": "eta.detectors.TFModelsInstanceSegmenter",
                 "config": {
                     "model_name": "mask-rcnn-inception-resnet-v2-atrous-coco",
                     "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
@@ -257,7 +257,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "eta.detectors.TFModelsSegmenter",
+                "type": "eta.detectors.TFModelsInstanceSegmenter",
                 "config": {
                     "model_name": "mask-rcnn-inception-v2-coco",
                     "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
@@ -278,7 +278,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "eta.detectors.TFModelsSegmenter",
+                "type": "eta.detectors.TFModelsInstanceSegmenter",
                 "config": {
                     "model_name": "mask-rcnn-resnet50-atrous-coco",
                     "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
@@ -299,7 +299,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "eta.detectors.TFModelsSegmenter",
+                "type": "eta.detectors.TFModelsInstanceSegmenter",
                 "config": {
                     "model_name": "mask-rcnn-resnet101-atrous-coco",
                     "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
