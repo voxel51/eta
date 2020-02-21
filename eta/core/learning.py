@@ -725,6 +725,139 @@ class VideoEventDetector(Detector):
         raise NotImplementedError("subclass must implement detect()")
 
 
+class SemanticSegmenterConfig(ModelConfig):
+    '''Configuration class that encapsulates the name of a `SemanticSegmenter`
+    and an instance of its associated Config class.
+
+    Attributes:
+        type: the fully-qualified class name of the `SemanticSegmenter`
+        config: an instance of the Config class associated with the specified
+            `SemanticSegmenter`
+    '''
+
+    def __init__(self, d):
+        super(SemanticSegmenterConfig, self).__init__(d)
+        self._validate_type(SemanticSegmenter)
+
+
+class SemanticSegmenter(Model):
+    '''Interface for sementic segmentation models.
+
+    Subclasses of `SemanticSegmenter` must implement the `segment()` method.
+
+    Subclasses can optionally implement the context manager interface to
+    perform any necessary setup and teardown.
+    '''
+
+    def segment(self, arg):
+        '''Peforms segmentation on the given argument.
+
+        Args:
+            arg: the data to process
+
+        Returns:
+            an `eta.core.labels.Labels` describing the segmentations
+        '''
+        raise NotImplementedError("subclasses must implement segment()")
+
+
+class ImageSemanticSegmenterConfig(SemanticSegmenterConfig):
+    '''Configuration class that encapsulates the name of an
+    `ImageSemanticSegmenter` and an instance of its associated Config class.
+
+    Attributes:
+        type: the fully-qualified class name of the `ImageSemanticSegmenter`
+        config: an instance of the Config class associated with the specified
+            `ImageSemanticSegmenter`
+    '''
+
+    def __init__(self, d):
+        super(ImageSemanticSegmenterConfig, self).__init__(d)
+        self._validate_type(ImageSemanticSegmenter)
+
+
+class ImageSemanticSegmenter(SemanticSegmenter):
+    '''Base class for sementic segmentation models that operate on single
+    images.
+
+    Subclasses of `ImageSemanticSegmenter` must implement the `segment()`
+    method, and they can optionally provide a custom (efficient) implementation
+    of the `segment_all()` method.
+
+    Subclasses can optionally implement the context manager interface to
+    perform any necessary setup and teardown, e.g., operating a `Featurizer`
+    that featurizes the input images.
+    '''
+
+    def segment(self, img):
+        '''Peforms segmentation on the given image.
+
+        Args:
+            img: an image
+
+        Returns:
+            an `eta.core.image.ImageLabels` instance containing the
+                segmentation
+        '''
+        raise NotImplementedError("subclasses must implement segment()")
+
+    def segment_all(self, imgs):
+        '''Performs segmentation on the given tensor of images.
+
+        Subclasses can override this method to increase efficiency, but, by
+        default, this method simply iterates over the images and segments each.
+
+        Args:
+            imgs: a list (or n x h x w x 3 tensor) of images
+
+        Returns:
+            a list of `eta.core.image.ImageLabels` instances describing the
+                segmentations for each image
+        '''
+        return [self.segment(img) for img in imgs]
+
+
+class VideoSemanticSegmenterConfig(SemanticSegmenterConfig):
+    '''Configuration class that encapsulates the name of a
+    `VideoSemanticSegmenter` and an instance of its associated Config class.
+
+    Attributes:
+        type: the fully-qualified class name of the `VideoSemanticSegmenter`
+        config: an instance of the Config class associated with the specified
+            `VideoSemanticSegmenter`
+    '''
+
+    def __init__(self, d):
+        super(VideoSemanticSegmenterConfig, self).__init__(d)
+        self._validate_type(VideoSemanticSegmenter)
+
+
+class VideoSemanticSegmenter(SemanticSegmenter):
+    '''Base class for semantic segmentation models that operate on entire
+    videos.
+
+    Subclasses of `VideoSemanticSegmenter` must implement the `segment()`
+    method.
+
+    Subclasses can optionally implement the context manager interface to
+    perform any necessary setup and teardown, e.g., operating a `Featurizer`
+    that featurizes the frames of the input video.
+    '''
+
+    def segment(self, video_reader):
+        '''Peforms segmentation on the given video.
+
+        Args:
+            video_reader: an `eta.core.video.VideoReader` that can be used to
+                read the video
+
+        Returns:
+            an `eta.core.video.VideoLabels` instance containing the
+                segmentations
+        '''
+        raise NotImplementedError("subclasses must implement segment()")
+
+
 class ExposesFeatures(object):
     '''Mixin for `Model` subclasses that expose features for their predictions.
 
