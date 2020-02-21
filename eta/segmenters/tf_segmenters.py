@@ -166,7 +166,7 @@ class TFSemanticSegmenter(etal.ImageSemanticSegmenter, etat.UsesTFSession):
             for img in imgs]
 
         masks = self._evaluate(imgs, [self._output_op])
-        return [etai.ImageLabels(mask=mask) for mask in masks]
+        return [etai.ImageLabels(mask=mask[0]) for mask in masks]
 
     def _evaluate(self, imgs, ops):
         in_tensor = self._input_op.outputs[0]
