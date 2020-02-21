@@ -1039,10 +1039,15 @@ def _compute_region_centroids(mask):
         mask, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
     c = max(contours, key=cv2.contourArea)
 
+    # Extract centroid, if possible
+    coords = []
     M = cv2.moments(c)
-    tlx = int(M["m10"] / M["m00"])
-    tly = int(M["m01"] / M["m00"])
-    return [(tlx, tly)]
+    if M["m00"] > 0:
+        tlx = int(M["m10"] / M["m00"])
+        tly = int(M["m01"] / M["m00"])
+        coords.append((tlx, tly))
+
+    return coords
 
 
 '''
