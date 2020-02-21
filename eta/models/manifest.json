@@ -489,7 +489,7 @@
                 "type": "eta.segmenters.TFSemanticSegmenter",
                 "config": {
                     "model_name": "deeplabv3-cityscapes",
-                    "labels_path": "{{eta-resources}}/tf-segmenters-cityscapes-train-labels.txt",
+                    "labels_path": "{{eta-resources}}/tf-semantic-segmenters-cityscapes-train-labels.txt",
                     "resize_to_max_dim": 513,
                     "input_name": "ImageTensor",
                     "output_name": "SemanticPredictions"
@@ -512,7 +512,7 @@
                 "type": "eta.segmenters.TFSemanticSegmenter",
                 "config": {
                     "model_name": "deeplabv3-mnv2-cityscapes",
-                    "labels_path": "{{eta-resources}}/tf-segmenters-cityscapes-train-labels.txt",
+                    "labels_path": "{{eta-resources}}/tf-semantic-segmenters-cityscapes-train-labels.txt",
                     "resize_to_max_dim": 513,
                     "input_name": "ImageTensor",
                     "output_name": "SemanticPredictions"
