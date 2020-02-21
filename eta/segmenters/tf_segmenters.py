@@ -22,6 +22,7 @@ from builtins import *
 import logging
 
 from eta.core.config import Config, ConfigError
+import eta.core.data as etad
 import eta.core.image as etai
 import eta.core.learning as etal
 import eta.core.models as etam
@@ -131,6 +132,14 @@ class TFSemanticSegmenter(etal.ImageSemanticSegmenter, etat.UsesTFSession):
     def labels_map(self):
         '''A dictionary mapping semantic indices to class labels.'''
         return self._labels_map
+
+    def get_mask_index(self):
+        '''Makes a MaskIndex for the model's labels map.
+
+        Returns:
+            A MaskIndex
+        '''
+        return etad.MaskIndex.from_labels_map(self.labels_map)
 
     def segment(self, img):
         '''Performs segmentation on the input image.
