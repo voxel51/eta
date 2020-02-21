@@ -67,8 +67,11 @@ class TFSemanticSegmenterConfig(Config, etal.HasDefaultDeploymentConfig):
         if self.model_name:
             d = self.load_default_deployment_params(d, self.model_name)
 
-        self.labels_path = etau.fill_config_patterns(
-            self.parse_string(d, "labels_path"))
+        _labels_path = self.parse_string(d, "labels_path", default=None)
+        if _labels_path:
+            _labels_path = etau.fill_config_patterns(_labels_path)
+        self.labels_path = _labels_path
+
         self.resize_to_max_dim = self.parse_number(d, "resize_to_max_dim")
         self.input_name = self.parse_string(d, "input_name")
         self.output_name = self.parse_string(d, "output_name")
@@ -114,7 +117,9 @@ class TFSemanticSegmenter(etal.ImageSemanticSegmenter, etat.UsesTFSession):
         self._sess = self.make_tf_session(graph=self._graph)
 
         # Load labels
-        self._labels_map = etal.load_labels_map(self.config.labels_path)
+        self._labels_map = None
+        if self.config.labels_path:
+            self._labels_map = etal.load_labels_map(self.config.labels_path)
 
         # Get operations
         self._input_op = self._graph.get_operation_by_name(
@@ -129,16 +134,26 @@ class TFSemanticSegmenter(etal.ImageSemanticSegmenter, etat.UsesTFSession):
         self.close()
 
     @property
+    def has_labels_map(self):
+        '''Whether this model has a labels map.'''
+        return self._labels_map is not None
+
+    @property
     def labels_map(self):
-        '''A dictionary mapping semantic indices to class labels.'''
+        '''A dictionary mapping semantic indices to class labels, or None if
+        this model does not have a labels map.
+        '''
         return self._labels_map
 
     def get_mask_index(self):
         '''Makes a MaskIndex for the model's labels map.
 
         Returns:
-            A MaskIndex
+            A MaskIndex, or None if this model does not have a labels map
         '''
+        if not self.has_labels_map:
+            return None
+
         return etad.MaskIndex.from_labels_map(self.labels_map)
 
     def segment(self, img):
