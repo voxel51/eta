@@ -227,46 +227,6 @@ class ImageLabels(Serializable):
         '''
         self.objects.remove_objects_without_attrs(labels=labels)
 
-    def check_for_duplicate_attrs(self, image_attr_multi_value_names=None,
-                                  obj_attr_multi_value_names=None):
-        '''Check for duplicate attributes (and raise exception)
-
-        Args:
-            image_attr_multi_value_names: list of attr name strings that the
-                image attrs is allowed to have multiple DIFFERENT values for
-            obj_attr_multi_value_names: list of attr name strings that any
-                object attrs is allowed to have multiple DIFFERENT values for
-
-        Raises:
-            ValueError if:
-                - multiple types for an attr name
-                - multiple values for an attr name *not in multi_value_names*
-                - duplicate values for an attr name
-        '''
-        self.attrs.check_for_duplicates(image_attr_multi_value_names)
-        for obj in self.objects:
-            obj.attrs.check_for_duplicates(obj_attr_multi_value_names)
-
-    def has_duplicate_attrs(self, image_attr_multi_value_names=None,
-                            obj_attr_multi_value_names=None):
-        '''Check for duplicate attributes (and return boolean)
-
-        Args:
-            image_attr_multi_value_names: list of attr name strings that the
-                image attrs is allowed to have multiple DIFFERENT values for
-            obj_attr_multi_value_names: list of attr name strings that any
-                object attrs is allowed to have multiple DIFFERENT values for
-
-        Returns:
-            True if any duplicate attributes exist (image or object)
-        '''
-        try:
-            self.check_for_duplicate_attrs(
-                image_attr_multi_value_names, obj_attr_multi_value_names)
-            return False
-        except ValueError:
-            return True
-
     @property
     def has_attributes(self):
         '''Whether the container has at least one attribute.'''

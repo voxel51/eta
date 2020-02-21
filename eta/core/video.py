@@ -1010,60 +1010,6 @@ class VideoLabels(Serializable):
         '''Removes the enforced schema from the video.'''
         self.schema = None
 
-    def check_for_duplicate_attrs(self, video_attr_multi_value_names=None,
-                                  frame_attr_multi_value_names=None,
-                                  obj_attr_multi_value_names=None,
-                                  event_attr_multi_value_names=None):
-        '''Check for duplicate attributes (and raise exception)
-
-        Args:
-            video_attr_multi_value_names: list of attr name strings that the
-                video attrs is allowed to have multiple DIFFERENT values for
-            frame_attr_multi_value_names: same for frame attrs
-            obj_attr_multi_value_names: same for object attrs
-            event_attr_multi_value_names: same for event attrs
-
-        Raises:
-            ValueError if:
-                - multiple types for an attr name
-                - multiple values for an attr name *not in multi_value_names*
-                - duplicate values for an attr name
-        '''
-        self.attrs.check_for_duplicates(video_attr_multi_value_names)
-        for frame in self.iter_frames():
-            frame.attrs.check_for_duplicates(frame_attr_multi_value_names)
-            for obj in frame.objects:
-                obj.attrs.check_for_duplicates(obj_attr_multi_value_names)
-        for event in self.iter_events():
-            event.attrs.check_for_duplicates(event_attr_multi_value_names)
-
-    def has_duplicate_attrs(self, video_attr_multi_value_names=None,
-                            frame_attr_multi_value_names=None,
-                            obj_attr_multi_value_names=None,
-                            event_attr_multi_value_names=None):
-        '''Check for duplicate attributes (and return boolean)
-
-        Args:
-            video_attr_multi_value_names: list of attr name strings that the
-                video attrs is allowed to have multiple DIFFERENT values for
-            frame_attr_multi_value_names: same for frame attrs
-            obj_attr_multi_value_names: same for object attrs
-            event_attr_multi_value_names: same for event attrs
-
-        Returns:
-            True if any duplicate attributes exist (image or object)
-        '''
-        try:
-            self.check_for_duplicate_attrs(
-                video_attr_multi_value_names,
-                frame_attr_multi_value_names,
-                obj_attr_multi_value_names,
-                event_attr_multi_value_names
-            )
-            return False
-        except ValueError:
-            return True
-
     def attributes(self):
         '''Returns the list of class attributes that will be serialized.
 
