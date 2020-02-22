@@ -635,13 +635,21 @@ class VideoLabels(
         '''
         del self.frames[frame_number]
 
-    def get_frame_numbers(self):
+    def get_frame_numbers_with_labels(self):
         '''Returns a sorted list of all frames with VideoFrameLabels.
 
         Returns:
             a list of frame numbers
         '''
         return sorted(self.frames.keys())
+
+    def get_frame_numbers_with_masks(self):
+        '''Returns a sorted list of frames with frame-level masks.
+
+        Returns:
+            a sorted list of frame numbers
+        '''
+        return sorted([fn for fn in self if self[fn].has_mask])
 
     def get_frame_numbers_with_attributes(self):
         '''Returns a sorted list of frames with one or more frame-level
@@ -666,7 +674,7 @@ class VideoLabels(
         Returns:
             the (min, max) frame numbers
         '''
-        fns = self.get_frame_numbers()
+        fns = self.get_frame_numbers_with_labels()
         return (fns[0], fns[-1]) if fns else (None, None)
 
     def add_video_attribute(self, attr):
