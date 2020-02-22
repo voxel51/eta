@@ -24,7 +24,6 @@ from future.utils import iteritems
 from collections import defaultdict
 import logging
 import os
-import logging
 
 import numpy as np
 
