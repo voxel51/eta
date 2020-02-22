@@ -22,6 +22,7 @@ from future.utils import iteritems
 # pragma pylint: enable=wildcard-import
 
 from collections import defaultdict
+import logging
 import os
 import logging
 
