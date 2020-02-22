@@ -668,14 +668,13 @@ class VideoLabels(
         '''
         return sorted([fn for fn in self if self[fn].has_objects])
 
-    def get_frame_range(self):
-        '''Returns the (min, max) frame numbers with VideoFrameLabels.
+    def get_frame_numbers_with_detected_event(self):
+        '''Returns a sorted list of frames with one or more `DetectedEvent`s.
 
         Returns:
-            the (min, max) frame numbers
+            a list of frame numbers
         '''
-        fns = self.get_frame_numbers_with_labels()
-        return (fns[0], fns[-1]) if fns else (None, None)
+        return sorted([fn for fn in self if self[fn].has_events])
 
     def add_video_attribute(self, attr):
         '''Adds the given video-level attribute to the video.
