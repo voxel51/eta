@@ -5,7 +5,6 @@ Copyright 2017-2019, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
-Tyler Ganter, tyler@voxel51.com
 '''
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
@@ -184,18 +183,6 @@ class DetectedObjectContainer(Container):
     _ELE_CLS = DetectedObject
     _ELE_CLS_FIELD = "_OBJ_CLS"
     _ELE_ATTR = "objects"
-
-    def iter_objects(self, label="*"):
-        for obj in self:
-            if label != "*" and obj.label != label:
-                continue
-            yield obj
-
-    def iter_object_attrs(self, label="*", attr_type="*",
-                          attr_name="*", attr_value="*"):
-        for obj in self.iter_objects(label):
-            for attr in obj.attrs.iter_attrs(attr_type, attr_name, attr_value):
-                yield obj, attr
 
     def get_labels(self):
         '''Returns a set containing the labels of the DetectedObjects.

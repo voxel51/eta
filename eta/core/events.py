@@ -154,19 +154,6 @@ class EventContainer(Container):
     _ELE_CLS_FIELD = "_EVENT_CLS"
     _ELE_ATTR = "events"
 
-    def iter_events(self, label="*"):
-        for event in self:
-            if label != "*" and event.label != label:
-                continue
-            yield event
-
-    def iter_event_attrs(self, label="*", attr_type="*", attr_name="*",
-                         attr_value="*"):
-        for event in self.iter_events(label):
-            for attr in event.attrs.iter_attrs(
-                    attr_type, attr_name, attr_value):
-                yield event, attr
-
     def get_labels(self):
         '''Returns a set containing the labels of the `Event`s.
 

@@ -347,15 +347,6 @@ class CategoricalAttributeSchema(AttributeSchema):
         '''Merges the given CategoricalAttributeSchema into this schema.'''
         self.categories.update(schema.categories)
 
-    def iter_name_values(self):
-        '''Iterate over all pairs of (attr.name, attr.value)
-
-        Returns:
-            generator that yields (attr.name, attr.value) tuples
-        '''
-        for value in self.categories:
-            yield self.name, value
-
     def serialize(self, *args, **kwargs):
         d = super(CategoricalAttributeSchema, self).serialize(*args, **kwargs)
         if "categories" in d:
@@ -476,16 +467,6 @@ class AttributeContainer(Container):
     def has_schema(self):
         '''Returns True/False whether the container has an enforced schema.'''
         return self.schema is not None
-
-    def iter_attrs(self, attr_type="*", attr_name="*", attr_value="*"):
-        for attr in self:
-            if attr_type != "*" and attr.type != attr_type:
-                continue
-            if attr_name != "*" and attr.name != attr_name:
-                continue
-            if attr_value != "*" and attr.value != attr_value:
-                continue
-            yield attr
 
     def add(self, attr):
         '''Adds an attribute to the container.
