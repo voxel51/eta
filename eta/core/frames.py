@@ -970,6 +970,20 @@ class FrameLabelsSchema(etal.LabelsSchema):
         schema.add_labels(frame_labels)
         return schema
 
+    @classmethod
+    def from_video_labels_schema(cls, video_labels_schema):
+        '''Creates a FrameLabelsSchema from a VideoLabelsSchema.
+
+        Args:
+            video_labels_schema: a VideoLabelsSchema
+
+        Returns:
+            a FrameLabelsSchema
+        '''
+        return cls(
+            attrs=video_labels_schema.frames,
+            objects=video_labels_schema.objects)
+
     def attributes(self):
         '''Returns the list of class attributes that will be serialized.
 

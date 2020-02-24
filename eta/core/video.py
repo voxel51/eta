@@ -2075,6 +2075,20 @@ class VideoLabelsSchema(etal.LabelsSchema):
         return schema
 
     @classmethod
+    def from_image_labels_schema(cls, frame_labels_schema):
+        '''Creates a VideoLabelsSchema from FrameLabelsSchema.
+
+        Args:
+            frame_labels_schema: an FrameLabelsSchema
+
+        Returns:
+            a VideoLabelsSchema
+        '''
+        return cls(
+            frames=frame_labels_schema.attrs,
+            objects=frame_labels_schema.objects)
+
+    @classmethod
     def build_active_schema(cls, video_labels):
         '''Builds a VideoLabelsSchema that describes the active schema of the
         given labels.
