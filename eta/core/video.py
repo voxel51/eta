@@ -9,7 +9,7 @@ Notes:
         produced outside of this library must be converted to RGB. This
         conversion can be done via `eta.core.image.bgr_to_rgb()`
 
-Copyright 2017-2019, Voxel51, Inc.
+Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
@@ -29,7 +29,7 @@ import six
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-from collections import defaultdict, OrderedDict
+from copy import deepcopy
 import errno
 import logging
 import os
@@ -40,13 +40,14 @@ import cv2
 import dateutil.parser
 import numpy as np
 
-from eta.core.data import AttributeContainer, AttributeContainerSchema
-from eta.core.events import EventContainer
-import eta.core.frames as etaf
+import eta.core.data as etad
+import eta.core.events as etae
+from eta.core.frames import FrameLabels, FrameMaskIndex
+import eta.core.frameutils as etaf
 import eta.core.gps as etag
 import eta.core.image as etai
-from eta.core.objects import DetectedObjectContainer
-from eta.core.serial import load_json, Serializable, Set, BigSet
+import eta.core.labels as etal
+import eta.core.objects as etao
 import eta.core.serial as etas
 import eta.core.utils as etau
 
@@ -160,7 +161,7 @@ def glob_videos(dir_):
         *SUPPORTED_VIDEO_FILE_FORMATS, root=os.path.join(dir_, "*"))
 
 
-class VideoMetadata(Serializable):
+class VideoMetadata(etas.Serializable):
     '''Class encapsulating metadata about a video.
 
     Attributes:
@@ -343,216 +344,121 @@ class VideoMetadata(Serializable):
             gps_waypoints=gps_waypoints)
 
 
-class VideoFrameLabels(Serializable):
-    '''Class encapsulating labels for a specific frame of a video.
+class VideoFrameLabels(FrameLabels):
+    '''FrameLabels for a specific frame of a video.
+
+    VideoFrameLabels are spatial concepts that describe a collection of
+    information about a specific frame in a video. VideoFrameLabels can have
+    frame-level attributes, object detections, event detections, and
+    segmentation masks.
 
     Attributes:
         frame_number: the frame number
-        attrs: an AttributeContainer describing the attributes of the frame
-        objects: a DetectedObjectContainer describing the detected objects in
-            the frame
+        mask: (optional) a segmentation mask for the frame
+        mask_index: (optional) a FrameMaskIndex describing the semantics of the
+            segmentation mask
+        attrs: an AttributeContainer of attributes of the frame
+        objects: a DetectedObjectContainer of objects in the frame
+        events: a DetectedEventContainer of events in the frame
     '''
 
-    def __init__(self, frame_number, attrs=None, objects=None):
-        '''Constructs a VideoFrameLabels instance.
-
-        Args:
-            frame_number: the frame number of the video
-            attrs: an optional AttributeContainer of attributes for the frame.
-                By default, an empty AttributeContainer is created
-            objects: an optional DetectedObjectContainer of detected objects
-                for the frame. By default, an empty DetectedObjectContainer is
-                created
-        '''
-        self.frame_number = frame_number
-        self.attrs = attrs or AttributeContainer()
-        self.objects = objects or DetectedObjectContainer()
-
-    @property
-    def has_frame_attributes(self):
-        '''Whether the frame has at least one frame attribute.'''
-        return bool(self.attrs)
-
-    @property
-    def has_objects(self):
-        '''Whether the frame has at least one DetectedObject.'''
-        return bool(self.objects)
-
-    @property
-    def is_empty(self):
-        '''Whether the frame has no labels of any kind.'''
-        return not self.has_frame_attributes and not self.has_objects
-
-    def add_frame_attribute(self, frame_attr):
-        '''Adds the attribute to the frame.
-
-        Args:
-            frame_attr: an Attribute
-        '''
-        self.attrs.add(frame_attr)
-
-    def add_frame_attributes(self, frame_attrs):
-        '''Adds the attributes to the frame.
-
-        Args:
-            frame_attrs: an AttributeContainer
-        '''
-        self.attrs.add_container(frame_attrs)
-
-    def add_object(self, obj):
-        '''Adds the object to the frame.
-
-        Args:
-            obj: a DetectedObject
-        '''
-        self.objects.add(obj)
-
-    def add_objects(self, objs):
-        '''Adds the objects to the frame.
-
-        Args:
-            objs: a DetectedObjectContainer
-        '''
-        self.objects.add_container(objs)
-
-    def clear_frame_attributes(self):
-        '''Removes all frame attributes from the instance.'''
-        self.attrs = AttributeContainer()
-
-    def clear_objects(self):
-        '''Removes all objects from the instance.'''
-        self.objects = DetectedObjectContainer()
-
-    def merge_frame_labels(self, frame_labels):
-        '''Merges the labels into the frame.
-
-        Args:
-            frame_labels: a VideoFrameLabels
-        '''
-        self.add_frame_attributes(frame_labels.attrs)
-        self.add_objects(frame_labels.objects)
-
     def filter_by_schema(self, schema):
-        '''Removes objects/attributes from this object that are not compliant
-        with the given schema.
+        '''Filters the labels by the given schema.
 
         Args:
             schema: a VideoLabelsSchema
         '''
         self.attrs.filter_by_schema(schema.frames)
-        self.objects.filter_by_schema(schema)
-
-    def remove_objects_without_attrs(self, labels=None):
-        '''Removes DetectedObjects from the VideoFrameLabels that do not have
-        attributes.
-
-        Args:
-            labels: an optional list of DetectedObject label strings to which
-                to restrict attention when filtering. By default, all objects
-                are processed
-        '''
-        self.objects.remove_objects_without_attrs(labels=labels)
-
-    def attributes(self):
-        '''Returns the list of class attributes that will be serialized.
-
-        Returns:
-            a list of attribute names
-        '''
-        _attrs = ["frame_number"]
-        if self.attrs:
-            _attrs.append("attrs")
-        if self.objects:
-            _attrs.append("objects")
-        return _attrs
+        self.objects.filter_by_schema(schema.objects)
+        self.events.filter_by_schema(schema.events)
 
     @classmethod
     def from_image_labels(cls, image_labels, frame_number):
         '''Constructs a VideoFrameLabels from an ImageLabels.
 
         Args:
-            image_labels: an ImageLabels instance
+            image_labels: an ImageLabels
             frame_number: the frame number
-
-        Returns:
-            a VideoFrameLabels instance
-        '''
-        return cls(frame_number, image_labels.attrs, image_labels.objects)
-
-    @classmethod
-    def from_dict(cls, d):
-        '''Constructs a VideoFrameLabels from a JSON dictionary.
-
-        Args:
-            d: a JSON dictionary
 
         Returns:
             a VideoFrameLabels
         '''
-        attrs = d.get("attrs", None)
-        if attrs is not None:
-            attrs = AttributeContainer.from_dict(attrs)
+        return cls(
+            frame_number=frame_number, mask=image_labels.mask,
+            mask_index=image_labels.mask_index, attrs=image_labels.attrs,
+            objects=image_labels.objects, events=image_labels.events)
 
-        objects = d.get("objects", None)
-        if objects is not None:
-            objects = DetectedObjectContainer.from_dict(objects)
+    @classmethod
+    def from_frame_labels(cls, frame_labels):
+        '''Constructs a VideoFrameLabels from a FrameLabels.
 
-        return cls(d["frame_number"], attrs=attrs, objects=objects)
+        Args:
+            frame_labels: a FrameLabels
+
+        Returns:
+            a VideoFrameLabels
+        '''
+        return cls(
+            frame_number=frame_labels.frame_number, mask=frame_labels.mask,
+            mask_index=frame_labels.mask_index, attrs=frame_labels.attrs,
+            objects=frame_labels.objects, events=frame_labels.events)
 
 
-class VideoLabels(Serializable):
+class VideoLabels(
+        etal.Labels, etal.HasLabelsSchema, etal.HasLabelsSupport,
+        etal.HasFramewiseView):
     '''Class encapsulating labels for a video.
 
-    Note that any falsey fields of this class will be omitted during
-    serialization.
-
-    Note that when VideoLabels objects are serialized, any integer keys will be
-    converted to strings and then back to integers upon deserialization. For
-    example, the keys of the `frames` dict will be converted to strings,
-    because all JSON object keys _must_ be strings. The `from_dict` method of
-    this class handles converting the keys back to integers when VideoLabels
-    instances are loaded.
+    VideoLabels are spatiotemporal concepts that describe the content of a
+    video. VideoLabels can have video-level attributes that apply to the entire
+    video, frame-level attributes, frame-level object detections, frame-level
+    event detections, spatiotemporal objects, and spatiotemporal events.
 
     Attributes:
-        filename: the filename of the video
-        metadata: a VideoMetadata describing metadata about the video
-        attrs: an AttributeContainer containing video attributes
-        frames: a dictionary mapping frame number strings to VideoFrameLabels
-            instances
-        events: an EventContainer containing events
-        schema: a VideoLabelsSchema describing the schema of the labels
+        filename: (optional) the filename of the video
+        metadata: (optional) a VideoMetadata of metadata about the video
+        support: a FrameRanges instance describing the support of the labels
+        mask_index: (optional) a FrameMaskIndex describing the semantics of all
+            frame segmentation masks in the video
+        attrs: an AttributeContainer of video-level attributes
+        frames: a dictionary mapping frame numbers to VideoFrameLabels
+        objects: a VideoObjectContainer of objects
+        events: a VideoEventContainer of events
+        schema: (optional) a VideoLabelsSchema describing the video's schema
     '''
 
     def __init__(
-            self, filename=None, metadata=None, attrs=None, frames=None,
-            events=None, schema=None):
-        '''Constructs a VideoLabels instance.
+            self, filename=None, metadata=None, support=None, mask_index=None,
+            attrs=None, frames=None, objects=None, events=None, schema=None):
+        '''Creates a VideoLabels instance.
 
         Args:
-            filename: an optional filename for the video. By default, no
-                filename is stored
-            metadata: an optional VideoMetadata instance describing metadata
-                about the video. By default, no metadata is stored
-            attrs: an optional AttributeContainer of video attributes. By
-                default, an empty AttributeContainer is created
-            frames: an optional dictionary mapping frame numbers to
-                VideoFrameLabels instances. By default, an empty dictionary
-                is created
-            events: an optional EventContainer of events. By default, an empty
-                EventContainer is created
-            schema: an optional VideoLabelsSchema to enforce on the object.
-                By default, no schema is enforced
+            filename: (optional) the filename of the video
+            metadata: (optional) a VideoMetadata of metadata about the video
+            support: (optional) a FrameRanges instance describing the frozen
+                support of the labels
+            mask_index: (optional) a FrameMaskIndex describing the semantics of
+                all frame segmentation masks in the video
+            attrs: (optional) an AttributeContainer of video-level attributes
+            frames: (optional) a dictionary mapping frame numbers to
+                VideoFrameLabels
+            objects: (optional) a VideoObjectContainer of objects
+            events: (optional) a VideoEventContainer of events
+            schema: (optional) a VideoLabelsSchema to enforce on the video
         '''
         self.filename = filename
         self.metadata = metadata
-        self.attrs = attrs or AttributeContainer()
+        self.mask_index = mask_index
+        self.attrs = attrs or etad.AttributeContainer()
         self.frames = frames or {}
-        self.events = events or EventContainer()
-        self.schema = schema
+        self.objects = objects or etao.VideoObjectContainer()
+        self.events = events or etae.VideoEventContainer()
+        etal.HasLabelsSchema.__init__(self, schema=schema)
+        etal.HasLabelsSupport.__init__(self, support=support)
 
     def __getitem__(self, frame_number):
-        '''Gets the VideoFrameLabels for the given frame number, or an empty if
-        VideoFrameLabels if the frame has no labels.
+        '''Gets the VideoFrameLabels for the given frame number, or an empty
+        if no VideoFrameLabels exists.
 
         Args:
             frame_number: the frame number
@@ -563,9 +469,9 @@ class VideoLabels(Serializable):
         return self.get_frame(frame_number)
 
     def __setitem__(self, frame_number, frame_labels):
-        '''Sets the VideoFrameLabels for the given frame.
+        '''Sets the VideoFrameLabels for the given frame number.
 
-        Any existing VideoFrameLabels for the frame are overwritten.
+        If a VideoFrameLabels already exists for the frame, it is overwritten.
 
         Args:
             frame_number: the frame number
@@ -592,38 +498,51 @@ class VideoLabels(Serializable):
         '''
         return iter(sorted(self.frames))
 
+    def iter_attributes(self):
+        '''Returns an iterator over the video-level attributes in the video.
+
+        Returns:
+            an iterator over `Attribute`s
+        '''
+        return iter(self.attrs)
+
+    def iter_video_objects(self):
+        '''Returns an iterator over the `VideoObject`s in the video.
+
+        Returns:
+            an iterator over `VideoObject`s
+        '''
+        return iter(self.objects)
+
+    def iter_video_events(self):
+        '''Returns an iterator over the `VideoEvent`s in the video.
+
+        Returns:
+            an iterator over `VideoEvent`s
+        '''
+        return iter(self.events)
+
     def iter_frames(self):
-        '''Returns an iterator over the VideoFrameLabels in the container.
+        '''Returns an iterator over the VideoFrameLabels in the video.
 
         Returns:
             an iterator over VideoFrameLabels
         '''
         return itervalues(self.frames)
 
-    def iter_events(self):
-        '''Returns an iterator over the Events in the container.
-
-        Returns:
-            an iterator over Events
-        '''
-        return iter(self.events)
-
-    def __len__(self):
-        '''The number of frames in the container with VideoFrameLabels.'''
-        return len(self.frames)
-
-    def __bool__(self):
-        '''Whether the container has labels of any kind.'''
-        return not self.is_empty
+    @property
+    def has_mask_index(self):
+        '''Whether the video has a video-wide frame segmentation mask index.'''
+        return self.mask_index is not None
 
     @property
     def has_video_attributes(self):
-        '''Whether the container has at least one video attribute.'''
+        '''Whether the video has at least one video-level attribute.'''
         return bool(self.attrs)
 
     @property
     def has_frame_attributes(self):
-        '''Whether the container has at least one frame attribute.'''
+        '''Whether the video has at least one frame-level attribute.'''
         for frame_number in self:
             if self[frame_number].has_frame_attributes:
                 return True
@@ -631,52 +550,55 @@ class VideoLabels(Serializable):
         return False
 
     @property
-    def has_events(self):
-        '''Whether the container has at least one Event.'''
-        return bool(self.events)
+    def has_video_objects(self):
+        '''Whether the video has at least one VideoObject.'''
+        return bool(self.objects)
+
+    @property
+    def has_detected_objects(self):
+        '''Whether the video has at least one frame-level DetectedObject.'''
+        for frame_labels in self.iter_frames():
+            if frame_labels.has_objects:
+                return True
+
+        return False
 
     @property
     def has_objects(self):
-        '''Whether the container has at least one DetectedObject.'''
-        for frame_number in self:
-            if self[frame_number].has_objects:
+        '''Whether the video has at least one VideoObject or DetectedObject.'''
+        return self.has_video_objects or self.has_detected_objects
+
+    @property
+    def has_video_events(self):
+        '''Whether the video has at least one VideoEvent.'''
+        return bool(self.events)
+
+    @property
+    def has_detected_events(self):
+        '''Whether the video has at least one frame-level DetectedEvent.'''
+        for frame_labels in self.iter_frames():
+            if frame_labels.has_events:
                 return True
 
         return False
 
     @property
-    def has_event_attributes(self):
-        '''Whether the container has at least one event attribute.'''
-        for event in self.events:
-            if event.attrs:
-                return True
-
-        return False
+    def has_events(self):
+        '''Whether the video has at least one VideoEvent or DetectedEvent.'''
+        return self.has_video_events or self.has_detected_events
 
     @property
-    def has_object_attributes(self):
-        '''Whether the container has at least one DetectedObject with an
-        attribute.
-        '''
-        for frame_number in self:
-            for obj in self[frame_number].objects:
-                if obj.has_attributes:
-                    return True
-
-        return False
+    def has_frame_labels(self):
+        '''Whether the video has at least one VideoFrameLabels.'''
+        return bool(self.frames)
 
     @property
     def is_empty(self):
-        '''Whether the container has no labels of any kind.'''
-        return (not self.has_video_attributes
-                and not self.has_frame_attributes
-                and not self.has_objects
-                and not self.has_events)
-
-    @property
-    def has_schema(self):
-        '''Whether the container has an enforced schema.'''
-        return self.schema is not None
+        '''Whether the video has no labels of any kind.'''
+        return not (
+            self.has_video_attributes or self.has_frame_attributes
+            or self.has_video_objects or self.has_video_events
+            or self.has_frame_labels)
 
     def has_frame(self, frame_number):
         '''Determines whether this object contains a VideoFrameLabels for the
@@ -691,8 +613,8 @@ class VideoLabels(Serializable):
         return frame_number in self.frames
 
     def get_frame(self, frame_number):
-        '''Gets the VideoFrameLabels for the given frame number, or an empty if
-        VideoFrameLabels if the frame has no labels.
+        '''Gets the VideoFrameLabels for the given frame number, or an empty
+        VideoFrameLabels if one does not yet exist.
 
         Args:
             frame_number: the frame number
@@ -703,7 +625,7 @@ class VideoLabels(Serializable):
         try:
             return self.frames[frame_number]
         except KeyError:
-            return VideoFrameLabels(frame_number)
+            return VideoFrameLabels(frame_number=frame_number)
 
     def delete_frame(self, frame_number):
         '''Deletes the VideoFrameLabels for the given frame number.
@@ -722,15 +644,16 @@ class VideoLabels(Serializable):
         return sorted(self.frames.keys())
 
     def get_frame_numbers_with_attributes(self):
-        '''Returns a sorted list of frames with one or more frame attributes.
+        '''Returns a sorted list of frames with one or more frame-level
+        attributes.
 
         Returns:
-            a list of frame numbers
+            a sorted list of frame numbers
         '''
         return sorted([fn for fn in self if self[fn].has_frame_attributes])
 
-    def get_frame_numbers_with_objects(self):
-        '''Returns a sorted list of frames with one or more DetectedObjects.
+    def get_frame_numbers_with_detected_objects(self):
+        '''Returns a sorted list of frames with one or more `DetectedObject`s.
 
         Returns:
             a list of frame numbers
@@ -746,230 +669,211 @@ class VideoLabels(Serializable):
         fns = self.get_frame_numbers()
         return (fns[0], fns[-1]) if fns else (None, None)
 
-    def add_video_attribute(self, video_attr):
-        '''Adds the given video attribute to the video.
+    def add_video_attribute(self, attr):
+        '''Adds the given video-level attribute to the video.
 
         Args:
-            video_attr: an Attribute
+            attr: an Attribute
         '''
-        if self.has_schema:
-            self._validate_video_attribute(video_attr)
+        self.attrs.add(attr)
 
-        self.attrs.add(video_attr)
-
-    def add_video_attributes(self, video_attrs):
-        '''Adds the given video attributes to the video.
+    def add_video_attributes(self, attrs):
+        '''Adds the given video-level attributes to the video.
 
         Args:
-            video_attrs: an AttributeContainer
+            attrs: an AttributeContainer
         '''
-        if self.has_schema:
-            for video_attr in video_attrs:
-                self._validate_video_attribute(video_attr)
+        self.attrs.add_container(attrs)
 
-        self.attrs.add_container(video_attrs)
-
-    def add_frame(self, frame_labels, overwrite=True):
+    def add_frame(self, frame_labels, frame_number=None, overwrite=True):
         '''Adds the frame labels to the video.
 
         Args:
-            frame_labels: a VideoFrameLabels instance
+            frame_labels: a FrameLabels instance
+            frame_number: an optional frame number. If not specified, the
+                FrameLabels must have its `frame_number` set
             overwrite: whether to overwrite any existing VideoFrameLabels
                 instance for the frame or merge the new labels. By default,
                 this is True
         '''
-        if self.has_schema:
-            self._validate_frame_labels(frame_labels)
+        self._add_frame_labels(frame_labels, frame_number, overwrite)
 
-        frame_number = frame_labels.frame_number
-        if overwrite or not self.has_frame(frame_number):
-            self.frames[frame_number] = frame_labels
+    def add_frame_attribute(self, attr, frame_number):
+        '''Adds the given frame-level attribute to the video.
+
+        Args:
+            attr: an Attribute
+            frame_number: the frame number
+        '''
+        self._ensure_frame(frame_number)
+        self.frames[frame_number].add_frame_attribute(attr)
+
+    def add_frame_attributes(self, attrs, frame_number):
+        '''Adds the given frame-level attributes to the video.
+
+        Args:
+            attrs: an AttributeContainer
+            frame_number: the frame number
+        '''
+        self._ensure_frame(frame_number)
+        self.frames[frame_number].add_frame_attributes(attrs)
+
+    def add_object(self, obj, frame_number=None):
+        '''Adds the object to the video.
+
+        Args:
+            obj: a VideoObject or DetectedObject
+            frame_number: (DetectedObject only) the frame number. If omitted,
+                the DetectedObject must have its `frame_number` set
+        '''
+        if isinstance(obj, etao.DetectedObject):
+            self._add_detected_object(obj, frame_number)
         else:
-            self.frames[frame_number].merge_frame_labels(frame_labels)
+            self.objects.add(obj)
 
-    def add_frame_attribute(self, frame_attr, frame_number):
-        '''Adds the given frame attribute to the video.
-
-        Args:
-            frame_attr: an Attribute
-            frame_number: the frame number
-        '''
-        if self.has_schema:
-            self._validate_frame_attribute(frame_attr)
-
-        self._ensure_frame(frame_number)
-        self.frames[frame_number].add_frame_attribute(frame_attr)
-
-    def add_frame_attributes(self, frame_attrs, frame_number):
-        '''Adds the given frame attributes to the video.
+    def add_objects(self, objects, frame_number=None):
+        '''Adds the objects to the video.
 
         Args:
-            frame_attrs: an AttributeContainer
-            frame_number: the frame number
+            objects: a VideoObjectContainer or DetectedObjectContainer
+            frame_number: (DetectedObjectContainer only) the frame number. If
+                omitted, the DetectedObjects must have their `frame_number` set
         '''
-        if self.has_schema:
-            for frame_attr in frame_attrs:
-                self._validate_frame_attribute(frame_attr)
+        if isinstance(objects, etao.DetectedObjectContainer):
+            self._add_detected_objects(objects, frame_number)
+        else:
+            self.objects.add_container(objects)
 
-        self._ensure_frame(frame_number)
-        self.frames[frame_number].add_frame_attributes(frame_attrs)
-
-    def add_object(self, obj, frame_number):
-        '''Adds the object to the video at the given frame.
-
-        Args:
-            obj: a DetectedObject
-            frame_number: the frame number
-        '''
-        if self.has_schema:
-            self._validate_object(obj)
-
-        self._ensure_frame(frame_number)
-        obj.frame_number = frame_number
-        self.frames[frame_number].add_object(obj)
-
-    def add_objects(self, objs, frame_number):
-        '''Adds the objects to the video at the given frame.
-
-        Args:
-            objs: a DetectedObjectContainer
-            frame_number: the frame number
-        '''
-        if self.has_schema:
-            for obj in objs:
-                self._validate_object(obj)
-
-        self._ensure_frame(frame_number)
-        for obj in objs:
-            obj.frame_number = frame_number
-            self.frames[frame_number].add_object(obj)
-
-    def add_event(self, event):
+    def add_event(self, event, frame_number=None):
         '''Adds the event to the video.
 
         Args:
-            event: an Event
+            event: a VideoEvent or DetectedEvent
+            frame_number: (DetectedEvent only) the frame number. If omitted,
+                the DetectedEvent must have its `frame_number` set
         '''
-        if self.has_schema:
-            self._validate_event(event)
-        self.events.add(event)
+        if isinstance(event, etae.DetectedEvent):
+            self._add_detected_event(event, frame_number)
+        else:
+            self.events.add(event)
 
-    def add_events(self, events):
+    def add_events(self, events, frame_number=None):
         '''Adds the events to the video.
 
         Args:
-            events: an EventContainer
+            events: a VideoEventContainer or DetectedEventContainer
+            frame_number: (DetectedEventContainer only) the frame number. If
+                omitted, the `DetectedEvent`s must have their `frame_number`s
+                set
         '''
-        for event in events:
-            self.add_event(event)
+        if isinstance(events, etae.DetectedEventContainer):
+            self._add_detected_events(events, frame_number)
+        else:
+            self.events.add_container(events)
 
-    def merge_video_labels(self, video_labels, reindex=False):
+    def clear_video_attributes(self):
+        '''Removes all video-level attributes from the video.'''
+        self.attrs = etad.AttributeContainer()
+
+    def clear_frame_attributes(self):
+        '''Removes all frame-level attributes from the video.'''
+        for frame_labels in self.iter_frames():
+            frame_labels.clear_frame_attributes()
+
+    def clear_video_objects(self):
+        '''Removes all `VideoObject`s from the video.'''
+        self.objects = etao.VideoObjectContainer()
+
+    def clear_detected_objects(self):
+        '''Removes all `DetectedObject`s from the video.'''
+        for frame_labels in self.iter_frames():
+            frame_labels.clear_objects()
+
+    def clear_objects(self):
+        '''Removes all `VideoObject`s and `DetectedObject`s from the video.'''
+        self.clear_video_objects()
+        self.clear_detected_objects()
+
+    def clear_video_events(self):
+        '''Removes all `VideoEvent`s from the video.'''
+        self.events = etae.VideoEventContainer()
+
+    def clear_detected_events(self):
+        '''Removes all `DetectedEvent`s from the video.'''
+        for frame_labels in self.iter_frames():
+            frame_labels.clear_events()
+
+    def clear_events(self):
+        '''Removes all `VideoEvent`s and `DetectedEvent`s from the video.'''
+        self.clear_video_events()
+        self.clear_detected_events()
+
+    def merge_labels(self, video_labels, reindex=False):
         '''Merges the given VideoLabels into this labels.
 
         Args:
-            video_labels: a VideoLabels instance
-            reindex: whether to reindex objects in `video_labels` before
-                merging so that all indices are unique
+            video_labels: a VideoLabels
+            reindex: whether to offset the `index` fields of objects and events
+                in `video_labels` before merging so that all indices are
+                unique. The default is False
         '''
         if reindex:
             self._reindex_objects(video_labels)
+            self._reindex_events(video_labels)
+
+        if self.is_support_frozen or video_labels.is_support_frozen:
+            self.merge_support(video_labels.support)
 
         self.add_video_attributes(video_labels.attrs)
+        self.add_objects(video_labels.objects)
         self.add_events(video_labels.events)
         for frame_labels in video_labels.iter_frames():
             self.add_frame(frame_labels, overwrite=False)
 
-    def clear_frame_attributes(self):
-        '''Removes all frame attributes from the instance.'''
-        for frame_number in self:
-            self[frame_number].clear_frame_attributes()
-
-    def clear_objects(self):
-        '''Removes all objects from the instance.'''
-        for frame_number in self:
-            self[frame_number].clear_objects()
-
-    def clear_events(self):
-        '''Removes all events from the instance.'''
-        self.events.clear()
-
-    def get_schema(self):
-        '''Gets the current enforced schema for the video, or None if no schema
-        is enforced.
-        '''
-        return self.schema
-
-    def get_active_schema(self):
-        '''Returns a VideoLabelsSchema describing the active schema of the
-        video.
+    def render_framewise_labels(self):
+        '''Renders a framewise copy of the labels.
 
         Returns:
-            a VideoLabelsSchema
+            a VideoLabels whose labels are all contained in `VideoFrameLabels`s
         '''
-        return VideoLabelsSchema.build_active_schema(self)
+        renderer = VideoLabelsFrameRenderer(self)
+        frames = renderer.render_all_frames()
 
-    def set_schema(self, schema, filter_by_schema=False):
-        '''Sets the enforced schema to the given VideoLabelsSchema.
+        kwargs = {}
+        if self.is_support_frozen:
+            kwargs["support"] = self.support
 
-        Args:
-            schema: a VideoLabelsSchema to assign
-            filter_by_schema: whether to filter objects/attributes that are not
-                compliant with the schema. By default, this is False
-
-        Raises:
-            VideoLabelsSchemaError: if `filter_by_schema` was False and this
-                object contains attributes/objects that are not compliant with
-                the schema
-        '''
-        self.schema = schema
-        if not self.has_schema:
-            return
-
-        if filter_by_schema:
-            self.filter_by_schema(self.schema)
-        else:
-            self._validate_schema()
+        return VideoLabels(
+            filename=self.filename, metadata=self.metadata,
+            mask_index=self.mask_index, frames=frames, schema=self.schema,
+            **kwargs)
 
     def filter_by_schema(self, schema):
-        '''Removes objects/attributes from this object that are not compliant
-        with the given schema.
+        '''Filters the labels by the given schema.
 
         Args:
             schema: a VideoLabelsSchema
         '''
         self.attrs.filter_by_schema(schema.attrs)
-        for frame_labels in itervalues(self.frames):
+        self.objects.filter_by_schema(schema.objects)
+        self.events.filter_by_schema(schema.events)
+        for frame_labels in self.iter_frames():
             frame_labels.filter_by_schema(schema)
 
+        # @todo support child objects/events
+
     def remove_objects_without_attrs(self, labels=None):
-        '''Removes DetectedObjects from the VideoLabels that do not have
-        attributes.
+        '''Removes objects from the VideoLabels that do not have attributes.
 
         Args:
-            labels: an optional list of DetectedObject label strings to which
-                to restrict attention when filtering. By default, all objects
-                are processed
-        '''
-        for frame_labels in itervalues(self.frames):
-            frame_labels.remove_objects_without_attrs(labels=labels)
-
-    def remove_events_without_attrs(self, labels=None):
-        '''Removes Events from the instance that do not have attributes.
-
-        Args:
-            labels: an optional list of Event label strings to which to
-                restrict attention when filtering. By default, all events are
+            labels: an optional list of object label strings to which to
+                restrict attention when filtering. By default, all objects are
                 processed
         '''
-        self.events.remove_events_without_attrs(labels=labels)
-
-    def freeze_schema(self):
-        '''Sets the schema for the container to the current active schema.'''
-        self.set_schema(self.get_active_schema())
-
-    def remove_schema(self):
-        '''Removes the enforced schema from the video.'''
-        self.schema = None
+        self.objects.remove_objects_without_attrs(labels=labels)
+        self.events.remove_objects_without_attrs(labels=labels)
+        for frame_labels in self.iter_frames():
+            frame_labels.remove_objects_without_attrs(labels=labels)
 
     def attributes(self):
         '''Returns the list of class attributes that will be serialized.
@@ -984,47 +888,168 @@ class VideoLabels(Serializable):
             _attrs.append("metadata")
         if self.has_schema:
             _attrs.append("schema")
+        if self.is_support_frozen:
+            _attrs.append("support")
+        if self.has_mask_index:
+            _attrs.append("mask_index")
         if self.attrs:
             _attrs.append("attrs")
         if self.frames:
             _attrs.append("frames")
+        if self.objects:
+            _attrs.append("objects")
         if self.events:
             _attrs.append("events")
         return _attrs
 
-    def _validate_video_attribute(self, video_attr):
-        if self.has_schema:
-            self.schema.validate_video_attribute(video_attr)
+    @classmethod
+    def from_objects(cls, objects):
+        '''Builds a VideoLabels instance from a container of objects.
+
+        If a DetectedObjectContainer is provided, the `DetectedObject`s must
+        have their `frame_number`s set.
+
+        Args:
+            objects: a VideoObjectContainer or DetectedObjectContainer
+
+        Returns:
+            a VideoLabels
+        '''
+        labels = cls()
+        labels.add_objects(objects)
+        return labels
+
+    @classmethod
+    def from_events(cls, events):
+        '''Builds a VideoLabels instance from an event container.
+
+        If a DetectedEventContainer is provided, the `DetectedEvent`s must
+        have their `frame_number`s set.
+
+        Args:
+            events: a VideoEventContainer or DetectedEventContainer
+
+        Returns:
+            a VideoLabels
+        '''
+        labels = cls()
+        labels.add_events(events)
+        return labels
+
+    @classmethod
+    def from_dict(cls, d):
+        '''Constructs a VideoLabels from a JSON dictionary.
+
+        Args:
+            d: a JSON dictionary
+
+        Returns:
+            a VideoLabels
+        '''
+        filename = d.get("filename", None)
+
+        metadata = d.get("metadata", None)
+        if metadata is not None:
+            metadata = VideoMetadata.from_dict(metadata)
+
+        support = d.get("support", None)
+        if support is not None:
+            support = etaf.FrameRanges.from_dict(support)
+
+        mask_index = d.get("mask_index", None)
+        if mask_index is not None:
+            mask_index = FrameMaskIndex.from_dict(mask_index)
+
+        attrs = d.get("attrs", None)
+        if attrs is not None:
+            attrs = etad.AttributeContainer.from_dict(attrs)
+
+        frames = d.get("frames", None)
+        if frames is not None:
+            frames = {
+                int(fn): VideoFrameLabels.from_dict(vfl)
+                for fn, vfl in iteritems(frames)
+            }
+
+        objects = d.get("objects", None)
+        if objects is not None:
+            objects = etao.VideoObjectContainer.from_dict(objects)
+
+        events = d.get("events", None)
+        if events is not None:
+            events = etae.VideoEventContainer.from_dict(events)
+
+        schema = d.get("schema", None)
+        if schema is not None:
+            schema = VideoLabelsSchema.from_dict(schema)
+
+        return cls(
+            filename=filename, metadata=metadata, support=support,
+            mask_index=mask_index, attrs=attrs, frames=frames, objects=objects,
+            events=events, schema=schema)
 
     def _ensure_frame(self, frame_number):
         if not self.has_frame(frame_number):
-            self.frames[frame_number] = VideoFrameLabels(frame_number)
+            self.frames[frame_number] = VideoFrameLabels(
+                frame_number=frame_number)
 
-    def _validate_frame_labels(self, frame_labels):
-        if self.has_schema:
-            for frame_attr in frame_labels.attrs:
-                self.schema.validate_frame_attribute(frame_attr)
-            for obj in frame_labels.objects:
-                self.schema.validate_object(obj)
+    def _add_detected_object(self, obj, frame_number):
+        if frame_number is None:
+            if not obj.has_frame_number:
+                raise ValueError(
+                    "Either `frame_number` must be provided or the "
+                    "DetectedObject must have its `frame_number` set")
 
-    def _validate_frame_attribute(self, frame_attr):
-        if self.has_schema:
-            self.schema.validate_frame_attribute(frame_attr)
+            frame_number = obj.frame_number
 
-    def _validate_object(self, obj):
-        if self.has_schema:
-            self.schema.validate_object(obj)
+        obj.frame_number = frame_number
+        self._ensure_frame(frame_number)
+        self.frames[frame_number].add_object(obj)
 
-    def _validate_event(self, event):
-        if self.has_schema:
-            self.schema.validate_event(event)
+    def _add_detected_objects(self, objects, frame_number):
+        for obj in objects:
+            self._add_detected_object(obj, frame_number)
 
-    def _validate_schema(self):
-        if self.has_schema:
-            for video_attr in self.attrs:
-                self._validate_video_attribute(video_attr)
-            for frame_labels in itervalues(self.frames):
-                self._validate_frame_labels(frame_labels)
+    def _add_detected_event(self, event, frame_number):
+        if frame_number is None:
+            if not event.has_frame_number:
+                raise ValueError(
+                    "Either `frame_number` must be provided or the "
+                    "DetectedEvent must have its `frame_number` set")
+
+            frame_number = event.frame_number
+
+        event.frame_number = frame_number
+        self._ensure_frame(frame_number)
+        self.frames[frame_number].add_event(event)
+
+    def _add_detected_events(self, events, frame_number):
+        for event in events:
+            self._add_detected_event(event, frame_number)
+
+    def _add_frame_labels(self, frame_labels, frame_number, overwrite):
+        if frame_number is None:
+            if not frame_labels.has_frame_number:
+                raise ValueError(
+                    "Either `frame_number` must be provided or the "
+                    "FrameLabels must have its `frame_number` set")
+
+            frame_number = frame_labels.frame_number
+
+        if overwrite or not self.has_frame(frame_number):
+            if not isinstance(frame_labels, VideoFrameLabels):
+                frame_labels = VideoFrameLabels.from_frame_labels(frame_labels)
+
+            frame_labels.frame_number = frame_number
+            self.frames[frame_number] = frame_labels
+        else:
+            self.frames[frame_number].merge_labels(frame_labels)
+
+    def _compute_support(self):
+        frame_ranges = etaf.FrameRanges.from_iterable(self.frames.keys())
+        frame_ranges.merge(*[obj.support for obj in self.objects])
+        frame_ranges.merge(*[event.support for event in self.events])
+        return frame_ranges
 
     def _reindex_objects(self, video_labels):
         self_indices = self._get_object_indices(self)
@@ -1035,171 +1060,221 @@ class VideoLabels(Serializable):
         if not new_indices:
             return
 
-        offset = max(new_indices) + 1 - min(self_indices)
-
-        for frame_labels in self.iter_frames():
-            for obj in frame_labels.objects:
-                if obj.index is not None:
-                    obj.index += offset
+        offset = max(self_indices) + 1 - min(new_indices)
+        self._offset_object_indices(video_labels, offset)
 
     @staticmethod
     def _get_object_indices(video_labels):
         obj_indices = set()
+
         for frame_labels in video_labels.iter_frames():
             for obj in frame_labels.objects:
                 if obj.index is not None:
                     obj_indices.add(obj.index)
 
+        for obj in video_labels.iter_objects():
+            if obj.index is not None:
+                obj_indices.add(obj.index)
+
+            for dobj in obj.iter_detections():
+                if dobj.index is not None:
+                    obj_indices.add(dobj.index)
+
+        for event in video_labels.iter_events():
+            for devent in event.iter_detections():
+                for obj in devent.objects:
+                    if obj.index is not None:
+                        obj_indices.add(obj.index)
+
         return obj_indices
 
-    @classmethod
-    def from_detected_objects(cls, objects):
-        '''Builds a VideoLabels instance from a DetectedObjectContainer.
+    @staticmethod
+    def _offset_object_indices(video_labels, offset):
+        for frame_labels in video_labels.iter_frames():
+            for obj in frame_labels.objects:
+                if obj.index is not None:
+                    obj.index += offset
 
-        The DetectedObjects must have their `frame_number` attributes set.
+        for obj in video_labels.iter_objects():
+            if obj.index is not None:
+                obj.index += offset
 
-        Args:
-            objects: a DetectedObjectContainer
+            for dobj in obj.iter_detections():
+                if dobj.index is not None:
+                    dobj.index += offset
 
-        Returns:
-            a VideoLabels instance
-        '''
-        labels = cls()
-        for obj in objects:
-            labels.add_object(obj, obj.frame_number)
+        for event in video_labels.iter_events():
+            for devent in event.iter_detections():
+                for obj in devent.objects:
+                    if obj.index is not None:
+                        obj.index += offset
 
-        return labels
+    def _reindex_events(self, video_labels):
+        self_indices = self._get_event_indices(self)
+        if not self_indices:
+            return
 
-    @classmethod
-    def from_events(cls, events):
-        '''Builds a VideoLabels instance from an EventContainer.
+        new_indices = self._get_event_indices(video_labels)
+        if not new_indices:
+            return
 
-        Args:
-            events: an EventContainer
+        offset = max(self_indices) + 1 - min(new_indices)
+        self._offset_event_indices(video_labels, offset)
 
-        Returns:
-            a VideoLabels instance
-        '''
-        labels = cls()
-        labels.add_events(events)
-        return labels
+    @staticmethod
+    def _get_event_indices(video_labels):
+        event_indices = set()
 
-    @classmethod
-    def from_dict(cls, d):
-        '''Constructs a VideoLabels from a JSON dictionary.'''
-        filename = d.get("filename", None)
+        for event in video_labels.iter_events():
+            if event.index is not None:
+                event_indices.add(event.index)
 
-        metadata = d.get("metadata", None)
-        if metadata is not None:
-            metadata = VideoMetadata.from_dict(metadata)
+        for frame_labels in video_labels.iter_frames():
+            for event in frame_labels.events:
+                if event.index is not None:
+                    event_indices.add(event.index)
 
-        attrs = d.get("attrs", None)
-        if attrs is not None:
-            attrs = AttributeContainer.from_dict(attrs)
+        return event_indices
 
-        events = d.get("events", None)
-        if events is not None:
-            events = EventContainer.from_dict(events)
+    @staticmethod
+    def _offset_event_indices(video_labels, offset):
+        for event in video_labels.iter_events():
+            if event.index is not None:
+                event.index += offset
 
-        frames = d.get("frames", None)
-        if frames is not None:
-            frames = OrderedDict(
-                (int(fn), VideoFrameLabels.from_dict(vfl))
-                for fn, vfl in iteritems(frames)
-            )
-
-        schema = d.get("schema", None)
-        if schema is not None:
-            schema = VideoLabelsSchema.from_dict(schema)
-
-        return cls(
-            filename=filename, metadata=metadata, attrs=attrs, frames=frames,
-            events=events, schema=schema)
+        for frame_labels in video_labels.iter_frames():
+            for event in frame_labels.events:
+                if event.index is not None:
+                    event.index += offset
 
 
-class VideoLabelsSchema(Serializable):
-    '''A schema for a VideoLabels instance.
+class VideoLabelsSchema(etal.LabelsSchema):
+    '''Schema for VideoLabels.
 
     Attributes:
-        attrs: an AttributeContainerSchema describing the video attributes of
-            the video
-        frames: an AttributeContainerSchema describing the frame attributes
-                of the video
-        objects: a dictionary mapping object labels to AttributeContainerSchema
-            instances describing the object attributes of each object class
-        events: a dictionary mapping event labels to AttributeContainerSchema
-            instances describing the event attributes of each event class
+        attrs: an AttributeContainerSchema describing the video-level
+            attributes of the video(s)
+        frames: an AttributeContainerSchema describing the frame-level
+            attributes of the video(s)
+        objects: an ObjectContainerSchema describing the objects of the
+            video(s)
+        events: an EventContainerSchema describing the events of the video(s)
     '''
 
     def __init__(self, attrs=None, frames=None, objects=None, events=None):
         '''Creates a VideoLabelsSchema instance.
 
         Args:
-            attrs: an AttributeContainerSchema describing the video attributes
-                of the video
-            frames: an AttributeContainerSchema describing the frame attributes
-                of the video
-            objects: a dictionary mapping object labels to
-                AttributeContainerSchema instances describing the object
-                attributes of each object class
-            events: a dictionary mapping event labels to
-                AttributeContainerSchema instances describing the event
-                attributes of each event class
+            attrs: (optional) an AttributeContainerSchema describing the
+                video-level attributes of the video(s)
+            frames: (optional) an AttributeContainerSchema describing the frame
+                attributes of the video(s)
+            objects: (optional) an ObjectContainerSchema describing the objects
+                of the video(s)
+            events: (optional) an EventContainerSchema describing the events of
+                the video(s)
         '''
-        self.attrs = attrs or AttributeContainerSchema()
-        self.frames = frames or AttributeContainerSchema()
-        self.objects = defaultdict(lambda: AttributeContainerSchema())
-        if objects is not None:
-            self.objects.update(objects)
-        self.events = defaultdict(lambda: AttributeContainerSchema())
-        if events is not None:
-            self.events.update(events)
+        self.attrs = attrs or etad.AttributeContainerSchema()
+        self.frames = frames or etad.AttributeContainerSchema()
+        self.objects = objects or etao.ObjectContainerSchema()
+        self.events = events or etae.EventContainerSchema()
 
-    def has_video_attribute(self, video_attr_name):
-        '''Whether the schema has a video attribute with the given name.
+    @property
+    def has_video_attributes(self):
+        '''Whether the schema has at least one video-level AttributeSchema.'''
+        return bool(self.attrs)
+
+    @property
+    def has_frame_attributes(self):
+        '''Whether the schema has at least one frame-level AttributeSchema.'''
+        return bool(self.frames)
+
+    @property
+    def has_objects(self):
+        '''Whether the schema has at least one ObjectSchema.'''
+        return bool(self.objects)
+
+    @property
+    def has_events(self):
+        '''Whether the schema has at least one EventSchema.'''
+        return bool(self.events)
+
+    @property
+    def is_empty(self):
+        '''Whether the schema has no labels of any kind.'''
+        return not (
+            self.has_video_attributes or self.has_frame_attributes
+            or self.has_objects or self.has_events)
+
+    def has_video_attribute(self, attr_name):
+        '''Whether the schema has a video-level attribute with the given name.
 
         Args:
-            video_attr_name: the name of the video attribute
+            attr_name: the name
 
         Returns:
             True/False
         '''
-        return self.attrs.has_attribute(video_attr_name)
+        return self.attrs.has_attribute(attr_name)
 
-    def get_video_attribute_class(self, video_attr_name):
-        '''Gets the Attribute class for the video attribute with the given
-        name.
+    def get_video_attribute_schema(self, attr_name):
+        '''Gets the AttributeSchema for the video-level attribute with the
+        given name.
 
         Args:
-            video_attr_name: the name of the video attribute
+            attr_name: the name
 
         Returns:
-            an Attribute subclass
+            the AttributeSchema
         '''
-        return self.attrs.get_attribute_class(video_attr_name)
+        return self.attrs.get_attribute_schema(attr_name)
 
-    def has_frame_attribute(self, frame_attr_name):
-        '''Whether the schema has a frame attribute with the given name.
+    def get_video_attribute_class(self, attr_name):
+        '''Gets the Attribute class for the video-level attribute with the
+        given name.
 
         Args:
-            frame_attr_name: the name of the frame attribute
+            attr_name: the name
+
+        Returns:
+            the Attribute class
+        '''
+        return self.attrs.get_attribute_class(attr_name)
+
+    def has_frame_attribute(self, attr_name):
+        '''Whether the schema has a frame-level attribute with the given name.
+
+        Args:
+            attr_name: the name
 
         Returns:
             True/False
         '''
-        return self.frames.has_attribute(frame_attr_name)
+        return self.frames.has_attribute(attr_name)
 
-    def get_frame_attribute_class(self, frame_attr_name):
-        '''Gets the Attribute class for the frame attribute with the given
-        name.
+    def get_frame_attribute_schema(self, attr_name):
+        '''Gets the AttributeSchema for the frame-level attribute with the
+        given name.
 
         Args:
-            frame_attr_name: the name of the frame attribute
+            attr_name: the name
 
         Returns:
-            an Attribute subclass
+            the AttributeSchema
         '''
-        return self.frames.get_attribute_class(frame_attr_name)
+        return self.frames.get_attribute_schema(attr_name)
+
+    def get_frame_attribute_class(self, attr_name):
+        '''Gets the Attribute class for the frame-level attribute with the
+        given name.
+
+        Args:
+            attr_name: the name
+
+        Returns:
+            the Attribute
+        '''
+        return self.frames.get_attribute_class(attr_name)
 
     def has_object_label(self, label):
         '''Whether the schema has an object with the given label.
@@ -1210,36 +1285,96 @@ class VideoLabelsSchema(Serializable):
         Returns:
             True/False
         '''
-        return label in self.objects
+        return self.objects.has_object_label(label)
 
-    def has_object_attribute(self, label, obj_attr_name):
-        '''Whether the schema has an object with the given label with an
-        attribute of the given name.
+    def get_object_schema(self, label):
+        '''Gets the ObjectSchema for the object with the given label.
 
         Args:
             label: the object label
-            obj_attr_name: the name of the object attribute
+
+        Returns:
+            the ObjectSchema
+        '''
+        return self.objects.get_object_schema(label)
+
+    def has_object_attribute(self, label, attr_name):
+        '''Whether the schema has an object with the given label with an
+        object-level attribute of the given name.
+
+        Args:
+            label: the object label
+            attr_name: the name of the object-level attribute
 
         Returns:
             True/False
         '''
-        if not self.has_object_label(label):
-            return False
-        return self.objects[label].has_attribute(obj_attr_name)
+        return self.objects.has_object_attribute(label, attr_name)
 
-    def get_object_attribute_class(self, label, obj_attr_name):
-        '''Gets the Attribute class for the attribute of the given name for
-        the object with the given label.
+    def has_object_frame_attribute(self, label, attr_name):
+        '''Whether the schema has an object with the given label with a
+        frame-level attribute of the given name.
 
         Args:
             label: the object label
-            obj_attr_name: the name of the object attribute
+            attr_name: the name of the frame-level attribute
 
         Returns:
-            the Attribute subclass
+            True/False
         '''
-        self.validate_object_label(label)
-        return self.objects[label].get_attribute_class(obj_attr_name)
+        return self.objects.has_frame_attribute(label, attr_name)
+
+    def get_object_attribute_schema(self, label, attr_name):
+        '''Gets the AttributeSchema for the object-level attribute of the given
+        name for the object with the given label.
+
+        Args:
+            label: the object label
+            attr_name: the name of the object-level attribute
+
+        Returns:
+            the AttributeSchema
+        '''
+        return self.objects.get_object_attribute_schema(label, attr_name)
+
+    def get_object_frame_attribute_schema(self, label, attr_name):
+        '''Gets the AttributeSchema for the frame-level attribute of the given
+        name for the object with the given label.
+
+        Args:
+            label: the object label
+            attr_name: the name of the frame-level attribute
+
+        Returns:
+            the AttributeSchema
+        '''
+        return self.objects.get_frame_attribute_schema(label, attr_name)
+
+    def get_object_attribute_class(self, label, attr_name):
+        '''Gets the Attribute class for the object-level attribute of the given
+        name for the object with the given label.
+
+        Args:
+            label: the object label
+            attr_name: the name of the object-level attribute
+
+        Returns:
+            the Attribute
+        '''
+        return self.objects.get_object_attribute_class(label, attr_name)
+
+    def get_object_frame_attribute_class(self, label, attr_name):
+        '''Gets the Attribute class for the frame-level attribute of the given
+        name for the object with the given label.
+
+        Args:
+            label: the object label
+            attr_name: the name of the frame-level attribute
+
+        Returns:
+            the Attribute
+        '''
+        return self.objects.get_frame_attribute_class(label, attr_name)
 
     def has_event_label(self, label):
         '''Whether the schema has an event with the given label.
@@ -1250,164 +1385,224 @@ class VideoLabelsSchema(Serializable):
         Returns:
             True/False
         '''
-        return label in self.events
+        return self.events.has_event_label(label)
 
-    def has_event_attribute(self, label, event_attr_name):
-        '''Whether the schema has an event with the given label with an
-        attribute of the given name.
-
-        Args:
-            label: the event label
-            event_attr_name: the name of the event attribute
-
-        Returns:
-            True/False
-        '''
-        if not self.has_event_label(label):
-            return False
-        return self.events[label].has_attribute(event_attr_name)
-
-    def get_event_attribute_class(self, label, event_attr_name):
-        '''Gets the Attribute class for the attribute of the given name for
-        the event with the given label.
+    def get_event_schema(self, label):
+        '''Gets the EventSchema for the event with the given label.
 
         Args:
             label: the event label
-            event_attr_name: the name of the event attribute
 
         Returns:
-            the Attribute subclass
+            the EventSchema
         '''
-        self.validate_event_label(label)
-        return self.events[label].get_attribute_class(event_attr_name)
+        return self.events.get_event_schema(label)
 
-    def add_video_attribute(self, video_attr):
-        '''Adds the given video attribute to the schema.
+    def add_video_attribute(self, attr):
+        '''Adds the given video-level attribute to the schema.
 
         Args:
-            video_attr: an Attribute
+            attr: an Attribute
         '''
-        self.attrs.add_attribute(video_attr)
+        self.attrs.add_attribute(attr)
 
-    def add_video_attributes(self, video_attrs):
-        '''Adds the given video attributes to the schema.
+    def add_video_attributes(self, attrs):
+        '''Adds the given video-level attributes to the schema.
 
         Args:
-            video_attrs: an AttributeContainer
+            attrs: an AttributeContainer
         '''
-        self.attrs.add_attributes(video_attrs)
+        self.attrs.add_attributes(attrs)
 
-    def add_frame_attribute(self, frame_attr):
-        '''Adds the given frame attribute to the schema.
+    def add_frame_attribute(self, attr):
+        '''Adds the given frame-level attribute to the schema.
 
         Args:
-            frame_attr: an Attribute
+            attr: an Attribute
         '''
-        self.frames.add_attribute(frame_attr)
+        self.frames.add_attribute(attr)
 
-    def add_frame_attributes(self, frame_attrs):
-        '''Adds the given frame attributes to the schema.
+    def add_frame_attributes(self, attrs):
+        '''Adds the given frame-level attributes to the schema.
 
         Args:
-            frame_attrs: an AttributeContainer
+            attrs: an AttributeContainer
         '''
-        self.frames.add_attributes(frame_attrs)
+        self.frames.add_attributes(attrs)
 
     def add_object_label(self, label):
         '''Adds the given object label to the schema.
 
-        ArgsL:
+        Args:
             label: an object label
         '''
-        self.objects[label]  # adds key to defaultdict #pylint: disable=W0104
+        self.objects.add_object_label(label)
 
-    def add_object_attribute(self, label, obj_attr):
-        '''Adds the Attribute for the object with the given label to the
-        schema.
+    def add_object_attribute(self, label, attr):
+        '''Adds the object-level attribute for the object with the given label
+        to the schema.
 
         Args:
             label: an object label
-            obj_attr: an Attribute
+            attr: an object-level Attribute
         '''
-        self.objects[label].add_attribute(obj_attr)
+        self.objects.add_object_attribute(label, attr)
 
-    def add_object_attributes(self, label, obj_attrs):
-        '''Adds the AttributeContainer for the object with the given label to
-        the schema.
+    def add_object_frame_attribute(self, label, attr):
+        '''Adds the frame-level attribute for the object with the given label
+        to the schema.
 
         Args:
             label: an object label
-            obj_attrs: an AttributeContainer
+            attr: a frame-level Attribute
         '''
-        self.objects[label].add_attributes(obj_attrs)
+        self.objects.add_frame_attribute(label, attr)
+
+    def add_object_attributes(self, label, attrs):
+        '''Adds the object-level attributes for the object with the given label
+        to the schema.
+
+        Args:
+            label: an object label
+            attrs: an AttributeContainer
+        '''
+        self.objects.add_object_attributes(label, attrs)
+
+    def add_object_frame_attributes(self, label, attrs):
+        '''Adds the frame-level attributes for the object with the given label
+        to the schema.
+
+        Args:
+            label: an object label
+            attrs: an AttributeContainer
+        '''
+        self.objects.add_frame_attributes(label, attrs)
+
+    def add_object(self, obj):
+        '''Adds the object to the schema.
+
+        Args:
+            obj: a VideoObject or DetectedObject
+        '''
+        self.objects.add_object(obj)
+
+    def add_objects(self, objects):
+        '''Adds the objects to the schema.
+
+        Args:
+            objects: a VideoObjectContainer or DetectedObjectContainer
+        '''
+        self.objects.add_objects(objects)
 
     def add_event_label(self, label):
-        '''Adds the given event label to the schema.
-
-        Args
-            label: an event label
-        '''
-        self.events[label]  # adds key to defaultdict #pylint: disable=W0104
-
-    def add_event_attribute(self, label, event_attr):
-        '''Adds the Attribute for the event with the given label to the schema.
+        '''Adds the event label to the schema.
 
         Args:
             label: an event label
-            event_attr: an Attribute
         '''
-        self.events[label].add_attribute(event_attr)
+        self.events.add_event_label(label)
 
-    def add_event_attributes(self, label, event_attrs):
-        '''Adds the AttributeContainer for the event with the given label to
+    def add_event_attribute(self, label, attr):
+        '''Adds the event-level attribute for the event with the given label to
         the schema.
 
         Args:
             label: an event label
-            event_attrs: an AttributeContainer
+            attr: an Attribute
         '''
-        self.events[label].add_attributes(event_attrs)
+        self.events.add_event_attribute(label, attr)
 
-    def merge_schema(self, schema):
-        '''Merges the given VideoLabelsSchema into this schema.
+    def add_event_attributes(self, label, attrs):
+        '''Adds the event-level attributes to the event with the given label to
+        the schema.
 
         Args:
-            schema: a VideoLabelsSchema
+            label: an event label
+            attrs: an AttributeContainer
         '''
-        self.attrs.merge_schema(schema.attrs)
-        self.frames.merge_schema(schema.frames)
-        for k, v in iteritems(schema.objects):
-            self.objects[k].merge_schema(v)
+        self.events.add_event_attributes(label, attrs)
 
-    def is_valid_video_attribute(self, video_attr):
-        '''Whether the video attribute is compliant with the schema.
+    def add_event(self, event):
+        '''Adds the event to the schema.
 
         Args:
-            video_attr: an Attribute
+            event: a VideoEvent or DetectedEvent
+        '''
+        self.events.add_event(event)
+
+    def add_events(self, events):
+        '''Adds the events to the schema.
+
+        Args:
+            events: a VideoEventContainer or DetectedEventContainer
+        '''
+        self.events.add_events(events)
+
+    def add_frame_labels(self, frame_labels):
+        '''Adds the FrameLabels to the schema.
+
+        Args:
+            frame_labels: a FrameLabels
+        '''
+        self.add_frame_attributes(frame_labels.attrs)
+        self.add_objects(frame_labels.objects)
+        self.add_events(frame_labels.events)
+
+    def add_video_labels(self, video_labels):
+        '''Adds the labels to the schema.
+
+        Args:
+            video_labels: a VideoLabels
+        '''
+        self.add_video_attributes(video_labels.attrs)
+        self.add_objects(video_labels.objects)
+        self.add_events(video_labels.events)
+        for frame_labels in video_labels.iter_frames():
+            self.add_frame_labels(frame_labels)
+
+    def is_valid_video_attribute(self, attr):
+        '''Whether the video-level attribute is compliant with the schema.
+
+        Args:
+            attr: an Attribute
 
         Returns:
             True/False
         '''
-        try:
-            self.validate_video_attribute(video_attr)
-            return True
-        except:
-            return False
+        return self.attrs.is_valid_attribute(attr)
 
-    def is_valid_frame_attribute(self, frame_attr):
-        '''Whether the frame attribute is compliant with the schema.
+    def is_valid_video_attributes(self, attrs):
+        '''Whether the video-level attributes are compliant with the schema.
 
         Args:
-            frame_attr: an Attribute
+            attrs: an AttributeContainer
 
         Returns:
             True/False
         '''
-        try:
-            self.validate_frame_attribute(frame_attr)
-            return True
-        except:
-            return False
+        return self.attrs.is_valid_attributes(attrs)
+
+    def is_valid_frame_attribute(self, attr):
+        '''Whether the frame-level attribute is compliant with the schema.
+
+        Args:
+            attr: an Attribute
+
+        Returns:
+            True/False
+        '''
+        return self.frames.is_valid_attribute(attr)
+
+    def is_valid_frame_attributes(self, attrs):
+        '''Whether the frame-level attributes are compliant with the schema.
+
+        Args:
+            attrs: an AttributeContainer
+
+        Returns:
+            True/False
+        '''
+        return self.frames.is_valid_attributes(attrs)
 
     def is_valid_object_label(self, label):
         '''Whether the object label is compliant with the schema.
@@ -1418,43 +1613,70 @@ class VideoLabelsSchema(Serializable):
         Returns:
             True/False
         '''
-        try:
-            self.validate_object_label(label)
-            return True
-        except:
-            return False
+        return self.objects.is_valid_object_label(label)
 
-    def is_valid_object_attribute(self, label, obj_attr):
-        '''Whether the object attribute for the object with the given label is
-        compliant with the schema.
+    def is_valid_object_attribute(self, label, attr):
+        '''Whether the object-level attribute for the object with the given
+        label is compliant with the schema.
 
         Args:
             label: an object label
-            obj_attr: an Attribute
+            attr: an Attribute
 
         Returns:
             True/False
         '''
-        try:
-            self.validate_object_attribute(label, obj_attr)
-            return True
-        except:
-            return False
+        return self.objects.is_valid_object_attribute(label, attr)
 
-    def is_valid_object(self, obj):
-        '''Whether the DetectedObject is compliant with the schema.
+    def is_valid_object_attributes(self, label, attrs):
+        '''Whether the object-level attributes for the object with the given
+        label are compliant with the schema.
 
         Args:
-            obj: a DetectedObject
+            label: an object label
+            attrs: an AttributeContainer
 
         Returns:
             True/False
         '''
-        try:
-            self.validate_object(obj)
-            return True
-        except:
-            return False
+        return self.objects.is_valid_object_attributes(label, attrs)
+
+    def is_valid_object_frame_attribute(self, label, attr):
+        '''Whether the frame-level attribute for the object with the given
+        label is compliant with the schema.
+
+        Args:
+            label: an object label
+            attr: a frame-level Attribute
+
+        Returns:
+            True/False
+        '''
+        return self.objects.is_valid_frame_attribute(label, attr)
+
+    def is_valid_object_frame_attributes(self, label, attrs):
+        '''Whether the frame-level attributes for the object with the given
+        label are compliant with the schema.
+
+        Args:
+            label: an object label
+            attrs: an AttributeContainer
+
+        Returns:
+            True/False
+        '''
+        return self.objects.is_valid_frame_attributes(label, attrs)
+
+    def is_valid_object(self, obj):
+        '''Whether the object is compliant with the schema.
+
+        Args:
+            obj: a VideoObject or DetectedObject
+
+        Returns:
+            True/False
+        '''
+        return self.objects.is_valid_object(obj)
 
     def is_valid_event_label(self, label):
         '''Whether the event label is compliant with the schema.
@@ -1465,65 +1687,131 @@ class VideoLabelsSchema(Serializable):
         Returns:
             True/False
         '''
-        try:
-            self.validate_event_label(label)
-            return True
-        except:
-            return False
+        return self.events.is_valid_event_label(label)
 
-    def is_valid_event_attribute(self, label, event_attr):
+    def is_valid_event_attribute(self, label, attr):
         '''Whether the event attribute for the event with the given label is
         compliant with the schema.
 
         Args:
             label: an event label
-            event_attr: an Attribute
+            attr: an Attribute
 
         Returns:
             True/False
         '''
-        try:
-            self.validate_event_attribute(label, event_attr)
-            return True
-        except:
-            return False
+        return self.events.is_valid_event_attribute(label, attr)
+
+    def is_valid_event_attributes(self, label, attrs):
+        '''Whether the AttributeContainer of event-level attributes for the
+        event with the given label is compliant with the schema.
+
+        Args:
+            label: an event label
+            attrs: an AttributeContainer
+
+        Returns:
+            True/False
+        '''
+        return self.events.is_valid_event_attributes(label, attrs)
 
     def is_valid_event(self, event):
-        '''Whether the Event is compliant with the schema.
+        '''Whether the event is compliant with the schema.
 
         Args:
-            event: an Event
+            event: a VideoEvent or DetectedEvent
+
+        Returns:
+            True/False
+        '''
+        return self.events.is_valid_event(event)
+
+    def is_valid_frame_labels(self, frame_labels):
+        '''Whether the frame labels are compliant with the schema.
+
+        Args:
+            frame_labels: a FrameLabels
 
         Returns:
             True/False
         '''
         try:
-            self.validate_event(event)
+            self.validate_frame_labels(frame_labels)
             return True
-        except:
+        except etal.LabelsSchemaError:
             return False
 
-    def validate_video_attribute(self, video_attr):
-        '''Validates that the video attribute is compliant with the schema.
+    def validate_video_attribute_name(self, attr_name):
+        '''Validates that the schema contains a video-level attribute with the
+        given name.
 
         Args:
-            video_attr: an Attribute
+            attr_name: the name
 
         Raises:
-            AttributeContainerSchemaError: if the attribute violates the schema
+            LabelsSchemaError: if the schema does not contain the attribute
         '''
-        self.attrs.validate_attribute(video_attr)
+        self.attrs.validate_attribute_name(attr_name)
 
-    def validate_frame_attribute(self, frame_attr):
-        '''Validates that the frame attribute is compliant with the schema.
+    def validate_video_attribute(self, attr):
+        '''Validates that the video-level attribute is compliant with the
+        schema.
 
         Args:
-            frame_attr: an Attribute
+            attr: an Attribute
 
         Raises:
-            AttributeContainerSchemaError: if the attribute violates the schema
+            LabelsSchemaError: if the attribute violates the schema
         '''
-        self.frames.validate_attribute(frame_attr)
+        self.attrs.validate_attribute(attr)
+
+    def validate_video_attributes(self, attrs):
+        '''Validates that the video-level attributes are compliant with the
+        schema.
+
+        Args:
+            attrs: an AttributeContainer
+
+        Raises:
+            LabelsSchemaError: if the attributes violate the schema
+        '''
+        self.attrs.validate(attrs)
+
+    def validate_frame_attribute_name(self, attr_name):
+        '''Validates that the schema contains a frame-level attribute with the
+        given name.
+
+        Args:
+            attr_name: the name
+
+        Raises:
+            LabelsSchemaError: if the schema does not contain the attribute
+        '''
+        self.frames.validate_attribute_name(attr_name)
+
+    def validate_frame_attribute(self, attr):
+        '''Validates that the frame-level attribute is compliant with the
+        schema.
+
+        Args:
+            attr: an Attribute
+
+        Raises:
+            LabelsSchemaError: if the attribute violates the schema
+        '''
+        self.frames.validate_attribute(attr)
+
+    def validate_frame_attributes(self, attrs):
+        '''Validates that the frame-level attributes are compliant with the
+        schema.
+
+        Args:
+            attrs: an AttributeContainer
+
+        Raises:
+            LabelsSchemaError: if the attributes violate the schema
+        '''
+        self.frames.validate(attrs)
 
     def validate_object_label(self, label):
         '''Validates that the object label is compliant with the schema.
@@ -1532,42 +1820,72 @@ class VideoLabelsSchema(Serializable):
             label: an object label
 
         Raises:
-            VideoLabelsSchemaError: if the object label violates the schema
+            LabelsSchemaError: if the object label violates the schema
         '''
-        if label not in self.objects:
-            raise VideoLabelsSchemaError(
-                "Object label '%s' is not allowed by the schema" % label)
+        self.objects.validate_object_label(label)
 
-    def validate_object_attribute(self, label, obj_attr):
-        '''Validates that the object attribute for the given label is compliant
-        with the schema.
+    def validate_object_attribute(self, label, attr):
+        '''Validates that the object-level attribute for the object with the
+        given label is compliant with the schema.
 
         Args:
             label: an object label
-            obj_attr: an Attribute
+            attr: an object-level Attribute
 
         Raises:
-            AttributeContainerSchemaError: if the object attribute violates
-                the schema
+            LabelsSchemaError: if the attribute violates the schema
         '''
-        obj_schema = self.objects[label]
-        obj_schema.validate_attribute(obj_attr)
+        self.objects.validate_object_attribute(label, attr)
 
-    def validate_object(self, obj):
-        '''Validates that the detected object is compliant with the schema.
+    def validate_object_attributes(self, label, attrs):
+        '''Validates that the object-level attributes for the object with the
+        given label are compliant with the schema.
 
         Args:
-            obj: a DetectedObject
+            label: an object label
+            attrs: an AttributeContainer of object-level attributes
 
         Raises:
-            VideoLabelsSchemaError: if the object's label violates the schema
-            AttributeContainerSchemaError: if any attributes of the
-                DetectedObject violate the schema
+            LabelsSchemaError: if the attributes violate the schema
         '''
-        self.validate_object_label(obj.label)
-        if obj.has_attributes:
-            for obj_attr in obj.attrs:
-                self.validate_object_attribute(obj.label, obj_attr)
+        self.objects.validate_object_attributes(label, attrs)
+
+    def validate_object_frame_attribute(self, label, attr):
+        '''Validates that the frame-level attribute for the object with the
+        given label is compliant with the schema.
+
+        Args:
+            label: an object label
+            attr: a frame-level Attribute
+
+        Raises:
+            LabelsSchemaError: if the attribute violates the schema
+        '''
+        self.objects.validate_object_attribute(label, attr)
+
+    def validate_object_frame_attributes(self, label, attrs):
+        '''Validates that the frame-level attributes for the object with the
+        given label are compliant with the schema.
+
+        Args:
+            label: an object label
+            attrs: an AttributeContainer of frame-level attributes
+
+        Raises:
+            LabelsSchemaError: if the attributes violate the schema
+        '''
+        self.objects.validate_object_attributes(label, attrs)
+
+    def validate_object(self, obj):
+        '''Validates that the object is compliant with the schema.
+
+        Args:
+            obj: a VideoObject or DetectedObject
+
+        Raises:
+            LabelsSchemaError: if the object violates the schema
+        '''
+        self.objects.validate_object(obj)
 
     def validate_event_label(self, label):
         '''Validates that the event label is compliant with the schema.
@@ -1576,72 +1894,115 @@ class VideoLabelsSchema(Serializable):
             label: an event label
 
         Raises:
-            VideoLabelsSchemaError: if the event label violates the schema
+            LabelsSchemaError: if the event violates the schema
         '''
-        if label not in self.events:
-            raise VideoLabelsSchemaError(
-                "Event label '%s' is not allowed by the schema" % label)
+        self.events.validate_event_label(label)
 
-    def validate_event_attribute(self, label, event_attr):
-        '''Validates that the event attribute for the given label is compliant
-        with the schema.
+    def validate_event_attribute(self, label, attr):
+        '''Validates that the event-level attribute for the event with the
+        given label is compliant with the schema.
 
         Args:
             label: an event label
-            event_attr: an Attribute
+            attr: an Attribute
 
         Raises:
-            AttributeContainerSchemaError: if the event attribute violates
-                the schema
+            LabelsSchemaError: if the attribute violates the schema
         '''
-        event_schema = self.events[label]
-        event_schema.validate_attribute(event_attr)
+        self.events.validate_event_attribute(label, attr)
+
+    def validate_event_attributes(self, label, attrs):
+        '''Validates that the event-level attributes for the event with the
+        given label is compliant with the schema.
+
+        Args:
+            label: an event label
+            attrs: an AttributeContainer
+
+        Raises:
+            LabelsSchemaError: if the attributes violate the schema
+        '''
+        self.events.validate_event_attributes(label, attrs)
 
     def validate_event(self, event):
         '''Validates that the event is compliant with the schema.
 
         Args:
-            event: an Event
+            event: a VideoEvent or DetectedEvent
 
         Raises:
-            VideoLabelsSchemaError: if the event's label violates the schema
-            AttributeContainerSchemaError: if any attributes of the Event
-                violate the schema
+            LabelsSchemaError: if the event violates the schema
         '''
-        self.validate_event_label(event.label)
-        if event.has_attributes:
-            for event_attr in event.attrs:
-                self.validate_event_attribute(event.label, event_attr)
+        self.events.validate_event(event)
 
-    def attributes(self):
-        '''Returns the list of class attributes that will be serialized.
-
-        Returns:
-            a list of attribute names
-        '''
-        return ["attrs", "frames", "objects", "events"]
-
-    @classmethod
-    def from_image_labels_schema(cls, image_labels_schema):
-        '''Creates a VideoLabelsSchema from an ImageLabelsSchema.
-
-        Image-level attributes of the ImageLabelsSchema are converted to
-        frame-level attributes in the VideoLabelsSchema.
+    def validate_frame_labels(self, frame_labels):
+        '''Validates that the frame labels are compliant with the schema.
 
         Args:
-            image_labels_schema: an ImageLabelsSchema
+            frame_labels: a FrameLabels
 
-        Returns:
-            a VideoLabelsSchema
+        Raises:
+            LabelsSchemaError: if the frame labels violate the schema
         '''
-        return cls(
-            frames=image_labels_schema.attrs,
-            objects=image_labels_schema.objects)
+        self.validate_frame_attributes(frame_labels.attrs)
+
+        for obj in frame_labels.objects:
+            self.validate_object(obj)
+
+        for event in frame_labels.events:
+            self.validate_event(event)
+
+    def validate(self, video_labels):
+        '''Validates that the labels are compliant with the schema.
+
+        Args:
+            video_labels: a VideoLabels
+
+        Raises:
+            LabelsSchemaError: if the VideoLabels violate the schema
+        '''
+        self.validate_video_attributes(video_labels.attrs)
+
+        for obj in video_labels.objects:
+            self.validate_object(obj)
+
+        for event in video_labels.events:
+            self.validate_event(event)
+
+        for frame_labels in video_labels.iter_frames():
+            self.validate_frame_labels(frame_labels)
+
+    def validate_subset_of_schema(self, schema):
+        '''Validates that this schema is a subset of the given schema.
+
+        Args:
+            schema: a VideoLabelsSchema
+
+        Raises:
+            LabelsSchemaError: if this schema is not a subset of the given
+                schema
+        '''
+        self.validate_schema_type(schema)
+        self.attrs.validate_subset_of_schema(schema.attrs)
+        self.frames.validate_subset_of_schema(schema.frames)
+        self.objects.validate_subset_of_schema(schema.objects)
+        self.events.validate_subset_of_schema(schema.events)
+
+    def merge_schema(self, schema):
+        '''Merges the given VideoLabelsSchema into this schema.
+
+        Args:
+            schema: a VideoLabelsSchema
+        '''
+        self.attrs.merge_schema(schema.attrs)
+        self.frames.merge_schema(schema.frames)
+        self.objects.merge_schema(schema.objects)
+        self.events.merge_schema(schema.events)
 
     @classmethod
     def build_active_schema_for_frame(cls, frame_labels):
         '''Builds a VideoLabelsSchema that describes the active schema of the
-        given VideoFrameLabels.
+        given frame labels.
 
         Args:
             frame_labels: a VideoFrameLabels
@@ -1650,19 +2011,87 @@ class VideoLabelsSchema(Serializable):
             a VideoLabelsSchema
         '''
         schema = cls()
-        schema.add_frame_attributes(frame_labels.attrs)
-        for obj in frame_labels.objects:
-            if obj.has_attributes:
-                schema.add_object_attributes(obj.label, obj.attrs)
-            else:
-                schema.add_object_label(obj.label)
-
+        schema.add_frame_labels(frame_labels)
         return schema
+
+    @classmethod
+    def build_active_schema_for_object(cls, obj):
+        '''Builds a VideoLabelsSchema that describes the active schema of the
+        given object.
+
+        Args:
+            obj: a VideoObject or DetectedObject
+
+        Returns:
+            a VideoLabelsSchema
+        '''
+        schema = cls()
+        schema.add_object(obj)
+        return schema
+
+    @classmethod
+    def build_active_schema_for_objects(cls, objects):
+        '''Builds a VideoLabelsSchema that describes the active schema of the
+        given objects.
+
+        Args:
+            objects: a VideoObjectContainer or DetectedObjectContainer
+
+        Returns:
+            a VideoLabelsSchema
+        '''
+        schema = cls()
+        schema.add_objects(objects)
+        return schema
+
+    @classmethod
+    def build_active_schema_for_event(cls, event):
+        '''Builds a VideoLabelsSchema that describes the active schema of the
+        given event.
+
+        Args:
+            event: a VideoEvent or DetectedEvent
+
+        Returns:
+            a VideoLabelsSchema
+        '''
+        schema = cls()
+        schema.add_event(event)
+        return schema
+
+    @classmethod
+    def build_active_schema_for_events(cls, events):
+        '''Builds a VideoLabelsSchema that describes the active schema of the
+        given events.
+
+        Args:
+            events: a VideoEventContainer or DetectedEventContainer
+
+        Returns:
+            a VideoLabelsSchema
+        '''
+        schema = cls()
+        schema.add_events(events)
+        return schema
+
+    @classmethod
+    def from_image_labels_schema(cls, frame_labels_schema):
+        '''Creates a VideoLabelsSchema from FrameLabelsSchema.
+
+        Args:
+            frame_labels_schema: an FrameLabelsSchema
+
+        Returns:
+            a VideoLabelsSchema
+        '''
+        return cls(
+            frames=frame_labels_schema.attrs,
+            objects=frame_labels_schema.objects)
 
     @classmethod
     def build_active_schema(cls, video_labels):
         '''Builds a VideoLabelsSchema that describes the active schema of the
-        given VideoLabels.
+        given labels.
 
         Args:
             video_labels: a VideoLabels
@@ -1671,18 +2100,26 @@ class VideoLabelsSchema(Serializable):
             a VideoLabelsSchema
         '''
         schema = cls()
-        schema.add_video_attributes(video_labels.attrs)
-        for frame_labels in video_labels.iter_frames():
-            schema.merge_schema(
-                VideoLabelsSchema.build_active_schema_for_frame(frame_labels))
-
-        for event in video_labels.events:
-            if event.has_attributes:
-                schema.add_event_attributes(event.label, event.attrs)
-            else:
-                schema.add_event_label(event.label)
-
+        schema.add_video_labels(video_labels)
         return schema
+
+    def attributes(self):
+        '''Returns the list of class attributes that will be serialized.
+
+        Args:
+            a list of attribute names
+        '''
+        _attrs = []
+        if self.attrs:
+            _attrs.append("attrs")
+        if self.frames:
+            _attrs.append("frames")
+        if self.objects:
+            _attrs.append("objects")
+        if self.events:
+            _attrs.append("events")
+
+        return _attrs
 
     @classmethod
     def from_dict(cls, d):
@@ -1696,35 +2133,133 @@ class VideoLabelsSchema(Serializable):
         '''
         attrs = d.get("attrs", None)
         if attrs is not None:
-            attrs = AttributeContainerSchema.from_dict(attrs)
+            attrs = etad.AttributeContainerSchema.from_dict(attrs)
 
         frames = d.get("frames", None)
         if frames is not None:
-            frames = AttributeContainerSchema.from_dict(frames)
+            frames = etad.AttributeContainerSchema.from_dict(frames)
 
         objects = d.get("objects", None)
         if objects is not None:
-            objects = {
-                k: AttributeContainerSchema.from_dict(v)
-                for k, v in iteritems(objects)
-            }
+            objects = etao.ObjectContainerSchema.from_dict(objects)
 
         events = d.get("events", None)
         if events is not None:
-            events = {
-                k: AttributeContainerSchema.from_dict(v)
-                for k, v in iteritems(events)
-            }
+            events = etae.EventContainerSchema.from_dict(events)
 
         return cls(attrs=attrs, frames=frames, objects=objects, events=events)
 
 
-class VideoLabelsSchemaError(Exception):
+class VideoLabelsSchemaError(etal.LabelsSchemaError):
     '''Error raised when a VideoLabelsSchema is violated.'''
     pass
 
 
-class VideoSetLabels(Set):
+class VideoLabelsFrameRenderer(etal.LabelsFrameRenderer):
+    '''Class for rendering VideoLabels at the frame-level.'''
+
+    def __init__(self, video_labels):
+        '''Creates an VideoLabelsFrameRenderer instance.
+
+        Args:
+            video_labels: a VideoLabels
+        '''
+        self._video_labels = video_labels
+
+    def render_frame(self, frame_number):
+        '''Renders the VideoLabels for the given frame.
+
+        Args:
+            frame_number: the frame number
+
+        Returns:
+            a VideoFrameLabels, or None if no labels exist for the given frame
+        '''
+        if frame_number not in self._video_labels.support:
+            return None
+
+        video_attrs = self._get_video_attrs()
+        dobjs = self._render_object_frame(frame_number)
+        devents = self._render_event_frame(frame_number)
+        return self._render_frame(frame_number, video_attrs, dobjs, devents)
+
+    def render_all_frames(self):
+        '''Renders the VideoLabels for all possible frames.
+
+        Returns:
+            a dictionary mapping frame numbers to VideoFrameLabels instances
+        '''
+        video_attrs = self._get_video_attrs()
+        dobjs_map = self._render_all_object_frames()
+        devents_map = self._render_all_event_frames()
+
+        frame_labels_map = {}
+        for frame_number in self._video_labels.support:
+            dobjs = dobjs_map.get(frame_number, None)
+            devents = devents_map.get(frame_number, None)
+            frame_labels_map[frame_number] = self._render_frame(
+                frame_number, video_attrs, dobjs, devents)
+
+        return frame_labels_map
+
+    def _render_frame(self, frame_number, video_attrs, dobjs, devents):
+        # Base VideoFrameLabels
+        if self._video_labels.has_frame(frame_number):
+            frame_labels = deepcopy(self._video_labels.get_frame(frame_number))
+        else:
+            frame_labels = VideoFrameLabels(frame_number=frame_number)
+
+        # Render video-level attributes
+        if video_attrs is not None:
+            # Prepend video-level attributes
+            frame_labels.attrs.prepend_container(video_attrs)
+
+        # Render objects
+        if dobjs is not None:
+            frame_labels.add_objects(dobjs)
+
+        # Render events
+        if devents is not None:
+            frame_labels.add_events(devents)
+
+        return frame_labels
+
+    def _get_video_attrs(self):
+        if not self._video_labels.has_video_attributes:
+            return None
+
+        return deepcopy(self._video_labels.attrs)
+
+    def _render_all_object_frames(self):
+        if not self._video_labels.has_video_objects:
+            return {}
+
+        r = etao.VideoObjectContainerFrameRenderer(self._video_labels.objects)
+        return r.render_all_frames()
+
+    def _render_object_frame(self, frame_number):
+        if not self._video_labels.has_video_objects:
+            return None
+
+        r = etao.VideoObjectContainerFrameRenderer(self._video_labels.objects)
+        return r.render_frame(frame_number)
+
+    def _render_all_event_frames(self):
+        if not self._video_labels.has_video_events:
+            return {}
+
+        r = etae.VideoEventContainerFrameRenderer(self._video_labels.events)
+        return r.render_all_frames()
+
+    def _render_event_frame(self, frame_number):
+        if not self._video_labels.has_video_events:
+            return None
+
+        r = etae.VideoEventContainerFrameRenderer(self._video_labels.events)
+        return r.render_frame(frame_number)
+
+
+class VideoSetLabels(etal.LabelsSet):
     '''Class encapsulating labels for a set of videos.
 
     VideoSetLabels support item indexing by the `filename` of the VideoLabels
@@ -1746,166 +2281,6 @@ class VideoSetLabels(Set):
     _ELE_CLS = VideoLabels
     _ELE_CLS_FIELD = "_LABELS_CLS"
 
-    def __init__(self, videos=None, schema=None):
-        '''Constructs a VideoSetLabels instance.
-
-        Args:
-            videos: an optional iterable of VideoLabels. By default, an empty
-                set is created
-            schema: an optional VideoLabelsSchema to enforce on the object.
-                By default, no schema is enforced
-        '''
-        self.schema = schema
-        super(VideoSetLabels, self).__init__(videos=videos)
-
-    def __getitem__(self, filename):
-        '''Gets the VideoLabels with the given filename.
-
-        If the filename is not in the set, an empty VideoLabels is created,
-        added to the set, and returned.
-
-        Args:
-            filename: a filename
-
-        Returns:
-            a VideoLabels
-        '''
-        if filename not in self:
-            video_labels = VideoLabels(filename=filename)
-            self.add(video_labels)
-
-        return super(VideoSetLabels, self).__getitem__(filename)
-
-    def __setitem__(self, filename, video_labels):
-        '''Sets the VideoLabels for the given filename.
-
-        Any existing labels are overwritten.
-
-        Args:
-            filename: a filename
-            video_labels: a VideoLabels
-        '''
-        if self.has_schema:
-            self._apply_schema_to_video(video_labels)
-
-        super(VideoSetLabels, self).__setitem__(filename, video_labels)
-
-    @property
-    def has_schema(self):
-        '''Whether the container has an enforced schema.'''
-        return self.schema is not None
-
-    def empty(self):
-        '''Returns an empty copy of the VideoSetLabels.
-
-        The schema of the set is preserved, if applicable.
-
-        Returns:
-            an empty VideoSetLabels
-        '''
-        return self.__class__(schema=self.schema)
-
-    def add(self, video_labels):
-        '''Adds the VideoLabels to the set.
-
-        Args:
-            video_labels: a VideoLabels
-        '''
-        if self.has_schema:
-            self._apply_schema_to_video(video_labels)
-        super(VideoSetLabels, self).add(video_labels)
-
-    def clear_frame_attributes(self):
-        '''Removes all frame attributes from all VideoLabels in the set.'''
-        for video_labels in self:
-            video_labels.clear_frame_attributes()
-
-    def clear_objects(self):
-        '''Removes all objects from all VideoLabels in the set.'''
-        for video_labels in self:
-            video_labels.clear_objects()
-
-    def get_filenames(self):
-        '''Returns the set of filenames of VideoLabels in the set.
-
-        Returns:
-            the set of filenames
-        '''
-        return set(vl.filename for vl in self if vl.filename)
-
-    def get_schema(self):
-        '''Gets the schema for the set, or None if no schema is enforced.
-
-        Returns:
-            a VideoLabelsSchema, or None
-        '''
-        return self.schema
-
-    def get_active_schema(self):
-        '''Returns a VideoLabelsSchema describing the active schema of the set.
-
-        Returns:
-            a VideoLabelsSchema
-        '''
-        schema = VideoLabelsSchema()
-        for video_labels in self:
-            schema.merge_schema(
-                VideoLabelsSchema.build_active_schema(video_labels))
-
-        return schema
-
-    def set_schema(self, schema, filter_by_schema=False):
-        '''Sets the schema to the given VideoLabelsSchema.
-
-        Args:
-            schema: the VideoLabelsSchema to use
-            filter_by_schema: whether to filter any invalid objects/attributes
-                from the set after changing the schema. By default, this is
-                False
-
-        Raises:
-            VideoLabelsSchemaError: if `filter_by_schema` was False and the
-                set contains attributes/objects that are not compliant with the
-                schema
-        '''
-        self.schema = schema
-
-        if filter_by_schema and self.has_schema:
-            self.filter_by_schema(schema)
-
-        self._apply_schema()
-
-    def filter_by_schema(self, schema):
-        '''Removes objects/attributes from the VideoLabels in the set that are
-        not compliant with the given schema.
-
-        Args:
-            schema: a VideoLabelsSchema
-        '''
-        for video_labels in self:
-            video_labels.filter_by_schema(schema)
-
-    def remove_objects_without_attrs(self, labels=None):
-        '''Removes DetectedObjects from the VideoSetLabels that do not have
-        attributes.
-
-        Args:
-            labels: an optional list of DetectedObject label strings to which
-                to restrict attention when filtering. By default, all objects
-                are processed
-        '''
-        for video_labels in self:
-            video_labels.remove_objects_without_attrs(labels=labels)
-
-    def freeze_schema(self):
-        '''Sets the schema for the set to the current active schema.'''
-        self.set_schema(self.get_active_schema())
-
-    def remove_schema(self):
-        '''Removes the schema from the set.'''
-        self.schema = None
-        self._apply_schema()
-
     def sort_by_filename(self, reverse=False):
         '''Sorts the VideoLabels in this instance by filename.
 
@@ -1917,60 +2292,87 @@ class VideoSetLabels(Set):
         '''
         self.sort_by("filename", reverse=reverse)
 
-    def attributes(self):
-        '''Returns the list of class attributes that will be serialized.
+    def clear_video_attributes(self):
+        '''Removes all video-level attributes from all VideoLabels in the set.
+        '''
+        for video_labels in self:
+            video_labels.clear_video_attributes()
+
+    def clear_frame_attributes(self):
+        '''Removes all frame-level attributes from all VideoLabels in the set.
+        '''
+        for video_labels in self:
+            video_labels.clear_frame_attributes()
+
+    def clear_video_objects(self):
+        '''Removes all `VideoObject`s from all VideoLabels in the set.'''
+        for video_labels in self:
+            video_labels.clear_video_objects()
+
+    def clear_detected_objects(self):
+        '''Removes all `DetectedObject`s from all VideoLabels in the set.'''
+        for video_labels in self:
+            video_labels.clear_detected_objects()
+
+    def clear_objects(self):
+        '''Removes all `VideoObject`s and `DetectedObject`s from all
+        VideoLabels in the set.
+        '''
+        for video_labels in self:
+            video_labels.clear_objects()
+
+    def clear_video_events(self):
+        '''Removes all `VideoEvent`s from all VideoLabels in the set.'''
+        for video_labels in self:
+            video_labels.clear_video_events()
+
+    def clear_detected_events(self):
+        '''Removes all `DetectedEvent`s from all VideoLabels in the set.'''
+        for video_labels in self:
+            video_labels.clear_detected_events()
+
+    def clear_events(self):
+        '''Removes all `VideoEvent`s and `DetectedEvent`s from all VideoLabels
+        in the set.
+        '''
+        for video_labels in self:
+            video_labels.clear_events()
+
+    def get_filenames(self):
+        '''Returns the set of filenames of VideoLabels in the set.
 
         Returns:
-            a list of attribute names
+            the set of filenames
         '''
-        _attrs = super(VideoSetLabels, self).attributes()
-        if self.has_schema:
-            return ["schema"] + _attrs
-        return _attrs
+        return set(vl.filename for vl in self if vl.filename)
 
-    def _apply_schema_to_video(self, video_labels):
-        if self.has_schema:
-            video_labels.set_schema(self.get_schema())
-        else:
-            video_labels.remove_schema()
+    def remove_objects_without_attrs(self, labels=None):
+        '''Removes objects from the VideoLabels in the set that do not have
+        attributes.
 
-    def _apply_schema(self):
+        Args:
+            labels: an optional list of object label strings to which to
+                restrict attention when filtering. By default, all objects are
+                processed
+        '''
         for video_labels in self:
-            self._apply_schema_to_video(video_labels)
+            video_labels.remove_objects_without_attrs(labels=labels)
 
     @classmethod
     def from_video_labels_patt(cls, video_labels_patt):
-        '''Creates an instance of `cls` from a pattern of `_ELE_CLS` files.
+        '''Creates a VideoSetLabels from a pattern of VideoLabels files.
 
         Args:
-             video_labels_patt: a pattern with one or more numeric sequences:
-                example: "/path/to/labels/%05d.json"
+             video_labels_patt: a pattern with one or more numeric sequences
+                for VideoLabels files on disk
 
         Returns:
-            a `cls` instance
+            a VideoSetLabels instance
         '''
-        logger.warning("Using deprecated method `from_video_labels_patt`. Use"
-                       " `from_numeric_patt` instead.")
-        return cls.from_numeric_patt(video_labels_patt)
-
-    @classmethod
-    def from_dict(cls, d):
-        '''Constructs a VideoSetLabels from a JSON dictionary.
-
-        Args:
-            d: a JSON dictionary
-
-        Returns:
-            a VideoSetLabels
-        '''
-        schema = d.pop("schema", None)
-        if schema is not None:
-            schema = VideoLabelsSchema.from_dict(schema)
-
-        return super(VideoSetLabels, cls).from_dict(d, schema=schema)
+        return cls.from_labels_patt(video_labels_patt)
 
 
-class BigVideoSetLabels(VideoSetLabels, BigSet):
+class BigVideoSetLabels(VideoSetLabels, etas.BigSet):
     '''A BigSet of VideoLabels.
 
     Behaves identically to VideoSetLabels except that each VideoLabels is
@@ -2003,8 +2405,8 @@ class BigVideoSetLabels(VideoSetLabels, BigSet):
                 are/will be stored. If omitted, a temporary backing directory
                 is used
         '''
-        self.schema = schema
-        BigSet.__init__(self, backing_dir=backing_dir, videos=videos)
+        etas.BigSet.__init__(self, backing_dir=backing_dir, videos=videos)
+        etal.HasLabelsSchema.__init__(self, schema=schema)
 
     def empty_set(self):
         '''Returns an empty in-memory VideoSetLabels version of this
@@ -2016,8 +2418,8 @@ class BigVideoSetLabels(VideoSetLabels, BigSet):
         return VideoSetLabels(schema=self.schema)
 
     def filter_by_schema(self, schema):
-        '''Removes objects/attributes from the VideoLabels in the set that are
-        not compliant with the given schema.
+        '''Removes objects/attributes from the VideoLabels in the set that
+        are not compliant with the given schema.
 
         Args:
             schema: a VideoLabelsSchema
@@ -2027,28 +2429,44 @@ class BigVideoSetLabels(VideoSetLabels, BigSet):
             video_labels.filter_by_schema(schema)
             self[key] = video_labels
 
+    def set_schema(self, schema, filter_by_schema=False, validate=False):
+        '''Sets the enforced schema to the given VideoLabelsSchema.
+
+        Args:
+            schema: a VideoLabelsSchema to assign
+            filter_by_schema: whether to filter labels that are not compliant
+                with the schema. By default, this is False
+            validate: whether to validate that the labels (after filtering, if
+                applicable) are compliant with the new schema. By default, this
+                is False
+
+        Raises:
+            LabelsSchemaError: if `validate` was `True` and this set contains
+                labels that are not compliant with the schema
+        '''
+        self.schema = schema
+        for key in self.keys():
+            video_labels = self[key]
+            video_labels.set_schema(
+                schema, filter_by_schema=filter_by_schema, validate=validate)
+            self[key] = video_labels
+
     def remove_objects_without_attrs(self, labels=None):
-        '''Removes DetectedObjects from the BigVideoSetLabels that do not have
+        '''Removes all objects from the BigVideoSetLabels that do not have
         attributes.
 
         Args:
-            labels: an optional list of DetectedObject label strings to which
-                to restrict attention when filtering. By default, all objects
-                are processed
+            labels: an optional list of object label strings to which to
+                restrict attention when filtering. By default, all objects are
+                processed
         '''
         for key in self.keys():
             video_labels = self[key]
             video_labels.remove_objects_without_attrs(labels=labels)
             self[key] = video_labels
 
-    def _apply_schema(self):
-        for key in self.keys():
-            video_labels = self[key]
-            self._apply_schema_to_video(video_labels)
-            self[key] = video_labels
 
-
-class VideoStreamInfo(Serializable):
+class VideoStreamInfo(etas.Serializable):
     '''Class encapsulating the stream info for a video.'''
 
     def __init__(self, stream_info, format_info):
@@ -2100,7 +2518,7 @@ class VideoStreamInfo(Serializable):
         '''The frame rate of the video.
 
         Raises:
-            VideoStreamInfoError if the frame rate could not be determined
+            VideoStreamInfoError: if the frame rate could not be determined
         '''
         try:
             try:
@@ -2227,7 +2645,7 @@ def _get_stream_info(inpath):
         "-print_format", "json",     # return in JSON format
     ])
     out = ffprobe.run(inpath, decode=True)
-    info = load_json(out)
+    info = etas.load_json(out)
 
     # Get format info
     format_info = info["format"]
@@ -2415,7 +2833,7 @@ def sample_select_frames(
     gracefully exit rather than raising an error if `ffmpeg` cannot understand
     some frames of the video you provide.
 
-    When `fast=False`, this implementation uses `VideoProcessor`.
+    When `fast=False`, this implementation uses VideoProcessor.
 
     When `fast=True`, this implementation uses ffmpeg's `-vf select` option.
     In this case, it may resort to `fast=False` internally if one of the
@@ -2427,7 +2845,7 @@ def sample_select_frames(
         (b) the fast implementation failed to generate at least 90%% of the
             target frames. This can happen if `ffmpeg -vf select` is confused
             by the the video it encounters. We have empirically found that
-            `VideoProcessor` may be able to extract more frames such cases
+            VideoProcessor may be able to extract more frames such cases
 
     Args:
         video_path: the path to a video
@@ -2519,8 +2937,8 @@ def _sample_select_frames_fast(video_path, frames, output_patt, size):
         if percent_complete < target_percent_complete:
             raise SampleSelectFramesError(
                 "We only managed to sample %.1f%% of the frames; this is "
-                "below our target of %.1f%%, so let's try slow mode" % (
-                100 * percent_complete, 100 * target_percent_complete))
+                "below our target of %.1f%%, so let's try slow mode" %
+                (100 * percent_complete, 100 * target_percent_complete))
 
         # Move frames into place with correct output names
         if output_patt is not None:
@@ -2529,7 +2947,7 @@ def _sample_select_frames_fast(video_path, frames, output_patt, size):
                 outpath = output_patt % frame_number
                 etau.move_file(tmp_path, outpath)
 
-            return
+            return None
 
         # Return frames into memory
         imgs = []
@@ -2740,7 +3158,8 @@ def extract_keyframes(video_path, output_patt=None):
         with p:
             for img in p:
                 p.write(img)
-        return
+
+        return None
 
     # Load frames into memory via FFmpegVideoReader
     with FFmpegVideoReader(video_path, keyframes_only=True) as r:
@@ -3019,7 +3438,7 @@ class VideoReader(object):
 
         (a) `VideoReader`s implement the context manager interface. This means
             that models can optionally use context to perform any necessary
-            setup and teardown, and so any code that uses a `VideoReader`
+            setup and teardown, and so any code that uses a VideoReader
             should use the `with` syntax
 
         (b) `VideoReader`s support a `reset()` method that allows them to be
@@ -3036,8 +3455,8 @@ class VideoReader(object):
                 - None (all frames)
                 - "*" (all frames)
                 - a string like "1-3,6,8-10"
-                - an `eta.core.frames.FrameRange` instance
-                - an `eta.core.frames.FrameRanges` instance
+                - an `eta.core.frameutils.FrameRange` instance
+                - an `eta.core.frameutils.FrameRanges` instance
                 - an iterable, e.g., [1, 2, 3, 6, 8, 9, 10]. The frames do not
                     need to be in sorted order
         '''
@@ -3157,8 +3576,8 @@ class FFmpegVideoReader(VideoReader):
                 - None (all frames - the default)
                 - "*" (all frames)
                 - a string like "1-3,6,8-10"
-                - an `eta.core.frames.FrameRange` instance
-                - an `eta.core.frames.FrameRanges` instance
+                - an `eta.core.frameutils.FrameRange` instance
+                - an `eta.core.frameutils.FrameRanges` instance
                 - an iterable, e.g., [1, 2, 3, 6, 8, 9, 10]. The frames do not
                     need to be in sorted order
             keyframes_only: whether to only read keyframes. By default, this
@@ -3294,8 +3713,8 @@ class SampledFramesVideoReader(VideoReader):
                 - None (all frames - the default)
                 - "*" (all frames)
                 - a string like "1-3,6,8-10"
-                - an `eta.core.frames.FrameRange` instance
-                - an `eta.core.frames.FrameRanges` instance
+                - an `eta.core.frameutils.FrameRange` instance
+                - an `eta.core.frameutils.FrameRanges` instance
                 - an iterable, e.g., [1, 2, 3, 6, 8, 9, 10]. The frames do not
                     need to be in sorted order
         '''
@@ -3398,8 +3817,8 @@ class OpenCVVideoReader(VideoReader):
                 - None (all frames - the default)
                 - "*" (all frames)
                 - a string like "1-3,6,8-10"
-                - an `eta.core.frames.FrameRange` instance
-                - an `eta.core.frames.FrameRanges` instance
+                - an `eta.core.frameutils.FrameRange` instance
+                - an `eta.core.frameutils.FrameRanges` instance
                 - an iterable, e.g., [1, 2, 3, 6, 8, 9, 10]. The frames do not
                     need to be in sorted order
 
@@ -3528,7 +3947,7 @@ class VideoWriter(object):
 
         (a) `VideoWriter`s implement the context manager interface. This means
             that subclasses can optionally use context to perform any necessary
-            setup and teardown, and so any code that uses a `VideoWriter`
+            setup and teardown, and so any code that uses a VideoWriter
             should use the `with` syntax
     '''
 

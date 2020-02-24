@@ -28,7 +28,7 @@ import os
 import re
 
 from eta.core.data import BaseDataRecord, DataRecords
-import eta.core.frames as etaf
+import eta.core.frameutils as etaf
 import eta.core.image as etai
 import eta.core.utils as etau
 import eta.core.video as etav

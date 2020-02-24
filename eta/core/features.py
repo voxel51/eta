@@ -27,7 +27,7 @@ import cv2
 import numpy as np
 
 from eta.core.config import Config, Configurable, ConfigError
-import eta.core.frames as etaf
+import eta.core.frameutils as etaf
 import eta.core.image as etai
 import eta.core.utils as etau
 import eta.core.video as etav
@@ -844,7 +844,7 @@ class CachingVideoObjectsFeaturizer(Featurizer):
 
         self._video_labels = video_labels
         if frames is None or frames == "*":
-            frames = video_labels.get_frame_numbers_with_objects()
+            frames = video_labels.get_frame_numbers_with_detected_objects()
             logger.info(
                 "Found %d frames with objects to featurize", len(frames))
         else:

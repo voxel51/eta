@@ -1,7 +1,7 @@
 '''
 Core data structures for working with data that can be read/written to disk.
 
-Copyright 2017-2019, Voxel51, Inc.
+Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
@@ -400,8 +400,8 @@ class Serializable(object):
             # this method will be called again and we need to raise a
             # NotImplementedError next time around!
             #
-            cls = etau.get_class(d.pop("_CLS"))
-            return cls.from_dict(d, *args, **kwargs)
+            serializable_cls = etau.get_class(d.pop("_CLS"))
+            return serializable_cls.from_dict(d, *args, **kwargs)
 
         raise NotImplementedError("subclass must implement from_dict()")
 
@@ -614,6 +614,11 @@ class Set(Serializable):
         '''
         return getattr(element, cls._ELE_KEY_ATTR)
 
+    @property
+    def is_empty(self):
+        '''Whether this set has no elements.'''
+        return not bool(self)
+
     def clear(self):
         '''Deletes all elements from the set.'''
         setattr(self, self._ELE_ATTR, OrderedDict())
@@ -817,15 +822,17 @@ class Set(Serializable):
 
         Args:
             d: a JSON dictionary representation of a Set object
-            **kwargs: an optional set of keyword arguments that have already
-                been parsed by a subclass
+            **kwargs: optional keyword arguments that have already been parsed
+                by a subclass
 
         Returns:
             an instance of the Set class
         '''
-        cls = cls._validate_dict(d)
-        elements = [cls._ELE_CLS.from_dict(dd) for dd in d[cls._ELE_ATTR]]
-        return cls(**etau.join_dicts({cls._ELE_ATTR: elements}, kwargs))
+        set_cls = cls._validate_dict(d)
+        elements = [
+            set_cls._ELE_CLS.from_dict(dd) for dd in d[set_cls._ELE_ATTR]]
+        return set_cls(
+            **etau.join_dicts({set_cls._ELE_ATTR: elements}, kwargs))
 
     @classmethod
     def from_numeric_patt(cls, pattern, *args, **kwargs):
@@ -981,7 +988,7 @@ class BigMixin(object):
 
     def clear(self):
         '''Deletes all elements from the Big iterable.'''
-        super(BigSet, self).clear()
+        super(BigMixin, self).clear()
         etau.delete_dir(self.backing_dir)
         etau.ensure_dir(self.backing_dir)
 
@@ -1222,6 +1229,7 @@ class BigSet(BigMixin, Set):
     def __setitem__(self, key, element):
         if key not in self:
             self.__elements__[key] = self._make_uuid()
+
         element.write_json(self._ele_path(key))
 
     def __delitem__(self, key):
@@ -1458,10 +1466,10 @@ class BigSet(BigMixin, Set):
         Returns:
             an instance of the BigSet class
         '''
-        cls = cls._validate_dict(d)
+        set_cls = cls._validate_dict(d)
         backing_dir = d.get("backing_dir", None)
-        kwargs[cls._ELE_ATTR] = d[cls._ELE_ATTR]
-        return cls(backing_dir=backing_dir, **kwargs)
+        kwargs[set_cls._ELE_ATTR] = d[set_cls._ELE_ATTR]
+        return set_cls(backing_dir=backing_dir, **kwargs)
 
     def _filter_elements(self, filters, match):
         def run_filters(key):
@@ -1600,8 +1608,9 @@ class Container(Serializable):
     def __setitem__(self, idx, element):
         if isinstance(idx, slice):
             inds = self._slice_to_inds(idx)
-            for idx, ele in zip(inds, element):
-                self[idx] = ele
+            for ind, ele in zip(inds, element):
+                self[ind] = ele
+
             return
 
         self.__elements__[idx] = element
@@ -1639,6 +1648,11 @@ class Container(Serializable):
         '''
         return etau.get_class_name(cls._ELE_CLS)
 
+    @property
+    def is_empty(self):
+        '''Whether this container has no elements.'''
+        return not bool(self)
+
     def clear(self):
         '''Deletes all elements from the container.'''
         setattr(self, self._ELE_ATTR, [])
@@ -1674,7 +1688,7 @@ class Container(Serializable):
         '''Appends the elements in the given container to this container.
 
         Args:
-            container: a Container instance
+            container: a Container of `_ELE_CLS` objects
         '''
         self.__elements__.extend(container.__elements__)
 
@@ -1684,11 +1698,31 @@ class Container(Serializable):
         Args:
             elements: an iterable of `_ELE_CLS` objects
         '''
-        if isinstance(elements, list):
-            self.__elements__.extend(elements)
-        else:
-            for element in elements:
-                self.add(element)
+        self.__elements__.extend(list(elements))
+
+    def prepend(self, element):
+        '''Prepends an element to the container.
+
+        Args:
+            element: an instance of `_ELE_CLS`
+        '''
+        self.__elements__.insert(0, element)
+
+    def prepend_container(self, container):
+        '''Prepends the elements in the given container to this container.
+
+        Args:
+            container: a Container of `_ELE_CLS` objects
+        '''
+        self.__elements__[0:0] = container.__elements__
+
+    def prepend_iterable(self, elements):
+        '''Prepends the elements in the given iterable to the container.
+
+        Args:
+            elements: an iterable of `_ELE_CLS` objects
+        '''
+        self.__elements__[0:0] = list(elements)
 
     def filter_elements(self, filters, match=any):
         '''Removes elements that don't match the given filters from the
@@ -1863,9 +1897,12 @@ class Container(Serializable):
         Returns:
             an instance of the Container class
         '''
-        cls = cls._validate_dict(d)
-        elements = [cls._ELE_CLS.from_dict(dd) for dd in d[cls._ELE_ATTR]]
-        return cls(**etau.join_dicts({cls._ELE_ATTR: elements}, kwargs))
+        container_cls = cls._validate_dict(d)
+        elements = [
+            container_cls._ELE_CLS.from_dict(dd)
+            for dd in d[container_cls._ELE_ATTR]]
+        return container_cls(
+            **etau.join_dicts({container_cls._ELE_ATTR: elements}, kwargs))
 
     @classmethod
     def from_numeric_patt(cls, pattern, *args, **kwargs):
@@ -1892,8 +1929,7 @@ class Container(Serializable):
         files.
 
         Args:
-             pattern: a glob pattern
-                example: "/path/to/labels/*.json"
+             pattern: a glob pattern, e.g., "/path/to/labels/*.json"
             *args: optional positional arguments for
                 `cls.get_element_class().from_json()`
             **kwargs: optional keyword arguments for
@@ -2053,17 +2089,20 @@ class BigContainer(BigMixin, Container):
 
         if idx < 0:
             idx += len(self)
+
         return self._load_ele(self._ele_path(idx))
 
     def __setitem__(self, idx, element):
         if isinstance(idx, slice):
             inds = self._slice_to_inds(idx)
-            for idx, ele in zip(inds, element):
-                self[idx] = ele
+            for ind, ele in zip(inds, element):
+                self[ind] = ele
+
             return
 
         if idx < 0:
             idx += len(self)
+
         element.write_json(self._ele_path(idx))
 
     def __delitem__(self, idx):
@@ -2074,6 +2113,7 @@ class BigContainer(BigMixin, Container):
 
         if idx < 0:
             idx += len(self)
+
         etau.delete_file(self._ele_path(idx))
         super(BigContainer, self).__delitem__(idx)
 
@@ -2283,8 +2323,8 @@ class BigContainer(BigMixin, Container):
         Returns:
             an instance of the BigContainer class
         '''
-        cls = cls._validate_dict(d)
-        return cls(**etau.join_dicts(d, kwargs))
+        container_cls = cls._validate_dict(d)
+        return container_cls(**etau.join_dicts(d, kwargs))
 
     def _filter_elements(self, filters, match):
         def run_filters(idx):
@@ -2402,12 +2442,12 @@ class ETAJSONEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, Serializable):
             return obj.serialize()
-        elif isinstance(obj, np.integer):
+        if isinstance(obj, np.integer):
             return int(obj)
-        elif isinstance(obj, np.floating):
+        if isinstance(obj, np.floating):
             return float(obj)
-        elif isinstance(obj, np.ndarray):
+        if isinstance(obj, np.ndarray):
             return obj.tolist()
-        elif isinstance(obj, (dt.datetime, dt.date)):
+        if isinstance(obj, (dt.datetime, dt.date)):
             return obj.isoformat()
         return super(ETAJSONEncoder, self).default(obj)
