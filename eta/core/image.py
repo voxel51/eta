@@ -570,17 +570,20 @@ class ImageLabelsSchema(Serializable):
 
     @classmethod
     def from_video_labels_schema(cls, video_labels_schema):
-        '''Create ImageLabelsSchema from VideoLabelsSchema, using frame attrs
-        as image attrs
+        '''Creates an ImageLabelsSchema from a VideoLabelsSchema.
+
+        Frame-level attributes of the VideoLabelsSchema are converted to
+        image-level attributes in the ImageLabelsSchema.
 
         Args:
-            video_labels_schema: a VideoLabelsSchema instance
+            video_labels_schema: a VideoLabelsSchema
 
         Returns:
-            an ImageLabelsSchema instance
+            a ImageLabelsSchema
         '''
-        return cls(attrs=video_labels_schema.frames,
-                   objects=video_labels_schema.objects)
+        return cls(
+            attrs=video_labels_schema.frames,
+            objects=video_labels_schema.objects)
 
     @classmethod
     def from_dict(cls, d):

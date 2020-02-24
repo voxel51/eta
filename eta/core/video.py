@@ -1621,14 +1621,22 @@ class VideoLabelsSchema(Serializable):
         '''
         return ["attrs", "frames", "objects", "events"]
 
-    def cast_as_image_labels_schema(self):
-        '''Create ImageLabelsSchema from VideoLabelsSchema, using frame attrs
-        as image attrs
+    @classmethod
+    def from_image_labels_schema(cls, image_labels_schema):
+        '''Creates a VideoLabelsSchema from an ImageLabelsSchema.
+
+        Image-level attributes of the ImageLabelsSchema are converted to
+        frame-level attributes in the VideoLabelsSchema.
+
+        Args:
+            image_labels_schema: an ImageLabelsSchema
 
         Returns:
-            an ImageLabelsSchema instance
+            a VideoLabelsSchema
         '''
-        return etai.ImageLabelsSchema.from_video_labels_schema(self)
+        return cls(
+            frames=image_labels_schema.attrs,
+            objects=image_labels_schema.objects)
 
     @classmethod
     def build_active_schema_for_frame(cls, frame_labels):
