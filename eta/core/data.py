@@ -549,6 +549,12 @@ class CategoricalAttributeSchema(AttributeSchema):
         '''
         return ["name", "type", "categories", "exclusive"]
 
+    def serialize(self, *args, **kwargs):
+        d = super(CategoricalAttributeSchema, self).serialize(*args, **kwargs)
+        if "categories" in d:
+            d["categories"].sort()
+        return d
+
     @staticmethod
     def get_kwargs(d):
         '''Extracts the relevant keyword arguments for this schema from the
