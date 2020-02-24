@@ -660,7 +660,7 @@ class VideoLabels(
         '''
         return sorted([fn for fn in self if self[fn].has_frame_attributes])
 
-    def get_frame_numbers_with_detected_objects(self):
+    def get_frame_numbers_with_objects(self):
         '''Returns a sorted list of frames with one or more `DetectedObject`s.
 
         Returns:
@@ -668,7 +668,7 @@ class VideoLabels(
         '''
         return sorted([fn for fn in self if self[fn].has_objects])
 
-    def get_frame_numbers_with_detected_event(self):
+    def get_frame_numbers_with_events(self):
         '''Returns a sorted list of frames with one or more `DetectedEvent`s.
 
         Returns:
