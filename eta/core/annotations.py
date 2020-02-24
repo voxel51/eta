@@ -1050,16 +1050,6 @@ def _compute_region_centroids(mask):
     return coords
 
 
-'''
-M = cv2.moments(mask.astype(np.uint8))
-tlx = int(M["m10"] / M["m00"])
-tly = int(M["m01"] / M["m00"])
-
-#tlx = maski.sum(axis=0).argmax()
-#tly = maski.sum(axis=1).argmax()
-'''
-
-
 def _annotate_frame_mask_regions(
         img, center_coords, attr_strs, annotation_config):
     for coords, attr_str in zip(center_coords, attr_strs):

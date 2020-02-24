@@ -549,6 +549,12 @@ class CategoricalAttributeSchema(AttributeSchema):
         '''
         return ["name", "type", "categories", "exclusive"]
 
+    def serialize(self, *args, **kwargs):
+        d = super(CategoricalAttributeSchema, self).serialize(*args, **kwargs)
+        if "categories" in d:
+            d["categories"].sort()
+        return d
+
     @staticmethod
     def get_kwargs(d):
         '''Extracts the relevant keyword arguments for this schema from the
@@ -1154,17 +1160,26 @@ class AttributeContainerSchema(etal.LabelsContainerSchema):
             other_attr_schema = schema.get_attribute_schema(name)
             attr_schema.validate_subset_of_schema(other_attr_schema)
 
+    def merge_attribute_schema(self, attr_schema):
+        '''Merges the given `AttributeSchema` into the schema.
+
+        Args:
+            attr_schema: an AttributeSchema
+        '''
+        name = attr_schema.name
+        if name not in self.schema:
+            self.schema[name] = attr_schema
+        else:
+            self.schema[name].merge_schema(attr_schema)
+
     def merge_schema(self, schema):
         '''Merges the given `AttributeContainerSchema` into the schema.
 
         Args:
             schema: an AttributeContainerSchema
         '''
-        for name, attr_schema in schema.iter_attributes():
-            if name not in self.schema:
-                self.schema[name] = attr_schema
-            else:
-                self.schema[name].merge_schema(attr_schema)
+        for _, attr_schema in schema.iter_attributes():
+            self.merge_attribute_schema(attr_schema)
 
     @classmethod
     def build_active_schema(cls, attrs):
