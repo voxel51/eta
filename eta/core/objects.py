@@ -1640,15 +1640,24 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
             other_obj_schema = schema.get_object_schema(label)
             obj_schema.validate_subset_of_schema(other_obj_schema)
 
+    def merge_object_schema(self, obj_schema):
+        '''Merges the given `ObjectSchema` into the schema.
+
+        Args:
+            obj_schema: an ObjectSchema
+        '''
+        label = obj_schema.label
+        self._ensure_has_object_label(label)
+        self.schema[label].merge_schema(obj_schema)
+
     def merge_schema(self, schema):
         '''Merges the given ObjectContainerSchema into this schema.
 
         Args:
             schema: an ObjectContainerSchema
         '''
-        for label, obj_schema in schema.iter_objects():
-            self._ensure_has_object_label(label)
-            self.schema[label].merge_schema(obj_schema)
+        for _, obj_schema in schema.iter_objects():
+            self.merge_object_schema(obj_schema)
 
     @classmethod
     def build_active_schema(cls, objects):

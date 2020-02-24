@@ -2589,15 +2589,24 @@ class EventContainerSchema(etal.LabelsContainerSchema):
             other_event_schema = schema.get_event_schema(label)
             event_schema.validate_subset_of_schema(other_event_schema)
 
+    def merge_event_schema(self, event_schema):
+        '''Merges the given `EventSchema` into the schema.
+
+        Args:
+            event_schema: an EventSchema
+        '''
+        label = event_schema.label
+        self._ensure_has_event_label(label)
+        self.schema[label].merge_schema(event_schema)
+
     def merge_schema(self, schema):
         '''Merges the given EventContainerSchema into this schema.
 
         Args:
             schema: an EventContainerSchema
         '''
-        for label, event_schema in schema.iter_events():
-            self._ensure_has_event_label(label)
-            self.schema[label].merge_schema(event_schema)
+        for _, event_schema in schema.iter_events():
+            self.merge_event_schema(event_schema)
 
     @classmethod
     def build_active_schema(cls, events):
