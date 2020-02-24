@@ -2522,3 +2522,20 @@ class ExecutableRuntimeError(Exception):
     def __init__(self, cmd, err):
         message = "Command '%s' failed with error:\n%s" % (cmd, err)
         super(ExecutableRuntimeError, self).__init__(message)
+
+
+def validate_type(obj, expected_type):
+    '''Validates an object's type against an expected type.
+
+    Args:
+        obj: the python object to validate
+        expected_type: the type that `obj` must be (via `isinstance`)
+
+    Raises:
+        TypeError: if `obj` is not of `expected_type`
+    '''
+    if not isinstance(obj, expected_type):
+        raise TypeError(
+            "Unexpected argument type:\n\tExpected: %s\n\tActual: %s"
+            % (get_class_name(expected_type), get_class_name(obj))
+        )
