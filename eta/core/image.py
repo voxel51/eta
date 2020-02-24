@@ -579,7 +579,7 @@ class ImageLabelsSchema(Serializable):
             video_labels_schema: a VideoLabelsSchema
 
         Returns:
-            a ImageLabelsSchema
+            an ImageLabelsSchema
         '''
         return cls(
             attrs=video_labels_schema.frames,
