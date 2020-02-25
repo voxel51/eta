@@ -549,6 +549,65 @@ class VideoEventDetector(Detector):
             return False
 
 
+class SemanticSegmenter(Model):
+    '''Configuration for an `eta.core.learning.SemanticSegmenter`.
+
+    This type is implemented in ETA by the
+    `eta.core.learning.SemanticSegmenterConfig` class.
+    '''
+
+    @staticmethod
+    def is_valid_value(val):
+        try:
+            etal.SemanticSegmenterConfig(val)
+            return True
+        except Exception as e:
+            logger.error(
+                "An error occured while parsing the SemanticSegmenter value")
+            logger.error(e, exc_info=True)
+            return False
+
+
+class ImageSemanticSegmenter(SemanticSegmenter):
+    '''Configuration for an `eta.core.learning.ImageSemanticSegmenter`.
+
+    This type is implemented in ETA by the
+    `eta.core.learning.ImageSemanticSegmenterConfig` class.
+    '''
+
+    @staticmethod
+    def is_valid_value(val):
+        try:
+            etal.ImageSemanticSegmenterConfig(val)
+            return True
+        except Exception as e:
+            logger.error(
+                "An error occured while parsing the ImageSemanticSegmenter "
+                "value")
+            logger.error(e, exc_info=True)
+            return False
+
+
+class VideoSemanticSegmenter(SemanticSegmenter):
+    '''Configuration for an `eta.core.learning.VideoSemanticSegmenter`.
+
+    This type is implemented in ETA by the
+    `eta.core.learning.VideoSemanticSegmenterConfig` class.
+    '''
+
+    @staticmethod
+    def is_valid_value(val):
+        try:
+            etal.VideoSemanticSegmenterConfig(val)
+            return True
+        except Exception as e:
+            logger.error(
+                "An error occured while parsing the VideoSemanticSegmenter "
+                "value")
+            logger.error(e, exc_info=True)
+            return False
+
+
 ###### Data types #############################################################
 
 
