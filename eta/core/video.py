@@ -600,6 +600,11 @@ class VideoLabels(
             or self.has_video_objects or self.has_video_events
             or self.has_frame_labels)
 
+    @property
+    def num_frames(self):
+        '''The number of frames with VideoFrameLabels.'''
+        return len(self.frames)
+
     def has_frame(self, frame_number):
         '''Determines whether this object contains a VideoFrameLabels for the
         given frame number.
