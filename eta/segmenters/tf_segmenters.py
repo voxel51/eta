@@ -21,6 +21,8 @@ from builtins import *
 
 import logging
 
+import numpy as np
+
 from eta.core.config import Config, ConfigError
 import eta.core.data as etad
 import eta.core.image as etai
@@ -186,6 +188,7 @@ class TFSemanticSegmenter(
             for img in imgs]
 
         masks = self._evaluate(imgs, [self._output_op])
+        masks = masks.astype(np.uint8)
         return [etai.ImageLabels(mask=mask[0]) for mask in masks]
 
     def _evaluate(self, imgs, ops):
