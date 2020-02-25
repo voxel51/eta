@@ -113,7 +113,7 @@ class ImageLabels(etaf.FrameLabels):
         metadata: (optional) an ImageMetadata describing metadata about the
             image
         mask: (optiona) a segmentation mask for the image
-        mask_index: (optional) a FrameMaskIndex describing the semantics of the
+        mask_index: (optional) a MaskIndex describing the semantics of the
             segmentation mask
         attrs: an AttributeContainer of attributes of the image
         objects: a DetectedObjectContainer of objects in the image
@@ -616,14 +616,65 @@ def resize(img, width=None, height=None, *args, **kwargs):
     Returns:
         the resized image
     '''
+    ih, iw = img.shape[:2]
+
     if height is None or height < 0:
-        height = int(round(img.shape[0] * (width * 1.0 / img.shape[1])))
+        height = int(round(ih * (width * 1.0 / iw)))
+
     if width is None or width < 0:
-        width = int(round(img.shape[1] * (height * 1.0 / img.shape[0])))
+        width = int(round(iw * (height * 1.0 / ih)))
+
     return cv2.resize(img, (width, height), *args, **kwargs)
 
 
-def expand(img, width=None, height=None, *args, **kwargs):
+def resize_to_fit_max(img, max_dim, *args, **kwargs):
+    '''Resizes the given image, if necessary, so that its largest dimension is
+    exactly equal to the specified value.
+
+    The aspect ratio of the input image is preserved.
+
+    Args:
+        img: input image
+        max_dim: the maximum dimension
+        *args: valid positional arguments for `cv2.resize()`
+        **kwargs: valid keyword arguments for `cv2.resize()`
+
+    Returns:
+        the fitted image
+    '''
+    width, height = to_frame_size(img=img)
+
+    alpha = max_dim * 1.0 / max(width, height)
+    width = int(round(alpha * width))
+    height = int(round(alpha * height))
+    return resize(img, width=width, height=height, *args, **kwargs)
+
+
+def resize_to_fit_min(img, min_dim, *args, **kwargs):
+    '''Resizes the given image, if necessary, so that its smallest dimension is
+    exactly equal to the specified value.
+
+    The aspect ratio of the input image is preserved.
+
+    Args:
+        img: input image
+        min_dim: the minimum dimension
+        *args: valid positional arguments for `cv2.resize()`
+        **kwargs: valid keyword arguments for `cv2.resize()`
+
+    Returns:
+        the fitted image
+    '''
+    width, height = to_frame_size(img=img)
+
+    alpha = min_dim * 1.0 / min(width, height)
+    width = int(round(alpha * width))
+    height = int(round(alpha * height))
+    return resize(img, width=width, height=height, *args, **kwargs)
+
+
+def expand(
+        img, min_width=None, min_height=None, min_dim=None, *args, **kwargs):
     '''Resizes the given image, if necesary, so that its width and height are
     greater than or equal to the specified minimum values.
 
@@ -631,25 +682,70 @@ def expand(img, width=None, height=None, *args, **kwargs):
 
     Args:
         img: input image
-        width: the minimum width
-        height: the minimum height
+        min_width: the minimum width
+        min_height: the minimum height
+        min_dim: the minimum width and height
         *args: valid positional arguments for `cv2.resize()`
         **kwargs: valid keyword arguments for `cv2.resize()`
 
     Returns:
-        the expanded image
+        the expanded (if necessary) image
     '''
+    if min_dim is not None:
+        min_width = min_dim
+        min_height = min_dim
+
     iw, ih = to_frame_size(img=img)
     ow, oh = iw, ih
-    if ow < width:
-        oh = int(round(oh * (width / ow)))
-        ow = width
 
-    if oh < height:
-        ow = int(round(ow * (height / oh)))
-        oh = height
+    if ow < min_width:
+        oh = int(round(oh * (min_width / ow)))
+        ow = min_width
+
+    if oh < min_height:
+        ow = int(round(ow * (min_height / oh)))
+        oh = min_height
 
     if (ow > iw) or (oh > ih):
+        img = resize(img, width=ow, height=oh, *args, **kwargs)
+
+    return img
+
+
+def contract(
+        img, max_width=None, max_height=None, max_dim=None, *args, **kwargs):
+    '''Resizes the given image, if necesary, so that its width and height are
+    less than or equal to the specified maximum values.
+
+    The aspect ratio of the input image is preserved.
+
+    Args:
+        img: input image
+        max_width: the maximum width
+        max_height: the maximum height
+        max_dim: the maximum width and width
+        *args: valid positional arguments for `cv2.resize()`
+        **kwargs: valid keyword arguments for `cv2.resize()`
+
+    Returns:
+        the contracted (if necessary) image
+    '''
+    if max_dim is not None:
+        max_width = max_dim
+        max_height = max_dim
+
+    iw, ih = to_frame_size(img=img)
+    ow, oh = iw, ih
+
+    if ow > max_width:
+        oh = int(round(oh * (max_width / ow)))
+        ow = max_width
+
+    if oh > max_height:
+        ow = int(round(ow * (max_height / oh)))
+        oh = max_height
+
+    if (ow < iw) or (oh < ih):
         img = resize(img, width=ow, height=oh, *args, **kwargs)
 
     return img
@@ -674,7 +770,7 @@ def central_crop(img, frame_size=None, shape=None):
     width, height = to_frame_size(frame_size=frame_size, shape=shape)
 
     # Expand image, if necessary
-    img = expand(img, width=width, height=height)
+    img = expand(img, min_width=width, min_height=height)
 
     # Extract central crop
     bounding = (height, width)

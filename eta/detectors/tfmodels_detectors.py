@@ -1,8 +1,8 @@
 '''
-Interface to the TF models object detection library available at
+Interface to the TF-Models Object Detection Library available at
 https://github.com/tensorflow/models/tree/master/research/object_detection.
 
-Copyright 2017-2019, Voxel51, Inc.
+Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
@@ -355,8 +355,8 @@ class TFModelsDetector(
         return self._sess.run(out_tensors, feed_dict={in_tensor: imgs})
 
 
-class TFModelsSegmenterConfig(Config, etal.HasDefaultDeploymentConfig):
-    '''TFModelsSegmenter configuration settings.
+class TFModelsInstanceSegmenterConfig(Config, etal.HasDefaultDeploymentConfig):
+    '''TFModelsInstanceSegmenter configuration settings.
 
     Note that `labels_path` is passed through
     `eta.core.utils.fill_config_patterns` at load time, so it can contain
@@ -441,7 +441,7 @@ class TFModelsSegmenterConfig(Config, etal.HasDefaultDeploymentConfig):
                 "Either `model_name` or `model_path` must be provided")
 
 
-class TFModelsSegmenter(
+class TFModelsInstanceSegmenter(
         etal.ObjectDetector, etal.ExposesFeatures, etal.ExposesProbabilities,
         etat.UsesTFSession):
     '''Interface to the instance segmentation models from the TF-Models
@@ -468,10 +468,10 @@ class TFModelsSegmenter(
     '''
 
     def __init__(self, config):
-        '''Creates a TFModelsSegmenter instance.
+        '''Creates a TFModelsInstanceSegmenter instance.
 
         Args:
-            config: a TFModelsSegmenterConfig instance
+            config: a TFModelsInstanceSegmenterConfig instance
         '''
         self.config = config
         etat.UsesTFSession.__init__(self)

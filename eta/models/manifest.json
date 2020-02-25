@@ -236,7 +236,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "eta.detectors.TFModelsSegmenter",
+                "type": "eta.detectors.TFModelsInstanceSegmenter",
                 "config": {
                     "model_name": "mask-rcnn-inception-resnet-v2-atrous-coco",
                     "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
@@ -257,7 +257,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "eta.detectors.TFModelsSegmenter",
+                "type": "eta.detectors.TFModelsInstanceSegmenter",
                 "config": {
                     "model_name": "mask-rcnn-inception-v2-coco",
                     "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
@@ -278,7 +278,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "eta.detectors.TFModelsSegmenter",
+                "type": "eta.detectors.TFModelsInstanceSegmenter",
                 "config": {
                     "model_name": "mask-rcnn-resnet50-atrous-coco",
                     "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
@@ -299,7 +299,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "eta.detectors.TFModelsSegmenter",
+                "type": "eta.detectors.TFModelsInstanceSegmenter",
                 "config": {
                     "model_name": "mask-rcnn-resnet101-atrous-coco",
                     "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
@@ -473,6 +473,52 @@
                 }
             },
             "date_created": "2019-04-11 12:25:44"
+        },
+        {
+            "base_name": "deeplabv3-cityscapes",
+            "base_filename": "deeplabv3-cityscapes.pb",
+            "version": null,
+            "description": "A DeepLabv3 semantic segmentation model trained on the Cityscapes dataset",
+            "manager": {
+                "type": "eta.core.models.ETAModelManager",
+                "config": {
+                    "google_drive_id": "1GKJtItUirHZ2DY_mQu872QuoWZuAHNr8"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "eta.segmenters.TFSemanticSegmenter",
+                "config": {
+                    "model_name": "deeplabv3-cityscapes",
+                    "labels_path": "{{eta-resources}}/tf-semantic-segmenters-cityscapes-train-labels.txt",
+                    "resize_to_max_dim": 513,
+                    "input_name": "ImageTensor",
+                    "output_name": "SemanticPredictions"
+                }
+            },
+            "date_created": "2020-12-10 12:07:51"
+        },
+        {
+            "base_name": "deeplabv3-mnv2-cityscapes",
+            "base_filename": "deeplabv3-mnv2-cityscapes.pb",
+            "version": null,
+            "description": "A DeepLabv3 semantic segmentation model with MobileNetV2 backbone trained on the Cityscapes dataset",
+            "manager": {
+                "type": "eta.core.models.ETAModelManager",
+                "config": {
+                    "google_drive_id": "1JYx2Z6or9Jm24aWv79-5aQ8Gg9IF_m6Z"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "eta.segmenters.TFSemanticSegmenter",
+                "config": {
+                    "model_name": "deeplabv3-mnv2-cityscapes",
+                    "labels_path": "{{eta-resources}}/tf-semantic-segmenters-cityscapes-train-labels.txt",
+                    "resize_to_max_dim": 513,
+                    "input_name": "ImageTensor",
+                    "output_name": "SemanticPredictions"
+                }
+            },
+            "date_created": "2020-12-10 12:07:51"
         },
         {
             "base_name": "vgg16-imagenet",

@@ -1,8 +1,8 @@
 # Instance Segmentation Demo
 
 This demo runs an instance detection pipeline that uses a pre-trained
-`eta.detectors.TFModelsSegmenter` model to detect and segment vehicles and
-peoples in videos.
+`eta.detectors.TFModelsInstanceSegmenter` model to detect and segment vehicles
+and peoples in videos.
 
 
 ## Instructions
@@ -23,7 +23,7 @@ To visualize the results, view `out/people-annotated.mp4` and
 
 ## Copyright
 
-Copyright 2017-2019, Voxel51, Inc.<br>
+Copyright 2017-2020, Voxel51, Inc.<br>
 voxel51.com
 
 Brian Moore, brian@voxel51.com

@@ -105,6 +105,24 @@ Open the `demo_instance_segmentation/out/people-annotated.mp4` and
 inspect the output of the pipelines.
 
 
+## Semantic segmentation
+
+The following code runs a semantic segmentation pipeline on video.
+
+See [this README](demo_semantic_segmentation/README.md) for more information.
+
+```shell
+cd demo_semantic_segmentation
+
+eta build -r segment-frames.json --run-now
+
+cd ..
+```
+
+Open the `demo_semantic_segmentation/out/people-annotated.mp4` in your video
+player to inspect the output of the pipeline.
+
+
 ## Image detection and classification
 
 The following code runs a pipeline that performs image detection and

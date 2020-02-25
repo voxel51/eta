@@ -1275,6 +1275,22 @@ class MaskIndex(etas.Serializable):
         del self.index[value]
 
     @classmethod
+    def from_labels_map(cls, labels_map):
+        '''Returns a MaskIndex for the given labels map.
+
+        Args:
+            labels_map: a dict mapping indices to label values
+
+        Returns:
+            a MaskIndex
+        '''
+        mask_index = cls()
+        for index, value in iteritems(labels_map):
+            mask_index[index] = CategoricalAttribute("label", value)
+
+        return mask_index
+
+    @classmethod
     def from_dict(cls, d):
         '''Constructs a MaskIndex from a JSON dictionary.
 

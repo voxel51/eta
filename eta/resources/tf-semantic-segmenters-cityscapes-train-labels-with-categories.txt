@@ -1,0 +1,20 @@
+0:flat:road
+1:flat:sidewalk
+2:construction:building
+3:construction:wall
+4:construction:fence
+5:object:pole
+6:object:traffic light
+7:object:traffic sign
+8:vegetation
+9:nature:terrain
+10:nature:sky
+11:human:person
+12:human:rider
+13:vehicle:car
+14:vehicle:truck
+15:vehicle:bus
+16:vehicle:train
+17:vehicle:motorcycle
+18:vehicle:bicycle
+255:void:other

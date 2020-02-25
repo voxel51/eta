@@ -42,7 +42,7 @@ import numpy as np
 
 import eta.core.data as etad
 import eta.core.events as etae
-from eta.core.frames import FrameLabels, FrameMaskIndex
+from eta.core.frames import FrameLabels
 import eta.core.frameutils as etaf
 import eta.core.gps as etag
 import eta.core.image as etai
@@ -355,7 +355,7 @@ class VideoFrameLabels(FrameLabels):
     Attributes:
         frame_number: the frame number
         mask: (optional) a segmentation mask for the frame
-        mask_index: (optional) a FrameMaskIndex describing the semantics of the
+        mask_index: (optional) a MaskIndex describing the semantics of the
             segmentation mask
         attrs: an AttributeContainer of attributes of the frame
         objects: a DetectedObjectContainer of objects in the frame
@@ -418,8 +418,8 @@ class VideoLabels(
         filename: (optional) the filename of the video
         metadata: (optional) a VideoMetadata of metadata about the video
         support: a FrameRanges instance describing the support of the labels
-        mask_index: (optional) a FrameMaskIndex describing the semantics of all
-            frame segmentation masks in the video
+        mask_index: (optional) a MaskIndex describing the semantics of all
+            segmentation masks in the video
         attrs: an AttributeContainer of video-level attributes
         frames: a dictionary mapping frame numbers to VideoFrameLabels
         objects: a VideoObjectContainer of objects
@@ -437,8 +437,8 @@ class VideoLabels(
             metadata: (optional) a VideoMetadata of metadata about the video
             support: (optional) a FrameRanges instance describing the frozen
                 support of the labels
-            mask_index: (optional) a FrameMaskIndex describing the semantics of
-                all frame segmentation masks in the video
+            mask_index: (optional) a MaskIndex describing the semantics of all
+                segmentation masks in the video
             attrs: (optional) an AttributeContainer of video-level attributes
             frames: (optional) a dictionary mapping frame numbers to
                 VideoFrameLabels
@@ -640,13 +640,21 @@ class VideoLabels(
         '''
         del self.frames[frame_number]
 
-    def get_frame_numbers(self):
+    def get_frame_numbers_with_labels(self):
         '''Returns a sorted list of all frames with VideoFrameLabels.
 
         Returns:
             a list of frame numbers
         '''
         return sorted(self.frames.keys())
+
+    def get_frame_numbers_with_masks(self):
+        '''Returns a sorted list of frames with frame-level masks.
+
+        Returns:
+            a sorted list of frame numbers
+        '''
+        return sorted([fn for fn in self if self[fn].has_mask])
 
     def get_frame_numbers_with_attributes(self):
         '''Returns a sorted list of frames with one or more frame-level
@@ -657,7 +665,7 @@ class VideoLabels(
         '''
         return sorted([fn for fn in self if self[fn].has_frame_attributes])
 
-    def get_frame_numbers_with_detected_objects(self):
+    def get_frame_numbers_with_objects(self):
         '''Returns a sorted list of frames with one or more `DetectedObject`s.
 
         Returns:
@@ -665,14 +673,13 @@ class VideoLabels(
         '''
         return sorted([fn for fn in self if self[fn].has_objects])
 
-    def get_frame_range(self):
-        '''Returns the (min, max) frame numbers with VideoFrameLabels.
+    def get_frame_numbers_with_events(self):
+        '''Returns a sorted list of frames with one or more `DetectedEvent`s.
 
         Returns:
-            the (min, max) frame numbers
+            a list of frame numbers
         '''
-        fns = self.get_frame_numbers()
-        return (fns[0], fns[-1]) if fns else (None, None)
+        return sorted([fn for fn in self if self[fn].has_events])
 
     def add_video_attribute(self, attr):
         '''Adds the given video-level attribute to the video.
@@ -963,7 +970,7 @@ class VideoLabels(
 
         mask_index = d.get("mask_index", None)
         if mask_index is not None:
-            mask_index = FrameMaskIndex.from_dict(mask_index)
+            mask_index = etad.MaskIndex.from_dict(mask_index)
 
         attrs = d.get("attrs", None)
         if attrs is not None:

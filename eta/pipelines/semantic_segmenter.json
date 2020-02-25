@@ -1,14 +1,13 @@
 {
     "info": {
-        "name": "object_detector",
+        "name": "semantic_segmenter",
         "type": "eta.core.types.Pipeline",
         "version": "0.1",
-        "description": "A pipeline for detecting objects in videos"
+        "description": "A pipeline for performing semantic segmentation on the frames of videos"
     },
     "inputs": ["video"],
     "outputs": [
         "labels",
-        "features_dir",
         "annotated_video"
     ],
     "modules": {
@@ -20,10 +19,11 @@
                 "max_size": [-1, 1080]
             }
         },
-        "apply_object_detector": {
-            "name": "apply_object_detector",
+        "apply_image_semantic_segmenter": {
+            "name": "apply_image_semantic_segmenter",
             "tunable_parameters": [
-                "detector", "objects", "record_top_k_probs"
+                "segmenter",
+                "store_mask_index"
             ],
             "set_parameters": {}
         },
@@ -40,22 +40,18 @@
         },
         {
             "source": "format_videos.output_video_path",
-            "sink": "apply_object_detector.video_path"
+            "sink": "apply_image_semantic_segmenter.video_path"
         },
         {
-            "source": "apply_object_detector.output_labels_path",
+            "source": "apply_image_semantic_segmenter.output_labels_path",
             "sink": "OUTPUT.labels"
-        },
-        {
-            "source": "apply_object_detector.video_features_dir",
-            "sink": "OUTPUT.features_dir"
         },
         {
             "source": "format_videos.output_video_path",
             "sink": "visualize_labels.video_path"
         },
         {
-            "source": "apply_object_detector.output_labels_path",
+            "source": "apply_image_semantic_segmenter.output_labels_path",
             "sink": "visualize_labels.video_labels_path"
         },
         {
