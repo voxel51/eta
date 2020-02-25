@@ -187,9 +187,9 @@ class TFSemanticSegmenter(
             etai.resize_to_fit_max(img, self.config.resize_to_max_dim)
             for img in imgs]
 
-        masks = self._evaluate(imgs, [self._output_op])
-        masks = masks.astype(np.uint8)
-        return [etai.ImageLabels(mask=mask[0]) for mask in masks]
+        masks = self._evaluate(imgs, [self._output_op])[0]
+        masks = np.asarray(masks, dtype=np.uint8)
+        return [etai.ImageLabels(mask=mask) for mask in masks]
 
     def _evaluate(self, imgs, ops):
         in_tensor = self._input_op.outputs[0]
