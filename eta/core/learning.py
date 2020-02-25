@@ -858,6 +858,52 @@ class VideoSemanticSegmenter(SemanticSegmenter):
         raise NotImplementedError("subclasses must implement segment()")
 
 
+class ExposesMaskIndex(object):
+    '''Mixin for `SemanticSegmenter` subclasses that expose
+    `eta.core.data.MaskIndex`s that assign semantic labels to their
+    segmentations.
+    '''
+
+    @property
+    def exposes_mask_index(self):
+        '''Whether this segmenter exposes an `eta.core.data.MaskIndex`.
+
+        This property allows for the possibility that some, but not all
+        instances of a `SemanticSegmenter` expose their semantic labels.
+        '''
+        raise NotImplementedError(
+            "subclasses must implement exposes_mask_index")
+
+    def get_mask_index(self):
+        '''Returns the MaskIndex for the segmenter.
+
+        Returns:
+            A MaskIndex, or None if the segmenter does not expose its mask
+                index
+        '''
+        raise NotImplementedError("subclasses must implement get_mask_index()")
+
+    @staticmethod
+    def ensure_exposes_mask_index(segmenter):
+        '''Ensures that the given segmenter exposes its mask index.
+
+        Args:
+            segmenter: a SemanticSegmenter
+
+        Raises:
+            ValueError: if the segmenter does not expose features
+        '''
+        if not isinstance(segmenter, ExposesMaskIndex):
+            raise ValueError(
+                "Expected %s to implement the %s mixin, but it does not" %
+                (type(segmenter), ExposesMaskIndex))
+
+        if not segmenter.exposes_mask_index:
+            raise ValueError(
+                "Expected %s to expose its mask index, but it does not" %
+                type(segmenter))
+
+
 class ExposesFeatures(object):
     '''Mixin for `Model` subclasses that expose features for their predictions.
 
