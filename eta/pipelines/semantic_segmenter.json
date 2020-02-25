@@ -1,0 +1,62 @@
+{
+    "info": {
+        "name": "semantic_segmenter",
+        "type": "eta.core.types.Pipeline",
+        "version": "0.1",
+        "description": "A pipeline for performing semantic segmentation on the frames of videos"
+    },
+    "inputs": ["video"],
+    "outputs": [
+        "labels",
+        "annotated_video"
+    ],
+    "modules": {
+        "format_videos": {
+            "name": "format_videos",
+            "tunable_parameters": ["fps", "size"],
+            "set_parameters": {
+                "max_fps": 30,
+                "max_size": [-1, 1080]
+            }
+        },
+        "apply_image_semantic_segmenter": {
+            "name": "apply_image_semantic_segmenter",
+            "tunable_parameters": [
+                "segmenter",
+                "store_mask_index"
+            ],
+            "set_parameters": {}
+        },
+        "visualize_labels": {
+            "name": "visualize_labels",
+            "tunable_parameters": ["annotation_config"],
+            "set_parameters": {}
+        }
+    },
+    "connections": [
+        {
+            "source": "INPUT.video",
+            "sink": "format_videos.input_path"
+        },
+        {
+            "source": "format_videos.output_video_path",
+            "sink": "apply_image_semantic_segmenter.video_path"
+        },
+        {
+            "source": "apply_image_semantic_segmenter.output_labels_path",
+            "sink": "OUTPUT.labels"
+        },
+        {
+            "source": "format_videos.output_video_path",
+            "sink": "visualize_labels.video_path"
+        },
+        {
+            "source": "apply_image_semantic_segmenter.output_labels_path",
+            "sink": "visualize_labels.video_labels_path"
+        },
+        {
+            "source": "visualize_labels.output_path",
+            "sink": "OUTPUT.annotated_video"
+        }
+    ]
+}
