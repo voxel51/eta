@@ -84,7 +84,9 @@ class TFSemanticSegmenterConfig(Config, etal.HasDefaultDeploymentConfig):
                 "Either `model_name` or `model_path` must be provided")
 
 
-class TFSemanticSegmenter(etal.ImageSemanticSegmenter, etat.UsesTFSession):
+class TFSemanticSegmenter(
+        etal.ImageSemanticSegmenter, etal.ExposesMaskIndex,
+        etat.UsesTFSession):
     '''Generic interface for semantic segmentation models stored as frozen TF
     graphs.
 
@@ -134,27 +136,21 @@ class TFSemanticSegmenter(etal.ImageSemanticSegmenter, etat.UsesTFSession):
         self.close()
 
     @property
-    def has_labels_map(self):
-        '''Whether this model has a labels map.'''
+    def exposes_mask_index(self):
+        '''Whether this segmenter exposes a MaskIndex for its predictions.'''
         return self._labels_map is not None
 
-    @property
-    def labels_map(self):
-        '''A dictionary mapping semantic indices to class labels, or None if
-        this model does not have a labels map.
-        '''
-        return self._labels_map
-
     def get_mask_index(self):
-        '''Makes a MaskIndex for the model's labels map.
+        '''Returns the MaskIndex describing the semantics of this model's
+        segmentations.
 
         Returns:
-            A MaskIndex, or None if this model does not have a labels map
+            A MaskIndex, or None if this model does not expose its mask index
         '''
-        if not self.has_labels_map:
+        if not self.exposes_mask_index:
             return None
 
-        return etad.MaskIndex.from_labels_map(self.labels_map)
+        return etad.MaskIndex.from_labels_map(self._labels_map)
 
     def segment(self, img):
         '''Performs segmentation on the input image.
