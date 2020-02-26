@@ -80,21 +80,29 @@ class Attribute(etal.Labels):
         name: the name of the attribute
         value: the value of the attribute
         confidence: (optional) the confidence of the attribute, in [0, 1]
+        constant: whether this attribute is constant, i.e., all attributes of
+            the same `name` must be identical to this attribute throughout the
+            life of its parent entity
     '''
 
-    def __init__(self, name, value, confidence=None):
-        '''Constructs an Attribute instance.
+    def __init__(self, name, value, confidence=None, constant=False):
+        '''Initializes the base Attribute instance.
 
         Args:
             name: the attribute name
             value: the attribute value
             confidence: an optional confidence of the value, in [0, 1]. By
                 default, no confidence is stored
+            constant: whether this attribute is constant, i.e., all attributes
+                of the same `name` must be identical to this attribute
+                throughout the life of its parent entity. By default, this is
+                False
         '''
         self.type = etau.get_class_name(self)
         self.name = name
         self.value = self.parse_value(value)
         self.confidence = confidence
+        self.constant = constant
 
     @classmethod
     def parse_value(cls, value):
@@ -125,6 +133,8 @@ class Attribute(etal.Labels):
         _attrs = ["type", "name", "value"]
         if self.confidence is not None:
             _attrs.append("confidence")
+        if self.constant:
+            _attrs.append("constant")
 
         return _attrs
 
@@ -141,7 +151,9 @@ class Attribute(etal.Labels):
             an Attribute
         '''
         confidence = d.get("confidence", None)
-        return cls(d["name"], d["value"], confidence=confidence)
+        constant = d.get("constant", False)
+        return cls(
+            d["name"], d["value"], confidence=confidence, constant=constant)
 
     @classmethod
     def from_dict(cls, d):
@@ -166,10 +178,15 @@ class CategoricalAttribute(Attribute):
         confidence: (optional) the confidence of the attribute, in [0, 1]
         top_k_probs: (optional) an optional dictionary mapping values to
             probabilities
+        constant: whether this attribute is constant, i.e., all attributes of
+            the same `name` must be identical to this attribute throughout the
+            life of its parent entity
     '''
 
-    def __init__(self, name, value, confidence=None, top_k_probs=None):
-        '''Constructs a CategoricalAttribute instance.
+    def __init__(
+            self, name, value, confidence=None, top_k_probs=None,
+            constant=False):
+        '''Creates a CategoricalAttribute instance.
 
         Args:
             name: the attribute name
@@ -178,9 +195,13 @@ class CategoricalAttribute(Attribute):
                 default, no confidence is stored
             top_k_probs: an optional dictionary mapping values to
                 probabilities. By default, no probabilities are stored
+            constant: whether this attribute is constant, i.e., all attributes
+                of the same `name` must be identical to this attribute
+                throughout the life of its parent entity. By default, this is
+                False
         '''
         super(CategoricalAttribute, self).__init__(
-            name, value, confidence=confidence)
+            name, value, confidence=confidence, constant=constant)
         self.top_k_probs = top_k_probs
 
     @classmethod
@@ -221,6 +242,9 @@ class NumericAttribute(Attribute):
         name: the name of the attribute
         value: the value of the attribute
         confidence: (optional) the confidence of the attribute, in [0, 1]
+        constant: whether this attribute is constant, i.e., all attributes of
+            the same `name` must be identical to this attribute throughout the
+            life of its parent entity
     '''
 
     @classmethod
@@ -243,6 +267,9 @@ class BooleanAttribute(Attribute):
         name: the name of the attribute
         value: the value of the attribute
         confidence: (optional) the confidence of the attribute, in [0, 1]
+        constant: whether this attribute is constant, i.e., all attributes of
+            the same `name` must be identical to this attribute throughout the
+            life of its parent entity
     '''
 
     @classmethod
@@ -268,13 +295,13 @@ class AttributeSchema(etal.LabelsSchema):
             an AttributeContainer
     '''
 
-    def __init__(self, name, exclusive):
+    def __init__(self, name, exclusive=False):
         '''Initializes the base AttributeSchema instance.
 
         Args:
             name: the name of the attribute
             exclusive: whether at most one attribute with this name may appear
-                in an AttributeContainer
+                in an AttributeContainer. By default, this is False
         '''
         self.name = name
         self.type = etau.get_class_name(self)[:-len("Schema")]
@@ -472,7 +499,8 @@ class CategoricalAttributeSchema(AttributeSchema):
             exclusive: whether at most one attribute with this name may appear
                 in an AttributeContainer. By default, this is False
         '''
-        super(CategoricalAttributeSchema, self).__init__(name, exclusive)
+        super(CategoricalAttributeSchema, self).__init__(
+            name, exclusive=exclusive)
         self.categories = set(categories or [])
 
     @property
@@ -553,6 +581,7 @@ class CategoricalAttributeSchema(AttributeSchema):
         d = super(CategoricalAttributeSchema, self).serialize(*args, **kwargs)
         if "categories" in d:
             d["categories"].sort()
+
         return d
 
     @staticmethod
@@ -589,7 +618,7 @@ class NumericAttributeSchema(AttributeSchema):
             exclusive: whether at most one attribute with this name may appear
                 in an AttributeContainer. By default, this is False
         '''
-        super(NumericAttributeSchema, self).__init__(name, exclusive)
+        super(NumericAttributeSchema, self).__init__(name, exclusive=exclusive)
         self.range = tuple(range or [])
 
     @property
@@ -716,7 +745,7 @@ class BooleanAttributeSchema(AttributeSchema):
             exclusive: whether at most one attribute with this name may appear
                 in an AttributeContainer. By default, this is False
         '''
-        super(BooleanAttributeSchema, self).__init__(name, exclusive)
+        super(BooleanAttributeSchema, self).__init__(name, exclusive=exclusive)
         self.values = set(values or [])
 
     @property
@@ -904,6 +933,14 @@ class AttributeContainer(etal.LabelsContainer):
         '''
         attr = self.get_attr_with_name(name, default=default)
         return attr.value
+
+    def pop_constant_attrs(self):
+        '''Pops constant attributes from this container.
+
+        Returns:
+            an AttributeContainer with the constant attributes, if any
+        '''
+        return self.pop_elements([lambda attr: attr.constant])
 
     def filter_by_schema(self, schema):
         '''Removes attributes from this container that are not compliant with
