@@ -951,10 +951,14 @@ class Set(Serializable):
         match_fcn = lambda e: match(f(e) for f in filters)
 
         pop = []
+        del_keys = []
         for k, e in iteritems(self.__elements__):
             if match_fcn(e):
                 pop.append(e)
-                del self[k]
+                del_keys.append(k)
+
+        for k in del_keys:
+            del self[k]
 
         return pop
 
