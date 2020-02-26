@@ -2311,7 +2311,7 @@ class VideoLabelsSpatiotemporalRenderer(etal.LabelsSpatiotemporalRenderer):
     For VideoLabels, spatiotemporal format means that all objects are
     stored as `VideoObject`s, all events stored as `VideoEvent`s, and all
     constant attributes will be upgraded to their parent entity (e.g.,
-    constant object attributes will be stored at object-level).
+    constant frame attributes will be stored as video-level attributes).
     '''
 
     def __init__(self, video_labels):
@@ -2349,7 +2349,6 @@ class VideoLabelsSpatiotemporalRenderer(etal.LabelsSpatiotemporalRenderer):
             # By convention, don't mark attributes as constant when this is
             # apparent from their location in their parent entity
             attr.constant = False  # by convention, we do not
-
             video_attrs.add(attr)
 
         video_labels.attrs.add_container(video_attrs)
