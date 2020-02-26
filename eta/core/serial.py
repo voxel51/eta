@@ -686,6 +686,24 @@ class Set(Serializable):
         elements = self._filter_elements(filters, match)
         setattr(self, self._ELE_ATTR, elements)
 
+    def pop_elements(self, filters, match=any):
+        '''Pops elements that match the given filters from the set.
+
+        Args:
+            filters: a list of functions that accept elements and return
+                True/False
+            match: a function (usually `any` or `all`) that accepts an iterable
+                and returns True/False. Used to aggregate the outputs of each
+                filter to decide whether a match has occurred. The default is
+                `any`
+
+        Returns:
+            a Set of elements matching the given filters
+        '''
+        _set = self.empty()
+        _set.add_iterable(self._pop_elements(filters, match))
+        return _set
+
     def delete_keys(self, keys):
         '''Deletes the elements from the set with the given keys.
 
@@ -701,7 +719,7 @@ class Set(Serializable):
         Args:
             keys: an iterable of keys of the elements to keep
         '''
-        elements = self._get_elements(keys)
+        elements = self._get_elements_with_keys(keys)
         setattr(self, self._ELE_ATTR, elements)
 
     def extract_keys(self, keys):
@@ -715,10 +733,24 @@ class Set(Serializable):
         Returns:
             a Set with the requested elements
         '''
-        new_set = self.empty()
+        _set = self.empty()
         for key in keys:
-            new_set.add(self[key])
-        return new_set
+            _set.add(self[key])
+
+        return _set
+
+    def pop_keys(self, keys):
+        '''Pops elements with the given keys from the set.
+
+        Args:
+            keys: an iterable of keys of the elements to keep
+
+        Returns:
+            a Set with the popped elements
+        '''
+        _set = self.empty()
+        _set.add_iterable(self._pop_elements_with_keys(keys))
+        return _set
 
     def count_matches(self, filters, match=any):
         '''Counts the number of elements in the set that match the given
@@ -754,10 +786,9 @@ class Set(Serializable):
         Returns:
             a Set with elements matching the filters
         '''
-        new_set = self.empty()
-        elements = self._filter_elements(filters, match)
-        new_set.add_iterable(elements)
-        return new_set
+        _set = self.empty()
+        _set.add_iterable(itervalues(self._filter_elements(filters, match)))
+        return _set
 
     def sort_by(self, attr, reverse=False):
         '''Sorts the elements in the set by the given attribute.
