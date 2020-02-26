@@ -14,11 +14,12 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
-from future.utils import iteritems
+from future.utils import iteritems, itervalues
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+from collections import defaultdict
 from copy import deepcopy
 
 import eta.core.data as etad
@@ -163,10 +164,6 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
         '''
         return self.bounding_box
 
-    def clear_attributes(self):
-        '''Removes all attributes from the object.'''
-        self.attrs = etad.AttributeContainer()
-
     def add_attribute(self, attr):
         '''Adds the attribute to the object.
 
@@ -182,6 +179,20 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
             attrs: an AttributeContainer
         '''
         self.attrs.add_container(attrs)
+
+    def pop_attributes(self):
+        '''Pops the attributes from the object.
+
+        Returns:
+            an AttributeContainer
+        '''
+        attrs = self.attrs
+        self.clear_attributes()
+        return attrs
+
+    def clear_attributes(self):
+        '''Removes all attributes from the object.'''
+        self.attrs = etad.AttributeContainer()
 
     def filter_by_schema(self, schema, allow_none_label=False):
         '''Filters the object by the given schema.
@@ -611,6 +622,52 @@ class VideoObject(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
         return _attrs
 
     @classmethod
+    def from_detections(cls, objects):
+        '''Builds a VideoObject from a container of `DetectedObject`s.
+
+        The `DetectedObject`s must have their `frame_number`s set, and they
+        must all have the same `label` and `index` (which may be None).
+
+        The input objects are modified in-place and passed by reference to the
+        VideoObject.
+
+        Args:
+            objects: a DetectedObjectContainer
+
+        Returns:
+            a VideoObject
+        '''
+        if not objects:
+            return cls()
+
+        label = objects[0].label
+        index = objects[0].index
+
+        obj_attrs = {}
+        for obj in objects:
+            if obj.label != label:
+                raise ValueError(
+                    "Object label '%s' does not match first label '%s'" %
+                    (obj.label, label))
+
+            if obj.index != index:
+                raise ValueError(
+                    "Object index '%s' does not match first index '%s'" %
+                    (obj.index, index))
+
+            # Extract constant attributes
+            for const_attr in obj.attrs.pop_constant_attrs():
+                # @todo verify that existing attributes are exactly equal?
+                obj_attrs[const_attr.name] = const_attr
+
+        # Store constant attributes as object-level attributes
+        attrs = etad.AttributeContainer.from_iterable(itervalues(obj_attrs))
+
+        obj = cls(label=label, index=index, attrs=attrs)
+        obj.add_detections(objects)
+        return obj
+
+    @classmethod
     def _from_dict(cls, d):
         '''Internal implementation of `from_dict()`.
 
@@ -754,6 +811,47 @@ class VideoObjectContainer(etal.LabelsContainer):
             (labels is not None and obj.label not in labels)
             or obj.has_attributes)
         self.filter_elements([filter_func])
+
+    @classmethod
+    def from_detections(cls, objects):
+        '''Builds a VideoObjectContainer from a DetectedObjectContainer of
+        objects by constructing `VideoObject`s from the collections formed by
+        partitioning into (label, index) groups.
+
+        The `DetectedObject`s must have their `frame_number`s set, and each
+        instance without an `index` is treated as a separate object.
+
+        The input objects may be modified in-place and are passed by reference
+        to the `VideoObject`s.
+
+        Args:
+            objects: a DetectedObjectContainer
+
+        Returns:
+            a VideoObjectContainer
+        '''
+        # Group objects by (label, index)
+        objects_map = defaultdict(DetectedObjectContainer)
+        single_objects = []
+        max_index = 0
+        for obj in objects:
+            if obj.index is not None:
+                max_index = max(max_index, obj.index)
+                objects_map[(obj.label, obj.index)].add(obj)
+            else:
+                single_objects.append(obj)
+
+        # Give objects with no `index` their own groups
+        for obj in single_objects:
+            max_index += 1
+            objects_map[(obj.label, max_index)].add(obj)
+
+        # Build VideoObjects
+        video_objects = cls()
+        for dobjects in itervalues(objects_map):
+            video_objects.add(VideoObject.from_detections(dobjects))
+
+        return video_objects
 
 
 class ObjectSchema(etal.LabelsSchema):
@@ -1770,7 +1868,11 @@ class VideoObjectFrameRenderer(etal.LabelsFrameRenderer):
         if not self._obj.has_object_attributes:
             return None
 
-        return deepcopy(self._obj.attrs)
+        obj_attrs = deepcopy(self._obj.attrs)
+        for attr in obj_attrs:
+            attr.constant = True
+
+        return obj_attrs
 
 
 class VideoObjectContainerFrameRenderer(etal.LabelsContainerFrameRenderer):
