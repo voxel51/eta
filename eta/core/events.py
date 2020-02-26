@@ -15,11 +15,12 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
-from future.utils import iteritems
+from future.utils import iteritems, itervalues
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+from collections import defaultdict
 from copy import deepcopy
 
 import eta.core.data as etad
@@ -198,6 +199,26 @@ class DetectedEvent(etal.Labels, etag.HasBoundingBox):
         '''
         self.objects.add_container(objs)
 
+    def pop_attributes(self):
+        '''Pops the attributes from the event.
+
+        Returns:
+            an AttributeContainer
+        '''
+        attrs = self.attrs
+        self.clear_attributes()
+        return attrs
+
+    def pop_objects(self):
+        '''Pops the objects from the event.
+
+        Returns:
+            a DetectedObjectContainer
+        '''
+        objects = self.objects
+        self.clear_objects()
+        return objects
+
     def clear_attributes(self):
         '''Removes all frame-level attributes from the event.'''
         self.attrs = etad.AttributeContainer()
@@ -229,6 +250,7 @@ class DetectedEvent(etal.Labels, etag.HasBoundingBox):
             if not allow_none_label:
                 raise EventSchemaError(
                     "None event label is not allowed by the schema")
+
         elif self.label != schema.get_label():
             raise EventSchemaError(
                 "Label '%s' does not match event schema" % self.label)
@@ -771,6 +793,60 @@ class VideoEvent(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
             uuid=uuid)
 
     @classmethod
+    def from_detections(cls, events):
+        '''Builds a VideoEvent from a container of `DetectedEvent`s.
+
+        The `DetectedEvent`s must have their `frame_number`s set, and they must
+        all have the same `label` and `index` (which may be None).
+
+        The input events are modified in-place and passed by reference to the
+        VideoEvent.
+
+        Args:
+            events: a DetectedEventContainer
+
+        Returns:
+            a VideoEvent
+        '''
+        if not events:
+            return cls()
+
+        label = events[0].label
+        index = events[0].index
+
+        objects = etao.DetectedObjectContainer()
+
+        event_attrs = {}
+        for event in events:
+            if event.label != label:
+                raise ValueError(
+                    "Event label '%s' does not match first label '%s'" %
+                    (event.label, label))
+
+            if event.index != index:
+                raise ValueError(
+                    "Event index '%s' does not match first index '%s'" %
+                    (event.index, index))
+
+            # Extract objects
+            objects.add_container(event.pop_objects())
+
+            # Extract constant attributes
+            for const_attr in event.attrs.pop_constant_attrs():
+                # @todo verify that existing attributes are exactly equal?
+                event_attrs[const_attr.name] = const_attr
+
+        # Store constant attributes as event-level attributes
+        attrs = etad.AttributeContainer.from_iterable(itervalues(event_attrs))
+
+        # Build VideoObjects from the observations
+        objects = etao.VideoObjectContainer.from_detections(objects)
+
+        event = cls(label=label, index=index, attrs=attrs, objects=objects)
+        event.add_detections(events)
+        return event
+
+    @classmethod
     def _from_dict(cls, d):
         '''Internal implementation of `from_dict()`.
 
@@ -950,6 +1026,47 @@ class VideoEventContainer(etal.LabelsContainer):
         '''
         for event in self:
             event.remove_objects_without_attrs(labels=labels)
+
+    @classmethod
+    def from_detections(cls, events):
+        '''Builds a VideoEventContainer from a DetectedEventContainer of events
+        by constructing `VideoEvent`s from the collections formed by
+        partitioning into (label, index) groups.
+
+        The `DetectedEvent`s must have their `frame_number`s set, and each
+        instance without an `index` is treated as a separate event.
+
+        The input events may be modified in-place and are passed by reference
+        to the `VideoEvent`s.
+
+        Args:
+            events: a DetectedEventContainer
+
+        Returns:
+            a VideoEventContainer
+        '''
+        # Group objects by (label, index)
+        events_map = defaultdict(DetectedEventContainer)
+        single_events = []
+        max_index = 0
+        for event in events:
+            if event.index is not None:
+                max_index = max(max_index, event.index)
+                events_map[(event.label, event.index)].add(event)
+            else:
+                single_events.append(event)
+
+        # Give objects with no `index` their own groups
+        for event in single_events:
+            max_index += 1
+            events_map[(event.label, max_index)].add(event)
+
+        # Build VideoEvents
+        video_events = cls()
+        for devents in itervalues(events_map):
+            video_events.add(VideoEvent.from_detections(devents))
+
+        return video_events
 
 
 class EventSchema(etal.LabelsSchema):
@@ -2722,12 +2839,6 @@ class VideoEventFrameRenderer(etal.LabelsFrameRenderer):
 
         return devent
 
-    def _get_event_attrs(self):
-        if not self._event.has_event_attributes:
-            return None
-
-        return deepcopy(self._event.attrs)
-
     def _render_all_object_frames(self):
         if not self._event.has_video_objects:
             return {}
@@ -2741,6 +2852,16 @@ class VideoEventFrameRenderer(etal.LabelsFrameRenderer):
 
         r = etao.VideoObjectContainerFrameRenderer(self._event.objects)
         return r.render_frame(frame_number)
+
+    def _get_event_attrs(self):
+        if not self._event.has_event_attributes:
+            return None
+
+        event_attrs = deepcopy(self._event.attrs)
+        for attr in event_attrs:
+            attr.constant = True
+
+        return event_attrs
 
 
 class VideoEventContainerFrameRenderer(etal.LabelsContainerFrameRenderer):
