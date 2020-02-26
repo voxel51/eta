@@ -563,14 +563,6 @@ class LabelsSet(Labels, HasLabelsSchema, etas.Set):
         HasLabelsSchema.__init__(self, schema=schema)
         etas.Set.__init__(self, **kwargs)
 
-    def __bool__(self):
-        return etas.Set.__bool__(self)
-
-    @property
-    def is_empty(self):
-        '''Whether this set has no labels.'''
-        return etas.Set.is_empty(self)
-
     def __getitem__(self, key):
         '''Gets the Labels for the given key.
 
@@ -588,6 +580,14 @@ class LabelsSet(Labels, HasLabelsSchema, etas.Set):
             self.add(labels)
 
         return super(LabelsSet, self).__getitem__(key)
+
+    def __bool__(self):
+        return etas.Set.__bool__(self)
+
+    @property
+    def is_empty(self):
+        '''Whether this set has no labels.'''
+        return etas.Set.is_empty(self)
 
     @classmethod
     def get_schema_cls(cls):
@@ -607,6 +607,10 @@ class LabelsSet(Labels, HasLabelsSchema, etas.Set):
             an empty LabelsSet
         '''
         return self.__class__(schema=self.schema)
+
+    def remove_empty_labels(self):
+        '''Removes all empty Labels from the set.'''
+        self.filter_elements([lambda labels: not labels.is_empty])
 
     def add_set(self, labels_set):
         '''Adds the labels in the given LabelSet to the set.
