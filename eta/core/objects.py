@@ -533,6 +533,13 @@ class VideoObject(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
 
         self.child_objects.add(obj.uuid)
 
+    def remove_empty_frames(self):
+        '''Removes all empty `DetectedObject`s from this object.'''
+        self.frames = {
+            fn: dobj for fn, dobj in iteritems(self.frames)
+            if not dobj.is_empty
+        }
+
     def clear_attributes(self):
         '''Removes all attributes of any kind from the object.'''
         self.clear_object_attributes()

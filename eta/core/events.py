@@ -639,6 +639,13 @@ class VideoEvent(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
 
         self.child_events.add(event.uuid)
 
+    def remove_empty_frames(self):
+        '''Removes all empty DetectedEvents from this event.'''
+        self.frames = {
+            fn: devent for fn, devent in iteritems(self.frames)
+            if not devent.is_empty
+        }
+
     def clear_attributes(self):
         '''Removes all attributes of any kind from the event.'''
         self.clear_event_attributes()

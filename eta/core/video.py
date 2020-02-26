@@ -783,6 +783,13 @@ class VideoLabels(
         else:
             self.events.add_container(events)
 
+    def remove_empty_frames(self):
+        '''Removes all empty VideoFrameLabels from the video.'''
+        self.frames = {
+            fn: vfl for fn, vfl in iteritems(self.frames)
+            if not vfl.is_empty
+        }
+
     def clear_video_attributes(self):
         '''Removes all video-level attributes from the video.'''
         self.attrs = etad.AttributeContainer()

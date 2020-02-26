@@ -428,6 +428,10 @@ class LabelsContainer(Labels, HasLabelsSchema, etas.Container):
         '''Whether this container has no labels.'''
         return etas.Container.is_empty(self)
 
+    def remove_empty_labels(self):
+        '''Removes all empty Labels from the container.'''
+        self.filter_elements([lambda labels: not labels.is_empty])
+
     def add_container(self, container):
         '''Appends the labels in the given LabelContainer to the container.
 
