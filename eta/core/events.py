@@ -1790,7 +1790,12 @@ class EventSchema(etal.LabelsSchema):
         if validate_label:
             self.validate_label(devent.label)
 
-        self.add_frame_attributes(devent.attrs)
+        for attr in devent.attrs:
+            if attr.constant:
+                self.add_event_attribute(attr)
+            else:
+                self.add_frame_attribute(attr)
+
         self.add_objects(devent.objects)
 
     def _add_video_event(self, event):
@@ -1799,12 +1804,17 @@ class EventSchema(etal.LabelsSchema):
         for devent in event.iter_detections():
             self._add_detected_event(devent, validate_label=False)
 
-    def _validate_detected_event(self, event, validate_label=True):
+    def _validate_detected_event(self, devent, validate_label=True):
         if validate_label:
-            self.validate_label(event.label)
+            self.validate_label(devent.label)
 
-        self.validate_frame_attributes(event.attrs)
-        for obj in event.objects:
+        for attr in devent.attrs:
+            if attr.constant:
+                self.validate_event_attribute(attr)
+            else:
+                self.validate_frame_attribute(attr)
+
+        for obj in devent.objects:
             self.validate_object(obj)
 
     def _validate_video_event(self, event):

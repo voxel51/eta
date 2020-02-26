@@ -1578,7 +1578,12 @@ class VideoLabelsSchema(etal.LabelsSchema):
         Args:
             frame_labels: a FrameLabels
         '''
-        self.add_frame_attributes(frame_labels.attrs)
+        for attr in frame_labels.attrs:
+            if attr.constant:
+                self.add_video_attribute(attr)
+            else:
+                self.add_frame_attribute(attr)
+
         self.add_objects(frame_labels.objects)
         self.add_events(frame_labels.events)
 
@@ -1978,7 +1983,11 @@ class VideoLabelsSchema(etal.LabelsSchema):
         Raises:
             LabelsSchemaError: if the frame labels violate the schema
         '''
-        self.validate_frame_attributes(frame_labels.attrs)
+        for attr in frame_labels.attrs:
+            if attr.constant:
+                self.validate_video_attribute(attr)
+            else:
+                self.validate_frame_attribute(attr)
 
         for obj in frame_labels.objects:
             self.validate_object(obj)
@@ -2152,7 +2161,6 @@ class VideoLabelsSchema(etal.LabelsSchema):
             _attrs.append("objects")
         if self.events:
             _attrs.append("events")
-
         return _attrs
 
     @classmethod

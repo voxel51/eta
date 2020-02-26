@@ -1264,7 +1264,11 @@ class ObjectSchema(etal.LabelsSchema):
         if validate_label:
             self.validate_label(dobj.label)
 
-        self.add_frame_attributes(dobj.attrs)
+        for attr in dobj.attrs:
+            if attr.constant:
+                self.add_object_attribute(attr)
+            else:
+                self.add_frame_attribute(attr)
 
     def _add_video_object(self, obj):
         self.validate_label(obj.label)
@@ -1276,7 +1280,11 @@ class ObjectSchema(etal.LabelsSchema):
         if validate_label:
             self.validate_label(dobj.label)
 
-        self.validate_frame_attributes(dobj.attrs)
+        for attr in dobj.attrs:
+            if attr.constant:
+                self.validate_object_attribute(attr)
+            else:
+                self.validate_frame_attribute(attr)
 
     def _validate_video_object(self, obj):
         # @todo children...
