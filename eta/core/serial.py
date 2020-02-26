@@ -2410,6 +2410,30 @@ class BigContainer(BigMixin, Container):
         '''
         self.keep_inds(self._filter_elements(filters, match))
 
+    def pop_elements(self, filters, match=any, big=True, backing_dir=None):
+        '''Pops elements that match the given filters from the container.
+
+        The order of the elements in both containers are preserved.
+
+        Args:
+            filters: a list of functions that accept elements and return
+                True/False
+            match: a function (usually `any` or `all`) that accepts an iterable
+                and returns True/False. Used to aggregate the outputs of each
+                filter to decide whether a match has occurred. The default is
+                `any`
+            big: whether to create a BigContainer (True) or Container (False).
+                By default, this is True
+            backing_dir: an optional backing directory to use for the new
+                BigContainer. If provided, the directory must be empty or
+                non-existent. Only relevant if `big == True`
+
+        Returns:
+            a BigContainer or Container of elements matching the given filters
+        '''
+        inds = self._filter_elements(filters, match)
+        return self.pop_inds(inds, big=big, backing_dir=backing_dir)
+
     def keep_inds(self, inds):
         '''Keeps only the elements in the container with the given indices.
 
@@ -2432,23 +2456,45 @@ class BigContainer(BigMixin, Container):
                 By default, this is True
             backing_dir: an optional backing directory to use for the new
                 BigContainer. If provided, the directory must be empty or
-                non-existent. Only relevant if to_container is False
+                non-existent. Only relevant if `big == True`
 
         Returns:
             a BigContainer or Container with the requested elements
         '''
         if not big:
             # Return results in a Container
-            new_container = self.empty_container()
+            container = self.empty_container()
             for idx in inds:
-                new_container.add(self[idx])
-            return new_container
+                container.add(self[idx])
+
+            return container
 
         # Return results in a BigContainer
-        new_container = self.empty(backing_dir=backing_dir)
+        container = self.empty(backing_dir=backing_dir)
         for idx in inds:
-            new_container.add_by_path(self._ele_path(idx))
-        return new_container
+            container.add_by_path(self._ele_path(idx))
+
+        return container
+
+    def pop_inds(self, inds, big=True, backing_dir=None):
+        '''Pops elements from the container with the given indices.
+
+        The order of the elements in both containers are preserved.
+
+        Args:
+            inds: a list of indices of the elements to pop
+            big: whether to create a BigContainer (True) or Container (False).
+                By default, this is True
+            backing_dir: an optional backing directory to use for the new
+                BigContainer. If provided, the directory must be empty or
+                non-existent. Only relevant if `big == True`
+
+        Returns:
+            a BigContainer or Container with the popped elements
+        '''
+        container = self.extract_inds(inds, big=big, backing_dir=backing_dir)
+        self.delete_inds(inds)
+        return container
 
     def get_matches(self, filters, match=any, big=True, backing_dir=None):
         '''Returns a container with elements matching the given filters.
@@ -2525,6 +2571,22 @@ class BigContainer(BigMixin, Container):
         '''
         big_container = cls(backing_dir=backing_dir)
         big_container.add_container(container)
+        return big_container
+
+    @classmethod
+    def from_iterable(cls, elements, backing_dir=None):
+        '''Constructs a BigContainer from an iterable of elements.
+
+        Args:
+            elements: an iterable of elements
+            backing_dir: an optional backing directory to use for the new
+                BigContainer. If provided, must be empty or non-existent
+
+        Returns:
+            a BigContainer
+        '''
+        big_container = cls(backing_dir=backing_dir)
+        big_container.add_iterable(elements)
         return big_container
 
     @classmethod
