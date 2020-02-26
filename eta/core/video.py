@@ -1926,6 +1926,17 @@ class VideoLabelsSchema(etal.LabelsSchema):
         '''
         self.objects.validate_object(obj)
 
+    def validate_objects(self, objects):
+        '''Validates that the objects are compliant with the schema.
+
+        Args:
+            objects: a VideoObjectContainer or DetectedObjectContainer
+
+        Raises:
+            LabelsSchemaError: if the objects violate the schema
+        '''
+        self.objects.validate(objects)
+
     def validate_event_label(self, label):
         '''Validates that the event label is compliant with the schema.
 
@@ -1974,6 +1985,17 @@ class VideoLabelsSchema(etal.LabelsSchema):
         '''
         self.events.validate_event(event)
 
+    def validate_events(self, events):
+        '''Validates that the events are compliant with the schema.
+
+        Args:
+            events: a VideoEventContainer or DetectedEventContainer
+
+        Raises:
+            LabelsSchemaError: if the events violate the schema
+        '''
+        self.events.validate(events)
+
     def validate_frame_labels(self, frame_labels):
         '''Validates that the frame labels are compliant with the schema.
 
@@ -1989,11 +2011,8 @@ class VideoLabelsSchema(etal.LabelsSchema):
             else:
                 self.validate_frame_attribute(attr)
 
-        for obj in frame_labels.objects:
-            self.validate_object(obj)
-
-        for event in frame_labels.events:
-            self.validate_event(event)
+        self.validate_objects(frame_labels.objects)
+        self.validate_events(frame_labels.events)
 
     def validate(self, video_labels):
         '''Validates that the labels are compliant with the schema.
@@ -2005,13 +2024,8 @@ class VideoLabelsSchema(etal.LabelsSchema):
             LabelsSchemaError: if the VideoLabels violate the schema
         '''
         self.validate_video_attributes(video_labels.attrs)
-
-        for obj in video_labels.objects:
-            self.validate_object(obj)
-
-        for event in video_labels.events:
-            self.validate_event(event)
-
+        self.validate_objects(video_labels.objects)
+        self.validate_events(video_labels.events)
         for frame_labels in video_labels.iter_frames():
             self.validate_frame_labels(frame_labels)
 

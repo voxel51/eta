@@ -1679,6 +1679,17 @@ class EventSchema(etal.LabelsSchema):
         '''
         self.objects.validate_object(obj)
 
+    def validate_objects(self, objects):
+        '''Validates that the objects are compliant with the schema.
+
+        Args:
+            objects: a VideoObjectContainer or DetectedObjectContainer
+
+        Raises:
+            LabelsSchemaError: if the objects violate the schema
+        '''
+        self.objects.validate(objects)
+
     def validate(self, event):
         '''Validates that the event is compliant with the schema.
 
@@ -1801,6 +1812,7 @@ class EventSchema(etal.LabelsSchema):
     def _add_video_event(self, event):
         self.validate_label(event.label)
         self.add_event_attributes(event.attrs)
+        self.add_objects(event.objects)
         for devent in event.iter_detections():
             self._add_detected_event(devent, validate_label=False)
 
@@ -1814,13 +1826,13 @@ class EventSchema(etal.LabelsSchema):
             else:
                 self.validate_frame_attribute(attr)
 
-        for obj in devent.objects:
-            self.validate_object(obj)
+        self.validate_objects(devent.objects)
 
     def _validate_video_event(self, event):
         # @todo children...
         self.validate_label(event.label)
         self.validate_event_attributes(event.attrs)
+        self.validate_objects(event.objects)
         for devent in event.iter_detections():
             self._validate_detected_event(devent, validate_label=False)
 
