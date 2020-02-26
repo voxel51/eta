@@ -855,39 +855,31 @@ class Set(Serializable):
         return _set
 
     @classmethod
-    def from_numeric_patt(cls, pattern, *args, **kwargs):
+    def from_numeric_patt(cls, pattern):
         '''Constructs a Set from a numeric pattern of elements on disk.
 
         Args:
              pattern: a string with one or more numeric patterns, like
                 "/path/to/labels/%05d.json"
-            *args: optional positional arguments for
-                `cls.get_element_class().from_json()`
-            **kwargs: optional keyword arguments for
-                `cls.get_element_class().from_json()`
 
         Returns:
             a Set
         '''
         parse_method = etau.get_pattern_matches
-        return cls._from_element_patt(pattern, parse_method, *args, **kwargs)
+        return cls._from_element_patt(pattern, parse_method)
 
     @classmethod
-    def from_glob_patt(cls, pattern, *args, **kwargs):
+    def from_glob_patt(cls, pattern):
         '''Constructs a Set from a glob pattern of elements on disk.
 
         Args:
-             pattern: a glob pattern like "/path/to/labels/*.json"
-            *args: optional positional arguments for
-                `cls.get_element_class().from_json()`
-            **kwargs: optional keyword arguments for
-                `cls.get_element_class().from_json()`
+            pattern: a glob pattern like "/path/to/labels/*.json"
 
         Returns:
             a Set
         '''
         parse_method = glob.glob
-        return cls._from_element_patt(pattern, parse_method, *args, **kwargs)
+        return cls._from_element_patt(pattern, parse_method)
 
     @classmethod
     def from_dict(cls, d, **kwargs):
@@ -916,13 +908,13 @@ class Set(Serializable):
             **etau.join_dicts({set_cls._ELE_ATTR: elements}, kwargs))
 
     @classmethod
-    def _from_element_patt(cls, pattern, parse_method, *args, **kwargs):
-        instance = cls()
+    def _from_element_patt(cls, pattern, parse_method):
+        _set = cls()
         for element_path in parse_method(pattern):
-            instance.add(cls.get_element_class().from_json(
-                element_path, *args, **kwargs))
+            _set.add(
+                cls.get_element_class().from_json(element_path))
 
-        return instance
+        return _set
 
     def _get_elements_with_keys(self, keys):
         if isinstance(keys, six.string_types):
@@ -1591,6 +1583,37 @@ class BigSet(BigMixin, Set):
         return big_set
 
     @classmethod
+    def from_numeric_patt(cls, pattern, backing_dir=None):
+        '''Constructs a BigSet from a numeric pattern of elements on disk.
+
+        Args:
+            pattern: a string with one or more numeric patterns, like
+                "/path/to/labels/%05d.json"
+            backing_dir: an optional backing directory to use for the new
+                BigSet. If provided, must be empty or non-existent
+
+        Returns:
+            a BigSet
+        '''
+        parse_method = etau.get_pattern_matches
+        return cls._from_element_patt(pattern, parse_method, backing_dir)
+
+    @classmethod
+    def from_glob_patt(cls, pattern, backing_dir=None):
+        '''Constructs a BigSet from a glob pattern of elements on disk.
+
+        Args:
+            pattern: a glob pattern like "/path/to/labels/*.json"
+            backing_dir: an optional backing directory to use for the new
+                BigSet. If provided, must be empty or non-existent
+
+        Returns:
+            a BigSet
+        '''
+        parse_method = glob.glob
+        return cls._from_element_patt(pattern, parse_method, backing_dir)
+
+    @classmethod
     def from_dict(cls, d, **kwargs):
         '''Constructs a BigSet from a JSON dictionary.
 
@@ -1606,6 +1629,14 @@ class BigSet(BigMixin, Set):
         backing_dir = d.get("backing_dir", None)
         kwargs[set_cls._ELE_ATTR] = d[set_cls._ELE_ATTR]
         return set_cls(backing_dir=backing_dir, **kwargs)
+
+    @classmethod
+    def _from_element_patt(cls, pattern, parse_method, backing_dir):
+        big_set = cls(backing_dir=backing_dir)
+        for element_path in parse_method(pattern):
+            big_set.add_by_path(element_path)
+
+        return big_set
 
     def _filter_elements(self, filters, match):
         def run_filters(key):
@@ -2050,6 +2081,7 @@ class Container(Serializable):
         if reflective:
             d["_CLS"] = self.get_class_name()
             d[self._ELE_CLS_FIELD] = etau.get_class_name(self._ELE_CLS)
+
         d.update(super(Container, self).serialize(reflective=False))
         return d
 
@@ -2068,39 +2100,31 @@ class Container(Serializable):
         return container
 
     @classmethod
-    def from_numeric_patt(cls, pattern, *args, **kwargs):
+    def from_numeric_patt(cls, pattern):
         '''Constructs a Container from a numeric pattern of elements on disk.
 
         Args:
-             pattern: a string with one or more numeric patterns, like
+            pattern: a string with one or more numeric patterns, like
                 "/path/to/labels/%05d.json"
-            *args: optional positional arguments for
-                `cls.get_element_class().from_json()`
-            **kwargs: optional keyword arguments for
-                `cls.get_element_class().from_json()`
 
         Returns:
             a Container
         '''
         parse_method = etau.get_pattern_matches
-        return cls._from_element_patt(pattern, parse_method, *args, **kwargs)
+        return cls._from_element_patt(pattern, parse_method)
 
     @classmethod
-    def from_glob_patt(cls, pattern, *args, **kwargs):
+    def from_glob_patt(cls, pattern):
         '''Constructs a Container from a glob pattern of elements on disk.
 
         Args:
              pattern: a glob pattern like "/path/to/labels/*.json"
-            *args: optional positional arguments for
-                `cls.get_element_class().from_json()`
-            **kwargs: optional keyword arguments for
-                `cls.get_element_class().from_json()`
 
         Returns:
             a Container
         '''
         parse_method = glob.glob
-        return cls._from_element_patt(pattern, parse_method, *args, **kwargs)
+        return cls._from_element_patt(pattern, parse_method)
 
     @classmethod
     def from_dict(cls, d, **kwargs):
@@ -2130,12 +2154,13 @@ class Container(Serializable):
             **etau.join_dicts({container_cls._ELE_ATTR: elements}, kwargs))
 
     @classmethod
-    def _from_element_patt(cls, pattern, parse_method, *args, **kwargs):
-        instance = cls()
+    def _from_element_patt(cls, pattern, parse_method):
+        container = cls()
         for element_path in parse_method(pattern):
-            instance.add(cls.get_element_class().from_json(
-                element_path, *args, **kwargs))
-        return instance
+            container.add(
+                cls.get_element_class().from_json(element_path))
+
+        return container
 
     def _get_elements_with_inds(self, inds):
         if isinstance(inds, numbers.Integral):
@@ -2346,8 +2371,8 @@ class BigContainer(BigMixin, Container):
     def add_by_path(self, path):
         '''Appends an element to the container via its path on disk.
 
-        No validation is done. Subclasses may choose to implement this method
-        for suchs purposes, etc.
+        No validation is done. Subclasses may choose to override this method
+        for such purposes.
 
         Args:
             path: the path to the element JSON file on disk
@@ -2594,6 +2619,38 @@ class BigContainer(BigMixin, Container):
         return big_container
 
     @classmethod
+    def from_numeric_patt(cls, pattern, backing_dir=None):
+        '''Constructs a BigContainer from a numeric pattern of elements on
+        disk.
+
+        Args:
+            pattern: a string with one or more numeric patterns, like
+                "/path/to/labels/%05d.json"
+            backing_dir: an optional backing directory to use for the new
+                BigContainer. If provided, must be empty or non-existent
+
+        Returns:
+            a BigContainer
+        '''
+        parse_method = etau.get_pattern_matches
+        return cls._from_element_patt(pattern, parse_method, backing_dir)
+
+    @classmethod
+    def from_glob_patt(cls, pattern, backing_dir=None):
+        '''Constructs a BigContainer from a glob pattern of elements on disk.
+
+        Args:
+            pattern: a glob pattern like "/path/to/labels/*.json"
+            backing_dir: an optional backing directory to use for the new
+                BigContainer. If provided, must be empty or non-existent
+
+        Returns:
+            a BigContainer
+        '''
+        parse_method = glob.glob
+        return cls._from_element_patt(pattern, parse_method, backing_dir)
+
+    @classmethod
     def from_dict(cls, d, **kwargs):
         '''Constructs a BigContainer from a JSON dictionary.
 
@@ -2607,6 +2664,14 @@ class BigContainer(BigMixin, Container):
         '''
         container_cls = cls._validate_dict(d)
         return container_cls(**etau.join_dicts(d, kwargs))
+
+    @classmethod
+    def _from_element_patt(cls, pattern, parse_method, backing_dir):
+        big_container = cls(backing_dir=backing_dir)
+        for element_path in parse_method(pattern):
+            big_container.add_by_path(element_path)
+
+        return big_container
 
     def _filter_elements(self, filters, match):
         def run_filters(idx):
