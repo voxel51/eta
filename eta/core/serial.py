@@ -1388,7 +1388,30 @@ class BigSet(BigMixin, Set):
                 filter to decide whether a match has occurred. The default is
                 `any`
         '''
-        self.keep_keys(self._filter_elements(filters, match).keys())
+        elements = self._filter_elements(filters, match)
+        self.keep_keys(elements.keys())
+
+    def pop_elements(self, filters, match=any, big=True, backing_dir=None):
+        '''Pops elements that match the given filters from the set.
+
+        Args:
+            filters: a list of functions that accept elements and return
+                True/False
+            match: a function (usually `any` or `all`) that accepts an iterable
+                and returns True/False. Used to aggregate the outputs of each
+                filter to decide whether a match has occurred. The default is
+                `any`
+            big: whether to create a BigSet (True) or Set (False). By default,
+                this is True
+            backing_dir: an optional backing directory to use for the new
+                BigSet. If provided, the directory must be empty or
+                non-existent. Only relevant if `big == True`
+
+        Returns:
+            a BigSet or Set of elements matching the given filters
+        '''
+        elements = self._filter_elements(filters, match)
+        return self.pop_keys(elements.keys(), big=big, backing_dir=backing_dir)
 
     def keep_keys(self, keys):
         '''Keeps only the elements in the set with the given keys.
@@ -1424,8 +1447,27 @@ class BigSet(BigMixin, Set):
         _set = self.empty(backing_dir=backing_dir)
         for key in keys:
             path = self._ele_path(key)
-            new_set.add_by_path(path, key=key)
-        return new_set
+            _set.add_by_path(path, key=key)
+
+        return _set
+
+    def pop_keys(self, keys, big=True, backing_dir=None):
+        '''Pops elements from the set with the given keys.
+
+        Args:
+            keys: an iterable of keys of the elements to pop
+            big: whether to create a BigSet (True) or Set (False). By default,
+                this is True
+            backing_dir: an optional backing directory to use for the new
+                BigSet. If provided, the directory must be empty or
+                non-existent. Only relevant if `big == True`
+
+        Returns:
+            a BigSet or Set with the popped elements
+        '''
+        _set = self.extract_keys(keys, big=big, backing_dir=backing_dir)
+        self.delete_keys(keys)
+        return _set
 
     def get_matches(self, filters, match=any, big=True, backing_dir=None):
         '''Gets elements matching the given filters.
@@ -1526,6 +1568,22 @@ class BigSet(BigMixin, Set):
         '''
         big_set = cls(backing_dir=backing_dir)
         big_set.add_set(set_)
+        return big_set
+
+    @classmethod
+    def from_iterable(cls, elements, backing_dir=None):
+        '''Constructs a BigSet from an iterable of elements.
+
+        Args:
+            elements: an iterable of elements
+            backing_dir: an optional backing directory to use for the new
+                BigSet. If provided, must be empty or non-existent
+
+        Returns:
+            a BigSet
+        '''
+        big_set = cls(backing_dir=backing_dir)
+        big_set.add_iterable(elements)
         return big_set
 
     @classmethod
