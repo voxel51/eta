@@ -2323,7 +2323,7 @@ class VideoLabelsSpatiotemporalRenderer(etal.LabelsSpatiotemporalRenderer):
         video_labels = deepcopy(self._video_labels)
 
         # Extract spatiotemporal elements from frames
-        video_attrs = {}
+        video_attrs_map = {}
         objects = etao.DetectedObjectContainer()
         events = etae.DetectedEventContainer()
         for frame_labels in video_labels.iter_frames():
@@ -2333,11 +2333,18 @@ class VideoLabelsSpatiotemporalRenderer(etal.LabelsSpatiotemporalRenderer):
             # Extract constant attributes
             for const_attr in frame_labels.attrs.pop_constant_attrs():
                 # @todo verify that existing attributes are exactly equal?
-                video_attrs[const_attr.name] = const_attr
+                video_attrs_map[const_attr.name] = const_attr
 
         # Store video-level attributes
-        attrs = etad.AttributeContainer.from_iterable(itervalues(video_attrs))
-        video_labels.attrs.add_container(attrs)
+        video_attrs = etad.AttributeContainer()
+        for attr in itervalues(video_attrs_map):
+            # By convention, don't mark attributes as constant when this is
+            # apparent from their location in their parent entity
+            attr.constant = False  # by convention, we do not
+
+            video_attrs.add(attr)
+
+        video_labels.attrs.add_container(video_attrs)
 
         # Build VideoObjects
         video_labels.add_objects(
@@ -2346,6 +2353,9 @@ class VideoLabelsSpatiotemporalRenderer(etal.LabelsSpatiotemporalRenderer):
         # Build VideoEvents
         video_labels.add_events(
             etae.VideoEventContainer.from_detections(events))
+
+        # Remove empty frame labels
+        video_labels.remove_empty_frames()
 
         return video_labels
 

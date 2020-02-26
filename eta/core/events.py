@@ -823,7 +823,7 @@ class VideoEvent(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
 
         objects = etao.DetectedObjectContainer()
 
-        event_attrs = {}
+        event_attrs_map = {}
         for event in events:
             if event.label != label:
                 raise ValueError(
@@ -841,15 +841,24 @@ class VideoEvent(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
             # Extract constant attributes
             for const_attr in event.attrs.pop_constant_attrs():
                 # @todo verify that existing attributes are exactly equal?
-                event_attrs[const_attr.name] = const_attr
+                event_attrs_map[const_attr.name] = const_attr
 
         # Store constant attributes as event-level attributes
-        attrs = etad.AttributeContainer.from_iterable(itervalues(event_attrs))
+        event_attrs = etad.AttributeContainer()
+        for attr in itervalues(event_attrs_map):
+            # By convention, don't mark attributes as constant when this is
+            # apparent from their location in their parent entity
+            attr.constant = False
+            event_attrs.add(attr)
 
         # Build VideoObjects from the observations
         objects = etao.VideoObjectContainer.from_detections(objects)
 
-        event = cls(label=label, index=index, attrs=attrs, objects=objects)
+        # Remove empty detections
+        events.remove_empty_labels()
+
+        event = cls(
+            label=label, index=index, attrs=event_attrs, objects=objects)
         event.add_detections(events)
         return event
 

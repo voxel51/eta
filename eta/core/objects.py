@@ -104,8 +104,7 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
         '''Whether this object has no labels of any kind.'''
         return not (
             self.has_label or self.has_bounding_box or self.has_mask or
-            self.has_confidence or self.has_top_k_probs or self.has_index or
-            self.has_frame_number or self.has_attributes)
+            self.has_attributes)
 
     @property
     def has_label(self):
@@ -650,7 +649,7 @@ class VideoObject(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
         label = objects[0].label
         index = objects[0].index
 
-        obj_attrs = {}
+        obj_attrs_map = {}
         for obj in objects:
             if obj.label != label:
                 raise ValueError(
@@ -665,12 +664,17 @@ class VideoObject(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
             # Extract constant attributes
             for const_attr in obj.attrs.pop_constant_attrs():
                 # @todo verify that existing attributes are exactly equal?
-                obj_attrs[const_attr.name] = const_attr
+                obj_attrs_map[const_attr.name] = const_attr
 
         # Store constant attributes as object-level attributes
-        attrs = etad.AttributeContainer.from_iterable(itervalues(obj_attrs))
+        obj_attrs = etad.AttributeContainer()
+        for attr in itervalues(obj_attrs_map):
+            # By convention, don't mark attributes as constant when this is
+            # apparent from their location in their parent entity
+            attr.constant = False
+            obj_attrs.add(attr)
 
-        obj = cls(label=label, index=index, attrs=attrs)
+        obj = cls(label=label, index=index, attrs=obj_attrs)
         obj.add_detections(objects)
         return obj
 
