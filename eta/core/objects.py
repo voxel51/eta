@@ -583,24 +583,11 @@ class VideoObject(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
         Raises:
             LabelsSchemaError: if the object label does not match the schema
         '''
+        # @todo children...
         schema.validate_label(self.label)
         self.attrs.filter_by_schema(schema.attrs)
         for dobj in self.iter_detections():
             dobj.filter_by_schema(schema, allow_none_label=True)
-
-        # @todo children...
-        '''
-        # Filter child objects
-        if objects:
-            for uuid in self.child_objects:
-                if uuid in objects:
-                    child_obj = objects[uuid]
-                    if not schema.has_label(child_obj.label):
-                        self.child_objects.remove(uuid)
-                    else:
-                        child_obj.filter_by_schema(
-                            schema.get_object_schema(child_obj.label))
-        '''
 
     def attributes(self):
         '''Returns the list of attributes to serialize.
@@ -1235,18 +1222,9 @@ class ObjectSchema(etal.LabelsSchema):
         Returns:
             an ObjectSchema
         '''
+        # @todo children...
         schema = cls(obj.label)
         schema.add_object(obj)
-
-        # @todo children...
-        '''
-        # Child objects
-        if objects:
-            for uuid in obj.child_objects:
-                if uuid in objects:
-                    schema.add_object(objects[uuid])
-        '''
-
         return schema
 
     def attributes(self):
@@ -1301,17 +1279,11 @@ class ObjectSchema(etal.LabelsSchema):
         self.validate_frame_attributes(dobj.attrs)
 
     def _validate_video_object(self, obj):
+        # @todo children...
         self.validate_label(obj.label)
         self.validate_object_attributes(obj.attrs)
         for dobj in obj.iter_detections():
             self._validate_detected_object(dobj, validate_label=False)
-
-        # @todo children...
-        '''
-        # Validate child objects
-        for child_object in obj.child_objects:
-            self.validate(child_object)
-        '''
 
 
 class ObjectSchemaError(etal.LabelsSchemaError):

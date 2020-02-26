@@ -706,36 +706,12 @@ class VideoEvent(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
         Raises:
             LabelsSchemaError: if the event label does not match the schema
         '''
+        # @todo children...
         schema.validate_label(self.label)
         self.attrs.filter_by_schema(schema.attrs)
         self.objects.filter_by_schema(schema.objects)
         for event in self.iter_detections():
             event.filter_by_schema(schema)
-
-        # @todo children...
-        '''
-        # Filter child objects
-        if objects:
-            for uuid in self.child_objects:
-                if uuid in objects:
-                    child_obj = objects[uuid]
-                    if not schema.has_object_label(child_obj.label):
-                        self.child_objects.remove(uuid)
-                    else:
-                        child_obj.filter_by_schema(
-                            schema.get_object_schema(child_obj.label))
-
-        # Filter child events
-        if events:
-            for uuid in self.child_events:
-                if uuid in events:
-                    child_event = events[uuid]
-                    if not schema.has_event_label(child_event.label):
-                        self.child_events.remove(uuid)
-                    else:
-                        child_event.filter_by_schema(
-                            schema.get_child_event_schema(child_event.label))
-        '''
 
     def remove_objects_without_attrs(self, labels=None):
         '''Removes objects that do not have attributes from this event.
@@ -1766,24 +1742,9 @@ class EventSchema(etal.LabelsSchema):
         Returns:
             an EventSchema
         '''
+        # @todo children...
         schema = cls(event.label)
         schema.add_event(event)
-
-        # @todo children...
-        '''
-        # Child objects
-        if objects:
-            for uuid in event.child_objects:
-                if uuid in objects:
-                    schema.add_object(objects[uuid])
-
-        # Child events
-        if events:
-            for uuid in event.child_events:
-                if uuid in events:
-                    schema.add_event(events[uuid])
-        '''
-
         return schema
 
     def attributes(self):
@@ -1847,21 +1808,11 @@ class EventSchema(etal.LabelsSchema):
             self.validate_object(obj)
 
     def _validate_video_event(self, event):
+        # @todo children...
         self.validate_label(event.label)
         self.validate_event_attributes(event.attrs)
         for devent in event.iter_detections():
             self._validate_detected_event(devent, validate_label=False)
-
-        # @todo children...
-        '''
-        # Validate child objects
-        for obj in event.child_objects:
-            self.validate_object(obj)
-
-        # Validate child events
-        for child_event in event.child_events:
-            self.validate(child_event)
-        '''
 
 
 class EventSchemaError(etal.LabelsSchemaError):
