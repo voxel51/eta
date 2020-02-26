@@ -406,7 +406,7 @@ class VideoFrameLabels(FrameLabels):
 
 class VideoLabels(
         etal.Labels, etal.HasLabelsSchema, etal.HasLabelsSupport,
-        etal.HasFramewiseView):
+        etal.HasFramewiseView, etal.HasSpatiotemporalView):
     '''Class encapsulating labels for a video.
 
     VideoLabels are spatiotemporal concepts that describe the content of a
@@ -843,10 +843,11 @@ class VideoLabels(
             self.add_frame(frame_labels, overwrite=False)
 
     def render_framewise_labels(self):
-        '''Renders a framewise copy of the labels.
+        '''Renders a framewise copy of the labels, i.e., a copy of this
+        VideoLabels whose labels are all contained in `VideoFrameLabels`.
 
         Returns:
-            a VideoLabels whose labels are all contained in `VideoFrameLabels`s
+            a VideoLabels
         '''
         renderer = VideoLabelsFrameRenderer(self)
         frames = renderer.render_all_frames()
@@ -859,6 +860,20 @@ class VideoLabels(
             filename=self.filename, metadata=self.metadata,
             mask_index=self.mask_index, frames=frames, schema=self.schema,
             **kwargs)
+
+    def render_spatiotemporal_labels(self):
+        '''Renders a spatiotemporal copy of the labels.
+
+        For VideoLabels, spatiotemporal format means that all objects are
+        stored as `VideoObject`s, all events stored as `VideoEvent`s, and all
+        constant attributes will be upgraded to their parent entity (e.g.,
+        constant object attributes will be stored at object-level).
+
+        Returns:
+            a VideoLabels
+        '''
+        renderer = VideoLabelsSpatiotemporalRenderer(self)
+        return renderer.render()
 
     def filter_by_schema(self, schema):
         '''Filters the labels by the given schema.
@@ -2171,7 +2186,7 @@ class VideoLabelsFrameRenderer(etal.LabelsFrameRenderer):
     '''Class for rendering VideoLabels at the frame-level.'''
 
     def __init__(self, video_labels):
-        '''Creates an VideoLabelsFrameRenderer instance.
+        '''Creates a VideoLabelsFrameRenderer instance.
 
         Args:
             video_labels: a VideoLabels
@@ -2236,12 +2251,6 @@ class VideoLabelsFrameRenderer(etal.LabelsFrameRenderer):
 
         return frame_labels
 
-    def _get_video_attrs(self):
-        if not self._video_labels.has_video_attributes:
-            return None
-
-        return deepcopy(self._video_labels.attrs)
-
     def _render_all_object_frames(self):
         if not self._video_labels.has_video_objects:
             return {}
@@ -2269,6 +2278,69 @@ class VideoLabelsFrameRenderer(etal.LabelsFrameRenderer):
 
         r = etae.VideoEventContainerFrameRenderer(self._video_labels.events)
         return r.render_frame(frame_number)
+
+    def _get_video_attrs(self):
+        if not self._video_labels.has_video_attributes:
+            return None
+
+        video_attrs = deepcopy(self._video_labels.attrs)
+        for attr in video_attrs:
+            attr.constant = True
+
+        return video_attrs
+
+
+class VideoLabelsSpatiotemporalRenderer(etal.LabelsSpatiotemporalRenderer):
+    '''Class for rendering VideoLabels in spatiotemporal format.
+
+    For VideoLabels, spatiotemporal format means that all objects are
+    stored as `VideoObject`s, all events stored as `VideoEvent`s, and all
+    constant attributes will be upgraded to their parent entity (e.g.,
+    constant object attributes will be stored at object-level).
+    '''
+
+    def __init__(self, video_labels):
+        '''Creates a VideoLabelsSpatiotemporalRenderer instance.
+
+        Args:
+            video_labels: a VideoLabels
+        '''
+        self._video_labels = video_labels
+
+    def render(self):
+        '''Renders the VideoLabels in spatiotemporal format.
+
+        Returns:
+            a VideoLabels
+        '''
+        video_labels = deepcopy(self._video_labels)
+
+        # Extract spatiotemporal elements from frames
+        video_attrs = {}
+        objects = etao.DetectedObjectContainer()
+        events = etae.DetectedEventContainer()
+        for frame_labels in video_labels.iter_frames():
+            objects.add_container(frame_labels.pop_objects())
+            events.add_container(frame_labels.pop_events())
+
+            # Extract constant attributes
+            for const_attr in frame_labels.attrs.pop_constant_attrs():
+                # @todo verify that existing attributes are exactly equal?
+                video_attrs[const_attr.name] = const_attr
+
+        # Store video-level attributes
+        attrs = etad.AttributeContainer.from_iterable(itervalues(video_attrs))
+        video_labels.attrs.add_container(attrs)
+
+        # Build VideoObjects
+        video_labels.add_objects(
+            etao.VideoObjectContainer.from_detections(objects))
+
+        # Build VideoEvents
+        video_labels.add_events(
+            etae.VideoEventContainer.from_detections(events))
+
+        return video_labels
 
 
 class VideoSetLabels(etal.LabelsSet):
