@@ -191,6 +191,36 @@ class FrameLabels(etal.Labels):
         '''
         self.events.add_container(events)
 
+    def pop_attributes(self):
+        '''Pops the frame-level attributes from the frame.
+
+        Returns:
+            an AttributeContainer
+        '''
+        attrs = self.attrs
+        self.clear_attributes()
+        return attrs
+
+    def pop_objects(self):
+        '''Pops the objects from the frame.
+
+        Returns:
+            a DetectedObjectContainer
+        '''
+        objects = self.objects
+        self.clear_objects()
+        return objects
+
+    def pop_events(self):
+        '''Pops the events from the frame.
+
+        Returns:
+            a DetectedEventContainer
+        '''
+        events = self.events
+        self.clear_events()
+        return events
+
     def clear_attributes(self):
         '''Removes all frame-level attributes from the frame.'''
         self.attrs = etad.AttributeContainer()
