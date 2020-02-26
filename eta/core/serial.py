@@ -1874,6 +1874,26 @@ class Container(Serializable):
         elements = self._filter_elements(filters, match)
         setattr(self, self._ELE_ATTR, elements)
 
+    def pop_elements(self, filters, match=any):
+        '''Pops elements that match the given filters from the container.
+
+        The order of the elements in both containers are preserved.
+
+        Args:
+            filters: a list of functions that accept elements and return
+                True/False
+            match: a function (usually `any` or `all`) that accepts an iterable
+                and returns True/False. Used to aggregate the outputs of each
+                filter to decide whether a match has occurred. The default is
+                `any`
+
+        Returns:
+            a Container of elements matching the given filters
+        '''
+        container = self.empty()
+        container.add_iterable(self._pop_elements(filters, match))
+        return container
+
     def delete_inds(self, inds):
         '''Deletes the elements from the container with the given indices.
 
@@ -1893,7 +1913,7 @@ class Container(Serializable):
         Args:
             inds: an iterable of indices of the elements to keep
         '''
-        elements = self._get_elements(inds)
+        elements = self._get_elements_with_inds(inds)
         setattr(self, self._ELE_ATTR, elements)
 
     def extract_inds(self, inds):
@@ -1909,10 +1929,26 @@ class Container(Serializable):
         Returns:
             a Container with the requested elements
         '''
-        new_container = self.empty()
+        container = self.empty()
         for idx in inds:
-            new_container.add(self[idx])
-        return new_container
+            container.add(self[idx])
+
+        return container
+
+    def pop_inds(self, inds):
+        '''Pops elements from the container with the given indices.
+
+        The order of the elements in both containers are preserved.
+
+        Args:
+            inds: an iterable of indices of the elements to pop
+
+        Returns:
+            a Container with the popped elements
+        '''
+        container = self.empty()
+        container.add_iterable(self._pop_elements_with_inds(inds))
+        return container
 
     def count_matches(self, filters, match=any):
         '''Counts the number of elements in the container that match the
@@ -2014,6 +2050,55 @@ class Container(Serializable):
         return d
 
     @classmethod
+    def from_iterable(cls, elements):
+        '''Constructs a Container from an iterable of elements.
+
+        Args:
+            elements: an iterable of elements
+
+        Returns:
+            a Container
+        '''
+        container = cls()
+        container.add_iterable(elements)
+        return container
+
+    @classmethod
+    def from_numeric_patt(cls, pattern, *args, **kwargs):
+        '''Constructs a Container from a numeric pattern of elements on disk.
+
+        Args:
+             pattern: a string with one or more numeric patterns, like
+                "/path/to/labels/%05d.json"
+            *args: optional positional arguments for
+                `cls.get_element_class().from_json()`
+            **kwargs: optional keyword arguments for
+                `cls.get_element_class().from_json()`
+
+        Returns:
+            a Container
+        '''
+        parse_method = etau.get_pattern_matches
+        return cls._from_element_patt(pattern, parse_method, *args, **kwargs)
+
+    @classmethod
+    def from_glob_patt(cls, pattern, *args, **kwargs):
+        '''Constructs a Container from a glob pattern of elements on disk.
+
+        Args:
+             pattern: a glob pattern like "/path/to/labels/*.json"
+            *args: optional positional arguments for
+                `cls.get_element_class().from_json()`
+            **kwargs: optional keyword arguments for
+                `cls.get_element_class().from_json()`
+
+        Returns:
+            a Container
+        '''
+        parse_method = glob.glob
+        return cls._from_element_patt(pattern, parse_method, *args, **kwargs)
+
+    @classmethod
     def from_dict(cls, d, **kwargs):
         '''Constructs a Container from a JSON dictionary.
 
@@ -2031,7 +2116,7 @@ class Container(Serializable):
                 by a subclass
 
         Returns:
-            an instance of the Container class
+            a Container
         '''
         container_cls = cls._validate_dict(d)
         elements = [
@@ -2039,43 +2124,6 @@ class Container(Serializable):
             for dd in d[container_cls._ELE_ATTR]]
         return container_cls(
             **etau.join_dicts({container_cls._ELE_ATTR: elements}, kwargs))
-
-    @classmethod
-    def from_numeric_patt(cls, pattern, *args, **kwargs):
-        '''Creates an instance of `cls` from a numeric pattern of `_ELE_CLS`
-        files.
-
-        Args:
-             pattern: a pattern with one or more numeric sequences
-                example: "/path/to/labels/%05d.json"
-            *args: optional positional arguments for
-                `cls.get_element_class().from_json()`
-            **kwargs: optional keyword arguments for
-                `cls.get_element_class().from_json()`
-
-        Returns:
-            a `cls` instance
-        '''
-        parse_method = etau.get_pattern_matches
-        return cls._from_element_patt(pattern, parse_method, *args, **kwargs)
-
-    @classmethod
-    def from_glob_patt(cls, pattern, *args, **kwargs):
-        '''Creates an instance of `cls` from a numeric pattern of `_ELE_CLS`
-        files.
-
-        Args:
-             pattern: a glob pattern, e.g., "/path/to/labels/*.json"
-            *args: optional positional arguments for
-                `cls.get_element_class().from_json()`
-            **kwargs: optional keyword arguments for
-                `cls.get_element_class().from_json()`
-
-        Returns:
-            a `cls` instance
-        '''
-        parse_method = glob.glob
-        return cls._from_element_patt(pattern, parse_method, *args, **kwargs)
 
     @classmethod
     def _from_element_patt(cls, pattern, parse_method, *args, **kwargs):
