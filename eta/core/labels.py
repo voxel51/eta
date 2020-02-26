@@ -383,6 +383,21 @@ class HasFramewiseView(object):
             "subclasses must implement render_framewise_labels()")
 
 
+class HasSpatiotemporalView(object):
+    '''Mixin for Label classes that describe videos and can be rendered in a
+    spatiotemporal view by a LabelsSpatiotemporalRenderer.
+    '''
+
+    def render_spatiotemporal_labels(self):
+        '''Renders a spatiotemporal copy of the labels
+
+        Returns:
+            a spatiotemporal copy of the labels
+        '''
+        raise NotImplementedError(
+            "subclasses must implement render_spatiotemporal_labels()")
+
+
 class LabelsContainer(Labels, HasLabelsSchema, etas.Container):
     '''Base class for `eta.core.serial.Container`s of Labels.
 
@@ -803,3 +818,21 @@ class LabelsContainerFrameRenderer(LabelsFrameRenderer):
                 frame_elements_map[frame_number].add(frame_element)
 
         return dict(frame_elements_map)
+
+
+class LabelsSpatiotemporalRenderer(object):
+    '''Interface for classes that render Labels in spatiotemporal format.
+
+    `LabelsSpatiotemporalRenderer`s must follow the strict convention that they
+    do not modify or pass by reference any components of the source Labels that
+    they are rendering. I.e., any labels they produce are deep copies of the
+    source labels.
+    '''
+
+    def render(self):
+        '''Renders the labels in spatiotemporal format.
+
+        Returns:
+            a Labels instance
+        '''
+        raise NotImplementedError("subclasses must implement render()")
