@@ -1098,15 +1098,44 @@ class VideoLabels(
         self._offset_object_indices(video_labels, offset)
 
     @staticmethod
+    def _clear_object_indices(video_labels):
+        for frame_labels in video_labels.iter_frames():
+            for dobj in frame_labels.objects:
+                dobj.index = None
+
+            for devent in frame_labels.events:
+                for dobj in devent.objects:
+                    dobj.index = None
+
+        for obj in video_labels.iter_video_objects():
+            obj.index = None
+            for dobj in obj.iter_detections():
+                dobj.index = None
+
+        for event in video_labels.iter_video_events():
+            for obj in event.iter_video_objects():
+                obj.index = None
+                for dobj in obj.iter_detections():
+                    dobj.index = None
+
+            for devent in event.iter_detections():
+                for dobj in devent.objects:
+                    dobj.index = None
+
+    @staticmethod
     def _get_object_indices(video_labels):
         obj_indices = set()
 
         for frame_labels in video_labels.iter_frames():
-            for obj in frame_labels.objects:
-                if obj.index is not None:
-                    obj_indices.add(obj.index)
+            for dobj in frame_labels.objects:
+                if dobj.index is not None:
+                    obj_indices.add(dobj.index)
 
-        for obj in video_labels.iter_objects():
+            for devent in frame_labels.events:
+                for dobj in devent.objects:
+                    obj_indices.add(dobj.index)
+
+        for obj in video_labels.iter_video_objects():
             if obj.index is not None:
                 obj_indices.add(obj.index)
 
@@ -1114,22 +1143,34 @@ class VideoLabels(
                 if dobj.index is not None:
                     obj_indices.add(dobj.index)
 
-        for event in video_labels.iter_events():
+        for event in video_labels.iter_video_events():
+            for obj in event.iter_video_objects():
+                if obj.index is not None:
+                    obj_indices.add(obj.index)
+
+                for dobj in obj.iter_detections():
+                    dobj.index = None
+
             for devent in event.iter_detections():
-                for obj in devent.objects:
-                    if obj.index is not None:
-                        obj_indices.add(obj.index)
+                for dobj in devent.objects:
+                    if dobj.index is not None:
+                        obj_indices.add(dobj.index)
 
         return obj_indices
 
     @staticmethod
     def _offset_object_indices(video_labels, offset):
         for frame_labels in video_labels.iter_frames():
-            for obj in frame_labels.objects:
-                if obj.index is not None:
-                    obj.index += offset
+            for dobj in frame_labels.objects:
+                if dobj.index is not None:
+                    dobj.index += offset
 
-        for obj in video_labels.iter_objects():
+            for devent in frame_labels.events:
+                for dobj in devent.objects:
+                    if dobj.index is not None:
+                        dobj.index += offset
+
+        for obj in video_labels.iter_video_objects():
             if obj.index is not None:
                 obj.index += offset
 
@@ -1137,11 +1178,19 @@ class VideoLabels(
                 if dobj.index is not None:
                     dobj.index += offset
 
-        for event in video_labels.iter_events():
+        for event in video_labels.iter_video_events():
+            for obj in event.iter_video_objects():
+                if obj.index is not None:
+                    obj.index += offset
+
+                for dobj in obj.iter_detections():
+                    if dobj.index is not None:
+                        dobj.index += offset
+
             for devent in event.iter_detections():
-                for obj in devent.objects:
-                    if obj.index is not None:
-                        obj.index += offset
+                for dobj in devent.objects:
+                    if dobj.index is not None:
+                        dobj.index += offset
 
     def _reindex_events(self, video_labels):
         self_indices = self._get_event_indices(self)
@@ -1156,30 +1205,49 @@ class VideoLabels(
         self._offset_event_indices(video_labels, offset)
 
     @staticmethod
+    def _clear_event_indices(video_labels):
+        for event in video_labels.iter_video_events():
+            event.index = None
+            for devent in event.iter_detections():
+                devent.index = None
+
+        for frame_labels in video_labels.iter_frames():
+            for devent in frame_labels.events:
+                devent.index = None
+
+    @staticmethod
     def _get_event_indices(video_labels):
         event_indices = set()
 
-        for event in video_labels.iter_events():
+        for event in video_labels.iter_video_events():
             if event.index is not None:
                 event_indices.add(event.index)
 
+            for devent in event.iter_detections():
+                if devent.index is not None:
+                    event_indices.add(devent.index)
+
         for frame_labels in video_labels.iter_frames():
-            for event in frame_labels.events:
-                if event.index is not None:
-                    event_indices.add(event.index)
+            for devent in frame_labels.events:
+                if devent.index is not None:
+                    event_indices.add(devent.index)
 
         return event_indices
 
     @staticmethod
     def _offset_event_indices(video_labels, offset):
-        for event in video_labels.iter_events():
+        for event in video_labels.iter_video_events():
             if event.index is not None:
                 event.index += offset
 
+            for devent in event.iter_detections():
+                if devent.index is not None:
+                    devent.index += offset
+
         for frame_labels in video_labels.iter_frames():
-            for event in frame_labels.events:
-                if event.index is not None:
-                    event.index += offset
+            for devent in frame_labels.events:
+                if devent.index is not None:
+                    devent.index += offset
 
 
 class VideoLabelsSchema(etal.LabelsSchema):
