@@ -22,6 +22,7 @@ from future.utils import iteritems, itervalues
 
 from collections import defaultdict
 from copy import deepcopy
+import logging
 
 import eta.core.data as etad
 import eta.core.frameutils as etaf
@@ -30,6 +31,9 @@ import eta.core.labels as etal
 import eta.core.objects as etao
 import eta.core.serial as etas
 import eta.core.utils as etau
+
+
+logger = logging.getLogger(__name__)
 
 
 class DetectedEvent(etal.Labels, etag.HasBoundingBox):
@@ -84,54 +88,54 @@ class DetectedEvent(etal.Labels, etag.HasBoundingBox):
 
     @property
     def is_empty(self):
-        '''Whether this event has no labels of any kind.'''
+        '''Whether the event has no labels of any kind.'''
         return not (
             self.has_label or self.has_bounding_box or self.has_mask
             or self.has_attributes or self.has_objects)
 
     @property
     def has_label(self):
-        '''Whether this event has a label.'''
+        '''Whether the event has a label.'''
         return self.label is not None
 
     @property
     def has_bounding_box(self):
-        '''Whether this event has a bounding box.'''
+        '''Whether the event has a bounding box.'''
         return self.bounding_box is not None
 
     @property
     def has_mask(self):
-        '''Whether this event has a segmentation mask.'''
+        '''Whether the event has a segmentation mask.'''
         return self.mask is not None
 
     @property
     def has_confidence(self):
-        '''Whether this event has a confidence.'''
+        '''Whether the event has a label confidence.'''
         return self.confidence is not None
 
     @property
     def has_top_k_probs(self):
-        '''Whether this event has top-k probabilities.'''
+        '''Whether the event has top-k probabilities for its label.'''
         return self.top_k_probs is not None
 
     @property
     def has_index(self):
-        '''Whether this event has an index.'''
+        '''Whether the event has an index.'''
         return self.index is not None
 
     @property
     def has_frame_number(self):
-        '''Whether this event has a frame number.'''
+        '''Whether the event has a frame number.'''
         return self.frame_number is not None
 
     @property
     def has_attributes(self):
-        '''Whether this event has attributes.'''
+        '''Whether the event has attributes.'''
         return bool(self.attrs)
 
     @property
     def has_objects(self):
-        '''Whether this event has at least one object.'''
+        '''Whether the event has at least one object.'''
         return bool(self.objects)
 
     @classmethod
@@ -166,6 +170,51 @@ class DetectedEvent(etal.Labels, etag.HasBoundingBox):
              a BoundingBox
         '''
         return self.bounding_box
+
+    def get_index(self):
+        '''Returns the `index` of the event.
+
+        Returns:
+            the index, or None if the event has no index
+        '''
+        return self.index
+
+    def offset_index(self, offset):
+        '''Adds the given offset to the event's index.
+
+        If the event has no index, this does nothing.
+
+        Args:
+            offset: the integer offset
+        '''
+        if self.has_index:
+            self.index += offset
+
+    def clear_index(self):
+        '''Clears the `index` of the event.'''
+        self.index = None
+
+    def get_object_indexes(self):
+        '''Returns the set of `index`es of objects in the event.
+
+        `None` indexes are omitted.
+
+        Returns:
+            a set of indexes
+        '''
+        return self.objects.get_indexes()
+
+    def offset_object_indexes(self, offset):
+        '''Adds the given offset to all objects in the event with `index`es.
+
+        Args:
+            offset: the integer offset
+        '''
+        self.objects.offset_indexes(offset)
+
+    def clear_object_indexes(self):
+        '''Clears the `index`es of all objects in the event.'''
+        self.objects.clear_indexes()
 
     def add_attribute(self, attr):
         '''Adds the attribute to the event.
@@ -334,12 +383,67 @@ class DetectedEventContainer(etal.LabelsContainer):
     _ELE_ATTR = "events"
 
     def get_labels(self):
-        '''Returns a set containing the labels of the `DetectedEvent`s.
+        '''Returns the set of `label`s of all events in the container.
 
         Returns:
             a set of labels
         '''
-        return set(obj.label for obj in self)
+        return set(devent.label for devent in self)
+
+    def get_indexes(self):
+        '''Returns the set of `index`es of all events in the container.
+
+        `None` indexes are omitted.
+
+        Returns:
+            a set of indexes
+        '''
+        return set(devent.index for devent in self if devent.has_index)
+
+    def offset_indexes(self, offset):
+        '''Adds the given offset to all events with `index`es.
+
+        Args:
+            offset: the integer offset
+        '''
+        for devent in self:
+            devent.offset_index(offset)
+
+    def clear_indexes(self):
+        '''Clears the `index` of all events in the container.'''
+        for devent in self:
+            devent.clear_index()
+
+    def get_object_indexes(self):
+        '''Returns the set of `index`es of all objects in the events in the
+        container.
+
+        `None` indexes are omitted.
+
+        Returns:
+            a set of indexes
+        '''
+        obj_indexes = set()
+        for devent in self:
+            obj_indexes.update(devent.get_object_indexes())
+
+        return obj_indexes
+
+    def offset_object_indexes(self, offset):
+        '''Adds the given offset to all objects with `index`es in all events
+        in the container.
+
+        Args:
+            offset: the integer offset
+        '''
+        for devent in self:
+            devent.offset_object_indexes(offset)
+
+    def clear_object_indexes(self):
+        '''Clears the `index`es of all objects in all events in the container.
+        '''
+        for devent in self:
+            devent.clear_object_indexes()
 
     def sort_by_confidence(self, reverse=False):
         '''Sorts the `DetectedEvent`s by confidence.
@@ -405,8 +509,7 @@ class VideoEvent(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
     information about an event in a video. `VideoEvent`s can have labels with
     confidences, event-level attributes that apply to the event over all
     frames, spatiotemporal objects, frame-level attributes such as bounding
-    boxes, object detections, and attributes that apply to individual frames,
-    and child objects and events.
+    boxes, object detections, and attributes that apply to individual frames.
 
     Attributes:
         type: the fully-qualified class name of the event
@@ -414,18 +517,14 @@ class VideoEvent(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
         confidence: (optional) the label confidence in [0, 1]
         support: a FrameRanges instance describing the support of the event
         index: (optional) an index assigned to the event
-        uuid: (optional) a UUID assigned to the event
         attrs: an AttributeContainer of event-level attributes
         objects: a VideoObjectContainer of objects
         frames: dictionary mapping frame numbers to `DetectedEvent`s
-        child_objects: a set of UUIDs of child `VideoObject`s
-        child_events: a set of UUIDs of child `VideoEvent`s
     '''
 
     def __init__(
             self, label=None, confidence=None, support=None, index=None,
-            uuid=None, attrs=None, objects=None, frames=None,
-            child_objects=None, child_events=None):
+            attrs=None, objects=None, frames=None):
         '''Creates a VideoEvent instance.
 
         Args:
@@ -434,30 +533,41 @@ class VideoEvent(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
             support: (optional) a FrameRanges instance describing the frozen
                 support of the event
             index: (optional) a index assigned to the event
-            uuid: (optional) a UUID assigned to the event
             attrs: (optional) an AttributeContainer of event-level attributes
             objects: (optional) a VideoObjectContainer of objects
             frames: (optional) dictionary mapping frame numbers to
                 `DetectedEvent`s
-            child_objects: (optional) a set of UUIDs of child `VideoObject`s
-            child_events: (optional) a set of UUIDs of child `VideoEvent`s
         '''
         self.type = etau.get_class_name(self)
         self.label = label
         self.confidence = confidence
         self.index = index
-        self.uuid = uuid
         self.attrs = attrs or etad.AttributeContainer()
         self.objects = objects or etao.VideoObjectContainer()
         self.frames = frames or {}
-        self.child_objects = set(child_objects or [])
-        self.child_events = set(child_events or [])
         etal.HasLabelsSupport.__init__(self, support=support)
 
     @property
     def is_empty(self):
-        '''Whether this instance has no labels of any kind.'''
-        return False
+        '''Whether the event has no labels of any kind.'''
+        return not (
+            self.has_label or self.has_event_attributes
+            or self.has_video_objects or self.has_detections)
+
+    @property
+    def has_label(self):
+        '''Whether the event has a label.'''
+        return self.label is not None
+
+    @property
+    def has_confidence(self):
+        '''Whether the event has a label confidence.'''
+        return self.confidence is not None
+
+    @property
+    def has_index(self):
+        '''Whether the event has an index.'''
+        return self.index is not None
 
     @property
     def has_attributes(self):
@@ -493,14 +603,9 @@ class VideoEvent(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
         return False
 
     @property
-    def has_child_objects(self):
-        '''Whether the event has at least one child VideoObject.'''
-        return bool(self.child_objects)
-
-    @property
-    def has_child_events(self):
-        '''Whether the event has at least one child VideoEvent.'''
-        return bool(self.child_events)
+    def has_detections(self):
+        '''Whether the event has at least one non-empty DetectedEvent.'''
+        return any(not devent.is_empty for devent in itervalues(self.frames))
 
     def iter_attributes(self):
         '''Returns an iterator over the event-level attributes of the event.
@@ -529,6 +634,63 @@ class VideoEvent(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
         '''
         for frame_number in sorted(self.frames):
             yield self.frames[frame_number]
+
+    def get_index(self):
+        '''Returns the `index` of the event.
+
+        Returns:
+            the index, or None if the event has no index
+        '''
+        return self.index
+
+    def offset_index(self, offset):
+        '''Adds the given offset to the event's index.
+
+        If the event has no index, this does nothing.
+
+        Args:
+            offset: the integer offset
+        '''
+        if self.has_index:
+            self.index += offset
+            for devent in self.iter_detections():
+                devent.offset_index(offset)
+
+    def clear_index(self):
+        '''Clears the `index` of the event.'''
+        self.index = None
+        for devent in self.iter_detections():
+            devent.clear_index()
+
+    def get_object_indexes(self):
+        '''Returns the set of `index`es of objects in the event.
+
+        `None` indexes are omitted.
+
+        Returns:
+            a set of indexes
+        '''
+        obj_indexes = self.objects.get_indexes()
+        for devent in self.iter_detections():
+            obj_indexes.update(devent.get_object_indexes())
+
+        return obj_indexes
+
+    def offset_object_indexes(self, offset):
+        '''Adds the given offset to all objects in the event with `index`es.
+
+        Args:
+            offset: the integer offset
+        '''
+        self.objects.offset_indexes(offset)
+        for devent in self.iter_detections():
+            devent.offset_object_indexes(offset)
+
+    def clear_object_indexes(self):
+        '''Clears the `index`es of all objects in the event.'''
+        self.objects.clear_indexes()
+        for devent in self.iter_detections():
+            devent.clear_object_indexes()
 
     def add_event_attribute(self, attr):
         '''Adds the event-level attribute to the event.
@@ -593,51 +755,28 @@ class VideoEvent(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
         else:
             self.objects.add_container(objects)
 
-    def add_detection(self, event, frame_number=None, clean=True):
+    def add_detection(self, event, frame_number=None):
         '''Adds the detection to the event.
+
+        The detection will have its `label` and `index` scrubbed.
 
         Args:
             event: a DetectedEvent
             frame_number: a frame number. If omitted, the DetectedEvent must
                 have its `frame_number` set
-            clean: whether to set the `label` and `index` fields of the
-                DetectedEvent to `None`. By default, this is True
         '''
-        self._add_detected_event(event, frame_number, clean)
+        self._add_detected_event(event, frame_number)
 
-    def add_detections(self, events, clean=True):
+    def add_detections(self, events):
         '''Adds the detections to the event.
 
-        The `DetectedEvent`s must have their `frame_number`s set.
+        The `DetectedEvent`s must have their `frame_number`s set, and they will
+        have their `label`s and `index`es scrubbed.
 
         Args:
             events: a DetectedEventContainer
-            clean: whether to set the `label` and `index` fields of the
-                `DetectedEvent`s to `None`. By default, this is True
         '''
-        self._add_detected_events(events, clean)
-
-    def add_child_object(self, obj):
-        '''Adds the VideoObject as a child of this event.
-
-        Args:
-            obj: a VideoObject, which must have its `uuid` set
-        '''
-        if obj.uuid is None:
-            raise ValueError("VideoObject must have its `uuid` set")
-
-        self.child_objects.add(obj.uuid)
-
-    def add_child_event(self, event):
-        '''Adds the VideoEvent as a child of this event.
-
-        Args:
-            event: a VideoEvent, which must have its `uuid` set
-        '''
-        if event.uuid is None:
-            raise ValueError("VideoEvent must have its `uuid` set")
-
-        self.child_events.add(event.uuid)
+        self._add_detected_events(events)
 
     def remove_empty_frames(self):
         '''Removes all empty DetectedEvents from this event.'''
@@ -673,14 +812,6 @@ class VideoEvent(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
         '''Removes all `DetectedEvent`s from the event.'''
         self.frames = {}
 
-    def clear_child_objects(self):
-        '''Removes all child objects from the event.'''
-        self.child_objects = set()
-
-    def clear_child_events(self):
-        '''Removes all child events from the event.'''
-        self.child_events = set()
-
     def render_framewise_labels(self):
         '''Renders a framewise copy of the event.
 
@@ -691,22 +822,15 @@ class VideoEvent(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
         frames = renderer.render_all_frames()
         return VideoEvent(frames=frames)
 
-    def filter_by_schema(self, schema, objects=None, events=None):
+    def filter_by_schema(self, schema):
         '''Filters the event by the given schema.
 
         Args:
             schema: an EventSchema
-            objects: an optional dictionary mapping uuids to `VideoObject`s. If
-                provided, the child objects of the event will be filtered by
-                their respective schemas
-            events: an optional dictionary mapping uuids to `VideoEvent`s. If
-                provided, the child events of the event will be filtered by
-                their respective schemas
 
         Raises:
             LabelsSchemaError: if the event label does not match the schema
         '''
-        # @todo children...
         schema.validate_label(self.label)
         self.attrs.filter_by_schema(schema.attrs)
         self.objects.filter_by_schema(schema.objects)
@@ -740,23 +864,17 @@ class VideoEvent(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
             _attrs.append("support")
         if self.index is not None:
             _attrs.append("index")
-        if self.uuid is not None:
-            _attrs.append("uuid")
         if self.attrs:
             _attrs.append("attrs")
         if self.objects:
             _attrs.append("objects")
         if self.frames:
             _attrs.append("frames")
-        if self.child_objects:
-            _attrs.append("child_objects")
-        if self.child_events:
-            _attrs.append("child_events")
         return _attrs
 
     @staticmethod
     def build_simple(
-            first, last, label, confidence=None, index=None, uuid=None):
+            first, last, label, confidence=None, index=None):
         '''Builds a simple contiguous VideoEvent.
 
         Args:
@@ -765,15 +883,13 @@ class VideoEvent(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
             label: the event label
             confidence: (optional) confidence in [0, 1]
             index: (optional) an index for the event
-            uuid: (optional) a UUID for the event
 
         Returns:
              a VideoEvent
         '''
         support = etaf.FrameRanges.build_simple(first, last)
         return VideoEvent(
-            label=label, confidence=confidence, support=support, index=index,
-            uuid=uuid)
+            label=label, confidence=confidence, support=support, index=index)
 
     @classmethod
     def from_detections(cls, events):
@@ -874,12 +990,9 @@ class VideoEvent(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
             confidence=d.get("confidence", None),
             support=support,
             index=d.get("index", None),
-            uuid=d.get("uuid", None),
             attrs=attrs,
             objects=objects,
             frames=frames,
-            child_objects=d.get("child_objects", None),
-            child_events=d.get("child_events", None),
         )
 
     @classmethod
@@ -918,28 +1031,36 @@ class VideoEvent(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
         self.frames[frame_number].add_object(obj)
 
     def _add_detected_objects(self, objects, frame_number):
-        for obj in objects:
-            self._add_detected_object(obj, frame_number)
+        for dobj in objects:
+            self._add_detected_object(dobj, frame_number)
 
-    def _add_detected_event(self, event, frame_number, clean):
+    def _add_detected_event(self, devent, frame_number):
         if frame_number is None:
-            if not event.has_frame_number:
+            if not devent.has_frame_number:
                 raise ValueError(
                     "Either `frame_number` must be provided or the "
                     "DetectedEvent must have its `frame_number` set")
 
-            frame_number = event.frame_number
+            frame_number = devent.frame_number
 
-        if clean:
-            event.label = None
-            event.index = None
+        if devent.label is not None and devent.label != self.label:
+            logger.warning(
+                "Erasing DetectedEvent label '%s' that does not match "
+                "VideoEvent label '%s'", devent.label, self.label)
 
-        event.frame_number = frame_number
-        self.frames[frame_number] = event
+        if devent.index is not None and devent.index != self.index:
+            logger.warning(
+                "Erasing DetectedEvent index '%s' that does not match "
+                "VideoEvent index '%s'", devent.index, self.index)
 
-    def _add_detected_events(self, events, clean):
-        for event in events:
-            self._add_detected_event(event, None, clean)
+        devent.label = None
+        devent.index = None
+        devent.frame_number = frame_number
+        self.frames[frame_number] = devent
+
+    def _add_detected_events(self, events):
+        for devent in events:
+            self._add_detected_event(devent, None)
 
     def _compute_support(self):
         frame_ranges = etaf.FrameRanges.from_iterable(self.frames.keys())
@@ -955,12 +1076,67 @@ class VideoEventContainer(etal.LabelsContainer):
     _ELE_ATTR = "events"
 
     def get_labels(self):
-        '''Returns a set containing the labels of the `VideoEvent`s.
+        '''Returns the set of `label`s of all events in the container.
 
         Returns:
             a set of labels
         '''
         return set(event.label for event in self)
+
+    def get_indexes(self):
+        '''Returns the set of `index`es of all events in the container.
+
+        `None` indexes are omitted.
+
+        Returns:
+            a set of indexes
+        '''
+        return set(event.index for event in self if event.has_index)
+
+    def offset_indexes(self, offset):
+        '''Adds the given offset to all events with `index`es.
+
+        Args:
+            offset: the integer offset
+        '''
+        for event in self:
+            event.offset_index(offset)
+
+    def clear_indexes(self):
+        '''Clears the `index` of all events in the container.'''
+        for event in self:
+            event.clear_index()
+
+    def get_object_indexes(self):
+        '''Returns the set of `index`es of all objects in the events in the
+        container.
+
+        `None` indexes are omitted.
+
+        Returns:
+            a set of indexes
+        '''
+        obj_indexes = set()
+        for event in self:
+            obj_indexes.update(event.get_object_indexes())
+
+        return obj_indexes
+
+    def offset_object_indexes(self, offset):
+        '''Adds the given offset to all objects with `index`es in all events
+        in the container.
+
+        Args:
+            offset: the integer offset
+        '''
+        for event in self:
+            event.offset_object_indexes(offset)
+
+    def clear_object_indexes(self):
+        '''Clears the `index`es of all objects in all events in the container.
+        '''
+        for event in self:
+            event.clear_object_indexes()
 
     def sort_by_confidence(self, reverse=False):
         '''Sorts the `VideoEvent`s by confidence.
@@ -982,17 +1158,11 @@ class VideoEventContainer(etal.LabelsContainer):
         '''
         self.sort_by("index", reverse=reverse)
 
-    def filter_by_schema(self, schema, objects=None, events=None):
+    def filter_by_schema(self, schema):
         '''Filter the events in the container by the given schema.
 
         Args:
             schema: an EventContainerSchema
-            objects: an optional dictionary mapping uuids to `VideoObject`s. If
-                provided, child objects will be filtered by their respective
-                schemas
-            events: an optional dictionary mapping uuids to `VideoEvent`s. If
-                provided, child events will be filtered by their respective
-                schemas
 
         Raises:
             LabelsSchemaError: if the label does not match the schema
@@ -1004,8 +1174,7 @@ class VideoEventContainer(etal.LabelsContainer):
         # Filter events
         for event in self:
             event_schema = schema.get_event_schema(event.label)
-            event.filter_by_schema(
-                event_schema, objects=objects, events=events)
+            event.filter_by_schema(event_schema)
 
     def remove_objects_without_attrs(self, labels=None):
         '''Removes objects that do not have attributes from all events in this
@@ -1737,23 +1906,16 @@ class EventSchema(etal.LabelsSchema):
         self.objects.merge_schema(schema.objects)
 
     @classmethod
-    def build_active_schema(cls, event, objects=None, events=None):
+    def build_active_schema(cls, event):
         '''Builds an EventSchema that describes the active schema of the given
         event.
 
         Args:
             event: a VideoEvent or DetectedEvent
-            objects: an optional dictionary mapping uuids to `VideoObject`s. If
-                provided, the child objects of this event will be incorporated
-                into the schema
-            events: an optional dictionary mapping uuids to `VideoEvent`s. If
-                provided, the child events of this event will be incorporated
-                into the schema
 
         Returns:
             an EventSchema
         '''
-        # @todo children...
         schema = cls(event.label)
         schema.add_event(event)
         return schema
@@ -1829,7 +1991,6 @@ class EventSchema(etal.LabelsSchema):
         self.validate_objects(devent.objects)
 
     def _validate_video_event(self, event):
-        # @todo children...
         self.validate_label(event.label)
         self.validate_event_attributes(event.attrs)
         self.validate_objects(event.objects)
