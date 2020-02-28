@@ -21,6 +21,7 @@ from future.utils import iteritems, itervalues
 
 from collections import defaultdict
 from copy import deepcopy
+import logging
 
 import eta.core.data as etad
 import eta.core.frameutils as etaf
@@ -28,6 +29,9 @@ import eta.core.geometry as etag
 import eta.core.labels as etal
 import eta.core.serial as etas
 import eta.core.utils as etau
+
+
+logger = logging.getLogger(__name__)
 
 
 class DetectedObject(etal.Labels, etag.HasBoundingBox):
@@ -53,16 +57,13 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
         index_in_frame: (optional) the index of the object in the frame where
             it was detected
         eval_type: (optional) an EvaluationType value
-        event_uuids: (optional) a set of a Event uuids to which the object
-            belongs
         attrs: (optional) an AttributeContainer of attributes for the object
     '''
 
     def __init__(
             self, label=None, bounding_box=None, mask=None, confidence=None,
             top_k_probs=None, index=None, score=None, frame_number=None,
-            index_in_frame=None, eval_type=None, event_uuids=None,
-            attrs=None):
+            index_in_frame=None, eval_type=None, attrs=None):
         '''Creates a DetectedObject instance.
 
         Args:
@@ -79,8 +80,6 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
             index_in_frame: (optional) the index of the object in the frame
                 where it was detected
             eval_type: (optional) an EvaluationType value
-            event_uuids: (optional) a set of Event uuids to which the object
-                belongs
             attrs: (optional) an AttributeContainer of attributes for the
                 object
         '''
@@ -95,55 +94,54 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
         self.frame_number = frame_number
         self.index_in_frame = index_in_frame
         self.eval_type = eval_type
-        self.event_uuids = set(event_uuids or [])
         self.attrs = attrs or etad.AttributeContainer()
         self._meta = None  # Usable by clients to store temporary metadata
 
     @property
     def is_empty(self):
-        '''Whether this object has no labels of any kind.'''
+        '''Whether the object has no labels of any kind.'''
         return not (
             self.has_label or self.has_bounding_box or self.has_mask or
             self.has_attributes)
 
     @property
     def has_label(self):
-        '''Whether this object has a label.'''
+        '''Whether the object has a label.'''
         return self.label is not None
 
     @property
     def has_bounding_box(self):
-        '''Whether this object has a bounding box.'''
+        '''Whether the object has a bounding box.'''
         return self.bounding_box is not None
 
     @property
     def has_mask(self):
-        '''Whether this object has a segmentation mask.'''
+        '''Whether the object has a segmentation mask.'''
         return self.mask is not None
 
     @property
     def has_confidence(self):
-        '''Whether this object has a confidence.'''
+        '''Whether the object has a label confidence.'''
         return self.confidence is not None
 
     @property
     def has_top_k_probs(self):
-        '''Whether this object has top-k probabilities.'''
+        '''Whether the object has top-k probabilities for its label.'''
         return self.top_k_probs is not None
 
     @property
     def has_index(self):
-        '''Whether this object has an index.'''
+        '''Whether the object has an index.'''
         return self.index is not None
 
     @property
     def has_frame_number(self):
-        '''Whether this object has a frame number.'''
+        '''Whether the object has a frame number.'''
         return self.frame_number is not None
 
     @property
     def has_attributes(self):
-        '''Whether this object has attributes.'''
+        '''Whether the object has attributes.'''
         return bool(self.attrs)
 
     @classmethod
@@ -162,6 +160,29 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
              a BoundingBox
         '''
         return self.bounding_box
+
+    def get_index(self):
+        '''Returns the `index` of the object.
+
+        Returns:
+            the index, or None if the object has no index
+        '''
+        return self.index
+
+    def offset_index(self, offset):
+        '''Adds the given offset to the object's index.
+
+        If the object has no index, this does nothing.
+
+        Args:
+            offset: the integer offset
+        '''
+        if self.has_index:
+            self.index += offset
+
+    def clear_index(self):
+        '''Clears the `index` of the object.'''
+        self.index = None
 
     def add_attribute(self, attr):
         '''Adds the attribute to the object.
@@ -229,8 +250,6 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
             "index", "score", "frame_number", "index_in_frame", "eval_type"]
         _attrs.extend(
             [a for a in _noneable_attrs if getattr(self, a) is not None])
-        if self.event_uuids:
-            _attrs.append("event_uuids")
         if self.attrs:
             _attrs.append("attrs")
         return _attrs
@@ -271,7 +290,6 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
             index_in_frame=d.get("index_in_frame", None),
             attrs=attrs,
             eval_type=d.get("eval_type", None),
-            event_uuids=set(d.get("event_uuids", []))
         )
 
     @classmethod
@@ -300,12 +318,38 @@ class DetectedObjectContainer(etal.LabelsContainer):
     _ELE_ATTR = "objects"
 
     def get_labels(self):
-        '''Returns a set containing the labels of the `DetectedObject`s.
+        '''Returns the set of `label`s of all objects in the container.
+
+        `None` indexes are omitted.
 
         Returns:
             a set of labels
         '''
-        return set(obj.label for obj in self)
+        return set(dobj.label for dobj in self)
+
+    def get_indexes(self):
+        '''Returns the set of `index`es of all objects in the container.
+
+        `None` indexes are omitted.
+
+        Returns:
+            a set of indexes
+        '''
+        return set(dobj.index for dobj in self if dobj.has_index)
+
+    def offset_indexes(self, offset):
+        '''Adds the given offset to all objects with `index`es.
+
+        Args:
+            offset: the integer offset
+        '''
+        for dobj in self:
+            dobj.offset_index(offset)
+
+    def clear_indexes(self):
+        '''Clears the `index` of all objects in the container.'''
+        for dobj in self:
+            dobj.clear_index()
 
     def sort_by_confidence(self, reverse=False):
         '''Sorts the `DetectedObject`s by confidence.
@@ -382,8 +426,8 @@ class VideoObject(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
     `VideoObject`s are spatiotemporal concepts that describe information about
     an object over multiple frames in a video. `VideoObject`s can have labels
     with confidences, object-level attributes that apply to the object over all
-    frames, frame-level attributes such as bounding boxes and attributes that
-    apply to individual frames, and child objects.
+    frames, and frame-level attributes such as bounding boxes and attributes
+    that apply to individual frames.
 
     Attributes:
         type: the fully-qualified class name of the object
@@ -391,17 +435,15 @@ class VideoObject(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
         confidence: (optional) label confidence in [0, 1]
         support: a FrameRanges instance describing the support of the object
         index: (optional) an index assigned to the object
-        uuid: (optional) a UUID assigned to the object
         attrs: (optional) AttributeContainer of object-level attributes of the
             object
         frames: dictionary mapping frame numbers to DetectedObject instances
             describing the frame-level attributes of the object
-        child_objects: (optional) a set of UUIDs of child `VideoObject`s
     '''
 
     def __init__(
             self, label=None, confidence=None, support=None, index=None,
-            uuid=None, attrs=None, frames=None, child_objects=None):
+            attrs=None, frames=None):
         '''Creates a VideoObject instance.
 
         Args:
@@ -410,26 +452,39 @@ class VideoObject(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
             support: (optional) a FrameRanges instance describing the frozen
                 support of the object
             index: (optional) an index assigned to the object
-            uuid: (optional) a UUID assigned to the object
             attrs: (optional) an AttributeContainer of object-level attributes
             frames: (optional) a dictionary mapping frame numbers to
                 DetectedObject instances
-            child_objects: (optional) a set of UUIDs of child `VideoObject`s
         '''
         self.type = etau.get_class_name(self)
         self.label = label
         self.confidence = confidence
         self.index = index
-        self.uuid = uuid
         self.attrs = attrs or etad.AttributeContainer()
         self.frames = frames or {}
-        self.child_objects = set(child_objects or [])
         etal.HasLabelsSupport.__init__(self, support=support)
 
     @property
     def is_empty(self):
-        '''Whether this instance has no labels of any kind.'''
-        return False
+        '''Whether the object has no labels of any kind.'''
+        return not (
+            self.has_label or self.has_object_attributes
+            or self.has_detections)
+
+    @property
+    def has_label(self):
+        '''Whether the object has a label.'''
+        return self.label is not None
+
+    @property
+    def has_confidence(self):
+        '''Whether the object has a label confidence.'''
+        return self.confidence is not None
+
+    @property
+    def has_index(self):
+        '''Whether the object has an index.'''
+        return self.index is not None
 
     @property
     def has_attributes(self):
@@ -443,8 +498,8 @@ class VideoObject(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
 
     @property
     def has_detections(self):
-        '''Whether the object has frame-level detections.'''
-        return bool(self.frames)
+        '''Whether the object has at least one non-empty DetectedObject.'''
+        return any(not dobj.is_empty for dobj in itervalues(self.frames))
 
     @property
     def has_frame_attributes(self):
@@ -454,11 +509,6 @@ class VideoObject(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
                 return True
 
         return False
-
-    @property
-    def has_child_objects(self):
-        '''Whether the object has at least one child VideoObject.'''
-        return bool(self.child_objects)
 
     def iter_attributes(self):
         '''Returns an iterator over the object-level attributes of the object.
@@ -480,6 +530,33 @@ class VideoObject(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
         for frame_number in sorted(self.frames):
             yield self.frames[frame_number]
 
+    def get_index(self):
+        '''Returns the `index` of the object.
+
+        Returns:
+            the index, or None if the object has no index
+        '''
+        return self.index
+
+    def offset_index(self, offset):
+        '''Adds the given offset to the object's index.
+
+        If the object has no index, this does nothing.
+
+        Args:
+            offset: the integer offset
+        '''
+        if self.has_index:
+            self.index += offset
+            for dobj in self.iter_detections():
+                dobj.offset_index(offset)
+
+    def clear_index(self):
+        '''Clears the `index` of the object.'''
+        self.index = None
+        for dobj in self.iter_detections():
+            dobj.clear_index()
+
     def add_object_attribute(self, attr):
         '''Adds the object-level attribute to the object.
 
@@ -497,40 +574,28 @@ class VideoObject(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
         '''
         self.attrs.add_container(attrs)
 
-    def add_detection(self, obj, frame_number=None, clean=True):
+    def add_detection(self, obj, frame_number=None):
         '''Adds the detection to the object.
+
+        The detection will have its `label` and `index` scrubbed.
 
         Args:
             obj: a DetectedObject
             frame_number: a frame number. If omitted, the DetectedObject must
                 have its `frame_number` set
-            clean: whether to set the `label` and `index` fields of the
-                DetectedObject to `None`. By default, this is True
         '''
-        self._add_detected_object(obj, frame_number, clean)
+        self._add_detected_object(obj, frame_number)
 
-    def add_detections(self, objects, clean=True):
+    def add_detections(self, objects):
         '''Adds the detections to the object.
 
-        The `DetectedObject`s must have their `frame_number`s set.
+        The `DetectedObject`s must have their `frame_number`s set, and they
+        will have their `label`s and `index`es scrubbed.
 
         Args:
             objects: a DetectedObjectContainer
-            clean: whether to set the `label` and `index` fields of the
-                `DetectedObject`s to `None`. By default, this is True
         '''
-        self._add_detected_objects(objects, clean)
-
-    def add_child_object(self, obj):
-        '''Adds the VideoObject as a child of this object.
-
-        Args:
-            obj: a VideoObject, which must have its `uuid` set
-        '''
-        if obj.uuid is None:
-            raise ValueError("VideoObject must have its `uuid` set")
-
-        self.child_objects.add(obj.uuid)
+        self._add_detected_objects(objects)
 
     def remove_empty_frames(self):
         '''Removes all empty `DetectedObject`s from this object.'''
@@ -557,10 +622,6 @@ class VideoObject(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
         '''Removes all `DetectedObject`s from the object.'''
         self.frames = {}
 
-    def clear_child_objects(self):
-        '''Removes all child objects from the object.'''
-        self.child_objects = set()
-
     def render_framewise_labels(self):
         '''Renders a framewise copy of the object.
 
@@ -571,19 +632,15 @@ class VideoObject(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
         frames = renderer.render_all_frames()
         return VideoObject(frames=frames)
 
-    def filter_by_schema(self, schema, objects=None):
+    def filter_by_schema(self, schema):
         '''Filters the object by the given schema.
 
         Args:
             schema: an ObjectSchema
-            objects: an optional dictionary mapping uuids to `VideoObject`s. If
-                provided, child objects will be filtered by their respective
-                schemas
 
         Raises:
             LabelsSchemaError: if the object label does not match the schema
         '''
-        # @todo children...
         schema.validate_label(self.label)
         self.attrs.filter_by_schema(schema.attrs)
         for dobj in self.iter_detections():
@@ -604,14 +661,10 @@ class VideoObject(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
             _attrs.append("support")
         if self.index is not None:
             _attrs.append("index")
-        if self.uuid is not None:
-            _attrs.append("uuid")
         if self.attrs:
             _attrs.append("attrs")
         if self.frames:
             _attrs.append("frames")
-        if self.child_objects:
-            _attrs.append("child_objects")
         return _attrs
 
     @classmethod
@@ -697,10 +750,8 @@ class VideoObject(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
             confidence=d.get("confidence", None),
             support=support,
             index=d.get("index", None),
-            uuid=d.get("uuid", None),
             frames=frames,
             attrs=attrs,
-            child_objects=d.get("child_objects", None),
         )
 
     @classmethod
@@ -720,25 +771,33 @@ class VideoObject(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
 
         return obj_cls._from_dict(d)
 
-    def _add_detected_object(self, obj, frame_number, clean):
+    def _add_detected_object(self, dobj, frame_number):
         if frame_number is None:
-            if not obj.has_frame_number:
+            if not dobj.has_frame_number:
                 raise ValueError(
                     "Either `frame_number` must be provided or the "
                     "DetectedObject must have its `frame_number` set")
 
-            frame_number = obj.frame_number
+            frame_number = dobj.frame_number
 
-        if clean:
-            obj.label = None
-            obj.index = None
+        if dobj.label is not None and dobj.label != self.label:
+            logger.warning(
+                "DetectedObject label '%s' does not match VideoObject label "
+                "'%s'", dobj.label, self.label)
 
-        obj.frame_number = frame_number
-        self.frames[frame_number] = obj
+        if dobj.index is not None and dobj.index != self.index:
+            logger.warning(
+                "DetectedObject index '%s' does not match VideoObject index "
+                "'%s'", dobj.index, self.index)
 
-    def _add_detected_objects(self, objects, clean):
-        for obj in objects:
-            self._add_detected_object(obj, None, clean)
+        dobj.label = None
+        dobj.index = None
+        dobj.frame_number = frame_number
+        self.frames[frame_number] = dobj
+
+    def _add_detected_objects(self, objects):
+        for dobj in objects:
+            self._add_detected_object(dobj, None)
 
     def _compute_support(self):
         return etaf.FrameRanges.from_iterable(self.frames.keys())
@@ -752,12 +811,36 @@ class VideoObjectContainer(etal.LabelsContainer):
     _ELE_ATTR = "objects"
 
     def get_labels(self):
-        '''Returns a set containing the labels of the `VideoObject`s.
+        '''Returns the set of `label`s of all objects in the container.
 
         Returns:
             a set of labels
         '''
         return set(obj.label for obj in self)
+
+    def get_indexes(self):
+        '''Returns the set of `index`es of all objects in the container.
+
+        `None` indexes are omitted.
+
+        Returns:
+            a set of indexes
+        '''
+        return set(obj.index for obj in self if obj.has_index)
+
+    def offset_indexes(self, offset):
+        '''Adds the given offset to all objects with `index`es.
+
+        Args:
+            offset: the integer offset
+        '''
+        for obj in self:
+            obj.offset_index(offset)
+
+    def clear_indexes(self):
+        '''Clears the `index` of all objects in the container.'''
+        for obj in self:
+            obj.clear_index()
 
     def sort_by_confidence(self, reverse=False):
         '''Sorts the `VideoObject`s by confidence.
@@ -779,14 +862,11 @@ class VideoObjectContainer(etal.LabelsContainer):
         '''
         self.sort_by("index", reverse=reverse)
 
-    def filter_by_schema(self, schema, objects=None):
+    def filter_by_schema(self, schema):
         '''Filters the objects in the container by the given schema.
 
         Args:
             schema: an ObjectContainerSchema
-            objects: an optional dictionary mapping uuids to `VideoObject`s. If
-                provided, child objects will be filtered by their respective
-                schemas
         '''
         # Remove objects with invalid labels
         filter_func = lambda obj: schema.has_object_label(obj.label)
@@ -795,7 +875,7 @@ class VideoObjectContainer(etal.LabelsContainer):
         # Filter objects by their schemas
         for obj in self:
             obj_schema = schema.get_object_schema(obj.label)
-            obj.filter_by_schema(obj_schema, objects=objects)
+            obj.filter_by_schema(obj_schema)
 
     def remove_objects_without_attrs(self, labels=None):
         '''Removes objects from this container that do not have attributes.
@@ -1209,20 +1289,16 @@ class ObjectSchema(etal.LabelsSchema):
         self.frames.merge_schema(schema.frames)
 
     @classmethod
-    def build_active_schema(cls, obj, objects=None):
+    def build_active_schema(cls, obj):
         '''Builds an ObjectSchema that describes the active schema of the
         object.
 
         Args:
             obj: a VideoObject or DetectedObject
-            objects: an optional dictionary mapping uuids to `VideoObject`s. If
-                provided, the child objects of this object will be incorporated
-                into the schema
 
         Returns:
             an ObjectSchema
         '''
-        # @todo children...
         schema = cls(obj.label)
         schema.add_object(obj)
         return schema
@@ -1287,7 +1363,6 @@ class ObjectSchema(etal.LabelsSchema):
                 self.validate_frame_attribute(attr)
 
     def _validate_video_object(self, obj):
-        # @todo children...
         self.validate_label(obj.label)
         self.validate_object_attributes(obj.attrs)
         for dobj in obj.iter_detections():
