@@ -143,6 +143,54 @@ class FrameLabels(etal.Labels):
         '''
         return iter(self.events)
 
+    def get_object_indexes(self):
+        '''Returns the set of `index`es of all objects in the frame.
+
+        `None` indexes are omitted.
+
+        Returns:
+            a set of indexes
+        '''
+        obj_indexes = self.objects.get_indexes()
+        obj_indexes.update(self.events.get_object_indexes())
+        return obj_indexes
+
+    def offset_object_indexes(self, offset):
+        '''Adds the given offset to all objects with `index`es in the frame.
+
+        Args:
+            offset: the integer offset
+        '''
+        self.objects.offset_indexes(offset)
+        self.events.offset_object_indexes(offset)
+
+    def clear_object_indexes(self):
+        '''Clears the `index` of all objects in the frame.'''
+        self.objects.clear_indexes()
+        self.events.clear_object_indexes()
+
+    def get_event_indexes(self):
+        '''Returns the set of `index`es of all events in the frame.
+
+        `None` indexes are omitted.
+
+        Returns:
+            a set of indexes
+        '''
+        return self.events.get_indexes()
+
+    def offset_event_indexes(self, offset):
+        '''Adds the given offset to all events with `index`es in the frame.
+
+        Args:
+            offset: the integer offset
+        '''
+        self.events.offset_indexes(offset)
+
+    def clear_event_indexes(self):
+        '''Clears the `index` of all events in the frame.'''
+        self.events.clear_indexes()
+
     def add_attribute(self, attr):
         '''Adds the frame-level attribute to the frame.
 
