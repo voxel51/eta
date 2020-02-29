@@ -286,7 +286,7 @@ class BooleanAttribute(Attribute):
 
 
 class AttributeSchema(etal.LabelsSchema):
-    '''Base class for `Attribute` schemas.
+    '''Base class for Attribute schemas.
 
     Attributes:
         name: the name of the Attribute
@@ -314,7 +314,7 @@ class AttributeSchema(etal.LabelsSchema):
         return self.exclusive
 
     def get_attribute_class(self):
-        '''Gets the `Attribute` class associated with this schema.
+        '''Gets the Attribute class associated with this schema.
 
         Returns:
             the Attribute class
@@ -322,7 +322,7 @@ class AttributeSchema(etal.LabelsSchema):
         return self._attr_cls
 
     def add_attribute(self, attr):
-        '''Incorporates the given `Attribute` into the schema.
+        '''Incorporates the given Attribute into the schema.
 
         Args:
             attr: an Attribute
@@ -352,7 +352,7 @@ class AttributeSchema(etal.LabelsSchema):
         return self.is_valid(attr)
 
     def validate_schema(self, schema):
-        '''Validates that the given `AttributeSchema` has the same class and
+        '''Validates that the given AttributeSchema has the same class and
         `name` as this schema.
 
         Args:
@@ -372,7 +372,7 @@ class AttributeSchema(etal.LabelsSchema):
                 (self.name, schema.name))
 
     def validate_type(self, attr):
-        '''Validates that the `Attribute` is of the correct class.
+        '''Validates that the Attribute is of the correct class.
 
         Args:
             attr: an Attribute
@@ -386,7 +386,7 @@ class AttributeSchema(etal.LabelsSchema):
                 (attr.name, self.type, etau.get_class_name(attr)))
 
     def validate_attribute(self, attr):
-        '''Validates that the `Attribute` is compliant with the schema.
+        '''Validates that the Attribute is compliant with the schema.
 
         Args:
             attr: an Attribute
@@ -397,7 +397,7 @@ class AttributeSchema(etal.LabelsSchema):
         self.validate(attr)
 
     def validate(self, attr):
-        '''Validates that the `Attribute` is compliant with the schema.
+        '''Validates that the Attribute is compliant with the schema.
 
         Args:
             attr: an Attribute
@@ -453,7 +453,7 @@ class AttributeSchema(etal.LabelsSchema):
 
     @classmethod
     def from_dict(cls, d):
-        '''Constructs an `AttributeSchema` from a JSON dictionary.
+        '''Constructs an AttributeSchema from a JSON dictionary.
 
         Note that this function reflectively parses the schema type from the
         dictionary, so subclasses do not need to implement this method.
@@ -520,7 +520,7 @@ class CategoricalAttributeSchema(AttributeSchema):
         return value in self.categories
 
     def add(self, attr):
-        '''Incorporates the given `CategoricalAttribute` into the schema.
+        '''Incorporates the given CategoricalAttribute into the schema.
 
         Args:
             attr: a CategoricalAttribute
@@ -548,8 +548,8 @@ class CategoricalAttributeSchema(AttributeSchema):
 
     @classmethod
     def build_active_schema(cls, attr):
-        '''Builds a `CategoricalAttributeSchema` that describes the active
-        schema of the `CategoricalAttribute`.
+        '''Builds a CategoricalAttributeSchema that describes the active schema
+        of the CategoricalAttribute.
 
         Args:
             attr: a CategoricalAttribute
@@ -641,7 +641,7 @@ class NumericAttributeSchema(AttributeSchema):
         return value >= self.range[0] and value <= self.range[1]
 
     def add(self, attr):
-        '''Incorporates the `NumericAttribute` into the schema.
+        '''Incorporates the NumericAttribute into the schema.
 
         Args:
             attr: a NumericAttribute
@@ -674,8 +674,8 @@ class NumericAttributeSchema(AttributeSchema):
 
     @classmethod
     def build_active_schema(cls, attr):
-        '''Builds a `NumericAttributeSchema` that describes the active schema
-        of the `NumericAttribute`.
+        '''Builds a NumericAttributeSchema that describes the active schema of
+        the NumericAttribute.
 
         Args:
             attr: a NumericAttribute
@@ -765,7 +765,7 @@ class BooleanAttributeSchema(AttributeSchema):
         return value in self.values
 
     def add(self, attr):
-        '''Incorporates the given `BooleanAttribute` into the schema.
+        '''Incorporates the given BooleanAttribute into the schema.
 
         Args:
             attr: a BooleanAttribute
@@ -792,8 +792,8 @@ class BooleanAttributeSchema(AttributeSchema):
 
     @classmethod
     def build_active_schema(cls, attr):
-        '''Builds a `BooleanAttributeSchema` that describes the active schema
-        of the `BooleanAttribute`.
+        '''Builds a BooleanAttributeSchema that describes the active schema of
+        the BooleanAttribute.
 
         Args:
             attr: a BooleanAttribute
@@ -852,7 +852,7 @@ class AttributeContainer(etal.LabelsContainer):
         self.sort_by("name", reverse=reverse)
 
     def has_attr_with_name(self, name):
-        '''Returns whether or not the container contains an `Attribute` with
+        '''Returns whether or not the container contains an Attribute with
         the given name.
 
         Args:
@@ -879,7 +879,7 @@ class AttributeContainer(etal.LabelsContainer):
         return self.get_matches([lambda attr: attr.name == name])
 
     def get_attr_with_name(self, name, default=no_default):
-        '''Gets the single `Attribute` with the given name.
+        '''Gets the single Attribute with the given name.
 
         Args:
             name: the Attribute name
@@ -917,7 +917,7 @@ class AttributeContainer(etal.LabelsContainer):
         return [attr.value for attr in self.get_attrs_with_name(name)]
 
     def get_attr_value_with_name(self, name, default=no_default):
-        '''Get the value of the single `Attribute` with the given name
+        '''Get the value of the single Attribute with the given name
 
         Args:
             name: the Attribute name
@@ -942,7 +942,7 @@ class AttributeContainer(etal.LabelsContainer):
         '''
         return self.pop_elements([lambda attr: attr.constant])
 
-    def filter_by_schema(self, schema):
+    def filter_by_schema(self, schema, constant_schema=None):
         '''Removes attributes from this container that are not compliant with
         the given schema.
 
@@ -989,7 +989,7 @@ class AttributeContainer(etal.LabelsContainer):
 
 
 class AttributeContainerSchema(etal.LabelsContainerSchema):
-    '''Schema for an `AttributeContainer`.
+    '''Schema for an AttributeContainer.
 
     Attributes:
         schema: a dictionary mapping attribute names to AttributeSchema
@@ -1016,14 +1016,6 @@ class AttributeContainerSchema(etal.LabelsContainerSchema):
         '''Whether this schema contains at least one exclusive attribute.'''
         return any(schema.is_exclusive for schema in itervalues(self.schema))
 
-    def iter_attribute_names(self):
-        '''Returns an iterator over the attribute names in this schema.
-
-        Returns:
-            an iterator over attribute names
-        '''
-        return iter(self.schema)
-
     def iter_attributes(self):
         '''Returns an iterator over the (name, AttributeSchema) pairs in this
         schema.
@@ -1034,7 +1026,7 @@ class AttributeContainerSchema(etal.LabelsContainerSchema):
         return iteritems(self.schema)
 
     def has_attribute(self, name):
-        '''Whether the schema has an `Attribute` with the given name.
+        '''Whether the schema has an Attribute with the given name.
 
         Args:
             name: the name
@@ -1045,11 +1037,11 @@ class AttributeContainerSchema(etal.LabelsContainerSchema):
         return name in self.schema
 
     def is_exclusive_attribute(self, name):
-        '''Whether the `Attribute` with the given name is exclusive.'''
+        '''Whether the Attribute with the given name is exclusive.'''
         return self.get_attribute_schema(name).is_exclusive
 
     def get_attribute_schema(self, name):
-        '''Gets the `AttributeSchema` for the `Attribute` with the given name.
+        '''Gets the AttributeSchema for the Attribute with the given name.
 
         Args:
             name: the name
@@ -1061,7 +1053,7 @@ class AttributeContainerSchema(etal.LabelsContainerSchema):
         return self.schema[name]
 
     def get_attribute_class(self, name):
-        '''Gets the class of the `Attribute` with the given name.
+        '''Gets the class of the Attribute with the given name.
 
         Args:
             name: the name
@@ -1077,7 +1069,7 @@ class AttributeContainerSchema(etal.LabelsContainerSchema):
         return self.schema[name].get_attribute_class()
 
     def add_attribute(self, attr):
-        '''Incorporates the given `Attribute` into the schema.
+        '''Incorporates the given Attribute into the schema.
 
         Args:
             attr: an Attribute
@@ -1090,7 +1082,7 @@ class AttributeContainerSchema(etal.LabelsContainerSchema):
         self.schema[name].add_attribute(attr)
 
     def add_attributes(self, attrs):
-        '''Incorporates the given `AttributeContainer` into the schema.
+        '''Incorporates the given AttributeContainer into the schema.
 
         Args:
             attrs: an AttributeContainer
@@ -1099,7 +1091,7 @@ class AttributeContainerSchema(etal.LabelsContainerSchema):
             self.add_attribute(attr)
 
     def is_valid_attribute_name(self, name):
-        '''Whether the schema has an `Attribute` with the given name.
+        '''Whether the schema has an Attribute with the given name.
 
         Args:
             name: the name
@@ -1114,7 +1106,7 @@ class AttributeContainerSchema(etal.LabelsContainerSchema):
             return False
 
     def is_valid_attribute(self, attr):
-        '''Whether the `Attribute` is compliant with the schema.
+        '''Whether the Attribute is compliant with the schema.
 
         Args:
             attr: an Attribute
@@ -1129,7 +1121,7 @@ class AttributeContainerSchema(etal.LabelsContainerSchema):
             return False
 
     def validate_attribute_name(self, name):
-        '''Validates that the schema has an `Attribute` with the given name.
+        '''Validates that the schema has an Attribute with the given name.
 
         Args:
             name: the name
@@ -1143,7 +1135,7 @@ class AttributeContainerSchema(etal.LabelsContainerSchema):
                 "Attribute '%s' is not allowed by the schema" % name)
 
     def validate_attribute(self, attr):
-        '''Validates that the `Attribute` is compliant with the schema.
+        '''Validates that the Attribute is compliant with the schema.
 
         Args:
             attr: an Attribute
@@ -1155,8 +1147,7 @@ class AttributeContainerSchema(etal.LabelsContainerSchema):
         self.schema[attr.name].validate_attribute(attr)
 
     def validate(self, attrs):
-        '''Validates that the `AttributeContainer` is compliant with the
-        schema.
+        '''Validates that the AttributeContainer is compliant with the schema.
 
         Args:
             attrs: an AttributeContainer
@@ -1198,7 +1189,7 @@ class AttributeContainerSchema(etal.LabelsContainerSchema):
             attr_schema.validate_subset_of_schema(other_attr_schema)
 
     def merge_attribute_schema(self, attr_schema):
-        '''Merges the given `AttributeSchema` into the schema.
+        '''Merges the given AttributeSchema into the schema.
 
         Args:
             attr_schema: an AttributeSchema
@@ -1210,7 +1201,7 @@ class AttributeContainerSchema(etal.LabelsContainerSchema):
             self.schema[name].merge_schema(attr_schema)
 
     def merge_schema(self, schema):
-        '''Merges the given `AttributeContainerSchema` into the schema.
+        '''Merges the given AttributeContainerSchema into the schema.
 
         Args:
             schema: an AttributeContainerSchema
@@ -1220,8 +1211,8 @@ class AttributeContainerSchema(etal.LabelsContainerSchema):
 
     @classmethod
     def build_active_schema(cls, attrs):
-        '''Builds an `AttributeContainerSchema` that describes the active
-        schema of the given `AttributeContainer`.
+        '''Builds an AttributeContainerSchema that describes the active schema
+        of the given AttributeContainer.
 
         Args:
             attrs: an AttributeContainer
@@ -1236,7 +1227,7 @@ class AttributeContainerSchema(etal.LabelsContainerSchema):
 
     @classmethod
     def from_dict(cls, d):
-        '''Constructs an `AttributeContainerSchema` from a JSON dictionary.
+        '''Constructs an AttributeContainerSchema from a JSON dictionary.
 
         Args:
             d: a JSON dictionary
@@ -1255,7 +1246,7 @@ class AttributeContainerSchema(etal.LabelsContainerSchema):
 
 
 class AttributeContainerSchemaError(etal.LabelsContainerSchemaError):
-    '''Error raised when an `AttributeContainerSchema` is violated.'''
+    '''Error raised when an AttributeContainerSchema is violated.'''
     pass
 
 
@@ -1485,12 +1476,12 @@ class DataFileSequence(etas.Serializable):
 
     @classmethod
     def build_for_dir(cls, dir_path):
-        '''Builds a `DataFileSequence` for the given directory.'''
+        '''Builds a DataFileSequence for the given directory.'''
         return cls(etau.parse_dir_pattern(dir_path)[0])
 
     @classmethod
     def from_dict(cls, d):
-        '''Builds a `DataFileSequence` from a JSON dictioanry.'''
+        '''Builds a DataFileSequence from a JSON dictioanry.'''
         return cls(d["sequence"], immutable_bounds=d["immutable_bounds"])
 
 
@@ -1502,14 +1493,14 @@ class DataFileSequenceError(Exception):
 class DataRecords(etas.Container):
     '''Container class for data records.
 
-    `DataRecords` is a generic container of records each having a value for
-    a certain set of fields. When creating `DataRecords` instances, you must
-    provide a `record_cls` that specifies the subclass of `BaseDataRecord`
+    DataRecords is a generic container of records each having a value for
+    a certain set of fields. When creating DataRecords instances, you must
+    provide a `record_cls` that specifies the subclass of BaseDataRecord
     that you plan to store in the container.
 
-    When `DataRecords` instances are serialized, they can optionally have their
+    When DataRecords instances are serialized, they can optionally have their
     reflective `_CLS` and `_RECORD_CLS` attributes set by passing
-    `reflective=True`. When this is done, `DataRecords` can be read from disk
+    `reflective=True`. When this is done, DataRecords can be read from disk
     via `DataRecords.from_json("/path/to/records.json")` and the class of the
     records in the container will be inferred while loading.
     '''
@@ -1519,7 +1510,7 @@ class DataRecords(etas.Container):
     _ELE_ATTR = "records"
 
     def __init__(self, record_cls, **kwargs):
-        '''Creates a `DataRecords` instance.
+        '''Creates a DataRecords instance.
 
         Args:
             record_cls: the records class to use for this container
@@ -1622,8 +1613,8 @@ class DataRecords(etas.Container):
         return len(self)
 
     def cull_with_function(self, field, func):
-        '''Cull records from the container for which `field` returns
-        something that evaluates to False when passed through func.
+        '''Cull records from the container for which `field` returns something
+        that evaluates to False when passed through func.
 
         Args:
             field: the field to process
@@ -1644,8 +1635,7 @@ class DataRecords(etas.Container):
         return len(self)
 
     def slice(self, field):
-        '''Returns a list of `field` values for the records in the
-        container.
+        '''Returns a list of `field` values for the records in the container.
         '''
         return [getattr(r, field) for r in self.__elements__]
 
@@ -1706,13 +1696,10 @@ class BaseDataRecord(etas.Serializable):
     '''
 
     def __init__(self):
-        '''Base constructor for all data records.'''
+        '''Initializes the BaseDataRecord instance.'''
         self.clean_optional()
 
     def __getitem__(self, key):
-        '''Provides dictionary-style `[key]` access to the attributes of the
-        data record.
-        '''
         return getattr(self, key)
 
     def attributes(self):
@@ -1803,10 +1790,7 @@ class LabeledFileRecord(BaseDataRecord):
 
     @property
     def filename(self):
-        '''The filename of the record.
-
-        @deprecated Use `file_path` instead.
-        '''
+        '''The filename of the record.'''
         logger.warning("`filename` is deprecated; use `file_path` instead")
         return self.file_path
 
@@ -1818,17 +1802,24 @@ class LabeledFileRecord(BaseDataRecord):
 class LabeledVideoRecord(LabeledFileRecord):
     '''A simple, reusable DataRecord for a labeled video.
 
+    The `group` attribute allows for providing additional information about the
+    video. For example, if multiple video clips were sampled from a single
+    video, this attribute can be used to specify the p.arent video
+
     Args:
-        file_path (video_path): the path to the video
+        video_path: the path to the video
         label: the label of the video
-        group: an optional group attribute that provides additional information
-            about the video. For example, if multiple video clips were sampled
-            from a single video, this attribute can be used to specify the
-            parent video
+        group: an optional group attribute for the video
     '''
 
     def __init__(self, video_path, label, group=no_default):
-        '''Creates a new LabeledVideoRecord instance.'''
+        '''Creates a LabeledVideoRecord instance.
+
+        Args:
+            video_path: the path to the video
+            label: the label of the video
+            group: an optional group attribute for the video
+        '''
         super(LabeledVideoRecord, self).__init__(video_path, label)
         self.group = group
 
@@ -1845,8 +1836,9 @@ class LabeledVideoRecord(LabeledFileRecord):
 class LabeledFeatures(etas.NpzWriteable):
     '''Class representing a feature array `X` and corresponding labels `y`.
 
-    `X` is an n x d array whose rows contain features
-    `y` is a length-n array of labels
+    Attributes:
+        x: an n x d array whose rows contain features
+        y: a length-n array of labels
     '''
 
     def __init__(self, X, y):
