@@ -951,28 +951,43 @@ class AttributeContainer(etal.LabelsContainer):
 
         Args:
             schema: an AttributeContainerSchema
+            constant_schema: an AttributeContainerSchema describing a schema
+                for constant attributes (those with `constant == True`). If
+                provided, `schema` is applied only to non-constant attributes.
+                If omitted, `schema` is applied to all attributes
         '''
+        if constant_schema is None:
+            constant_schema = schema
+
+        get_schema = lambda attr: constant_schema if attr.constant else schema
+
         # Remove attributes with invalid names
-        filter_func = lambda attr: schema.has_attribute(attr.name)
-        self.filter_elements([filter_func])
+        filter_fcn = lambda attr: get_schema(attr).has_attribute(attr.name)
+        self.filter_elements([filter_fcn])
 
+        #
         # Filter objects by their schemas
-        for attr in self:
-            attr_schema = schema.get_attribute_schema(attr.name)
-            attr.filter_by_schema(attr_schema)
+        #
 
-        # Enforce attribute exclusivity, if necessary
-        if schema.has_exclusive_attributes:
-            del_inds = set()
-            found_names = set()
-            for idx, attr in enumerate(self):
-                name = attr.name
-                if name in found_names and schema.is_exclusive_attribute(name):
+        del_inds = set()
+        found_names = set()
+        for idx, attr in enumerate(self):
+            name = attr.name
+
+            # Remove attributes that violate schema
+            attr_schema = get_schema(attr).get_attribute_schema(name)
+            if not attr_schema.is_valid_attribute(attr):
+                del_inds.add(idx)
+
+            # Enforce exclusivity, if necessary
+            is_exclusive = get_schema(attr).is_exclusive_attribute(name)
+            if is_exclusive:
+                if name in found_names:
                     del_inds.add(idx)
                 else:
                     found_names.add(name)
 
-            self.delete_inds(del_inds)
+        self.delete_inds(del_inds)
 
     def get_attribute_counts(self):
         '''Returns a dictionary mapping attribute names to their counts in this
