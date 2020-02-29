@@ -236,7 +236,8 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
             raise ObjectSchemaError(
                 "Label '%s' does not match object schema" % self.label)
 
-        self.attrs.filter_by_schema(schema.frames)
+        self.attrs.filter_by_schema(
+            schema.frames, constant_schema=schema.attrs)
 
     def attributes(self):
         '''Returns the list of attributes to serialize.
