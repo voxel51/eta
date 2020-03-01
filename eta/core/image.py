@@ -36,7 +36,7 @@ import cv2
 import numpy as np
 
 import eta
-import eta.core.frames as etaf
+from eta.core.frames import FrameLabels, FrameLabelsSchema
 import eta.core.labels as etal
 import eta.core.serial as etas
 import eta.core.utils as etau
@@ -101,7 +101,7 @@ def make_image_sequence_patt(basedir, basename="", patt=None, ext=None):
 ###### Image Labels ###########################################################
 
 
-class ImageLabels(etaf.FrameLabels):
+class ImageLabels(FrameLabels):
     '''Class encapsulating labels for an image.
 
     ImageLabels are spatial concepts that describe a collection of information
@@ -185,8 +185,8 @@ class ImageLabels(etaf.FrameLabels):
             d, filename=filename, metadata=metadata)
 
 
-class ImageLabelsSchema(etaf.FrameLabelsSchema):
-    '''Schema for ImageLabels.
+class ImageLabelsSchema(FrameLabelsSchema):
+    '''Schema describing the content of one or more ImageLabels.
 
     Attributes:
         attrs: an AttributeContainerSchema describing attributes of the
