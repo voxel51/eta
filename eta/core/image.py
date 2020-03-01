@@ -189,8 +189,10 @@ class ImageLabelsSchema(FrameLabelsSchema):
     '''Schema describing the content of one or more ImageLabels.
 
     Attributes:
-        attrs: an AttributeContainerSchema describing attributes of the
-            image(s)
+        attrs: an AttributeContainerSchema describing constant attributes of
+            the image(s)
+        frames: an AttributeContainerSchema describing frame-level attributes
+            of the image(s)
         objects: an ObjectContainerSchema describing the objects in the
             image(s)
         events: an EventContainerSchema describing the events in the image(s)
