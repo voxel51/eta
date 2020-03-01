@@ -304,7 +304,8 @@ class DetectedEvent(etal.Labels, etag.HasBoundingBox):
             raise EventSchemaError(
                 "Label '%s' does not match event schema" % self.label)
 
-        self.attrs.filter_by_schema(schema.frames)
+        self.attrs.filter_by_schema(
+            schema.frames, constant_schema=schema.attrs)
         self.objects.filter_by_schema(schema.objects)
 
     def remove_objects_without_attrs(self, labels=None):
