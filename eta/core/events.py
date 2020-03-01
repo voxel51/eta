@@ -2981,7 +2981,7 @@ class VideoEventFrameRenderer(etal.LabelsFrameRenderer):
         # Render event-level attributes
         if event_attrs is not None:
             # Prepend event-level attributes
-            devent.attrs.prepend_container(event_attrs)
+            devent.attrs.prepend_container(deepcopy(event_attrs))
 
         # Render objects
         if dobjs is not None:
