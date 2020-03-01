@@ -192,7 +192,7 @@ class FrameLabels(etal.Labels):
         self.events.clear_indexes()
 
     def add_attribute(self, attr):
-        '''Adds the frame-level attribute to the frame.
+        '''Adds the attribute to the frame.
 
         Args:
             attr: an Attribute
@@ -200,7 +200,7 @@ class FrameLabels(etal.Labels):
         self.attrs.add(attr)
 
     def add_attributes(self, attrs):
-        '''Adds the frame-level attributes to the frame.
+        '''Adds the attributes to the frame.
 
         Args:
             attrs: an AttributeContainer
@@ -524,7 +524,7 @@ class FrameLabelsSchema(etal.LabelsSchema):
         return self.objects.has_object_label(label)
 
     def get_object_schema(self, label):
-        '''Gets the `ObjectSchema` for the object with the given label.
+        '''Gets the ObjectSchema for the object with the given label.
 
         Args:
             label: the object label
@@ -614,7 +614,7 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Args:
             label: the event label
-            attr_name: the name of the event-level attribute
+            attr_name: an event-level attribute name
 
         Returns:
             the AttributeSchema
@@ -682,7 +682,7 @@ class FrameLabelsSchema(etal.LabelsSchema):
         '''Adds the object to the schema.
 
         Args:
-            obj: a DetectedObject
+            obj: a VideoObject or DetectedObject
         '''
         self.objects.add_object(obj)
 
@@ -690,7 +690,7 @@ class FrameLabelsSchema(etal.LabelsSchema):
         '''Adds the objects to the schema.
 
         Args:
-            objects: a DetectedObjectContainer
+            objects: a VideoObjectContainer or DetectedObjectContainer
         '''
         self.objects.add_objects(objects)
 
@@ -811,7 +811,7 @@ class FrameLabelsSchema(etal.LabelsSchema):
         '''Whether the given object is compliant with the schema.
 
         Args:
-            obj: a DetectedObject
+            obj: a VideoObject or DetectedObject
 
         Returns:
             True/False
