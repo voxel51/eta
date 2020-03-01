@@ -2806,6 +2806,20 @@ class EventContainerSchema(etal.LabelsContainerSchema):
         self.validate_event_label(event_label)
         self.schema[event_label].validate_object(obj)
 
+    def validate_objects(self, event_label, objects):
+        '''Validates that the objects for the given event label are compliant
+        with the schema.
+
+        Args:
+            event_label: an event label
+            objects: a VideoObjectContainer or DetectedObjectContainer
+
+        Raises:
+            LabelsSchemaError: if the object is not compliant with the schema
+        '''
+        self.validate_event_label(event_label)
+        self.schema[event_label].validate(objects)
+
     def validate_event(self, event):
         '''Validates that the event is compliant with the schema.
 
