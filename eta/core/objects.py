@@ -488,19 +488,9 @@ class VideoObject(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
         return self.index is not None
 
     @property
-    def has_attributes(self):
-        '''Whether the object has attributes of any kind.'''
-        return self.has_object_attributes or self.has_frame_attributes
-
-    @property
     def has_object_attributes(self):
         '''Whether the object has object-level attributes.'''
         return bool(self.attrs)
-
-    @property
-    def has_detections(self):
-        '''Whether the object has at least one non-empty DetectedObject.'''
-        return any(not dobj.is_empty for dobj in itervalues(self.frames))
 
     @property
     def has_frame_attributes(self):
@@ -510,6 +500,16 @@ class VideoObject(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
                 return True
 
         return False
+
+    @property
+    def has_attributes(self):
+        '''Whether the object has object- or frame-level attributes.'''
+        return self.has_object_attributes or self.has_frame_attributes
+
+    @property
+    def has_detections(self):
+        '''Whether the object has at least one non-empty DetectedObject.'''
+        return any(not dobj.is_empty for dobj in itervalues(self.frames))
 
     def iter_attributes(self):
         '''Returns an iterator over the object-level attributes of the object.
@@ -691,19 +691,19 @@ class VideoObject(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
         index = objects[0].index
 
         obj_attrs_map = {}
-        for obj in objects:
-            if obj.label != label:
+        for dobj in objects:
+            if dobj.label != label:
                 raise ValueError(
                     "Object label '%s' does not match first label '%s'" %
-                    (obj.label, label))
+                    (dobj.label, label))
 
-            if obj.index != index:
+            if dobj.index != index:
                 raise ValueError(
                     "Object index '%s' does not match first index '%s'" %
-                    (obj.index, index))
+                    (dobj.index, index))
 
             # Extract constant attributes
-            for const_attr in obj.attrs.pop_constant_attrs():
+            for const_attr in dobj.attrs.pop_constant_attrs():
                 # @todo verify that existing attributes are exactly equal?
                 obj_attrs_map[const_attr.name] = const_attr
 
@@ -1430,7 +1430,7 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
 
         Args:
             label: the object label
-            attr_name: the name of the object-level attribute
+            attr_name: the object-level attribute name
 
         Returns:
             True/False
@@ -1446,7 +1446,7 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
 
         Args:
             label: the object label
-            attr_name: the name of the frame-level attribute
+            attr_name: the frame-level object attribute name
 
         Returns:
             True/False
@@ -1474,7 +1474,7 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
 
         Args:
             label: the object label
-            attr_name: the name of the object-level attribute
+            attr_name: the object-level attribute name
 
         Returns:
             the AttributeSchema
@@ -1482,27 +1482,13 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
         obj_schema = self.get_object_schema(label)
         return obj_schema.get_object_attribute_schema(attr_name)
 
-    def get_frame_attribute_schema(self, label, attr_name):
-        '''Gets the AttributeSchema for the frame-level attribute of the given
-        name for the object with the given label.
-
-        Args:
-            label: the object label
-            attr_name: the name of the frame-level attribute
-
-        Returns:
-            the AttributeSchema
-        '''
-        obj_schema = self.get_object_schema(label)
-        return obj_schema.get_frame_attribute_schema(attr_name)
-
     def get_object_attribute_class(self, label, attr_name):
         '''Gets the Attribute class for the object-level attribute of the given
         name for the object with the given label.
 
         Args:
             label: the object label
-            attr_name: the name of the object-level attribute
+            attr_name: the object-level attribute name
 
         Returns:
             the Attribute
@@ -1510,13 +1496,27 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
         self.validate_object_label(label)
         return self.schema[label].get_object_attribute_class(attr_name)
 
+    def get_frame_attribute_schema(self, label, attr_name):
+        '''Gets the AttributeSchema for the frame-level attribute of the given
+        name for the object with the given label.
+
+        Args:
+            label: the object label
+            attr_name: the frame-level object attribute name
+
+        Returns:
+            the AttributeSchema
+        '''
+        obj_schema = self.get_object_schema(label)
+        return obj_schema.get_frame_attribute_schema(attr_name)
+
     def get_frame_attribute_class(self, label, attr_name):
         '''Gets the Attribute class for the frame-level attribute of the given
         name for the object with the given label.
 
         Args:
             label: the object label
-            attr_name: the name of the frame-level attribute
+            attr_name: the frame-level object attribute name
 
         Returns:
             the Attribute
@@ -1538,21 +1538,10 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
 
         Args:
             label: an object label
-            attr: an object-level Attribute
+            attr: an Attribute
         '''
         self._ensure_has_object_label(label)
         self.schema[label].add_object_attribute(attr)
-
-    def add_frame_attribute(self, label, attr):
-        '''Adds the frame-level Attribute for the object with the given label
-        to the schema.
-
-        Args:
-            label: an object label
-            attr: a frame-level Attribute
-        '''
-        self._ensure_has_object_label(label)
-        self.schema[label].add_frame_attribute(attr)
 
     def add_object_attributes(self, label, attrs):
         '''Adds the AttributeContainer of object-level attributes for the
@@ -1560,10 +1549,21 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
 
         Args:
             label: an object label
-            attrs: an AttributeContainer of object-level attributes
+            attrs: an AttributeContainer
         '''
         self._ensure_has_object_label(label)
         self.schema[label].add_object_attributes(attrs)
+
+    def add_frame_attribute(self, label, attr):
+        '''Adds the frame-level Attribute for the object with the given label
+        to the schema.
+
+        Args:
+            label: an object label
+            attr: an Attribute
+        '''
+        self._ensure_has_object_label(label)
+        self.schema[label].add_frame_attribute(attr)
 
     def add_frame_attributes(self, label, attrs):
         '''Adds the AttributeContainer of frame-level attributes for the object
@@ -1571,7 +1571,7 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
 
         Args:
             label: an object label
-            attrs: an AttributeContainer of frame-level attributes
+            attrs: an AttributeContainer
         '''
         self._ensure_has_object_label(label)
         self.schema[label].add_frame_attributes(attrs)
@@ -1615,7 +1615,7 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
 
         Args:
             label: an object label
-            attr: an object-level Attribute
+            attr: an Attribute
 
         Returns:
             True/False
@@ -1632,7 +1632,7 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
 
         Args:
             label: an object label
-            attrs: an AttributeContainer of object-level attributes
+            attrs: an AttributeContainer
 
         Returns:
             True/False
@@ -1649,7 +1649,7 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
 
         Args:
             label: an object label
-            attr: a frame-level Attribute
+            attr: an Attribute
 
         Returns:
             True/False
@@ -1666,7 +1666,7 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
 
         Args:
             label: an object label
-            attrs: an AttributeContainer of frame-level attributes
+            attrs: an AttributeContainer
 
         Returns:
             True/False
@@ -1711,7 +1711,7 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
 
         Args:
             label: an object label
-            attr: an object-level Attribute
+            attr: an Attribute
 
         Raises:
             LabelsSchemaError: if the attribute violates the schema
@@ -1725,7 +1725,7 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
 
         Args:
             label: an object label
-            attrs: an AttributeContainer of object-level attributes
+            attrs: an AttributeContainer
 
         Raises:
             LabelsSchemaError: if the attributes violate the schema
@@ -1739,7 +1739,7 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
 
         Args:
             label: an object label
-            attr: a frame-level Attribute
+            attr: an Attribute
 
         Raises:
             LabelsSchemaError: if the attribute violates the schema
@@ -1753,7 +1753,7 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
 
         Args:
             label: an object label
-            attrs: an AttributeContainer of frame-level attributes
+            attrs: an AttributeContainer
 
         Raises:
             LabelsSchemaError: if the attributes violate the schema
