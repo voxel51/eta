@@ -540,6 +540,11 @@ class VideoLabels(
         return False
 
     @property
+    def has_attributes(self):
+        '''Whether the video has video- or frame-level attributes.'''
+        return self.has_video_attributes or self.has_frame_attributes
+
+    @property
     def has_video_objects(self):
         '''Whether the video has at least one VideoObject.'''
         return bool(self.objects)
