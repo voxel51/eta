@@ -315,7 +315,8 @@ class FrameLabels(etal.Labels):
         Args:
             schema: a FrameLabelsSchema
         '''
-        self.attrs.filter_by_schema(schema.attrs)
+        self.attrs.filter_by_schema(
+            schema.frames, constant_schema=schema.attrs)
         self.objects.filter_by_schema(schema.objects)
         self.events.filter_by_schema(schema.events)
 
