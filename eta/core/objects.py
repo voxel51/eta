@@ -994,17 +994,6 @@ class ObjectSchema(etal.LabelsSchema):
         '''
         return self.attrs.has_attribute(attr_name)
 
-    def has_frame_attribute(self, attr_name):
-        '''Whether the schema has a frame-level Attribute of the given name.
-
-        Args:
-            attr_name: the name
-
-        Returns:
-            True/False
-        '''
-        return self.frames.has_attribute(attr_name)
-
     def get_object_attribute_schema(self, attr_name):
         '''Gets the AttributeSchema for the object-level attribute of the given
         name.
@@ -1017,18 +1006,6 @@ class ObjectSchema(etal.LabelsSchema):
         '''
         return self.attrs.get_attribute_schema(attr_name)
 
-    def get_frame_attribute_schema(self, attr_name):
-        '''Gets the AttributeSchema for the frame-level attribute of the given
-        name.
-
-        Args:
-            attr_name: the name
-
-        Returns:
-            the AttributeSchema
-        '''
-        return self.frames.get_attribute_schema(attr_name)
-
     def get_object_attribute_class(self, attr_name):
         '''Gets the Attribute class for the object-level attribute of the given
         name.
@@ -1040,6 +1017,29 @@ class ObjectSchema(etal.LabelsSchema):
             the Attribute
         '''
         return self.attrs.get_attribute_class(attr_name)
+
+    def has_frame_attribute(self, attr_name):
+        '''Whether the schema has a frame-level Attribute of the given name.
+
+        Args:
+            attr_name: the name
+
+        Returns:
+            True/False
+        '''
+        return self.frames.has_attribute(attr_name)
+
+    def get_frame_attribute_schema(self, attr_name):
+        '''Gets the AttributeSchema for the frame-level attribute of the given
+        name.
+
+        Args:
+            attr_name: the name
+
+        Returns:
+            the AttributeSchema
+        '''
+        return self.frames.get_attribute_schema(attr_name)
 
     def get_frame_attribute_class(self, attr_name):
         '''Gets the Attribute class for the frame-level attribute of the given
@@ -1061,14 +1061,6 @@ class ObjectSchema(etal.LabelsSchema):
         '''
         self.attrs.add_attribute(attr)
 
-    def add_frame_attribute(self, attr):
-        '''Adds the frame-level Attribute to the schema.
-
-        Args:
-            attr: an Attribute
-        '''
-        self.frames.add_attribute(attr)
-
     def add_object_attributes(self, attrs):
         '''Adds the AttributeContainer of object-level attributes to the
         schema.
@@ -1077,6 +1069,14 @@ class ObjectSchema(etal.LabelsSchema):
             attrs: an AttributeContainer
         '''
         self.attrs.add_attributes(attrs)
+
+    def add_frame_attribute(self, attr):
+        '''Adds the frame-level Attribute to the schema.
+
+        Args:
+            attr: an Attribute
+        '''
+        self.frames.add_attribute(attr)
 
     def add_frame_attributes(self, attrs):
         '''Adds the AttributeContainer of frame-level attributes to the schema.
