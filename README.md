@@ -33,8 +33,8 @@ ETA is very portable:
 
 ## Installation
 
-0. Activate a [virtual environment](docs/virtualenv_guide.md) (optional but
-highly recommended)
+0. _(Optional but highly recommended)_ Activate a
+[virtual environment](docs/virtualenv_guide.md)
 
 1. Clone the repository:
 
@@ -54,13 +54,28 @@ sudo privileges. Note that the install script supports flags that control
 things like (on macOS) whether `port` or `brew` is used to install packages.
 Run `bash install.bash -h` for more information.
 
-The script inspects your system to see if CUDA is installed, and, if it is,
-TensorFlow is installed with GPU support. In particular, if CUDA 9 is found,
-the latest version of the `tensorflow-gpu` package is installed, and if CUDA 8
-is found, `tensorflow-gpu 1.4` is installed.
+ETA assumes that the version of Python that you intend to use is available on
+your system path via the `python` command, and it will install packages via the
+`pip` executable on your path. In particular, for Python 3.X users, this means
+that you may need to alias `python3` and `pip3` to `python` and `pip`,
+respectively. If you find this annoying, let us again mention
+[virtual environments](docs/virtualenv_guide.md).
 
-Note that ETA is installed in editable via `pip install -e .`, so don't delete
-the directory after installation!
+For Linux installs, the script inspects your system to see if CUDA is installed
+via the `lspci` command. If CUDA is available, TensorFlow is installed with GPU
+support. The table below lists the version of TensorFlow that will be
+installed:
+
+| CUDA Version Found | TensorFlow Version Installed |
+| ------------------ | ---------------------------- |
+| CUDA 8 | `tensorflow-gpu==1.4` |
+| CUDA 9 | `tensorflow-gpu==1.4` |
+| CUDA 10 | `tensorflow-gpu==1.4` |
+| Other CUDA | the latest available `tensorflow-gpu` |
+| No CUDA | `tensorflow==1.12.0`
+
+Note that ETA is installed in editable mode via `pip install -e .`, so don't
+delete the directory after installation!
 
 ### Lite installation
 
