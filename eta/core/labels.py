@@ -373,14 +373,24 @@ class HasFramewiseView(object):
     a framewise view by a LabelsFrameRenderer.
     '''
 
-    def render_framewise_labels(self):
-        '''Renders a framewise copy of the labels.
+    @property
+    def framewise_renderer_cls(self):
+        '''The LabelsFrameRenderer used by this class.'''
+        raise NotImplementedError(
+            "subclasses must implement framewise_renderer_cls()")
+
+    def render_framewise(self, in_place=False):
+        '''Renders a framewise version of the labels.
+
+        Args:
+            in_place: whether to perform the rendering in-place. By default,
+                this is False
 
         Returns:
-            an framewise copy of the labels
+            a framewise version of the labels
         '''
-        raise NotImplementedError(
-            "subclasses must implement render_framewise_labels()")
+        renderer = self.framewise_renderer_cls(self)
+        return renderer.render(in_place=in_place)
 
 
 class HasSpatiotemporalView(object):
@@ -388,14 +398,24 @@ class HasSpatiotemporalView(object):
     spatiotemporal view by a LabelsSpatiotemporalRenderer.
     '''
 
-    def render_spatiotemporal_labels(self):
-        '''Renders a spatiotemporal copy of the labels
+    @property
+    def spatiotemporal_renderer_cls(self):
+        '''The LabelsSpatiotemporalRenderer used by this class.'''
+        raise NotImplementedError(
+            "subclasses must implement spatiotemporal_renderer_cls()")
+
+    def render_spatiotemporal(self, in_place=False):
+        '''Renders a spatiotemporal version of the labels.
+
+        Args:
+            in_place: whether to perform the rendering in-place. By default,
+                this is False
 
         Returns:
-            a spatiotemporal copy of the labels
+            a spatiotemporal version of the labels
         '''
-        raise NotImplementedError(
-            "subclasses must implement render_spatiotemporal_labels()")
+        renderer = self.spatiotemporal_renderer_cls(self)
+        return renderer.render(in_place=in_place)
 
 
 class LabelsContainer(Labels, HasLabelsSchema, etas.Container):
@@ -731,45 +751,156 @@ class LabelsSet(Labels, HasLabelsSchema, etas.Set):
             self.schema.validate(labels)
 
 
-class LabelsFrameRenderer(object):
-    '''Interface for classes that render Labels at the frame-level.
+class LabelsRenderer(object):
+    '''Interface for classes that render Labels instances in a specified
+    format.
 
-    `LabelsFrameRenderer`s must follow the strict convention that they do not
-    modify or pass by reference any components of the source Labels that they
-    are rendering. I.e., any labels they produce are deep copies of the source
-    labels.
+    `LabelsRenderer`s must follow the strict convention that, when
+    `in_place == False`, they do not modify or pass by reference any components
+    of the source labels that they are rendering. In particular, any labels
+    they produce are deep copies of the source labels.
     '''
 
-    def render_frame(self, frame_number):
+    #
+    # The Labels class that this renderer takes as input
+    #
+    # Subclasses MUST set this field
+    #
+    _LABELS_CLS = None
+
+    @property
+    def labels_cls(self):
+        '''The Labels subclass that this renderer takes as input.'''
+        return self._LABELS_CLS
+
+    def render(self, in_place=False):
+        '''Renders the labels in the format specified by the class.
+
+        Args:
+            in_place: whether to perform the rendering in-place. By default,
+                this is False
+
+        Returns:
+            a `labels_cls` instance
+        '''
+        raise NotImplementedError("subclasses must implement render()")
+
+
+class LabelsContainerRenderer(LabelsRenderer):
+    '''Base class for rendering labels in `LabelsContainer`s in a specified
+    format.
+
+    The only thing that subclasses need to do to implement this interface is
+    to define their `_LABELS_CLS` and `_ELEMENT_RENDERER_CLS`.
+    '''
+
+    #
+    # The LabelsRenderer class to use to render elements of the container
+    #
+    # Subclasses MUST set this field
+    #
+    _ELEMENT_RENDERER_CLS = None
+
+    def __init__(self, container):
+        '''Creates a LabelsContainerRenderer instance.
+
+        Args:
+            container: a LabelsContainer
+        '''
+        self._container = container
+
+    @property
+    def element_renderer_cls(self):
+        '''The LabelsRenderer class to use to render elements of the container.
+        '''
+        return self._ELEMENT_RENDERER_CLS
+
+    def render(self, in_place=False):
+        '''Renders the container in the format specified by the class.
+
+        Args:
+            in_place: whether to perform the rendering in-place. By default,
+                this is False
+
+        Returns:
+            a `labels_cls` instance
+        '''
+        if in_place:
+            return self._render_in_place()
+
+        return self._render_copy()
+
+    def _render_in_place(self):
+        for labels in self._container:
+            # pylint: disable=not-callable
+            renderer = self.element_renderer_cls(labels)
+            renderer.render(in_place=True)
+
+        return self._container
+
+    def _render_copy(self):
+        new_container = self._container.empty()
+        for labels in self._container:
+            # pylint: disable=not-callable
+            renderer = self.element_renderer_cls(labels)
+            element = renderer.render(in_place=False)
+            new_container.add(element)
+
+        return new_container
+
+
+class LabelsFrameRenderer(LabelsRenderer):
+    '''Interface for classes that render Labels at the frame-level.'''
+
+    #
+    # The per-frame Labels class that this renderer outputs
+    #
+    # Subclasses MUST set this field
+    #
+    _FRAME_LABELS_CLS = None
+
+    @property
+    def frame_labels_cls(self):
+        '''The per-frame Labels class that this renderer outputs.'''
+        return self._FRAME_LABELS_CLS
+
+    def render_frame(self, frame_number, in_place=False):
         '''Renders the labels for the given frame.
 
         Args:
             frame_number: the frame number
+            in_place: whether to perform the rendering in-place (i.e., without
+                deep copying objects). By default, this is False
 
         Returns:
-            a Labels instance, or None if no labels exist for the given frame
+            a `frame_labels_cls` instance, or None if no labels exist for the
+                given frame
         '''
         raise NotImplementedError("subclasses must implement render_frame()")
 
-    def render_all_frames(self):
+    def render_all_frames(self, in_place=False):
         '''Renders the labels for all possible frames.
 
+        Args:
+            in_place: whether to perform the rendering in-place (i.e., without
+                deep copying objects). By default, this is False
+
         Returns:
-            a dictionary mapping frame numbers to Labels instances
+            a dictionary mapping frame numbers to `frame_labels_cls` instances
         '''
         raise NotImplementedError(
             "subclasses must implement render_all_frames()")
 
 
-class LabelsContainerFrameRenderer(LabelsFrameRenderer):
-    '''Base class for rendering labels for Containers at the frame-level.'''
+class LabelsContainerFrameRenderer(
+        LabelsFrameRenderer, LabelsContainerRenderer):
+    '''Base class for rendering labels in `LabelsContainer`s at the
+    frame-level.
 
-    #
-    # The Container class in which to store frame elements that are rendered
-    #
-    # Subclasses MUST set this field
-    #
-    _FRAME_CONTAINER_CLS = None
+    The only thing that subclasses need to do to implement this interface is
+    to define their `_LABELS_CLS`, `_FRAME_LABELS_CLS`, and
+    `_ELEMENT_RENDERER_CLS`.
+    '''
 
     #
     # The LabelsFrameRenderer class to use to render elements of the container
@@ -778,69 +909,72 @@ class LabelsContainerFrameRenderer(LabelsFrameRenderer):
     #
     _ELEMENT_RENDERER_CLS = None
 
-    def __init__(self, container):
-        '''Creates an LabelsContainerFrameRenderer instance.
-
-        Args:
-            container: a Container
+    @property
+    def element_renderer_cls(self):
+        '''The LabelsFrameRenderer class to use to render elements of the
+        container.
         '''
-        self._container = container
+        return self._ELEMENT_RENDERER_CLS
 
-    def render_frame(self, frame_number):
-        '''Renders the Container for the given frame.
+    def render_frame(self, frame_number, in_place=False):
+        '''Renders the container for the given frame.
 
         Args:
             frame_number: the frame number
+            in_place: whether to perform the rendering in-place (i.e., without
+                deep copying objects). By default, this is False
 
         Returns:
-            a `_FRAME_CONTAINER_CLS` instance, which may be empty if no labels
+            a `frame_labels_cls` instance, which may be empty if no labels
                 exist for the specified frame
         '''
         # pylint: disable=not-callable
-        frame_elements = self._FRAME_CONTAINER_CLS()
+        frame_elements = self.frame_labels_cls()
 
-        for element in self._container:
+        for labels in self._container:
             # pylint: disable=not-callable
-            renderer = self._ELEMENT_RENDERER_CLS(element)
-            frame_element = renderer.render_frame(frame_number)
+            renderer = self.element_renderer_cls(labels)
+            frame_element = renderer.render_frame(
+                frame_number, in_place=in_place)
             if frame_element is not None:
                 frame_elements.add(frame_element)
 
         return frame_elements
 
-    def render_all_frames(self):
-        '''Renders the Container for all possible frames.
+    def render_all_frames(self, in_place=False):
+        '''Renders the container for all possible frames.
+
+        Args:
+            in_place: whether to perform the rendering in-place (i.e., without
+                deep copying objects). By default, this is False
 
         Returns:
-            a dictionary mapping frame numbers to `_FRAME_CONTAINER_CLS`
-                instances
+            a dictionary mapping frame numbers to `frame_labels_cls` instances
         '''
         # pylint: disable=not-callable
-        frame_elements_map = defaultdict(self._FRAME_CONTAINER_CLS)
+        frame_elements_map = defaultdict(self.frame_labels_cls)
 
-        for element in self._container:
+        for labels in self._container:
             # pylint: disable=not-callable
-            renderer = self._ELEMENT_RENDERER_CLS(element)
-            frame_map = renderer.render_all_frames()
-            for frame_number, frame_element in iteritems(frame_map):
+            renderer = self.element_renderer_cls(labels)
+            frames_map = renderer.render_all_frames(in_place=in_place)
+            for frame_number, frame_element in iteritems(frames_map):
                 frame_elements_map[frame_number].add(frame_element)
 
         return dict(frame_elements_map)
 
 
-class LabelsSpatiotemporalRenderer(object):
-    '''Interface for classes that render Labels in spatiotemporal format.
+class LabelsSpatiotemporalRenderer(LabelsRenderer):
+    '''Interface for classes that render Labels in spatiotemporal format.'''
+    pass
 
-    `LabelsSpatiotemporalRenderer`s must follow the strict convention that they
-    do not modify or pass by reference any components of the source Labels that
-    they are rendering. I.e., any labels they produce are deep copies of the
-    source labels.
+
+class LabelsContainerSpatiotemporalRenderer(
+        LabelsSpatiotemporalRenderer, LabelsContainerRenderer):
+    '''Base class for rendering labels for `LabelsContainer`s in spatiotemporal
+    format.
+
+    The only thing that subclasses need to do to implement this interface is
+    to define their `_LABELS_CLS` and `_ELEMENT_RENDERER_CLS`.
     '''
-
-    def render(self):
-        '''Renders the labels in spatiotemporal format.
-
-        Returns:
-            a Labels instance
-        '''
-        raise NotImplementedError("subclasses must implement render()")
+    pass
