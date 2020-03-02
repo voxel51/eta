@@ -404,6 +404,52 @@ class VideoLabels(
     video, frame-level attributes, frame-level object detections, frame-level
     event detections, spatiotemporal objects, and spatiotemporal events.
 
+    Note that the VideoLabels class implements the `HasFramewiseView` and
+    `HasSpatiotemporalView` mixins. This means that all VideoLabels instances
+    can be rendered in both *framewise* and *spatiotemporal* format. Converting
+    between these formats is guaranteed to be lossless and idempotent.
+
+    In framewise format, VideoLabels store all information at the frame-level
+    in VideoFrameLabels. In particular, the following invariants will hold:
+
+        - The `attrs` field will be empty. All video-level attributes will be
+          stored as frame-level `Attribute`s in `frames` with
+          `constant == True`
+
+        - The `objects` field will be empty. All video objects will be stored
+          stored as frame-level `DetectedObject`s in `frames` with their
+          `label` and `index` fields populated to encode the identity of each
+          object
+
+        - The `events` field will be empty. All video events will be stored
+          stored as frame-level `DetectedEvent`s in `frames` with their
+          `label` and `index` fields populated to encode the identity of each
+          event
+
+    In spatiotemporal format, VideoLabels store all possible information in
+    the highest-available-level video constructs. In particular, the following
+    invariants will hold:
+
+        - The `attrs` fields of all VideoFrameLabels will contain only
+          non-constant `Attribute`s. All constant attributes will be upgraded
+          to video-level attributes in the top-level `attrs` field
+
+        - The `objects` fields of all VideoFrameLabels will be empty. All
+          objects will be stored as `VideoObject`s in the top-level `objects`
+          field. Detections for objects with `index`es will be collected in a
+          single VideoObject, and each DetectedObject without an index will be
+          given its own VideoObject. Additionally, all constant attributes of
+          `DetectedObject`s will be upgraded to object-level attributes in
+          their parent VideoObject
+
+        - The `events` fields of all VideoFrameLabels will be empty. All
+          events will be stored as `VideoEvent`s in the top-level `events`
+          field. Detections for events with `index`es will be collected in a
+          single VideoEvent, and each DetectedEvent without an index will be
+          given its own VideoEvent. Additionally, all objects (and their
+          constant attributes) within events will be upgraded to `VideoObject`s
+          using the strategy described in the previous bullet point
+
     Attributes:
         filename: (optional) the filename of the video
         metadata: (optional) a VideoMetadata of metadata about the video
@@ -519,6 +565,16 @@ class VideoLabels(
             an iterator over VideoFrameLabels
         '''
         return itervalues(self.frames)
+
+    @property
+    def framewise_renderer_cls(self):
+        '''The LabelsFrameRenderer used by this class.'''
+        return VideoLabelsFrameRenderer
+
+    @property
+    def spatiotemporal_renderer_cls(self):
+        '''The LabelsSpatiotemporalRenderer used by this class.'''
+        return VideoLabelsSpatiotemporalRenderer
 
     @property
     def has_mask_index(self):
@@ -841,13 +897,6 @@ class VideoLabels(
         else:
             self.events.add_container(events)
 
-    def remove_empty_frames(self):
-        '''Removes all empty VideoFrameLabels from the video.'''
-        self.frames = {
-            fn: vfl for fn, vfl in iteritems(self.frames)
-            if not vfl.is_empty
-        }
-
     def clear_video_attributes(self):
         '''Removes all video-level attributes from the video.'''
         self.attrs = etad.AttributeContainer()
@@ -885,6 +934,17 @@ class VideoLabels(
         self.clear_video_events()
         self.clear_detected_events()
 
+    def clear_frames(self):
+        '''Removes all VideoFrameLabels from the video.'''
+        self.frames = {}
+
+    def remove_empty_frames(self):
+        '''Removes all empty VideoFrameLabels from the video.'''
+        self.frames = {
+            fn: vfl for fn, vfl in iteritems(self.frames)
+            if not vfl.is_empty
+        }
+
     def merge_labels(self, video_labels, reindex=False):
         '''Merges the given VideoLabels into this labels.
 
@@ -906,39 +966,6 @@ class VideoLabels(
         self.add_events(video_labels.events)
         for frame_labels in video_labels.iter_frames():
             self.add_frame(frame_labels, overwrite=False)
-
-    def render_framewise_labels(self):
-        '''Renders a framewise copy of the labels, i.e., a copy of this
-        VideoLabels whose labels are all contained in `VideoFrameLabels`.
-
-        Returns:
-            a VideoLabels
-        '''
-        renderer = VideoLabelsFrameRenderer(self)
-        frames = renderer.render_all_frames()
-
-        kwargs = {}
-        if self.is_support_frozen:
-            kwargs["support"] = self.support
-
-        return VideoLabels(
-            filename=self.filename, metadata=self.metadata,
-            mask_index=self.mask_index, frames=frames, schema=self.schema,
-            **kwargs)
-
-    def render_spatiotemporal_labels(self):
-        '''Renders a spatiotemporal copy of the labels.
-
-        For VideoLabels, spatiotemporal format means that all objects are
-        stored as `VideoObject`s, all events stored as `VideoEvent`s, and all
-        constant attributes will be upgraded to their parent entity (e.g.,
-        constant object attributes will be stored at object-level).
-
-        Returns:
-            a VideoLabels
-        '''
-        renderer = VideoLabelsSpatiotemporalRenderer(self)
-        return renderer.render()
 
     def filter_by_schema(self, schema):
         '''Filters the labels by the given schema.
@@ -1332,7 +1359,13 @@ class VideoLabelsSchema(FrameLabelsSchema):
 
 
 class VideoLabelsFrameRenderer(etal.LabelsFrameRenderer):
-    '''Class for rendering VideoLabels at the frame-level.'''
+    '''Class for rendering VideoLabels at the frame-level.
+
+    See the VideoLabels class docstring for the framewise format spec.
+    '''
+
+    _LABELS_CLS = VideoLabels
+    _FRAME_LABELS_CLS = VideoFrameLabels
 
     def __init__(self, video_labels):
         '''Creates a VideoLabelsFrameRenderer instance.
@@ -1342,11 +1375,50 @@ class VideoLabelsFrameRenderer(etal.LabelsFrameRenderer):
         '''
         self._video_labels = video_labels
 
-    def render_frame(self, frame_number):
+    def render(self, in_place=False):
+        '''Renders the VideoLabels in framewise format.
+
+        Args:
+            in_place: whether to perform the rendering in-place. By default,
+                this is False
+
+        Returns:
+            a VideoLabels
+        '''
+        labels = self._video_labels
+        frames = self.render_all_frames(in_place=in_place)
+
+        if in_place:
+            # Render in-place
+            labels.clear_video_attributes()
+            labels.clear_video_objects()
+            labels.clear_video_events()
+            labels.clear_frames()
+            labels.frames = frames
+            return labels
+
+        # Render new copy of labels
+        filename = deepcopy(labels.filename)
+        metadata = deepcopy(labels.metadata)
+        if labels.is_support_frozen:
+            support = deepcopy(labels.support)
+        else:
+            support = None
+
+        mask_index = deepcopy(labels.mask_index)
+        schema = deepcopy(labels.schema)
+
+        return VideoLabels(
+            filename=filename, metadata=metadata, support=support,
+            mask_index=mask_index, frames=frames, schema=schema)
+
+    def render_frame(self, frame_number, in_place=False):
         '''Renders the VideoLabels for the given frame.
 
         Args:
             frame_number: the frame number
+            in_place: whether to perform the rendering in-place (i.e., without
+                deep copying objects). By default, this is False
 
         Returns:
             a VideoFrameLabels, or None if no labels exist for the given frame
@@ -1355,39 +1427,54 @@ class VideoLabelsFrameRenderer(etal.LabelsFrameRenderer):
             return None
 
         video_attrs = self._get_video_attrs()
-        dobjs = self._render_object_frame(frame_number)
-        devents = self._render_event_frame(frame_number)
-        return self._render_frame(frame_number, video_attrs, dobjs, devents)
+        dobjs = self._render_object_frame(frame_number, in_place)
+        devents = self._render_event_frame(frame_number, in_place)
+        return self._render_frame(
+            frame_number, video_attrs, dobjs, devents, in_place)
 
-    def render_all_frames(self):
+    def render_all_frames(self, in_place=False):
         '''Renders the VideoLabels for all possible frames.
+
+        Args:
+            in_place: whether to perform the rendering in-place (i.e., without
+                deep copying objects). By default, this is False
 
         Returns:
             a dictionary mapping frame numbers to VideoFrameLabels instances
         '''
         video_attrs = self._get_video_attrs()
-        dobjs_map = self._render_all_object_frames()
-        devents_map = self._render_all_event_frames()
+        dobjs_map = self._render_all_object_frames(in_place)
+        devents_map = self._render_all_event_frames(in_place)
 
         frame_labels_map = {}
         for frame_number in self._video_labels.support:
             dobjs = dobjs_map.get(frame_number, None)
             devents = devents_map.get(frame_number, None)
             frame_labels_map[frame_number] = self._render_frame(
-                frame_number, video_attrs, dobjs, devents)
+                frame_number, video_attrs, dobjs, devents, in_place)
 
         return frame_labels_map
 
-    def _render_frame(self, frame_number, video_attrs, dobjs, devents):
+    def _render_frame(
+            self, frame_number, video_attrs, dobjs, devents, in_place):
+        labels = self._video_labels
+
         # Base VideoFrameLabels
-        if self._video_labels.has_frame(frame_number):
-            frame_labels = deepcopy(self._video_labels.get_frame(frame_number))
+        if labels.has_frame(frame_number):
+            frame_labels = labels.get_frame(frame_number)
+            if not in_place:
+                frame_labels = deepcopy(frame_labels)
         else:
             frame_labels = VideoFrameLabels(frame_number=frame_number)
 
         # Render video-level attributes
         if video_attrs is not None:
+            #
             # Prepend video-level attributes
+            #
+            # We cannot avoid `deepcopy` here because video-level attributes
+            # must be embedded in each frame
+            #
             frame_labels.attrs.prepend_container(deepcopy(video_attrs))
 
         # Render objects
@@ -1400,39 +1487,51 @@ class VideoLabelsFrameRenderer(etal.LabelsFrameRenderer):
 
         return frame_labels
 
-    def _render_all_object_frames(self):
-        if not self._video_labels.has_video_objects:
-            return {}
+    def _render_object_frame(self, frame_number, in_place):
+        labels = self._video_labels
 
-        r = etao.VideoObjectContainerFrameRenderer(self._video_labels.objects)
-        return r.render_all_frames()
-
-    def _render_object_frame(self, frame_number):
-        if not self._video_labels.has_video_objects:
+        if not labels.has_video_objects:
             return None
 
-        r = etao.VideoObjectContainerFrameRenderer(self._video_labels.objects)
-        return r.render_frame(frame_number)
+        r = etao.VideoObjectContainerFrameRenderer(labels.objects)
+        return r.render_frame(frame_number, in_place=in_place)
 
-    def _render_all_event_frames(self):
-        if not self._video_labels.has_video_events:
+    def _render_all_object_frames(self, in_place):
+        labels = self._video_labels
+
+        if not labels.has_video_objects:
             return {}
 
-        r = etae.VideoEventContainerFrameRenderer(self._video_labels.events)
-        return r.render_all_frames()
+        r = etao.VideoObjectContainerFrameRenderer(labels.objects)
+        return r.render_all_frames(in_place=in_place)
 
-    def _render_event_frame(self, frame_number):
-        if not self._video_labels.has_video_events:
+    def _render_event_frame(self, frame_number, in_place):
+        labels = self._video_labels
+
+        if not labels.has_video_events:
             return None
 
-        r = etae.VideoEventContainerFrameRenderer(self._video_labels.events)
-        return r.render_frame(frame_number)
+        r = etae.VideoEventContainerFrameRenderer(labels.events)
+        return r.render_frame(frame_number, in_place=in_place)
+
+    def _render_all_event_frames(self, in_place):
+        labels = self._video_labels
+
+        if not labels.has_video_events:
+            return {}
+
+        r = etae.VideoEventContainerFrameRenderer(labels.events)
+        return r.render_all_frames(in_place=in_place)
 
     def _get_video_attrs(self):
-        if not self._video_labels.has_video_attributes:
+        labels = self._video_labels
+
+        if not labels.has_video_attributes:
             return None
 
-        video_attrs = deepcopy(self._video_labels.attrs)
+        # There's no need to avoid `deepcopy` here when `in_place == True`
+        # because copies of video-level attributes must be made for each frame
+        video_attrs = deepcopy(labels.attrs)
         for attr in video_attrs:
             attr.constant = True
 
@@ -1442,11 +1541,10 @@ class VideoLabelsFrameRenderer(etal.LabelsFrameRenderer):
 class VideoLabelsSpatiotemporalRenderer(etal.LabelsSpatiotemporalRenderer):
     '''Class for rendering VideoLabels in spatiotemporal format.
 
-    For VideoLabels, spatiotemporal format means that all objects are
-    stored as `VideoObject`s, all events stored as `VideoEvent`s, and all
-    constant attributes will be upgraded to their parent entity (e.g.,
-    constant frame attributes will be stored as video-level attributes).
+    See the VideoLabels class docstring for the spatiotemporal format spec.
     '''
+
+    _LABELS_CLS = VideoLabels
 
     def __init__(self, video_labels):
         '''Creates a VideoLabelsSpatiotemporalRenderer instance.
@@ -1456,49 +1554,77 @@ class VideoLabelsSpatiotemporalRenderer(etal.LabelsSpatiotemporalRenderer):
         '''
         self._video_labels = video_labels
 
-    def render(self):
+    def render(self, in_place=False):
         '''Renders the VideoLabels in spatiotemporal format.
+
+        Args:
+            in_place: whether to perform the rendering in-place. By default,
+                this is False
 
         Returns:
             a VideoLabels
         '''
-        video_labels = deepcopy(self._video_labels)
+        labels = self._video_labels
+        if not in_place:
+            labels = deepcopy(labels)
 
-        # Extract spatiotemporal elements from frames
-        video_attrs_map = {}
-        objects = etao.DetectedObjectContainer()
-        events = etae.DetectedEventContainer()
-        for frame_labels in video_labels.iter_frames():
-            objects.add_container(frame_labels.pop_objects())
-            events.add_container(frame_labels.pop_events())
+        # Upgrade spatiotemporal elements from frames
+        attrs, objects, events = strip_spatiotemporal_content_from_frames(self)
+        labels.attrs.add_container(attrs)
+        labels.add_objects(objects)
+        labels.add_events(events)
+        labels.remove_empty_frames()
 
-            # Extract constant attributes
-            for const_attr in frame_labels.attrs.pop_constant_attrs():
-                # @todo verify that existing attributes are exactly equal?
-                video_attrs_map[const_attr.name] = const_attr
+        return labels
 
-        # Store video-level attributes
-        video_attrs = etad.AttributeContainer()
-        for attr in itervalues(video_attrs_map):
-            # By convention, don't mark attributes as constant when this is
-            # apparent from their location in their parent entity
-            attr.constant = False  # by convention, we do not
-            video_attrs.add(attr)
 
-        video_labels.attrs.add_container(video_attrs)
+def strip_spatiotemporal_content_from_frames(video_labels):
+    '''Strips the spatiotemporal content from the frames of the given
+    VideoLabels.
 
-        # Build VideoObjects
-        video_labels.add_objects(
-            etao.VideoObjectContainer.from_detections(objects))
+    The input labels are modified in-place.
 
-        # Build VideoEvents
-        video_labels.add_events(
-            etae.VideoEventContainer.from_detections(events))
+    Args:
+        video_labels: a VideoLabels
 
-        # Remove empty frame labels
-        video_labels.remove_empty_frames()
+    Returns:
+        attrs: an AttributeContainer of constant frame attributes. By
+            convention, these attributes are no longer marked as constant, as
+            this is assumed to be implicit
+        objects: a VideoObjectContainer containing the objects that were
+            stripped from the frames
+        events: a VideoEventContainer containing the events that were stripped
+            from the frames
+    '''
+    # Extract spatiotemporal content from frames
+    attrs_map = {}
+    dobjs = etao.DetectedObjectContainer()
+    devents = etae.DetectedEventContainer()
+    for frame_labels in video_labels.iter_frames():
+        # Extract objects
+        dobjs.add_container(frame_labels.pop_objects())
 
-        return video_labels
+        # Extract events
+        devents.add_container(frame_labels.pop_events())
+
+        # Extract constant attributes
+        for const_attr in frame_labels.attrs.pop_constant_attrs():
+            # @todo verify that duplicate attributes are exactly equal?
+            attrs_map[const_attr.name] = const_attr
+
+    # Store video-level attributes in a container with `constant == False`
+    attrs = etad.AttributeContainer()
+    for attr in itervalues(attrs_map):
+        attr.constant = False
+        attrs.add(attr)
+
+    # Build VideoObjects
+    objects = etao.VideoObjectContainer.from_detections(dobjs)
+
+    # Build VideoEvents
+    events = etae.VideoEventContainer.from_detections(devents)
+
+    return attrs, objects, events
 
 
 class VideoSetLabels(etal.LabelsSet):
