@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Installs ETA and its dependencies
+# Installs ETA and its dependencies.
 #
-# Copyright 2017-2019, Voxel51, Inc.
+# Copyright 2017-2020, Voxel51, Inc.
 # voxel51.com
 #
 # Brian Moore, brian@voxel51.com
@@ -243,18 +243,18 @@ if [ $? -eq 0 ]; then
 else
     MSG "Installing protoc"
     if [ "${OS}" == "Darwin" ]; then
-        # Mac - Download Protoc from github
+        # Mac - Download Protoc from GitHub
         CRITICAL curl -OL https://github.com/protocolbuffers/protobuf/releases/download/v3.6.1/protoc-3.6.1-osx-x86_64.zip
         CRITICAL unzip protoc-3.6.1-osx-x86_64.zip -d protoc3
         CRITICAL rm -rf protoc-3.6.1-osx-x86_64.zip
      else
-        # Linux - Download Protoc from github
+        # Linux - Download Protoc from GitHub
         CRITICAL curl -OL https://github.com/protocolbuffers/protobuf/releases/download/v3.6.1/protoc-3.6.1-linux-x86_64.zip
         CRITICAL unzip protoc-3.6.1-linux-x86_64.zip -d protoc3
         CRITICAL rm -rf protoc-3.6.1-linux-x86_64.zip
     fi
 
-    # Move protoc to /usr/local/
+    # Move protoc to /usr/local
     CRITICAL sudo mv protoc3/bin/* /usr/local/bin/
     CRITICAL sudo mv protoc3/include/* /usr/local/include/
     CRITICAL rm -rf protoc3
