@@ -36,7 +36,7 @@ import eta.core.video as etav
 
 from .builders import BuilderImageRecord, BuilderVideoRecord, \
     BuilderVideoDataset
-from .utils import _get_dataset_name
+from .utils import get_dataset_name
 
 
 logger = logging.getLogger(__name__)
@@ -1034,7 +1034,7 @@ class Merger(DatasetTransformer):
 
         if self.prepend_dataset_name:
             for record in self._builder_dataset_to_merge.records:
-                base = _get_dataset_name(record.data_path)
+                base = get_dataset_name(record.data_path)
                 record.prepend_to_name(prefix=base)
 
         src.add_container(self._builder_dataset_to_merge)
@@ -1055,7 +1055,7 @@ class PrependDatasetNameToRecords(DatasetTransformer):
             src: a BuilderDataset
         '''
         for record in src.records:
-            base = _get_dataset_name(record.data_path)
+            base = get_dataset_name(record.data_path)
             record.prepend_to_name(prefix=base)
 
 

@@ -33,7 +33,7 @@ import eta.core.utils as etau
 import eta.core.video as etav
 
 from .utils import COPY, FILE_METHODS, _FILE_METHODS_MAP, \
-    _append_index_if_necessary
+    append_index_if_necessary
 
 
 logger = logging.getLogger(__name__)
@@ -150,7 +150,7 @@ class LabeledDatasetBuilder(object):
             labels_path = os.path.join(labels_subdir, labels_filename)
 
             old_data_path = data_path
-            data_path, labels_path = _append_index_if_necessary(
+            data_path, labels_path = append_index_if_necessary(
                 dataset, data_path, labels_path)
             if data_path != old_data_path and not did_warn_duplicate_name:
                 logger.warning(
