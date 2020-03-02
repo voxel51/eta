@@ -1567,7 +1567,8 @@ class VideoLabelsSpatiotemporalRenderer(etal.LabelsSpatiotemporalRenderer):
             labels = deepcopy(labels)
 
         # Upgrade spatiotemporal elements from frames
-        attrs, objects, events = strip_spatiotemporal_content_from_frames(self)
+        attrs, objects, events = strip_spatiotemporal_content_from_frames(
+            labels)
         labels.attrs.add_container(attrs)
         labels.add_objects(objects)
         labels.add_events(events)
