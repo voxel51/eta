@@ -485,7 +485,7 @@ def annotate_video(
         annotation_config = _DEFAULT_ANNOTATION_CONFIG
 
     # Render framewise labels for annotation
-    video_labels = video_labels.render_framewise_labels()
+    video_labels = video_labels.render_framewise()
     mask_index = video_labels.mask_index
 
     # Annotate video
