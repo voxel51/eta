@@ -1,11 +1,11 @@
 '''
-DatasetTransformers, that apply transformations to BuilderDatasets
+Core definition of `DatasetTransformer`s, which define the interface and
+implementations of applying transformations to `BuilderDataset`s.
 
-Copyright 2017-2019 Voxel51, Inc.
+Copyright 2017-2020 Voxel51, Inc.
 voxel51.com
 
 Matthew Lightman, matthew@voxel51.com
-Jason Corso, jason@voxel51.com
 Ben Kane, ben@voxel51.com
 Tyler Ganter, tyler@voxel51.com
 '''
@@ -17,7 +17,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
-from future.utils import iteritems
+from future.utils import iteritems, itervalues
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
@@ -43,13 +43,15 @@ logger = logging.getLogger(__name__)
 
 
 class DatasetTransformer(object):
-    '''Classes that subclass DatasetTransformer operate on BuilderDatasets
-    (BuilderImageDataset or BuilderVideoDataset). Only transform() will be
-    called outside the instances of a DatasetTransformer.
+    '''Interface for dataset transformers, which take `BuilderDataset`s as
+    input and transform their samples according to a specified algorithm.
+
+    Subclasses must implement the `transform()` method, which applies the
+    transformation.
     '''
 
     def transform(self, src):
-        '''Transforms a BuilderDataset.
+        '''Applies the dataset transform to the BuilderDataset.
 
         Args:
             src: a BuilderDataset
@@ -58,14 +60,15 @@ class DatasetTransformer(object):
 
 
 class Sampler(DatasetTransformer):
-    '''Randomly sample the number of records in the dataset to some number k.
+    '''Dataset transformer that randomly samples a specified number of records
+    from the dataset.
 
-    If the number of records is less than k, then all records are kept, but
-    the order is randomized.
+    If the number of records is less than the requested number, then all
+    records are kept, but the order is randomized.
     '''
 
     def __init__(self, k):
-        '''Initialize the Samples with k; the number of samples to take.
+        '''Creates a Sampler instance.
 
         Args:
             k: the number of samples to take
@@ -73,27 +76,24 @@ class Sampler(DatasetTransformer):
         self.k = k
 
     def transform(self, src):
-        '''Sample from the existing records.
+        '''Samples from the existing records.
 
         Args:
             src: a BuilderImageDataset or BuilderVideoDataset
         '''
-        src.records = random.sample(
-            src.records, min(self.k, len(src.records))
-        )
+        src.records = random.sample(src.records, min(self.k, len(src.records)))
 
 
 class Balancer(DatasetTransformer):
-    '''Balance the the dataset's values of a categorical attribute by removing
-    records.
+    '''Dataset transformer that balances the dataset's attributes and object
+    labels by removing records as necessary.
 
-    For example:
+    Currently only categorical attributes are supported.
+
+    Example:
         Given a dataset with 10 green cars, 20 blue cars and 15 red cars,
         remove records with blue and red cars until there are the same number
         of each color.
-
-        In this example 'color' is the `attribute_name` and 'car' is the
-        `object_label`.
     '''
 
     _NUM_RANDOM_ITER = 10000
@@ -156,7 +156,7 @@ class Balancer(DatasetTransformer):
         self._validate()
 
     def transform(self, src):
-        '''Modify the BuilderDataset records by removing records until the
+        '''Modifues the BuilderDataset records by removing records until the
         target attribute is ~roughly~ balanced for each value.
 
         Args:
@@ -171,17 +171,17 @@ class Balancer(DatasetTransformer):
         if not attribute_values:
             return
 
-        # STEP 2: determine target number to remove of each attribute value
+        # STEP 2: Determine target number to remove of each attribute value
         logger.info("Determining target counts...")
-        counts = np.sum(occurrence_matrix, axis=1).astype(np.dtype('int'))
+        counts = np.sum(occurrence_matrix, axis=1).astype(np.dtype("int"))
         target_count = self._get_target_count(counts)
 
-        # STEP 3: find the records to keep
+        # STEP 3: Find the records to keep
         logger.info("Calculating which records to keep...")
         keep_idxs = self._get_keep_idxs(
             occurrence_matrix, counts, target_count)
 
-        # STEP 4: modify the list of records
+        # STEP 4: Modify the list of records
         logger.info("Filtering records...")
         old_records = src.records
         src.clear()
@@ -226,14 +226,13 @@ class Balancer(DatasetTransformer):
                 for pattern in acceptable_patterns):
             raise ValueError(
                 "Pattern of variables specified not allowed: %s\n"
-                "Allowed patterns: %s" % (specified, acceptable_patterns)
-            )
+                "Allowed patterns: %s" % (specified, acceptable_patterns))
 
     def _get_occurrence_matrix(self, records):
-        '''Compute occurrence of each attribute value for each class
+        '''Computes occurrence of each attribute value for each class.
 
         Args:
-            records: list of BuilderDataRecord's
+            records: list of `BuilderDataRecord`s
 
         Returns:
             A: an N x M occurrence matrix counting the number of instances of
@@ -249,7 +248,7 @@ class Balancer(DatasetTransformer):
         helper_list = self._to_helper_list(records)
         record_idxs = [idx for idx, _ in helper_list]
 
-        A = np.zeros((0, len(helper_list)), dtype=np.dtype('uint32'))
+        A = np.zeros((0, len(helper_list)), dtype=np.dtype("uint32"))
         values = []
         for j, (_, attr_values) in enumerate(helper_list):
             for attr_value in attr_values:
@@ -260,7 +259,7 @@ class Balancer(DatasetTransformer):
                     values.append(attr_value)
                     A = np.vstack([
                         A,
-                        np.zeros(len(helper_list), dtype=np.dtype('uint32'))
+                        np.zeros(len(helper_list), dtype=np.dtype("uint32"))
                     ])
                     i = values.index(attr_value)
                     A[i, j] += 1
@@ -274,22 +273,12 @@ class Balancer(DatasetTransformer):
             records: list of BuilderDataRecord's
 
         Returns:
-            a list of tuples with two entries:
-            ```
-                [
-                    (record_id, list_of_values),
-                    (record_id, list_of_values),
-                    (record_id, list_of_values),
-                    ...
-                ]
-            ```
-            record_id: integer ID of the corresponding old_record
-            list_of_values: list of attribute values for the attribute to be
-                balanced, one per unique object, if using objects. For example:
-                ["red", "red", "green"] would imply three objects with the
-                "color" attribute in this record
+            a list of (`record_id`, `values`) tuples, where `record_id` is the
+            integer ID of the corresponding old record, and `values` is a list
+            of attribute values for the attribute to be balanced (or, one entry
+            per unique object, when using objects)
         '''
-        if not len(records):
+        if not records:
             return []
 
         if self.attr_name is not None:
@@ -362,19 +351,19 @@ class Balancer(DatasetTransformer):
         helper_list = []
 
         for i, record in enumerate(records):
-            labels = record.get_labels()
+            labels = record.get_labels()  # ImageLabels
             helper = (i, [])
 
-            for detected_object in labels.objects:
-                if detected_object.label != self.object_label:
+            for dobj in labels.objects:
+                if dobj.label != self.object_label:
                     continue
 
-                for attr in detected_object.attrs:
+                for attr in dobj.attrs:
                     if attr.name == self.attr_name:
                         helper[1].append(attr.value)
                         break
 
-            if len(helper[1]):
+            if helper[1]:
                 helper_list.append(helper)
 
         return helper_list
@@ -388,34 +377,34 @@ class Balancer(DatasetTransformer):
             labels = record.get_labels()
             helper = (i, [])
 
-            for detected_object in labels.objects:
-                helper[1].append(detected_object.label)
+            for dobj in labels.objects:
+                helper[1].append(dobj.label)
 
-            if len(helper[1]):
+            if helper[1]:
                 helper_list.append(helper)
 
         return helper_list
 
     def _to_helper_list_video(self, records):
-        '''Balancer._to_helper_list for video attributes'''
+        '''Balancer._to_helper_list for video frame attributes'''
         helper_list = []
 
         for i, record in enumerate(records):
-            labels = record.get_labels()
+            labels = record.get_labels()  # VideoLabels
             helper = (i, set())
 
-            for frame_no in labels:
-                if (frame_no < record.clip_start_frame or
-                        frame_no >= record.clip_end_frame):
+            for frame_number in labels:
+                if (frame_number < record.clip_start_frame or
+                        frame_number >= record.clip_end_frame):
                     continue
 
-                frame = labels[frame_no]
+                frame = labels[frame_number]
                 for attr in frame.attrs:
                     if attr.name == self.attr_name:
                         helper[1].add(attr.value)
                         break
 
-            if len(helper[1]):
+            if helper[1]:
                 helper = (helper[0], list(helper[1]))
                 helper_list.append(helper)
 
@@ -427,39 +416,36 @@ class Balancer(DatasetTransformer):
 
         for i, record in enumerate(records):
             labels = record.get_labels()
-            NO_ID = 'NO_ID'
+            NO_ID = "NO_ID"
             helper_dict = defaultdict(set)
 
-            for frame_no in labels:
-                if (frame_no < record.clip_start_frame
-                        or frame_no >= record.clip_end_frame):
+            for frame_number in labels:
+                if (frame_number < record.clip_start_frame
+                        or frame_number >= record.clip_end_frame):
                     continue
 
-                frame = labels[frame_no]
-                for detected_object in frame.objects:
-                    if detected_object.label != self.object_label:
+                frame = labels[frame_number]
+                for dobj in frame.objects:
+                    if dobj.label != self.object_label:
                         continue
 
-                    for attr in detected_object.attrs:
+                    for attr in dobj.attrs:
                         if attr.name == self.attr_name:
                             obj_idx = (
-                                detected_object.index
-                                if detected_object.index is not None
-                                else NO_ID
-                            )
-
+                                dobj.index if dobj.index is not None
+                                else NO_ID)
                             helper_dict[obj_idx].add(attr.value)
-
                             break
 
-            # At this point, the keys of helper dict are unique
-            # object indices for objects of type self.object_label.
-            # The values are unique attribute values for self.attr_name.
+            # At this point, the keys of helper dict are unique object indices
+            # for objects of type self.object_label. The values are unique
+            # attribute values for self.attr_name
 
-            if len(helper_dict):
+            if helper_dict:
                 helper = (i, [])
                 for s in helper_dict.values():
                     helper[1].extend(s)
+
                 helper_list.append(helper)
 
         return helper_list
@@ -470,33 +456,31 @@ class Balancer(DatasetTransformer):
         helper_list = []
 
         for i, record in enumerate(records):
-            labels = record.get_labels()
-            NO_ID = 'NO_ID'
+            labels = record.get_labels()  # VideoLabels
+            NO_ID = "NO_ID"
             helper_dict = defaultdict(set)
 
-            for frame_no in labels:
-                if (frame_no < record.clip_start_frame
-                        or frame_no >= record.clip_end_frame):
+            for frame_number in labels:
+                if (frame_number < record.clip_start_frame
+                        or frame_number >= record.clip_end_frame):
                     continue
 
-                frame = labels[frame_no]
-                for detected_object in frame.objects:
-                    obj_idx = (
-                        detected_object.index
-                        if detected_object.index is not None
-                        else NO_ID
-                    )
+                frame = labels[frame_number]
+                for dobj in frame.objects:
+                    obj_idx = dobj.index if dobj.index is not None else NO_ID
+                    helper_dict[obj_idx].add(dobj.label)
 
-                    helper_dict[obj_idx].add(detected_object.label)
+            #
+            # At this point, the keys of helper dict are unique object indices
+            # for objects of type self.object_label. The values are unique
+            # attribute values for self.attr_name
+            #
 
-            # At this point, the keys of helper dict are unique
-            # object indices for objects of type self.object_label.
-            # The values are unique attribute values for self.attr_name.
-
-            if len(helper_dict):
+            if helper_dict:
                 helper = (i, [])
                 for s in helper_dict.values():
                     helper[1].extend(s)
+
                 helper_list.append(helper)
 
         return helper_list
@@ -530,29 +514,43 @@ class Balancer(DatasetTransformer):
         helper_list = []
 
         for i, record in enumerate(records):
-            labels = record.get_labels()
+            image_labels = record.get_labels()  # ImageLabels
             helper = (i, [])
 
-            for attr in labels.attrs:
-                if self.labels_schema.is_valid_attribute(attr):
-                    helper[1].append(
-                        ("image_attribute", attr.name, attr.value)
-                    )
+            for attr in image_labels.attrs:
+                if attr.constant:
+                    # Constant attribute
+                    if self.labels_schema.is_valid_constant_attribute(attr):
+                        helper[1].append(
+                            ("constant_attribute", attr.name, attr.value))
+                else:
+                    # Frame attribute
+                    if self.labels_schema.is_valid_frame_attribute(attr):
+                        helper[1].append(
+                            ("frame_attribute", attr.name, attr.value))
 
-            for detected_object in labels.objects:
-                if not self.labels_schema.is_valid_object_label(
-                        detected_object.label):
+            for dobj in image_labels.objects:
+                # Object label
+                if not self.labels_schema.is_valid_object_label(dobj.label):
                     continue
 
-                for attr in detected_object.attrs:
-                    if self.labels_schema.is_valid_object_attribute(
-                            detected_object.label, attr):
-                        helper[1].append(
-                            ("object_attribute", detected_object.label,
-                             attr.name, attr.value)
-                        )
+                for attr in dobj.attrs:
+                    if attr.constant:
+                        # Object attribute
+                        if self.labels_schema.is_valid_object_attribute(
+                                dobj.label, attr):
+                            helper[1].append(
+                                ("object_attribute", dobj.label,
+                                 attr.name, attr.value))
+                    else:
+                        # Object frame attribute
+                        if self.labels_schema.is_valid_object_frame_attribute(
+                                dobj.label, attr):
+                            helper[1].append((
+                                "object_frame_attribute", dobj.label,
+                                attr.name, attr.value))
 
-            if len(helper[1]):
+            if helper[1]:
                 helper_list.append(helper)
 
         return helper_list
@@ -562,47 +560,60 @@ class Balancer(DatasetTransformer):
         helper_list = []
 
         for i, record in enumerate(records):
-            labels = record.get_labels()
+            video_labels = record.get_labels()  # VideoLabels
             helper = (i, [])
             helper_dict = defaultdict(set)
 
-            for attr in labels.attrs:
+            for attr in video_labels.attrs:
+                # Video attribute
                 if self.labels_schema.is_valid_video_attribute(attr):
                     helper[1].append(
-                        ("video_attribute", attr.name, attr.value)
-                    )
+                        ("video_attribute", attr.name, attr.value))
 
-            for frame_no in labels:
-                if (frame_no < record.clip_start_frame
-                        or frame_no >= record.clip_end_frame):
+            for frame_number in video_labels:
+                if (frame_number < record.clip_start_frame
+                        or frame_number >= record.clip_end_frame):
                     continue
 
-                frame = labels[frame_no]
+                frame = video_labels[frame_number]
                 for attr in frame.attrs:
-                    if self.labels_schema.is_valid_frame_attribute(attr):
-                        helper[1].append(
-                            ("frame_attribute", attr.name, attr.value)
-                        )
+                    if attr.constant:
+                        # Another way to store video attributes
+                        if self.labels_schema.is_valid_video_attribute(attr):
+                            helper[1].append(
+                                ("video_attribute", attr.name, attr.value))
+                    else:
+                        # Frame attribute
+                        if self.labels_schema.is_valid_frame_attribute(attr):
+                            helper[1].append(
+                                ("frame_attribute", attr.name, attr.value))
 
-                for obj in frame.objects:
+                for dobj in frame.objects:
+                    # Object label
                     if not self.labels_schema.is_valid_object_label(
-                            obj.label):
+                            dobj.label):
                         continue
 
-                    for attr in obj.attrs:
-                        if self.labels_schema.is_valid_object_attribute(
-                                obj.label, attr):
-                            helper_dict[(obj.label, obj.index)].add(
-                                (attr.name, attr.value)
-                            )
+                    for attr in dobj.attrs:
+                        if attr.constant:
+                            # Object attribute
+                            if self.labels_schema.is_valid_object_attribute(
+                                    dobj.label, attr):
+                                helper_dict[(dobj.label, dobj.index)].add((
+                                    "object_attribute", dobj.label, attr.name,
+                                    attr.value))
+                        else:
+                            # Object frame attribute
+                            if self.labels_schema.is_valid_object_frame_attribute(  # pylint: disable=line-too-long
+                                    dobj.label, attr):
+                                helper_dict[(dobj.label, dobj.index)].add((
+                                    "object_frame_attribute", dobj.label,
+                                    attr.name, attr.value))
 
-            for (label, _), attr_set in iteritems(helper_dict):
-                for name, value in attr_set:
-                    helper[1].append(
-                        ("object_attribute", label, name, value)
-                    )
+            for attr_set in itervalues(helper_dict):
+                helper[1].extend(list(attr_set))
 
-            if len(helper[1]):
+            if helper[1]:
                 helper_list.append(helper)
 
         return helper_list
@@ -695,12 +706,12 @@ class Balancer(DatasetTransformer):
         Returns:
             x: the solution vector, where `x[j] == 1` --> omit the j'th record
         '''
-        best_x = np.zeros(A.shape[1], dtype=np.dtype('int'))
+        best_x = np.zeros(A.shape[1], dtype=np.dtype("int"))
         best_score = self._solution_score(b - np.dot(A, best_x))
         w = np.where(best_x == 0)[0]
 
-        while len(w):
-            x_matrix = np.zeros((len(best_x), len(w)), dtype=np.dtype('int'))
+        while len(w) > 0:  # pylint: disable=len-as-condition
+            x_matrix = np.zeros((len(best_x), len(w)), dtype=np.dtype("int"))
             for idx, val in enumerate(w):
                 x_matrix[:, idx] = best_x
                 x_matrix[val, idx] = 1
@@ -855,16 +866,18 @@ class Balancer(DatasetTransformer):
 
 
 class SchemaFilter(DatasetTransformer):
-    '''Filter all labels in the dataset by the provided schema. If the schema
-    is None, no filtering is done.
+    '''Dataset transformer that filter all labels in the dataset by the
+    provided schema.
     '''
 
-    def __init__(self, schema, remove_objects_without_attrs=False,
-                 object_labels_to_filter=None, prune_empty=True):
-        '''Initialize the SchemaFilter
+    def __init__(
+            self, schema=None, remove_objects_without_attrs=False,
+            object_labels_to_filter=None, prune_empty=True):
+        '''Creates a SchemaFilter instance.
 
         Args:
-            schema: a VideoLabelsSchema or ImageLabelsSchema
+            schema: a VideoLabelsSchema or ImageLabelsSchema. By default, no
+                filtering will be performed
             remove_objects_without_attrs: whether to remove objects with no
                 attributes, after filtering. Use the `object_labels_to_filter`
                 argument to control which object labels are filtered. By
@@ -881,40 +894,42 @@ class SchemaFilter(DatasetTransformer):
         self.prune_empty = prune_empty
 
     def transform(self, src):
-        '''Filter all records in src. If the schema is None, no filtering is
-        done.
+        '''Filters all records in the given source dataset.
+
+        If this transformer has no schema, no filtering is done.
 
         Args:
             src: a BuilderImageDataset or BuilderVideoDataset
         '''
         if self.schema is None:
             return
+
         old_records = src.records
         src.clear()
         for record in old_records:
             labels = record.get_labels()
 
-            # filter by schema
+            # Filter by schema
             labels.filter_by_schema(self.schema)
 
-            # filter objects that don't have attributes
+            # Filter objects that don't have attributes
             if self.remove_objects_without_attrs:
                 labels.remove_objects_without_attrs(
                     labels=self.object_labels_to_filter)
 
-            # add the filtered record to the new dataset
+            # Add the filtered record to the new dataset
             if not self.prune_empty or not labels.is_empty:
                 record.set_labels(labels)
                 src.add(record)
 
 
 class Clipper(DatasetTransformer):
-    '''Clip longer videos into shorter ones, and sample at some stride step.'''
+    '''Dataset transformer that extracts video clips from source videos
+    according to the specified parameters.
+    '''
 
     def __init__(self, clip_len, stride_len, min_clip_len):
         '''Creates a Clipper instance.
-
-        min_clip_len determines whether remainders are included or not.
 
         Args:
             clip_len: number of frames per clip, must be > 0
@@ -925,14 +940,10 @@ class Clipper(DatasetTransformer):
         self.clip_len = int(clip_len)
         self.stride_len = int(stride_len)
         self.min_clip_len = int(min_clip_len)
-        bad_args = self.clip_len < 1 or self.stride_len < 1
-        bad_args = bad_args or self.min_clip_len < 1
-        bad_args = bad_args or self.min_clip_len > self.clip_len
-        if bad_args:
-            raise DatasetTransformerError("Bad args provided to Clipper")
+        self._validate()
 
     def transform(self, src):
-        '''Create the new record list made of clipped records from the old
+        '''Creates the new record list made of clipped records from the old
         records list.
 
         Args:
@@ -940,7 +951,8 @@ class Clipper(DatasetTransformer):
         '''
         if not isinstance(src, BuilderVideoDataset):
             raise DatasetTransformerError(
-                "Clipper transform can only operate on BuilderVideoDatasets")
+                "`Clipper`s can only operate on `BuilderVideoDataset`s")
+
         old_records = src.records
         src.clear()
         for record in old_records:
@@ -952,6 +964,7 @@ class Clipper(DatasetTransformer):
                     clip_duration = int(end_frame - start_frame + 1)
                     if clip_duration < self.min_clip_len:
                         break
+
                 self._add_clipping(start_frame, end_frame, record, src.records)
                 start_frame += self.stride_len
 
@@ -962,12 +975,18 @@ class Clipper(DatasetTransformer):
         new_record.clip_end_frame = end_frame
         records.append(new_record)
 
+    def _validate(self):
+        if ((self.clip_len < 1) or (self.stride_len < 1) or
+                (self.min_clip_len < 1) or
+                (self.min_clip_len > self.clip_len)):
+            raise DatasetTransformerError("Invalid Clipper args found")
+
 
 class EmptyLabels(DatasetTransformer):
-    '''Assign empty labels to all records.'''
+    '''Dataset transformer that assigns empty labels to all records.'''
 
     def transform(self, src):
-        '''Assign empty labels to all records.
+        '''Assigns empty labels to all records.
 
         Args:
             src: a BuilderDataRecord
@@ -976,13 +995,14 @@ class EmptyLabels(DatasetTransformer):
             return
 
         labels_cls = src.records[0].get_labels().__class__
-
         for record in src:
             record.set_labels(labels_cls())
 
 
 class Merger(DatasetTransformer):
-    '''Merges another dataset into the existing dataset.'''
+    '''Dataset transformer that merges another dataset into the existing
+    dataset.
+    '''
 
     def __init__(self, dataset_builder, prepend_dataset_name=True):
         '''Creates a Merger instance.
@@ -1010,9 +1030,7 @@ class Merger(DatasetTransformer):
                 "src.record_cls = %s, to_merge.record_cls = %s" % (
                     etau.get_class_name(src.record_cls),
                     etau.get_class_name(
-                        self._builder_dataset_to_merge.record_cls)
-                )
-            )
+                        self._builder_dataset_to_merge.record_cls)))
 
         if self.prepend_dataset_name:
             for record in self._builder_dataset_to_merge.records:
@@ -1023,14 +1041,15 @@ class Merger(DatasetTransformer):
 
 
 class PrependDatasetNameToRecords(DatasetTransformer):
-    ''' Given a labeled dataset, this transformation prepends the dataset name
-    followed by an underscore to all data and label files in the dataset.
-    E.g. mydataset/data/vid.mp4 is now mydataset/data/mydataset_vid.mp4
+    '''Dataset transformer that prepends the dataset name followed by an
+    underscore to all data and label files in the dataset.
+
+    Example:
+        `mydataset/data/vid.mp4` ==> `mydataset/data/mydataset_vid.mp4`
     '''
 
     def transform(self, src):
-        '''Prepends the dataset name and an underscore to all records in the
-        dataset
+        '''Prepends the dataset name to all records in the dataset.
 
         Args:
             src: a BuilderDataset
@@ -1041,7 +1060,9 @@ class PrependDatasetNameToRecords(DatasetTransformer):
 
 
 class FilterByFilename(DatasetTransformer):
-    '''Filters data from a dataset using a filename blacklist.'''
+    '''Dataset transformer that filters data from a dataset using a filename
+    blacklist.
+    '''
 
     def __init__(self, filename_blacklist):
         '''Creates a FilterByFilename instance.
@@ -1060,12 +1081,13 @@ class FilterByFilename(DatasetTransformer):
         src.cull_with_function(
             "data_path",
             lambda path: os.path.basename(
-                path) not in self._files_to_remove
-        )
+                path) not in self._files_to_remove)
 
 
 class FilterByFilenameRegex(DatasetTransformer):
-    '''Filters data from a dataset using a regex blacklist for filenames.'''
+    '''Dataset transformer that filters data from a dataset using a regex
+    blacklist for filenames.
+    '''
 
     def __init__(self, filename_regex_blacklist):
         '''Creates a FilterByFilenameRegex instance.
@@ -1087,12 +1109,13 @@ class FilterByFilenameRegex(DatasetTransformer):
             "data_path",
             lambda path: not any(
                 rgx.match(os.path.basename(path))
-                for rgx in self._regex_blacklist)
-        )
+                for rgx in self._regex_blacklist))
 
 
 class FilterByPath(DatasetTransformer):
-    '''Filters data from a dataset using a full path blacklist.'''
+    '''Dataset transformer that filters data from a dataset using a full path
+    blacklist.
+    '''
 
     def __init__(self, full_path_blacklist):
         '''Creates a FilterByPath instance.
@@ -1113,9 +1136,9 @@ class FilterByPath(DatasetTransformer):
         src.cull_with_function(
             "data_path",
             lambda path: os.path.abspath(
-                path) not in self._paths_to_remove
-        )
+                path) not in self._paths_to_remove)
 
 
 class DatasetTransformerError(Exception):
     '''Exception raised when there is an error in a DatasetTransformer'''
+    pass
