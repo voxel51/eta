@@ -432,9 +432,10 @@ class VideoObject(
     frames, and frame-level attributes such as bounding boxes and attributes
     that apply to individual frames.
 
-    Note that the VideoObject class implements the `HasFramewiseView` mixin.
-    This means that all VideoObject instances can be rendered in *framewise*
-    format. Converting to framewise format is guaranteed to be lossless.
+    Note that the VideoObject class implements the `HasFramewiseView` and
+    `HasSpatiotemporalView` mixins. This means that all VideoObject instances
+    can be rendered in both *framewise* and *spatiotemporal* format. Converting
+    between these formats is guaranteed to be lossless and idempotent.
 
     In framewise format, `VideoObject`s store all information at the
     frame-level in `DetectedObject`s. In particular, the following invariants
@@ -443,6 +444,14 @@ class VideoObject(
         - The `attrs` field will be empty. All object-level attributes will be
           stored as frame-level `Attribute`s within `DetectedObject`s with
           `constant == True`
+
+    In spatiotemporal format, `VideoObject`s store all possible information in
+    the highest-available video construct. In particular, the following
+    invariants will hold:
+
+        - The `attrs` fields of all `DetectedObject`s will contain only
+          non-constant `Attribute`s. All constant attributes will be upgraded
+          to object-level attributes in the top-level `attrs` field
 
     Attributes:
         type: the fully-qualified class name of the object

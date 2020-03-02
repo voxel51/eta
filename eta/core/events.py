@@ -514,9 +514,10 @@ class VideoEvent(
     frames, spatiotemporal objects, frame-level attributes such as bounding
     boxes, object detections, and attributes that apply to individual frames.
 
-    Note that the VideoEvent class implements the `HasFramewiseView` mixin.
-    This means that all VideoEvent instances can be rendered in *framewise*
-    format. Converting to framewise format is guaranteed to be lossless.
+    Note that the VideoEvent class implements the `HasFramewiseView` and
+    `HasSpatiotemporalView` mixins. This means that all VideoEvent instances
+    can be rendered in both *framewise* and *spatiotemporal* format. Converting
+    between these formats is guaranteed to be lossless and idempotent.
 
     In framewise format, `VideoEvent`s store all information at the
     frame-level in `DetectedEvent`s. In particular, the following invariants
@@ -527,8 +528,24 @@ class VideoEvent(
           `constant == True`
 
         - The `objects` field will be empty. All video objects will be stored
-          in framewise format as detections within the `DetectedEvent`s in
-          the frames in which they are observed
+          in framewise format as `DetectedObject`s within the `DetectedEvent`s
+          in the frames in which they are observed
+
+    In spatiotemporal format, `VideoEvent`s store all possible information in
+    the highest-available video construct. In particular, the following
+    invariants will hold:
+
+        - The `attrs` fields of all `DetectedEvent`s will contain only
+          non-constant `Attribute`s. All constant attributes will be upgraded
+          to event-level attributes in the top-level `attrs` field
+
+        - The `objects` fields of all `DetectedEvent`s will be empty. All
+          objects will be stored as `VideoObject`s in the top-level `objects`
+          field. Detections for objects with `index`es will be collected in a
+          single VideoObject, and each DetectedObject without an index will be
+          given its own VideoObject. Additionally, all constant attributes of
+          `DetectedObject`s will be upgraded to object-level attributes in
+          their parent VideoObject
 
     Attributes:
         type: the fully-qualified class name of the event

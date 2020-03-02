@@ -417,17 +417,15 @@ class VideoLabels(
           `constant == True`
 
         - The `objects` field will be empty. All video objects will be stored
-          stored as frame-level `DetectedObject`s in `frames` with their
-          `label` and `index` fields populated to encode the identity of each
-          object
+          stored as frame-level `DetectedObject`s in the VideoFrameLabels
+          corresponding to the frames in which they are observed
 
         - The `events` field will be empty. All video events will be stored
-          stored as frame-level `DetectedEvent`s in `frames` with their
-          `label` and `index` fields populated to encode the identity of each
-          event
+          stored as frame-level `DetectedEvent`s in the VideoFrameLabels
+          corresponding to the frames in which they are observed
 
     In spatiotemporal format, VideoLabels store all possible information in
-    the highest-available-level video constructs. In particular, the following
+    the highest-available video construct. In particular, the following
     invariants will hold:
 
         - The `attrs` fields of all VideoFrameLabels will contain only
