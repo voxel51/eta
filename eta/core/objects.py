@@ -421,7 +421,9 @@ class DetectedObjectContainer(etal.LabelsContainer):
         self.filter_elements([filter_func])
 
 
-class VideoObject(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
+class VideoObject(
+        etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView,
+        etal.HasSpatiotemporalView):
     '''A spatiotemporal object in a video.
 
     `VideoObject`s are spatiotemporal concepts that describe information about
@@ -430,12 +432,24 @@ class VideoObject(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
     frames, and frame-level attributes such as bounding boxes and attributes
     that apply to individual frames.
 
+    Note that the VideoObject class implements the `HasFramewiseView` mixin.
+    This means that all VideoObject instances can be rendered in *framewise*
+    format. Converting to framewise format is guaranteed to be lossless.
+
+    In framewise format, `VideoObject`s store all information at the
+    frame-level in `DetectedObject`s. In particular, the following invariants
+    will hold:
+
+        - The `attrs` field will be empty. All object-level attributes will be
+          stored as frame-level `Attribute`s within `DetectedObject`s with
+          `constant == True`
+
     Attributes:
         type: the fully-qualified class name of the object
         label: (optional) the object label
         confidence: (optional) label confidence in [0, 1]
-        support: a FrameRanges instance describing the support of the object
         index: (optional) an index assigned to the object
+        support: a FrameRanges instance describing the support of the object
         attrs: (optional) AttributeContainer of object-level attributes of the
             object
         frames: dictionary mapping frame numbers to DetectedObject instances
@@ -443,16 +457,16 @@ class VideoObject(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
     '''
 
     def __init__(
-            self, label=None, confidence=None, support=None, index=None,
+            self, label=None, confidence=None, index=None, support=None,
             attrs=None, frames=None):
         '''Creates a VideoObject instance.
 
         Args:
             label: (optional) the object label
             confidence: (optional) the label confidence in [0, 1]
+            index: (optional) an index assigned to the object
             support: (optional) a FrameRanges instance describing the frozen
                 support of the object
-            index: (optional) an index assigned to the object
             attrs: (optional) an AttributeContainer of object-level attributes
             frames: (optional) a dictionary mapping frame numbers to
                 DetectedObject instances
@@ -531,6 +545,16 @@ class VideoObject(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
         for frame_number in sorted(self.frames):
             yield self.frames[frame_number]
 
+    @property
+    def framewise_renderer_cls(self):
+        '''The LabelsFrameRenderer used by this class.'''
+        return VideoObjectFrameRenderer
+
+    @property
+    def spatiotemporal_renderer_cls(self):
+        '''The LabelsSpatiotemporalRenderer used by this class.'''
+        return VideoObjectSpatiotemporalRenderer
+
     def get_index(self):
         '''Returns the `index` of the object.
 
@@ -557,6 +581,28 @@ class VideoObject(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
         self.index = None
         for dobj in self.iter_detections():
             dobj.clear_index()
+
+    def has_detection(self, frame_number):
+        '''Whether the object has a detection on the given frame number.
+
+        Args:
+            frame_number: the frame number
+
+        Returns:
+            True/False
+        '''
+        return frame_number in self.frames
+
+    def get_detection(self, frame_number):
+        '''Gets the detection for the given frame number, if available.
+
+        Args:
+            frame_number: the frame number
+
+        Returns:
+            a DetectedObject, or None
+        '''
+        return self.frames.get(frame_number, None)
 
     def add_object_attribute(self, attr):
         '''Adds the object-level attribute to the object.
@@ -623,16 +669,6 @@ class VideoObject(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
         '''Removes all `DetectedObject`s from the object.'''
         self.frames = {}
 
-    def render_framewise_labels(self):
-        '''Renders a framewise copy of the object.
-
-        Returns:
-            a VideoObject whose labels are all contained in `DetectedObject`s
-        '''
-        renderer = VideoObjectFrameRenderer(self)
-        frames = renderer.render_all_frames()
-        return VideoObject(frames=frames)
-
     def filter_by_schema(self, schema):
         '''Filters the object by the given schema.
 
@@ -690,7 +726,6 @@ class VideoObject(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
         label = objects[0].label
         index = objects[0].index
 
-        obj_attrs_map = {}
         for dobj in objects:
             if dobj.label != label:
                 raise ValueError(
@@ -702,19 +737,13 @@ class VideoObject(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
                     "Object index '%s' does not match first index '%s'" %
                     (dobj.index, index))
 
-            # Extract constant attributes
-            for const_attr in dobj.attrs.pop_constant_attrs():
-                # @todo verify that existing attributes are exactly equal?
-                obj_attrs_map[const_attr.name] = const_attr
+        # Strip constant attributes
+        obj_attrs = strip_spatiotemporal_content_from_objects(objects)
 
-        # Store constant attributes as object-level attributes
-        obj_attrs = etad.AttributeContainer()
-        for attr in itervalues(obj_attrs_map):
-            # By convention, don't mark attributes as constant when this is
-            # apparent from their location in their parent entity
-            attr.constant = False
-            obj_attrs.add(attr)
+        # Remove empty detections
+        objects.remove_empty_labels()
 
+        # Build VideoObject
         obj = cls(label=label, index=index, attrs=obj_attrs)
         obj.add_detections(objects)
         return obj
@@ -749,8 +778,8 @@ class VideoObject(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
         return cls(
             label=d.get("label", None),
             confidence=d.get("confidence", None),
-            support=support,
             index=d.get("index", None),
+            support=support,
             frames=frames,
             attrs=attrs,
         )
@@ -804,12 +833,24 @@ class VideoObject(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
         return etaf.FrameRanges.from_iterable(self.frames.keys())
 
 
-class VideoObjectContainer(etal.LabelsContainer):
+class VideoObjectContainer(
+        etal.LabelsContainer, etal.HasFramewiseView,
+        etal.HasSpatiotemporalView):
     '''An `eta.core.serial.Container` of `VideoObject`s.'''
 
     _ELE_CLS = VideoObject
     _ELE_CLS_FIELD = "_OBJ_CLS"
     _ELE_ATTR = "objects"
+
+    @property
+    def framewise_renderer_cls(self):
+        '''The LabelsFrameRenderer used by this class.'''
+        return VideoObjectContainerFrameRenderer
+
+    @property
+    def spatiotemporal_renderer_cls(self):
+        '''The LabelsSpatiotemporalRenderer used by this class.'''
+        return VideoObjectContainerSpatiotemporalRenderer
 
     def get_labels(self):
         '''Returns the set of `label`s of all objects in the container.
@@ -1869,7 +1910,13 @@ class ObjectContainerSchemaError(etal.LabelsContainerSchemaError):
 
 
 class VideoObjectFrameRenderer(etal.LabelsFrameRenderer):
-    '''Class for rendering labels for a VideoObject at the frame-level.'''
+    '''Class for rendering a VideoObject at the frame-level.
+
+    See the VideoObject class docstring for the framewise format spec.
+    '''
+
+    _LABELS_CLS = VideoObject
+    _FRAME_LABELS_CLS = DetectedObject
 
     def __init__(self, obj):
         '''Creates an VideoObjectFrameRenderer instance.
@@ -1879,11 +1926,46 @@ class VideoObjectFrameRenderer(etal.LabelsFrameRenderer):
         '''
         self._obj = obj
 
-    def render_frame(self, frame_number):
+    def render(self, in_place=False):
+        '''Renders the VideoObject in framewise format.
+
+        Args:
+            in_place: whether to perform the rendering in-place. By default,
+                this is False
+
+        Returns:
+            a VideoObject
+        '''
+        obj = self._obj
+        frames = self.render_all_frames(in_place=in_place)
+
+        if in_place:
+            # Render in-place
+            obj.clear_object_attributes()
+            obj.clear_detections()
+            obj.frames = frames
+            return obj
+
+        # Render new copy of object
+        label = deepcopy(obj.label)
+        confidence = deepcopy(obj.confidence)
+        index = deepcopy(obj.index)
+        if obj.is_support_frozen:
+            support = deepcopy(obj.support)
+        else:
+            support = None
+
+        return VideoObject(
+            label=label, confidence=confidence, index=index, support=support,
+            frames=frames)
+
+    def render_frame(self, frame_number, in_place=False):
         '''Renders the VideoObject for the given frame.
 
         Args:
             frame_number: the frame number
+            in_place: whether to perform the rendering in-place. By default,
+                this is False
 
         Returns:
             a DetectedObject, or None if no labels exist for the given frame
@@ -1892,10 +1974,14 @@ class VideoObjectFrameRenderer(etal.LabelsFrameRenderer):
             return None
 
         obj_attrs = self._get_object_attrs()
-        return self._render_frame(frame_number, obj_attrs)
+        return self._render_frame(frame_number, obj_attrs, in_place)
 
-    def render_all_frames(self):
+    def render_all_frames(self, in_place=False):
         '''Renders the VideoObject for all possible frames.
+
+        Args:
+            in_place: whether to perform the rendering in-place. By default,
+                this is False
 
         Returns:
             a dictionary mapping frame numbers to DetectedObject instances
@@ -1905,20 +1991,27 @@ class VideoObjectFrameRenderer(etal.LabelsFrameRenderer):
         dobjs_map = {}
         for frame_number in self._obj.support:
             dobjs_map[frame_number] = self._render_frame(
-                frame_number, obj_attrs)
+                frame_number, obj_attrs, in_place)
 
         return dobjs_map
 
-    def _render_frame(self, frame_number, obj_attrs):
+    def _render_frame(self, frame_number, obj_attrs, in_place):
         # Base DetectedObject
         if frame_number in self._obj.frames:
-            dobj = deepcopy(self._obj.frames[frame_number])
+            dobj = self._obj.frames[frame_number]
+            if not in_place:
+                dobj = deepcopy(dobj)
         else:
             dobj = DetectedObject(frame_number=frame_number)
 
         # Render object-level attributes
         if obj_attrs is not None:
+            #
             # Prepend object-level attributes
+            #
+            # We cannot avoid `deepcopy` here because object-level attributes
+            # must be embedded in each frame
+            #
             dobj.attrs.prepend_container(deepcopy(obj_attrs))
 
         # Inherit available object-level metadata
@@ -1935,6 +2028,8 @@ class VideoObjectFrameRenderer(etal.LabelsFrameRenderer):
         if not self._obj.has_object_attributes:
             return None
 
+        # There's no need to avoid `deepcopy` here when `in_place == True`
+        # because copies of object-level attributes must be made for each frame
         obj_attrs = deepcopy(self._obj.attrs)
         for attr in obj_attrs:
             attr.constant = True
@@ -1947,8 +2042,89 @@ class VideoObjectContainerFrameRenderer(etal.LabelsContainerFrameRenderer):
     frame-level.
     '''
 
-    _FRAME_CONTAINER_CLS = DetectedObjectContainer
+    _LABELS_CLS = VideoObjectContainer
+    _FRAME_LABELS_CLS = DetectedObjectContainer
     _ELEMENT_RENDERER_CLS = VideoObjectFrameRenderer
+
+
+class VideoObjectSpatiotemporalRenderer(etal.LabelsSpatiotemporalRenderer):
+    '''Class for rendering a VideoObject in spatiotemporal format.
+
+    See the VideoObject class docstring for the spatiotemporal format spec.
+    '''
+
+    _LABELS_CLS = VideoObject
+
+    def __init__(self, obj):
+        '''Creates an VideoObjectSpatiotemporalRenderer instance.
+
+        Args:
+            obj: a VideoObject
+        '''
+        self._obj = obj
+
+    def render(self, in_place=False):
+        '''Renders the VideoObject in spatiotemporal format.
+
+        Args:
+            in_place: whether to perform the rendering in-place. By default,
+                this is False
+
+        Returns:
+            a VideoObject
+        '''
+        obj = self._obj
+        if not in_place:
+            obj = deepcopy(obj)
+
+        # Upgrade spatiotemporal elements from frames
+        attrs = strip_spatiotemporal_content_from_objects(
+            obj.iter_detections())
+        obj.add_object_attributes(attrs)
+        obj.remove_empty_frames()
+
+        return obj
+
+
+class VideoObjectContainerSpatiotemporalRenderer(
+        etal.LabelsContainerSpatiotemporalRenderer):
+    '''Class for rendering labels for a VideoObjectContainer in spatiotemporal
+    format.
+    '''
+
+    _LABELS_CLS = VideoObjectContainer
+    _ELEMENT_RENDERER_CLS = VideoObjectSpatiotemporalRenderer
+
+
+def strip_spatiotemporal_content_from_objects(objects):
+    '''Strips the spatiotemporal content from the given iterable of
+    `DetectedObject`s.
+
+    The input objects are modified in-place.
+
+    Args:
+        objects: an iterable of `DetectedObject`s (e.g., a list or
+            DetectedObjectContainer)
+
+    Returns:
+        an AttributeContainer of constant object attributes. By convention, the
+            returned attributes are no longer marked as constant, as this is
+            assumed to be implicit
+    '''
+    # Extract spatiotemporal content from objects
+    attrs_map = {}
+    for dobj in objects:
+        for const_attr in dobj.attrs.pop_constant_attrs():
+            # @todo verify that duplicate attributes are exactly equal?
+            attrs_map[const_attr.name] = const_attr
+
+    # Store object-level attributes in a container with `constant == False`
+    attrs = etad.AttributeContainer()
+    for attr in itervalues(attrs_map):
+        attr.constant = False
+        attrs.add(attr)
+
+    return attrs
 
 
 class ObjectCount(etas.Serializable):
