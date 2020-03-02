@@ -1,11 +1,10 @@
 '''
-Core interfaces, data structures, and methods for working with datasets
+Core interfaces, data structures, and methods for working with datasets.
 
-Copyright 2017-2019 Voxel51, Inc.
+Copyright 2017-2020 Voxel51, Inc.
 voxel51.com
 
 Matthew Lightman, matthew@voxel51.com
-Jason Corso, jason@voxel51.com
 Ben Kane, ben@voxel51.com
 Tyler Ganter, tyler@voxel51.com
 '''
@@ -44,12 +43,9 @@ from .utils import COPY, FILE_METHODS, _FILE_METHODS_MAP
 logger = logging.getLogger(__name__)
 
 
-# Functions involving LabeledDatasets
-
-
 def get_manifest_path_from_dir(dirpath):
-    '''Infers the filename of the manifest within the given
-    `LabeledDataset` directory, and returns the path to that file.
+    '''Infers the filename of the manifest within the given LabeledDataset
+    directory, and returns the path to that file.
 
     Args:
         dirpath: path to a `LabeledDataset` directory
@@ -64,9 +60,8 @@ def get_manifest_path_from_dir(dirpath):
 
     if not candidate_manifests:
         raise ValueError(
-            "Directory '%s' contains no JSON files to use as a "
-            "manifest" % dirpath
-        )
+            "Directory '%s' contains no JSON files to use as a manifest"
+            % dirpath)
 
     if "manifest.json" in candidate_manifests:
         return os.path.join(dirpath, "manifest.json")
@@ -82,31 +77,26 @@ def get_manifest_path_from_dir(dirpath):
 
 
 def load_dataset(manifest_path):
-    '''Loads a `LabeledDataset` instance from the manifest JSON at
-    the given path.
+    '''Loads a `LabeledDataset` instance from the manifest JSON at the given
+    path.
 
-    The manifest JSON is assumed to sit inside a `LabeledDataset`
-    directory structure, as outlined in the `LabeledDataset`
-    documentation. This function will read the specific subclass
-    of `LabeledDataset` that should be used to load the dataset
-    from the manifest, and return an instance of that subclass.
+    The manifest JSON is assumed to sit inside a LabeledDataset directory
+    structure, as outlined in the LabeledDataset documentation. This function
+    will read the specific subclass of LabeledDataset that should be used to
+    load the dataset from the manifest, and return an instance of that
+    subclass.
 
     Args:
-        manifest_path: path to a `manifest.json` within a
-            `LabeledDataset` directory
+        manifest_path: path to a `manifest.json` within a LabeledDataset
+            directory
 
     Returns:
-        an instance of a `LabeledDataset` subclass, (e.g.
-            `LabeledImageDataset`, `LabeledVideoDataset`)
+        a LabeledDataset
     '''
     index = LabeledDatasetIndex.from_json(manifest_path)
     dataset_type = index.type
     dataset_cls = etau.get_class(dataset_type)
-
     return dataset_cls(manifest_path)
-
-
-# Core LabeledDataset infrastructure
 
 
 class LabeledDataset(object):
@@ -125,18 +115,20 @@ class LabeledDataset(object):
             ...
     ```
 
+    The `manifest.json` path may have a different name. In particular, you may
+    maintain multiple manifests in a dataset in order to provide different
+    views into the dataset.
+
     Class invariants:
-    - `self.dataset_index` contains paths to data and labels files that exist
-        on disk (assuming this is the case for the manifest.json file that is
-        read initially)
-    - each data file appears only once is `self.dataset_index`
+    - `dataset_index` contains paths to data and labels files that exist on
+       disk
+    - Each data file appears only once in `dataset_index`
 
     Note that any method that doesn't take a manifest path as input will only
-    change the internal state in `self.dataset_index`, and will not write to
-    any manifest JSON files on disk. (Example methods are `self.sample()` and
-    `self.add_file()`.) Thus it may desirable to use the
-    `self.write_manifest()` method to write the internal state to a manifest
-    JSON file on disk, at some point after using these methods.
+    change the internal state in `dataset_index`, and will not write to any
+    manifest JSON files on disk. Example methods of this kind are `sample()`
+    and `add_file()`. In order to serialize this state to disk, you must call
+    `write_manifest()`.
     '''
 
     _DATA_SUBDIR = "data"
@@ -159,141 +151,132 @@ class LabeledDataset(object):
                 "but manifest is of type '%s'" % (
                     etau.get_class_name(self), manifest_path,
                     self.dataset_index.type))
-        self._manifest_path = manifest_path
 
+        self._manifest_path = manifest_path
         self._build_index_map()
 
     @property
     def dataset_dir(self):
-        '''The top level directory for the dataset, which would contain
-        manifest.json files.
-        '''
+        '''The top-level directory for the dataset.'''
         return os.path.dirname(self._manifest_path)
 
     @property
     def data_dir(self):
-        '''Deprecated! Use `dataset_dir` instead.'''
-        class_name = etau.get_class_name(self)
-        logger.warning("%s.data_dir is deprecated. Use %s.dataset_dir"
-                       " instead.", class_name, class_name)
+        '''The top-level directory for the dataset.
+
+        This property is a deprecated alias for `dataset_dir`.
+        '''
+        logger.warning("`data_dir` is deprecated. Use `dataset_dir` instead")
         return self.dataset_dir
 
     @property
     def dataset_index(self):
-        '''A `LabeledDatasetIndex` object containing the paths of data and
-        labels files in the dataset.
-        '''
+        '''Gets the LabeledDatasetIndex for the dataset.'''
         return self._dataset_index
 
     @dataset_index.setter
     def dataset_index(self, dataset_index):
-        '''Sets the `LabeledDatasetIndex` of the `LabeledDataset`
+        '''Sets the LabeledDatasetIndex for the dataset.
 
         Args:
-            dataset_index: a `LabeledDatasetIndex`
+            dataset_index: a LabeledDatasetIndex
         '''
         if not isinstance(dataset_index, LabeledDatasetIndex):
             raise ValueError(
-                "expected type %s but got type %s" %
+                "Expected type %s; found %s" %
                 (type(LabeledDatasetIndex), type(dataset_index)))
 
         self._dataset_index = dataset_index
 
     def __iter__(self):
-        '''Iterates over the samples in the dataset.
+        '''Returns an iterator over the samples in the dataset.
 
         Returns:
-            iterator: iterator over (data, labels) pairs, where data is an
-                object returned by self.read_data() and labels is an object
-                returned by self.read_labels() from the respective paths
-                of a data file and corresponding labels file
+            an iterator over (data, labels) pairs, where data is an object
+                returned by `read_data()` and labels is an object
+                returned by `read_labels()`
         '''
         return zip(self.iter_data(), self.iter_labels())
 
     def __len__(self):
-        '''Returns the number of data elements in the dataset'''
+        '''The number of samples in the dataset.'''
         return len(self.dataset_index)
 
     def __getitem__(self, key):
-        '''Returns a LabeledDataRecord from `self.dataset_index` with the
-        given key.
+        '''Gets the LabeledDataRecord with the given key.
 
         Args:
-            key: an integer index into `self.dataset_index`
+            key: an integer index into `dataset_index`
         '''
         return self.dataset_index[key]
 
     def iter_data(self):
-        '''Iterates over the data in the dataset.
+        '''Returns an iterator over the data in the dataset.
 
         Returns:
-            iterator: iterator over objects returned by self.read_data()
-                from the paths to data files
+            an iterator over objects returned by `read_data()`
         '''
         for data_path in self.iter_data_paths():
             yield self.read_data(data_path)
 
     def iter_data_paths(self):
-        '''Iterates over the paths to data files in the dataset.
+        '''Returns an iterator over the paths to data files in the dataset.
 
         Returns:
-            iterator: iterator over paths to data files
+            an iterator over paths to data files
         '''
         for record in self.dataset_index:
             yield os.path.join(self.dataset_dir, record.data)
 
     def iter_labels(self):
-        '''Iterates over the labels in the dataset.
+        '''Returns an iterator over the labels in the dataset.
 
         Returns:
-            iterator: iterator over objects returned by self.read_labels()
-                from the paths to labels files
+            an iterator over objects returned by `read_labels()`
         '''
         for labels_path in self.iter_labels_paths():
             yield self.read_labels(labels_path)
 
     def iter_labels_paths(self):
-        '''Iterates over the paths to labels files in the dataset.
+        '''Returns an iterator over the paths to labels files in the dataset.
 
         Returns:
-            iterator: iterator over paths to labels files
+            an iterator over paths to labels files
         '''
         for record in self.dataset_index:
             yield os.path.join(self.dataset_dir, record.labels)
 
     def iter_paths(self):
-        '''Iterates over the data and labels paths tuple in the dataset.
+        '''Returns an iterator over the data and labels paths in the dataset.
 
         Returns:
-            iterator: iterator over (path to data, path to labels file)
-                tuples
+            an iterator over (data path, labels path) tuples
         '''
         return zip(self.iter_data_paths(), self.iter_labels_paths())
 
     def set_description(self, description):
-        '''Set the description string of this dataset.
+        '''Sets the description of the dataset.
 
         Args:
-            description: the new description string
+            description: the new description
 
         Returns:
             self
         '''
         self.dataset_index.description = description
-
         return self
 
     def write_manifest(self, filename, description=None):
-        '''Writes the manifest to a new file inside the base dataset directory.
+        '''Writes the current manifest to disk inside `dataset_dir`.
 
-        This can be used after the dataset index has been manipulated to save
-        a new view of the data in a different manifest file.
+        Use this method to serialize the current state of a dataset after
+        performing some manipulations on it.
 
         Args:
             filename: the name of a new manifest file to be written in
-                self.dataset_dir
+                `dataset_dir`
             description: optional description for the new manifest. If not
-                specified, the existing description is retained.
+                specified, the existing description is retained
         '''
         if description is not None:
             self.set_description(description)
@@ -302,7 +285,7 @@ class LabeledDataset(object):
         self.dataset_index.write_json(out_path)
 
     def sample(self, k):
-        '''Randomly downsamples the dataset to k elements.
+        '''Randomly downsamples the dataset to k samples.
 
         Args:
             k: the number of data elements in the dataset after sampling
@@ -312,39 +295,36 @@ class LabeledDataset(object):
         '''
         self.dataset_index.sample(k)
         self._build_index_map()
-
         return self
 
     def shuffle(self):
-        '''Randomly shuffles the order of the data.
+        '''Randomly shuffles the order of the samples in the dataset.
 
         Returns:
             self
         '''
         self.dataset_index.shuffle()
-
         return self
 
-    def split(self, split_fractions=None, descriptions=None,
-              split_method="random_exact"):
+    def split(
+            self, split_fractions=None, descriptions=None,
+            split_method="random_exact"):
         '''Splits the dataset into multiple datasets containing disjoint
         subsets of the original dataset.
 
         Args:
-            split_fractions: an optional list of split fractions, which
-                should sum to 1, that specifies how to split the dataset.
-                By default, [0.5, 0.5] is used.
+            split_fractions: an optional list of split fractions, which should
+                sum to 1, that specifies how to split the dataset. By default,
+                [0.5, 0.5] is used
             descriptions: an optional list of descriptions for the output
                 datasets. The list should be the same length as
-                `split_fractions`. If not specified, the description of
-                the original dataset is used for all of the output
-                datasets.
-            split_method: string describing the method with which to split
-                the data
+                `split_fractions`. If not specified, the description of the
+                original dataset is used for all of the output datasets
+            split_method: string describing the method with which to split the
+                data
 
         Returns:
-            dataset_list: list of `LabeledDataset`s of the same length as
-                `split_fractions`
+            a list of `LabeledDataset`s of the same length as `split_fractions`
         '''
         dataset_indices = self.dataset_index.split(
             split_fractions=split_fractions,
@@ -368,8 +348,7 @@ class LabeledDataset(object):
             data_path: path to or filename of a data file
 
         Returns:
-            (bool): True if the filename of `data_path` is the same as a
-                data file already present in the dataset
+            True/False
         '''
         data_file = os.path.basename(data_path)
         return data_file in self._data_to_labels_map
@@ -387,9 +366,10 @@ class LabeledDataset(object):
 
         return _FILE_METHODS_MAP[data_method], _FILE_METHODS_MAP[labels_method]
 
-    def add_file(self, data_path, labels_path, new_data_filename=None,
-                 new_labels_filename=None, file_method=COPY,
-                 error_on_duplicates=False):
+    def add_file(
+            self, data_path, labels_path, new_data_filename=None,
+            new_labels_filename=None, file_method=COPY,
+            error_on_duplicates=False):
         '''Adds a single data file and its labels file to this dataset.
 
         Args:
@@ -424,8 +404,9 @@ class LabeledDataset(object):
             new_labels_filename = os.path.basename(labels_path)
 
         if error_on_duplicates and self.has_data_with_name(new_data_filename):
-            raise ValueError("Data file '%s' already present in dataset"
-                             % new_data_filename)
+            raise ValueError(
+                "Data file '%s' already present in dataset"
+                % new_data_filename)
 
         data_method, labels_method = self._parse_file_methods(file_method)
 
@@ -456,32 +437,32 @@ class LabeledDataset(object):
         )
 
         self._data_to_labels_map[new_data_filename] = new_labels_filename
-
         return self
 
-    def add_data(self, data, labels, data_filename, labels_filename,
-                 error_on_duplicates=False):
+    def add_data(
+            self, data, labels, data_filename, labels_filename,
+            error_on_duplicates=False):
         '''Creates and adds a single data file and its labels file to this
         dataset, using the input python data structure.
 
         Args:
-            data: input data in a format that can be passed to
-                self.write_data()
+            data: input data in a format that can be passed to `write_data()`
             labels: input labels in a format that can be passed to
-                self.write_labels()
+                `write_labels()`
             data_filename: filename for the data in the dataset
             labels_filename: filename for the labels in the dataset
-            error_on_duplicates: whether to raise an error if a data file
-                with the name `data_filename` already exists in the dataset.
-                If this is set to `False`, the previous mapping of
-                `data_filename` to a labels file will be deleted.
+            error_on_duplicates: whether to raise an error if a data file with
+                the name `data_filename` already exists in the dataset. If this
+                is set to `False`, the previous mapping of `data_filename` to a
+                labels file will be deleted
 
         Returns:
             self
         '''
         if error_on_duplicates and self.has_data_with_name(data_filename):
-            raise ValueError("Data file '%s' already present in dataset"
-                             % os.path.basename(data_filename))
+            raise ValueError(
+                "Data file '%s' already present in dataset"
+                % os.path.basename(data_filename))
 
         data_path = os.path.join(
             self.dataset_dir, self._DATA_SUBDIR, data_filename)
@@ -502,15 +483,14 @@ class LabeledDataset(object):
         )
 
         self._data_to_labels_map[data_filename] = labels_filename
-
         return self
 
     def remove_data_files(self, data_filenames):
         '''Removes the given data files from `self.dataset_index`.
 
         Note that this method doesn't delete the files from disk, it just
-        removes them from the index. To remove files from disk that are
-        not present in the index, use the `prune()` method.
+        removes them from the index. To remove files from disk that are not
+        present in the index, use the `prune()` method.
 
         Args:
             data_filenames: list of filenames of data to remove
@@ -521,9 +501,7 @@ class LabeledDataset(object):
         removals = set(data_filenames)
         self.dataset_index.cull_with_function(
             lambda record: os.path.basename(record.data) not in removals)
-
         self._build_index_map()
-
         return self
 
     def copy(self, dataset_path, file_method=COPY):
@@ -542,17 +520,13 @@ class LabeledDataset(object):
                 for example. The default is "copy"
 
         Returns:
-            dataset_copy: `LabeledDataset` instance that points to the new
-                containing directory
+            a LabeledDataset instance that points to the new directory
         '''
         self._ensure_empty_dataset_dir(dataset_path)
 
         new_data_dir = os.path.dirname(dataset_path)
-
         new_data_subdir = os.path.join(new_data_dir, self._DATA_SUBDIR)
-
         new_labels_subdir = os.path.join(new_data_dir, self._LABELS_SUBDIR)
-
         data_method, labels_method = self._parse_file_methods(file_method)
 
         for data_path, labels_path in zip(
@@ -571,33 +545,34 @@ class LabeledDataset(object):
         cls = etau.get_class(class_name)
         return cls(dataset_path)
 
-    def merge(self, labeled_dataset_or_path, merged_dataset_path,
-              in_place=False, description=None, file_method=COPY):
-        '''Union of two labeled datasets.
+    def merge(
+            self, labeled_dataset_or_path, merged_dataset_path, in_place=False,
+            description=None, file_method=COPY):
+        '''Creates a new dataset which contains the merged contents of this
+        dataset and the given dataset.
 
         Args:
-            labeled_dataset_or_path: an `LabeledDataset` instance or path
-                to a `manifest.json`, that is of the same type as `self`
+            labeled_dataset_or_path: a LabeledDataset instance or path to a
+                `manifest.json`, that is of the same type as this dataset
             merged_dataset_path: path to `manifest.json` for the merged
-                dataset. If `in_place` is False, the containing directory
-                must either not exist or be empty. If `in_place` is True,
-                either the containing directory must be equal to
-                `self.dataset_dir`, or `merged_dataset_path` is just a filename
-                of a new `manifest.json` to write in `self.dataset_dir`.
+                dataset. If `in_place` is False, the containing directory must
+                either not exist or be empty. If `in_place` is True, either the
+                containing directory must be equal to `dataset_dir`, or
+                `merged_dataset_path` is just a filename of a new
+                `manifest.json` to write in `dataset_dir`
             in_place: whether or not to write the merged dataset to a new
                 directory. If not, the data from `labeled_dataset_or_path`
-                will be added into `self.dataset_dir`.
+                will be added into `dataset_dir`
             description: optional description for the manifest of the merged
-                dataset. If not specified, the existing description is used.
+                dataset. If not specified, the existing description is used
             file_method: how to add the files to the dataset. One of "copy",
                 "link", "move", or "symlink". A tuple, e.g. `("move", "copy")`,
                 may be used as well to move data files and copy labels files,
                 for example. The default is "copy"
 
         Returns:
-            merged_dataset: a `LabeledDataset` instance pointing to the
-                merged dataset. If `in_place` is True, this will just be
-                `self`.
+            a LabeledDataset instance pointing to the merged dataset.
+                If `in_place` is True, this will just be `self`
         '''
         labeled_dataset = self._parse_dataset(labeled_dataset_or_path)
 
@@ -639,10 +614,11 @@ class LabeledDataset(object):
     def deduplicate(self):
         '''Removes duplicate data files from the index.
 
-        If sets of files are found with the same content, one file in each
-        is set is chosen arbitrarily to be kept, and the rest are removed.
-        Note that no files are deleted; this method only removes entries
-        from the index.
+        If sets of files are found with the same content, one file in each is
+        set is chosen arbitrarily to be kept, and the rest are removed.
+
+        Note that no files are deleted; this method only removes entries from
+        the index.
 
         Returns:
             self
@@ -663,15 +639,14 @@ class LabeledDataset(object):
                 self.dataset_dir, record.data) not in data_paths_remove)
 
         self._build_index_map()
-
         return self
 
     def prune(self):
         '''Deletes data and labels files that are not in the index.
 
         Note that actual files will be deleted if they are not present in
-        `self.dataset_index`, for which the current state can be different
-        than when it was read from a manifest JSON file.
+        `dataset_index`, for which the current state can be different than when
+        it was read from a manifest JSON file.
 
         Returns:
             self
@@ -695,13 +670,13 @@ class LabeledDataset(object):
         return self
 
     def apply_to_data(self, func):
-        '''Apply the given function to each data element and overwrite the
-        data file with the output.
+        '''Applies the given function to each data element and overwrites the
+        data files with the outputs.
 
         Args:
-            func: function that takes in a data element in the format
-                returned by `self.read_data()` and outputs transformed
-                data in the same format
+            func: function that takes in a data element in the format returned
+                by `read_data()` and outputs transformed data in the same
+                format
 
         Returns:
             self
@@ -712,13 +687,13 @@ class LabeledDataset(object):
         return self
 
     def apply_to_data_paths(self, func):
-        '''Call the given function on the path of each data file, with the
+        '''Calls the given function on the path of each data file, with the
         path as both the input and output argument.
 
         Args:
             func: function that takes in two arguments, an input path and
                 an output path. It will be called with the same value for
-                both arguments, so that the file is overwritten.
+                both arguments, so that the file is overwritten
 
         Returns:
             self
@@ -729,13 +704,13 @@ class LabeledDataset(object):
         return self
 
     def apply_to_labels(self, func):
-        '''Apply the given function to each of the labels, and overwrite the
-        labels file with the output.
+        '''Applies the given function to each of the labels, and overwrites the
+        labels file with the outputs.
 
         Args:
-            func: function that takes in a labels object in the format
-                returned by `self.read_labels()` and outputs transformed
-                labels in the same format
+            func: function that takes in a labels object in the format returned
+                by `read_labels()` and outputs transformed labels in the same
+                format
 
         Returns:
             self
@@ -747,13 +722,13 @@ class LabeledDataset(object):
         return self
 
     def apply_to_labels_paths(self, func):
-        '''Call the given function on the path of each labels file, with
-        the path as both the input and output argument.
+        '''Calls the given function on the path of each labels file, with the
+        path as both the input and output argument.
 
         Args:
-            func: function that takes in two arguments, an input path and
-                an output path. It will be called with the same value for
-                both arguments, so that the file is overwritten.
+            func: function that takes in two arguments, an input path and an
+                output path. It will be called with the same value for both
+                arguments, so that the file is overwritten
 
         Returns:
             self
@@ -764,8 +739,7 @@ class LabeledDataset(object):
         return self
 
     def builder(self):
-        '''Creates a LabeledDatasetBuilder instance for this dataset for
-        transformations to be run.
+        '''Creates a LabeledDatasetBuilder instance for this dataset.
 
         Returns:
             a LabeledDatasetBuilder
@@ -776,7 +750,7 @@ class LabeledDataset(object):
         return builder
 
     def get_labels_set(self, ensure_filenames=True):
-        '''Creates a SetLabels type object from this dataset's labels.
+        '''Creates a SetLabels-type object from this dataset's labels.
 
         Args:
             ensure_filenames: whether to add the filename into the individual
@@ -799,15 +773,15 @@ class LabeledDataset(object):
             "subclasses must implement get_active_schema()")
 
     def write_annotated_data(self, output_dir_path, annotation_config=None):
-        '''Annotates the data with its labels, and outputs the
-        annotated data to the specified directory.
+        '''Annotates the data with its labels, and outputs the annotated data
+        to the specified directory.
 
         Args:
-            output_dir_path: the path to the directory into which
-                the annotated data will be written
-            annotation_config: an optional etaa.AnnotationConfig specifying
-                how to render the annotations. If omitted, the default config
-                is used.
+            output_dir_path: the path to the directory into which the annotated
+                data will be written
+            annotation_config: an optional etaa.AnnotationConfig specifying how
+                to render the annotations. If omitted, the default config is
+                used
         '''
         raise NotImplementedError(
             "subclasses must implement write_annotated_data()")
@@ -825,8 +799,7 @@ class LabeledDataset(object):
             if not hasattr(labels, "metadata"):
                 raise TypeError(
                     "'%s' has no 'metadata' attribute" % etau.get_class_name(
-                        labels)
-                )
+                        labels))
 
             if overwrite or labels.metadata is None:
                 labels.metadata = self._build_metadata(data_path)
@@ -834,17 +807,14 @@ class LabeledDataset(object):
 
     @classmethod
     def create_empty_dataset(cls, dataset_path, description=None):
-        '''Creates a new empty labeled dataset.
+        '''Creates an labeled dataset.
 
         Args:
-            dataset_path: the path to the `manifest.json` file for the
-                dataset to be created
-            description: optional description for the manifest of the
-                new dataset
+            dataset_path: the path to the `manifest.json` file for the dataset
+            description: optional description for the dataset
 
         Returns:
-            empty_dataset: `LabeledDataset` instance pointing to the
-                new empty dataset
+            a LabeledDataset instance pointing to the empty dataset
         '''
         cls._ensure_empty_dataset_dir(dataset_path)
         dataset_index = LabeledDatasetIndex(
@@ -858,7 +828,7 @@ class LabeledDataset(object):
             raise TypeError(
                 "create_empty_dataset() can only be used with a "
                 "`LabeledDataset` subclass that implements "
-                "is_valid_dataset()")
+                "`is_valid_dataset()`")
 
         return dataset
 
@@ -896,7 +866,7 @@ class LabeledDataset(object):
             "subclasses must implement validate_dataset()")
 
     def _build_index_map(self):
-        '''Build data --> labels mapping, to ensure this mapping is unique,
+        '''Builds data --> labels mapping, to ensure this mapping is unique,
         and remains unique.
 
         We do allow the same labels file to map to multiple data files. This
@@ -913,6 +883,7 @@ class LabeledDataset(object):
                 raise LabeledDatasetError(
                     "Data file '%s' maps to multiple labels files" %
                     data_file)
+
             self._data_to_labels_map[data_file] = labels_file
 
     def read_data(self, path):
@@ -925,7 +896,7 @@ class LabeledDataset(object):
             path: path to a data file in the dataset
 
         Returns:
-            a data object in the particular format for the subclass
+            a data object
         '''
         raise NotImplementedError("subclasses must implement read_data()")
 
@@ -939,7 +910,7 @@ class LabeledDataset(object):
             path: path to a labels file in the dataset
 
         Returns:
-            a labels object in the particular format for the subclass
+            a labels object
         '''
         raise NotImplementedError("subclasses must implement read_labels()")
 
@@ -1115,15 +1086,15 @@ class LabeledVideoDataset(LabeledDataset):
         return schema
 
     def write_annotated_data(self, output_dir_path, annotation_config=None):
-        '''Annotates the data with its labels, and outputs the
-        annotated data to the specified directory.
+        '''Annotates the data with its labels, and outputs the annotated data
+        to the specified directory.
 
         Args:
-            output_dir_path: the path to the directory into which
-                the annotated data will be written
-            annotation_config: an optional etaa.AnnotationConfig specifying
-                how to render the annotations. If omitted, the default config
-                is used.
+            output_dir_path: the path to the directory into which the annotated
+                data will be written
+            annotation_config: an optional etaa.AnnotationConfig specifying how
+                to render the annotations. If omitted, the default config is
+                used
         '''
         for video_path, video_labels in zip(
                 self.iter_data_paths(), self.iter_labels()):
@@ -1154,6 +1125,7 @@ class LabeledVideoDataset(LabeledDataset):
             if not etav.is_supported_video_file(video_path):
                 raise LabeledDatasetError(
                     "Unsupported video format: %s" % video_path)
+
             if not os.path.isfile(video_path):
                 raise LabeledDatasetError("File not found: %s" % video_path)
 
@@ -1161,6 +1133,7 @@ class LabeledVideoDataset(LabeledDataset):
             if not os.path.splitext(labels_path)[1] == ".json":
                 raise LabeledDatasetError(
                     "Unsupported labels format: %s" % labels_path)
+
             if not os.path.isfile(labels_path):
                 raise LabeledDatasetError("File not found: %s" % labels_path)
 
@@ -1170,8 +1143,9 @@ class LabeledVideoDataset(LabeledDataset):
         Returns:
              the average duration in seconds
         '''
-        video_durations = [etav.VideoMetadata.build_for(data_path).duration
-                           for data_path in self.iter_data_paths()]
+        video_durations = [
+            etav.VideoMetadata.build_for(data_path).duration
+            for data_path in self.iter_data_paths()]
 
         return np.mean(video_durations)
 
@@ -1182,8 +1156,8 @@ class LabeledVideoDataset(LabeledDataset):
         return etav.VideoLabels.from_json(path)
 
     def write_data(self, data, path):
-        with etav.FFmpegVideoWriter(
-                path, data.frame_rate, data.frame_size) as writer:
+        writer = etav.FFmpegVideoWriter(path, data.frame_rate, data.frame_size)
+        with writer:
             for img in data:
                 writer.write(img)
 
@@ -1257,8 +1231,8 @@ class LabeledImageDataset(LabeledDataset):
         return schema
 
     def write_annotated_data(self, output_dir_path, annotation_config=None):
-        '''Annotates the data with its labels, and outputs the
-        annotated data to the specified directory.
+        '''Annotates the data with its labels, and outputs the annotated data
+        to the specified directory.
 
         Args:
             output_dir_path: the path to the directory into which
@@ -1296,6 +1270,7 @@ class LabeledImageDataset(LabeledDataset):
             if not etai.is_supported_image(img_path):
                 raise LabeledDatasetError(
                     "Unsupported image format: %s" % img_path)
+
             if not os.path.isfile(img_path):
                 raise LabeledDatasetError("File not found: %s" % img_path)
 
@@ -1303,6 +1278,7 @@ class LabeledImageDataset(LabeledDataset):
             if not os.path.splitext(labels_path)[1] == ".json":
                 raise LabeledDatasetError(
                     "Unsupported labels format: %s" % labels_path)
+
             if not os.path.isfile(labels_path):
                 raise LabeledDatasetError("File not found: %s" % labels_path)
 
@@ -1354,8 +1330,8 @@ class LabeledDatasetIndex(Serializable):
         '''Initializes the LabeledDatasetIndex.
 
         Args:
-            type: the fully qualified class name of the `LabeledDataset`
-                subclass that encapsulates the dataset
+            type: the fully qualified class name of the LabeledDataset subclass
+                that encapsulates the dataset
             index: a list of `LabeledDataRecord`s. By default and empty list is
                 created
             description: an optional description of the dataset
@@ -1373,22 +1349,22 @@ class LabeledDatasetIndex(Serializable):
     def __getitem__(self, key):
         return self.index[key]
 
-    def append(self, labeled_data_record):
+    def append(self, record):
         '''Appends an entry to the index.
 
         Args:
-            labeled_data_record: a `LabeledDataRecord` instance
+            record: a LabeledDataRecord
         '''
-        self.index.append(labeled_data_record)
+        self.index.append(record)
 
     def cull_with_function(self, func):
         '''Removes `LabeledDataRecord`s from the index using the provided
         function.
 
         Args:
-            func: a function that takes in a `LabeledDataRecord` and
-                returns a boolean. Only records for which the function
-                evaluates to True will be retained in `self.index`.
+            func: a function that takes in a LabeledDataRecord and returns
+                True/False. Only records for which the function evaluates to
+                True will be retained in the index
         '''
         self.index = [record for record in self.index if func(record)]
 
@@ -1404,26 +1380,26 @@ class LabeledDatasetIndex(Serializable):
         '''Randomly shuffles the index.'''
         random.shuffle(self.index)
 
-    def split(self, split_fractions=None, descriptions=None,
-              split_method="random_exact"):
-        '''Splits the `LabeledDatasetIndex` into multiple `LabeledDatasetIndex`
+    def split(
+            self, split_fractions=None, descriptions=None,
+            split_method="random_exact"):
+        '''Splits the LabeledDatasetIndex into multiple LabeledDatasetIndex
         instances, containing disjoint subsets of the original index.
 
         Args:
-            split_fractions: an optional list of split fractions, which
-                should sum to 1, that specifies how to split the index.
-                By default, [0.5, 0.5] is used.
+            split_fractions: an optional list of split fractions, which should
+                sum to 1, that specifies how to split the index. By default,
+                [0.5, 0.5] is used
             descriptions: an optional list of descriptions for the output
                 indices. The list should be the same length as
-                `split_fractions`. If not specified, the description of
-                the original index is used for all of the output
-                indices.
-            split_method: string describing the method with which to split
-                the index
+                `split_fractions`. If not specified, the description of the
+                original index is used for all of the output indices
+            split_method: string describing the method with which to split the
+                index
 
         Returns:
-            dataset_indices: list of `LabeledDatasetIndex` instances of
-                the same length as `split_fractions`
+            a list of LabeledDatasetIndex instances of the same length as
+                `split_fractions`
         '''
         if split_fractions is None:
             split_fractions = [0.5, 0.5]
@@ -1447,15 +1423,21 @@ class LabeledDatasetIndex(Serializable):
                 split_indices, descriptions)]
 
     @classmethod
-    def from_dict(cls, d, *args, **kwargs):
-        '''Constructs a LabeledDatasetIndex object from a JSON dictionary.'''
-        type = d["type"]
+    def from_dict(cls, d):
+        '''Constructs a LabeledDatasetIndex from a JSON dictionary.
+
+        Args:
+            d: a JSON dictionary
+
+        Returns:
+            a LabeledDatasetIndex
+        '''
         index = d.get("index", None)
         if index is not None:
             index = [LabeledDataRecord.from_dict(rec) for rec in index]
-        description = d.get("description", None)
 
-        return cls(type, index=index, description=description)
+        description = d.get("description", None)
+        return cls(d["type"], index=index, description=description)
 
 
 class LabeledDataRecord(BaseDataRecord):
@@ -1484,3 +1466,4 @@ class LabeledDataRecord(BaseDataRecord):
 
 class LabeledDatasetError(Exception):
     '''Exception raised when there is an error reading a LabeledDataset'''
+    pass
