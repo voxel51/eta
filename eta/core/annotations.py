@@ -518,8 +518,7 @@ def annotate_image(img, frame_labels, annotation_config=None):
 
     Args:
         img: the image to annotate
-        frame_labels: a FrameLabels or ImageLabels describing the content to
-            annotate
+        frame_labels: a FrameLabels describing the content to annotate
         annotation_config: an optional AnnotationConfig specifying how to
             render the annotations. If omitted, the default config is used
 
