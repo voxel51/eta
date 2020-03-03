@@ -194,7 +194,8 @@ class VideoMetadata(etas.Serializable):
     '''Class encapsulating metadata about a video.
 
     Attributes:
-        start_time: a datetime describing the start (world) time of the video
+        start_time: (optional) a datetime describing the start (world) time of
+            the video
         frame_size: the [width, height] of the video frames
         frame_rate: the frame rate of the video
         total_frame_count: the total number of frames in the video
@@ -202,8 +203,8 @@ class VideoMetadata(etas.Serializable):
         size_bytes: the size of the video file on disk, in bytes
         mime_type: the MIME type of the video
         encoding_str: the encoding string for the video
-        gps_waypoints: a GPSWaypoints instance describing the GPS coordinates
-            for the video
+        gps_waypoints: (optional) a GPSWaypoints instance describing the GPS
+            coordinates for the video
     '''
 
     def __init__(
@@ -213,7 +214,8 @@ class VideoMetadata(etas.Serializable):
         '''Creates a VideoMetadata instance.
 
         Args:
-            start_time: a datetime describing
+            start_time: (optional) a datetime describing the start (world) time
+                of the video
             frame_size: the [width, height] of the video frames
             frame_rate: the frame rate of the video
             total_frame_count: the total number of frames in the video
@@ -221,8 +223,8 @@ class VideoMetadata(etas.Serializable):
             size_bytes: the size of the video file on disk, in bytes
             mime_type: the MIME type of the video
             encoding_str: the encoding string for the video
-            gps_waypoints: a GPSWaypoints instance describing the GPS
-                coordinates for the video
+            gps_waypoints: (optional) a GPSWaypoints instance describing the
+                GPS coordinates for the video
         '''
         self.start_time = start_time
         self.frame_size = frame_size
@@ -235,8 +237,14 @@ class VideoMetadata(etas.Serializable):
         self.gps_waypoints = gps_waypoints
 
     @property
+    def aspect_ratio(self):
+        '''The aspect ratio of the video.'''
+        width, height = self.frame_size
+        return width * 1.0 / height
+
+    @property
     def has_gps(self):
-        '''Returns True/False if this object has GPS waypoints.'''
+        '''Whether this object has GPS waypoints.'''
         return self.gps_waypoints is not None
 
     def get_timestamp(self, frame_number=None, world_time=None):
@@ -362,8 +370,10 @@ class VideoMetadata(etas.Serializable):
         if isinstance(gps_waypoints, dict):
             gps_waypoints = etag.GPSWaypoints.from_dict(gps_waypoints)
         elif isinstance(gps_waypoints, list):
-            # this supports a list of GPSWaypoint instances rather than a
+            #
+            # This supports a list of GPSWaypoint instances rather than a
             # serialized GPSWaypoints instance. for backwards compatability
+            #
             points = [etag.GPSWaypoint.from_dict(p) for p in gps_waypoints]
             gps_waypoints = etag.GPSWaypoints(points=points)
 
@@ -2165,7 +2175,6 @@ class VideoLabelsSchema(etal.LabelsSchema):
             _attrs.append("objects")
         if self.events:
             _attrs.append("events")
-
         return _attrs
 
     @classmethod
@@ -2533,7 +2542,7 @@ class VideoStreamInfo(etas.Serializable):
         '''The (width, height) of each frame.
 
         Raises:
-            VideoStreamInfoError if the frame size could not be determined
+            VideoStreamInfoError: if the frame size could not be determined
         '''
         try:
             return (
@@ -2548,8 +2557,8 @@ class VideoStreamInfo(etas.Serializable):
     def aspect_ratio(self):
         '''The aspect ratio of the video.
 
-        Raises a VideoStreamInfoError if the frame size could not be
-        determined.
+        Raises:
+            VideoStreamInfoError: if the frame size could not be determined
         '''
         width, height = self.frame_size
         return width * 1.0 / height
@@ -2682,7 +2691,14 @@ class VideoStreamInfo(etas.Serializable):
 
     @classmethod
     def from_dict(cls, d):
-        '''Constructs a VideoStreamInfo from a JSON dictionary.'''
+        '''Constructs a VideoStreamInfo from a JSON dictionary.
+
+        Args:
+            d: a JSON dictionary
+
+        Returns:
+            a VideoStreamInfo
+        '''
         stream_info = d["stream_info"]
         format_info = d["format_info"]
         mime_type = d.get("mime_type", None)
@@ -2690,9 +2706,7 @@ class VideoStreamInfo(etas.Serializable):
 
 
 class VideoStreamInfoError(Exception):
-    '''Exception raised when an invalid video stream info dictionary is
-    encountered.
-    '''
+    '''Exception raised when a problem with a VideoStreamInfo occurs.'''
     pass
 
 
