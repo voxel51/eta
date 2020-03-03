@@ -124,15 +124,18 @@ def _sample_videos(config):
 
 
 def _process_video(input_path, output_frames_dir, parameters):
-    stream_info = etav.VideoStreamInfo.build_for(input_path)
+    # Get video metadata
+    video_metadata = etav.VideoMetadata.build_for(input_path)
+    logger.info("Processing video '%s'", input_path)
+    logger.info("Found video metadata: %s" % str(video_metadata))
 
     _check_input_video_size(
-        stream_info, parameters.max_video_file_size,
+        video_metadata, parameters.max_video_file_size,
         parameters.max_video_duration)
 
-    ifps = stream_info.frame_rate
-    isize = stream_info.frame_size
-    iframe_count = stream_info.total_frame_count
+    ifps = video_metadata.frame_rate
+    isize = video_metadata.frame_size
+    iframe_count = video_metadata.total_frame_count
 
     #
     # Compute acceleration using the following strategy:
@@ -201,20 +204,20 @@ def _process_video(input_path, output_frames_dir, parameters):
 
 
 def _check_input_video_size(
-        stream_info, max_video_file_size, max_video_duration):
+        video_metadata, max_video_file_size, max_video_duration):
     if (max_video_file_size is not None
-            and stream_info.size_bytes > max_video_file_size):
+            and video_metadata.size_bytes > max_video_file_size):
         raise ValueError(
             "Input video file size must be less than %s; found %s" % (
                 etau.to_human_bytes_str(max_video_file_size),
-                etau.to_human_bytes_str(stream_info.size_bytes)))
+                etau.to_human_bytes_str(video_metadata.size_bytes)))
 
     if (max_video_duration is not None
-            and stream_info.duration > max_video_duration):
+            and video_metadata.duration > max_video_duration):
         raise ValueError(
             "Input video duration must be less than %s; found %s" % (
                 etau.to_human_time_str(max_video_duration),
-                etau.to_human_time_str(stream_info.duration)))
+                etau.to_human_time_str(video_metadata.duration)))
 
 
 def run(config_path, pipeline_config_path=None):
