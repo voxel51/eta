@@ -162,7 +162,7 @@ def glob_videos(dir_):
 
 
 def get_video_metadata(video_path, log=False):
-    '''Gets VideoMetadata for the given path, and log generously.
+    '''Builds a VideoMetadata for the given video.
 
     Args:
         video_path: the path to the video
