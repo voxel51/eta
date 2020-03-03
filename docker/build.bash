@@ -47,12 +47,10 @@ fi
 git submodule init
 git submodule update
 cp config-example.json config.json
-rm -rf .git/modules  # trim the fat (removes ~500MB)
 cd ..
 
 # Build image
 docker build \
-    --file Dockerfile \
     --build-arg BASE_IMAGE="${BASE_IMAGE}" \
     --build-arg TENSORFLOW_VERSION="${TENSORFLOW_VERSION}" \
     --tag "${TAG}" \

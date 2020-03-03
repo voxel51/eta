@@ -77,9 +77,6 @@ RUN pip --no-cache-dir  install --upgrade pip setuptools \
     && pip --no-cache-dir install -e eta/. \
     && pip --no-cache-dir install -I $TENSORFLOW_VERSION \
     && pip --no-cache-dir install --upgrade numpy==1.16.0 \
-    && make --directory=eta/cocoapi/PythonAPI/ \
-    && rm -rf eta/tensorflow/models/research/pycocotools \
-    && cp -r eta/cocoapi/PythonAPI/pycocotools eta/tensorflow/models/research/ \
     && curl -OL https://github.com/protocolbuffers/protobuf/releases/download/v3.6.1/protoc-3.6.1-linux-x86_64.zip \
     && unzip protoc-3.6.1-linux-x86_64.zip -d protoc3 \
     && rm -rf protoc-3.6.1-linux-x86_64.zip \
