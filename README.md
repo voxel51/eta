@@ -31,19 +31,28 @@ ETA is very portable:
 - Supports CUDA 8, 9 and 10 (for GPU installations)
 
 
-## Installation
+## Docker Installation
 
-0. _(Optional but highly recommended)_ Activate a
-[virtual environment](docs/virtualenv_guide.md)
+If you prefer to operate via Docker, see the
+[Docker Build Guide](docs/docker_build_guide.md) for simple instructions for
+building a Docker image with an ETA environment installed.
 
-1. Clone the repository:
+
+## Local Installation
+
+The following instructions describe how to install ETA locally on your machine.
+
+0. _(Optional but highly recommended)_
+[Activate a virtual environment](docs/virtualenv_guide.md)
+
+1. Clone the repository
 
 ```shell
 git clone https://github.com/voxel51/eta
 cd eta
 ```
 
-2. Run the install script:
+2. Run the install script
 
 ```shell
 bash install.bash
@@ -98,7 +107,7 @@ file to configure various package-level constants. Many advanced ETA features
 such as pipeline building, model management, etc. require a properly configured
 environment to function.
 
-To setup your environment, create a copy the example configuration file
+To setup your environment, create a copy the example configuration file:
 
 ```shell
 cp config-example.json config.json
