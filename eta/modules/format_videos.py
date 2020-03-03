@@ -175,10 +175,13 @@ def _process_video(input_path, output_path, parameters):
     max_size = parameters.max_size
     ffmpeg_out_opts = parameters.ffmpeg_out_opts
 
-    # Get input video details
-    stream_info = etav.VideoStreamInfo.build_for(input_path)
-    ifps = stream_info.frame_rate
-    isize = stream_info.frame_size
+    # Get input video metadata
+    video_metadata = etav.VideoMetadata.build_for(input_path)
+    logger.info("Processing video '%s'", input_path)
+    logger.info("Found video metadata: %s", str(video_metadata))
+
+    ifps = video_metadata.frame_rate
+    isize = video_metadata.frame_size
 
     # Compute output frame rate
     ofps = fps or -1
