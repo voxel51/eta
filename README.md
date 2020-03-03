@@ -148,12 +148,12 @@ The ETA package is organized as described below. For more information about the
 design and function of the various ETA components, read the documentation in
 the [docs folder](https://github.com/voxel51/eta/tree/develop/docs).
 
-- `eta/classifiers/`: interfaces for common classifiers
+- `eta/classifiers/`: wrappers for performing inference with common classifiers
 
 - `eta/core/`: the core ETA library, which includes utilities for working
 with images, videos, embeddings, and much more.
 
-- `eta/detectors/`: interfaces for common detectors
+- `eta/detectors/`: wrappers for performing inference with common detectors
 
 - `eta/docs/`: documentation about the ETA library
 
@@ -173,6 +173,9 @@ for more information about ETA modules.
 for more information about ETA pipelines.
 
 - `eta/resources/`: resources such as media, templates, etc.
+
+- `eta/segmenters/`: wrappers for performing inference with common semantic
+segmenters
 
 In addition, ETA makes use of the following external dependencies:
 
