@@ -2766,7 +2766,7 @@ def get_raw_frame_number(raw_frame_rate, raw_frame_count, fps, sampled_frame):
 def read_video_as_array(video_path):
     '''Reads the video from the given path into an in-memory array.
 
-    CAUTION: in-memory videos are hude; use this at your own risk!
+    CAUTION: in-memory videos are huge; use this at your own risk!
 
     Args:
         video_path: the path to the video to load
