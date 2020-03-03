@@ -52,6 +52,7 @@ cd ..
 
 # Build image
 docker build \
+    --file Dockerfile \
     --build-arg BASE_IMAGE="${BASE_IMAGE}" \
     --build-arg TENSORFLOW_VERSION="${TENSORFLOW_VERSION}" \
     --tag "${TAG}" \
