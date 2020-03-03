@@ -176,7 +176,7 @@ def _process_video(input_path, output_path, parameters):
     ffmpeg_out_opts = parameters.ffmpeg_out_opts
 
     # Get video metadata, logging generously
-    video_metadata = etav.get_video_metadata(input_path, log=True)
+    video_metadata = etav.VideoMetadata.build_for(input_path, verbose=True)
 
     ifps = video_metadata.frame_rate
     isize = video_metadata.frame_size

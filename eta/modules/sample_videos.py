@@ -125,7 +125,7 @@ def _sample_videos(config):
 
 def _process_video(input_path, output_frames_dir, parameters):
     # Get video metadata, logging generously
-    video_metadata = etav.get_video_metadata(input_path, log=True)
+    video_metadata = etav.VideoMetadata.build_for(input_path, verbose=True)
 
     _check_input_video_size(
         video_metadata, parameters.max_video_file_size,
