@@ -2925,8 +2925,7 @@ def _sample_select_frames_fast(video_path, frames, output_patt, size):
             ffmpeg.run(video_path, tmp_patt)
         except etau.ExecutableRuntimeError as e:
             # Graceful failure if frames couldn't be sampled
-            msg = etau.summarize_long_str(str(e), 500)
-            logger.warning(msg)
+            logger.warning(etau.summarize_long_str(str(e), 500))
             logger.warning(
                 "A sampling error occured; attempting to gracefully continue")
 
