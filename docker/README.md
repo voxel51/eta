@@ -53,15 +53,15 @@ bash build.bash $BASE_IMAGE $TENSORFLOW_VERSION $TAG
 
 ## Using an image
 
-After you have built an ETA image, you can run the image with an interactive
+After you have built an ETA image, you run the image with an interactive
 shell as follows:
 
 ```shell
 # For CPU images
-docker run -it --entrypoint=/bin/bash $TAG
+docker run -it $TAG
 
 # For GPU images
-docker run -it --runtime=nvidia --entrypoint=/bin/bash $TAG
+docker run -it --runtime=nvidia $TAG
 ```
 
 

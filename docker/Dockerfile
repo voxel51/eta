@@ -1,5 +1,5 @@
 # Dockerfile for building a base image with an ETA environment atop a
-# Linux-based OS.
+# Debian, Ubuntu, or related Linux distribution.
 #
 # ARGs:
 #   BASE_IMAGE
