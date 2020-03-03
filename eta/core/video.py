@@ -2763,6 +2763,21 @@ def get_raw_frame_number(raw_frame_rate, raw_frame_count, fps, sampled_frame):
     return int(raw_frame)
 
 
+def read_video_as_array(video_path):
+    '''Reads the video from the given path into an in-memory array.
+
+    CAUTION: in-memory videos are hude; use this at your own risk!
+
+    Args:
+        video_path: the path to the video to load
+
+    Returns:
+        a numpy array of size [num_frames, height, width, num_channels]
+    '''
+    with FFmpegVideoReader(video_path) as vr:
+        return np.asarray([img for img in vr])
+
+
 def extract_clip(
         video_path, output_path, start_time=None, duration=None, fast=False):
     '''Extracts the specified clip from the video.
