@@ -19,6 +19,7 @@ __pycache__
 /config.json
 /configs
 /data
+/docker/eta
 /docs/*.tex
 /docs/*.html
 /docs/*.pdf

@@ -4,7 +4,6 @@
 # ARGs:
 #   BASE_IMAGE
 #   TENSORFLOW_VERSION
-#   ETA_BRANCH_OR_COMMIT
 #
 # TensorFlow version notes:
 #   - For CPU-only images, use tensorflow==1.12.0
@@ -68,33 +67,25 @@ RUN apt-get update \
     && ln -s /usr/bin/python3.6 /usr/local/bin/python \
     && curl https://bootstrap.pypa.io/get-pip.py | python
 
-ARG ETA_BRANCH_OR_COMMIT
 WORKDIR /dev
-RUN git clone https://github.com/voxel51/eta \
-    && cd /dev/eta \
-    && git checkout $ETA_BRANCH_OR_COMMIT \
-    && git submodule init \
-    && git submodule update \
-    && cp config-example.json config.json \
-    && rm .git/modules
-
+COPY eta/ eta/
 ARG TENSORFLOW_VERSION
 RUN pip --no-cache-dir  install --upgrade pip setuptools \
-    && pip --no-cache-dir install -r /dev/eta/requirements.txt \
-    && pip --no-cache-dir  install --upgrade setuptools \
-    && pip --no-cache-dir install -e /dev/eta/. \
+    && pip --no-cache-dir install -r eta/requirements.txt \
+    && pip --no-cache-dir install --upgrade setuptools \
+    && pip --no-cache-dir install -e eta/. \
     && pip --no-cache-dir install -I $TENSORFLOW_VERSION \
     && pip --no-cache-dir install --upgrade numpy==1.16.0 \
-    && make --directory=/dev/eta/cocoapi/PythonAPI/ \
-    && rm -rf /dev/eta/tensorflow/models/research/pycocotools \
-    && cp -r /dev/eta/cocoapi/PythonAPI/pycocotools /dev/eta/tensorflow/models/research/ \
+    && make --directory=eta/cocoapi/PythonAPI/ \
+    && rm -rf eta/tensorflow/models/research/pycocotools \
+    && cp -r eta/cocoapi/PythonAPI/pycocotools eta/tensorflow/models/research/ \
     && curl -OL https://github.com/protocolbuffers/protobuf/releases/download/v3.6.1/protoc-3.6.1-linux-x86_64.zip \
     && unzip protoc-3.6.1-linux-x86_64.zip -d protoc3 \
     && rm -rf protoc-3.6.1-linux-x86_64.zip \
     && mv protoc3/bin/* /usr/local/bin \
     && mv protoc3/include/* /usr/local/include \
     && rm -rf protoc3 \
-    && cd /dev/eta/tensorflow/models \
+    && cd eta/tensorflow/models \
     && protoc research/object_detection/protos/*.proto \
         --proto_path=research \
         --python_out=research \

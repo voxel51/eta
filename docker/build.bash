@@ -22,7 +22,7 @@ tag                    A tag for the built image.
 # Parse flags
 unset OPTIND
 SHOW_HELP=false
-ETA_BRANCH_OR_COMMIT=develop
+ETA_BRANCH_OR_COMMIT=""
 while getopts "hb:" FLAG; do
     case ${FLAG} in
         h) SHOW_HELP=true ;;
@@ -38,10 +38,24 @@ BASE_IMAGE=$1
 TENSORFLOW_VERSION=$2
 TAG=$3
 
-# Build the image
+# Clone ETA
+git clone https://github.com/voxel51/eta
+cd eta
+if [[ ! -z $ETA_BRANCH_OR_COMMIT ]]; then
+    git checkout $ETA_BRANCH_OR_COMMIT
+fi
+git submodule init
+git submodule update
+cp config-example.json config.json
+rm -rf .git/modules  # trim the fat (removes ~500MB)
+cd ..
+
+# Build image
 docker build \
     --build-arg BASE_IMAGE="${BASE_IMAGE}" \
-    --build-arg ETA_BRANCH_OR_COMMIT="${ETA_BRANCH_OR_COMMIT}" \
     --build-arg TENSORFLOW_VERSION="${TENSORFLOW_VERSION}" \
     --tag "${TAG}" \
     .
+
+# Cleanup
+rm -rf eta
