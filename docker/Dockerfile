@@ -67,8 +67,9 @@ RUN apt-get update \
     && ln -s /usr/bin/python3.6 /usr/local/bin/python \
     && curl https://bootstrap.pypa.io/get-pip.py | python
 
-WORKDIR /dev
+WORKDIR /usr/src/app
 COPY eta/ eta/
+
 ARG TENSORFLOW_VERSION
 RUN pip --no-cache-dir  install --upgrade pip setuptools \
     && pip --no-cache-dir install -r eta/requirements.txt \
