@@ -20,7 +20,8 @@
 #
 
 #
-# The base image to build from, which must be Linux-based
+# The base image to build from, which must be a Debian, Ubuntu, or related
+# Linux distribution
 #
 
 ARG BASE_IMAGE
