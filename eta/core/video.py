@@ -161,35 +161,6 @@ def glob_videos(dir_):
         *SUPPORTED_VIDEO_FILE_FORMATS, root=os.path.join(dir_, "*"))
 
 
-def get_video_metadata(video_path, log=False):
-    '''Builds a VideoMetadata for the given video.
-
-    Args:
-        video_path: the path to the video
-        log: whether to generously log the process of extracting the video
-            metadata. By default, this is False
-
-    Returns:
-        a VideoMetadata
-    '''
-    # Get stream info
-    if log:
-        logger.info("Getting stream info for '%s'", video_path)
-
-    vsi = VideoStreamInfo.build_for(video_path, log=log)
-    if log:
-        logger.info("Found format info: %s", etas.json_to_str(vsi.format_info))
-        logger.info(
-            "Found video stream: %s", etas.json_to_str(vsi.stream_info))
-
-    # Extract metadata
-    metadata = VideoMetadata.from_stream_info(vsi)
-    if log:
-        logger.info("Extracted video metadata: %s", str(metadata))
-
-    return metadata
-
-
 class VideoMetadata(etas.Serializable):
     '''Class encapsulating metadata about a video.
 
@@ -325,19 +296,23 @@ class VideoMetadata(etas.Serializable):
         return [a for a in _attrs if getattr(self, a) is not None]
 
     @classmethod
-    def build_for(cls, video_path, log=False):
+    def build_for(cls, video_path, verbose=False):
         '''Builds a VideoMetadata instance for the given video.
 
         Args:
             video_path: the path to the video
-            log: whether to log the ffprobe command used to extract stream
-                info at INFO level. By default, this is False
+            verbose: whether to generously log the process of extracting the
+                video metadata. By default, this is False
 
         Returns:
-            a VideoMetadata
+            a VideoMetadata instance
         '''
-        vsi = VideoStreamInfo.build_for(video_path, log=log)
-        return cls.from_stream_info(vsi)
+        vsi = VideoStreamInfo.build_for(video_path, verbose=verbose)
+        metadata = cls.from_stream_info(vsi)
+        if verbose:
+            logger.info("Extracted video metadata: %s", str(metadata))
+
+        return metadata
 
     @classmethod
     def from_stream_info(cls, stream_info):
@@ -2674,19 +2649,29 @@ class VideoStreamInfo(etas.Serializable):
         return self.custom_attributes(dynamic=True)
 
     @classmethod
-    def build_for(cls, video_path, log=False):
+    def build_for(cls, video_path, verbose=False):
         '''Builds a VideoStreamInfo instance for the given video.
 
         Args:
             video_path: the path to the video
-            log: whether to log the ffprobe command used to extract stream
-                info at INFO level. By default, this is False
+            verbose: whether to generously log the process of extracting the
+                stream info. By default, this is False
 
         Returns:
             a VideoStreamInfo instance
         '''
+        if verbose:
+            logger.info("Getting stream info for '%s'", video_path)
+
+        stream_info, format_info = _get_stream_info(
+            video_path, verbose=verbose)
+
+        if verbose:
+            logger.info("Found format info: %s", etas.json_to_str(format_info))
+            logger.info(
+                "Found video stream: %s", etas.json_to_str(stream_info))
+
         mime_type = etau.guess_mime_type(video_path)
-        stream_info, format_info = _get_stream_info(video_path, log=log)
         return cls(stream_info, format_info, mime_type=mime_type)
 
     @classmethod
@@ -2710,14 +2695,14 @@ class VideoStreamInfoError(Exception):
     pass
 
 
-def _get_stream_info(inpath, log=False):
+def _get_stream_info(inpath, verbose=False):
     # Get stream info via ffprobe
     ffprobe = FFprobe(opts=[
         "-show_format",              # get format info
         "-show_streams",             # get stream info
         "-print_format", "json",     # return in JSON format
     ])
-    out = ffprobe.run(inpath, decode=True, log=log)
+    out = ffprobe.run(inpath, decode=True, verbose=verbose)
     info = etas.load_json(out)
 
     # Get format info
@@ -4180,7 +4165,7 @@ class FFprobe(object):
         '''
         return " ".join(self._args) if self._args else None
 
-    def run(self, inpath, decode=False, log=False):
+    def run(self, inpath, decode=False, verbose=False):
         '''Run the ffprobe binary with the specified input path.
 
         Args:
@@ -4190,7 +4175,7 @@ class FFprobe(object):
             out: the stdout from the ffprobe binary
             decode: whether to decode the output bytes into utf-8 strings. By
                 default, the raw bytes are returned
-            log: whether to log the ffprobe command used at INFO level. By
+            verbose: whether to log the ffprobe command used at INFO level. By
                 default, this is False
 
         Raises:
@@ -4205,7 +4190,7 @@ class FFprobe(object):
             ["-i", inpath]
         )
 
-        if log:
+        if verbose:
             logger.info("Executing '%s'", self.cmd)
         else:
             logger.debug("Executing '%s'", self.cmd)
@@ -4302,7 +4287,7 @@ class FFmpeg(object):
         '''
         return " ".join(self._args) if self._args else None
 
-    def run(self, inpath, outpath, log=False):
+    def run(self, inpath, outpath, verbose=False):
         '''Run the ffmpeg binary with the specified input/outpath paths.
 
         Args:
@@ -4312,7 +4297,7 @@ class FFmpeg(object):
                 directory is created if needed. If outpath is "-", output
                 streaming mode is activated and data can be read via the
                 read() method
-            log: whether to log the ffmpeg command used at INFO level. By
+            verbose: whether to log the ffmpeg command used at INFO level. By
                 default, this is False
 
         Raises:
@@ -4364,7 +4349,7 @@ class FFmpeg(object):
         if not self.is_output_streaming:
             etau.ensure_path(outpath)
 
-        if log:
+        if verbose:
             logger.info("Executing '%s'", self.cmd)
         else:
             logger.debug("Executing '%s'", self.cmd)
