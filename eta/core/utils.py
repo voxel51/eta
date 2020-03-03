@@ -100,7 +100,8 @@ def summarize_long_str(s, max_len, mode="middle"):
         s: a string
         max_len: the desired maximum length
         mode: the summary mode, which controls which portion of long strings
-            is deleted. Supported values are ("first", "middle", "last")
+            are deleted. Supported values are ("first", "middle", "last"). The
+            default is "middle"
 
     Returns:
         the summarized string
