@@ -1120,7 +1120,8 @@ class MaskIndex(JSONFile):
 
 
 class Labels(JSONFile):
-    '''Base type for labels in images or videos.
+    '''Base type for labels representing attributes, objects, frames, events,
+    images, videos, etc.
 
     This type is implemented in ETA by the `eta.core.labels.Labels` class.
 
@@ -1384,7 +1385,31 @@ class DetectedEvents(Labels):
     pass
 
 
-class ImageLabels(Labels):
+class FrameLabels(Labels):
+    '''A description of the labeled contents of a frame.
+
+    This type is implemented in ETA by the `eta.core.frames.FrameLabels` class.
+
+    Examples:
+        /path/to/frame_labels.json
+    '''
+    pass
+
+
+class FrameLabelsSchema(LabelsSchema):
+    '''A description of the schema of possible labels that can be generated for
+    one or more frames.
+
+    This type is implemented in ETA by the `eta.core.frames.FrameLabelsSchema`
+    class.
+
+    Examples:
+        /path/to/frame_labels_schema.json
+    '''
+    pass
+
+
+class ImageLabels(FrameLabels):
     '''A description of the labeled contents of an image.
 
     This type is implemented in ETA by the `eta.core.image.ImageLabels`
@@ -1392,6 +1417,19 @@ class ImageLabels(Labels):
 
     Examples:
         /path/to/image_labels.json
+    '''
+    pass
+
+
+class ImageLabelsSchema(FrameLabelsSchema):
+    '''A description of the schema of possible labels that can be generated for
+    images.
+
+    This type is implemented in ETA by the `eta.core.image.ImageLabelsSchema`
+    class.
+
+    Examples:
+        /path/to/image_labels_schema.json
     '''
     pass
 
@@ -1408,19 +1446,6 @@ class ImageSetLabels(Labels):
     pass
 
 
-class ImageLabelsSchema(LabelsSchema):
-    '''A description of the schema of possible labels that can be generated for
-    images.
-
-    This type is implemented in ETA by the `eta.core.image.ImageLabelsSchema`
-    class.
-
-    Examples:
-        /path/to/image_labels_schema.json
-    '''
-    pass
-
-
 class VideoLabels(Labels):
     '''A description of the labeled contents of a video.
 
@@ -1433,7 +1458,7 @@ class VideoLabels(Labels):
     pass
 
 
-class VideoLabelsSchema(LabelsSchema):
+class VideoLabelsSchema(FrameLabelsSchema):
     '''A description of the schema of possible labels that can be generated for
     a video.
 

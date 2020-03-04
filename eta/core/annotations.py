@@ -485,7 +485,7 @@ def annotate_video(
         annotation_config = _DEFAULT_ANNOTATION_CONFIG
 
     # Render framewise labels for annotation
-    video_labels = video_labels.render_framewise_labels()
+    video_labels = video_labels.render_framewise()
     mask_index = video_labels.mask_index
 
     # Annotate video
@@ -518,8 +518,7 @@ def annotate_image(img, frame_labels, annotation_config=None):
 
     Args:
         img: the image to annotate
-        frame_labels: a FrameLabels or ImageLabels describing the content to
-            annotate
+        frame_labels: a FrameLabels describing the content to annotate
         annotation_config: an optional AnnotationConfig specifying how to
             render the annotations. If omitted, the default config is used
 

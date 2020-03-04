@@ -1,12 +1,11 @@
 '''
-LabeledDataset builders, which serve the purpose of managing a series of
-dataset transformations and building a new LabeledDataset
+Core definition of `LabeledDatasetBuilder`s, which serve the purpose of
+managing and applying a series of `DatasetTransformer`s to `LabeledDataset`s.
 
-Copyright 2017-2019 Voxel51, Inc.
+Copyright 2017-2020 Voxel51, Inc.
 voxel51.com
 
 Matthew Lightman, matthew@voxel51.com
-Jason Corso, jason@voxel51.com
 Ben Kane, ben@voxel51.com
 Tyler Ganter, tyler@voxel51.com
 '''
@@ -34,27 +33,55 @@ import eta.core.utils as etau
 import eta.core.video as etav
 
 from .utils import COPY, FILE_METHODS, _FILE_METHODS_MAP, \
-    _append_index_if_necessary
+    append_index_if_necessary
 
 
 logger = logging.getLogger(__name__)
 
 
 class LabeledDatasetBuilder(object):
-    '''This object builds a LabeledDataset with transformations applied,
-    e.g. Sampler, Balancer.
+    '''Class that enables the construction and application of a series of
+    `DatasetTransformer`s to a `LabeledDataset`.
 
     Transformations are run in the order they are added.
     '''
 
     def __init__(self):
-        '''Initialize the LabeledDatasetBuilder.'''
+        '''Creates a LabeledDatasetBuilder instance.'''
         self._transformers = []
         self._dataset = self.builder_dataset_cls()
 
+    @property
+    def builder_dataset(self):
+        '''The BuilderDataset instance managed by this builder.'''
+        return self._dataset
+
+    @property
+    def builder_dataset_cls(self):
+        '''The BuilderDataset class used by this builder.'''
+        cls_breakup = etau.get_class_name(self).split(".")
+        cls = cls_breakup[-1]
+        cls = re.sub("^Labeled", "Builder", re.sub("Builder$", "", cls))
+        cls_breakup[-1] = cls
+        return etau.get_class(".".join(cls_breakup))
+
+    @property
+    def dataset_cls(self):
+        '''The LabeledDataset class used by this builder.'''
+        cls = etau.get_class_name(self)
+        cls = re.sub("Builder$", "", cls).split(".")[-1]
+        return etau.get_class(cls, "eta.core.datasets")
+
+    @property
+    def record_cls(self):
+        '''The record class of the BuilderDataset used by this builder.'''
+        return self._dataset.record_cls
+
     def add_record(self, record):
-        '''Add a record. LabeledImageDatasetBuilders take BuilderImageRecords
-        and LabeledVideoDatasetBuilders take BuilderVideoRecords.
+        '''Adds a record to the dataset managed by the builder.
+
+        `LabeledImageDatasetBuilder`s take `BuilderImageRecord`s, and
+        `LabeledVideoDatasetBuilder`s take `BuilderVideoRecord`s.
 
         Args:
             record: a BuilderImageRecord or BuilderVideoRecord
@@ -62,48 +89,23 @@ class LabeledDatasetBuilder(object):
         self._dataset.add(record)
 
     def add_transform(self, transform):
-        '''Add a DatasetTransformer.
+        '''Appends a DatasetTransformer to the builder.
 
         Args:
             transform: a DatasetTransformer
         '''
         self._transformers.append(transform)
 
-    @property
-    def builder_dataset(self):
-        '''The underlying BuilderDataset instance'''
-        return self._dataset
-
-    @property
-    def builder_dataset_cls(self):
-        '''The associated BuilderDataset class.'''
-        cls_breakup = etau.get_class_name(self).split(".")
-        cls = cls_breakup[-1]
-        cls = re.sub("^Labeled", "Builder", re.sub("Builder$", "", cls))
-        cls_breakup[-1] = cls
-        full_cls_path = ".".join(cls_breakup)
-        return etau.get_class(full_cls_path)
-
-    @property
-    def dataset_cls(self):
-        '''The associated LabeledDataset class.'''
-        cls = etau.get_class_name(self)
-        cls = re.sub("Builder$", "", cls).split(".")[-1]
-        return etau.get_class(cls, "eta.core.datasets")
-
-    @property
-    def record_cls(self):
-        '''The record class.'''
-        return self._dataset.record_cls
-
-    def build(self, path, description=None, pretty_print=False,
-              create_empty=False, data_method=COPY):
-        '''Build the new LabeledDataset after all records and transformations
-        have been added.
+    def build(
+            self, manifest_path, description=None, pretty_print=False,
+            create_empty=False, data_method=COPY):
+        '''Builds the new LabeledDataset after all records managed by this
+        builder have been added and all transformations have been applied.
 
         Args:
-            path: path to write the new dataset (manifest.json)
-            description: optional dataset description
+            manifest_path: the path to write the `manifest.json` for the new
+                dataset
+            description: an optional description for the new dataset
             pretty_print: whether to pretty print JSON labels. By default, this
                 is False
             create_empty: whether to write empty datasets to disk. By default,
@@ -112,7 +114,7 @@ class LabeledDatasetBuilder(object):
                 applicable. If clipping is required, this option is ignored,
                 for example. One of "copy", "link", "move", or "symlink".
                 Labels files are written from their class instances and do not
-                apply.
+                apply. The default is `COPY`
 
         Returns:
             a LabeledDataset
@@ -127,14 +129,15 @@ class LabeledDatasetBuilder(object):
         for transformer in self._transformers:
             transformer.transform(self._dataset)
 
-        if not create_empty and not len(self.builder_dataset):
+        if not create_empty and not self.builder_dataset:
             logger.info("Built dataset is empty. Skipping write out.")
             return None
 
         logger.info(
             "Building dataset with %d elements", len(self.builder_dataset))
 
-        dataset = self.dataset_cls.create_empty_dataset(path, description)
+        dataset = self.dataset_cls.create_empty_dataset(
+            manifest_path, description)
         data_subdir = os.path.join(dataset.dataset_dir, dataset._DATA_SUBDIR)
         labels_subdir = os.path.join(
             dataset.dataset_dir, dataset._LABELS_SUBDIR)
@@ -147,7 +150,7 @@ class LabeledDatasetBuilder(object):
             labels_path = os.path.join(labels_subdir, labels_filename)
 
             old_data_path = data_path
-            data_path, labels_path = _append_index_if_necessary(
+            data_path, labels_path = append_index_if_necessary(
                 dataset, data_path, labels_path)
             if data_path != old_data_path and not did_warn_duplicate_name:
                 logger.warning(
@@ -166,30 +169,34 @@ class LabeledDatasetBuilder(object):
             # placed directly into the dataset directory by `record.build()`.
             dataset.add_file(data_path, labels_path)
 
-        dataset.write_manifest(os.path.basename(path))
+        dataset.write_manifest(os.path.basename(manifest_path))
         return dataset
 
 
 class LabeledImageDatasetBuilder(LabeledDatasetBuilder):
     '''LabeledDatasetBuilder for images.'''
+    pass
 
 
 class LabeledVideoDatasetBuilder(LabeledDatasetBuilder):
     '''LabeledDatasetBuilder for videos.'''
+    pass
 
 
 class BuilderDataRecord(BaseDataRecord):
-    '''This class is responsible for tracking all of the metadata about a data
+    '''Class that is responsible for tracking all of the metadata about a data
     record required for dataset operations on a BuilderDataset.
+
+    The `data_path` and `labels_path` of a record cannot be modified after
+    initialization.
     '''
 
     def __init__(self, data_path, labels_path):
-        '''Initialize the BuilderDataRecord. The label and data paths cannot
-        and should not be modified after initialization.
+        '''Creates a BuilderDataRecord instance.
 
         Args:
             data_path: path to data file
-            labels_path: path to labels json
+            labels_path: path to labels JSON
         '''
         super(BuilderDataRecord, self).__init__()
         self._data_path = data_path
@@ -198,25 +205,6 @@ class BuilderDataRecord(BaseDataRecord):
         self._new_labels_path = None
         self._labels_cls = None
         self._labels_obj = None
-
-    def get_labels(self):
-        '''Get the labels in this record..
-
-        Returns:
-            an ImageLabels or VideoLabels
-        '''
-        if self._labels_obj is not None:
-            return self._labels_obj
-        self._labels_obj = self._labels_cls.from_json(self.labels_path)
-        return self._labels_obj
-
-    def set_labels(self, labels):
-        '''Set the labels for this record.
-
-        Args:
-            labels: ImageLabels or VideoLabels
-        '''
-        self._labels_obj = labels
 
     @property
     def data_path(self):
@@ -233,6 +221,7 @@ class BuilderDataRecord(BaseDataRecord):
         '''The data path to be written to.'''
         if self._new_data_path is not None:
             return self._new_data_path
+
         return self._data_path
 
     @property
@@ -240,6 +229,7 @@ class BuilderDataRecord(BaseDataRecord):
         '''The labels path to be written to.'''
         if self._new_labels_path is not None:
             return self._new_labels_path
+
         return self._labels_path
 
     @new_data_path.setter
@@ -250,19 +240,38 @@ class BuilderDataRecord(BaseDataRecord):
     def new_labels_path(self, value):
         self._new_labels_path = value
 
-    def build(self, data_path, labels_path, pretty_print=False,
-              data_method=COPY):
-        '''Write the transformed labels and data files to dir_path. The
-        subclasses BuilderVideoRecord and BuilderDataRecord are responsible for
-        writing the data file.
+    def get_labels(self):
+        '''Get the labels in this record.
+
+        Returns:
+            an ImageLabels or VideoLabels
+        '''
+        if self._labels_obj is not None:
+            return self._labels_obj
+
+        self._labels_obj = self._labels_cls.from_json(self.labels_path)
+        return self._labels_obj
+
+    def set_labels(self, labels):
+        '''Sets the labels for this record.
 
         Args:
-            data_path: path to write the data file to
-            labels_path: path to write the labels file to
+            labels: ImageLabels or VideoLabels
+        '''
+        self._labels_obj = labels
+
+    def build(
+            self, data_path, labels_path, pretty_print=False,
+            data_method=COPY):
+        '''Writes the transformed labels and data files to the specified paths.
+
+        Args:
+            data_path: path to which to write the data file
+            labels_path: path to which to write the labels file
             pretty_print: whether to pretty print JSON. By default, this is
                 False
-            data_method: how to create the data file, when applicable. The
-                default is copy
+            data_method: the `FILE_METHOD` to use to build the data sample,
+                when applicable. The default is "copy"
         '''
         self._build_labels()
         labels = self.get_labels()
@@ -280,41 +289,55 @@ class BuilderDataRecord(BaseDataRecord):
         '''
         return copy.deepcopy(self)
 
+    def prepend_to_name(self, prefix):
+        '''Prepends a prefix to the data and label filenames respectively.
+
+        Args:
+            prefix: the prefix
+        '''
+        self._new_data_path = prefix + '_' + os.path.basename(self.data_path)
+        self._new_labels_path = prefix + '_' + os.path.basename(
+            self.labels_path)
+
     def attributes(self):
-        '''Overrides Serializable.attributes() to provide a custom list of
-        attributes to be serialized.
+        '''Returns the list of attributes to be serialized.
 
         Returns:
             a list of class attributes to be serialized
         '''
-        return super(BuilderDataRecord, self).attributes() + [
-            "data_path",
-            "labels_path"
-        ]
+        attrs_ = super(BuilderDataRecord, self).attributes()
+        return attrs_ + ["data_path", "labels_path"]
 
     @classmethod
     def required(cls):
         '''Returns a list of attributes that are required by all instances of
         the data record.
         '''
-        return super(BuilderDataRecord, cls).required() + [
-            "data_path",
-            "labels_path"
-        ]
-
-    def prepend_to_name(self, prefix):
-        '''Prepends a prefix to the data and label filenames respectively.'''
-        self._new_data_path = prefix + '_' + os.path.basename(self.data_path)
-        self._new_labels_path = prefix + '_' + os.path.basename(
-            self.labels_path)
-
-    def _build_labels(self):
-        raise NotImplementedError(
-            "subclasses must implement _build_labels()")
+        _required = super(BuilderDataRecord, cls).required()
+        return _required + ["data_path", "labels_path"]
 
     def _build_data(self, data_path, data_method):
+        '''Internal implementation of building the data sample represented by
+        this builder.
+
+        Subclasses must implement this method.
+
+        Args:
+            data_path: the path to which to write the built data sample
+            data_method: the `FILE_METHOD` to use to build the data sample,
+                when applicable. The default is "copy"
+        '''
         raise NotImplementedError(
             "subclasses must implement _build_data()")
+
+    def _build_labels(self):
+        '''Internal implementation of building the labels represented by this
+        builder.
+
+        Subclasses must implement this method.
+        '''
+        raise NotImplementedError(
+            "subclasses must implement _build_labels()")
 
 
 class BuilderImageRecord(BuilderDataRecord):
@@ -340,32 +363,31 @@ class BuilderImageRecord(BuilderDataRecord):
 class BuilderVideoRecord(BuilderDataRecord):
     '''BuilderDataRecord for video.'''
 
-    def __init__(self, data_path, labels_path, clip_start_frame=1,
-                 clip_end_frame=None, duration=None, total_frame_count=None):
-        '''Initialize a BuilderVideoRecord with data_path, labels_path, and
-        optional metadata about video. Without the optional arguments their
-        values will be loaded from the video metadata and the start and end
-        frames will default to covering the entire video.
+    def __init__(
+            self, data_path, labels_path, clip_start_frame=1,
+            clip_end_frame=None, duration=None, total_frame_count=None):
+        '''Creates a BuilderVideoRecord instacne.
 
         Args:
             data_path: path to video
             labels_path: path to labels
-            clip_start_frame: start frame of the clip
-            clip_end_frame: end frame of the clip
-            duration: duration (in seconds) of the full video (not the clip)
-            total_frame_count: number of frames in full video (not the clip)
+            clip_start_frame: start frame of the clip. By default, the first
+                frame is used
+            clip_end_frame: end frame of the clip. By default, the last frame
+                of the video is used
+            duration: duration (in seconds) of the full video. By default, this
+                value is loaded dynamically via `VideoMetadata`
+            total_frame_count: number of frames in full video. By default, this
+                value is loaded dynamically via `VideoMetadata`
         '''
         super(BuilderVideoRecord, self).__init__(data_path, labels_path)
         self.clip_start_frame = clip_start_frame
-        self._metadata = None
-        if None in [clip_end_frame, duration, total_frame_count]:
-            self._init_from_video_metadata(
-                clip_end_frame, duration, total_frame_count)
-        else:
-            self.clip_end_frame = clip_end_frame
-            self.duration = duration
-            self.total_frame_count = total_frame_count
+        self.clip_end_frame = clip_end_frame
+        self.duration = duration
+        self.total_frame_count = total_frame_count
+
         self._labels_cls = etav.VideoLabels
+        self._initialize()
 
     @classmethod
     def optional(cls):
@@ -373,11 +395,22 @@ class BuilderVideoRecord(BuilderDataRecord):
         data record if they are present in the data dictionary.
         '''
         return super(BuilderVideoRecord, cls).required() + [
-            "clip_start_frame",
-            "clip_end_frame",
-            "duration",
-            "total_frame_count"
-        ]
+            "clip_start_frame", "clip_end_frame", "duration",
+            "total_frame_count"]
+
+    def _build_data(self, data_path, data_method):
+        start_frame = self.clip_start_frame
+        end_frame = self.clip_end_frame
+        if (start_frame == 1) and (end_frame == self.total_frame_count):
+            data_method(self.data_path, data_path)
+            return
+
+        frames = etaf.FrameRanges.build_simple(start_frame, end_frame)
+        processor = etav.VideoProcessor(
+            self.data_path, frames=frames, out_video_path=data_path)
+        with processor as p:
+            for img in p:
+                p.write(img)
 
     def _build_labels(self):
         start_frame, end_frame = (self.clip_start_frame, self.clip_end_frame)
@@ -386,40 +419,41 @@ class BuilderVideoRecord(BuilderDataRecord):
         self.set_labels(segment)
         if not labels:
             return
+
         for frame_id in range(start_frame, end_frame + 1):
             frame = labels[frame_id]
             new_frame_number = frame.frame_number - start_frame + 1
             if frame.objects:
                 segment.add_objects(frame.objects, new_frame_number)
+
             if frame.attrs:
                 segment.add_frame_attributes(frame.attrs, new_frame_number)
 
-    def _init_from_video_metadata(
-            self, clip_end_frame, duration, total_frame_count):
-        metadata = etav.VideoMetadata.build_for(self.data_path)
-        self.total_frame_count = (
-            total_frame_count or metadata.total_frame_count)
-        self.duration = duration or metadata.duration
-        self.clip_end_frame = clip_end_frame or metadata.total_frame_count
+    def _initialize(self):
+        metadata = None
 
-    def _build_data(self, data_path, data_method):
-        start_frame, end_frame = (self.clip_start_frame, self.clip_end_frame)
-        if start_frame == 1 and end_frame == self.total_frame_count:
-            data_method(self.data_path, data_path)
-        else:
-            args = (
-                self.data_path,
-                etaf.FrameRanges.build_simple(start_frame, end_frame)
-            )
-            with etav.VideoProcessor(*args, out_video_path=data_path) as p:
-                for img in p:
-                    p.write(img)
+        if self.total_frame_count is None:
+            metadata = metadata or self._load_metadata()
+            self.total_frame_count = metadata.total_frame_count
+
+        if self.duration is None:
+            metadata = metadata or self._load_metadata()
+            self.duration = metadata.duration
+
+        if self.clip_end_frame is None:
+            metadata = metadata or self._load_metadata()
+            self.clip_end_frame = metadata.total_frame_count
+
+    def _load_metadata(self):
+        return etav.VideoMetadata.build_for(self.data_path)
 
 
 class BuilderDataset(DataRecords):
-    '''A BuilderDataset is managed by a LabeledDatasetBuilder.
-    DatasetTransformers operate on BuilderDatasets.
+    '''Base class for records that are managed by `LabeledDatasetBuilder`s and
+    operated on by `DatasetTransformer`s in order to build new
+    `LabeledDataset`s.
     '''
+    pass
 
 
 class BuilderImageDataset(BuilderDataset):
