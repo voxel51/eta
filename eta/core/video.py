@@ -2520,11 +2520,23 @@ class VideoStreamInfo(etas.Serializable):
             VideoStreamInfoError: if the frame size could not be determined
         '''
         try:
-            return (
-                int(self.stream_info["width"]),
-                int(self.stream_info["height"]),
-            )
-        except KeyError:
+            # Must check if the video is rotated!
+            rotation = int(self.stream_info["tags"]["rotate"])
+        except (KeyError, ValueError):
+            rotation = 0
+
+        try:
+            width = int(self.stream_info["width"])
+            height = int(self.stream_info["height"])
+
+            if (rotation // 90) % 2:
+                logger.debug(
+                    "Found video with rotation %d; swapping width and height",
+                    rotation)
+                width, height = height, width
+
+            return width, height
+        except (KeyError, ValueError):
             raise VideoStreamInfoError(
                 "Unable to determine frame size of the video")
 
