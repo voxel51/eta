@@ -54,10 +54,25 @@ def timestamp_to_frame_number(timestamp, duration, total_frame_count):
     Returns:
         the frame number associated with the given timestamp in the video
     '''
-    if isinstance(timestamp, six.string_types):
-        timestamp = timestamp_str_to_seconds(timestamp)
+    timestamp = timestamp_to_seconds(timestamp)
     alpha = timestamp / duration
     return 1 + int(round(alpha * (total_frame_count - 1)))
+
+
+def timestamp_to_seconds(timestamp):
+    '''Converts a timestamp that is in either seconds or "HH:MM:SS.XXX" format
+    to seconds.
+
+    Args:
+        timestamp: a timestamp in seconds or "HH:MM:SS.XXX" format
+
+    Returns:
+        a timestamp in seconds
+    '''
+    if isinstance(timestamp, six.string_types):
+        return timestamp_str_to_seconds(timestamp)
+
+    return timestamp
 
 
 def timestamp_str_to_seconds(timestamp):
