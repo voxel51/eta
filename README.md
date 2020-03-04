@@ -31,19 +31,41 @@ ETA is very portable:
 - Supports CUDA 8, 9 and 10 (for GPU installations)
 
 
-## Installation
+## Docker Installation
 
-0. Activate a [virtual environment](docs/virtualenv_guide.md) (optional but
-highly recommended)
+If you prefer to operate via Docker, see the
+[Docker Build Guide](docs/docker_build_guide.md) for simple instructions for
+building a Docker image with an ETA environment installed.
 
-1. Clone the repository:
+
+## Local Installation
+
+### Instructions
+
+The following instructions describe how to install ETA locally on your machine.
+
+#### Step 0: Setup your Python environment
+
+It is assumed that you already have
+[Python installed](https://www.python.org/downloads) on your machine.
+
+**IMPORTANT:** ETA assumes that the version of Python that you intend to use
+is accessible via `python` and `pip` on your path. In particular, for Python 3
+users, this means that you may need to alias `python3` and `pip3` to `python`
+and `pip`, respectively.
+
+We strongly recommend that you install ETA
+[in a virtual environment](docs/virtualenv_guide.md) to maintain a clean
+workspace.
+
+#### Step 1: Clone the repository
 
 ```shell
 git clone https://github.com/voxel51/eta
 cd eta
 ```
 
-2. Run the install script:
+#### Step 2: Run the install script
 
 ```shell
 bash install.bash
@@ -54,13 +76,21 @@ sudo privileges. Note that the install script supports flags that control
 things like (on macOS) whether `port` or `brew` is used to install packages.
 Run `bash install.bash -h` for more information.
 
-The script inspects your system to see if CUDA is installed, and, if it is,
-TensorFlow is installed with GPU support. In particular, if CUDA 9 is found,
-the latest version of the `tensorflow-gpu` package is installed, and if CUDA 8
-is found, `tensorflow-gpu 1.4` is installed.
+For Linux installs, the script inspects your system to see if CUDA is installed
+via the `lspci` command. If CUDA is available, TensorFlow is installed with GPU
+support. The table below lists the version of TensorFlow that will be
+installed:
 
-Note that ETA is installed in editable via `pip install -e .`, so don't delete
-the directory after installation!
+| CUDA Version Found | TensorFlow Version Installed |
+| ------------------ | ---------------------------- |
+| CUDA 8 | `tensorflow-gpu==1.4` |
+| CUDA 9 | `tensorflow-gpu==1.4` |
+| CUDA 10 | `tensorflow-gpu==1.4` |
+| Other CUDA | the latest available `tensorflow-gpu` |
+| No CUDA | `tensorflow==1.12.0`
+
+Note that ETA is installed in editable mode via `pip install -e .`, so don't
+delete the directory after installation!
 
 ### Lite installation
 
@@ -83,7 +113,7 @@ file to configure various package-level constants. Many advanced ETA features
 such as pipeline building, model management, etc. require a properly configured
 environment to function.
 
-To setup your environment, create a copy the example configuration file
+To setup your environment, create a copy the example configuration file:
 
 ```shell
 cp config-example.json config.json
@@ -133,35 +163,19 @@ The ETA package is organized as described below. For more information about the
 design and function of the various ETA components, read the documentation in
 the [docs folder](https://github.com/voxel51/eta/tree/develop/docs).
 
-- `eta/classifiers/`: interfaces for common classifiers
-
-- `eta/core/`: the core ETA library, which includes utilities for working
-with images, videos, embeddings, and much more.
-
-- `eta/detectors/`: interfaces for common detectors
-
-- `eta/docs/`: documentation about the ETA library
-
-- `eta/examples/`: examples of using the ETA library
-
-- `eta/models/`: library of ML models. The `manifest.json` file in this
-folder enumerates the models, which are downloaded to this folder as needed.
-See the [Models developer's guide](https://github.com/voxel51/eta/blob/develop/docs/models_dev_guide.md)
-for more information about ETA's model registry.
-
-- `eta/modules/`: library of video processing/analytics modules. See the
-[Module developer's guide](https://github.com/voxel51/eta/blob/develop/docs/modules_dev_guide.md)
-for more information about ETA modules.
-
-- `eta/pipelines/`: library of video processing/analytics pipelines. See the
-[Pipeline developer's guide](https://github.com/voxel51/eta/blob/develop/docs/pipelines_dev_guide.md)
-for more information about ETA pipelines.
-
-- `eta/resources/`: resources such as media, templates, etc.
-
-In addition, ETA makes use of the following external dependencies:
-
-- `tensorflow/`: Third-party TensorFlow repositories that ETA builds upon
+| Directory | Description |
+| --------- | ----------- |
+| `eta/classifiers` | wrappers for performing inference with common classifiers |
+| `eta/core` | the core ETA library, which includes utilities for working with images, videos, embeddings, and much more |
+| `eta/detectors` | wrappers for performing inference with common detectors |
+| `eta/docs` | documentation about the ETA library |
+| `eta/examples` | examples of using the ETA library |
+| `eta/models` | library of ML models. The `manifest.json` file in this folder enumerates the models, which are downloaded to this folder as needed. See the [Models developer's guide](https://github.com/voxel51/eta/blob/develop/docs/models_dev_guide.md) for more information about ETA's model registry |
+| `eta/modules` | library of video processing/analytics modules. See the [Module developer's guide](https://github.com/voxel51/eta/blob/develop/docs/modules_dev_guide.md) for more information about ETA modules |
+| `eta/pipelines` | library of video processing/analytics pipelines. See the [Pipeline developer's guide](https://github.com/voxel51/eta/blob/develop/docs/pipelines_dev_guide.md) for more information about ETA pipelines |
+| `eta/resources` | resources such as media, templates, etc |
+| `eta/segmenters` | wrappers for performing inference with common semantic segmenters |
+| `tensorflow` | third-party TensorFlow repositories that ETA builds upon |
 
 
 ## Uninstallation

@@ -165,7 +165,8 @@ class VideoMetadata(etas.Serializable):
     '''Class encapsulating metadata about a video.
 
     Attributes:
-        start_time: a datetime describing the start (world) time of the video
+        start_time: (optional) a datetime describing the start (world) time of
+            the video
         frame_size: the [width, height] of the video frames
         frame_rate: the frame rate of the video
         total_frame_count: the total number of frames in the video
@@ -173,8 +174,8 @@ class VideoMetadata(etas.Serializable):
         size_bytes: the size of the video file on disk, in bytes
         mime_type: the MIME type of the video
         encoding_str: the encoding string for the video
-        gps_waypoints: a GPSWaypoints instance describing the GPS coordinates
-            for the video
+        gps_waypoints: (optional) a GPSWaypoints instance describing the GPS
+            coordinates for the video
     '''
 
     def __init__(
@@ -184,7 +185,8 @@ class VideoMetadata(etas.Serializable):
         '''Creates a VideoMetadata instance.
 
         Args:
-            start_time: a datetime describing
+            start_time: (optional) a datetime describing the start (world) time
+                of the video
             frame_size: the [width, height] of the video frames
             frame_rate: the frame rate of the video
             total_frame_count: the total number of frames in the video
@@ -192,8 +194,8 @@ class VideoMetadata(etas.Serializable):
             size_bytes: the size of the video file on disk, in bytes
             mime_type: the MIME type of the video
             encoding_str: the encoding string for the video
-            gps_waypoints: a GPSWaypoints instance describing the GPS
-                coordinates for the video
+            gps_waypoints: (optional) a GPSWaypoints instance describing the
+                GPS coordinates for the video
         '''
         self.start_time = start_time
         self.frame_size = frame_size
@@ -206,8 +208,14 @@ class VideoMetadata(etas.Serializable):
         self.gps_waypoints = gps_waypoints
 
     @property
+    def aspect_ratio(self):
+        '''The aspect ratio of the video.'''
+        width, height = self.frame_size
+        return width * 1.0 / height
+
+    @property
     def has_gps(self):
-        '''Returns True/False if this object has GPS waypoints.'''
+        '''Whether this object has GPS waypoints.'''
         return self.gps_waypoints is not None
 
     def get_timestamp(self, frame_number=None, world_time=None):
@@ -284,36 +292,46 @@ class VideoMetadata(etas.Serializable):
         _attrs = [
             "start_time", "frame_size", "frame_rate", "total_frame_count",
             "duration", "size_bytes", "mime_type", "encoding_str",
-            "gps_waypoints"
-        ]
-        # Exclude attributes that are None
+            "gps_waypoints"]
         return [a for a in _attrs if getattr(self, a) is not None]
 
     @classmethod
-    def build_for(cls, filepath, start_time=None, gps_waypoints=None):
-        '''Builds a VideoMetadata object for the given video.
+    def build_for(cls, video_path, verbose=False):
+        '''Builds a VideoMetadata instance for the given video.
 
         Args:
-            filepath: the path to the video on disk
-            start_time: an optional datetime specifying the start time of the
-                video
-            gps_waypoints: an optional GPSWaypoints instance describing the
-                GPS coordinates of the video
+            video_path: the path to the video
+            verbose: whether to generously log the process of extracting the
+                video metadata. By default, this is False
 
         Returns:
             a VideoMetadata instance
         '''
-        vsi = VideoStreamInfo.build_for(filepath)
+        vsi = VideoStreamInfo.build_for(video_path, verbose=verbose)
+        metadata = cls.from_stream_info(vsi)
+        if verbose:
+            logger.info("Extracted video metadata: %s", str(metadata))
+
+        return metadata
+
+    @classmethod
+    def from_stream_info(cls, stream_info):
+        '''Builds a VideoMetadata from a VideoStreamInfo.
+
+        Args:
+            stream_info: a VideoStreamInfo
+
+        Returns:
+            a VideoMetadata
+        '''
         return cls(
-            start_time=start_time,
-            frame_size=vsi.frame_size,
-            frame_rate=vsi.frame_rate,
-            total_frame_count=vsi.total_frame_count,
-            duration=vsi.duration,
-            size_bytes=vsi.size_bytes,
-            mime_type=etau.guess_mime_type(filepath),
-            encoding_str=vsi.encoding_str,
-            gps_waypoints=gps_waypoints,
+            frame_size=stream_info.frame_size,
+            frame_rate=stream_info.frame_rate,
+            total_frame_count=stream_info.total_frame_count,
+            duration=stream_info.duration,
+            size_bytes=stream_info.size_bytes,
+            mime_type=stream_info.mime_type,
+            encoding_str=stream_info.encoding_str,
         )
 
     @classmethod
@@ -327,8 +345,10 @@ class VideoMetadata(etas.Serializable):
         if isinstance(gps_waypoints, dict):
             gps_waypoints = etag.GPSWaypoints.from_dict(gps_waypoints)
         elif isinstance(gps_waypoints, list):
-            # this supports a list of GPSWaypoint instances rather than a
+            #
+            # This supports a list of GPSWaypoint instances rather than a
             # serialized GPSWaypoints instance. for backwards compatability
+            #
             points = [etag.GPSWaypoint.from_dict(p) for p in gps_waypoints]
             gps_waypoints = etag.GPSWaypoints(points=points)
 
@@ -1836,37 +1856,43 @@ class BigVideoSetLabels(VideoSetLabels, etas.BigSet):
 class VideoStreamInfo(etas.Serializable):
     '''Class encapsulating the stream info for a video.'''
 
-    def __init__(self, stream_info, format_info):
-        '''Constructs a VideoStreamInfo instance.
+    def __init__(self, stream_info, format_info, mime_type=None):
+        '''Creates a VideoStreamInfo instance.
 
         Args:
             stream_info: a dictionary of video stream info
             format_info: a dictionary of video format info
+            mime_type: (optional) the MIME type of the video
         '''
         self.stream_info = stream_info
         self.format_info = format_info
-
-    @property
-    def encoding_str(self):
-        '''The video encoding string, or "" if it code not be found.'''
-        _encoding_str = str(self.stream_info.get("codec_tag_string", ""))
-        if _encoding_str is None:
-            logger.warning("Unable to determine encoding string")
-        return _encoding_str
+        self._mime_type = mime_type
 
     @property
     def frame_size(self):
         '''The (width, height) of each frame.
 
         Raises:
-            VideoStreamInfoError if the frame size could not be determined
+            VideoStreamInfoError: if the frame size could not be determined
         '''
         try:
-            return (
-                int(self.stream_info["width"]),
-                int(self.stream_info["height"]),
-            )
-        except KeyError:
+            # Must check if the video is rotated!
+            rotation = int(self.stream_info["tags"]["rotate"])
+        except (KeyError, ValueError):
+            rotation = 0
+
+        try:
+            width = int(self.stream_info["width"])
+            height = int(self.stream_info["height"])
+
+            if (rotation // 90) % 2:
+                logger.debug(
+                    "Found video with rotation %d; swapping width and height",
+                    rotation)
+                width, height = height, width
+
+            return width, height
+        except (KeyError, ValueError):
             raise VideoStreamInfoError(
                 "Unable to determine frame size of the video")
 
@@ -1874,8 +1900,8 @@ class VideoStreamInfo(etas.Serializable):
     def aspect_ratio(self):
         '''The aspect ratio of the video.
 
-        Raises a VideoStreamInfoError if the frame size could not be
-        determined.
+        Raises:
+            VideoStreamInfoError: if the frame size could not be determined
         '''
         width, height = self.frame_size
         return width * 1.0 / height
@@ -1972,46 +1998,79 @@ class VideoStreamInfo(etas.Serializable):
         logger.warning("Unable to determine video size; returning -1")
         return -1
 
+    @property
+    def mime_type(self):
+        '''The MIME type of the video, or None if it is not available.'''
+        return self._mime_type
+
+    @property
+    def encoding_str(self):
+        '''The video encoding string, or "" if it code not be found.'''
+        _encoding_str = str(self.stream_info.get("codec_tag_string", ""))
+        if _encoding_str is None:
+            logger.warning("Unable to determine encoding string")
+
+        return _encoding_str
+
     def attributes(self):
         '''Returns the list of class attributes that will be serialized.'''
         return self.custom_attributes(dynamic=True)
 
     @classmethod
-    def build_for(cls, inpath):
+    def build_for(cls, video_path, verbose=False):
         '''Builds a VideoStreamInfo instance for the given video.
 
         Args:
-            inpath: the path to the input video
+            video_path: the path to the video
+            verbose: whether to generously log the process of extracting the
+                stream info. By default, this is False
 
         Returns:
             a VideoStreamInfo instance
         '''
-        stream_info, format_info = _get_stream_info(inpath)
-        return cls(stream_info, format_info)
+        if verbose:
+            logger.info("Getting stream info for '%s'", video_path)
+
+        stream_info, format_info = _get_stream_info(
+            video_path, verbose=verbose)
+
+        if verbose:
+            logger.info("Found format info: %s", etas.json_to_str(format_info))
+            logger.info(
+                "Found video stream: %s", etas.json_to_str(stream_info))
+
+        mime_type = etau.guess_mime_type(video_path)
+        return cls(stream_info, format_info, mime_type=mime_type)
 
     @classmethod
     def from_dict(cls, d):
-        '''Constructs a VideoStreamInfo from a JSON dictionary.'''
+        '''Constructs a VideoStreamInfo from a JSON dictionary.
+
+        Args:
+            d: a JSON dictionary
+
+        Returns:
+            a VideoStreamInfo
+        '''
         stream_info = d["stream_info"]
         format_info = d["format_info"]
-        return cls(stream_info, format_info)
+        mime_type = d.get("mime_type", None)
+        return cls(stream_info, format_info, mime_type=mime_type)
 
 
 class VideoStreamInfoError(Exception):
-    '''Exception raised when an invalid video stream info dictionary is
-    encountered.
-    '''
+    '''Exception raised when a problem with a VideoStreamInfo occurs.'''
     pass
 
 
-def _get_stream_info(inpath):
+def _get_stream_info(inpath, verbose=False):
     # Get stream info via ffprobe
     ffprobe = FFprobe(opts=[
         "-show_format",              # get format info
         "-show_streams",             # get stream info
         "-print_format", "json",     # return in JSON format
     ])
-    out = ffprobe.run(inpath, decode=True)
+    out = ffprobe.run(inpath, decode=True, verbose=verbose)
     info = etas.load_json(out)
 
     # Get format info
@@ -2030,18 +2089,6 @@ def _get_stream_info(inpath):
         stream_info = video_streams[0]
 
     return stream_info, format_info
-
-
-def get_encoding_str(inpath):
-    '''Get the encoding string of the input video.
-
-    Args:
-        inpath: video path
-
-    Returns:
-        the encoding string
-    '''
-    return VideoStreamInfo.build_for(inpath).encoding_str
 
 
 def get_frame_rate(inpath):
@@ -2093,6 +2140,18 @@ def get_duration(inpath):
     return VideoStreamInfo.build_for(inpath).duration
 
 
+def get_encoding_str(inpath):
+    '''Get the encoding string of the input video.
+
+    Args:
+        inpath: video path
+
+    Returns:
+        the encoding string
+    '''
+    return VideoStreamInfo.build_for(inpath).encoding_str
+
+
 def get_raw_frame_number(raw_frame_rate, raw_frame_count, fps, sampled_frame):
     '''Get the raw frame number corresponding to the given sampled frame
     number.
@@ -2118,6 +2177,21 @@ def get_raw_frame_number(raw_frame_rate, raw_frame_count, fps, sampled_frame):
     return int(raw_frame)
 
 
+def read_video_as_array(video_path):
+    '''Reads the video from the given path into an in-memory array.
+
+    CAUTION: in-memory videos are huge; use this at your own risk!
+
+    Args:
+        video_path: the path to the video to load
+
+    Returns:
+        a numpy array of size (num_frames, height, width, num_channels)
+    '''
+    with FFmpegVideoReader(video_path) as vr:
+        return np.asarray([img for img in vr])
+
+
 def extract_clip(
         video_path, output_path, start_time=None, duration=None, fast=False):
     '''Extracts the specified clip from the video.
@@ -2136,7 +2210,7 @@ def extract_clip(
     ```
 
     Args:
-        video_path: the path to a video
+        video_path: the path to the video
         output_path: the path to write the extracted video clip
         start_time: the start timestamp, which can either be a float value of
             seconds or a string in "HH:MM:SS.XXX" format. If omitted, the
@@ -2215,7 +2289,7 @@ def sample_select_frames(
             VideoProcessor may be able to extract more frames such cases
 
     Args:
-        video_path: the path to a video
+        video_path: the path to the video
         frames: a sorted list of frame numbers to sample
         output_patt: an optional output pattern like "/path/to/frames-%d.png"
             specifying where to write the sampled frames. If omitted, the
@@ -2280,7 +2354,7 @@ def _sample_select_frames_fast(video_path, frames, output_patt, size):
             ffmpeg.run(video_path, tmp_patt)
         except etau.ExecutableRuntimeError as e:
             # Graceful failure if frames couldn't be sampled
-            logger.warning(e, exc_info=True)
+            logger.warning(etau.summarize_long_str(str(e), 500))
             logger.warning(
                 "A sampling error occured; attempting to gracefully continue")
 
@@ -2360,7 +2434,7 @@ def sample_first_frames(imgs_or_video_path, k, stride=1, size=None):
 
     Args:
         imgs_or_video_path: can be either the path to the input video or an
-            array of frames of size [num_frames, height, width, num_channels]
+            array of frames of size (num_frames, height, width, num_channels)
         k: number of frames to extract
         stride: number of frames to be skipped in between. By default, a
             contiguous array of frames in extracted
@@ -2406,7 +2480,7 @@ def uniformly_sample_frames(imgs_or_video_path, k, size=None):
 
     Args:
         imgs_or_video_path: can be either the path to the input video or an
-            array of frames of size [num_frames, height, width, num_channels]
+            array of frames of size (num_frames, height, width, num_channels)
         k: the number of frames to extract
         size: an optional (width, height) to resize the sampled frames. By
             default, the native dimensions of the frames are used
@@ -2449,7 +2523,7 @@ def sliding_window_sample_frames(imgs_or_video_path, k, stride, size=None):
 
     Args:
         imgs_or_video_path: can be either the path to the input video or an
-            array of frames of size [num_frames, height, width, num_channels]
+            array of frames of size (num_frames, height, width, num_channels)
         k: the size of each window
         stride: the stride for sliding window
         size: an optional (width, height) to resize the sampled frames. By
@@ -2510,7 +2584,7 @@ def extract_keyframes(video_path, output_patt=None):
     and are faster to extract than an arbitrary frame.
 
     Args:
-        video_path: the path to a video
+        video_path: the path to the video
         output_patt: an optional output pattern like "/path/to/frames-%d.png"
             specifying where to write the sampled frames. If omitted, the
             frames are instead returned in an in-memory list
@@ -2550,7 +2624,7 @@ def split_video(
     ```
 
     Args:
-        video_path: the path to a video
+        video_path: the path to the video
         output_patt: an output pattern like "/path/to/clips-%03d.mp4"
             specifying where to write the output clips
         num_clips: the number of (roughly) equal size clips to break the
@@ -3459,7 +3533,7 @@ class FFprobe(object):
         '''
         return " ".join(self._args) if self._args else None
 
-    def run(self, inpath, decode=False):
+    def run(self, inpath, decode=False, verbose=False):
         '''Run the ffprobe binary with the specified input path.
 
         Args:
@@ -3469,6 +3543,8 @@ class FFprobe(object):
             out: the stdout from the ffprobe binary
             decode: whether to decode the output bytes into utf-8 strings. By
                 default, the raw bytes are returned
+            verbose: whether to log the ffprobe command used at INFO level. By
+                default, this is False
 
         Raises:
             ExecutableNotFoundError: if the ffprobe binary cannot be found
@@ -3482,12 +3558,13 @@ class FFprobe(object):
             ["-i", inpath]
         )
 
+        if verbose:
+            logger.info("Executing '%s'", self.cmd)
+        else:
+            logger.debug("Executing '%s'", self.cmd)
+
         try:
-            self._p = Popen(
-                self._args,
-                stdout=PIPE,
-                stderr=PIPE,
-            )
+            self._p = Popen(self._args, stdout=PIPE, stderr=PIPE)
         except EnvironmentError as e:
             if e.errno == errno.ENOENT:
                 raise etau.ExecutableNotFoundError("ffprobe")
@@ -3578,7 +3655,7 @@ class FFmpeg(object):
         '''
         return " ".join(self._args) if self._args else None
 
-    def run(self, inpath, outpath):
+    def run(self, inpath, outpath, verbose=False):
         '''Run the ffmpeg binary with the specified input/outpath paths.
 
         Args:
@@ -3588,6 +3665,8 @@ class FFmpeg(object):
                 directory is created if needed. If outpath is "-", output
                 streaming mode is activated and data can be read via the
                 read() method
+            verbose: whether to log the ffmpeg command used at INFO level. By
+                default, this is False
 
         Raises:
             ExecutableNotFoundError: if the ffmpeg binary cannot be found
@@ -3638,8 +3717,12 @@ class FFmpeg(object):
         if not self.is_output_streaming:
             etau.ensure_path(outpath)
 
-        try:
+        if verbose:
+            logger.info("Executing '%s'", self.cmd)
+        else:
             logger.debug("Executing '%s'", self.cmd)
+
+        try:
             self._p = Popen(self._args, stdin=PIPE, stdout=PIPE, stderr=PIPE)
         except EnvironmentError as e:
             if e.errno == errno.ENOENT:

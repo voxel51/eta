@@ -92,6 +92,39 @@ def standarize_strs(arg):
     return arg
 
 
+def summarize_long_str(s, max_len, mode="middle"):
+    '''Renders a shorter version of a long string (if necessary) to meet a
+    given length requirement by replacing part of the string with "..."
+
+    Args:
+        s: a string
+        max_len: the desired maximum length
+        mode: the summary mode, which controls which portion of long strings
+            are deleted. Supported values are ("first", "middle", "last"). The
+            default is "middle"
+
+    Returns:
+        the summarized string
+    '''
+    if len(s) <= max_len:
+        return s
+
+    _mode = mode.lower()
+
+    if _mode == "first":
+        return "... " + s[-(max_len - 4):]
+
+    if _mode == "middle":
+        len1 = math.ceil(0.5 * (max_len - 5))
+        len2 = math.floor(0.5 * (max_len - 5))
+        return s[:len1] + " ... " + s[-len2:]
+
+    if _mode == "last":
+        return s[:(max_len - 4)] + " ..."
+
+    raise ValueError("Unsupported mode '%s'" % mode)
+
+
 def get_localtime():
     '''Gets the local time in "YYYY-MM-DD HH:MM:SS" format.
 
