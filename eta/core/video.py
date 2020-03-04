@@ -2876,7 +2876,7 @@ def extract_clip(
 
     When fast=False, the following ffmpeg command is used:
     ```
-    # Slow, accurate option
+    # Slower, more accurate option
     ffmpeg -ss <start_time> -i <video_path> -t <duration> <output_path>
     ```
 
