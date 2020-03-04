@@ -15,12 +15,14 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
-from future.utils import iteritems
+from future.utils import iteritems, itervalues
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+from collections import defaultdict
 from copy import deepcopy
+import logging
 
 import eta.core.data as etad
 import eta.core.frameutils as etaf
@@ -29,6 +31,9 @@ import eta.core.labels as etal
 import eta.core.objects as etao
 import eta.core.serial as etas
 import eta.core.utils as etau
+
+
+logger = logging.getLogger(__name__)
 
 
 class DetectedEvent(etal.Labels, etag.HasBoundingBox):
@@ -83,54 +88,54 @@ class DetectedEvent(etal.Labels, etag.HasBoundingBox):
 
     @property
     def is_empty(self):
-        '''Whether this event has no labels of any kind.'''
+        '''Whether the event has no labels of any kind.'''
         return not (
             self.has_label or self.has_bounding_box or self.has_mask
             or self.has_attributes or self.has_objects)
 
     @property
     def has_label(self):
-        '''Whether this event has a label.'''
+        '''Whether the event has a label.'''
         return self.label is not None
 
     @property
     def has_bounding_box(self):
-        '''Whether this event has a bounding box.'''
+        '''Whether the event has a bounding box.'''
         return self.bounding_box is not None
 
     @property
     def has_mask(self):
-        '''Whether this event has a segmentation mask.'''
+        '''Whether the event has a segmentation mask.'''
         return self.mask is not None
 
     @property
     def has_confidence(self):
-        '''Whether this event has a confidence.'''
+        '''Whether the event has a label confidence.'''
         return self.confidence is not None
 
     @property
     def has_top_k_probs(self):
-        '''Whether this event has top-k probabilities.'''
+        '''Whether the event has top-k probabilities for its label.'''
         return self.top_k_probs is not None
 
     @property
     def has_index(self):
-        '''Whether this event has an index.'''
+        '''Whether the event has an index.'''
         return self.index is not None
 
     @property
     def has_frame_number(self):
-        '''Whether this event has a frame number.'''
+        '''Whether the event has a frame number.'''
         return self.frame_number is not None
 
     @property
     def has_attributes(self):
-        '''Whether this event has attributes.'''
+        '''Whether the event has attributes.'''
         return bool(self.attrs)
 
     @property
     def has_objects(self):
-        '''Whether this event has at least one object.'''
+        '''Whether the event has at least one object.'''
         return bool(self.objects)
 
     @classmethod
@@ -166,6 +171,51 @@ class DetectedEvent(etal.Labels, etag.HasBoundingBox):
         '''
         return self.bounding_box
 
+    def get_index(self):
+        '''Returns the `index` of the event.
+
+        Returns:
+            the index, or None if the event has no index
+        '''
+        return self.index
+
+    def offset_index(self, offset):
+        '''Adds the given offset to the event's index.
+
+        If the event has no index, this does nothing.
+
+        Args:
+            offset: the integer offset
+        '''
+        if self.has_index:
+            self.index += offset
+
+    def clear_index(self):
+        '''Clears the `index` of the event.'''
+        self.index = None
+
+    def get_object_indexes(self):
+        '''Returns the set of `index`es of objects in the event.
+
+        `None` indexes are omitted.
+
+        Returns:
+            a set of indexes
+        '''
+        return self.objects.get_indexes()
+
+    def offset_object_indexes(self, offset):
+        '''Adds the given offset to all objects in the event with `index`es.
+
+        Args:
+            offset: the integer offset
+        '''
+        self.objects.offset_indexes(offset)
+
+    def clear_object_indexes(self):
+        '''Clears the `index`es of all objects in the event.'''
+        self.objects.clear_indexes()
+
     def add_attribute(self, attr):
         '''Adds the attribute to the event.
 
@@ -198,6 +248,26 @@ class DetectedEvent(etal.Labels, etag.HasBoundingBox):
         '''
         self.objects.add_container(objs)
 
+    def pop_attributes(self):
+        '''Pops the attributes from the event.
+
+        Returns:
+            an AttributeContainer
+        '''
+        attrs = self.attrs
+        self.clear_attributes()
+        return attrs
+
+    def pop_objects(self):
+        '''Pops the objects from the event.
+
+        Returns:
+            a DetectedObjectContainer
+        '''
+        objects = self.objects
+        self.clear_objects()
+        return objects
+
     def clear_attributes(self):
         '''Removes all frame-level attributes from the event.'''
         self.attrs = etad.AttributeContainer()
@@ -229,11 +299,13 @@ class DetectedEvent(etal.Labels, etag.HasBoundingBox):
             if not allow_none_label:
                 raise EventSchemaError(
                     "None event label is not allowed by the schema")
+
         elif self.label != schema.get_label():
             raise EventSchemaError(
                 "Label '%s' does not match event schema" % self.label)
 
-        self.attrs.filter_by_schema(schema.frames)
+        self.attrs.filter_by_schema(
+            schema.frames, constant_schema=schema.attrs)
         self.objects.filter_by_schema(schema.objects)
 
     def remove_objects_without_attrs(self, labels=None):
@@ -312,12 +384,67 @@ class DetectedEventContainer(etal.LabelsContainer):
     _ELE_ATTR = "events"
 
     def get_labels(self):
-        '''Returns a set containing the labels of the `DetectedEvent`s.
+        '''Returns the set of `label`s of all events in the container.
 
         Returns:
             a set of labels
         '''
-        return set(obj.label for obj in self)
+        return set(devent.label for devent in self)
+
+    def get_indexes(self):
+        '''Returns the set of `index`es of all events in the container.
+
+        `None` indexes are omitted.
+
+        Returns:
+            a set of indexes
+        '''
+        return set(devent.index for devent in self if devent.has_index)
+
+    def offset_indexes(self, offset):
+        '''Adds the given offset to all events with `index`es.
+
+        Args:
+            offset: the integer offset
+        '''
+        for devent in self:
+            devent.offset_index(offset)
+
+    def clear_indexes(self):
+        '''Clears the `index` of all events in the container.'''
+        for devent in self:
+            devent.clear_index()
+
+    def get_object_indexes(self):
+        '''Returns the set of `index`es of all objects in the events in the
+        container.
+
+        `None` indexes are omitted.
+
+        Returns:
+            a set of indexes
+        '''
+        obj_indexes = set()
+        for devent in self:
+            obj_indexes.update(devent.get_object_indexes())
+
+        return obj_indexes
+
+    def offset_object_indexes(self, offset):
+        '''Adds the given offset to all objects with `index`es in all events
+        in the container.
+
+        Args:
+            offset: the integer offset
+        '''
+        for devent in self:
+            devent.offset_object_indexes(offset)
+
+    def clear_object_indexes(self):
+        '''Clears the `index`es of all objects in all events in the container.
+        '''
+        for devent in self:
+            devent.clear_object_indexes()
 
     def sort_by_confidence(self, reverse=False):
         '''Sorts the `DetectedEvent`s by confidence.
@@ -376,71 +503,107 @@ class DetectedEventContainer(etal.LabelsContainer):
             event.remove_objects_without_attrs(labels=labels)
 
 
-class VideoEvent(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
+class VideoEvent(
+        etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView,
+        etal.HasSpatiotemporalView):
     '''A spatiotemporal event in a video.
 
     `VideoEvent`s are spatiotemporal concepts that describe a collection of
     information about an event in a video. `VideoEvent`s can have labels with
     confidences, event-level attributes that apply to the event over all
     frames, spatiotemporal objects, frame-level attributes such as bounding
-    boxes, object detections, and attributes that apply to individual frames,
-    and child objects and events.
+    boxes, object detections, and attributes that apply to individual frames.
+
+    Note that the VideoEvent class implements the `HasFramewiseView` and
+    `HasSpatiotemporalView` mixins. This means that all VideoEvent instances
+    can be rendered in both *framewise* and *spatiotemporal* format. Converting
+    between these formats is guaranteed to be lossless and idempotent.
+
+    In framewise format, `VideoEvent`s store all information at the
+    frame-level in `DetectedEvent`s. In particular, the following invariants
+    will hold:
+
+        - The `attrs` field will be empty. All event-level attributes will be
+          stored as frame-level `Attribute`s within `DetectedEvent`s with
+          `constant == True`
+
+        - The `objects` field will be empty. All video objects will be stored
+          in framewise format as `DetectedObject`s within the `DetectedEvent`s
+          in the frames in which they are observed
+
+    In spatiotemporal format, `VideoEvent`s store all possible information in
+    the highest-available video construct. In particular, the following
+    invariants will hold:
+
+        - The `attrs` fields of all `DetectedEvent`s will contain only
+          non-constant `Attribute`s. All constant attributes will be upgraded
+          to event-level attributes in the top-level `attrs` field
+
+        - The `objects` fields of all `DetectedEvent`s will be empty. All
+          objects will be stored as `VideoObject`s in the top-level `objects`
+          field. Detections for objects with `index`es will be collected in a
+          single VideoObject, and each DetectedObject without an index will be
+          given its own VideoObject. Additionally, all constant attributes of
+          `DetectedObject`s will be upgraded to object-level attributes in
+          their parent VideoObject
 
     Attributes:
         type: the fully-qualified class name of the event
         label: (optional) the event label
         confidence: (optional) the label confidence in [0, 1]
-        support: a FrameRanges instance describing the support of the event
         index: (optional) an index assigned to the event
-        uuid: (optional) a UUID assigned to the event
+        support: a FrameRanges instance describing the support of the event
         attrs: an AttributeContainer of event-level attributes
         objects: a VideoObjectContainer of objects
         frames: dictionary mapping frame numbers to `DetectedEvent`s
-        child_objects: a set of UUIDs of child `VideoObject`s
-        child_events: a set of UUIDs of child `VideoEvent`s
     '''
 
     def __init__(
-            self, label=None, confidence=None, support=None, index=None,
-            uuid=None, attrs=None, objects=None, frames=None,
-            child_objects=None, child_events=None):
+            self, label=None, confidence=None, index=None, support=None,
+            attrs=None, objects=None, frames=None):
         '''Creates a VideoEvent instance.
 
         Args:
             label: (optional) the event label
             confidence: (optional) the label confidence in [0, 1]
+            index: (optional) a index assigned to the event
             support: (optional) a FrameRanges instance describing the frozen
                 support of the event
-            index: (optional) a index assigned to the event
-            uuid: (optional) a UUID assigned to the event
             attrs: (optional) an AttributeContainer of event-level attributes
             objects: (optional) a VideoObjectContainer of objects
             frames: (optional) dictionary mapping frame numbers to
                 `DetectedEvent`s
-            child_objects: (optional) a set of UUIDs of child `VideoObject`s
-            child_events: (optional) a set of UUIDs of child `VideoEvent`s
         '''
         self.type = etau.get_class_name(self)
         self.label = label
         self.confidence = confidence
         self.index = index
-        self.uuid = uuid
         self.attrs = attrs or etad.AttributeContainer()
         self.objects = objects or etao.VideoObjectContainer()
         self.frames = frames or {}
-        self.child_objects = set(child_objects or [])
-        self.child_events = set(child_events or [])
         etal.HasLabelsSupport.__init__(self, support=support)
 
     @property
     def is_empty(self):
-        '''Whether this instance has no labels of any kind.'''
-        return False
+        '''Whether the event has no labels of any kind.'''
+        return not (
+            self.has_label or self.has_event_attributes
+            or self.has_video_objects or self.has_detections)
 
     @property
-    def has_attributes(self):
-        '''Whether the event has event- or frame-level attributes.'''
-        return self.has_event_attributes or self.has_frame_attributes
+    def has_label(self):
+        '''Whether the event has a label.'''
+        return self.label is not None
+
+    @property
+    def has_confidence(self):
+        '''Whether the event has a label confidence.'''
+        return self.confidence is not None
+
+    @property
+    def has_index(self):
+        '''Whether the event has an index.'''
+        return self.index is not None
 
     @property
     def has_event_attributes(self):
@@ -457,6 +620,11 @@ class VideoEvent(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
         return False
 
     @property
+    def has_attributes(self):
+        '''Whether the event has event- or frame-level attributes.'''
+        return self.has_event_attributes or self.has_frame_attributes
+
+    @property
     def has_video_objects(self):
         '''Whether the event has at least one VideoObject.'''
         return bool(self.objects)
@@ -471,14 +639,19 @@ class VideoEvent(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
         return False
 
     @property
-    def has_child_objects(self):
-        '''Whether the event has at least one child VideoObject.'''
-        return bool(self.child_objects)
+    def has_detections(self):
+        '''Whether the event has at least one non-empty DetectedEvent.'''
+        return any(not devent.is_empty for devent in itervalues(self.frames))
 
     @property
-    def has_child_events(self):
-        '''Whether the event has at least one child VideoEvent.'''
-        return bool(self.child_events)
+    def framewise_renderer_cls(self):
+        '''The LabelsFrameRenderer used by this class.'''
+        return VideoEventFrameRenderer
+
+    @property
+    def spatiotemporal_renderer_cls(self):
+        '''The LabelsSpatiotemporalRenderer used by this class.'''
+        return VideoEventSpatiotemporalRenderer
 
     def iter_attributes(self):
         '''Returns an iterator over the event-level attributes of the event.
@@ -507,6 +680,85 @@ class VideoEvent(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
         '''
         for frame_number in sorted(self.frames):
             yield self.frames[frame_number]
+
+    def get_index(self):
+        '''Returns the `index` of the event.
+
+        Returns:
+            the index, or None if the event has no index
+        '''
+        return self.index
+
+    def offset_index(self, offset):
+        '''Adds the given offset to the event's index.
+
+        If the event has no index, this does nothing.
+
+        Args:
+            offset: the integer offset
+        '''
+        if self.has_index:
+            self.index += offset
+            for devent in self.iter_detections():
+                devent.offset_index(offset)
+
+    def clear_index(self):
+        '''Clears the `index` of the event.'''
+        self.index = None
+        for devent in self.iter_detections():
+            devent.clear_index()
+
+    def get_object_indexes(self):
+        '''Returns the set of `index`es of objects in the event.
+
+        `None` indexes are omitted.
+
+        Returns:
+            a set of indexes
+        '''
+        obj_indexes = self.objects.get_indexes()
+        for devent in self.iter_detections():
+            obj_indexes.update(devent.get_object_indexes())
+
+        return obj_indexes
+
+    def offset_object_indexes(self, offset):
+        '''Adds the given offset to all objects in the event with `index`es.
+
+        Args:
+            offset: the integer offset
+        '''
+        self.objects.offset_indexes(offset)
+        for devent in self.iter_detections():
+            devent.offset_object_indexes(offset)
+
+    def clear_object_indexes(self):
+        '''Clears the `index`es of all objects in the event.'''
+        self.objects.clear_indexes()
+        for devent in self.iter_detections():
+            devent.clear_object_indexes()
+
+    def has_detection(self, frame_number):
+        '''Whether the event has a detection for the given frame number.
+
+        Args:
+            frame_number: the frame number
+
+        Returns:
+            True/False
+        '''
+        return frame_number in self.frames
+
+    def get_detection(self, frame_number):
+        '''Gets the detection for the given frame number, if available.
+
+        Args:
+            frame_number: the frame number
+
+        Returns:
+            a DetectedEvent, or None
+        '''
+        return self.frames.get(frame_number, None)
 
     def add_event_attribute(self, attr):
         '''Adds the event-level attribute to the event.
@@ -571,51 +823,35 @@ class VideoEvent(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
         else:
             self.objects.add_container(objects)
 
-    def add_detection(self, event, frame_number=None, clean=True):
+    def add_detection(self, event, frame_number=None):
         '''Adds the detection to the event.
+
+        The detection will have its `label` and `index` scrubbed.
 
         Args:
             event: a DetectedEvent
             frame_number: a frame number. If omitted, the DetectedEvent must
                 have its `frame_number` set
-            clean: whether to set the `label` and `index` fields of the
-                DetectedEvent to `None`. By default, this is True
         '''
-        self._add_detected_event(event, frame_number, clean)
+        self._add_detected_event(event, frame_number)
 
-    def add_detections(self, events, clean=True):
+    def add_detections(self, events):
         '''Adds the detections to the event.
 
-        The `DetectedEvent`s must have their `frame_number`s set.
+        The `DetectedEvent`s must have their `frame_number`s set, and they will
+        have their `label`s and `index`es scrubbed.
 
         Args:
             events: a DetectedEventContainer
-            clean: whether to set the `label` and `index` fields of the
-                `DetectedEvent`s to `None`. By default, this is True
         '''
-        self._add_detected_events(events, clean)
+        self._add_detected_events(events)
 
-    def add_child_object(self, obj):
-        '''Adds the VideoObject as a child of this event.
-
-        Args:
-            obj: a VideoObject, which must have its `uuid` set
-        '''
-        if obj.uuid is None:
-            raise ValueError("VideoObject must have its `uuid` set")
-
-        self.child_objects.add(obj.uuid)
-
-    def add_child_event(self, event):
-        '''Adds the VideoEvent as a child of this event.
-
-        Args:
-            event: a VideoEvent, which must have its `uuid` set
-        '''
-        if event.uuid is None:
-            raise ValueError("VideoEvent must have its `uuid` set")
-
-        self.child_events.add(event.uuid)
+    def remove_empty_frames(self):
+        '''Removes all empty DetectedEvents from this event.'''
+        self.frames = {
+            fn: devent for fn, devent in iteritems(self.frames)
+            if not devent.is_empty
+        }
 
     def clear_attributes(self):
         '''Removes all attributes of any kind from the event.'''
@@ -644,35 +880,11 @@ class VideoEvent(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
         '''Removes all `DetectedEvent`s from the event.'''
         self.frames = {}
 
-    def clear_child_objects(self):
-        '''Removes all child objects from the event.'''
-        self.child_objects = set()
-
-    def clear_child_events(self):
-        '''Removes all child events from the event.'''
-        self.child_events = set()
-
-    def render_framewise_labels(self):
-        '''Renders a framewise copy of the event.
-
-        Returns:
-            a VideoEvent whose labels are all contained in `DetectedEvent`s
-        '''
-        renderer = VideoEventFrameRenderer(self)
-        frames = renderer.render_all_frames()
-        return VideoEvent(frames=frames)
-
-    def filter_by_schema(self, schema, objects=None, events=None):
+    def filter_by_schema(self, schema):
         '''Filters the event by the given schema.
 
         Args:
             schema: an EventSchema
-            objects: an optional dictionary mapping uuids to `VideoObject`s. If
-                provided, the child objects of the event will be filtered by
-                their respective schemas
-            events: an optional dictionary mapping uuids to `VideoEvent`s. If
-                provided, the child events of the event will be filtered by
-                their respective schemas
 
         Raises:
             LabelsSchemaError: if the event label does not match the schema
@@ -682,31 +894,6 @@ class VideoEvent(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
         self.objects.filter_by_schema(schema.objects)
         for event in self.iter_detections():
             event.filter_by_schema(schema)
-
-        # @todo children...
-        '''
-        # Filter child objects
-        if objects:
-            for uuid in self.child_objects:
-                if uuid in objects:
-                    child_obj = objects[uuid]
-                    if not schema.has_object_label(child_obj.label):
-                        self.child_objects.remove(uuid)
-                    else:
-                        child_obj.filter_by_schema(
-                            schema.get_object_schema(child_obj.label))
-
-        # Filter child events
-        if events:
-            for uuid in self.child_events:
-                if uuid in events:
-                    child_event = events[uuid]
-                    if not schema.has_event_label(child_event.label):
-                        self.child_events.remove(uuid)
-                    else:
-                        child_event.filter_by_schema(
-                            schema.get_child_event_schema(child_event.label))
-        '''
 
     def remove_objects_without_attrs(self, labels=None):
         '''Removes objects that do not have attributes from this event.
@@ -731,27 +918,21 @@ class VideoEvent(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
             _attrs.append("label")
         if self.confidence is not None:
             _attrs.append("confidence")
-        if self.is_support_frozen:
-            _attrs.append("support")
         if self.index is not None:
             _attrs.append("index")
-        if self.uuid is not None:
-            _attrs.append("uuid")
+        if self.is_support_frozen:
+            _attrs.append("support")
         if self.attrs:
             _attrs.append("attrs")
         if self.objects:
             _attrs.append("objects")
         if self.frames:
             _attrs.append("frames")
-        if self.child_objects:
-            _attrs.append("child_objects")
-        if self.child_events:
-            _attrs.append("child_events")
         return _attrs
 
     @staticmethod
     def build_simple(
-            first, last, label, confidence=None, index=None, uuid=None):
+            first, last, label, confidence=None, index=None):
         '''Builds a simple contiguous VideoEvent.
 
         Args:
@@ -760,15 +941,58 @@ class VideoEvent(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
             label: the event label
             confidence: (optional) confidence in [0, 1]
             index: (optional) an index for the event
-            uuid: (optional) a UUID for the event
 
         Returns:
              a VideoEvent
         '''
         support = etaf.FrameRanges.build_simple(first, last)
         return VideoEvent(
-            label=label, confidence=confidence, support=support, index=index,
-            uuid=uuid)
+            label=label, confidence=confidence, index=index, support=support)
+
+    @classmethod
+    def from_detections(cls, events):
+        '''Builds a VideoEvent from a container of `DetectedEvent`s.
+
+        The `DetectedEvent`s must have their `frame_number`s set, and they must
+        all have the same `label` and `index` (which may be None).
+
+        The input events are modified in-place and passed by reference to the
+        VideoEvent.
+
+        Args:
+            events: a DetectedEventContainer
+
+        Returns:
+            a VideoEvent
+        '''
+        if not events:
+            return cls()
+
+        label = events[0].label
+        index = events[0].index
+
+        for event in events:
+            if event.label != label:
+                raise ValueError(
+                    "Event label '%s' does not match first label '%s'" %
+                    (event.label, label))
+
+            if event.index != index:
+                raise ValueError(
+                    "Event index '%s' does not match first index '%s'" %
+                    (event.index, index))
+
+        # Strip objects and event-level attributes
+        event_attrs, objects = strip_spatiotemporal_content_from_events(events)
+
+        # Remove empty detections
+        events.remove_empty_labels()
+
+        # Build VideoEvent
+        event = cls(
+            label=label, index=index, attrs=event_attrs, objects=objects)
+        event.add_detections(events)
+        return event
 
     @classmethod
     def _from_dict(cls, d):
@@ -804,14 +1028,11 @@ class VideoEvent(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
         return cls(
             label=d.get("label", None),
             confidence=d.get("confidence", None),
-            support=support,
             index=d.get("index", None),
-            uuid=d.get("uuid", None),
+            support=support,
             attrs=attrs,
             objects=objects,
             frames=frames,
-            child_objects=d.get("child_objects", None),
-            child_events=d.get("child_events", None),
         )
 
     @classmethod
@@ -850,28 +1071,36 @@ class VideoEvent(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
         self.frames[frame_number].add_object(obj)
 
     def _add_detected_objects(self, objects, frame_number):
-        for obj in objects:
-            self._add_detected_object(obj, frame_number)
+        for dobj in objects:
+            self._add_detected_object(dobj, frame_number)
 
-    def _add_detected_event(self, event, frame_number, clean):
+    def _add_detected_event(self, devent, frame_number):
         if frame_number is None:
-            if not event.has_frame_number:
+            if not devent.has_frame_number:
                 raise ValueError(
                     "Either `frame_number` must be provided or the "
                     "DetectedEvent must have its `frame_number` set")
 
-            frame_number = event.frame_number
+            frame_number = devent.frame_number
 
-        if clean:
-            event.label = None
-            event.index = None
+        if devent.label is not None and devent.label != self.label:
+            logger.warning(
+                "Erasing DetectedEvent label '%s' that does not match "
+                "VideoEvent label '%s'", devent.label, self.label)
 
-        event.frame_number = frame_number
-        self.frames[frame_number] = event
+        if devent.index is not None and devent.index != self.index:
+            logger.warning(
+                "Erasing DetectedEvent index '%s' that does not match "
+                "VideoEvent index '%s'", devent.index, self.index)
 
-    def _add_detected_events(self, events, clean):
-        for event in events:
-            self._add_detected_event(event, None, clean)
+        devent.label = None
+        devent.index = None
+        devent.frame_number = frame_number
+        self.frames[frame_number] = devent
+
+    def _add_detected_events(self, events):
+        for devent in events:
+            self._add_detected_event(devent, None)
 
     def _compute_support(self):
         frame_ranges = etaf.FrameRanges.from_iterable(self.frames.keys())
@@ -879,20 +1108,87 @@ class VideoEvent(etal.Labels, etal.HasLabelsSupport, etal.HasFramewiseView):
         return frame_ranges
 
 
-class VideoEventContainer(etal.LabelsContainer):
+class VideoEventContainer(
+        etal.LabelsContainer, etal.HasFramewiseView,
+        etal.HasSpatiotemporalView):
     '''An `eta.core.serial.Container` of `VideoEvent`s.'''
 
     _ELE_CLS = VideoEvent
     _ELE_CLS_FIELD = "_EVENT_CLS"
     _ELE_ATTR = "events"
 
+    @property
+    def framewise_renderer_cls(self):
+        '''The LabelsFrameRenderer used by this class.'''
+        return VideoEventContainerFrameRenderer
+
+    @property
+    def spatiotemporal_renderer_cls(self):
+        '''The LabelsSpatiotemporalRenderer used by this class.'''
+        return VideoEventContainerSpatiotemporalRenderer
+
     def get_labels(self):
-        '''Returns a set containing the labels of the `VideoEvent`s.
+        '''Returns the set of `label`s of all events in the container.
 
         Returns:
             a set of labels
         '''
         return set(event.label for event in self)
+
+    def get_indexes(self):
+        '''Returns the set of `index`es of all events in the container.
+
+        `None` indexes are omitted.
+
+        Returns:
+            a set of indexes
+        '''
+        return set(event.index for event in self if event.has_index)
+
+    def offset_indexes(self, offset):
+        '''Adds the given offset to all events with `index`es.
+
+        Args:
+            offset: the integer offset
+        '''
+        for event in self:
+            event.offset_index(offset)
+
+    def clear_indexes(self):
+        '''Clears the `index` of all events in the container.'''
+        for event in self:
+            event.clear_index()
+
+    def get_object_indexes(self):
+        '''Returns the set of `index`es of all objects in the events in the
+        container.
+
+        `None` indexes are omitted.
+
+        Returns:
+            a set of indexes
+        '''
+        obj_indexes = set()
+        for event in self:
+            obj_indexes.update(event.get_object_indexes())
+
+        return obj_indexes
+
+    def offset_object_indexes(self, offset):
+        '''Adds the given offset to all objects with `index`es in all events
+        in the container.
+
+        Args:
+            offset: the integer offset
+        '''
+        for event in self:
+            event.offset_object_indexes(offset)
+
+    def clear_object_indexes(self):
+        '''Clears the `index`es of all objects in all events in the container.
+        '''
+        for event in self:
+            event.clear_object_indexes()
 
     def sort_by_confidence(self, reverse=False):
         '''Sorts the `VideoEvent`s by confidence.
@@ -914,17 +1210,11 @@ class VideoEventContainer(etal.LabelsContainer):
         '''
         self.sort_by("index", reverse=reverse)
 
-    def filter_by_schema(self, schema, objects=None, events=None):
+    def filter_by_schema(self, schema):
         '''Filter the events in the container by the given schema.
 
         Args:
             schema: an EventContainerSchema
-            objects: an optional dictionary mapping uuids to `VideoObject`s. If
-                provided, child objects will be filtered by their respective
-                schemas
-            events: an optional dictionary mapping uuids to `VideoEvent`s. If
-                provided, child events will be filtered by their respective
-                schemas
 
         Raises:
             LabelsSchemaError: if the label does not match the schema
@@ -936,8 +1226,7 @@ class VideoEventContainer(etal.LabelsContainer):
         # Filter events
         for event in self:
             event_schema = schema.get_event_schema(event.label)
-            event.filter_by_schema(
-                event_schema, objects=objects, events=events)
+            event.filter_by_schema(event_schema)
 
     def remove_objects_without_attrs(self, labels=None):
         '''Removes objects that do not have attributes from all events in this
@@ -950,6 +1239,47 @@ class VideoEventContainer(etal.LabelsContainer):
         '''
         for event in self:
             event.remove_objects_without_attrs(labels=labels)
+
+    @classmethod
+    def from_detections(cls, events):
+        '''Builds a VideoEventContainer from a DetectedEventContainer of events
+        by constructing `VideoEvent`s from the collections formed by
+        partitioning into (label, index) groups.
+
+        The `DetectedEvent`s must have their `frame_number`s set, and each
+        instance without an `index` is treated as a separate event.
+
+        The input events may be modified in-place and are passed by reference
+        to the `VideoEvent`s.
+
+        Args:
+            events: a DetectedEventContainer
+
+        Returns:
+            a VideoEventContainer
+        '''
+        # Group objects by (label, index)
+        events_map = defaultdict(DetectedEventContainer)
+        single_events = []
+        max_index = 0
+        for event in events:
+            if event.index is not None:
+                max_index = max(max_index, event.index)
+                events_map[(event.label, event.index)].add(event)
+            else:
+                single_events.append(event)
+
+        # Give objects with no `index` their own groups
+        for event in single_events:
+            max_index += 1
+            events_map[(event.label, max_index)].add(event)
+
+        # Build VideoEvents
+        video_events = cls()
+        for devents in itervalues(events_map):
+            video_events.add(VideoEvent.from_detections(devents))
+
+        return video_events
 
 
 class EventSchema(etal.LabelsSchema):
@@ -1424,18 +1754,6 @@ class EventSchema(etal.LabelsSchema):
             raise EventSchemaError(
                 "Label '%s' does not match event schema" % label)
 
-    def validate_event_attribute_name(self, attr_name):
-        '''Validates that the schema contains an event-level attribute with the
-        given name.
-
-        Args:
-            attr_name: the attribute name
-
-        Raises:
-            LabelsSchemaError: if the schema does not contain the attribute
-        '''
-        self.attrs.validate_attribute_name(attr_name)
-
     def validate_event_attribute(self, attr):
         '''Validates that the event-level attribute is compliant with the
         schema.
@@ -1459,18 +1777,6 @@ class EventSchema(etal.LabelsSchema):
             LabelsSchemaError: if the attributes violate the schema
         '''
         self.attrs.validate(attrs)
-
-    def validate_frame_attribute_name(self, attr_name):
-        '''Validates that the schema contains a frame-level attribute with the
-        given name.
-
-        Args:
-            attr_name: the attribute name
-
-        Raises:
-            LabelsSchemaError: if the schema does not contain the attribute
-        '''
-        self.frames.validate_attribute_name(attr_name)
 
     def validate_frame_attribute(self, attr):
         '''Validates that the frame-level attribute is compliant with the
@@ -1570,6 +1876,17 @@ class EventSchema(etal.LabelsSchema):
         '''
         self.objects.validate_object(obj)
 
+    def validate_objects(self, objects):
+        '''Validates that the objects are compliant with the schema.
+
+        Args:
+            objects: a VideoObjectContainer or DetectedObjectContainer
+
+        Raises:
+            LabelsSchemaError: if the objects violate the schema
+        '''
+        self.objects.validate(objects)
+
     def validate(self, event):
         '''Validates that the event is compliant with the schema.
 
@@ -1617,40 +1934,18 @@ class EventSchema(etal.LabelsSchema):
         self.objects.merge_schema(schema.objects)
 
     @classmethod
-    def build_active_schema(cls, event, objects=None, events=None):
+    def build_active_schema(cls, event):
         '''Builds an EventSchema that describes the active schema of the given
         event.
 
         Args:
             event: a VideoEvent or DetectedEvent
-            objects: an optional dictionary mapping uuids to `VideoObject`s. If
-                provided, the child objects of this event will be incorporated
-                into the schema
-            events: an optional dictionary mapping uuids to `VideoEvent`s. If
-                provided, the child events of this event will be incorporated
-                into the schema
 
         Returns:
             an EventSchema
         '''
         schema = cls(event.label)
         schema.add_event(event)
-
-        # @todo children...
-        '''
-        # Child objects
-        if objects:
-            for uuid in event.child_objects:
-                if uuid in objects:
-                    schema.add_object(objects[uuid])
-
-        # Child events
-        if events:
-            for uuid in event.child_events:
-                if uuid in events:
-                    schema.add_event(events[uuid])
-        '''
-
         return schema
 
     def attributes(self):
@@ -1696,39 +1991,39 @@ class EventSchema(etal.LabelsSchema):
         if validate_label:
             self.validate_label(devent.label)
 
-        self.add_frame_attributes(devent.attrs)
+        for attr in devent.attrs:
+            if attr.constant:
+                self.add_event_attribute(attr)
+            else:
+                self.add_frame_attribute(attr)
+
         self.add_objects(devent.objects)
 
     def _add_video_event(self, event):
         self.validate_label(event.label)
         self.add_event_attributes(event.attrs)
+        self.add_objects(event.objects)
         for devent in event.iter_detections():
             self._add_detected_event(devent, validate_label=False)
 
-    def _validate_detected_event(self, event, validate_label=True):
+    def _validate_detected_event(self, devent, validate_label=True):
         if validate_label:
-            self.validate_label(event.label)
+            self.validate_label(devent.label)
 
-        self.validate_frame_attributes(event.attrs)
-        for obj in event.objects:
-            self.validate_object(obj)
+        for attr in devent.attrs:
+            if attr.constant:
+                self.validate_event_attribute(attr)
+            else:
+                self.validate_frame_attribute(attr)
+
+        self.validate_objects(devent.objects)
 
     def _validate_video_event(self, event):
         self.validate_label(event.label)
         self.validate_event_attributes(event.attrs)
+        self.validate_objects(event.objects)
         for devent in event.iter_detections():
             self._validate_detected_event(devent, validate_label=False)
-
-        # @todo children...
-        '''
-        # Validate child objects
-        for obj in event.child_objects:
-            self.validate_object(obj)
-
-        # Validate child events
-        for child_event in event.child_events:
-            self.validate(child_event)
-        '''
 
 
 class EventSchemaError(etal.LabelsSchemaError):
@@ -1899,38 +2194,6 @@ class EventContainerSchema(etal.LabelsContainerSchema):
         self.validate_event_label(event_label)
         return self.schema[event_label].has_object_label(obj_label)
 
-    def has_object_attribute(self, event_label, obj_label, attr_name):
-        '''Whether the schema has an event of the given label with an object
-        of the given label with an object-level attribute of the given name.
-
-        Args:
-            event_label: the event label
-            obj_label: the object label
-            attr_name: the name of the object-level attribute
-
-        Returns:
-            True/False
-        '''
-        self.validate_event_label(event_label)
-        return self.schema[event_label].has_object_attribute(
-            obj_label, attr_name)
-
-    def has_object_frame_attribute(self, event_label, obj_label, attr_name):
-        '''Whether the schema has an event of the given label with an object
-        of the given label with a frame-level attribute of the given name.
-
-        Args:
-            event_label: the event label
-            obj_label: the object label
-            attr_name: the name of the frame-level attribute
-
-        Returns:
-            True/False
-        '''
-        self.validate_event_label(event_label)
-        return self.schema[event_label].has_frame_attribute(
-            obj_label, attr_name)
-
     def get_object_schema(self, event_label, obj_label):
         '''Gets the ObjectSchema for the object with the given label from the
         event with the given label.
@@ -1945,6 +2208,22 @@ class EventContainerSchema(etal.LabelsContainerSchema):
         self.validate_event_label(event_label)
         return self.schema[event_label].get_object_schema(obj_label)
 
+    def has_object_attribute(self, event_label, obj_label, attr_name):
+        '''Whether the schema has an event of the given label with an object
+        of the given label with an object-level attribute of the given name.
+
+        Args:
+            event_label: the event label
+            obj_label: the object label
+            attr_name: the object-level attribute name
+
+        Returns:
+            True/False
+        '''
+        self.validate_event_label(event_label)
+        return self.schema[event_label].has_object_attribute(
+            obj_label, attr_name)
+
     def get_object_attribute_schema(self, event_label, obj_label, attr_name):
         '''Gets the AttributeSchema for the object-level attribute of the
         given name for the object with the given label from the event with the
@@ -1953,25 +2232,7 @@ class EventContainerSchema(etal.LabelsContainerSchema):
         Args:
             event_label: the event label
             obj_label: the object label
-            attr_name: the name of the object-level attribute
-
-        Returns:
-            the AttributeSchema
-        '''
-        self.validate_event_label(event_label)
-        return self.schema[event_label].get_object_attribute_schema(
-            obj_label, attr_name)
-
-    def get_object_frame_attribute_schema(
-            self, event_label, obj_label, attr_name):
-        '''Gets the AttributeSchema for the frame-level attribute of the
-        given name for the object with the given label from the event with the
-        given label.
-
-        Args:
-            event_label: the event label
-            obj_label: the object label
-            attr_name: the name of the frame-level attribute
+            attr_name: the object-level attribute name
 
         Returns:
             the AttributeSchema
@@ -1988,13 +2249,47 @@ class EventContainerSchema(etal.LabelsContainerSchema):
         Args:
             event_label: the event label
             obj_label: the object label
-            attr_name: the name of the object-level attribute
+            attr_name: the object-level attribute name
 
         Returns:
             the Attribute
         '''
         self.validate_event_label(event_label)
         return self.schema[event_label].get_object_attribute_class(
+            obj_label, attr_name)
+
+    def has_object_frame_attribute(self, event_label, obj_label, attr_name):
+        '''Whether the schema has an event of the given label with an object
+        of the given label with a frame-level attribute of the given name.
+
+        Args:
+            event_label: the event label
+            obj_label: the object label
+            attr_name: the frame-level object attribute name
+
+        Returns:
+            True/False
+        '''
+        self.validate_event_label(event_label)
+        return self.schema[event_label].has_frame_attribute(
+            obj_label, attr_name)
+
+    def get_object_frame_attribute_schema(
+            self, event_label, obj_label, attr_name):
+        '''Gets the AttributeSchema for the frame-level attribute of the
+        given name for the object with the given label from the event with the
+        given label.
+
+        Args:
+            event_label: the event label
+            obj_label: the object label
+            attr_name: the frame-level object attribute name
+
+        Returns:
+            the AttributeSchema
+        '''
+        self.validate_event_label(event_label)
+        return self.schema[event_label].get_object_attribute_schema(
             obj_label, attr_name)
 
     def get_object_frame_attribute_class(
@@ -2006,7 +2301,7 @@ class EventContainerSchema(etal.LabelsContainerSchema):
         Args:
             event_label: the event label
             obj_label: the object label
-            attr_name: the name of the frame-level attribute
+            attr_name: the frame-level object attribute name
 
         Returns:
             the Attribute
@@ -2085,22 +2380,10 @@ class EventContainerSchema(etal.LabelsContainerSchema):
         Args:
             event_label: an event label
             obj_label: an object label
-            attr: an object-level Attribute
+            attr: an Attribute
         '''
         self._ensure_has_event_label(event_label)
         self.schema[event_label].add_object_attribute(obj_label, attr)
-
-    def add_object_frame_attribute(self, event_label, obj_label, attr):
-        '''Adds the frame-level attribute for the object with the given label
-        to the event with the given label to the schema.
-
-        Args:
-            event_label: an event label
-            obj_label: an object label
-            attr: a frame-level Attribute
-        '''
-        self._ensure_has_event_label(event_label)
-        self.schema[event_label].add_object_frame_attribute(obj_label, attr)
 
     def add_object_attributes(self, event_label, obj_label, attrs):
         '''Adds the AttributeContainer of object-level attributes for the
@@ -2110,10 +2393,22 @@ class EventContainerSchema(etal.LabelsContainerSchema):
         Args:
             event_label: an event label
             obj_label: an object label
-            attrs: an AttributeContainer of object-level attributes
+            attrs: an AttributeContainer
         '''
         self._ensure_has_event_label(event_label)
         self.schema[event_label].add_object_attributes(obj_label, attrs)
+
+    def add_object_frame_attribute(self, event_label, obj_label, attr):
+        '''Adds the frame-level attribute for the object with the given label
+        to the event with the given label to the schema.
+
+        Args:
+            event_label: an event label
+            obj_label: an object label
+            attr: an Attribute
+        '''
+        self._ensure_has_event_label(event_label)
+        self.schema[event_label].add_object_frame_attribute(obj_label, attr)
 
     def add_object_frame_attributes(self, event_label, obj_label, attrs):
         '''Adds the AttributeContainer of frame-level attributes for the
@@ -2123,7 +2418,7 @@ class EventContainerSchema(etal.LabelsContainerSchema):
         Args:
             event_label: an event label
             obj_label: an object label
-            attrs: an AttributeContainer of frame-level attributes
+            attrs: an AttributeContainer
         '''
         self._ensure_has_event_label(event_label)
         self.schema[event_label].add_object_frame_attributes(obj_label, attrs)
@@ -2187,7 +2482,7 @@ class EventContainerSchema(etal.LabelsContainerSchema):
 
         Args:
             label: an event label
-            attr: an event-level Attribute
+            attr: an Attribute
 
         Returns:
             True/False
@@ -2204,7 +2499,7 @@ class EventContainerSchema(etal.LabelsContainerSchema):
 
         Args:
             label: an event label
-            attrs: an AttributeContainer of event-level attributes
+            attrs: an AttributeContainer
 
         Returns:
             True/False
@@ -2221,7 +2516,7 @@ class EventContainerSchema(etal.LabelsContainerSchema):
 
         Args:
             label: an event label
-            attr: a frame-level Attribute
+            attr: an Attribute
 
         Returns:
             True/False
@@ -2238,7 +2533,7 @@ class EventContainerSchema(etal.LabelsContainerSchema):
 
         Args:
             label: an event label
-            attrs: an AttributeContainer of frame-level attributes
+            attrs: an AttributeContainer
 
         Returns:
             True/False
@@ -2273,7 +2568,7 @@ class EventContainerSchema(etal.LabelsContainerSchema):
         Args:
             event_label: an event label
             obj_label: an object label
-            attr: an object-level Attribute
+            attr: an Attribute
 
         Returns:
             True/False
@@ -2292,7 +2587,7 @@ class EventContainerSchema(etal.LabelsContainerSchema):
         Args:
             event_label: an event label
             obj_label: an object label
-            attrs: an AttributeContainer of object-level attributes
+            attrs: an AttributeContainer
 
         Returns:
             True/False
@@ -2310,7 +2605,7 @@ class EventContainerSchema(etal.LabelsContainerSchema):
         Args:
             event_label: an event label
             obj_label: an object label
-            attr: a frame-level Attribute
+            attr: an Attribute
 
         Returns:
             True/False
@@ -2329,7 +2624,7 @@ class EventContainerSchema(etal.LabelsContainerSchema):
         Args:
             event_label: an event label
             obj_label: an object label
-            attrs: an AttributeContainer of frame-level attributes
+            attrs: an AttributeContainer
 
         Returns:
             True/False
@@ -2354,6 +2649,23 @@ class EventContainerSchema(etal.LabelsContainerSchema):
         '''
         try:
             self.validate_object(event_label, obj)
+            return True
+        except etal.LabelsSchemaError:
+            return False
+
+    def is_valid_objects(self, event_label, objects):
+        '''Whether the objects for the event with the given label are compliant
+        with the schema.
+
+        Args:
+            event_label: an event label
+            obj: a VideoObjectContainer or DetectedObjectContainer
+
+        Returns:
+            True/False
+        '''
+        try:
+            self.validate_objects(event_label, objects)
             return True
         except etal.LabelsSchemaError:
             return False
@@ -2392,7 +2704,7 @@ class EventContainerSchema(etal.LabelsContainerSchema):
 
         Args:
             label: an event label
-            attr: an event-level Attribute
+            attr: an Attribute
 
         Raises:
             LabelsSchemaError: if the attribute is not compliant with the
@@ -2407,7 +2719,7 @@ class EventContainerSchema(etal.LabelsContainerSchema):
 
         Args:
             label: an event label
-            attrs: an AttributeContainer of event-level attributes
+            attrs: an AttributeContainer
 
         Raises:
             LabelsSchemaError: if the attributes are not compliant with the
@@ -2422,7 +2734,7 @@ class EventContainerSchema(etal.LabelsContainerSchema):
 
         Args:
             label: an event label
-            attr: a frame-level Attribute
+            attr: an Attribute
 
         Raises:
             LabelsSchemaError: if the attribute is not compliant with the
@@ -2437,7 +2749,7 @@ class EventContainerSchema(etal.LabelsContainerSchema):
 
         Args:
             label: an event label
-            attrs: an AttributeContainer of frame-level attributes
+            attrs: an AttributeContainer
 
         Raises:
             LabelsSchemaError: if the attributes are not compliant with the
@@ -2469,7 +2781,7 @@ class EventContainerSchema(etal.LabelsContainerSchema):
         Args:
             event_label: an event label
             obj_label: an object label
-            attr: an object-level Attribute
+            attr: an Attribute
 
         Raises:
             LabelsSchemaError: if the attribute is not compliant with the
@@ -2486,7 +2798,7 @@ class EventContainerSchema(etal.LabelsContainerSchema):
         Args:
             event_label: an event label
             obj_label: an object label
-            attrs: an AttributeContainer of object-level attributes
+            attrs: an AttributeContainer
 
         Raises:
             LabelsSchemaError: if the attributes are not compliant with the
@@ -2503,7 +2815,7 @@ class EventContainerSchema(etal.LabelsContainerSchema):
         Args:
             event_label: an event label
             obj_label: an object label
-            attr: a frame-level Attribute
+            attr: an Attribute
 
         Raises:
             LabelsSchemaError: if the attribute is not compliant with the
@@ -2521,7 +2833,7 @@ class EventContainerSchema(etal.LabelsContainerSchema):
         Args:
             event_label: an event label
             obj_label: an object label
-            attrs: an AttributeContainer of frame-level attributes
+            attrs: an AttributeContainer
 
         Raises:
             LabelsSchemaError: if the attribute is not compliant with the
@@ -2544,6 +2856,20 @@ class EventContainerSchema(etal.LabelsContainerSchema):
         '''
         self.validate_event_label(event_label)
         self.schema[event_label].validate_object(obj)
+
+    def validate_objects(self, event_label, objects):
+        '''Validates that the objects for the given event label are compliant
+        with the schema.
+
+        Args:
+            event_label: an event label
+            objects: a VideoObjectContainer or DetectedObjectContainer
+
+        Raises:
+            LabelsSchemaError: if the object is not compliant with the schema
+        '''
+        self.validate_event_label(event_label)
+        self.schema[event_label].validate(objects)
 
     def validate_event(self, event):
         '''Validates that the event is compliant with the schema.
@@ -2653,7 +2979,13 @@ class EventContainerSchemaError(etal.LabelsContainerSchemaError):
 
 
 class VideoEventFrameRenderer(etal.LabelsFrameRenderer):
-    '''Class for rendering labels for a VideoEvent at the frame-level.'''
+    '''Class for rendering a VideoEvent at the frame-level.
+
+    See the VideoEvent class docstring for the framewise format spec.
+    '''
+
+    _LABELS_CLS = VideoEvent
+    _FRAME_LABELS_CLS = DetectedEvent
 
     def __init__(self, event):
         '''Creates an VideoEventFrameRenderer instance.
@@ -2663,11 +2995,47 @@ class VideoEventFrameRenderer(etal.LabelsFrameRenderer):
         '''
         self._event = event
 
-    def render_frame(self, frame_number):
+    def render(self, in_place=False):
+        '''Renders the VideoEvent in framewise format.
+
+        Args:
+            in_place: whether to perform the rendering in-place. By default,
+                this is False
+
+        Returns:
+            a VideoEvent
+        '''
+        event = self._event
+        frames = self.render_all_frames(in_place=in_place)
+
+        if in_place:
+            # Render in-place
+            event.clear_event_attributes()
+            event.clear_video_objects()
+            event.clear_detections()
+            event.frames = frames
+            return event
+
+        # Render new copy of event
+        label = deepcopy(event.label)
+        confidence = deepcopy(event.confidence)
+        index = deepcopy(event.index)
+        if event.is_support_frozen:
+            support = deepcopy(event.support)
+        else:
+            support = None
+
+        return VideoEvent(
+            label=label, confidence=confidence, index=index, support=support,
+            frames=frames)
+
+    def render_frame(self, frame_number, in_place=False):
         '''Renders the VideoEvent for the given frame.
 
         Args:
             frame_number: the frame number
+            in_place: whether to perform the rendering in-place. By default,
+                this is False
 
         Returns:
             a DetectedEvent, or None if no labels exist for the given frame
@@ -2676,76 +3044,193 @@ class VideoEventFrameRenderer(etal.LabelsFrameRenderer):
             return None
 
         event_attrs = self._get_event_attrs()
-        dobjs = self._render_object_frame(frame_number)
-        return self._render_frame(frame_number, event_attrs, dobjs)
+        dobjs = self._render_object_frame(frame_number, in_place)
+        return self._render_frame(frame_number, event_attrs, dobjs, in_place)
 
-    def render_all_frames(self):
+    def render_all_frames(self, in_place=False):
         '''Renders the VideoEvent for all possible frames.
+
+        Args:
+            in_place: whether to perform the rendering in-place. By default,
+                this is False
 
         Returns:
             a dictionary mapping frame numbers to DetectedEvent instances
         '''
         event_attrs = self._get_event_attrs()
-        dobjs_map = self._render_all_object_frames()
+        dobjs_map = self._render_all_object_frames(in_place)
 
         devents_map = {}
         for frame_number in self._event.support:
             dobjs = dobjs_map.get(frame_number, None)
             devents_map[frame_number] = self._render_frame(
-                frame_number, event_attrs, dobjs)
+                frame_number, event_attrs, dobjs, in_place)
 
         return devents_map
 
-    def _render_frame(self, frame_number, event_attrs, dobjs):
+    def _render_frame(self, frame_number, event_attrs, dobjs, in_place):
+        event = self._event
+
         # Base DetectedEvent
-        if frame_number in self._event.frames:
-            devent = deepcopy(self._event.frames[frame_number])
+        if frame_number in event.frames:
+            devent = event.frames[frame_number]
+            if not in_place:
+                devent = deepcopy(devent)
         else:
             devent = DetectedEvent(frame_number=frame_number)
 
         # Render event-level attributes
         if event_attrs is not None:
+            #
             # Prepend event-level attributes
-            devent.attrs.prepend_container(event_attrs)
+            #
+            # We cannot avoid `deepcopy` here because event-level attributes
+            # must be embedded in each frame
+            #
+            devent.attrs.prepend_container(deepcopy(event_attrs))
 
         # Render objects
         if dobjs is not None:
             devent.add_objects(dobjs)
 
         # Inherit available event-level metadata
-        if self._event.label is not None:
-            devent.label = self._event.label
-        if self._event.confidence is not None:
-            devent.confidence = self._event.confidence
-        if self._event.index is not None:
-            devent.index = self._event.index
+        if event.label is not None:
+            devent.label = event.label
+        if event.confidence is not None:
+            devent.confidence = event.confidence
+        if event.index is not None:
+            devent.index = event.index
 
         return devent
 
-    def _get_event_attrs(self):
-        if not self._event.has_event_attributes:
-            return None
+    def _render_all_object_frames(self, in_place):
+        event = self._event
 
-        return deepcopy(self._event.attrs)
-
-    def _render_all_object_frames(self):
-        if not self._event.has_video_objects:
+        if not event.has_video_objects:
             return {}
 
-        r = etao.VideoObjectContainerFrameRenderer(self._event.objects)
-        return r.render_all_frames()
+        r = etao.VideoObjectContainerFrameRenderer(event.objects)
+        return r.render_all_frames(in_place=in_place)
 
-    def _render_object_frame(self, frame_number):
-        if not self._event.has_video_objects:
+    def _render_object_frame(self, frame_number, in_place):
+        event = self._event
+
+        if not event.has_video_objects:
             return None
 
-        r = etao.VideoObjectContainerFrameRenderer(self._event.objects)
-        return r.render_frame(frame_number)
+        r = etao.VideoObjectContainerFrameRenderer(event.objects)
+        return r.render_frame(frame_number, in_place=in_place)
+
+    def _get_event_attrs(self):
+        event = self._event
+
+        if not event.has_event_attributes:
+            return None
+
+        # There's no need to avoid `deepcopy` here when `in_place == True`
+        # because copies of event-level attributes must be made for each frame
+        event_attrs = deepcopy(event.attrs)
+        for attr in event_attrs:
+            attr.constant = True
+
+        return event_attrs
 
 
 class VideoEventContainerFrameRenderer(etal.LabelsContainerFrameRenderer):
     '''Class for rendering labels for a VideoEventContainer at the frame-level.
     '''
 
-    _FRAME_CONTAINER_CLS = DetectedEventContainer
+    _LABELS_CLS = VideoEventContainer
+    _FRAME_LABELS_CLS = DetectedEventContainer
     _ELEMENT_RENDERER_CLS = VideoEventFrameRenderer
+
+
+class VideoEventSpatiotemporalRenderer(etal.LabelsSpatiotemporalRenderer):
+    '''Class for rendering a VideoEvent in spatiotemporal format.
+
+    See the VideoEvent class docstring for the spatiotemporal format spec.
+    '''
+
+    _LABELS_CLS = VideoEvent
+
+    def __init__(self, event):
+        '''Creates an VideoEventSpatiotemporalRenderer instance.
+
+        Args:
+            event: a VideoEvent
+        '''
+        self._event = event
+
+    def render(self, in_place=False):
+        '''Renders the VideoEvent in spatiotemporal format.
+
+        Args:
+            in_place: whether to perform the rendering in-place. By default,
+                this is False
+
+        Returns:
+            a VideoEvent
+        '''
+        event = self._event
+        if not in_place:
+            event = deepcopy(event)
+
+        # Upgrade spatiotemporal elements from frames
+        attrs, objects = strip_spatiotemporal_content_from_events(
+            event.iter_detections())
+        event.add_event_attributes(attrs)
+        event.add_objects(objects)
+        event.remove_empty_frames()
+
+        return event
+
+
+class VideoEventContainerSpatiotemporalRenderer(
+        etal.LabelsContainerSpatiotemporalRenderer):
+    '''Class for rendering labels for a VideoEventContainer in spatiotemporal
+    format.
+    '''
+
+    _LABELS_CLS = VideoEventContainer
+    _ELEMENT_RENDERER_CLS = VideoEventSpatiotemporalRenderer
+
+
+def strip_spatiotemporal_content_from_events(events):
+    '''Strips the spatiotemporal content from the given iterable of
+    `DetectedEvent`s.
+
+    The input events are modified in-place.
+
+    Args:
+        events: an iterable of `DetectedEvent`s (e.g., a list or
+            DetectedEventContainer)
+
+    Returns:
+        attrs: an AttributeContainer of constant event attributes. By
+            convention, these attributes are no longer marked as constant, as
+            this is assumed to be implicit
+        objects: a VideoObjectContainer containing the objects that were
+            stripped from the frames
+    '''
+    # Extract spatiotemporal content from events
+    attrs_map = {}
+    dobjs = etao.DetectedObjectContainer()
+    for event in events:
+        # Extract objects
+        dobjs.add_container(event.pop_objects())
+
+        # Extract constant attributes
+        for const_attr in event.attrs.pop_constant_attrs():
+            # @todo verify that duplicate attributes are exactly equal?
+            attrs_map[const_attr.name] = const_attr
+
+    # Store event-level attributes in a container with `constant == False`
+    attrs = etad.AttributeContainer()
+    for attr in itervalues(attrs_map):
+        attr.constant = False
+        attrs.add(attr)
+
+    # Store objects in a VideoObjectContainer
+    objects = etao.VideoObjectContainer.from_detections(dobjs)
+
+    return attrs, objects

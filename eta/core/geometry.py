@@ -487,7 +487,7 @@ class LabeledPoint(Serializable):
             label: label string
             relative_point: a RelativePoint instance
         '''
-        self.label = str(label)
+        self.label = label
         self.relative_point = relative_point
 
     @classmethod

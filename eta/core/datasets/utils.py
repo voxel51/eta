@@ -1,5 +1,5 @@
 '''
-Utility functions supporting ETA datasets
+Utilities for working with `LabeledDataset`s.
 
 Copyright 2017-2019 Voxel51, Inc.
 voxel51.com
@@ -31,12 +31,13 @@ import eta.core.utils as etau
 logger = logging.getLogger(__name__)
 
 
-# File method enums and helpers
 COPY = "copy"
 LINK = "link"
 MOVE = "move"
 SYMLINK = "symlink"
+
 FILE_METHODS = {COPY, LINK, MOVE, SYMLINK}
+
 _FILE_METHODS_MAP = {
     COPY: etau.copy_file,
     LINK: etau.link_file,
@@ -44,12 +45,13 @@ _FILE_METHODS_MAP = {
     SYMLINK: etau.symlink_file
 }
 
-def _append_index_if_necessary(dataset, data_path, labels_path):
+
+def append_index_if_necessary(dataset, data_path, labels_path):
     '''Appends an index to the data and labels names if the data filename
     already exists in the dataset.
 
     Args:
-        dataset: a `LabeledDataset` instance
+        dataset: a LabeledDataset
         data_path: a path where we want to add a data file to the dataset
         labels_path: a path where we want to add a labels file to the dataset
 
@@ -79,20 +81,32 @@ def _append_index_if_necessary(dataset, data_path, labels_path):
         new_index = max(existing_indices) + 1
     else:
         new_index = 1
-    return (
-        os.path.join(os.path.dirname(data_path),
-                     "%s-%d%s" % (data_basename, new_index, data_ext)),
-        os.path.join(os.path.dirname(labels_path),
-                     "%s-%d%s" % (labels_basename, new_index, labels_ext))
-    )
+
+    new_data_path = os.path.join(
+        os.path.dirname(data_path),
+        "%s-%d%s" % (data_basename, new_index, data_ext))
+
+    new_labels_path = os.path.join(
+        os.path.dirname(labels_path),
+        "%s-%d%s" % (labels_basename, new_index, labels_ext))
+
+    return new_data_path, new_labels_path
 
 
-def _get_dataset_name(path):
-    ''' Given a filepath to a specific data or label file in a labeled dataset,
-    this will return the dataset name determined by the containing folder.
+def get_dataset_name(path):
+    '''Gets the name of the labeled dataset containing the given data or label
+    file.
 
-    E.g. => /datasets/special-dataset-1/labels/vid-1.json
-    returns 'special-dataset-1'
+    The "name" of the dataset is the name of it's dataset directory folder.
+
+    Example:
+        `get_dataset_name("/datasets/special-dataset-1/labels/vid-1.json")`
+        returns "special-dataset-1"
+
+    Args:
+        path: the path to a data sample or labels file in a dataset
+
+    Returns:
+        the name of the dataset
     '''
-    base = os.path.basename(os.path.dirname(os.path.dirname(path)))
-    return base
+    return os.path.basename(os.path.dirname(os.path.dirname(path)))
