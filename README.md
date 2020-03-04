@@ -40,19 +40,32 @@ building a Docker image with an ETA environment installed.
 
 ## Local Installation
 
+### Instructions
+
 The following instructions describe how to install ETA locally on your machine.
 
-0. _(Optional but highly recommended)_
-[Activate a virtual environment](docs/virtualenv_guide.md)
+#### Step 0: Setup your Python environment
 
-1. Clone the repository
+It is assumed that you already have
+[Python installed](https://www.python.org/downloads) on your machine.
+
+**IMPORTANT:** ETA assumes that the version of Python that you intend to use
+is accessible via `python` and `pip` on your path. In particular, for Python 3
+users, this means that you may need to alias `python3` and `pip3` to `python`
+and `pip`, respectively.
+
+We strongly recommend that you install ETA
+[in a virtual environment](docs/virtualenv_guide.md) to maintain a clean
+workspace.
+
+#### Step 1: Clone the repository
 
 ```shell
 git clone https://github.com/voxel51/eta
 cd eta
 ```
 
-2. Run the install script
+#### Step 2: Run the install script
 
 ```shell
 bash install.bash
@@ -62,13 +75,6 @@ Depending on your Python environment, you may need to run the script with
 sudo privileges. Note that the install script supports flags that control
 things like (on macOS) whether `port` or `brew` is used to install packages.
 Run `bash install.bash -h` for more information.
-
-ETA assumes that the version of Python that you intend to use is available on
-your system path via the `python` command, and it will install packages via the
-`pip` executable on your path. In particular, for Python 3.X users, this means
-that you may need to alias `python3` and `pip3` to `python` and `pip`,
-respectively. If you find this annoying, let us again mention
-[virtual environments](docs/virtualenv_guide.md).
 
 For Linux installs, the script inspects your system to see if CUDA is installed
 via the `lspci` command. If CUDA is available, TensorFlow is installed with GPU
