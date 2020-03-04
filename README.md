@@ -163,38 +163,19 @@ The ETA package is organized as described below. For more information about the
 design and function of the various ETA components, read the documentation in
 the [docs folder](https://github.com/voxel51/eta/tree/develop/docs).
 
-- `eta/classifiers/`: wrappers for performing inference with common classifiers
-
-- `eta/core/`: the core ETA library, which includes utilities for working
-with images, videos, embeddings, and much more.
-
-- `eta/detectors/`: wrappers for performing inference with common detectors
-
-- `eta/docs/`: documentation about the ETA library
-
-- `eta/examples/`: examples of using the ETA library
-
-- `eta/models/`: library of ML models. The `manifest.json` file in this
-folder enumerates the models, which are downloaded to this folder as needed.
-See the [Models developer's guide](https://github.com/voxel51/eta/blob/develop/docs/models_dev_guide.md)
-for more information about ETA's model registry.
-
-- `eta/modules/`: library of video processing/analytics modules. See the
-[Module developer's guide](https://github.com/voxel51/eta/blob/develop/docs/modules_dev_guide.md)
-for more information about ETA modules.
-
-- `eta/pipelines/`: library of video processing/analytics pipelines. See the
-[Pipeline developer's guide](https://github.com/voxel51/eta/blob/develop/docs/pipelines_dev_guide.md)
-for more information about ETA pipelines.
-
-- `eta/resources/`: resources such as media, templates, etc.
-
-- `eta/segmenters/`: wrappers for performing inference with common semantic
-segmenters
-
-In addition, ETA makes use of the following external dependencies:
-
-- `tensorflow/`: Third-party TensorFlow repositories that ETA builds upon
+| Directory | Description |
+| --------- | ----------- |
+| `eta/classifiers` | wrappers for performing inference with common classifiers |
+| `eta/core` | the core ETA library, which includes utilities for working with images, videos, embeddings, and much more |
+| `eta/detectors` | wrappers for performing inference with common detectors |
+| `eta/docs` | documentation about the ETA library |
+| `eta/examples` | examples of using the ETA library |
+| `eta/models` | library of ML models. The `manifest.json` file in this folder enumerates the models, which are downloaded to this folder as needed. See the [Models developer's guide](https://github.com/voxel51/eta/blob/develop/docs/models_dev_guide.md) for more information about ETA's model registry |
+| `eta/modules` | library of video processing/analytics modules. See the [Module developer's guide](https://github.com/voxel51/eta/blob/develop/docs/modules_dev_guide.md) for more information about ETA modules |
+| `eta/pipelines` | library of video processing/analytics pipelines. See the [Pipeline developer's guide](https://github.com/voxel51/eta/blob/develop/docs/pipelines_dev_guide.md) for more information about ETA pipelines |
+| `eta/resources` | resources such as media, templates, etc |
+| `eta/segmenters` | wrappers for performing inference with common semantic segmenters |
+| `tensorflow` | third-party TensorFlow repositories that ETA builds upon |
 
 
 ## Uninstallation
