@@ -97,6 +97,12 @@ CRITICAL () {
 }
 
 
+# Abort installation by printing message and exiting
+ABORT () {
+    EXIT "INSTALLATION ABORTED: $1"
+}
+
+
 if [[ ${LITE_INSTALL} = true ]]; then
     MSG "LITE INSTALLATION STARTED"
 else
@@ -104,12 +110,47 @@ else
 fi
 
 
+# Check for `python` binary
+MSG "Checking for 'python' binary"
+PYTHON_BINARY=$(command -v python)
+if [[ ! -z "${PYTHON_BINARY}" ]]; then
+    MSG "Using 'python' binary at '${PYTHON_BINARY}'"
+else
+    ABORT "No 'python' binary found"
+fi
+
+
+# Check Python version
+MSG "Checking version of 'python' binary"
+PYTHON_VERSION=$(python -c 'import platform; print(platform.python_version())')
+if [[ $PYTHON_VERSION == "3.6."* ]] || [[ $PYTHON_VERSION == "2.7."* ]]; then
+    MSG "Found compatible version: Python ${PYTHON_VERSION}"
+else
+    WARN "Python 3.6.X or 2.7.X are recommended, but Python $PYTHON_VERSION was found"
+    read -p "Are you sure you want to continue? [y/N] " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        ABORT "Unsupported Python version"
+    fi
+fi
+
+
+# Check for `pip` binary
+MSG "Checking for 'pip' binary"
+PIP_BINARY=$(command -v pip)
+if [[ ! -z "${PIP_BINARY}" ]]; then
+    MSG "Using 'pip' binary at '${PIP_BINARY}'"
+else
+    ABORT "No 'pip' binary found"
+fi
+
+
 # Check that specified package manager is installed in Mac OS
 if [ "${OS}" == "Darwin" ]; then
     if [ ${USE_MACPORTS} = true -a -z "$(which port)" ]; then
-        EXIT "MacPorts specified, but 'port' application not found. INSTALLATION FAILED."
+        ABORT "MacPorts specified, but 'port' application not found"
     elif [ ${USE_MACPORTS} = false -a -z "$(which brew)" ]; then
-        EXIT "Homebrew specified, but 'brew' application not found. INSTALLATION FAILED."
+        ABORT "Homebrew specified, but 'brew' application not found"
     fi
 fi
 
@@ -135,21 +176,16 @@ if [ "${OS}" == "Linux" ]; then
     CRITICAL sudo apt-get update
     CRITICAL sudo apt-get -y install build-essential
     CRITICAL sudo apt-get -y install pkg-config
-    CRITICAL sudo apt-get -y install python-pip
-    CRITICAL sudo apt-get -y install python-dev
     CRITICAL sudo apt-get -y install cmake
     CRITICAL sudo apt-get -y install cmake-data
     CRITICAL sudo apt-get -y install unzip
 elif [ "${OS}" == "Darwin" ]; then
-    # Macs already have most goodies, so just update package managers
     if [ ${USE_MACPORTS} = true ]; then
         CRITICAL sudo port selfupdate
     else
         CRITICAL brew update
     fi
 fi
-CRITICAL pip install --upgrade pip
-CRITICAL pip install --upgrade virtualenv
 
 
 MSG "Installing Python packages"
