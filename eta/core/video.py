@@ -1586,6 +1586,16 @@ class VideoLabelsSpatiotemporalRenderer(etal.LabelsSpatiotemporalRenderer):
         if not in_place:
             labels = deepcopy(labels)
 
+        # Ensure that existing `VideoObject`s are in spatiotemporal format
+        obj_renderer = etao.VideoObjectContainerSpatiotemporalRenderer(
+            labels.objects)
+        obj_renderer.render(in_place=True)
+
+        # Ensure that existing `VideoEvent`s are in spatiotemporal format
+        event_renderer = etae.VideoEventContainerSpatiotemporalRenderer(
+            labels.events)
+        event_renderer.render(in_place=True)
+
         # Upgrade spatiotemporal elements from frames
         attrs, objects, events = strip_spatiotemporal_content_from_frames(
             labels)
