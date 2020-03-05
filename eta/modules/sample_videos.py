@@ -79,20 +79,22 @@ class ParametersConfig(Config):
     Parameters:
         accel (eta.core.types.Number): [None] A desired acceleration factor to
             apply when sampling frames. For example, an acceleration of 2x
-            would correspond to sampling every other frame
-        fps (eta.core.types.Number): [None] The desired sampling rate, which
+            would correspond to sampling every other frame. If specified, this
+            takes precedence over `fps`
+        fps (eta.core.types.Number): [None] A desired sampling rate, which
             must be less than the frame rate of the input video
         size (eta.core.types.Array): [None] A desired output (width, height)
             of the sampled frames. Dimensions can be -1, in which case the
             input aspect ratio is preserved
         max_fps (eta.core.types.Number): [None] The maximum sampling rate
             allowed for the output video. If this parameter is specified, the
-            `accel` parameter will be increased if necessary to satisfy this
-            constraint
+            `accel` and `fps` parameters will be adjusted as necessary to
+            satisfy this constraint
         max_size (eta.core.types.Array): [None] A maximum (width, height)
             allowed for the sampled frames. Frames are resized as necessary to
-            meet this limit. Dimensions can be -1, in which case no constraint
-            is applied to them
+            meet this limit, and `size` is decreased (aspect-preserving) if
+            necessary to satisfy this constraint. Dimensions can be -1, in
+            which case no limit is applied to them
         always_sample_last (eta.core.types.Boolean): [False] Whether to always
             sample the last frame of the video
         max_video_file_size (eta.core.types.Number): [None] The maximum file
@@ -123,84 +125,6 @@ def _sample_videos(config):
         _process_video(data.input_path, data.output_frames_dir, parameters)
 
 
-def _process_video(input_path, output_frames_dir, parameters):
-    # Get video metadata, logging generously
-    video_metadata = etav.VideoMetadata.build_for(input_path, verbose=True)
-
-    _check_input_video_size(
-        video_metadata, parameters.max_video_file_size,
-        parameters.max_video_duration)
-
-    ifps = video_metadata.frame_rate
-    isize = video_metadata.frame_size
-    iframe_count = video_metadata.total_frame_count
-
-    #
-    # Compute acceleration using the following strategy:
-    #   (i) use `accel` if provided
-    #   (ii) if `accel` is not provided, use `fps` to set `accel`
-    #   (iii) if a `max_fps` is provided, always increase `accel` if necessary
-    #
-    accel = parameters.accel
-    fps = parameters.fps
-    max_fps = parameters.max_fps
-    if accel is not None:
-        if accel < 1:
-            raise ValueError(
-                "Acceleration factor must be greater than 1; found %d" % accel)
-
-    elif fps is not None:
-        if fps > ifps:
-            raise ValueError(
-                "Sampling frame rate (%g) cannot be greater than input frame "
-                "rate (%g)" % (fps, ifps))
-
-        accel = ifps / fps
-
-    if max_fps is not None and max_fps > 0:
-        min_accel = ifps / max_fps
-        if accel is None or accel < min_accel:
-            logger.warning(
-                "Maximum frame rate %g requires acceleration of at least %g; "
-                "setting `accel = %g` now", max_fps, min_accel, min_accel)
-
-            accel = min_accel
-
-    if accel is None:
-        accel = 1.0
-
-    # Determine frames to sample
-    sample_pts = np.arange(1, iframe_count, accel)
-    sample_frames = set(int(round(x)) for x in sample_pts)
-    if parameters.always_sample_last:
-        sample_frames.add(iframe_count)
-
-    # Compute output frame size
-    if parameters.size is not None:
-        psize = etai.parse_frame_size(parameters.size)
-        osize = etai.infer_missing_dims(psize, isize)
-    else:
-        osize = isize
-    if parameters.max_size is not None:
-        msize = etai.parse_frame_size(parameters.max_size)
-        osize = etai.clamp_frame_size(osize, msize)
-
-    # Avoid resizing if possible
-    resize_frames = osize != isize
-    if resize_frames:
-        owidth, oheight = osize
-        logger.info("Resizing frames to %d x %d", owidth, oheight)
-
-    # Sample frames
-    frames = sorted(sample_frames)
-    output_patt = os.path.join(
-        output_frames_dir,
-        eta.config.default_sequence_idx + eta.config.default_image_ext)
-    size = osize if resize_frames else None
-    etav.sample_select_frames(
-        input_path, frames, output_patt=output_patt, size=size, fast=True)
-
-
 def _check_input_video_size(
         video_metadata, max_video_file_size, max_video_duration):
     if (max_video_file_size is not None
@@ -216,6 +140,105 @@ def _check_input_video_size(
             "Input video duration must be less than %s; found %s" % (
                 etau.to_human_time_str(max_video_duration),
                 etau.to_human_time_str(video_metadata.duration)))
+
+
+def _compute_accel(video_metadata, parameters):
+    # Parse metadata
+    ifps = video_metadata.frame_rate
+
+    # Parse parameters
+    accel = parameters.accel
+    fps = parameters.fps
+    max_fps = parameters.max_fps
+
+    #
+    # Compute acceleration using the following strategy:
+    #   (i) if `accel` is provided, use it
+    #   (ii) if `accel` is not provided, use `fps` to set it
+    #   (iii) if `max_fps` is provided, increase `accel` if necessary
+    #
+    if accel is not None:
+        if accel < 1:
+            raise ValueError(
+                "Acceleration factor must be greater than 1; found %d" % accel)
+    elif fps is not None:
+        if fps > ifps:
+            raise ValueError(
+                "Sampling frame rate (%g) cannot be greater than input frame "
+                "rate (%g)" % (fps, ifps))
+
+        accel = ifps / fps
+    if max_fps is not None and max_fps > 0:
+        min_accel = ifps / max_fps
+        if accel is None or accel < min_accel:
+            logger.warning(
+                "Maximum frame rate %g requires acceleration of at least %g; "
+                "setting `accel = %g` now", max_fps, min_accel, min_accel)
+            accel = min_accel
+
+    if accel is None:
+        accel = 1.0
+
+    return accel
+
+
+def _compute_output_frame_size(video_metadata, parameters):
+    # Parse metadata
+    isize = video_metadata.frame_size
+
+    # Parse parameters
+    size = parameters.size
+    max_size = parameters.max_size
+
+    # Compute output frame size
+    if size is not None:
+        psize = etai.parse_frame_size(size)
+        osize = etai.infer_missing_dims(psize, isize)
+    else:
+        osize = isize
+
+    if max_size is not None:
+        msize = etai.parse_frame_size(max_size)
+        osize = etai.clamp_frame_size(osize, msize)
+
+    # Avoid resizing if possible
+    resize_frames = osize != isize
+    if resize_frames:
+        owidth, oheight = osize
+        logger.info("Resizing frames to %d x %d", owidth, oheight)
+
+    return osize if resize_frames else None
+
+
+def _process_video(input_path, output_frames_dir, parameters):
+    # Get video metadata, logging generously
+    video_metadata = etav.VideoMetadata.build_for(input_path, verbose=True)
+
+    # Check input video size
+    _check_input_video_size(
+        video_metadata, parameters.max_video_file_size,
+        parameters.max_video_duration)
+
+    # Compute acceleration
+    accel = _compute_accel(video_metadata, parameters)
+
+    # Compute output frame size
+    size = _compute_output_frame_size(video_metadata, parameters)
+
+    # Determine frames to sample
+    total_frame_count = video_metadata.total_frame_count
+    sample_pts = np.arange(1, total_frame_count, accel)
+    sample_frames = set(int(round(x)) for x in sample_pts)
+    if parameters.always_sample_last:
+        sample_frames.add(total_frame_count)
+    frames = sorted(sample_frames)
+
+    # Sample frames
+    output_patt = os.path.join(
+        output_frames_dir,
+        eta.config.default_sequence_idx + eta.config.default_image_ext)
+    etav.sample_select_frames(
+        input_path, frames, output_patt=output_patt, size=size, fast=True)
 
 
 def run(config_path, pipeline_config_path=None):
