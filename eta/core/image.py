@@ -1100,7 +1100,9 @@ def scale_frame_size(frame_size, scale):
 
 
 def clamp_frame_size(frame_size, max_size):
-    '''Clamps the frame size to the given maximum size
+    '''Clamps the frame size to the given maximum size.
+
+    The aspect ratio of the input frame size is preserved.
 
     Args:
         frame_size: a (width, height) tuple
@@ -1114,8 +1116,10 @@ def clamp_frame_size(frame_size, max_size):
     alpha = 1
     if max_size[0] > 0:
         alpha = min(alpha, max_size[0] / frame_size[0])
+
     if max_size[1] > 0:
         alpha = min(alpha, max_size[1] / frame_size[1])
+
     return scale_frame_size(frame_size, alpha)
 
 
