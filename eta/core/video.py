@@ -2245,9 +2245,7 @@ def extract_clip(
 
     Args:
         video_path: the path to the video
-        output_path: the path to write the extracted video clip. If
-            `fast == True`, this path can optionally be a pattern like
-            "/path/to/frames/%05d.png"
+        output_path: the path to write the extracted video clip
         start_time: the start timestamp, which can either be a float value of
             seconds or a string in "HH:MM:SS.XXX" format. If omitted, the
             beginning of the video is used
