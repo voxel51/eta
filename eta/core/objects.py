@@ -2127,7 +2127,8 @@ def strip_spatiotemporal_content_from_objects(objects):
         dobj.index = None
 
         for const_attr in dobj.attrs.pop_constant_attrs():
-            # @todo verify that duplicate attributes are exactly equal?
+            # @todo could verify here that duplicate constant attributes are
+            # exactly equal, as they should be
             attrs_map[const_attr.name] = const_attr
 
     # Store object-level attributes in a container with `constant == False`
