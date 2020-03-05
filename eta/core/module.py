@@ -31,6 +31,7 @@ import eta
 from eta.core.config import Config, ConfigError, Configurable
 from eta.core.diagram import HasBlockDiagram, BlockdiagModule
 import eta.core.logging as etal
+import eta.core.serial as etas
 import eta.core.types as etat
 import eta.core.utils as etau
 
@@ -47,9 +48,9 @@ def run(module_name, module_config_or_path):
 
     Args:
         module_name: the name of the module
-        module_config_or_path: a ModuleConfig or path to one on disk. If a
-            ModuleConfig is provided in-memory, it is written to a temporary
-            directory on disk while the module executes
+        module_config_or_path: a ModuleConfig, a dict representation of one,
+            or path to one on disk. If a config is provided in-memory, it is
+            written to a temporary directory on disk while the module executes
 
     Returns:
         True/False whether the module completed successfully
@@ -61,7 +62,7 @@ def run(module_name, module_config_or_path):
     # Found an in-memory module config
     with etau.TempDir() as d:
         module_config_path = os.path.join(d, "config.json")
-        module_config_or_path.write_json(module_config_path)
+        etas.write_json(module_config_or_path, module_config_path)
         return _run(module_name, module_config_path)
 
 

@@ -53,9 +53,10 @@ def run(
     '''Run the pipeline specified by the PipelineConfig.
 
     Args:
-        pipeline_config_or_path: a PipelineConfig or a path to one on disk. If
-            a PipelineConfig is provided in-memory, it is written to a
-            temporary directory on disk while the pipeline executes
+        pipeline_config_or_path: a PipelineConfig, a dict representation of
+            one, or a path to one on disk. If a config is provided in-memory,
+            it is writeen to a temporary directory on disk while the pipeline
+            executes
         pipeline_status: an optional PipelineStatus instance. By default, a
             PipelineStatus object is created that logs its status to the path
             specified in the provided PipelineConfig
@@ -89,7 +90,11 @@ def run(
         temp_dir = etau.TempDir()
         pipeline_config_path = os.path.join(
             temp_dir.__enter__(), "pipeline.json")
-        pipeline_config = pipeline_config_or_path
+        if isinstance(pipeline_config_or_path, dict):
+            pipeline_config = PipelineConfig.from_dict(pipeline_config_or_path)
+        else:
+            pipeline_config = pipeline_config_or_path
+
         pipeline_config.write_json(pipeline_config_path)
 
     # Force overwrite, if requested
