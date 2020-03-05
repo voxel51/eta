@@ -2123,6 +2123,9 @@ def strip_spatiotemporal_content_from_objects(objects):
     # Extract spatiotemporal content from objects
     attrs_map = {}
     for dobj in objects:
+        dobj.label = None
+        dobj.index = None
+
         for const_attr in dobj.attrs.pop_constant_attrs():
             # @todo verify that duplicate attributes are exactly equal?
             attrs_map[const_attr.name] = const_attr

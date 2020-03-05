@@ -3221,6 +3221,9 @@ def strip_spatiotemporal_content_from_events(events):
     attrs_map = {}
     dobjs = etao.DetectedObjectContainer()
     for event in events:
+        event.label = None
+        event.index = None
+
         # Extract objects
         dobjs.add_container(event.pop_objects())
 
