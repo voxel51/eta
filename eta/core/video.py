@@ -2301,21 +2301,6 @@ def extract_clip_frames(
         keep_source_frame_numbers=False):
     '''Extracts the frames of the specified clip from the video.
 
-    When `keep_source_frame_numbers` is False, the following ffmpeg command is
-    used to perform the sampling:
-    ```
-    ffmpeg -ss <start_time> -i <video_path> -t <duration> <output_path>
-    ```
-
-    When `keep_source_frame_numbers` is True, the following ffmpeg command is
-    used to perform the
-    ```
-    # Faster, less accurate option
-    with FFmpegVideoProcessor()
-    ffmpeg -ss <start_time> -i <video_path> -t <duration> -c copy <tmp_path>
-    ffmpeg -i <tmp_path> <output_path>
-    ```
-
     Args:
         video_path: the path to the video
         output_patt: the pattern to which to write the extracted frames, like
