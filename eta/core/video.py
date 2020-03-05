@@ -850,7 +850,7 @@ class VideoLabels(
             frame_number: the frame number
         '''
         self._ensure_frame(frame_number)
-        self.frames[frame_number].add_frame_attribute(attr)
+        self.frames[frame_number].add_attribute(attr)
 
     def add_frame_attributes(self, attrs, frame_number):
         '''Adds the given frame-level attributes to the video.
@@ -860,7 +860,7 @@ class VideoLabels(
             frame_number: the frame number
         '''
         self._ensure_frame(frame_number)
-        self.frames[frame_number].add_frame_attributes(attrs)
+        self.frames[frame_number].add_attributes(attrs)
 
     def add_object(self, obj, frame_number=None):
         '''Adds the object to the video.
