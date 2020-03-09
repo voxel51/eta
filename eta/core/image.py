@@ -49,7 +49,7 @@ logger = logging.getLogger(__name__)
 #
 # The file extensions of supported image files. Use LOWERCASE!
 #
-# In practice, any image that `cv2.imread` can eead will be supported.
+# In practice, any image that `cv2.imread` can read will be supported.
 # Nonetheless, we enumerate this list here so that the ETA type system can
 # verify the extension of an image provided to a pipeline at build time.
 #
