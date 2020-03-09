@@ -397,7 +397,7 @@ def read(path_or_url, include_alpha=False, flag=None):
     By default, images are returned as color images with no alpha channel.
 
     Args:
-        path_or_url: the file path or url to the
+        path_or_url: the file path or url to the image
         include_alpha: whether to include the alpha channel of the image, if
             present, in the returned array. By default, this is False
         flag: an optional OpenCV image format flag to use. If provided, this
