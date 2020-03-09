@@ -406,11 +406,11 @@ def read(path_or_url, include_alpha=False, flag=None):
     Returns:
         a uint8 numpy array containing the image
     '''
-    flag = _get_opencv_imread_flag(flag, include_alpha)
     if etaw.is_url(path_or_url):
         return download(path_or_url, include_alpha=include_alpha, flag=flag)
-    else:
-        img_bgr = cv2.imread(path_or_url, flag)
+
+    flag = _get_opencv_imread_flag(flag, include_alpha)
+    img_bgr = cv2.imread(path_or_url, flag)
     if img_bgr is None:
         raise OSError("Image not found '%s'" % path_or_url)
     return _exchange_rb(img_bgr)
