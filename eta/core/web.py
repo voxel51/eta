@@ -22,6 +22,7 @@ from future.utils import iteritems
 import logging
 import re
 import requests
+import six
 from time import time
 
 import eta.constants as etac
@@ -35,8 +36,15 @@ URL_REGEX = re.compile(r'http://|https://|ftp://|file://|file:\\')
 
 
 def is_url(filename):
-    """Return True if string is an http or ftp path."""
-    return (isinstance(filename, str) and
+    '''Return True if string is an http or ftp path.
+
+    Args:
+        filename: a string
+
+    Returns:
+        True/False if the filename is a url
+    '''
+    return (isinstance(filename, six.string_types) and
             URL_REGEX.match(filename) is not None)
 
 
