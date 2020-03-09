@@ -49,7 +49,7 @@ logger = logging.getLogger(__name__)
 #
 # The file extensions of supported image files. Use LOWERCASE!
 #
-# In practice, any image that `cv2.imread` can read will be supported.
+# In practice, any image that `cv2.imread` can eead will be supported.
 # Nonetheless, we enumerate this list here so that the ETA type system can
 # verify the extension of an image provided to a pipeline at build time.
 #
@@ -407,7 +407,11 @@ def read(path, include_alpha=False, flag=None):
         a uint8 numpy array containing the image
     '''
     flag = _get_opencv_imread_flag(flag, include_alpha)
-    img_bgr = cv2.imread(path, flag)
+    if etaw.is_url(path):
+        string = etaw.download_file(path)
+        return decode(string, include_alpha=include_alpha, flag=flag)
+    else:
+        img_bgr = cv2.imread(path, flag)
     if img_bgr is None:
         raise OSError("Image not found '%s'" % path)
     return _exchange_rb(img_bgr)
