@@ -391,13 +391,13 @@ def download(url, include_alpha=False, flag=None):
     return decode(bytes, include_alpha=include_alpha, flag=flag)
 
 
-def read(path, include_alpha=False, flag=None):
-    '''Reads image from path.
+def read(path_or_url, include_alpha=False, flag=None):
+    '''Reads image from a file path or url.
 
     By default, images are returned as color images with no alpha channel.
 
     Args:
-        path: the path to the image on disk
+        path_or_url: the file path or url to the
         include_alpha: whether to include the alpha channel of the image, if
             present, in the returned array. By default, this is False
         flag: an optional OpenCV image format flag to use. If provided, this
@@ -407,13 +407,12 @@ def read(path, include_alpha=False, flag=None):
         a uint8 numpy array containing the image
     '''
     flag = _get_opencv_imread_flag(flag, include_alpha)
-    if etaw.is_url(path):
-        string = etaw.download_file(path)
-        return decode(string, include_alpha=include_alpha, flag=flag)
+    if etaw.is_url(path_or_url):
+        return download(path_or_url, include_alpha=include_alpha, flag=flag)
     else:
-        img_bgr = cv2.imread(path, flag)
+        img_bgr = cv2.imread(path_or_url, flag)
     if img_bgr is None:
-        raise OSError("Image not found '%s'" % path)
+        raise OSError("Image not found '%s'" % path_or_url)
     return _exchange_rb(img_bgr)
 
 
