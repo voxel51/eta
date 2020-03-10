@@ -383,7 +383,7 @@ def get_class_name(cls_or_obj):
         cls_or_obj: a class or class instance
 
     Returns:
-        class_name: a fully-qualified class name string like
+        the fully-qualified class name string, such as
             "eta.core.utils.ClassName"
     '''
     cls = cls_or_obj if inspect.isclass(cls_or_obj) else cls_or_obj.__class__
@@ -397,7 +397,7 @@ def get_function_name(fcn):
         fcn: a function
 
     Returns:
-        function_name: a fully-qualified function name string like
+        the fully-qualified function name string, such as
             "eta.core.utils.function_name"
     '''
     return fcn.__module__ + "." + fcn.__name__
@@ -413,6 +413,9 @@ def get_class(class_name, module_name=None):
         module_name: the fully-qualified module name like "eta.core.utils", or
             None if class_name includes the module name. Set module_name to
             __name__ to load a class from the calling module
+
+    Returns:
+        the class
 
     Raises:
         ImportError: if the class could not be imported
@@ -440,8 +443,13 @@ def get_function(function_name, module_name=None):
         module_name: the fully-qualified module name like "eta.core.utils", or
             None if function_name includes the module name. Set module_name to
             __name__ to load a function from the calling module
+
+    Returns:
+        the function
+
+    Raises:
+        ImportError: if the function could not be imported
     '''
-    # reuse implementation for getting a class
     return get_class(function_name, module_name=module_name)
 
 
