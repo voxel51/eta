@@ -931,8 +931,14 @@ class AttributeContainer(etal.LabelsContainer):
             ValueError: if there is not exactly one Attribute with the given
                 name
         '''
-        attr = self.get_attr_with_name(name, default=default)
-        return attr.value
+        try:
+            attr = self.get_attr_with_name(name)
+            return attr.value
+        except ValueError:
+            if default is not no_default:
+                return default
+
+            raise
 
     def pop_constant_attrs(self):
         '''Pops constant attributes from this container.
