@@ -1189,7 +1189,7 @@ def _render_numeric_attr_value(attr):
     if isinstance(attr.value, int):
         return "%d" % attr.value
 
-    return "%.2f" % attr.value
+    return "%.2g" % attr.value
 
 
 def _clean_str(s):
