@@ -98,9 +98,6 @@ def make_image_sequence_patt(basedir, basename="", patt=None, ext=None):
     return os.path.join(basedir, name + patt + ext)
 
 
-###### Image Labels ###########################################################
-
-
 class ImageLabels(FrameLabels):
     '''Class encapsulating labels for an image.
 
@@ -348,9 +345,6 @@ class BigImageSetLabels(ImageSetLabels, etas.BigSet):
             self[key] = image_labels
 
 
-###### Image I/O ##############################################################
-
-
 def decode(b, include_alpha=False, flag=None):
     '''Decodes an image from raw bytes.
 
@@ -493,9 +487,6 @@ class ImageMetadata(etas.Serializable):
             num_channels=d.get("num_channels", None),
             size_bytes=d.get("size_bytes", None),
             mime_type=d.get("mime_type", None))
-
-
-###### Image Manipulation #####################################################
 
 
 def create(width, height, background=None):
@@ -960,9 +951,6 @@ class Convert(object):
         return out
 
 
-###### Image Properties and Representations ###################################
-
-
 def has_alpha(img):
     '''Checks if the image has an alpha channel.
 
@@ -1254,9 +1242,6 @@ class Location(object):
         return self._loc in self.BOTTOM_LEFT
 
 
-###### Image Composition ######################################################
-
-
 def best_tiling_shape(n, kappa=1.777, **kwargs):
     '''Computes the (width, height) of the best tiling of n images in a grid
     such that the composite image would have roughly the specified aspect
@@ -1332,7 +1317,6 @@ def tile_images(imgs, width, height, fill_value=0):
     return np.concatenate(rows, axis=0)
 
 
-###### Color Conversions ######################################################
 #
 # R, G, B: ints in [0, 255], [0, 255], [0, 255]
 # B, G, R: ints in [0, 255], [0, 255], [0, 255]
