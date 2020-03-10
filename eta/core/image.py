@@ -874,6 +874,30 @@ def render_instance_image(
     return img_mask
 
 
+def get_contour_band_mask(mask, bandwidth):
+    '''Returns a mask that traces the contours of the given frame mask with
+    thickness specified by the given bandwidth.
+
+    Args:
+        mask: a frame mask
+        bandwidth: the bandwidth to use to trace each contour in the output
+            mask. A typical value for this parameter is 5 pixels
+
+    Returns:
+        a binary mask indicating the countour bands
+    '''
+    mask = np.asarray(mask)
+    band_mask = np.zeros(mask.shape, dtype=np.uint8)
+
+    for value in np.unique(mask):
+        mask_value = (mask == value).astype(np.uint8)
+        contours, _ = cv2.findContours(
+            mask_value, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+        cv2.drawContours(band_mask, contours, -1, 1, bandwidth)
+
+    return band_mask.astype(bool)
+
+
 def to_double(img):
     '''Converts img to a double precision image with values in [0, 1].
 
