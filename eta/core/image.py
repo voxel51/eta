@@ -910,6 +910,18 @@ def to_double(img):
     return img.astype(np.float) / np.iinfo(img.dtype).max
 
 
+def to_float(img):
+    '''Converts img to a single precision image with values in [0, 1].
+
+    Args:
+        img: input image
+
+    Returns:
+        a copy of the image in single precision format
+    '''
+    return img.astype(np.float32) / np.iinfo(img.dtype).max
+
+
 class Convert(object):
     '''Interface for the ImageMagick convert binary.'''
 
