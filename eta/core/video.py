@@ -595,6 +595,16 @@ class VideoLabels(
         return VideoLabelsSpatiotemporalRenderer
 
     @property
+    def has_filename(self):
+        '''Whether the video has a filename.'''
+        return self.filename is not None
+
+    @property
+    def has_metadata(self):
+        '''Whether the video has metadata.'''
+        return self.metadata is not None
+
+    @property
     def has_mask_index(self):
         '''Whether the video has a video-wide frame segmentation mask index.'''
         return self.mask_index is not None
@@ -976,9 +986,22 @@ class VideoLabels(
             self._reindex_objects(video_labels)
             self._reindex_events(video_labels)
 
+        # Merge metadata
+        if video_labels.has_filename and not self.has_filename:
+            self.filename = video_labels.filename
+        if video_labels.has_metadata and not self.has_metadata:
+            self.metadata = video_labels.metadata
         if self.is_support_frozen or video_labels.is_support_frozen:
             self.merge_support(video_labels.support)
+        if video_labels.has_mask_index and not self.has_mask_index:
+            self.mask_index = video_labels.mask_index
+        if video_labels.has_schema:
+            if self.has_schema:
+                self.schema.merge_schema(video_labels.schema)
+            else:
+                self.schema = video_labels.schema
 
+        # Merge labels
         self.add_video_attributes(video_labels.attrs)
         self.add_objects(video_labels.objects)
         self.add_events(video_labels.events)
