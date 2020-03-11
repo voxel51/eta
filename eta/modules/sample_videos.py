@@ -227,7 +227,7 @@ def _process_video(input_path, output_frames_dir, parameters):
 
     # Determine frames to sample
     total_frame_count = video_metadata.total_frame_count
-    sample_pts = np.arange(1, total_frame_count, accel)
+    sample_pts = np.arange(1, total_frame_count + 1, accel)
     sample_frames = set(int(round(x)) for x in sample_pts)
     if parameters.always_sample_last:
         sample_frames.add(total_frame_count)
