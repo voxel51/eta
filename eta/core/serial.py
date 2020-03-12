@@ -109,16 +109,15 @@ def read_json(path):
         raise ValueError("Unable to parse JSON file '%s'" % path)
 
 
-def write_json(obj, path, pretty_print=True):
+def write_json(obj, path, pretty_print=False):
     '''Writes JSON object to file, creating the output directory if necessary.
 
     Args:
         obj: is either an object that can be directly dumped to a JSON file or
             an instance of a subclass of Serializable
         path: the output path
-        pretty_print: when True (default), the resulting JSON will be outputted
-            to be human readable; when False, it will be compact with no
-            extra spaces or newline characters
+        pretty_print: whether to render the JSON in human readable format with
+            newlines and indentations. By default, this is False
     '''
     s = json_to_str(obj, pretty_print=pretty_print)
     etau.ensure_basedir(path)
@@ -131,17 +130,16 @@ def json_to_str(obj, pretty_print=True):
 
     Args:
         obj: a JSON dictionary or an instance of a Serializable subclass
-        pretty_print: when True (default), the string will be formatted to be
-            human readable; when False, it will be compact with no extra spaces
-            or newline characters
+        pretty_print: whether to render the JSON in human readable format with
+            newlines and indentations. By default, this is True
     '''
     if isinstance(obj, Serializable):
         obj = obj.serialize()
+
     kwargs = {"indent": 4} if pretty_print else {}
     s = json.dumps(
         obj, separators=(",", ": "), cls=ETAJSONEncoder, ensure_ascii=False,
-        **kwargs
-    )
+        **kwargs)
     return str(s)
 
 
@@ -352,9 +350,8 @@ class Serializable(object):
         '''Returns a string representation of this object.
 
         Args:
-            pretty_print: if True (default), the string will be formatted to be
-                human readable; when False, it will be compact with no extra
-                spaces or newline characters
+            pretty_print: whether to render the JSON in human readable format
+                with newlines and indentations. By default, this is True
             **kwargs: optional keyword arguments for `self.serialize()`
 
         Returns:
@@ -363,14 +360,13 @@ class Serializable(object):
         obj = self.serialize(**kwargs)
         return json_to_str(obj, pretty_print=pretty_print)
 
-    def write_json(self, path, pretty_print=True, **kwargs):
+    def write_json(self, path, pretty_print=False, **kwargs):
         '''Serializes the object and writes it to disk.
 
         Args:
             path: the output path
-            pretty_print: when True (default), the resulting JSON will be
-                outputted to be human readable; when False, it will be compact
-                with no extra spaces or newline characters
+            pretty_print: whether to render the JSON in human readable format
+                with newlines and indentations. By default, this is False
             **kwargs: optional keyword arguments for `self.serialize()`
         '''
         obj = self.serialize(**kwargs)

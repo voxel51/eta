@@ -106,8 +106,8 @@ class LabeledDatasetBuilder(object):
             manifest_path: the path to write the `manifest.json` for the new
                 dataset
             description: an optional description for the new dataset
-            pretty_print: whether to pretty print JSON labels. By default, this
-                is False
+            pretty_print: whether to render the JSON in human readable format
+                with newlines and indentations. By default, this is False
             create_empty: whether to write empty datasets to disk. By default,
                 this is False
             data_method: how to add the data files to the dataset, when
@@ -159,11 +159,8 @@ class LabeledDatasetBuilder(object):
                 did_warn_duplicate_name = True
 
             record.build(
-                data_path,
-                labels_path,
-                pretty_print=pretty_print,
-                data_method=data_method
-            )
+                data_path, labels_path, pretty_print=pretty_print,
+                data_method=data_method)
 
             # The `file_method` is irrelevant because the files were already
             # placed directly into the dataset directory by `record.build()`.
@@ -268,8 +265,8 @@ class BuilderDataRecord(BaseDataRecord):
         Args:
             data_path: path to which to write the data file
             labels_path: path to which to write the labels file
-            pretty_print: whether to pretty print JSON. By default, this is
-                False
+            pretty_print: whether to render the JSON in human readable format
+                with newlines and indentations. By default, this is False
             data_method: the `FILE_METHOD` to use to build the data sample,
                 when applicable. The default is "copy"
         '''
