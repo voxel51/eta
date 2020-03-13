@@ -17,12 +17,6 @@ python download_data.py
 
 ## Basics
 
-Perform some image manipulation:
-
-```shell
-python demo_image_manipulation/demo_images.py
-```
-
 Build and run pipelines from requests:
 
 ```shell
