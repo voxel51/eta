@@ -35,8 +35,8 @@ from eta.core.serial import Serializable
 import eta.core.utils as etau
 import eta.core.video as etav
 
-from .split_methods import SPLIT_FUNCTIONS
-from .utils import COPY, FILE_METHODS, _FILE_METHODS_MAP
+from .split_methods import SplitMethods
+from .utils import FileMethods
 
 
 logger = logging.getLogger(__name__)
