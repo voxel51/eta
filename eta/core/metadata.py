@@ -85,7 +85,7 @@ def generate(module_py_path):
 
     outpath = os.path.join(module_dir, module_name + ".json")
     logger.info("Writing module metadata to %s", outpath)
-    mmc.write_json(outpath)
+    mmc.write_json(outpath, pretty_print=True)
 
 
 class ModuleDocstring(object):
