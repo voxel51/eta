@@ -1,7 +1,7 @@
 '''
-Iterable split methods
+Core methods for splitting iterables into subsets.
 
-Copyright 2017-2019 Voxel51, Inc.
+Copyright 2017-2020 Voxel51, Inc.
 voxel51.com
 
 Matthew Lightman, matthew@voxel51.com
@@ -25,6 +25,8 @@ import logging
 import random
 
 import numpy as np
+
+import eta.core.utils as etau
 
 
 logger = logging.getLogger(__name__)
@@ -220,9 +222,22 @@ def _find_next_available_idx(idx, unavailable_indicators):
     return None
 
 
-SPLIT_FUNCTIONS = {
-    "round_robin": round_robin_split,
-    "random_exact": random_split_exact,
-    "random_approx": random_split_approx,
-    "in_order": split_in_order
-}
+class SplitMethods(etau.FunctionEnum):
+    '''Enum of supported methods for splitting iterables according to split
+    fractions.
+
+    By convention, all methods should follow the syntax
+    `fcn(iterable, split_fractions=None) -> list`.
+    '''
+
+    ROUND_ROBIN = "round_robin"
+    RANDOM_EXACT = "random_exact"
+    RANDOM_APPROX = "random_approx"
+    IN_ORDER = "in_order"
+
+    _FUNCTIONS_MAP = {
+        "round_robin": round_robin_split,
+        "random_exact": random_split_exact,
+        "random_approx": random_split_approx,
+        "in_order": split_in_order
+    }
