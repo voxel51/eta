@@ -32,8 +32,7 @@ import eta.core.image as etai
 import eta.core.utils as etau
 import eta.core.video as etav
 
-from .utils import COPY, FILE_METHODS, _FILE_METHODS_MAP, \
-    append_index_if_necessary
+from .utils import FileMethods, append_index_if_necessary
 
 
 logger = logging.getLogger(__name__)
@@ -98,7 +97,7 @@ class LabeledDatasetBuilder(object):
 
     def build(
             self, manifest_path, description=None, pretty_print=False,
-            create_empty=False, data_method=COPY):
+            create_empty=False, data_method=FileMethods.COPY):
         '''Builds the new LabeledDataset after all records managed by this
         builder have been added and all transformations have been applied.
 
@@ -110,60 +109,50 @@ class LabeledDatasetBuilder(object):
                 is False
             create_empty: whether to write empty datasets to disk. By default,
                 this is False
-            data_method: how to add the data files to the dataset, when
-                applicable. If clipping is required, this option is ignored,
-                for example. One of "copy", "link", "move", or "symlink".
-                Labels files are written from their class instances and do not
-                apply. The default is `COPY`
+            data_method: an `eta.core.datasets.FileMethods` value specifying
+                how to add the data files to the dataset, when applicable. If
+                clipping is required, this option is ignored, for example.
+                The default value is `FileMethods.COPY`
 
         Returns:
             a LabeledDataset
         '''
-        if data_method not in FILE_METHODS:
-            raise ValueError("invalid file_method: %s" % str(data_method))
+        data_method = FileMethods.get_function(data_method)
 
-        logger.info("Applying transformations to dataset")
-
-        data_method = _FILE_METHODS_MAP[data_method]
-
-        for transformer in self._transformers:
-            transformer.transform(self._dataset)
+        if self._transformers:
+            logger.info("Applying transformations to dataset")
+            for transformer in self._transformers:
+                transformer.transform(self._dataset)
 
         if not create_empty and not self.builder_dataset:
-            logger.info("Built dataset is empty. Skipping write out.")
+            logger.info("Dataset is empty; skipping write-out")
             return None
 
         logger.info(
             "Building dataset with %d elements", len(self.builder_dataset))
 
         dataset = self.dataset_cls.create_empty_dataset(
-            manifest_path, description)
-        data_subdir = os.path.join(dataset.dataset_dir, dataset._DATA_SUBDIR)
-        labels_subdir = os.path.join(
-            dataset.dataset_dir, dataset._LABELS_SUBDIR)
+            manifest_path, description=description)
 
-        did_warn_duplicate_name = False
+        warned_duplicate_names = False
         for record in self._dataset:
             data_filename = os.path.basename(record.new_data_path)
+            data_path = os.path.join(dataset.data_dir, data_filename)
+
             labels_filename = os.path.basename(record.new_labels_path)
-            data_path = os.path.join(data_subdir, data_filename)
-            labels_path = os.path.join(labels_subdir, labels_filename)
+            labels_path = os.path.join(dataset.labels_dir, labels_filename)
 
             old_data_path = data_path
             data_path, labels_path = append_index_if_necessary(
                 dataset, data_path, labels_path)
-            if data_path != old_data_path and not did_warn_duplicate_name:
+            if data_path != old_data_path and not warned_duplicate_names:
                 logger.warning(
                     "Duplicate data filenames found in dataset being built. "
                     "Appending indices to names as necessary")
-                did_warn_duplicate_name = True
+                warned_duplicate_names = True
 
             record.build(
-                data_path,
-                labels_path,
-                pretty_print=pretty_print,
-                data_method=data_method
-            )
+                data_path, labels_path, data_method, pretty_print=pretty_print)
 
             # The `file_method` is irrelevant because the files were already
             # placed directly into the dataset directory by `record.build()`.
@@ -260,25 +249,23 @@ class BuilderDataRecord(BaseDataRecord):
         '''
         self._labels_obj = labels
 
-    def build(
-            self, data_path, labels_path, pretty_print=False,
-            data_method=COPY):
+    def build(self, data_path, labels_path, data_method, pretty_print=False):
         '''Writes the transformed labels and data files to the specified paths.
 
         Args:
             data_path: path to which to write the data file
             labels_path: path to which to write the labels file
+            data_method: a function from `eta.core.datasets.FileMethods`
+                specifying how to add the data sample
             pretty_print: whether to pretty print JSON. By default, this is
                 False
-            data_method: the `FILE_METHOD` to use to build the data sample,
-                when applicable. The default is "copy"
         '''
+        self._build_data(data_path, data_method)
+
         self._build_labels()
         labels = self.get_labels()
         labels.filename = os.path.basename(data_path)
         labels.write_json(labels_path, pretty_print=pretty_print)
-
-        self._build_data(data_path, data_method)
 
     def copy(self):
         '''Safely copy a record. Only copy should be used when creating new
@@ -324,8 +311,8 @@ class BuilderDataRecord(BaseDataRecord):
 
         Args:
             data_path: the path to which to write the built data sample
-            data_method: the `FILE_METHOD` to use to build the data sample,
-                when applicable. The default is "copy"
+            data_method: a function from `eta.core.datasets.FileMethods`
+                specifying how to add the data sample
         '''
         raise NotImplementedError(
             "subclasses must implement _build_data()")
