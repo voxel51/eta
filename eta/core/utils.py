@@ -375,6 +375,65 @@ def parse_categorical_string(value, choices, ignore_case=True):
     return orig_value
 
 
+class FunctionEnum(object):
+    '''Base class for enums that support string-based lookup into a set of
+    functions.
+
+    Subclasses must implement the `_FUNCTIONS_MAP` constant.
+    '''
+
+    #
+    # A dictionary mapping string values to functions
+    #
+    # Subclasses MUST implement this constant
+    #
+    _FUNCTIONS_MAP = {}
+
+    @classmethod
+    def get_function(cls, value):
+        '''Gets the function for the given value.
+
+        Args:
+            value: the FunctionEnum value
+
+        Returns:
+            the function
+        '''
+        cls.validate_value(value)
+        return cls._FUNCTIONS_MAP[value]
+
+    @classmethod
+    def is_valid_value(cls, value):
+        '''Determines whether the given value is valid.
+
+        Args:
+            value: the FunctionEnum value
+
+        Returns:
+            True/False
+        '''
+        try:
+            cls.validate_value(value)
+            return True
+        except ValueError:
+            return False
+
+    @classmethod
+    def validate_value(cls, value):
+        '''Validates that the given value is valid.
+
+        Args:
+            value: the FunctionEnum value
+
+        Raises:
+            ValueError: if the value is invalid
+        '''
+        if value not in cls._FUNCTIONS_MAP:
+            raise ValueError(
+                "'%s' is not a valid value for %s; supported values are %s" %
+                (value, get_class_name(cls), list(cls._FUNCTIONS_MAP)))
+
+
 def get_class_name(cls_or_obj):
     '''Returns the fully-qualified class name for the given input, which can
     be a class or class instance.
