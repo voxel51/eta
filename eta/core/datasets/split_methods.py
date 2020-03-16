@@ -1,7 +1,7 @@
 '''
-Iterable split methods
+Core methods for splitting iterables into subsets.
 
-Copyright 2017-2019 Voxel51, Inc.
+Copyright 2017-2020 Voxel51, Inc.
 voxel51.com
 
 Matthew Lightman, matthew@voxel51.com
@@ -26,6 +26,8 @@ import random
 
 import numpy as np
 
+import eta.core.utils as etau
+
 
 logger = logging.getLogger(__name__)
 
@@ -38,13 +40,13 @@ def round_robin_split(iterable, split_fractions=None):
     items are already randomly ordered.
 
     Args:
-        iterable: any finite iterable
+        iterable: a finite iterable
         split_fractions: an optional list of split fractions, which should sum
             to 1. By default, [0.5, 0.5] is used
 
     Returns:
         sample_lists: a list of lists, of the same length as `split_fractions`.
-            Each sub-list contains items from the original iterable.
+            Each sub-list contains items from the original iterable
     '''
     split_fractions = _validate_split_fractions(split_fractions)
 
@@ -59,8 +61,8 @@ def round_robin_split(iterable, split_fractions=None):
     if n == 0:
         return [[] for _ in sample_sizes]
 
-    # Calculate exact size of each sample, making sure the sum of the
-    # samples sizes is equal to `n`
+    # Calculate exact size of each sample, making sure the sum of the samples'
+    # sizes is equal to `n`
     remainder = n - sum(sample_sizes)
     num_to_add = int(remainder / len(sample_sizes))
     for idx, _ in enumerate(sample_sizes):
@@ -101,13 +103,13 @@ def random_split_exact(iterable, split_fractions=None):
     specified fractions.
 
     Args:
-        iterable: any finite iterable
+        iterable: a finite iterable
         split_fractions: an optional list of split fractions, which should sum
             to 1. By default, [0.5, 0.5] is used
 
     Returns:
         sample_lists: a list of lists, of the same length as `split_fractions`.
-            Each sub-list contains items from the original iterable.
+            Each sub-list contains items from the original iterable
     '''
     split_fractions = _validate_split_fractions(split_fractions)
 
@@ -125,13 +127,13 @@ def random_split_approx(iterable, split_fractions=None):
     corresponding split fraction.
 
     Args:
-        iterable: any finite iterable
+        iterable: a finite iterable
         split_fractions: an optional list of split fractions, which should sum
             to 1. By default, [0.5, 0.5] is used
 
     Returns:
         sample_lists: a list of lists, of the same length as `split_fractions`.
-            Each sub-list contains items from the original iterable.
+            Each sub-list contains items from the original iterable
     '''
     split_fractions = _validate_split_fractions(split_fractions)
 
@@ -150,18 +152,18 @@ def split_in_order(iterable, split_fractions=None):
     '''Splits items into multiple sample lists according to the given split
     fractions.
 
-    The items are partitioned into samples in order according to their
-    position in the input sample. If a random split is required, this function
-    is not recommended unless your items are already randomly ordered.
+    The items are partitioned into samples in order according to their position
+    in the input sample. If a random split is required, this function is not
+    recommended unless your items are already randomly ordered.
 
     Args:
-        iterable: any finite iterable
+        iterable: a finite iterable
         split_fractions: an optional list of split fractions, which should sum
             to 1. By default, [0.5, 0.5] is used
 
     Returns:
         sample_lists: a list of lists, of the same length as `split_fractions`.
-            Each sub-list contains items from the original iterable.
+            Each sub-list contains items from the original iterable
     '''
     split_fractions = _validate_split_fractions(split_fractions)
 
@@ -182,27 +184,18 @@ def _split_in_order(item_list, split_fractions):
 
 
 def _validate_split_fractions(split_fractions=None):
-    '''Validate the `split_fractions` are non-negative and sum to one.
-
-    @todo Function currently assumes a two-class setting when generating a
-    split fraction if one does not exist.
-
-    @todo Improve Function Contract -- "validate" implies the function will
-    only check the inputted data, not generate one if none are given.
-    '''
-    # bool is used here to allow for both None and empty-list inputs
-    if not bool(split_fractions):
+    if not split_fractions:
         split_fractions = [0.5, 0.5]
 
-    negative = [frac for frac in split_fractions if frac < 0]
-    if negative:
+    negative_fractions = [f for f in split_fractions if f < 0]
+    if negative_fractions:
         raise ValueError(
-            "Split fractions must be non-negative, but got the following "
-            "negative values: %s" % str(negative))
+            "Split fractions must be non-negative; found negative values: %s"
+            % str(negative_fractions))
 
     if sum(split_fractions) > 1.0:
         raise ValueError(
-            "Sum of split fractions must be <= 1.0, but got sum(%s) = %f" %
+            "Sum of split fractions must be <= 1.0; found sum(%s) = %f" %
             (split_fractions, sum(split_fractions)))
 
     return split_fractions
@@ -220,9 +213,22 @@ def _find_next_available_idx(idx, unavailable_indicators):
     return None
 
 
-SPLIT_FUNCTIONS = {
-    "round_robin": round_robin_split,
-    "random_exact": random_split_exact,
-    "random_approx": random_split_approx,
-    "in_order": split_in_order
-}
+class SplitMethods(etau.FunctionEnum):
+    '''Enum of supported methods for splitting iterables according to split
+    fractions.
+
+    By convention, all methods should follow the syntax
+    `fcn(iterable, split_fractions=None) -> list`.
+    '''
+
+    ROUND_ROBIN = "round_robin"
+    RANDOM_EXACT = "random_exact"
+    RANDOM_APPROX = "random_approx"
+    IN_ORDER = "in_order"
+
+    _FUNCTIONS_MAP = {
+        "round_robin": round_robin_split,
+        "random_exact": random_split_exact,
+        "random_approx": random_split_approx,
+        "in_order": split_in_order
+    }

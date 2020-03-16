@@ -375,6 +375,65 @@ def parse_categorical_string(value, choices, ignore_case=True):
     return orig_value
 
 
+class FunctionEnum(object):
+    '''Base class for enums that support string-based lookup into a set of
+    functions.
+
+    Subclasses must implement the `_FUNCTIONS_MAP` constant.
+    '''
+
+    #
+    # A dictionary mapping string values to functions
+    #
+    # Subclasses MUST implement this constant
+    #
+    _FUNCTIONS_MAP = {}
+
+    @classmethod
+    def get_function(cls, value):
+        '''Gets the function for the given value.
+
+        Args:
+            value: the FunctionEnum value
+
+        Returns:
+            the function
+        '''
+        cls.validate_value(value)
+        return cls._FUNCTIONS_MAP[value]
+
+    @classmethod
+    def is_valid_value(cls, value):
+        '''Determines whether the given value is valid.
+
+        Args:
+            value: the FunctionEnum value
+
+        Returns:
+            True/False
+        '''
+        try:
+            cls.validate_value(value)
+            return True
+        except ValueError:
+            return False
+
+    @classmethod
+    def validate_value(cls, value):
+        '''Validates that the given value is valid.
+
+        Args:
+            value: the FunctionEnum value
+
+        Raises:
+            ValueError: if the value is invalid
+        '''
+        if value not in cls._FUNCTIONS_MAP:
+            raise ValueError(
+                "'%s' is not a valid value for %s; supported values are %s" %
+                (value, get_class_name(cls), list(cls._FUNCTIONS_MAP)))
+
+
 def get_class_name(cls_or_obj):
     '''Returns the fully-qualified class name for the given input, which can
     be a class or class instance.
@@ -2313,9 +2372,9 @@ def find_duplicate_files(path_list, verbose=False):
             the output.
     '''
     if verbose:
-        logger.info("Finding duplicates out of %d files..." % len(path_list))
+        logger.info("Finding duplicates among %d files...", len(path_list))
 
-    hash_buckets = _get_file_hash_buckets(path_list, verbose=verbose)
+    hash_buckets = _get_file_hash_buckets(path_list, verbose)
 
     duplicates = []
     for file_group in itervalues(hash_buckets):
@@ -2324,25 +2383,26 @@ def find_duplicate_files(path_list, verbose=False):
 
     if verbose:
         duplicate_count = sum(len(x) for x in duplicates) - len(duplicates)
-        logger.info("Complete: %d duplicates found" % duplicate_count)
+        logger.info("Operation complete. Found %d duplicates", duplicate_count)
 
     return duplicates
 
 
-def find_matching_file_pairs(path_list1, path_list2):
+def find_matching_file_pairs(path_list1, path_list2, verbose=False):
     '''Returns a list of pairs of paths that have identical contents, where
     the paths in each pair aren't from the same path list.
 
     Args:
         path_list1: list of file paths
         path_list2: another list of file paths
+        verbose: if True, log progress
 
     Returns:
         pairs: a list of pairs of file paths that have identical content,
             where one member of the pair is from `path_list1` and the other
             member is from `path_list2`
     '''
-    hash_buckets1 = _get_file_hash_buckets(path_list1)
+    hash_buckets1 = _get_file_hash_buckets(path_list1, verbose)
     pairs = []
     for path in path_list2:
         with open(path, "rb") as f:
@@ -2359,11 +2419,11 @@ def _get_file_hash_buckets(path_list, verbose):
     hash_buckets = defaultdict(list)
     for idx, path in enumerate(path_list):
         if verbose and idx % 100 == 0:
-            logger.info("\thashing file %d/%d" % (idx, len(path_list)))
+            logger.info("\tHashing file %d/%d", idx, len(path_list))
+
         if not os.path.isfile(path):
             logger.warning(
-                "File '%s' is a directory or does not exist. "
-                "Skipping.", path)
+                "'%s' is a directory or does not exist; skipping", path)
             continue
 
         with open(path, "rb") as f:

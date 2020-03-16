@@ -1,10 +1,9 @@
 '''
 Utilities for working with `LabeledDataset`s.
 
-Copyright 2017-2019 Voxel51, Inc.
+Copyright 2017-2020 Voxel51, Inc.
 voxel51.com
 
-Matthew Lightman, matthew@voxel51.com
 Jason Corso, jason@voxel51.com
 Ben Kane, ben@voxel51.com
 Tyler Ganter, tyler@voxel51.com
@@ -31,19 +30,23 @@ import eta.core.utils as etau
 logger = logging.getLogger(__name__)
 
 
-COPY = "copy"
-LINK = "link"
-MOVE = "move"
-SYMLINK = "symlink"
+class FileMethods(etau.FunctionEnum):
+    '''Enum of supported methods for adding files to `LabeledDataset`s.
 
-FILE_METHODS = {COPY, LINK, MOVE, SYMLINK}
+    By convention, all methods should follow the syntax `fcn(inpath, outpath)`.
+    '''
 
-_FILE_METHODS_MAP = {
-    COPY: etau.copy_file,
-    LINK: etau.link_file,
-    MOVE: etau.move_file,
-    SYMLINK: etau.symlink_file
-}
+    COPY = "copy"
+    LINK = "link"
+    MOVE = "move"
+    SYMLINK = "symlink"
+
+    _FUNCTIONS_MAP = {
+        "copy": etau.copy_file,
+        "link": etau.link_file,
+        "move": etau.move_file,
+        "symlink": etau.symlink_file,
+    }
 
 
 def append_index_if_necessary(dataset, data_path, labels_path):
