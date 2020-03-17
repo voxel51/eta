@@ -339,7 +339,7 @@ class AttributeSchema(etal.LabelsSchema):
         self.add(attr)
 
     def is_valid_value(self, value):
-        '''Whether value is valid for the attribute.
+        '''Whether the attribute value is compliant with the schema.
 
         Args:
             value: the value
@@ -451,6 +451,19 @@ class AttributeSchema(etal.LabelsSchema):
                 "Expected default '%s' for attribute '%s'; found '%s'" %
                 (schema.default, self.name, self.default))
 
+    def validate_default_value(self):
+        '''Validates that the schema's default value (if any) is compliant with
+        the schema.
+
+        Raises:
+            LabelsSchemaError: if the schema has a default value that is not
+                compliant with the schema
+        '''
+        if self.has_default_value:
+            if not self.is_valid_value(self.default):
+                raise AttributeSchemaError(
+                    "Default value '%s' is not compliant with the schema")
+
     def merge_schema(self, schema):
         '''Merges the given AttributeSchema into this schema.
 
@@ -548,6 +561,7 @@ class CategoricalAttributeSchema(AttributeSchema):
         super(CategoricalAttributeSchema, self).__init__(
             name, exclusive=exclusive, default=default)
         self.categories = set(categories or [])
+        self.validate_default_value()
 
     @property
     def is_empty(self):
@@ -673,6 +687,7 @@ class NumericAttributeSchema(AttributeSchema):
         super(NumericAttributeSchema, self).__init__(
             name, exclusive=exclusive, default=default)
         self.range = tuple(range or [])
+        self.validate_default_value()
 
     @property
     def is_empty(self):
@@ -805,6 +820,7 @@ class BooleanAttributeSchema(AttributeSchema):
         super(BooleanAttributeSchema, self).__init__(
             name, exclusive=exclusive, default=default)
         self.values = set(values or [])
+        self.validate_default_value()
 
     @property
     def is_empty(self):
