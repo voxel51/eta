@@ -131,6 +131,33 @@ class ImageLabels(FrameLabels):
         kwargs.pop("frame_number", None) # ImageLabels don't use `frame_number`
         super(ImageLabels, self).__init__(**kwargs)
 
+    @property
+    def has_filename(self):
+        '''Whether the image has a filename.'''
+        return self.filename is not None
+
+    @property
+    def has_metadata(self):
+        '''Whether the image has metadata.'''
+        return self.metadata is not None
+
+    def merge_labels(self, frame_labels, reindex=False):
+        '''Merges the given FrameLabels into this labels.
+
+        Args:
+            frame_labels: a FrameLabels
+            reindex: whether to offset the `index` fields of objects and events
+                in `frame_labels` before merging so that all indices are
+                unique. The default is False
+        '''
+        super(ImageLabels, self).merge_labels(frame_labels, reindex=reindex)
+
+        if isinstance(frame_labels, ImageLabels):
+            if frame_labels.has_filename and not self.has_filename:
+                self.filename = frame_labels.filename
+            if frame_labels.has_metadata and not self.has_metadata:
+                self.metadata = frame_labels.metadata
+
     @classmethod
     def from_frame_labels(cls, frame_labels, filename=None, metadata=None):
         '''Constructs an ImageLabels from a FrameLabels.
