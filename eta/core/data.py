@@ -293,25 +293,34 @@ class AttributeSchema(etal.LabelsSchema):
         type: the fully-qualified name of the Attribute class
         exclusive: whether at most one attribute with this name may appear in
             an AttributeContainer
+        default: an optional default value for the attribute
     '''
 
-    def __init__(self, name, exclusive=False):
+    def __init__(self, name, exclusive=False, default=None):
         '''Initializes the base AttributeSchema instance.
 
         Args:
             name: the name of the attribute
             exclusive: whether at most one attribute with this name may appear
                 in an AttributeContainer. By default, this is False
+            default: an optional default value for the attribute. By default,
+                no default is stored
         '''
         self.name = name
         self.type = etau.get_class_name(self)[:-len("Schema")]
         self.exclusive = exclusive
+        self.default = default
         self._attr_cls = etau.get_class(self.type)
 
     @property
     def is_exclusive(self):
         '''Whether this attribute is exclusive.'''
         return self.exclusive
+
+    @property
+    def has_default_value(self):
+        '''Whether this attribute has a default value.'''
+        return self.default is not None
 
     def get_attribute_class(self):
         '''Gets the Attribute class associated with this schema.
@@ -330,7 +339,7 @@ class AttributeSchema(etal.LabelsSchema):
         self.add(attr)
 
     def is_valid_value(self, value):
-        '''Whether value is valid for the attribute.
+        '''Whether the attribute value is compliant with the schema.
 
         Args:
             value: the value
@@ -417,8 +426,7 @@ class AttributeSchema(etal.LabelsSchema):
                 "schema " % (attr.value, attr.name))
 
     def validate_subset_of_schema(self, schema):
-        '''Validates that the base type and attributes of this schema are a
-        subset of the given schema.
+        '''Validates that this schema is a subset of the given schema.
 
         Args:
             schema: an AttributeSchema
@@ -438,6 +446,38 @@ class AttributeSchema(etal.LabelsSchema):
                 "Expected exclusive '%s' for attribute '%s'; found '%s'" %
                 (schema.exclusive, self.name, self.exclusive))
 
+        if self.default != schema.default:
+            raise AttributeSchemaError(
+                "Expected default '%s' for attribute '%s'; found '%s'" %
+                (schema.default, self.name, self.default))
+
+    def validate_default_value(self):
+        '''Validates that the schema's default value (if any) is compliant with
+        the schema.
+
+        Raises:
+            LabelsSchemaError: if the schema has a default value that is not
+                compliant with the schema
+        '''
+        if self.has_default_value:
+            if not self.is_valid_value(self.default):
+                raise AttributeSchemaError(
+                    "Default value '%s' is not compliant with the schema")
+
+    def merge_schema(self, schema):
+        '''Merges the given AttributeSchema into this schema.
+
+        Args:
+            schema: a AttributeSchema
+        '''
+        self.validate_schema(schema)
+
+        if self.exclusive is False:
+            self.exclusive = schema.exclusive
+
+        if self.default is None:
+            self.default = schema.default
+
     @staticmethod
     def get_kwargs(d):
         '''Extracts the relevant keyword arguments for this schema from the
@@ -450,6 +490,20 @@ class AttributeSchema(etal.LabelsSchema):
             a dictionary of parsed keyword arguments
         '''
         raise NotImplementedError("subclass must implement get_kwargs()")
+
+    def attributes(self):
+        '''Returns the list of attributes to be serialized.
+
+        Returns:
+            the list of attributes
+        '''
+        attrs_ = ["name", "type"]
+        if self.exclusive:
+            attrs_.append("exclusive")
+        if self.default is not None:
+            attrs_.append("default")
+
+        return attrs_
 
     @classmethod
     def from_dict(cls, d):
@@ -469,8 +523,10 @@ class AttributeSchema(etal.LabelsSchema):
 
         name = d["name"]
         exclusive = d.get("exclusive", False)
+        default = d.get("default", None)
         return schema_cls(
-            name, exclusive=exclusive, **schema_cls.get_kwargs(d))
+            name, exclusive=exclusive, default=default,
+            **schema_cls.get_kwargs(d))
 
 
 class AttributeSchemaError(etal.LabelsSchemaError):
@@ -487,9 +543,10 @@ class CategoricalAttributeSchema(AttributeSchema):
         categories: the set of valid values for the attribute
         exclusive: whether at most one attribute with this name may appear in
             an AttributeContainer
+        default: an optional default value for the attribute
     '''
 
-    def __init__(self, name, categories=None, exclusive=False):
+    def __init__(self, name, categories=None, exclusive=False, default=None):
         '''Creates a CategoricalAttributeSchema instance.
 
         Args:
@@ -498,10 +555,13 @@ class CategoricalAttributeSchema(AttributeSchema):
                 empty set is used
             exclusive: whether at most one attribute with this name may appear
                 in an AttributeContainer. By default, this is False
+            default: an optional default value for the attribute. By default,
+                no default is stored
         '''
         super(CategoricalAttributeSchema, self).__init__(
-            name, exclusive=exclusive)
+            name, exclusive=exclusive, default=default)
         self.categories = set(categories or [])
+        self.validate_default_value()
 
     @property
     def is_empty(self):
@@ -565,9 +625,8 @@ class CategoricalAttributeSchema(AttributeSchema):
         Args:
             schema: a CategoricalAttributeSchema
         '''
-        self.validate_schema(schema)
+        super(CategoricalAttributeSchema, self).merge_schema(schema)
         self.categories.update(schema.categories)
-        self.exclusive |= schema.exclusive
 
     def attributes(self):
         '''Returns the list of attributes to be serialized.
@@ -575,10 +634,14 @@ class CategoricalAttributeSchema(AttributeSchema):
         Returns:
             the list of attributes
         '''
-        return ["name", "type", "categories", "exclusive"]
+        attrs_ = super(CategoricalAttributeSchema, self).attributes()
+        attrs_.append("categories")
+        return attrs_
 
     def serialize(self, *args, **kwargs):
         d = super(CategoricalAttributeSchema, self).serialize(*args, **kwargs)
+
+        # Always serialize categories in alphabetical order
         if "categories" in d:
             d["categories"].sort()
 
@@ -607,9 +670,10 @@ class NumericAttributeSchema(AttributeSchema):
         range: the (min, max) range for the attribute
         exclusive: whether at most one attribute with this name may appear in
             an AttributeContainer
+        default: an optional default value for the attribute
     '''
 
-    def __init__(self, name, range=None, exclusive=False):
+    def __init__(self, name, range=None, exclusive=False, default=None):
         '''Creates a NumericAttributeSchema instance.
 
         Args:
@@ -617,9 +681,13 @@ class NumericAttributeSchema(AttributeSchema):
             range: the (min, max) range for the attribute
             exclusive: whether at most one attribute with this name may appear
                 in an AttributeContainer. By default, this is False
+            default: an optional default value for the attribute. By default,
+                no default is stored
         '''
-        super(NumericAttributeSchema, self).__init__(name, exclusive=exclusive)
+        super(NumericAttributeSchema, self).__init__(
+            name, exclusive=exclusive, default=default)
         self.range = tuple(range or [])
+        self.validate_default_value()
 
     @property
     def is_empty(self):
@@ -691,7 +759,7 @@ class NumericAttributeSchema(AttributeSchema):
         Args:
             schema: a NumericAttributeSchema
         '''
-        self.validate_schema(schema)
+        super(NumericAttributeSchema, self).merge_schema(schema)
 
         if not self.range:
             self.range = schema.range
@@ -700,15 +768,15 @@ class NumericAttributeSchema(AttributeSchema):
                 min(self.range[0], schema.range[0]),
                 max(self.range[1], schema.range[1]))
 
-        self.exclusive |= schema.exclusive
-
     def attributes(self):
         '''Returns the list of attributes to be serialized.
 
         Returns:
             the list of attributes
         '''
-        return ["name", "type", "range", "exclusive"]
+        attrs_ = super(NumericAttributeSchema, self).attributes()
+        attrs_.append("range")
+        return attrs_
 
     @staticmethod
     def get_kwargs(d):
@@ -733,9 +801,11 @@ class BooleanAttributeSchema(AttributeSchema):
         values: the set of valid boolean values for the attribute
         exclusive: whether at most one attribute with this name may appear in
             an AttributeContainer
+        default: an optional default value for the attribute. By default,
+                no default is stored
     '''
 
-    def __init__(self, name, values=None, exclusive=False):
+    def __init__(self, name, values=None, exclusive=False, default=None):
         '''Creates a BooleanAttributeSchema instance.
 
         Args:
@@ -744,9 +814,13 @@ class BooleanAttributeSchema(AttributeSchema):
                 default, an empty set is used
             exclusive: whether at most one attribute with this name may appear
                 in an AttributeContainer. By default, this is False
+            default: an optional default value for the attribute. By default,
+                no default is stored
         '''
-        super(BooleanAttributeSchema, self).__init__(name, exclusive=exclusive)
+        super(BooleanAttributeSchema, self).__init__(
+            name, exclusive=exclusive, default=default)
         self.values = set(values or [])
+        self.validate_default_value()
 
     @property
     def is_empty(self):
@@ -809,9 +883,8 @@ class BooleanAttributeSchema(AttributeSchema):
         Args:
             schema: a BooleanAttributeSchema
         '''
-        self.validate_schema(schema)
+        super(BooleanAttributeSchema, self).merge_schema(schema)
         self.values.update(schema.values)
-        self.exclusive |= schema.exclusive
 
     def attributes(self):
         '''Returns the list of attributes to be serialized.
@@ -819,7 +892,9 @@ class BooleanAttributeSchema(AttributeSchema):
         Returns:
             the list of attributes
         '''
-        return ["name", "type", "values", "exclusive"]
+        attrs_ = super(BooleanAttributeSchema, self).attributes()
+        attrs_.append("values")
+        return attrs_
 
     @staticmethod
     def get_kwargs(d):
@@ -1057,10 +1132,6 @@ class AttributeContainerSchema(etal.LabelsContainerSchema):
         '''
         return name in self.schema
 
-    def is_exclusive_attribute(self, name):
-        '''Whether the Attribute with the given name is exclusive.'''
-        return self.get_attribute_schema(name).is_exclusive
-
     def get_attribute_schema(self, name):
         '''Gets the AttributeSchema for the Attribute with the given name.
 
@@ -1088,6 +1159,39 @@ class AttributeContainerSchema(etal.LabelsContainerSchema):
         '''
         self.validate_attribute_name(name)
         return self.schema[name].get_attribute_class()
+
+    def is_exclusive_attribute(self, name):
+        '''Whether the Attribute with the given name is exclusive.
+
+        Args:
+            name: the name
+
+        Returns:
+            True/False
+        '''
+        return self.get_attribute_schema(name).is_exclusive
+
+    def has_default_value(self, name):
+        '''Whether the Attribute with the given name has a default value.
+
+        Args:
+            name: the name
+
+        Returns:
+            True/False
+        '''
+        return self.get_attribute_schema(name).has_default_value
+
+    def get_default_value(self, name):
+        '''Gets the default value for the Attribute with the given name.
+
+        Args:
+            name: the name
+
+        Returns:
+            the default value, or None if the attribute has no default value
+        '''
+        return self.get_attribute_schema(name).default
 
     def add_attribute(self, attr):
         '''Incorporates the given Attribute into the schema.
