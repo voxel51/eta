@@ -690,7 +690,7 @@ def export_frozen_inference_graph(
 
     Args:
         checkpoint_path: path to the training checkpoint to export
-        pipeline_config_path: path to the pipeline config file for the
+        pipeline_config_path: path to the pipeline config file for the graph
         output_dir: the directory in which to write the frozen inference graph
     '''
     # Import here because they are sooooo slow
