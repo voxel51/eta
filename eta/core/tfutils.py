@@ -1,7 +1,7 @@
 '''
 Core utilities for working with TensorFlow models.
 
-Copyright 2017-2019, Voxel51, Inc.
+Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
@@ -68,6 +68,94 @@ def load_graph(model_path, prefix=""):
     return graph
 
 
+def export_frozen_graph(model_dir, output_node_names):
+    '''Exports the TF model defined by the given model directory as a
+    `frozen_model.pb` file in that directory.
+
+    Only the subgraph defined by the specified output nodes is saved.
+
+    Args:
+        model_dir: the model directory, which will be passed to
+            `tf.train.get_checkpoint_state()`
+        output_node_names: a list of output node names to export
+
+    Returns:
+        the path to the frozen graph on disk
+    '''
+    if not os.path.isdir(model_dir):
+        raise OSError(
+            "Model directory '%s' does not exist" % model_dir)
+
+    checkpoint = tf.train.get_checkpoint_state(model_dir)
+    input_checkpoint = checkpoint.model_checkpoint_path
+    frozen_model_name = "frozen_model.pb"
+
+    with tf.Session(graph=tf.Graph()) as sess:
+        # Import the meta graph
+        saver = tf.train.import_meta_graph(
+            input_checkpoint + ".meta", clear_devices=True)
+
+        # Restore the weights
+        saver.restore(sess, input_checkpoint)
+
+        # Fix batch norm nodes
+        # https://github.com/tensorflow/tensorflow/issues/3628#issuecomment-272149052
+        gd = sess.graph.as_graph_def()
+        for node in gd.node:
+            if node.op == "RefSwitch":
+                node.op = "Switch"
+                for index in range(len(node.input)):
+                    if "moving_" in node.input[index]:
+                        node.input[index] = node.input[index] + "/read"
+            elif node.op == "AssignSub":
+                node.op = "Sub"
+                if "use_locking" in node.attr:
+                    del node.attr["use_locking"]
+
+        # Export variables to constants
+        output_graph_def = tf.graph_util.convert_variables_to_constants(
+            sess, gd, output_node_names)
+
+        # Write the frozen graph
+        tf.train.write_graph(
+            output_graph_def, model_dir, frozen_model_name, as_text=False)
+
+        logger.info(
+            "Exported %d ops in the frozen graph.", len(output_graph_def.node))
+
+    output_path = os.path.join(model_dir, frozen_model_name)
+
+    return output_path
+
+
+def visualize_checkpoint(model_dir, log_dir=None, port=None):
+    '''Visualizes the TF checkpoint in the given directory via TensorBoard.
+
+    Specifically, this script performs the following actions:
+        - loads the checkpoint via `tf.train.get_checkpoint_state()`
+        - populates a TensorBoard log directory for the graph
+        - launches a TensorBoard instance to visualize the graph
+
+    Args:
+        model_dir: the TF model directory
+        log_dir: an optional log directory in which to write the TensorBoard
+            files. By default, a temp directory is created
+        port: an optional port on which to launch TensorBoard
+    '''
+    if not os.path.isdir(model_dir):
+        raise OSError(
+            "Model directory '%s' does not exist" % model_dir)
+
+    checkpoint = tf.train.get_checkpoint_state(model_dir)
+    input_checkpoint = checkpoint.model_checkpoint_path
+
+    graph = tf.Graph()
+    with graph.as_default():
+        tf.train.import_meta_graph(
+            input_checkpoint + ".meta", clear_devices=True)
+        _launch_tensorboard(graph, log_dir=log_dir, port=port)
+
+
 def visualize_frozen_graph(model_path, log_dir=None, port=None):
     '''Visualizes the TF graph from the given `.pb` file via TensorBoard.
 
@@ -82,10 +170,14 @@ def visualize_frozen_graph(model_path, log_dir=None, port=None):
             files. By default, a temp directory is created
         port: an optional port on which to launch TensorBoard
     '''
+    graph = load_graph(model_path, prefix="import")
+    _launch_tensorboard(graph, log_dir=log_dir, port=port)
+
+
+def _launch_tensorboard(graph, log_dir=None, port=None):
     if log_dir is None:
         log_dir = etau.make_temp_dir()
 
-    graph = load_graph(model_path, prefix="import")
     writer = tf.summary.FileWriter(log_dir)
     writer.add_graph(graph)
     logger.info("Model imported to '%s'", log_dir)
