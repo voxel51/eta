@@ -65,6 +65,7 @@ def load_graph(model_path, prefix=""):
         with tf.gfile.GFile(model_path, "rb") as f:
             graph_def.ParseFromString(f.read())
             tf.import_graph_def(graph_def, name=prefix)
+
     return graph
 
 
@@ -160,7 +161,7 @@ def visualize_frozen_graph(model_path, log_dir=None, port=None):
     '''Visualizes the TF graph from the given `.pb` file via TensorBoard.
 
     Specifically, this script performs the following actions:
-        - load the graph
+        - loads the graph
         - populates a TensorBoard log directory for the graph
         - launches a TensorBoard instance to visualize the graph
 
@@ -265,6 +266,7 @@ class UsesTFSession(object):
         for sess in self._sess_list:
             if sess:
                 sess.close()
+
         self._sess_list = []
 
 
