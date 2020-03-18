@@ -1067,7 +1067,7 @@ class ETAModelManager(ModelManager):
     def upload_model(model_path, *args, **kwargs):
         raise NotImplementedError(
             "ETA models must be uploaded by a Voxel51 administrator. "
-            "Please contact %s for more information." % etac.CONTACT)
+            "Please contact %s for more information." % etac.AUTHOR_EMAIL)
 
     def _download_model(self, model_path):
         if self.config.google_drive_id:
@@ -1102,7 +1102,7 @@ class ETAModelManager(ModelManager):
     def delete_model(self):
         raise NotImplementedError(
             "ETA models must be deleted by a Voxel51 administrator. "
-            "Please contact %s for more information." % etac.CONTACT)
+            "Please contact %s for more information." % etac.AUTHOR_EMAIL)
 
 
 class ModelError(Exception):
