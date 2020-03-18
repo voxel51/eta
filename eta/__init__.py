@@ -71,6 +71,9 @@ class ETAConfig(EnvConfig):
         self.default_video_ext = self.parse_string(
             d, "default_video_ext", env_var="ETA_DEFAULT_VIDEO_EXT",
             default=".mp4")
+        self.default_figure_ext = self.parse_string(
+            d, "default_figure_ext", env_var="ETA_DEFAULT_FIGURE_EXT",
+            default=".pdf")
 
         self._parse_patterns()
         self._fill_patterns()

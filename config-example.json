@@ -26,5 +26,6 @@
     "allow_model_downloads": true,
     "default_sequence_idx" : "%06d",
     "default_video_ext": ".mp4",
-    "default_image_ext": ".jpg"
+    "default_image_ext": ".jpg",
+    "default_figure_ext": ".pdf"
 }
