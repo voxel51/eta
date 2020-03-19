@@ -6,6 +6,33 @@ See [this document](visualize_tf_graphs_guide.md) for more information about
 visualizing the architecture of graphs that you have exported.
 
 
+## Exporting a generic training checkpoint
+
+Training a generic TF model yields a model directory with contents similar to:
+
+```
+.
+├── model.ckpt.meta
+├── model.ckpt.data-?????-of-?????
+└── model.ckpt.index
+```
+
+Run the commands below to export the checkpoint from a `model_dir` whose
+contents are as shown above as a `frozen_model.pb` file in that directory:
+
+```py
+import eta.core.tfutils as etat
+
+# The model directory to process
+model_dir = "/path/to/model/dir"
+
+# The names of the output nodes to export
+output_node_names = ["output", "nodes"]
+
+model_path = etat.export_frozen_graph(model_dir, output_node_names)
+```
+
+
 ## Exporting pre-trained models from the TF-Slim Model Zoo
 
 This section describes how to export a pre-trained model from the
@@ -101,7 +128,7 @@ etat.export_frozen_inference_graph(
 
 ## Copyright
 
-Copyright 2017-2019, Voxel51, Inc.<br>
+Copyright 2017-2020, Voxel51, Inc.<br>
 voxel51.com
 
 Brian Moore, brian@voxel51.com

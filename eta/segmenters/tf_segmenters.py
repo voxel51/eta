@@ -55,10 +55,14 @@ class TFSemanticSegmenterConfig(Config, etal.HasDefaultDeploymentConfig):
         labels_path: the path to the labels map for the model
         resize_to_max_dim: resize input images so that their maximum dimension
             is equal to this value
+        preprocessing_fcn: the fully-qualified name of a preprocessing function
+            to use
         input_name: the name of the `tf.Operation` to which to feed the input
             image tensor
         output_name: the name of the `tf.Operation` from which to extract the
             output segmentation masks
+        outputs_logits: whether the specified output node produces logits
+            (True) or directly produces segmentation masks (False)
     '''
 
     def __init__(self, d):
@@ -74,9 +78,14 @@ class TFSemanticSegmenterConfig(Config, etal.HasDefaultDeploymentConfig):
             _labels_path = etau.fill_config_patterns(_labels_path)
         self.labels_path = _labels_path
 
-        self.resize_to_max_dim = self.parse_number(d, "resize_to_max_dim")
+        self.resize_to_max_dim = self.parse_number(
+            d, "resize_to_max_dim", default=None)
+        self.preprocessing_fcn = self.parse_string(
+            d, "preprocessing_fcn", default=None)
         self.input_name = self.parse_string(d, "input_name")
         self.output_name = self.parse_string(d, "output_name")
+        self.outputs_logits = self.parse_bool(
+            d, "outputs_logits", default=False)
 
         self._validate()
 
@@ -124,6 +133,11 @@ class TFSemanticSegmenter(
         self._labels_map = None
         if self.config.labels_path:
             self._labels_map = etal.load_labels_map(self.config.labels_path)
+
+        # Setup preprocessing
+        self._preprocessing_fcn = None
+        if self.config.preprocessing_fcn:
+            self._make_preprocessing_fcn(self.config.preprocessing_fcn)
 
         # Get operations
         self._input_op = self._graph.get_operation_by_name(
@@ -179,19 +193,33 @@ class TFSemanticSegmenter(
         return self._segment(imgs)
 
     def _segment(self, imgs):
-        #
-        # Preprocessing: resize so that maximum dimension is equal to the
-        # specified value
-        #
-        imgs = [
-            etai.resize_to_fit_max(img, self.config.resize_to_max_dim)
-            for img in imgs]
+        imgs = self._preprocess(imgs)
 
         masks = self._evaluate(imgs, [self._output_op])[0]
+
+        if self.config.outputs_logits:
+            masks = np.asarray(masks)
+            masks = np.argmax(masks, axis=masks.ndim - 1)
+
         masks = np.asarray(masks, dtype=np.uint8)
         return [etai.ImageLabels(mask=mask) for mask in masks]
+
+    def _preprocess(self, imgs):
+        if self.config.resize_to_max_dim is not None:
+            imgs = [
+                etai.resize_to_fit_max(img, self.config.resize_to_max_dim)
+                for img in imgs]
+
+        if self._preprocessing_fcn is not None:
+            imgs = self._preprocessing_fcn(imgs)
+
+        return imgs
 
     def _evaluate(self, imgs, ops):
         in_tensor = self._input_op.outputs[0]
         out_tensors = [op.outputs[0] for op in ops]
         return self._sess.run(out_tensors, feed_dict={in_tensor: imgs})
+
+    def _make_preprocessing_fcn(self, preprocessing_fcn):
+        logger.info("Using preprocessing function '%s'", preprocessing_fcn)
+        self._preprocessing_fcn = etau.get_function(preprocessing_fcn)

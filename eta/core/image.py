@@ -630,7 +630,7 @@ def resize(img, width=None, height=None, *args, **kwargs):
     aspect-preserving value is used.
 
     Args:
-        img: input image
+        img: an image
         width: the desired image width
         height: the desired image height
         *args: valid positional arguments for `cv2.resize()`
@@ -657,7 +657,7 @@ def resize_to_fit_max(img, max_dim, *args, **kwargs):
     The aspect ratio of the input image is preserved.
 
     Args:
-        img: input image
+        img: an image
         max_dim: the maximum dimension
         *args: valid positional arguments for `cv2.resize()`
         **kwargs: valid keyword arguments for `cv2.resize()`
@@ -680,7 +680,7 @@ def resize_to_fit_min(img, min_dim, *args, **kwargs):
     The aspect ratio of the input image is preserved.
 
     Args:
-        img: input image
+        img: an image
         min_dim: the minimum dimension
         *args: valid positional arguments for `cv2.resize()`
         **kwargs: valid keyword arguments for `cv2.resize()`
@@ -696,6 +696,36 @@ def resize_to_fit_min(img, min_dim, *args, **kwargs):
     return resize(img, width=width, height=height, *args, **kwargs)
 
 
+def resize_to_even(img, *args, **kwargs):
+    '''Minimally resizes the given image, if necessary, so that its dimensions
+    are even.
+
+    Args:
+        img: an image
+        *args: valid positional arguments for `cv2.resize()`
+        **kwargs: valid keyword arguments for `cv2.resize()`
+
+    Returns:
+        the resized image with even dimensions
+    '''
+    width, height = to_frame_size(img=img)
+
+    should_resize = False
+
+    if width % 2:
+        width -= 1
+        should_resize = True
+
+    if height % 2:
+        height -= 1
+        should_resize = True
+
+    if should_resize:
+        img = resize(img, width=width, height=height, *args, **kwargs)
+
+    return img
+
+
 def expand(
         img, min_width=None, min_height=None, min_dim=None, *args, **kwargs):
     '''Resizes the given image, if necesary, so that its width and height are
@@ -704,7 +734,7 @@ def expand(
     The aspect ratio of the input image is preserved.
 
     Args:
-        img: input image
+        img: an image
         min_width: the minimum width
         min_height: the minimum height
         min_dim: the minimum width and height
@@ -743,7 +773,7 @@ def contract(
     The aspect ratio of the input image is preserved.
 
     Args:
-        img: input image
+        img: an image
         max_width: the maximum width
         max_height: the maximum height
         max_dim: the maximum width and width
@@ -926,10 +956,11 @@ def get_contour_band_mask(mask, bandwidth):
 
 
 def to_double(img):
-    '''Converts img to a double precision image with values in [0, 1].
+    '''Converts the given image to a double precision (float) image with values
+    in [0, 1].
 
     Args:
-        img: input image
+        img: an image
 
     Returns:
         a copy of the image in double precision format
@@ -938,10 +969,11 @@ def to_double(img):
 
 
 def to_float(img):
-    '''Converts img to a single precision image with values in [0, 1].
+    '''Converts the given image to a single precision (float32) image with
+    values in [0, 1].
 
     Args:
-        img: input image
+        img: an image
 
     Returns:
         a copy of the image in single precision format
