@@ -318,6 +318,24 @@ def make_tf_config(config_proto=None):
     return config
 
 
+def _set_proto_fields(proto, d):
+    def _split_field(field):
+        chunks = field.split(".", 1)
+        return tuple(chunks) if len(chunks) == 2 else (chunks[0], None)
+
+    for field, val in iteritems(d):
+        field, sub = _split_field(field)
+        try:
+            if sub:
+                _set_proto_fields(getattr(proto, field), {sub: val})
+            elif isinstance(val, dict):
+                _set_proto_fields(getattr(proto, field), val)
+            else:
+                setattr(proto, field, val)
+        except AttributeError as e:
+            logger.warning(str(e))
+
+
 def is_valid_tf_record_path(tf_record_path):
     '''Determines whether the provided tf.Record path is a valid path.
 
@@ -374,6 +392,28 @@ IMG_MEAN_VOC = np.array(
     dtype=np.float32).reshape(1, 1, 3)
 
 
+def float_preprocessing_numpy(imgs):
+    '''Preprocesses the images by scaling them to [-1, 1] in float32 format.
+
+    Args:
+        imgs: a list of images
+
+    Returns:
+        the preprocessed images, in float32 format
+    '''
+    imgs_out = []
+    for img in imgs:
+        if etai.is_gray(img):
+            img = etai.gray_to_rgb(img)
+        elif etai.has_alpha(img):
+            img = img[:, :, :3]
+
+        img = 2.0 * (etai.to_float(img) - 0.5)
+        imgs_out.append(img)
+
+    return imgs_out
+
+
 def inception_preprocessing_numpy(imgs, height, width):
     '''Performs Inception-style preprocessing of images using numpy.
 
@@ -416,6 +456,11 @@ def voc_preprocessing_numpy(imgs):
     '''
     imgs_out = []
     for img in imgs:
+        if etai.is_gray(img):
+            img = etai.gray_to_rgb(img)
+        elif etai.has_alpha(img):
+            img = img[:, :, :3]
+
         img = np.asarray(img, dtype=np.float32)
         img -= IMG_MEAN_VOC
         imgs_out.append(img)
@@ -455,21 +500,3 @@ def vgg_preprocessing_numpy(imgs, height, width):
         imgs_out.append(img)
 
     return imgs_out
-
-
-def _set_proto_fields(proto, d):
-    def _split_field(field):
-        chunks = field.split(".", 1)
-        return tuple(chunks) if len(chunks) == 2 else (chunks[0], None)
-
-    for field, val in iteritems(d):
-        field, sub = _split_field(field)
-        try:
-            if sub:
-                _set_proto_fields(getattr(proto, field), {sub: val})
-            elif isinstance(val, dict):
-                _set_proto_fields(getattr(proto, field), val)
-            else:
-                setattr(proto, field, val)
-        except AttributeError as e:
-            logger.warning(str(e))
