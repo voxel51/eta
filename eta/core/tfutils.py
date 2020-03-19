@@ -64,9 +64,25 @@ def load_graph(model_path, prefix=""):
         graph_def = tf.GraphDef()
         with tf.gfile.GFile(model_path, "rb") as f:
             graph_def.ParseFromString(f.read())
+            _fix_batch_norm_nodes(graph_def)
             tf.import_graph_def(graph_def, name=prefix)
 
     return graph
+
+
+def _fix_batch_norm_nodes(graph_def):
+    # Fix batch norm nodes
+    # https://github.com/tensorflow/tensorflow/issues/3628#issuecomment-272149052
+    for node in graph_def.node:
+        if node.op == "RefSwitch":
+            node.op = "Switch"
+            for index in range(len(node.input)):
+                if "moving_" in node.input[index]:
+                    node.input[index] = node.input[index] + "/read"
+        elif node.op == "AssignSub":
+            node.op = "Sub"
+            if "use_locking" in node.attr:
+                del node.attr["use_locking"]
 
 
 def export_frozen_graph(model_dir, output_node_names):
@@ -92,30 +108,18 @@ def export_frozen_graph(model_dir, output_node_names):
     frozen_model_name = "frozen_model.pb"
 
     with tf.Session(graph=tf.Graph()) as sess:
-        # Import the meta graph
+        # Load the graph
         saver = tf.train.import_meta_graph(
             input_checkpoint + ".meta", clear_devices=True)
-
-        # Restore the weights
         saver.restore(sess, input_checkpoint)
+        graph_def = sess.graph.as_graph_def()
 
         # Fix batch norm nodes
-        # https://github.com/tensorflow/tensorflow/issues/3628#issuecomment-272149052
-        gd = sess.graph.as_graph_def()
-        for node in gd.node:
-            if node.op == "RefSwitch":
-                node.op = "Switch"
-                for index in range(len(node.input)):
-                    if "moving_" in node.input[index]:
-                        node.input[index] = node.input[index] + "/read"
-            elif node.op == "AssignSub":
-                node.op = "Sub"
-                if "use_locking" in node.attr:
-                    del node.attr["use_locking"]
+        _fix_batch_norm_nodes(graph_def)
 
         # Export variables to constants
         output_graph_def = tf.graph_util.convert_variables_to_constants(
-            sess, gd, output_node_names)
+            sess, graph_def, output_node_names)
 
         # Write the frozen graph
         tf.train.write_graph(
