@@ -44,7 +44,7 @@ from nets import nets_factory
 logger = logging.getLogger(__name__)
 
 
-# Networks for which we provide pre-processing implemented in numpy
+# Networks for which we provide preprocessing implemented in numpy
 _NUMPY_PREPROC_FUNCTIONS = {
     "resnet_v1_50": etat.vgg_preprocessing_numpy,
     "resnet_v2_50": etat.inception_preprocessing_numpy,
@@ -97,9 +97,9 @@ class TFSlimClassifierConfig(Config, etal.HasDefaultDeploymentConfig):
         network_name: the name of the network architecture from
             `tf.slim.nets.nets_factory`
         labels_path: the path to the labels map for the classifier
-        preprocessing_fcn: the fully-qualified name of a pre-processing
-            function to use. If omitted, the default pre-processing for the
-            specified network architecture is used
+        preprocessing_fcn: the fully-qualified name of a preprocessing function
+            to use. If omitted, the default preprocessing for the specified
+            network architecture is used
         input_name: the name of the `tf.Operation` to use as input. If omitted,
             the default value "input" is used
         features_name: the name of the `tf.Operation` to use to extract
@@ -218,7 +218,7 @@ class TFSlimClassifier(
         self._output_op = self._graph.get_operation_by_name(
             self._prefix + "/" + output_name)
 
-        # Setup pre-processing
+        # Setup preprocessing
         self._preprocessing_fcn = None
         self._preprocessing_sess = None
         self.preprocessing_fcn = self._make_preprocessing_fcn(
@@ -373,27 +373,27 @@ class TFSlimClassifier(
         return attrs, keep
 
     def _make_preprocessing_fcn(self, network_name, preprocessing_fcn):
-        # Use user-specified pre-processing, if provided
+        # Use user-specified preprocessing, if provided
         if preprocessing_fcn:
             logger.info(
-                "Using user-provided pre-processing function '%s'",
+                "Using user-provided preprocessing function '%s'",
                 preprocessing_fcn)
             preproc_fcn_user = etau.get_function(preprocessing_fcn)
             return lambda imgs: preproc_fcn_user(
                 imgs, self.img_size, self.img_size)
 
-        # Use numpy-based pre-processing if supported
+        # Use numpy-based preprocessing if supported
         preproc_fcn_np = _NUMPY_PREPROC_FUNCTIONS.get(network_name, None)
         if preproc_fcn_np is not None:
             logger.info(
-                "Found numpy-based pre-processing implementation for network "
+                "Found numpy-based preprocessing implementation for network "
                 "'%s'", network_name)
             return lambda imgs: preproc_fcn_np(
                 imgs, self.img_size, self.img_size)
 
-        # Fallback to TF-slim pre-processing
+        # Fallback to TF-slim preprocessing
         logger.info(
-            "Using TF-based pre-processing from pre-processing_factory for "
+            "Using TF-based preprocessing from preprocessing_factory for "
             "network '%s'", network_name)
         self._preprocessing_fcn = preprocessing_factory.get_preprocessing(
             network_name, is_training=False)
