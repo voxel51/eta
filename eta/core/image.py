@@ -926,10 +926,11 @@ def get_contour_band_mask(mask, bandwidth):
 
 
 def to_double(img):
-    '''Converts img to a double precision image with values in [0, 1].
+    '''Converts the given image to a double precision (float) image with values
+    in [0, 1].
 
     Args:
-        img: input image
+        img: an image
 
     Returns:
         a copy of the image in double precision format
@@ -938,10 +939,11 @@ def to_double(img):
 
 
 def to_float(img):
-    '''Converts img to a single precision image with values in [0, 1].
+    '''Converts the given image to a single precision (float32) image with
+    values in [0, 1].
 
     Args:
-        img: input image
+        img: an image
 
     Returns:
         a copy of the image in single precision format
