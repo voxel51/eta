@@ -414,8 +414,6 @@ def voc_preprocessing_numpy(imgs):
     Returns:
         the preprocessed images, in float32 format
     '''
-    print("HIHIHIHIHIHIHIHI")
-
     imgs_out = []
     for img in imgs:
         img = np.asarray(img, dtype=np.float32)
