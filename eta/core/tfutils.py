@@ -364,18 +364,29 @@ def make_sharded_tf_record_path(base_path, num_shards):
     return base_path + "-" + "?" * num_digits + "-of-" + num_shards_str
 
 
+# Mean of ImageNet training set
+IMG_MEAN_IMAGENET = np.array(
+    (123.68, 116.779, 103.939), dtype=np.float32).reshape(1, 1, 3)
+
+# Mean of PASCAL VOC training set
+IMG_MEAN_VOC = np.array(
+    (104.00698793, 116.66876762, 122.67891434),
+    dtype=np.float32).reshape(1, 1, 3)
+
+
 def inception_preprocessing_numpy(imgs, height, width):
     '''Performs Inception-style preprocessing of images using numpy.
 
-    Specifically, the images are resized and then scaled to [-1, 1].
+    Specifically, the images are resized and then scaled to [-1, 1] in float32
+    format.
 
     Args:
-        imgs: a list of images (grayscale, RGB, or RGBA)
+        imgs: a list of images
         height: desired image height after preprocessing
         width: desired image width after preprocessing
 
     Returns:
-        a list of preprocessed images
+        the preprocessed images, in float32 format
     '''
     imgs_out = []
     for img in imgs:
@@ -385,7 +396,30 @@ def inception_preprocessing_numpy(imgs, height, width):
             img = img[:, :, :3]
 
         img = etai.resize(img, height, width)
-        img = 2.0 * (etai.to_double(img) - 0.5)
+        img = 2.0 * (etai.to_float(img) - 0.5)
+        imgs_out.append(img)
+
+    return imgs_out
+
+
+def voc_preprocessing_numpy(imgs):
+    '''Performs PASCAL VOC-style preprocessing of images using numpy.
+
+    Specifically, the images are centered by `IMG_MEAN_VOC` and returned in
+    float32 format.
+
+    Args:
+        imgs: a list of images
+
+    Returns:
+        the preprocessed images, in float32 format
+    '''
+    print("HIHIHIHIHIHIHIHI")
+
+    imgs_out = []
+    for img in imgs:
+        img = np.asarray(img, dtype=np.float32)
+        img -= IMG_MEAN_VOC
         imgs_out.append(img)
 
     return imgs_out
@@ -395,18 +429,16 @@ def vgg_preprocessing_numpy(imgs, height, width):
     '''Performs VGG-style preprocessing of images using numpy.
 
     Specifically, the images are resized (aspect-preserving) to the desired
-    size and then centered by the standard ImageNet mean vector.
+    size and then centered by `IMG_MEAN_IMAGENET`
 
     Args:
-        imgs: a list of images (grayscale, RGB, or RGBA)
-        height: desired image height after preprocessing
-        width: desired image width after preprocessing
+        imgs: a list of images
+        height: desired height after preprocessing
+        width: desired width after preprocessing
 
     Returns:
-        a list of preprocessed images
+        the preprocessed images, in float32 format
     '''
-    imagenet_mean = np.array([123.68, 116.779, 103.939]).reshape(1, 1, 3)
-
     imgs_out = []
     for img in imgs:
         if etai.is_gray(img):
@@ -421,7 +453,7 @@ def vgg_preprocessing_numpy(imgs, height, width):
             img = etai.resize(img, width=256)
 
         img = etai.central_crop(img, shape=(height, width))
-        img = img.astype(np.float) - imagenet_mean
+        img = np.asarray(img, dtype=np.float32) - IMG_MEAN_IMAGENET
         imgs_out.append(img)
 
     return imgs_out
