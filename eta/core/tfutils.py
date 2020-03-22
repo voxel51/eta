@@ -48,17 +48,22 @@ def is_gpu_available():
     return tf.test.is_gpu_available()
 
 
-def load_graph(model_path, prefix=""):
+def load_graph(model_path, sess=None, prefix=""):
     '''Loads the TF graph from the given `.pb` file.
 
     Args:
         model_path: the `.pb` file to load
+        sess: an optional `tf.Session` into which to load the graph
         prefix: an optional prefix to prepend when importing the graph
 
     Returns:
         the loaded `tf.Graph`
     '''
-    graph = tf.Graph()
+    if sess is not None:
+        graph = sess.graph
+    else:
+        graph = tf.Graph()
+
     with graph.as_default():
         graph_def = tf.GraphDef()
         with tf.gfile.GFile(model_path, "rb") as f:
