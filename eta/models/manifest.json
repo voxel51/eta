@@ -478,7 +478,7 @@
             "base_name": "deeplabv3-cityscapes",
             "base_filename": "deeplabv3-cityscapes.pb",
             "version": null,
-            "description": "A DeepLabv3 semantic segmentation model trained on the Cityscapes dataset",
+            "description": "A DeepLabv3+ semantic segmentation model with Xception backbone trained on the Cityscapes dataset. Source: https://github.com/tensorflow/models/blob/master/research/deeplab/g3doc/model_zoo.md",
             "manager": {
                 "type": "eta.core.models.ETAModelManager",
                 "config": {
@@ -501,7 +501,7 @@
             "base_name": "deeplabv3-mnv2-cityscapes",
             "base_filename": "deeplabv3-mnv2-cityscapes.pb",
             "version": null,
-            "description": "A DeepLabv3 semantic segmentation model with MobileNetV2 backbone trained on the Cityscapes dataset",
+            "description": "A DeepLabv3+ semantic segmentation model with MobileNetV2 backbone trained on the Cityscapes dataset. Source: https://github.com/tensorflow/models/blob/master/research/deeplab/g3doc/model_zoo.md",
             "manager": {
                 "type": "eta.core.models.ETAModelManager",
                 "config": {
