@@ -27,7 +27,7 @@ import tensorflow as tf
 
 import eta.constants as etac
 from eta.core.config import Config, ConfigError
-from eta.core.geometry import BoundingBox, RelativePoint
+from eta.core.geometry import BoundingBox
 import eta.core.learning as etal
 import eta.core.models as etam
 from eta.core.objects import DetectedObject, DetectedObjectContainer
@@ -768,7 +768,7 @@ def _parse_labelmap_proto(labelmap):
 def _to_detected_object(
         box, score, class_id, category_index, mask_probs=None,
         mask_thresh=None):
-    '''Converts a detection to a DetectedObject.
+    '''Converts a TF-Models detection to a DetectedObject.
 
     Args:
         box: [ymin, xmin, ymax, xmax]
@@ -781,14 +781,11 @@ def _to_detected_object(
             mask for the detection, if masks are supported by the model
 
     Returns:
-        a DetectedObject describing the detection
+        a DetectedObject
     '''
     label = category_index[class_id]
 
-    bounding_box = BoundingBox(
-        RelativePoint(box[1], box[0]),
-        RelativePoint(box[3], box[2]),
-    )
+    bounding_box = BoundingBox.from_coords(box[1], box[0], box[3], box[2])
 
     if mask_probs is not None:
         mask = mask_probs

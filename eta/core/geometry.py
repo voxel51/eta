@@ -327,25 +327,51 @@ class BoundingBox(Serializable):
         return self.top_left.to_tuple() + self.bottom_right.to_tuple()
 
     @classmethod
-    def from_coords(cls, tlx, tly, brx, bry):
-        '''Constructs a BoundingBox from its top-left and bottom-right
-        coordinates.
+    def from_coords(cls, tlx, tly, brx, bry, clamp=True):
+        '''Constructs a BoundingBox from top-left and bottom-right coordinates.
 
         Args:
             tlx: the top-left x coordinate
             tly: the top-left y coordinate
             brx: the bottom-right x coordinate
             bry: the bottom-right y coordinate
+            clamp: whether to clamp the bounding box to [0, 1] x [0, 1], if
+                necessary. By default, this is True
 
         Returns:
             a BoundingBox
         '''
-        tlx = max(0, min(tlx, 1))
-        tly = max(0, min(tly, 1))
-        brx = max(0, min(brx, 1))
-        bry = max(0, min(bry, 1))
-        top_left = RelativePoint(tlx, tly)
-        bottom_right = RelativePoint(brx, bry)
+        top_left = RelativePoint.from_coords(tlx, tly, clamp=clamp)
+        bottom_right = RelativePoint.from_coords(brx, bry, clamp=clamp)
+        return cls(top_left, bottom_right)
+
+    @classmethod
+    def from_abs_coords(
+            cls, tlx, tly, brx, bry, clamp=True, frame_size=None, shape=None,
+            img=None):
+        '''Constructs a BoundingBox from absolute top-left and bottom-right
+        coordinates.
+
+        One of `frame_size`, `shape`, or `img` must be provided.
+
+        Args:
+            tlx: the absolute top-left x coordinate
+            tly: the absolute top-left y coordinate
+            brx: the absolute bottom-right x coordinate
+            bry: the absolute bottom-right y coordinate
+            clamp: whether to clamp the bounding box to [0, 1] x [0, 1], if
+                necessary. By default, this is True
+            frame_size: the (width, height) of the image
+            shape: the (height, width, ...) of the image, e.g. from img.shape
+            img: the image itself
+
+        Returns:
+            a BoundingBox
+        '''
+        top_left = RelativePoint.from_abs_coords(
+            tlx, tly, clamp=clamp, frame_size=frame_size, shape=shape, img=img)
+        bottom_right = RelativePoint.from_abs_coords(
+            brx, bry, clamp=clamp, frame_size=frame_size, shape=shape, img=img)
         return cls(top_left, bottom_right)
 
     @classmethod
@@ -437,12 +463,35 @@ class RelativePoint(Serializable):
         return (self.x, self.y)
 
     @classmethod
-    def from_abs(cls, x, y, frame_size=None, shape=None, img=None):
-        '''Constructs a RelativePoint from absolute (x, y) pixel coordinates.
-
-        Pass *one* keyword argument to this function.
+    def from_coords(cls, x, y, clamp=True):
+        '''Constructs a RelativePoint from (x, y) coordinates.
 
         Args:
+            x: the x coordinate
+            y: the y coordinate
+            clamp: whether to clamp the point to [0, 1] if necessary. By
+                default, this is True
+
+        Returns:
+            a RelativePoint
+        '''
+        if clamp:
+            x, y = cls.clamp(x, y)
+
+        return cls(x, y)
+
+    @classmethod
+    def from_abs_coords(
+            cls, x, y, clamp=True, frame_size=None, shape=None, img=None):
+        '''Constructs a RelativePoint from absolute (x, y) pixel coordinates.
+
+        One of `frame_size`, `shape`, or `img` must be provided.
+
+        Args:
+            x: the absolute x coordinate
+            y: the absolute y coordinate
+            clamp: whether to clamp the point to [0, 1] if necessary. By
+                default, this is True
             frame_size: the (width, height) of the image
             shape: the (height, width, ...) of the image, e.g. from img.shape
             img: the image itself
@@ -450,10 +499,12 @@ class RelativePoint(Serializable):
         Returns:
             a RelativePoint instance
         '''
+        # Convert to relative coordinates
         w, h = _to_frame_size(frame_size=frame_size, shape=shape, img=img)
         x /= 1.0 * w
         y /= 1.0 * h
-        return cls(x, y)
+
+        return cls.from_coords(x, y, clamp=clamp)
 
     @classmethod
     def origin(cls):
