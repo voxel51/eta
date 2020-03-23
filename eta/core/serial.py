@@ -450,7 +450,7 @@ def _recurse(v, reflective):
 
     if isinstance(v, dict):
         return OrderedDict(
-            (ki, _recurse(vi, reflective)) for ki, vi in iteritems(v))
+            (str(ki), _recurse(vi, reflective)) for ki, vi in iteritems(v))
 
     if isinstance(v, np.ndarray):
         return serialize_numpy_array(v)
