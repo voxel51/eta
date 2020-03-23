@@ -275,6 +275,14 @@ class Serializable(object):
     def __str__(self):
         return self.to_str()
 
+    def copy(self):
+        '''Returns a deep copy of the object.
+
+        Returns:
+            a Serializable instance
+        '''
+        return copy.deepcopy(self)
+
     @classmethod
     def get_class_name(cls):
         '''Returns the fully-qualified class name string of this object.'''
@@ -618,14 +626,6 @@ class Set(Serializable):
     def clear(self):
         '''Deletes all elements from the set.'''
         setattr(self, self._ELE_ATTR, OrderedDict())
-
-    def copy(self):
-        '''Returns a deep copy of the set.
-
-        Returns:
-            a Set
-        '''
-        return copy.deepcopy(self)
 
     def empty(self):
         '''Returns an empty copy of the set.
@@ -1820,14 +1820,6 @@ class Container(Serializable):
     def clear(self):
         '''Deletes all elements from the container.'''
         setattr(self, self._ELE_ATTR, [])
-
-    def copy(self):
-        '''Returns a deep copy of the container.
-
-        Returns:
-            a Container
-        '''
-        return copy.deepcopy(self)
 
     def empty(self):
         '''Returns an empty copy of the container.
