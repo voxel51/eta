@@ -401,7 +401,7 @@ IMG_MEAN_VOC = np.array(
 
 
 def float_preprocessing_numpy(imgs):
-    '''Preprocesses the images by scaling them to [-1, 1] in float32 format.
+    '''Preprocesses the images by converting them to float32 in [0, 1].
 
     Args:
         imgs: a list of images
@@ -416,7 +416,7 @@ def float_preprocessing_numpy(imgs):
         elif etai.has_alpha(img):
             img = img[:, :, :3]
 
-        img = 2.0 * (etai.to_float(img) - 0.5)
+        img = etai.to_float(img)
         imgs_out.append(img)
 
     return imgs_out
