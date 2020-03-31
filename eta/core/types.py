@@ -1671,6 +1671,15 @@ class JSONDirectory(Directory):
     pass
 
 
+class DataRecordsDirectory(JSONDirectory):
+    '''A directory of DataRecords files.
+
+    Examples:
+        /path/to/data_records
+    '''
+    pass
+
+
 class JSONSequenceDirectory(FileSequenceDirectory, JSONDirectory):
     '''A directory containing a sequence of JSON files indexed by one numeric
     parameter.
