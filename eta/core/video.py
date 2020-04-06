@@ -2424,7 +2424,7 @@ def sample_select_frames(
     Args:
         video_path: the path to the video
         frames: a sorted list of frame numbers to sample
-        output_path: an optional output pattern like "/path/to/frames-%d.png"
+        output_patt: an optional output pattern like "/path/to/frames-%d.png"
             specifying where to write the sampled frames. If omitted, the
             frames are instead returned in an in-memory list
         size: an optional (width, height) to resize the sampled frames. By
