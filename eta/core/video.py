@@ -2562,11 +2562,6 @@ def _sample_select_frames_slow(video_path, frames, output_patt, size):
     return imgs, out_frames
 
 
-def _make_ffmpeg_select_arg(frames):
-    ss = "+".join(["eq(n\,%d)" % (f - 1) for f in frames])
-    return "select='%s'" % ss
-
-
 def sample_first_frames(imgs_or_video_path, k, stride=1, size=None):
     '''Samples the first k frames in a video.
 
