@@ -2353,6 +2353,33 @@ def extract_clip(
         ffmpeg.run(tmp_path, output_path)
 
 
+def extract_frame(video_path, output_path, start_time=None):
+    '''Extracts a single frame from the local video or from the live stream and
+    saves it to an image.
+
+    Uses the following ffmpeg command:
+    ```
+    ffmpeg -y -i <video_path> -ss <start_time> -vframes 1 ${output_path} \
+            >/dev/null 2>&1
+    ```
+
+    Args:
+        video_path: the path or m3u8 stream to a video
+        output_path: the path to the image to write the frame
+        start_time: a string in the ffmpeg time duration format, as follows,
+                    [-][HH:]MM:SS[.m...]
+                    https://ffmpeg.org/ffmpeg-utils.html#time-duration-syntax
+    '''
+    in_opts = ["-vsync", "0"]
+    if start_time is not None:
+        if not isinstance(start_time, six.string_types):
+            start_time = "%.3f" % start_time
+        in_opts.extend(["-ss", start_time])
+
+    ffmpeg = FFmpeg(in_opts=in_opts, out_opts=["-vsync", "0", "-vframes", "1"])
+    ffmpeg.run(video_path, output_path)
+
+
 def _make_ffmpeg_select_arg(frames):
     ss = "+".join(["eq(n\,%d)" % (f - 1) for f in frames])
     return "select='%s'" % ss
@@ -2369,7 +2396,7 @@ def sample_select_frames(
     Args:
         video_path: the path to a video
         frames: a sorted list of frame numbers to sample
-        output_patt: an optional output pattern like "/path/to/frames-%d.png"
+        output_path: an optional output pattern like "/path/to/frames-%d.png"
             specifying where to write the sampled frames. If omitted, the
             frames are instead returned in an in-memory list
         size: an optional (width, height) to resize the sampled frames. By
