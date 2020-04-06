@@ -2330,11 +2330,6 @@ def extract_clip(
         ffmpeg.run(tmp_path, output_path)
 
 
-def _make_ffmpeg_select_arg(frames):
-    ss = "+".join(["eq(n\,%d)" % (f - 1) for f in frames])
-    return "select='%s'" % ss
-
-
 def extract_clip_frames(
         video_path, output_patt, start_time=None, duration=None,
         keep_source_frame_numbers=False):
@@ -2396,6 +2391,11 @@ def extract_frame(video_path, output_path, start_time=None):
 
     ffmpeg = FFmpeg(in_opts=in_opts, out_opts=["-vsync", "0", "-vframes", "1"])
     ffmpeg.run(video_path, output_path)
+
+
+def _make_ffmpeg_select_arg(frames):
+    ss = "+".join(["eq(n\,%d)" % (f - 1) for f in frames])
+    return "select='%s'" % ss
 
 
 def sample_select_frames(
