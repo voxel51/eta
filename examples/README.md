@@ -17,12 +17,6 @@ python download_data.py
 
 ## Basics
 
-Perform some image manipulation:
-
-```shell
-python demo_image_manipulation/demo_images.py
-```
-
 Build and run pipelines from requests:
 
 ```shell
@@ -103,6 +97,24 @@ cd ..
 Open the `demo_instance_segmentation/out/people-annotated.mp4` and
 `demo_instance_segmentation/out/vehicles-annotated.mp4` in your video player to
 inspect the output of the pipelines.
+
+
+## Semantic segmentation
+
+The following code runs a semantic segmentation pipeline on video.
+
+See [this README](demo_semantic_segmentation/README.md) for more information.
+
+```shell
+cd demo_semantic_segmentation
+
+eta build -r segment-frames.json --run-now
+
+cd ..
+```
+
+Open the `demo_semantic_segmentation/out/people-annotated.mp4` in your video
+player to inspect the output of the pipeline.
 
 
 ## Image detection and classification

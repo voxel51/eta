@@ -9,7 +9,7 @@ Info:
     type: eta.core.types.Module
     version: 0.1.0
 
-Copyright 2017-2019, Voxel51, Inc.
+Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
@@ -33,7 +33,7 @@ import sys
 import numpy as np
 
 import eta
-from eta.core.config import Config, ConfigError
+from eta.core.config import Config
 import eta.core.image as etai
 import eta.core.module as etam
 import eta.core.utils as etau
@@ -44,7 +44,7 @@ logger = logging.getLogger(__name__)
 
 
 class SampleVideosConfig(etam.BaseModuleConfig):
-    '''Formatter configuration settings.
+    '''Sample videos configuration settings.
 
     Attributes:
         data (DataConfig)
@@ -79,20 +79,22 @@ class ParametersConfig(Config):
     Parameters:
         accel (eta.core.types.Number): [None] A desired acceleration factor to
             apply when sampling frames. For example, an acceleration of 2x
-            would correspond to sampling every other frame
-        fps (eta.core.types.Number): [None] The desired sampling rate, which
+            would correspond to sampling every other frame. If specified, this
+            takes precedence over `fps`
+        fps (eta.core.types.Number): [None] A desired sampling rate, which
             must be less than the frame rate of the input video
         size (eta.core.types.Array): [None] A desired output (width, height)
             of the sampled frames. Dimensions can be -1, in which case the
             input aspect ratio is preserved
         max_fps (eta.core.types.Number): [None] The maximum sampling rate
             allowed for the output video. If this parameter is specified, the
-            `accel` parameter will be increased if necessary to satisfy this
-            constraint
+            `accel` and `fps` parameters will be adjusted as necessary to
+            satisfy this constraint
         max_size (eta.core.types.Array): [None] A maximum (width, height)
             allowed for the sampled frames. Frames are resized as necessary to
-            meet this limit. Dimensions can be -1, in which case no constraint
-            is applied to them
+            meet this limit, and `size` is decreased (aspect-preserving) if
+            necessary to satisfy this constraint. Dimensions can be -1, in
+            which case no limit is applied to them
         always_sample_last (eta.core.types.Boolean): [False] Whether to always
             sample the last frame of the video
         max_video_file_size (eta.core.types.Number): [None] The maximum file
@@ -104,7 +106,7 @@ class ParametersConfig(Config):
     '''
 
     def __init__(self, d):
-        self.accel = self.parse_number(d, "accel", default=1.0)
+        self.accel = self.parse_number(d, "accel", default=None)
         self.fps = self.parse_number(d, "fps", default=None)
         self.size = self.parse_array(d, "size", default=None)
         self.max_fps = self.parse_number(d, "max_fps", default=None)
@@ -123,30 +125,42 @@ def _sample_videos(config):
         _process_video(data.input_path, data.output_frames_dir, parameters)
 
 
-def _process_video(input_path, output_frames_dir, parameters):
-    stream_info = etav.VideoStreamInfo.build_for(input_path)
+def _check_input_video_size(
+        video_metadata, max_video_file_size, max_video_duration):
+    if (max_video_file_size is not None
+            and video_metadata.size_bytes > max_video_file_size):
+        raise ValueError(
+            "Input video file size must be less than %s; found %s" % (
+                etau.to_human_bytes_str(max_video_file_size),
+                etau.to_human_bytes_str(video_metadata.size_bytes)))
 
-    _check_input_video_size(stream_info, parameters.max_video_file_size,
-                            parameters.max_video_duration)
+    if (max_video_duration is not None
+            and video_metadata.duration > max_video_duration):
+        raise ValueError(
+            "Input video duration must be less than %s; found %s" % (
+                etau.to_human_time_str(max_video_duration),
+                etau.to_human_time_str(video_metadata.duration)))
 
-    ifps = stream_info.frame_rate
-    isize = stream_info.frame_size
-    iframe_count = stream_info.total_frame_count
 
-    #
-    # Compute acceleration using the following strategy:
-    #   (i) use `accel` if provided
-    #   (ii) if `accel` is not provided, use `fps` to set `accel`
-    #   (iii) if a `max_fps` is provided, always increase `accel` if necessary
-    #
+def _compute_accel(video_metadata, parameters):
+    # Parse metadata
+    ifps = video_metadata.frame_rate
+
+    # Parse parameters
     accel = parameters.accel
     fps = parameters.fps
     max_fps = parameters.max_fps
+
+    #
+    # Compute acceleration using the following strategy:
+    #   (i) if `accel` is provided, use it
+    #   (ii) if `accel` is not provided, use `fps` to set it
+    #   (iii) if `max_fps` is provided, increase `accel` if necessary
+    #
     if accel is not None:
         if accel < 1:
             raise ValueError(
                 "Acceleration factor must be greater than 1; found %d" % accel)
-
     elif fps is not None:
         if fps > ifps:
             raise ValueError(
@@ -160,25 +174,31 @@ def _process_video(input_path, output_frames_dir, parameters):
             logger.warning(
                 "Maximum frame rate %g requires acceleration of at least %g; "
                 "setting `accel = %g` now", max_fps, min_accel, min_accel)
-
             accel = min_accel
-    if accel is None:
-        raise ConfigError("One of (accel, fps, max_fps) must be specified")
 
-    # Determine frames to sample
-    sample_pts = np.arange(1, iframe_count, accel)
-    sample_frames = set(int(round(x)) for x in sample_pts)
-    if parameters.always_sample_last:
-        sample_frames.add(iframe_count)
+    if accel is None:
+        accel = 1.0
+
+    return accel
+
+
+def _compute_output_frame_size(video_metadata, parameters):
+    # Parse metadata
+    isize = video_metadata.frame_size
+
+    # Parse parameters
+    size = parameters.size
+    max_size = parameters.max_size
 
     # Compute output frame size
-    if parameters.size is not None:
-        psize = etai.parse_frame_size(parameters.size)
+    if size is not None:
+        psize = etai.parse_frame_size(size)
         osize = etai.infer_missing_dims(psize, isize)
     else:
         osize = isize
-    if parameters.max_size is not None:
-        msize = etai.parse_frame_size(parameters.max_size)
+
+    if max_size is not None:
+        msize = etai.parse_frame_size(max_size)
         osize = etai.clamp_frame_size(osize, msize)
 
     # Avoid resizing if possible
@@ -187,33 +207,38 @@ def _process_video(input_path, output_frames_dir, parameters):
         owidth, oheight = osize
         logger.info("Resizing frames to %d x %d", owidth, oheight)
 
-    # Sample frames
+    return osize if resize_frames else None
+
+
+def _process_video(input_path, output_frames_dir, parameters):
+    # Get video metadata, logging generously
+    video_metadata = etav.VideoMetadata.build_for(input_path, verbose=True)
+
+    # Check input video size
+    _check_input_video_size(
+        video_metadata, parameters.max_video_file_size,
+        parameters.max_video_duration)
+
+    # Compute acceleration
+    accel = _compute_accel(video_metadata, parameters)
+
+    # Compute output frame size
+    size = _compute_output_frame_size(video_metadata, parameters)
+
+    # Determine frames to sample
+    total_frame_count = video_metadata.total_frame_count
+    sample_pts = np.arange(1, total_frame_count + 1, accel)
+    sample_frames = set(int(round(x)) for x in sample_pts)
+    if parameters.always_sample_last:
+        sample_frames.add(total_frame_count)
     frames = sorted(sample_frames)
+
+    # Sample frames
     output_patt = os.path.join(
         output_frames_dir,
         eta.config.default_sequence_idx + eta.config.default_image_ext)
-    size = osize if resize_frames else None
     etav.sample_select_frames(
         input_path, frames, output_patt=output_patt, size=size, fast=True)
-
-
-def _check_input_video_size(
-        stream_info, max_video_file_size, max_video_duration):
-    if (max_video_file_size is not None
-            and stream_info.size_bytes > max_video_file_size):
-        raise ValueError(
-            "Input video file size must be less than {}; found {}".format(
-                etau.to_human_bytes_str(max_video_file_size),
-                etau.to_human_bytes_str(stream_info.size_bytes))
-        )
-
-    if (max_video_duration is not None
-            and stream_info.duration > max_video_duration):
-        raise ValueError(
-            ("Input video duration must be less than {} seconds;"
-             " found {} seconds").format(
-                max_video_duration, stream_info.duration)
-        )
 
 
 def run(config_path, pipeline_config_path=None):

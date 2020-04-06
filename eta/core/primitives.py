@@ -1,11 +1,10 @@
 '''
 Implementations of computer vision primitive algorithms.
 
-Copyright 2018, Voxel51, Inc.
+Copyright 2018-2020, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
-Kunyi Lu, kunyi@voxel51.com
 '''
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
@@ -29,6 +28,13 @@ import eta.core.video as etav
 
 class DenseOpticalFlow(object):
     '''Base class for dense optical flow methods.'''
+
+    def __enter__(self):
+        self.reset()
+        return self
+
+    def __exit__(self, *args):
+        pass
 
     def process_video(
             self, input_path, cart_path=None, polar_path=None,
@@ -138,15 +144,9 @@ class FarnebackDenseOpticalFlow(DenseOpticalFlow):
     '''
 
     def __init__(
-            self,
-            pyramid_scale=0.5,
-            pyramid_levels=3,
-            window_size=15,
-            iterations=3,
-            poly_n=7,
-            poly_sigma=1.5,
-            use_gaussian_filter=False):
-        '''Constructs a FarnebackDenseOpticalFlow object.
+            self, pyramid_scale=0.5, pyramid_levels=3, window_size=15,
+            iterations=3, poly_n=7, poly_sigma=1.5, use_gaussian_filter=False):
+        '''Creates a FarnebackDenseOpticalFlow instance.
 
         Args:
             pyramid_scale (0.5): the image scale (<1) to build pyramids for
@@ -200,6 +200,13 @@ class FarnebackDenseOpticalFlow(DenseOpticalFlow):
 
 class BackgroundSubtractor(object):
     '''Base class for background subtraction methods.'''
+
+    def __enter__(self):
+        self.reset()
+        return self
+
+    def __exit__(self, *args):
+        pass
 
     def process_video(
             self, input_path, fgmask_path=None, fgvideo_path=None,
@@ -300,7 +307,7 @@ class MOG2BackgroundSubtractor(BackgroundSubtractor):
     def __init__(
             self, history=500, threshold=16.0, learning_rate=-1,
             detect_shadows=False):
-        '''Initializes an MOG2BackgroundSubtractor object.
+        '''Creates an MOG2BackgroundSubtractor instance.
 
         Args:
             history (500): the number of previous frames that affect the
@@ -358,7 +365,7 @@ class KNNBackgroundSubtractor(BackgroundSubtractor):
     def __init__(
             self, history=500, threshold=400.0, learning_rate=-1,
             detect_shadows=False):
-        '''Initializes an KNNBackgroundSubtractor object.
+        '''Creates a KNNBackgroundSubtractor instance.
 
         Args:
             history (500): length of the history
@@ -399,6 +406,13 @@ class KNNBackgroundSubtractor(BackgroundSubtractor):
 
 class EdgeDetector(object):
     '''Base class for edge detection methods.'''
+
+    def __enter__(self):
+        self.reset()
+        return self
+
+    def __exit__(self, *args):
+        pass
 
     def process_video(self, input_path, masks_path=None, video_path=None):
         '''Detect edges using self.detector.
@@ -454,7 +468,7 @@ class CannyEdgeDetector(EdgeDetector):
     def __init__(
             self, threshold1=200, threshold2=50, aperture_size=3,
             l2_gradient=False):
-        '''Creates a new CannyEdgeDetector object.
+        '''Creates a CannyEdgeDetector instance.
 
         Args:
             threshold1 (200): the edge threshold
@@ -480,6 +494,13 @@ class FeaturePointDetector(object):
     '''Base class for feature point detection methods.'''
 
     KEYPOINT_RGB_COLOR = (0, 255, 0)  # RGB
+
+    def __enter__(self):
+        self.reset()
+        return self
+
+    def __exit__(self, *args):
+        pass
 
     def process_video(self, input_path, coords_path=None, video_path=None):
         '''Detect feature points using self.detector.
@@ -537,7 +558,7 @@ class HarrisFeaturePointDetector(FeaturePointDetector):
     '''
 
     def __init__(self, threshold=0.01, block_size=3, aperture_size=3, k=0.04):
-        '''Creates a new HarrisEdgeDetector object.
+        '''Creates a HarrisEdgeDetector instance.
 
         Args:
             threshold (0.01): threshold (relative to the maximum detector
@@ -570,7 +591,7 @@ class FASTFeaturePointDetector(FeaturePointDetector):
     '''
 
     def __init__(self, threshold=1, non_max_suppression=True):
-        '''Creates a new FastFeatureDetector instance.
+        '''Creates a FastFeatureDetector instance.
 
         Args:
             threshold (1): threshold on difference between intensity of the
@@ -604,7 +625,7 @@ class ORBFeaturePointDetector(FeaturePointDetector):
     '''
 
     def __init__(self, max_num_features=500, score_type=cv2.ORB_HARRIS_SCORE):
-        '''Creates a new ORBFeaturePointDetector instance.
+        '''Creates a ORBFeaturePointDetector instance.
 
         Args:
             max_num_features (500): the maximum number of features to retain

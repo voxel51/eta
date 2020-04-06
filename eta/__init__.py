@@ -71,6 +71,9 @@ class ETAConfig(EnvConfig):
         self.default_video_ext = self.parse_string(
             d, "default_video_ext", env_var="ETA_DEFAULT_VIDEO_EXT",
             default=".mp4")
+        self.default_figure_ext = self.parse_string(
+            d, "default_figure_ext", env_var="ETA_DEFAULT_FIGURE_EXT",
+            default=".pdf")
 
         self._parse_patterns()
         self._fill_patterns()
@@ -136,7 +139,7 @@ def set_config_settings(**kwargs):
 def startup_message():
     '''Logs ETA startup message.'''
     logger.info("Starting...\n" + _load_ascii_art())
-    logger.info(version)
+    logger.info(etac.VERSION_LONG)
     logger.info("Revision %s", etau.get_eta_rev())
 
 
@@ -154,9 +157,6 @@ def is_python3():
     '''Returns True/False whether the Python version running is 3.X.'''
     return sys.version_info[0] == 3
 
-
-# Version string
-version = "%s v%s, %s" % (etac.NAME, etac.VERSION, etac.AUTHOR)
 
 # Default logging behavior
 etal.basic_setup()

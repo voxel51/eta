@@ -20,7 +20,9 @@ from future.utils import iteritems
 # pragma pylint: enable=wildcard-import
 
 import logging
+import re
 import requests
+import six
 from time import time
 
 import eta.constants as etac
@@ -28,6 +30,22 @@ import eta.core.utils as etau
 
 
 logger = logging.getLogger(__name__)
+
+
+URL_REGEX = re.compile(r'http://|https://|ftp://|file://|file:\\')
+
+
+def is_url(filename):
+    '''Return True if string is an http or ftp path.
+
+    Args:
+        filename: a string
+
+    Returns:
+        True/False if the filename is a url
+    '''
+    return (isinstance(filename, six.string_types) and
+            URL_REGEX.match(filename) is not None)
 
 
 def download_file(url, path=None, chunk_size=None):

@@ -1,7 +1,7 @@
 '''
 Core data structures for working with data that can be read/written to disk.
 
-Copyright 2017-2019, Voxel51, Inc.
+Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
@@ -20,17 +20,12 @@ import six
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-try:
-    from base64 import encodebytes as b64encode  # Python 3
-    from base64 import decodebytes as b64decode  # Python 3
-except ImportError:
-    from base64 import encodestring as b64encode  # Python 2
-    from base64 import decodestring as b64decode  # Python 2
-
+from base64 import b64encode, b64decode
 from collections import OrderedDict
 import copy
 import datetime as dt
 import dill as pickle
+import glob
 import io
 import json
 import logging
@@ -39,8 +34,8 @@ import os
 import pickle as _pickle
 import pprint
 from uuid import uuid4
+import zlib
 
-import h5py
 import numpy as np
 
 import eta.core.utils as etau
@@ -114,16 +109,15 @@ def read_json(path):
         raise ValueError("Unable to parse JSON file '%s'" % path)
 
 
-def write_json(obj, path, pretty_print=True):
+def write_json(obj, path, pretty_print=False):
     '''Writes JSON object to file, creating the output directory if necessary.
 
     Args:
         obj: is either an object that can be directly dumped to a JSON file or
             an instance of a subclass of Serializable
         path: the output path
-        pretty_print: when True (default), the resulting JSON will be outputted
-            to be human readable; when False, it will be compact with no
-            extra spaces or newline characters
+        pretty_print: whether to render the JSON in human readable format with
+            newlines and indentations. By default, this is False
     '''
     s = json_to_str(obj, pretty_print=pretty_print)
     etau.ensure_basedir(path)
@@ -136,17 +130,16 @@ def json_to_str(obj, pretty_print=True):
 
     Args:
         obj: a JSON dictionary or an instance of a Serializable subclass
-        pretty_print: when True (default), the string will be formatted to be
-            human readable; when False, it will be compact with no extra spaces
-            or newline characters
+        pretty_print: whether to render the JSON in human readable format with
+            newlines and indentations. By default, this is True
     '''
     if isinstance(obj, Serializable):
         obj = obj.serialize()
+
     kwargs = {"indent": 4} if pretty_print else {}
     s = json.dumps(
         obj, separators=(",", ": "), cls=ETAJSONEncoder, ensure_ascii=False,
-        **kwargs
-    )
+        **kwargs)
     return str(s)
 
 
@@ -200,14 +193,12 @@ def serialize_numpy_array(array):
         the serialized string
     '''
     #
-    # We currently serialize in HDF5 format. Other alternatives considered were
-    # `pickle.dumps(array)` and `np.save(f, array, allow_pickle=False)`
+    # We currently serialize in numpy format. Other alternatives considered
+    # were `pickle.dumps(array)` and HDF5
     #
     with io.BytesIO() as f:
-        with h5py.File(f, "w") as h:
-            h["array"] = array
-
-        bytes_str = f.getvalue()
+        np.save(f, array, allow_pickle=False)
+        bytes_str = zlib.compress(f.getvalue())
 
     return b64encode(bytes_str).decode("ascii")
 
@@ -222,13 +213,12 @@ def deserialize_numpy_array(numpy_str):
         the numpy array
     '''
     #
-    # We currently serialize in HDF5 format. Other alternatives considered were
-    # `pickle.loads(numpy_str)` and `return np.load(f)`
+    # We currently serialize in numpy format. Other alternatives considered
+    # were `pickle.loads(numpy_str)` and HDF5
     #
-    bytes_str = b64decode(numpy_str.encode("ascii"))
+    bytes_str = zlib.decompress(b64decode(numpy_str.encode("ascii")))
     with io.BytesIO(bytes_str) as f:
-        with h5py.File(f, "r") as h:
-            return h[list(h.keys())[0]][()]
+        return np.load(f)
 
 
 class Serializable(object):
@@ -284,6 +274,14 @@ class Serializable(object):
 
     def __str__(self):
         return self.to_str()
+
+    def copy(self):
+        '''Returns a deep copy of the object.
+
+        Returns:
+            a Serializable instance
+        '''
+        return copy.deepcopy(self)
 
     @classmethod
     def get_class_name(cls):
@@ -360,9 +358,8 @@ class Serializable(object):
         '''Returns a string representation of this object.
 
         Args:
-            pretty_print: if True (default), the string will be formatted to be
-                human readable; when False, it will be compact with no extra
-                spaces or newline characters
+            pretty_print: whether to render the JSON in human readable format
+                with newlines and indentations. By default, this is True
             **kwargs: optional keyword arguments for `self.serialize()`
 
         Returns:
@@ -371,14 +368,13 @@ class Serializable(object):
         obj = self.serialize(**kwargs)
         return json_to_str(obj, pretty_print=pretty_print)
 
-    def write_json(self, path, pretty_print=True, **kwargs):
+    def write_json(self, path, pretty_print=False, **kwargs):
         '''Serializes the object and writes it to disk.
 
         Args:
             path: the output path
-            pretty_print: when True (default), the resulting JSON will be
-                outputted to be human readable; when False, it will be compact
-                with no extra spaces or newline characters
+            pretty_print: whether to render the JSON in human readable format
+                with newlines and indentations. By default, this is False
             **kwargs: optional keyword arguments for `self.serialize()`
         '''
         obj = self.serialize(**kwargs)
@@ -408,8 +404,8 @@ class Serializable(object):
             # this method will be called again and we need to raise a
             # NotImplementedError next time around!
             #
-            cls = etau.get_class(d.pop("_CLS"))
-            return cls.from_dict(d, *args, **kwargs)
+            serializable_cls = etau.get_class(d.pop("_CLS"))
+            return serializable_cls.from_dict(d, *args, **kwargs)
 
         raise NotImplementedError("subclass must implement from_dict()")
 
@@ -453,15 +449,26 @@ class Serializable(object):
 def _recurse(v, reflective):
     if isinstance(v, Serializable):
         return v.serialize(reflective=reflective)
+
     if isinstance(v, set):
         v = list(v)  # convert sets to lists
+
     if isinstance(v, list):
         return [_recurse(vi, reflective) for vi in v]
+
     if isinstance(v, dict):
         return OrderedDict(
-            (ki, _recurse(vi, reflective)) for ki, vi in iteritems(v))
+            (str(ki), _recurse(vi, reflective)) for ki, vi in iteritems(v))
+
     if isinstance(v, np.ndarray):
         return serialize_numpy_array(v)
+
+    if hasattr(v, "serialize") and callable(v.serialize):
+        return v.serialize()
+
+    if hasattr(v, "to_dict") and callable(v.to_dict):
+        return v.to_dict()
+
     return v
 
 
@@ -611,17 +618,14 @@ class Set(Serializable):
         '''
         return getattr(element, cls._ELE_KEY_ATTR)
 
+    @property
+    def is_empty(self):
+        '''Whether this set has no elements.'''
+        return not bool(self)
+
     def clear(self):
         '''Deletes all elements from the set.'''
         setattr(self, self._ELE_ATTR, OrderedDict())
-
-    def copy(self):
-        '''Returns a deep copy of the set.
-
-        Returns:
-            a Set
-        '''
-        return copy.deepcopy(self)
 
     def empty(self):
         '''Returns an empty copy of the set.
@@ -643,6 +647,7 @@ class Set(Serializable):
         key = self.get_key(element)
         if key is None:
             key = str(uuid4())
+
         self[key] = element
 
     def add_set(self, set_):
@@ -677,6 +682,24 @@ class Set(Serializable):
         elements = self._filter_elements(filters, match)
         setattr(self, self._ELE_ATTR, elements)
 
+    def pop_elements(self, filters, match=any):
+        '''Pops elements that match the given filters from the set.
+
+        Args:
+            filters: a list of functions that accept elements and return
+                True/False
+            match: a function (usually `any` or `all`) that accepts an iterable
+                and returns True/False. Used to aggregate the outputs of each
+                filter to decide whether a match has occurred. The default is
+                `any`
+
+        Returns:
+            a Set of elements matching the given filters
+        '''
+        _set = self.empty()
+        _set.add_iterable(self._pop_elements(filters, match))
+        return _set
+
     def delete_keys(self, keys):
         '''Deletes the elements from the set with the given keys.
 
@@ -692,7 +715,7 @@ class Set(Serializable):
         Args:
             keys: an iterable of keys of the elements to keep
         '''
-        elements = self._get_elements(keys)
+        elements = self._get_elements_with_keys(keys)
         setattr(self, self._ELE_ATTR, elements)
 
     def extract_keys(self, keys):
@@ -706,10 +729,24 @@ class Set(Serializable):
         Returns:
             a Set with the requested elements
         '''
-        new_set = self.empty()
+        _set = self.empty()
         for key in keys:
-            new_set.add(self[key])
-        return new_set
+            _set.add(self[key])
+
+        return _set
+
+    def pop_keys(self, keys):
+        '''Pops elements with the given keys from the set.
+
+        Args:
+            keys: an iterable of keys of the elements to keep
+
+        Returns:
+            a Set with the popped elements
+        '''
+        _set = self.empty()
+        _set.add_iterable(self._pop_elements_with_keys(keys))
+        return _set
 
     def count_matches(self, filters, match=any):
         '''Counts the number of elements in the set that match the given
@@ -745,10 +782,9 @@ class Set(Serializable):
         Returns:
             a Set with elements matching the filters
         '''
-        new_set = self.empty()
-        elements = self._filter_elements(filters, match)
-        new_set.add_iterable(elements)
-        return new_set
+        _set = self.empty()
+        _set.add_iterable(itervalues(self._filter_elements(filters, match)))
+        return _set
 
     def sort_by(self, attr, reverse=False):
         '''Sorts the elements in the set by the given attribute.
@@ -801,6 +837,47 @@ class Set(Serializable):
         return d
 
     @classmethod
+    def from_iterable(cls, elements):
+        '''Constructs a Set from an iterable of elements.
+
+        Args:
+            elements: an iterable of elements
+
+        Returns:
+            a Set
+        '''
+        _set = cls()
+        _set.add_iterable(elements)
+        return _set
+
+    @classmethod
+    def from_numeric_patt(cls, pattern):
+        '''Constructs a Set from a numeric pattern of elements on disk.
+
+        Args:
+             pattern: a string with one or more numeric patterns, like
+                "/path/to/labels/%05d.json"
+
+        Returns:
+            a Set
+        '''
+        parse_method = etau.get_pattern_matches
+        return cls._from_element_patt(pattern, parse_method)
+
+    @classmethod
+    def from_glob_patt(cls, pattern):
+        '''Constructs a Set from a glob pattern of elements on disk.
+
+        Args:
+            pattern: a glob pattern like "/path/to/labels/*.json"
+
+        Returns:
+            a Set
+        '''
+        parse_method = glob.glob
+        return cls._from_element_patt(pattern, parse_method)
+
+    @classmethod
     def from_dict(cls, d, **kwargs):
         '''Constructs a Set from a JSON dictionary.
 
@@ -814,40 +891,78 @@ class Set(Serializable):
 
         Args:
             d: a JSON dictionary representation of a Set object
-            **kwargs: an optional set of keyword arguments that have already
-                been parsed by a subclass
+            **kwargs: optional keyword arguments that have already been parsed
+                by a subclass
 
         Returns:
-            an instance of the Set class
+            a Set
         '''
-        cls = cls._validate_dict(d)
-        elements = [cls._ELE_CLS.from_dict(dd) for dd in d[cls._ELE_ATTR]]
-        return cls(**etau.join_dicts({cls._ELE_ATTR: elements}, kwargs))
+        set_cls = cls._validate_dict(d)
+        elements = [
+            set_cls._ELE_CLS.from_dict(dd) for dd in d[set_cls._ELE_ATTR]]
+        return set_cls(
+            **etau.join_dicts({set_cls._ELE_ATTR: elements}, kwargs))
 
-    def _get_elements(self, keys):
+    @classmethod
+    def _from_element_patt(cls, pattern, parse_method):
+        _set = cls()
+        for element_path in parse_method(pattern):
+            _set.add(
+                cls.get_element_class().from_json(element_path))
+
+        return _set
+
+    def _get_elements_with_keys(self, keys):
         if isinstance(keys, six.string_types):
             logger.debug("Wrapping single key as a list")
             keys = [keys]
 
         return OrderedDict(
-            (k, v) for k, v in iteritems(self.__elements__) if k in set(keys))
+            (k, e) for k, e in iteritems(self.__elements__) if k in set(keys))
+
+    def _pop_elements_with_keys(self, keys):
+        pop = []
+        for key in keys:
+            e = self.__elements__.pop(key, None)
+            if e is not None:
+                pop.append(e)
+
+        return pop
 
     def _filter_elements(self, filters, match):
+        match_fcn = lambda e: match(f(e) for f in filters)
+
         return OrderedDict(
-            (k, v) for k, v in iteritems(self.__elements__)
-            if match(f(v) for f in filters))
+            (k, e) for k, e in iteritems(self.__elements__) if match_fcn(e))
+
+    def _pop_elements(self, filters, match):
+        match_fcn = lambda e: match(f(e) for f in filters)
+
+        pop = []
+        del_keys = []
+        for k, e in iteritems(self.__elements__):
+            if match_fcn(e):
+                pop.append(e)
+                del_keys.append(k)
+
+        for k in del_keys:
+            del self[k]
+
+        return pop
 
     def _validate(self):
-        '''Validates that a Set instance is valid.'''
         if self._ELE_CLS is None:
             raise SetError(
                 "Cannot instantiate a Set for which _ELE_CLS is None")
+
         if self._ELE_ATTR is None:
             raise SetError(
                 "Cannot instantiate a Set for which _ELE_ATTR is None")
+
         if not issubclass(self._ELE_CLS, Serializable):
             raise SetError(
                 "%s is not Serializable" % self._ELE_CLS)
+
         if self._ELE_KEY_ATTR is None:
             raise SetError(
                 "Cannot instantiate a Set for which _ELE_KEY_ATTR is None")
@@ -932,7 +1047,7 @@ class BigMixin(object):
 
     def clear(self):
         '''Deletes all elements from the Big iterable.'''
-        super(BigSet, self).clear()
+        super(BigMixin, self).clear()
         etau.delete_dir(self.backing_dir)
         etau.ensure_dir(self.backing_dir)
 
@@ -1173,6 +1288,7 @@ class BigSet(BigMixin, Set):
     def __setitem__(self, key, element):
         if key not in self:
             self.__elements__[key] = self._make_uuid()
+
         element.write_json(self._ele_path(key))
 
     def __delitem__(self, key):
@@ -1264,7 +1380,30 @@ class BigSet(BigMixin, Set):
                 filter to decide whether a match has occurred. The default is
                 `any`
         '''
-        self.keep_keys(self._filter_elements(filters, match).keys())
+        elements = self._filter_elements(filters, match)
+        self.keep_keys(elements.keys())
+
+    def pop_elements(self, filters, match=any, big=True, backing_dir=None):
+        '''Pops elements that match the given filters from the set.
+
+        Args:
+            filters: a list of functions that accept elements and return
+                True/False
+            match: a function (usually `any` or `all`) that accepts an iterable
+                and returns True/False. Used to aggregate the outputs of each
+                filter to decide whether a match has occurred. The default is
+                `any`
+            big: whether to create a BigSet (True) or Set (False). By default,
+                this is True
+            backing_dir: an optional backing directory to use for the new
+                BigSet. If provided, the directory must be empty or
+                non-existent. Only relevant if `big == True`
+
+        Returns:
+            a BigSet or Set of elements matching the given filters
+        '''
+        elements = self._filter_elements(filters, match)
+        return self.pop_keys(elements.keys(), big=big, backing_dir=backing_dir)
 
     def keep_keys(self, keys):
         '''Keeps only the elements in the set with the given keys.
@@ -1282,24 +1421,45 @@ class BigSet(BigMixin, Set):
             big: whether to create a BigSet (True) or Set (False). By default,
                 this is True
             backing_dir: an optional backing directory to use for the new
-                BigSet. If provided, must be empty or non-existent
+                BigSet. If provided, the directory must be empty or
+                non-existent. Only relevant if `big == True`
 
         Returns:
             a BigSet or Set with the requested elements
         '''
         if not big:
             # Return results in a Set
-            new_set = self.empty_set()
+            _set = self.empty_set()
             for key in keys:
-                new_set.add(self[key])
-            return new_set
+                _set.add(self[key])
+
+            return _set
 
         # Return results in a BigSet
-        new_set = self.empty(backing_dir=backing_dir)
+        _set = self.empty(backing_dir=backing_dir)
         for key in keys:
             path = self._ele_path(key)
-            new_set.add_by_path(path, key=key)
-        return new_set
+            _set.add_by_path(path, key=key)
+
+        return _set
+
+    def pop_keys(self, keys, big=True, backing_dir=None):
+        '''Pops elements from the set with the given keys.
+
+        Args:
+            keys: an iterable of keys of the elements to pop
+            big: whether to create a BigSet (True) or Set (False). By default,
+                this is True
+            backing_dir: an optional backing directory to use for the new
+                BigSet. If provided, the directory must be empty or
+                non-existent. Only relevant if `big == True`
+
+        Returns:
+            a BigSet or Set with the popped elements
+        '''
+        _set = self.extract_keys(keys, big=big, backing_dir=backing_dir)
+        self.delete_keys(keys)
+        return _set
 
     def get_matches(self, filters, match=any, big=True, backing_dir=None):
         '''Gets elements matching the given filters.
@@ -1314,14 +1474,15 @@ class BigSet(BigMixin, Set):
             big: whether to create a BigSet (True) or Set (False). By default,
                 this is True
             backing_dir: an optional backing directory to use for the new
-                BigSet. If provided, must be empty or non-existent
+                BigSet. If provided, the directory must be empty or
+                non-existent. Only relevant if `big == True`
 
         Returns:
             a Set or BigSet with elements matching the filters
         '''
-        subset = self._filter_elements(filters, match)
+        elements = self._filter_elements(filters, match)
         return self.extract_keys(
-            subset.keys(), big=big, backing_dir=backing_dir)
+            elements.keys(), big=big, backing_dir=backing_dir)
 
     def sort_by(self, attr, reverse=False):
         '''Sorts the elements in the set by the given attribute.
@@ -1343,7 +1504,11 @@ class BigSet(BigMixin, Set):
         setattr(self, self._ELE_ATTR, elements)
 
     def attributes(self):
-        '''Returns the list of class attributes that will be serialized.'''
+        '''Returns the list of class attributes that will be serialized.
+
+        Returns:
+            the list of attributes
+        '''
         return ["backing_dir"] + super(BigSet, self).attributes()
 
     def serialize(self, reflective=False):
@@ -1383,7 +1548,7 @@ class BigSet(BigMixin, Set):
 
     @classmethod
     def from_set(cls, set_, backing_dir=None):
-        '''Creates a BigSet with the given Set's elements.
+        '''Constructs a BigSet with the given Set's elements.
 
         Args:
             set_: a Set
@@ -1398,8 +1563,55 @@ class BigSet(BigMixin, Set):
         return big_set
 
     @classmethod
+    def from_iterable(cls, elements, backing_dir=None):
+        '''Constructs a BigSet from an iterable of elements.
+
+        Args:
+            elements: an iterable of elements
+            backing_dir: an optional backing directory to use for the new
+                BigSet. If provided, must be empty or non-existent
+
+        Returns:
+            a BigSet
+        '''
+        big_set = cls(backing_dir=backing_dir)
+        big_set.add_iterable(elements)
+        return big_set
+
+    @classmethod
+    def from_numeric_patt(cls, pattern, backing_dir=None):
+        '''Constructs a BigSet from a numeric pattern of elements on disk.
+
+        Args:
+            pattern: a string with one or more numeric patterns, like
+                "/path/to/labels/%05d.json"
+            backing_dir: an optional backing directory to use for the new
+                BigSet. If provided, must be empty or non-existent
+
+        Returns:
+            a BigSet
+        '''
+        parse_method = etau.get_pattern_matches
+        return cls._from_element_patt(pattern, parse_method, backing_dir)
+
+    @classmethod
+    def from_glob_patt(cls, pattern, backing_dir=None):
+        '''Constructs a BigSet from a glob pattern of elements on disk.
+
+        Args:
+            pattern: a glob pattern like "/path/to/labels/*.json"
+            backing_dir: an optional backing directory to use for the new
+                BigSet. If provided, must be empty or non-existent
+
+        Returns:
+            a BigSet
+        '''
+        parse_method = glob.glob
+        return cls._from_element_patt(pattern, parse_method, backing_dir)
+
+    @classmethod
     def from_dict(cls, d, **kwargs):
-        '''Creates a BigSet from a JSON dictionary.
+        '''Constructs a BigSet from a JSON dictionary.
 
         Args:
             d: a JSON dictionary representation of a BigSet object
@@ -1407,12 +1619,20 @@ class BigSet(BigMixin, Set):
                 by a subclass
 
         Returns:
-            an instance of the BigSet class
+            a BigSet
         '''
-        cls = cls._validate_dict(d)
+        set_cls = cls._validate_dict(d)
         backing_dir = d.get("backing_dir", None)
-        kwargs[cls._ELE_ATTR] = d[cls._ELE_ATTR]
-        return cls(backing_dir=backing_dir, **kwargs)
+        kwargs[set_cls._ELE_ATTR] = d[set_cls._ELE_ATTR]
+        return set_cls(backing_dir=backing_dir, **kwargs)
+
+    @classmethod
+    def _from_element_patt(cls, pattern, parse_method, backing_dir):
+        big_set = cls(backing_dir=backing_dir)
+        for element_path in parse_method(pattern):
+            big_set.add_by_path(element_path)
+
+        return big_set
 
     def _filter_elements(self, filters, match):
         def run_filters(key):
@@ -1420,7 +1640,7 @@ class BigSet(BigMixin, Set):
             return match(f(ele) for f in filters)
 
         return OrderedDict(
-            (k, v) for k, v in iteritems(self.__elements__)
+            (k, e) for k, e in iteritems(self.__elements__)
             if run_filters(k))
 
     @property
@@ -1430,6 +1650,7 @@ class BigSet(BigMixin, Set):
     def _ele_filename(self, key):
         if key not in self.__elements__:
             raise KeyError("Set key %d does not exist" % key)
+
         return "%s.json" % self.__elements__[key]
 
     def _ele_path(self, key):
@@ -1551,8 +1772,9 @@ class Container(Serializable):
     def __setitem__(self, idx, element):
         if isinstance(idx, slice):
             inds = self._slice_to_inds(idx)
-            for idx, ele in zip(inds, element):
-                self[idx] = ele
+            for ind, ele in zip(inds, element):
+                self[ind] = ele
+
             return
 
         self.__elements__[idx] = element
@@ -1590,17 +1812,14 @@ class Container(Serializable):
         '''
         return etau.get_class_name(cls._ELE_CLS)
 
+    @property
+    def is_empty(self):
+        '''Whether this container has no elements.'''
+        return not bool(self)
+
     def clear(self):
         '''Deletes all elements from the container.'''
         setattr(self, self._ELE_ATTR, [])
-
-    def copy(self):
-        '''Returns a deep copy of the container.
-
-        Returns:
-            a Container
-        '''
-        return copy.deepcopy(self)
 
     def empty(self):
         '''Returns an empty copy of the container.
@@ -1625,7 +1844,7 @@ class Container(Serializable):
         '''Appends the elements in the given container to this container.
 
         Args:
-            container: a Container instance
+            container: a Container of `_ELE_CLS` objects
         '''
         self.__elements__.extend(container.__elements__)
 
@@ -1635,11 +1854,31 @@ class Container(Serializable):
         Args:
             elements: an iterable of `_ELE_CLS` objects
         '''
-        if isinstance(elements, list):
-            self.__elements__.extend(elements)
-        else:
-            for element in elements:
-                self.add(element)
+        self.__elements__.extend(list(elements))
+
+    def prepend(self, element):
+        '''Prepends an element to the container.
+
+        Args:
+            element: an instance of `_ELE_CLS`
+        '''
+        self.__elements__.insert(0, element)
+
+    def prepend_container(self, container):
+        '''Prepends the elements in the given container to this container.
+
+        Args:
+            container: a Container of `_ELE_CLS` objects
+        '''
+        self.__elements__[0:0] = container.__elements__
+
+    def prepend_iterable(self, elements):
+        '''Prepends the elements in the given iterable to the container.
+
+        Args:
+            elements: an iterable of `_ELE_CLS` objects
+        '''
+        self.__elements__[0:0] = list(elements)
 
     def filter_elements(self, filters, match=any):
         '''Removes elements that don't match the given filters from the
@@ -1657,6 +1896,26 @@ class Container(Serializable):
         '''
         elements = self._filter_elements(filters, match)
         setattr(self, self._ELE_ATTR, elements)
+
+    def pop_elements(self, filters, match=any):
+        '''Pops elements that match the given filters from the container.
+
+        The order of the elements in both containers are preserved.
+
+        Args:
+            filters: a list of functions that accept elements and return
+                True/False
+            match: a function (usually `any` or `all`) that accepts an iterable
+                and returns True/False. Used to aggregate the outputs of each
+                filter to decide whether a match has occurred. The default is
+                `any`
+
+        Returns:
+            a Container of elements matching the given filters
+        '''
+        container = self.empty()
+        container.add_iterable(self._pop_elements(filters, match))
+        return container
 
     def delete_inds(self, inds):
         '''Deletes the elements from the container with the given indices.
@@ -1677,7 +1936,7 @@ class Container(Serializable):
         Args:
             inds: an iterable of indices of the elements to keep
         '''
-        elements = self._get_elements(inds)
+        elements = self._get_elements_with_inds(inds)
         setattr(self, self._ELE_ATTR, elements)
 
     def extract_inds(self, inds):
@@ -1693,10 +1952,26 @@ class Container(Serializable):
         Returns:
             a Container with the requested elements
         '''
-        new_container = self.empty()
+        container = self.empty()
         for idx in inds:
-            new_container.add(self[idx])
-        return new_container
+            container.add(self[idx])
+
+        return container
+
+    def pop_inds(self, inds):
+        '''Pops elements from the container with the given indices.
+
+        The order of the elements in both containers are preserved.
+
+        Args:
+            inds: an iterable of indices of the elements to pop
+
+        Returns:
+            a Container with the popped elements
+        '''
+        container = self.empty()
+        container.add_iterable(self._pop_elements_with_inds(inds))
+        return container
 
     def count_matches(self, filters, match=any):
         '''Counts the number of elements in the container that match the
@@ -1733,10 +2008,9 @@ class Container(Serializable):
         Returns:
             a Container with elements that matched the filters
         '''
-        new_container = self.empty()
-        elements = self._filter_elements(filters, match)
-        new_container.add_iterable(elements)
-        return new_container
+        container = self.empty()
+        container.add_iterable(self._filter_elements(filters, match))
+        return container
 
     def get_matching_inds(self, filters, match=any):
         '''Gets the indices of the elements matching the given filters.
@@ -1774,7 +2048,11 @@ class Container(Serializable):
         setattr(self, self._ELE_ATTR, elements)
 
     def attributes(self):
-        '''Returns the list of class attributes that will be serialized.'''
+        '''Returns the list of class attributes that will be serialized.
+
+        Returns:
+            the list of attributes
+        '''
         return [self._ELE_ATTR]
 
     def serialize(self, reflective=False):
@@ -1791,8 +2069,50 @@ class Container(Serializable):
         if reflective:
             d["_CLS"] = self.get_class_name()
             d[self._ELE_CLS_FIELD] = etau.get_class_name(self._ELE_CLS)
+
         d.update(super(Container, self).serialize(reflective=False))
         return d
+
+    @classmethod
+    def from_iterable(cls, elements):
+        '''Constructs a Container from an iterable of elements.
+
+        Args:
+            elements: an iterable of elements
+
+        Returns:
+            a Container
+        '''
+        container = cls()
+        container.add_iterable(elements)
+        return container
+
+    @classmethod
+    def from_numeric_patt(cls, pattern):
+        '''Constructs a Container from a numeric pattern of elements on disk.
+
+        Args:
+            pattern: a string with one or more numeric patterns, like
+                "/path/to/labels/%05d.json"
+
+        Returns:
+            a Container
+        '''
+        parse_method = etau.get_pattern_matches
+        return cls._from_element_patt(pattern, parse_method)
+
+    @classmethod
+    def from_glob_patt(cls, pattern):
+        '''Constructs a Container from a glob pattern of elements on disk.
+
+        Args:
+             pattern: a glob pattern like "/path/to/labels/*.json"
+
+        Returns:
+            a Container
+        '''
+        parse_method = glob.glob
+        return cls._from_element_patt(pattern, parse_method)
 
     @classmethod
     def from_dict(cls, d, **kwargs):
@@ -1812,27 +2132,67 @@ class Container(Serializable):
                 by a subclass
 
         Returns:
-            an instance of the Container class
+            a Container
         '''
-        cls = cls._validate_dict(d)
-        elements = [cls._ELE_CLS.from_dict(dd) for dd in d[cls._ELE_ATTR]]
-        return cls(**etau.join_dicts({cls._ELE_ATTR: elements}, kwargs))
+        container_cls = cls._validate_dict(d)
+        elements = [
+            container_cls._ELE_CLS.from_dict(dd)
+            for dd in d[container_cls._ELE_ATTR]]
+        return container_cls(
+            **etau.join_dicts({container_cls._ELE_ATTR: elements}, kwargs))
 
-    def _get_elements(self, inds):
+    @classmethod
+    def _from_element_patt(cls, pattern, parse_method):
+        container = cls()
+        for element_path in parse_method(pattern):
+            container.add(
+                cls.get_element_class().from_json(element_path))
+
+        return container
+
+    def _get_elements_with_inds(self, inds):
         if isinstance(inds, numbers.Integral):
             logger.debug("Wrapping single index as a list")
             inds = [inds]
 
         return [e for i, e in enumerate(self.__elements__) if i in set(inds)]
 
+    def _pop_elements_with_inds(self, inds):
+        inds = set(inds)
+
+        keep = []
+        pop = []
+        for i, e in enumerate(self.__elements__):
+            if i in inds:
+                pop.append(e)
+            else:
+                keep.append(e)
+
+        setattr(self, self._ELE_ATTR, keep)
+        return pop
+
     def _filter_elements(self, filters, match):
         return list(
-            filter(lambda o: match(f(o) for f in filters), self.__elements__))
+            filter(lambda e: match(f(e) for f in filters), self.__elements__))
+
+    def _pop_elements(self, filters, match):
+        match_fcn = lambda e: match(f(e) for f in filters)
+
+        keep = []
+        pop = []
+        for e in self.__elements__:
+            if match_fcn(e):
+                pop.append(e)
+            else:
+                keep.append(e)
+
+        setattr(self, self._ELE_ATTR, keep)
+        return pop
 
     def _get_matching_inds(self, filters, match):
         return [
-            ind for ind, o in enumerate(self.__elements__)
-            if match(f(o) for f in filters)]
+            ind for ind, e in enumerate(self.__elements__)
+            if match(f(e) for f in filters)]
 
     def _slice_to_inds(self, sli):
         return range(len(self))[sli]
@@ -1958,17 +2318,20 @@ class BigContainer(BigMixin, Container):
 
         if idx < 0:
             idx += len(self)
+
         return self._load_ele(self._ele_path(idx))
 
     def __setitem__(self, idx, element):
         if isinstance(idx, slice):
             inds = self._slice_to_inds(idx)
-            for idx, ele in zip(inds, element):
-                self[idx] = ele
+            for ind, ele in zip(inds, element):
+                self[ind] = ele
+
             return
 
         if idx < 0:
             idx += len(self)
+
         element.write_json(self._ele_path(idx))
 
     def __delitem__(self, idx):
@@ -1979,6 +2342,7 @@ class BigContainer(BigMixin, Container):
 
         if idx < 0:
             idx += len(self)
+
         etau.delete_file(self._ele_path(idx))
         super(BigContainer, self).__delitem__(idx)
 
@@ -1995,8 +2359,8 @@ class BigContainer(BigMixin, Container):
     def add_by_path(self, path):
         '''Appends an element to the container via its path on disk.
 
-        No validation is done. Subclasses may choose to implement this method
-        for suchs purposes, etc.
+        No validation is done. Subclasses may choose to override this method
+        for such purposes.
 
         Args:
             path: the path to the element JSON file on disk
@@ -2063,6 +2427,30 @@ class BigContainer(BigMixin, Container):
         '''
         self.keep_inds(self._filter_elements(filters, match))
 
+    def pop_elements(self, filters, match=any, big=True, backing_dir=None):
+        '''Pops elements that match the given filters from the container.
+
+        The order of the elements in both containers are preserved.
+
+        Args:
+            filters: a list of functions that accept elements and return
+                True/False
+            match: a function (usually `any` or `all`) that accepts an iterable
+                and returns True/False. Used to aggregate the outputs of each
+                filter to decide whether a match has occurred. The default is
+                `any`
+            big: whether to create a BigContainer (True) or Container (False).
+                By default, this is True
+            backing_dir: an optional backing directory to use for the new
+                BigContainer. If provided, the directory must be empty or
+                non-existent. Only relevant if `big == True`
+
+        Returns:
+            a BigContainer or Container of elements matching the given filters
+        '''
+        inds = self._filter_elements(filters, match)
+        return self.pop_inds(inds, big=big, backing_dir=backing_dir)
+
     def keep_inds(self, inds):
         '''Keeps only the elements in the container with the given indices.
 
@@ -2085,23 +2473,45 @@ class BigContainer(BigMixin, Container):
                 By default, this is True
             backing_dir: an optional backing directory to use for the new
                 BigContainer. If provided, the directory must be empty or
-                non-existent. Only relevant if to_container is False
+                non-existent. Only relevant if `big == True`
 
         Returns:
             a BigContainer or Container with the requested elements
         '''
         if not big:
             # Return results in a Container
-            new_container = self.empty_container()
+            container = self.empty_container()
             for idx in inds:
-                new_container.add(self[idx])
-            return new_container
+                container.add(self[idx])
+
+            return container
 
         # Return results in a BigContainer
-        new_container = self.empty(backing_dir=backing_dir)
+        container = self.empty(backing_dir=backing_dir)
         for idx in inds:
-            new_container.add_by_path(self._ele_path(idx))
-        return new_container
+            container.add_by_path(self._ele_path(idx))
+
+        return container
+
+    def pop_inds(self, inds, big=True, backing_dir=None):
+        '''Pops elements from the container with the given indices.
+
+        The order of the elements in both containers are preserved.
+
+        Args:
+            inds: a list of indices of the elements to pop
+            big: whether to create a BigContainer (True) or Container (False).
+                By default, this is True
+            backing_dir: an optional backing directory to use for the new
+                BigContainer. If provided, the directory must be empty or
+                non-existent. Only relevant if `big == True`
+
+        Returns:
+            a BigContainer or Container with the popped elements
+        '''
+        container = self.extract_inds(inds, big=big, backing_dir=backing_dir)
+        self.delete_inds(inds)
+        return container
 
     def get_matches(self, filters, match=any, big=True, backing_dir=None):
         '''Returns a container with elements matching the given filters.
@@ -2119,7 +2529,7 @@ class BigContainer(BigMixin, Container):
                 By default, this is True
             backing_dir: an optional backing directory to use to create a
                 BigContainer. If provided, the directory must be empty or
-                non-existent. Only relevant if to_container is False
+                non-existent. Only relevant if `big == True`
 
         Returns:
             a BigContainer or Container with elements that match the filters
@@ -2146,7 +2556,11 @@ class BigContainer(BigMixin, Container):
         setattr(self, self._ELE_ATTR, elements)
 
     def attributes(self):
-        '''Returns the list of class attributes that will be serialized.'''
+        '''Returns the list of class attributes that will be serialized.
+
+        Returns:
+            the list of attributes
+        '''
         return ["backing_dir"] + super(BigContainer, self).attributes()
 
     def to_container(self):
@@ -2156,13 +2570,13 @@ class BigContainer(BigMixin, Container):
         Returns:
             a Container
         '''
-        new_container = self.empty_container()
-        new_container.add_container(self)
-        return new_container
+        container = self.empty_container()
+        container.add_container(self)
+        return container
 
     @classmethod
     def from_container(cls, container, backing_dir=None):
-        '''Creates a BigContainer with the given Container's elements.
+        '''Constructs a BigContainer with the given Container's elements.
 
         Args:
             container: a Container
@@ -2177,8 +2591,56 @@ class BigContainer(BigMixin, Container):
         return big_container
 
     @classmethod
+    def from_iterable(cls, elements, backing_dir=None):
+        '''Constructs a BigContainer from an iterable of elements.
+
+        Args:
+            elements: an iterable of elements
+            backing_dir: an optional backing directory to use for the new
+                BigContainer. If provided, must be empty or non-existent
+
+        Returns:
+            a BigContainer
+        '''
+        big_container = cls(backing_dir=backing_dir)
+        big_container.add_iterable(elements)
+        return big_container
+
+    @classmethod
+    def from_numeric_patt(cls, pattern, backing_dir=None):
+        '''Constructs a BigContainer from a numeric pattern of elements on
+        disk.
+
+        Args:
+            pattern: a string with one or more numeric patterns, like
+                "/path/to/labels/%05d.json"
+            backing_dir: an optional backing directory to use for the new
+                BigContainer. If provided, must be empty or non-existent
+
+        Returns:
+            a BigContainer
+        '''
+        parse_method = etau.get_pattern_matches
+        return cls._from_element_patt(pattern, parse_method, backing_dir)
+
+    @classmethod
+    def from_glob_patt(cls, pattern, backing_dir=None):
+        '''Constructs a BigContainer from a glob pattern of elements on disk.
+
+        Args:
+            pattern: a glob pattern like "/path/to/labels/*.json"
+            backing_dir: an optional backing directory to use for the new
+                BigContainer. If provided, must be empty or non-existent
+
+        Returns:
+            a BigContainer
+        '''
+        parse_method = glob.glob
+        return cls._from_element_patt(pattern, parse_method, backing_dir)
+
+    @classmethod
     def from_dict(cls, d, **kwargs):
-        '''Creates a BigContainer from a JSON dictionary.
+        '''Constructs a BigContainer from a JSON dictionary.
 
         Args:
             d: a JSON dictionary representation of a BigContainer object
@@ -2186,10 +2648,18 @@ class BigContainer(BigMixin, Container):
                 by a subclass
 
         Returns:
-            an instance of the BigContainer class
+            a BigContainer
         '''
-        cls = cls._validate_dict(d)
-        return cls(**etau.join_dicts(d, kwargs))
+        container_cls = cls._validate_dict(d)
+        return container_cls(**etau.join_dicts(d, kwargs))
+
+    @classmethod
+    def _from_element_patt(cls, pattern, parse_method, backing_dir):
+        big_container = cls(backing_dir=backing_dir)
+        for element_path in parse_method(pattern):
+            big_container.add_by_path(element_path)
+
+        return big_container
 
     def _filter_elements(self, filters, match):
         def run_filters(idx):
@@ -2307,12 +2777,12 @@ class ETAJSONEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, Serializable):
             return obj.serialize()
-        elif isinstance(obj, np.integer):
+        if isinstance(obj, np.integer):
             return int(obj)
-        elif isinstance(obj, np.floating):
+        if isinstance(obj, np.floating):
             return float(obj)
-        elif isinstance(obj, np.ndarray):
+        if isinstance(obj, np.ndarray):
             return obj.tolist()
-        elif isinstance(obj, (dt.datetime, dt.date)):
+        if isinstance(obj, (dt.datetime, dt.date)):
             return obj.isoformat()
         return super(ETAJSONEncoder, self).default(obj)

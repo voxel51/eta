@@ -1,0 +1,19 @@
+{
+    "pipeline": "semantic_segmenter",
+    "inputs": {
+        "video": "../data/people.mp4"
+    },
+    "outputs": {
+        "labels": "out/people-labels.json",
+        "annotated_video": "out/people-annotated.mp4"
+    },
+    "parameters": {
+        "apply_image_semantic_segmenter.segmenter": {
+            "type": "eta.segmenters.TFSemanticSegmenter",
+            "config": {
+                "model_name": "deeplabv3-mnv2-cityscapes"
+            }
+        },
+        "apply_image_semantic_segmenter.store_mask_index": true
+    }
+}

@@ -421,8 +421,12 @@ class ModelsCommand(Command):
             etamode.download_model(args.force_download, force=True)
 
         if args.visualize_tf_graph:
-            # Do this locally to avoid importing TF unless absolutely necessary
+            #
+            # @note(lite) import this locally to avoid importing `tensorflow`
+            # unless absolutely necessary
+            #
             import eta.core.tfutils as etat
+
             model_path = etamode.download_model(args.visualize_tf_graph)
             etat.visualize_frozen_graph(model_path)
 
@@ -2215,8 +2219,7 @@ class SFTPUploadCommand(Command):
         parser.add_argument("--user", metavar="USER", help="the username")
         parser.add_argument("--host", metavar="HOST", help="the hostname")
         parser.add_argument(
-            "-p", "--port", metavar="PORT", help="the port to use "
-            "(default = 22)")
+            "-p", "--port", metavar="PORT", help="the port to use")
 
     @staticmethod
     def run(parser, args):
@@ -2249,8 +2252,7 @@ class SFTPUploadDirCommand(Command):
         parser.add_argument("--user", metavar="USER", help="the username")
         parser.add_argument("--host", metavar="HOST", help="the hostname")
         parser.add_argument(
-            "-p", "--port", metavar="PORT", help="the port to use "
-            "(default = 22)")
+            "-p", "--port", metavar="PORT", help="the port to use")
 
     @staticmethod
     def run(parser, args):
@@ -2287,8 +2289,7 @@ class SFTPDownloadCommand(Command):
         parser.add_argument("--user", metavar="USER", help="the username")
         parser.add_argument("--host", metavar="HOST", help="the hostname")
         parser.add_argument(
-            "-p", "--port", metavar="PORT", help="the port to use "
-            "(default = 22)")
+            "-p", "--port", metavar="PORT", help="the port to use")
         parser.add_argument(
             "--print", action="store_true", help="whether to print the "
             "download to stdout. If true, a file is NOT written to disk")
@@ -2328,8 +2329,7 @@ class SFTPDownloadDirCommand(Command):
         parser.add_argument("--user", metavar="USER", help="the username")
         parser.add_argument("--host", metavar="HOST", help="the hostname")
         parser.add_argument(
-            "-p", "--port", metavar="PORT", help="the port to use "
-            "(default = 22)")
+            "-p", "--port", metavar="PORT", help="the port to use")
 
     @staticmethod
     def run(parser, args):
@@ -2359,8 +2359,7 @@ class SFTPDeleteCommand(Command):
         parser.add_argument("--user", metavar="USER", help="the username")
         parser.add_argument("--host", metavar="HOST", help="the hostname")
         parser.add_argument(
-            "-p", "--port", metavar="PORT", help="the port to use "
-            "(default = 22)")
+            "-p", "--port", metavar="PORT", help="the port to use")
 
     @staticmethod
     def run(parser, args):
@@ -2390,8 +2389,7 @@ class SFTPDeleteDirCommand(Command):
         parser.add_argument("--user", metavar="USER", help="the username")
         parser.add_argument("--host", metavar="HOST", help="the hostname")
         parser.add_argument(
-            "-p", "--port", metavar="PORT", help="the port to use "
-            "(default = 22)")
+            "-p", "--port", metavar="PORT", help="the port to use")
 
     @staticmethod
     def run(parser, args):
@@ -2841,6 +2839,6 @@ _ADD_RECURSIVE_HELP_FLAGS = True
 
 def main():
     '''Executes the `eta` tool with the given command-line args.'''
-    parser = _register_main_command(ETACommand, version=eta.version)
+    parser = _register_main_command(ETACommand, version=etac.VERSION_LONG)
     args = parser.parse_args()
     args.run(args)

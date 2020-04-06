@@ -26,14 +26,14 @@
         {
             "name": "accel",
             "type": "eta.core.types.Number",
-            "description": "A desired acceleration factor to apply when sampling frames. For example, an acceleration of 2x would correspond to sampling every other frame",
+            "description": "A desired acceleration factor to apply when sampling frames. For example, an acceleration of 2x would correspond to sampling every other frame. If specified, this takes precedence over fps",
             "required": false,
             "default": null
         },
         {
             "name": "fps",
             "type": "eta.core.types.Number",
-            "description": "The desired sampling rate, which must be less than the frame rate of the input video",
+            "description": "A desired sampling rate, which must be less than the frame rate of the input video",
             "required": false,
             "default": null
         },
@@ -47,14 +47,14 @@
         {
             "name": "max_fps",
             "type": "eta.core.types.Number",
-            "description": "The maximum sampling rate allowed for the output video. If this parameter is specified, the accel parameter will be increased if necessary to satisfy this constraint",
+            "description": "The maximum sampling rate allowed for the output video. If this parameter is specified, the accel and fps parameters will be adjusted as necessary to satisfy this constraint",
             "required": false,
             "default": null
         },
         {
             "name": "max_size",
             "type": "eta.core.types.Array",
-            "description": "A maximum (width, height) allowed for the sampled frames. Frames are resized as necessary to meet this limit. Dimensions can be -1, in which case no constraint is applied to them",
+            "description": "A maximum (width, height) allowed for the sampled frames. Frames are resized as necessary to meet this limit, and size is decreased (aspect-preserving) if necessary to satisfy this constraint. Dimensions can be -1, in which case no limit is applied to them",
             "required": false,
             "default": null
         },

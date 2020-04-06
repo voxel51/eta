@@ -101,7 +101,7 @@ def _process_video(data, annotation_config):
     elif data.objects_path:
         logger.info("Reading objects from '%s'", data.objects_path)
         objects = etao.DetectedObjectContainer.from_json(data.objects_path)
-        labels = etav.VideoLabels.from_detected_objects(objects)
+        labels = etav.VideoLabels.from_objects(objects)
     else:
         logger.info("No labels found; rendering raw video")
         labels = etav.VideoLabels()

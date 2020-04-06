@@ -993,12 +993,17 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
 
     def _get_file_metadata(self, bucket, object_name):
         metadata = self._client.head_object(Bucket=bucket, Key=object_name)
+
+        mime_type = metadata["ContentType"]
+        if not mime_type:
+            mime_type = etau.guess_mime_type(object_name)
+
         return {
             "bucket": bucket,
             "object_name": object_name,
             "name": os.path.basename(object_name),
             "size": metadata["ContentLength"],
-            "mime_type": metadata["ContentType"],
+            "mime_type": mime_type,
             "last_modified": metadata["LastModified"],
         }
 
@@ -1487,12 +1492,16 @@ class GoogleCloudStorageClient(
 
     @staticmethod
     def _get_file_metadata(blob):
+        mime_type = blob.content_type
+        if not mime_type:
+            mime_type = etau.guess_mime_type(blob.name)
+
         return {
             "bucket": blob.bucket.name,
             "object_name": blob.name,
             "name": os.path.basename(blob.name),
             "size": blob.size,
-            "mime_type": blob.content_type,
+            "mime_type": mime_type,
             "last_modified": blob.updated,
         }
 
@@ -2625,7 +2634,7 @@ class SFTPStorageClient(StorageClient, NeedsSSHCredentials):
     '''
 
     def __init__(
-            self, hostname, username, private_key_path=None, port=22,
+            self, hostname, username, private_key_path=None, port=None,
             keep_open=False,
         ):
         '''Creates an SFTPStorageClient instance.
@@ -2645,7 +2654,7 @@ class SFTPStorageClient(StorageClient, NeedsSSHCredentials):
         self.username = username
         self.private_key_path = self.get_private_key_path(
             private_key_path=private_key_path)
-        self.port = port
+        self.port = port or 22
         self.keep_open = keep_open
 
         self._connection = _SFTPConnection(

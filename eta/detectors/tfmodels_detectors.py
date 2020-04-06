@@ -1,8 +1,8 @@
 '''
-Interface to the TF models object detection library available at
+Interface to the TF-Models Object Detection Library available at
 https://github.com/tensorflow/models/tree/master/research/object_detection.
 
-Copyright 2017-2019, Voxel51, Inc.
+Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
@@ -27,7 +27,7 @@ import tensorflow as tf
 
 import eta.constants as etac
 from eta.core.config import Config, ConfigError
-from eta.core.geometry import BoundingBox, RelativePoint
+from eta.core.geometry import BoundingBox
 import eta.core.learning as etal
 import eta.core.models as etam
 from eta.core.objects import DetectedObject, DetectedObjectContainer
@@ -355,8 +355,8 @@ class TFModelsDetector(
         return self._sess.run(out_tensors, feed_dict={in_tensor: imgs})
 
 
-class TFModelsSegmenterConfig(Config, etal.HasDefaultDeploymentConfig):
-    '''TFModelsSegmenter configuration settings.
+class TFModelsInstanceSegmenterConfig(Config, etal.HasDefaultDeploymentConfig):
+    '''TFModelsInstanceSegmenter configuration settings.
 
     Note that `labels_path` is passed through
     `eta.core.utils.fill_config_patterns` at load time, so it can contain
@@ -441,7 +441,7 @@ class TFModelsSegmenterConfig(Config, etal.HasDefaultDeploymentConfig):
                 "Either `model_name` or `model_path` must be provided")
 
 
-class TFModelsSegmenter(
+class TFModelsInstanceSegmenter(
         etal.ObjectDetector, etal.ExposesFeatures, etal.ExposesProbabilities,
         etat.UsesTFSession):
     '''Interface to the instance segmentation models from the TF-Models
@@ -468,10 +468,10 @@ class TFModelsSegmenter(
     '''
 
     def __init__(self, config):
-        '''Creates a TFModelsSegmenter instance.
+        '''Creates a TFModelsInstanceSegmenter instance.
 
         Args:
-            config: a TFModelsSegmenterConfig instance
+            config: a TFModelsInstanceSegmenterConfig instance
         '''
         self.config = config
         etat.UsesTFSession.__init__(self)
@@ -690,7 +690,7 @@ def export_frozen_inference_graph(
 
     Args:
         checkpoint_path: path to the training checkpoint to export
-        pipeline_config_path: path to the pipeline config file for the
+        pipeline_config_path: path to the pipeline config file for the graph
         output_dir: the directory in which to write the frozen inference graph
     '''
     # Import here because they are sooooo slow
@@ -768,7 +768,7 @@ def _parse_labelmap_proto(labelmap):
 def _to_detected_object(
         box, score, class_id, category_index, mask_probs=None,
         mask_thresh=None):
-    '''Converts a detection to a DetectedObject.
+    '''Converts a TF-Models detection to a DetectedObject.
 
     Args:
         box: [ymin, xmin, ymax, xmax]
@@ -781,14 +781,11 @@ def _to_detected_object(
             mask for the detection, if masks are supported by the model
 
     Returns:
-        a DetectedObject describing the detection
+        a DetectedObject
     '''
     label = category_index[class_id]
 
-    bounding_box = BoundingBox(
-        RelativePoint(box[1], box[0]),
-        RelativePoint(box[3], box[2]),
-    )
+    bounding_box = BoundingBox.from_coords(box[1], box[0], box[3], box[2])
 
     if mask_probs is not None:
         mask = mask_probs

@@ -9,7 +9,7 @@
     },
     "parameters": {
         "apply_object_detector.detector": {
-            "type": "eta.detectors.TFModelsSegmenter",
+            "type": "eta.detectors.TFModelsInstanceSegmenter",
             "config": {
                 "model_name": "mask-rcnn-resnet101-atrous-coco"
             }

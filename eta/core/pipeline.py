@@ -4,7 +4,7 @@ Core pipeline infrastructure.
 See `docs/pipelines_dev_guide.md` for detailed information about the design of
 the ETA pipeline system.
 
-Copyright 2017-2019, Voxel51, Inc.
+Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
 
 Brian Moore, brian@voxel51.com
@@ -48,12 +48,15 @@ PIPELINE_OUTPUT_NAME = "OUTPUT"
 
 
 def run(
-        pipeline_config_path, pipeline_status=None, mark_as_complete=True,
+        pipeline_config_or_path, pipeline_status=None, mark_as_complete=True,
         handle_failures=True, rotate_logs=True, force_overwrite=False):
     '''Run the pipeline specified by the PipelineConfig.
 
     Args:
-        pipeline_config_path: path to a PipelineConfig file
+        pipeline_config_or_path: a PipelineConfig, a dict representation of
+            one, or a path to one on disk. If a config is provided in-memory,
+            it is writeen to a temporary directory on disk while the pipeline
+            executes
         pipeline_status: an optional PipelineStatus instance. By default, a
             PipelineStatus object is created that logs its status to the path
             specified in the provided PipelineConfig
@@ -76,8 +79,25 @@ def run(
         PipelineExecutionError: if the pipeline failed and `handle_failures` is
             False
     '''
-    # Load pipeline config
-    pipeline_config = PipelineConfig.from_json(pipeline_config_path)
+    # Parse PipelineConfig
+    if etau.is_str(pipeline_config_or_path):
+        # Found a path to a pipeline config on disk
+        temp_dir = None
+        pipeline_config_path = pipeline_config_or_path
+        pipeline_config = PipelineConfig.from_json(pipeline_config_path)
+    else:
+        # Found an in-memory pipeline config
+        temp_dir = etau.TempDir()
+        pipeline_config_path = os.path.join(
+            temp_dir.__enter__(), "pipeline.json")
+        if isinstance(pipeline_config_or_path, dict):
+            pipeline_config = PipelineConfig.from_dict(pipeline_config_or_path)
+        else:
+            pipeline_config = pipeline_config_or_path
+
+        pipeline_config.write_json(pipeline_config_path)
+
+    # Force overwrite, if requested
     if force_overwrite:
         pipeline_config.overwrite = True
 
@@ -96,9 +116,15 @@ def run(
     pipeline_config_path = os.path.abspath(pipeline_config_path)
 
     # Run pipeline
-    return _run(
+    status = _run(
         pipeline_config, pipeline_config_path, pipeline_status,
         mark_as_complete, handle_failures)
+
+    # Cleanup, if necessary
+    if temp_dir is not None:
+        temp_dir.__exit__()
+
+    return status
 
 
 def _make_pipeline_status(pipeline_config):
@@ -453,8 +479,10 @@ class PipelineParameter(object):
             raise PipelineMetadataError(
                 "Pipeline parameter '%s' is required, so it has no default "
                 "value" % self.param_str)
-        elif self.has_set_value:
+
+        if self.has_set_value:
             return self.set_value
+
         return self.param.default_value
 
     @property
@@ -687,7 +715,28 @@ class PipelineMetadata(Configurable, HasBlockDiagram):
         self.nodes = []
         self.connections = []
 
+        self._concrete_data_params = etat.ConcreteDataParams()
         self._parse_metadata(config)
+
+    @property
+    def num_inputs(self):
+        '''Returns the number of inputs for the pipeline.'''
+        return len(self.inputs)
+
+    @property
+    def num_outputs(self):
+        '''Returns the number of outputs for the pipeline.'''
+        return len(self.outputs)
+
+    @property
+    def num_parameters(self):
+        '''Returns the number of active parameters for the pipeline.'''
+        return len(self.parameters)
+
+    @property
+    def num_modules(self):
+        '''Returns the number of modules in the pipeline.'''
+        return len(self.modules)
 
     def has_input(self, name):
         '''Returns True/False if the pipeline has an input `name`.'''
@@ -707,8 +756,25 @@ class PipelineMetadata(Configurable, HasBlockDiagram):
         '''
         return (
             param_str in self.parameters and
-            self.parameters[param_str].is_tunable
-        )
+            self.parameters[param_str].is_tunable)
+
+    def get_input_type(self, name):
+        '''Returns the `eta.core.types.Type` of input `name`.'''
+        #
+        # @todo propertly support pipeline input types, rather than simply
+        # returning the type of the first connected module input
+        #
+        return self.inputs[name].inputs[0].type
+
+    def get_output_type(self, name):
+        '''Returns the `eta.core.types.Type` of output `name`.'''
+        return self.outputs[name].output.type
+
+    def recommend_output_filename(self, name):
+        '''Returns a recommended filename for output `name`.'''
+        output_type = self.get_output_type(name)
+        params = self._concrete_data_params.render_for(name)
+        return os.path.basename(output_type.gen_path("", params))
 
     def is_valid_input(self, name, path):
         '''Returns True/False if `path` is a valid path for input `name`.'''
