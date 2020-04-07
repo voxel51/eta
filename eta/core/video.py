@@ -2362,6 +2362,42 @@ def extract_clip_frames(
             etai.write(img, outpath)
 
 
+def extract_frame(video_path, output_path, start_time=None):
+    '''Extracts a single frame from the local video or from the live stream and
+    saves it to an image.
+
+    This extraction function is the simplest of the extract command in this
+    video code and strictly extracts a single frame either from the beginning
+    of a video or stream or at some point in the video or stream.
+
+    Uses the following ffmpeg command:
+    ```
+    ffmpeg -y -i <video_path> -ss <start_time> -vframes 1 ${output_path} \
+            >/dev/null 2>&1
+    ```
+
+    Args:
+        video_path: the path or m3u8 stream to a video
+        output_path: the path to the image to write the frame
+        start_time: a string in the ffmpeg time duration format, as follows,
+                    [-][HH:]MM:SS[.m...]
+                    https://ffmpeg.org/ffmpeg-utils.html#time-duration-syntax
+    '''
+    in_opts = ["-vsync", "0"]
+    if start_time is not None:
+        if not isinstance(start_time, six.string_types):
+            start_time = "%.3f" % start_time
+        in_opts.extend(["-ss", start_time])
+
+    ffmpeg = FFmpeg(in_opts=in_opts, out_opts=["-vsync", "0", "-vframes", "1"])
+    ffmpeg.run(video_path, output_path)
+
+
+def _make_ffmpeg_select_arg(frames):
+    ss = "+".join(["eq(n\,%d)" % (f - 1) for f in frames])
+    return "select='%s'" % ss
+
+
 def sample_select_frames(
         video_path, frames, output_patt=None, size=None, fast=False):
     '''Samples the specified frames of the video.
@@ -2524,11 +2560,6 @@ def _sample_select_frames_slow(video_path, frames, output_patt, size):
             out_frames.append(r.frame_number)
 
     return imgs, out_frames
-
-
-def _make_ffmpeg_select_arg(frames):
-    ss = "+".join(["eq(n\,%d)" % (f - 1) for f in frames])
-    return "select='%s'" % ss
 
 
 def sample_first_frames(imgs_or_video_path, k, stride=1, size=None):
