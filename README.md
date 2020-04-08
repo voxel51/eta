@@ -180,6 +180,25 @@ the [docs folder](https://github.com/voxel51/eta/tree/develop/docs).
 | `tensorflow` | third-party TensorFlow repositories that ETA builds upon |
 
 
+## Generating Documentation
+
+This project uses
+[Sphinx-Napoleon](https://pypi.python.org/pypi/sphinxcontrib-napoleon)
+to generate its documentation from source.
+
+To generate the documentation, you must install the developer dependencies by
+running the `install.bash` script with the `-d` flag.
+
+Then you can generate the docs by running:
+
+```shell
+bash sphinx/generate_docs.bash
+```
+
+To view the documentation, open the `sphinx/build/html/index.html` file in
+your browser.
+
+
 ## Uninstallation
 
 ```shell
