@@ -38,6 +38,7 @@ import eta.core.module as etam
 import eta.core.status as etas
 import eta.core.types as etat
 import eta.core.utils as etau
+import eta.core.video as etav
 
 
 logger = logging.getLogger(__name__)
@@ -50,7 +51,7 @@ PIPELINE_OUTPUT_NAME = "OUTPUT"
 def run(
         pipeline_config_or_path, pipeline_status=None, mark_as_complete=True,
         handle_failures=True, rotate_logs=True, force_overwrite=False):
-    '''Run the pipeline specified by the PipelineConfig.
+    '''Runs the pipeline specified by the given PipelineConfig.
 
     Args:
         pipeline_config_or_path: a PipelineConfig, a dict representation of
@@ -244,8 +245,8 @@ def find_all_metadata():
     pipeline metadata files. To load these files, use `load_all_metadata()`.
 
     Returns:
-        a dictionary mapping pipeline names to (absolute paths to) pipelines
-            metadata filenames
+        a dictionary mapping pipeline names to absolute paths to
+            PipelineMetadata files
     '''
     d = {}
     pdirs = etau.make_search_path(eta.config.pipeline_dirs)
@@ -267,8 +268,11 @@ def find_metadata(pipeline_name):
     Pipeline metadata files must be JSON files in one of the directories in
     `eta.config.pipeline_dirs`.
 
+    Args:
+        pipeline_name: the name of the pipeline
+
     Returns:
-        the (absolute) path to the pipeline metadata file
+        the absolute path to the PipelineMetadata file
 
     Raises:
         PipelineMetadataError: if the pipeline could not be found
@@ -278,6 +282,46 @@ def find_metadata(pipeline_name):
     except KeyError:
         raise PipelineMetadataError(
             "Could not find pipeline '%s'" % pipeline_name)
+
+
+def is_video_pipeline(metadata):
+    '''Determines whether this pipeline is a video pipeline, i.e., if it has
+    exactly one input and that input is a video type.
+
+    Args:
+        metadata: a PipelineMetadata instance
+
+    Returns:
+        True/False
+    '''
+    if metadata.num_inputs == 1:
+        input_name = list(metadata.inputs.keys())[0]
+        input_type = metadata.get_input_type(input_name)
+        if issubclass(input_type, etat.Video):
+            return True
+
+    return False
+
+
+def get_metadata_for_video_input(request):
+    '''Returns VideoMetadata for the input of the given pipeline request, which
+    must be a video pipeline.
+
+    Args:
+        request: a PipelineBuildRequest
+
+    Returns:
+        a VideoMetadata instance, or None
+    '''
+    if is_video_pipeline(request.metadata):
+        input_name = list(request.metadata.inputs.keys())[0]
+        video_path = request.inputs[input_name]
+        try:
+            return etav.VideoMetadata.build_for(video_path)
+        except:
+            pass
+
+    return None
 
 
 class PipelineConfig(Config):
