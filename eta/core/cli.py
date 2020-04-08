@@ -820,13 +820,13 @@ class DeactivateAuthCommand(Command):
 
     Examples:
         # Deactivate Google credentials
-        eta auth deactivate --google '/path/to/service-account.json'
+        eta auth deactivate --google
 
         # Deactivate AWS credentials
-        eta auth deactivate --aws '/path/to/credentials.ini'
+        eta auth deactivate --aws
 
         # Deactivate SSH credentials
-        eta auth deactivate --ssh '/path/to/id_rsa'
+        eta auth deactivate --ssh
 
         # Deactivate all credentials
         eta auth deactivate --all
