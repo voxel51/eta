@@ -10,7 +10,7 @@
 
 # Show usage information
 usage() {
-    echo "Usage:  bash $0 [-h] [-l] [-bp]
+    echo "Usage:  bash $0 [-h] [-l] [-d] [-bp]
 
 Getting help:
 -h      Display this help message.
@@ -18,6 +18,7 @@ Getting help:
 Custom installations:
 -l      Perform a lite install, which omits submodules and other items not
         required to use the core library. The default is a full install.
+-d      Install developer dependencies. The default is false.
 
 Mac-only options:
 -b      Use brew to install packages (mac only). The default is true.
@@ -29,11 +30,13 @@ Mac-only options:
 # Parse flags
 SHOW_HELP=false
 LITE_INSTALL=false
+DEV_INSTALL=false
 USE_MACPORTS=false
-while getopts "hlbp" FLAG; do
+while getopts "hldbp" FLAG; do
     case "${FLAG}" in
         h) SHOW_HELP=true ;;
         l) LITE_INSTALL=true ;;
+        d) DEV_INSTALL=true ;;
         b) USE_MACPORTS=false ;;
         p) USE_MACPORTS=true ;;
         *) usage ;;
@@ -189,7 +192,12 @@ fi
 
 
 MSG "Installing Python packages"
-CRITICAL pip install -r requirements.txt
+if [ ${DEV_INSTALL} = true ]; then
+    MSG "Performing dev install"
+    CRITICAL pip install -r requirements/dev.txt
+else
+    CRITICAL pip install -r requirements.txt
+fi
 
 
 # Install Tensorflow

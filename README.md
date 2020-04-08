@@ -105,6 +105,15 @@ bash install.bash -l
 Lite installation omits submodules and other large dependencies that are not
 required in order for the core library to function.
 
+### Developer installation
+
+If you are interested in contributing to ETA or generating its documentation
+from source, you should perform a developer installation using the `-d` flag
+of the install script:
+
+```shell
+bash install.bash -d
+```
 
 ### Setting up your execution environment
 
