@@ -446,6 +446,31 @@ class Serializable(object):
         return cls.from_dict(read_json(path), *args, **kwargs)
 
 
+class ExcludeNoneAttributes(Serializable):
+    '''Mixin for Serializable classes that exclude None-valued attributes when
+    serializing.
+
+    This class must appear BEFORE Serializable in the inheritence list of the
+    class:
+
+    ```
+    class Foo(ExcludeNone, Serializable):
+        ...
+    ```
+    '''
+
+    def attributes(self):
+        '''Returns a list of class attributes to be serialized.
+
+        Any attributes whose value is None are omitted.
+
+        Returns:
+            the list of attributes
+        '''
+        attrs = super(ExcludeNoneAttributes, self).attributes()
+        return [a for a in attrs if getattr(self, a) is not None]
+
+
 def _recurse(v, reflective):
     if isinstance(v, Serializable):
         return v.serialize(reflective=reflective)
