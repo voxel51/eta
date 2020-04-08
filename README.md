@@ -7,11 +7,7 @@ This project is supported by the [NIST Public Safety Innovation Accelerator
 Program](
 https://www.nist.gov/news-events/news/2017/06/nist-awards-385-million-accelerate-public-safety-communications).
 
-<img
-    src="https://drive.google.com/uc?id=14ZclqNXJXSct6O0sqcUoxFpzt_CnZuGP"
-    alt="eta-infrastructure.png"
-    width="75%"
-/>
+<img src="https://drive.google.com/uc?id=14ZclqNXJXSct6O0sqcUoxFpzt_CnZuGP" alt="eta-infrastructure.png" width="75%"/>
 
 
 ## Requirements
@@ -88,9 +84,6 @@ installed:
 | CUDA 10 | `tensorflow-gpu==1.4` |
 | Other CUDA | the latest available `tensorflow-gpu` |
 | No CUDA | `tensorflow==1.12.0`
-
-Note that ETA is installed in editable mode via `pip install -e .`, so don't
-delete the directory after installation!
 
 ### Lite installation
 
