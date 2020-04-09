@@ -5,13 +5,13 @@ our style. Our priority is *consistency*, so that developers can quickly ingest
 and understand the entire ETA codebase. *When in doubt, follow the existing
 style in the module you are contributing to.*
 
-We mostly follow the [Google Python style](
-https://github.com/google/styleguide/blob/gh-pages/pyguide.md), so please
-review it before contributing.
+We have recently introduced Black (deterministic) autoformatting, and Flake8 as
+pre-commit hooks. Installing ETA with the `-d` (dev) automatically configures
+these hooks. Much the style guide is automatically handled by Black.
 
 Here are some highlights of our Python style:
 
-- Maximum line length is **79 characters**, with the exception of long URLs
+- Maximum line length is **88 characters**, with the exception of long URLs
 that cannot be split
 
 - Indent your code with **4 spaces**. That is, **no tabs**!
@@ -32,6 +32,10 @@ to least generic
     * standard library imports
     * third-party imports
     * application-specific imports
+
+- When encountering a Flake8 error during a commit that cannot be addressed for
+whatever reason, add an inline comment ` # noqa: E<X>` where `E<X>` is the error
+raised by Flake8. This will ignore the error during the pre-commit hook.
 
 For ETA-library imports, we import modules as `etax`, where `x` is the first
 letter of the module imported. If necessary, we use `etaxy` to disambiguate
@@ -69,8 +73,7 @@ import eta.core.video as etav
 Long imports should be implemented with hanging indentation:
 
 ```python
-from eta.core.features import CachingVideoFeaturizer, \
-                              CachingVideoFeaturizerConfig
+from eta.core.features import CachingVideoFeaturizer, CachingVideoFeaturizerConfig
 ```
 
 - Names should follow the conventions
@@ -89,44 +92,13 @@ function_parameter_name, local_var_name
 - Follow standard typographic rules for spaces around punctuation except for
 colons, which should only have one space rather than two.
 
-```python
-# YES!
-spam(ham[1], {eggs: 2}, [])
-
-def complex(real, imag=0.0):
-    return magic(r=real, i=imag)
-
-foo = 1000  # comment
-long_name = 2  # comment that should not be aligned
-
-dictionary = {
-    'foo': 1,
-    'long_name': 2,
-}
-```
-
-```python
-# NO!
-spam( ham[ 1 ], { eggs: 2 }, [ ] )
-
-def complex(real, imag = 0.0):
-    return magic(r = real, i = imag)
-
-foo       = 1000  # comment
-long_name = 2     # comment that should not be aligned
-
-dictionary = {
-    'foo'      : 1,
-    'long_name': 2,
-}
-```
 
 - All non-trivial public module/class methods should have docstrings describing
 their behavior, inputs, outputs, and exceptions (when appropriate)
 
 ```python
 def parse_object(d, key, cls, default=None):
-    '''Parses an object attribute.
+    """Parses an object attribute.
 
     Args:
         d: a JSON dictionary
@@ -140,55 +112,9 @@ def parse_object(d, key, cls, default=None):
     Raises:
         ConfigError: if no default value was provided and the key was
             not present in the dictionary.
-  '''
-  pass
+    """
+    pass
 ```
-
-- Indentation and spacing around punctuation follows the general pep8
-guidelines, including [the note](
-https://www.python.org/dev/peps/pep-0008/#indentation) that hanging indents may
-be aligned to other than 4-spaces. The highlights of these guidelines are
-below.
-
-```python
-# Yes!
-# Aligned with opening delimiter.
-foo = long_function_name(var_one, var_two,
-                         var_three, var_four)
-
-# More indentation included to distinguish this from the rest.
-def long_function_name(
-        var_one, var_two, var_three,
-        var_four):
-    print(var_one)
-
-# Hanging indents should add a level.
-foo = long_function_name(
-    var_one, var_two,
-    var_three, var_four)
-
-# Hanging indents *may* be indented to other than 4 spaces.
-# Note that this is option in the pep8 spec and we follow it.
-# Use your human judgement for when to leverage it.
-foo = long_function_name(
-  var_one, var_two,
-  var_three, var_four)
-```
-
-```python
-# No!
-
-# Arguments on first line forbidden when not using vertical alignment.
-foo = long_function_name(var_one, var_two,
-    var_three, var_four)
-
-# Further indentation required as indentation is not distinguishable.
-def long_function_name(
-    var_one, var_two, var_three,
-    var_four):
-    print(var_one)
-```
-
 
 ## Copyright
 
