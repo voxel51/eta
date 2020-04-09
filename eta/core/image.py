@@ -1,7 +1,8 @@
 '''
 Core tools and data structures for working with images.
 
-Notes:
+Notes::
+
     [image format] ETA stores images exclusively in RGB format. In contrast,
         OpenCV stores its images in BGR format, so all images that are read or
         produced outside of this library must be converted to RGB. This
