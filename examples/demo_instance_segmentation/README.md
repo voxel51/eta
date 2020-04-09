@@ -25,5 +25,3 @@ To visualize the results, view `out/people-annotated.mp4` and
 
 Copyright 2017-2020, Voxel51, Inc.<br>
 voxel51.com
-
-Brian Moore, brian@voxel51.com

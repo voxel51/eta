@@ -3,7 +3,6 @@
 # Build configuration file for ETA.
 #
 # Copyright 2017-2020, Voxel51, Inc.
-# Brian Moore, brian@voxel51.com
 #
 
 #

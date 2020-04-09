@@ -89,5 +89,3 @@ docker run -it --runtime=nvidia $TAG
 
 Copyright 2017-2020, Voxel51, Inc.<br>
 voxel51.com
-
-Brian Moore, brian@voxel51.com

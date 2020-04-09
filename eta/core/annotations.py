@@ -2,13 +2,10 @@
 Core utilities for rendering annotations on media.
 
 @todo improve efficiency by minimizing number of times that images are copied
-and rendered
+and rendered.
 
 Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
-
-Brian Moore, brian@voxel51.com
-Tyler Ganter, tyler@voxel51.com
 '''
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import

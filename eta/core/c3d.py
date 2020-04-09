@@ -8,11 +8,8 @@ C3D implementation in TensorFlow:
 https://github.com/hx173149/C3D-tensorflow
 Hou Xin, 2016
 
-Copyright 2017-2019, Voxel51, Inc.
+Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
-
-Brian Moore, brian@voxel51.com
-Yixin Jin, yixin@voxel51.com
 '''
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import

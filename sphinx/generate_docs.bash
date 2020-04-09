@@ -5,7 +5,7 @@
 #   bash sphnix/generate_docs.bash
 #
 # Copyright 2017-2020, Voxel51, Inc.
-# Brian Moore, brian@voxel51.com
+# voxel51.com
 #
 
 echo "**** Generating documentation"
