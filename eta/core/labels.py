@@ -18,9 +18,13 @@ from future.utils import iteritems
 # pragma pylint: enable=wildcard-import
 
 from collections import defaultdict
+import logging
 
 import eta.core.serial as etas
 import eta.core.utils as etau
+
+
+logger = logging.getLogger(__name__)
 
 
 class Labels(etas.Serializable):
@@ -593,6 +597,9 @@ class LabelsSet(Labels, HasLabelsSchema, etas.Set):
             a Labels instance
         '''
         if key not in self:
+            logger.warning(
+                "Key '%s' not found; creating new %s",
+                key, self._ELE_CLS.__name__)
             # pylint: disable=not-callable
             labels = self._ELE_CLS(**{self._ELE_KEY_ATTR: key})
             self.add(labels)
