@@ -193,6 +193,7 @@ MSG "Installing Python packages"
 if [ ${DEV_INSTALL} = true ]; then
     MSG "Performing dev install"
     CRITICAL pip install -r requirements/dev.txt
+    CRITICAL pre-commit install
 else
     CRITICAL pip install -r requirements.txt
 fi

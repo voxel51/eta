@@ -1,10 +1,10 @@
 #!/usr/bin/env python
-'''
+"""
 Installs ETA.
 
 Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
-'''
+"""
 from setuptools import setup, find_packages
 
 

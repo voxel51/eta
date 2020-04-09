@@ -47,11 +47,11 @@ git checkout develop
 git checkout -b <new_feature_branch>
 git push -u origin <new_feature_branch>
 # WORK
-pylint <changed_files>
-pycodestyle <changed_files>
+pre-commit run --files <changed_files>
 # ADDRESS LINT OUTPUT
 git status -s
 git add <changed_files>
+# COMMIT, PRE-COMMIT HOOKS (BLACK, PYLINT, ETC.) ARE RUN
 git commit -m "message describing your changes"
 # MORE WORK, LINTING, AND COMMITS
 # PULL REQUEST
@@ -67,15 +67,18 @@ than combining multiple changes into a single commit.
 
 ## Python 2 and 3 compatibility
 
-The ETA codebase is Python 2/3 cross-compatible. See `python23_guide.md` for
+The ETA codebase is Python 2/3 cross-compatible. See the [Python 2/3
+guide](https://github.com/voxel51/eta/blob/develop/docs/python23_guide.md) for
 more tips on writing cross-compatible code in ETA.
 
 
 ## Style guide
 
-We require all ETA code to adhere to our Python style guide. See
-`python_style_guide.md` for a description of our style, and see
-`linting_guide.md` for details on our code linting tools.
+We require all ETA code to adhere to our Python style guide. See the
+[Python style guide](https://github.com/voxel51/eta/blob/develop/docs/python_style_guide.md)
+for a description of our style, and see the
+[linting guide](https://github.com/voxel51/eta/blob/develop/docs/linting_guide.md)
+for details on our code linting tools.
 
 
 ## Image and video color formats

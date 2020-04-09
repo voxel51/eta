@@ -1,5 +1,7 @@
 # ETA: Extensible Toolkit for Analytics
 
+[![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/pre-commit/pre-commit)
+
 An open and extensible computer vision, machine learning and video analytics
 infrastructure.
 
