@@ -7,8 +7,8 @@ style in the module you are contributing to.*
 
 We use Black (deterministic) auto-formatting, and Pylint as pre-commit hooks.
 Installing ETA with the `-d` (dev) flag automatically configures these hooks.
-Much of the style guide is automatically handled by Black. See the (linting
-guide)[https://github.com/voxel51/eta/blob/develop/docs/linting_guide.md] for
+Much of the style guide is automatically handled by Black. See the [linting
+guide](https://github.com/voxel51/eta/blob/develop/docs/linting_guide.md) for
 more information.
 
 Here are some highlights of our Python style:
@@ -32,8 +32,8 @@ to least generic
 
 - When encountering a pylint error during a commit that cannot be addressed for
 whatever reason, add an inline comment ` # pylint: disable=rule` where `rule`
-is the rule in question. See the (linting
-guide)[https://github.com/voxel51/eta/blob/develop/docs/linting_guide.md] for
+is the rule in question. See the [linting
+guide](https://github.com/voxel51/eta/blob/develop/docs/linting_guide.md) for
 more information.
 
 For ETA-library imports, we import modules as `etax`, where `x` is the first
