@@ -1,9 +1,9 @@
-'''
+"""
 ETA package initialization.
 
 Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
-'''
+"""
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
 # pragma pylint: disable=wildcard-import
@@ -13,6 +13,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
 from future.utils import iteritems
+
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
@@ -31,47 +32,74 @@ logger = logging.getLogger(__name__)
 
 
 class ETAConfig(EnvConfig):
-    '''Sytem-wide ETA configuration settings.
+    """Sytem-wide ETA configuration settings.
 
     When an ETAConfig is loaded, any `{{eta}}` patterns are replaced with
     `eta.constants.BASE_DIR`.
-    '''
+    """
 
     def __init__(self, d):
         self.config_dir = self.parse_string(
-            d, "config_dir", env_var="ETA_CONFIG_DIR", default="")
+            d, "config_dir", env_var="ETA_CONFIG_DIR", default=""
+        )
         self.output_dir = self.parse_string(
-            d, "output_dir", env_var="ETA_OUTPUT_DIR", default="")
+            d, "output_dir", env_var="ETA_OUTPUT_DIR", default=""
+        )
         self.module_dirs = self.parse_string_array(
-            d, "module_dirs", env_var="ETA_MODULE_DIRS", default=[])
+            d, "module_dirs", env_var="ETA_MODULE_DIRS", default=[]
+        )
         self.pipeline_dirs = self.parse_string_array(
-            d, "pipeline_dirs", env_var="ETA_PIPELINE_DIRS", default=[])
+            d, "pipeline_dirs", env_var="ETA_PIPELINE_DIRS", default=[]
+        )
         self.models_dirs = self.parse_string_array(
-            d, "models_dirs", env_var="ETA_MODELS_DIRS", default=[])
+            d, "models_dirs", env_var="ETA_MODELS_DIRS", default=[]
+        )
         self.pythonpath_dirs = self.parse_string_array(
-            d, "pythonpath_dirs", env_var="ETA_PYTHONPATH_DIRS", default=[])
+            d, "pythonpath_dirs", env_var="ETA_PYTHONPATH_DIRS", default=[]
+        )
         self.environment_vars = self.parse_dict(
-            d, "environment_vars", default={})
+            d, "environment_vars", default={}
+        )
         self.tf_config = self.parse_dict(d, "tf_config", default={})
         self.patterns = self.parse_dict(d, "patterns", default={})
-        self.max_model_versions_to_keep = int(self.parse_number(
-            d, "max_model_versions_to_keep",
-            env_var="ETA_MAX_MODEL_VERSIONS_TO_KEEP", default=-1))
+        self.max_model_versions_to_keep = int(
+            self.parse_number(
+                d,
+                "max_model_versions_to_keep",
+                env_var="ETA_MAX_MODEL_VERSIONS_TO_KEEP",
+                default=-1,
+            )
+        )
         self.allow_model_downloads = self.parse_bool(
-            d, "allow_model_downloads", env_var="ETA_ALLOW_MODEL_DOWNLOADS",
-            default=True)
+            d,
+            "allow_model_downloads",
+            env_var="ETA_ALLOW_MODEL_DOWNLOADS",
+            default=True,
+        )
         self.default_sequence_idx = self.parse_string(
-            d, "default_sequence_idx", env_var="ETA_DEFAULT_SEQUENCE_IDX",
-            default="%05d")
+            d,
+            "default_sequence_idx",
+            env_var="ETA_DEFAULT_SEQUENCE_IDX",
+            default="%05d",
+        )
         self.default_image_ext = self.parse_string(
-            d, "default_image_ext", env_var="ETA_DEFAULT_IMAGE_EXT",
-            default=".png")
+            d,
+            "default_image_ext",
+            env_var="ETA_DEFAULT_IMAGE_EXT",
+            default=".png",
+        )
         self.default_video_ext = self.parse_string(
-            d, "default_video_ext", env_var="ETA_DEFAULT_VIDEO_EXT",
-            default=".mp4")
+            d,
+            "default_video_ext",
+            env_var="ETA_DEFAULT_VIDEO_EXT",
+            default=".mp4",
+        )
         self.default_figure_ext = self.parse_string(
-            d, "default_figure_ext", env_var="ETA_DEFAULT_FIGURE_EXT",
-            default=".pdf")
+            d,
+            "default_figure_ext",
+            env_var="ETA_DEFAULT_FIGURE_EXT",
+            default=".pdf",
+        )
 
         self._parse_patterns()
         self._fill_patterns()
@@ -94,23 +122,28 @@ class ETAConfig(EnvConfig):
         #
         for patt in self.patterns:
             self.patterns[patt] = os.path.realpath(
-                etau.fill_patterns(self.patterns[patt], self.patterns))
+                etau.fill_patterns(self.patterns[patt], self.patterns)
+            )
 
     def _fill_patterns(self):
         self.config_dir = etau.fill_patterns(self.config_dir, self.patterns)
         self.output_dir = etau.fill_patterns(self.output_dir, self.patterns)
         self.module_dirs = [
-            etau.fill_patterns(m, self.patterns) for m in self.module_dirs]
+            etau.fill_patterns(m, self.patterns) for m in self.module_dirs
+        ]
         self.pipeline_dirs = [
-            etau.fill_patterns(p, self.patterns) for p in self.pipeline_dirs]
+            etau.fill_patterns(p, self.patterns) for p in self.pipeline_dirs
+        ]
         self.models_dirs = [
-            etau.fill_patterns(m, self.patterns) for m in self.models_dirs]
+            etau.fill_patterns(m, self.patterns) for m in self.models_dirs
+        ]
         self.pythonpath_dirs = [
-            etau.fill_patterns(m, self.patterns) for m in self.pythonpath_dirs]
+            etau.fill_patterns(m, self.patterns) for m in self.pythonpath_dirs
+        ]
 
 
 def set_config_settings(**kwargs):
-    '''Sets the given ETA config settings.
+    """Sets the given ETA config settings.
 
     The settings are validated by constructing an ETAConfig from them before
     applying them.
@@ -120,7 +153,7 @@ def set_config_settings(**kwargs):
 
     Raises:
         EnvConfigError: if the settings were invalid
-    '''
+    """
     # Validiate settings
     _config = ETAConfig.from_dict(kwargs)
 
@@ -135,8 +168,8 @@ def set_config_settings(**kwargs):
 
 
 def startup_message():
-    '''Logs ETA startup message.'''
-    logger.info("Starting...\n" + _load_ascii_art())
+    """Logs ETA startup message."""
+    logger.info("Starting...\n%s", _load_ascii_art())
     logger.info(etac.VERSION_LONG)
     logger.info("Revision %s", etau.get_eta_rev())
 
@@ -147,12 +180,12 @@ def _load_ascii_art():
 
 
 def is_python2():
-    '''Returns True/False whether the Python version running is 2.X.'''
+    """Returns True/False whether the Python version running is 2.X."""
     return sys.version_info[0] == 2
 
 
 def is_python3():
-    '''Returns True/False whether the Python version running is 3.X.'''
+    """Returns True/False whether the Python version running is 3.X."""
     return sys.version_info[0] == 3
 
 
