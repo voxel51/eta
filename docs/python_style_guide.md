@@ -69,15 +69,6 @@ from eta.core.serial import Serializable
 import eta.core.video as etav
 ```
 
-Long imports should be implemented with hanging indentation:
-
-```python
-from eta.core.features import (
-    CachingVideoFeaturizer,
-    CachingVideoFeaturizerConfig,
-)
-```
-
 - Names should follow the conventions
 
 ```python
