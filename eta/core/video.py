@@ -1,7 +1,8 @@
 '''
 Core tools and data structures for working with videos.
 
-Notes:
+Notes::
+
     [frame numbers] ETA uses 1-based indexing for all frame numbers
 
     [image format] ETA stores images exclusively in RGB format. In contrast,
