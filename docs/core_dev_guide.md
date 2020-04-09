@@ -52,7 +52,7 @@ pycodestyle <changed_files>
 # ADDRESS LINT OUTPUT
 git status -s
 git add <changed_files>
-# COMMIT, PRE-COMMIT HOOKS (FLAKE8, BLACK, ETC.) ARE RUN
+# COMMIT, PRE-COMMIT HOOKS (BLACK, PYLINT, ETC.) ARE RUN
 git commit -m "message describing your changes"
 # MORE WORK, LINTING, AND COMMITS
 # PULL REQUEST
