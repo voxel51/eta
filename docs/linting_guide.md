@@ -29,10 +29,8 @@ To manually lint a file, run the following:
 ```shell
 # Run Black and Pylint as configured in the pre-commit hook
 pre-commit run --files <file>
-
-# Run pylint directly
-pylint <file>
 ```
+
 
 ## Customizing Black
 
@@ -42,30 +40,30 @@ You don't customize Black, silly! From the docs:
 > answer is “No”. Black is all about sensible defaults.
 
 
-## Customizing pylint
+## Customizing Pylint
 
-To permanently disable a pylint message, add it to the `disable` field in
-the `pylintrc` file:
+To permanently disable a Pylint message, add it to the `disable` field in the
+`pylintrc` file:
 
 ```shell
 [MESSAGES CONTROL]
 disable=too-few-public-methods,too-many-arguments
 ```
 
-To disable a pylint message for the rest of the current block (i.e.,
+To disable a Pylint message for the rest of the current block (i.e.,
 indentation level) in a module, add the comment:
 
 ```py
 # pylint: disable=too-many-instance-attributes
 ```
 
-To disable a pylint message for the current line:
+To disable a Pylint message for the current line:
 
 ```py
 from builtins import *  # pylint disable=wildcard-import
 ```
 
-To disable pylint errors temporarily in a module:
+To disable Pylint errors temporarily in a module:
 
 ```py
 # pragma pylint: disable=redefined-builtin
@@ -76,7 +74,7 @@ from builtins import *
 # pragma pylint: enable=wildcard-import
 ```
 
-See the [pylint user guide](https://pylint.readthedocs.io/en/latest/) for more
+See the [Pylint user guide](https://pylint.readthedocs.io/en/latest/) for more
 information.
 
 
@@ -84,6 +82,3 @@ information.
 
 Copyright 2017-2020, Voxel51, Inc.<br>
 voxel51.com
-
-Brian Moore, brian@voxel51.com<br>
-Benjamin Kane, ben@voxel51.com
