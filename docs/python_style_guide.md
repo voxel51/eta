@@ -5,7 +5,7 @@ our style. Our priority is *consistency*, so that developers can quickly ingest
 and understand the entire ETA codebase. *When in doubt, follow the existing
 style in the module you are contributing to.*
 
-We use black (deterministic) autoformatting, and pylint as pre-commit hooks.
+We use Black (deterministic) auto-formatting, and Pylint as pre-commit hooks.
 Installing ETA with the `-d` (dev) flag automatically configures these hooks.
 Much of the style guide is automatically handled by Black. See the (linting
 guide)[https://github.com/voxel51/eta/blob/develop/docs/linting_guide.md] for
