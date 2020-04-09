@@ -4,13 +4,13 @@ repos:
     hooks:
     -   id: blacken-docs
         additional_dependencies: [black==19.10b0]
-        args: ['-l 88']
+        args: ['-l 79']
 -   repo: https://github.com/ambv/black
     rev: 19.10b0
     hooks:
     - id: black
       language_version: python3.6
-      args: ['-l 88']
+      args: ['-l 79']
 -   repo: https://github.com/PyCQA/pylint
     rev: pylint-2.4.2
     hooks:

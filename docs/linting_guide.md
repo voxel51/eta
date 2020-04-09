@@ -61,7 +61,7 @@ Add new entries to the `[pycodestyle]` section of the `setup.cfg` file:
 
 ```shell
 [pycodestyle]
-max-line-length=88
+max-line-length=79
 ```
 
 See the [pycodestyle user guide](

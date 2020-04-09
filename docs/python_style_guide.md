@@ -11,7 +11,7 @@ these hooks. Much of the style guide is automatically handled by Black.
 
 Here are some highlights of our Python style:
 
-- Maximum line length is **88 characters**, with the exception of long URLs
+- Maximum line length is **79 characters**, with the exception of long URLs
 that cannot be split
 
 - Indent your code with **4 spaces**. That is, **no tabs**!
@@ -74,7 +74,10 @@ import eta.core.video as etav
 Long imports should be implemented with hanging indentation:
 
 ```python
-from eta.core.features import CachingVideoFeaturizer, CachingVideoFeaturizerConfig
+from eta.core.features import (
+    CachingVideoFeaturizer,
+    CachingVideoFeaturizerConfig,
+)
 ```
 
 - Names should follow the conventions
