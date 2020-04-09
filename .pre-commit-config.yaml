@@ -8,13 +8,14 @@ repos:
 -   repo: https://github.com/ambv/black
     rev: 19.10b0
     hooks:
-    - id: black
-      language_version: python3.6
-      args: ['-l 79']
+    -   id: black
+        language_version: python3.6
+        args: ['-l 79']
 -   repo: local
     hooks:
-    - id: pylint
-      name: pylint
-      language: system
-      entry: pylint
-      files: \.py$
+    -   id: pylint
+        name: pylint
+        language: system
+        entry: pylint
+        files: \.py$
+        args: ['--exit-zero']

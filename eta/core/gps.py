@@ -18,7 +18,6 @@ from builtins import *
 # pragma pylint: enable=wildcard-import
 
 import datetime
-import dateutil.parser
 import math
 
 import eta.core.frameutils as etaf
@@ -184,7 +183,10 @@ def lat_lon_distance(lat1, lon1, lat2, lon2, in_miles=False):
     lat1r = degrees_to_radians(lat1)
     lat2r = degrees_to_radians(lat2)
     a = math.sin(dlat / 2) * math.sin(dlat / 2) + (
-        math.sin(dlon / 2) * math.sin(dlon / 2) * math.cos(lat1r) * math.cos(lat2r)
+        math.sin(dlon / 2)
+        * math.sin(dlon / 2)
+        * math.cos(lat1r)
+        * math.cos(lat2r)
     )
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
     return EARTH_RADIUS_MILES * c if in_miles else EARTH_RADIUS_METERS * c
@@ -232,7 +234,9 @@ def parse_gopro_gps5(gps5_path, video_metadata):
 
         timestamp = sample["cts"] / 1000.0  # cts = ms since first frame
         frame_number = etaf.timestamp_to_frame_number(
-            timestamp, video_metadata.duration, video_metadata.total_frame_count
+            timestamp,
+            video_metadata.duration,
+            video_metadata.total_frame_count,
         )
 
         points.append(GPSWaypoint(lat, lon, frame_number))
@@ -283,7 +287,9 @@ def parse_gopro_geojson(geojson_path, video_metadata):
 
         timestamp /= 1000.0  # convert to seconds
         frame_number = etaf.timestamp_to_frame_number(
-            timestamp, video_metadata.duration, video_metadata.total_frame_count
+            timestamp,
+            video_metadata.duration,
+            video_metadata.total_frame_count,
         )
 
         points.append(GPSWaypoint(lat, lon, frame_number))
