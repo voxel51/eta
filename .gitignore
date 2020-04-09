@@ -31,4 +31,5 @@ __pycache__
 /sphinx/build/
 /sphinx/source/*.rst
 !/sphinx/source/index.rst
+!/sphinx/source/modules.rst
 !/sphinx/source/README.rst
