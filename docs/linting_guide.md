@@ -31,6 +31,13 @@ To manually lint a file, run the following:
 pre-commit run --files <file>
 ```
 
+The Pylint component of the pre-commit hook only checks for errors. To see the
+full output, run:
+
+```shell
+pylint <file>
+```
+
 
 ## Customizing Black
 
