@@ -47,7 +47,7 @@ git checkout develop
 git checkout -b <new_feature_branch>
 git push -u origin <new_feature_branch>
 # WORK
-pylint <changed_files>
+pre-commit run --files <changed_files>
 # ADDRESS LINT OUTPUT
 git status -s
 git add <changed_files>
@@ -75,9 +75,10 @@ more tips on writing cross-compatible code in ETA.
 ## Style guide
 
 We require all ETA code to adhere to our Python style guide. See the
-[Python style guide](https://github.com/voxel51/eta/blob/develop/docs/python_style_guide.md) for a description of our style, and see
-the [linting
-guide](https://github.com/voxel51/eta/blob/develop/docs/linting_guide.md) for details on our code linting tools.
+[Python style guide](https://github.com/voxel51/eta/blob/develop/docs/python_style_guide.md)
+for a description of our style, and see the
+[linting guide](https://github.com/voxel51/eta/blob/develop/docs/linting_guide.md)
+for details on our code linting tools.
 
 
 ## Image and video color formats

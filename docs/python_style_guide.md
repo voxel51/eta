@@ -7,9 +7,9 @@ style in the module you are contributing to.*
 
 We use Black (deterministic) auto-formatting, and Pylint as pre-commit hooks.
 Installing ETA with the `-d` (dev) flag automatically configures these hooks.
-Much of the style guide is automatically handled by Black. See the [linting
-guide](https://github.com/voxel51/eta/blob/develop/docs/linting_guide.md) for
-more information.
+Much of the style guide is automatically handled by Black. See the
+[linting guide](https://github.com/voxel51/eta/blob/develop/docs/linting_guide.md)
+for more information.
 
 Here are some highlights of our Python style:
 
@@ -42,7 +42,7 @@ between two modules that start with the same letter. We also allow direct
 importing of (a small number of) attributes into the local namespace at the
 developer's discretion.
 
-```python
+```py
 import eta.core.image as etai
 from eta.core.serial import Serializable
 import eta.core.video as etav
@@ -51,7 +51,7 @@ import eta.core.video as etav
 Within each group, imports should be sorted alphabetically by full package
 path, ignoring `from` and `import`:
 
-```python
+```py
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -71,7 +71,7 @@ import eta.core.video as etav
 
 - Names should follow the conventions
 
-```python
+```py
 module_name, package_name, ClassName, method_name, ExceptionName,
 function_name, GLOBAL_CONSTANT_NAME, global_var_name, instance_var_name,
 function_parameter_name, local_var_name
@@ -85,11 +85,10 @@ function_parameter_name, local_var_name
 - Follow standard typographic rules for spaces around punctuation except for
 colons, which should only have one space rather than two.
 
-
 - All non-trivial public module/class methods should have docstrings describing
 their behavior, inputs, outputs, and exceptions (when appropriate)
 
-```python
+```py
 def parse_object(d, key, cls, default=None):
     """Parses an object attribute.
 
@@ -108,6 +107,7 @@ def parse_object(d, key, cls, default=None):
     """
     pass
 ```
+
 
 ## Copyright
 
