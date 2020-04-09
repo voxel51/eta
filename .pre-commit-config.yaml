@@ -16,6 +16,6 @@ repos:
     -   id: pylint
         name: pylint
         language: system
-        entry: pylint
         files: \.py$
-        args: ['--exit-zero']
+        entry: pylint
+        args: ['--errors-only']
