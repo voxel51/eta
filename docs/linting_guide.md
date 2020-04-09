@@ -1,6 +1,6 @@
-# THETA Linting Guide
+# ETA Linting Guide
 
-The THETA project uses the following tools for linting and code style:
+The ETA project uses the following tools for linting and code style:
 - [Black](https://github.com/psf/black)
 - [Pylint](https://www.pylint.org)
 
@@ -13,7 +13,7 @@ the repository:
 
 ## Pre-commit hooks
 
-When you installed THETA, pre-commit hooks were automatically installed that
+When you installed ETA, pre-commit hooks were automatically installed that
 run Black and Pylint on any files you modified in your commit. If these tools
 produced any errors or changes to your code, you will need to recommit to
 accept the changes.
