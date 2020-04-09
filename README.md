@@ -10,16 +10,10 @@ infrastructure.
 
 ## Requirements
 
-The ETA package requires the following external dependencies:
-- [OpenCV](https://opencv.org)
-- [TensorFlow](https://www.tensorflow.org/)
-- [ffmpeg](https://www.ffmpeg.org)
-- [ImageMagick](https://www.imagemagick.org/script/index.php)
-- [tensorflow/models](https://github.com/tensorflow/models)
-
 ETA is very portable:
 - Installable on Mac or Linux
 - Supports Python 2.7.X and Python 3.6.X
+- Supports TensorFlow 1.X
 - Supports OpenCV 2.4+ and OpenCV 3.0+
 - Supports CPU-only and GPU-enabled installations
 - Supports CUDA 8, 9 and 10 (for GPU installations)
@@ -66,23 +60,25 @@ cd eta
 bash install.bash
 ```
 
-Depending on your Python environment, you may need to run the script with
-sudo privileges. Note that the install script supports flags that control
-things like (on macOS) whether `port` or `brew` is used to install packages.
-Run `bash install.bash -h` for more information.
+Note that the install script supports flags that control things like (on macOS)
+whether `port` or `brew` is used to install packages. Run
+`bash install.bash -h` for more information.
 
 For Linux installs, the script inspects your system to see if CUDA is installed
 via the `lspci` command. If CUDA is available, TensorFlow is installed with GPU
-support. The table below lists the version of TensorFlow that will be
-installed:
+support.
+
+The table below lists the version of TensorFlow that will be installed by
+the installer, as recommended by the
+[tested build configurations](https://www.tensorflow.org/install/source#tested_build_configurations):
 
 | CUDA Version Found | TensorFlow Version Installed |
 | ------------------ | ---------------------------- |
-| CUDA 8 | `tensorflow-gpu==1.4` |
-| CUDA 9 | `tensorflow-gpu==1.4` |
-| CUDA 10 | `tensorflow-gpu==1.4` |
-| Other CUDA | the latest available `tensorflow-gpu` |
-| No CUDA | `tensorflow==1.12.0`
+| CUDA 8 | `tensorflow-gpu==1.4.0` |
+| CUDA 9 | `tensorflow-gpu==1.12.0` |
+| CUDA 10 | `tensorflow-gpu==1.14.0` |
+| Other CUDA | `tensorflow-gpu==1.14.0` |
+| No CUDA | `tensorflow==1.12.0` |
 
 ### Lite installation
 
