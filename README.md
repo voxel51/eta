@@ -30,8 +30,9 @@ ETA is very portable:
 ## Docker Installation
 
 If you prefer to operate via Docker, see the
-[Docker Build Guide](docs/docker_build_guide.md) for simple instructions for
-building a Docker image with an ETA environment installed.
+[Docker Build Guide](https://github.com/voxel51/eta/blob/develop/docs/docker_build_guide.md)
+for simple instructions for building a Docker image with an ETA environment
+installed.
 
 
 ## Local Installation
@@ -51,8 +52,8 @@ users, this means that you may need to alias `python3` and `pip3` to `python`
 and `pip`, respectively.
 
 We strongly recommend that you install ETA
-[in a virtual environment](docs/virtualenv_guide.md) to maintain a clean
-workspace.
+[in a virtual environment](https://github.com/voxel51/eta/blob/develop/docs/virtualenv_guide.md)
+to maintain a clean workspace.
 
 #### Step 1: Clone the repository
 
@@ -147,7 +148,8 @@ features of ETA, including building and running pipelines, downloading models,
 and interacting with remote storage.
 
 To explore the CLI, type `eta --help`, and see the
-[CLI Guide](docs/cli_guide.md) for complete information.
+[CLI Guide](https://github.com/voxel51/eta/blob/develop/docs/cli_guide.md) for
+complete information.
 
 
 ## Quickstart
