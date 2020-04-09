@@ -636,13 +636,11 @@ class Balancer(DatasetTransformer):
 
         There's still plenty of potential for testing and improvement here.
 
-        This problem can be posed as:
+        This problem can be posed as::
 
-            ```
             minimize |Ax - b|
             subject to:
                 x[i] is an element of [0, 1]
-            ```
 
         and different algorithms may be substituted in.
 

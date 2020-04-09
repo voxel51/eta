@@ -642,7 +642,6 @@ class ProgressBar(object):
                 bar.set_iteration(bar.iteration + 1)
                 bar.draw()
                 time.sleep(0.05)
-        ```
     '''
 
     def __init__(
@@ -867,13 +866,12 @@ def _run_system_os_cmd(args):
 class Timer(object):
     '''Class for timing things that supports the context manager interface.
 
-    Example usage:
-        ```
+    Example::
+
         with Timer() as t:
             # your commands here
 
         print("Request took %s" % t.elapsed_time_str)
-        ```
     '''
 
     def __init__(self):
@@ -1889,16 +1887,13 @@ def multiglob(*patterns, **kwargs):
     Note that if a given file matches multiple patterns that you provided, it
     will appear multiple times in the output iterable.
 
-    Examples:
-        Find all .py or .pyc files in a directory
-        ```py
-        multiglob(".py", ".pyc", root="/path/to/dir/*")
-        ```
+    Examples::
 
-        Find all JSON files recursively in a given directory:
-        ```py
+        # Find all .py or .pyc files in a directory
+        multiglob(".py", ".pyc", root="/path/to/dir/*")
+
+        # Find all JSON files recursively in a given directory:
         multiglob(".json", root="/path/to/dir/**/*")
-        ```
 
     Args:
         *patterns: the patterns to search for

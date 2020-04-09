@@ -2187,10 +2187,9 @@ def get_raw_frame_number(raw_frame_rate, raw_frame_count, fps, sampled_frame):
     '''Get the raw frame number corresponding to the given sampled frame
     number.
 
-    This function assumes that the sampling was performed using the command:
-    ```
-    FFmpeg(fps=fps).run(raw_video_path, ...)
-    ```
+    This function assumes that the sampling was performed using the command::
+
+        FFmpeg(fps=fps).run(raw_video_path, ...)
 
     Args:
         raw_frame_rate: the frame rate of the raw video
@@ -2261,18 +2260,17 @@ def extract_clip(
         video_path, output_path, start_time=None, duration=None, fast=False):
     '''Extracts the specified clip from the video.
 
-    When fast=False, the following ffmpeg command is used:
-    ```
-    # Slower, more accurate option
-    ffmpeg -ss <start_time> -i <video_path> -t <duration> <output_path>
-    ```
+    When fast=False, the following ffmpeg command is used::
 
-    When fast is True, the following two-step ffmpeg process is used:
-    ```
-    # Faster, less accurate option
-    ffmpeg -ss <start_time> -i <video_path> -t <duration> -c copy <tmp_path>
-    ffmpeg -i <tmp_path> <output_path>
-    ```
+        # Slower, more accurate option
+        ffmpeg -ss <start_time> -i <video_path> -t <duration> <output_path>
+
+
+    When fast is True, the following two-step ffmpeg process is used::
+
+        # Faster, less accurate option
+        ffmpeg -ss <start_time> -i <video_path> -t <duration> -c copy <tmp_path>
+        ffmpeg -i <tmp_path> <output_path>
 
     Args:
         video_path: the path to the video
@@ -2367,18 +2365,17 @@ def extract_frame(video_path, output_path, start_time=None):
     video code and strictly extracts a single frame either from the beginning
     of a video or stream or at some point in the video or stream.
 
-    Uses the following ffmpeg command:
-    ```
-    ffmpeg -y -i <video_path> -ss <start_time> -vframes 1 ${output_path} \
+    Uses the following ffmpeg command::
+
+        ffmpeg -y -i <video_path> -ss <start_time> -vframes 1 ${output_path} \
             >/dev/null 2>&1
-    ```
 
     Args:
         video_path: the path or m3u8 stream to a video
         output_path: the path to the image to write the frame
         start_time: a string in the ffmpeg time duration format, as follows,
-                    [-][HH:]MM:SS[.m...]
-                    https://ffmpeg.org/ffmpeg-utils.html#time-duration-syntax
+            [-][HH:]MM:SS[.m...]
+            https://ffmpeg.org/ffmpeg-utils.html#time-duration-syntax
     '''
     in_opts = ["-vsync", "0"]
     if start_time is not None:
@@ -2744,14 +2741,12 @@ def split_video(
 
     Exactly one keyword argument should be provided.
 
-    This implementation uses an `ffmpeg` command of the following form:
+    This implementation uses an `ffmpeg` command of the following form::
 
-    ```
-    ffmpeg \
-        -i input.mp4 \
-        -c copy -segment_time SS.XXX -f segment -reset_timestamps 1 \
-        output-%03d.mp4
-    ```
+        ffmpeg \
+            -i input.mp4 \
+            -c copy -segment_time SS.XXX -f segment -reset_timestamps 1 \
+            output-%03d.mp4
 
     Args:
         video_path: the path to the video
@@ -2799,13 +2794,12 @@ def split_video(
 class VideoProcessor(object):
     '''Class for reading a video and writing a new video frame-by-frame.
 
-    The typical usage is:
-    ```
-    with VideoProcessor(...) as p:
-        for img in p:
-            new_img = ... # process img
-            p.write(new_img)
-    ```
+    The typical usage is::
+
+        with VideoProcessor(...) as p:
+            for img in p:
+                new_img = ... # process img
+                p.write(new_img)
     '''
 
     def __init__(
