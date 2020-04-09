@@ -5,10 +5,6 @@
 An open and extensible computer vision, machine learning and video analytics
 infrastructure.
 
-This project is supported by the [NIST Public Safety Innovation Accelerator
-Program](
-https://www.nist.gov/news-events/news/2017/06/nist-awards-385-million-accelerate-public-safety-communications).
-
 <img src="https://user-images.githubusercontent.com/25985824/78944107-2d766c80-7a8b-11ea-8863-fcb4897eecb5.png" alt="eta-infrastructure.png" width="75%"/>
 
 
@@ -208,6 +204,12 @@ your browser.
 ```shell
 pip uninstall eta
 ```
+
+
+## Acknowledgements
+
+This project was gratefully supported by the
+[NIST Public Safety Innovation Accelerator Program](https://www.nist.gov/news-events/news/2017/06/nist-awards-385-million-accelerate-public-safety-communications).
 
 
 ## Copyright
