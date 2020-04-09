@@ -7,7 +7,7 @@ style in the module you are contributing to.*
 
 We have recently introduced Black (deterministic) autoformatting, and Flake8 as
 pre-commit hooks. Installing ETA with the `-d` (dev) automatically configures
-these hooks. Much the style guide is automatically handled by Black.
+these hooks. Much of the style guide is automatically handled by Black.
 
 Here are some highlights of our Python style:
 
@@ -35,7 +35,8 @@ to least generic
 
 - When encountering a Flake8 error during a commit that cannot be addressed for
 whatever reason, add an inline comment ` # noqa: E<X>` where `E<X>` is the error
-raised by Flake8. This will ignore the error during the pre-commit hook.
+raised by Flake8. This will tell Flake8 ignore the error. You can also add the
+error to the `.flake8` dot file error list to have the error ignored globally.
 
 For ETA-library imports, we import modules as `etax`, where `x` is the first
 letter of the module imported. If necessary, we use `etaxy` to disambiguate
