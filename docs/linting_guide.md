@@ -46,6 +46,7 @@ To disable pylint errors temporarily in a module:
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: enable=wildcard-import
 from builtins import *
+
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=wildcard-import
 ```
@@ -60,7 +61,7 @@ Add new entries to the `[pycodestyle]` section of the `setup.cfg` file:
 
 ```shell
 [pycodestyle]
-max-line-length=79
+max-line-length=88
 ```
 
 See the [pycodestyle user guide](
