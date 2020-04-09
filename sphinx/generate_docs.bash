@@ -2,7 +2,7 @@
 # Generates documentation for ETA.
 #
 # Usage:
-#   bash sphnix/generate_docs.bash
+#   bash sphinx/generate_docs.bash
 #
 # Copyright 2017-2020, Voxel51, Inc.
 # voxel51.com
