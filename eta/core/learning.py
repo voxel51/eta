@@ -3,8 +3,6 @@ Core infrastructure for deploying ML models.
 
 Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
-
-Brian Moore, brian@voxel51.com
 '''
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
@@ -33,14 +31,12 @@ logger = logging.getLogger(__name__)
 def load_labels_map(labels_map_path):
     '''Loads the labels map from the given path.
 
-    The labels mmap must be in the following plain text format:
+    The labels mmap must be in the following plain text format::
 
-    ```
-    1:label1
-    2:label2
-    3:label3
-    ...
-    ```
+        1:label1
+        2:label2
+        3:label3
+        ...
 
     The indexes are irrelevant to this function, they can be in any order and
     can start from zero, one, or another number.
@@ -62,14 +58,12 @@ def load_labels_map(labels_map_path):
 def write_labels_map(labels_map, outpath):
     '''Writes the labels map to disk.
 
-    Labels maps are written to disk in the following plain text format:
+    Labels maps are written to disk in the following plain text format::
 
-    ```
-    1:label1
-    2:label2
-    3:label3
-    ...
-    ```
+        1:label1
+        2:label2
+        3:label3
+        ...
 
     The indexes are irrelevant to this function, they can be in any order and
     can start from zero, one, or another number. They are, however, written

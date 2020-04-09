@@ -44,7 +44,7 @@ eval `register-python-argcomplete --shell tcsh eta`
 
 The following usage information was generated via `eta --all-help`:
 
-> Last generated on 2020/01/06
+> Last generated on 2020/04/08
 
 ```
 *******************************************************************************
@@ -430,13 +430,13 @@ Deactivate authentication credentials.
 
     Examples:
         # Deactivate Google credentials
-        eta auth deactivate --google '/path/to/service-account.json'
+        eta auth deactivate --google
 
         # Deactivate AWS credentials
-        eta auth deactivate --aws '/path/to/credentials.ini'
+        eta auth deactivate --aws
 
         # Deactivate SSH credentials
-        eta auth deactivate --ssh '/path/to/id_rsa'
+        eta auth deactivate --ssh
 
         # Deactivate all credentials
         eta auth deactivate --all
@@ -1422,7 +1422,7 @@ optional arguments:
   -h, --help            show this help message and exit
   --user USER           the username
   --host HOST           the hostname
-  -p PORT, --port PORT  the port to use (default = 22)
+  -p PORT, --port PORT  the port to use
 
 
 *******************************************************************************
@@ -1444,7 +1444,7 @@ optional arguments:
   -h, --help            show this help message and exit
   --user USER           the username
   --host HOST           the hostname
-  -p PORT, --port PORT  the port to use (default = 22)
+  -p PORT, --port PORT  the port to use
 
 
 *******************************************************************************
@@ -1469,7 +1469,7 @@ optional arguments:
   -h, --help            show this help message and exit
   --user USER           the username
   --host HOST           the hostname
-  -p PORT, --port PORT  the port to use (default = 22)
+  -p PORT, --port PORT  the port to use
   --print               whether to print the download to stdout. If true, a file is NOT written to disk
 
 
@@ -1492,7 +1492,7 @@ optional arguments:
   -h, --help            show this help message and exit
   --user USER           the username
   --host HOST           the hostname
-  -p PORT, --port PORT  the port to use (default = 22)
+  -p PORT, --port PORT  the port to use
 
 
 *******************************************************************************
@@ -1512,7 +1512,7 @@ optional arguments:
   -h, --help            show this help message and exit
   --user USER           the username
   --host HOST           the hostname
-  -p PORT, --port PORT  the port to use (default = 22)
+  -p PORT, --port PORT  the port to use
 
 
 *******************************************************************************
@@ -1533,13 +1533,11 @@ optional arguments:
   -h, --help            show this help message and exit
   --user USER           the username
   --host HOST           the hostname
-  -p PORT, --port PORT  the port to use (default = 22)
+  -p PORT, --port PORT  the port to use
 ```
 
 
 ## Copyright
 
-Copyright 2017-2019, Voxel51, Inc.<br>
+Copyright 2017-2020, Voxel51, Inc.<br>
 voxel51.com
-
-Brian Moore, brian@voxel51.com

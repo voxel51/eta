@@ -12,10 +12,8 @@ This module currently provides clients for the following storage resources:
 - Web storage via HTTP requests
 - Local disk storage
 
-Copyright 2017-2019, Voxel51, Inc.
+Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
-
-Brian Moore, brian@voxel51.com
 '''
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
@@ -536,15 +534,13 @@ class NeedsAWSCredentials(object):
         (5) loading credentials from `~/.eta/aws-credentials.ini` that have
             been activated via `cls.activate_credentials()`
 
-    In the above, the `.ini` file should have syntax similar to the following:
+    In the above, the `.ini` file should have syntax similar to the following::
 
-    ```
-    [default]
-    aws_access_key_id = WWW
-    aws_secret_access_key = XXX
-    aws_session_token = YYY
-    region = ZZZ
-    ```
+        [default]
+        aws_access_key_id = WWW
+        aws_secret_access_key = XXX
+        aws_session_token = YYY
+        region = ZZZ
 
     See the following link for more information:
     https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html#configuration
@@ -1067,22 +1063,20 @@ class NeedsGoogleCredentials(object):
             been activated via `cls.activate_credentials()`
 
     In the above, the service account JSON file should have syntax similar to
-    the following:
+    the following::
 
-    ```
-    {
-      "type": "service_account",
-      "project_id": "<project-id>",
-      "private_key_id": "<private-key-id>",
-      "private_key": "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n",
-      "client_email": "<account-name>@<project-id>.iam.gserviceaccount.com",
-      "client_id": "<client-id>",
-      "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-      "token_uri": "https://oauth2.googleapis.com/token",
-      "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-      "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/..."
-    }
-    ```
+        {
+          "type": "service_account",
+          "project_id": "<project-id>",
+          "private_key_id": "<private-key-id>",
+          "private_key": "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n",
+          "client_email": "<account-name>@<project-id>.iam.gserviceaccount.com",
+          "client_id": "<client-id>",
+          "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+          "token_uri": "https://oauth2.googleapis.com/token",
+          "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+          "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/..."
+        }
 
     See the following page for more information:
     https://cloud.google.com/docs/authentication/getting-started
@@ -2282,8 +2276,8 @@ class HTTPStorageClient(StorageClient):
         keep_alive: whether the request session should be kept alive between
             requests
 
-    Examples:
-        ```
+    Examples::
+
         # Use client to perform a one-off task
         client = HTTPStorageClient(...)
         client.upload(...)
@@ -2301,7 +2295,6 @@ class HTTPStorageClient(StorageClient):
             client.upload(...)
             client.download(...)
             ...
-        ```
     '''
 
     #
@@ -2611,8 +2604,8 @@ class SFTPStorageClient(StorageClient, NeedsSSHCredentials):
         port: the remote port to use for the SFTP connection
         keep_open: whether the connection is being held open between API calls
 
-    Examples:
-        ```
+    Examples::
+
         # Use client to perform a one-off task
         client = SFTPStorageClient(...)
         client.upload(...)
@@ -2630,7 +2623,6 @@ class SFTPStorageClient(StorageClient, NeedsSSHCredentials):
             client.upload(...)
             client.download(...)
             ...
-        ```
     '''
 
     def __init__(
@@ -2804,8 +2796,8 @@ class _SFTPConnection(object):
         port: the remote port to use for the SFTP connection
         keep_open: whether the connection is being held open between API calls
 
-    Examples:
-        ```
+    Examples::
+
         # Automatic usage
         conn = _SFTPConnection(..., keep_open=False)
         # no pysftp.Connection is opened yet
@@ -2824,7 +2816,6 @@ class _SFTPConnection(object):
         with conn as pyconn:
             # pyconn is the same pysftp.Connection
         conn.close()
-        ```
     '''
 
     def __init__(

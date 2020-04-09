@@ -1,7 +1,8 @@
 '''
 Core tools and data structures for working with images.
 
-Notes:
+Notes::
+
     [image format] ETA stores images exclusively in RGB format. In contrast,
         OpenCV stores its images in BGR format, so all images that are read or
         produced outside of this library must be converted to RGB. This
@@ -9,9 +10,6 @@ Notes:
 
 Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
-
-Brian Moore, brian@voxel51.com
-Jason Corso, jason@voxel51.com
 '''
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import

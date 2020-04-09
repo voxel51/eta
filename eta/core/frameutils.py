@@ -3,8 +3,6 @@ Utilities for working with frames of videos.
 
 Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
-
-Brian Moore, brian@voxel51.com
 '''
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import

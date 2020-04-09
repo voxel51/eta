@@ -3,8 +3,6 @@ Core data structures for working with data that can be read/written to disk.
 
 Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
-
-Brian Moore, brian@voxel51.com
 '''
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
@@ -234,42 +232,38 @@ class Serializable(object):
         - JSON strings
 
     For example, you can do the following with any class `SerializableClass`
-    that is a subclass of `Serializable`:
+    that is a subclass of `Serializable`::
 
-    ```
-    json_path = "/path/to/data.json"
+        json_path = "/path/to/data.json"
 
-    obj = SerializableClass(...)
+        obj = SerializableClass(...)
 
-    s = obj.to_str()
-    obj1 = SerializableClass.from_str(s)
+        s = obj.to_str()
+        obj1 = SerializableClass.from_str(s)
 
-    d = obj.serialize()
-    obj2 = SerializableClass.from_dict(d)
+        d = obj.serialize()
+        obj2 = SerializableClass.from_dict(d)
 
-    obj.write_json(json_path)
-    obj3 = SerializableClass.from_json(json_path)
-    ```
+        obj.write_json(json_path)
+        obj3 = SerializableClass.from_json(json_path)
 
     Serializable objects can optionally be serialized in "reflective" mode,
     in which case their class names are embedded in their JSON representations.
     This allows for reading Serializable JSON instances of arbitrary types
-    polymorphically via the Serializable interface. For example:
+    polymorphically via the Serializable interface. For example::
 
-    ```
-    json_path = "/path/to/data.json"
+        json_path = "/path/to/data.json"
 
-    obj = SerializableClass(...)
+        obj = SerializableClass(...)
 
-    s = obj.to_str(reflective=True)
-    obj1 = Serializable.from_str(s)  # returns a SerializableClass
+        s = obj.to_str(reflective=True)
+        obj1 = Serializable.from_str(s)  # returns a SerializableClass
 
-    d = obj.serialize(reflective=True)
-    obj2 = Serializable.from_dict(d)  # returns a SerializableClass
+        d = obj.serialize(reflective=True)
+        obj2 = Serializable.from_dict(d)  # returns a SerializableClass
 
-    obj.write_json(json_path, reflective=True)
-    obj3 = Serializable.from_json(json_path)  # returns a SerializableClass
-    ```
+        obj.write_json(json_path, reflective=True)
+        obj3 = Serializable.from_json(json_path)  # returns a SerializableClass
     '''
 
     def __str__(self):
@@ -451,12 +445,10 @@ class ExcludeNoneAttributes(Serializable):
     serializing.
 
     This class must appear BEFORE Serializable in the inheritence list of the
-    class:
+    class::
 
-    ```
-    class Foo(ExcludeNone, Serializable):
-        ...
-    ```
+        class Foo(ExcludeNone, Serializable):
+            ...
     '''
 
     def attributes(self):
@@ -519,8 +511,8 @@ class Set(Serializable):
     element class names in their JSON representations, so they can be read
     reflectively from disk.
 
-    Examples:
-        ```
+    Examples::
+
         from eta.core.serial import Set
         from eta.core.geometry import LabeledPointSet
 
@@ -529,7 +521,6 @@ class Set(Serializable):
 
         points2 = Set.from_json("points.json")
         print(points2.__class__)  # LabeledPointSet, not Set!
-        ```
     '''
 
     #
@@ -1131,14 +1122,12 @@ class BigMixin(object):
 
         The archive contains both a JSON index and the raw element JSON files
         organized in the directory structure shown below. The filename (without
-        extension) defines the root directory inside the archive.
+        extension) defines the root directory inside the archive::
 
-        ```
-        <root>/
-            index.json
-            <elements>/
-                <uuid>.json
-        ```
+            <root>/
+                index.json
+                <elements>/
+                    <uuid>.json
 
         Note that deleting the backing directory is a more efficient way to
         create the archive because it avoids data duplication, but it also
@@ -1724,8 +1713,8 @@ class Container(Serializable):
     element class names in their JSON representations, so they can be read
     reflectively from disk.
 
-    Examples:
-        ```
+    Examples::
+
         from eta.core.serial import Container
         from eta.core.geometry import LabeledPointContainer
 
@@ -1734,7 +1723,6 @@ class Container(Serializable):
 
         points2 = Container.from_json("points.json")
         print(points2.__class__)  # LabeledPointContainer, not Container!
-        ```
     '''
 
     #
@@ -2292,8 +2280,8 @@ class BigContainer(BigMixin, Container):
         - `_ELE_ATTR`: the name of the attribute that will store the elements
             in the container
 
-    Examples:
-        ```
+    Examples::
+
         import eta.core.geometry as etag
 
         point = etag.LabeledPoint("origin", etag.RelativePoint(0, 0))
@@ -2307,7 +2295,6 @@ class BigContainer(BigMixin, Container):
 
         # Only the index of the BigContainer is serialized
         print(points)
-        ```
     '''
 
     def __init__(self, backing_dir=None, **kwargs):

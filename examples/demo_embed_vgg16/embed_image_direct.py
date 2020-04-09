@@ -6,11 +6,8 @@ This example has the same effect as `embed_image.py` except that it directly
 uses the low-level functionality rather than the higher level `Featurizer`
 functionality. It is included here for pedagogical reasons with ETA.
 
-Copyright 2017-2019, Voxel51, Inc.
+Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
-
-Jason Corso, jason@voxel51.com
-Brian Moore, brian@voxel51.com
 '''
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import

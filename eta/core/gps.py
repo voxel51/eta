@@ -1,11 +1,8 @@
-#!/usr/bin/env python
 '''
 Core utilities for working with GPS coordinates.
 
-Copyright 2019-2020, Voxel51, Inc.
+Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
-
-Brian Moore, brian@voxel51.com
 '''
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
@@ -195,26 +192,24 @@ def parse_gopro_gps5(gps5_path, video_metadata):
     '''Constructs a GPSWaypoints from a GoPro GPS5 JSON file.
 
     This implementation assumes that the input JSON file follows the schema
-    below:
+    below::
 
-    ```
-    {
-        "1": {
-            "streams": {
-                "GPS5": {
-                    "samples": [
-                        {
-                            "value": [<lat-degrees>, <lon-degrees>, ...],
-                            "cts": <ms-since-first-frame>,
+        {
+            "1": {
+                "streams": {
+                    "GPS5": {
+                        "samples": [
+                            {
+                                "value": [<lat-degrees>, <lon-degrees>, ...],
+                                "cts": <ms-since-first-frame>,
+                                ...
+                            },
                             ...
-                        },
-                        ...
-                    ]
+                        ]
+                    }
                 }
             }
         }
-    }
-    ```
 
     Args:
         gps5_path: the path to a GoPro GPS5 JSON file
@@ -247,24 +242,22 @@ def parse_gopro_geojson(geojson_path, video_metadata):
     '''Constructs a GPSWaypoints from a GoPro GeoJSON file.
 
     This implementation assumes that the input JSON file follows the schema
-    below:
+    below::
 
-    ```
-    {
-        "type": "Feature",
-        "geometry": {
-            "type": "LineString",
-            "coordinates": [
-                [<lon-degrees>, <lat-degrees>, ...],
+        {
+            "type": "Feature",
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [
+                    [<lon-degrees>, <lat-degrees>, ...],
+                    ...
+                ]
+            },
+            "properties": {
+                "RelativeMicroSec": [<ms-since-first-frame>, ...],
                 ...
-            ]
-        },
-        "properties": {
-            "RelativeMicroSec": [<ms-since-first-frame>, ...],
-            ...
+            }
         }
-    }
-    ```
 
     Args:
         geojson_path: the path to a GeoJSON file

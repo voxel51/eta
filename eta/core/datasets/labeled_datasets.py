@@ -100,22 +100,20 @@ def load_dataset(manifest_path):
 class LabeledDatasetIndex(Serializable):
     '''Class that encapsulates the index of a `LabeledDataset`.
 
-    The index is stored on disk in the following format:
+    The index is stored on disk in the following format::
 
-    ```
-    {
-        "description": "",
-        "type": "eta.core.datasets.LabeledDataset",
-        ...
-        "index": [
-            {
-                "data": "data/video1.mp4",
-                "labels": "labels/video1.json"
-            },
+        {
+            "description": "",
+            "type": "eta.core.datasets.LabeledDataset",
             ...
-        ]
-    }
-    ```
+            "index": [
+                {
+                    "data": "data/video1.mp4",
+                    "labels": "labels/video1.json"
+                },
+                ...
+            ]
+        }
 
     Attributes:
         type: the fully-qualified name of the `LabeledDataset` subclass that
@@ -275,18 +273,16 @@ class LabeledDataset(object):
     '''Base class for labeled datasets, which encapsulate raw data samples and
     their associated labels.
 
-    Labeled datasets are stored on disk in the following format:
+    Labeled datasets are stored on disk in the following format::
 
-    ```
-    /path/to/dataset/
-        manifest.json
-        data/
-            image1.png (or) video1.mp4
-            ...
-        labels/
-            image1.json (or) video1.json
-            ...
-    ```
+        /path/to/dataset/
+            manifest.json
+            data/
+                image1.png (or) video1.mp4
+                ...
+            labels/
+                image1.json (or) video1.json
+                ...
 
     Here, `manifest.json` is a LabeledDatasetIndex that specifies the contents
     of the dataset. Note that this file may have a different name, if desired,
@@ -1194,18 +1190,16 @@ class LabeledDatasetError(Exception):
 class LabeledVideoDataset(LabeledDataset):
     '''Core class for interacting with a labeled dataset of videos.
 
-    Labeled video datasets are stored on disk in the following format:
+    Labeled video datasets are stored on disk in the following format::
 
-    ```
-    /path/to/video/dataset/
-        manifest.json
-        data/
-            video1.mp4
-            ...
-        labels/
-            video1.json
-            ...
-    ```
+        /path/to/video/dataset/
+            manifest.json
+            data/
+                video1.mp4
+                ...
+            labels/
+                video1.json
+                ...
 
     where each labels file is stored in `eta.core.video.VideoLabels` format.
     '''
@@ -1331,18 +1325,16 @@ class LabeledVideoDataset(LabeledDataset):
 class LabeledImageDataset(LabeledDataset):
     '''Core class for interacting with a labeled dataset of images.
 
-    Labeled image datasets are stored on disk in the following format:
+    Labeled image datasets are stored on disk in the following format::
 
-    ```
-    /path/to/image/dataset/
-        manifest.json
-        data/
-            image1.png
-            ...
-        labels/
-            image1.json
-            ...
-    ```
+        /path/to/image/dataset/
+            manifest.json
+            data/
+                image1.png
+                ...
+            labels/
+                image1.json
+                ...
 
     where each labels file is stored in `eta.core.image.ImageLabels` format.
     '''

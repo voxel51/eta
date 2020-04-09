@@ -7,11 +7,7 @@ This project is supported by the [NIST Public Safety Innovation Accelerator
 Program](
 https://www.nist.gov/news-events/news/2017/06/nist-awards-385-million-accelerate-public-safety-communications).
 
-<img
-    src="https://drive.google.com/uc?id=14ZclqNXJXSct6O0sqcUoxFpzt_CnZuGP"
-    alt="eta-infrastructure.png"
-    width="75%"
-/>
+<img src="https://drive.google.com/uc?id=14ZclqNXJXSct6O0sqcUoxFpzt_CnZuGP" alt="eta-infrastructure.png" width="75%"/>
 
 
 ## Requirements
@@ -34,8 +30,9 @@ ETA is very portable:
 ## Docker Installation
 
 If you prefer to operate via Docker, see the
-[Docker Build Guide](docs/docker_build_guide.md) for simple instructions for
-building a Docker image with an ETA environment installed.
+[Docker Build Guide](https://github.com/voxel51/eta/blob/develop/docs/docker_build_guide.md)
+for simple instructions for building a Docker image with an ETA environment
+installed.
 
 
 ## Local Installation
@@ -55,8 +52,8 @@ users, this means that you may need to alias `python3` and `pip3` to `python`
 and `pip`, respectively.
 
 We strongly recommend that you install ETA
-[in a virtual environment](docs/virtualenv_guide.md) to maintain a clean
-workspace.
+[in a virtual environment](https://github.com/voxel51/eta/blob/develop/docs/virtualenv_guide.md)
+to maintain a clean workspace.
 
 #### Step 1: Clone the repository
 
@@ -89,9 +86,6 @@ installed:
 | Other CUDA | the latest available `tensorflow-gpu` |
 | No CUDA | `tensorflow==1.12.0`
 
-Note that ETA is installed in editable mode via `pip install -e .`, so don't
-delete the directory after installation!
-
 ### Lite installation
 
 Some ETA users are only interested in using the core ETA library defined in
@@ -105,6 +99,15 @@ bash install.bash -l
 Lite installation omits submodules and other large dependencies that are not
 required in order for the core library to function.
 
+### Developer installation
+
+If you are interested in contributing to ETA or generating its documentation
+from source, you should perform a developer installation using the `-d` flag
+of the install script:
+
+```shell
+bash install.bash -d
+```
 
 ### Setting up your execution environment
 
@@ -145,7 +148,8 @@ features of ETA, including building and running pipelines, downloading models,
 and interacting with remote storage.
 
 To explore the CLI, type `eta --help`, and see the
-[CLI Guide](docs/cli_guide.md) for complete information.
+[CLI Guide](https://github.com/voxel51/eta/blob/develop/docs/cli_guide.md) for
+complete information.
 
 
 ## Quickstart
@@ -176,6 +180,25 @@ the [docs folder](https://github.com/voxel51/eta/tree/develop/docs).
 | `eta/resources` | resources such as media, templates, etc |
 | `eta/segmenters` | wrappers for performing inference with common semantic segmenters |
 | `tensorflow` | third-party TensorFlow repositories that ETA builds upon |
+
+
+## Generating Documentation
+
+This project uses
+[Sphinx-Napoleon](https://pypi.python.org/pypi/sphinxcontrib-napoleon)
+to generate its documentation from source.
+
+To generate the documentation, you must install the developer dependencies by
+running the `install.bash` script with the `-d` flag.
+
+Then you can generate the docs by running:
+
+```shell
+bash sphinx/generate_docs.bash
+```
+
+To view the documentation, open the `sphinx/build/html/index.html` file in
+your browser.
 
 
 ## Uninstallation

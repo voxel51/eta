@@ -2,13 +2,10 @@
 Core utilities for rendering annotations on media.
 
 @todo improve efficiency by minimizing number of times that images are copied
-and rendered
+and rendered.
 
 Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
-
-Brian Moore, brian@voxel51.com
-Tyler Ganter, tyler@voxel51.com
 '''
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
@@ -47,14 +44,10 @@ class AnnotationConfig(Config):
     rendered on images/videos.
 
     Attributes:
-
-    ##### FRAME ATTRIBUTES #####
         show_frame_attr_confidences: whether to render video/frame attribute
             confidences, if available
         frame_attrs_box_gap: the gap between the frame attributes box and the
             upper left corner of the image
-
-    ##### OBJECTS #####
         show_object_boxes: whether to render object bounding boxes, if available.
             If this is false, labels, confidences, attributes, etc. are also
             hidden
@@ -74,8 +67,6 @@ class AnnotationConfig(Config):
             provided, only objects with labels in this list will be rendered
         object_labels_blacklist: an optional blacklist of object labels. If
             provided, object with labels in this list will not be rendered
-
-    ##### EVENTS #####
         show_event_boxes: whether to render event bounding boxes, if available.
             If this is false, all attributes, confidences, etc. are also hidden
         show_event_labels: whether to render event labels, if available
@@ -99,21 +90,15 @@ class AnnotationConfig(Config):
             provided, only events with labels in this list will be rendered
         event_labels_blacklist: an optional blacklist of event labels. If
             provided, events with labels in this list will not be rendered
-
-    ##### BOUNDING BOXES #####
         bbox_alpha: the transparency of bounding boxes
         bbox_label_text_pad_pixels: the padding, in pixels, around the text in
             bounding box labels
         bbox_linewidth: the linewidth, in pixels, of bounding boxes
-
-    ##### MASKS #####
         mask_border_thickness: the thickness, in pixels, to use when drawing
             the borders of segmentation masks
         mask_fill_alpha: the transparency of segmentation masks
         show_frame_mask_semantics: whether to render semantic labels for frame
             mask regions, when mask indexes are available
-
-    ##### ATTRIBUTE BOXES #####
         attrs_box_render_method: the method used to render object attributes
         attrs_box_bg_color: the background color for attributes boxes
         attrs_box_bg_alpha: the transparency of attribute panel boxes
@@ -121,8 +106,6 @@ class AnnotationConfig(Config):
             attribute boxes
         attrs_box_text_line_spacing_pixels: the padding, in pixels, between
             each line of text in attribute boxes
-
-    ##### ALL LABELS #####
         show_all_confidences: whether to render all confidences, if available.
             If set to `True`, this overrides all other confidence flags
         hide_attr_values: an optional list of attribute values (of any kind)
@@ -131,8 +114,6 @@ class AnnotationConfig(Config):
             when they are False
         confidence_scaled_alpha: whether to scale alpha values of objects
             and events based on their associated confidences
-
-    ##### FONTS AND COLORS #####
         colormap_config: the `eta.core.annotations.ColormapConfig` to use to
             select colors for objects/event boxes
         text_color: the annotation text color
@@ -141,8 +122,6 @@ class AnnotationConfig(Config):
         scale_by_media_height: whether to scale font sizes and linewidths
             according to the height of the media (relative to a height of 720
             pixels)
-
-    ##### LOGO #####
         add_logo: whether to add a logo to the video
         logo_config: the `eta.core.logo.LogoConfig` describing the logo to use
     '''
