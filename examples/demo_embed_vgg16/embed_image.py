@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-'''
+"""
 Example of embedding an image via a `VGG16Featurizer`.
 
 Note that the `embed_video.py` example shows the use of the video featurization
@@ -9,7 +9,7 @@ between modules.
 
 Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
-'''
+"""
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
 # pragma pylint: disable=wildcard-import
@@ -18,6 +18,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
+
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
@@ -38,12 +39,12 @@ logger = logging.getLogger(__name__)
 
 
 def embed_image(impath):
-    '''Embeds the image using VGG-16 and stores the embeddeding as an .npy file
+    """Embeds the image using VGG-16 and stores the embeddeding as an .npy file
     on disk, using VideoFeaturizer to handle I/O.
 
     Args:
         impath: path to an image to embed
-    '''
+    """
     img = etai.read(impath)
 
     # Invoke the Featurizer using the "with" syntax to automatically handle
