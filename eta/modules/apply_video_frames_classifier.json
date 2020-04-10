@@ -30,9 +30,9 @@
     ],
     "parameters": [
         {
-            "name": "stride",
-            "type": "eta.core.types.Number",
-            "description": "the stride of the sliding window",
+            "name": "classifier",
+            "type": "eta.core.types.VideoFramesClassifier",
+            "description": "an eta.core.learning.VideoFramesClassifierConfig describing the eta.core.learning.VideoFramesClassifier to use",
             "required": true
         },
         {
@@ -42,17 +42,17 @@
             "required": true
         },
         {
+            "name": "stride",
+            "type": "eta.core.types.Number",
+            "description": "the stride of the sliding window",
+            "required": true
+        },
+        {
             "name": "confidence_threshold",
             "type": "eta.core.types.Number",
             "description": "a confidence threshold to use when assigning labels",
             "required": false,
             "default": null
-        },
-        {
-            "name": "classifier",
-            "type": "eta.core.types.VideoFramesClassifier",
-            "description": "an eta.core.learning.VideoFramesClassifierConfig describing the eta.core.learning.VideoFramesClassifier to use",
-            "required": true
         },
         {
             "name": "confidence_weighted_vote",

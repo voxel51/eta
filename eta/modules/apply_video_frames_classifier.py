@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-'''
+"""
 A module that uses an `eta.core.learning.VideoFramesClassifier` to classify the
 frames of a video using a sliding window strategy.
 
@@ -9,7 +9,7 @@ Info:
 
 Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
-'''
+"""
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
 # pragma pylint: disable=wildcard-import
@@ -19,6 +19,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
 from future.utils import iteritems
+
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
@@ -37,22 +38,22 @@ import eta.core.video as etav
 logger = logging.getLogger(__name__)
 
 
-class ApplyVideoFramesClassifierConfig(etam.BaseModuleConfig):
-    '''Module configuration settings.
+class ModuleConfig(etam.BaseModuleConfig):
+    """Module configuration settings.
 
     Attributes:
         data (DataConfig)
         parameters (ParametersConfig)
-    '''
+    """
 
     def __init__(self, d):
-        super(ApplyVideoFramesClassifierConfig, self).__init__(d)
+        super(ModuleConfig, self).__init__(d)
         self.data = self.parse_object_array(d, "data", DataConfig)
         self.parameters = self.parse_object(d, "parameters", ParametersConfig)
 
 
 class DataConfig(Config):
-    '''Data configuration settings.
+    """Data configuration settings.
 
     Inputs:
         video_path (eta.core.types.Video): the input video
@@ -62,17 +63,18 @@ class DataConfig(Config):
     Outputs:
         output_labels_path (eta.core.types.VideoLabels): a VideoLabels file
             containing the predictions
-    '''
+    """
 
     def __init__(self, d):
         self.video_path = self.parse_string(d, "video_path")
         self.input_labels_path = self.parse_string(
-            d, "input_labels_path", default=None)
+            d, "input_labels_path", default=None
+        )
         self.output_labels_path = self.parse_string(d, "output_labels_path")
 
 
 class ParametersConfig(Config):
-    '''Parameter configuration settings.
+    """Parameter configuration settings.
 
     Parameters:
         classifier (eta.core.types.VideoFramesClassifier): an
@@ -85,17 +87,20 @@ class ParametersConfig(Config):
             threshold to use when assigning labels
         confidence_weighted_vote (eta.core.types.Boolean): [False] whether to
             weight any per-frame-attribute votes by confidence
-    '''
+    """
 
     def __init__(self, d):
         self.classifier = self.parse_object(
-            d, "classifier", etal.VideoFramesClassifierConfig)
+            d, "classifier", etal.VideoFramesClassifierConfig
+        )
         self.window_size = self.parse_number(d, "window_size")
         self.stride = self.parse_number(d, "stride")
         self.confidence_threshold = self.parse_number(
-            d, "confidence_threshold", default=None)
+            d, "confidence_threshold", default=None
+        )
         self.confidence_weighted_vote = self.parse_bool(
-            d, "confidence_weighted_vote", default=False)
+            d, "confidence_weighted_vote", default=False
+        )
 
 
 def _build_attribute_filter(threshold):
@@ -128,7 +133,8 @@ def _process_video(data, classifier, parameters):
     # Load labels
     if data.input_labels_path:
         logger.info(
-            "Reading existing labels from '%s'", data.input_labels_path)
+            "Reading existing labels from '%s'", data.input_labels_path
+        )
         labels = etav.VideoLabels.from_json(data.input_labels_path)
     else:
         labels = etav.VideoLabels()
@@ -182,22 +188,23 @@ def _classify_windows(classifier, video_reader, labels, parameters):
     for frame_number, attrs in iteritems(attrs_map):
         # Majority vote over frame
         final_attrs = etad.majority_vote_categorical_attrs(
-            attrs, confidence_weighted=cweighted)
+            attrs, confidence_weighted=cweighted
+        )
 
         labels.add_frame_attributes(final_attrs, frame_number)
 
 
 def run(config_path, pipeline_config_path=None):
-    '''Run the apply_video_frames_classifier module.
+    """Run the apply_video_frames_classifier module.
 
     Args:
-        config_path: path to a ApplyVideoFramesClassifierConfig file
+        config_path: path to a ModuleConfig file
         pipeline_config_path: optional path to a PipelineConfig file
-    '''
-    config = ApplyVideoFramesClassifierConfig.from_json(config_path)
+    """
+    config = ModuleConfig.from_json(config_path)
     etam.setup(config, pipeline_config_path=pipeline_config_path)
     _apply_video_frames_classifier(config)
 
 
 if __name__ == "__main__":
-    run(*sys.argv[1:])
+    run(*sys.argv[1:])  # pylint: disable=no-value-for-parameter

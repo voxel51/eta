@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-'''
+"""
 A module that uses an `eta.core.learning.ObjectDetector` to detect objects in
 videos or images.
 
@@ -9,7 +9,7 @@ Info:
 
 Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
-'''
+"""
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
 # pragma pylint: disable=wildcard-import
@@ -18,6 +18,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
+
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
@@ -38,22 +39,22 @@ import eta.core.video as etav
 logger = logging.getLogger(__name__)
 
 
-class ApplyObjectDetectorConfig(etam.BaseModuleConfig):
-    '''Module configuration settings.
+class ModuleConfig(etam.BaseModuleConfig):
+    """Module configuration settings.
 
     Attributes:
         data (DataConfig)
         parameters (ParametersConfig)
-    '''
+    """
 
     def __init__(self, d):
-        super(ApplyObjectDetectorConfig, self).__init__(d)
+        super(ModuleConfig, self).__init__(d)
         self.data = self.parse_object_array(d, "data", DataConfig)
         self.parameters = self.parse_object(d, "parameters", ParametersConfig)
 
 
 class DataConfig(Config):
-    '''Data configuration settings.
+    """Data configuration settings.
 
     Inputs:
         video_path (eta.core.types.Video): [None] the input video
@@ -91,35 +92,44 @@ class DataConfig(Config):
             [None] a directory in which to write features for the objects in
             the images in `images_dir`.  If provided, the detector used must
             support generating features
-    '''
+    """
 
     def __init__(self, d):
         # Single video
         self.video_path = self.parse_string(d, "video_path", default=None)
         self.input_labels_path = self.parse_string(
-            d, "input_labels_path", default=None)
+            d, "input_labels_path", default=None
+        )
         self.output_labels_path = self.parse_string(
-            d, "output_labels_path", default=None)
+            d, "output_labels_path", default=None
+        )
         self.video_features_dir = self.parse_string(
-            d, "video_features_dir", default=None)
+            d, "video_features_dir", default=None
+        )
 
         # Single image
         self.image_path = self.parse_string(d, "image_path", default=None)
         self.input_image_labels_path = self.parse_string(
-            d, "input_image_labels_path", default=None)
+            d, "input_image_labels_path", default=None
+        )
         self.output_image_labels_path = self.parse_string(
-            d, "output_image_labels_path", default=None)
+            d, "output_image_labels_path", default=None
+        )
         self.image_features_dir = self.parse_string(
-            d, "image_features_dir", default=None)
+            d, "image_features_dir", default=None
+        )
 
         # Directory of images
         self.images_dir = self.parse_string(d, "images_dir", default=None)
         self.input_image_set_labels_path = self.parse_string(
-            d, "input_image_set_labels_path", default=None)
+            d, "input_image_set_labels_path", default=None
+        )
         self.output_image_set_labels_path = self.parse_string(
-            d, "output_image_set_labels_path", default=None)
+            d, "output_image_set_labels_path", default=None
+        )
         self.image_set_features_dir = self.parse_string(
-            d, "image_set_features_dir", default=None)
+            d, "image_set_features_dir", default=None
+        )
 
         self._validate()
 
@@ -128,23 +138,26 @@ class DataConfig(Config):
             if not self.output_labels_path:
                 raise ConfigError(
                     "`output_labels_path` is required when `video_path` is "
-                    "set")
+                    "set"
+                )
 
         if self.image_path:
             if not self.output_image_labels_path:
                 raise ConfigError(
                     "`output_image_labels_path` is required when `image_path` "
-                    "is set")
+                    "is set"
+                )
 
         if self.images_dir:
             if not self.output_image_set_labels_path:
                 raise ConfigError(
                     "`output_image_set_labels_path` is required when "
-                    "`images_dir` is set")
+                    "`images_dir` is set"
+                )
 
 
 class ParametersConfig(Config):
-    '''Parameter configuration settings.
+    """Parameter configuration settings.
 
     Parameters:
         detector (eta.core.types.ObjectDetector): an
@@ -156,19 +169,22 @@ class ParametersConfig(Config):
             used
         record_top_k_probs (eta.core.types.Number): [None] the number of top-k
             class probabilities to record for the predictions
-    '''
+    """
 
     def __init__(self, d):
         self.detector = self.parse_object(
-            d, "detector", etal.ObjectDetectorConfig)
+            d, "detector", etal.ObjectDetectorConfig
+        )
         self.objects = self.parse_object_array(
-            d, "objects", ObjectsConfig, default=None)
+            d, "objects", ObjectsConfig, default=None
+        )
         self.record_top_k_probs = self.parse_number(
-            d, "record_top_k_probs", default=None)
+            d, "record_top_k_probs", default=None
+        )
 
 
 class ObjectsConfig(Config):
-    '''Objects configuration settings.'''
+    """Objects configuration settings."""
 
     def __init__(self, d):
         self.labels = self.parse_array(d, "labels", default=None)
@@ -185,7 +201,8 @@ def _build_object_filter(labels, threshold):
             filter_fcn = lambda obj: True
         else:
             logger.info(
-                "Detecting all objects with confidence >= %g", threshold)
+                "Detecting all objects with confidence >= %g", threshold
+            )
             filter_fcn = lambda obj: obj.confidence >= threshold
     else:
         if threshold is None:
@@ -193,7 +210,8 @@ def _build_object_filter(labels, threshold):
             filter_fcn = lambda obj: obj.label in labels
         else:
             logger.info(
-                "Detecting %s with confidence >= %g", labels, threshold)
+                "Detecting %s with confidence >= %g", labels, threshold
+            )
             filter_fcn = (
                 lambda obj: obj.label in labels and obj.confidence >= threshold
             )
@@ -208,7 +226,8 @@ def _build_detection_filter(objects_config):
 
     # Parse object filter
     obj_filters = [
-        _build_object_filter(oc.labels, oc.threshold) for oc in objects_config]
+        _build_object_filter(oc.labels, oc.threshold) for oc in objects_config
+    ]
 
     def object_filter(objects):
         inds = objects.get_matching_inds(obj_filters)
@@ -236,15 +255,18 @@ def _apply_object_detector(config):
             if data.video_path:
                 logger.info("Processing video '%s'", data.video_path)
                 _process_video(
-                    data, detector, object_filter, record_top_k_probs)
+                    data, detector, object_filter, record_top_k_probs
+                )
             if data.image_path:
                 logger.info("Processing image '%s'", data.image_path)
                 _process_image(
-                    data, detector, object_filter, record_top_k_probs)
+                    data, detector, object_filter, record_top_k_probs
+                )
             if data.images_dir:
                 logger.info("Processing image directory '%s'", data.images_dir)
                 _process_images_dir(
-                    data, detector, object_filter, record_top_k_probs)
+                    data, detector, object_filter, record_top_k_probs
+                )
 
 
 def _process_video(data, detector, object_filter, record_top_k_probs):
@@ -253,11 +275,13 @@ def _process_video(data, detector, object_filter, record_top_k_probs):
     if write_features:
         etal.ExposesFeatures.ensure_exposes_features(detector)
         features_handler = etaf.VideoObjectsFeaturesHandler(
-            data.video_features_dir)
+            data.video_features_dir
+        )
 
     if data.input_labels_path:
         logger.info(
-            "Reading existing labels from '%s'", data.input_labels_path)
+            "Reading existing labels from '%s'", data.input_labels_path
+        )
         video_labels = etav.VideoLabels.from_json(data.input_labels_path)
     else:
         video_labels = etav.VideoLabels()
@@ -269,7 +293,8 @@ def _process_video(data, detector, object_filter, record_top_k_probs):
 
             # Detect objects
             objects, inds = _detect_objects(
-                img, detector, object_filter, record_top_k_probs)
+                img, detector, object_filter, record_top_k_probs
+            )
 
             # Write features, if necessary
             if write_features:
@@ -292,11 +317,13 @@ def _process_image(data, detector, object_filter, record_top_k_probs):
     if write_features:
         etal.ExposesFeatures.ensure_exposes_features(detector)
         features_handler = etaf.ImageObjectsFeaturesHandler(
-            data.image_features_dir)
+            data.image_features_dir
+        )
 
     if data.input_image_labels_path:
         logger.info(
-            "Reading existing labels from '%s'", data.input_image_labels_path)
+            "Reading existing labels from '%s'", data.input_image_labels_path
+        )
         image_labels = etai.ImageLabels.from_json(data.input_image_labels_path)
     else:
         image_labels = etai.ImageLabels()
@@ -304,7 +331,8 @@ def _process_image(data, detector, object_filter, record_top_k_probs):
     # Detect objects
     img = etai.read(data.image_path)
     objects, inds = _detect_objects(
-        img, detector, object_filter, record_top_k_probs)
+        img, detector, object_filter, record_top_k_probs
+    )
 
     # Write features, if necessary
     if write_features:
@@ -325,14 +353,17 @@ def _process_images_dir(data, detector, object_filter, record_top_k_probs):
     if write_features:
         etal.ExposesFeatures.ensure_exposes_features(detector)
         features_handler = etaf.ImageSetObjectsFeaturesHandler(
-            data.image_set_features_dir)
+            data.image_set_features_dir
+        )
 
     if data.input_image_set_labels_path:
         logger.info(
             "Reading existing labels from '%s'",
-            data.input_image_set_labels_path)
+            data.input_image_set_labels_path,
+        )
         image_set_labels = etai.ImageSetLabels.from_json(
-            data.input_image_set_labels_path)
+            data.input_image_set_labels_path
+        )
     else:
         image_set_labels = etai.ImageSetLabels()
 
@@ -344,7 +375,8 @@ def _process_images_dir(data, detector, object_filter, record_top_k_probs):
         # Detect objects
         img = etai.read(inpath)
         objects, inds = _detect_objects(
-            img, detector, object_filter, record_top_k_probs)
+            img, detector, object_filter, record_top_k_probs
+        )
 
         # Write features, if necessary
         if write_features:
@@ -376,16 +408,16 @@ def _detect_objects(img, detector, object_filter, record_top_k_probs):
 
 
 def run(config_path, pipeline_config_path=None):
-    '''Run the apply_object_detector module.
+    """Run the apply_object_detector module.
 
     Args:
-        config_path: path to a ApplyObjectDetectorConfig file
+        config_path: path to a ModuleConfig file
         pipeline_config_path: optional path to a PipelineConfig file
-   '''
-    config = ApplyObjectDetectorConfig.from_json(config_path)
+   """
+    config = ModuleConfig.from_json(config_path)
     etam.setup(config, pipeline_config_path=pipeline_config_path)
     _apply_object_detector(config)
 
 
 if __name__ == "__main__":
-    run(*sys.argv[1:])
+    run(*sys.argv[1:])  # pylint: disable=no-value-for-parameter
