@@ -54,6 +54,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
+
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
@@ -91,6 +92,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
+
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
@@ -120,12 +122,12 @@ be mixed together. Indeed:
 
 ```python
 # Python 2
-type( "asdf")  # 'str'
+type("asdf")  # 'str'
 type(u"asdf")  # 'unicode'
 type(b"asdf")  # 'str'
 
 # Python 3
-type( "asdf")  # 'str'
+type("asdf")  # 'str'
 type(u"asdf")  # 'str'
 type(b"asdf")  # 'bytes'
 ```
@@ -190,6 +192,7 @@ for key, value in iteritems(heights):
 ```python
 from builtins import object
 
+
 class Iterator(object):
     def __next__(self):  # use Python 3 interface
         ...
@@ -213,8 +216,8 @@ mylist = list(range(5))
 ```python
 from builtins import open
 
-f = open(pathname, "rb")   # f.read() will return bytes
-f = open(pathname, "rt")   # f.read() will return unicode
+f = open(pathname, "rb")  # f.read() will return bytes
+f = open(pathname, "rt")  # f.read() will return unicode
 ```
 
 #### Exceptions
@@ -223,7 +226,7 @@ f = open(pathname, "rt")   # f.read() will return unicode
 raise ValueError("msg")
 
 # not this!
-#raise ValueError, "msg"
+# raise ValueError, "msg"
 ```
 
 ```python
