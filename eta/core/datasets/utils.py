@@ -1,4 +1,4 @@
-'''
+"""
 Utilities for working with `LabeledDataset`s.
 
 Copyright 2017-2020 Voxel51, Inc.
@@ -7,7 +7,7 @@ voxel51.com
 Jason Corso, jason@voxel51.com
 Ben Kane, ben@voxel51.com
 Tyler Ganter, tyler@voxel51.com
-'''
+"""
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
 # pragma pylint: disable=wildcard-import
@@ -16,6 +16,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
+
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
@@ -31,10 +32,10 @@ logger = logging.getLogger(__name__)
 
 
 class FileMethods(etau.FunctionEnum):
-    '''Enum of supported methods for adding files to `LabeledDataset`s.
+    """Enum of supported methods for adding files to `LabeledDataset`s.
 
     By convention, all methods should follow the syntax `fcn(inpath, outpath)`.
-    '''
+    """
 
     COPY = "copy"
     LINK = "link"
@@ -50,7 +51,7 @@ class FileMethods(etau.FunctionEnum):
 
 
 def append_index_if_necessary(dataset, data_path, labels_path):
-    '''Appends an index to the data and labels names if the data filename
+    """Appends an index to the data and labels names if the data filename
     already exists in the dataset.
 
     Args:
@@ -63,7 +64,7 @@ def append_index_if_necessary(dataset, data_path, labels_path):
             the dataset
         new_labels_path: a path for the labels files which potentially has the
             same index appended to the name as for the data
-    '''
+    """
     if not dataset.has_data_with_name(data_path):
         return data_path, labels_path
 
@@ -87,17 +88,19 @@ def append_index_if_necessary(dataset, data_path, labels_path):
 
     new_data_path = os.path.join(
         os.path.dirname(data_path),
-        "%s-%d%s" % (data_basename, new_index, data_ext))
+        "%s-%d%s" % (data_basename, new_index, data_ext),
+    )
 
     new_labels_path = os.path.join(
         os.path.dirname(labels_path),
-        "%s-%d%s" % (labels_basename, new_index, labels_ext))
+        "%s-%d%s" % (labels_basename, new_index, labels_ext),
+    )
 
     return new_data_path, new_labels_path
 
 
 def get_dataset_name(path):
-    '''Gets the name of the labeled dataset containing the given data or label
+    """Gets the name of the labeled dataset containing the given data or label
     file.
 
     The "name" of the dataset is the name of it's dataset directory folder.
@@ -111,5 +114,5 @@ def get_dataset_name(path):
 
     Returns:
         the name of the dataset
-    '''
+    """
     return os.path.basename(os.path.dirname(os.path.dirname(path)))
