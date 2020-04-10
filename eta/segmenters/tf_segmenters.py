@@ -1,10 +1,10 @@
-'''
+"""
 Generic interface for performing inference on semantic segmentation models
 stored as frozen TF graphs.
 
 Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
-'''
+"""
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
 # pragma pylint: disable=wildcard-import
@@ -13,6 +13,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
+
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
@@ -34,7 +35,7 @@ logger = logging.getLogger(__name__)
 
 
 class TFSemanticSegmenterConfig(Config, etal.HasDefaultDeploymentConfig):
-    '''TFSemanticSegmenter configuration settings.
+    """TFSemanticSegmenter configuration settings.
 
     Note that `labels_path` is passed through
     `eta.core.utils.fill_config_patterns` at load time, so it can contain
@@ -61,7 +62,7 @@ class TFSemanticSegmenterConfig(Config, etal.HasDefaultDeploymentConfig):
             output segmentation masks
         outputs_logits: whether the specified output node produces logits
             (True) or directly produces segmentation masks (False)
-    '''
+    """
 
     def __init__(self, d):
         self.model_name = self.parse_string(d, "model_name", default=None)
@@ -77,26 +78,30 @@ class TFSemanticSegmenterConfig(Config, etal.HasDefaultDeploymentConfig):
         self.labels_path = _labels_path
 
         self.resize_to_max_dim = self.parse_number(
-            d, "resize_to_max_dim", default=None)
+            d, "resize_to_max_dim", default=None
+        )
         self.preprocessing_fcn = self.parse_string(
-            d, "preprocessing_fcn", default=None)
+            d, "preprocessing_fcn", default=None
+        )
         self.input_name = self.parse_string(d, "input_name")
         self.output_name = self.parse_string(d, "output_name")
         self.outputs_logits = self.parse_bool(
-            d, "outputs_logits", default=False)
+            d, "outputs_logits", default=False
+        )
 
         self._validate()
 
     def _validate(self):
         if not self.model_name and not self.model_path:
             raise ConfigError(
-                "Either `model_name` or `model_path` must be provided")
+                "Either `model_name` or `model_path` must be provided"
+            )
 
 
 class TFSemanticSegmenter(
-        etal.ImageSemanticSegmenter, etal.ExposesMaskIndex,
-        etat.UsesTFSession):
-    '''Generic interface for semantic segmentation models stored as frozen TF
+    etal.ImageSemanticSegmenter, etal.ExposesMaskIndex, etat.UsesTFSession
+):
+    """Generic interface for semantic segmentation models stored as frozen TF
     graphs.
 
     This class uses `eta.core.tfutils.UsesTFSession` to create TF sessions, so
@@ -104,14 +109,14 @@ class TFSemanticSegmenter(
 
     Instances of this class must either use the context manager interface or
     manually call `close()` when finished to release memory.
-    '''
+    """
 
     def __init__(self, config):
-        '''Creates a TFSemanticSegmenter instance.
+        """Creates a TFSemanticSegmenter instance.
 
         Args:
             config: a TFSemanticSegmenterConfig instance
-        '''
+        """
         self.config = config
         etat.UsesTFSession.__init__(self)
 
@@ -139,9 +144,11 @@ class TFSemanticSegmenter(
 
         # Get operations
         self._input_op = self._graph.get_operation_by_name(
-            self.config.input_name)
+            self.config.input_name
+        )
         self._output_op = self._graph.get_operation_by_name(
-            self.config.output_name)
+            self.config.output_name
+        )
 
     def __enter__(self):
         return self
@@ -151,23 +158,23 @@ class TFSemanticSegmenter(
 
     @property
     def exposes_mask_index(self):
-        '''Whether this segmenter exposes a MaskIndex for its predictions.'''
+        """Whether this segmenter exposes a MaskIndex for its predictions."""
         return self._labels_map is not None
 
     def get_mask_index(self):
-        '''Returns the MaskIndex describing the semantics of this model's
+        """Returns the MaskIndex describing the semantics of this model's
         segmentations.
 
         Returns:
             A MaskIndex, or None if this model does not expose its mask index
-        '''
+        """
         if not self.exposes_mask_index:
             return None
 
         return etad.MaskIndex.from_labels_map(self._labels_map)
 
     def segment(self, img):
-        '''Performs segmentation on the input image.
+        """Performs segmentation on the input image.
 
         Args:
             img: an image
@@ -175,11 +182,11 @@ class TFSemanticSegmenter(
         Returns:
             an `eta.core.image.ImageLabels` instance containing the
                 segmentation
-        '''
+        """
         return self._segment([img])[0]
 
     def segment_all(self, imgs):
-        '''Performs segmention on the given tensor of images.
+        """Performs segmention on the given tensor of images.
 
         Args:
             imgs: a list (or n x h x w x 3 tensor) of images
@@ -187,7 +194,7 @@ class TFSemanticSegmenter(
         Returns:
             a list of `eta.core.image.ImageLabels` instances containing the
                 segmentions
-        '''
+        """
         return self._segment(imgs)
 
     def _segment(self, imgs):
@@ -206,7 +213,8 @@ class TFSemanticSegmenter(
         if self.config.resize_to_max_dim is not None:
             imgs = [
                 etai.resize_to_fit_max(img, self.config.resize_to_max_dim)
-                for img in imgs]
+                for img in imgs
+            ]
 
         if self._preprocessing_fcn is not None:
             imgs = self._preprocessing_fcn(imgs)
