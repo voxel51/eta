@@ -1,4 +1,4 @@
-'''
+"""
 Core tools and data structures for working with videos.
 
 Notes::
@@ -12,7 +12,7 @@ Notes::
 
 Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
-'''
+"""
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
 # pragma pylint: disable=wildcard-import
@@ -23,6 +23,7 @@ from __future__ import unicode_literals
 from builtins import *
 from future.utils import iteritems, itervalues
 import six
+
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
@@ -64,16 +65,49 @@ logger = logging.getLogger(__name__)
 # with additions from other places on an ad-hoc basis
 #
 SUPPORTED_VIDEO_FILE_FORMATS = {
-    ".3g2", ".3gp", ".m2ts", ".mts", ".amv", ".avi", ".f4a", ".f4b", ".f4p",
-    ".f4v", ".flv", ".m2v", ".m4p", ".m4v", ".mkv", ".mov", ".mp2", ".mp4",
-    ".mpe", ".mpeg", ".mpg", ".mpv", ".m2ts", ".mts", ".nsv", ".ogg", ".ogv",
-    ".qt", ".rm", ".rmvb", ".svi", ".ts", ".tsv", ".tsa", ".vob", ".webm",
-    ".wmv", ".yuv"
+    ".3g2",
+    ".3gp",
+    ".m2ts",
+    ".mts",
+    ".amv",
+    ".avi",
+    ".f4a",
+    ".f4b",
+    ".f4p",
+    ".f4v",
+    ".flv",
+    ".m2v",
+    ".m4p",
+    ".m4v",
+    ".mkv",
+    ".mov",
+    ".mp2",
+    ".mp4",
+    ".mpe",
+    ".mpeg",
+    ".mpg",
+    ".mpv",
+    ".m2ts",
+    ".mts",
+    ".nsv",
+    ".ogg",
+    ".ogv",
+    ".qt",
+    ".rm",
+    ".rmvb",
+    ".svi",
+    ".ts",
+    ".tsv",
+    ".tsa",
+    ".vob",
+    ".webm",
+    ".wmv",
+    ".yuv",
 }
 
 
 def is_supported_video(path):
-    '''Determines whether the given filepath points to a supported video.
+    """Determines whether the given filepath points to a supported video.
 
     Args:
         path: the path to a video, like `/path/to/video.mp4` or
@@ -81,12 +115,12 @@ def is_supported_video(path):
 
     Returns:
         True/False if the path refers to a supported video type
-    '''
+    """
     return is_supported_video_file(path) or is_supported_image_sequence(path)
 
 
 def is_supported_video_file(path):
-    '''Determines whether the given filepath points to a supported video file
+    """Determines whether the given filepath points to a supported video file
     type.
 
     Args:
@@ -94,12 +128,12 @@ def is_supported_video_file(path):
 
     Returns:
         True/False if the path refers to a supported video file type
-    '''
+    """
     return os.path.splitext(path)[1].lower() in SUPPORTED_VIDEO_FILE_FORMATS
 
 
 def is_supported_image_sequence(path):
-    '''Determines whether the given filepath points to a supported image
+    """Determines whether the given filepath points to a supported image
     sequence type.
 
     Args:
@@ -107,7 +141,7 @@ def is_supported_image_sequence(path):
 
     Returns:
         True/False if the path refers to a supported video file type
-    '''
+    """
     try:
         _ = path % 1
         return etai.is_supported_image(path)
@@ -116,7 +150,7 @@ def is_supported_image_sequence(path):
 
 
 def is_same_video_file_format(path1, path2):
-    '''Determines whether the video files have the same supported format.
+    """Determines whether the video files have the same supported format.
 
     Args:
         path1: the path to a video
@@ -124,15 +158,15 @@ def is_same_video_file_format(path1, path2):
 
     Returns:
         True/False
-    '''
+    """
     return (
-        is_supported_video(path1) and
-        os.path.splitext(path1)[1] == os.path.splitext(path2)[1]
+        is_supported_video(path1)
+        and os.path.splitext(path1)[1] == os.path.splitext(path2)[1]
     )
 
 
 def is_valid_video_file(path):
-    '''Determines if the given video file is valid, i.e., it has a supported
+    """Determines if the given video file is valid, i.e., it has a supported
     type and can be read by our system.
 
     This method does not support videos represented as image sequences (i.e.,
@@ -143,7 +177,7 @@ def is_valid_video_file(path):
 
     Returns:
         True/False if the video is valid
-    '''
+    """
     if not is_supported_video_file(path):
         return False
     try:
@@ -154,13 +188,14 @@ def is_valid_video_file(path):
 
 
 def glob_videos(dir_):
-    '''Returns an iterator over all supported video files in the directory.'''
+    """Returns an iterator over all supported video files in the directory."""
     return etau.multiglob(
-        *SUPPORTED_VIDEO_FILE_FORMATS, root=os.path.join(dir_, "*"))
+        *SUPPORTED_VIDEO_FILE_FORMATS, root=os.path.join(dir_, "*")
+    )
 
 
 class VideoMetadata(etas.Serializable):
-    '''Class encapsulating metadata about a video.
+    """Class encapsulating metadata about a video.
 
     Attributes:
         start_time: (optional) a datetime describing the start (world) time of
@@ -174,13 +209,21 @@ class VideoMetadata(etas.Serializable):
         encoding_str: the encoding string for the video
         gps_waypoints: (optional) a GPSWaypoints instance describing the GPS
             coordinates for the video
-    '''
+    """
 
     def __init__(
-            self, start_time=None, frame_size=None, frame_rate=None,
-            total_frame_count=None, duration=None, size_bytes=None,
-            mime_type=None, encoding_str=None, gps_waypoints=None):
-        '''Creates a VideoMetadata instance.
+        self,
+        start_time=None,
+        frame_size=None,
+        frame_rate=None,
+        total_frame_count=None,
+        duration=None,
+        size_bytes=None,
+        mime_type=None,
+        encoding_str=None,
+        gps_waypoints=None,
+    ):
+        """Creates a VideoMetadata instance.
 
         Args:
             start_time: (optional) a datetime describing the start (world) time
@@ -194,7 +237,7 @@ class VideoMetadata(etas.Serializable):
             encoding_str: the encoding string for the video
             gps_waypoints: (optional) a GPSWaypoints instance describing the
                 GPS coordinates for the video
-        '''
+        """
         self.start_time = start_time
         self.frame_size = frame_size
         self.frame_rate = frame_rate
@@ -207,17 +250,17 @@ class VideoMetadata(etas.Serializable):
 
     @property
     def aspect_ratio(self):
-        '''The aspect ratio of the video.'''
+        """The aspect ratio of the video."""
         width, height = self.frame_size
         return width * 1.0 / height
 
     @property
     def has_gps(self):
-        '''Whether this object has GPS waypoints.'''
+        """Whether this object has GPS waypoints."""
         return self.gps_waypoints is not None
 
     def get_timestamp(self, frame_number=None, world_time=None):
-        '''Gets the timestamp for the given point in the video.
+        """Gets the timestamp for the given point in the video.
 
         Exactly one keyword argument must be supplied.
 
@@ -227,18 +270,21 @@ class VideoMetadata(etas.Serializable):
 
         Returns:
             the timestamp (in seconds) in the video
-        '''
+        """
         if world_time is not None:
             timestamp = etaf.world_time_to_timestamp(
-                world_time, self.start_time)
+                world_time, self.start_time
+            )
             return etaf.timestamp_to_frame_number(
-                timestamp, self.duration, self.total_frame_count)
+                timestamp, self.duration, self.total_frame_count
+            )
 
         return etaf.frame_number_to_timestamp(
-            frame_number, self.total_frame_count, self.duration)
+            frame_number, self.total_frame_count, self.duration
+        )
 
     def get_frame_number(self, timestamp=None, world_time=None):
-        '''Gets the frame number for the given point in the video.
+        """Gets the frame number for the given point in the video.
 
         Exactly one keyword argument must be supplied.
 
@@ -249,18 +295,23 @@ class VideoMetadata(etas.Serializable):
 
         Returns:
             the frame number in the video
-        '''
+        """
         if world_time is not None:
             return etaf.world_time_to_frame_number(
-                world_time, self.start_time, self.duration,
-                self.total_frame_count)
+                world_time,
+                self.start_time,
+                self.duration,
+                self.total_frame_count,
+            )
 
         return etaf.timestamp_to_frame_number(
-            timestamp, self.duration, self.total_frame_count)
+            timestamp, self.duration, self.total_frame_count
+        )
 
     def get_gps_location(
-            self, frame_number=None, timestamp=None, world_time=None):
-        '''Gets the GPS location at the given point in the video.
+        self, frame_number=None, timestamp=None, world_time=None
+    ):
+        """Gets the GPS location at the given point in the video.
 
         Exactly one keyword argument must be supplied.
 
@@ -276,7 +327,7 @@ class VideoMetadata(etas.Serializable):
         Returns:
             the (lat, lon) at the given frame in the video, or None if the
                 video has no GPS waypoints
-        '''
+        """
         if not self.has_gps:
             return None
         if world_time is not None:
@@ -286,16 +337,23 @@ class VideoMetadata(etas.Serializable):
         return self.gps_waypoints.get_location(frame_number)
 
     def attributes(self):
-        '''Returns the list of class attributes that will be serialized.'''
+        """Returns the list of class attributes that will be serialized."""
         _attrs = [
-            "start_time", "frame_size", "frame_rate", "total_frame_count",
-            "duration", "size_bytes", "mime_type", "encoding_str",
-            "gps_waypoints"]
+            "start_time",
+            "frame_size",
+            "frame_rate",
+            "total_frame_count",
+            "duration",
+            "size_bytes",
+            "mime_type",
+            "encoding_str",
+            "gps_waypoints",
+        ]
         return [a for a in _attrs if getattr(self, a) is not None]
 
     @classmethod
     def build_for(cls, video_path, verbose=False):
-        '''Builds a VideoMetadata instance for the given video.
+        """Builds a VideoMetadata instance for the given video.
 
         Args:
             video_path: the path to the video
@@ -304,7 +362,7 @@ class VideoMetadata(etas.Serializable):
 
         Returns:
             a VideoMetadata instance
-        '''
+        """
         vsi = VideoStreamInfo.build_for(video_path, verbose=verbose)
         metadata = cls.from_stream_info(vsi)
         if verbose:
@@ -314,14 +372,14 @@ class VideoMetadata(etas.Serializable):
 
     @classmethod
     def from_stream_info(cls, stream_info):
-        '''Builds a VideoMetadata from a VideoStreamInfo.
+        """Builds a VideoMetadata from a VideoStreamInfo.
 
         Args:
             stream_info: a VideoStreamInfo
 
         Returns:
             a VideoMetadata
-        '''
+        """
         return cls(
             frame_size=stream_info.frame_size,
             frame_rate=stream_info.frame_rate,
@@ -334,7 +392,7 @@ class VideoMetadata(etas.Serializable):
 
     @classmethod
     def from_dict(cls, d):
-        '''Constructs a VideoMetadata from a JSON dictionary.'''
+        """Constructs a VideoMetadata from a JSON dictionary."""
         start_time = d.get("start_time", None)
         if start_time is not None:
             start_time = dateutil.parser.parse(start_time)
@@ -359,11 +417,12 @@ class VideoMetadata(etas.Serializable):
             size_bytes=d.get("size_bytes", None),
             mime_type=d.get("mime_type", None),
             encoding_str=d.get("encoding_str", None),
-            gps_waypoints=gps_waypoints)
+            gps_waypoints=gps_waypoints,
+        )
 
 
 class VideoFrameLabels(FrameLabels):
-    '''FrameLabels for a specific frame of a video.
+    """FrameLabels for a specific frame of a video.
 
     VideoFrameLabels are spatial concepts that describe a collection of
     information about a specific frame in a video. VideoFrameLabels can have
@@ -378,11 +437,11 @@ class VideoFrameLabels(FrameLabels):
         attrs: an AttributeContainer of attributes of the frame
         objects: a DetectedObjectContainer of objects in the frame
         events: a DetectedEventContainer of events in the frame
-    '''
+    """
 
     @classmethod
     def from_image_labels(cls, image_labels, frame_number):
-        '''Constructs a VideoFrameLabels from an ImageLabels.
+        """Constructs a VideoFrameLabels from an ImageLabels.
 
         Args:
             image_labels: an ImageLabels
@@ -390,32 +449,44 @@ class VideoFrameLabels(FrameLabels):
 
         Returns:
             a VideoFrameLabels
-        '''
+        """
         return cls(
-            frame_number=frame_number, mask=image_labels.mask,
-            mask_index=image_labels.mask_index, attrs=image_labels.attrs,
-            objects=image_labels.objects, events=image_labels.events)
+            frame_number=frame_number,
+            mask=image_labels.mask,
+            mask_index=image_labels.mask_index,
+            attrs=image_labels.attrs,
+            objects=image_labels.objects,
+            events=image_labels.events,
+        )
 
     @classmethod
     def from_frame_labels(cls, frame_labels):
-        '''Constructs a VideoFrameLabels from a FrameLabels.
+        """Constructs a VideoFrameLabels from a FrameLabels.
 
         Args:
             frame_labels: a FrameLabels
 
         Returns:
             a VideoFrameLabels
-        '''
+        """
         return cls(
-            frame_number=frame_labels.frame_number, mask=frame_labels.mask,
-            mask_index=frame_labels.mask_index, attrs=frame_labels.attrs,
-            objects=frame_labels.objects, events=frame_labels.events)
+            frame_number=frame_labels.frame_number,
+            mask=frame_labels.mask,
+            mask_index=frame_labels.mask_index,
+            attrs=frame_labels.attrs,
+            objects=frame_labels.objects,
+            events=frame_labels.events,
+        )
 
 
 class VideoLabels(
-        etal.Labels, etal.HasLabelsSchema, etal.HasLabelsSupport,
-        etal.HasFramewiseView, etal.HasSpatiotemporalView):
-    '''Class encapsulating labels for a video.
+    etal.Labels,
+    etal.HasLabelsSchema,
+    etal.HasLabelsSupport,
+    etal.HasFramewiseView,
+    etal.HasSpatiotemporalView,
+):
+    """Class encapsulating labels for a video.
 
     VideoLabels are spatiotemporal concepts that describe the content of a
     video. VideoLabels can have video-level attributes that apply to the entire
@@ -477,12 +548,21 @@ class VideoLabels(
         objects: a VideoObjectContainer of objects
         events: a VideoEventContainer of events
         schema: (optional) a VideoLabelsSchema describing the video's schema
-    '''
+    """
 
     def __init__(
-            self, filename=None, metadata=None, support=None, mask_index=None,
-            attrs=None, frames=None, objects=None, events=None, schema=None):
-        '''Creates a VideoLabels instance.
+        self,
+        filename=None,
+        metadata=None,
+        support=None,
+        mask_index=None,
+        attrs=None,
+        frames=None,
+        objects=None,
+        events=None,
+        schema=None,
+    ):
+        """Creates a VideoLabels instance.
 
         Args:
             filename: (optional) the filename of the video
@@ -497,7 +577,7 @@ class VideoLabels(
             objects: (optional) a VideoObjectContainer of objects
             events: (optional) a VideoEventContainer of events
             schema: (optional) a VideoLabelsSchema to enforce on the video
-        '''
+        """
         self.filename = filename
         self.metadata = metadata
         self.mask_index = mask_index
@@ -509,7 +589,7 @@ class VideoLabels(
         etal.HasLabelsSupport.__init__(self, support=support)
 
     def __getitem__(self, frame_number):
-        '''Gets the VideoFrameLabels for the given frame number, or an empty
+        """Gets the VideoFrameLabels for the given frame number, or an empty
         if no VideoFrameLabels exists.
 
         Args:
@@ -517,104 +597,104 @@ class VideoLabels(
 
         Returns:
             a VideoFrameLabels
-        '''
+        """
         return self.get_frame(frame_number)
 
     def __setitem__(self, frame_number, frame_labels):
-        '''Sets the VideoFrameLabels for the given frame number.
+        """Sets the VideoFrameLabels for the given frame number.
 
         If a VideoFrameLabels already exists for the frame, it is overwritten.
 
         Args:
             frame_number: the frame number
             frame_labels: a VideoFrameLabels
-        '''
+        """
         frame_labels.frame_number = frame_number
         self.add_frame(frame_labels, overwrite=True)
 
     def __delitem__(self, frame_number):
-        '''Deletes the VideoFrameLabels for the given frame number.
+        """Deletes the VideoFrameLabels for the given frame number.
 
         Args:
             frame_number: the frame number
-        '''
+        """
         self.delete_frame(frame_number)
 
     def __iter__(self):
-        '''Returns an iterator over the frames with VideoFrameLabels.
+        """Returns an iterator over the frames with VideoFrameLabels.
 
         The frames are traversed in sorted order.
 
         Returns:
             an iterator over frame numbers
-        '''
+        """
         return iter(sorted(self.frames))
 
     def iter_attributes(self):
-        '''Returns an iterator over the video-level attributes in the video.
+        """Returns an iterator over the video-level attributes in the video.
 
         Returns:
             an iterator over `Attribute`s
-        '''
+        """
         return iter(self.attrs)
 
     def iter_video_objects(self):
-        '''Returns an iterator over the `VideoObject`s in the video.
+        """Returns an iterator over the `VideoObject`s in the video.
 
         Returns:
             an iterator over `VideoObject`s
-        '''
+        """
         return iter(self.objects)
 
     def iter_video_events(self):
-        '''Returns an iterator over the `VideoEvent`s in the video.
+        """Returns an iterator over the `VideoEvent`s in the video.
 
         Returns:
             an iterator over `VideoEvent`s
-        '''
+        """
         return iter(self.events)
 
     def iter_frames(self):
-        '''Returns an iterator over the VideoFrameLabels in the video.
+        """Returns an iterator over the VideoFrameLabels in the video.
 
         Returns:
             an iterator over VideoFrameLabels
-        '''
+        """
         return itervalues(self.frames)
 
     @property
     def framewise_renderer_cls(self):
-        '''The LabelsFrameRenderer used by this class.'''
+        """The LabelsFrameRenderer used by this class."""
         return VideoLabelsFrameRenderer
 
     @property
     def spatiotemporal_renderer_cls(self):
-        '''The LabelsSpatiotemporalRenderer used by this class.'''
+        """The LabelsSpatiotemporalRenderer used by this class."""
         return VideoLabelsSpatiotemporalRenderer
 
     @property
     def has_filename(self):
-        '''Whether the video has a filename.'''
+        """Whether the video has a filename."""
         return self.filename is not None
 
     @property
     def has_metadata(self):
-        '''Whether the video has metadata.'''
+        """Whether the video has metadata."""
         return self.metadata is not None
 
     @property
     def has_mask_index(self):
-        '''Whether the video has a video-wide frame segmentation mask index.'''
+        """Whether the video has a video-wide frame segmentation mask index."""
         return self.mask_index is not None
 
     @property
     def has_video_attributes(self):
-        '''Whether the video has at least one video-level attribute.'''
+        """Whether the video has at least one video-level attribute."""
         return bool(self.attrs)
 
     @property
     def has_frame_attributes(self):
-        '''Whether the video has at least one frame-level attribute.'''
+        """Whether the video has at least one frame-level attribute."""
         for frame_number in self:
             if self[frame_number].has_frame_attributes:
                 return True
@@ -623,17 +703,17 @@ class VideoLabels(
 
     @property
     def has_attributes(self):
-        '''Whether the video has video- or frame-level attributes.'''
+        """Whether the video has video- or frame-level attributes."""
         return self.has_video_attributes or self.has_frame_attributes
 
     @property
     def has_video_objects(self):
-        '''Whether the video has at least one VideoObject.'''
+        """Whether the video has at least one VideoObject."""
         return bool(self.objects)
 
     @property
     def has_detected_objects(self):
-        '''Whether the video has at least one frame-level DetectedObject.'''
+        """Whether the video has at least one frame-level DetectedObject."""
         for frame_labels in self.iter_frames():
             if frame_labels.has_objects:
                 return True
@@ -642,17 +722,17 @@ class VideoLabels(
 
     @property
     def has_objects(self):
-        '''Whether the video has at least one VideoObject or DetectedObject.'''
+        """Whether the video has at least one VideoObject or DetectedObject."""
         return self.has_video_objects or self.has_detected_objects
 
     @property
     def has_video_events(self):
-        '''Whether the video has at least one VideoEvent.'''
+        """Whether the video has at least one VideoEvent."""
         return bool(self.events)
 
     @property
     def has_detected_events(self):
-        '''Whether the video has at least one frame-level DetectedEvent.'''
+        """Whether the video has at least one frame-level DetectedEvent."""
         for frame_labels in self.iter_frames():
             if frame_labels.has_events:
                 return True
@@ -661,29 +741,32 @@ class VideoLabels(
 
     @property
     def has_events(self):
-        '''Whether the video has at least one VideoEvent or DetectedEvent.'''
+        """Whether the video has at least one VideoEvent or DetectedEvent."""
         return self.has_video_events or self.has_detected_events
 
     @property
     def has_frame_labels(self):
-        '''Whether the video has at least one VideoFrameLabels.'''
+        """Whether the video has at least one VideoFrameLabels."""
         return bool(self.frames)
 
     @property
     def is_empty(self):
-        '''Whether the video has no labels of any kind.'''
+        """Whether the video has no labels of any kind."""
         return not (
-            self.has_video_attributes or self.has_frame_attributes
-            or self.has_video_objects or self.has_video_events
-            or self.has_frame_labels)
+            self.has_video_attributes
+            or self.has_frame_attributes
+            or self.has_video_objects
+            or self.has_video_events
+            or self.has_frame_labels
+        )
 
     @property
     def num_frames(self):
-        '''The number of frames with VideoFrameLabels.'''
+        """The number of frames with VideoFrameLabels."""
         return len(self.frames)
 
     def has_frame(self, frame_number):
-        '''Determines whether this object contains a VideoFrameLabels for the
+        """Determines whether this object contains a VideoFrameLabels for the
         given frame number.
 
         Args:
@@ -691,11 +774,11 @@ class VideoLabels(
 
         Returns:
             True/False
-        '''
+        """
         return frame_number in self.frames
 
     def get_frame(self, frame_number):
-        '''Gets the VideoFrameLabels for the given frame number, or an empty
+        """Gets the VideoFrameLabels for the given frame number, or an empty
         VideoFrameLabels if one does not yet exist.
 
         Args:
@@ -703,69 +786,69 @@ class VideoLabels(
 
         Returns:
             a VideoFrameLabels
-        '''
+        """
         try:
             return self.frames[frame_number]
         except KeyError:
             return VideoFrameLabels(frame_number=frame_number)
 
     def delete_frame(self, frame_number):
-        '''Deletes the VideoFrameLabels for the given frame number.
+        """Deletes the VideoFrameLabels for the given frame number.
 
         Args:
             frame_number: the frame number
-        '''
+        """
         del self.frames[frame_number]
 
     def get_frame_numbers_with_labels(self):
-        '''Returns a sorted list of all frames with VideoFrameLabels.
+        """Returns a sorted list of all frames with VideoFrameLabels.
 
         Returns:
             a list of frame numbers
-        '''
+        """
         return sorted(self.frames.keys())
 
     def get_frame_numbers_with_masks(self):
-        '''Returns a sorted list of frames with frame-level masks.
+        """Returns a sorted list of frames with frame-level masks.
 
         Returns:
             a sorted list of frame numbers
-        '''
+        """
         return sorted([fn for fn in self if self[fn].has_mask])
 
     def get_frame_numbers_with_attributes(self):
-        '''Returns a sorted list of frames with one or more frame-level
+        """Returns a sorted list of frames with one or more frame-level
         attributes.
 
         Returns:
             a sorted list of frame numbers
-        '''
+        """
         return sorted([fn for fn in self if self[fn].has_frame_attributes])
 
     def get_frame_numbers_with_objects(self):
-        '''Returns a sorted list of frames with one or more `DetectedObject`s.
+        """Returns a sorted list of frames with one or more `DetectedObject`s.
 
         Returns:
             a list of frame numbers
-        '''
+        """
         return sorted([fn for fn in self if self[fn].has_objects])
 
     def get_frame_numbers_with_events(self):
-        '''Returns a sorted list of frames with one or more `DetectedEvent`s.
+        """Returns a sorted list of frames with one or more `DetectedEvent`s.
 
         Returns:
             a list of frame numbers
-        '''
+        """
         return sorted([fn for fn in self if self[fn].has_events])
 
     def get_object_indexes(self):
-        '''Returns the set of `index`es of all objects in the video.
+        """Returns the set of `index`es of all objects in the video.
 
         `None` indexes are omitted.
 
         Returns:
             a set of indexes
-        '''
+        """
         obj_indexes = self.objects.get_indexes()
         obj_indexes.update(self.events.get_object_indexes())
         for frame_labels in self.iter_frames():
@@ -774,31 +857,31 @@ class VideoLabels(
         return obj_indexes
 
     def offset_object_indexes(self, offset):
-        '''Adds the given offset to all objects with `index`es in the video.
+        """Adds the given offset to all objects with `index`es in the video.
 
         Args:
             offset: the integer offset
-        '''
+        """
         self.objects.offset_indexes(offset)
         self.events.offset_object_indexes(offset)
         for frame_labels in self.iter_frames():
             frame_labels.offset_object_indexes(offset)
 
     def clear_object_indexes(self):
-        '''Clears the `index` of all objects in the video.'''
+        """Clears the `index` of all objects in the video."""
         self.objects.clear_indexes()
         self.events.clear_object_indexes()
         for frame_labels in self.iter_frames():
             frame_labels.clear_object_indexes()
 
     def get_event_indexes(self):
-        '''Returns the set of `index`es of all events in the video.
+        """Returns the set of `index`es of all events in the video.
 
         `None` indexes are omitted.
 
         Returns:
             a set of indexes
-        '''
+        """
         event_indexes = self.events.get_indexes()
         for frame_labels in self.iter_frames():
             event_indexes.update(frame_labels.get_event_indexes())
@@ -806,39 +889,39 @@ class VideoLabels(
         return event_indexes
 
     def offset_event_indexes(self, offset):
-        '''Adds the given offset to all events with `index`es in the video.
+        """Adds the given offset to all events with `index`es in the video.
 
         Args:
             offset: the integer offset
-        '''
+        """
         self.events.offset_indexes(offset)
         for frame_labels in self.iter_frames():
             frame_labels.offset_event_indexes(offset)
 
     def clear_event_indexes(self):
-        '''Clears the `index` of all events in the video.'''
+        """Clears the `index` of all events in the video."""
         self.events.clear_indexes()
         for frame_labels in self.iter_frames():
             frame_labels.clear_event_indexes()
 
     def add_video_attribute(self, attr):
-        '''Adds the given video-level attribute to the video.
+        """Adds the given video-level attribute to the video.
 
         Args:
             attr: an Attribute
-        '''
+        """
         self.attrs.add(attr)
 
     def add_video_attributes(self, attrs):
-        '''Adds the given video-level attributes to the video.
+        """Adds the given video-level attributes to the video.
 
         Args:
             attrs: an AttributeContainer
-        '''
+        """
         self.attrs.add_container(attrs)
 
     def add_frame(self, frame_labels, frame_number=None, overwrite=True):
-        '''Adds the frame labels to the video.
+        """Adds the frame labels to the video.
 
         Args:
             frame_labels: a FrameLabels instance
@@ -847,139 +930,138 @@ class VideoLabels(
             overwrite: whether to overwrite any existing VideoFrameLabels
                 instance for the frame or merge the new labels. By default,
                 this is True
-        '''
+        """
         self._add_frame_labels(frame_labels, frame_number, overwrite)
 
     def add_frame_attribute(self, attr, frame_number):
-        '''Adds the given frame-level attribute to the video.
+        """Adds the given frame-level attribute to the video.
 
         Args:
             attr: an Attribute
             frame_number: the frame number
-        '''
+        """
         self._ensure_frame(frame_number)
         self.frames[frame_number].add_attribute(attr)
 
     def add_frame_attributes(self, attrs, frame_number):
-        '''Adds the given frame-level attributes to the video.
+        """Adds the given frame-level attributes to the video.
 
         Args:
             attrs: an AttributeContainer
             frame_number: the frame number
-        '''
+        """
         self._ensure_frame(frame_number)
         self.frames[frame_number].add_attributes(attrs)
 
     def add_object(self, obj, frame_number=None):
-        '''Adds the object to the video.
+        """Adds the object to the video.
 
         Args:
             obj: a VideoObject or DetectedObject
             frame_number: (DetectedObject only) the frame number. If omitted,
                 the DetectedObject must have its `frame_number` set
-        '''
+        """
         if isinstance(obj, etao.DetectedObject):
             self._add_detected_object(obj, frame_number)
         else:
             self.objects.add(obj)
 
     def add_objects(self, objects, frame_number=None):
-        '''Adds the objects to the video.
+        """Adds the objects to the video.
 
         Args:
             objects: a VideoObjectContainer or DetectedObjectContainer
             frame_number: (DetectedObjectContainer only) the frame number. If
                 omitted, the DetectedObjects must have their `frame_number` set
-        '''
+        """
         if isinstance(objects, etao.DetectedObjectContainer):
             self._add_detected_objects(objects, frame_number)
         else:
             self.objects.add_container(objects)
 
     def add_event(self, event, frame_number=None):
-        '''Adds the event to the video.
+        """Adds the event to the video.
 
         Args:
             event: a VideoEvent or DetectedEvent
             frame_number: (DetectedEvent only) the frame number. If omitted,
                 the DetectedEvent must have its `frame_number` set
-        '''
+        """
         if isinstance(event, etae.DetectedEvent):
             self._add_detected_event(event, frame_number)
         else:
             self.events.add(event)
 
     def add_events(self, events, frame_number=None):
-        '''Adds the events to the video.
+        """Adds the events to the video.
 
         Args:
             events: a VideoEventContainer or DetectedEventContainer
             frame_number: (DetectedEventContainer only) the frame number. If
                 omitted, the `DetectedEvent`s must have their `frame_number`s
                 set
-        '''
+        """
         if isinstance(events, etae.DetectedEventContainer):
             self._add_detected_events(events, frame_number)
         else:
             self.events.add_container(events)
 
     def clear_video_attributes(self):
-        '''Removes all video-level attributes from the video.'''
+        """Removes all video-level attributes from the video."""
         self.attrs = etad.AttributeContainer()
 
     def clear_frame_attributes(self):
-        '''Removes all frame-level attributes from the video.'''
+        """Removes all frame-level attributes from the video."""
         for frame_labels in self.iter_frames():
             frame_labels.clear_frame_attributes()
 
     def clear_video_objects(self):
-        '''Removes all `VideoObject`s from the video.'''
+        """Removes all `VideoObject`s from the video."""
         self.objects = etao.VideoObjectContainer()
 
     def clear_detected_objects(self):
-        '''Removes all `DetectedObject`s from the video.'''
+        """Removes all `DetectedObject`s from the video."""
         for frame_labels in self.iter_frames():
             frame_labels.clear_objects()
 
     def clear_objects(self):
-        '''Removes all `VideoObject`s and `DetectedObject`s from the video.'''
+        """Removes all `VideoObject`s and `DetectedObject`s from the video."""
         self.clear_video_objects()
         self.clear_detected_objects()
 
     def clear_video_events(self):
-        '''Removes all `VideoEvent`s from the video.'''
+        """Removes all `VideoEvent`s from the video."""
         self.events = etae.VideoEventContainer()
 
     def clear_detected_events(self):
-        '''Removes all `DetectedEvent`s from the video.'''
+        """Removes all `DetectedEvent`s from the video."""
         for frame_labels in self.iter_frames():
             frame_labels.clear_events()
 
     def clear_events(self):
-        '''Removes all `VideoEvent`s and `DetectedEvent`s from the video.'''
+        """Removes all `VideoEvent`s and `DetectedEvent`s from the video."""
         self.clear_video_events()
         self.clear_detected_events()
 
     def clear_frames(self):
-        '''Removes all VideoFrameLabels from the video.'''
+        """Removes all VideoFrameLabels from the video."""
         self.frames = {}
 
     def remove_empty_frames(self):
-        '''Removes all empty VideoFrameLabels from the video.'''
+        """Removes all empty VideoFrameLabels from the video."""
         self.frames = {
-            fn: vfl for fn, vfl in iteritems(self.frames)
-            if not vfl.is_empty
+            fn: vfl for fn, vfl in iteritems(self.frames) if not vfl.is_empty
         }
 
     def merge_labels(self, video_labels, reindex=False):
-        '''Merges the given VideoLabels into this labels.
+        """Merges the given VideoLabels into this labels.
 
         Args:
             video_labels: a VideoLabels
             reindex: whether to offset the `index` fields of objects and events
                 in `video_labels` before merging so that all indexes are
                 unique. The default is False
-        '''
+        """
         if reindex:
             self._reindex_objects(video_labels)
             self._reindex_events(video_labels)
@@ -1007,11 +1089,11 @@ class VideoLabels(
             self.add_frame(frame_labels, overwrite=False)
 
     def filter_by_schema(self, schema):
-        '''Filters the labels by the given schema.
+        """Filters the labels by the given schema.
 
         Args:
             schema: a VideoLabelsSchema
-        '''
+        """
         self.attrs.filter_by_schema(schema.attrs)
         self.objects.filter_by_schema(schema.objects)
         self.events.filter_by_schema(schema.events)
@@ -1019,24 +1101,24 @@ class VideoLabels(
             frame_labels.filter_by_schema(schema)
 
     def remove_objects_without_attrs(self, labels=None):
-        '''Removes objects from the VideoLabels that do not have attributes.
+        """Removes objects from the VideoLabels that do not have attributes.
 
         Args:
             labels: an optional list of object label strings to which to
                 restrict attention when filtering. By default, all objects are
                 processed
-        '''
+        """
         self.objects.remove_objects_without_attrs(labels=labels)
         self.events.remove_objects_without_attrs(labels=labels)
         for frame_labels in self.iter_frames():
             frame_labels.remove_objects_without_attrs(labels=labels)
 
     def attributes(self):
-        '''Returns the list of class attributes that will be serialized.
+        """Returns the list of class attributes that will be serialized.
 
         Returns:
             a list of attributes
-        '''
+        """
         _attrs = []
         if self.filename:
             _attrs.append("filename")
@@ -1060,7 +1142,7 @@ class VideoLabels(
 
     @classmethod
     def from_objects(cls, objects):
-        '''Builds a VideoLabels instance from a container of objects.
+        """Builds a VideoLabels instance from a container of objects.
 
         If a DetectedObjectContainer is provided, the `DetectedObject`s must
         have their `frame_number`s set.
@@ -1070,14 +1152,14 @@ class VideoLabels(
 
         Returns:
             a VideoLabels
-        '''
+        """
         labels = cls()
         labels.add_objects(objects)
         return labels
 
     @classmethod
     def from_events(cls, events):
-        '''Builds a VideoLabels instance from an event container.
+        """Builds a VideoLabels instance from an event container.
 
         If a DetectedEventContainer is provided, the `DetectedEvent`s must
         have their `frame_number`s set.
@@ -1087,21 +1169,21 @@ class VideoLabels(
 
         Returns:
             a VideoLabels
-        '''
+        """
         labels = cls()
         labels.add_events(events)
         return labels
 
     @classmethod
     def from_dict(cls, d):
-        '''Constructs a VideoLabels from a JSON dictionary.
+        """Constructs a VideoLabels from a JSON dictionary.
 
         Args:
             d: a JSON dictionary
 
         Returns:
             a VideoLabels
-        '''
+        """
         filename = d.get("filename", None)
 
         metadata = d.get("metadata", None)
@@ -1140,21 +1222,30 @@ class VideoLabels(
             schema = VideoLabelsSchema.from_dict(schema)
 
         return cls(
-            filename=filename, metadata=metadata, support=support,
-            mask_index=mask_index, attrs=attrs, frames=frames, objects=objects,
-            events=events, schema=schema)
+            filename=filename,
+            metadata=metadata,
+            support=support,
+            mask_index=mask_index,
+            attrs=attrs,
+            frames=frames,
+            objects=objects,
+            events=events,
+            schema=schema,
+        )
 
     def _ensure_frame(self, frame_number):
         if not self.has_frame(frame_number):
             self.frames[frame_number] = VideoFrameLabels(
-                frame_number=frame_number)
+                frame_number=frame_number
+            )
 
     def _add_detected_object(self, obj, frame_number):
         if frame_number is None:
             if not obj.has_frame_number:
                 raise ValueError(
                     "Either `frame_number` must be provided or the "
-                    "DetectedObject must have its `frame_number` set")
+                    "DetectedObject must have its `frame_number` set"
+                )
 
             frame_number = obj.frame_number
 
@@ -1171,7 +1262,8 @@ class VideoLabels(
             if not event.has_frame_number:
                 raise ValueError(
                     "Either `frame_number` must be provided or the "
-                    "DetectedEvent must have its `frame_number` set")
+                    "DetectedEvent must have its `frame_number` set"
+                )
 
             frame_number = event.frame_number
 
@@ -1188,7 +1280,8 @@ class VideoLabels(
             if not frame_labels.has_frame_number:
                 raise ValueError(
                     "Either `frame_number` must be provided or the "
-                    "FrameLabels must have its `frame_number` set")
+                    "FrameLabels must have its `frame_number` set"
+                )
 
             frame_number = frame_labels.frame_number
 
@@ -1233,7 +1326,7 @@ class VideoLabels(
 
 
 class VideoLabelsSchema(FrameLabelsSchema):
-    '''Schema describing the content of one or more VideoLabels.
+    """Schema describing the content of one or more VideoLabels.
 
     VideoLabelsSchema introduces the term "video-level attribute", which is
     merely an alias for the term "constant frame attribute" as used in
@@ -1247,18 +1340,18 @@ class VideoLabelsSchema(FrameLabelsSchema):
         objects: an ObjectContainerSchema describing the objects of the
             video(s)
         events: an EventContainerSchema describing the events of the video(s)
-    '''
+    """
 
     @property
     def has_video_attributes(self):
-        '''Whether the schema has at least one video-level AttributeSchema.
+        """Whether the schema has at least one video-level AttributeSchema.
 
         This property is an alias for `has_constant_attributes`.
-        '''
+        """
         return self.has_constant_attributes
 
     def has_video_attribute(self, attr_name):
-        '''Whether the schema has a video-level attribute with the given name.
+        """Whether the schema has a video-level attribute with the given name.
 
         This method is an alias for `has_constant_attribute()`.
 
@@ -1267,11 +1360,11 @@ class VideoLabelsSchema(FrameLabelsSchema):
 
         Returns:
             True/False
-        '''
+        """
         return self.has_constant_attribute(attr_name)
 
     def get_video_attribute_schema(self, attr_name):
-        '''Gets the AttributeSchema for the video-level attribute with the
+        """Gets the AttributeSchema for the video-level attribute with the
         given name.
 
         This method is an alias for `get_video_attribute_schema()`.
@@ -1281,11 +1374,11 @@ class VideoLabelsSchema(FrameLabelsSchema):
 
         Returns:
             the AttributeSchema
-        '''
+        """
         return self.get_constant_attribute_schema(attr_name)
 
     def get_video_attribute_class(self, attr_name):
-        '''Gets the Attribute class for the video-level attribute with the
+        """Gets the Attribute class for the video-level attribute with the
         given name.
 
         This method is an alias for `get_constant_attribute_class()`.
@@ -1295,31 +1388,31 @@ class VideoLabelsSchema(FrameLabelsSchema):
 
         Returns:
             the Attribute class
-        '''
+        """
         return self.get_constant_attribute_class(attr_name)
 
     def add_video_attribute(self, attr):
-        '''Adds the given video-level attribute to the schema.
+        """Adds the given video-level attribute to the schema.
 
         This method is an alias for `add_constant_attribute()`.
 
         Args:
             attr: an Attribute
-        '''
+        """
         self.add_constant_attribute(attr)
 
     def add_video_attributes(self, attrs):
-        '''Adds the given video-level attributes to the schema.
+        """Adds the given video-level attributes to the schema.
 
         This method is an alias for `add_constant_attributes()`.
 
         Args:
             attrs: an AttributeContainer
-        '''
+        """
         self.add_constant_attributes(attrs)
 
     def is_valid_video_attribute(self, attr):
-        '''Whether the video-level attribute is compliant with the schema.
+        """Whether the video-level attribute is compliant with the schema.
 
         This method is an alias for `is_valid_constant_attribute()`.
 
@@ -1328,11 +1421,11 @@ class VideoLabelsSchema(FrameLabelsSchema):
 
         Returns:
             True/False
-        '''
+        """
         return self.is_valid_constant_attribute(attr)
 
     def is_valid_video_attributes(self, attrs):
-        '''Whether the video-level attributes are compliant with the schema.
+        """Whether the video-level attributes are compliant with the schema.
 
         This method is an alias for `is_valid_constant_attributes()`.
 
@@ -1341,11 +1434,11 @@ class VideoLabelsSchema(FrameLabelsSchema):
 
         Returns:
             True/False
-        '''
+        """
         return self.is_valid_constant_attributes(attrs)
 
     def validate_video_attribute(self, attr):
-        '''Validates that the video-level attribute is compliant with the
+        """Validates that the video-level attribute is compliant with the
         schema.
 
         This method is an alias for `validate_constant_attribute()`.
@@ -1355,11 +1448,11 @@ class VideoLabelsSchema(FrameLabelsSchema):
 
         Raises:
             LabelsSchemaError: if the attribute violates the schema
-        '''
+        """
         self.validate_constant_attribute(attr)
 
     def validate_video_attributes(self, attrs):
-        '''Validates that the video-level attributes are compliant with the
+        """Validates that the video-level attributes are compliant with the
         schema.
 
         This method is an alias for `validate_constant_attributes()`.
@@ -1369,23 +1462,23 @@ class VideoLabelsSchema(FrameLabelsSchema):
 
         Raises:
             LabelsSchemaError: if the attributes violate the schema
-        '''
+        """
         self.validate_constant_attributes(attrs)
 
     def validate(self, video_labels):
-        '''Validates that the video labels are compliant with the schema.
+        """Validates that the video labels are compliant with the schema.
 
         Args:
             video_labels: a VideoLabels
 
         Raises:
             LabelsSchemaError: if the labels violate the schema
-        '''
+        """
         self.validate_video_labels(video_labels)
 
     @classmethod
     def build_active_schema(cls, video_labels):
-        '''Builds a VideoLabelsSchema that describes the active schema of the
+        """Builds a VideoLabelsSchema that describes the active schema of the
         given labels.
 
         Args:
@@ -1393,29 +1486,29 @@ class VideoLabelsSchema(FrameLabelsSchema):
 
         Returns:
             a VideoLabelsSchema
-        '''
+        """
         return cls.build_active_schema_for_video_labels(video_labels)
 
 
 class VideoLabelsFrameRenderer(etal.LabelsFrameRenderer):
-    '''Class for rendering VideoLabels at the frame-level.
+    """Class for rendering VideoLabels at the frame-level.
 
     See the VideoLabels class docstring for the framewise format spec.
-    '''
+    """
 
     _LABELS_CLS = VideoLabels
     _FRAME_LABELS_CLS = VideoFrameLabels
 
     def __init__(self, video_labels):
-        '''Creates a VideoLabelsFrameRenderer instance.
+        """Creates a VideoLabelsFrameRenderer instance.
 
         Args:
             video_labels: a VideoLabels
-        '''
+        """
         self._video_labels = video_labels
 
     def render(self, in_place=False):
-        '''Renders the VideoLabels in framewise format.
+        """Renders the VideoLabels in framewise format.
 
         Args:
             in_place: whether to perform the rendering in-place. By default,
@@ -1423,7 +1516,7 @@ class VideoLabelsFrameRenderer(etal.LabelsFrameRenderer):
 
         Returns:
             a VideoLabels
-        '''
+        """
         labels = self._video_labels
         frames = self.render_all_frames(in_place=in_place)
 
@@ -1448,11 +1541,16 @@ class VideoLabelsFrameRenderer(etal.LabelsFrameRenderer):
         schema = deepcopy(labels.schema)
 
         return VideoLabels(
-            filename=filename, metadata=metadata, support=support,
-            mask_index=mask_index, frames=frames, schema=schema)
+            filename=filename,
+            metadata=metadata,
+            support=support,
+            mask_index=mask_index,
+            frames=frames,
+            schema=schema,
+        )
 
     def render_frame(self, frame_number, in_place=False):
-        '''Renders the VideoLabels for the given frame.
+        """Renders the VideoLabels for the given frame.
 
         Args:
             frame_number: the frame number
@@ -1461,7 +1559,7 @@ class VideoLabelsFrameRenderer(etal.LabelsFrameRenderer):
 
         Returns:
             a VideoFrameLabels, or None if no labels exist for the given frame
-        '''
+        """
         if frame_number not in self._video_labels.support:
             return None
 
@@ -1469,10 +1567,11 @@ class VideoLabelsFrameRenderer(etal.LabelsFrameRenderer):
         dobjs = self._render_object_frame(frame_number, in_place)
         devents = self._render_event_frame(frame_number, in_place)
         return self._render_frame(
-            frame_number, video_attrs, dobjs, devents, in_place)
+            frame_number, video_attrs, dobjs, devents, in_place
+        )
 
     def render_all_frames(self, in_place=False):
-        '''Renders the VideoLabels for all possible frames.
+        """Renders the VideoLabels for all possible frames.
 
         Args:
             in_place: whether to perform the rendering in-place (i.e., without
@@ -1480,7 +1579,7 @@ class VideoLabelsFrameRenderer(etal.LabelsFrameRenderer):
 
         Returns:
             a dictionary mapping frame numbers to VideoFrameLabels instances
-        '''
+        """
         video_attrs = self._get_video_attrs()
         dobjs_map = self._render_all_object_frames(in_place)
         devents_map = self._render_all_event_frames(in_place)
@@ -1490,12 +1589,14 @@ class VideoLabelsFrameRenderer(etal.LabelsFrameRenderer):
             dobjs = dobjs_map.get(frame_number, None)
             devents = devents_map.get(frame_number, None)
             frame_labels_map[frame_number] = self._render_frame(
-                frame_number, video_attrs, dobjs, devents, in_place)
+                frame_number, video_attrs, dobjs, devents, in_place
+            )
 
         return frame_labels_map
 
     def _render_frame(
-            self, frame_number, video_attrs, dobjs, devents, in_place):
+        self, frame_number, video_attrs, dobjs, devents, in_place
+    ):
         labels = self._video_labels
 
         # Base VideoFrameLabels
@@ -1578,23 +1679,23 @@ class VideoLabelsFrameRenderer(etal.LabelsFrameRenderer):
 
 
 class VideoLabelsSpatiotemporalRenderer(etal.LabelsSpatiotemporalRenderer):
-    '''Class for rendering VideoLabels in spatiotemporal format.
+    """Class for rendering VideoLabels in spatiotemporal format.
 
     See the VideoLabels class docstring for the spatiotemporal format spec.
-    '''
+    """
 
     _LABELS_CLS = VideoLabels
 
     def __init__(self, video_labels):
-        '''Creates a VideoLabelsSpatiotemporalRenderer instance.
+        """Creates a VideoLabelsSpatiotemporalRenderer instance.
 
         Args:
             video_labels: a VideoLabels
-        '''
+        """
         self._video_labels = video_labels
 
     def render(self, in_place=False):
-        '''Renders the VideoLabels in spatiotemporal format.
+        """Renders the VideoLabels in spatiotemporal format.
 
         Args:
             in_place: whether to perform the rendering in-place. By default,
@@ -1602,24 +1703,27 @@ class VideoLabelsSpatiotemporalRenderer(etal.LabelsSpatiotemporalRenderer):
 
         Returns:
             a VideoLabels
-        '''
+        """
         labels = self._video_labels
         if not in_place:
             labels = deepcopy(labels)
 
         # Ensure that existing `VideoObject`s are in spatiotemporal format
         obj_renderer = etao.VideoObjectContainerSpatiotemporalRenderer(
-            labels.objects)
+            labels.objects
+        )
         obj_renderer.render(in_place=True)
 
         # Ensure that existing `VideoEvent`s are in spatiotemporal format
         event_renderer = etae.VideoEventContainerSpatiotemporalRenderer(
-            labels.events)
+            labels.events
+        )
         event_renderer.render(in_place=True)
 
         # Upgrade spatiotemporal elements from frames
         attrs, objects, events = strip_spatiotemporal_content_from_frames(
-            labels)
+            labels
+        )
         labels.attrs.add_container(attrs)
         labels.add_objects(objects)
         labels.add_events(events)
@@ -1629,7 +1733,7 @@ class VideoLabelsSpatiotemporalRenderer(etal.LabelsSpatiotemporalRenderer):
 
 
 def strip_spatiotemporal_content_from_frames(video_labels):
-    '''Strips the spatiotemporal content from the frames of the given
+    """Strips the spatiotemporal content from the frames of the given
     VideoLabels.
 
     The input labels are modified in-place.
@@ -1645,7 +1749,7 @@ def strip_spatiotemporal_content_from_frames(video_labels):
             stripped from the frames
         events: a VideoEventContainer containing the events that were stripped
             from the frames
-    '''
+    """
     # Extract spatiotemporal content from frames
     attrs_map = {}
     dobjs = etao.DetectedObjectContainer()
@@ -1679,7 +1783,7 @@ def strip_spatiotemporal_content_from_frames(video_labels):
 
 
 class VideoSetLabels(etal.LabelsSet):
-    '''Class encapsulating labels for a set of videos.
+    """Class encapsulating labels for a set of videos.
 
     VideoSetLabels support item indexing by the `filename` of the VideoLabels
     instances in the set.
@@ -1693,7 +1797,7 @@ class VideoSetLabels(etal.LabelsSet):
     Attributes:
         videos: an OrderedDict of VideoLabels with filenames as keys
         schema: a VideoLabelsSchema describing the schema of the labels
-    '''
+    """
 
     _ELE_ATTR = "videos"
     _ELE_KEY_ATTR = "filename"
@@ -1701,85 +1805,85 @@ class VideoSetLabels(etal.LabelsSet):
     _ELE_CLS_FIELD = "_LABELS_CLS"
 
     def sort_by_filename(self, reverse=False):
-        '''Sorts the VideoLabels in this instance by filename.
+        """Sorts the VideoLabels in this instance by filename.
 
         VideoLabels without filenames are always put at the end of the set.
 
         Args:
             reverse: whether to sort in reverse order. By default, this is
                 False
-        '''
+        """
         self.sort_by("filename", reverse=reverse)
 
     def clear_video_attributes(self):
-        '''Removes all video-level attributes from all VideoLabels in the set.
-        '''
+        """Removes all video-level attributes from all VideoLabels in the set.
+        """
         for video_labels in self:
             video_labels.clear_video_attributes()
 
     def clear_frame_attributes(self):
-        '''Removes all frame-level attributes from all VideoLabels in the set.
-        '''
+        """Removes all frame-level attributes from all VideoLabels in the set.
+        """
         for video_labels in self:
             video_labels.clear_frame_attributes()
 
     def clear_video_objects(self):
-        '''Removes all `VideoObject`s from all VideoLabels in the set.'''
+        """Removes all `VideoObject`s from all VideoLabels in the set."""
         for video_labels in self:
             video_labels.clear_video_objects()
 
     def clear_detected_objects(self):
-        '''Removes all `DetectedObject`s from all VideoLabels in the set.'''
+        """Removes all `DetectedObject`s from all VideoLabels in the set."""
         for video_labels in self:
             video_labels.clear_detected_objects()
 
     def clear_objects(self):
-        '''Removes all `VideoObject`s and `DetectedObject`s from all
+        """Removes all `VideoObject`s and `DetectedObject`s from all
         VideoLabels in the set.
-        '''
+        """
         for video_labels in self:
             video_labels.clear_objects()
 
     def clear_video_events(self):
-        '''Removes all `VideoEvent`s from all VideoLabels in the set.'''
+        """Removes all `VideoEvent`s from all VideoLabels in the set."""
         for video_labels in self:
             video_labels.clear_video_events()
 
     def clear_detected_events(self):
-        '''Removes all `DetectedEvent`s from all VideoLabels in the set.'''
+        """Removes all `DetectedEvent`s from all VideoLabels in the set."""
         for video_labels in self:
             video_labels.clear_detected_events()
 
     def clear_events(self):
-        '''Removes all `VideoEvent`s and `DetectedEvent`s from all VideoLabels
+        """Removes all `VideoEvent`s and `DetectedEvent`s from all VideoLabels
         in the set.
-        '''
+        """
         for video_labels in self:
             video_labels.clear_events()
 
     def get_filenames(self):
-        '''Returns the set of filenames of VideoLabels in the set.
+        """Returns the set of filenames of VideoLabels in the set.
 
         Returns:
             the set of filenames
-        '''
+        """
         return set(vl.filename for vl in self if vl.filename)
 
     def remove_objects_without_attrs(self, labels=None):
-        '''Removes objects from the VideoLabels in the set that do not have
+        """Removes objects from the VideoLabels in the set that do not have
         attributes.
 
         Args:
             labels: an optional list of object label strings to which to
                 restrict attention when filtering. By default, all objects are
                 processed
-        '''
+        """
         for video_labels in self:
             video_labels.remove_objects_without_attrs(labels=labels)
 
     @classmethod
     def from_video_labels_patt(cls, video_labels_patt):
-        '''Creates a VideoSetLabels from a pattern of VideoLabels files.
+        """Creates a VideoSetLabels from a pattern of VideoLabels files.
 
         Args:
              video_labels_patt: a pattern with one or more numeric sequences
@@ -1787,12 +1891,12 @@ class VideoSetLabels(etal.LabelsSet):
 
         Returns:
             a VideoSetLabels instance
-        '''
+        """
         return cls.from_labels_patt(video_labels_patt)
 
 
 class BigVideoSetLabels(VideoSetLabels, etas.BigSet):
-    '''A BigSet of VideoLabels.
+    """A BigSet of VideoLabels.
 
     Behaves identically to VideoSetLabels except that each VideoLabels is
     stored on disk.
@@ -1810,10 +1914,10 @@ class BigVideoSetLabels(VideoSetLabels, etas.BigSet):
         schema: a VideoLabelsSchema describing the schema of the labels
         backing_dir: the backing directory in which the VideoLabels
             are/will be stored
-    '''
+    """
 
     def __init__(self, videos=None, schema=None, backing_dir=None):
-        '''Creates a BigVideoSetLabels instance.
+        """Creates a BigVideoSetLabels instance.
 
         Args:
             videos: an optional dictionary or list of (key, uuid) tuples for
@@ -1823,33 +1927,33 @@ class BigVideoSetLabels(VideoSetLabels, etas.BigSet):
             backing_dir: an optional backing directory in which the VideoLabels
                 are/will be stored. If omitted, a temporary backing directory
                 is used
-        '''
+        """
         etas.BigSet.__init__(self, backing_dir=backing_dir, videos=videos)
         etal.HasLabelsSchema.__init__(self, schema=schema)
 
     def empty_set(self):
-        '''Returns an empty in-memory VideoSetLabels version of this
+        """Returns an empty in-memory VideoSetLabels version of this
         BigVideoSetLabels.
 
         Returns:
             an empty VideoSetLabels
-        '''
+        """
         return VideoSetLabels(schema=self.schema)
 
     def filter_by_schema(self, schema):
-        '''Removes objects/attributes from the VideoLabels in the set that
+        """Removes objects/attributes from the VideoLabels in the set that
         are not compliant with the given schema.
 
         Args:
             schema: a VideoLabelsSchema
-        '''
+        """
         for key in self.keys():
             video_labels = self[key]
             video_labels.filter_by_schema(schema)
             self[key] = video_labels
 
     def set_schema(self, schema, filter_by_schema=False, validate=False):
-        '''Sets the enforced schema to the given VideoLabelsSchema.
+        """Sets the enforced schema to the given VideoLabelsSchema.
 
         Args:
             schema: a VideoLabelsSchema to assign
@@ -1862,23 +1966,24 @@ class BigVideoSetLabels(VideoSetLabels, etas.BigSet):
         Raises:
             LabelsSchemaError: if `validate` was `True` and this set contains
                 labels that are not compliant with the schema
-        '''
+        """
         self.schema = schema
         for key in self.keys():
             video_labels = self[key]
             video_labels.set_schema(
-                schema, filter_by_schema=filter_by_schema, validate=validate)
+                schema, filter_by_schema=filter_by_schema, validate=validate
+            )
             self[key] = video_labels
 
     def remove_objects_without_attrs(self, labels=None):
-        '''Removes all objects from the BigVideoSetLabels that do not have
+        """Removes all objects from the BigVideoSetLabels that do not have
         attributes.
 
         Args:
             labels: an optional list of object label strings to which to
                 restrict attention when filtering. By default, all objects are
                 processed
-        '''
+        """
         for key in self.keys():
             video_labels = self[key]
             video_labels.remove_objects_without_attrs(labels=labels)
@@ -1886,27 +1991,27 @@ class BigVideoSetLabels(VideoSetLabels, etas.BigSet):
 
 
 class VideoStreamInfo(etas.Serializable):
-    '''Class encapsulating the stream info for a video.'''
+    """Class encapsulating the stream info for a video."""
 
     def __init__(self, stream_info, format_info, mime_type=None):
-        '''Creates a VideoStreamInfo instance.
+        """Creates a VideoStreamInfo instance.
 
         Args:
             stream_info: a dictionary of video stream info
             format_info: a dictionary of video format info
             mime_type: (optional) the MIME type of the video
-        '''
+        """
         self.stream_info = stream_info
         self.format_info = format_info
         self._mime_type = mime_type
 
     @property
     def frame_size(self):
-        '''The (width, height) of each frame.
+        """The (width, height) of each frame.
 
         Raises:
             VideoStreamInfoError: if the frame size could not be determined
-        '''
+        """
         try:
             # Must check if the video is rotated!
             rotation = int(self.stream_info["tags"]["rotate"])
@@ -1920,31 +2025,33 @@ class VideoStreamInfo(etas.Serializable):
             if (rotation // 90) % 2:
                 logger.debug(
                     "Found video with rotation %d; swapping width and height",
-                    rotation)
+                    rotation,
+                )
                 width, height = height, width
 
             return width, height
         except (KeyError, ValueError):
             raise VideoStreamInfoError(
-                "Unable to determine frame size of the video")
+                "Unable to determine frame size of the video"
+            )
 
     @property
     def aspect_ratio(self):
-        '''The aspect ratio of the video.
+        """The aspect ratio of the video.
 
         Raises:
             VideoStreamInfoError: if the frame size could not be determined
-        '''
+        """
         width, height = self.frame_size
         return width * 1.0 / height
 
     @property
     def frame_rate(self):
-        '''The frame rate of the video.
+        """The frame rate of the video.
 
         Raises:
             VideoStreamInfoError: if the frame rate could not be determined
-        '''
+        """
         try:
             try:
                 num, denom = self.stream_info["avg_frame_rate"].split("/")
@@ -1954,13 +2061,14 @@ class VideoStreamInfo(etas.Serializable):
                 return float(num) / float(denom)
         except (KeyError, ValueError):
             raise VideoStreamInfoError(
-                "Unable to determine frame rate of the video")
+                "Unable to determine frame rate of the video"
+            )
 
     @property
     def total_frame_count(self):
-        '''The total number of frames in the video, or -1 if it could not be
+        """The total number of frames in the video, or -1 if it could not be
         determined.
-        '''
+        """
         try:
             # try `nb_frames`
             return int(self.stream_info["nb_frames"])
@@ -1991,9 +2099,9 @@ class VideoStreamInfo(etas.Serializable):
 
     @property
     def duration(self):
-        '''The duration of the video, in seconds, or -1 if it could not be
+        """The duration of the video, in seconds, or -1 if it could not be
         determined.
-        '''
+        """
         try:
             # try `duration`
             return float(self.stream_info["duration"])
@@ -2019,9 +2127,9 @@ class VideoStreamInfo(etas.Serializable):
 
     @property
     def size_bytes(self):
-        '''The size of the video on disk, in bytes, or -1 if it could not be
+        """The size of the video on disk, in bytes, or -1 if it could not be
         determined.
-        '''
+        """
         try:
             return int(self.format_info["size"])
         except KeyError:
@@ -2032,12 +2140,12 @@ class VideoStreamInfo(etas.Serializable):
 
     @property
     def mime_type(self):
-        '''The MIME type of the video, or None if it is not available.'''
+        """The MIME type of the video, or None if it is not available."""
         return self._mime_type
 
     @property
     def encoding_str(self):
-        '''The video encoding string, or "" if it code not be found.'''
+        """The video encoding string, or "" if it code not be found."""
         _encoding_str = str(self.stream_info.get("codec_tag_string", ""))
         if _encoding_str is None:
             logger.warning("Unable to determine encoding string")
@@ -2045,12 +2153,12 @@ class VideoStreamInfo(etas.Serializable):
         return _encoding_str
 
     def attributes(self):
-        '''Returns the list of class attributes that will be serialized.'''
+        """Returns the list of class attributes that will be serialized."""
         return self.custom_attributes(dynamic=True)
 
     @classmethod
     def build_for(cls, video_path, verbose=False):
-        '''Builds a VideoStreamInfo instance for the given video.
+        """Builds a VideoStreamInfo instance for the given video.
 
         Args:
             video_path: the path to the video
@@ -2059,31 +2167,33 @@ class VideoStreamInfo(etas.Serializable):
 
         Returns:
             a VideoStreamInfo instance
-        '''
+        """
         if verbose:
             logger.info("Getting stream info for '%s'", video_path)
 
         stream_info, format_info = _get_stream_info(
-            video_path, verbose=verbose)
+            video_path, verbose=verbose
+        )
 
         if verbose:
             logger.info("Found format info: %s", etas.json_to_str(format_info))
             logger.info(
-                "Found video stream: %s", etas.json_to_str(stream_info))
+                "Found video stream: %s", etas.json_to_str(stream_info)
+            )
 
         mime_type = etau.guess_mime_type(video_path)
         return cls(stream_info, format_info, mime_type=mime_type)
 
     @classmethod
     def from_dict(cls, d):
-        '''Constructs a VideoStreamInfo from a JSON dictionary.
+        """Constructs a VideoStreamInfo from a JSON dictionary.
 
         Args:
             d: a JSON dictionary
 
         Returns:
             a VideoStreamInfo
-        '''
+        """
         stream_info = d["stream_info"]
         format_info = d["format_info"]
         mime_type = d.get("mime_type", None)
@@ -2091,17 +2201,21 @@ class VideoStreamInfo(etas.Serializable):
 
 
 class VideoStreamInfoError(Exception):
-    '''Exception raised when a problem with a VideoStreamInfo occurs.'''
+    """Exception raised when a problem with a VideoStreamInfo occurs."""
+
     pass
 
 
 def _get_stream_info(inpath, verbose=False):
     # Get stream info via ffprobe
-    ffprobe = FFprobe(opts=[
-        "-show_format",              # get format info
-        "-show_streams",             # get stream info
-        "-print_format", "json",     # return in JSON format
-    ])
+    ffprobe = FFprobe(
+        opts=[
+            "-show_format",  # get format info
+            "-show_streams",  # get stream info
+            "-print_format",
+            "json",  # return in JSON format
+        ]
+    )
     out = ffprobe.run(inpath, decode=True, verbose=verbose)
     info = etas.load_json(out)
 
@@ -2124,43 +2238,43 @@ def _get_stream_info(inpath, verbose=False):
 
 
 def get_frame_rate(inpath):
-    '''Get the frame rate of the input video.
+    """Get the frame rate of the input video.
 
     Args:
         inpath: video path
 
     Returns:
         the frame rate
-    '''
+    """
     return VideoStreamInfo.build_for(inpath).frame_rate
 
 
 def get_frame_size(inpath):
-    '''Get the frame (width, height) of the input video.
+    """Get the frame (width, height) of the input video.
 
     Args:
         inpath: video path
 
     Returns:
         the (width, height) of the video frames
-    '''
+    """
     return VideoStreamInfo.build_for(inpath).frame_size
 
 
 def get_frame_count(inpath):
-    '''Get the number of frames in the input video.
+    """Get the number of frames in the input video.
 
     Args:
         inpath: video path
 
     Returns:
         the frame count, or -1 if it could not be determined
-    '''
+    """
     return VideoStreamInfo.build_for(inpath).total_frame_count
 
 
 def get_duration(inpath):
-    '''Gets the duration of the video, in seconds.
+    """Gets the duration of the video, in seconds.
 
     Args:
         inpath: video path
@@ -2168,24 +2282,24 @@ def get_duration(inpath):
     Returns:
         the duration of the video, in seconds, or -1 if it could not be
             determined
-    '''
+    """
     return VideoStreamInfo.build_for(inpath).duration
 
 
 def get_encoding_str(inpath):
-    '''Get the encoding string of the input video.
+    """Get the encoding string of the input video.
 
     Args:
         inpath: video path
 
     Returns:
         the encoding string
-    '''
+    """
     return VideoStreamInfo.build_for(inpath).encoding_str
 
 
 def get_raw_frame_number(raw_frame_rate, raw_frame_count, fps, sampled_frame):
-    '''Get the raw frame number corresponding to the given sampled frame
+    """Get the raw frame number corresponding to the given sampled frame
     number.
 
     This function assumes that the sampling was performed using the command::
@@ -2201,15 +2315,16 @@ def get_raw_frame_number(raw_frame_rate, raw_frame_count, fps, sampled_frame):
     Returns:
         raw_frame: the raw frame number from the input video corresponding to
             the given sampled frame number
-    '''
+    """
     delta = raw_frame_rate / (1.0 * fps)
     raw_frame = np.minimum(
-        np.ceil(delta * (sampled_frame - 0.5)), raw_frame_count)
+        np.ceil(delta * (sampled_frame - 0.5)), raw_frame_count
+    )
     return int(raw_frame)
 
 
 def read_video_as_array(video_path):
-    '''Reads the video from the given path into an in-memory array.
+    """Reads the video from the given path into an in-memory array.
 
     CAUTION: in-memory videos are huge; use this at your own risk!
 
@@ -2218,13 +2333,13 @@ def read_video_as_array(video_path):
 
     Returns:
         a numpy array of size (num_frames, height, width, num_channels)
-    '''
+    """
     with FFmpegVideoReader(video_path) as vr:
         return np.asarray([img for img in vr])
 
 
 def get_frame_range_for_clip(video_path, start_time=None, duration=None):
-    '''Gets a FrameRange instance describing the specified range of frames in
+    """Gets a FrameRange instance describing the specified range of frames in
     the given video.
 
     Args:
@@ -2238,7 +2353,7 @@ def get_frame_range_for_clip(video_path, start_time=None, duration=None):
 
     Returns:
         a FrameRange
-    '''
+    """
     metadata = VideoMetadata.build_for(video_path)
 
     if start_time is not None:
@@ -2258,8 +2373,9 @@ def get_frame_range_for_clip(video_path, start_time=None, duration=None):
 
 
 def extract_clip(
-        video_path, output_path, start_time=None, duration=None, fast=False):
-    '''Extracts the specified clip from the video.
+    video_path, output_path, start_time=None, duration=None, fast=False
+):
+    """Extracts the specified clip from the video.
 
     When fast=False, the following ffmpeg command is used::
 
@@ -2284,7 +2400,7 @@ def extract_clip(
             extends to the end of the video
         fast: whether to use a faster-but-potentially-less-accurate strategy to
             extract the clip. By default, the slow accurate strategy is used
-    '''
+    """
     #
     # @todo using FFmpeg directly here may not yield exact alignment with frame
     # numbers generated by FFmpegVideoReader, VideoProcessor, etc. Should we
@@ -2327,9 +2443,13 @@ def extract_clip(
 
 
 def extract_clip_frames(
-        video_path, output_patt, start_time=None, duration=None,
-        keep_source_frame_numbers=False):
-    '''Extracts the frames of the specified clip from the video.
+    video_path,
+    output_patt,
+    start_time=None,
+    duration=None,
+    keep_source_frame_numbers=False,
+):
+    """Extracts the frames of the specified clip from the video.
 
     Args:
         video_path: the path to the video
@@ -2344,9 +2464,10 @@ def extract_clip_frames(
         keep_source_frame_numbers: whether to write the output frames with
             their frame numbers from the source video. If False (the default),
             the output frames are written with frame numbers starting from 1
-    '''
+    """
     frames = get_frame_range_for_clip(
-        video_path, start_time=start_time, duration=duration)
+        video_path, start_time=start_time, duration=duration
+    )
 
     with FFmpegVideoReader(video_path, frames=frames) as vr:
         for idx, img in enumerate(vr, 1):
@@ -2359,7 +2480,7 @@ def extract_clip_frames(
 
 
 def extract_frame(video_path, output_path, start_time=None):
-    '''Extracts a single frame from the local video or from the live stream and
+    """Extracts a single frame from the local video or from the live stream and
     saves it to an image.
 
     This extraction function is the simplest of the extract command in this
@@ -2377,7 +2498,7 @@ def extract_frame(video_path, output_path, start_time=None):
         start_time: a string in the ffmpeg time duration format, as follows,
             [-][HH:]MM:SS[.m...]
             https://ffmpeg.org/ffmpeg-utils.html#time-duration-syntax
-    '''
+    """
     in_opts = ["-vsync", "0"]
     if start_time is not None:
         if not isinstance(start_time, six.string_types):
@@ -2394,8 +2515,9 @@ def _make_ffmpeg_select_arg(frames):
 
 
 def sample_select_frames(
-        video_path, frames, output_patt=None, size=None, fast=False):
-    '''Samples the specified frames of the video.
+    video_path, frames, output_patt=None, size=None, fast=False
+):
+    """Samples the specified frames of the video.
 
     This method is *intentionally* designed to be extremely graceful. It will
     sample whatever frames it can from the video you provide and will
@@ -2434,11 +2556,12 @@ def sample_select_frames(
         where `imgs` is the list of sampled frames, and `frames` is the list
         of frames that were succesfully sampled. If no errors were encountered,
         the output `frames` will match the input `frames`
-    '''
+    """
     if fast:
         try:
             return _sample_select_frames_fast(
-                video_path, frames, output_patt, size)
+                video_path, frames, output_patt, size
+            )
         except SampleSelectFramesError as e:
             logger.warning("Select frames fast mode failed: '%s'", e)
             logger.info("Reverting to `fast=False`")
@@ -2447,9 +2570,10 @@ def sample_select_frames(
 
 
 class SampleSelectFramesError(Exception):
-    '''Exception raised when the `sample_select_frames` method encounters an
+    """Exception raised when the `sample_select_frames` method encounters an
     error.
-    '''
+    """
+
     pass
 
 
@@ -2462,7 +2586,8 @@ def _sample_select_frames_fast(video_path, frames, output_patt, size):
     select_arg_str = _make_ffmpeg_select_arg(frames)
     if len(select_arg_str) > 131072:
         raise SampleSelectFramesError(
-            "Number of frames (%d) requested too large" % len(frames))
+            "Number of frames (%d) requested too large" % len(frames)
+        )
 
     # If reading into memory, use `png` to ensure lossless-ness
     ext = os.path.splitext(output_patt)[1] if output_patt else ".png"
@@ -2476,7 +2601,8 @@ def _sample_select_frames_fast(video_path, frames, output_patt, size):
         # Sample frames to disk temporarily
         tmp_patt = os.path.join(d, "frame-%06d" + ext)
         ffmpeg = FFmpeg(
-            size=size, out_opts=["-vf", select_arg_str, "-vsync", "0"])
+            size=size, out_opts=["-vf", select_arg_str, "-vsync", "0"]
+        )
 
         try:
             ffmpeg.run(video_path, tmp_patt)
@@ -2484,7 +2610,8 @@ def _sample_select_frames_fast(video_path, frames, output_patt, size):
             # Graceful failure if frames couldn't be sampled
             logger.warning(etau.summarize_long_str(str(e), 500))
             logger.warning(
-                "A sampling error occured; attempting to gracefully continue")
+                "A sampling error occured; attempting to gracefully continue"
+            )
 
         sampled_frames = etau.parse_pattern(tmp_patt)
         out_frames = [frames[i - 1] for i in sampled_frames]
@@ -2494,8 +2621,10 @@ def _sample_select_frames_fast(video_path, frames, output_patt, size):
         # Warn user if not all frames were sampled
         if num_frames < num_target_frames:
             logger.warning(
-                "Only %d/%d expected frames were sampled", num_frames,
-                num_target_frames)
+                "Only %d/%d expected frames were sampled",
+                num_frames,
+                num_target_frames,
+            )
 
         #
         # If an insufficient number of frames were succesfully sampled, revert
@@ -2506,8 +2635,9 @@ def _sample_select_frames_fast(video_path, frames, output_patt, size):
         if percent_complete < target_percent_complete:
             raise SampleSelectFramesError(
                 "We only managed to sample %.1f%% of the frames; this is "
-                "below our target of %.1f%%, so let's try slow mode" %
-                (100 * percent_complete, 100 * target_percent_complete))
+                "below our target of %.1f%%, so let's try slow mode"
+                % (100 * percent_complete, 100 * target_percent_complete)
+            )
 
         # Move frames into place with correct output names
         if output_patt is not None:
@@ -2533,7 +2663,8 @@ def _sample_select_frames_slow(video_path, frames, output_patt, size):
     # Sample frames to disk via VideoProcessor
     if output_patt:
         p = VideoProcessor(
-            video_path, frames=frames, out_images_path=output_patt)
+            video_path, frames=frames, out_images_path=output_patt
+        )
         with p:
             for img in p:
                 if resize_images:
@@ -2558,7 +2689,7 @@ def _sample_select_frames_slow(video_path, frames, output_patt, size):
 
 
 def sample_first_frames(imgs_or_video_path, k, stride=1, size=None):
-    '''Samples the first k frames in a video.
+    """Samples the first k frames in a video.
 
     Args:
         imgs_or_video_path: can be either the path to the input video or an
@@ -2571,7 +2702,7 @@ def sample_first_frames(imgs_or_video_path, k, stride=1, size=None):
 
     Returns:
         a numpy array of size [k, height, width, num_channels]
-    '''
+    """
     # Read frames ...
     if isinstance(imgs_or_video_path, six.string_types):
         # ... from disk
@@ -2582,15 +2713,18 @@ def sample_first_frames(imgs_or_video_path, k, stride=1, size=None):
     else:
         # ... from tensor
         imgs = imgs_or_video_path
-        imgs_out = imgs[:(k * stride):stride]
+        imgs_out = imgs[: (k * stride) : stride]
 
     # Duplicate last frame if necessary
     if k > len(imgs_out):
         num_repeats = k - len(imgs_out)
         imgs_out = np.asarray(imgs_out)
-        imgs_out = np.concatenate((
-            imgs_out, np.repeat(imgs_out[-1][np.newaxis], num_repeats, axis=0)
-        ))
+        imgs_out = np.concatenate(
+            (
+                imgs_out,
+                np.repeat(imgs_out[-1][np.newaxis], num_repeats, axis=0),
+            )
+        )
 
     # Resize frames, if necessary
     if size is not None:
@@ -2600,7 +2734,7 @@ def sample_first_frames(imgs_or_video_path, k, stride=1, size=None):
 
 
 def uniformly_sample_frames(imgs_or_video_path, k, size=None):
-    '''Uniformly samples k frames from the video, always including the first
+    """Uniformly samples k frames from the video, always including the first
     and last frames.
 
     If k is larger than the number of frames in the video, duplicate frames
@@ -2615,7 +2749,7 @@ def uniformly_sample_frames(imgs_or_video_path, k, size=None):
 
     Returns:
         a numpy array of size [k, height, width, num_channels]
-    '''
+    """
     is_video = isinstance(imgs_or_video_path, six.string_types)
     if is_video:
         video_path = imgs_or_video_path
@@ -2643,7 +2777,7 @@ def uniformly_sample_frames(imgs_or_video_path, k, size=None):
 
 
 def sliding_window_sample_frames(imgs_or_video_path, k, stride, size=None):
-    '''Samples clips from the video using a sliding window of the given
+    """Samples clips from the video using a sliding window of the given
     length and stride.
 
     If k is larger than the number of frames in the video, duplicate frames
@@ -2659,7 +2793,7 @@ def sliding_window_sample_frames(imgs_or_video_path, k, stride, size=None):
 
     Returns:
         a numpy array of size [XXXX, k, height, width, num_channels]
-    '''
+    """
     is_video = isinstance(imgs_or_video_path, six.string_types)
     if is_video:
         video_path = imgs_or_video_path
@@ -2674,9 +2808,9 @@ def sliding_window_sample_frames(imgs_or_video_path, k, stride, size=None):
         clip_inds = offsets[:, np.newaxis] + delta[np.newaxis, :]
     else:
         # Duplicate last frame as necessary to fill one window of size k
-        clip_inds = np.concatenate((
-            np.arange(1, num_frames + 1),
-            [num_frames] * (k - num_frames)))[np.newaxis]
+        clip_inds = np.concatenate(
+            (np.arange(1, num_frames + 1), [num_frames] * (k - num_frames))
+        )[np.newaxis]
 
     # Read frames ...
     imgs_dict = {}
@@ -2706,7 +2840,7 @@ def sliding_window_sample_frames(imgs_or_video_path, k, stride, size=None):
 
 
 def extract_keyframes(video_path, output_patt=None):
-    '''Extracts the keyframes from the video.
+    """Extracts the keyframes from the video.
 
     Keyframes are a set of video frames that mark the start of a transition,
     and are faster to extract than an arbitrary frame.
@@ -2719,11 +2853,12 @@ def extract_keyframes(video_path, output_patt=None):
 
     Returns:
         a list of the keyframes if output_patt is None, and None otherwise
-    '''
+    """
     if output_patt:
         # Write frames to disk via VideoProcessor
         p = VideoProcessor(
-            video_path, keyframes_only=True, out_images_path=output_patt)
+            video_path, keyframes_only=True, out_images_path=output_patt
+        )
         with p:
             for img in p:
                 p.write(img)
@@ -2736,9 +2871,13 @@ def extract_keyframes(video_path, output_patt=None):
 
 
 def split_video(
-        video_path, output_patt, num_clips=None, clip_duration=None,
-        clip_size_bytes=None):
-    '''Splits the video into (roughly) equal-sized clips of the specified size.
+    video_path,
+    output_patt,
+    num_clips=None,
+    clip_duration=None,
+    clip_size_bytes=None,
+):
+    """Splits the video into (roughly) equal-sized clips of the specified size.
 
     Exactly one keyword argument should be provided.
 
@@ -2759,7 +2898,7 @@ def split_video(
             generate. The last clip may be shorter
         clip_size_bytes: the (approximate) size, in bytes, of each clip to
             generate. The last clip may be smaller
-    '''
+    """
     #
     # Determine segment time
     #
@@ -2783,17 +2922,21 @@ def split_video(
 
     in_opts = []
     out_opts = [
-        "-c:v", "copy",
-        "-segment_time", "%.3f" % segment_time,
-        "-f", "segment",
-        "-reset_timestamps", "1",
+        "-c:v",
+        "copy",
+        "-segment_time",
+        "%.3f" % segment_time,
+        "-f",
+        "segment",
+        "-reset_timestamps",
+        "1",
     ]
     ffmpeg = FFmpeg(in_opts=in_opts, out_opts=out_opts)
     ffmpeg.run(video_path, output_patt)
 
 
 class VideoProcessor(object):
-    '''Class for reading a video and writing a new video frame-by-frame.
+    """Class for reading a video and writing a new video frame-by-frame.
 
     The typical usage is::
 
@@ -2801,22 +2944,23 @@ class VideoProcessor(object):
             for img in p:
                 new_img = ... # process img
                 p.write(new_img)
-    '''
+    """
 
     def __init__(
-            self,
-            inpath,
-            frames=None,
-            keyframes_only=False,
-            in_use_ffmpeg=True,
-            out_use_ffmpeg=True,
-            out_images_path=None,
-            out_video_path=None,
-            out_clips_path=None,
-            out_fps=None,
-            out_size=None,
-            out_opts=None):
-        '''Creates a VideoProcessor instance.
+        self,
+        inpath,
+        frames=None,
+        keyframes_only=False,
+        in_use_ffmpeg=True,
+        out_use_ffmpeg=True,
+        out_images_path=None,
+        out_video_path=None,
+        out_clips_path=None,
+        out_fps=None,
+        out_size=None,
+        out_opts=None,
+    ):
+        """Creates a VideoProcessor instance.
 
         Args:
             inpath: path to the input video. Passed directly to a VideoReader
@@ -2853,13 +2997,15 @@ class VideoProcessor(object):
         Raises:
             VideoProcessorError: if insufficient options are supplied to
                 construct a VideoWriter
-        '''
+        """
         if in_use_ffmpeg:
             self._reader = FFmpegVideoReader(
-                inpath, frames=frames, keyframes_only=keyframes_only)
+                inpath, frames=frames, keyframes_only=keyframes_only
+            )
         elif keyframes_only:
             raise VideoProcessorError(
-                "Must have `in_use_ffmpeg=True` when `keyframes_only=True`")
+                "Must have `in_use_ffmpeg=True` when `keyframes_only=True`"
+            )
         else:
             self._reader = OpenCVVideoReader(inpath, frames=frames)
         self._video_clip_writer = None
@@ -2881,14 +3027,15 @@ class VideoProcessor(object):
             self.out_fps = self._reader.frame_rate
         else:
             raise VideoProcessorError(
-                "The inferred frame rate '%s' cannot be used. You must " +
-                "manually specify a frame rate" % str(self._reader.frame_rate))
+                "The inferred frame rate '%s' cannot be used. You must "
+                + "manually specify a frame rate"
+                % str(self._reader.frame_rate)
+            )
         self.out_size = out_size if out_size else self._reader.frame_size
         self.out_opts = out_opts
 
         if self._write_video:
-            self._video_writer = self._new_video_writer(
-                self.out_video_path)
+            self._video_writer = self._new_video_writer(self.out_video_path)
 
     def __enter__(self):
         return self
@@ -2904,63 +3051,63 @@ class VideoProcessor(object):
 
     @property
     def input_frame_size(self):
-        '''The (width, height) of each input frame.'''
+        """The (width, height) of each input frame."""
         return self._reader.frame_size
 
     @property
     def output_frame_size(self):
-        '''The (width, height) of each output frame.'''
+        """The (width, height) of each output frame."""
         return self.out_size
 
     @property
     def input_frame_rate(self):
-        '''The input frame rate.'''
+        """The input frame rate."""
         return self._reader.frame_rate
 
     @property
     def output_frame_rate(self):
-        '''The output frame rate.'''
+        """The output frame rate."""
         return self.out_fps
 
     @property
     def frame_number(self):
-        '''The current frame number, or -1 if no frames have been read.'''
+        """The current frame number, or -1 if no frames have been read."""
         return self._reader.frame_number
 
     @property
     def frame_range(self):
-        '''The (first, last) frames for the current range, or (-1, -1) if no
+        """The (first, last) frames for the current range, or (-1, -1) if no
         frames have been read.
-        '''
+        """
         return self._reader.frame_range
 
     @property
     def is_new_frame_range(self):
-        '''Whether the current frame is the first in a new range.'''
+        """Whether the current frame is the first in a new range."""
         return self._reader.is_new_frame_range
 
     @property
     def total_frame_count(self):
-        '''The total number of frames in the video.'''
+        """The total number of frames in the video."""
         return self._reader.total_frame_count
 
     def process(self):
-        '''Returns the next frame.
+        """Returns the next frame.
 
         Returns:
             img: the frame as a numpy array
-        '''
+        """
         img = self._reader.read()
         if self._write_clips and self._reader.is_new_frame_range:
             self._reset_video_clip_writer()
         return img
 
     def write(self, img):
-        '''Appends the image to the output VideoWriter(s).
+        """Appends the image to the output VideoWriter(s).
 
         Args:
             img: an numpy array containing the image
-        '''
+        """
         if self._write_images:
             etai.write(img, self.out_images_path % self._reader.frame_number)
         if self._write_video:
@@ -2969,7 +3116,7 @@ class VideoProcessor(object):
             self._video_clip_writer.write(img)
 
     def close(self):
-        '''Closes the video processor.'''
+        """Closes the video processor."""
         self._reader.close()
         if self._video_writer is not None:
             self._video_writer.close()
@@ -2986,19 +3133,20 @@ class VideoProcessor(object):
     def _new_video_writer(self, outpath):
         if self.out_use_ffmpeg:
             return FFmpegVideoWriter(
-                outpath, self.out_fps, self.out_size, out_opts=self.out_opts)
+                outpath, self.out_fps, self.out_size, out_opts=self.out_opts
+            )
 
-        return OpenCVVideoWriter(
-            outpath, self.out_fps, self.out_size)
+        return OpenCVVideoWriter(outpath, self.out_fps, self.out_size)
 
 
 class VideoProcessorError(Exception):
-    '''Exception raised when a problem with a VideoProcessor is encountered.'''
+    """Exception raised when a problem with a VideoProcessor is encountered."""
+
     pass
 
 
 class VideoReader(object):
-    '''Base class for reading videos.
+    """Base class for reading videos.
 
     This class declares the following conventions:
 
@@ -3009,10 +3157,10 @@ class VideoReader(object):
 
         (b) `VideoReader`s support a `reset()` method that allows them to be
             reset back to their first frame, on demand
-    '''
+    """
 
     def __init__(self, inpath, frames):
-        '''Initializes a VideoReader base instance.
+        """Initializes a VideoReader base instance.
 
         Args:
             inpath: the input video path
@@ -3025,7 +3173,7 @@ class VideoReader(object):
                 - an `eta.core.frameutils.FrameRanges` instance
                 - an iterable, e.g., [1, 2, 3, 6, 8, 9, 10]. The frames do not
                     need to be in sorted order
-        '''
+        """
         self.inpath = inpath
 
         # Parse frames
@@ -3047,77 +3195,78 @@ class VideoReader(object):
         return self.read()
 
     def close(self):
-        '''Closes the VideoReader.
+        """Closes the VideoReader.
 
         Subclasses can override this method if necessary.
-        '''
+        """
         pass
 
     def reset(self):
-        '''Resets the VideoReader so that the next call to `read()` will return
+        """Resets the VideoReader so that the next call to `read()` will return
         the first frame.
-        '''
+        """
         raise NotImplementedError("subclass must implement reset()")
 
     def _reset(self):
-        '''Base VideoReader implementation of `reset()`. Subclasses must call
+        """Base VideoReader implementation of `reset()`. Subclasses must call
         this method internally within `reset()`.
-        '''
+        """
         self._ranges.reset()
 
     @property
     def frame_number(self):
-        '''The current frame number, or -1 if no frames have been read.'''
+        """The current frame number, or -1 if no frames have been read."""
         return self._ranges.frame
 
     @property
     def frame_range(self):
-        '''The (first, last) frames for the current range, or (-1, -1) if no
+        """The (first, last) frames for the current range, or (-1, -1) if no
         frames have been read.
-        '''
+        """
         return self._ranges.frame_range
 
     @property
     def is_new_frame_range(self):
-        '''Whether the current frame is the first in a new range.'''
+        """Whether the current frame is the first in a new range."""
         return self._ranges.is_new_frame_range
 
     @property
     def encoding_str(self):
-        '''The video encoding string.'''
+        """The video encoding string."""
         raise NotImplementedError("subclass must implement encoding_str")
 
     @property
     def frame_size(self):
-        '''The (width, height) of each frame.'''
+        """The (width, height) of each frame."""
         raise NotImplementedError("subclass must implement frame_size")
 
     @property
     def frame_rate(self):
-        '''The frame rate.'''
+        """The frame rate."""
         raise NotImplementedError("subclass must implement frame_rate")
 
     @property
     def total_frame_count(self):
-        '''The total number of frames in the video.'''
+        """The total number of frames in the video."""
         raise NotImplementedError("subclass must implement total_frame_count")
 
     def read(self):
-        '''Reads the next frame.
+        """Reads the next frame.
 
         Returns:
             img: the next frame
-        '''
+        """
         raise NotImplementedError("subclass must implement read()")
 
 
 class VideoReaderError(Exception):
-    '''Exception raised when a problem with a VideoReader is encountered.'''
+    """Exception raised when a problem with a VideoReader is encountered."""
+
     pass
 
 
 class FFmpegVideoReader(VideoReader):
-    '''Class for reading video using ffmpeg.
+    """Class for reading video using ffmpeg.
 
     The input video can be a standalone video file like "/path/to/video.mp4"
     or a directory of frames like "/path/to/frames/%05d.png". This path is
@@ -3127,10 +3276,10 @@ class FFmpegVideoReader(VideoReader):
     certain frame ranges.
 
     This class uses 1-based indexing for all frame operations.
-    '''
+    """
 
     def __init__(self, inpath, frames=None, keyframes_only=False):
-        '''Creates an FFmpegVideoReader instance.
+        """Creates an FFmpegVideoReader instance.
 
         Args:
             inpath: path to the input video, which can be a standalone video
@@ -3149,7 +3298,7 @@ class FFmpegVideoReader(VideoReader):
             keyframes_only: whether to only read keyframes. By default, this
                 is False. When this is True, `frames` is interpreted as
                 keyframe numbers
-        '''
+        """
         # Parse args
         if keyframes_only:
             in_opts = ["-skip_frame", "nokey", "-vsync", "0"]
@@ -3160,10 +3309,14 @@ class FFmpegVideoReader(VideoReader):
         self._ffmpeg = FFmpeg(
             in_opts=in_opts,
             out_opts=[
-                "-vsync", "0",              # never omit frames
-                "-f", 'image2pipe',         # pipe frames to stdout
-                "-vcodec", "rawvideo",      # output will be raw video
-                "-pix_fmt", "rgb24",        # pixel format
+                "-vsync",
+                "0",  # never omit frames
+                "-f",
+                "image2pipe",  # pipe frames to stdout
+                "-vcodec",
+                "rawvideo",  # output will be raw video
+                "-pix_fmt",
+                "rgb24",  # pixel format
             ],
         )
         self._raw_frame = None
@@ -3172,39 +3325,39 @@ class FFmpegVideoReader(VideoReader):
         super(FFmpegVideoReader, self).__init__(inpath, frames)
 
     def close(self):
-        '''Closes the FFmpegVideoReader.'''
+        """Closes the FFmpegVideoReader."""
         self._ffmpeg.close()
 
     def reset(self):
-        '''Resets the FFmpegVideoReader.'''
+        """Resets the FFmpegVideoReader."""
         self.close()
         self._reset()
         self._open_stream(self.inpath)
 
     @property
     def encoding_str(self):
-        '''The video encoding string.'''
+        """The video encoding string."""
         return self._stream_info.encoding_str
 
     @property
     def frame_size(self):
-        '''The (width, height) of each frame.'''
+        """The (width, height) of each frame."""
         return self._stream_info.frame_size
 
     @property
     def frame_rate(self):
-        '''The frame rate.'''
+        """The frame rate."""
         return self._stream_info.frame_rate
 
     @property
     def total_frame_count(self):
-        '''The total number of frames in the video, or 0 if it could not be
+        """The total number of frames in the video, or 0 if it could not be
         determined.
-        '''
+        """
         return self._stream_info.total_frame_count
 
     def read(self):
-        '''Reads the next frame.
+        """Reads the next frame.
 
         If any problem is encountered while reading the frame, a warning is
         logged and a StopIteration is raised. This means that FFmpegVideoReader
@@ -3216,12 +3369,13 @@ class FFmpegVideoReader(VideoReader):
         Raises:
             StopIteration: if there are no more frames to process or the next
                 frame could not be read or parsed for any reason
-        '''
+        """
         for _ in range(max(0, self.frame_number), next(self._ranges)):
             if not self._grab():
                 logger.warning(
                     "Failed to grab frame %d. Raising StopIteration now",
-                    self.frame_number)
+                    self.frame_number,
+                )
                 raise StopIteration
         return self._retrieve()
 
@@ -3241,7 +3395,8 @@ class FFmpegVideoReader(VideoReader):
         if not self._raw_frame:
             logger.warning(
                 "Found empty frame %d. Raising StopIteration now",
-                self.frame_number)
+                self.frame_number,
+            )
             raise StopIteration
 
         width, height = self.frame_size
@@ -3254,7 +3409,8 @@ class FFmpegVideoReader(VideoReader):
             logger.warning(e, exc_info=True)
             logger.warning(
                 "Unable to parse frame %d; Raising StopIteration now",
-                self.frame_number)
+                self.frame_number,
+            )
             raise StopIteration
 
     def _open_stream(self, inpath):
@@ -3263,13 +3419,13 @@ class FFmpegVideoReader(VideoReader):
 
 
 class SampledFramesVideoReader(VideoReader):
-    '''Class for reading video stored as sampled frames on disk.
+    """Class for reading video stored as sampled frames on disk.
 
     This class uses 1-based indexing for all frame operations.
-    '''
+    """
 
     def __init__(self, frames_dir, frames=None):
-        '''Creates a SampledFramesVideoReader instance.
+        """Creates a SampledFramesVideoReader instance.
 
         Args:
             frames_dir: the path to a directory of frames, which must be
@@ -3283,7 +3439,7 @@ class SampledFramesVideoReader(VideoReader):
                 - an `eta.core.frameutils.FrameRanges` instance
                 - an iterable, e.g., [1, 2, 3, 6, 8, 9, 10]. The frames do not
                     need to be in sorted order
-        '''
+        """
         self._frames_dir = None
         self._frames_patt = None
         self._frame_size = None
@@ -3296,34 +3452,34 @@ class SampledFramesVideoReader(VideoReader):
         super(SampledFramesVideoReader, self).__init__(frames_dir, frames)
 
     def reset(self):
-        '''Resets the SampledFramesVideoReader.'''
+        """Resets the SampledFramesVideoReader."""
         self.close()
         self._reset()
 
     @property
     def encoding_str(self):
-        '''The video encoding string.'''
+        """The video encoding string."""
         return None
 
     @property
     def frame_size(self):
-        '''The (width, height) of each frame.'''
+        """The (width, height) of each frame."""
         return self._frame_size
 
     @property
     def frame_rate(self):
-        '''The frame rate.'''
+        """The frame rate."""
         return None
 
     @property
     def total_frame_count(self):
-        '''The total number of frames in the video, or 0 if it could not be
+        """The total number of frames in the video, or 0 if it could not be
         determined.
-        '''
+        """
         return self._total_frame_count
 
     def read(self):
-        '''Reads the next frame.
+        """Reads the next frame.
 
         Returns:
             img: the next frame
@@ -3331,14 +3487,15 @@ class SampledFramesVideoReader(VideoReader):
         Raises:
             StopIteration: if there are no more frames to process or the next
                 frame could not be read or parsed for any reason
-        '''
+        """
         frame_number = next(self._ranges)
         try:
             return etai.read(self._frames_patt % frame_number)
         except:
             logger.warning(
                 "Failed to grab frame %d. Raising StopIteration now",
-                frame_number)
+                frame_number,
+            )
             raise StopIteration
 
     def _init_for_frames_dir(self, frames_dir):
@@ -3357,7 +3514,7 @@ class SampledFramesVideoReader(VideoReader):
 
 
 class OpenCVVideoReader(VideoReader):
-    '''Class for reading video using OpenCV.
+    """Class for reading video using OpenCV.
 
     The input video can be a standalone video file like "/path/to/video.mp4"
     or a directory of frames like "/path/to/frames/%05d.png". This path is
@@ -3368,10 +3525,10 @@ class OpenCVVideoReader(VideoReader):
     certain frame ranges.
 
     This class uses 1-based indexing for all frame operations.
-    '''
+    """
 
     def __init__(self, inpath, frames=None):
-        '''Creates an OpenCVVideoReader instance.
+        """Creates an OpenCVVideoReader instance.
 
         Args:
             inpath: path to the input video, which can be a standalone video
@@ -3390,38 +3547,39 @@ class OpenCVVideoReader(VideoReader):
 
         Raises:
             OpenCVVideoReaderError: if the input video could not be opened
-        '''
+        """
         self._cap = None
 
         self._open_stream(inpath)
         super(OpenCVVideoReader, self).__init__(inpath, frames)
 
     def close(self):
-        '''Closes the OpenCVVideoReader.'''
+        """Closes the OpenCVVideoReader."""
         if self._cap is not None:
             self._cap.release()
             self._cap = None
 
     def reset(self):
-        '''Resets the OpenCVVideoReader.'''
+        """Resets the OpenCVVideoReader."""
         self.close()
         self._reset()
         self._open_stream(self.inpath)
 
     @property
     def encoding_str(self):
-        '''Return the video encoding string.'''
+        """Return the video encoding string."""
         try:
             # OpenCV 3
             code = int(self._cap.get(cv2.CAP_PROP_FOURCC))
         except AttributeError:
             # OpenCV 2
+            # pylint: disable=no-member
             code = int(self._cap.get(cv2.cv.CV_CAP_PROP_FOURCC))
         return FOURCC.int_to_str(code)
 
     @property
     def frame_size(self):
-        '''The (width, height) of each frame.'''
+        """The (width, height) of each frame."""
         try:
             # OpenCV 3
             return (
@@ -3431,32 +3589,36 @@ class OpenCVVideoReader(VideoReader):
         except AttributeError:
             # OpenCV 2
             return (
+                # pylint: disable=no-member
                 int(self._cap.get(cv2.cv.CV_CAP_PROP_FRAME_WIDTH)),
+                # pylint: disable=no-member
                 int(self._cap.get(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT)),
             )
 
     @property
     def frame_rate(self):
-        '''The frame rate.'''
+        """The frame rate."""
         try:
             # OpenCV 3
             return float(self._cap.get(cv2.CAP_PROP_FPS))
         except AttributeError:
             # OpenCV 2
+            # pylint: disable=no-member
             return float(self._cap.get(cv2.cv.CV_CAP_PROP_FPS))
 
     @property
     def total_frame_count(self):
-        '''The total number of frames in the video.'''
+        """The total number of frames in the video."""
         try:
             # OpenCV 3
             return int(self._cap.get(cv2.CAP_PROP_FRAME_COUNT))
         except AttributeError:
             # OpenCV 2
+            # pylint: disable=no-member
             return int(self._cap.get(cv2.cv.CV_CAP_PROP_FRAME_COUNT))
 
     def read(self):
-        '''Reads the next frame.
+        """Reads the next frame.
 
         If any problem is encountered while reading the frame, a warning is
         logged and a StopIteration is raised. This means that OpenCVVideoReader
@@ -3468,12 +3630,13 @@ class OpenCVVideoReader(VideoReader):
         Raises:
             StopIteration: if there are no more frames to process or the next
                 frame could not be read or parsed for any reason
-        '''
+        """
         for _ in range(max(0, self.frame_number), next(self._ranges)):
             if not self._grab():
                 logger.warning(
                     "Failed to grab frame %d. Raising StopIteration now",
-                    self.frame_number)
+                    self.frame_number,
+                )
                 raise StopIteration
         return self._retrieve()
 
@@ -3492,7 +3655,8 @@ class OpenCVVideoReader(VideoReader):
             logger.warning(e, exc_info=True)
             logger.warning(
                 "Unable to parse frame %d; Raising StopIteration now",
-                self.frame_number)
+                self.frame_number,
+            )
             raise StopIteration
 
     def _open_stream(self, inpath):
@@ -3502,12 +3666,13 @@ class OpenCVVideoReader(VideoReader):
 
 
 class OpenCVVideoReaderError(VideoReaderError):
-    '''Error raised when a problem with an OpenCVVideoReader is encountered.'''
+    """Error raised when a problem with an OpenCVVideoReader is encountered."""
+
     pass
 
 
 class VideoWriter(object):
-    '''Base class for writing videos.
+    """Base class for writing videos.
 
     This class declares the following conventions:
 
@@ -3515,7 +3680,7 @@ class VideoWriter(object):
             that subclasses can optionally use context to perform any necessary
             setup and teardown, and so any code that uses a VideoWriter
             should use the `with` syntax
-    '''
+    """
 
     def __enter__(self):
         return self
@@ -3524,28 +3689,29 @@ class VideoWriter(object):
         self.close()
 
     def write(self, img):
-        '''Appends the image to the output video.
+        """Appends the image to the output video.
 
         Args:
             img: a numpy array
-        '''
+        """
         raise NotImplementedError("subclass must implement write()")
 
     def close(self):
-        '''Closes the VideoWriter.'''
+        """Closes the VideoWriter."""
         pass
 
 
 class VideoWriterError(Exception):
-    '''Exception raised when a problem with a VideoWriter is encountered.'''
+    """Exception raised when a problem with a VideoWriter is encountered."""
+
     pass
 
 
 class FFmpegVideoWriter(VideoWriter):
-    '''Class for writing videos using ffmpeg.'''
+    """Class for writing videos using ffmpeg."""
 
     def __init__(self, outpath, fps, size, out_opts=None):
-        '''Creates an FFmpegVideoWriter instance.
+        """Creates an FFmpegVideoWriter instance.
 
         Args:
             outpath: the output video path. Existing files are overwritten,
@@ -3553,44 +3719,49 @@ class FFmpegVideoWriter(VideoWriter):
             fps: the frame rate
             size: the (width, height) of each frame
             out_opts: an optional list of output options for FFmpeg
-        '''
+        """
         self.outpath = outpath
         self.fps = fps
         self.size = size
 
         self._ffmpeg = FFmpeg(
             in_opts=[
-                "-f", "rawvideo",           # input will be raw video
-                "-vcodec", "rawvideo",      # input will be raw video
-                "-s", "%dx%d" % self.size,  # frame size
-                "-pix_fmt", "rgb24",        # pixel format
-                "-r", str(self.fps),        # frame rate
+                "-f",
+                "rawvideo",  # input will be raw video
+                "-vcodec",
+                "rawvideo",  # input will be raw video
+                "-s",
+                "%dx%d" % self.size,  # frame size
+                "-pix_fmt",
+                "rgb24",  # pixel format
+                "-r",
+                str(self.fps),  # frame rate
             ],
             out_opts=out_opts,
         )
         self._ffmpeg.run("-", self.outpath)
 
     def write(self, img):
-        '''Appends the image to the output video.
+        """Appends the image to the output video.
 
         Args:
             img: a numpy array
-        '''
+        """
         self._ffmpeg.stream(img.tostring())
 
     def close(self):
-        '''Closes the FFmpegVideoWriter.'''
+        """Closes the FFmpegVideoWriter."""
         self._ffmpeg.close()
 
 
 class OpenCVVideoWriter(VideoWriter):
-    '''Class for writing videos using cv2.VideoWriter.
+    """Class for writing videos using cv2.VideoWriter.
 
     Uses the default encoding scheme for the extension of the output path.
-    '''
+    """
 
     def __init__(self, outpath, fps, size):
-        '''Creates an OpenCVVideoWriter instance.
+        """Creates an OpenCVVideoWriter instance.
 
         Args:
             outpath: the output video path. Existing files are overwritten,
@@ -3600,7 +3771,7 @@ class OpenCVVideoWriter(VideoWriter):
 
         Raises:
             OpenCVVideoWriterError: if the writer failed to open
-        '''
+        """
         self.outpath = outpath
         self.fps = fps
         self.size = size
@@ -3612,39 +3783,40 @@ class OpenCVVideoWriter(VideoWriter):
             raise OpenCVVideoWriterError("Unable to open '%s'" % self.outpath)
 
     def write(self, img):
-        '''Appends the image to the output video.
+        """Appends the image to the output video.
 
         Args:
             img: a numpy array
-        '''
+        """
         self._writer.write(etai.rgb_to_bgr(img))
 
     def close(self):
-        '''Closes the video writer.'''
+        """Closes the video writer."""
         # self._writer.release()  # warns to use a separate thread
         threading.Thread(target=self._writer.release, args=()).start()
 
 
 class OpenCVVideoWriterError(VideoWriterError):
-    '''Exception raised when a problem with an OpenCVVideoWriter is
+    """Exception raised when a problem with an OpenCVVideoWriter is
     encountered.
-    '''
+    """
+
     pass
 
 
 class FFprobe(object):
-    '''Interface for the ffprobe binary.'''
+    """Interface for the ffprobe binary."""
 
     DEFAULT_GLOBAL_OPTS = ["-loglevel", "error"]
 
     def __init__(self, global_opts=None, opts=None):
-        '''Creates an FFprobe instance.
+        """Creates an FFprobe instance.
 
         Args:
             global_opts: a list of global options for ffprobe. By default,
                 self.DEFAULT_GLOBAL_OPTS is used
             opts: a list of options for ffprobe
-        '''
+        """
         self._global_opts = global_opts or self.DEFAULT_GLOBAL_OPTS
         self._opts = opts or []
 
@@ -3653,13 +3825,13 @@ class FFprobe(object):
 
     @property
     def cmd(self):
-        '''The last executed ffprobe command string, or None if run() has not
+        """The last executed ffprobe command string, or None if run() has not
         yet been called.
-        '''
+        """
         return " ".join(self._args) if self._args else None
 
     def run(self, inpath, decode=False, verbose=False):
-        '''Run the ffprobe binary with the specified input path.
+        """Run the ffprobe binary with the specified input path.
 
         Args:
             inpath: the input path
@@ -3675,12 +3847,9 @@ class FFprobe(object):
             ExecutableNotFoundError: if the ffprobe binary cannot be found
             ExecutableRuntimeError: if the ffprobe binary raises an error
                 during execution
-        '''
+        """
         self._args = (
-            ["ffprobe"] +
-            self._global_opts +
-            self._opts +
-            ["-i", inpath]
+            ["ffprobe"] + self._global_opts + self._opts + ["-i", inpath]
         )
 
         if verbose:
@@ -3704,7 +3873,7 @@ class FFprobe(object):
 
 
 class FFmpeg(object):
-    '''Interface for the ffmpeg binary.
+    """Interface for the ffmpeg binary.
 
     Example usages:
         # Convert a video to sampled frames
@@ -3718,27 +3887,38 @@ class FFmpeg(object):
         # Change the frame rate of a video
         ffmpeg = FFmpeg(fps=10)
         ffmpeg.run("/path/to/video.mp4", "/path/to/resampled.mp4")
-    '''
+    """
 
     DEFAULT_GLOBAL_OPTS = ["-loglevel", "error"]
 
     DEFAULT_IN_OPTS = ["-vsync", "0"]
 
     DEFAULT_VIDEO_OUT_OPTS = [
-        "-c:v", "libx264", "-preset", "medium", "-crf", "23",
-        "-pix_fmt", "yuv420p", "-vsync", "0", "-an"]
+        "-c:v",
+        "libx264",
+        "-preset",
+        "medium",
+        "-crf",
+        "23",
+        "-pix_fmt",
+        "yuv420p",
+        "-vsync",
+        "0",
+        "-an",
+    ]
 
     DEFAULT_IMAGES_OUT_OPTS = ["-vsync", "0"]
 
     def __init__(
-            self,
-            fps=None,
-            size=None,
-            scale=None,
-            global_opts=None,
-            in_opts=None,
-            out_opts=None):
-        '''Creates an FFmpeg instance.
+        self,
+        fps=None,
+        size=None,
+        scale=None,
+        global_opts=None,
+        in_opts=None,
+        out_opts=None,
+    ):
+        """Creates an FFmpeg instance.
 
         Args:
             fps: an optional output frame rate. By default, the native frame
@@ -3756,7 +3936,7 @@ class FFmpeg(object):
                 default, self.DEFAULT_VIDEO_OUT_OPTS is used when the output
                 path is a video file and self.DEFAULT_IMAGES_OUT_OPTS is used
                 when the output path is an image sequence
-        '''
+        """
         self.is_input_streaming = False
         self.is_output_streaming = False
 
@@ -3775,13 +3955,13 @@ class FFmpeg(object):
 
     @property
     def cmd(self):
-        '''The last executed ffmpeg command string, or None if run() has not
+        """The last executed ffmpeg command string, or None if run() has not
         yet been called.
-        '''
+        """
         return " ".join(self._args) if self._args else None
 
     def run(self, inpath, outpath, verbose=False):
-        '''Run the ffmpeg binary with the specified input/outpath paths.
+        """Run the ffmpeg binary with the specified input/outpath paths.
 
         Args:
             inpath: the input path. If inpath is "-", input streaming mode is
@@ -3797,9 +3977,9 @@ class FFmpeg(object):
             ExecutableNotFoundError: if the ffmpeg binary cannot be found
             ExecutableRuntimeError: if the ffmpeg binary raises an error during
                 execution
-        '''
-        self.is_input_streaming = (inpath == "-")
-        self.is_output_streaming = (outpath == "-")
+        """
+        self.is_input_streaming = inpath == "-"
+        self.is_output_streaming = outpath == "-"
 
         # Input options
         if self._in_opts is None:
@@ -3833,10 +4013,12 @@ class FFmpeg(object):
 
         # Construct ffmpeg command
         self._args = (
-            ["ffmpeg"] +
-            self._global_opts +
-            in_opts + ["-i", inpath] +
-            out_opts + [outpath]
+            ["ffmpeg"]
+            + self._global_opts
+            + in_opts
+            + ["-i", inpath]
+            + out_opts
+            + [outpath]
         )
 
         if not self.is_output_streaming:
@@ -3862,20 +4044,20 @@ class FFmpeg(object):
                 raise etau.ExecutableRuntimeError(self.cmd, err)
 
     def stream(self, string):
-        '''Writes the string to ffmpeg's stdin stream.
+        """Writes the string to ffmpeg's stdin stream.
 
         Args:
             string: the string to write
 
         Raises:
             FFmpegStreamingError: if input streaming mode is not active
-        '''
+        """
         if not self.is_input_streaming:
             raise FFmpegStreamingError("Not currently input streaming")
         self._p.stdin.write(string)
 
     def read(self, num_bytes):
-        '''Reads the given number of bytes from ffmpeg's stdout stream.
+        """Reads the given number of bytes from ffmpeg's stdout stream.
 
         Args:
             num_bytes: the number of bytes to read
@@ -3885,13 +4067,13 @@ class FFmpeg(object):
 
         Raises:
             FFmpegStreamingError: if output streaming mode is not active
-        '''
+        """
         if not self.is_output_streaming:
             raise FFmpegStreamingError("Not currently output streaming")
         return self._p.stdout.read(num_bytes)
 
     def close(self):
-        '''Closes a streaming ffmpeg program, if necessary.'''
+        """Closes a streaming ffmpeg program, if necessary."""
         if self.is_input_streaming or self.is_output_streaming:
             self._p.stdin.close()
             self._p.stdout.close()
@@ -3925,17 +4107,18 @@ class FFmpeg(object):
 
 
 class FFmpegStreamingError(Exception):
-    '''Exception raised when an error occurs while operating an FFmpeg instance
+    """Exception raised when an error occurs while operating an FFmpeg instance
     in streaming mode.
-    '''
+    """
+
     pass
 
 
 class FOURCC(object):
-    '''Class reprsesenting a FOURCC code.'''
+    """Class reprsesenting a FOURCC code."""
 
     def __init__(self, _i=None, _s=None):
-        '''Creates a FOURCC instance.
+        """Creates a FOURCC instance.
 
         Don't call this directly! Instead, use `from_str ` or `from_int` to
         create a FOURCC instance.
@@ -3943,7 +4126,7 @@ class FOURCC(object):
         Args:
             _i: the integer representation of the FOURCC code
             _s: the string representation of the FOURCC code
-        '''
+        """
         if _i:
             self.int = _i
             self.str = FOURCC.int_to_str(_i)
@@ -3953,56 +4136,59 @@ class FOURCC(object):
 
     @classmethod
     def from_str(cls, s):
-        '''Construct a FOURCC instance from a string.
+        """Construct a FOURCC instance from a string.
 
         Args:
             s: the string representation of the FOURCC code
 
         Returns:
             a FOURCC instance
-        '''
+        """
         return cls(_s=s)
 
     @classmethod
     def from_int(cls, i):
-        '''Construct a FOURCC instance from an integer.
+        """Construct a FOURCC instance from an integer.
 
         Args:
             i: the integer representation of the FOURCC code
 
         Returns:
             a FOURCC instance
-        '''
+        """
         return cls(_i=i)
 
     @staticmethod
     def str_to_int(s):
-        '''Returns the integer representation of the given FOURCC string.
+        """Returns the integer representation of the given FOURCC string.
 
         Args:
             s: the string representation of the FOURCC code
 
         Returns:
             the integer representation of the FOURCC code
-        '''
+        """
         try:
             # OpenCV 3
             return cv2.VideoWriter_fourcc(*s)
         except AttributeError:
             # OpenCV 2
+            # pylint: disable=no-member
             return cv2.cv.FOURCC(*s)
 
     @staticmethod
     def int_to_str(i):
-        '''Returns the string representation of the given FOURCC integer.
+        """Returns the string representation of the given FOURCC integer.
 
         Args:
             i: the integer representation of the FOURCC code
 
         Returns:
             the string representation of the FOURCC code
-        '''
-        return chr((i & 0x000000FF) >> 0) + \
-               chr((i & 0x0000FF00) >> 8) + \
-               chr((i & 0x00FF0000) >> 16) + \
-               chr((i & 0xFF000000) >> 24)
+        """
+        return (
+            chr((i & 0x000000FF) >> 0)
+            + chr((i & 0x0000FF00) >> 8)
+            + chr((i & 0x00FF0000) >> 16)
+            + chr((i & 0xFF000000) >> 24)
+        )

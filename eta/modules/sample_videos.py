@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-'''
+"""
 A module for sampling frames from videos.
 
 The sampled frames are written to a directory with filenames that encode their
@@ -11,7 +11,7 @@ Info:
 
 Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
-'''
+"""
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
 # pragma pylint: disable=wildcard-import
@@ -20,6 +20,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
+
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
@@ -41,22 +42,22 @@ import eta.core.video as etav
 logger = logging.getLogger(__name__)
 
 
-class SampleVideosConfig(etam.BaseModuleConfig):
-    '''Sample videos configuration settings.
+class ModuleConfig(etam.BaseModuleConfig):
+    """Module configuration settings.
 
     Attributes:
         data (DataConfig)
         parameters (ParametersConfig)
-    '''
+    """
 
     def __init__(self, d):
-        super(SampleVideosConfig, self).__init__(d)
+        super(ModuleConfig, self).__init__(d)
         self.data = self.parse_object_array(d, "data", DataConfig)
         self.parameters = self.parse_object(d, "parameters", ParametersConfig)
 
 
 class DataConfig(Config):
-    '''Data configuration settings.
+    """Data configuration settings.
 
     Inputs:
         input_path (eta.core.types.Video): The input video
@@ -64,7 +65,7 @@ class DataConfig(Config):
     Outputs:
         output_frames_dir (eta.core.types.ImageSequenceDirectory): A directory
             of sampled frames
-    '''
+    """
 
     def __init__(self, d):
         self.input_path = self.parse_string(d, "input_path")
@@ -72,7 +73,7 @@ class DataConfig(Config):
 
 
 class ParametersConfig(Config):
-    '''Parameter configuration settings.
+    """Parameter configuration settings.
 
     Parameters:
         accel (eta.core.types.Number): [None] A desired acceleration factor to
@@ -101,7 +102,7 @@ class ParametersConfig(Config):
         max_video_duration (eta.core.types.Number): [None] The maximum duration
             of the input video in seconds. If duration is greater than this,
             an error will be thrown
-    '''
+    """
 
     def __init__(self, d):
         self.accel = self.parse_number(d, "accel", default=None)
@@ -110,11 +111,14 @@ class ParametersConfig(Config):
         self.max_fps = self.parse_number(d, "max_fps", default=None)
         self.max_size = self.parse_array(d, "max_size", default=None)
         self.always_sample_last = self.parse_bool(
-            d, "always_sample_last", default=False)
+            d, "always_sample_last", default=False
+        )
         self.max_video_file_size = self.parse_number(
-            d, "max_video_file_size", default=None)
+            d, "max_video_file_size", default=None
+        )
         self.max_video_duration = self.parse_number(
-            d, "max_video_duration", default=None)
+            d, "max_video_duration", default=None
+        )
 
 
 def _sample_videos(config):
@@ -124,20 +128,31 @@ def _sample_videos(config):
 
 
 def _check_input_video_size(
-        video_metadata, max_video_file_size, max_video_duration):
-    if (max_video_file_size is not None
-            and video_metadata.size_bytes > max_video_file_size):
+    video_metadata, max_video_file_size, max_video_duration
+):
+    if (
+        max_video_file_size is not None
+        and video_metadata.size_bytes > max_video_file_size
+    ):
         raise ValueError(
-            "Input video file size must be less than %s; found %s" % (
+            "Input video file size must be less than %s; found %s"
+            % (
                 etau.to_human_bytes_str(max_video_file_size),
-                etau.to_human_bytes_str(video_metadata.size_bytes)))
+                etau.to_human_bytes_str(video_metadata.size_bytes),
+            )
+        )
 
-    if (max_video_duration is not None
-            and video_metadata.duration > max_video_duration):
+    if (
+        max_video_duration is not None
+        and video_metadata.duration > max_video_duration
+    ):
         raise ValueError(
-            "Input video duration must be less than %s; found %s" % (
+            "Input video duration must be less than %s; found %s"
+            % (
                 etau.to_human_time_str(max_video_duration),
-                etau.to_human_time_str(video_metadata.duration)))
+                etau.to_human_time_str(video_metadata.duration),
+            )
+        )
 
 
 def _compute_accel(video_metadata, parameters):
@@ -158,12 +173,14 @@ def _compute_accel(video_metadata, parameters):
     if accel is not None:
         if accel < 1:
             raise ValueError(
-                "Acceleration factor must be greater than 1; found %d" % accel)
+                "Acceleration factor must be greater than 1; found %d" % accel
+            )
     elif fps is not None:
         if fps > ifps:
             raise ValueError(
                 "Sampling frame rate (%g) cannot be greater than input frame "
-                "rate (%g)" % (fps, ifps))
+                "rate (%g)" % (fps, ifps)
+            )
 
         accel = ifps / fps
     if max_fps is not None and max_fps > 0:
@@ -171,7 +188,11 @@ def _compute_accel(video_metadata, parameters):
         if accel is None or accel < min_accel:
             logger.warning(
                 "Maximum frame rate %g requires acceleration of at least %g; "
-                "setting `accel = %g` now", max_fps, min_accel, min_accel)
+                "setting `accel = %g` now",
+                max_fps,
+                min_accel,
+                min_accel,
+            )
             accel = min_accel
 
     if accel is None:
@@ -214,8 +235,10 @@ def _process_video(input_path, output_frames_dir, parameters):
 
     # Check input video size
     _check_input_video_size(
-        video_metadata, parameters.max_video_file_size,
-        parameters.max_video_duration)
+        video_metadata,
+        parameters.max_video_file_size,
+        parameters.max_video_duration,
+    )
 
     # Compute acceleration
     accel = _compute_accel(video_metadata, parameters)
@@ -234,22 +257,24 @@ def _process_video(input_path, output_frames_dir, parameters):
     # Sample frames
     output_patt = os.path.join(
         output_frames_dir,
-        eta.config.default_sequence_idx + eta.config.default_image_ext)
+        eta.config.default_sequence_idx + eta.config.default_image_ext,
+    )
     etav.sample_select_frames(
-        input_path, frames, output_patt=output_patt, size=size, fast=True)
+        input_path, frames, output_patt=output_patt, size=size, fast=True
+    )
 
 
 def run(config_path, pipeline_config_path=None):
-    '''Run the sample_videos module.
+    """Run the sample_videos module.
 
     Args:
-        config_path: path to a SampleVideosConfig file
+        config_path: path to a ModuleConfig file
         pipeline_config_path: optional path to a PipelineConfig file
-    '''
-    config = SampleVideosConfig.from_json(config_path)
+    """
+    config = ModuleConfig.from_json(config_path)
     etam.setup(config, pipeline_config_path=pipeline_config_path)
     _sample_videos(config)
 
 
 if __name__ == "__main__":
-    run(*sys.argv[1:])
+    run(*sys.argv[1:])  # pylint: disable=no-value-for-parameter

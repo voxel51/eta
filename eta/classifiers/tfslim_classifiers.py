@@ -1,10 +1,10 @@
-'''
+"""
 Interface to the TF-Slim image classification library available at
 https://github.com/tensorflow/models/tree/master/research/slim.
 
 Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
-'''
+"""
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
 # pragma pylint: disable=wildcard-import
@@ -13,6 +13,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
+
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
@@ -22,6 +23,8 @@ import sys
 
 import numpy as np
 import tensorflow as tf
+
+# pylint: disable=no-name-in-module
 from tensorflow.python.tools import freeze_graph
 
 import eta.constants as etac
@@ -34,8 +37,8 @@ import eta.core.tfutils as etat
 import eta.core.utils as etau
 
 sys.path.insert(1, etac.TF_SLIM_DIR)
-from preprocessing import preprocessing_factory
-from nets import nets_factory
+from preprocessing import preprocessing_factory  # pylint: disable=import-error
+from nets import nets_factory  # pylint: disable=import-error
 
 
 logger = logging.getLogger(__name__)
@@ -73,7 +76,7 @@ _DEFAULT_OUTPUT_NAMES = {
 
 
 class TFSlimClassifierConfig(Config, etal.HasDefaultDeploymentConfig):
-    '''Configuration class for loading a TensorFlow classifier whose network
+    """Configuration class for loading a TensorFlow classifier whose network
     architecture is defined in `tf.slim.nets`.
 
     Note that `labels_path` is passed through
@@ -107,7 +110,7 @@ class TFSlimClassifierConfig(Config, etal.HasDefaultDeploymentConfig):
         confidence_thresh: a confidence threshold to apply to candidate
             predictions
         generate_features: whether to generate features for predictions
-    '''
+    """
 
     def __init__(self, d):
         self.model_name = self.parse_string(d, "model_name", default=None)
@@ -120,30 +123,39 @@ class TFSlimClassifierConfig(Config, etal.HasDefaultDeploymentConfig):
         self.attr_name = self.parse_string(d, "attr_name")
         self.network_name = self.parse_string(d, "network_name")
         self.labels_path = etau.fill_config_patterns(
-            self.parse_string(d, "labels_path"))
+            self.parse_string(d, "labels_path")
+        )
         self.preprocessing_fcn = self.parse_string(
-            d, "preprocessing_fcn", default=None)
+            d, "preprocessing_fcn", default=None
+        )
         self.input_name = self.parse_string(d, "input_name", default="input")
         self.features_name = self.parse_string(
-            d, "features_name", default=None)
+            d, "features_name", default=None
+        )
         self.output_name = self.parse_string(d, "output_name", default=None)
         self.confidence_thresh = self.parse_number(
-            d, "confidence_thresh", default=0)
+            d, "confidence_thresh", default=0
+        )
         self.generate_features = self.parse_bool(
-            d, "generate_features", default=False)
+            d, "generate_features", default=False
+        )
 
         self._validate()
 
     def _validate(self):
         if not self.model_name and not self.model_path:
             raise ConfigError(
-                "Either `model_name` or `model_path` must be provided")
+                "Either `model_name` or `model_path` must be provided"
+            )
 
 
 class TFSlimClassifier(
-        etal.ImageClassifier, etal.ExposesFeatures, etal.ExposesProbabilities,
-        etat.UsesTFSession):
-    '''Interface for the TF-Slim image classification library at
+    etal.ImageClassifier,
+    etal.ExposesFeatures,
+    etal.ExposesProbabilities,
+    etat.UsesTFSession,
+):
+    """Interface for the TF-Slim image classification library at
     https://github.com/tensorflow/models/tree/master/research/slim.
 
     This class uses `eta.core.tfutils.UsesTFSession` to create TF sessions, so
@@ -151,14 +163,14 @@ class TFSlimClassifier(
 
     Instances of this class must either use the context manager interface or
     manually call `close()` when finished to release memory.
-    '''
+    """
 
     def __init__(self, config):
-        '''Creates a TFSlimClassifier instance.
+        """Creates a TFSlimClassifier instance.
 
         Args:
             config: a TFSlimClassifierConfig instance
-        '''
+        """
         self.config = config
         etat.UsesTFSession.__init__(self)
 
@@ -183,12 +195,14 @@ class TFSlimClassifier(
         # Get network
         network_name = self.config.network_name
         network_fn = nets_factory.get_network_fn(
-            network_name, num_classes=self._num_classes, is_training=False)
+            network_name, num_classes=self._num_classes, is_training=False
+        )
         self.img_size = network_fn.default_image_size
 
         # Get input operation
         self._input_op = self._graph.get_operation_by_name(
-            self._prefix + "/" + self.config.input_name)
+            self._prefix + "/" + self.config.input_name
+        )
 
         # Get feature operation, if necessary
         features_name = None
@@ -199,7 +213,8 @@ class TFSlimClassifier(
                 features_name = _DEFAULT_FEATURES_NAMES[network_name]
         if features_name is not None:
             self._features_op = self._graph.get_operation_by_name(
-                self._prefix + "/" + features_name)
+                self._prefix + "/" + features_name
+            )
         else:
             self._features_op = None
 
@@ -211,15 +226,18 @@ class TFSlimClassifier(
             if output_name is None:
                 raise ValueError(
                     "`output_name` was not provided and network `%s` was not "
-                    "found in default outputs map" % network_name)
+                    "found in default outputs map" % network_name
+                )
         self._output_op = self._graph.get_operation_by_name(
-            self._prefix + "/" + output_name)
+            self._prefix + "/" + output_name
+        )
 
         # Setup preprocessing
         self._preprocessing_fcn = None
         self._preprocessing_sess = None
         self.preprocessing_fcn = self._make_preprocessing_fcn(
-            network_name, self.config.preprocessing_fcn)
+            network_name, self.config.preprocessing_fcn
+        )
 
         self._last_features = None
         self._last_probs = None
@@ -232,67 +250,68 @@ class TFSlimClassifier(
 
     @property
     def exposes_features(self):
-        '''Whether this classifier exposes features for predictions.'''
+        """Whether this classifier exposes features for predictions."""
         return self._features_op is not None
 
     @property
     def features_dim(self):
-        '''The dimension of the features extracted by this classifier, or None
+        """The dimension of the features extracted by this classifier, or None
         if it cannot generate features.
-        '''
+        """
         if not self.exposes_features:
             return None
 
         dim = self._features_op.outputs[0].get_shape().as_list()[-1]
         if dim is None:
             logger.warning(
-                "Unable to statically get feature dimension; returning None")
+                "Unable to statically get feature dimension; returning None"
+            )
 
         return dim
 
     @property
     def exposes_probabilities(self):
-        '''Whether this classifier exposes probabilities for predictions.'''
+        """Whether this classifier exposes probabilities for predictions."""
         return True
 
     @property
     def num_classes(self):
-        '''The number of classes for the model.'''
+        """The number of classes for the model."""
         return self._num_classes
 
     @property
     def class_labels(self):
-        '''The list of class labels generated by the classifier.'''
+        """The list of class labels generated by the classifier."""
         return self._class_labels
 
     def get_features(self):
-        '''Gets the features generated by the classifier from its last
+        """Gets the features generated by the classifier from its last
         prediction.
 
         Returns:
             an array of features, or None if the classifier has not (or does
                 not) generate features
-        '''
+        """
         if not self.exposes_features:
             return None
 
         return self._last_features
 
     def get_probabilities(self):
-        '''Gets the class probabilities generated by the classifier from its
+        """Gets the class probabilities generated by the classifier from its
         last prediction.
 
         Returns:
             an array of class probabilities, or None if the classifier has not
                 (or does not) generate probabilities
-        '''
+        """
         if not self.exposes_probabilities:
             return None
 
         return self._last_probs
 
     def predict(self, img):
-        '''Peforms prediction on the given image.
+        """Peforms prediction on the given image.
 
         Args:
             img: an image
@@ -300,11 +319,11 @@ class TFSlimClassifier(
         Returns:
             an `eta.core.data.AttributeContainer` instance containing the
                 predictions
-        '''
+        """
         return self._predict([img])[0]
 
     def predict_all(self, imgs):
-        '''Performs prediction on the given tensor of images.
+        """Performs prediction on the given tensor of images.
 
         Args:
             imgs: a list (or n x h x w x 3 tensor) of images
@@ -312,7 +331,7 @@ class TFSlimClassifier(
         Returns:
             a list of `eta.core.data.AttributeContainer` instances describing
                 the predictions for each image
-        '''
+        """
         return self._predict(imgs)
 
     def _predict(self, imgs):
@@ -322,7 +341,8 @@ class TFSlimClassifier(
         # Perform inference
         if self.exposes_features:
             features, probs = self._evaluate(
-                imgs, [self._features_op, self._output_op])
+                imgs, [self._features_op, self._output_op]
+            )
         else:
             features = None
             probs = self._evaluate(imgs, [self._output_op])[0]
@@ -361,11 +381,13 @@ class TFSlimClassifier(
         confidence = probs[idx]
 
         attrs = etad.AttributeContainer()
-        keep = (confidence > self.config.confidence_thresh)
+        keep = confidence > self.config.confidence_thresh
         if keep:
             attrs.add(
                 etad.CategoricalAttribute(
-                    self.config.attr_name, label, confidence=confidence))
+                    self.config.attr_name, label, confidence=confidence
+                )
+            )
 
         return attrs, keep
 
@@ -374,26 +396,34 @@ class TFSlimClassifier(
         if preprocessing_fcn:
             logger.info(
                 "Using user-provided preprocessing function '%s'",
-                preprocessing_fcn)
+                preprocessing_fcn,
+            )
             preproc_fcn_user = etau.get_function(preprocessing_fcn)
             return lambda imgs: preproc_fcn_user(
-                imgs, self.img_size, self.img_size)
+                imgs, self.img_size, self.img_size
+            )
 
         # Use numpy-based preprocessing if supported
         preproc_fcn_np = _NUMPY_PREPROC_FUNCTIONS.get(network_name, None)
         if preproc_fcn_np is not None:
             logger.info(
                 "Found numpy-based preprocessing implementation for network "
-                "'%s'", network_name)
+                "'%s'",
+                network_name,
+            )
             return lambda imgs: preproc_fcn_np(
-                imgs, self.img_size, self.img_size)
+                imgs, self.img_size, self.img_size
+            )
 
         # Fallback to TF-slim preprocessing
         logger.info(
             "Using TF-based preprocessing from preprocessing_factory for "
-            "network '%s'", network_name)
+            "network '%s'",
+            network_name,
+        )
         self._preprocessing_fcn = preprocessing_factory.get_preprocessing(
-            network_name, is_training=False)
+            network_name, is_training=False
+        )
         self._preprocessing_sess = self.make_tf_session()
 
         return self._builtin_preprocessing_tf
@@ -401,19 +431,22 @@ class TFSlimClassifier(
     def _builtin_preprocessing_tf(self, imgs):
         _imgs = tf.placeholder("uint8", [None, None, 3])
         _imgs_proc = tf.expand_dims(
-            self._preprocessing_fcn(_imgs, self.img_size, self.img_size), 0)
+            self._preprocessing_fcn(_imgs, self.img_size, self.img_size), 0
+        )
 
         imgs_out = []
         for img in imgs:
             imgs_out.append(
                 self._preprocessing_sess.run(
-                    _imgs_proc, feed_dict={_imgs: img}))
+                    _imgs_proc, feed_dict={_imgs: img}
+                )
+            )
 
         return imgs_out
 
 
 class TFSlimFeaturizerConfig(TFSlimClassifierConfig):
-    '''Configuration settings for a TFSlimFeaturizer.'''
+    """Configuration settings for a TFSlimFeaturizer."""
 
     def __init__(self, d):
         # Featurizers don't care what attribute name the classifier uses
@@ -426,23 +459,23 @@ class TFSlimFeaturizerConfig(TFSlimClassifierConfig):
 
 
 class TFSlimFeaturizer(ImageFeaturizer):
-    '''Featurizer that embeds images into the feature space of a TF-Slim
+    """Featurizer that embeds images into the feature space of a TF-Slim
     classifier.
-    '''
+    """
 
     def __init__(self, config):
-        '''Creates a TFSlimFeaturizer instance.
+        """Creates a TFSlimFeaturizer instance.
 
         Args:
             config: a TFSlimFeaturizer instance
-        '''
+        """
         super(TFSlimFeaturizer, self).__init__()
         self.config = config
         self.validate(self.config)
         self._classifier = None
 
     def dim(self):
-        '''The dimension of the features extracted by this Featurizer.'''
+        """The dimension of the features extracted by this Featurizer."""
         if self._classifier is None:
             with self:
                 return self._classifier.features_dim
@@ -450,34 +483,39 @@ class TFSlimFeaturizer(ImageFeaturizer):
         return self._classifier.features_dim
 
     def _start(self):
-        '''Starts a TensorFlow session and loads the network.'''
+        """Starts a TensorFlow session and loads the network."""
         if self._classifier is None:
             self._classifier = TFSlimClassifier(self.config)
             self._classifier.__enter__()
 
     def _stop(self):
-        '''Closes the TensorFlow session and frees up the network.'''
+        """Closes the TensorFlow session and frees up the network."""
         if self._classifier:
             self._classifier.__exit__()
             self._classifier = None
 
     def _featurize(self, img):
-        '''Featurizes the input image.
+        """Featurizes the input image.
 
         Args:
             img: the input image
 
         Returns:
             the feature vector (a 1D array)
-        '''
+        """
         self._classifier.predict(img)
         return self._classifier.get_features()
 
 
 def export_frozen_inference_graph(
-        checkpoint_path, network_name, output_path, num_classes=None,
-        labels_map_path=None, output_name=None):
-    '''Exports the given TF-Slim checkpoint as a frozen inference graph
+    checkpoint_path,
+    network_name,
+    output_path,
+    num_classes=None,
+    labels_map_path=None,
+    output_name=None,
+):
+    """Exports the given TF-Slim checkpoint as a frozen inference graph
     suitable for running inference.
 
     Either `num_classes` or `labels_map_path` must be provided.
@@ -495,36 +533,48 @@ def export_frozen_inference_graph(
         output_name: the name of the `tf.Operation` from which to extract the
             output predictions. By default, this value is loaded from
             `_DEFAULT_OUTPUT_NAMES`
-    '''
+    """
     if num_classes is None:
         if labels_map_path is None:
             raise ValueError(
                 "Must provide a `labels_map_path` when `num_classes` is not "
-                "specified")
+                "specified"
+            )
 
         num_classes = len(etal.load_labels_map(labels_map_path))
 
     output_name = _DEFAULT_OUTPUT_NAMES.get(network_name, None)
     if output_name is None:
         raise ValueError(
-            "No 'output_name' manually provided and no default output found " +
-            "for network '%s'" % network_name)
+            "No 'output_name' manually provided and no default output found "
+            + "for network '%s'" % network_name
+        )
 
-    with tf.Graph().as_default() as graph:
+    with tf.Graph().as_default() as graph:  # pylint: disable=not-context-manager
         graph_def = _get_graph_def(graph, network_name, num_classes)
         freeze_graph.freeze_graph_with_def_protos(
-            graph_def, None, checkpoint_path, output_name, None, None,
-            output_path, True, "")
+            graph_def,
+            None,
+            checkpoint_path,
+            output_name,
+            None,
+            None,
+            output_path,
+            True,
+            "",
+        )
 
 
 def _get_graph_def(graph, network_name, num_classes):
     # Adapted from `tensorflow/models/research/slim/export_inference_graph.py`
     network_fn = nets_factory.get_network_fn(
-        network_name, num_classes=num_classes, is_training=False)
+        network_name, num_classes=num_classes, is_training=False
+    )
     img_size = network_fn.default_image_size
     input_shape = [1, img_size, img_size, 3]
     placeholder = tf.placeholder(
-        name="input", dtype=tf.float32, shape=input_shape)
+        name="input", dtype=tf.float32, shape=input_shape
+    )
     network_fn(placeholder)
 
     return graph.as_graph_def()

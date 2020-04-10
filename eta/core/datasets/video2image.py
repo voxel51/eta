@@ -1,4 +1,4 @@
-'''
+"""
 Convert LabeledVideoDataset to LabeledImageDataset
 
 Copyright 2017-2019 Voxel51, Inc.
@@ -8,7 +8,7 @@ Matthew Lightman, matthew@voxel51.com
 Jason Corso, jason@voxel51.com
 Ben Kane, ben@voxel51.com
 Tyler Ganter, tyler@voxel51.com
-'''
+"""
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
 # pragma pylint: disable=wildcard-import
@@ -17,6 +17,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
+
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
@@ -38,10 +39,15 @@ logger = logging.getLogger(__name__)
 
 
 def sample_videos_to_images(
-        video_dataset, image_dataset_path, stride=None, num_images=None,
-        frame_filter=lambda labels: True, image_extension=".jpg",
-        description=None):
-    '''Creates a `LabeledImageDataset` by extracting frames and their
+    video_dataset,
+    image_dataset_path,
+    stride=None,
+    num_images=None,
+    frame_filter=lambda labels: True,
+    image_extension=".jpg",
+    description=None,
+):
+    """Creates a `LabeledImageDataset` by extracting frames and their
     corresponding labels from a `LabeledVideoDataset`.
 
     Args:
@@ -69,7 +75,7 @@ def sample_videos_to_images(
     Returns:
         image_dataset: `LabeledImageDataset` instance that points to
             the new image dataset
-    '''
+    """
     if stride is None and num_images is None:
         stride = 1
 
@@ -81,22 +87,26 @@ def sample_videos_to_images(
     logger.info("Sampling video frames with stride %d", stride)
 
     image_dataset = LabeledImageDataset.create_empty_dataset(
-        image_dataset_path, description=description)
+        image_dataset_path, description=description
+    )
 
     frame_iterator = _iter_filtered_video_frames(
-        video_dataset, frame_filter, stride)
+        video_dataset, frame_filter, stride
+    )
     for img_number, (frame_img, frame_labels, base_filename) in enumerate(
-            frame_iterator, 1):
+        frame_iterator, 1
+    ):
         image_filename = "%s%s" % (base_filename, image_extension)
         labels_filename = "%s.json" % base_filename
 
         image_labels = etai.ImageLabels(
             filename=image_filename,
             attrs=frame_labels.attrs,
-            objects=frame_labels.objects)
+            objects=frame_labels.objects,
+        )
         image_dataset.add_data(
-            frame_img, image_labels, image_filename,
-            labels_filename)
+            frame_img, image_labels, image_filename, labels_filename
+        )
 
         if num_images is not None and img_number >= num_images:
             break
@@ -105,7 +115,8 @@ def sample_videos_to_images(
         logger.info(
             "All frames were filtered out in sample_videos_to_images(). "
             "Writing an empty image dataset to '%s'.",
-            image_dataset_path)
+            image_dataset_path,
+        )
 
     image_dataset.write_manifest(image_dataset_path)
 
@@ -114,12 +125,10 @@ def sample_videos_to_images(
 
 def _validate_stride_and_num_images(stride, num_images):
     if stride is not None and stride < 1:
-        raise ValueError(
-            "stride must be >= 1, but got %d" % stride)
+        raise ValueError("stride must be >= 1, but got %d" % stride)
 
     if num_images is not None and num_images < 1:
-        raise ValueError(
-            "num_images must be >= 1, but got %d" % num_images)
+        raise ValueError("num_images must be >= 1, but got %d" % num_images)
 
 
 def _compute_stride(video_dataset, num_images, frame_filter):
@@ -130,8 +139,10 @@ def _compute_stride(video_dataset, num_images, frame_filter):
             if frame_filter(frame_labels):
                 total_frames_retained += 1
 
-    logger.info("Found %d total frames after applying the filter",
-                total_frames_retained)
+    logger.info(
+        "Found %d total frames after applying the filter",
+        total_frames_retained,
+    )
 
     # Handle corner cases
     if total_frames_retained < 2:
@@ -139,8 +150,7 @@ def _compute_stride(video_dataset, num_images, frame_filter):
     if num_images < 2:
         return total_frames_retained
 
-    return _compute_stride_from_total_frames(
-        total_frames_retained, num_images)
+    return _compute_stride_from_total_frames(total_frames_retained, num_images)
 
 
 def _compute_stride_from_total_frames(total_frames, num_desired):
@@ -151,18 +161,23 @@ def _compute_stride_from_total_frames(total_frames, num_desired):
     stride_guess = max(stride_guess, 1)
     stride_int_guesses = [np.floor(stride_guess), np.ceil(stride_guess)]
     actual_num_images = [
-        total_frames / stride for stride in stride_int_guesses]
+        total_frames / stride for stride in stride_int_guesses
+    ]
     differences = [
-        np.abs(actual - num_desired) for actual in actual_num_images]
-    return int(min(
-        zip(stride_int_guesses, differences), key=lambda t: t[1])[0])
+        np.abs(actual - num_desired) for actual in actual_num_images
+    ]
+    return int(
+        min(zip(stride_int_guesses, differences), key=lambda t: t[1])[0]
+    )
 
 
 def _iter_filtered_video_frames(video_dataset, frame_filter, stride):
     filtered_frame_index = -1
     for video_reader, video_path, video_labels in zip(
-            video_dataset.iter_data(), video_dataset.iter_data_paths(),
-            video_dataset.iter_labels()):
+        video_dataset.iter_data(),
+        video_dataset.iter_data_paths(),
+        video_dataset.iter_labels(),
+    ):
         video_filename = os.path.basename(video_path)
         video_name = os.path.splitext(video_filename)[0]
         with video_reader:

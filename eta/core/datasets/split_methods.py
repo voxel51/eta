@@ -1,4 +1,4 @@
-'''
+"""
 Core methods for splitting iterables into subsets.
 
 Copyright 2017-2020 Voxel51, Inc.
@@ -8,7 +8,7 @@ Matthew Lightman, matthew@voxel51.com
 Jason Corso, jason@voxel51.com
 Ben Kane, ben@voxel51.com
 Tyler Ganter, tyler@voxel51.com
-'''
+"""
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
 # pragma pylint: disable=wildcard-import
@@ -17,6 +17,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
+
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
@@ -33,7 +34,7 @@ logger = logging.getLogger(__name__)
 
 
 def round_robin_split(iterable, split_fractions=None):
-    '''Traverses the iterable in order and assigns items to samples in order,
+    """Traverses the iterable in order and assigns items to samples in order,
     until a given sample has reached its desired size.
 
     If a random split is required, this function is not recommended unless your
@@ -47,7 +48,7 @@ def round_robin_split(iterable, split_fractions=None):
     Returns:
         sample_lists: a list of lists, of the same length as `split_fractions`.
             Each sub-list contains items from the original iterable
-    '''
+    """
     split_fractions = _validate_split_fractions(split_fractions)
 
     # Initial estimate of size of each sample
@@ -78,8 +79,8 @@ def round_robin_split(iterable, split_fractions=None):
     sample_lists = [[] for _ in sample_sizes]
     sample_full = [sample_size == 0 for sample_size in sample_sizes]
     current_sample_idx = min(
-        idx for idx, sample_size in enumerate(sample_sizes)
-        if sample_size > 0)
+        idx for idx, sample_size in enumerate(sample_sizes) if sample_size > 0
+    )
     for item in item_list:
         sample_lists[current_sample_idx].append(item)
         curr_sample_size = len(sample_lists[current_sample_idx])
@@ -90,13 +91,14 @@ def round_robin_split(iterable, split_fractions=None):
             break
 
         current_sample_idx = _find_next_available_idx(
-            current_sample_idx, sample_full)
+            current_sample_idx, sample_full
+        )
 
     return sample_lists
 
 
 def random_split_exact(iterable, split_fractions=None):
-    '''Randomly splits items into multiple sample lists according to the given
+    """Randomly splits items into multiple sample lists according to the given
     split fractions.
 
     The number of items in each sample list will be given exactly by the
@@ -110,7 +112,7 @@ def random_split_exact(iterable, split_fractions=None):
     Returns:
         sample_lists: a list of lists, of the same length as `split_fractions`.
             Each sub-list contains items from the original iterable
-    '''
+    """
     split_fractions = _validate_split_fractions(split_fractions)
 
     shuffled = list(iterable)
@@ -120,7 +122,7 @@ def random_split_exact(iterable, split_fractions=None):
 
 
 def random_split_approx(iterable, split_fractions=None):
-    '''Randomly splits items into multiple sample lists according to the given
+    """Randomly splits items into multiple sample lists according to the given
     split fractions.
 
     Each item is assigned to a sample list with probability equal to the
@@ -134,7 +136,7 @@ def random_split_approx(iterable, split_fractions=None):
     Returns:
         sample_lists: a list of lists, of the same length as `split_fractions`.
             Each sub-list contains items from the original iterable
-    '''
+    """
     split_fractions = _validate_split_fractions(split_fractions)
 
     sample_lists = [[] for _ in split_fractions]
@@ -149,7 +151,7 @@ def random_split_approx(iterable, split_fractions=None):
 
 
 def split_in_order(iterable, split_fractions=None):
-    '''Splits items into multiple sample lists according to the given split
+    """Splits items into multiple sample lists according to the given split
     fractions.
 
     The items are partitioned into samples in order according to their position
@@ -164,7 +166,7 @@ def split_in_order(iterable, split_fractions=None):
     Returns:
         sample_lists: a list of lists, of the same length as `split_fractions`.
             Each sub-list contains items from the original iterable
-    '''
+    """
     split_fractions = _validate_split_fractions(split_fractions)
 
     return _split_in_order(list(iterable), split_fractions)
@@ -191,12 +193,14 @@ def _validate_split_fractions(split_fractions=None):
     if negative_fractions:
         raise ValueError(
             "Split fractions must be non-negative; found negative values: %s"
-            % str(negative_fractions))
+            % str(negative_fractions)
+        )
 
     if sum(split_fractions) > 1.0:
         raise ValueError(
-            "Sum of split fractions must be <= 1.0; found sum(%s) = %f" %
-            (split_fractions, sum(split_fractions)))
+            "Sum of split fractions must be <= 1.0; found sum(%s) = %f"
+            % (split_fractions, sum(split_fractions))
+        )
 
     return split_fractions
 
@@ -214,12 +218,12 @@ def _find_next_available_idx(idx, unavailable_indicators):
 
 
 class SplitMethods(etau.FunctionEnum):
-    '''Enum of supported methods for splitting iterables according to split
+    """Enum of supported methods for splitting iterables according to split
     fractions.
 
     By convention, all methods should follow the syntax
     `fcn(iterable, split_fractions=None) -> list`.
-    '''
+    """
 
     ROUND_ROBIN = "round_robin"
     RANDOM_EXACT = "random_exact"
@@ -230,5 +234,5 @@ class SplitMethods(etau.FunctionEnum):
         "round_robin": round_robin_split,
         "random_exact": random_split_exact,
         "random_approx": random_split_approx,
-        "in_order": split_in_order
+        "in_order": split_in_order,
     }

@@ -1,9 +1,9 @@
-'''
+"""
 Tools for rendering logos on images.
 
 Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
-'''
+"""
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
 # pragma pylint: disable=wildcard-import
@@ -12,6 +12,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
+
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
@@ -26,7 +27,7 @@ import eta.core.utils as etau
 
 
 class LogoConfig(Config):
-    '''Logo configuration settings.
+    """Logo configuration settings.
 
     At least one of `vector_path` and `raster_path` must be provided.
     If a vector image is provided, it is always used. If the vector image
@@ -49,7 +50,7 @@ class LogoConfig(Config):
         gapy: a gap string only for the y coordinate
         loc: a string like "bl" or "top-right" specifying the location to
             apply the logo. Must be a valid input to `etai.Location(loc)`
-    '''
+    """
 
     def __init__(self, d):
         _vector_path = self.parse_string(d, "vector_path", default=None)
@@ -72,20 +73,20 @@ class LogoConfig(Config):
 
     @classmethod
     def load_default(cls):
-        '''Loads the default LogoConfig.'''
+        """Loads the default LogoConfig."""
         return cls.from_json(etac.DEFAULT_LOGO_CONFIG_PATH)
 
 
 class Logo(Configurable):
-    '''Class for rendering a vector/raster logo onto an image.'''
+    """Class for rendering a vector/raster logo onto an image."""
 
     def __init__(self, config=None):
-        '''Constructs a Logo instance.
+        """Constructs a Logo instance.
 
         Args:
             config: an LogoConfig instance. If omitted, the default LogoConfig
                 is used
-        '''
+        """
         if config is None:
             config = LogoConfig.load_default()
         self.validate(config)
@@ -104,11 +105,11 @@ class Logo(Configurable):
 
     @classmethod
     def load_default(cls):
-        '''Loads the default Logo.'''
+        """Loads the default Logo."""
         return cls.from_config(LogoConfig.load_default())
 
     def render_for(self, frame_size=None, shape=None, img=None):
-        '''Renders the logo for the given frame size/shape/image.
+        """Renders the logo for the given frame size/shape/image.
 
         Pass any *one* of the keyword arguments to render the logo.
 
@@ -116,7 +117,7 @@ class Logo(Configurable):
             frame_size: the (width, height) of the image
             shape: the (height, width, ...) of the image, e.g. from img.shape
             img: the image itself
-        '''
+        """
         # Compute width
         w = self._width.render_for(frame_size=frame_size, shape=shape, img=img)
 
@@ -130,19 +131,21 @@ class Logo(Configurable):
             self._logo = etai.resize(raw_logo, width=w)
 
     def apply(self, img):
-        '''Applies the logo to the given image.
+        """Applies the logo to the given image.
 
         If something goes wrong or the logo hasn't been rendered, returns the
         input image.
-        '''
+        """
         if self._logo is None:
             return img
 
         # Compute top-left coordinates of logo in img
         gapx = self._gapx.render_for(img=img)
         gapy = self._gapy.render_for(img=img)
+
         def offset(dim, gap):
             return img.shape[dim] - self._logo.shape[dim] - gap
+
         if self._loc.is_top_left:
             x0, y0 = gapx, gapy
         elif self._loc.is_top_right:

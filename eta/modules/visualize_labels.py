@@ -1,4 +1,5 @@
-'''
+#!/usr/bin/env python
+"""
 A module for visualizing labeled videos.
 
 Info:
@@ -7,7 +8,7 @@ Info:
 
 Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
-'''
+"""
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
 # pragma pylint: disable=wildcard-import
@@ -16,6 +17,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
+
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
@@ -33,22 +35,22 @@ import eta.core.video as etav
 logger = logging.getLogger(__name__)
 
 
-class VisualizeLabelsConfig(etam.BaseModuleConfig):
-    '''Label visualization configuration settings.
+class ModuleConfig(etam.BaseModuleConfig):
+    """Module configuration settings.
 
     Attributes:
         data (DataConfig)
         parameters (ParametersConfig)
-    '''
+    """
 
     def __init__(self, d):
-        super(VisualizeLabelsConfig, self).__init__(d)
+        super(ModuleConfig, self).__init__(d)
         self.data = self.parse_object_array(d, "data", DataConfig)
         self.parameters = self.parse_object(d, "parameters", ParametersConfig)
 
 
 class DataConfig(Config):
-    '''Data configuration settings.
+    """Data configuration settings.
 
     Inputs:
         video_path (eta.core.types.Video): A video
@@ -59,29 +61,31 @@ class DataConfig(Config):
 
     Outputs:
         output_path (eta.core.types.VideoFile): The labeled video
-    '''
+    """
 
     def __init__(self, d):
         self.video_path = self.parse_string(d, "video_path")
         self.video_labels_path = self.parse_string(
-            d, "video_labels_path", default=None)
+            d, "video_labels_path", default=None
+        )
         self.objects_path = self.parse_string(d, "objects_path", default=None)
         self.output_path = self.parse_string(d, "output_path")
 
 
 class ParametersConfig(Config):
-    '''Parameter configuration settings.
+    """Parameter configuration settings.
 
     Parameters:
         annotation_config (eta.core.types.Config): [None] an
             `eta.core.annotations.AnnotationConfig` describing how to render
             the annotations on the video. If omitted, the default settings are
             used
-    '''
+    """
 
     def __init__(self, d):
         self.annotation_config = self.parse_object(
-            d, "annotation_config", etaa.AnnotationConfig, default=None)
+            d, "annotation_config", etaa.AnnotationConfig, default=None
+        )
 
 
 def _visualize_labels(config):
@@ -106,21 +110,24 @@ def _process_video(data, annotation_config):
 
     # Annotate video
     etaa.annotate_video(
-        data.video_path, labels, data.output_path,
-        annotation_config=annotation_config)
+        data.video_path,
+        labels,
+        data.output_path,
+        annotation_config=annotation_config,
+    )
 
 
 def run(config_path, pipeline_config_path=None):
-    '''Run the visualize_labels module.
+    """Run the visualize_labels module.
 
     Args:
-        config_path: path to a VisualizeLabelsConfig file
+        config_path: path to a ModuleConfig file
         pipeline_config_path: optional path to a PipelineConfig file
-    '''
-    config = VisualizeLabelsConfig.from_json(config_path)
+    """
+    config = ModuleConfig.from_json(config_path)
     etam.setup(config, pipeline_config_path=pipeline_config_path)
     _visualize_labels(config)
 
 
 if __name__ == "__main__":
-    run(*sys.argv[1:])
+    run(*sys.argv[1:])  # pylint: disable=no-value-for-parameter

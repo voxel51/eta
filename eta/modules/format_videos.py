@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-'''
+"""
 A module for formatting videos.
 
 Info:
@@ -8,7 +8,7 @@ Info:
 
 Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
-'''
+"""
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
 # pragma pylint: disable=wildcard-import
@@ -17,6 +17,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
+
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
@@ -36,22 +37,22 @@ import eta.core.ziputils as etaz
 logger = logging.getLogger(__name__)
 
 
-class FormatVideosConfig(etam.BaseModuleConfig):
-    '''Format videos configuration settings.
+class ModuleConfig(etam.BaseModuleConfig):
+    """Module configuration settings.
 
     Attributes:
         data (DataConfig)
         parameters (ParametersConfig)
-    '''
+    """
 
     def __init__(self, d):
-        super(FormatVideosConfig, self).__init__(d)
+        super(ModuleConfig, self).__init__(d)
         self.data = self.parse_object_array(d, "data", DataConfig)
         self.parameters = self.parse_object(d, "parameters", ParametersConfig)
 
 
 class DataConfig(Config):
-    '''Data configuration settings.
+    """Data configuration settings.
 
     Inputs:
         input_path (eta.core.types.Video): [None] The input video
@@ -67,17 +68,20 @@ class DataConfig(Config):
             formatted frames pattern
         output_zip (eta.core.types.ZippedVideoFileDirectory): [None] A zip file
             containing a directory of formatted video files
-    '''
+    """
 
     def __init__(self, d):
         self.input_path = self.parse_string(d, "input_path", default=None)
         self.input_zip = self.parse_string(d, "input_zip", default=None)
         self.output_video_path = self.parse_string(
-            d, "output_video_path", default=None)
+            d, "output_video_path", default=None
+        )
         self.output_frames_dir = self.parse_string(
-            d, "output_frames_dir", default=None)
+            d, "output_frames_dir", default=None
+        )
         self.output_frames_path = self.parse_string(
-            d, "output_frames_path", default=None)
+            d, "output_frames_path", default=None
+        )
         self.output_zip = self.parse_string(d, "output_zip", default=None)
 
         self._output_field = None
@@ -102,11 +106,13 @@ class DataConfig(Config):
             self._output_val = self.output_zip
             return
 
-        field, val = Config.parse_mutually_exclusive_fields({
-            "output_video_path": self.output_video_path,
-            "output_frames_dir": self.output_frames_dir,
-            "output_frames_path": self.output_frames_path,
-        })
+        field, val = Config.parse_mutually_exclusive_fields(
+            {
+                "output_video_path": self.output_video_path,
+                "output_frames_dir": self.output_frames_dir,
+                "output_frames_path": self.output_frames_path,
+            }
+        )
         if field == "output_frames_dir":
             val = etai.make_image_sequence_patt(val)
         self._output_field = field
@@ -114,7 +120,7 @@ class DataConfig(Config):
 
 
 class ParametersConfig(Config):
-    '''Parameter configuration settings.
+    """Parameter configuration settings.
 
     Parameters:
         fps (eta.core.types.Number): [None] The output frame rate
@@ -130,7 +136,7 @@ class ParametersConfig(Config):
             constraint is applied to them
         ffmpeg_out_opts (eta.core.types.Array): [None] An array of ffmpeg
             output options
-    '''
+    """
 
     def __init__(self, d):
         self.fps = self.parse_number(d, "fps", default=None)
@@ -139,7 +145,8 @@ class ParametersConfig(Config):
         self.size = self.parse_array(d, "size", default=None)
         self.max_size = self.parse_array(d, "max_size", default=None)
         self.ffmpeg_out_opts = self.parse_array(
-            d, "ffmpeg_out_opts", default=None)
+            d, "ffmpeg_out_opts", default=None
+        )
 
 
 def _format_videos(config):
@@ -211,7 +218,9 @@ def _process_video(input_path, output_path, parameters):
         logger.info(
             "Same frame rate, frame size, and video format detected, so no "
             "computation is required. Just symlinking %s to %s",
-            output_path, input_path)
+            output_path,
+            input_path,
+        )
         etau.symlink_file(input_path, output_path)
         return
 
@@ -238,16 +247,16 @@ def _process_video(input_path, output_path, parameters):
 
 
 def run(config_path, pipeline_config_path=None):
-    '''Run the format_videos module.
+    """Run the format_videos module.
 
     Args:
-        config_path: path to a FormatVideosConfig file
+        config_path: path to a ModuleConfig file
         pipeline_config_path: optional path to a PipelineConfig file
-    '''
-    config = FormatVideosConfig.from_json(config_path)
+    """
+    config = ModuleConfig.from_json(config_path)
     etam.setup(config, pipeline_config_path=pipeline_config_path)
     _format_videos(config)
 
 
 if __name__ == "__main__":
-    run(*sys.argv[1:])
+    run(*sys.argv[1:])  # pylint: disable=no-value-for-parameter

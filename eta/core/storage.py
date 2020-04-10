@@ -1,4 +1,4 @@
-'''
+"""
 Core infrastructure for working with remote storage resources.
 
 See `docs/storage_dev_guide.md` for more information and best practices for
@@ -14,7 +14,7 @@ This module currently provides clients for the following storage resources:
 
 Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
-'''
+"""
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
 # pragma pylint: disable=wildcard-import
@@ -25,6 +25,7 @@ from __future__ import unicode_literals
 from builtins import *
 from future.utils import iteritems
 import six
+
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
@@ -35,6 +36,7 @@ import io
 import logging
 import os
 import re
+
 try:
     import urllib.parse as urlparse  # Python 3
 except ImportError:
@@ -66,15 +68,16 @@ logging.getLogger("paramiko").setLevel(logging.ERROR)
 
 
 def google_cloud_api_retry(func):
-    '''Decorator for handling retry of Google API errors.
+    """Decorator for handling retry of Google API errors.
 
     Follows recommendations from:
     https://cloud.google.com/apis/design/errors#error_retries
-    '''
+    """
 
     def is_500_or_503(exception):
-        return (isinstance(exception, gae.InternalServerError)
-                or isinstance(exception, gae.ServiceUnavailable))
+        return isinstance(exception, gae.InternalServerError) or isinstance(
+            exception, gae.ServiceUnavailable
+        )
 
     def is_429(exception):
         return isinstance(exception, gae.TooManyRequests)
@@ -82,12 +85,17 @@ def google_cloud_api_retry(func):
     stop_max_attempt_number = 10
     # wait times below are in milliseconds
 
-    @retry(retry_on_exception=is_500_or_503,
-           stop_max_attempt_number=stop_max_attempt_number,
-           wait_exponential_multiplier=1000, wait_exponential_max=1 * 1000)
-    @retry(retry_on_exception=is_429,
-           stop_max_attempt_number=stop_max_attempt_number,
-           wait_fixed=30 * 1000)
+    @retry(
+        retry_on_exception=is_500_or_503,
+        stop_max_attempt_number=stop_max_attempt_number,
+        wait_exponential_multiplier=1000,
+        wait_exponential_max=1 * 1000,
+    )
+    @retry(
+        retry_on_exception=is_429,
+        stop_max_attempt_number=stop_max_attempt_number,
+        wait_fixed=30 * 1000,
+    )
     def wrapper(*args, **kwargs):
         return func(*args, **kwargs)
 
@@ -95,94 +103,94 @@ def google_cloud_api_retry(func):
 
 
 class StorageClient(object):
-    '''Interface for storage clients that read/write files from remote storage
+    """Interface for storage clients that read/write files from remote storage
     locations.
 
     Depending on the nature of the concrete StorageClient, `remote_path` may be
     a cloud object, a file ID, or some other construct that represents the path
     to which the file will be written.
-    '''
+    """
 
     def upload(self, local_path, remote_path):
-        '''Uploads the file to the given remote path.
+        """Uploads the file to the given remote path.
 
         Args:
             local_path: the path to the file to upload
             remote_path: the remote path to write the file
-        '''
+        """
         raise NotImplementedError("subclass must implement upload()")
 
     def upload_bytes(self, bytes_str, remote_path):
-        '''Uploads the given bytes to the given remote path.
+        """Uploads the given bytes to the given remote path.
 
         Args:
             bytes_str: the bytes string to upload
             remote_path: the remote path to write the file
-        '''
+        """
         raise NotImplementedError("subclass must implement upload_bytes()")
 
     def upload_stream(self, file_obj, remote_path):
-        '''Uploads the contents of the given file-like object to the given
+        """Uploads the contents of the given file-like object to the given
         remote path.
 
         Args:
             file_obj: the file-like object to upload, which must be open for
                 reading
             remote_path: the remote path to write the file
-        '''
+        """
         raise NotImplementedError("subclass must implement upload_stream()")
 
     def download(self, remote_path, local_path):
-        '''Downloads the remote file to the given local path.
+        """Downloads the remote file to the given local path.
 
         Args:
             remote_path: the remote file to download
             local_path: the path to which to write the downloaded file
-        '''
+        """
         raise NotImplementedError("subclass must implement download()")
 
     def download_bytes(self, remote_path):
-        '''Downloads bytes from the given remote path.
+        """Downloads bytes from the given remote path.
 
         Args:
             remote_path: the remote file to download
 
         Returns:
             the downloaded bytes string
-        '''
+        """
         raise NotImplementedError("subclass must implement download_bytes()")
 
     def download_stream(self, remote_path, file_obj):
-        '''Downloads the file from the given remote path to the given
+        """Downloads the file from the given remote path to the given
         file-like object.
 
         Args:
             remote_path: the remote file to download
             file_obj: the file-like object to which to write the download,
                 which must be open for writing
-        '''
+        """
         raise NotImplementedError("subclass must implement download_stream()")
 
     def delete(self, remote_path):
-        '''Deletes the file at the remote path.
+        """Deletes the file at the remote path.
 
         Args:
             remote_path: the remote path to delete
-        '''
+        """
         raise NotImplementedError("subclass must implement delete()")
 
 
 class CanSyncDirectories(object):
-    '''Mixin class for `StorageClient`s that can sync directories to/from
+    """Mixin class for `StorageClient`s that can sync directories to/from
     remote storage.
 
     Depending on the nature of the concrete StorageClient, `remote_dir` may be
     a cloud bucket or prefix, the ID of a directory, or some other construct
     that contains a collection of files of interest.
-    '''
+    """
 
     def list_files_in_folder(self, remote_dir, recursive=True):
-        '''Returns a list of the files in the given remote directory.
+        """Returns a list of the files in the given remote directory.
 
         Args:
             remote_dir: the remote directory
@@ -191,13 +199,15 @@ class CanSyncDirectories(object):
 
         Returns:
             a list of full paths to the files in the folder
-        '''
+        """
         raise NotImplementedError(
-            "subclass must implement list_files_in_folder()")
+            "subclass must implement list_files_in_folder()"
+        )
 
     def upload_dir(
-            self, local_dir, remote_dir, recursive=True, skip_failures=False):
-        '''Uploads the contents of the given directory to the given remote
+        self, local_dir, remote_dir, recursive=True, skip_failures=False
+    ):
+        """Uploads the contents of the given directory to the given remote
         storage directory.
 
         The remote paths are created by appending the relative paths of all
@@ -209,7 +219,7 @@ class CanSyncDirectories(object):
             recursive: whether to recursively traverse subdirectories. By
                 default, this is True
             skip_failures: whether to skip failures. By default, this is False
-        '''
+        """
         files = etau.list_files(local_dir, recursive=recursive)
         if not files:
             return
@@ -221,9 +231,14 @@ class CanSyncDirectories(object):
             self._do_upload_sync(local_path, remote_path, skip_failures)
 
     def upload_dir_sync(
-            self, local_dir, remote_dir, overwrite=False, recursive=True,
-            skip_failures=False):
-        '''Syncs the contents of the given local directory to the given remote
+        self,
+        local_dir,
+        remote_dir,
+        overwrite=False,
+        recursive=True,
+        skip_failures=False,
+    ):
+        """Syncs the contents of the given local directory to the given remote
         storage directory.
 
         This method is similar to `upload_dir()`, except that files in the
@@ -240,7 +255,7 @@ class CanSyncDirectories(object):
             recursive: whether to recursively traverse subdirectories. By
                 default, this is True
             skip_failures: whether to skip failures. By default, this is False
-        '''
+        """
         local_files = set(etau.list_files(local_dir, recursive=recursive))
         remote_files = set(
             os.path.relpath(f, remote_dir)
@@ -258,22 +273,25 @@ class CanSyncDirectories(object):
 
         if delete_files:
             logger.info(
-                "Deleting %d files from '%s'", len(delete_files), remote_dir)
+                "Deleting %d files from '%s'", len(delete_files), remote_dir
+            )
             for f in delete_files:
                 remote_path = os.path.join(remote_dir, f)
                 self._do_remote_delete_sync(remote_path, skip_failures)
 
         if upload_files:
             logger.info(
-                "Uploading %d files to '%s'", len(upload_files), remote_dir)
+                "Uploading %d files to '%s'", len(upload_files), remote_dir
+            )
             for f in upload_files:
                 local_path = os.path.join(local_dir, f)
                 remote_path = os.path.join(remote_dir, f)
                 self._do_upload_sync(local_path, remote_path, skip_failures)
 
     def download_dir(
-            self, remote_dir, local_dir, recursive=True, skip_failures=False):
-        '''Downloads the contents of the remote directory to the given local
+        self, remote_dir, local_dir, recursive=True, skip_failures=False
+    ):
+        """Downloads the contents of the remote directory to the given local
         directory.
 
         The files are written inside the specified local directory according
@@ -285,23 +303,31 @@ class CanSyncDirectories(object):
             recursive: whether to recursively traverse subdirectories. By
                 default, this is True
             skip_failures: whether to skip failures. By default, this is False
-        '''
+        """
         remote_paths = self.list_files_in_folder(
-            remote_dir, recursive=recursive)
+            remote_dir, recursive=recursive
+        )
         if not remote_paths:
             return
 
         logger.info(
-            "Downloading %d files from '%s'", len(remote_paths), remote_dir)
+            "Downloading %d files from '%s'", len(remote_paths), remote_dir
+        )
         for remote_path in remote_paths:
             local_path = os.path.join(
-                local_dir, os.path.relpath(remote_path, remote_dir))
+                local_dir, os.path.relpath(remote_path, remote_dir)
+            )
             self._do_download_sync(remote_path, local_path, skip_failures)
 
     def download_dir_sync(
-            self, remote_dir, local_dir, overwrite=False, recursive=True,
-            skip_failures=False):
-        '''Syncs the contents of the given remote directory to the given local
+        self,
+        remote_dir,
+        local_dir,
+        overwrite=False,
+        recursive=True,
+        skip_failures=False,
+    ):
+        """Syncs the contents of the given remote directory to the given local
         directory.
 
         This method is similar to `download_dir()`, except that files in the
@@ -318,7 +344,7 @@ class CanSyncDirectories(object):
             recursive: whether to recursively traverse subdirectories. By
                 default, this is True
             skip_failures: whether to skip failures. By default, this is False
-        '''
+        """
         remote_files = set(
             os.path.relpath(f, remote_dir)
             for f in self.list_files_in_folder(remote_dir, recursive=recursive)
@@ -336,14 +362,16 @@ class CanSyncDirectories(object):
 
         if delete_files:
             logger.info(
-                "Deleting %d files from '%s'", len(delete_files), local_dir)
+                "Deleting %d files from '%s'", len(delete_files), local_dir
+            )
             for f in delete_files:
                 local_path = os.path.join(local_dir, f)
                 self._do_local_delete_sync(local_path, skip_failures)
 
         if download_files:
             logger.info(
-                "Downloading %d files to '%s'", len(download_files), local_dir)
+                "Downloading %d files to '%s'", len(download_files), local_dir
+            )
             for f in download_files:
                 remote_path = os.path.join(remote_dir, f)
                 local_path = os.path.join(local_dir, f)
@@ -351,25 +379,29 @@ class CanSyncDirectories(object):
 
     def _do_upload_sync(self, local_path, remote_path, skip_failures):
         try:
-            self.upload(local_path, remote_path)
+            self.upload(local_path, remote_path)  # pylint: disable=no-member
             logger.info("Uploaded '%s'", remote_path)
         except Exception as e:
             if not skip_failures:
                 raise SyncDirectoriesError(e)
             logger.warning(
                 "Failed to upload '%s' to '%s'; skipping",
-                local_path, remote_path)
+                local_path,
+                remote_path,
+            )
 
     def _do_download_sync(self, remote_path, local_path, skip_failures):
         try:
-            self.download(remote_path, local_path)
+            self.download(remote_path, local_path)  # pylint: disable=no-member
             logger.info("Downloaded '%s'", local_path)
         except Exception as e:
             if not skip_failures:
                 raise SyncDirectoriesError(e)
             logger.warning(
                 "Failed to download '%s' to '%s'; skipping",
-                remote_path, local_path)
+                remote_path,
+                local_path,
+            )
 
     def _do_local_delete_sync(self, local_path, skip_failures):
         try:
@@ -382,7 +414,7 @@ class CanSyncDirectories(object):
 
     def _do_remote_delete_sync(self, remote_path, skip_failures):
         try:
-            self.delete(remote_path)
+            self.delete(remote_path)  # pylint: disable=no-member
             logger.info("Deleted '%s'", remote_path)
         except Exception as e:
             if not skip_failures:
@@ -391,12 +423,13 @@ class CanSyncDirectories(object):
 
 
 class SyncDirectoriesError(Exception):
-    '''Error raised when a CanSyncDirectories method fails.'''
+    """Error raised when a CanSyncDirectories method fails."""
+
     pass
 
 
 class LocalStorageClient(StorageClient, CanSyncDirectories):
-    '''Client for reading/writing data from local disk storage.
+    """Client for reading/writing data from local disk storage.
 
     Since this class encapsulates local disk storage, the `storage_path`
     arguments refer to local storage paths on disk.
@@ -405,7 +438,7 @@ class LocalStorageClient(StorageClient, CanSyncDirectories):
         chunk_size: the chunk size (in bytes) that will be used for streaming
             uploads and downloads. A negative value implies that the entire
             file is uploaded/downloaded at once
-    '''
+    """
 
     #
     # The chunk size (in bytes) to use when streaming. If a negative value
@@ -414,89 +447,89 @@ class LocalStorageClient(StorageClient, CanSyncDirectories):
     DEFAULT_CHUNK_SIZE = -1
 
     def __init__(self, chunk_size=None):
-        '''Creates a LocalStorageClient instance.
+        """Creates a LocalStorageClient instance.
 
         chunk_size: an optional chunk size (in bytes) to use for streaming
             uploads and downloads. By default, `DEFAULT_CHUNK_SIZE` is used
-        '''
+        """
         self.chunk_size = chunk_size or self.DEFAULT_CHUNK_SIZE
 
     def upload(self, local_path, storage_path):
-        '''Uploads the file to storage.
+        """Uploads the file to storage.
 
         Args:
             local_path: the path to the file to upload
             storage_path: the path to the storage location
-        '''
+        """
         etau.copy_file(local_path, storage_path)
 
     def upload_bytes(self, bytes_str, storage_path):
-        '''Uploads the given bytes to storage.
+        """Uploads the given bytes to storage.
 
         Args:
             bytes_str: the bytes string to upload
             storage_path: the path to the storage location
-        '''
+        """
         etau.ensure_basedir(storage_path)
         with open(storage_path, "wb") as f:
             f.write(bytes_str)
 
     def upload_stream(self, file_obj, storage_path):
-        '''Uploads the contents of the given file-like object to storage.
+        """Uploads the contents of the given file-like object to storage.
 
         Args:
             file_obj: the file-like object to upload, which must be open for
                 reading
             storage_path: the path to the storage location
-        '''
+        """
         etau.ensure_basedir(storage_path)
         with open(storage_path, "wb") as f:
             for chunk in _read_file_in_chunks(file_obj, self.chunk_size):
                 f.write(chunk)
 
     def download(self, storage_path, local_path):
-        '''Downloads the file from storage.
+        """Downloads the file from storage.
 
         Args:
             storage_path: the path to the storage location
             local_path: the path to store the downloaded file locally
-        '''
+        """
         etau.copy_file(storage_path, local_path)
 
     def download_bytes(self, storage_path):
-        '''Downloads bytes from storage.
+        """Downloads bytes from storage.
 
         Args:
             storage_path: the path to the storage location
 
         Returns:
             the downloaded bytes string
-        '''
+        """
         with open(storage_path, "rb") as f:
             return f.read()
 
     def download_stream(self, storage_path, file_obj):
-        '''Downloads the file from storage to the given file-like object.
+        """Downloads the file from storage to the given file-like object.
 
         Args:
             storage_path: the path to the storage location
             file_obj: the file-like object to which to write the download,
                 which must be open for writing
-        '''
+        """
         with open(storage_path, "rb") as f:
             for chunk in _read_file_in_chunks(f, self.chunk_size):
                 file_obj.write(chunk)
 
     def delete(self, storage_path):
-        '''Deletes the file from storage.
+        """Deletes the file from storage.
 
         Args:
             storage_path: the path to the storage location
-        '''
+        """
         etau.delete_file(storage_path)
 
     def list_files_in_folder(self, storage_dir, recursive=True):
-        '''Returns a list of the files in the given storage directory.
+        """Returns a list of the files in the given storage directory.
 
         Args:
             storage_dir: the storage directory
@@ -505,13 +538,14 @@ class LocalStorageClient(StorageClient, CanSyncDirectories):
 
         Returns:
             a list of full paths to the files in the storage directory
-        '''
+        """
         return etau.list_files(
-            storage_dir, abs_paths=True, recursive=recursive)
+            storage_dir, abs_paths=True, recursive=recursive
+        )
 
 
 class NeedsAWSCredentials(object):
-    '''Mixin for classes that need AWS credentials to take authenticated
+    """Mixin for classes that need AWS credentials to take authenticated
     actions.
 
     Storage clients that derive from this class should allow users to provide
@@ -544,50 +578,52 @@ class NeedsAWSCredentials(object):
 
     See the following link for more information:
     https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html#configuration
-    '''
+    """
 
     CREDENTIALS_PATH = os.path.join(etac.ETA_CONFIG_DIR, "aws-credentials.ini")
 
     @classmethod
     def activate_credentials(cls, credentials_path):
-        '''Activate the credentials by copying them to
+        """Activate the credentials by copying them to
         `~/.eta/aws-credentials.ini`.
 
         Args:
             credentials_path: the path to a credentials `.ini` file
-        '''
+        """
         etau.copy_file(credentials_path, cls.CREDENTIALS_PATH)
         logger.info(
             "AWS credentials successfully activated at '%s'",
-            cls.CREDENTIALS_PATH)
+            cls.CREDENTIALS_PATH,
+        )
 
     @classmethod
     def deactivate_credentials(cls):
-        '''Deactivates (deletes) the currently active credentials, if any.
+        """Deactivates (deletes) the currently active credentials, if any.
 
         Active credentials (if any) are at `~/.eta/aws-credentials.ini`.
-        '''
+        """
         try:
             os.remove(cls.CREDENTIALS_PATH)
             logger.info(
                 "AWS credentials '%s' successfully deactivated",
-                cls.CREDENTIALS_PATH)
+                cls.CREDENTIALS_PATH,
+            )
         except OSError:
             logger.info("No AWS credentials to deactivate")
 
     @classmethod
     def has_active_credentials(cls):
-        '''Determines whether there are any active credentials stored at
+        """Determines whether there are any active credentials stored at
         `~/.eta/aws-credentials.ini`.
 
         Returns:
             True/False
-        '''
+        """
         return os.path.isfile(cls.CREDENTIALS_PATH)
 
     @classmethod
     def load_credentials(cls, credentials_path=None, profile=None):
-        '''Loads the AWS credentials as a dictionary.
+        """Loads the AWS credentials as a dictionary.
 
         Args:
             credentials_path: an optional path to a credentials `.ini` file.
@@ -601,62 +637,75 @@ class NeedsAWSCredentials(object):
             a (credentials, path) tuple containing the credentials and the path
                 from which they were loaded. If the credentials were loaded
                 from environment variables, `path` will be None
-        '''
+        """
         if credentials_path:
             logger.debug(
-                "Loading AWS credentials from manually provided path "
-                "'%s'", credentials_path)
+                "Loading AWS credentials from manually provided path " "'%s'",
+                credentials_path,
+            )
             credentials = cls._load_credentials_ini(
-                credentials_path, profile=profile)
+                credentials_path, profile=profile
+            )
             return credentials, credentials_path
 
-        if ("AWS_ACCESS_KEY_ID" in os.environ and
-                "AWS_SECRET_ACCESS_KEY" in os.environ):
+        if (
+            "AWS_ACCESS_KEY_ID" in os.environ
+            and "AWS_SECRET_ACCESS_KEY" in os.environ
+        ):
             logger.debug(
                 "Loading access key and secret key from 'AWS_ACCESS_KEY_ID' "
-                "and 'AWS_SECRET_ACCESS_KEY' environment variables")
+                "and 'AWS_SECRET_ACCESS_KEY' environment variables"
+            )
             credentials = {
                 "aws_access_key_id": os.environ["AWS_ACCESS_KEY_ID"],
-                "aws_secret_access_key": os.environ["AWS_SECRET_ACCESS_KEY"]
+                "aws_secret_access_key": os.environ["AWS_SECRET_ACCESS_KEY"],
             }
             if "AWS_DEFAULT_REGION" in os.environ:
                 logger.debug(
                     "Loading region from 'AWS_DEFAULT_REGION' environment "
-                    "variable")
+                    "variable"
+                )
                 credentials["region"] = os.environ["AWS_DEFAULT_REGION"]
             if "AWS_SESSION_TOKEN" in os.environ:
                 logger.debug(
                     "Loading session token from 'AWS_SESSION_TOKEN' "
-                    "environment variable")
-                credentials["aws_session_token"] = \
-                    os.environ["AWS_SESSION_TOKEN"]
+                    "environment variable"
+                )
+                credentials["aws_session_token"] = os.environ[
+                    "AWS_SESSION_TOKEN"
+                ]
             return credentials, None
 
         if "AWS_SHARED_CREDENTIALS_FILE" in os.environ:
             credentials_path = os.environ["AWS_SHARED_CREDENTIALS_FILE"]
             logger.debug(
                 "Loading AWS credentials from environment variable "
-                "AWS_SHARED_CREDENTIALS_FILE='%s'", credentials_path)
+                "AWS_SHARED_CREDENTIALS_FILE='%s'",
+                credentials_path,
+            )
         elif "AWS_CONFIG_FILE" in os.environ:
             credentials_path = os.environ["AWS_CONFIG_FILE"]
             logger.debug(
                 "Loading AWS credentials from environment variable "
-                "AWS_CONFIG_FILE='%s'", credentials_path)
+                "AWS_CONFIG_FILE='%s'",
+                credentials_path,
+            )
         elif cls.has_active_credentials():
             credentials_path = cls.CREDENTIALS_PATH
             logger.debug(
-                "Loading activated AWS credentials from '%s'",
-                credentials_path)
+                "Loading activated AWS credentials from '%s'", credentials_path
+            )
         else:
             raise AWSCredentialsError("No AWS credentials found")
 
         credentials = cls._load_credentials_ini(
-            credentials_path, profile=profile)
+            credentials_path, profile=profile
+        )
         return credentials, credentials_path
 
     @classmethod
     def from_ini(cls, credentials_path, profile=None):
-        '''Creates a `cls` instance from the given credentials `.ini` file.
+        """Creates a `cls` instance from the given credentials `.ini` file.
 
         Args:
             credentials_path: the path to a credentials `.ini` file
@@ -665,9 +714,10 @@ class NeedsAWSCredentials(object):
 
         Returns:
             an instance of cls with the given credentials
-        '''
+        """
         credentials, _ = cls.load_credentials(
-            credentials_path=credentials_path, profile=profile)
+            credentials_path=credentials_path, profile=profile
+        )
         return cls(credentials=credentials)
 
     @classmethod
@@ -679,32 +729,33 @@ class NeedsAWSCredentials(object):
 
 
 class AWSCredentialsError(Exception):
-    '''Error raised when a problem with AWS credentials is encountered.'''
+    """Error raised when a problem with AWS credentials is encountered."""
 
     def __init__(self, message):
-        '''Creates an AWSCredentialsError instance.
+        """Creates an AWSCredentialsError instance.
 
         Args:
             message: the error message
-        '''
+        """
         super(AWSCredentialsError, self).__init__(
             "%s. Read the class docstring of "
             "`eta.core.storage.NeedsAWSCredentials` for more information "
-            "about authenticating with AWS services." % message)
+            "about authenticating with AWS services." % message
+        )
 
 
 class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
-    '''Client for reading/writing data from Amazon S3 buckets.
+    """Client for reading/writing data from Amazon S3 buckets.
 
     All cloud path strings used by this class should have the form
     "s3://<bucket>/<path/to/object>".
 
     See `NeedsAWSCredentials` for more information about the authentication
     strategy used by this class.
-    '''
+    """
 
     def __init__(self, credentials=None):
-        '''Creates an S3StorageClient instance.
+        """Creates an S3StorageClient instance.
 
         Args:
             credentials: an optional AWS credentials dictionary. If provided,
@@ -712,7 +763,7 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
                 `boto3.client("s3", **credentials)`. If not provided, active
                 credentials are automatically loaded as described in
                 `NeedsAWSCredentials`
-        '''
+        """
         if credentials is None:
             credentials, _ = self.load_credentials()
 
@@ -724,19 +775,20 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
         self._client = boto3.client("s3", **credentials)
 
     def upload(self, local_path, cloud_path, content_type=None):
-        '''Uploads the file to S3.
+        """Uploads the file to S3.
 
         Args:
             local_path: the path to the file to upload
             cloud_path: the path to the S3 object to create
             content_type: the optional type of the content being uploaded. If
                 no value is provided, it is guessed from the filename
-        '''
+        """
         self._do_upload(
-            cloud_path, local_path=local_path, content_type=content_type)
+            cloud_path, local_path=local_path, content_type=content_type
+        )
 
     def upload_stream(self, file_obj, cloud_path, content_type=None):
-        '''Uploads the contents of the given file-like object to S3.
+        """Uploads the contents of the given file-like object to S3.
 
         Args:
             file_obj: the file-like object to upload, which must be open for
@@ -746,12 +798,13 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
                 no value is provided but the object already exists in S3, then
                 the same value is used. Otherwise, the default value
                 ("application/octet-stream") is used
-        '''
+        """
         self._do_upload(
-            cloud_path, file_obj=file_obj, content_type=content_type)
+            cloud_path, file_obj=file_obj, content_type=content_type
+        )
 
     def upload_bytes(self, bytes_str, cloud_path, content_type=None):
-        '''Uploads the given bytes to S3.
+        """Uploads the given bytes to S3.
 
         Args:
             bytes_str: the bytes string to upload
@@ -760,57 +813,57 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
                 no value is provided but the object already exists in S3, then
                 the same value is used. Otherwise, the default value
                 ("application/octet-stream") is used
-        '''
+        """
         with io.BytesIO(_to_bytes(bytes_str)) as f:
             self._do_upload(cloud_path, file_obj=f, content_type=content_type)
 
     def download(self, cloud_path, local_path):
-        '''Downloads the file from S3 to the given location.
+        """Downloads the file from S3 to the given location.
 
         Args:
             cloud_path: the path to the S3 object to download
             local_path: the local disk path to store the downloaded file
-        '''
+        """
         self._do_download(cloud_path, local_path=local_path)
 
     def download_stream(self, cloud_path, file_obj):
-        '''Downloads the file from S3 to the given file-like object.
+        """Downloads the file from S3 to the given file-like object.
 
         Args:
             cloud_path: the path to the S3 object to download
             file_obj: the file-like object to which to write the download,
                 which must be open for writing in binary mode
-        '''
+        """
         self._do_download(cloud_path, file_obj=file_obj)
 
     def download_bytes(self, cloud_path):
-        '''Downloads the file from S3 and returns the bytes string.
+        """Downloads the file from S3 and returns the bytes string.
 
         Args:
             cloud_path: the path to the S3 object to download
 
         Returns:
             the downloaded bytes string
-        '''
+        """
         with io.BytesIO() as f:
             self.download_stream(cloud_path, f)
             return f.getvalue()
 
     def delete(self, cloud_path):
-        '''Deletes the given file from S3.
+        """Deletes the given file from S3.
 
         Args:
             cloud_path: the path to the S3 object to delete
-        '''
+        """
         bucket, object_name = self._parse_s3_path(cloud_path)
         self._client.delete_object(Bucket=bucket, Key=object_name)
 
     def delete_folder(self, cloud_folder):
-        '''Deletes all files in the given S3 "folder".
+        """Deletes all files in the given S3 "folder".
 
         Args:
             cloud_folder: a string like `s3://<bucket-name>/<folder-path>`
-        '''
+        """
         bucket, folder_name = self._parse_s3_path(cloud_folder)
         if folder_name and not folder_name.endswith("/"):
             folder_name += "/"
@@ -820,9 +873,7 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
             resp = self._client.list_objects_v2(**kwargs)
             contents = resp.get("Contents", [])
             if contents:
-                delete = {
-                    "Objects" : [{"Key": obj["Key"]} for obj in contents]
-                }
+                delete = {"Objects": [{"Key": obj["Key"]} for obj in contents]}
                 self._client.delete_objects(Bucket=bucket, Delete=delete)
 
             try:
@@ -831,7 +882,7 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
                 break
 
     def get_file_metadata(self, cloud_path):
-        '''Returns metadata about the given file in S3.
+        """Returns metadata about the given file in S3.
 
         Args:
             cloud_path: the path to the S3 object
@@ -840,12 +891,12 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
             a dictionary containing metadata about the file, including its
                 `bucket`, `object_name`, `name`, `size`, `mime_type`, and
                 `last_modified`
-        '''
+        """
         bucket, object_name = self._parse_s3_path(cloud_path)
         return self._get_file_metadata(bucket, object_name)
 
     def get_folder_metadata(self, cloud_folder):
-        '''Returns metadata about the given "folder" in S3.
+        """Returns metadata about the given "folder" in S3.
 
         Note that this method is *expensive*; the only way to compute this
         information is to call `list_files_in_folder(..., recursive=True)` and
@@ -857,9 +908,10 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
         Returns:
             a dictionary containing metadata about the "folder", including its
                 `bucket`, `path`, `num_files`, `size`, and `last_modified`
-        '''
+        """
         files = self.list_files_in_folder(
-            cloud_folder, recursive=True, return_metadata=True)
+            cloud_folder, recursive=True, return_metadata=True
+        )
 
         bucket, path = self._parse_s3_path(cloud_folder)
         path = path.rstrip("/")
@@ -882,8 +934,9 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
         }
 
     def list_files_in_folder(
-            self, cloud_folder, recursive=True, return_metadata=False):
-        '''Returns a list of the files in the given "folder" in S3.
+        self, cloud_folder, recursive=True, return_metadata=False
+    ):
+        """Returns a list of the files in the given "folder" in S3.
 
         Args:
             cloud_folder: a string like `s3://<bucket-name>/<folder-path>`
@@ -898,7 +951,7 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
             a list of full cloud paths (when `return_metadata == False`) or a
                 list of metadata dictionaries (when `return_metadata == True`)
                 for the files in the folder
-        '''
+        """
         bucket, folder_name = self._parse_s3_path(cloud_folder)
         if folder_name and not folder_name.endswith("/"):
             folder_name += "/"
@@ -917,7 +970,8 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
                 if not path.endswith("/"):
                     if return_metadata:
                         paths_or_metadata.append(
-                            self._get_object_metadata(bucket, obj))
+                            self._get_object_metadata(bucket, obj)
+                        )
                     else:
                         paths_or_metadata.append(os.path.join(prefix, path))
 
@@ -929,8 +983,9 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
         return paths_or_metadata
 
     def generate_signed_url(
-            self, cloud_path, method="GET", hours=24, content_type=None):
-        '''Generates a signed URL for accessing the given S3 object.
+        self, cloud_path, method="GET", hours=24, content_type=None
+    ):
+        """Generates a signed URL for accessing the given S3 object.
 
         Anyone with the URL can access the object with the permission until it
         expires.
@@ -946,7 +1001,7 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
 
         Returns:
             a URL for accessing the object via HTTP request
-        '''
+        """
         client_method = method.lower() + "_object"
         bucket, object_name = self._parse_s3_path(cloud_path)
         params = {"Bucket": bucket, "Key": object_name}
@@ -954,11 +1009,12 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
             params["ContentType"] = content_type
         expiration = int(3600 * hours)
         return self._client.generate_presigned_url(
-            ClientMethod=client_method, Params=params, ExpiresIn=expiration)
+            ClientMethod=client_method, Params=params, ExpiresIn=expiration
+        )
 
     def _do_upload(
-            self, cloud_path, local_path=None, file_obj=None,
-            content_type=None):
+        self, cloud_path, local_path=None, file_obj=None, content_type=None
+    ):
         bucket, object_name = self._parse_s3_path(cloud_path)
 
         if local_path and not content_type:
@@ -971,11 +1027,13 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
 
         if local_path:
             self._client.upload_file(
-                local_path, bucket, object_name, ExtraArgs=extra_args)
+                local_path, bucket, object_name, ExtraArgs=extra_args
+            )
 
         if file_obj is not None:
             self._client.upload_fileobj(
-                file_obj, bucket, object_name, ExtraArgs=extra_args)
+                file_obj, bucket, object_name, ExtraArgs=extra_args
+            )
 
     def _do_download(self, cloud_path, local_path=None, file_obj=None):
         bucket, object_name = self._parse_s3_path(cloud_path)
@@ -1019,7 +1077,7 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
 
     @staticmethod
     def _parse_s3_path(cloud_path):
-        '''Parses an S3 path.
+        """Parses an S3 path.
 
         Args:
             cloud_path: a string of form "s3://<bucket_name>/<object_name>"
@@ -1030,10 +1088,11 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
 
         Raises:
             S3StorageClientError: if the cloud path string was invalid
-        '''
+        """
         if not cloud_path.startswith("s3://"):
             raise S3StorageClientError(
-                "Cloud storage path '%s' must start with s3://" % cloud_path)
+                "Cloud storage path '%s' must start with s3://" % cloud_path
+            )
         chunks = cloud_path[5:].split("/", 1)
         if len(chunks) != 2:
             return chunks[0], ""
@@ -1041,12 +1100,13 @@ class S3StorageClient(StorageClient, CanSyncDirectories, NeedsAWSCredentials):
 
 
 class S3StorageClientError(Exception):
-    '''Error raised when a problem occurred in an S3StorageClient.'''
+    """Error raised when a problem occurred in an S3StorageClient."""
+
     pass
 
 
 class NeedsGoogleCredentials(object):
-    '''Mixin for classes that need a `google.auth.credentials.Credentials`
+    """Mixin for classes that need a `google.auth.credentials.Credentials`
     instance to take authenticated actions.
 
     Storage clients that derive from this class should allow users to provide
@@ -1080,51 +1140,54 @@ class NeedsGoogleCredentials(object):
 
     See the following page for more information:
     https://cloud.google.com/docs/authentication/getting-started
-    '''
+    """
 
     CREDENTIALS_PATH = os.path.join(
-        etac.ETA_CONFIG_DIR, "google-credentials.json")
+        etac.ETA_CONFIG_DIR, "google-credentials.json"
+    )
 
     @classmethod
     def activate_credentials(cls, credentials_path):
-        '''Activate the credentials by copying them to
+        """Activate the credentials by copying them to
         `~/.eta/google-credentials.json`.
 
         Args:
             credentials_path: the path to a service account JSON file
-        '''
+        """
         etau.copy_file(credentials_path, cls.CREDENTIALS_PATH)
         logger.info(
             "Google credentials successfully activated at '%s'",
-            cls.CREDENTIALS_PATH)
+            cls.CREDENTIALS_PATH,
+        )
 
     @classmethod
     def deactivate_credentials(cls):
-        '''Deactivates (deletes) the currently active credentials, if any.
+        """Deactivates (deletes) the currently active credentials, if any.
 
         Active credentials (if any) are at `~/.eta/google-credentials.json`.
-        '''
+        """
         try:
             os.remove(cls.CREDENTIALS_PATH)
             logger.info(
                 "Google credentials '%s' successfully deactivated",
-                cls.CREDENTIALS_PATH)
+                cls.CREDENTIALS_PATH,
+            )
         except OSError:
             logger.info("No Google credentials to deactivate")
 
     @classmethod
     def has_active_credentials(cls):
-        '''Determines whether there are any active credentials stored at
+        """Determines whether there are any active credentials stored at
         `~/.eta/google-credentials.json`.
 
         Returns:
             True/False
-        '''
+        """
         return os.path.isfile(cls.CREDENTIALS_PATH)
 
     @classmethod
     def load_credentials(cls, credentials_path=None):
-        '''Loads Google credentials as an `google.auth.credentials.Credentials`
+        """Loads Google credentials as an `google.auth.credentials.Credentials`
         instance.
 
         Args:
@@ -1136,15 +1199,16 @@ class NeedsGoogleCredentials(object):
             a (credentials, path) tuple containing the
                 `google.auth.credentials.Credentials` instance and the path
                 from which it was loaded
-        '''
+        """
         info, credentials_path = cls.load_credentials_json(
-            credentials_path=credentials_path)
+            credentials_path=credentials_path
+        )
         credentials = gos.Credentials.from_service_account_info(info)
         return credentials, credentials_path
 
     @classmethod
     def load_credentials_json(cls, credentials_path=None):
-        '''Loads the Google credentials as a JSON dictionary.
+        """Loads the Google credentials as a JSON dictionary.
 
         Args:
             credentials_path: an optional path to a service account JSON file.
@@ -1154,11 +1218,12 @@ class NeedsGoogleCredentials(object):
         Returns:
             a (credentials_dict, path) tuple containing the service account
                 dictionary and the path from which it was loaded
-        '''
+        """
         if credentials_path is not None:
             logger.debug(
                 "Loading Google credentials from manually provided path '%s'",
-                credentials_path)
+                credentials_path,
+            )
         else:
             credentials_path = cls._find_active_credentials()
 
@@ -1167,31 +1232,36 @@ class NeedsGoogleCredentials(object):
 
     @classmethod
     def from_json(cls, credentials_path):
-        '''Creates a `cls` instance from the given service account JSON file.
+        """Creates a `cls` instance from the given service account JSON file.
 
         Args:
             credentials_path: the path to a service account JSON file
 
         Returns:
             an instance of cls
-        '''
+        """
         credentials, _ = cls.load_credentials(
-            credentials_path=credentials_path)
+            credentials_path=credentials_path
+        )
         return cls(credentials=credentials)
 
     @classmethod
     def _find_active_credentials(cls):
         credentials_path = os.environ.get(
-            "GOOGLE_APPLICATION_CREDENTIALS", None)
+            "GOOGLE_APPLICATION_CREDENTIALS", None
+        )
         if credentials_path is not None:
             logger.debug(
                 "Loading Google credentials from environment variable "
-                "'GOOGLE_APPLICATION_CREDENTIALS=%s'", credentials_path)
+                "'GOOGLE_APPLICATION_CREDENTIALS=%s'",
+                credentials_path,
+            )
         elif cls.has_active_credentials():
             credentials_path = cls.CREDENTIALS_PATH
             logger.debug(
                 "Loading activated Google credentials from '%s'",
-                credentials_path)
+                credentials_path,
+            )
         else:
             raise GoogleCredentialsError("No Google credentials found")
 
@@ -1199,30 +1269,32 @@ class NeedsGoogleCredentials(object):
 
 
 class GoogleCredentialsError(Exception):
-    '''Error raised when a problem with Google credentials is encountered.'''
+    """Error raised when a problem with Google credentials is encountered."""
 
     def __init__(self, message):
-        '''Creates a GoogleCredentialsError instance.
+        """Creates a GoogleCredentialsError instance.
 
         Args:
             message: the error message
-        '''
+        """
         super(GoogleCredentialsError, self).__init__(
             "%s. Read the documentation for "
             "`eta.core.storage.NeedsGoogleCredentials` for more information "
-            "about authenticating with Google services." % message)
+            "about authenticating with Google services." % message
+        )
 
 
 class GoogleCloudStorageClient(
-        StorageClient, CanSyncDirectories, NeedsGoogleCredentials):
-    '''Client for reading/writing data from Google Cloud Storage buckets.
+    StorageClient, CanSyncDirectories, NeedsGoogleCredentials
+):
+    """Client for reading/writing data from Google Cloud Storage buckets.
 
     All cloud path strings used by this class should have the form
     "gs://<bucket>/<path/to/object>".
 
     See `NeedsGoogleCredentials` for more information about the authentication
     strategy used by this class.
-    '''
+    """
 
     #
     # The default chunk size to use when uploading and downloading files.
@@ -1232,7 +1304,7 @@ class GoogleCloudStorageClient(
     DEFAULT_CHUNK_SIZE = 256 * 1024 * 1024  # in bytes
 
     def __init__(self, credentials=None, chunk_size=None):
-        '''Creates a GoogleCloudStorageClient instance.
+        """Creates a GoogleCloudStorageClient instance.
 
         Args:
             credentials: an optional `google.auth.credentials.Credentials`
@@ -1240,31 +1312,32 @@ class GoogleCloudStorageClient(
                 loaded as described in `NeedsGoogleCredentials`
             chunk_size: an optional chunk size (in bytes) to use for uploads
                 and downloads. By default, `DEFAULT_CHUNK_SIZE` is used
-        '''
+        """
         if credentials is None:
             credentials, _ = self.load_credentials()
 
         self._client = gcs.Client(
-            credentials=credentials, project=credentials.project_id)
+            credentials=credentials, project=credentials.project_id
+        )
         self.chunk_size = chunk_size or self.DEFAULT_CHUNK_SIZE
 
     @google_cloud_api_retry
     def upload(self, local_path, cloud_path, content_type=None):
-        '''Uploads the file to GCS.
+        """Uploads the file to GCS.
 
         Args:
             local_path: the path to the file to upload
             cloud_path: the path to the GCS object to create
             content_type: the optional type of the content being uploaded. If
                 no value is provided, it is guessed from the filename
-        '''
+        """
         content_type = content_type or etau.guess_mime_type(local_path)
         blob = self._get_blob(cloud_path)
         blob.upload_from_filename(local_path, content_type=content_type)
 
     @google_cloud_api_retry
     def upload_bytes(self, bytes_str, cloud_path, content_type=None):
-        '''Uploads the given bytes to GCS.
+        """Uploads the given bytes to GCS.
 
         Args:
             bytes_str: the bytes string to upload
@@ -1273,13 +1346,13 @@ class GoogleCloudStorageClient(
                 no value is provided but the object already exists in GCS, then
                 the same value is used. Otherwise, the default value
                 ("application/octet-stream") is used
-        '''
+        """
         blob = self._get_blob(cloud_path)
         blob.upload_from_string(bytes_str, content_type=content_type)
 
     @google_cloud_api_retry
     def upload_stream(self, file_obj, cloud_path, content_type=None):
-        '''Uploads the contents of the given file-like object to GCS.
+        """Uploads the contents of the given file-like object to GCS.
 
         Args:
             file_obj: the file-like object to upload, which must be open for
@@ -1289,64 +1362,64 @@ class GoogleCloudStorageClient(
                 no value is provided but the object already exists in GCS, then
                 the same value is used. Otherwise, the default value
                 ("application/octet-stream") is used
-        '''
+        """
         blob = self._get_blob(cloud_path)
         blob.upload_from_file(file_obj, content_type=content_type)
 
     @google_cloud_api_retry
     def download(self, cloud_path, local_path):
-        '''Downloads the file from GCS to the given location.
+        """Downloads the file from GCS to the given location.
 
         Args:
             cloud_path: the path to the GCS object to download
             local_path: the local disk path to store the downloaded file
-        '''
+        """
         blob = self._get_blob(cloud_path)
         etau.ensure_basedir(local_path)
         blob.download_to_filename(local_path)
 
     @google_cloud_api_retry
     def download_bytes(self, cloud_path):
-        '''Downloads the file from GCS and returns the bytes string.
+        """Downloads the file from GCS and returns the bytes string.
 
         Args:
             cloud_path: the path to the GCS object to download
 
         Returns:
             the downloaded bytes string
-        '''
+        """
         blob = self._get_blob(cloud_path)
         return blob.download_as_string()
 
     @google_cloud_api_retry
     def download_stream(self, cloud_path, file_obj):
-        '''Downloads the file from GCS to the given file-like object.
+        """Downloads the file from GCS to the given file-like object.
 
         Args:
             cloud_path: the path to the GCS object to download
             file_obj: the file-like object to which to write the download,
                 which must be open for writing
-        '''
+        """
         blob = self._get_blob(cloud_path)
         blob.download_to_file(file_obj)
 
     @google_cloud_api_retry
     def delete(self, cloud_path):
-        '''Deletes the given file from GCS.
+        """Deletes the given file from GCS.
 
         Args:
             cloud_path: the path to the GCS object to delete
-        '''
+        """
         blob = self._get_blob(cloud_path)
         blob.delete()
 
     @google_cloud_api_retry
     def delete_folder(self, cloud_folder):
-        '''Deletes all files in the given GCS "folder".
+        """Deletes all files in the given GCS "folder".
 
         Args:
             cloud_folder: a string like `gs://<bucket-name>/<folder-path>`
-        '''
+        """
         bucket_name, folder_name = self._parse_gcs_path(cloud_folder)
         bucket = self._client.get_bucket(bucket_name)
 
@@ -1358,7 +1431,7 @@ class GoogleCloudStorageClient(
 
     @google_cloud_api_retry
     def get_file_metadata(self, cloud_path):
-        '''Returns metadata about the given file in GCS.
+        """Returns metadata about the given file in GCS.
 
         Args:
             cloud_path: the path to the GCS object
@@ -1367,13 +1440,13 @@ class GoogleCloudStorageClient(
             a dictionary containing metadata about the file, including its
                 `bucket`, `object_name`, `name`, `size`, `mime_type`, and
                 `last_modified`
-        '''
+        """
         blob = self._get_blob(cloud_path)
         blob.patch()  # must call `patch` so metadata is populated
         return self._get_file_metadata(blob)
 
     def get_folder_metadata(self, cloud_folder):
-        '''Returns metadata about the given "folder" in GCS.
+        """Returns metadata about the given "folder" in GCS.
 
         Note that this method is *expensive*; the only way to compute this
         information is to call `list_files_in_folder(..., recursive=True)` and
@@ -1385,9 +1458,10 @@ class GoogleCloudStorageClient(
         Returns:
             a dictionary containing metadata about the "folder", including its
                 `bucket`, `path`, `num_files`, `size`, and `last_modified`
-        '''
+        """
         files = self.list_files_in_folder(
-            cloud_folder, recursive=True, return_metadata=True)
+            cloud_folder, recursive=True, return_metadata=True
+        )
 
         bucket, path = self._parse_gcs_path(cloud_folder)
         path = path.rstrip("/")
@@ -1411,8 +1485,9 @@ class GoogleCloudStorageClient(
 
     @google_cloud_api_retry
     def list_files_in_folder(
-            self, cloud_folder, recursive=True, return_metadata=False):
-        '''Returns a list of the files in the given "folder" in GCS.
+        self, cloud_folder, recursive=True, return_metadata=False
+    ):
+        """Returns a list of the files in the given "folder" in GCS.
 
         Args:
             cloud_folder: a string like `gs://<bucket-name>/<folder-path>`
@@ -1427,7 +1502,7 @@ class GoogleCloudStorageClient(
             a list of full cloud paths (when `return_metadata == False`) or a
                 list of metadata dictionaries (when `return_metadata == True`)
                 for the files in the folder
-        '''
+        """
         bucket_name, folder_name = self._parse_gcs_path(cloud_folder)
         bucket = self._client.get_bucket(bucket_name)
 
@@ -1456,8 +1531,9 @@ class GoogleCloudStorageClient(
 
     @google_cloud_api_retry
     def generate_signed_url(
-            self, cloud_path, method="GET", hours=24, content_type=None):
-        '''Generates a signed URL for accessing the given GCS object.
+        self, cloud_path, method="GET", hours=24, content_type=None
+    ):
+        """Generates a signed URL for accessing the given GCS object.
 
         Anyone with the URL can access the object with the permission until it
         expires.
@@ -1473,11 +1549,12 @@ class GoogleCloudStorageClient(
 
         Returns:
             a URL for accessing the object via HTTP request
-        '''
+        """
         blob = self._get_blob(cloud_path)
         expiration = datetime.timedelta(hours=hours)
         return blob.generate_signed_url(
-            expiration=expiration, method=method, content_type=content_type)
+            expiration=expiration, method=method, content_type=content_type
+        )
 
     def _get_blob(self, cloud_path):
         bucket_name, object_name = self._parse_gcs_path(cloud_path)
@@ -1503,7 +1580,8 @@ class GoogleCloudStorageClient(
     def _parse_gcs_path(cloud_path):
         if not cloud_path.startswith("gs://"):
             raise GoogleCloudStorageClientError(
-                "Cloud storage path '%s' must start with gs://" % cloud_path)
+                "Cloud storage path '%s' must start with gs://" % cloud_path
+            )
         chunks = cloud_path[5:].split("/", 1)
         if len(chunks) != 2:
             return chunks[0], ""
@@ -1511,12 +1589,13 @@ class GoogleCloudStorageClient(
 
 
 class GoogleCloudStorageClientError(Exception):
-    '''Error raised when a problem occurred in a GoogleCloudStorageClient.'''
+    """Error raised when a problem occurred in a GoogleCloudStorageClient."""
+
     pass
 
 
 class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
-    '''Client for reading/writing data from Google Drive.
+    """Client for reading/writing data from Google Drive.
 
     The service account credentials you use must have access permissions for
     any Drive folders you intend to access.
@@ -1527,7 +1606,7 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
     Attributes:
         chunk_size: the chunk size (in bytes) that will be used for uploads and
             downloads
-    '''
+    """
 
     #
     # The default chunk size to use when uploading and downloading files.
@@ -1537,7 +1616,7 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
     DEFAULT_CHUNK_SIZE = 256 * 1024 * 1024  # in bytes
 
     def __init__(self, credentials=None, chunk_size=None):
-        '''Creates a GoogleDriveStorageClient instance.
+        """Creates a GoogleDriveStorageClient instance.
 
         Args:
             credentials: an optional `google.auth.credentials.Credentials`
@@ -1545,16 +1624,17 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
                 loaded as described in `NeedsGoogleCredentials`
             chunk_size: an optional chunk size (in bytes) to use for uploads
                 and downloads. By default, `DEFAULT_CHUNK_SIZE` is used
-        '''
+        """
         if credentials is None:
             credentials, _ = self.load_credentials()
 
         self._service = gad.build(
-            "drive", "v3", credentials=credentials, cache_discovery=False)
+            "drive", "v3", credentials=credentials, cache_discovery=False
+        )
         self.chunk_size = chunk_size or self.DEFAULT_CHUNK_SIZE
 
     def upload(self, local_path, folder_id, filename=None, content_type=None):
-        '''Uploads the file to Google Drive.
+        """Uploads the file to Google Drive.
 
         Note that `filename` can contain directories like `path/to/filename`.
         Such directories will be created (if necessary) in Google Drive.
@@ -1569,13 +1649,13 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
 
         Returns:
             file_id: the ID of the uploaded file
-        '''
+        """
         name = filename or os.path.basename(local_path)
         with open(local_path, "rb") as f:
             return self._do_upload(f, folder_id, name, content_type)
 
     def upload_bytes(self, bytes_str, folder_id, filename, content_type=None):
-        '''Uploads the given bytes to Google Drive.
+        """Uploads the given bytes to Google Drive.
 
         Note that `filename` can contain directories like `path/to/filename`.
         Such directories will be created (if necessary) in Google Drive.
@@ -1589,12 +1669,12 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
 
         Returns:
             file_id: the ID of the uploaded file
-        '''
+        """
         with io.BytesIO(_to_bytes(bytes_str)) as f:
             return self._do_upload(f, folder_id, filename, content_type)
 
     def upload_stream(self, file_obj, folder_id, filename, content_type=None):
-        '''Uploads the contents of the given file-like object to Google Drive.
+        """Uploads the contents of the given file-like object to Google Drive.
 
         Note that `filename` can contain directories like `path/to/filename`.
         Such directories will be created (if necessary) in Google Drive.
@@ -1609,63 +1689,65 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
 
         Returns:
             file_id: the ID of the uploaded file
-        '''
+        """
         return self._do_upload(file_obj, folder_id, filename, content_type)
 
     def download(self, file_id, local_path):
-        '''Downloads the file from Google Drive.
+        """Downloads the file from Google Drive.
 
         Args:
             file_id: the ID of the file to download
             local_path: the path to which to download the file
-        '''
+        """
         etau.ensure_basedir(local_path)
         with open(local_path, "wb") as f:
             self._do_download(file_id, f)
 
     def download_bytes(self, file_id):
-        '''Downloads a file from Google Drive and returns the bytes.
+        """Downloads a file from Google Drive and returns the bytes.
 
         Args:
             file_id: the ID of the file to download
 
         Returns:
             the downloaded bytes string
-        '''
+        """
         with io.BytesIO() as f:
             self._do_download(file_id, f)
             return f.getvalue()
 
     def download_stream(self, file_id, file_obj):
-        '''Downloads the file from Google Drive to the given file-like object.
+        """Downloads the file from Google Drive to the given file-like object.
 
         Args:
             file_id: the ID of the file to download
             file_obj: the file-like object to which to write the download,
                 which must be open for writing
-        '''
+        """
         self._do_download(file_id, file_obj)
 
     def delete(self, file_id):
-        '''Deletes the file from Google Drive.
+        """Deletes the file from Google Drive.
 
         Args:
             file_id: the ID of the file to delete
-        '''
-        self._service.files().delete(
-            fileId=file_id, supportsTeamDrives=True).execute()
+        """
+        self._service.files().delete(  # pylint: disable=no-member
+            fileId=file_id, supportsTeamDrives=True
+        ).execute()
 
     def delete_folder(self, folder_id):
-        '''Deletes the folder from Google Drive.
+        """Deletes the folder from Google Drive.
 
         Args:
             folder_id: the ID of the folder to delete
-        '''
-        self._service.files().delete(
-            fileId=folder_id, supportsTeamDrives=True).execute()
+        """
+        self._service.files().delete(  # pylint: disable=no-member
+            fileId=folder_id, supportsTeamDrives=True
+        ).execute()
 
     def delete_folder_contents(self, folder_id, skip_failures=False):
-        '''Deletes the contents (files and subfolders) of the given Google
+        """Deletes the contents (files and subfolders) of the given Google
         Drive folder, retaining the (now empty) parent folder.
 
         Args:
@@ -1673,15 +1755,15 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
                 deleted
             skip_failures: whether to gracefully skip delete errors. By
                 default, this is False
-        '''
+        """
         files, folders = self._list_folder_contents(folder_id)
         files += folders
 
         num_files = len(files)
         if num_files > 0:
             logger.info(
-                "Deleting %d files and folders from '%s'",
-                num_files, folder_id)
+                "Deleting %d files and folders from '%s'", num_files, folder_id
+            )
         for f in files:
             try:
                 self.delete(f["id"])  # works for files and folders
@@ -1691,10 +1773,12 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
                     raise GoogleDriveStorageClientError(e)
                 logger.warning(
                     "Failed to delete '%s' from '%s'; skipping",
-                    f["name"], folder_id)
+                    f["name"],
+                    folder_id,
+                )
 
     def get_file_metadata(self, file_id, include_path=False):
-        '''Gets metadata about the file with the given ID.
+        """Gets metadata about the file with the given ID.
 
         Args:
             file_id: the ID of the file
@@ -1706,7 +1790,7 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
                 including its `id`, `name`, `size`, `mime_type`, and
                 `last_modified`. When `include_path == True`, additional fields
                 `drive_id`, `drive_name`, and `path` are included
-        '''
+        """
         fields = ["id", "name", "size", "mimeType", "modifiedTime"]
         _meta = self._get_file_metadata(file_id, fields=fields)
         metadata = self._parse_file_metadata(_meta)
@@ -1717,7 +1801,7 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
         return metadata
 
     def get_folder_metadata(self, folder_id):
-        '''Returns metadata about the given folder.
+        """Returns metadata about the given folder.
 
         Note that this method is *expensive*; the only way to compute this
         information is to call `list_files_in_folder(..., recursive=True)` and
@@ -1730,7 +1814,7 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
             a dictionary containing metadata about the folder, including its
                 `folder_id`, `drive_id`, `drive_name`, `path`, `num_files`,
                 `size`, and `last_modified`
-        '''
+        """
         # Get folder path metadata
         metadata = self._get_filepath_metadata(folder_id)
 
@@ -1756,7 +1840,7 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
         }
 
     def get_team_drive_id(self, name):
-        '''Get the ID of the Team Drive with the given name.
+        """Get the ID of the Team Drive with the given name.
 
         Args:
             name: the name of the Team Drive
@@ -1766,9 +1850,12 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
 
         Raises:
             GoogleDriveStorageClientError: if the Team Drive was not found
-        '''
-        response = self._service.teamdrives().list(
-            fields="teamDrives(id, name)").execute()
+        """
+        response = (
+            self._service.teamdrives()  # pylint: disable=no-member
+            .list(fields="teamDrives(id, name)")
+            .execute()
+        )
         for team_drive in response["teamDrives"]:
             if name == team_drive["name"]:
                 return team_drive["id"]
@@ -1776,7 +1863,7 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
         raise GoogleDriveStorageClientError("Team Drive '%s' not found" % name)
 
     def get_team_drive_name(self, drive_id):
-        '''Gets the name of the Team Drive with the given ID.
+        """Gets the name of the Team Drive with the given ID.
 
         Args:
             drive_id: the ID of the Team Drive
@@ -1786,17 +1873,19 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
 
         Raises:
             GoogleDriveStorageClientError: if the Team Drive was not found
-        '''
+        """
         try:
-            response = self._service.teamdrives().get(
-                teamDriveId=drive_id).execute()
+            response = (
+                self._service.teamdrives().get(teamDriveId=drive_id).execute()
+            )
             return response["name"]
         except:
             raise GoogleDriveStorageClientError(
-                "Team Drive with ID '%s' not found", drive_id)
+                "Team Drive with ID '%s' not found", drive_id
+            )
 
     def get_root_team_drive_id(self, file_id):
-        '''Returns the ID of the root Team Drive in which this file lives.
+        """Returns the ID of the root Team Drive in which this file lives.
 
         Args:
             file_id: the ID of the file (or folder)
@@ -1804,24 +1893,24 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
         Returns:
             the ID of the Team Drive, or None if the file does not live in a
                 Team Drive
-        '''
+        """
         metadata = self._get_file_metadata(file_id, ["teamDriveId"])
         return metadata.get("teamDriveId", None)
 
     def is_folder(self, file_id):
-        '''Determines whether the file with the given ID is a folder.
+        """Determines whether the file with the given ID is a folder.
 
         Args:
             file_id: the ID of a file (or folder)
 
         Returns:
             True/False whether the file is a folder
-        '''
+        """
         metadata = self._get_file_metadata(file_id, ["mimeType"])
         return self._is_folder(metadata)
 
     def create_folder_if_necessary(self, folder_name, parent_folder_id):
-        '''Creates the given folder within the given parent folder, if
+        """Creates the given folder within the given parent folder, if
         necessary.
 
         Args:
@@ -1831,14 +1920,14 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
 
         Returns:
             the ID of the last created folder
-        '''
+        """
         folder_id = parent_folder_id
         for folder in folder_name.split("/"):
             folder_id = self._create_folder_if_necessary(folder, folder_id)
         return folder_id
 
     def create_folder(self, folder_name, parent_folder_id):
-        '''Creates the given folder within the given parent folder. The folder
+        """Creates the given folder within the given parent folder. The folder
         is assumed not to exist.
 
         Args:
@@ -1848,14 +1937,14 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
 
         Returns:
             the ID of the last created folder
-        '''
+        """
         folder_id = parent_folder_id
         for folder in folder_name.split("/"):
             folder_id = self._create_folder(folder, folder_id)
         return folder_id
 
     def list_subfolders(self, folder_id, recursive=False):
-        '''Returns a list of the subfolders of the folder with the given ID.
+        """Returns a list of the subfolders of the folder with the given ID.
 
         Args:
             folder_id: the ID of a folder
@@ -1865,7 +1954,7 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
         Returns:
             a list of dicts containing the `id`, `name`, and `last_modified` of
                 the subfolders
-        '''
+        """
         # List folder contents
         _, folders = self._list_folder_contents(folder_id)
 
@@ -1880,7 +1969,7 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
         return [self._parse_folder_metadata(f) for f in folders]
 
     def list_files_in_folder(self, folder_id, recursive=False):
-        '''Returns a list of the files in the folder with the given ID.
+        """Returns a list of the files in the folder with the given ID.
 
         Args:
             folder_id: the ID of a folder
@@ -1890,7 +1979,7 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
         Returns:
             a list of dicts containing the `id`, `name`, `size`, `mime_type`,
                 and `last_modified` of the files in the folder
-        '''
+        """
         # List folder contents
         files, folders = self._list_folder_contents(folder_id)
         files = [self._parse_file_metadata(f) for f in files]
@@ -1899,7 +1988,8 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
             # Recursively traverse subfolders
             for folder in folders:
                 contents = self.list_files_in_folder(
-                    folder["id"], recursive=True)
+                    folder["id"], recursive=True
+                )
                 for f in contents:
                     # Embed <folder-name>/<file-name> namespace in filename
                     f["name"] = os.path.join(folder["name"], f["name"])
@@ -1908,9 +1998,14 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
         return files
 
     def upload_files_in_folder(
-            self, local_dir, folder_id, skip_failures=False,
-            skip_existing_files=False, recursive=False):
-        '''Uploads the files in the given folder to Google Drive.
+        self,
+        local_dir,
+        folder_id,
+        skip_failures=False,
+        skip_existing_files=False,
+        recursive=False,
+    ):
+        """Uploads the files in the given folder to Google Drive.
 
         Note that this function uses `eta.core.utils.list_files()` to determine
         which files to upload. This means that hidden files are skipped.
@@ -1932,14 +2027,15 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
         Raises:
             GoogleDriveStorageClientError if an upload error occured and
                 failure skipping is turned off
-        '''
+        """
         # Get local files to upload
         files = etau.list_files(local_dir)
 
         # Get existing Drive files
         if skip_existing_files or recursive:
             existing_files, existing_folders = self._list_folder_contents(
-                folder_id)
+                folder_id
+            )
 
         # Skip existing files, if requested
         if skip_existing_files:
@@ -1965,22 +2061,31 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
                 if not skip_failures:
                     raise GoogleDriveStorageClientError(e)
                 logger.warning(
-                    "Failed to upload '%s' to '%s'; skipping", local_path,
-                    folder_id)
+                    "Failed to upload '%s' to '%s'; skipping",
+                    local_path,
+                    folder_id,
+                )
 
         # Recursively traverse subfolders, if requested
         if recursive:
             for subfolder in etau.list_subdirs(local_dir):
                 subfolder_id = self._create_folder_if_necessary(
-                    subfolder, folder_id, existing_folders=existing_folders)
+                    subfolder, folder_id, existing_folders=existing_folders
+                )
                 logger.info(
                     "Recursively uploading contents of '%s' to '%s'",
-                    subfolder, subfolder_id)
+                    subfolder,
+                    subfolder_id,
+                )
 
                 sublocal_dir = os.path.join(local_dir, subfolder)
                 subfile_ids = self.upload_files_in_folder(
-                    sublocal_dir, subfolder_id, skip_failures=skip_failures,
-                    skip_existing_files=skip_existing_files, recursive=True)
+                    sublocal_dir,
+                    subfolder_id,
+                    skip_failures=skip_failures,
+                    skip_existing_files=skip_existing_files,
+                    recursive=True,
+                )
 
                 for subname, subid in iteritems(subfile_ids):
                     file_ids[os.path.join(subfolder, subname)] = subid
@@ -1988,9 +2093,14 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
         return file_ids
 
     def download_files_in_folder(
-            self, folder_id, local_dir, skip_failures=False,
-            skip_existing_files=False, recursive=True):
-        '''Downloads the files in the Google Drive folder to the given local
+        self,
+        folder_id,
+        local_dir,
+        skip_failures=False,
+        skip_existing_files=False,
+        recursive=True,
+    ):
+        """Downloads the files in the Google Drive folder to the given local
         directory.
 
         Args:
@@ -2010,7 +2120,7 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
         Raises:
             GoogleDriveStorageClientError if a download error occured and
                 failure skipping is turned off
-        '''
+        """
         # Get Drive files in folder
         files, folders = self._list_folder_contents(folder_id)
 
@@ -2041,8 +2151,10 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
                 if not skip_failures:
                     raise GoogleDriveStorageClientError(e)
                 logger.warning(
-                    "Failed to download '%s' to '%s'; skipping", file_id,
-                    local_path)
+                    "Failed to download '%s' to '%s'; skipping",
+                    file_id,
+                    local_path,
+                )
 
         # Recursively download folders, if requested
         if recursive:
@@ -2052,11 +2164,17 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
                 local_subdir = os.path.join(local_dir, subdir_name)
                 logger.info(
                     "Recursively downloading contents of '%s' to '%s'",
-                    subdir_id, local_subdir)
+                    subdir_id,
+                    local_subdir,
+                )
 
                 subfiles = self.download_files_in_folder(
-                    subdir_id, local_subdir, skip_failures=skip_failures,
-                    skip_existing_files=skip_existing_files, recursive=True)
+                    subdir_id,
+                    local_subdir,
+                    skip_failures=skip_failures,
+                    skip_existing_files=skip_existing_files,
+                    recursive=True,
+                )
 
                 for subfile in subfiles:
                     filenames.append(os.path.join(subdir_name, subfile))
@@ -2064,8 +2182,9 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
         return filenames
 
     def delete_duplicate_files_in_folder(
-            self, folder_id, skip_failures=False, recursive=False):
-        '''Deletes any duplicate files (i.e., files with the same filename) in
+        self, folder_id, skip_failures=False, recursive=False
+    ):
+        """Deletes any duplicate files (i.e., files with the same filename) in
         the given Google Drive folder.
 
         Args:
@@ -2081,7 +2200,7 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
         Raises:
             GoogleDriveStorageClientError if a deletion error occured and
                 failure skipping is turned off
-        '''
+        """
         existing_files = set()
         num_deleted = 0
         for f in self.list_files_in_folder(folder_id, recursive=recursive):
@@ -2099,8 +2218,10 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
                 if not skip_failures:
                     raise GoogleDriveStorageClientError(e)
                 logger.warning(
-                    "Failed to delete '%s' from '%s'; skipping", filename,
-                    folder_id)
+                    "Failed to delete '%s' from '%s'; skipping",
+                    filename,
+                    folder_id,
+                )
 
         return num_deleted
 
@@ -2113,22 +2234,32 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
 
         mime_type = content_type or etau.guess_mime_type(filename)
         media = gah.MediaIoBaseUpload(
-            file_obj, mime_type, chunksize=self.chunk_size, resumable=True)
+            file_obj, mime_type, chunksize=self.chunk_size, resumable=True
+        )
         body = {
             "name": filename,
             "mimeType": mime_type,
             "parents": [folder_id],
         }
-        stored_file = self._service.files().create(
-            body=body, media_body=media,
-            supportsTeamDrives=True, fields="id").execute()
+        stored_file = (
+            self._service.files()  # pylint: disable=no-member
+            .create(
+                body=body,
+                media_body=media,
+                supportsTeamDrives=True,
+                fields="id",
+            )
+            .execute()
+        )
         return stored_file["id"]
 
     def _do_download(self, file_id, file_obj):
-        request = self._service.files().get_media(
-            fileId=file_id, supportsTeamDrives=True)
+        request = self._service.files().get_media(  # pylint: disable=no-member
+            fileId=file_id, supportsTeamDrives=True
+        )
         downloader = gah.MediaIoBaseDownload(
-            file_obj, request, chunksize=self.chunk_size)
+            file_obj, request, chunksize=self.chunk_size
+        )
 
         done = False
         while not done:
@@ -2139,7 +2270,8 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
         return f.get("mimeType", "") == "application/vnd.google-apps.folder"
 
     def _create_folder_if_necessary(
-            self, new_folder, parent_folder_id, existing_folders=None):
+        self, new_folder, parent_folder_id, existing_folders=None
+    ):
         if existing_folders is None:
             _, existing_folders = self._list_folder_contents(parent_folder_id)
 
@@ -2160,8 +2292,11 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
             "parents": [parent_folder_id],
             "mimeType": "application/vnd.google-apps.folder",
         }
-        folder = self._service.files().create(
-            body=body, supportsTeamDrives=True, fields="id").execute()
+        folder = (
+            self._service.files()  # pylint: disable=no-member
+            .create(body=body, supportsTeamDrives=True, fields="id")
+            .execute()
+        )
         return folder["id"]
 
     def _list_folder_contents(self, folder_id):
@@ -2185,13 +2320,17 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
         fields = "id,name,size,mimeType,modifiedTime"
         while True:
             # Get the next page of files
-            response = self._service.files().list(
-                q=query,
-                fields="files(%s),nextPageToken" % fields,
-                pageSize=256,
-                pageToken=page_token,
-                **params
-            ).execute()
+            response = (
+                self._service.files()  # pylint: disable=no-member
+                .list(
+                    q=query,
+                    fields="files(%s),nextPageToken" % fields,
+                    pageSize=256,
+                    pageToken=page_token,
+                    **params
+                )
+                .execute()
+            )
             page_token = response.get("nextPageToken", None)
 
             for f in response["files"]:
@@ -2212,8 +2351,11 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
         else:
             fields = ",".join(fields)
 
-        return self._service.files().get(
-            fileId=file_id, fields=fields, supportsTeamDrives=True).execute()
+        return (
+            self._service.files()  # pylint: disable=no-member
+            .get(fileId=file_id, fields=fields, supportsTeamDrives=True)
+            .execute()
+        )
 
     def _get_filepath_metadata(self, file_id):
         parts = []
@@ -2259,12 +2401,13 @@ class GoogleDriveStorageClient(StorageClient, NeedsGoogleCredentials):
 
 
 class GoogleDriveStorageClientError(Exception):
-    '''Error raised when a problem occurred in a GoogleDriveStorageClient.'''
+    """Error raised when a problem occurred in a GoogleDriveStorageClient."""
+
     pass
 
 
 class HTTPStorageClient(StorageClient):
-    '''Client for reading/writing files via HTTP requests.
+    """Client for reading/writing files via HTTP requests.
 
     Attributes:
         set_content_type: whether to set the `Content-Type` in the request
@@ -2295,7 +2438,7 @@ class HTTPStorageClient(StorageClient):
             client.upload(...)
             client.download(...)
             ...
-    '''
+    """
 
     #
     # The default chunk size to use when downloading files.
@@ -2305,8 +2448,9 @@ class HTTPStorageClient(StorageClient):
     DEFAULT_CHUNK_SIZE = 32 * 1024 * 1024  # in bytes
 
     def __init__(
-            self, set_content_type=False, chunk_size=None, keep_alive=False):
-        '''Creates an HTTPStorageClient instance.
+        self, set_content_type=False, chunk_size=None, keep_alive=False
+    ):
+        """Creates an HTTPStorageClient instance.
 
         Args:
             set_content_type: whether to specify the `Content-Type` during
@@ -2315,7 +2459,7 @@ class HTTPStorageClient(StorageClient):
                 By default, `DEFAULT_CHUNK_SIZE` is used
             keep_alive: whether to keep the request session alive between
                 requests. By default, this is False
-        '''
+        """
         self.set_content_type = set_content_type
         self.chunk_size = chunk_size or self.DEFAULT_CHUNK_SIZE
         self.keep_alive = keep_alive
@@ -2328,14 +2472,14 @@ class HTTPStorageClient(StorageClient):
         self.close()
 
     def close(self):
-        '''Closes the HTTP session. Only needs to be called when
+        """Closes the HTTP session. Only needs to be called when
         `keep_alive=True` is passed to the constructor.
-        '''
+        """
         if self.keep_alive:
-            self._requests.close()
+            self._requests.close()  # pylint: disable=no-member
 
     def upload(self, local_path, url, filename=None, content_type=None):
-        '''Uploads the file to the given URL via a PUT request.
+        """Uploads the file to the given URL via a PUT request.
 
         Args:
             local_path: the path to the file to upload
@@ -2349,14 +2493,14 @@ class HTTPStorageClient(StorageClient):
         Raises:
             `requests.exceptions.HTTPError`: if the request resulted in an HTTP
                 error
-        '''
+        """
         filename = filename or os.path.basename(local_path)
         content_type = content_type or etau.guess_mime_type(filename)
         with open(local_path, "rb") as f:
             self._do_upload(f, url, filename, content_type)
 
     def upload_bytes(self, bytes_str, url, filename=None, content_type=None):
-        '''Uploads the given bytes to the given URL via a PUT request.
+        """Uploads the given bytes to the given URL via a PUT request.
 
         Args:
             bytes_str: the bytes string to upload
@@ -2368,12 +2512,12 @@ class HTTPStorageClient(StorageClient):
         Raises:
             `requests.exceptions.HTTPError`: if the request resulted in an HTTP
                 error
-        '''
+        """
         with io.BytesIO(_to_bytes(bytes_str)) as f:
             self._do_upload(f, url, filename, content_type)
 
     def upload_stream(self, file_obj, url, filename=None, content_type=None):
-        '''Uploads the contents of the given file-like object to the given
+        """Uploads the contents of the given file-like object to the given
         URL via a PUT request.
 
         Args:
@@ -2387,11 +2531,11 @@ class HTTPStorageClient(StorageClient):
         Raises:
             `requests.exceptions.HTTPError`: if the request resulted in an HTTP
                 error
-        '''
+        """
         self._do_upload(file_obj, url, filename, content_type)
 
     def download(self, url, local_path):
-        '''Downloads the file from the given URL via a GET request.
+        """Downloads the file from the given URL via a GET request.
 
         Args:
             url: the URL from which to GET the file
@@ -2400,13 +2544,13 @@ class HTTPStorageClient(StorageClient):
         Raises:
             `requests.exceptions.HTTPError`: if the request resulted in an HTTP
                 error
-        '''
+        """
         etau.ensure_basedir(local_path)
         with open(local_path, "wb") as f:
             self._do_download(url, f)
 
     def download_bytes(self, url):
-        '''Downloads bytes from the given URL via a GET request.
+        """Downloads bytes from the given URL via a GET request.
 
         Args:
             url: the URL from which to GET the file
@@ -2417,13 +2561,13 @@ class HTTPStorageClient(StorageClient):
         Raises:
             `requests.exceptions.HTTPError`: if the request resulted in an HTTP
                 error
-        '''
+        """
         with io.BytesIO() as f:
             self._do_download(url, f)
             return f.getvalue()
 
     def download_stream(self, url, file_obj):
-        '''Downloads the file from the given URL via a GET request to the given
+        """Downloads the file from the given URL via a GET request to the given
         file-like object.
 
         Args:
@@ -2434,23 +2578,23 @@ class HTTPStorageClient(StorageClient):
         Raises:
             `requests.exceptions.HTTPError`: if the request resulted in an HTTP
                 error
-        '''
+        """
         self._do_download(url, file_obj)
 
     def delete(self, url):
-        '''Deletes the file at the given URL via a DELETE request.
+        """Deletes the file at the given URL via a DELETE request.
 
         Args:
             url: the URL of the file to DELETE
-        '''
+        """
         self._requests.delete(url)
 
     @staticmethod
     def get_filename(url):
-        '''Gets the filename for the given URL by first trying to extract it
+        """Gets the filename for the given URL by first trying to extract it
         from the "Content-Disposition" header field, and, if that fails, by
         returning the base name of the path portion of the URL.
-        '''
+        """
         filename = None
         try:
             res = requests.head(url)
@@ -2487,7 +2631,7 @@ class HTTPStorageClient(StorageClient):
 
 
 class NeedsSSHCredentials(object):
-    '''Mixin for classes that need an SSH private key to take authenticated
+    """Mixin for classes that need an SSH private key to take authenticated
     actions.
 
     The SSH key used must have _no password_.
@@ -2503,49 +2647,51 @@ class NeedsSSHCredentials(object):
 
         (3) loading credentials from `~/.eta/id_rsa` that have been activated
             via `cls.activate_credentials()`
-    '''
+    """
 
     CREDENTIALS_PATH = os.path.join(etac.ETA_CONFIG_DIR, "id_rsa")
 
     @classmethod
     def activate_credentials(cls, credentials_path):
-        '''Activate the credentials by copying them to `~/.eta/id_rsa`.
+        """Activate the credentials by copying them to `~/.eta/id_rsa`.
 
         Args:
             credentials_path: the path to an SSH private key file
-        '''
+        """
         etau.copy_file(credentials_path, cls.CREDENTIALS_PATH)
         logger.info(
             "SSH credentials successfully activated at '%s'",
-            cls.CREDENTIALS_PATH)
+            cls.CREDENTIALS_PATH,
+        )
 
     @classmethod
     def deactivate_credentials(cls):
-        '''Deactivates (deletes) the currently active credentials, if any.
+        """Deactivates (deletes) the currently active credentials, if any.
 
         Active credentials (if any) are at `~/.eta/id_rsa`.
-        '''
+        """
         try:
             os.remove(cls.CREDENTIALS_PATH)
             logger.info(
                 "SSH credentials '%s' successfully deactivated",
-                cls.CREDENTIALS_PATH)
+                cls.CREDENTIALS_PATH,
+            )
         except OSError:
             logger.info("No SSH credentials to deactivate")
 
     @classmethod
     def has_active_credentials(cls):
-        '''Determines whether there are any active credentials stored at
+        """Determines whether there are any active credentials stored at
         `~/.eta/id_rsa`.
 
         Returns:
             True/False
-        '''
+        """
         return os.path.isfile(cls.CREDENTIALS_PATH)
 
     @classmethod
     def get_private_key_path(cls, private_key_path=None):
-        '''Gets the path to the SSH private key.
+        """Gets the path to the SSH private key.
 
         Args:
             private_key_path: an optional path to an SSH private key. If no
@@ -2557,22 +2703,26 @@ class NeedsSSHCredentials(object):
 
         Raises:
             SSHCredentialsError: if no private key file was found
-        '''
+        """
         if private_key_path is not None:
             logger.debug(
                 "Using manually provided SSH private key path '%s'",
-                private_key_path)
+                private_key_path,
+            )
             return private_key_path
 
         private_key_path = os.environ.get("SSH_PRIVATE_KEY_PATH", None)
         if private_key_path is not None:
             logger.debug(
                 "Using SSH private key from environment variable "
-                "'SSH_PRIVATE_KEY_PATH=%s'", private_key_path)
+                "'SSH_PRIVATE_KEY_PATH=%s'",
+                private_key_path,
+            )
         elif cls.has_active_credentials():
             private_key_path = cls.CREDENTIALS_PATH
             logger.debug(
-                "Using activated SSH private key from '%s'", private_key_path)
+                "Using activated SSH private key from '%s'", private_key_path
+            )
         else:
             raise SSHCredentialsError("No SSH credentials found")
 
@@ -2580,22 +2730,23 @@ class NeedsSSHCredentials(object):
 
 
 class SSHCredentialsError(Exception):
-    '''Error raised when a problem with SSH credentials is encountered.'''
+    """Error raised when a problem with SSH credentials is encountered."""
 
     def __init__(self, message):
-        '''Creates an SSHCredentialsError instance.
+        """Creates an SSHCredentialsError instance.
 
         Args:
             message: the error message
-        '''
+        """
         super(SSHCredentialsError, self).__init__(
             "%s. Read the documentation for "
             "`eta.core.storage.NeedsSSHCredentials` for more information "
-            "about authenticating with SSH keys." % message)
+            "about authenticating with SSH keys." % message
+        )
 
 
 class SFTPStorageClient(StorageClient, NeedsSSHCredentials):
-    '''Client for reading/writing files from remote servers via SFTP.
+    """Client for reading/writing files from remote servers via SFTP.
 
     Attributes:
         hostname: the host name of the remote server
@@ -2623,13 +2774,17 @@ class SFTPStorageClient(StorageClient, NeedsSSHCredentials):
             client.upload(...)
             client.download(...)
             ...
-    '''
+    """
 
     def __init__(
-            self, hostname, username, private_key_path=None, port=None,
-            keep_open=False,
-        ):
-        '''Creates an SFTPStorageClient instance.
+        self,
+        hostname,
+        username,
+        private_key_path=None,
+        port=None,
+        keep_open=False,
+    ):
+        """Creates an SFTPStorageClient instance.
 
         Args:
             hostname: the host name of the remote server
@@ -2641,16 +2796,20 @@ class SFTPStorageClient(StorageClient, NeedsSSHCredentials):
                 default value is 22
             keep_open: whether to keep the connection open between API calls.
                 The default value is False
-        '''
+        """
         self.hostname = hostname
         self.username = username
         self.private_key_path = self.get_private_key_path(
-            private_key_path=private_key_path)
+            private_key_path=private_key_path
+        )
         self.port = port or 22
         self.keep_open = keep_open
 
         self._connection = _SFTPConnection(
-            self.hostname, self.username, self.private_key_path, self.port,
+            self.hostname,
+            self.username,
+            self.private_key_path,
+            self.port,
             keep_open=self.keep_open,
         )
 
@@ -2663,129 +2822,129 @@ class SFTPStorageClient(StorageClient, NeedsSSHCredentials):
         self.close()
 
     def close(self):
-        '''Closes the SFTP connection. Only needs to be called when
+        """Closes the SFTP connection. Only needs to be called when
         `keep_open=True` is passed to the constructor.
-        '''
+        """
         self._connection.close()
 
     def upload(self, local_path, remote_path):
-        '''Uploads the file to the given remote path.
+        """Uploads the file to the given remote path.
 
         Args:
             local_path: the path to the file to upload
             remote_path: the remote path to write the file
-        '''
+        """
         with self._connection as sftp:
             sftp.put(local_path, remotepath=remote_path)
 
     def upload_bytes(self, bytes_str, remote_path):
-        '''Uploads the given bytes to the given remote path.
+        """Uploads the given bytes to the given remote path.
 
         Args:
             bytes_str: the bytes string to upload
             remote_path: the remote path to write the file
-        '''
+        """
         with io.BytesIO(_to_bytes(bytes_str)) as f:
             self.upload_stream(f, remote_path)
 
     def upload_stream(self, file_obj, remote_path):
-        '''Uploads the contents of the given file-like object to the given
+        """Uploads the contents of the given file-like object to the given
         remote path.
 
         Args:
             file_obj: the file-like object to upload, which must be open for
                 reading
             remote_path: the remote path to write the file
-        '''
+        """
         with self._connection as sftp:
             sftp.putfo(file_obj, remotepath=remote_path)
 
     def download(self, remote_path, local_path):
-        '''Uploads the file to the given remote path.
+        """Uploads the file to the given remote path.
 
         Args:
             remote_path: the remote file to download
             local_path: the path to which to write the downloaded file
-        '''
+        """
         with self._connection as sftp:
             sftp.get(remote_path, localpath=local_path)
 
     def download_bytes(self, remote_path):
-        '''Downloads bytes from the given remote path.
+        """Downloads bytes from the given remote path.
 
         Args:
             remote_path: the remote file to download
 
         Returns:
             the downloaded bytes string
-        '''
+        """
         with io.BytesIO() as f:
             self.download_stream(remote_path, f)
             return f.getvalue()
 
     def download_stream(self, remote_path, file_obj):
-        '''Downloads the file from the given remote path to the given
+        """Downloads the file from the given remote path to the given
         file-like object.
 
         Args:
             remote_path: the remote file to download
             file_obj: the file-like object to which to write the download,
                 which must be open for writing
-        '''
+        """
         with self._connection as sftp:
             sftp.getfo(remote_path, file_obj)
 
     def delete(self, remote_path):
-        '''Deletes the given file from the remote server.
+        """Deletes the given file from the remote server.
 
         Args:
             remote_path: the remote path to delete. Must be a file
-        '''
+        """
         with self._connection as sftp:
             sftp.remove(remote_path)
 
     def upload_dir(self, local_dir, remote_dir):
-        '''Uploads the local directory to the given remote directory.
+        """Uploads the local directory to the given remote directory.
 
         Args:
             local_dir: the path to the local directory to upload
             remote_dir: the remote directory to write the uploaded directory
-        '''
+        """
         with self._connection as sftp:
             sftp.put_r(local_dir, remote_dir)
 
     def download_dir(self, remote_dir, local_dir):
-        '''Downloads the remote directory to the given local directory.
+        """Downloads the remote directory to the given local directory.
 
         Args:
             remote_dir: the remote directory to download
             local_dir: the local directory to write the downloaded directory
-        '''
+        """
         with self._connection as sftp:
             sftp.get_r(remote_dir, local_dir)
 
     def make_dir(self, remote_dir, mode=777):
-        '''Makes the specified remote directory, recursively if necessary.
+        """Makes the specified remote directory, recursively if necessary.
 
         Args:
             remote_dir: the remote directory to create
             mode: int representation of the octal permissions for directory
-        '''
+        """
         with self._connection as sftp:
             sftp.makedirs(remote_dir, mode=mode)
 
     def delete_dir(self, remote_dir):
-        '''Deletes the remote directory, which must be empty.
+        """Deletes the remote directory, which must be empty.
 
         Args:
             remote_dir: the (empty) remote directory to delete
-        '''
+        """
         with self._connection as sftp:
             sftp.rmdir(remote_dir)
 
 
 class _SFTPConnection(object):
-    '''An internal class for managing a pysftp.Connection that can either be
+    """An internal class for managing a pysftp.Connection that can either be
     kept open manually controlled or automatically opened and closed on a
     per-context basis.
 
@@ -2816,13 +2975,12 @@ class _SFTPConnection(object):
         with conn as pyconn:
             # pyconn is the same pysftp.Connection
         conn.close()
-    '''
+    """
 
     def __init__(
-            self, hostname, username, private_key_path, port,
-            keep_open=False,
-        ):
-        '''Creates an _SFTPConnection instance.
+        self, hostname, username, private_key_path, port, keep_open=False,
+    ):
+        """Creates an _SFTPConnection instance.
 
         Args:
             hostname: the host name of the remote server
@@ -2830,7 +2988,7 @@ class _SFTPConnection(object):
             private_key_path: the path to an SSH private key to use
             port: the remote port to use for the SFTP connection
             keep_open: whether to keep the connection open between API calls
-        '''
+        """
         self.hostname = hostname
         self.username = username
         self.private_key_path = private_key_path
@@ -2850,11 +3008,11 @@ class _SFTPConnection(object):
             self._close()
 
     def set_keep_open(self, keep_open):
-        '''Sets the keep open status of the connection.
+        """Sets the keep open status of the connection.
 
         Args:
             keep_open: True/False
-        '''
+        """
         if keep_open != self.keep_open:
             self.keep_open = keep_open
             if self.keep_open:
@@ -2863,9 +3021,9 @@ class _SFTPConnection(object):
                 self._close()
 
     def close(self):
-        '''Closes the SFTP connection, if necessary. Only needs to be called
+        """Closes the SFTP connection, if necessary. Only needs to be called
         when `keep_open=True` is passed to the constructor.
-        '''
+        """
         if self._pyconn is not None:
             self._close()
 
@@ -2893,8 +3051,7 @@ def _read_file_in_chunks(file_obj, chunk_size):
 
 
 def _to_bytes(val, encoding="utf-8"):
-    bytes_str = (
-        val.encode(encoding) if isinstance(val, six.text_type) else val)
+    bytes_str = val.encode(encoding) if isinstance(val, six.text_type) else val
     if not isinstance(bytes_str, six.binary_type):
         raise TypeError("Failed to convert %r to bytes" % bytes_str)
 

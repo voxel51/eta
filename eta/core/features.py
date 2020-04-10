@@ -1,9 +1,9 @@
-'''
+"""
 Core interfaces, data structures, and methods for feature extraction.
 
 Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
-'''
+"""
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
 # pragma pylint: disable=wildcard-import
@@ -12,6 +12,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
+
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
@@ -34,7 +35,7 @@ logger = logging.getLogger(__name__)
 
 
 class FeaturizerConfig(Config):
-    '''Configuration class that encapsulates the name of a `Featurizer` and an
+    """Configuration class that encapsulates the name of a `Featurizer` and an
     instance of its associated Config class.
 
     Attributes:
@@ -42,23 +43,24 @@ class FeaturizerConfig(Config):
             `eta.core.vgg16.VGG16Featurizer`
         config: an instance of the Config class associated with the specified
             Featurizer, e.g., `eta.core.vgg16.VGG16FeaturizerConfig`
-    '''
+    """
 
     def __init__(self, d):
         self.type = self.parse_string(d, "type")
         self._featurizer_cls, self._config_cls = Configurable.parse(self.type)
         self.config = self.parse_object(
-            d, "config", self._config_cls, default=None)
+            d, "config", self._config_cls, default=None
+        )
         if not self.config:
             self.config = self._load_default_config()
 
     def build(self):
-        '''Factory method that builds the Featurizer instance from the config
+        """Factory method that builds the Featurizer instance from the config
         specified by this class.
 
         Returns:
             a Featurizer instance
-        '''
+        """
         return self._featurizer_cls(self.config)
 
     def _load_default_config(self):
@@ -72,12 +74,13 @@ class FeaturizerConfig(Config):
     def _validate_type(self, base_cls):
         if not issubclass(self._featurizer_cls, base_cls):
             raise ConfigError(
-                "Expected type '%s' to be a subclass of '%s'" % (
-                    self.type, etau.get_class_name(base_cls)))
+                "Expected type '%s' to be a subclass of '%s'"
+                % (self.type, etau.get_class_name(base_cls))
+            )
 
 
 class Featurizer(Configurable):
-    '''Base class for all featurizers.
+    """Base class for all featurizers.
 
     Subclasses of Featurizer must implement the `dim()` and `_featurize()`
     methods.
@@ -93,10 +96,10 @@ class Featurizer(Configurable):
 
         with <My>Featurizer(...) as f:
             v = f.featurize(data)
-    '''
+    """
 
     def __init__(self):
-        '''Initializes the base Featurizer instance.'''
+        """Initializes the base Featurizer instance."""
         self._is_started = False
         self._keep_alive = False
 
@@ -108,13 +111,13 @@ class Featurizer(Configurable):
         self.stop()
 
     def dim(self):
-        '''Returns the dimension of the features extracted by this
+        """Returns the dimension of the features extracted by this
         Featurizer.
-        '''
+        """
         raise NotImplementedError("subclass must implement dim()")
 
     def start(self, warn_on_restart=True, keep_alive=True):
-        '''Start method that handles any necessary setup to prepare the
+        """Start method that handles any necessary setup to prepare the
         Featurizer for use.
 
         This method can be explicitly called by users. If it is not called
@@ -126,7 +129,7 @@ class Featurizer(Configurable):
                 value is True
             keep_alive: whether to keep the Featurizer alive (i.e. not to call
                 `stop()`) after a each `featurize()` call
-        '''
+        """
         if warn_on_restart and self._is_started:
             logger.warning("Featurizer.start() called when already started")
 
@@ -138,23 +141,23 @@ class Featurizer(Configurable):
         self._start()
 
     def _start(self):
-        '''The backend implementation that is called when the public `start()`
+        """The backend implementation that is called when the public `start()`
         method is called.
 
         Subclasses that require startup configuration should implement this
         method.
-        '''
+        """
         pass
 
     def stop(self):
-        '''Stop method that handles any necessary cleanup after featurization
+        """Stop method that handles any necessary cleanup after featurization
         is complete.
 
         This method can be explicitly called by users, and, in fact, it must
         be called by users who called `start()` themselves. If `start()` was
         not called manually or `keep_alive` was set to False, then this method
         will be invoked at the end of each call to `featurize()`.
-        '''
+        """
         if not self._is_started:
             return
 
@@ -163,23 +166,23 @@ class Featurizer(Configurable):
         self._keep_alive = False
 
     def _stop(self):
-        '''The backend implementation that is called when the public `stop()`
+        """The backend implementation that is called when the public `stop()`
         method is called.
 
         Subclasses that require cleanup after featurization should implement
         this method.
-        '''
+        """
         pass
 
     def featurize(self, data):
-        '''Featurizes the input data.
+        """Featurizes the input data.
 
         Args:
             data: the data to featurize
 
         Returns:
             the feature vector
-        '''
+        """
         self.start(warn_on_restart=False, keep_alive=False)
         v = self._featurize(data)
         if self._keep_alive is False:
@@ -188,7 +191,7 @@ class Featurizer(Configurable):
         return v
 
     def _featurize(self, data):
-        '''The backend implementation of the feature extraction routine.
+        """The backend implementation of the feature extraction routine.
         Subclasses must implement this method.
 
         Args:
@@ -196,19 +199,19 @@ class Featurizer(Configurable):
 
         Returns:
             the feature vector
-        '''
+        """
         raise NotImplementedError("subclass must implement _featurize()")
 
 
 class ImageFeaturizerConfig(FeaturizerConfig):
-    '''Base configuration class that encapsulates the name of an
+    """Base configuration class that encapsulates the name of an
     `ImageFeaturizer` subclass and an instance of its associated Config class.
 
     Attributes:
         type: the fully-qualified class name of the `ImageFeaturizer` subclass
         config: an instance of the Config class associated with the specified
             `ImageFeaturizer` subclass
-    '''
+    """
 
     def __init__(self, d):
         super(ImageFeaturizerConfig, self).__init__(d)
@@ -216,22 +219,22 @@ class ImageFeaturizerConfig(FeaturizerConfig):
 
 
 class ImageFeaturizer(Featurizer):
-    '''Interface for featurizers that operate on images.'''
+    """Interface for featurizers that operate on images."""
 
     def _featurize(self, img):
-        '''Featurizes the given image.
+        """Featurizes the given image.
 
         Args:
             img: the image to featurize
 
         Returns:
             the feature vector
-        '''
+        """
         raise NotImplementedError("subclass must implement _featurize()")
 
 
 class VideoFramesFeaturizerConfig(FeaturizerConfig):
-    '''Base configuration class that encapsulates the name of an
+    """Base configuration class that encapsulates the name of an
     `VideoFramesFeaturizer` subclass and an instance of its associated Config
     class.
 
@@ -240,7 +243,7 @@ class VideoFramesFeaturizerConfig(FeaturizerConfig):
             subclass
         config: an instance of the Config class associated with the specified
             `VideoFramesFeaturizer` subclass
-    '''
+    """
 
     def __init__(self, d):
         super(VideoFramesFeaturizerConfig, self).__init__(d)
@@ -248,12 +251,12 @@ class VideoFramesFeaturizerConfig(FeaturizerConfig):
 
 
 class VideoFramesFeaturizer(Featurizer):
-    '''Interface for featurizers that operate on videos represented as
+    """Interface for featurizers that operate on videos represented as
     tensors of images.
-    '''
+    """
 
     def _featurize(self, imgs):
-        '''Featurizes the given video represented as a tensor of images.
+        """Featurizes the given video represented as a tensor of images.
 
         Args:
             imgs: a list (or n x h x w x 3 tensor) of images defining the
@@ -261,19 +264,19 @@ class VideoFramesFeaturizer(Featurizer):
 
         Returns:
             the feature vector
-        '''
+        """
         raise NotImplementedError("subclass must implement _featurize()")
 
 
 class VideoFeaturizerConfig(FeaturizerConfig):
-    '''Base configuration class that encapsulates the name of an
+    """Base configuration class that encapsulates the name of an
     `VideoFeaturizer` subclass and an instance of its associated Config class.
 
     Attributes:
         type: the fully-qualified class name of the `VideoFeaturizer` subclass
         config: an instance of the Config class associated with the specified
             `VideoFeaturizer` subclass
-    '''
+    """
 
     def __init__(self, d):
         super(VideoFeaturizerConfig, self).__init__(d)
@@ -281,41 +284,41 @@ class VideoFeaturizerConfig(FeaturizerConfig):
 
 
 class VideoFeaturizer(Featurizer):
-    '''Base class for featurizers that operate on entire videos.'''
+    """Base class for featurizers that operate on entire videos."""
 
     def _featurize(self, video_path):
-        '''Featurizes the given video.
+        """Featurizes the given video.
 
         Args:
             video_path: the path to the video
 
         Returns:
             the feature vector
-        '''
+        """
         raise NotImplementedError("subclass must implement _featurize()")
 
 
 class ORBFeaturizerConfig(Config):
-    '''Configuration settings for an ORBFeaturizer.'''
+    """Configuration settings for an ORBFeaturizer."""
 
     def __init__(self, d):
         self.num_keypoints = self.parse_number(d, "num_keypoints", default=128)
 
 
 class ORBFeaturizer(ImageFeaturizer):
-    '''ORB (Oriented FAST and rotated BRIEF features) Featurizer.
+    """ORB (Oriented FAST and rotated BRIEF features) Featurizer.
 
     Reference:
         http://www.willowgarage.com/sites/default/files/orb_final.pdf
-    '''
+    """
 
     def __init__(self, config=None):
-        '''Creates a new ORBFeaturizer instance.
+        """Creates a new ORBFeaturizer instance.
 
         Args:
             config: an optional ORBFeaturizerConfig instance. If omitted, the
                 default ORBFeaturizerConfig is used
-        '''
+        """
         if config is None:
             config = ORBFeaturizerConfig.default()
         self.num_keypoints = config.num_keypoints
@@ -329,7 +332,7 @@ class ORBFeaturizer(ImageFeaturizer):
             self._orb = cv2.ORB(nfeatures=self.num_keypoints)
 
     def dim(self):
-        '''Returns the dimension of the features.'''
+        """Returns the dimension of the features."""
         return 32 * self.num_keypoints
 
     def _featurize(self, img):
@@ -338,31 +341,31 @@ class ORBFeaturizer(ImageFeaturizer):
 
 
 class RandFeaturizerConfig(Config):
-    '''Configuration settings for a RandFeaturizer.'''
+    """Configuration settings for a RandFeaturizer."""
 
     def __init__(self, d):
         self.dim = self.parse_number(d, "dim", default=1024)
 
 
 class RandFeaturizer(ImageFeaturizer, VideoFramesFeaturizer, VideoFeaturizer):
-    '''Featurizer that returns a feature vector with uniformly random entries
+    """Featurizer that returns a feature vector with uniformly random entries
     regardless of the input data.
-    '''
+    """
 
     def __init__(self, config=None):
-        '''Creates a new RandFeaturizer instance.
+        """Creates a new RandFeaturizer instance.
 
         Args:
             config: an optional RandFeaturizerConfig instance. If omitted, the
                 default RandFeaturizerConfig is used
-        '''
+        """
         if config is None:
             config = RandFeaturizerConfig.default()
         self._dim = config.dim
         super(RandFeaturizer, self).__init__()
 
     def dim(self):
-        '''Returns the dimension of the features.'''
+        """Returns the dimension of the features."""
         return self._dim
 
     def _featurize(self, _):
@@ -370,7 +373,7 @@ class RandFeaturizer(ImageFeaturizer, VideoFramesFeaturizer, VideoFeaturizer):
 
 
 class CachingVideoFeaturizerConfig(Config):
-    '''Configuration settings for a CachingVideoFeaturizer.
+    """Configuration settings for a CachingVideoFeaturizer.
 
     Attributes:
         frame_featurizer: an ImageFeaturizerConfig specifying the
@@ -379,21 +382,24 @@ class CachingVideoFeaturizerConfig(Config):
             to use
         delete_backing_directory: whether to delete the backing directory
             when the featurizer is stopped
-    '''
+    """
 
     def __init__(self, d):
         self.frame_featurizer = self.parse_object(
-            d, "frame_featurizer", ImageFeaturizerConfig)
+            d, "frame_featurizer", ImageFeaturizerConfig
+        )
         self.backing_manager = self.parse_object(
-            d, "backing_manager", BackingManagerConfig, default=None)
+            d, "backing_manager", BackingManagerConfig, default=None
+        )
         if self.backing_manager is None:
             self.backing_manager = BackingManagerConfig.default()
         self.delete_backing_directory = self.parse_bool(
-            d, "delete_backing_directory", default=True)
+            d, "delete_backing_directory", default=True
+        )
 
 
 class CachingVideoFeaturizer(Featurizer):
-    '''Meta-featurizer that uses an ImageFeaturizer to featurize the frames of
+    """Meta-featurizer that uses an ImageFeaturizer to featurize the frames of
     a video.
 
     The features are written to disk using an
@@ -423,14 +429,14 @@ class CachingVideoFeaturizer(Featurizer):
     Features generated by a `CachingVideoFeaturizer` can be subsequently read
     from disk by a `eta.core.features.VideoFramesFeaturesHandler` that points
     to the same underlying `backing_dir`.
-    '''
+    """
 
     def __init__(self, config):
-        '''Creates a CachingVideoFeaturizer instance.
+        """Creates a CachingVideoFeaturizer instance.
 
         Args:
             config: a CachingVideoFeaturizerConfig instance
-        '''
+        """
         self.validate(config)
         self.config = config
         super(CachingVideoFeaturizer, self).__init__()
@@ -467,32 +473,33 @@ class CachingVideoFeaturizer(Featurizer):
 
     @property
     def frame_number(self):
-        '''The current frame number (only applicable while iterating).'''
+        """The current frame number (only applicable while iterating)."""
         return self._iter_frame_number
 
     @property
     def backing_dir(self):
-        '''The current backing directory.
+        """The current backing directory.
 
         If a manual backing directory was set via `set_manual_backing_dir`, it
         will be returned here.
-        '''
+        """
         if self._manual_backing_dir is not None:
             return self._manual_backing_dir
         return self._backing_manager.backing_dir
 
     @property
     def features_handler(self):
-        '''The current VideoFramesFeaturesHandler.'''
+        """The current VideoFramesFeaturesHandler."""
         if self._features_handler is None:
             raise CachingVideoFeaturizerError(
                 "No features handler found; did you forget to featurize "
-                "something?")
+                "something?"
+            )
 
         return self._features_handler
 
     def set_manual_backing_dir(self, backing_dir):
-        '''Manually sets the backing directory.
+        """Manually sets the backing directory.
 
         If a manual backing directory is set, it will take precedence over the
         backing manager's directory. To remove this manual setting, call
@@ -500,27 +507,27 @@ class CachingVideoFeaturizer(Featurizer):
 
         Args:
             backing_dir: the manual backing directory to use
-        '''
+        """
         logger.info("Using manual backing directory '%s'", backing_dir)
         self._manual_backing_dir = backing_dir
 
     def clear_manual_backing_dir(self):
-        '''Clears the manual backing directory.
+        """Clears the manual backing directory.
 
         This does not delete the contents of the directory.
-        '''
+        """
         logger.info("Clearing manual backing directory")
         self._manual_backing_dir = None
 
     def dim(self):
-        '''Returns the dimension of the features extracted by the underlying
+        """Returns the dimension of the features extracted by the underlying
         frame featurizer.
-        '''
+        """
         return self._frame_featurizer.dim()
 
     @property
     def frame_preprocessor(self):
-        '''The frame processor applied to each frame before featurizing.'''
+        """The frame processor applied to each frame before featurizing."""
         return self._frame_preprocessor
 
     @frame_preprocessor.setter
@@ -532,7 +539,7 @@ class CachingVideoFeaturizer(Featurizer):
         self._frame_preprocessor = None
 
     def featurize(self, video_path, backing_dir=None, frames=None):
-        '''Featurizes the frames of the input video.
+        """Featurizes the frames of the input video.
 
         Attributes:
             video_path: the video path
@@ -541,14 +548,14 @@ class CachingVideoFeaturizer(Featurizer):
                 `set_manual_backing_dir()`
             frames: an optional subset of frames to featurize. By default,
                 all frames are featurized
-        '''
+        """
         self.start(warn_on_restart=False, keep_alive=False)
         self._featurize(video_path, backing_dir, frames)
         if self._keep_alive is False:
             self.stop()
 
     def get_featurized_frame_path(self, frame_number):
-        '''Returns the feature path on disk for the given frame number.
+        """Returns the feature path on disk for the given frame number.
 
         The actual file may or may not exist.
 
@@ -557,22 +564,22 @@ class CachingVideoFeaturizer(Featurizer):
 
         Returns:
             the feature path
-        '''
+        """
         return self.features_handler.get_feature_path(frame_number)
 
     def load_feature_for_frame(self, frame_number):
-        '''Loads the feature for the given frame.
+        """Loads the feature for the given frame.
 
         Args:
             frame_number: the frame number
 
         Returns:
             the feature vector
-        '''
+        """
         return self.features_handler.load_feature(frame_number)
 
     def load_features_for_frames(self, frame_range):
-        '''Loads the features for the given range of frames.
+        """Loads the features for the given range of frames.
 
         Args:
             frame_range: a (start, stop) tuple definining the range of frames
@@ -580,18 +587,18 @@ class CachingVideoFeaturizer(Featurizer):
 
         Returns:
             an n x d array of features, where n = stop - start + 1
-        '''
+        """
         X = []
         for frame_number in range(frame_range[0], frame_range[1] + 1):
             X.append(self.load_feature_for_frame(frame_number))
         return np.array(X)
 
     def load_all_features(self):
-        '''Loads all features for the video.
+        """Loads all features for the video.
 
         Returns:
             an n x d array of features, where n = # of featurized frames
-        '''
+        """
         return self.features_handler.load_features()
 
     def _start(self):
@@ -615,7 +622,8 @@ class CachingVideoFeaturizer(Featurizer):
             self._backing_manager.set_task_name(video_name)
 
         logger.info(
-            "Writing features to backing directory '%s'", self.backing_dir)
+            "Writing features to backing directory '%s'", self.backing_dir
+        )
         self._features_handler = VideoFramesFeaturesHandler(self.backing_dir)
 
         #
@@ -632,14 +640,15 @@ class CachingVideoFeaturizer(Featurizer):
 
 
 class CachingVideoFeaturizerError(Exception):
-    '''Exception raised when a problem is encountered with a
+    """Exception raised when a problem is encountered with a
     CachingVideoFeaturizer.
-    '''
+    """
+
     pass
 
 
 class CachingVideoObjectsFeaturizerConfig(Config):
-    '''Configuration settings for a CachingVideoObjectsFeaturizer.
+    """Configuration settings for a CachingVideoObjectsFeaturizer.
 
     Attributes:
         object_featurizer: an ImageFeaturizerConfig specifying the
@@ -648,21 +657,24 @@ class CachingVideoObjectsFeaturizerConfig(Config):
             to use
         delete_backing_directory: whether to delete the backing directory
             when the featurizer is stopped
-    '''
+    """
 
     def __init__(self, d):
         self.object_featurizer = self.parse_object(
-            d, "object_featurizer", ImageFeaturizerConfig)
+            d, "object_featurizer", ImageFeaturizerConfig
+        )
         self.backing_manager = self.parse_object(
-            d, "backing_manager", BackingManagerConfig, default=None)
+            d, "backing_manager", BackingManagerConfig, default=None
+        )
         if self.backing_manager is None:
             self.backing_manager = BackingManagerConfig.default()
         self.delete_backing_directory = self.parse_bool(
-            d, "delete_backing_directory", default=True)
+            d, "delete_backing_directory", default=True
+        )
 
 
 class CachingVideoObjectsFeaturizer(Featurizer):
-    '''Meta-featurizer that uses an ImageFeaturizer to featurize the objects
+    """Meta-featurizer that uses an ImageFeaturizer to featurize the objects
     in each frame of a video.
 
     The features are written to disk using an
@@ -686,14 +698,14 @@ class CachingVideoObjectsFeaturizer(Featurizer):
     Object numbers passed to this class should be **1-based** indices
     corresponding to the ordering of the objects in the corresponding
     `eta.core.objects.DetectedObjectContainer` instance.
-    '''
+    """
 
     def __init__(self, config):
-        '''Creates a new CachingVideoObjectsFeaturizer instance.
+        """Creates a new CachingVideoObjectsFeaturizer instance.
 
         Args:
             config: a CachingVideoObjectsFeaturizerConfig instance
-        '''
+        """
         self.validate(config)
         self.config = config
         super(CachingVideoObjectsFeaturizer, self).__init__()
@@ -710,27 +722,28 @@ class CachingVideoObjectsFeaturizer(Featurizer):
 
     @property
     def backing_dir(self):
-        '''The current backing directory.
+        """The current backing directory.
 
         If a manual backing directory was set via `set_manual_backing_dir`, it
         will be returned here.
-        '''
+        """
         if self._manual_backing_dir is not None:
             return self._manual_backing_dir
         return self._backing_manager.backing_dir
 
     @property
     def features_handler(self):
-        '''The current VideoObjectsFeaturesHandler.'''
+        """The current VideoObjectsFeaturesHandler."""
         if self._features_handler is None:
             raise CachingVideoObjectsFeaturizerError(
                 "No features handler found; did you forget to featurize "
-                "something?")
+                "something?"
+            )
 
         return self._features_handler
 
     def set_manual_backing_dir(self, backing_dir):
-        '''Manually sets the backing directory.
+        """Manually sets the backing directory.
 
         If a manual backing directory is set, it will take precedence over the
         backing manager's directory. To remove this manual setting, call
@@ -738,28 +751,33 @@ class CachingVideoObjectsFeaturizer(Featurizer):
 
         Args:
             backing_dir: the manual backing directory to use
-        '''
+        """
         logger.info("Using manual backing directory '%s'", backing_dir)
         self._manual_backing_dir = backing_dir
 
     def clear_manual_backing_dir(self):
-        '''Clears the manual backing directory.
+        """Clears the manual backing directory.
 
         This does not delete the contents of the directory.
-        '''
+        """
         logger.info("Clearing manual backing directory")
         self._manual_backing_dir = None
 
     def dim(self):
-        '''Returns the dimension of the features extracted by the underlying
+        """Returns the dimension of the features extracted by the underlying
         object featurizer.
-        '''
+        """
         return self._object_featurizer.dim()
 
     def featurize(
-            self, video_path=None, video_frames_dir=None, video_labels=None,
-            backing_dir=None, frames=None):
-        '''Featurizes the objects in the frames of the video.
+        self,
+        video_path=None,
+        video_frames_dir=None,
+        video_labels=None,
+        backing_dir=None,
+        frames=None,
+    ):
+        """Featurizes the objects in the frames of the video.
 
         Either `video_path` or `video_frames_dir` must be specified.
 
@@ -773,15 +791,16 @@ class CachingVideoObjectsFeaturizer(Featurizer):
                 `set_manual_backing_dir()`
             frames: an optional subset of frames to featurize. By default,
                 all frames are featurized
-        '''
+        """
         self.start(warn_on_restart=False, keep_alive=False)
         self._featurize(
-            video_path, video_frames_dir, video_labels, backing_dir, frames)
+            video_path, video_frames_dir, video_labels, backing_dir, frames
+        )
         if self._keep_alive is False:
             self.stop()
 
     def get_featurized_object_path(self, frame_number, object_number):
-        '''Returns the feature path on disk for the given object from the given
+        """Returns the feature path on disk for the given object from the given
         frame.
 
         The actual file may or may not exist.
@@ -792,12 +811,13 @@ class CachingVideoObjectsFeaturizer(Featurizer):
 
         Returns:
             the feature path
-        '''
+        """
         return self.features_handler.get_feature_path(
-            frame_number, object_number)
+            frame_number, object_number
+        )
 
     def load_feature(self, frame_number, object_number):
-        '''Loads the feature for the given object from the given frame.
+        """Loads the feature for the given object from the given frame.
 
         Args:
             frame_number: the frame number
@@ -805,18 +825,18 @@ class CachingVideoObjectsFeaturizer(Featurizer):
 
         Returns:
             the feature vector
-        '''
+        """
         return self.features_handler.load_feature(frame_number, object_number)
 
     def load_features_for_frame(self, frame_number):
-        '''Loads the features for all objects in the given frame.
+        """Loads the features for all objects in the given frame.
 
         Args:
             frame_number: the frame number
 
         Returns:
             a `num_objects x dim` array of features
-        '''
+        """
         return self.features_handler.load_features(frame_number)
 
     def _start(self):
@@ -829,8 +849,8 @@ class CachingVideoObjectsFeaturizer(Featurizer):
             etau.delete_dir(self.backing_dir)
 
     def _featurize(
-            self, video_path, video_frames_dir, video_labels, backing_dir,
-            frames):
+        self, video_path, video_frames_dir, video_labels, backing_dir, frames
+    ):
         #
         # Get frames to process
         #
@@ -839,12 +859,12 @@ class CachingVideoObjectsFeaturizer(Featurizer):
         if frames is None or frames == "*":
             frames = video_labels.get_frame_numbers_with_objects()
             logger.info(
-                "Found %d frames with objects to featurize", len(frames))
+                "Found %d frames with objects to featurize", len(frames)
+            )
         else:
             frame_ranges = etaf.parse_frame_ranges(frames)
             frames = frame_ranges.to_list()
-            logger.info(
-                "Featurizing %d frames of the video", len(frames))
+            logger.info("Featurizing %d frames of the video", len(frames))
 
         #
         # Get new features handler
@@ -860,7 +880,8 @@ class CachingVideoObjectsFeaturizer(Featurizer):
             self._backing_manager.set_task_name(video_name)
 
         logger.info(
-            "Writing features to backing directory '%s'", self.backing_dir)
+            "Writing features to backing directory '%s'", self.backing_dir
+        )
         self._features_handler = VideoObjectsFeaturesHandler(self.backing_dir)
 
         if video_path:
@@ -884,7 +905,8 @@ class CachingVideoObjectsFeaturizer(Featurizer):
 
         else:
             raise CachingVideoObjectsFeaturizerError(
-                "Either `video_path` or `video_frames_dir` must be provided")
+                "Either `video_path` or `video_frames_dir` must be provided"
+            )
 
     def _featurize_frame(self, img, frame_number):
         logger.debug("Processing frame %d", frame_number)
@@ -900,14 +922,15 @@ class CachingVideoObjectsFeaturizer(Featurizer):
 
 
 class CachingVideoObjectsFeaturizerError(Exception):
-    '''Exception raised when a problem is encountered with a
+    """Exception raised when a problem is encountered with a
     CachingVideoObjectsFeaturizer.
-    '''
+    """
+
     pass
 
 
 class FeaturesHandler(object):
-    '''Base class for handling the reading and writing features to disk.
+    """Base class for handling the reading and writing features to disk.
 
     The features are stored on disk in `features_dir` in .npy format with the
     following pattern:
@@ -923,15 +946,15 @@ class FeaturesHandler(object):
 
     Attributes:
         features_dir: the backing directory for the features
-    '''
+    """
 
     def __init__(self, features_dir, features_patt):
-        '''Initializes the base FeaturesHandler.
+        """Initializes the base FeaturesHandler.
 
         Args:
             features_dir: the backing directory in which to read/write features
             features_patt: the pattern to generate filenames for features
-        '''
+        """
         self.features_dir = features_dir
         self._features_patt = features_patt
         etau.ensure_dir(self.features_dir)
@@ -967,13 +990,15 @@ class FeaturesHandler(object):
 
     def _parse_features(self, *args):
         filename_patt = etau.fill_partial_pattern(
-            self._features_patt, args + (None,))
+            self._features_patt, args + (None,)
+        )
         sequence_patt = os.path.join(self.features_dir, filename_patt)
         return sequence_patt, etau.parse_pattern(sequence_patt)
 
     def _get_feature_sequence_paths(self, *args):
         filename_patt = etau.fill_partial_pattern(
-            self._features_patt, args + (None,))
+            self._features_patt, args + (None,)
+        )
         sequence_patt = os.path.join(self.features_dir, filename_patt)
         return etau.get_pattern_matches(sequence_patt)
 
@@ -990,27 +1015,28 @@ class FeaturesHandler(object):
 
 
 class FeatureNotFoundError(IOError):
-    '''Exception raised when a feature is not found on disk.'''
+    """Exception raised when a feature is not found on disk."""
 
     def __init__(self, path):
         super(FeatureNotFoundError, self).__init__(
-            "Feature not found at '%s'" % path)
+            "Feature not found at '%s'" % path
+        )
 
 
 class ImageFeaturesHandler(FeaturesHandler):
-    '''Class that handles reading and writing features to disk corresponding
+    """Class that handles reading and writing features to disk corresponding
     to an image.
 
     Unlike other feature handlers, `ImageFeaturesHandler` simply stores the
     features on disk (in .npy format) via a directly specified path.
-    '''
+    """
 
     def __init__(self):
-        '''Creates a ImageFeaturesHandler instance.'''
+        """Creates a ImageFeaturesHandler instance."""
         pass
 
     def load_feature(self, feature_path):
-        '''Load the feature from the given path.
+        """Load the feature from the given path.
 
         Args:
             feature_path: the feature path
@@ -1020,22 +1046,22 @@ class ImageFeaturesHandler(FeaturesHandler):
 
         Raises:
             FeatureNotFoundError: if the feature is not found on disk
-        '''
+        """
         return self._load_feature_from_path(feature_path)
 
     def write_feature(self, v, feature_path):
-        '''Writes the feature vector to disk.
+        """Writes the feature vector to disk.
 
         Args:
             v: the feature vector
             feature_path: the feature path
-        '''
+        """
         etau.ensure_basedir(feature_path)
         return self._write_feature_to_path(v, feature_path)
 
 
 class ImageObjectsFeaturesHandler(FeaturesHandler):
-    '''Class that handles reading and writing features to disk corresponding to
+    """Class that handles reading and writing features to disk corresponding to
     objects in an image.
 
     The features are stored on disk in `features_dir` in .npy format with the
@@ -1051,53 +1077,54 @@ class ImageObjectsFeaturesHandler(FeaturesHandler):
 
     Attributes:
         features_dir: the backing directory for the features
-    '''
+    """
 
     FEATURES_PATT = "%08d.npy"
 
     def __init__(self, features_dir):
-        '''Creates a ImageObjectsFeaturesHandler instance.
+        """Creates a ImageObjectsFeaturesHandler instance.
 
         Args:
             features_dir: the backing directory in which to read/write features
-        '''
+        """
         super(ImageObjectsFeaturesHandler, self).__init__(
-            features_dir, self.FEATURES_PATT)
+            features_dir, self.FEATURES_PATT
+        )
 
     def get_feature_path(self, object_number):
-        '''Gets the feature path for the given object.
+        """Gets the feature path for the given object.
 
         Args:
             object_number: the object number
 
         Returns:
             the feature path
-        '''
+        """
         return self._get_feature_path(object_number)
 
     def get_feature_paths(self):
-        '''Gets the list of paths to all featurized objects.
+        """Gets the list of paths to all featurized objects.
 
         The paths are returned in sequential order.
 
         Returns:
             a list of feature paths
-        '''
+        """
         return self._get_feature_sequence_paths()
 
     def parse_features(self):
-        '''Parses the features for all objects in the images.
+        """Parses the features for all objects in the images.
 
         The indices are returned in sequential order.
 
         Returns:
             a (patt, inds) tuple, where `patt` is the pattern to the features
                 on disk, and inds is the list of object indices with features
-        '''
+        """
         return self._parse_features()
 
     def load_feature(self, object_number):
-        '''Load the feature for the given object.
+        """Load the feature for the given object.
 
         Args:
             object_number: the object number
@@ -1107,40 +1134,40 @@ class ImageObjectsFeaturesHandler(FeaturesHandler):
 
         Raises:
             FeatureNotFoundError: if the feature is not found on disk
-        '''
+        """
         return self._load_feature(object_number)
 
     def load_features(self):
-        '''Loads the features for all objects in the image.
+        """Loads the features for all objects in the image.
 
         Returns:
             an `num_objects x dim` array of features
 
         Raises:
             FeatureNotFoundError: if a feature is not found on disk
-        '''
+        """
         return self._load_features_sequence()
 
     def write_feature(self, v, object_number):
-        '''Writes the feature vector to disk.
+        """Writes the feature vector to disk.
 
         Args:
             v: the feature vector
             object_number: the object number
-        '''
+        """
         return self._write_feature(v, object_number)
 
     def write_features(self, features):
-        '''Writes the feature vectors for the objects to disk.
+        """Writes the feature vectors for the objects to disk.
 
         Args:
             features: a `num_objects x dim` array of feature vectors
-        '''
+        """
         return self._write_features_sequence(features)
 
 
 class ImageSetFeaturesHandler(FeaturesHandler):
-    '''Class that handles reading and writing features to disk corresponding to
+    """Class that handles reading and writing features to disk corresponding to
     images in a set.
 
     The features are stored on disk in `features_dir` in .npy format with the
@@ -1156,32 +1183,33 @@ class ImageSetFeaturesHandler(FeaturesHandler):
 
     Attributes:
         features_dir: the backing directory for the features
-    '''
+    """
 
     FEATURES_PATT = "%s.npy"
 
     def __init__(self, features_dir):
-        '''Creates a ImageSetFeaturesHandler instance.
+        """Creates a ImageSetFeaturesHandler instance.
 
         Args:
             features_dir: the backing directory in which to read/write features
-        '''
+        """
         super(ImageSetFeaturesHandler, self).__init__(
-            features_dir, self.FEATURES_PATT)
+            features_dir, self.FEATURES_PATT
+        )
 
     def get_feature_path(self, image_name):
-        '''Gets the feature path for the given image.
+        """Gets the feature path for the given image.
 
         Args:
             image_name: the object name
 
         Returns:
             the feature path
-        '''
+        """
         return self._get_feature_path(image_name)
 
     def load_feature(self, image_name):
-        '''Load the feature for the given image.
+        """Load the feature for the given image.
 
         Args:
             image_name: the image name
@@ -1191,21 +1219,21 @@ class ImageSetFeaturesHandler(FeaturesHandler):
 
         Raises:
             FeatureNotFoundError: if the feature is not found on disk
-        '''
+        """
         return self._load_feature(image_name)
 
     def write_feature(self, v, image_name):
-        '''Writes the feature vector to disk.
+        """Writes the feature vector to disk.
 
         Args:
             v: the feature vector
             image_name: the image name
-        '''
+        """
         return self._write_feature(v, image_name)
 
 
 class ImageSetObjectsFeaturesHandler(FeaturesHandler):
-    '''Class that handles reading and writing features to disk corresponding to
+    """Class that handles reading and writing features to disk corresponding to
     detected objects in a set of images.
 
     The features are stored on disk in `features_dir` in .npy format with the
@@ -1225,21 +1253,22 @@ class ImageSetObjectsFeaturesHandler(FeaturesHandler):
 
     Attributes:
         features_dir: the backing directory for the features
-    '''
+    """
 
     FEATURES_PATT = "%s-%08d.npy"
 
     def __init__(self, features_dir):
-        '''Creates a ImageSetObjectsFeaturesHandler instance.
+        """Creates a ImageSetObjectsFeaturesHandler instance.
 
         Args:
             features_dir: the backing directory in which to read/write features
-        '''
+        """
         super(ImageSetObjectsFeaturesHandler, self).__init__(
-            features_dir, self.FEATURES_PATT)
+            features_dir, self.FEATURES_PATT
+        )
 
     def get_feature_path(self, image_name, object_number):
-        '''Gets the feature path for the given object.
+        """Gets the feature path for the given object.
 
         Args:
             image_name: the image name
@@ -1247,11 +1276,11 @@ class ImageSetObjectsFeaturesHandler(FeaturesHandler):
 
         Returns:
             the feature path
-        '''
+        """
         return self._get_feature_path(image_name, object_number)
 
     def get_feature_paths(self, image_name):
-        '''Gets the list of paths to all featurized objects in the given image.
+        """Gets the list of paths to all featurized objects in the given image.
 
         The paths are returned in sequential order.
 
@@ -1260,11 +1289,11 @@ class ImageSetObjectsFeaturesHandler(FeaturesHandler):
 
         Returns:
             a list of feature paths
-        '''
+        """
         return self._get_feature_sequence_paths(image_name)
 
     def parse_features(self, image_name):
-        '''Parses the features for all objects in the given image.
+        """Parses the features for all objects in the given image.
 
         The indices are returned in sequential order.
 
@@ -1274,11 +1303,11 @@ class ImageSetObjectsFeaturesHandler(FeaturesHandler):
         Returns:
             a (patt, inds) tuple, where `patt` is the pattern to the features
                 on disk, and inds is the list of object indices with features
-        '''
+        """
         return self._parse_features(image_name)
 
     def load_feature(self, image_name, object_number):
-        '''Load the feature for the given object from the given image.
+        """Load the feature for the given object from the given image.
 
         Args:
             image_name: the image name
@@ -1289,11 +1318,11 @@ class ImageSetObjectsFeaturesHandler(FeaturesHandler):
 
         Raises:
             FeatureNotFoundError: if the feature is not found on disk
-        '''
+        """
         return self._load_feature(image_name, object_number)
 
     def load_features(self, image_name):
-        '''Loads the features for all objects in the given image.
+        """Loads the features for all objects in the given image.
 
         Args:
             image_name: the image name
@@ -1303,31 +1332,31 @@ class ImageSetObjectsFeaturesHandler(FeaturesHandler):
 
         Raises:
             FeatureNotFoundError: if a feature is not found on disk
-        '''
+        """
         return self._load_features_sequence(image_name)
 
     def write_feature(self, v, image_name, object_number):
-        '''Writes the feature vector to disk.
+        """Writes the feature vector to disk.
 
         Args:
             v: the feature vector
             image_name: the image name
             object_number: the object number
-        '''
+        """
         return self._write_feature(v, image_name, object_number)
 
     def write_features(self, features, image_name):
-        '''Writes the feature vectors for the objects to disk.
+        """Writes the feature vectors for the objects to disk.
 
         Args:
             features: a `num_objects x dim` array of feature vectors
             image_name: the image name
-        '''
+        """
         return self._write_features_sequence(features, image_name)
 
 
 class VideoFramesFeaturesHandler(FeaturesHandler):
-    '''Class that handles reading and writing features to disk corresponding to
+    """Class that handles reading and writing features to disk corresponding to
     the frames of a video.
 
     The features are stored on disk in `features_dir` in .npy format with the
@@ -1339,53 +1368,54 @@ class VideoFramesFeaturesHandler(FeaturesHandler):
 
     Attributes:
         features_dir: the backing directory for the features
-    '''
+    """
 
     FEATURES_PATT = "%08d.npy"
 
     def __init__(self, features_dir):
-        '''Creates a VideoFramesFeaturesHandler instance.
+        """Creates a VideoFramesFeaturesHandler instance.
 
         Args:
             features_dir: the backing directory in which to read/write features
-        '''
+        """
         super(VideoFramesFeaturesHandler, self).__init__(
-            features_dir, self.FEATURES_PATT)
+            features_dir, self.FEATURES_PATT
+        )
 
     def get_feature_path(self, frame_number):
-        '''Gets the feature path for the given frame.
+        """Gets the feature path for the given frame.
 
         Args:
             frame_number: the frame number
 
         Returns:
             the feature path
-        '''
+        """
         return self._get_feature_path(frame_number)
 
     def get_feature_paths(self):
-        '''Gets the list of paths to all featurized frames.
+        """Gets the list of paths to all featurized frames.
 
         The paths are returned in sequential order.
 
         Returns:
             a list of feature paths
-        '''
+        """
         return self._get_feature_sequence_paths()
 
     def parse_features(self):
-        '''Parses the features for all featurized frames.
+        """Parses the features for all featurized frames.
 
         The indices are returned in sequential order.
 
         Returns:
             a (patt, inds) tuple, where `patt` is the pattern to the features
                 on disk, and inds is the list of frames with features
-        '''
+        """
         return self._parse_features()
 
     def load_feature(self, frame_number):
-        '''Load the feature for the given frame.
+        """Load the feature for the given frame.
 
         Args:
             frame_number: the frame number
@@ -1395,29 +1425,29 @@ class VideoFramesFeaturesHandler(FeaturesHandler):
 
         Raises:
             FeatureNotFoundError: if the feature is not found on disk
-        '''
+        """
         return self._load_feature(frame_number)
 
     def load_features(self):
-        '''Loads the features for all featurized frames.
+        """Loads the features for all featurized frames.
 
         Returns:
             an `num_frames x dim` array of features
-        '''
+        """
         return self._load_features_sequence()
 
     def write_feature(self, v, frame_number):
-        '''Writes the feature vector to disk.
+        """Writes the feature vector to disk.
 
         Args:
             v: the feature vector
             frame_number: the frame number
-        '''
+        """
         return self._write_feature(v, frame_number)
 
 
 class VideoObjectsFeaturesHandler(FeaturesHandler):
-    '''Class that handles reading and writing features to disk corresponding to
+    """Class that handles reading and writing features to disk corresponding to
     detected objects in the frames of a video.
 
     The features are stored on disk in `features_dir` in .npy format with the
@@ -1434,21 +1464,22 @@ class VideoObjectsFeaturesHandler(FeaturesHandler):
 
     Attributes:
         features_dir: the backing directory for the features
-    '''
+    """
 
     FEATURES_PATT = "%08d-%08d.npy"
 
     def __init__(self, features_dir):
-        '''Creates a VideoObjectsFeaturesHandler instance.
+        """Creates a VideoObjectsFeaturesHandler instance.
 
         Args:
             features_dir: the backing directory in which to read/write features
-        '''
+        """
         super(VideoObjectsFeaturesHandler, self).__init__(
-            features_dir, self.FEATURES_PATT)
+            features_dir, self.FEATURES_PATT
+        )
 
     def get_feature_path(self, frame_number, object_number):
-        '''Gets the feature path for the given object in the given frame.
+        """Gets the feature path for the given object in the given frame.
 
         Args:
             frame_number: the frame number
@@ -1456,11 +1487,11 @@ class VideoObjectsFeaturesHandler(FeaturesHandler):
 
         Returns:
             the feature path
-        '''
+        """
         return self._get_feature_path(frame_number, object_number)
 
     def get_feature_paths(self, frame_number):
-        '''Gets the list of paths to all featurized objects in the given frame.
+        """Gets the list of paths to all featurized objects in the given frame.
 
         The paths are returned in sequential order.
 
@@ -1469,11 +1500,11 @@ class VideoObjectsFeaturesHandler(FeaturesHandler):
 
         Returns:
             a list of feature paths
-        '''
+        """
         return self._get_feature_sequence_paths(frame_number)
 
     def parse_features(self, frame_number):
-        '''Parses the features for all objects in the given frame.
+        """Parses the features for all objects in the given frame.
 
         The indices are returned in sequential order.
 
@@ -1483,11 +1514,11 @@ class VideoObjectsFeaturesHandler(FeaturesHandler):
         Returns:
             a (patt, inds) tuple, where `patt` is the pattern to the features
                 on disk, and inds is the list of object indices with features
-        '''
+        """
         return self._parse_features(frame_number)
 
     def load_feature(self, frame_number, object_number):
-        '''Load the feature for the given object from the given frame.
+        """Load the feature for the given object from the given frame.
 
         Args:
             frame_number: the frame number
@@ -1498,11 +1529,11 @@ class VideoObjectsFeaturesHandler(FeaturesHandler):
 
         Raises:
             FeatureNotFoundError: if the feature is not found on disk
-        '''
+        """
         return self._load_feature(frame_number, object_number)
 
     def load_features(self, frame_number):
-        '''Loads the features for all objects in the given frame.
+        """Loads the features for all objects in the given frame.
 
         Args:
             frame_number: the frame number
@@ -1512,64 +1543,66 @@ class VideoObjectsFeaturesHandler(FeaturesHandler):
 
         Raises:
             FeatureNotFoundError: if a feature is not found on disk
-        '''
+        """
         return self._load_features_sequence(frame_number)
 
     def write_feature(self, v, frame_number, object_number):
-        '''Writes the feature vector to disk.
+        """Writes the feature vector to disk.
 
         Args:
             v: the feature vector
             frame_number: the frame number
             object_number: the object number
-        '''
+        """
         return self._write_feature(v, frame_number, object_number)
 
     def write_features(self, features, frame_number):
-        '''Writes the feature vectors for the objects to disk.
+        """Writes the feature vectors for the objects to disk.
 
         Args:
             features: a `num_objects x dim` array of feature vectors
             frame_number: the frame number
-        '''
+        """
         return self._write_features_sequence(features, frame_number)
 
 
 class BackingManagerConfig(Config):
-    '''Base configuration class that encapsulates the name of a
+    """Base configuration class that encapsulates the name of a
     `BackingManager` subclass and an instance of its associated Config class.
 
     Attributes:
         type: the fully-qualified class name of the `BackingManager` subclass
         config: an instance of the Config class associated with the specified
             `BackingManager` subclass
-    '''
+    """
 
     def __init__(self, d):
         self.type = self.parse_string(d, "type")
         self._backing_manager_cls, self._config_cls = Configurable.parse(
-            self.type)
+            self.type
+        )
         self.config = self.parse_object(
-            d, "config", self._config_cls, default=None)
+            d, "config", self._config_cls, default=None
+        )
         if not self.config:
             self.config = self._load_default_config()
 
     @classmethod
     def default(cls):
-        '''Loads the default BackingManager.
+        """Loads the default BackingManager.
 
         Returns:
             a BackingManager instance
-        '''
+        """
         return cls({"type": "eta.core.features.RandomBackingManager"})
 
     def build(self):
-        '''Factory method that builds the BackingManager instance from the
+        """Factory method that builds the BackingManager instance from the
         config specified by this class.
 
         Returns:
             a BackingManager instance
-        '''
+        """
         return self._backing_manager_cls(self.config)
 
     def _load_default_config(self):
@@ -1582,144 +1615,147 @@ class BackingManagerConfig(Config):
 
 
 class BackingManager(Configurable):
-    '''Abstract base class for backing managers.
+    """Abstract base class for backing managers.
 
     Backing managers are tools that handle the creation and deletion of backing
     directories for tasks. They are useful for tasks that require either
     temporary or permanent storage of data on disk.
-    '''
+    """
 
     @property
     def backing_dir(self):
-        '''The current backing directory.'''
+        """The current backing directory."""
         raise NotImplementedError("subclasses must implement `backing_dir`")
 
     def set_task_name(self, task_name):
-        '''Sets the task name and ensures that the backing directory for the
+        """Sets the task name and ensures that the backing directory for the
         task exists.
 
         Args:
             task_name: the task name
-        '''
+        """
         self._set_task_name(task_name)
         logger.info("Using backing directory '%s'", self.backing_dir)
         etau.ensure_dir(self.backing_dir)
 
     def _set_task_name(self, task_name):
-        '''Internal implementation of setting the task name.
+        """Internal implementation of setting the task name.
 
         Subclasses can implement this method if necessary.
 
         Args:
             task_name: the task name
-        '''
+        """
         pass
 
     def flush(self):
-        '''Deletes the backing directory.'''
+        """Deletes the backing directory."""
         logger.info("Deleting backing directory '%s'", self.backing_dir)
         etau.delete_dir(self.backing_dir)
 
 
 class ManualBackingManagerConfig(Config):
-    '''Configuration settings for a ManualBackingManager.
+    """Configuration settings for a ManualBackingManager.
 
     Attributes:
         backing_dir: the backing directory in which to store features
-    '''
+    """
 
     def __init__(self, d):
         self.backing_dir = self.parse_string(
-            d, "backing_dir", default="/tmp/eta.backing")
+            d, "backing_dir", default="/tmp/eta.backing"
+        )
 
 
 class ManualBackingManager(BackingManager):
-    '''Backing manager that stores features directly in the base directory.'''
+    """Backing manager that stores features directly in the base directory."""
 
     def __init__(self, config):
-        '''Creates the ManualBackingManager instance.
+        """Creates the ManualBackingManager instance.
 
         Args:
             config: a ManualBackingManager instance.
-        '''
+        """
         self.validate(config)
         self.config = config
 
     @property
     def backing_dir(self):
-        '''The current backing directory.'''
+        """The current backing directory."""
         return self.config.backing_dir
 
 
 class RandomBackingManagerConfig(Config):
-    '''Configuration settings for a RandomBackingManager.
+    """Configuration settings for a RandomBackingManager.
 
     Attributes:
         basedir: the base directory in which to store features
-    '''
+    """
 
     def __init__(self, d):
         self.basedir = self.parse_string(d, "basedir", default="/tmp")
 
 
 class RandomBackingManager(BackingManager):
-    '''Backing manager that stores features in random subdirectories of the
+    """Backing manager that stores features in random subdirectories of the
     given base directory.
-    '''
+    """
 
     def __init__(self, config):
-        '''Creates the RandomBackingManager instance.
+        """Creates the RandomBackingManager instance.
 
         Args:
             config: a RandomBackingManagerConfig instance.
-        '''
+        """
         self.validate(config)
         self.config = config
         self._backing_dir = None
 
     @property
     def backing_dir(self):
-        '''The current backing directory.'''
+        """The current backing directory."""
         return self._backing_dir
 
     def _set_task_name(self, task_name):
         etau.ensure_dir(self.config.basedir)
         self._backing_dir = tempfile.mkdtemp(
-            dir=self.config.basedir, prefix="eta.backing.")
+            dir=self.config.basedir, prefix="eta.backing."
+        )
 
 
 class PatternBackingManagerConfig(Config):
-    '''Configuration settings for a PatternBackingManager.
+    """Configuration settings for a PatternBackingManager.
 
     Attributes:
         path_replacers: an array of (find, replace) strings to apply to the
             task name
-    '''
+    """
 
     def __init__(self, d):
         self.path_replacers = self.parse_array(d, "path_replacers")
 
 
 class PatternBackingManager(BackingManager):
-    '''Backing manager that uses a list of (find, replace) strings to generate
+    """Backing manager that uses a list of (find, replace) strings to generate
     a backing directory for each task.
-    '''
+    """
 
     def __init__(self, config):
-        '''Creates the PatternBackingManager instance.
+        """Creates the PatternBackingManager instance.
 
         Args:
             config: a PatternBackingManagerConfig instance.
-        '''
+        """
         self.validate(config)
         self.config = config
         self._backing_dir = None
 
     @property
     def backing_dir(self):
-        '''The current backing directory.'''
+        """The current backing directory."""
         return self._backing_dir
 
     def _set_task_name(self, task_name):
         self._backing_dir = etau.replace_strings(
-            task_name, self.config.path_replacers)
+            task_name, self.config.path_replacers
+        )

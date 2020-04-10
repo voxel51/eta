@@ -18,4 +18,4 @@ repos:
         language: system
         files: \.py$
         entry: pylint
-        args: ['--errors-only']
+        args: ['--extension-pkg-whitelist=cv2', '--errors-only']

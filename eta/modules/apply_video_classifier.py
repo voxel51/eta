@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-'''
+"""
 A module that uses an `eta.core.learning.VideoClassifier` to classify a video.
 
 Info:
@@ -8,7 +8,7 @@ Info:
 
 Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
-'''
+"""
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
 # pragma pylint: disable=wildcard-import
@@ -17,6 +17,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
+
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
@@ -33,22 +34,22 @@ import eta.core.video as etav
 logger = logging.getLogger(__name__)
 
 
-class ApplyVideoClassifierConfig(etam.BaseModuleConfig):
-    '''Module configuration settings.
+class ModuleConfig(etam.BaseModuleConfig):
+    """Module configuration settings.
 
     Attributes:
         data (DataConfig)
         parameters (ParametersConfig)
-    '''
+    """
 
     def __init__(self, d):
-        super(ApplyVideoClassifierConfig, self).__init__(d)
+        super(ModuleConfig, self).__init__(d)
         self.data = self.parse_object_array(d, "data", DataConfig)
         self.parameters = self.parse_object(d, "parameters", ParametersConfig)
 
 
 class DataConfig(Config):
-    '''Data configuration settings.
+    """Data configuration settings.
 
     Inputs:
         video_path (eta.core.types.Video): [None] the input video
@@ -60,19 +61,21 @@ class DataConfig(Config):
     Outputs:
         output_labels_path (eta.core.types.VideoLabels): a VideoLabels file
             containing the predictions
-    '''
+    """
 
     def __init__(self, d):
         self.video_path = self.parse_string(d, "video_path", default=None)
         self.video_frames_dir = self.parse_string(
-            d, "video_frames_dir", default=None)
+            d, "video_frames_dir", default=None
+        )
         self.input_labels_path = self.parse_string(
-            d, "input_labels_path", default=None)
+            d, "input_labels_path", default=None
+        )
         self.output_labels_path = self.parse_string(d, "output_labels_path")
 
 
 class ParametersConfig(Config):
-    '''Parameter configuration settings.
+    """Parameter configuration settings.
 
     Parameters:
         classifier (eta.core.types.VideoClassifier): an
@@ -80,13 +83,15 @@ class ParametersConfig(Config):
             `eta.core.learning.VideoClassifier` to use
         confidence_threshold (eta.core.types.Number): [None] a confidence
             threshold to use when assigning labels
-    '''
+    """
 
     def __init__(self, d):
         self.classifier = self.parse_object(
-            d, "classifier", etal.VideoClassifierConfig)
+            d, "classifier", etal.VideoClassifierConfig
+        )
         self.confidence_threshold = self.parse_number(
-            d, "confidence_threshold", default=None)
+            d, "confidence_threshold", default=None
+        )
 
 
 def _build_attribute_filter(threshold):
@@ -119,7 +124,8 @@ def _process_video(data, classifier, parameters):
     # Load labels
     if data.input_labels_path:
         logger.info(
-            "Reading existing labels from '%s'", data.input_labels_path)
+            "Reading existing labels from '%s'", data.input_labels_path
+        )
         labels = etav.VideoLabels.from_json(data.input_labels_path)
     else:
         labels = etav.VideoLabels()
@@ -135,7 +141,8 @@ def _process_video(data, classifier, parameters):
         video_reader = etav.SampledFramesVideoReader(data.video_frames_dir)
     else:
         raise ConfigError(
-            "Either `video_path` or `video_frames_dir` must be provided")
+            "Either `video_path` or `video_frames_dir` must be provided"
+        )
 
     with video_reader:
         attrs = classifier.predict(video_reader)
@@ -147,16 +154,16 @@ def _process_video(data, classifier, parameters):
 
 
 def run(config_path, pipeline_config_path=None):
-    '''Run the apply_video_classifier module.
+    """Run the apply_video_classifier module.
 
     Args:
-        config_path: path to a ApplyVideoClassifierConfig file
+        config_path: path to a ModuleConfig file
         pipeline_config_path: optional path to a PipelineConfig file
-    '''
-    config = ApplyVideoClassifierConfig.from_json(config_path)
+    """
+    config = ModuleConfig.from_json(config_path)
     etam.setup(config, pipeline_config_path=pipeline_config_path)
     _apply_video_classifier(config)
 
 
 if __name__ == "__main__":
-    run(*sys.argv[1:])
+    run(*sys.argv[1:])  # pylint: disable=no-value-for-parameter

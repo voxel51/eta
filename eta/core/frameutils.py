@@ -1,9 +1,9 @@
-'''
+"""
 Utilities for working with frames of videos.
 
 Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
-'''
+"""
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
 # pragma pylint: disable=wildcard-import
@@ -13,6 +13,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
 import six
+
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
@@ -24,7 +25,7 @@ import eta.core.utils as etau
 
 
 def frame_number_to_timestamp(frame_number, total_frame_count, duration):
-    '''Converts the given frame number to a timestamp.
+    """Converts the given frame number to a timestamp.
 
     Args:
         frame_number: the frame number of interest
@@ -33,7 +34,7 @@ def frame_number_to_timestamp(frame_number, total_frame_count, duration):
 
     Returns:
         the timestamp (in seconds) of the given frame number in the video
-    '''
+    """
     if total_frame_count == 1:
         return 0
     alpha = (frame_number - 1) / (total_frame_count - 1)
@@ -41,7 +42,7 @@ def frame_number_to_timestamp(frame_number, total_frame_count, duration):
 
 
 def timestamp_to_frame_number(timestamp, duration, total_frame_count):
-    '''Converts the given timestamp in a video to a frame number.
+    """Converts the given timestamp in a video to a frame number.
 
     Args:
         timestamp: the timestamp (in seconds or "HH:MM:SS.XXX" format) of
@@ -51,14 +52,14 @@ def timestamp_to_frame_number(timestamp, duration, total_frame_count):
 
     Returns:
         the frame number associated with the given timestamp in the video
-    '''
+    """
     timestamp = timestamp_to_seconds(timestamp)
     alpha = timestamp / duration
     return 1 + int(round(alpha * (total_frame_count - 1)))
 
 
 def timestamp_to_seconds(timestamp):
-    '''Converts a timestamp that is in either seconds or "HH:MM:SS.XXX" format
+    """Converts a timestamp that is in either seconds or "HH:MM:SS.XXX" format
     to seconds.
 
     Args:
@@ -66,7 +67,7 @@ def timestamp_to_seconds(timestamp):
 
     Returns:
         a timestamp in seconds
-    '''
+    """
     if isinstance(timestamp, six.string_types):
         return timestamp_str_to_seconds(timestamp)
 
@@ -74,21 +75,22 @@ def timestamp_to_seconds(timestamp):
 
 
 def timestamp_str_to_seconds(timestamp):
-    '''Converts a timestamp string in "HH:MM:SS.XXX" format to seconds.
+    """Converts a timestamp string in "HH:MM:SS.XXX" format to seconds.
 
     Args:
         timestamp: a string in "HH:MM:SS.XXX" format
 
     Returns:
         the number of seconds
-    '''
+    """
     return sum(
-        float(n) * m for n, m in zip(
-            reversed(timestamp.split(":")), (1, 60, 3600)))
+        float(n) * m
+        for n, m in zip(reversed(timestamp.split(":")), (1, 60, 3600))
+    )
 
 
 def world_time_to_timestamp(world_time, start_time):
-    '''Converts the given world time to a timestamp in a video.
+    """Converts the given world time to a timestamp in a video.
 
     If one (but not both) of the datetimes are timezone-aware, the other
     datetime is assumed to be expressed in UTC time.
@@ -99,13 +101,14 @@ def world_time_to_timestamp(world_time, start_time):
 
     Returns:
         the corresponding timestamp (in seconds) in the video
-    '''
+    """
     return etau.datetime_delta_seconds(start_time, world_time)
 
 
 def world_time_to_frame_number(
-        world_time, start_time, duration, total_frame_count):
-    '''Converts the given world time to a frame number in a video.
+    world_time, start_time, duration, total_frame_count
+):
+    """Converts the given world time to a frame number in a video.
 
     Args:
         world_time: a datetime describing a time of interest
@@ -115,13 +118,13 @@ def world_time_to_frame_number(
 
     Returns:
         the corresponding timestamp (in seconds) in the video
-    '''
+    """
     timestamp = world_time_to_timestamp(world_time, start_time)
     return timestamp_to_frame_number(timestamp, duration, total_frame_count)
 
 
 def parse_frame_ranges(frames):
-    '''Parses the given frames quantity into a FrameRanges instance.
+    """Parses the given frames quantity into a FrameRanges instance.
 
     Args:
         frames: one of the following quantities:
@@ -132,7 +135,7 @@ def parse_frame_ranges(frames):
 
     Returns:
         a FrameRanges instance describing the frames
-    '''
+    """
     if isinstance(frames, six.string_types):
         # Human-readable frames string
         frame_ranges = FrameRanges.from_human_str(frames)
@@ -152,19 +155,19 @@ def parse_frame_ranges(frames):
 
 
 class FrameRanges(etas.Serializable):
-    '''Class representing a monotonically increasing and disjoint series of
+    """Class representing a monotonically increasing and disjoint series of
     frames.
-    '''
+    """
 
     def __init__(self, ranges=None):
-        '''Creates a FrameRanges instance.
+        """Creates a FrameRanges instance.
 
         Args:
             ranges: can either be a human-readable frames string like
                 "1-3,6,8-10" or an iterable of (first, last) tuples, which must
                 be disjoint and monotonically increasing. By default, an empty
                 instance is created
-        '''
+        """
         self._ranges = []
         self._idx = 0
         self._started = False
@@ -227,17 +230,16 @@ class FrameRanges(etas.Serializable):
         end = self.limits[1]
 
         if end is not None and first <= end:
-            raise FrameRangesError(
-                "Expected first:%d > end:%d" % (first, end))
+            raise FrameRangesError("Expected first:%d > end:%d" % (first, end))
 
         self._ranges.append(FrameRange(first, last))
 
     @property
     def limits(self):
-        '''A (first, last) tuple describing the limits of the frame ranges.
+        """A (first, last) tuple describing the limits of the frame ranges.
 
         Returns (None, None) if the instance is empty.
-        '''
+        """
         if not self:
             return (None, None)
 
@@ -247,12 +249,12 @@ class FrameRanges(etas.Serializable):
 
     @property
     def num_ranges(self):
-        '''The number of `FrameRange`s in this object.'''
+        """The number of `FrameRange`s in this object."""
         return len(self._ranges)
 
     @property
     def frame(self):
-        '''The current frame number, or -1 if no frames have been read.'''
+        """The current frame number, or -1 if no frames have been read."""
         if self._started:
             return self._ranges[self._idx].frame
 
@@ -260,14 +262,14 @@ class FrameRanges(etas.Serializable):
 
     @property
     def ranges(self):
-        '''A serialized string representation of this object.'''
+        """A serialized string representation of this object."""
         return self.to_human_str()
 
     @property
     def frame_range(self):
-        '''The (first, last) values for the current range, or (-1, -1) if no
+        """The (first, last) values for the current range, or (-1, -1) if no
         frames have been read.
-        '''
+        """
         if self._started:
             return self._ranges[self._idx].first, self._ranges[self._idx].last
 
@@ -275,7 +277,7 @@ class FrameRanges(etas.Serializable):
 
     @property
     def is_new_frame_range(self):
-        '''Whether the current frame is the first in a new range.'''
+        """Whether the current frame is the first in a new range."""
         if self._started:
             return self._ranges[self._idx].is_first_frame
 
@@ -283,7 +285,7 @@ class FrameRanges(etas.Serializable):
 
     @property
     def is_contiguous(self):
-        '''Determines whether the frame range is contiguous, i.e., whether it
+        """Determines whether the frame range is contiguous, i.e., whether it
         consists of a single `FrameRange`.
 
         If you want to ensure that this instance does not contain trivial
@@ -291,26 +293,26 @@ class FrameRanges(etas.Serializable):
 
         Returns:
             True/False
-        '''
+        """
         return self.num_ranges == 1
 
     def reset(self):
-        '''Resets the FrameRanges instance so that the next frame will be the
+        """Resets the FrameRanges instance so that the next frame will be the
         first.
-        '''
-        for r in self._ranges[:(self._idx + 1)]:
+        """
+        for r in self._ranges[: (self._idx + 1)]:
             r.reset()
 
         self._started = False
         self._idx = 0
 
     def clear(self):
-        '''Clears and resets the FrameRanges instance.'''
+        """Clears and resets the FrameRanges instance."""
         self._ranges = []
         self.reset()
 
     def add_range(self, new_range):
-        '''Adds the given frame range to the instance.
+        """Adds the given frame range to the instance.
 
         Args:
             new_range: a (first, last) tuple describing the range
@@ -318,11 +320,11 @@ class FrameRanges(etas.Serializable):
         Raises:
             FrameRangesError: if the new range is not disjoint and
                 monotonically increasing w.r.t. the existing ranges
-        '''
+        """
         self._ingest_range(new_range)
 
     def merge(self, *args):
-        '''Merges the given FrameRange and/or FrameRanges instances into this
+        """Merges the given FrameRange and/or FrameRanges instances into this
         range.
 
         Merges are successful regardless of overlap between ranges.
@@ -331,7 +333,7 @@ class FrameRanges(etas.Serializable):
 
         Args:
             *args: one or more FrameRange or FrameRanges instances
-        '''
+        """
         new_frames = set(self.to_list())
         for r in args:
             new_frames.update(r.to_list())
@@ -340,7 +342,7 @@ class FrameRanges(etas.Serializable):
         self._set_ranges(new_ranges)
 
     def simplify(self):
-        '''Simplifies the frame ranges, if possible, by merging any adjacent
+        """Simplifies the frame ranges, if possible, by merging any adjacent
         `FrameRange` instances into a single range.
 
         This operation will reset the instance if any simplification was
@@ -348,7 +350,7 @@ class FrameRanges(etas.Serializable):
 
         Returns:
             True/False whether any simplification was performed
-        '''
+        """
         if not self:
             return False
 
@@ -371,29 +373,29 @@ class FrameRanges(etas.Serializable):
         return True
 
     def attributes(self):
-        '''Returns the list of class attributes that will be serialized.
+        """Returns the list of class attributes that will be serialized.
 
         Returns:
             a list of attributes
-        '''
+        """
         return ["ranges"]
 
     def to_range_tuples(self):
-        '''Returns the list of (first, last) tuples defining the frame ranges
+        """Returns the list of (first, last) tuples defining the frame ranges
         in this instance.
 
         Returns:
             a list of (first, last) tuples
-        '''
+        """
         return [r.limits for r in self._ranges]
 
     def to_list(self):
-        '''Returns the list of frames, in sorted order, described by this
+        """Returns the list of frames, in sorted order, described by this
         object.
 
         Returns:
             list of frames
-        '''
+        """
         frames = []
         for r in self._ranges:
             frames += r.to_list()
@@ -401,15 +403,15 @@ class FrameRanges(etas.Serializable):
         return frames
 
     def to_human_str(self):
-        '''Returns a human-readable string representation of this object.
+        """Returns a human-readable string representation of this object.
 
         Returns:
             a string like "1-3,6,8-10" describing the frame ranges
-        '''
+        """
         return ",".join([fr.to_human_str() for fr in self._ranges])
 
     def to_bools(self, total_frame_count=None):
-        '''Returns a boolean array indicating the frames described by this
+        """Returns a boolean array indicating the frames described by this
         object.
 
         Note that the boolean array uses 0-based indexing. Thus, the returned
@@ -423,7 +425,7 @@ class FrameRanges(etas.Serializable):
 
         Returns:
             a boolean numpy array of length `total_frame_count`
-        '''
+        """
         if total_frame_count is None:
             total_frame_count = self.limits[1]
 
@@ -436,7 +438,7 @@ class FrameRanges(etas.Serializable):
 
     @staticmethod
     def build_simple(first, last):
-        '''Builds a FrameRanges from a simple [first, last] range.
+        """Builds a FrameRanges from a simple [first, last] range.
 
         Args:
             first: the first frame
@@ -444,12 +446,12 @@ class FrameRanges(etas.Serializable):
 
         Returns:
             a FrameRanges instance
-        '''
+        """
         return FrameRanges(ranges=[(first, last)])
 
     @classmethod
     def from_bools(cls, bools):
-        '''Constructs a FrameRanges object from a boolean array describing the
+        """Constructs a FrameRanges object from a boolean array describing the
         frames in the ranges.
 
         Note that the 0-based indexes in the boolean array are converted to
@@ -461,12 +463,12 @@ class FrameRanges(etas.Serializable):
 
         Returns:
             a FrameRanges instance
-        '''
+        """
         return cls.from_iterable(1 + np.flatnonzero(bools))
 
     @classmethod
     def from_human_str(cls, frames_str):
-        '''Constructs a FrameRanges object from a human-readable frames string.
+        """Constructs a FrameRanges object from a human-readable frames string.
 
         Args:
             frames_str: a human-readable frames string like "1-3,6,8-10"
@@ -476,12 +478,12 @@ class FrameRanges(etas.Serializable):
 
         Raises:
             FrameRangesError: if the frames string is invalid
-        '''
+        """
         return cls(ranges=frames_str)
 
     @classmethod
     def from_iterable(cls, frames):
-        '''Constructs a FrameRanges object from an iterable of frames.
+        """Constructs a FrameRanges object from an iterable of frames.
 
         The frames do not need to be in sorted order, and they may contain
         duplicates.
@@ -494,50 +496,51 @@ class FrameRanges(etas.Serializable):
 
         Raises:
             FrameRangesError: if the frames list is invalid
-        '''
+        """
         return cls(ranges=_iterable_to_ranges(frames))
 
     @classmethod
     def from_frame_range(cls, frame_range):
-        '''Constructs a FrameRanges instance from a FrameRange instance.
+        """Constructs a FrameRanges instance from a FrameRange instance.
 
         Args:
             frame_range: a FrameRange instance
 
         Returns:
             a FrameRanges instance
-        '''
+        """
         return cls(ranges=[(frame_range.first, frame_range.last)])
 
     @classmethod
     def from_dict(cls, d):
-        '''Constructs a FrameRanges from a JSON dictionary.
+        """Constructs a FrameRanges from a JSON dictionary.
 
         Args:
             d: a JSON dictionary
 
         Returns:
             a FrameRanges instance
-        '''
+        """
         ranges = d.get("ranges", None)
         return cls(ranges=ranges)
 
 
 class FrameRangesError(Exception):
-    '''Exception raised when an invalid FrameRanges is encountered.'''
+    """Exception raised when an invalid FrameRanges is encountered."""
+
     pass
 
 
 class FrameRange(etas.Serializable):
-    '''Class representing a range of frames.'''
+    """Class representing a range of frames."""
 
     def __init__(self, first, last):
-        '''Creates a FrameRange instance.
+        """Creates a FrameRange instance.
 
         Args:
             first: the first frame in the range (inclusive)
             last: the last frame in the range (inclusive)
-        '''
+        """
         self.first = first
         self.last = last
         self._frame = -1
@@ -551,7 +554,8 @@ class FrameRange(etas.Serializable):
 
         if last < first:
             raise FrameRangeError(
-                "Expected first:%d <= last:%d" % (first, last))
+                "Expected first:%d <= last:%d" % (first, last)
+            )
 
     def __str__(self):
         return self.to_human_str()
@@ -580,14 +584,14 @@ class FrameRange(etas.Serializable):
         return self._frame
 
     def reset(self):
-        '''Resets the FrameRange instance so that the next frame will be the
+        """Resets the FrameRange instance so that the next frame will be the
         first.
-        '''
+        """
         self._frame = -1
 
     @property
     def frame(self):
-        '''The current frame number, or -1 if no frames have been read.'''
+        """The current frame number, or -1 if no frames have been read."""
         if self._frame < 0:
             return -1
 
@@ -595,28 +599,28 @@ class FrameRange(etas.Serializable):
 
     @property
     def limits(self):
-        '''A (first, last) tuple describing the frame range.'''
+        """A (first, last) tuple describing the frame range."""
         return (self.first, self.last)
 
     @property
     def is_first_frame(self):
-        '''Whether the current frame is first in the range.'''
+        """Whether the current frame is first in the range."""
         return self._frame == self.first
 
     def to_list(self):
-        '''Returns the list of frames in the range.
+        """Returns the list of frames in the range.
 
         Returns:
             a list of frames
-        '''
+        """
         return list(range(self.first, self.last + 1))
 
     def to_human_str(self):
-        '''Returns a human-readable string representation of the range.
+        """Returns a human-readable string representation of the range.
 
         Returns:
             a string like "1-5"
-        '''
+        """
         if self.first == self.last:
             return "%d" % self.first
 
@@ -624,7 +628,7 @@ class FrameRange(etas.Serializable):
 
     @classmethod
     def from_human_str(cls, frames_str):
-        '''Constructs a FrameRange object from a human-readable string.
+        """Constructs a FrameRange object from a human-readable string.
 
         Args:
             frames_str: a human-readable frames string like "1-5"
@@ -634,17 +638,18 @@ class FrameRange(etas.Serializable):
 
         Raises:
             FrameRangeError: if the frame range string is invalid
-        '''
+        """
         try:
             v = list(map(int, frames_str.split("-")))
             return cls(v[0], v[-1])
         except ValueError:
             raise FrameRangeError(
-                "Invalid frame range string '%s'" % frames_str)
+                "Invalid frame range string '%s'" % frames_str
+            )
 
     @classmethod
     def from_iterable(cls, frames):
-        '''Constructs a FrameRange object from an iterable of frames.
+        """Constructs a FrameRange object from an iterable of frames.
 
         The frames do not need to be in sorted order, and there may be
         duplicates. However, the frames must define a single interval.
@@ -657,7 +662,7 @@ class FrameRange(etas.Serializable):
 
         Raises:
             FrameRangeError: if the frame range list is invalid
-        '''
+        """
         ranges = list(_iterable_to_ranges(frames))
         if len(ranges) != 1:
             raise FrameRangeError("Invalid frame range list %s" % frames)
@@ -666,19 +671,20 @@ class FrameRange(etas.Serializable):
 
     @classmethod
     def from_dict(cls, d):
-        '''Constructs a FrameRange from a JSON dictionary.
+        """Constructs a FrameRange from a JSON dictionary.
 
         Args:
             d: a JSON dictionary
 
         Returns:
             a FrameRange instance
-        '''
+        """
         return cls(d["first"], d["last"])
 
 
 class FrameRangeError(Exception):
-    '''Exception raised when an invalid FrameRange is encountered.'''
+    """Exception raised when an invalid FrameRange is encountered."""
+
     pass
 
 

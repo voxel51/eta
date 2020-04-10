@@ -1,4 +1,4 @@
-'''
+"""
 Core infrastructure for managing models across local and remote storage.
 
 See `docs/models_dev_guide.md` for detailed information about the design of
@@ -6,7 +6,7 @@ the ETA model management system.
 
 Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
-'''
+"""
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
 # pragma pylint: disable=wildcard-import
@@ -16,6 +16,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
 from future.utils import iteritems, itervalues
+
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
@@ -44,7 +45,7 @@ MODELS_MANIFEST_JSON = "manifest.json"
 
 
 def list_models(downloaded_only=False):
-    '''Returns a list of all models on the models search path.
+    """Returns a list of all models on the models search path.
 
     Args:
         downloaded_only: whether to only include models that are currently
@@ -52,13 +53,13 @@ def list_models(downloaded_only=False):
 
     Returns:
         a list of model names (with "@<ver>" strings, if any)
-    '''
+    """
     models = _list_models(downloaded_only=downloaded_only)[0]
     return sorted(list(models.keys()))
 
 
 def list_models_in_directory(models_dir, downloaded_only=False):
-    '''Returns a list of all models in the given directory.
+    """Returns a list of all models in the given directory.
 
     Args:
         models_dir: the models directory
@@ -70,16 +71,19 @@ def list_models_in_directory(models_dir, downloaded_only=False):
 
     Raises:
         ModelError: if the directory was not a valid models directory
-    '''
+    """
     manifest = ModelsManifest.from_dir(models_dir)
-    return sorted([
-        model.name for model in manifest
-        if not downloaded_only or model.is_in_dir(models_dir)
-    ])
+    return sorted(
+        [
+            model.name
+            for model in manifest
+            if not downloaded_only or model.is_in_dir(models_dir)
+        ]
+    )
 
 
 def get_model(name):
-    '''Gets the Model instance for the given model, which must appear in a
+    """Gets the Model instance for the given model, which must appear in a
     ModelsManifest in one of the `eta.config.models_dirs` directories.
 
     Args:
@@ -92,12 +96,12 @@ def get_model(name):
 
     Raises:
         ModelError: if the model could not be found
-    '''
+    """
     return _find_model(name)[0]
 
 
 def find_model(name):
-    '''Finds the given model, which must appear in a ModelsManifest in one of
+    """Finds the given model, which must appear in a ModelsManifest in one of
     the `eta.config.models_dirs` directories.
 
     Note that the model might not actually exist at the returned model path.
@@ -114,13 +118,13 @@ def find_model(name):
 
     Raises:
         ModelError: if the model could not be found
-    '''
+    """
     model, models_dir, _ = _find_model(name)
     return model.get_path_in_dir(models_dir)
 
 
 def find_all_models(downloaded_only=False):
-    '''Finds all models on the models search path.
+    """Finds all models on the models search path.
 
     Args:
         downloaded_only: whether to only include models that are currently
@@ -129,16 +133,15 @@ def find_all_models(downloaded_only=False):
     Returns:
         a dictionary mapping model names (with "@<ver>" strings, if any) to
             full paths to the model files
-    '''
+    """
     models = _list_models(downloaded_only=downloaded_only)[0]
     return {
-        name: md[0].get_path_in_dir(md[1])
-        for name, md in iteritems(models)
+        name: md[0].get_path_in_dir(md[1]) for name, md in iteritems(models)
     }
 
 
 def is_model_downloaded(name):
-    '''Determines whether the given model is downloaded.
+    """Determines whether the given model is downloaded.
 
     Args:
         name: the name of the model, which can have "@<ver>" appended to refer
@@ -150,13 +153,13 @@ def is_model_downloaded(name):
 
     Raises:
         ModelError: if the model could not be found
-    '''
+    """
     model, models_dir, _ = _find_model(name)
     return model.is_in_dir(models_dir)
 
 
 def download_model(name, force=False):
-    '''Downloads the given model, if necessary.
+    """Downloads the given model, if necessary.
 
     If the download is forced, the local copy of the model will be overwitten
     if it exists.
@@ -174,7 +177,7 @@ def download_model(name, force=False):
 
     Raises:
         ModelError: if the model could not be found
-    '''
+    """
     model, models_dir, _ = _find_model(name)
     model_path = model.get_path_in_dir(models_dir)
     model.manager.download_model(model_path, force=force)
@@ -182,7 +185,7 @@ def download_model(name, force=False):
 
 
 def flush_model(name):
-    '''Deletes the local copy of the given model, if necessary.
+    """Deletes the local copy of the given model, if necessary.
 
     The models is not removed from its associated manifest and can be
     downloaded again at any time.
@@ -194,19 +197,19 @@ def flush_model(name):
 
     Raises:
         ModelError: if the model could not be found
-    '''
+    """
     model, models_dir, _ = _find_model(name)
     if model.is_in_dir(models_dir):
         _delete_model_from_dir(model, models_dir)
 
 
 def flush_old_models():
-    '''Deletes local copies of any old models, i.e. models for which the number
+    """Deletes local copies of any old models, i.e. models for which the number
     of versions stored on disk exceeds `eta.config.max_model_versions_to_keep`.
 
     The models are not removed from their associated manifests and can be
     downloaded again at any time.
-    '''
+    """
     max_vers = eta.config.max_model_versions_to_keep
     if max_vers < 0:
         # No flushing required
@@ -232,13 +235,15 @@ def flush_old_models():
         if num_to_flush > 0:
             logger.info(
                 "*** Flushing %d old version(s) of model '%s'",
-                num_to_flush, base_name)
+                num_to_flush,
+                base_name,
+            )
             for model, models_dir in reversed(models_list[max_vers:]):
                 _delete_model_from_dir(model, models_dir)
 
 
 def flush_models_directory(models_dir):
-    '''Deletes the local copies of all models in the given models directory.
+    """Deletes the local copies of all models in the given models directory.
 
     The models are not removed from their associated manifests and can be
     downloaded again at any time.
@@ -248,7 +253,7 @@ def flush_models_directory(models_dir):
 
     Raises:
         ModelError: if the directory contains no models manifest
-    '''
+    """
     _warn_if_not_on_search_path(models_dir)
     for model in ModelsManifest.from_dir(models_dir):
         if model.is_in_dir(models_dir):
@@ -256,17 +261,17 @@ def flush_models_directory(models_dir):
 
 
 def flush_all_models():
-    '''Deletes all local copies of all models on the models search path.
+    """Deletes all local copies of all models on the models search path.
 
     The models are not removed from their associated manifests and can be
     downloaded again at any time.
-    '''
+    """
     for models_dir in _get_models_search_path():
         flush_models_directory(models_dir)
 
 
 def init_models_dir(new_models_dir):
-    '''Initializes the given directory as a models directory by creating an
+    """Initializes the given directory as a models directory by creating an
     empty models manifest file for it.
 
     The directory is created if necessary.
@@ -280,10 +285,11 @@ def init_models_dir(new_models_dir):
 
     Raises:
         ModelError: if the models directory is already initialized
-    '''
+    """
     if ModelsManifest.dir_has_manifest(new_models_dir):
         raise ModelError(
-            "Directory '%s' already has a models manifest" % new_models_dir)
+            "Directory '%s' already has a models manifest" % new_models_dir
+        )
 
     logger.info("Initializing new models directory '%s'", new_models_dir)
     manifest = ModelsManifest()
@@ -291,9 +297,13 @@ def init_models_dir(new_models_dir):
 
 
 def publish_public_model(
-        name, google_drive_id, description=None, base_filename=None,
-        models_dir=None):
-    '''Publishes a new model to the public ETA model registry.
+    name,
+    google_drive_id,
+    description=None,
+    base_filename=None,
+    models_dir=None,
+):
+    """Publishes a new model to the public ETA model registry.
 
     This function assumes that the model has been uploaded to Google Drive by
     an ETA administrator and that you have the ID of the file to provide here.
@@ -330,10 +340,11 @@ def publish_public_model(
 
     Raises:
         ModelError: if the publishing failed for any reason
-    '''
+    """
     # Recommend paths if necessary
     base_filename, models_dir = recommend_paths_for_model(
-        name, base_filename=base_filename, models_dir=models_dir)
+        name, base_filename=base_filename, models_dir=models_dir
+    )
 
     # Perform a dry run of the model registration
     register_model_dry_run(name, base_filename, models_dir)
@@ -344,12 +355,14 @@ def publish_public_model(
 
     # Register model
     register_model(
-        name, base_filename, models_dir, manager, description=description)
+        name, base_filename, models_dir, manager, description=description
+    )
 
 
 def recommend_paths_for_model(
-        name, model_path=None, base_filename=None, models_dir=None):
-    '''Recommends a base filename and models directory for the given model,
+    name, model_path=None, base_filename=None, models_dir=None
+):
+    """Recommends a base filename and models directory for the given model,
     if possible, using the provided information to inform the recommendation.
 
     The recommendations are made using the first applicable option below:
@@ -380,7 +393,7 @@ def recommend_paths_for_model(
             no recommendation could be made
         models_dir: the recommended models directory to store the model, or
             None if no recommendation could be made
-    '''
+    """
     try:
         base_name = Model.parse_name(name)[0]
         model, _rec_models_dir, _ = _find_model(base_name)
@@ -395,12 +408,17 @@ def recommend_paths_for_model(
             base_filename = _rec_base_filename
             logger.info(
                 "Found a previous model version '%s'; recommending the same "
-                "base filename: '%s'", model.name, base_filename)
+                "base filename: '%s'",
+                model.name,
+                base_filename,
+            )
         elif model_path:
             base_filename = os.path.basename(model_path)
             logger.info(
                 "No previous model version found; recommending the base "
-                "filename of the input model path: '%s'", base_filename)
+                "filename of the input model path: '%s'",
+                base_filename,
+            )
         else:
             logger.info("Unable to recommended a base filename...")
             base_filename = None
@@ -411,18 +429,24 @@ def recommend_paths_for_model(
             models_dir = _rec_models_dir
             logger.info(
                 "Found a previous model version '%s'; recommending the same "
-                "model directory: '%s'", model.name, models_dir)
+                "model directory: '%s'",
+                model.name,
+                models_dir,
+            )
         elif model_path:
             models_dir = os.path.dirname(model_path)
             logger.info(
                 "No previous model version found; recommending the parent "
                 "directory of the model path as the models directory: '%s'",
-                models_dir)
+                models_dir,
+            )
         elif eta.config.models_dirs:
             models_dir = eta.config.models_dirs[0]
             logger.info(
                 "No models directory was specified; recommending the first "
-                "directory on the models search path: '%s'", models_dir)
+                "directory on the models search path: '%s'",
+                models_dir,
+            )
         else:
             logger.info("Unable to recommended a models directory...")
             models_dir = None
@@ -431,7 +455,7 @@ def recommend_paths_for_model(
 
 
 def register_model_dry_run(name, base_filename, models_dir):
-    '''Performs a dry-run of the model registration process to ensure that no
+    """Performs a dry-run of the model registration process to ensure that no
     errors will happen when a real model registration is performed.
 
     *** No files are modified by this function. ***
@@ -454,7 +478,7 @@ def register_model_dry_run(name, base_filename, models_dir):
 
     Raises:
         ModelError: if the dry run failed for any reason
-    '''
+    """
     # Verify name
     logger.info("Verifying that model name '%s' is valid", name)
     base_name, version = Model.parse_name(name)
@@ -471,19 +495,23 @@ def register_model_dry_run(name, base_filename, models_dir):
             "A versioned model with base name '%s' already exists, and "
             "publishing a versionless model with the same name as a versioned "
             "model can lead to unexpected behavior. Please choose another "
-            "model name." % name)
+            "model name." % name
+        )
     if base_name in models:
         raise ModelError(
             "A versionless model with name '%s' already exists, and "
             "publishing a versioned model with the same name as a versionless "
             "model can lead to unexpected behavior. Please choose another "
-            "model name." % base_name)
+            "model name." % base_name
+        )
 
     # Verify no filename conflicts
     if ModelsManifest.dir_has_manifest(models_dir):
         logger.info(
             "Verifying that no filename conflicts exist in models "
-            "directory '%s'", models_dir)
+            "directory '%s'",
+            models_dir,
+        )
         manifest = ModelsManifest.from_dir(models_dir)
         manifest.add_model(model)
 
@@ -491,7 +519,7 @@ def register_model_dry_run(name, base_filename, models_dir):
 
 
 def register_model(name, base_filename, models_dir, manager, description=None):
-    '''Registers a new model in the given models directory.
+    """Registers a new model in the given models directory.
 
     If the directory does not have a models manifest file, one is created.
     Note that new models directories are not automatically added to your
@@ -513,7 +541,7 @@ def register_model(name, base_filename, models_dir, manager, description=None):
 
     Raises:
         ModelError: if the registration failed for any reason
-    '''
+    """
     _warn_if_not_on_search_path(models_dir)
 
     # Create model
@@ -521,8 +549,13 @@ def register_model(name, base_filename, models_dir, manager, description=None):
     base_name, version = Model.parse_name(name)
     date_created = etau.get_localtime()
     model = Model(
-        base_name, base_filename, manager, version=version,
-        description=description, date_created=date_created)
+        base_name,
+        base_filename,
+        manager,
+        version=version,
+        description=description,
+        date_created=date_created,
+    )
 
     # Initialize models directory, if necessary
     if not ModelsManifest.dir_has_manifest(models_dir):
@@ -536,7 +569,7 @@ def register_model(name, base_filename, models_dir, manager, description=None):
 
 
 def delete_model(name, force=False):
-    '''Permanently deletes the given model from local and remote storage.
+    """Permanently deletes the given model from local and remote storage.
 
     CAUTION: this cannot be undone!
 
@@ -550,14 +583,16 @@ def delete_model(name, force=False):
 
     Raises:
         ModelError: if the model could not be found
-    '''
+    """
     # Flush model locally
     flush_model(name)
 
     model, models_dir, manifest = _find_model(name)
     if force or etau.query_yes_no(
-            "Are you sure you want to permanently delete this model from "
-            "remote storage? This cannot be undone!", default="no"):
+        "Are you sure you want to permanently delete this model from "
+        "remote storage? This cannot be undone!",
+        default="no",
+    ):
         # Flush model remotely
         logger.info("Deleting model '%s' from remote storage", name)
         model.manager.delete_model()
@@ -565,7 +600,8 @@ def delete_model(name, force=False):
         # Delete model from manifest
         manifest_path = manifest.make_manifest_path(models_dir)
         logger.info(
-            "Removing model '%s' from manifest '%s'", name, manifest_path)
+            "Removing model '%s' from manifest '%s'", name, manifest_path
+        )
         manifest.remove_model(model.name)
         manifest.write_json(manifest_path)
     else:
@@ -602,7 +638,8 @@ def _find_latest_model(base_name):
         raise ModelError("No models found with base name '%s'" % base_name)
     if _model.has_version:
         logger.debug(
-            "Found version %s of model '%s'", _model.version, base_name)
+            "Found version %s of model '%s'", _model.version, base_name
+        )
 
     return _model, _mdir, manifests[_mdir]
 
@@ -617,7 +654,8 @@ def _list_models(downloaded_only=False):
         for model in manifest:
             if model.name in models:
                 raise ModelError(
-                    "Found two '%s' models. Names must be unique" % model.name)
+                    "Found two '%s' models. Names must be unique" % model.name
+                )
             if not downloaded_only or model.is_in_dir(mdir):
                 models[model.name] = (model, mdir)
 
@@ -627,7 +665,8 @@ def _list_models(downloaded_only=False):
 def _delete_model_from_dir(model, models_dir):
     model_path = model.get_path_in_dir(models_dir)
     logger.info(
-        "Deleting local copy of model '%s' from '%s'", model.name, model_path)
+        "Deleting local copy of model '%s' from '%s'", model.name, model_path
+    )
     os.remove(model_path)
 
 
@@ -639,7 +678,9 @@ def _get_models_search_path():
         else:
             logger.debug(
                 "Directory '%s' is on the models search path but has no "
-                "manifest; omitting from search path", mdir)
+                "manifest; omitting from search path",
+                mdir,
+            )
 
     return mdirs
 
@@ -648,25 +689,26 @@ def _warn_if_not_on_search_path(models_dir):
     mdir = os.path.abspath(models_dir)
     if mdir not in _get_models_search_path():
         logger.warning(
-            "Directory '%s' is not on the ETA models search path", models_dir)
+            "Directory '%s' is not on the ETA models search path", models_dir
+        )
 
 
 class ModelsManifest(Serializable):
-    '''Class that describes the contents of a models directory.'''
+    """Class that describes the contents of a models directory."""
 
     def __init__(self, models=None):
-        '''Creates a ModelsManifest instance.
+        """Creates a ModelsManifest instance.
 
         Args:
             models: a list of Model instances
-        '''
+        """
         self.models = models or []
 
     def __iter__(self):
         return iter(self.models)
 
     def add_model(self, model):
-        '''Adds the given model to the manifest.
+        """Adds the given model to the manifest.
 
         Args:
             model: a Model instance
@@ -674,37 +716,39 @@ class ModelsManifest(Serializable):
         Raises:
             ModelError: if the model conflicts with an existing model in the
                 manifest
-        '''
+        """
         if self.has_model_with_name(model.name):
             raise ModelError(
-                "Manifest already contains model called '%s'" % model.name)
+                "Manifest already contains model called '%s'" % model.name
+            )
         if self.has_model_with_filename(model.filename):
             raise ModelError(
-                "Manifest already contains model with filename '%s'" % (
-                    model.filename))
+                "Manifest already contains model with filename '%s'"
+                % (model.filename)
+            )
         if self.has_model_with_name(model.base_name):
             raise ModelError(
                 "Manifest already contains a versionless model called '%s', "
-                "so a versioned model is not allowed" % model.base_name)
+                "so a versioned model is not allowed" % model.base_name
+            )
 
         self.models.append(model)
 
     def remove_model(self, name):
-        '''Removes the model with the given name from the ModelsManifest.
+        """Removes the model with the given name from the ModelsManifest.
 
         Args:
             name: the name of the model
 
         Raises:
             ModelError: if the model was not found
-        '''
+        """
         if not self.has_model_with_name(name):
-            raise ModelError(
-                "Manifest does not contain model '%s'" % name)
+            raise ModelError("Manifest does not contain model '%s'" % name)
         self.models = [model for model in self.models if model.name != name]
 
     def get_model_with_name(self, name):
-        '''Gets the model with the given name.
+        """Gets the model with the given name.
 
         Args:
             name: the name of the model
@@ -714,7 +758,7 @@ class ModelsManifest(Serializable):
 
         Raises:
             ModelError: if the model was not found
-        '''
+        """
         for model in self.models:
             if name == model.name:
                 return model
@@ -722,7 +766,7 @@ class ModelsManifest(Serializable):
         raise ModelError("Manifest does not contain model '%s'" % name)
 
     def get_latest_model_with_base_name(self, base_name):
-        '''Gets the Model instance for the latest version of the model with the
+        """Gets the Model instance for the latest version of the model with the
         given base name.
 
         Args:
@@ -733,7 +777,7 @@ class ModelsManifest(Serializable):
 
         Raises:
             ModelError: if the model was not found
-        '''
+        """
         _model = None
         for model in self.models:
             if base_name == model.base_name:
@@ -742,53 +786,55 @@ class ModelsManifest(Serializable):
 
         if _model is None:
             raise ModelError(
-                "Manifest does not contain model '%s'" % base_name)
+                "Manifest does not contain model '%s'" % base_name
+            )
 
         return _model
 
     def has_model_with_name(self, name):
-        '''Determines whether this manifest contains the model with the
+        """Determines whether this manifest contains the model with the
         given name.
-        '''
+        """
         return any(name == model.name for model in self.models)
 
     def has_model_with_filename(self, filename):
-        '''Determines whether this manifest contains a model with the given
+        """Determines whether this manifest contains a model with the given
         filename.
-        '''
+        """
         return any(filename == model.filename for model in self.models)
 
     @staticmethod
     def make_manifest_path(models_dir):
-        '''Makes the manifest path for the given models directory.'''
+        """Makes the manifest path for the given models directory."""
         return os.path.join(models_dir, MODELS_MANIFEST_JSON)
 
     @staticmethod
     def dir_has_manifest(models_dir):
-        '''Determines whether the given directory has a models manifest.'''
+        """Determines whether the given directory has a models manifest."""
         return os.path.isfile(ModelsManifest.make_manifest_path(models_dir))
 
     def write_to_dir(self, models_dir):
-        '''Writes the ModelsManifest to the given models directory.'''
+        """Writes the ModelsManifest to the given models directory."""
         self.write_json(self.make_manifest_path(models_dir))
 
     @classmethod
     def from_dir(cls, models_dir):
-        '''Loads the ModelsManifest from the given models directory.'''
+        """Loads the ModelsManifest from the given models directory."""
         if not cls.dir_has_manifest(models_dir):
             raise ModelError(
-                "Directory '%s' has no models manifest" % models_dir)
+                "Directory '%s' has no models manifest" % models_dir
+            )
 
         return cls.from_json(cls.make_manifest_path(models_dir))
 
     @classmethod
     def from_dict(cls, d):
-        '''Constructs a ModelsManifest from a JSON dictionary.'''
+        """Constructs a ModelsManifest from a JSON dictionary."""
         return cls(models=[Model.from_dict(md) for md in d["models"]])
 
 
 class Model(Serializable):
-    '''Class that describes a model.
+    """Class that describes a model.
 
     Attributes:
         base_name: the base name of the model (no version info)
@@ -801,13 +847,19 @@ class Model(Serializable):
             `eta.core.learning.ModelConfig` describing the recommended settings
             for deploying the model
         date_created: the datetime that the model was created (if any)
-    '''
+    """
 
     def __init__(
-            self, base_name, base_filename, manager, version=None,
-            description=None, default_deployment_config_dict=None,
-            date_created=None):
-        '''Creates a Model instance.
+        self,
+        base_name,
+        base_filename,
+        manager,
+        version=None,
+        description=None,
+        default_deployment_config_dict=None,
+        date_created=None,
+    ):
+        """Creates a Model instance.
 
         Args:
             base_name: the base name of the model
@@ -819,7 +871,7 @@ class Model(Serializable):
                 representation of an `eta.core.learning.ModelConfig` describing
                 the recommended settings for deploying the model
             date_created: (optional) the datetime that the model was created
-        '''
+        """
         self.base_name = base_name
         self.base_filename = base_filename
         self.manager = manager
@@ -830,7 +882,7 @@ class Model(Serializable):
 
     @property
     def name(self):
-        '''The version-aware name of the model.'''
+        """The version-aware name of the model."""
         if not self.has_version:
             return self.base_name
         base, ext = os.path.splitext(self.base_name)
@@ -838,7 +890,7 @@ class Model(Serializable):
 
     @property
     def filename(self):
-        '''The version-aware filename of the model.'''
+        """The version-aware filename of the model."""
         if not self.has_version:
             return self.base_filename
         base, ext = os.path.splitext(self.base_filename)
@@ -846,31 +898,31 @@ class Model(Serializable):
 
     @property
     def has_version(self):
-        '''Determines whether the model has a version.'''
+        """Determines whether the model has a version."""
         return self.version is not None
 
     @property
     def comp_version(self):
-        '''The version of this model expressed as a
+        """The version of this model expressed as a
         `distutils.version.LooseVersion` intended for comparison operations.
 
         Models with no version are given a version of 0.0.0.
-        '''
+        """
         return LooseVersion(self.version or "0.0.0")
 
     def get_path_in_dir(self, models_dir):
-        '''Gets the model path for the model in the given models directory.'''
+        """Gets the model path for the model in the given models directory."""
         return os.path.join(models_dir, self.filename)
 
     def is_in_dir(self, models_dir):
-        '''Determines whether a copy of the model exists in the given models
+        """Determines whether a copy of the model exists in the given models
         directory.
-        '''
+        """
         return os.path.isfile(self.get_path_in_dir(models_dir))
 
     @staticmethod
     def parse_name(name):
-        '''Parses the model name, returning the base name and the version,
+        """Parses the model name, returning the base name and the version,
         if any.
 
         Args:
@@ -883,7 +935,7 @@ class Model(Serializable):
 
         Raises:
             ModelError: if the model name was invalid
-        '''
+        """
         chunks = name.split("@")
         if len(chunks) == 1:
             return name, None
@@ -893,18 +945,24 @@ class Model(Serializable):
 
     @staticmethod
     def has_version_str(name):
-        '''Determines whether the given model name has a version string.'''
+        """Determines whether the given model name has a version string."""
         return bool(Model.parse_name(name)[1])
 
     def attributes(self):
-        '''Returns a list of class attributes to be serialized.'''
+        """Returns a list of class attributes to be serialized."""
         return [
-            "base_name", "base_filename", "version", "description", "manager",
-            "default_deployment_config_dict", "date_created"]
+            "base_name",
+            "base_filename",
+            "version",
+            "description",
+            "manager",
+            "default_deployment_config_dict",
+            "date_created",
+        ]
 
     @classmethod
     def from_dict(cls, d):
-        '''Constructs a Model from a JSON dictionary.'''
+        """Constructs a Model from a JSON dictionary."""
         date_created = etau.parse_isotime(d.get("date_created"))
         return cls(
             d["base_name"],
@@ -913,13 +971,14 @@ class Model(Serializable):
             version=d.get("version", None),
             description=d.get("description", None),
             default_deployment_config_dict=d.get(
-                "default_deployment_config_dict", None),
+                "default_deployment_config_dict", None
+            ),
             date_created=date_created,
         )
 
 
 class PublishedModel(object):
-    '''Base class for classes that encapsulate published models.
+    """Base class for classes that encapsulate published models.
 
     This class can load the model locally or from remote storage as needed.
 
@@ -928,26 +987,26 @@ class PublishedModel(object):
     Attributes:
         model_name: the name of the model
         model_path: the local path to the model on disk
-    '''
+    """
 
     def __init__(self, model_name):
-        '''Initializes a PublishedModel instance.
+        """Initializes a PublishedModel instance.
 
         Args:
             model_name: the model to load
 
         Raises:
             ModelError: if the model was not found
-        '''
+        """
         self.model_name = model_name
         self.model_path = find_model(self.model_name)
 
     def load(self):
-        '''Loads the model, downloading them from remote storage if necessary.
+        """Loads the model, downloading them from remote storage if necessary.
 
         Returns:
             the model
-        '''
+        """
         download_model(self.model_name, force=False)
         return self._load()
 
@@ -956,16 +1015,16 @@ class PublishedModel(object):
 
 
 class PickledModel(PublishedModel):
-    '''Class that can load a published model stored as a .pkl file.'''
+    """Class that can load a published model stored as a .pkl file."""
 
     def _load(self):
         return read_pickle(self.model_path)
 
 
 class NpzModelWeights(PublishedModel, dict):
-    '''Class that provides a dictionary interface to a collection of published
+    """Class that provides a dictionary interface to a collection of published
     model weights, which must be stored in an .npz file.
-    '''
+    """
 
     def _load(self):
         self.update(np.load(self.model_path))
@@ -973,30 +1032,29 @@ class NpzModelWeights(PublishedModel, dict):
 
 
 class ModelManager(Configurable, Serializable):
-    '''Base class for model managers.
+    """Base class for model managers.
 
     Attributes:
         type: the fully-qualified name of the ModelManager subclass
         config: the Config instance for the ModelManager subclass
-    '''
+    """
 
     def __init__(self, config):
-        '''Initializes a ModelManager instance.
+        """Initializes a ModelManager instance.
 
         Args:
             config: a Config for the ModelManager subclass
-        '''
+        """
         self.validate(config)
         self.type = etau.get_class_name(self)
         self.config = config
 
     @staticmethod
     def upload_model(model_path, *args, **kwargs):
-        raise NotImplementedError(
-            "subclass must implement upload_model()")
+        raise NotImplementedError("subclass must implement upload_model()")
 
     def download_model(self, model_path, force=False):
-        '''Downloads the model to the given local path.
+        """Downloads the model to the given local path.
 
         If the download is forced, any existing model is overwritten. If the
         download is not forced, the model will only be downloaded if it does
@@ -1010,48 +1068,48 @@ class ModelManager(Configurable, Serializable):
 
         Raises:
             ModelError: if model downloading is not currently allowed
-        '''
+        """
         if force or not os.path.isfile(model_path):
             if not eta.config.allow_model_downloads:
                 raise ModelError(
                     "Model downloading is currently disabled. Modify your ETA "
-                    "config to change this setting.")
+                    "config to change this setting."
+                )
             etau.ensure_basedir(model_path)
             self._download_model(model_path)
 
     def delete_model(self):
-        raise NotImplementedError(
-            "subclass must implement delete_model()")
+        raise NotImplementedError("subclass must implement delete_model()")
 
     def _download_model(self, model_path):
-        raise NotImplementedError(
-            "subclass must implement _download_model()")
+        raise NotImplementedError("subclass must implement _download_model()")
 
     def attributes(self):
-        '''Returns a list of attributes to be serialized.'''
+        """Returns a list of attributes to be serialized."""
         return ["type", "config"]
 
     @classmethod
     def from_dict(cls, d):
-        '''Builds the ModelManager subclass from a JSON dictionary.'''
+        """Builds the ModelManager subclass from a JSON dictionary."""
         manager_cls, config_cls = cls.parse(d["type"])
         return manager_cls(config_cls.from_dict(d["config"]))
 
 
 class ETAModelManagerConfig(Config):
-    '''Configuration settings for an ETAModelManager instance.
+    """Configuration settings for an ETAModelManager instance.
 
     Exactly one of the attributes should be set.
 
     Attributes:
         url: the URL of the file
         google_drive_id: the ID of the file in Google Drive
-    '''
+    """
 
     def __init__(self, d):
         self.url = self.parse_string(d, "url", default=None)
         self.google_drive_id = self.parse_string(
-            d, "google_drive_id", default=None)
+            d, "google_drive_id", default=None
+        )
 
     def attributes(self):
         # Omit attributes with no value, for clarity
@@ -1059,13 +1117,14 @@ class ETAModelManagerConfig(Config):
 
 
 class ETAModelManager(ModelManager):
-    '''Class that manages public models for the ETA repository.'''
+    """Class that manages public models for the ETA repository."""
 
     @staticmethod
     def upload_model(model_path, *args, **kwargs):
         raise NotImplementedError(
             "ETA models must be uploaded by a Voxel51 administrator. "
-            "Please contact %s for more information." % etac.AUTHOR_EMAIL)
+            "Please contact %s for more information." % etac.AUTHOR_EMAIL
+        )
 
     def _download_model(self, model_path):
         if self.config.google_drive_id:
@@ -1073,7 +1132,9 @@ class ETAModelManager(ModelManager):
             try:
                 logger.info(
                     "Downloading model from Google Drive ID '%s' to '%s'",
-                    gid, model_path)
+                    gid,
+                    model_path,
+                )
                 etaw.download_google_drive_file(gid, path=model_path)
             except etaw.WebSessionError as e:
                 logger.error("***** FAILED TO DOWNLOAD '%s' *****", gid)
@@ -1090,21 +1151,23 @@ class ETAModelManager(ModelManager):
 
         elif self.config.url:
             url = self.config.url
-            logger.info(
-                "Downloading model from '%s' to '%s'", url, model_path)
+            logger.info("Downloading model from '%s' to '%s'", url, model_path)
             etaw.download_file(url, path=model_path)
         else:
             raise ModelError(
-                "Invalid ETAModelManagerConfig '%s'" % str(self.config))
+                "Invalid ETAModelManagerConfig '%s'" % str(self.config)
+            )
 
     def delete_model(self):
         raise NotImplementedError(
             "ETA models must be deleted by a Voxel51 administrator. "
-            "Please contact %s for more information." % etac.AUTHOR_EMAIL)
+            "Please contact %s for more information." % etac.AUTHOR_EMAIL
+        )
 
 
 class ModelError(Exception):
-    '''Exception raised when an invalid model is encountered.'''
+    """Exception raised when an invalid model is encountered."""
+
     pass
 
 

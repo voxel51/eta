@@ -1,9 +1,9 @@
-'''
+"""
 Core infrastructure for graph manipulation.
 
 Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
-'''
+"""
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
 # pragma pylint: disable=wildcard-import
@@ -12,6 +12,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
+
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
@@ -20,11 +21,11 @@ import copy
 
 
 class DirectedGraph(object):
-    '''A simple, lightweight implementation of a directed graph.
+    """A simple, lightweight implementation of a directed graph.
 
     The graph nodes can be any hashable objects (they are stored internally as
     keys of dictionaries and elements of sets)
-    '''
+    """
 
     def __init__(self):
         self._sources = {}
@@ -32,41 +33,41 @@ class DirectedGraph(object):
 
     @property
     def is_empty(self):
-        '''Returns True/False if the graph is empty.'''
+        """Returns True/False if the graph is empty."""
         return len(self._sinks) == 0
 
     def add_edge(self, source, sink):
-        '''Adds a directed edge from `source` to `sink`.'''
+        """Adds a directed edge from `source` to `sink`."""
         _add(self._sources, sink, source)
         _add(self._sinks, source, sink)
 
     def remove_edge(self, source, sink):
-        '''Removes the directed edge from `source` to `sink`.'''
+        """Removes the directed edge from `source` to `sink`."""
         _remove(self._sources, sink, source)
         _remove(self._sinks, source, sink)
 
     def get_graph_sources(self):
-        '''Returns the set of graph source nodes, i.e., nodes with no incoming
+        """Returns the set of graph source nodes, i.e., nodes with no incoming
         edges.
-        '''
+        """
         return set(self._sinks.keys()) - set(self._sources.keys())
 
     def get_sources(self, node):
-        '''Returns the set of source nodes for the given node.'''
+        """Returns the set of source nodes for the given node."""
         try:
             return self._sources[node]
         except KeyError:
             return set()
 
     def get_sinks(self, node):
-        '''Returns the set of sink nodes for the given node.'''
+        """Returns the set of sink nodes for the given node."""
         try:
             return self._sinks[node]
         except KeyError:
             return set()
 
     def sort(self):
-        '''Performs a topological sort of the graph nodes.
+        """Performs a topological sort of the graph nodes.
 
         Returns:
             a list defining a (not necessarily unique) ordering of the nodes
@@ -75,12 +76,12 @@ class DirectedGraph(object):
 
         Raises:
             CyclicGraphError: if the graph contains a cycle
-        '''
+        """
         return kahns_algorithm(copy.deepcopy(self))
 
 
 def kahns_algorithm(graph):
-    '''Runs Kahn's algorithm on the DirectedGraph.
+    """Runs Kahn's algorithm on the DirectedGraph.
 
     The input graph is destroyed, so you should pass in a deep copy of your
     graph.
@@ -94,7 +95,7 @@ def kahns_algorithm(graph):
 
     Raises:
         CyclicGraphError: if the graph contains a cycle
-    '''
+    """
     order = []
     heads = graph.get_graph_sources()
     while heads:

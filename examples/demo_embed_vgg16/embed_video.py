@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-'''
+"""
 Example of embedding the frames of a video in the VGG-16 feature space using
 `CachingVideoFeaturizer`.
 
@@ -8,7 +8,7 @@ cropped version of each frame.
 
 Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
-'''
+"""
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
 # pragma pylint: disable=wildcard-import
@@ -17,6 +17,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
+
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
@@ -33,21 +34,23 @@ logger = logging.getLogger(__name__)
 
 
 class EmbedVideoConfig(Config):
-    '''Embedding configuration settings.'''
+    """Embedding configuration settings."""
 
     def __init__(self, d):
         self.video_path = self.parse_string(d, "video_path")
         self.caching_video_featurizer = self.parse_object(
-            d, "caching_video_featurizer", etaf.CachingVideoFeaturizerConfig)
+            d, "caching_video_featurizer", etaf.CachingVideoFeaturizerConfig
+        )
 
 
 def embed_video(config):
-    '''Embeds each frame of the video using VGG-16 and stores the embeddings
+    """Embeds each frame of the video using VGG-16 and stores the embeddings
     on disk using `eta.core.features.CachingVideoFeaturizer`
 
     Args:
         config: an EmbedConfig instance
-    '''
+    """
+
     def _crop(img):
         return img[10:100, 10:100, :]
 

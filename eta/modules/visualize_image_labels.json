@@ -8,15 +8,15 @@
     },
     "inputs": [
         {
-            "name": "images_dir",
-            "type": "eta.core.types.ImageFileDirectory",
-            "description": "A directory of images",
-            "required": false
-        },
-        {
             "name": "image_path",
             "type": "eta.core.types.Image",
             "description": "An image",
+            "required": false
+        },
+        {
+            "name": "images_dir",
+            "type": "eta.core.types.ImageFileDirectory",
+            "description": "A directory of images",
             "required": false
         },
         {
