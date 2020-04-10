@@ -1,9 +1,9 @@
-'''
+"""
 Core system and file I/O utilities.
 
 Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
-'''
+"""
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
 # pragma pylint: disable=wildcard-import
@@ -14,6 +14,7 @@ from __future__ import unicode_literals
 from builtins import *
 from future.utils import iteritems, itervalues
 import six
+
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
@@ -60,12 +61,12 @@ logger = logging.getLogger(__name__)
 
 
 def is_str(val):
-    '''Returns True/False whether the given value is a string.'''
+    """Returns True/False whether the given value is a string."""
     return isinstance(val, six.string_types)
 
 
 def standarize_strs(arg):
-    '''Standardizes any strings in the given object by casting them via
+    """Standardizes any strings in the given object by casting them via
     `str()`. Dictionaries and lists are processed recursively.
 
     Args:
@@ -74,7 +75,7 @@ def standarize_strs(arg):
     Returns:
         a copy (only if necessary) of the input object with any strings casted
             via str()
-    '''
+    """
     if isinstance(arg, dict):
         return {
             standarize_strs(k): standarize_strs(v) for k, v in iteritems(arg)
@@ -90,7 +91,7 @@ def standarize_strs(arg):
 
 
 def summarize_long_str(s, max_len, mode="middle"):
-    '''Renders a shorter version of a long string (if necessary) to meet a
+    """Renders a shorter version of a long string (if necessary) to meet a
     given length requirement by replacing part of the string with "..."
 
     Args:
@@ -102,14 +103,14 @@ def summarize_long_str(s, max_len, mode="middle"):
 
     Returns:
         the summarized string
-    '''
+    """
     if len(s) <= max_len:
         return s
 
     _mode = mode.lower()
 
     if _mode == "first":
-        return "... " + s[-(max_len - 4):]
+        return "... " + s[-(max_len - 4) :]
 
     if _mode == "middle":
         len1 = math.ceil(0.5 * (max_len - 5))
@@ -117,22 +118,22 @@ def summarize_long_str(s, max_len, mode="middle"):
         return s[:len1] + " ... " + s[-len2:]
 
     if _mode == "last":
-        return s[:(max_len - 4)] + " ..."
+        return s[: (max_len - 4)] + " ..."
 
     raise ValueError("Unsupported mode '%s'" % mode)
 
 
 def get_localtime():
-    '''Gets the local time in "YYYY-MM-DD HH:MM:SS" format.
+    """Gets the local time in "YYYY-MM-DD HH:MM:SS" format.
 
     Returns:
         "YYYY-MM-DD HH:MM:SS"
-    '''
+    """
     return str(datetime.now().replace(microsecond=0))
 
 
 def parse_isotime(isostr_or_none):
-    '''Parses the ISO time string into a datetime.
+    """Parses the ISO time string into a datetime.
 
     If the input string has a timezone ("Z" or "+HH:MM"), a timezone-aware
     datetime will be returned. Otherwise, a naive datetime will be returned.
@@ -143,7 +144,7 @@ def parse_isotime(isostr_or_none):
 
     Returns:
         a datetime, or None if the input was empty
-    '''
+    """
     if not isostr_or_none:
         return None
 
@@ -151,7 +152,7 @@ def parse_isotime(isostr_or_none):
 
 
 def datetime_delta_seconds(time1, time2):
-    '''Computes the difference between the two datetimes, in seconds.
+    """Computes the difference between the two datetimes, in seconds.
 
     If one (but not both) of the datetimes are timezone-aware, the other
     datetime is assumed to be expressed in UTC time.
@@ -162,7 +163,7 @@ def datetime_delta_seconds(time1, time2):
 
     Returns:
         the time difference, in seconds
-    '''
+    """
     try:
         return (time2 - time1).total_seconds()
     except (TypeError, ValueError):
@@ -172,7 +173,7 @@ def datetime_delta_seconds(time1, time2):
 
 
 def to_naive_local_datetime(dt):
-    '''Converts the datetime to a naive (no timezone) datetime with its time
+    """Converts the datetime to a naive (no timezone) datetime with its time
     expressed in the local timezone.
 
     The conversion is performed as follows:
@@ -186,13 +187,13 @@ def to_naive_local_datetime(dt):
 
     Returns:
         a naive datetime in local time
-    '''
+    """
     dt = add_utc_timezone_if_necessary(dt)
     return dt.astimezone().replace(tzinfo=None)
 
 
 def to_naive_utc_datetime(dt):
-    '''Converts the datetime to a naive (no timezone) datetime with its time
+    """Converts the datetime to a naive (no timezone) datetime with its time
     expressed in UTC.
 
     The conversion is performed as follows:
@@ -205,13 +206,13 @@ def to_naive_utc_datetime(dt):
 
     Returns:
         a naive datetime in UTC
-    '''
+    """
     dt = add_utc_timezone_if_necessary(dt)
     return dt.astimezone(pytz.utc).replace(tzinfo=None)
 
 
 def add_local_timezone_if_necessary(dt):
-    '''Makes the datetime timezone-aware, if necessary, by setting its timezone
+    """Makes the datetime timezone-aware, if necessary, by setting its timezone
     to the local timezone.
 
     Args:
@@ -219,7 +220,7 @@ def add_local_timezone_if_necessary(dt):
 
     Returns:
         a timezone-aware datetime
-    '''
+    """
     if dt.tzinfo is None:
         dt = dt.astimezone()  # empty ==> local timezone
 
@@ -227,7 +228,7 @@ def add_local_timezone_if_necessary(dt):
 
 
 def add_utc_timezone_if_necessary(dt):
-    '''Makes the datetime timezone-aware, if necessary, by setting its timezone
+    """Makes the datetime timezone-aware, if necessary, by setting its timezone
     to UTC.
 
     Args:
@@ -235,7 +236,7 @@ def add_utc_timezone_if_necessary(dt):
 
     Returns:
         a timezone-aware datetime
-    '''
+    """
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=pytz.utc)
 
@@ -243,24 +244,25 @@ def add_utc_timezone_if_necessary(dt):
 
 
 def get_eta_rev():
-    '''Returns the hash of the last commit to the current ETA branch or "" if
+    """Returns the hash of the last commit to the current ETA branch or "" if
     something went wrong with git.
 
     Returns:
         the current ETA revision hash
-    '''
+    """
     with WorkingDir(etac.ETA_DIR):
         success, rev, _ = communicate(
-            ["git", "rev-parse", "HEAD"], decode=True)
+            ["git", "rev-parse", "HEAD"], decode=True
+        )
     return rev.strip() if success else ""
 
 
 def has_gpu():
-    '''Determine if the current device has a GPU.
+    """Determine if the current device has a GPU.
 
     Returns:
         True/False
-    '''
+    """
     if sys.platform == "darwin":
         # No GPU on mac
         return False
@@ -272,7 +274,7 @@ def has_gpu():
 
 
 def get_int_pattern_with_capacity(max_number):
-    '''Gets a zero-padded integer pattern like "%%02d" or "%%03d" with
+    """Gets a zero-padded integer pattern like "%%02d" or "%%03d" with
     sufficient capacity for the given number.
 
     Args:
@@ -280,13 +282,13 @@ def get_int_pattern_with_capacity(max_number):
 
     Returns:
         a zero-padded integer formatting pattern
-    '''
+    """
     num_digits = max(1, math.ceil(math.log10(1 + max_number)))
     return "%%0%dd" % num_digits
 
 
 def fill_patterns(string, patterns):
-    '''Fills the patterns, if any, in the given string.
+    """Fills the patterns, if any, in the given string.
 
     Args:
         string: a string
@@ -294,14 +296,14 @@ def fill_patterns(string, patterns):
 
     Returns:
         a copy of string with any patterns replaced
-    '''
+    """
     for patt, val in iteritems(patterns):
         string = string.replace(patt, val)
     return string
 
 
 def fill_config_patterns(string):
-    '''Fills the patterns from ``eta.config.patterns``, if any, in the given
+    """Fills the patterns from ``eta.config.patterns``, if any, in the given
     string.
 
     Args:
@@ -309,12 +311,12 @@ def fill_config_patterns(string):
 
     Returns:
         a copy of string with any patterns replaced
-    '''
+    """
     return fill_patterns(string, eta.config.patterns)
 
 
 def parse_kvps(kvps_str):
-    '''Parses the comma-separated list of `key=value` pairs from the given
+    """Parses the comma-separated list of `key=value` pairs from the given
     string.
 
     Args:
@@ -325,7 +327,7 @@ def parse_kvps(kvps_str):
 
     Raises:
         ValueError: if the string was invalid
-    '''
+    """
     kvps = {}
     if kvps_str:
         try:
@@ -338,7 +340,7 @@ def parse_kvps(kvps_str):
 
 
 def parse_categorical_string(value, choices, ignore_case=True):
-    '''Parses a categorical string value, which must take a value from among
+    """Parses a categorical string value, which must take a value from among
     the given choices.
 
     Args:
@@ -353,10 +355,11 @@ def parse_categorical_string(value, choices, ignore_case=True):
 
     Raises:
         ValueError: if the value was not an allowed choice
-    '''
+    """
     if inspect.isclass(choices):
         choices = set(
-            v for k, v in iteritems(vars(choices)) if not k.startswith("_"))
+            v for k, v in iteritems(vars(choices)) if not k.startswith("_")
+        )
 
     orig_value = value
     orig_choices = choices
@@ -366,18 +369,19 @@ def parse_categorical_string(value, choices, ignore_case=True):
 
     if value not in choices:
         raise ValueError(
-            "Unsupported value '%s'; choices are %s" %
-            (orig_value, orig_choices))
+            "Unsupported value '%s'; choices are %s"
+            % (orig_value, orig_choices)
+        )
 
     return orig_value
 
 
 class FunctionEnum(object):
-    '''Base class for enums that support string-based lookup into a set of
+    """Base class for enums that support string-based lookup into a set of
     functions.
 
     Subclasses must implement the `_FUNCTIONS_MAP` constant.
-    '''
+    """
 
     #
     # A dictionary mapping string values to functions
@@ -388,27 +392,27 @@ class FunctionEnum(object):
 
     @classmethod
     def get_function(cls, value):
-        '''Gets the function for the given value.
+        """Gets the function for the given value.
 
         Args:
             value: the FunctionEnum value
 
         Returns:
             the function
-        '''
+        """
         cls.validate_value(value)
         return cls._FUNCTIONS_MAP[value]
 
     @classmethod
     def is_valid_value(cls, value):
-        '''Determines whether the given value is valid.
+        """Determines whether the given value is valid.
 
         Args:
             value: the FunctionEnum value
 
         Returns:
             True/False
-        '''
+        """
         try:
             cls.validate_value(value)
             return True
@@ -417,22 +421,23 @@ class FunctionEnum(object):
 
     @classmethod
     def validate_value(cls, value):
-        '''Validates that the given value is valid.
+        """Validates that the given value is valid.
 
         Args:
             value: the FunctionEnum value
 
         Raises:
             ValueError: if the value is invalid
-        '''
+        """
         if value not in cls._FUNCTIONS_MAP:
             raise ValueError(
-                "'%s' is not a valid value for %s; supported values are %s" %
-                (value, get_class_name(cls), list(cls._FUNCTIONS_MAP)))
+                "'%s' is not a valid value for %s; supported values are %s"
+                % (value, get_class_name(cls), list(cls._FUNCTIONS_MAP))
+            )
 
 
 def get_class_name(cls_or_obj):
-    '''Returns the fully-qualified class name for the given input, which can
+    """Returns the fully-qualified class name for the given input, which can
     be a class or class instance.
 
     Args:
@@ -441,13 +446,13 @@ def get_class_name(cls_or_obj):
     Returns:
         the fully-qualified class name string, such as
             "eta.core.utils.ClassName"
-    '''
+    """
     cls = cls_or_obj if inspect.isclass(cls_or_obj) else cls_or_obj.__class__
     return cls_or_obj.__module__ + "." + cls.__name__
 
 
 def get_function_name(fcn):
-    '''Returns the fully-qualified function name for the given function.
+    """Returns the fully-qualified function name for the given function.
 
     Args:
         fcn: a function
@@ -455,12 +460,12 @@ def get_function_name(fcn):
     Returns:
         the fully-qualified function name string, such as
             "eta.core.utils.function_name"
-    '''
+    """
     return fcn.__module__ + "." + fcn.__name__
 
 
 def get_class(class_name, module_name=None):
-    '''Returns the class specified by the given class string, loading the
+    """Returns the class specified by the given class string, loading the
     parent module if necessary.
 
     Args:
@@ -475,21 +480,22 @@ def get_class(class_name, module_name=None):
 
     Raises:
         ImportError: if the class could not be imported
-    '''
+    """
     if module_name is None:
         try:
             module_name, class_name = class_name.rsplit(".", 1)
         except ValueError:
             raise ImportError(
                 "Class name '%s' must be fully-qualified when no module "
-                "name is provided" % class_name)
+                "name is provided" % class_name
+            )
 
     __import__(module_name)  # does nothing if module is already imported
     return getattr(sys.modules[module_name], class_name)
 
 
 def get_function(function_name, module_name=None):
-    '''Returns the function specified by the given string.
+    """Returns the function specified by the given string.
 
     Loads the parent module if necessary.
 
@@ -505,12 +511,12 @@ def get_function(function_name, module_name=None):
 
     Raises:
         ImportError: if the function could not be imported
-    '''
+    """
     return get_class(function_name, module_name=module_name)
 
 
 def query_yes_no(question, default=None):
-    '''Asks a yes/no question via the command-line and returns the answer.
+    """Asks a yes/no question via the command-line and returns the answer.
 
     This function is case insensitive and partial matches are allowed.
 
@@ -524,7 +530,7 @@ def query_yes_no(question, default=None):
 
     Raises:
         ValueError: if the default value was invalid
-    '''
+    """
     valid = {"y": True, "ye": True, "yes": True, "n": False, "no": False}
 
     if default:
@@ -547,15 +553,15 @@ def query_yes_no(question, default=None):
 
 
 class CaptureStdout(object):
-    '''Class for temporarily capturing stdout.
+    """Class for temporarily capturing stdout.
 
     This class works by temporarily redirecting `sys.stdout` (and any stream
     handlers of the root logger that are streaming to `sys.stdout`) to a
     string buffer in between calls to `start()` and `stop()`.
-    '''
+    """
 
     def __init__(self):
-        '''Creates a CaptureStdout instance.'''
+        """Creates a CaptureStdout instance."""
         self._root_logger = logging.getLogger()
         self._orig_stdout = None
         self._cache_stdout = None
@@ -563,11 +569,11 @@ class CaptureStdout(object):
 
     @property
     def is_started(self):
-        '''Whether stdout is currently being captured.'''
+        """Whether stdout is currently being captured."""
         return self._cache_stdout is not None
 
     def start(self):
-        '''Start capturing stdout.'''
+        """Start capturing stdout."""
         if self.is_started:
             return
 
@@ -587,11 +593,11 @@ class CaptureStdout(object):
         sys.stdout = self._cache_stdout
 
     def stop(self):
-        '''Stop capturing stdout.
+        """Stop capturing stdout.
 
         Returns:
             a string containing the captured stdout
-        '''
+        """
         if not self.is_started:
             return ""
 
@@ -612,7 +618,7 @@ class CaptureStdout(object):
 
 
 class ProgressBar(object):
-    '''Class for printing a self-updating progress bar to stdout that tracks
+    """Class for printing a self-updating progress bar to stdout that tracks
     the progress of an iterative count towards completion (i.e., a total).
 
     The progress of the bar is updated via `set_iteration()`, and,
@@ -642,12 +648,12 @@ class ProgressBar(object):
                 bar.set_iteration(bar.iteration + 1)
                 bar.draw()
                 time.sleep(0.05)
-    '''
+    """
 
     def __init__(
-            self, total, prefix=None, suffix=None, num_decimals=1,
-            bar_length=70):
-        '''Creates a ProgressBar instance.
+        self, total, prefix=None, suffix=None, num_decimals=1, bar_length=70
+    ):
+        """Creates a ProgressBar instance.
 
         Args:
             total: the total number of iterations for the progress bar to
@@ -656,7 +662,7 @@ class ProgressBar(object):
             num_decimals: the number of percentage decimals to print. The
                 default is 1
             bar_length: the length of the bar, in characters. The default is 70
-        '''
+        """
         self._iteration = 0
         self._total = total
         self._pctfmt = "%%%d.%df" % (num_decimals + 4, num_decimals)
@@ -683,22 +689,22 @@ class ProgressBar(object):
 
     @property
     def capturing_stdout(self):
-        '''Whether stdout is being captured between calls to `draw()`.'''
+        """Whether stdout is being captured between calls to `draw()`."""
         return self._capturing_stdout
 
     @property
     def iteration(self):
-        '''The current iteration.'''
+        """The current iteration."""
         return self._iteration
 
     @property
     def total(self):
-        '''The total iterations.'''
+        """The total iterations."""
         return self._total
 
     @property
     def progress(self):
-        '''The current progress, in [0, 1].'''
+        """The current progress, in [0, 1]."""
         if self.total <= 0:
             return 1.0
 
@@ -706,11 +712,11 @@ class ProgressBar(object):
 
     @property
     def complete(self):
-        '''Whether the task is 100%% complete.'''
+        """Whether the task is 100%% complete."""
         return self.iteration >= self.total
 
     def set_iteration(self, iteration, prefix=None, suffix=None):
-        '''Sets the current iteration.
+        """Sets the current iteration.
 
         Args:
             iteration: the new iteration
@@ -718,7 +724,7 @@ class ProgressBar(object):
                 bar. By default, the prefix is unchanged
             suffix: an optional new suffix string to append to the progress
                 bar. By default, the suffix is unchanged
-        '''
+        """
         self._iteration = max(0, min(iteration, self.total))
         if prefix is not None:
             self._prefix = self._parse_prefix(prefix)
@@ -727,19 +733,19 @@ class ProgressBar(object):
             self._suffix = self._parse_suffix(suffix)
 
     def pause(self):
-        '''Pauses the progress bar so that other information can be printed.
+        """Pauses the progress bar so that other information can be printed.
 
         This function overwrites the current progress bar with whitespace and
         appends a carriage return so that any other information that is printed
         will overwrite the current progress bar.
-        '''
+        """
         sys.stdout.write("\r" + " " * self._max_len + "\r")
 
     def draw(self):
-        '''Draws the progress bar at its current progress.
+        """Draws the progress bar at its current progress.
 
         If the progress is 100%%, a newline is appended.
-        '''
+        """
         if self.capturing_stdout:
             self._flush_capture()
 
@@ -790,7 +796,7 @@ class ProgressBar(object):
 
 
 def call(args):
-    '''Runs the command via `subprocess.call()`.
+    """Runs the command via `subprocess.call()`.
 
     stdout and stderr are streamed live during execution. If you want to
     capture these streams, use `communicate()`.
@@ -800,12 +806,12 @@ def call(args):
 
     Returns:
         True/False: if the command executed successfully
-    '''
+    """
     return subprocess.call(args) == 0
 
 
 def communicate(args, decode=False):
-    '''Runs the command via `subprocess.communicate()`
+    """Runs the command via `subprocess.communicate()`
 
     Args:
         args: the command specified as a ["list", "of", "strings"]
@@ -816,7 +822,7 @@ def communicate(args, decode=False):
         True/False: if the command executed successfully
         out: the command's stdout
         err: the command's stderr
-    '''
+    """
     logger.debug("Executing '%s'", " ".join(args))
     p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = p.communicate()
@@ -827,7 +833,7 @@ def communicate(args, decode=False):
 
 
 def communicate_or_die(args, decode=False):
-    '''Wrapper around `communicate()` that raises an exception if any error
+    """Wrapper around `communicate()` that raises an exception if any error
     occurs.
 
     Args:
@@ -842,7 +848,7 @@ def communicate_or_die(args, decode=False):
         ExecutableNotFoundError: if the executable in the command was not found
         ExecutableRuntimeError: if an error occurred while executing the
             command
-    '''
+    """
     try:
         success, out, err = communicate(args, decode=decode)
         if not success:
@@ -864,7 +870,7 @@ def _run_system_os_cmd(args):
 
 
 class Timer(object):
-    '''Class for timing things that supports the context manager interface.
+    """Class for timing things that supports the context manager interface.
 
     Example::
 
@@ -872,10 +878,10 @@ class Timer(object):
             # your commands here
 
         print("Request took %s" % t.elapsed_time_str)
-    '''
+    """
 
     def __init__(self):
-        '''Creates a Timer instance.'''
+        """Creates a Timer instance."""
         self.start_time = None
         self.stop_time = None
 
@@ -888,34 +894,34 @@ class Timer(object):
 
     @property
     def elapsed_time(self):
-        '''The number of elapsed seconds.'''
+        """The number of elapsed seconds."""
         return self.stop_time - self.start_time
 
     @property
     def elapsed_time_str(self):
-        '''The human-readable elapsed time string.'''
+        """The human-readable elapsed time string."""
         return self.get_elapsed_time_str()
 
     def get_elapsed_time_str(self, decimals=1):
-        '''Gets the elapsed time as a human-readable string.
+        """Gets the elapsed time as a human-readable string.
 
         Args:
             decimals: the desired number of decimal points to show in the
                 string. The default is 1
-        '''
+        """
         return to_human_time_str(self.elapsed_time, decimals=decimals)
 
     def start(self):
-        '''Starts the timer.'''
+        """Starts the timer."""
         self.start_time = timeit.default_timer()
 
     def stop(self):
-        '''Stops the timer.'''
+        """Stops the timer."""
         self.stop_time = timeit.default_timer()
 
 
 def guess_mime_type(filepath):
-    '''Guess the MIME type for the given file path. If no reasonable guess can
+    """Guess the MIME type for the given file path. If no reasonable guess can
     be determined, `application/octet-stream` is returned.
 
     Args:
@@ -923,12 +929,12 @@ def guess_mime_type(filepath):
 
     Returns:
         the MIME type string
-    '''
+    """
     return mimetypes.guess_type(filepath)[0] or "application/octet-stream"
 
 
 def read_file(inpath, binary=False):
-    '''Reads the file from disk.
+    """Reads the file from disk.
 
     Args:
         inpath: the path to the file to read
@@ -937,21 +943,21 @@ def read_file(inpath, binary=False):
 
     Returns:
         the contents of the file as a string
-    '''
+    """
     mode = "rb" if binary else "rt"
     with open(inpath, mode) as f:
         return f.read()
 
 
 def write_file(str_or_bytes, outpath):
-    '''Writes the given string/bytes to disk.
+    """Writes the given string/bytes to disk.
 
     If a string is provided, it is encoded via `.encode()`.
 
     Args:
         str_or_bytes: the string or bytes to write to disk
         outpath: the desired output filepath
-    '''
+    """
     ensure_basedir(outpath)
     if is_str(str_or_bytes):
         str_or_bytes = str_or_bytes.encode()
@@ -961,7 +967,7 @@ def write_file(str_or_bytes, outpath):
 
 
 def copy_file(inpath, outpath, check_ext=False):
-    '''Copies the input file to the output location.
+    """Copies the input file to the output location.
 
     The output location can be a filepath or a directory in which to write the
     file. The base output directory is created if necessary, and any existing
@@ -976,7 +982,7 @@ def copy_file(inpath, outpath, check_ext=False):
     Raises:
         OSError if the copy failed, or if `check_ext == True` and the input and
             output paths have different extensions
-    '''
+    """
     if not os.path.isdir(outpath) and check_ext:
         assert_same_extensions(inpath, outpath)
 
@@ -985,7 +991,7 @@ def copy_file(inpath, outpath, check_ext=False):
 
 
 def link_file(filepath, linkpath, check_ext=False):
-    '''Creates a hard link at the given location using the given file.
+    """Creates a hard link at the given location using the given file.
 
     The base output directory is created if necessary, and any existing file
     will be overwritten.
@@ -999,7 +1005,7 @@ def link_file(filepath, linkpath, check_ext=False):
     Raises:
         OSError if the link failed or if `check_ext == True` and the input and
             output paths have different extensions
-    '''
+    """
     if check_ext:
         assert_same_extensions(filepath, linkpath)
 
@@ -1011,7 +1017,7 @@ def link_file(filepath, linkpath, check_ext=False):
 
 
 def symlink_file(filepath, linkpath, check_ext=False):
-    '''Creates a symlink at the given location that points to the given file.
+    """Creates a symlink at the given location that points to the given file.
 
     The base output directory is created if necessary, and any existing file
     will be overwritten.
@@ -1025,7 +1031,7 @@ def symlink_file(filepath, linkpath, check_ext=False):
     Raises:
         OSError: if check_ext is True and the input and output paths have
             different extensions
-    '''
+    """
     if check_ext:
         assert_same_extensions(filepath, linkpath)
 
@@ -1037,7 +1043,7 @@ def symlink_file(filepath, linkpath, check_ext=False):
 
 
 def move_file(inpath, outpath, check_ext=False):
-    '''Moves the input file to the output location.
+    """Moves the input file to the output location.
 
     The output location can be a filepath or a directory in which to move the
     file. The base output directory is created if necessary, and any existing
@@ -1052,7 +1058,7 @@ def move_file(inpath, outpath, check_ext=False):
     Raises:
         OSError if the move failed, or if `check_ext == True` and the input and
             output paths have different extensions
-    '''
+    """
     if not os.path.splitext(outpath)[1]:
         # Output location is a directory
         ensure_dir(outpath)
@@ -1067,7 +1073,7 @@ def move_file(inpath, outpath, check_ext=False):
 
 
 def move_dir(indir, outdir):
-    '''Moves the input directory to the given output location.
+    """Moves the input directory to the given output location.
 
     The base output directory is created, if necessary. Any existing directory
     will be deleted.
@@ -1078,7 +1084,7 @@ def move_dir(indir, outdir):
 
     Raises:
         OSError if the move failed
-    '''
+    """
     if os.path.isdir(outdir):
         delete_dir(outdir)
 
@@ -1087,7 +1093,7 @@ def move_dir(indir, outdir):
 
 
 def partition_files(indir, outdir=None, num_parts=None, dir_size=None):
-    '''Partitions the files in the input directory into the specified number
+    """Partitions the files in the input directory into the specified number
     of (equal-sized) subdirectories.
 
     Exactly one of `num_parts` and `dir_size` must be specified.
@@ -1101,7 +1107,7 @@ def partition_files(indir, outdir=None, num_parts=None, dir_size=None):
             `dir_size` must be provided
         dir_size: the number of files per subdirectory. If omitted,
             `num_parts` must be provided
-    '''
+    """
     if not outdir:
         outdir = indir
 
@@ -1122,7 +1128,7 @@ def partition_files(indir, outdir=None, num_parts=None, dir_size=None):
 
 
 def copy_sequence(inpatt, outpatt, check_ext=False):
-    '''Copies the input sequence to the output sequence.
+    """Copies the input sequence to the output sequence.
 
     The base output directory is created if necessary, and any existing files
     will be overwritten.
@@ -1136,7 +1142,7 @@ def copy_sequence(inpatt, outpatt, check_ext=False):
     Raises:
         OSError if the copy failed or if `check_ext == True` and the input and
             output sequences have different extensions
-    '''
+    """
     if check_ext:
         assert_same_extensions(inpatt, outpatt)
 
@@ -1145,7 +1151,7 @@ def copy_sequence(inpatt, outpatt, check_ext=False):
 
 
 def link_sequence(inpatt, outpatt, check_ext=False):
-    '''Creates hard links at the given locations using the given sequence.
+    """Creates hard links at the given locations using the given sequence.
 
     The base output directory is created if necessary, and any existing files
     will be overwritten.
@@ -1159,7 +1165,7 @@ def link_sequence(inpatt, outpatt, check_ext=False):
     Raises:
         OSError if the link failed or if `check_ext == True` and the input and
         output sequences have different extensions
-    '''
+    """
     if check_ext:
         assert_same_extensions(inpatt, outpatt)
 
@@ -1168,7 +1174,7 @@ def link_sequence(inpatt, outpatt, check_ext=False):
 
 
 def symlink_sequence(inpatt, outpatt, check_ext=False):
-    '''Creates symlinks at the given locations that point to the given
+    """Creates symlinks at the given locations that point to the given
     sequence.
 
     The base output directory is created if necessary, and any existing files
@@ -1183,7 +1189,7 @@ def symlink_sequence(inpatt, outpatt, check_ext=False):
     Raises:
         OSError if the symlink failed or if `check_ext == True` and the input
             and output sequences have different extensions
-    '''
+    """
     if check_ext:
         assert_same_extensions(inpatt, outpatt)
 
@@ -1192,7 +1198,7 @@ def symlink_sequence(inpatt, outpatt, check_ext=False):
 
 
 def move_sequence(inpatt, outpatt, check_ext=False):
-    '''Moves the input sequence to the output sequence.
+    """Moves the input sequence to the output sequence.
 
     The base output directory is created if necessary, and any existing files
     will be overwritten.
@@ -1206,7 +1212,7 @@ def move_sequence(inpatt, outpatt, check_ext=False):
     Raises:
         OSError if the move failed or if `check_ext == True` and the input and
             output sequences have different extensions
-    '''
+    """
     if check_ext:
         assert_same_extensions(inpatt, outpatt)
 
@@ -1215,20 +1221,20 @@ def move_sequence(inpatt, outpatt, check_ext=False):
 
 
 def is_in_root_dir(path, rootdir):
-    '''Determines if the given path is a file or subdirectory (any levels deep)
+    """Determines if the given path is a file or subdirectory (any levels deep)
     within the given root directory.
 
     Args:
         path: the input path (relative or absolute)
         rootdir: the root directory
-    '''
+    """
     path = os.path.abspath(path)
     rootdir = os.path.abspath(rootdir)
     return path.startswith(rootdir)
 
 
 def copy_dir(indir, outdir):
-    '''Copies the input directory to the output directory.
+    """Copies the input directory to the output directory.
 
     The base output directory is created if necessary, and any existing output
     directory will be deleted.
@@ -1239,7 +1245,7 @@ def copy_dir(indir, outdir):
 
     Raises:
         OSError if the copy failed
-    '''
+    """
     if os.path.isdir(outdir):
         _run_system_os_cmd(["rm", "-rf", outdir])
 
@@ -1247,8 +1253,7 @@ def copy_dir(indir, outdir):
 
     for filepath in list_files(indir, include_hidden_files=True, sort=False):
         copy_file(
-            os.path.join(indir, filepath),
-            os.path.join(outdir, filepath)
+            os.path.join(indir, filepath), os.path.join(outdir, filepath)
         )
 
     for subdir in list_subdirs(indir):
@@ -1258,7 +1263,7 @@ def copy_dir(indir, outdir):
 
 
 def delete_file(path):
-    '''Deletes the file at the given path and recursively deletes any empty
+    """Deletes the file at the given path and recursively deletes any empty
     directories from the resulting directory tree.
 
     Args:
@@ -1266,7 +1271,7 @@ def delete_file(path):
 
     Raises:
         OSError if the deletion failed
-    '''
+    """
     _run_system_os_cmd(["rm", "-f", path])
     try:
         os.removedirs(os.path.dirname(path))
@@ -1276,7 +1281,7 @@ def delete_file(path):
 
 
 def delete_dir(dir_):
-    '''Deletes the given directory and recursively deletes any empty
+    """Deletes the given directory and recursively deletes any empty
     directories from the resulting directory tree.
 
     Args:
@@ -1284,7 +1289,7 @@ def delete_dir(dir_):
 
     Raises:
         OSError if the deletion failed
-    '''
+    """
     dir_ = os.path.normpath(dir_)
     _run_system_os_cmd(["rm", "-rf", dir_])
     try:
@@ -1295,7 +1300,7 @@ def delete_dir(dir_):
 
 
 def make_search_path(dirs):
-    '''Makes a search path for the given directories by doing the following:
+    """Makes a search path for the given directories by doing the following:
         - converting all paths to absolute paths
         - removing directories that don't exist
         - removing duplicate directories
@@ -1308,7 +1313,7 @@ def make_search_path(dirs):
     Returns:
         a list of absolute paths with duplicates and non-existent directories
             removed
-    '''
+    """
     search_dirs = []
     for d in dirs:
         adir = os.path.abspath(d)
@@ -1322,7 +1327,7 @@ def make_search_path(dirs):
 
 
 def ensure_empty_dir(dirname, cleanup=False):
-    '''Ensures that the given directory exists and is empty.
+    """Ensures that the given directory exists and is empty.
 
     Args:
         dirname: the directory path
@@ -1331,7 +1336,7 @@ def ensure_empty_dir(dirname, cleanup=False):
 
     Raises:
         ValueError: if the directory is not empty and `cleanup` is False
-    '''
+    """
     if os.path.isdir(dirname):
         if cleanup:
             delete_dir(dirname)
@@ -1342,12 +1347,12 @@ def ensure_empty_dir(dirname, cleanup=False):
 
 
 def ensure_path(path):
-    '''Ensures that the given path is ready for writing by deleting any
+    """Ensures that the given path is ready for writing by deleting any
     existing file and ensuring that the base directory exists.
 
     Args:
         path: the filepath
-    '''
+    """
     if os.path.isfile(path):
         logger.debug("Deleting '%s'", path)
         delete_file(path)
@@ -1356,27 +1361,27 @@ def ensure_path(path):
 
 
 def ensure_basedir(path):
-    '''Makes the base directory of the given path, if necessary.
+    """Makes the base directory of the given path, if necessary.
 
     Args:
         path: the filepath
-    '''
+    """
     ensure_dir(os.path.dirname(path))
 
 
 def ensure_dir(dirname):
-    '''Makes the given directory, if necessary.
+    """Makes the given directory, if necessary.
 
     Args:
         dirname: the directory path
-    '''
+    """
     if dirname and not os.path.isdir(dirname):
         logger.debug("Making directory '%s'", dirname)
         os.makedirs(dirname)
 
 
 def has_extension(filename, *args):
-    '''Determines whether the filename has any of the given extensions.
+    """Determines whether the filename has any of the given extensions.
 
     Args:
         filename: a file name
@@ -1384,39 +1389,39 @@ def has_extension(filename, *args):
 
     Returns:
         True/False
-    '''
+    """
     ext = os.path.splitext(filename)[1]
     return any(ext == a for a in args)
 
 
 def have_same_extesions(*args):
-    '''Determines whether all of the input paths have the same extension.
+    """Determines whether all of the input paths have the same extension.
 
     Args:
         *args: filepaths
 
     Returns:
         True/False
-    '''
+    """
     exts = [os.path.splitext(path)[1] for path in args]
     return exts[1:] == exts[:-1]
 
 
 def assert_same_extensions(*args):
-    '''Asserts that all of the input paths have the same extension.
+    """Asserts that all of the input paths have the same extension.
 
     Args:
         *args: filepaths
 
     Raises:
         OSError if all input paths did not have the same extension
-    '''
+    """
     if not have_same_extesions(*args):
         raise OSError("Expected %s to have the same extensions" % str(args))
 
 
 def split_path(path):
-    '''Splits a path into a list of its individual parts.
+    """Splits a path into a list of its individual parts.
 
     E.g. split_path("/path/to/file") = ["/", "path", "to", "file"]
 
@@ -1429,7 +1434,7 @@ def split_path(path):
     Returns:
         all_parts: the path split into its individual components (directory
             and file names)
-    '''
+    """
     all_parts = []
     while True:
         parts = os.path.split(path)
@@ -1447,12 +1452,41 @@ def split_path(path):
 
 
 _TIME_UNITS = [
-    "ns", "us", "ms", " second", " minute", " hour", " day", " week", " month",
-    " year"]
+    "ns",
+    "us",
+    "ms",
+    " second",
+    " minute",
+    " hour",
+    " day",
+    " week",
+    " month",
+    " year",
+]
 _TIME_CONVERSIONS = [
-    1000, 1000, 1000, 60, 60, 24, 7, 52 / 12, 12, float("inf")]
+    1000,
+    1000,
+    1000,
+    60,
+    60,
+    24,
+    7,
+    52 / 12,
+    12,
+    float("inf"),
+]
 _TIME_IN_SECS = [
-    1e-9, 1e-6, 1e-3, 1, 60, 3600, 86400, 606461.5384615385, 2628000, 31536000]
+    1e-9,
+    1e-6,
+    1e-3,
+    1,
+    60,
+    3600,
+    86400,
+    606461.5384615385,
+    2628000,
+    31536000,
+]
 _TIME_PLURALS = [False, False, False, True, True, True, True, True, True, True]
 _DECIMAL_UNITS = ["", "K", "M", "B", "T"]
 _BYTES_UNITS = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"]
@@ -1460,7 +1494,7 @@ _BITS_UNITS = ["b", "Kb", "Mb", "Gb", "Tb", "Pb", "Eb", "Zb", "Yb"]
 
 
 def to_human_time_str(num_seconds, decimals=1, max_unit=None):
-    '''Converts the given number of seconds to a human-readable time string.
+    """Converts the given number of seconds to a human-readable time string.
 
     The supported units are ["ns", "us", "ms", "second", "minute", "hour",
     "day", "week", "month", "year"].
@@ -1481,7 +1515,7 @@ def to_human_time_str(num_seconds, decimals=1, max_unit=None):
 
     Returns:
         a human-readable time string like "1.5 minutes" or "20.1 days"
-    '''
+    """
     if num_seconds == 0:
         return "0 seconds"
 
@@ -1491,7 +1525,8 @@ def to_human_time_str(num_seconds, decimals=1, max_unit=None):
 
     num = 1e9 * num_seconds  # start with smallest unit
     for unit, conv, plural in zip(
-            _TIME_UNITS, _TIME_CONVERSIONS, _TIME_PLURALS):
+        _TIME_UNITS, _TIME_CONVERSIONS, _TIME_PLURALS
+    ):
         if abs(num) < conv:
             break
         if max_unit and unit.strip() == max_unit:
@@ -1512,7 +1547,7 @@ def to_human_time_str(num_seconds, decimals=1, max_unit=None):
 
 
 def from_human_time_str(time_str):
-    '''Parses the number of seconds from the given human-readable time string.
+    """Parses the number of seconds from the given human-readable time string.
 
     The supported units are ["ns", "us", "ms", "second", "minute", "hour",
     "day", "week", "month", "year"].
@@ -1528,22 +1563,22 @@ def from_human_time_str(time_str):
 
     Returns:
         the number of seconds
-    '''
+    """
     # Handle unit == "" outside loop
     for idx in reversed(range(len(_TIME_UNITS))):
         unit = _TIME_UNITS[idx].strip()
         can_be_plural = _TIME_PLURALS[idx]
         if time_str.endswith(unit):
-            return float(time_str[:-len(unit)]) * _TIME_IN_SECS[idx]
+            return float(time_str[: -len(unit)]) * _TIME_IN_SECS[idx]
 
         if can_be_plural and time_str.endswith(unit + "s"):
-            return float(time_str[:-(len(unit) + 1)]) * _TIME_IN_SECS[idx]
+            return float(time_str[: -(len(unit) + 1)]) * _TIME_IN_SECS[idx]
 
     return float(time_str)
 
 
 def to_human_decimal_str(num, decimals=1, max_unit=None):
-    '''Returns a human-readable string representation of the given decimal
+    """Returns a human-readable string representation of the given decimal
     (base-10) number.
 
     Supported units are ["", "K", "M", "B", "T"].
@@ -1563,7 +1598,7 @@ def to_human_decimal_str(num, decimals=1, max_unit=None):
 
     Returns:
         a human-readable decimal string
-    '''
+    """
     if max_unit is not None and max_unit not in _DECIMAL_UNITS:
         logger.warning("Unsupported max_unit = %s; ignoring", max_unit)
         max_unit = None
@@ -1580,7 +1615,7 @@ def to_human_decimal_str(num, decimals=1, max_unit=None):
 
 
 def from_human_decimal_str(num_str):
-    '''Parses the decimal number from the given human-readable decimal string.
+    """Parses the decimal number from the given human-readable decimal string.
 
     Supported units are ["", "K", "M", "B", "T"].
 
@@ -1594,18 +1629,18 @@ def from_human_decimal_str(num_str):
 
     Returns:
         the decimal number
-    '''
+    """
     # Handle unit == "" outside loop
     for idx in reversed(range(len(_DECIMAL_UNITS))[1:]):
         unit = _DECIMAL_UNITS[idx]
         if num_str.endswith(unit):
-            return float(num_str[:-len(unit)]) * (1000 ** idx)
+            return float(num_str[: -len(unit)]) * (1000 ** idx)
 
     return float(num_str)
 
 
 def to_human_bytes_str(num_bytes, decimals=1, max_unit=None):
-    '''Returns a human-readable string representation of the given number of
+    """Returns a human-readable string representation of the given number of
     bytes.
 
     Supported units are ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"].
@@ -1625,7 +1660,7 @@ def to_human_bytes_str(num_bytes, decimals=1, max_unit=None):
 
     Returns:
         a human-readable bytes string
-    '''
+    """
     if max_unit is not None and max_unit not in _BYTES_UNITS:
         logger.warning("Unsupported max_unit = %s; ignoring", max_unit)
         max_unit = None
@@ -1642,7 +1677,7 @@ def to_human_bytes_str(num_bytes, decimals=1, max_unit=None):
 
 
 def from_human_bytes_str(bytes_str):
-    '''Parses the number of bytes from the given human-readable bytes string.
+    """Parses the number of bytes from the given human-readable bytes string.
 
     Supported units are ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"].
 
@@ -1656,17 +1691,17 @@ def from_human_bytes_str(bytes_str):
 
     Returns:
         the number of bytes
-    '''
+    """
     for idx in reversed(range(len(_BYTES_UNITS))):
         unit = _BYTES_UNITS[idx]
         if bytes_str.endswith(unit):
-            return int(float(bytes_str[:-len(unit)]) * 1024 ** idx)
+            return int(float(bytes_str[: -len(unit)]) * 1024 ** idx)
 
     return int(bytes_str)
 
 
 def to_human_bits_str(num_bits, decimals=1, max_unit=None):
-    '''Returns a human-readable string representation of the given number of
+    """Returns a human-readable string representation of the given number of
     bits.
 
     Supported units are ["b", "Kb", "Mb", "Gb", "Tb", "Pb", "Eb", "Zb", "Yb"].
@@ -1686,7 +1721,7 @@ def to_human_bits_str(num_bits, decimals=1, max_unit=None):
 
     Returns:
         a human-readable bits string
-    '''
+    """
     if max_unit is not None and max_unit not in _BITS_UNITS:
         logger.warning("Unsupported max_unit = %s; ignoring", max_unit)
         max_unit = None
@@ -1703,7 +1738,7 @@ def to_human_bits_str(num_bits, decimals=1, max_unit=None):
 
 
 def from_human_bits_str(bits_str):
-    '''Parses the number of bits from the given human-readable bits string.
+    """Parses the number of bits from the given human-readable bits string.
 
     Supported units are ["b", "Kb", "Mb", "Gb", "Tb", "Pb", "Eb", "Zb", "Yb"].
 
@@ -1717,11 +1752,11 @@ def from_human_bits_str(bits_str):
 
     Returns:
         the number of bits
-    '''
+    """
     for idx in reversed(range(len(_BITS_UNITS))):
         unit = _BITS_UNITS[idx]
         if bits_str.endswith(unit):
-            return int(float(bits_str[:-len(unit)]) * 1024 ** idx)
+            return int(float(bits_str[: -len(unit)]) * 1024 ** idx)
 
     return int(bits_str)
 
@@ -1746,7 +1781,7 @@ def _get_archive_format(archive_path):
 
 
 def make_archive(dir_path, archive_path):
-    '''Makes an archive containing the given directory.
+    """Makes an archive containing the given directory.
 
     Supported formats include `.zip`, `.tar`, `.tar.gz`, `.tgz`, `.tar.bz`,
     and `.tbz`.
@@ -1754,7 +1789,7 @@ def make_archive(dir_path, archive_path):
     Args:
         dir_path: the directory to archive
         archive_path: the path + filename of the archive to create
-    '''
+    """
     outpath, format = _get_archive_format(archive_path)
     if format == "zip" and eta.is_python2():
         make_zip64(dir_path, archive_path)
@@ -1765,19 +1800,19 @@ def make_archive(dir_path, archive_path):
 
 
 def make_tar(dir_path, tar_path):
-    '''Makes a tarfile containing the given directory.
+    """Makes a tarfile containing the given directory.
 
     Supported formats include `.tar`, `.tar.gz`, `.tgz`, `.tar.bz`, and `.tbz`.
 
     Args:
         dir_path: the directory to tar
         tar_path: the path + filename of the .tar.gz file to create
-    '''
+    """
     make_archive(dir_path, tar_path)
 
 
 def make_zip(dir_path, zip_path):
-    '''Makes a zipfile containing the given directory.
+    """Makes a zipfile containing the given directory.
 
     Python 2 users must use `make_zip64` when making large zip files.
     `shutil.make_archive` does not offer Zip64 in Python 2, and is therefore
@@ -1786,17 +1821,17 @@ def make_zip(dir_path, zip_path):
     Args:
         dir_path: the directory to zip
         zip_path: the path + filename of the zip file to create
-    '''
+    """
     make_archive(dir_path, zip_path)
 
 
 def make_zip64(dir_path, zip_path):
-    '''Makes a zip file containing the given directory in Zip64 format.
+    """Makes a zip file containing the given directory in Zip64 format.
 
     Args:
         dir_path: the directory to zip
         zip_path: the path with extension of the zip file to create
-    '''
+    """
     dir_path = os.path.realpath(dir_path)
     rootdir = os.path.dirname(dir_path)
     with zf.ZipFile(zip_path, "w", zf.ZIP_DEFLATED, allowZip64=True) as f:
@@ -1809,7 +1844,7 @@ def make_zip64(dir_path, zip_path):
 
 
 def extract_archive(archive_path, outdir=None, delete_archive=False):
-    '''Extracts the contents of an archive.
+    """Extracts the contents of an archive.
 
     Supported formats include `.zip`, `.tar`, `.tar.gz`, `.tgz`, `.tar.bz`,
     and `.tbz`.
@@ -1820,7 +1855,7 @@ def extract_archive(archive_path, outdir=None, delete_archive=False):
             default, the directory containing the archive is used
         delete_archive: whether to delete the archive after extraction. By
             default, this is False
-    '''
+    """
     #
     # One could use `shutil.unpack_archive` in Python 3...
     # https://docs.python.org/3/library/shutil.html#shutil.unpack_archive
@@ -1832,7 +1867,7 @@ def extract_archive(archive_path, outdir=None, delete_archive=False):
 
 
 def extract_zip(zip_path, outdir=None, delete_zip=False):
-    '''Extracts the contents of a .zip file.
+    """Extracts the contents of a .zip file.
 
     Args:
         zip_path: the path to the zip file
@@ -1840,7 +1875,7 @@ def extract_zip(zip_path, outdir=None, delete_zip=False):
             default, the directory containing the zip file is used
         delete_zip: whether to delete the zip after extraction. By default,
             this is False
-    '''
+    """
     outdir = outdir or os.path.dirname(zip_path) or "."
 
     with zf.ZipFile(zip_path, "r", allowZip64=True) as f:
@@ -1851,7 +1886,7 @@ def extract_zip(zip_path, outdir=None, delete_zip=False):
 
 
 def extract_tar(tar_path, outdir=None, delete_tar=False):
-    '''Extracts the contents of a tarfile.
+    """Extracts the contents of a tarfile.
 
     Supported formats include `.tar`, `.tar.gz`, `.tgz`, `.tar.bz`, and `.tbz`.
 
@@ -1861,7 +1896,7 @@ def extract_tar(tar_path, outdir=None, delete_tar=False):
             default, the directory containing the tar file is used
         delete_tar: whether to delete the tar archive after extraction. By
             default, this is False
-    '''
+    """
     if tar_path.endswith(".tar"):
         fmt = "r:"
     elif tar_path.endswith(".tar.gz") or tar_path.endswith(".tgz"):
@@ -1871,7 +1906,8 @@ def extract_tar(tar_path, outdir=None, delete_tar=False):
     else:
         raise ValueError(
             "Expected file '%s' to have extension .tar, .tar.gz, .tgz,"
-            ".tar.bz, or .tbz in order to extract it" % tar_path)
+            ".tar.bz, or .tbz in order to extract it" % tar_path
+        )
 
     outdir = outdir or os.path.dirname(tar_path) or "."
     with tarfile.open(tar_path, fmt) as f:
@@ -1882,7 +1918,7 @@ def extract_tar(tar_path, outdir=None, delete_tar=False):
 
 
 def multiglob(*patterns, **kwargs):
-    '''Returns an iterable over the glob mathces for multiple patterns.
+    """Returns an iterable over the glob mathces for multiple patterns.
 
     Note that if a given file matches multiple patterns that you provided, it
     will appear multiple times in the output iterable.
@@ -1902,15 +1938,19 @@ def multiglob(*patterns, **kwargs):
 
     Returns:
         an iteratable over the glob matches
-    '''
+    """
     root = kwargs.get("root", "")
     return it.chain.from_iterable(glob2.iglob(root + p) for p in patterns)
 
 
 def list_files(
-        dir_path, abs_paths=False, recursive=False, include_hidden_files=False,
-        sort=True):
-    '''Lists the files in the given directory, sorted alphabetically and
+    dir_path,
+    abs_paths=False,
+    recursive=False,
+    include_hidden_files=False,
+    sort=True,
+):
+    """Lists the files in the given directory, sorted alphabetically and
     excluding directories and hidden files.
 
     Args:
@@ -1924,18 +1964,24 @@ def list_files(
 
     Returns:
         a sorted list of the non-hidden files in the directory
-    '''
+    """
     if recursive:
         files = []
         for root, _, filenames in os.walk(dir_path):
-            files.extend([
-                os.path.relpath(os.path.join(root, f), dir_path)
-                for f in filenames if not f.startswith(".")])
+            files.extend(
+                [
+                    os.path.relpath(os.path.join(root, f), dir_path)
+                    for f in filenames
+                    if not f.startswith(".")
+                ]
+            )
     else:
         files = [
-            f for f in os.listdir(dir_path)
+            f
+            for f in os.listdir(dir_path)
             if os.path.isfile(os.path.join(dir_path, f))
-            and (not f.startswith(".") or include_hidden_files)]
+            and (not f.startswith(".") or include_hidden_files)
+        ]
 
     if sort:
         files = sorted(files)
@@ -1948,7 +1994,7 @@ def list_files(
 
 
 def list_subdirs(dir_path, abs_paths=False, recursive=False):
-    '''Lists the subdirectories in the given directory, sorted alphabetically
+    """Lists the subdirectories in the given directory, sorted alphabetically
     and excluding hidden directories.
 
     Args:
@@ -1960,18 +2006,24 @@ def list_subdirs(dir_path, abs_paths=False, recursive=False):
 
     Returns:
         a sorted list of the non-hidden subdirectories in the directory
-    '''
+    """
     if recursive:
         dirs = []
         for root, dirnames, _ in os.walk(dir_path):
-            dirs.extend([
-                os.path.relpath(os.path.join(root, d), dir_path)
-                for d in dirnames if not d.startswith(".")])
+            dirs.extend(
+                [
+                    os.path.relpath(os.path.join(root, d), dir_path)
+                    for d in dirnames
+                    if not d.startswith(".")
+                ]
+            )
     else:
         dirs = [
-            d for d in os.listdir(dir_path)
+            d
+            for d in os.listdir(dir_path)
             if os.path.isdir(os.path.join(dir_path, d))
-            and not d.startswith(".")]
+            and not d.startswith(".")
+        ]
 
     dirs = sorted(dirs)
 
@@ -1983,7 +2035,7 @@ def list_subdirs(dir_path, abs_paths=False, recursive=False):
 
 
 def parse_pattern(patt):
-    '''Inspects the files matching the given numeric pattern and returns the
+    """Inspects the files matching the given numeric pattern and returns the
     numeric indicies of the sequence.
 
     Args:
@@ -1996,7 +2048,7 @@ def parse_pattern(patt):
             The indices are returned in alphabetical order of their
             corresponding files. If no matches were found, an empty list is
             returned
-    '''
+    """
     # Extract indices from exactly matching patterns
     inds = []
     for _, match, num_inds in _iter_pattern_matches(patt):
@@ -2007,7 +2059,7 @@ def parse_pattern(patt):
 
 
 def get_glob_matches(glob_patt):
-    '''Returns a list of file paths matching the given glob pattern.
+    """Returns a list of file paths matching the given glob pattern.
 
     The matches are returned in sorted order.
 
@@ -2017,12 +2069,12 @@ def get_glob_matches(glob_patt):
 
     Returns:
         a list of file paths that match `glob_patt`
-    '''
+    """
     return sorted(glob.glob(glob_patt))
 
 
 def parse_glob_pattern(glob_patt):
-    '''Inspects the files matching the given glob pattern and returns a string
+    """Inspects the files matching the given glob pattern and returns a string
     pattern version of the glob along with the matching strings.
 
     Args:
@@ -2036,7 +2088,7 @@ def parse_glob_pattern(glob_patt):
             - a list (or list of tuples if the string pattern contains multiple
                 "%s") describing the string patterns matching the glob. If no
                 matches were found, an empty list is returned
-    '''
+    """
     match_chunks = _get_match_chunks(glob_patt)
 
     matches = []
@@ -2048,7 +2100,7 @@ def parse_glob_pattern(glob_patt):
 
 
 def glob_to_str_pattern(glob_patt):
-    '''Converts the glob pattern to a string pattern by replacing glob
+    """Converts the glob pattern to a string pattern by replacing glob
     wildcards with "%s".
 
     Multiple consecutive glob wildcards are merged into single string patterns.
@@ -2060,7 +2112,7 @@ def glob_to_str_pattern(glob_patt):
     Returns:
         a string pattern like "/path/to/files-%s.jpg" or
             "/path/to/files-%s-%s.jpg"
-    '''
+    """
     return "%s".join(_get_match_chunks(glob_patt))
 
 
@@ -2087,7 +2139,7 @@ def _get_match_gaps(path, match_chunks):
         if not len_chunk:
             idx = len_path  # on empty match, consume rest of path
 
-        while path[idx:(idx + len_chunk)] != chunk and idx < len_path:
+        while path[idx : (idx + len_chunk)] != chunk and idx < len_path:
             idx += 1
 
         match.append(path[last_idx:idx])
@@ -2097,7 +2149,7 @@ def _get_match_gaps(path, match_chunks):
 
 
 def get_pattern_matches(patt):
-    '''Returns a list of file paths matching the given numeric pattern.
+    """Returns a list of file paths matching the given numeric pattern.
 
     Args:
         patt: a pattern with one or more numeric sequences like
@@ -2105,12 +2157,12 @@ def get_pattern_matches(patt):
 
     Returns:
         a list of file paths that match the pattern `patt`
-    '''
+    """
     return [path for path, _, _ in _iter_pattern_matches(patt)]
 
 
 def fill_partial_pattern(patt, vals):
-    '''Partially fills a pattern with the given values.
+    """Partially fills a pattern with the given values.
 
     Only supports integer ("%05d", "%4d", or "%d") and string ("%s") patterns.
 
@@ -2123,7 +2175,7 @@ def fill_partial_pattern(patt, vals):
 
     Returns:
         the partially filled pattern
-    '''
+    """
     if not vals:
         return patt
 
@@ -2158,7 +2210,7 @@ def _iter_pattern_matches(patt):
 
 
 def parse_bounds_from_pattern(patt):
-    '''Inspects the files satisfying the given pattern and returns the minimum
+    """Inspects the files satisfying the given pattern and returns the minimum
     and maximum indices satisfying it.
 
     Args:
@@ -2168,7 +2220,7 @@ def parse_bounds_from_pattern(patt):
     Returns:
         a (first, last) tuple describing the first and last indices satisfying
             the pattern, or (None, None) if no matches were found
-    '''
+    """
     inds = parse_pattern(patt)
     if not inds or isinstance(inds[0], tuple):
         return None, None
@@ -2176,7 +2228,7 @@ def parse_bounds_from_pattern(patt):
 
 
 def parse_dir_pattern(dir_path):
-    '''Inspects the contents of the given directory, returning the numeric
+    """Inspects the contents of the given directory, returning the numeric
     pattern in use and the associated indexes.
 
     The numeric pattern is guessed by analyzing the first file (alphabetically)
@@ -2200,7 +2252,7 @@ def parse_dir_pattern(dir_path):
                 indices are returned in alphabetical order of their
                 corresponding filenames. If no files were found, an empty list
                 is returned
-    '''
+    """
     try:
         files = list_files(dir_path)
     except OSError:
@@ -2226,7 +2278,7 @@ def parse_dir_pattern(dir_path):
 
 
 def parse_sequence_idx_from_pattern(patt):
-    '''Extracts the (first) numeric sequence index from the given pattern.
+    """Extracts the (first) numeric sequence index from the given pattern.
 
     Args:
         patt: a pattern like "/path/to/frames/frame-%05d.jpg"
@@ -2234,13 +2286,13 @@ def parse_sequence_idx_from_pattern(patt):
     Returns:
         the numeric sequence string like "%05d", or None if no sequence was
             found
-    '''
+    """
     m = re.search("%[0-9]*d", patt)
     return m.group() if m else None
 
 
 def parse_int_sprintf_pattern(patt):
-    '''Parses the integer sprintf pattern and returns a function that can
+    """Parses the integer sprintf pattern and returns a function that can
     detect whether a string matches the pattern.
 
     Args:
@@ -2249,7 +2301,7 @@ def parse_int_sprintf_pattern(patt):
     Returns:
         a function that returns True/False whether a given string matches the
             input numeric pattern
-    '''
+    """
     # zero-padded: e.g., "%05d"
     zm = re.match(r"%0(\d+)d$", patt)
     if zm:
@@ -2284,6 +2336,7 @@ def parse_int_sprintf_pattern(patt):
 
     # tight: "%d"
     if patt == "%d":
+
         def _is_tight_int_str(s):
             try:
                 return s == str(int(s))
@@ -2296,7 +2349,7 @@ def parse_int_sprintf_pattern(patt):
 
 
 def random_key(n):
-    '''Generates an n-lenth random key of lowercase characters and digits.'''
+    """Generates an n-lenth random key of lowercase characters and digits."""
     return "".join(
         random.SystemRandom().choice(string.ascii_lowercase + string.digits)
         for _ in range(n)
@@ -2304,7 +2357,7 @@ def random_key(n):
 
 
 def replace_strings(s, replacers):
-    '''Performs a sequence of find-replace operations on the given string.
+    """Performs a sequence of find-replace operations on the given string.
 
     Args:
         s: the input string
@@ -2312,7 +2365,7 @@ def replace_strings(s, replacers):
 
     Returns:
         a copy of the input strings with all of the find-and-replacements made
-    '''
+    """
     sout = s
     for sfind, srepl in replacers:
         sout = sout.replace(sfind, srepl)
@@ -2321,14 +2374,14 @@ def replace_strings(s, replacers):
 
 
 def join_dicts(*args):
-    '''Joins any number of dictionaries into a new single dictionary.
+    """Joins any number of dictionaries into a new single dictionary.
 
     Args:
         *args: one or more dictionaries
 
     Returns:
         a single dictionary containing all items.
-    '''
+    """
     d = {}
     for di in args:
         d.update(di)
@@ -2336,7 +2389,7 @@ def join_dicts(*args):
 
 
 def remove_none_values(d):
-    '''Returns a copy of the input dictionary with any keys with value None
+    """Returns a copy of the input dictionary with any keys with value None
     removed.
 
     Args:
@@ -2344,12 +2397,12 @@ def remove_none_values(d):
 
     Returns:
         a copy of the input dictionary with keys whose value was None ommitted
-    '''
+    """
     return {k: v for k, v in iteritems(d) if v is not None}
 
 
 def find_duplicate_files(path_list, verbose=False):
-    '''Returns a list of lists of file paths from the input, that have
+    """Returns a list of lists of file paths from the input, that have
     identical contents to each other.
 
     Args:
@@ -2361,7 +2414,7 @@ def find_duplicate_files(path_list, verbose=False):
             file paths that all have identical content. File paths in
             `path_list` that don't have any duplicates will not appear in
             the output.
-    '''
+    """
     if verbose:
         logger.info("Finding duplicates among %d files...", len(path_list))
 
@@ -2380,7 +2433,7 @@ def find_duplicate_files(path_list, verbose=False):
 
 
 def find_matching_file_pairs(path_list1, path_list2, verbose=False):
-    '''Returns a list of pairs of paths that have identical contents, where
+    """Returns a list of pairs of paths that have identical contents, where
     the paths in each pair aren't from the same path list.
 
     Args:
@@ -2392,7 +2445,7 @@ def find_matching_file_pairs(path_list1, path_list2, verbose=False):
         pairs: a list of pairs of file paths that have identical content,
             where one member of the pair is from `path_list1` and the other
             member is from `path_list2`
-    '''
+    """
     hash_buckets1 = _get_file_hash_buckets(path_list1, verbose)
     pairs = []
     for path in path_list2:
@@ -2414,7 +2467,8 @@ def _get_file_hash_buckets(path_list, verbose):
 
         if not os.path.isfile(path):
             logger.warning(
-                "'%s' is a directory or does not exist; skipping", path)
+                "'%s' is a directory or does not exist; skipping", path
+            )
             continue
 
         with open(path, "rb") as f:
@@ -2434,8 +2488,7 @@ def _find_duplicates_brute_force(path_list):
 
     remaining_paths = []
     for path in path_list[1:]:
-        if _diff_paths(
-                candidate_file_path, path, content1=candidate_content):
+        if _diff_paths(candidate_file_path, path, content1=candidate_content):
             remaining_paths.append(path)
         else:
             candidate_duplicates.append(path)
@@ -2450,7 +2503,7 @@ def _find_duplicates_brute_force(path_list):
 
 
 def _diff_paths(path1, path2, content1=None, content2=None):
-    '''Returns whether or not the files at `path1` and `path2` are different
+    """Returns whether or not the files at `path1` and `path2` are different
     without using hashing.
 
     Since hashing is not used, this is a good function to use when two paths
@@ -2467,7 +2520,7 @@ def _diff_paths(path1, path2, content1=None, content2=None):
     Returns:
         `True` if the files at `path1` and `path2` are different, otherwise
             returns `False`
-    '''
+    """
     if os.path.normpath(path1) == os.path.normpath(path2):
         return False
 
@@ -2483,36 +2536,36 @@ def _diff_paths(path1, path2, content1=None, content2=None):
 
 
 class FileHasher(object):
-    '''Base class for file hashers.'''
+    """Base class for file hashers."""
 
     EXT = ""
 
     def __init__(self, path):
-        '''Constructs a FileHasher instance based on the current version of
-        the input file.'''
+        """Constructs a FileHasher instance based on the current version of
+        the input file."""
         self.path = path
         self._new_hash = self.hash(path)
         self._cur_hash = self.read()
 
     @property
     def record_path(self):
-        '''The path to the hash record file.'''
+        """The path to the hash record file."""
         return os.path.splitext(self.path)[0] + self.EXT
 
     @property
     def has_record(self):
-        '''True if the file has an existing hash record.'''
+        """True if the file has an existing hash record."""
         return self._cur_hash is not None
 
     @property
     def has_changed(self):
-        '''True if the file's current hash differs from it's last hash record.
+        """True if the file's current hash differs from it's last hash record.
         Always returns False if the file has no existing hash record.
-        '''
+        """
         return self.has_record and self._new_hash != self._cur_hash
 
     def read(self):
-        '''Returns the current hash record, or None if there is no record.'''
+        """Returns the current hash record, or None if there is no record."""
         try:
             with open(self.record_path, "rt") as f:
                 logger.debug("Found hash record '%s'", self.record_path)
@@ -2525,7 +2578,7 @@ class FileHasher(object):
             raise
 
     def write(self):
-        '''Writes the current hash record.'''
+        """Writes the current hash record."""
         with open(self.record_path, "wt") as f:
             f.write(self._new_hash)
 
@@ -2535,26 +2588,26 @@ class FileHasher(object):
 
 
 class MD5FileHasher(FileHasher):
-    '''MD5 file hasher.'''
+    """MD5 file hasher."""
 
     EXT = ".md5"
 
     @staticmethod
     def hash(path):
-        '''Computes the MD5 hash of the file contents.'''
+        """Computes the MD5 hash of the file contents."""
         with open(path, "rb") as f:
             return str(hashlib.md5(f.read()).hexdigest())
 
 
 def make_temp_dir(basedir=None):
-    '''Makes a temporary directory.
+    """Makes a temporary directory.
 
     Args:
         basedir: an optional directory in which to create the new directory
 
     Returns:
         the path to the temporary directory
-    '''
+    """
     if not basedir:
         basedir = tempfile.gettempdir()
 
@@ -2563,14 +2616,14 @@ def make_temp_dir(basedir=None):
 
 
 class TempDir(object):
-    '''Context manager that creates and destroys a temporary directory.'''
+    """Context manager that creates and destroys a temporary directory."""
 
     def __init__(self, basedir=None):
-        '''Creates a TempDir instance.
+        """Creates a TempDir instance.
 
         Args:
             basedir: an optional base directory in which to create the temp dir
-        '''
+        """
         self._basedir = basedir
         self._name = None
 
@@ -2583,7 +2636,7 @@ class TempDir(object):
 
 
 class WorkingDir(object):
-    '''Context manager that temporarily changes working directories.'''
+    """Context manager that temporarily changes working directories."""
 
     def __init__(self, working_dir):
         self._orig_dir = None
@@ -2601,7 +2654,7 @@ class WorkingDir(object):
 
 
 class ExecutableNotFoundError(Exception):
-    '''Exception raised when an executable file is not found.'''
+    """Exception raised when an executable file is not found."""
 
     def __init__(self, executable):
         message = "Executable '%s' not found" % executable
@@ -2609,7 +2662,7 @@ class ExecutableNotFoundError(Exception):
 
 
 class ExecutableRuntimeError(Exception):
-    '''Exception raised when an executable call throws a runtime error.'''
+    """Exception raised when an executable call throws a runtime error."""
 
     def __init__(self, cmd, err):
         message = "Command '%s' failed with error:\n%s" % (cmd, err)
@@ -2617,7 +2670,7 @@ class ExecutableRuntimeError(Exception):
 
 
 def validate_type(obj, expected_type):
-    '''Validates an object's type against an expected type.
+    """Validates an object's type against an expected type.
 
     Args:
         obj: the python object to validate
@@ -2625,7 +2678,7 @@ def validate_type(obj, expected_type):
 
     Raises:
         TypeError: if `obj` is not of `expected_type`
-    '''
+    """
     if not isinstance(obj, expected_type):
         raise TypeError(
             "Unexpected argument type:\n\tExpected: %s\n\tActual: %s"

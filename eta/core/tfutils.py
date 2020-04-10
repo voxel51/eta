@@ -1,9 +1,9 @@
-'''
+"""
 Core utilities for working with TensorFlow models.
 
 Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
-'''
+"""
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
 # pragma pylint: disable=wildcard-import
@@ -13,6 +13,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
 from future.utils import iteritems
+
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
@@ -38,16 +39,16 @@ TF_RECORD_EXTENSIONS = [".record", ".tfrecord"]
 
 
 def is_gpu_available():
-    '''Determines whether TensorFlow can access a GPU.
+    """Determines whether TensorFlow can access a GPU.
 
     Returns:
         True/False
-    '''
+    """
     return tf.test.is_gpu_available()
 
 
 def load_graph(model_path, sess=None, prefix=""):
-    '''Loads the TF graph from the given `.pb` file.
+    """Loads the TF graph from the given `.pb` file.
 
     Args:
         model_path: the `.pb` file to load
@@ -56,7 +57,7 @@ def load_graph(model_path, sess=None, prefix=""):
 
     Returns:
         the loaded `tf.Graph`
-    '''
+    """
     if sess is not None:
         graph = sess.graph
     else:
@@ -88,7 +89,7 @@ def _fix_batch_norm_nodes(graph_def):
 
 
 def export_frozen_graph(model_dir, output_node_names):
-    '''Exports the TF model defined by the given model directory as a
+    """Exports the TF model defined by the given model directory as a
     `frozen_model.pb` file in that directory.
 
     Only the subgraph defined by the specified output nodes is saved.
@@ -100,19 +101,20 @@ def export_frozen_graph(model_dir, output_node_names):
 
     Returns:
         the path to the frozen graph on disk
-    '''
+    """
     if not os.path.isdir(model_dir):
-        raise OSError(
-            "Model directory '%s' does not exist" % model_dir)
+        raise OSError("Model directory '%s' does not exist" % model_dir)
 
     checkpoint = tf.train.get_checkpoint_state(model_dir)
+    # pylint: disable=no-member
     input_checkpoint = checkpoint.model_checkpoint_path
     frozen_model_name = "frozen_model.pb"
 
     with tf.Session(graph=tf.Graph()) as sess:
         # Load the graph
         saver = tf.train.import_meta_graph(
-            input_checkpoint + ".meta", clear_devices=True)
+            input_checkpoint + ".meta", clear_devices=True
+        )
         saver.restore(sess, input_checkpoint)
         graph_def = sess.graph.as_graph_def()
 
@@ -121,14 +123,18 @@ def export_frozen_graph(model_dir, output_node_names):
 
         # Export variables to constants
         output_graph_def = tf.graph_util.convert_variables_to_constants(
-            sess, graph_def, output_node_names)
+            sess, graph_def, output_node_names
+        )
 
         # Write the frozen graph
         tf.train.write_graph(
-            output_graph_def, model_dir, frozen_model_name, as_text=False)
+            output_graph_def, model_dir, frozen_model_name, as_text=False
+        )
 
+        # pylint: disable=no-member
         logger.info(
-            "Exported %d ops in the frozen graph.", len(output_graph_def.node))
+            "Exported %d ops in the frozen graph.", len(output_graph_def.node)
+        )
 
     output_path = os.path.join(model_dir, frozen_model_name)
 
@@ -136,7 +142,7 @@ def export_frozen_graph(model_dir, output_node_names):
 
 
 def visualize_checkpoint(model_dir, log_dir=None, port=None):
-    '''Visualizes the TF checkpoint in the given directory via TensorBoard.
+    """Visualizes the TF checkpoint in the given directory via TensorBoard.
 
     Specifically, this script performs the following actions:
         - loads the checkpoint via `tf.train.get_checkpoint_state()`
@@ -148,23 +154,24 @@ def visualize_checkpoint(model_dir, log_dir=None, port=None):
         log_dir: an optional log directory in which to write the TensorBoard
             files. By default, a temp directory is created
         port: an optional port on which to launch TensorBoard
-    '''
+    """
     if not os.path.isdir(model_dir):
-        raise OSError(
-            "Model directory '%s' does not exist" % model_dir)
+        raise OSError("Model directory '%s' does not exist" % model_dir)
 
     checkpoint = tf.train.get_checkpoint_state(model_dir)
+    # pylint: disable=no-member
     input_checkpoint = checkpoint.model_checkpoint_path
 
     graph = tf.Graph()
-    with graph.as_default():
+    with graph.as_default():  # pylint: disable=not-context-manager
         tf.train.import_meta_graph(
-            input_checkpoint + ".meta", clear_devices=True)
+            input_checkpoint + ".meta", clear_devices=True
+        )
         _launch_tensorboard(graph, log_dir=log_dir, port=port)
 
 
 def visualize_frozen_graph(model_path, log_dir=None, port=None):
-    '''Visualizes the TF graph from the given `.pb` file via TensorBoard.
+    """Visualizes the TF graph from the given `.pb` file via TensorBoard.
 
     Specifically, this script performs the following actions:
         - loads the graph
@@ -176,7 +183,7 @@ def visualize_frozen_graph(model_path, log_dir=None, port=None):
         log_dir: an optional log directory in which to write the TensorBoard
             files. By default, a temp directory is created
         port: an optional port on which to launch TensorBoard
-    '''
+    """
     graph = load_graph(model_path, prefix="import")
     _launch_tensorboard(graph, log_dir=log_dir, port=port)
 
@@ -194,17 +201,18 @@ def _launch_tensorboard(graph, log_dir=None, port=None):
         args.extend(["--port", str(port)])
 
     logger.info(
-        "Launching TensorBoard via the command:\n    %s\n", " ".join(args))
+        "Launching TensorBoard via the command:\n    %s\n", " ".join(args)
+    )
     etau.call(args)
 
 
 class TFModelCheckpoint(etam.PublishedModel):
-    '''Class that can load a published TensorFlow model checkpoint stored as a
+    """Class that can load a published TensorFlow model checkpoint stored as a
     .model file.
-    '''
+    """
 
     def __init__(self, model_name, sess):
-        '''Initializes a TFModelCheckpoint instance.
+        """Initializes a TFModelCheckpoint instance.
 
         Args:
             model_name: the model to load
@@ -212,7 +220,7 @@ class TFModelCheckpoint(etam.PublishedModel):
 
         Raises:
             ModelError: if the model was not found
-        '''
+        """
         super(TFModelCheckpoint, self).__init__(model_name)
         self._sess = sess
 
@@ -222,7 +230,7 @@ class TFModelCheckpoint(etam.PublishedModel):
 
 
 class UsesTFSession(object):
-    '''Mixin for classes that use one or more `tf.Session`s.
+    """Mixin for classes that use one or more `tf.Session`s.
 
     It is highly recommended that all classes that use `tf.Session` use this
     mixin to ensure that:
@@ -236,7 +244,7 @@ class UsesTFSession(object):
     a new session, and then either use the context manager interface or call
     the `close()` method to automatically clean up any sessions your instance
     was using.
-    '''
+    """
 
     def __init__(self):
         self._sess_list = []
@@ -248,7 +256,7 @@ class UsesTFSession(object):
         self.close()
 
     def make_tf_session(self, config_proto=None, graph=None):
-        '''Makes a new tf.Session that inherits any config settings from the
+        """Makes a new tf.Session that inherits any config settings from the
         global `eta.config.tf_config`.
 
         A reference to the session is stored internally so that it can be
@@ -262,13 +270,13 @@ class UsesTFSession(object):
 
         Returns:
             the tf.Session
-        '''
+        """
         sess = make_tf_session(config_proto=config_proto, graph=graph)
         self._sess_list.append(sess)
         return sess
 
     def close(self):
-        '''Closes any TensorFlow session(s) in use by this instance.'''
+        """Closes any TensorFlow session(s) in use by this instance."""
         for sess in self._sess_list:
             if sess:
                 sess.close()
@@ -277,7 +285,7 @@ class UsesTFSession(object):
 
 
 def make_tf_session(config_proto=None, graph=None):
-    '''Makes a new tf.Session that inherits any config settings from the global
+    """Makes a new tf.Session that inherits any config settings from the global
     `eta.config.tf_config`.
 
     Args:
@@ -288,13 +296,13 @@ def make_tf_session(config_proto=None, graph=None):
 
     Returns:
         the tf.Session
-    '''
+    """
     config = make_tf_config(config_proto=config_proto)
     return tf.Session(config=config, graph=graph)
 
 
 def make_tf_config(config_proto=None):
-    '''Makes a new tf.ConfigProto that inherits any config settings from the
+    """Makes a new tf.ConfigProto that inherits any config settings from the
     global `eta.config.tf_config`.
 
     Args:
@@ -303,7 +311,7 @@ def make_tf_config(config_proto=None):
 
     Returns:
         a tf.ConfigProto
-    '''
+    """
     config = copy(config_proto) if config_proto else tf.ConfigProto()
 
     if eta.config.tf_config:
@@ -311,14 +319,16 @@ def make_tf_config(config_proto=None):
         if not is_gpu_available():
             # Remove GPU options, just for clarity
             tf_config = {
-                k: v for k, v in iteritems(tf_config)
+                k: v
+                for k, v in iteritems(tf_config)
                 if not k.startswith("gpu_options.")
             }
 
         if tf_config:
             logger.info(
                 "Applying `tf_config` settings from ETA config: %s",
-                str(tf_config))
+                str(tf_config),
+            )
             _set_proto_fields(config, tf_config)
 
     return config
@@ -343,22 +353,22 @@ def _set_proto_fields(proto, d):
 
 
 def is_valid_tf_record_path(tf_record_path):
-    '''Determines whether the provided tf.Record path is a valid path.
+    """Determines whether the provided tf.Record path is a valid path.
 
     Valid paths must either end in `.record` or `.tfrecord` or describe
         a sharded tf.Record.
-    '''
+    """
     ext = os.path.splitext(tf_record_path)[1]
-    return (
-        ext in TF_RECORD_EXTENSIONS or
-        is_sharded_tf_record_path(tf_record_path))
+    return ext in TF_RECORD_EXTENSIONS or is_sharded_tf_record_path(
+        tf_record_path
+    )
 
 
 def is_sharded_tf_record_path(tf_record_path):
-    '''Determines whether the given path is a sharded tf.Record path like
+    """Determines whether the given path is a sharded tf.Record path like
     "/path/to/data.record-????-of-XXXXX" or
     "/path/to/data-?????-of-XXXXX.tfrecord"
-    '''
+    """
     ext_patt = "|".join(re.escape(e) for e in TF_RECORD_EXTENSIONS)
     shard_patt = "-\?+-of-\d+"
 
@@ -374,7 +384,7 @@ def is_sharded_tf_record_path(tf_record_path):
 
 
 def make_sharded_tf_record_path(base_path, num_shards):
-    '''Makes a sharded tf.Record path with the given number of shards.
+    """Makes a sharded tf.Record path with the given number of shards.
 
     Args:
         base_path: a path like "/path/to/tf.record"
@@ -382,31 +392,34 @@ def make_sharded_tf_record_path(base_path, num_shards):
 
     Returns:
         a sharded path like "/path/to/tf.record-????-of-1000"
-    '''
+    """
     num_shards_str = str(num_shards)
     num_digits = len(num_shards_str)
     return base_path + "-" + "?" * num_digits + "-of-" + num_shards_str
 
 
 # Mean of ImageNet training set
+# pylint: disable=too-many-function-args
 IMG_MEAN_IMAGENET = np.array(
-    (123.68, 116.779, 103.939), dtype=np.float32).reshape(1, 1, 3)
+    (123.68, 116.779, 103.939), dtype=np.float32
+).reshape(1, 1, 3)
 
 # Mean of PASCAL VOC training set
+# pylint: disable=too-many-function-args
 IMG_MEAN_VOC = np.array(
-    (104.00698793, 116.66876762, 122.67891434),
-    dtype=np.float32).reshape(1, 1, 3)
+    (104.00698793, 116.66876762, 122.67891434), dtype=np.float32
+).reshape(1, 1, 3)
 
 
 def float_preprocessing_numpy(imgs):
-    '''Preprocesses the images by converting them to float32 in [0, 1].
+    """Preprocesses the images by converting them to float32 in [0, 1].
 
     Args:
         imgs: a list of images
 
     Returns:
         the preprocessed images, in float32 format
-    '''
+    """
     imgs_out = []
     for img in imgs:
         if etai.is_gray(img):
@@ -421,7 +434,7 @@ def float_preprocessing_numpy(imgs):
 
 
 def inception_preprocessing_numpy(imgs, height, width):
-    '''Performs Inception-style preprocessing of images using numpy.
+    """Performs Inception-style preprocessing of images using numpy.
 
     Specifically, the images are resized and then scaled to [-1, 1] in float32
     format.
@@ -433,7 +446,7 @@ def inception_preprocessing_numpy(imgs, height, width):
 
     Returns:
         the preprocessed images, in float32 format
-    '''
+    """
     imgs_out = []
     for img in imgs:
         if etai.is_gray(img):
@@ -449,7 +462,7 @@ def inception_preprocessing_numpy(imgs, height, width):
 
 
 def voc_preprocessing_numpy(imgs):
-    '''Performs PASCAL VOC-style preprocessing of images using numpy.
+    """Performs PASCAL VOC-style preprocessing of images using numpy.
 
     Specifically, the images are centered by `IMG_MEAN_VOC` and returned in
     float32 format.
@@ -459,7 +472,7 @@ def voc_preprocessing_numpy(imgs):
 
     Returns:
         the preprocessed images, in float32 format
-    '''
+    """
     imgs_out = []
     for img in imgs:
         if etai.is_gray(img):
@@ -475,7 +488,7 @@ def voc_preprocessing_numpy(imgs):
 
 
 def vgg_preprocessing_numpy(imgs, height, width):
-    '''Performs VGG-style preprocessing of images using numpy.
+    """Performs VGG-style preprocessing of images using numpy.
 
     Specifically, the images are resized (aspect-preserving) to the desired
     size and then centered by `IMG_MEAN_IMAGENET`
@@ -487,7 +500,7 @@ def vgg_preprocessing_numpy(imgs, height, width):
 
     Returns:
         the preprocessed images, in float32 format
-    '''
+    """
     imgs_out = []
     for img in imgs:
         if etai.is_gray(img):

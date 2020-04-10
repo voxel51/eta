@@ -1,10 +1,10 @@
-'''
+"""
 Tools for generating metadata JSON files for ETA modules programmatically from
 source.
 
 Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
-'''
+"""
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
 # pragma pylint: disable=wildcard-import
@@ -14,6 +14,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
 from future.utils import iteritems, itervalues
+
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
@@ -37,13 +38,13 @@ logger = logging.getLogger(__name__)
 
 
 def generate(module_py_path):
-    '''Generates the module metadata JSON file for the given ETA module.
+    """Generates the module metadata JSON file for the given ETA module.
 
     The JSON file is written in the same directory as the input module file.
 
     Args:
         module_py_path: the path to the .py file defining an ETA module
-    '''
+    """
     module_dir, module_file = os.path.split(module_py_path)
     module_name = os.path.splitext(module_file)[0]
     sys.path.insert(1, module_dir)
@@ -59,7 +60,8 @@ def generate(module_py_path):
     data_class = cds.attributes["data"]["type"]
     if not data_class:
         raise ModuleMetadataGenerationError(
-            "Failed to find a data config class")
+            "Failed to find a data config class"
+        )
     logger.info("Parsing data class '%s' docstring", data_class)
     data_docstr = _get_class_docstring(module_name, data_class)
     dds = ModuleDocstring(data_docstr)
@@ -68,7 +70,8 @@ def generate(module_py_path):
     if not parameters_class:
         logger.info(
             "Failed to find a parameters config class. Assuming that this "
-            "module has no parameters")
+            "module has no parameters"
+        )
         pds = ModuleDocstring("")
     else:
         logger.info("Parsing parameter class '%s' docstring", parameters_class)
@@ -87,7 +90,7 @@ def generate(module_py_path):
 
 
 class ModuleDocstring(object):
-    '''Class encapsulating docstrings in ETA modules.
+    """Class encapsulating docstrings in ETA modules.
 
     This class supports a modified Google-style docstring syntax with
     `Info`, `Inputs`, `Outputs`, `Parameters`, and `Attributes` sections.
@@ -105,16 +108,16 @@ class ModuleDocstring(object):
             `Parameters` section (if any)
         attributes: a dictionary of dicts describing any fields provided in an
             `Attributes` section (if any)
-    '''
+    """
 
     def __init__(self, docstr):
-        '''Constructs a ModuleDocstring object describing the content of the
+        """Constructs a ModuleDocstring object describing the content of the
         given docstring.
 
         Args:
             docstr: a module, function, or class docstring written in our
                 modified Google-style
-        '''
+        """
         self.short_desc = ""
         self.long_desc = ""
         self.info = defaultdict(lambda: None)
@@ -155,7 +158,8 @@ class ModuleDocstring(object):
             meta, name = name.split(" ", 1)
         except ValueError:
             raise ModuleDocstringError(
-                "Unsupported field '%s'" % field.astext())
+                "Unsupported field '%s'" % field.astext()
+            )
 
         # Process based on meta tag
         if meta == "info":
@@ -182,7 +186,8 @@ class ModuleDocstring(object):
         if not required and default:
             raise ModuleDocstringError(
                 "Optional module inputs/outputs must have empty ('' or None) "
-                "default values, but '%s' was found" % str(default))
+                "default values, but '%s' was found" % str(default)
+            )
         d["description"] = body
         d["required"] = required
         self._last_dict = d
@@ -200,7 +205,8 @@ class ModuleDocstring(object):
 
 
 class ModuleDocstringError(Exception):
-    '''Error raised when there was a problem parsing a module docstring.'''
+    """Error raised when there was a problem parsing a module docstring."""
+
     pass
 
 
@@ -208,7 +214,8 @@ def _get_name(field):
     index = field.first_child_matching_class(field_name)
     if index is None:
         raise ModuleDocstringError(
-            "Expected field_name in field: %s" % field.astext())
+            "Expected field_name in field: %s" % field.astext()
+        )
     return field.children[index].astext()
 
 
@@ -216,7 +223,8 @@ def _get_body(field):
     index = field.first_child_matching_class(field_body)
     if index is None:
         raise ModuleDocstringError(
-            "Expected field_body in field: %s" % field.astext())
+            "Expected field_body in field: %s" % field.astext()
+        )
     return field.children[index].astext().replace("\n", " ").strip()
 
 
@@ -228,14 +236,15 @@ def _parse_default_element(body):
     else:
         raw = ""
 
-    required = (raw == "")
+    required = raw == ""
 
     try:
         default = eval(raw) if raw else None
     except Exception:
         raise ModuleDocstringError(
             "Invalid default value '%s'. Default values must be valid Python "
-            "expressions." % raw)
+            "expressions." % raw
+        )
 
     return body.strip(), required, default
 
@@ -297,9 +306,10 @@ GoogleDocstring._parse = _parse
 
 
 class ModuleMetadataGenerationError(Exception):
-    '''Error raised when there was a problem generating the module metadata
+    """Error raised when there was a problem generating the module metadata
     file for an ETA module.
-    '''
+    """
+
     pass
 
 
@@ -325,74 +335,89 @@ def _get_class_docstring(module_name, class_name):
 def _build_module_metadata(module_name, mds, dds, pds):
     try:
         logger.info("*** Building info field")
-        info = (etam.ModuleInfoConfig.builder()
+        info = (
+            etam.ModuleInfoConfig.builder()
             .set(name=module_name)
             .set(type=mds.info["type"])
             .set(version=mds.info["version"])
             .set(description=mds.short_desc.rstrip("?:!.,;"))
             .set(exe=module_name + ".py")
-            .validate())
+            .validate()
+        )
     except Exception as e:
         raise ModuleMetadataGenerationError(
-            "Error populating the 'info' field:\n" + str(e))
+            "Error populating the 'info' field:\n" + str(e)
+        )
 
     try:
         logger.info("*** Building inputs")
         inputs = []
         for iname, ispec in iteritems(dds.inputs):
-            ibuilder = (etam.ModuleInputConfig.builder()
+            ibuilder = (
+                etam.ModuleInputConfig.builder()
                 .set(name=iname)
                 .set(type=ispec["type"])
                 .set(description=ispec["description"])
                 .set(required=ispec["required"])
-                .validate())
+                .validate()
+            )
             inputs.append(ibuilder)
     except Exception as e:
         raise ModuleMetadataGenerationError(
-            "Error populating the 'inputs' field:\n" + str(e))
+            "Error populating the 'inputs' field:\n" + str(e)
+        )
 
     try:
         logger.info("*** Building outputs")
         outputs = []
         for oname, ospec in iteritems(dds.outputs):
-            obuilder = (etam.ModuleOutputConfig.builder()
+            obuilder = (
+                etam.ModuleOutputConfig.builder()
                 .set(name=oname)
                 .set(type=ospec["type"])
                 .set(description=ospec["description"])
                 .set(required=ospec["required"])
-                .validate())
+                .validate()
+            )
             outputs.append(obuilder)
     except Exception as e:
         raise ModuleMetadataGenerationError(
-            "Error populating the 'outputs' field:\n" + str(e))
+            "Error populating the 'outputs' field:\n" + str(e)
+        )
 
     try:
         logger.info("*** Building parameters")
         parameters = []
         for pname, pspec in iteritems(pds.parameters):
-            parameter_builder = (etam.ModuleParameterConfig.builder()
+            parameter_builder = (
+                etam.ModuleParameterConfig.builder()
                 .set(name=pname)
                 .set(type=pspec["type"])
                 .set(description=pspec["description"])
-                .set(required=pspec["required"]))
+                .set(required=pspec["required"])
+            )
             if not pspec["required"]:
                 parameter_builder.set(default=pspec["default"])
             parameter_builder.validate()
             parameters.append(parameter_builder)
     except Exception as e:
         raise ModuleMetadataGenerationError(
-            "Error populating the 'parameters' field:\n" + str(e))
+            "Error populating the 'parameters' field:\n" + str(e)
+        )
 
     try:
         logger.info("*** Building ModuleMetadataConfig")
-        mmc = (etam.ModuleMetadataConfig.builder()
+        mmc = (
+            etam.ModuleMetadataConfig.builder()
             .set(info=info)
             .set(inputs=inputs)
             .set(outputs=outputs)
             .set(parameters=parameters)
-            .build())
+            .build()
+        )
     except Exception as e:
         raise ModuleMetadataGenerationError(
-            "Error building the ModuleMetadataConfig:\n" + str(e))
+            "Error building the ModuleMetadataConfig:\n" + str(e)
+        )
 
     return mmc

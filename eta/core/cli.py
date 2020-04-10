@@ -1,9 +1,9 @@
-'''
+"""
 Core module that defines the `eta` command-line interface (CLI).
 
 Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
-'''
+"""
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
 # pragma pylint: disable=wildcard-import
@@ -14,6 +14,7 @@ from __future__ import unicode_literals
 from builtins import *
 from future.utils import iteritems, itervalues
 import six
+
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
@@ -49,36 +50,36 @@ TABLE_FORMAT = "simple"
 
 
 class Command(object):
-    '''Interface for defining commands.
+    """Interface for defining commands.
 
     Command instances must implement the `setup()` method, and they should
     implement the `run()` method if they perform any functionality beyond
     defining subparsers.
-    '''
+    """
 
     @staticmethod
     def setup(parser):
-        '''Setup the command-line arguments for the command.
+        """Setup the command-line arguments for the command.
 
         Args:
             parser: an `argparse.ArgumentParser` instance
-        '''
+        """
         raise NotImplementedError("subclass must implement setup()")
 
     @staticmethod
     def run(parser, args):
-        '''Executes the command on the given args.
+        """Executes the command on the given args.
 
         args:
             parser: the `argparse.ArgumentParser` instance for the command
             args: an `argparse.Namespace` instance containing the arguments
                 for the command
-        '''
+        """
         raise NotImplementedError("subclass must implement run()")
 
 
 class ETACommand(Command):
-    '''ETA command-line interface.'''
+    """ETA command-line interface."""
 
     @staticmethod
     def setup(parser):
@@ -104,7 +105,7 @@ class ETACommand(Command):
 
 
 class BuildCommand(Command):
-    '''Tools for building pipelines.
+    """Tools for building pipelines.
 
     Examples:
         # Build pipeline from a pipeline build request
@@ -117,46 +118,80 @@ class BuildCommand(Command):
             -o 'formatted_video="water-small.mp4"' \\
             -p 'format_videos.scale=0.5' \\
             --run-now --cleanup
-    '''
+    """
 
     @staticmethod
     def setup(parser):
         request = parser.add_argument_group("request arguments")
         request.add_argument("-n", "--name", help="pipeline name")
         request.add_argument(
-            "-r", "--request", type=load_json,
-            help="path to a PipelineBuildRequest file")
+            "-r",
+            "--request",
+            type=load_json,
+            help="path to a PipelineBuildRequest file",
+        )
         request.add_argument(
-            "-i", "--inputs", type=load_json,
-            metavar="'KEY=VAL,...'", help="pipeline inputs")
+            "-i",
+            "--inputs",
+            type=load_json,
+            metavar="'KEY=VAL,...'",
+            help="pipeline inputs",
+        )
         request.add_argument(
-            "-o", "--outputs", type=load_json,
-            metavar="'KEY=VAL,...'", help="pipeline outputs")
+            "-o",
+            "--outputs",
+            type=load_json,
+            metavar="'KEY=VAL,...'",
+            help="pipeline outputs",
+        )
         request.add_argument(
-            "-p", "--parameters", type=load_json,
-            metavar="'KEY=VAL,...'", help="pipeline parameters")
+            "-p",
+            "--parameters",
+            type=load_json,
+            metavar="'KEY=VAL,...'",
+            help="pipeline parameters",
+        )
         request.add_argument(
-            "-e", "--eta-config", type=load_json,
-            metavar="'KEY=VAL,...'", help="ETA config settings")
+            "-e",
+            "--eta-config",
+            type=load_json,
+            metavar="'KEY=VAL,...'",
+            help="ETA config settings",
+        )
         request.add_argument(
-            "-l", "--logging", type=load_json,
-            metavar="'KEY=VAL,...'", help="logging config settings")
+            "-l",
+            "--logging",
+            type=load_json,
+            metavar="'KEY=VAL,...'",
+            help="logging config settings",
+        )
         request.add_argument(
-            "--patterns", type=etau.parse_kvps, metavar="'KEY=VAL,...'",
-            help="patterns to replace in the build request")
+            "--patterns",
+            type=etau.parse_kvps,
+            metavar="'KEY=VAL,...'",
+            help="patterns to replace in the build request",
+        )
 
         parser.add_argument(
-            "--unoptimized", action="store_true",
-            help="don't optimize pipeline when building")
+            "--unoptimized",
+            action="store_true",
+            help="don't optimize pipeline when building",
+        )
         parser.add_argument(
-            "--run-now", action="store_true",
-            help="run pipeline after building")
+            "--run-now",
+            action="store_true",
+            help="run pipeline after building",
+        )
         parser.add_argument(
-            "--cleanup", action="store_true",
-            help="delete all generated files after running the pipeline")
+            "--cleanup",
+            action="store_true",
+            help="delete all generated files after running the pipeline",
+        )
         parser.add_argument(
-            "--debug", action="store_true",
-            help="set pipeline logging level to DEBUG")
+            "--debug",
+            action="store_true",
+            help="set pipeline logging level to DEBUG",
+        )
 
     @staticmethod
     def run(parser, args):
@@ -166,7 +201,7 @@ class BuildCommand(Command):
             "outputs": {},
             "parameters": {},
             "eta_config": {},
-            "logging_config": {}
+            "logging_config": {},
         }
         d = defaultdict(dict, d)
         if args.name:
@@ -203,8 +238,9 @@ class BuildCommand(Command):
             _run_pipeline(builder.pipeline_config_path)
         else:
             print(
-                "\n***** To run this pipeline *****\neta run %s\n" %
-                builder.pipeline_config_path)
+                "\n***** To run this pipeline *****\neta run %s\n"
+                % builder.pipeline_config_path
+            )
 
         if args.cleanup:
             print("Cleaning up pipeline-generated files")
@@ -212,7 +248,7 @@ class BuildCommand(Command):
 
 
 class RunCommand(Command):
-    '''Tools for running pipelines and modules.
+    """Tools for running pipelines and modules.
 
     Examples:
         # Run pipeline defined by a pipeline config
@@ -226,21 +262,27 @@ class RunCommand(Command):
 
         # Run last built pipeline
         eta run --last
-    '''
+    """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "config", nargs="?",
-            help="path to PipelineConfig or ModuleConfig file")
+            "config",
+            nargs="?",
+            help="path to PipelineConfig or ModuleConfig file",
+        )
         parser.add_argument(
-            "-o", "--overwrite", action="store_true",
-            help="force overwrite existing module outputs")
+            "-o",
+            "--overwrite",
+            action="store_true",
+            help="force overwrite existing module outputs",
+        )
         parser.add_argument(
-            "-m", "--module", help="run module with the given name")
+            "-m", "--module", help="run module with the given name"
+        )
         parser.add_argument(
-            "-l", "--last", action="store_true",
-            help="run last built pipeline")
+            "-l", "--last", action="store_true", help="run last built pipeline"
+        )
 
     @staticmethod
     def run(parser, args):
@@ -268,7 +310,7 @@ def _run_pipeline(config, force_overwrite=False):
 
 
 class CleanCommand(Command):
-    '''Tools for cleaning up after pipelines.
+    """Tools for cleaning up after pipelines.
 
     Examples:
         # Cleanup pipeline defined by a given pipeline config
@@ -279,19 +321,28 @@ class CleanCommand(Command):
 
         # Cleanup all built pipelines
         eta clean --all
-    '''
+    """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "config", nargs="?", metavar="PATH",
-            help="path to a PipelineConfig file")
+            "config",
+            nargs="?",
+            metavar="PATH",
+            help="path to a PipelineConfig file",
+        )
         parser.add_argument(
-            "-l", "--last", action="store_true",
-            help="cleanup the last built pipeline")
+            "-l",
+            "--last",
+            action="store_true",
+            help="cleanup the last built pipeline",
+        )
         parser.add_argument(
-            "-a", "--all", action="store_true",
-            help="cleanup all built pipelines")
+            "-a",
+            "--all",
+            action="store_true",
+            help="cleanup all built pipelines",
+        )
 
     @staticmethod
     def run(parser, args):
@@ -310,7 +361,7 @@ class CleanCommand(Command):
 
 
 class ModelsCommand(Command):
-    '''Tools for working with models.
+    """Tools for working with models.
 
     Examples:
         # List all available models
@@ -348,46 +399,75 @@ class ModelsCommand(Command):
 
         # Flush all models
         eta models --flush-all
-    '''
+    """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "-l", "--list", action="store_true",
-            help="list all published models on the current search path")
+            "-l",
+            "--list",
+            action="store_true",
+            help="list all published models on the current search path",
+        )
         parser.add_argument(
-            "--list-downloaded", action="store_true",
-            help="list all downloaded models on the current search path")
+            "--list-downloaded",
+            action="store_true",
+            help="list all downloaded models on the current search path",
+        )
         parser.add_argument(
-            "-s", "--search", metavar="SEARCH",
-            help="search for models whose names contain the given string")
+            "-s",
+            "--search",
+            metavar="SEARCH",
+            help="search for models whose names contain the given string",
+        )
         parser.add_argument(
-            "-f", "--find", metavar="NAME",
-            help="find the model with the given name")
+            "-f",
+            "--find",
+            metavar="NAME",
+            help="find the model with the given name",
+        )
         parser.add_argument(
-            "-i", "--info", metavar="NAME",
-            help="get info about the model with the given name")
+            "-i",
+            "--info",
+            metavar="NAME",
+            help="get info about the model with the given name",
+        )
         parser.add_argument(
-            "-d", "--download", metavar="NAME",
-            help="download the model with the given name, if necessary")
+            "-d",
+            "--download",
+            metavar="NAME",
+            help="download the model with the given name, if necessary",
+        )
         parser.add_argument(
-            "--force-download", metavar="NAME",
-            help="force download the model with the given name")
+            "--force-download",
+            metavar="NAME",
+            help="force download the model with the given name",
+        )
         parser.add_argument(
-            "--visualize-tf-graph", metavar="NAME",
-            help="visualize the TF graph for the model with the given name")
+            "--visualize-tf-graph",
+            metavar="NAME",
+            help="visualize the TF graph for the model with the given name",
+        )
         parser.add_argument(
-            "--init", metavar="DIR",
-            help="initialize the given models directory")
+            "--init",
+            metavar="DIR",
+            help="initialize the given models directory",
+        )
         parser.add_argument(
-            "--flush", metavar="NAME",
-            help="flush the model with the given name")
+            "--flush",
+            metavar="NAME",
+            help="flush the model with the given name",
+        )
         parser.add_argument(
-            "--flush-old", action="store_true", help="flush all old models, "
+            "--flush-old",
+            action="store_true",
+            help="flush all old models, "
             "i.e., those models for which the number of versions stored on "
-            "disk exceeds `eta.config.max_model_versions_to_keep`")
+            "disk exceeds `eta.config.max_model_versions_to_keep`",
+        )
         parser.add_argument(
-            "--flush-all", action="store_true", help="flush all models")
+            "--flush-all", action="store_true", help="flush all models"
+        )
 
     @staticmethod
     def run(parser, args):
@@ -442,7 +522,7 @@ class ModelsCommand(Command):
 
 
 class ModulesCommand(Command):
-    '''Tools for working with modules.
+    """Tools for working with modules.
 
     Examples:
         # List all available modules
@@ -468,34 +548,58 @@ class ModulesCommand(Command):
 
         # Refresh all module metadata files
         eta modules --refresh-metadata
-    '''
+    """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "-l", "--list", action="store_true",
-            help="list all modules on search path")
+            "-l",
+            "--list",
+            action="store_true",
+            help="list all modules on search path",
+        )
         parser.add_argument(
-            "-s", "--search", metavar="SEARCH",
-            help="search for modules whose names contain the given string")
+            "-s",
+            "--search",
+            metavar="SEARCH",
+            help="search for modules whose names contain the given string",
+        )
         parser.add_argument(
-            "-f", "--find", metavar="NAME",
-            help="find metadata file for module with the given name")
+            "-f",
+            "--find",
+            metavar="NAME",
+            help="find metadata file for module with the given name",
+        )
         parser.add_argument(
-            "-e", "--find-exe", metavar="NAME",
-            help="find the module executable for module with the given name")
+            "-e",
+            "--find-exe",
+            metavar="NAME",
+            help="find the module executable for module with the given name",
+        )
         parser.add_argument(
-            "-i", "--info", metavar="NAME",
-            help="show metadata for module with the given name")
+            "-i",
+            "--info",
+            metavar="NAME",
+            help="show metadata for module with the given name",
+        )
         parser.add_argument(
-            "-d", "--diagram", metavar="NAME",
-            help="generate block diagram for module with the given name")
+            "-d",
+            "--diagram",
+            metavar="NAME",
+            help="generate block diagram for module with the given name",
+        )
         parser.add_argument(
-            "-m", "--metadata", metavar="PATH",
-            help="generate metadata file for the given module")
+            "-m",
+            "--metadata",
+            metavar="PATH",
+            help="generate metadata file for the given module",
+        )
         parser.add_argument(
-            "-r", "--refresh-metadata", action="store_true",
-            help="refresh all module metadata files")
+            "-r",
+            "--refresh-metadata",
+            action="store_true",
+            help="refresh all module metadata files",
+        )
 
     @staticmethod
     def run(parser, args):
@@ -536,7 +640,7 @@ class ModulesCommand(Command):
 
 
 class PipelinesCommand(Command):
-    '''Tools for working with pipelines.
+    """Tools for working with pipelines.
 
     Examples:
         # List all available pipelines
@@ -553,25 +657,40 @@ class PipelinesCommand(Command):
 
         # Generate block diagram for pipeline
         eta pipelines --diagram <pipeline-name>
-    '''
+    """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "-l", "--list", action="store_true",
-            help="list all ETA pipelines on the current search path")
+            "-l",
+            "--list",
+            action="store_true",
+            help="list all ETA pipelines on the current search path",
+        )
         parser.add_argument(
-            "-s", "--search", metavar="NAME",
-            help="search for pipelines whose names contain the given string")
+            "-s",
+            "--search",
+            metavar="NAME",
+            help="search for pipelines whose names contain the given string",
+        )
         parser.add_argument(
-            "-f", "--find", metavar="NAME",
-            help="find metadata file for pipeline with the given name")
+            "-f",
+            "--find",
+            metavar="NAME",
+            help="find metadata file for pipeline with the given name",
+        )
         parser.add_argument(
-            "-i", "--info", metavar="NAME",
-            help="show metadata for pipeline with the given name")
+            "-i",
+            "--info",
+            metavar="NAME",
+            help="show metadata for pipeline with the given name",
+        )
         parser.add_argument(
-            "-d", "--diagram", metavar="NAME",
-            help="generate block diagram for pipeline with the given name")
+            "-d",
+            "--diagram",
+            metavar="NAME",
+            help="generate block diagram for pipeline with the given name",
+        )
 
     @staticmethod
     def run(parser, args):
@@ -582,7 +701,8 @@ class PipelinesCommand(Command):
         if args.search:
             pipelines = etap.find_all_metadata()
             pipelines = {
-                k: v for k, v in iteritems(pipelines) if args.search in k}
+                k: v for k, v in iteritems(pipelines) if args.search in k
+            }
             print(_render_names_in_dirs_str(pipelines))
 
         if args.find:
@@ -599,7 +719,7 @@ class PipelinesCommand(Command):
 
 
 class ConstantsCommand(Command):
-    '''Print constants from `eta.constants`.
+    """Print constants from `eta.constants`.
 
     Examples:
         # Print the specified constant
@@ -607,22 +727,29 @@ class ConstantsCommand(Command):
 
         # Print all constants
         eta constants --all
-    '''
+    """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "constant", nargs="?", metavar="CONSTANT",
-            help="the constant to print")
+            "constant",
+            nargs="?",
+            metavar="CONSTANT",
+            help="the constant to print",
+        )
         parser.add_argument(
-            "-a", "--all", action="store_true",
-            help="print all available constants")
+            "-a",
+            "--all",
+            action="store_true",
+            help="print all available constants",
+        )
 
     @staticmethod
     def run(parser, args):
         if args.all:
             d = {
-                k: v for k, v in iteritems(vars(etac))
+                k: v
+                for k, v in iteritems(vars(etac))
                 if not k.startswith("_") and k == k.upper()
             }
             _print_constants_table(d)
@@ -634,12 +761,13 @@ class ConstantsCommand(Command):
 def _print_constants_table(d):
     contents = sorted(d.items(), key=lambda kv: kv[0])
     table_str = tabulate(
-        contents, headers=["constant", "value"], tablefmt=TABLE_FORMAT)
+        contents, headers=["constant", "value"], tablefmt=TABLE_FORMAT
+    )
     print(table_str)
 
 
 class ConfigCommand(Command):
-    '''Tools for working with your ETA config.
+    """Tools for working with your ETA config.
 
     Examples:
         # Print your entire ETA config
@@ -647,14 +775,16 @@ class ConfigCommand(Command):
 
         # Print a specific config field
         eta config --print <field>
-    '''
+    """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "field", nargs="?", metavar="FIELD", help="a config field")
+            "field", nargs="?", metavar="FIELD", help="a config field"
+        )
         parser.add_argument(
-            "-p", "--print", action="store_true", help="print your ETA config")
+            "-p", "--print", action="store_true", help="print your ETA config"
+        )
 
     @staticmethod
     def run(parser, args):
@@ -667,7 +797,7 @@ class ConfigCommand(Command):
 
 
 class AuthCommand(Command):
-    '''Tools for configuring authentication credentials.'''
+    """Tools for configuring authentication credentials."""
 
     @staticmethod
     def setup(parser):
@@ -682,7 +812,7 @@ class AuthCommand(Command):
 
 
 class ShowAuthCommand(Command):
-    '''Show info about active credentials.
+    """Show info about active credentials.
 
     Examples:
         # Print info about all active credentials
@@ -696,19 +826,25 @@ class ShowAuthCommand(Command):
 
         # Print info about active SSH credentials
         eta auth show --ssh
-    '''
+    """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "--google", action="store_true",
-            help="show info about Google credentials")
+            "--google",
+            action="store_true",
+            help="show info about Google credentials",
+        )
         parser.add_argument(
-            "--aws", action="store_true",
-            help="show info about AWS credentials")
+            "--aws",
+            action="store_true",
+            help="show info about AWS credentials",
+        )
         parser.add_argument(
-            "--ssh", action="store_true",
-            help="show info about SSH credentials")
+            "--ssh",
+            action="store_true",
+            help="show info about SSH credentials",
+        )
 
     @staticmethod
     def run(parser, args):
@@ -748,7 +884,8 @@ def _print_google_credentials_info():
         ("path", path),
     ]
     table_str = tabulate(
-        contents, headers=["Google credentials", ""], tablefmt="simple")
+        contents, headers=["Google credentials", ""], tablefmt="simple"
+    )
     print(table_str + "\n")
 
 
@@ -763,7 +900,8 @@ def _print_aws_credentials_info():
         contents.append(("path", path))
 
     table_str = tabulate(
-        contents, headers=["AWS credentials", ""], tablefmt="simple")
+        contents, headers=["AWS credentials", ""], tablefmt="simple"
+    )
     print(table_str + "\n")
 
 
@@ -773,12 +911,13 @@ def _print_ssh_credentials_info():
         ("path", path),
     ]
     table_str = tabulate(
-        contents, headers=["SSH credentials", ""], tablefmt="simple")
+        contents, headers=["SSH credentials", ""], tablefmt="simple"
+    )
     print(table_str + "\n")
 
 
 class ActivateAuthCommand(Command):
-    '''Activate authentication credentials.
+    """Activate authentication credentials.
 
     Examples:
         # Activate Google credentials
@@ -789,17 +928,21 @@ class ActivateAuthCommand(Command):
 
         # Activate SSH credentials
         eta auth activate --ssh '/path/to/id_rsa'
-    '''
+    """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "--google", metavar="PATH",
-            help="path to Google service account JSON file")
+            "--google",
+            metavar="PATH",
+            help="path to Google service account JSON file",
+        )
         parser.add_argument(
-            "--aws", metavar="PATH", help="path to AWS credentials file")
+            "--aws", metavar="PATH", help="path to AWS credentials file"
+        )
         parser.add_argument(
-            "--ssh", metavar="PATH", help="path to SSH private key")
+            "--ssh", metavar="PATH", help="path to SSH private key"
+        )
 
     @staticmethod
     def run(parser, args):
@@ -814,7 +957,7 @@ class ActivateAuthCommand(Command):
 
 
 class DeactivateAuthCommand(Command):
-    '''Deactivate authentication credentials.
+    """Deactivate authentication credentials.
 
     Examples:
         # Deactivate Google credentials
@@ -828,21 +971,28 @@ class DeactivateAuthCommand(Command):
 
         # Deactivate all credentials
         eta auth deactivate --all
-    '''
+    """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "--google", action="store_true",
-            help="delete the active Google credentials")
+            "--google",
+            action="store_true",
+            help="delete the active Google credentials",
+        )
         parser.add_argument(
-            "--aws", action="store_true",
-            help="delete the active AWS credentials")
+            "--aws",
+            action="store_true",
+            help="delete the active AWS credentials",
+        )
         parser.add_argument(
-            "--ssh", action="store_true",
-            help="delete the active SSH credentials")
+            "--ssh",
+            action="store_true",
+            help="delete the active SSH credentials",
+        )
         parser.add_argument(
-            "--all", action="store_true", help="delete all active credentials")
+            "--all", action="store_true", help="delete all active credentials"
+        )
 
     @staticmethod
     def run(parser, args):
@@ -857,7 +1007,7 @@ class DeactivateAuthCommand(Command):
 
 
 class S3Command(Command):
-    '''Tools for working with S3.'''
+    """Tools for working with S3."""
 
     @staticmethod
     def setup(parser):
@@ -868,7 +1018,8 @@ class S3Command(Command):
         _register_command(subparsers, "upload-dir", S3UploadDirectoryCommand)
         _register_command(subparsers, "download", S3DownloadCommand)
         _register_command(
-            subparsers, "download-dir", S3DownloadDirectoryCommand)
+            subparsers, "download-dir", S3DownloadDirectoryCommand
+        )
         _register_command(subparsers, "delete", S3DeleteCommand)
         _register_command(subparsers, "delete-dir", S3DeleteDirCommand)
 
@@ -878,7 +1029,7 @@ class S3Command(Command):
 
 
 class S3InfoCommand(Command):
-    '''Get information about files/folders in S3.
+    """Get information about files/folders in S3.
 
     Examples:
         # Get file info
@@ -886,16 +1037,22 @@ class S3InfoCommand(Command):
 
         # Get folder info
         eta s3 info --folder <cloud-path> [...]
-    '''
+    """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "paths", nargs="+", metavar="CLOUD_PATH",
-            help="the path(s) of the files of interest in S3")
+            "paths",
+            nargs="+",
+            metavar="CLOUD_PATH",
+            help="the path(s) of the files of interest in S3",
+        )
         parser.add_argument(
-            "-f", "--folder", action="store_true", help="whether the provided"
-            "paths are folders, not files")
+            "-f",
+            "--folder",
+            action="store_true",
+            help="whether the provided" "paths are folders, not files",
+        )
 
     @staticmethod
     def run(parser, args):
@@ -911,7 +1068,7 @@ class S3InfoCommand(Command):
 
 
 class S3ListCommand(Command):
-    '''List contents of an S3 folder.
+    """List contents of an S3 folder.
 
     Examples:
         # List folder contents
@@ -1007,65 +1164,98 @@ class S3ListCommand(Command):
 
         You can include special characters (":", "=", "<", ">", ",") in search
         strings by escaping them with "\\".
-    '''
+    """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "folder", metavar="CLOUD_DIR", help="the S3 folder to list")
+            "folder", metavar="CLOUD_DIR", help="the S3 folder to list"
+        )
         parser.add_argument(
-            "-r", "--recursive", action="store_true", help="whether to "
-            "recursively list the contents of subfolders")
+            "-r",
+            "--recursive",
+            action="store_true",
+            help="whether to " "recursively list the contents of subfolders",
+        )
         parser.add_argument(
-            "-l", "--limit", metavar="LIMIT", type=int, default=-1,
-            help="limit the number of files listed")
+            "-l",
+            "--limit",
+            metavar="LIMIT",
+            type=int,
+            default=-1,
+            help="limit the number of files listed",
+        )
         parser.add_argument(
-            "-s", "--search", metavar="SEARCH",
-            help="search to limit results when listing files")
+            "-s",
+            "--search",
+            metavar="SEARCH",
+            help="search to limit results when listing files",
+        )
         parser.add_argument(
-            "--sort-by", metavar="FIELD",
-            help="field to sort by when listing files")
+            "--sort-by",
+            metavar="FIELD",
+            help="field to sort by when listing files",
+        )
         parser.add_argument(
-            "--ascending", action="store_true",
-            help="whether to sort in ascending order")
+            "--ascending",
+            action="store_true",
+            help="whether to sort in ascending order",
+        )
         parser.add_argument(
-            "-c", "--count", action="store_true",
-            help="whether to show the number of files in the list")
+            "-c",
+            "--count",
+            action="store_true",
+            help="whether to show the number of files in the list",
+        )
 
     @staticmethod
     def run(parser, args):
         client = etas.S3StorageClient()
 
         metadata = client.list_files_in_folder(
-            args.folder, recursive=args.recursive, return_metadata=True)
+            args.folder, recursive=args.recursive, return_metadata=True
+        )
 
         metadata = _filter_records(
-            metadata, args.limit, args.search, args.sort_by, args.ascending,
-            _S3_SEARCH_FIELDS_MAP)
+            metadata,
+            args.limit,
+            args.search,
+            args.sort_by,
+            args.ascending,
+            _S3_SEARCH_FIELDS_MAP,
+        )
 
         _print_s3_file_info_table(metadata, show_count=args.count)
 
 
 class S3UploadCommand(Command):
-    '''Upload file to S3.
+    """Upload file to S3.
 
     Examples:
         # Upload file
         eta s3 upload <local-path> <cloud-path>
-    '''
+    """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "local_path", metavar="LOCAL_PATH", help="the path to the file to "
-            "upload")
+            "local_path",
+            metavar="LOCAL_PATH",
+            help="the path to the file to " "upload",
+        )
         parser.add_argument(
-            "cloud_path", metavar="CLOUD_PATH", help="the path to the S3 "
-            "object to create")
+            "cloud_path",
+            metavar="CLOUD_PATH",
+            help="the path to the S3 " "object to create",
+        )
         parser.add_argument(
-            "-t", "--content-type", metavar="TYPE", help="an optional content "
+            "-t",
+            "--content-type",
+            metavar="TYPE",
+            help="an optional content "
             "type of the file. By default, the type is guessed from the "
-            "filename")
+            "filename",
+        )
 
     @staticmethod
     def run(parser, args):
@@ -1073,11 +1263,12 @@ class S3UploadCommand(Command):
 
         print("Uploading '%s' to '%s'" % (args.local_path, args.cloud_path))
         client.upload(
-            args.local_path, args.cloud_path, content_type=args.content_type)
+            args.local_path, args.cloud_path, content_type=args.content_type
+        )
 
 
 class S3UploadDirectoryCommand(Command):
-    '''Upload directory to S3.
+    """Upload directory to S3.
 
     Examples:
         # Upload directory
@@ -1085,25 +1276,40 @@ class S3UploadDirectoryCommand(Command):
 
         # Upload-sync directory
         eta s3 upload-dir --sync <local-dir> <cloud-dir>
-    '''
+    """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "local_dir", metavar="LOCAL_DIR", help="the directory of files to "
-            "upload")
+            "local_dir",
+            metavar="LOCAL_DIR",
+            help="the directory of files to " "upload",
+        )
         parser.add_argument(
-            "cloud_dir", metavar="CLOUD_DIR", help="the S3 directory to "
-            "upload into")
+            "cloud_dir",
+            metavar="CLOUD_DIR",
+            help="the S3 directory to " "upload into",
+        )
         parser.add_argument(
-            "--sync", action="store_true", help="whether to sync the S3 "
-            "directory to match the contents of the local directory")
+            "--sync",
+            action="store_true",
+            help="whether to sync the S3 "
+            "directory to match the contents of the local directory",
+        )
         parser.add_argument(
-            "-o", "--overwrite", action="store_true", help="whether to "
-            "overwrite existing files; only valid in `--sync` mode")
+            "-o",
+            "--overwrite",
+            action="store_true",
+            help="whether to "
+            "overwrite existing files; only valid in `--sync` mode",
+        )
         parser.add_argument(
-            "-r", "--recursive", action="store_true", help="whether to "
-            "recursively upload the contents of subdirecotires")
+            "-r",
+            "--recursive",
+            action="store_true",
+            help="whether to "
+            "recursively upload the contents of subdirecotires",
+        )
 
     @staticmethod
     def run(parser, args):
@@ -1111,15 +1317,19 @@ class S3UploadDirectoryCommand(Command):
 
         if args.sync:
             client.upload_dir_sync(
-                args.local_dir, args.cloud_dir, overwrite=args.overwrite,
-                recursive=args.recursive)
+                args.local_dir,
+                args.cloud_dir,
+                overwrite=args.overwrite,
+                recursive=args.recursive,
+            )
         else:
             client.upload_dir(
-                args.local_dir, args.cloud_dir, recursive=args.recursive)
+                args.local_dir, args.cloud_dir, recursive=args.recursive
+            )
 
 
 class S3DownloadCommand(Command):
-    '''Download file from S3.
+    """Download file from S3.
 
     Examples:
         # Download file
@@ -1127,20 +1337,29 @@ class S3DownloadCommand(Command):
 
         # Print download to stdout
         eta s3 download <cloud-path> --print
-    '''
+    """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "cloud_path", metavar="CLOUD_PATH", help="the S3 object to "
-            "download")
+            "cloud_path",
+            metavar="CLOUD_PATH",
+            help="the S3 object to " "download",
+        )
         parser.add_argument(
-            "local_path", nargs="?", metavar="LOCAL_PATH", help="the path to "
+            "local_path",
+            nargs="?",
+            metavar="LOCAL_PATH",
+            help="the path to "
             "which to write the downloaded file. If not provided, the "
-            "filename of the file in S3 is used")
+            "filename of the file in S3 is used",
+        )
         parser.add_argument(
-            "--print", action="store_true", help="whether to print the "
-            "download to stdout. If true, a file is NOT written to disk")
+            "--print",
+            action="store_true",
+            help="whether to print the "
+            "download to stdout. If true, a file is NOT written to disk",
+        )
 
     @staticmethod
     def run(parser, args):
@@ -1158,7 +1377,7 @@ class S3DownloadCommand(Command):
 
 
 class S3DownloadDirectoryCommand(Command):
-    '''Download directory from S3.
+    """Download directory from S3.
 
     Examples:
         # Download directory
@@ -1166,25 +1385,40 @@ class S3DownloadDirectoryCommand(Command):
 
         # Download directory sync
         eta s3 download-dir --sync <cloud-folder> <local-dir>
-    '''
+    """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "cloud_dir", metavar="CLOUD_DIR", help="the S3 directory to "
-            "download")
+            "cloud_dir",
+            metavar="CLOUD_DIR",
+            help="the S3 directory to " "download",
+        )
         parser.add_argument(
-            "local_dir", metavar="LOCAL_DIR", help="the directory to which to "
-            "download files into")
+            "local_dir",
+            metavar="LOCAL_DIR",
+            help="the directory to which to " "download files into",
+        )
         parser.add_argument(
-            "--sync", action="store_true", help="whether to sync the local"
-            "directory to match the contents of the S3 directory")
+            "--sync",
+            action="store_true",
+            help="whether to sync the local"
+            "directory to match the contents of the S3 directory",
+        )
         parser.add_argument(
-            "-o", "--overwrite", action="store_true", help="whether to "
-            "overwrite existing files; only valid in `--sync` mode")
+            "-o",
+            "--overwrite",
+            action="store_true",
+            help="whether to "
+            "overwrite existing files; only valid in `--sync` mode",
+        )
         parser.add_argument(
-            "-r", "--recursive", action="store_true", help="whether to "
-            "recursively download the contents of subdirecotires")
+            "-r",
+            "--recursive",
+            action="store_true",
+            help="whether to "
+            "recursively download the contents of subdirecotires",
+        )
 
     @staticmethod
     def run(parser, args):
@@ -1192,25 +1426,30 @@ class S3DownloadDirectoryCommand(Command):
 
         if args.sync:
             client.download_dir_sync(
-                args.cloud_dir, args.local_dir, overwrite=args.overwrite,
-                recursive=args.recursive)
+                args.cloud_dir,
+                args.local_dir,
+                overwrite=args.overwrite,
+                recursive=args.recursive,
+            )
         else:
             client.download_dir(
-                args.cloud_dir, args.local_dir, recursive=args.recursive)
+                args.cloud_dir, args.local_dir, recursive=args.recursive
+            )
 
 
 class S3DeleteCommand(Command):
-    '''Delete file from S3.
+    """Delete file from S3.
 
     Examples:
         # Delete file
         eta s3 delete <cloud-path>
-    '''
+    """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "cloud_path", metavar="CLOUD_PATH", help="the S3 file to delete")
+            "cloud_path", metavar="CLOUD_PATH", help="the S3 file to delete"
+        )
 
     @staticmethod
     def run(parser, args):
@@ -1221,17 +1460,18 @@ class S3DeleteCommand(Command):
 
 
 class S3DeleteDirCommand(Command):
-    '''Delete directory from S3.
+    """Delete directory from S3.
 
     Examples:
         # Delete directory
         eta s3 delete-dir <cloud-dir>
-    '''
+    """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "cloud_dir", metavar="CLOUD_DIR", help="the S3 folder to delete")
+            "cloud_dir", metavar="CLOUD_DIR", help="the S3 folder to delete"
+        )
 
     @staticmethod
     def run(parser, args):
@@ -1242,7 +1482,7 @@ class S3DeleteDirCommand(Command):
 
 
 class GCSCommand(Command):
-    '''Tools for working with Google Cloud Storage.'''
+    """Tools for working with Google Cloud Storage."""
 
     @staticmethod
     def setup(parser):
@@ -1253,7 +1493,8 @@ class GCSCommand(Command):
         _register_command(subparsers, "upload-dir", GCSUploadDirectoryCommand)
         _register_command(subparsers, "download", GCSDownloadCommand)
         _register_command(
-            subparsers, "download-dir", GCSDownloadDirectoryCommand)
+            subparsers, "download-dir", GCSDownloadDirectoryCommand
+        )
         _register_command(subparsers, "delete", GCSDeleteCommand)
         _register_command(subparsers, "delete-dir", GCSDeleteDirCommand)
 
@@ -1263,7 +1504,7 @@ class GCSCommand(Command):
 
 
 class GCSInfoCommand(Command):
-    '''Get information about files/folders in GCS.
+    """Get information about files/folders in GCS.
 
     Examples:
         # Get file info
@@ -1271,16 +1512,22 @@ class GCSInfoCommand(Command):
 
         # Get folder info
         eta gcs info --folder <cloud-path> [...]
-    '''
+    """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "paths", nargs="+", metavar="CLOUD_PATH",
-            help="path(s) to GCS files")
+            "paths",
+            nargs="+",
+            metavar="CLOUD_PATH",
+            help="path(s) to GCS files",
+        )
         parser.add_argument(
-            "-f", "--folder", action="store_true", help="whether the provided"
-            "paths are folders, not files")
+            "-f",
+            "--folder",
+            action="store_true",
+            help="whether the provided" "paths are folders, not files",
+        )
 
     @staticmethod
     def run(parser, args):
@@ -1296,7 +1543,7 @@ class GCSInfoCommand(Command):
 
 
 class GCSListCommand(Command):
-    '''List contents of a GCS folder.
+    """List contents of a GCS folder.
 
     Examples:
         # List folder contents
@@ -1392,68 +1639,105 @@ class GCSListCommand(Command):
 
         You can include special characters (":", "=", "<", ">", ",") in search
         strings by escaping them with "\\".
-    '''
+    """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "folder", metavar="CLOUD_DIR", help="the GCS folder to list")
+            "folder", metavar="CLOUD_DIR", help="the GCS folder to list"
+        )
         parser.add_argument(
-            "-r", "--recursive", action="store_true", help="whether to "
-            "recursively list the contents of subfolders")
+            "-r",
+            "--recursive",
+            action="store_true",
+            help="whether to " "recursively list the contents of subfolders",
+        )
         parser.add_argument(
-            "-l", "--limit", metavar="LIMIT", type=int, default=-1,
-            help="limit the number of files listed")
+            "-l",
+            "--limit",
+            metavar="LIMIT",
+            type=int,
+            default=-1,
+            help="limit the number of files listed",
+        )
         parser.add_argument(
-            "-s", "--search", metavar="SEARCH",
-            help="search to limit results when listing files")
+            "-s",
+            "--search",
+            metavar="SEARCH",
+            help="search to limit results when listing files",
+        )
         parser.add_argument(
-            "--sort-by", metavar="FIELD",
-            help="field to sort by when listing files")
+            "--sort-by",
+            metavar="FIELD",
+            help="field to sort by when listing files",
+        )
         parser.add_argument(
-            "--ascending", action="store_true",
-            help="whether to sort in ascending order")
+            "--ascending",
+            action="store_true",
+            help="whether to sort in ascending order",
+        )
         parser.add_argument(
-            "-c", "--count", action="store_true",
-            help="whether to show the number of files in the list")
+            "-c",
+            "--count",
+            action="store_true",
+            help="whether to show the number of files in the list",
+        )
 
     @staticmethod
     def run(parser, args):
         client = etas.GoogleCloudStorageClient()
 
         metadata = client.list_files_in_folder(
-            args.folder, recursive=args.recursive, return_metadata=True)
+            args.folder, recursive=args.recursive, return_metadata=True
+        )
 
         metadata = _filter_records(
-            metadata, args.limit, args.search, args.sort_by, args.ascending,
-            _GCS_SEARCH_FIELDS_MAP)
+            metadata,
+            args.limit,
+            args.search,
+            args.sort_by,
+            args.ascending,
+            _GCS_SEARCH_FIELDS_MAP,
+        )
 
         _print_gcs_file_info_table(metadata, show_count=args.count)
 
 
 class GCSUploadCommand(Command):
-    '''Upload file to GCS.
+    """Upload file to GCS.
 
     Examples:
         # Upload file
         eta gcs upload <local-path> <cloud-path>
-    '''
+    """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "local_path", metavar="LOCAL_PATH", help="the path to the file to "
-            "upload")
+            "local_path",
+            metavar="LOCAL_PATH",
+            help="the path to the file to " "upload",
+        )
         parser.add_argument(
-            "cloud_path", metavar="CLOUD_PATH", help="the path to the GCS "
-            "object to create")
+            "cloud_path",
+            metavar="CLOUD_PATH",
+            help="the path to the GCS " "object to create",
+        )
         parser.add_argument(
-            "-t", "--content-type", metavar="TYPE", help="an optional content "
+            "-t",
+            "--content-type",
+            metavar="TYPE",
+            help="an optional content "
             "type of the file. By default, the type is guessed from the "
-            "filename")
+            "filename",
+        )
         parser.add_argument(
-            "-s", "--chunk-size", metavar="SIZE", type=int, help="an optional "
-            "chunk size (in bytes) to use")
+            "-s",
+            "--chunk-size",
+            metavar="SIZE",
+            type=int,
+            help="an optional " "chunk size (in bytes) to use",
+        )
 
     @staticmethod
     def run(parser, args):
@@ -1461,11 +1745,12 @@ class GCSUploadCommand(Command):
 
         print("Uploading '%s' to '%s'" % (args.local_path, args.cloud_path))
         client.upload(
-            args.local_path, args.cloud_path, content_type=args.content_type)
+            args.local_path, args.cloud_path, content_type=args.content_type
+        )
 
 
 class GCSUploadDirectoryCommand(Command):
-    '''Upload directory to GCS.
+    """Upload directory to GCS.
 
     Examples:
         # Upload directory
@@ -1473,28 +1758,47 @@ class GCSUploadDirectoryCommand(Command):
 
         # Upload-sync directory
         eta gcs upload-dir --sync <local-dir> <cloud-dir>
-    '''
+    """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "local_dir", metavar="LOCAL_DIR", help="the directory of files to "
-            "upload")
+            "local_dir",
+            metavar="LOCAL_DIR",
+            help="the directory of files to " "upload",
+        )
         parser.add_argument(
-            "cloud_dir", metavar="CLOUD_DIR", help="the GCS directory to "
-            "upload into")
+            "cloud_dir",
+            metavar="CLOUD_DIR",
+            help="the GCS directory to " "upload into",
+        )
         parser.add_argument(
-            "--sync", action="store_true", help="whether to sync the GCS"
-            "directory to match the contents of the local directory")
+            "--sync",
+            action="store_true",
+            help="whether to sync the GCS"
+            "directory to match the contents of the local directory",
+        )
         parser.add_argument(
-            "-o", "--overwrite", action="store_true", help="whether to "
-            "overwrite existing files; only valid in `--sync` mode")
+            "-o",
+            "--overwrite",
+            action="store_true",
+            help="whether to "
+            "overwrite existing files; only valid in `--sync` mode",
+        )
         parser.add_argument(
-            "-r", "--recursive", action="store_true", help="whether to "
-            "recursively upload the contents of subdirecotires")
+            "-r",
+            "--recursive",
+            action="store_true",
+            help="whether to "
+            "recursively upload the contents of subdirecotires",
+        )
         parser.add_argument(
-            "-s", "--chunk-size", metavar="SIZE", type=int, help="an optional "
-            "chunk size (in bytes) to use")
+            "-s",
+            "--chunk-size",
+            metavar="SIZE",
+            type=int,
+            help="an optional " "chunk size (in bytes) to use",
+        )
 
     @staticmethod
     def run(parser, args):
@@ -1502,15 +1806,19 @@ class GCSUploadDirectoryCommand(Command):
 
         if args.sync:
             client.upload_dir_sync(
-                args.local_dir, args.cloud_dir, overwrite=args.overwrite,
-                recursive=args.recursive)
+                args.local_dir,
+                args.cloud_dir,
+                overwrite=args.overwrite,
+                recursive=args.recursive,
+            )
         else:
             client.upload_dir(
-                args.local_dir, args.cloud_dir, recursive=args.recursive)
+                args.local_dir, args.cloud_dir, recursive=args.recursive
+            )
 
 
 class GCSDownloadCommand(Command):
-    '''Download file from GCS.
+    """Download file from GCS.
 
     Examples:
         # Download file
@@ -1518,23 +1826,36 @@ class GCSDownloadCommand(Command):
 
         # Print download to stdout
         eta gcs download <cloud-path> --print
-    '''
+    """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "cloud_path", metavar="CLOUD_PATH", help="the GCS object to "
-            "download")
+            "cloud_path",
+            metavar="CLOUD_PATH",
+            help="the GCS object to " "download",
+        )
         parser.add_argument(
-            "local_path", nargs="?", metavar="LOCAL_PATH", help="the path to "
+            "local_path",
+            nargs="?",
+            metavar="LOCAL_PATH",
+            help="the path to "
             "which to write the downloaded file. If not provided, the "
-            "filename of the file in GCS is used")
+            "filename of the file in GCS is used",
+        )
         parser.add_argument(
-            "--print", action="store_true", help="whether to print the "
-            "download to stdout. If true, a file is NOT written to disk")
+            "--print",
+            action="store_true",
+            help="whether to print the "
+            "download to stdout. If true, a file is NOT written to disk",
+        )
         parser.add_argument(
-            "-s", "--chunk-size", metavar="SIZE", type=int, help="an optional "
-            "chunk size (in bytes) to use")
+            "-s",
+            "--chunk-size",
+            metavar="SIZE",
+            type=int,
+            help="an optional " "chunk size (in bytes) to use",
+        )
 
     @staticmethod
     def run(parser, args):
@@ -1552,7 +1873,7 @@ class GCSDownloadCommand(Command):
 
 
 class GCSDownloadDirectoryCommand(Command):
-    '''Download directory from GCS.
+    """Download directory from GCS.
 
     Examples:
         # Download directory
@@ -1560,28 +1881,47 @@ class GCSDownloadDirectoryCommand(Command):
 
         # Download directory sync
         eta gcs download-dir --sync <cloud-folder> <local-dir>
-    '''
+    """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "cloud_dir", metavar="CLOUD_DIR", help="the GCS directory to "
-            "download")
+            "cloud_dir",
+            metavar="CLOUD_DIR",
+            help="the GCS directory to " "download",
+        )
         parser.add_argument(
-            "local_dir", metavar="LOCAL_DIR", help="the directory to which to "
-            "download files into")
+            "local_dir",
+            metavar="LOCAL_DIR",
+            help="the directory to which to " "download files into",
+        )
         parser.add_argument(
-            "--sync", action="store_true", help="whether to sync the local"
-            "directory to match the contents of the GCS directory")
+            "--sync",
+            action="store_true",
+            help="whether to sync the local"
+            "directory to match the contents of the GCS directory",
+        )
         parser.add_argument(
-            "-o", "--overwrite", action="store_true", help="whether to "
-            "overwrite existing files; only valid in `--sync` mode")
+            "-o",
+            "--overwrite",
+            action="store_true",
+            help="whether to "
+            "overwrite existing files; only valid in `--sync` mode",
+        )
         parser.add_argument(
-            "-r", "--recursive", action="store_true", help="whether to "
-            "recursively download the contents of subdirecotires")
+            "-r",
+            "--recursive",
+            action="store_true",
+            help="whether to "
+            "recursively download the contents of subdirecotires",
+        )
         parser.add_argument(
-            "-s", "--chunk-size", metavar="SIZE", type=int, help="an optional "
-            "chunk size (in bytes) to use")
+            "-s",
+            "--chunk-size",
+            metavar="SIZE",
+            type=int,
+            help="an optional " "chunk size (in bytes) to use",
+        )
 
     @staticmethod
     def run(parser, args):
@@ -1589,25 +1929,30 @@ class GCSDownloadDirectoryCommand(Command):
 
         if args.sync:
             client.download_dir_sync(
-                args.cloud_dir, args.local_dir, overwrite=args.overwrite,
-                recursive=args.recursive)
+                args.cloud_dir,
+                args.local_dir,
+                overwrite=args.overwrite,
+                recursive=args.recursive,
+            )
         else:
             client.download_dir(
-                args.cloud_dir, args.local_dir, recursive=args.recursive)
+                args.cloud_dir, args.local_dir, recursive=args.recursive
+            )
 
 
 class GCSDeleteCommand(Command):
-    '''Delete file from GCS.
+    """Delete file from GCS.
 
     Examples:
         # Delete file
         eta gcs delete <cloud-path>
-    '''
+    """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "cloud_path", metavar="CLOUD_PATH", help="the GCS file to delete")
+            "cloud_path", metavar="CLOUD_PATH", help="the GCS file to delete"
+        )
 
     @staticmethod
     def run(parser, args):
@@ -1618,18 +1963,20 @@ class GCSDeleteCommand(Command):
 
 
 class GCSDeleteDirCommand(Command):
-    '''Delete directory from GCS.
+    """Delete directory from GCS.
 
     Examples:
         # Delete directory
         eta gcs delete-dir <cloud-dir>
-    '''
+    """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "cloud_dir", metavar="CLOUD_DIR", help="the GCS directory to "
-            "delete")
+            "cloud_dir",
+            metavar="CLOUD_DIR",
+            help="the GCS directory to " "delete",
+        )
 
     @staticmethod
     def run(parser, args):
@@ -1640,7 +1987,7 @@ class GCSDeleteDirCommand(Command):
 
 
 class GoogleDriveStorageCommand(Command):
-    '''Tools for working with Google Drive.'''
+    """Tools for working with Google Drive."""
 
     @staticmethod
     def setup(parser):
@@ -1649,13 +1996,16 @@ class GoogleDriveStorageCommand(Command):
         _register_command(subparsers, "list", GoogleDriveListCommand)
         _register_command(subparsers, "upload", GoogleDriveUploadCommand)
         _register_command(
-            subparsers, "upload-dir", GoogleDriveUploadDirectoryCommand)
+            subparsers, "upload-dir", GoogleDriveUploadDirectoryCommand
+        )
         _register_command(subparsers, "download", GoogleDriveDownloadCommand)
         _register_command(
-            subparsers, "download-dir", GoogleDriveDownloadDirectoryCommand)
+            subparsers, "download-dir", GoogleDriveDownloadDirectoryCommand
+        )
         _register_command(subparsers, "delete", GoogleDriveDeleteCommand)
         _register_command(
-            subparsers, "delete-dir", GoogleDriveDeleteDirCommand)
+            subparsers, "delete-dir", GoogleDriveDeleteDirCommand
+        )
 
     @staticmethod
     def run(parser, args):
@@ -1663,7 +2013,7 @@ class GoogleDriveStorageCommand(Command):
 
 
 class GoogleDriveInfoCommand(Command):
-    '''Get information about files/folders in Google Drive.
+    """Get information about files/folders in Google Drive.
 
     Examples:
         # Get file info
@@ -1671,16 +2021,22 @@ class GoogleDriveInfoCommand(Command):
 
         # Get folder info
         eta gdrive info --folder <folder-id> [...]
-    '''
+    """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "ids", nargs="+", metavar="ID",
-            help="the ID(s) of the files of interest in Google Drive")
+            "ids",
+            nargs="+",
+            metavar="ID",
+            help="the ID(s) of the files of interest in Google Drive",
+        )
         parser.add_argument(
-            "-f", "--folder", action="store_true", help="whether the files of"
-            "interest are folders")
+            "-f",
+            "--folder",
+            action="store_true",
+            help="whether the files of" "interest are folders",
+        )
 
     @staticmethod
     def run(parser, args):
@@ -1693,12 +2049,13 @@ class GoogleDriveInfoCommand(Command):
 
         metadata = [
             client.get_file_metadata(fid, include_path=True)
-            for fid in args.ids]
+            for fid in args.ids
+        ]
         _print_google_drive_file_info_table(metadata)
 
 
 class GoogleDriveListCommand(Command):
-    '''List contents of a Google Drive folder.
+    """List contents of a Google Drive folder.
 
     Examples:
         # List folder contents
@@ -1794,72 +2151,111 @@ class GoogleDriveListCommand(Command):
 
         You can include special characters (":", "=", "<", ">", ",") in search
         strings by escaping them with "\\".
-    '''
+    """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "folder_id", metavar="ID", help="the ID of the folder to list")
+            "folder_id", metavar="ID", help="the ID of the folder to list"
+        )
         parser.add_argument(
-            "-r", "--recursive", action="store_true", help="whether to "
-            "recursively list the contents of subfolders")
+            "-r",
+            "--recursive",
+            action="store_true",
+            help="whether to " "recursively list the contents of subfolders",
+        )
         parser.add_argument(
-            "-l", "--limit", metavar="LIMIT", type=int, default=-1,
-            help="limit the number of files listed")
+            "-l",
+            "--limit",
+            metavar="LIMIT",
+            type=int,
+            default=-1,
+            help="limit the number of files listed",
+        )
         parser.add_argument(
-            "-s", "--search", metavar="SEARCH",
-            help="search to limit results when listing files")
+            "-s",
+            "--search",
+            metavar="SEARCH",
+            help="search to limit results when listing files",
+        )
         parser.add_argument(
-            "--sort-by", metavar="FIELD",
-            help="field to sort by when listing files")
+            "--sort-by",
+            metavar="FIELD",
+            help="field to sort by when listing files",
+        )
         parser.add_argument(
-            "--ascending", action="store_true",
-            help="whether to sort in ascending order")
+            "--ascending",
+            action="store_true",
+            help="whether to sort in ascending order",
+        )
         parser.add_argument(
-            "-c", "--count", action="store_true",
-            help="whether to show the number of files in the list")
+            "-c",
+            "--count",
+            action="store_true",
+            help="whether to show the number of files in the list",
+        )
 
     @staticmethod
     def run(parser, args):
         client = etas.GoogleDriveStorageClient()
 
         metadata = client.list_files_in_folder(
-            args.folder_id, recursive=args.recursive)
+            args.folder_id, recursive=args.recursive
+        )
 
         metadata = _filter_records(
-            metadata, args.limit, args.search, args.sort_by, args.ascending,
-            _GOOGLE_DRIVE_SEARCH_FIELDS_MAP)
+            metadata,
+            args.limit,
+            args.search,
+            args.sort_by,
+            args.ascending,
+            _GOOGLE_DRIVE_SEARCH_FIELDS_MAP,
+        )
 
         _print_google_drive_list_files_table(metadata, show_count=args.count)
 
 
 class GoogleDriveUploadCommand(Command):
-    '''Upload file to Google Drive.
+    """Upload file to Google Drive.
 
     Examples:
         # Upload file
         eta gdrive upload <local-path> <folder-id>
-    '''
+    """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "path", metavar="LOCAL_PATH",
-            help="the path to the file to upload")
+            "path", metavar="LOCAL_PATH", help="the path to the file to upload"
+        )
         parser.add_argument(
-            "folder_id", metavar="ID", help="the ID of the folder to upload "
-            "the file into")
+            "folder_id",
+            metavar="ID",
+            help="the ID of the folder to upload " "the file into",
+        )
         parser.add_argument(
-            "-f", "--filename", metavar="FILENAME", help="an optional "
+            "-f",
+            "--filename",
+            metavar="FILENAME",
+            help="an optional "
             "filename to include in the request. By default, the name of the "
-            "local file is used")
+            "local file is used",
+        )
         parser.add_argument(
-            "-t", "--content-type", metavar="TYPE", help="an optional content "
+            "-t",
+            "--content-type",
+            metavar="TYPE",
+            help="an optional content "
             "type of the file. By default, the type is guessed from the "
-            "filename")
+            "filename",
+        )
         parser.add_argument(
-            "-s", "--chunk-size", metavar="SIZE", type=int, help="an optional "
-            "chunk size (in bytes) to use")
+            "-s",
+            "--chunk-size",
+            metavar="SIZE",
+            type=int,
+            help="an optional " "chunk size (in bytes) to use",
+        )
 
     @staticmethod
     def run(parser, args):
@@ -1867,50 +2263,75 @@ class GoogleDriveUploadCommand(Command):
 
         print("Uploading '%s' to '%s'" % (args.path, args.folder_id))
         client.upload(
-            args.path, args.folder_id, filename=args.filename,
-            content_type=args.content_type)
+            args.path,
+            args.folder_id,
+            filename=args.filename,
+            content_type=args.content_type,
+        )
 
 
 class GoogleDriveUploadDirectoryCommand(Command):
-    '''Upload directory to Google Drive.
+    """Upload directory to Google Drive.
 
     Examples:
         # Upload directory
         eta gdrive upload-dir <local-dir> <folder-id>
-    '''
+    """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "local_dir", metavar="LOCAL_DIR", help="the directory of files to "
-            "upload")
+            "local_dir",
+            metavar="LOCAL_DIR",
+            help="the directory of files to " "upload",
+        )
         parser.add_argument(
-            "folder_id", metavar="ID", help="the ID of the folder to upload "
-            "the files into")
+            "folder_id",
+            metavar="ID",
+            help="the ID of the folder to upload " "the files into",
+        )
         parser.add_argument(
-            "-f", "--skip-failures", action="store_true", help="whether to "
-            "skip failures")
+            "-f",
+            "--skip-failures",
+            action="store_true",
+            help="whether to " "skip failures",
+        )
         parser.add_argument(
-            "-e", "--skip-existing", action="store_true", help="whether to "
-            "skip existing files")
+            "-e",
+            "--skip-existing",
+            action="store_true",
+            help="whether to " "skip existing files",
+        )
         parser.add_argument(
-            "-r", "--recursive", action="store_true", help="whether to "
-            "recursively upload the contents of subdirecotires")
+            "-r",
+            "--recursive",
+            action="store_true",
+            help="whether to "
+            "recursively upload the contents of subdirecotires",
+        )
         parser.add_argument(
-            "-s", "--chunk-size", metavar="SIZE", type=int, help="an optional "
-            "chunk size (in bytes) to use")
+            "-s",
+            "--chunk-size",
+            metavar="SIZE",
+            type=int,
+            help="an optional " "chunk size (in bytes) to use",
+        )
 
     @staticmethod
     def run(parser, args):
         client = etas.GoogleDriveStorageClient(chunk_size=args.chunk_size)
 
         client.upload_files_in_folder(
-            args.local_dir, args.folder_id, skip_failures=args.skip_failures,
-            skip_existing_files=args.skip_existing, recursive=args.recursive)
+            args.local_dir,
+            args.folder_id,
+            skip_failures=args.skip_failures,
+            skip_existing_files=args.skip_existing,
+            recursive=args.recursive,
+        )
 
 
 class GoogleDriveDownloadCommand(Command):
-    '''Download file from Google Drive.
+    """Download file from Google Drive.
 
     Examples:
         # Download file
@@ -1921,26 +2342,41 @@ class GoogleDriveDownloadCommand(Command):
 
         # Download file with link sharing turned on (no credentials required)
         eta gdrive download --public <file-id> <local-path>
-    '''
+    """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "file_id", metavar="ID", help="the ID of the file to download")
+            "file_id", metavar="ID", help="the ID of the file to download"
+        )
         parser.add_argument(
-            "path", nargs="?", metavar="LOCAL_PATH", help="the path to which "
+            "path",
+            nargs="?",
+            metavar="LOCAL_PATH",
+            help="the path to which "
             "to write the downloaded file. If not provided, the filename of "
-            "the file in Google Drive is used")
+            "the file in Google Drive is used",
+        )
         parser.add_argument(
-            "--public", action="store_true", help="whether the file has "
+            "--public",
+            action="store_true",
+            help="whether the file has "
             "public link sharing turned on and can therefore be downloaded "
-            "with no credentials")
+            "with no credentials",
+        )
         parser.add_argument(
-            "--print", action="store_true", help="whether to print the "
-            "download to stdout. If true, a file is NOT written to disk")
+            "--print",
+            action="store_true",
+            help="whether to print the "
+            "download to stdout. If true, a file is NOT written to disk",
+        )
         parser.add_argument(
-            "-s", "--chunk-size", metavar="SIZE", type=int, help="an optional "
-            "chunk size (in bytes) to use")
+            "-s",
+            "--chunk-size",
+            metavar="SIZE",
+            type=int,
+            help="an optional " "chunk size (in bytes) to use",
+        )
 
     @staticmethod
     def run(parser, args):
@@ -1952,14 +2388,18 @@ class GoogleDriveDownloadCommand(Command):
             if args.print:
                 print(
                     etaw.download_google_drive_file(
-                        args.file_id, chunk_size=args.chunk_size))
+                        args.file_id, chunk_size=args.chunk_size
+                    )
+                )
             elif args.path is None:
                 raise ValueError(
-                    "Must provide `path` when `--public` flag is set")
+                    "Must provide `path` when `--public` flag is set"
+                )
             else:
                 print("Downloading '%s' to '%s'" % (args.file_id, args.path))
                 etaw.download_google_drive_file(
-                    args.file_id, path=args.path, chunk_size=args.chunk_size)
+                    args.file_id, path=args.path, chunk_size=args.chunk_size
+                )
 
             return
 
@@ -1981,54 +2421,76 @@ class GoogleDriveDownloadCommand(Command):
 
 
 class GoogleDriveDownloadDirectoryCommand(Command):
-    '''Download directory from Google Drive.
+    """Download directory from Google Drive.
 
     Examples:
         # Download directory
         eta gdrive download-dir <folder-id> <local-dir>
-    '''
+    """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "folder_id", metavar="ID", help="the ID of the folder to download")
+            "folder_id", metavar="ID", help="the ID of the folder to download"
+        )
         parser.add_argument(
-            "local_dir", metavar="LOCAL_DIR", help="the directory to download "
-            "the files into")
+            "local_dir",
+            metavar="LOCAL_DIR",
+            help="the directory to download " "the files into",
+        )
         parser.add_argument(
-            "-f", "--skip-failures", action="store_true", help="whether to "
-            "skip failures")
+            "-f",
+            "--skip-failures",
+            action="store_true",
+            help="whether to " "skip failures",
+        )
         parser.add_argument(
-            "-e", "--skip-existing", action="store_true", help="whether to "
-            "skip existing files")
+            "-e",
+            "--skip-existing",
+            action="store_true",
+            help="whether to " "skip existing files",
+        )
         parser.add_argument(
-            "-r", "--recursive", action="store_true", help="whether to "
-            "recursively download the contents of subdirecotires")
+            "-r",
+            "--recursive",
+            action="store_true",
+            help="whether to "
+            "recursively download the contents of subdirecotires",
+        )
         parser.add_argument(
-            "-s", "--chunk-size", metavar="SIZE", type=int, help="an optional "
-            "chunk size (in bytes) to use")
+            "-s",
+            "--chunk-size",
+            metavar="SIZE",
+            type=int,
+            help="an optional " "chunk size (in bytes) to use",
+        )
 
     @staticmethod
     def run(parser, args):
         client = etas.GoogleDriveStorageClient(chunk_size=args.chunk_size)
 
         client.download_files_in_folder(
-            args.folder_id, args.local_dir, skip_failures=args.skip_failures,
-            skip_existing_files=args.skip_existing, recursive=args.recursive)
+            args.folder_id,
+            args.local_dir,
+            skip_failures=args.skip_failures,
+            skip_existing_files=args.skip_existing,
+            recursive=args.recursive,
+        )
 
 
 class GoogleDriveDeleteCommand(Command):
-    '''Delete file from Google Drive.
+    """Delete file from Google Drive.
 
     Examples:
         # Delete file
         eta gdrive delete <file-id>
-    '''
+    """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "id", metavar="ID", help="the ID of the file to delete")
+            "id", metavar="ID", help="the ID of the file to delete"
+        )
 
     @staticmethod
     def run(parser, args):
@@ -2039,7 +2501,7 @@ class GoogleDriveDeleteCommand(Command):
 
 
 class GoogleDriveDeleteDirCommand(Command):
-    '''Delete directory from Google Drive.
+    """Delete directory from Google Drive.
 
     Examples:
         # Delete directory
@@ -2047,18 +2509,26 @@ class GoogleDriveDeleteDirCommand(Command):
 
         # Delete the contents (only) of a directory
         eta gdrive delete-dir <folder-id> --contents-only
-    '''
+    """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "id", metavar="ID", help="the ID of the folder to delete")
+            "id", metavar="ID", help="the ID of the folder to delete"
+        )
         parser.add_argument(
-            "-c", "--contents-only", action="store_true", help="whether to "
-            "delete only the contents of the folder (not the folder itself)")
+            "-c",
+            "--contents-only",
+            action="store_true",
+            help="whether to "
+            "delete only the contents of the folder (not the folder itself)",
+        )
         parser.add_argument(
-            "-s", "--skip-failures", action="store_true", help="whether to "
-            "skip failures")
+            "-s",
+            "--skip-failures",
+            action="store_true",
+            help="whether to " "skip failures",
+        )
 
     @staticmethod
     def run(parser, args):
@@ -2066,14 +2536,15 @@ class GoogleDriveDeleteDirCommand(Command):
 
         if args.contents_only:
             client.delete_folder_contents(
-                args.id, skip_failures=args.skip_failures)
+                args.id, skip_failures=args.skip_failures
+            )
         else:
             print("Deleting '%s'" % args.id)
             client.delete_folder(args.id)
 
 
 class HTTPStorageCommand(Command):
-    '''Tools for working with HTTP storage.'''
+    """Tools for working with HTTP storage."""
 
     @staticmethod
     def setup(parser):
@@ -2088,28 +2559,39 @@ class HTTPStorageCommand(Command):
 
 
 class HTTPUploadCommand(Command):
-    '''Upload file via HTTP.
+    """Upload file via HTTP.
 
     Examples:
         # Upload file
         eta http upload <local-path> <url>
-    '''
+    """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "path", metavar="LOCAL_PATH", help="the path to the file to "
-            "upload")
+            "path",
+            metavar="LOCAL_PATH",
+            help="the path to the file to " "upload",
+        )
         parser.add_argument(
-            "url", metavar="URL", help="the URL to which to PUT the file")
+            "url", metavar="URL", help="the URL to which to PUT the file"
+        )
         parser.add_argument(
-            "-f", "--filename", metavar="FILENAME", help="an optional "
+            "-f",
+            "--filename",
+            metavar="FILENAME",
+            help="an optional "
             "filename to include in the request. By default, the name of the "
-            "local file is used")
+            "local file is used",
+        )
         parser.add_argument(
-            "-t", "--content-type", metavar="TYPE", help="an optional content "
+            "-t",
+            "--content-type",
+            metavar="TYPE",
+            help="an optional content "
             "type of the file. By default, the type is guessed from the "
-            "filename")
+            "filename",
+        )
 
     @staticmethod
     def run(parser, args):
@@ -2118,12 +2600,15 @@ class HTTPUploadCommand(Command):
 
         print("Uploading '%s' to '%s'" % (args.path, args.url))
         client.upload(
-            args.path, args.url, filename=args.filename,
-            content_type=args.content_type)
+            args.path,
+            args.url,
+            filename=args.filename,
+            content_type=args.content_type,
+        )
 
 
 class HTTPDownloadCommand(Command):
-    '''Download file via HTTP.
+    """Download file via HTTP.
 
     Examples:
         # Download file
@@ -2131,22 +2616,34 @@ class HTTPDownloadCommand(Command):
 
         # Print download to stdout
         eta http download <url> --print
-    '''
+    """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "url", metavar="URL", help="the URL from which to GET the file")
+            "url", metavar="URL", help="the URL from which to GET the file"
+        )
         parser.add_argument(
-            "path", nargs="?", metavar="LOCAL_PATH", help="the path to which "
+            "path",
+            nargs="?",
+            metavar="LOCAL_PATH",
+            help="the path to which "
             "to write the downloaded file. If not provided, the filename is "
-            "guessed from the URL")
+            "guessed from the URL",
+        )
         parser.add_argument(
-            "--print", action="store_true", help="whether to print the "
-            "download to stdout. If true, a file is NOT written to disk")
+            "--print",
+            action="store_true",
+            help="whether to print the "
+            "download to stdout. If true, a file is NOT written to disk",
+        )
         parser.add_argument(
-            "-s", "--chunk-size", metavar="SIZE", type=int, help="an optional "
-            "chunk size (in bytes) to use")
+            "-s",
+            "--chunk-size",
+            metavar="SIZE",
+            type=int,
+            help="an optional " "chunk size (in bytes) to use",
+        )
 
     @staticmethod
     def run(parser, args):
@@ -2161,12 +2658,12 @@ class HTTPDownloadCommand(Command):
 
 
 class HTTPDeleteCommand(Command):
-    '''Delete file via HTTP.
+    """Delete file via HTTP.
 
     Examples:
         # Delete file
         eta http delete <url>
-    '''
+    """
 
     @staticmethod
     def setup(parser):
@@ -2180,7 +2677,7 @@ class HTTPDeleteCommand(Command):
 
 
 class SFTPStorageCommand(Command):
-    '''Tools for working with SFTP storage.'''
+    """Tools for working with SFTP storage."""
 
     @staticmethod
     def setup(parser):
@@ -2198,31 +2695,37 @@ class SFTPStorageCommand(Command):
 
 
 class SFTPUploadCommand(Command):
-    '''Upload file via SFTP.
+    """Upload file via SFTP.
 
     Examples:
         # Upload file
         eta sftp upload <local-path> <user>@<host>:<remote-path>
         eta sftp upload --user <user> --host <host> <local-path> <remote-path>
-    '''
+    """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "local_path", metavar="LOCAL_PATH", help="the path to the file to "
-            "upload")
+            "local_path",
+            metavar="LOCAL_PATH",
+            help="the path to the file to " "upload",
+        )
         parser.add_argument(
-            "remote_path", metavar="REMOTE_PATH", help="the remote path to "
-            "write the file")
+            "remote_path",
+            metavar="REMOTE_PATH",
+            help="the remote path to " "write the file",
+        )
         parser.add_argument("--user", metavar="USER", help="the username")
         parser.add_argument("--host", metavar="HOST", help="the hostname")
         parser.add_argument(
-            "-p", "--port", metavar="PORT", help="the port to use")
+            "-p", "--port", metavar="PORT", help="the port to use"
+        )
 
     @staticmethod
     def run(parser, args):
         hostname, username, remote_path = _parse_remote_path(
-            args.remote_path, args.host, args.user)
+            args.remote_path, args.host, args.user
+        )
 
         client = etas.SFTPStorageClient(hostname, username, port=args.port)
 
@@ -2231,31 +2734,37 @@ class SFTPUploadCommand(Command):
 
 
 class SFTPUploadDirCommand(Command):
-    '''Upload directory via SFTP.
+    """Upload directory via SFTP.
 
     Examples:
         # Upload directory
         eta sftp upload-dir <local-dir> <user>@<host>:<remote-dir>
         eta sftp upload-dir --user <user> --host <host> <local-dir> <remote-dir>
-    '''
+    """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "local_dir", metavar="LOCAL_DIR", help="the path to the directory "
-            "to upload")
+            "local_dir",
+            metavar="LOCAL_DIR",
+            help="the path to the directory " "to upload",
+        )
         parser.add_argument(
-            "remote_dir", metavar="REMOTE_DIR", help="the remote directory to "
-            "write the uploaded directory")
+            "remote_dir",
+            metavar="REMOTE_DIR",
+            help="the remote directory to " "write the uploaded directory",
+        )
         parser.add_argument("--user", metavar="USER", help="the username")
         parser.add_argument("--host", metavar="HOST", help="the hostname")
         parser.add_argument(
-            "-p", "--port", metavar="PORT", help="the port to use")
+            "-p", "--port", metavar="PORT", help="the port to use"
+        )
 
     @staticmethod
     def run(parser, args):
         hostname, username, remote_dir = _parse_remote_path(
-            args.remote_dir, args.host, args.user)
+            args.remote_dir, args.host, args.user
+        )
 
         client = etas.SFTPStorageClient(hostname, username, port=args.port)
 
@@ -2264,7 +2773,7 @@ class SFTPUploadDirCommand(Command):
 
 
 class SFTPDownloadCommand(Command):
-    '''Download file via SFTP.
+    """Download file via SFTP.
 
     Examples:
         # Download file
@@ -2273,29 +2782,40 @@ class SFTPDownloadCommand(Command):
 
         # Print download to stdout
         eta sftp download <remote-path> --print
-    '''
+    """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "remote_path", metavar="REMOTE_PATH", help="the remote file to "
-            "download")
+            "remote_path",
+            metavar="REMOTE_PATH",
+            help="the remote file to " "download",
+        )
         parser.add_argument(
-            "local_path", nargs="?", metavar="LOCAL_PATH", help="the path to "
+            "local_path",
+            nargs="?",
+            metavar="LOCAL_PATH",
+            help="the path to "
             "which to write the downloaded file. If not provided, the "
-            "filename is guessed from the remote path")
+            "filename is guessed from the remote path",
+        )
         parser.add_argument("--user", metavar="USER", help="the username")
         parser.add_argument("--host", metavar="HOST", help="the hostname")
         parser.add_argument(
-            "-p", "--port", metavar="PORT", help="the port to use")
+            "-p", "--port", metavar="PORT", help="the port to use"
+        )
         parser.add_argument(
-            "--print", action="store_true", help="whether to print the "
-            "download to stdout. If true, a file is NOT written to disk")
+            "--print",
+            action="store_true",
+            help="whether to print the "
+            "download to stdout. If true, a file is NOT written to disk",
+        )
 
     @staticmethod
     def run(parser, args):
         hostname, username, remote_path = _parse_remote_path(
-            args.remote_path, args.host, args.user)
+            args.remote_path, args.host, args.user
+        )
 
         client = etas.SFTPStorageClient(hostname, username, port=args.port)
 
@@ -2308,31 +2828,37 @@ class SFTPDownloadCommand(Command):
 
 
 class SFTPDownloadDirCommand(Command):
-    '''Download directory via SFTP.
+    """Download directory via SFTP.
 
     Examples:
         # Download directory
         eta sftp download-dir <user>@<host>:<remote-dir> <local-dir>
         eta sftp download-dir --user <user> --host <host> <remote-dir> <local-dir>
-    '''
+    """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "remote_dir", metavar="REMOTE_DIR", help="the remote directory to "
-            "download")
+            "remote_dir",
+            metavar="REMOTE_DIR",
+            help="the remote directory to " "download",
+        )
         parser.add_argument(
-            "local_dir", metavar="LOCAL_DIR", help="the local directory to "
-            "write the downloaded directory")
+            "local_dir",
+            metavar="LOCAL_DIR",
+            help="the local directory to " "write the downloaded directory",
+        )
         parser.add_argument("--user", metavar="USER", help="the username")
         parser.add_argument("--host", metavar="HOST", help="the hostname")
         parser.add_argument(
-            "-p", "--port", metavar="PORT", help="the port to use")
+            "-p", "--port", metavar="PORT", help="the port to use"
+        )
 
     @staticmethod
     def run(parser, args):
         hostname, username, remote_dir = _parse_remote_path(
-            args.remote_dir, args.host, args.user)
+            args.remote_dir, args.host, args.user
+        )
 
         client = etas.SFTPStorageClient(hostname, username, port=args.port)
 
@@ -2341,28 +2867,32 @@ class SFTPDownloadDirCommand(Command):
 
 
 class SFTPDeleteCommand(Command):
-    '''Delete file via SFTP.
+    """Delete file via SFTP.
 
     Examples:
         # Delete file
         eta sftp delete <user>@<host>:<remote-path>
         eta sftp delete --user <user> --host <host> <remote-path>
-    '''
+    """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "remote_path", metavar="REMOTE_PATH", help="the remote file to "
-            "delete")
+            "remote_path",
+            metavar="REMOTE_PATH",
+            help="the remote file to " "delete",
+        )
         parser.add_argument("--user", metavar="USER", help="the username")
         parser.add_argument("--host", metavar="HOST", help="the hostname")
         parser.add_argument(
-            "-p", "--port", metavar="PORT", help="the port to use")
+            "-p", "--port", metavar="PORT", help="the port to use"
+        )
 
     @staticmethod
     def run(parser, args):
         hostname, username, remote_path = _parse_remote_path(
-            args.remote_path, args.host, args.user)
+            args.remote_path, args.host, args.user
+        )
 
         client = etas.SFTPStorageClient(hostname, username, port=args.port)
 
@@ -2371,28 +2901,32 @@ class SFTPDeleteCommand(Command):
 
 
 class SFTPDeleteDirCommand(Command):
-    '''Delete directory via SFTP.
+    """Delete directory via SFTP.
 
     Examples:
         # Delete directory
         eta sftp delete <user>@<host>:<remote-dir>
         eta sftp delete --user <user> --host <host> <remote-dir>
-    '''
+    """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "remote_dir", metavar="REMOTE_DIR", help="the remote directory to "
-            "delete")
+            "remote_dir",
+            metavar="REMOTE_DIR",
+            help="the remote directory to " "delete",
+        )
         parser.add_argument("--user", metavar="USER", help="the username")
         parser.add_argument("--host", metavar="HOST", help="the hostname")
         parser.add_argument(
-            "-p", "--port", metavar="PORT", help="the port to use")
+            "-p", "--port", metavar="PORT", help="the port to use"
+        )
 
     @staticmethod
     def run(parser, args):
         hostname, username, remote_dir = _parse_remote_path(
-            args.remote_dir, args.host, args.user)
+            args.remote_dir, args.host, args.user
+        )
 
         client = etas.SFTPStorageClient(hostname, username, port=args.port)
 
@@ -2409,14 +2943,14 @@ def _parse_remote_path(remote_path, hostname, username):
 
 
 class Searcher(object):
-    '''Base class for search classes.'''
+    """Base class for search classes."""
 
     def __init__(self, name):
         self.name = name
 
     @staticmethod
     def contains(usr, rec):
-        '''Determines whether the record value contains the user's search.
+        """Determines whether the record value contains the user's search.
 
         Args:
             usr: the user's search string
@@ -2424,12 +2958,12 @@ class Searcher(object):
 
         Returns:
             True/False
-        '''
+        """
         raise NotImplementedError("subclass must implement contains()")
 
     @staticmethod
     def compare(usr, rec, op):
-        '''Compares the user's search with the record value via the given
+        """Compares the user's search with the record value via the given
         operation.
 
         Args:
@@ -2439,12 +2973,12 @@ class Searcher(object):
 
         Returns:
             True/False
-        '''
+        """
         raise NotImplementedError("subclass must implement contains()")
 
 
 class StringSearcher(Searcher):
-    '''Class for searching on string fields.'''
+    """Class for searching on string fields."""
 
     @staticmethod
     def contains(usr, rec):
@@ -2456,7 +2990,7 @@ class StringSearcher(Searcher):
 
 
 class BytesSearcher(Searcher):
-    '''Class for searching on bytes fields.'''
+    """Class for searching on bytes fields."""
 
     @staticmethod
     def contains(usr, rec):
@@ -2470,7 +3004,7 @@ class BytesSearcher(Searcher):
 
 
 class DatetimeSearcher(Searcher):
-    '''Class for searching on datetime fields.'''
+    """Class for searching on datetime fields."""
 
     @staticmethod
     def contains(usr, rec):
@@ -2525,7 +3059,8 @@ def _filter_records(records, limit, search_str, sort_by, ascending, field_map):
         except KeyError:
             raise KeyError(
                 "Invalid sort by field '%s' (normalized to '%s'); supported "
-                "keys are %s" % (sort_by, sort_by_normalized, list(field_map)))
+                "keys are %s" % (sort_by, sort_by_normalized, list(field_map))
+            )
     elif reverse:
         records = list(reversed(records))
 
@@ -2566,8 +3101,9 @@ def _make_match_fcn(key, value, delimiter, field_map, search_str):
     if searcher is None:
         raise KeyError(
             "Invalid search '%s'; unsupported key '%s' (normalized to '%s'); "
-            "supported keys are %s" %
-            (search_str, key, key_normalized, list(field_map)))
+            "supported keys are %s"
+            % (search_str, key, key_normalized, list(field_map))
+        )
 
     if delimiter == ":":
         # Contains search
@@ -2576,8 +3112,9 @@ def _make_match_fcn(key, value, delimiter, field_map, search_str):
     op = _SEARCH_COMPARISON_OPERATORS.get(delimiter, None)
     if op is None:
         raise KeyError(
-            "Invalid search '%s'; unsupported delimiter '%s'" %
-            (search_str, delimiter))
+            "Invalid search '%s'; unsupported delimiter '%s'"
+            % (search_str, delimiter)
+        )
 
     # Comparison search
     return lambda record: searcher.compare(value, record[searcher.name], op)
@@ -2607,15 +3144,22 @@ def _remove_escapes(s, chars):
 
 
 def _print_s3_file_info_table(metadata, show_count=False):
-    records = [(
-        m["bucket"], _render_name(m["object_name"]), _render_bytes(m["size"]),
-        m["mime_type"], _render_datetime(m["last_modified"])
-    ) for m in metadata]
+    records = [
+        (
+            m["bucket"],
+            _render_name(m["object_name"]),
+            _render_bytes(m["size"]),
+            m["mime_type"],
+            _render_datetime(m["last_modified"]),
+        )
+        for m in metadata
+    ]
 
     table_str = tabulate(
         records,
         headers=["bucket", "name", "size", "type", "last modified"],
-        tablefmt=TABLE_FORMAT)
+        tablefmt=TABLE_FORMAT,
+    )
 
     print(table_str)
     if show_count:
@@ -2624,29 +3168,43 @@ def _print_s3_file_info_table(metadata, show_count=False):
 
 
 def _print_s3_folder_info_table(metadata):
-    records = [(
-        m["bucket"], m["path"], m["num_files"], _render_bytes(m["size"]),
-        _render_datetime(m["last_modified"])
-    ) for m in metadata]
+    records = [
+        (
+            m["bucket"],
+            m["path"],
+            m["num_files"],
+            _render_bytes(m["size"]),
+            _render_datetime(m["last_modified"]),
+        )
+        for m in metadata
+    ]
 
     table_str = tabulate(
         records,
         headers=["bucket", "path", "num files", "size", "last modified"],
-        tablefmt=TABLE_FORMAT)
+        tablefmt=TABLE_FORMAT,
+    )
 
     print(table_str)
 
 
 def _print_gcs_file_info_table(metadata, show_count=False):
-    records = [(
-        m["bucket"], _render_name(m["object_name"]), _render_bytes(m["size"]),
-        m["mime_type"], _render_datetime(m["last_modified"])
-    ) for m in metadata]
+    records = [
+        (
+            m["bucket"],
+            _render_name(m["object_name"]),
+            _render_bytes(m["size"]),
+            m["mime_type"],
+            _render_datetime(m["last_modified"]),
+        )
+        for m in metadata
+    ]
 
     table_str = tabulate(
         records,
         headers=["bucket", "name", "size", "type", "last modified"],
-        tablefmt=TABLE_FORMAT)
+        tablefmt=TABLE_FORMAT,
+    )
 
     print(table_str)
     if show_count:
@@ -2655,61 +3213,93 @@ def _print_gcs_file_info_table(metadata, show_count=False):
 
 
 def _print_gcs_folder_info_table(metadata):
-    records = [(
-        m["bucket"], m["path"], m["num_files"], _render_bytes(m["size"]),
-        _render_datetime(m["last_modified"])
-    ) for m in metadata]
+    records = [
+        (
+            m["bucket"],
+            m["path"],
+            m["num_files"],
+            _render_bytes(m["size"]),
+            _render_datetime(m["last_modified"]),
+        )
+        for m in metadata
+    ]
 
     table_str = tabulate(
         records,
         headers=["bucket", "path", "num files", "size", "last modified"],
-        tablefmt=TABLE_FORMAT)
+        tablefmt=TABLE_FORMAT,
+    )
 
     print(table_str)
 
 
 def _print_google_drive_file_info_table(metadata):
-    records = [(
-        m["drive_name"], m["path"], _render_bytes(m["size"]),
-        _parse_google_drive_mime_type(m["mime_type"]),
-        _render_datetime(m["last_modified"])
-    ) for m in metadata]
+    records = [
+        (
+            m["drive_name"],
+            m["path"],
+            _render_bytes(m["size"]),
+            _parse_google_drive_mime_type(m["mime_type"]),
+            _render_datetime(m["last_modified"]),
+        )
+        for m in metadata
+    ]
 
     table_str = tabulate(
         records,
         headers=["drive name", "path", "size", "type", "last modified"],
-        tablefmt=TABLE_FORMAT)
+        tablefmt=TABLE_FORMAT,
+    )
 
     print(table_str)
 
 
 def _print_google_drive_folder_info_table(metadata):
-    records = [(
-        m["drive_id"], m["drive_name"], m["path"], m["num_files"],
-        _render_bytes(m["size"]), _render_datetime(m["last_modified"])
-    ) for m in metadata]
+    records = [
+        (
+            m["drive_id"],
+            m["drive_name"],
+            m["path"],
+            m["num_files"],
+            _render_bytes(m["size"]),
+            _render_datetime(m["last_modified"]),
+        )
+        for m in metadata
+    ]
 
     table_str = tabulate(
         records,
         headers=[
-            "drive id", "drive name", "path", "num files", "size",
-            "last modified"],
-        tablefmt=TABLE_FORMAT)
+            "drive id",
+            "drive name",
+            "path",
+            "num files",
+            "size",
+            "last modified",
+        ],
+        tablefmt=TABLE_FORMAT,
+    )
 
     print(table_str)
 
 
 def _print_google_drive_list_files_table(metadata, show_count=False):
-    records = [(
-        m["id"], _render_name(m["name"]), _render_bytes(m["size"]),
-        _parse_google_drive_mime_type(m["mime_type"]),
-        _render_datetime(m["last_modified"])
-    ) for m in metadata]
+    records = [
+        (
+            m["id"],
+            _render_name(m["name"]),
+            _render_bytes(m["size"]),
+            _parse_google_drive_mime_type(m["mime_type"]),
+            _render_datetime(m["last_modified"]),
+        )
+        for m in metadata
+    ]
 
     table_str = tabulate(
         records,
         headers=["id", "name", "size", "type", "last modified"],
-        tablefmt=TABLE_FORMAT)
+        tablefmt=TABLE_FORMAT,
+    )
 
     print(table_str)
     if show_count:
@@ -2733,7 +3323,7 @@ def _parse_datetime(datetime_or_str):
 
 def _render_name(name):
     if MAX_NAME_COLUMN_WIDTH is not None and len(name) > MAX_NAME_COLUMN_WIDTH:
-        name = name[:(MAX_NAME_COLUMN_WIDTH - 4)] + " ..."
+        name = name[: (MAX_NAME_COLUMN_WIDTH - 4)] + " ..."
     return name
 
 
@@ -2779,7 +3369,6 @@ def _iter_subparsers(parser):
 
 
 class _RecursiveHelpAction(argparse._HelpAction):
-
     def __call__(self, parser, *args, **kwargs):
         self._recurse(parser)
         parser.exit()
@@ -2799,13 +3388,19 @@ def _register_main_command(command, version=None):
 
     if version:
         parser.add_argument(
-            "-v", "--version", action="version", version=version,
-            help="show version info")
+            "-v",
+            "--version",
+            action="version",
+            version=version,
+            help="show version info",
+        )
 
     if _ADD_RECURSIVE_HELP_FLAGS and _has_subparsers(parser):
         parser.add_argument(
-            "--all-help", action=_RecursiveHelpAction,
-            help="show help recurisvely and exit")
+            "--all-help",
+            action=_RecursiveHelpAction,
+            help="show help recurisvely and exit",
+        )
 
     argcomplete.autocomplete(parser)
     return parser
@@ -2813,17 +3408,21 @@ def _register_main_command(command, version=None):
 
 def _register_command(parent, name, command):
     parser = parent.add_parser(
-        name, help=command.__doc__.splitlines()[0],
+        name,
+        help=command.__doc__.splitlines()[0],
         description=command.__doc__.rstrip(),
-        formatter_class=argparse.RawTextHelpFormatter)
+        formatter_class=argparse.RawTextHelpFormatter,
+    )
 
     parser.set_defaults(run=lambda args: command.run(parser, args))
     command.setup(parser)
 
     if _ADD_RECURSIVE_HELP_FLAGS and _has_subparsers(parser):
         parser.add_argument(
-            "--all-help", action=_RecursiveHelpAction,
-            help="show help recurisvely and exit")
+            "--all-help",
+            action=_RecursiveHelpAction,
+            help="show help recurisvely and exit",
+        )
 
     return parser
 
@@ -2836,7 +3435,7 @@ _ADD_RECURSIVE_HELP_FLAGS = True
 
 
 def main():
-    '''Executes the `eta` tool with the given command-line args.'''
+    """Executes the `eta` tool with the given command-line args."""
     parser = _register_main_command(ETACommand, version=etac.VERSION_LONG)
     args = parser.parse_args()
     args.run(args)

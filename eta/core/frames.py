@@ -1,9 +1,9 @@
-'''
+"""
 Core tools and data structures for working with frames of videos.
 
 Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
-'''
+"""
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
 # pragma pylint: disable=wildcard-import
@@ -12,6 +12,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
+
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
@@ -24,7 +25,7 @@ import eta.core.serial as etas
 
 
 class FrameLabels(etal.Labels):
-    '''Class encapsulating labels for a frame, i.e., an image or a video frame.
+    """Class encapsulating labels for a frame, i.e., an image or a video frame.
 
     FrameLabels are spatial concepts that describe a collection of information
     about a specific frame. FrameLabels can have frame-level attributes,
@@ -38,12 +39,18 @@ class FrameLabels(etal.Labels):
         attrs: an AttributeContainer of attributes of the frame
         objects: a DetectedObjectContainer of objects in the frame
         events: a DetectedEventContainer of events in the frame
-    '''
+    """
 
     def __init__(
-            self, frame_number=None, mask=None, mask_index=None, attrs=None,
-            objects=None, events=None):
-        '''Creates a FrameLabels instance.
+        self,
+        frame_number=None,
+        mask=None,
+        mask_index=None,
+        attrs=None,
+        objects=None,
+        events=None,
+    ):
+        """Creates a FrameLabels instance.
 
         Args:
             frame_number: (optional) a frame number for the labels
@@ -54,7 +61,7 @@ class FrameLabels(etal.Labels):
             objects: (optional) a DetectedObjectContainer of objects for the
                 frame
             events: (optional) a DetectedEventContainer of events for the frame
-        '''
+        """
         self.frame_number = frame_number
         self.mask = mask
         self.mask_index = mask_index
@@ -64,39 +71,42 @@ class FrameLabels(etal.Labels):
 
     @property
     def is_empty(self):
-        '''Whether the frame has no labels of any kind.'''
+        """Whether the frame has no labels of any kind."""
         return not (
-            self.has_mask or self.has_attributes or self.has_objects
-            or self.has_events)
+            self.has_mask
+            or self.has_attributes
+            or self.has_objects
+            or self.has_events
+        )
 
     @property
     def has_frame_number(self):
-        '''Whether the frame has a frame number.'''
+        """Whether the frame has a frame number."""
         return self.frame_number is not None
 
     @property
     def has_mask(self):
-        '''Whether this frame has a segmentation mask.'''
+        """Whether this frame has a segmentation mask."""
         return self.mask is not None
 
     @property
     def has_mask_index(self):
-        '''Whether this frame has a segmentation mask index.'''
+        """Whether this frame has a segmentation mask index."""
         return self.mask_index is not None
 
     @property
     def has_attributes(self):
-        '''Whether the frame has at least one attribute.'''
+        """Whether the frame has at least one attribute."""
         return bool(self.attrs)
 
     @property
     def has_objects(self):
-        '''Whether the frame has at least one object.'''
+        """Whether the frame has at least one object."""
         return bool(self.objects)
 
     @property
     def has_object_attributes(self):
-        '''Whether the frame has at least one object with attributes.'''
+        """Whether the frame has at least one object with attributes."""
         for obj in self.objects:
             if obj.has_attributes:
                 return True
@@ -105,12 +115,12 @@ class FrameLabels(etal.Labels):
 
     @property
     def has_events(self):
-        '''Whether the frame has at least one event.'''
+        """Whether the frame has at least one event."""
         return bool(self.events)
 
     @property
     def has_event_attributes(self):
-        '''Whether the frame has at least one event with attributes.'''
+        """Whether the frame has at least one event with attributes."""
         for event in self.events:
             if event.has_attributes:
                 return True
@@ -118,182 +128,182 @@ class FrameLabels(etal.Labels):
         return False
 
     def iter_attributes(self):
-        '''Returns an iterator over the attributes of the frame.
+        """Returns an iterator over the attributes of the frame.
 
         Returns:
             an iterator over `Attribute`s
-        '''
+        """
         return iter(self.attrs)
 
     def iter_objects(self):
-        '''Returns an iterator over the objects in the frame.
+        """Returns an iterator over the objects in the frame.
 
         Returns:
             an iterator over `DetectedObject`s
-        '''
+        """
         return iter(self.objects)
 
     def iter_events(self):
-        '''Returns an iterator over the events in the frame.
+        """Returns an iterator over the events in the frame.
 
         Returns:
             an iterator over `DetectedEvent`s
-        '''
+        """
         return iter(self.events)
 
     def get_object_indexes(self):
-        '''Returns the set of `index`es of all objects in the frame.
+        """Returns the set of `index`es of all objects in the frame.
 
         `None` indexes are omitted.
 
         Returns:
             a set of indexes
-        '''
+        """
         obj_indexes = self.objects.get_indexes()
         obj_indexes.update(self.events.get_object_indexes())
         return obj_indexes
 
     def offset_object_indexes(self, offset):
-        '''Adds the given offset to all objects with `index`es in the frame.
+        """Adds the given offset to all objects with `index`es in the frame.
 
         Args:
             offset: the integer offset
-        '''
+        """
         self.objects.offset_indexes(offset)
         self.events.offset_object_indexes(offset)
 
     def clear_object_indexes(self):
-        '''Clears the `index` of all objects in the frame.'''
+        """Clears the `index` of all objects in the frame."""
         self.objects.clear_indexes()
         self.events.clear_object_indexes()
 
     def get_event_indexes(self):
-        '''Returns the set of `index`es of all events in the frame.
+        """Returns the set of `index`es of all events in the frame.
 
         `None` indexes are omitted.
 
         Returns:
             a set of indexes
-        '''
+        """
         return self.events.get_indexes()
 
     def offset_event_indexes(self, offset):
-        '''Adds the given offset to all events with `index`es in the frame.
+        """Adds the given offset to all events with `index`es in the frame.
 
         Args:
             offset: the integer offset
-        '''
+        """
         self.events.offset_indexes(offset)
 
     def clear_event_indexes(self):
-        '''Clears the `index` of all events in the frame.'''
+        """Clears the `index` of all events in the frame."""
         self.events.clear_indexes()
 
     def add_attribute(self, attr):
-        '''Adds the attribute to the frame.
+        """Adds the attribute to the frame.
 
         Args:
             attr: an Attribute
-        '''
+        """
         self.attrs.add(attr)
 
     def add_attributes(self, attrs):
-        '''Adds the attributes to the frame.
+        """Adds the attributes to the frame.
 
         Args:
             attrs: an AttributeContainer
-        '''
+        """
         self.attrs.add_container(attrs)
 
     def add_object(self, obj):
-        '''Adds the object to the frame.
+        """Adds the object to the frame.
 
         Args:
             obj: a DetectedObject
-        '''
+        """
         self.objects.add(obj)
 
     def add_objects(self, objs):
-        '''Adds the objects to the frame.
+        """Adds the objects to the frame.
 
         Args:
             objs: a DetectedObjectContainer
-        '''
+        """
         self.objects.add_container(objs)
 
     def add_event(self, event):
-        '''Adds the event to the frame.
+        """Adds the event to the frame.
 
         Args:
             event: a DetectedEvent
-        '''
+        """
         self.events.add(event)
 
     def add_events(self, events):
-        '''Adds the events to the frame.
+        """Adds the events to the frame.
 
         Args:
             events: a DetectedEventContainer
-        '''
+        """
         self.events.add_container(events)
 
     def pop_attributes(self):
-        '''Pops the frame-level attributes from the frame.
+        """Pops the frame-level attributes from the frame.
 
         Returns:
             an AttributeContainer
-        '''
+        """
         attrs = self.attrs
         self.clear_attributes()
         return attrs
 
     def pop_objects(self):
-        '''Pops the objects from the frame.
+        """Pops the objects from the frame.
 
         Returns:
             a DetectedObjectContainer
-        '''
+        """
         objects = self.objects
         self.clear_objects()
         return objects
 
     def pop_events(self):
-        '''Pops the events from the frame.
+        """Pops the events from the frame.
 
         Returns:
             a DetectedEventContainer
-        '''
+        """
         events = self.events
         self.clear_events()
         return events
 
     def clear_attributes(self):
-        '''Removes all frame-level attributes from the frame.'''
+        """Removes all frame-level attributes from the frame."""
         self.attrs = etad.AttributeContainer()
 
     def clear_objects(self):
-        '''Removes all objects from the frame.'''
+        """Removes all objects from the frame."""
         self.objects = etao.DetectedObjectContainer()
 
     def clear_events(self):
-        '''Removes all events from the frame.'''
+        """Removes all events from the frame."""
         self.events = etae.DetectedEventContainer()
 
     def clear(self):
-        '''Removes all labels from the frame.'''
+        """Removes all labels from the frame."""
         self.clear_attributes()
         self.clear_objects()
         self.clear_events()
 
     def merge_labels(self, frame_labels, reindex=False):
-        '''Merges the given FrameLabels into this labels.
+        """Merges the given FrameLabels into this labels.
 
         Args:
             frame_labels: a FrameLabels
             reindex: whether to offset the `index` fields of objects and events
                 in `frame_labels` before merging so that all indices are
                 unique. The default is False
-        '''
+        """
         if reindex:
             self._reindex_objects(frame_labels)
             self._reindex_events(frame_labels)
@@ -308,33 +318,34 @@ class FrameLabels(etal.Labels):
         self.add_events(frame_labels.events)
 
     def filter_by_schema(self, schema):
-        '''Filters the frame labels by the given schema.
+        """Filters the frame labels by the given schema.
 
         Args:
             schema: a FrameLabelsSchema
-        '''
+        """
         self.attrs.filter_by_schema(
-            schema.frames, constant_schema=schema.attrs)
+            schema.frames, constant_schema=schema.attrs
+        )
         self.objects.filter_by_schema(schema.objects)
         self.events.filter_by_schema(schema.events)
 
     def remove_objects_without_attrs(self, labels=None):
-        '''Removes objects from the frame that do not have attributes.
+        """Removes objects from the frame that do not have attributes.
 
         Args:
             labels: an optional list of object `label` strings to which to
                 restrict attention when filtering. By default, all objects are
                 processed
-        '''
+        """
         self.objects.remove_objects_without_attrs(labels=labels)
         self.events.remove_objects_without_attrs(labels=labels)
 
     def attributes(self):
-        '''Returns the list of class attributes that will be serialized.
+        """Returns the list of class attributes that will be serialized.
 
         Returns:
             a list of attribute names
-        '''
+        """
         _attrs = []
         if self.has_frame_number:
             _attrs.append("frame_number")
@@ -352,7 +363,7 @@ class FrameLabels(etal.Labels):
 
     @classmethod
     def from_dict(cls, d, **kwargs):
-        '''Constructs a FrameLabels from a JSON dictionary.
+        """Constructs a FrameLabels from a JSON dictionary.
 
         Args:
             d: a JSON dictionary
@@ -361,7 +372,7 @@ class FrameLabels(etal.Labels):
 
         Returns:
             a FrameLabels
-        '''
+        """
         frame_number = d.get("frame_number", None)
 
         mask = d.get("mask", None)
@@ -385,8 +396,14 @@ class FrameLabels(etal.Labels):
             events = etae.DetectedEventContainer.from_dict(events)
 
         return cls(
-            frame_number=frame_number, mask=mask, mask_index=mask_index,
-            attrs=attrs, objects=objects, events=events, **kwargs)
+            frame_number=frame_number,
+            mask=mask,
+            mask_index=mask_index,
+            attrs=attrs,
+            objects=objects,
+            events=events,
+            **kwargs
+        )
 
     def _reindex_objects(self, frame_labels):
         self_indices = self._get_object_indices(self)
@@ -456,7 +473,7 @@ class FrameLabels(etal.Labels):
 
 
 class FrameLabelsSchema(etal.LabelsSchema):
-    '''Schema describing the content of one or more FrameLabels.
+    """Schema describing the content of one or more FrameLabels.
 
     Attributes:
         attrs: an AttributeContainerSchema describing the constant attributes
@@ -466,10 +483,10 @@ class FrameLabelsSchema(etal.LabelsSchema):
         objects: an ObjectContainerSchema describing the objects in the
             frame(s)
         events: an EventContainerSchema describing the events in the frame(s)
-    '''
+    """
 
     def __init__(self, attrs=None, frames=None, objects=None, events=None):
-        '''Creates a FrameLabelsSchema instance.
+        """Creates a FrameLabelsSchema instance.
 
         Args:
             attrs: (optional) an AttributeContainerSchema describing the
@@ -480,7 +497,7 @@ class FrameLabelsSchema(etal.LabelsSchema):
                 in the frame(s)
             events: (optional) an EventContainerSchema describing the events
                 in the frame(s)
-        '''
+        """
         self.attrs = attrs or etad.AttributeContainerSchema()
         self.frames = frames or etad.AttributeContainerSchema()
         self.objects = objects or etao.ObjectContainerSchema()
@@ -488,33 +505,36 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
     @property
     def is_empty(self):
-        '''Whether the schema has no labels of any kind.'''
+        """Whether the schema has no labels of any kind."""
         return not (
-            self.has_constant_attributes or self.has_frame_attributes or
-            self.has_objects or self.has_events)
+            self.has_constant_attributes
+            or self.has_frame_attributes
+            or self.has_objects
+            or self.has_events
+        )
 
     @property
     def has_constant_attributes(self):
-        '''Whether the schema has at least one constant AttributeSchema.'''
+        """Whether the schema has at least one constant AttributeSchema."""
         return bool(self.attrs)
 
     @property
     def has_frame_attributes(self):
-        '''Whether the schema has at least one frame-level AttributeSchema.'''
+        """Whether the schema has at least one frame-level AttributeSchema."""
         return bool(self.frames)
 
     @property
     def has_objects(self):
-        '''Whether the schema has at least one ObjectSchema.'''
+        """Whether the schema has at least one ObjectSchema."""
         return bool(self.objects)
 
     @property
     def has_events(self):
-        '''Whether the schema has at least one EventSchema.'''
+        """Whether the schema has at least one EventSchema."""
         return bool(self.events)
 
     def has_constant_attribute(self, attr_name):
-        '''Whether the schema has a constant frame attribute with the given
+        """Whether the schema has a constant frame attribute with the given
         name.
 
         Args:
@@ -522,11 +542,11 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Returns:
             True/False
-        '''
+        """
         return self.attrs.has_attribute(attr_name)
 
     def get_constant_attribute_schema(self, attr_name):
-        '''Gets the AttributeSchema for the constant frame attribute with the
+        """Gets the AttributeSchema for the constant frame attribute with the
         given name.
 
         Args:
@@ -534,11 +554,11 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Returns:
             the AttributeSchema
-        '''
+        """
         return self.attrs.get_attribute_schema(attr_name)
 
     def get_constant_attribute_class(self, attr_name):
-        '''Gets the Attribute class for the constant frame attribute with the
+        """Gets the Attribute class for the constant frame attribute with the
         given name.
 
         Args:
@@ -546,22 +566,22 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Returns:
             the Attribute class
-        '''
+        """
         return self.attrs.get_attribute_class(attr_name)
 
     def has_frame_attribute(self, attr_name):
-        '''Whether the schema has a frame-level attribute with the given name.
+        """Whether the schema has a frame-level attribute with the given name.
 
         Args:
             attr_name: the frame-level attribute name
 
         Returns:
             True/False
-        '''
+        """
         return self.frames.has_attribute(attr_name)
 
     def get_frame_attribute_schema(self, attr_name):
-        '''Gets the AttributeSchema for the frame-level attribute with the
+        """Gets the AttributeSchema for the frame-level attribute with the
         given name.
 
         Args:
@@ -569,11 +589,11 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Returns:
             the AttributeSchema
-        '''
+        """
         return self.frames.get_attribute_schema(attr_name)
 
     def get_frame_attribute_class(self, attr_name):
-        '''Gets the Attribute class for the frame-level attribute with the
+        """Gets the Attribute class for the frame-level attribute with the
         given name.
 
         Args:
@@ -581,33 +601,33 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Returns:
             the Attribute class
-        '''
+        """
         return self.frames.get_attribute_class(attr_name)
 
     def has_object_label(self, label):
-        '''Whether the schema has an object with the given label.
+        """Whether the schema has an object with the given label.
 
         Args:
             label: the object label
 
         Returns:
             True/False
-        '''
+        """
         return self.objects.has_object_label(label)
 
     def get_object_schema(self, label):
-        '''Gets the ObjectSchema for the object with the given label.
+        """Gets the ObjectSchema for the object with the given label.
 
         Args:
             label: the object label
 
         Returns:
             the ObjectSchema
-        '''
+        """
         return self.objects.get_object_schema(label)
 
     def has_object_attribute(self, label, attr_name):
-        '''Whether the schema has an object with the given label with an
+        """Whether the schema has an object with the given label with an
         object-level attribute with the given name.
 
         Args:
@@ -616,11 +636,11 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Returns:
             True/False
-        '''
+        """
         return self.objects.has_object_attribute(label, attr_name)
 
     def get_object_attribute_schema(self, label, attr_name):
-        '''Gets the AttributeSchema for the object-level attribute of the given
+        """Gets the AttributeSchema for the object-level attribute of the given
         name for the object with the given label.
 
         Args:
@@ -629,11 +649,11 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Returns:
             the AttributeSchema
-        '''
+        """
         return self.objects.get_object_attribute_schema(label, attr_name)
 
     def get_object_attribute_class(self, label, attr_name):
-        '''Gets the Attribute class for the object-level attribute of the given
+        """Gets the Attribute class for the object-level attribute of the given
         name for the object with the given label.
 
         Args:
@@ -642,11 +662,11 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Returns:
             the Attribute class
-        '''
+        """
         return self.objects.get_object_attribute_class(label, attr_name)
 
     def has_object_frame_attribute(self, label, attr_name):
-        '''Whether the schema has an object with the given label with a
+        """Whether the schema has an object with the given label with a
         frame-level attribute with the given name.
 
         Args:
@@ -655,11 +675,11 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Returns:
             True/False
-        '''
+        """
         return self.objects.has_frame_attribute(label, attr_name)
 
     def get_object_frame_attribute_schema(self, label, attr_name):
-        '''Gets the AttributeSchema for the frame-level attribute of the given
+        """Gets the AttributeSchema for the frame-level attribute of the given
         name for the object with the given label.
 
         Args:
@@ -668,11 +688,11 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Returns:
             the AttributeSchema
-        '''
+        """
         return self.objects.get_frame_attribute_schema(label, attr_name)
 
     def get_object_frame_attribute_class(self, label, attr_name):
-        '''Gets the Attribute class for the frame-level attribute of the given
+        """Gets the Attribute class for the frame-level attribute of the given
         name for the object with the given label.
 
         Args:
@@ -681,33 +701,33 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Returns:
             the Attribute class
-        '''
+        """
         return self.objects.get_frame_attribute_class(label, attr_name)
 
     def has_event_label(self, label):
-        '''Whether the schema has an event with the given label.
+        """Whether the schema has an event with the given label.
 
         Args:
             label: the event label
 
         Returns:
             True/False
-        '''
+        """
         return self.events.has_event_label(label)
 
     def get_event_schema(self, label):
-        '''Gets the EventSchema for the event with the given label.
+        """Gets the EventSchema for the event with the given label.
 
         Args:
             label: the event label
 
         Returns:
             the EventSchema
-        '''
+        """
         return self.events.get_event_schema(label)
 
     def has_event_attribute(self, label, attr_name):
-        '''Whether the schema has an event with the given label with an
+        """Whether the schema has an event with the given label with an
         event-level attribute with the given name.
 
         Args:
@@ -716,11 +736,11 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Returns:
             True/False
-        '''
+        """
         return self.events.has_event_attribute(label, attr_name)
 
     def get_event_attribute_schema(self, label, attr_name):
-        '''Gets the AttributeSchema for the event-level attribute of the given
+        """Gets the AttributeSchema for the event-level attribute of the given
         name for the event with the given label.
 
         Args:
@@ -729,11 +749,11 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Returns:
             the AttributeSchema
-        '''
+        """
         return self.events.get_event_attribute_schema(label, attr_name)
 
     def get_event_attribute_class(self, label, attr_name):
-        '''Gets the Attribute class for the event-level attribute of the given
+        """Gets the Attribute class for the event-level attribute of the given
         name for the event with the given label.
 
         Args:
@@ -742,11 +762,11 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Returns:
             the Attribute class
-        '''
+        """
         return self.events.get_event_attribute_class(label, attr_name)
 
     def has_event_frame_attribute(self, label, attr_name):
-        '''Whether the schema has an event with the given label with a
+        """Whether the schema has an event with the given label with a
         frame-level attribute with the given name.
 
         Args:
@@ -755,11 +775,11 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Returns:
             True/False
-        '''
+        """
         return self.events.has_frame_attribute(label, attr_name)
 
     def get_event_frame_attribute_schema(self, label, attr_name):
-        '''Gets the AttributeSchema for the frame-level attribute of the given
+        """Gets the AttributeSchema for the frame-level attribute of the given
         name for the event with the given label.
 
         Args:
@@ -768,11 +788,11 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Returns:
             the AttributeSchema
-        '''
+        """
         return self.events.get_frame_attribute_schema(label, attr_name)
 
     def get_event_frame_attribute_class(self, label, attr_name):
-        '''Gets the Attribute class for the frame-level attribute of the given
+        """Gets the Attribute class for the frame-level attribute of the given
         name for the event with the given label.
 
         Args:
@@ -781,11 +801,11 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Returns:
             the Attribute class
-        '''
+        """
         return self.events.get_frame_attribute_class(label, attr_name)
 
     def has_event_object_label(self, event_label, obj_label):
-        '''Whether the schema has an event with the given label with an object
+        """Whether the schema has an event with the given label with an object
         with the given label.
 
         Args:
@@ -794,11 +814,11 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Returns:
             True/False
-        '''
+        """
         return self.events.has_object_label(event_label, obj_label)
 
     def get_event_object_schema(self, event_label, obj_label):
-        '''Gets the ObjectSchema for the object with the given label from the
+        """Gets the ObjectSchema for the object with the given label from the
         event with the given label.
 
         Args:
@@ -807,11 +827,11 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Returns:
             the ObjectSchema
-        '''
+        """
         return self.events.get_object_schema(event_label, obj_label)
 
     def has_event_object_attribute(self, event_label, obj_label, attr_name):
-        '''Whether the schema has an event of the given label with an object
+        """Whether the schema has an event of the given label with an object
         of the given label with an object-level attribute of the given name.
 
         Args:
@@ -821,13 +841,15 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Returns:
             True/False
-        '''
+        """
         return self.events.has_object_attribute(
-            event_label, obj_label, attr_name)
+            event_label, obj_label, attr_name
+        )
 
     def get_event_object_attribute_schema(
-            self, event_label, obj_label, attr_name):
-        '''Gets the AttributeSchema for the object-level attribute of the
+        self, event_label, obj_label, attr_name
+    ):
+        """Gets the AttributeSchema for the object-level attribute of the
         given name for the object with the given label from the event with the
         given label.
 
@@ -838,13 +860,15 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Returns:
             the AttributeSchema
-        '''
+        """
         return self.events.get_object_attribute_schema(
-            event_label, obj_label, attr_name)
+            event_label, obj_label, attr_name
+        )
 
     def get_event_object_attribute_class(
-            self, event_label, obj_label, attr_name):
-        '''Gets the Attribute class for the object-level attribute of the
+        self, event_label, obj_label, attr_name
+    ):
+        """Gets the Attribute class for the object-level attribute of the
         given name for the object with the given label from the event with the
         given label.
 
@@ -855,13 +879,15 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Returns:
             the Attribute
-        '''
+        """
         return self.events.get_object_attribute_class(
-            event_label, obj_label, attr_name)
+            event_label, obj_label, attr_name
+        )
 
     def has_event_object_frame_attribute(
-            self, event_label, obj_label, attr_name):
-        '''Whether the schema has an event of the given label with an object
+        self, event_label, obj_label, attr_name
+    ):
+        """Whether the schema has an event of the given label with an object
         of the given label with a frame-level attribute of the given name.
 
         Args:
@@ -871,13 +897,15 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Returns:
             True/False
-        '''
+        """
         return self.events.has_object_frame_attribute(
-            event_label, obj_label, attr_name)
+            event_label, obj_label, attr_name
+        )
 
     def get_event_object_frame_attribute_schema(
-            self, event_label, obj_label, attr_name):
-        '''Gets the AttributeSchema for the frame-level attribute of the
+        self, event_label, obj_label, attr_name
+    ):
+        """Gets the AttributeSchema for the frame-level attribute of the
         given name for the object with the given label from the event with the
         given label.
 
@@ -888,13 +916,15 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Returns:
             the AttributeSchema
-        '''
+        """
         return self.events.get_object_frame_attribute_schema(
-            event_label, obj_label, attr_name)
+            event_label, obj_label, attr_name
+        )
 
     def get_event_object_frame_attribute_class(
-            self, event_label, obj_label, attr_name):
-        '''Gets the Attribute class for the frame-level attribute of the
+        self, event_label, obj_label, attr_name
+    ):
+        """Gets the Attribute class for the frame-level attribute of the
         given name for the object with the given label from the event with the
         given label.
 
@@ -905,177 +935,178 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Returns:
             the Attribute
-        '''
+        """
         return self.events.get_object_frame_attribute_class(
-            event_label, obj_label, attr_name)
+            event_label, obj_label, attr_name
+        )
 
     def add_constant_attribute(self, attr):
-        '''Adds the given constant attribute to the schema.
+        """Adds the given constant attribute to the schema.
 
         Args:
             attr: an Attribute
-        '''
+        """
         self.attrs.add_attribute(attr)
 
     def add_constant_attributes(self, attrs):
-        '''Adds the given constant attributes to the schema.
+        """Adds the given constant attributes to the schema.
 
         Args:
             attrs: an AttributeContainer
-        '''
+        """
         self.attrs.add_attributes(attrs)
 
     def add_frame_attribute(self, attr):
-        '''Adds the given frame-level attribute to the schema.
+        """Adds the given frame-level attribute to the schema.
 
         Args:
             attr: an Attribute
-        '''
+        """
         self.frames.add_attribute(attr)
 
     def add_frame_attributes(self, attrs):
-        '''Adds the given frame-level attributes to the schema.
+        """Adds the given frame-level attributes to the schema.
 
         Args:
             attrs: an AttributeContainer
-        '''
+        """
         self.frames.add_attributes(attrs)
 
     def add_object_label(self, label):
-        '''Adds the given object label to the schema.
+        """Adds the given object label to the schema.
 
         Args:
             label: an object label
-        '''
+        """
         self.objects.add_object_label(label)
 
     def add_object_attribute(self, label, attr):
-        '''Adds the object-level attribute for the object with the given label
+        """Adds the object-level attribute for the object with the given label
         to the schema.
 
         Args:
             label: an object label
             attr: an Attribute
-        '''
+        """
         self.objects.add_object_attribute(label, attr)
 
     def add_object_attributes(self, label, attrs):
-        '''Adds the object-level attributes for the object with the given label
+        """Adds the object-level attributes for the object with the given label
         to the schema.
 
         Args:
             label: an object label
             attrs: an AttributeContainer
-        '''
+        """
         self.objects.add_object_attributes(label, attrs)
 
     def add_object_frame_attribute(self, label, attr):
-        '''Adds the frame-level attribute for the object with the given label
+        """Adds the frame-level attribute for the object with the given label
         to the schema.
 
         Args:
             label: an object label
             attr: an Attribute
-        '''
+        """
         self.objects.add_frame_attribute(label, attr)
 
     def add_object_frame_attributes(self, label, attrs):
-        '''Adds the frame-level attributes for the object with the given label
+        """Adds the frame-level attributes for the object with the given label
         to the schema.
 
         Args:
             label: an object label
             attrs: an AttributeContainer
-        '''
+        """
         self.objects.add_frame_attributes(label, attrs)
 
     def add_object(self, obj):
-        '''Adds the object to the schema.
+        """Adds the object to the schema.
 
         Args:
             obj: a VideoObject or DetectedObject
-        '''
+        """
         self.objects.add_object(obj)
 
     def add_objects(self, objects):
-        '''Adds the objects to the schema.
+        """Adds the objects to the schema.
 
         Args:
             objects: a VideoObjectContainer or DetectedObjectContainer
-        '''
+        """
         self.objects.add_objects(objects)
 
     def add_event_label(self, label):
-        '''Adds the given event label to the schema.
+        """Adds the given event label to the schema.
 
         Args:
             label: an event label
-        '''
+        """
         self.events.add_event_label(label)
 
     def add_event_attribute(self, label, attr):
-        '''Adds the event-level attribute for the event with the given label to
+        """Adds the event-level attribute for the event with the given label to
         the schema.
 
         Args:
             label: an event label
             attr: an Attribute
-        '''
+        """
         self.events.add_event_attribute(label, attr)
 
     def add_event_attributes(self, label, attrs):
-        '''Adds the event-level attributes for the event with the given label
+        """Adds the event-level attributes for the event with the given label
         to the schema.
 
         Args:
             label: an event label
             attrs: an AttributeContainer
-        '''
+        """
         self.events.add_event_attributes(label, attrs)
 
     def add_event_frame_attribute(self, label, attr):
-        '''Adds the frame-level attribute for the event with the given label to
+        """Adds the frame-level attribute for the event with the given label to
         the schema.
 
         Args:
             label: an event label
             attr: an Attribute
-        '''
+        """
         self.events.add_frame_attribute(label, attr)
 
     def add_event_frame_attributes(self, label, attrs):
-        '''Adds the frame-level attributes for the event with the given label
+        """Adds the frame-level attributes for the event with the given label
         to the schema.
 
         Args:
             label: an event label
             attrs: an AttributeContainer
-        '''
+        """
         self.events.add_frame_attributes(label, attrs)
 
     def add_event_object_label(self, event_label, obj_label):
-        '''Adds the object label for the event with the given label to the
+        """Adds the object label for the event with the given label to the
         schema.
 
         Args:
             event_label: an event label
             obj_label: an object label
-        '''
+        """
         self.events.add_object_label(event_label, obj_label)
 
     def add_event_object_attribute(self, event_label, obj_label, attr):
-        '''Adds the object-level attribute for the object with the given label
+        """Adds the object-level attribute for the object with the given label
         to the event with the given label to the schema.
 
         Args:
             event_label: an event label
             obj_label: an object label
             attr: an Attribute
-        '''
+        """
         self.events.add_object_attribute(event_label, obj_label, attr)
 
     def add_event_object_attributes(self, event_label, obj_label, attrs):
-        '''Adds the AttributeContainer of object-level attributes for the
+        """Adds the AttributeContainer of object-level attributes for the
         object with the given label to the event with the given label to the
         schema.
 
@@ -1083,22 +1114,22 @@ class FrameLabelsSchema(etal.LabelsSchema):
             event_label: an event label
             obj_label: an object label
             attrs: an AttributeContainer
-        '''
+        """
         self.events.add_object_attributes(event_label, obj_label, attrs)
 
     def add_event_object_frame_attribute(self, event_label, obj_label, attr):
-        '''Adds the frame-level attribute for the object with the given label
+        """Adds the frame-level attribute for the object with the given label
         to the event with the given label to the schema.
 
         Args:
             event_label: an event label
             obj_label: an object label
             attr: an Attribute
-        '''
+        """
         self.events.add_object_frame_attribute(event_label, obj_label, attr)
 
     def add_event_object_frame_attributes(self, event_label, obj_label, attrs):
-        '''Adds the AttributeContainer of frame-level attributes for the
+        """Adds the AttributeContainer of frame-level attributes for the
         object with the given label to the event with the given label to the
         schema.
 
@@ -1106,49 +1137,49 @@ class FrameLabelsSchema(etal.LabelsSchema):
             event_label: an event label
             obj_label: an object label
             attrs: an AttributeContainer
-        '''
+        """
         self.events.add_object_frame_attributes(event_label, obj_label, attrs)
 
     def add_event_object(self, event_label, obj):
-        '''Adds the object to the event with the given label to the schema.
+        """Adds the object to the event with the given label to the schema.
 
         Args:
             event_label: an event label
             obj: a VideoObject or DetectedObject
-        '''
+        """
         self.events.add_object(event_label, obj)
 
     def add_event_objects(self, event_label, objects):
-        '''Adds the objects to the event with the given label to the schema.
+        """Adds the objects to the event with the given label to the schema.
 
         Args:
             event_label: an event label
             objects: a VideoObjectContainer or DetectedObjectContainer
-        '''
+        """
         self.events.add_objects(event_label, objects)
 
     def add_event(self, event):
-        '''Adds the event to the schema.
+        """Adds the event to the schema.
 
         Args:
             event: a VideoEvent or DetectedEvent
-        '''
+        """
         self.events.add_event(event)
 
     def add_events(self, events):
-        '''Adds the events to the schema.
+        """Adds the events to the schema.
 
         Args:
             events: a VideoEventContainer or DetectedEventContainer
-        '''
+        """
         self.events.add_events(events)
 
     def add_frame_labels(self, frame_labels):
-        '''Adds the frame labels to the schema.
+        """Adds the frame labels to the schema.
 
         Args:
             frame_labels: a FrameLabels
-        '''
+        """
         for attr in frame_labels.attrs:
             if attr.constant:
                 self.add_constant_attribute(attr)
@@ -1159,19 +1190,19 @@ class FrameLabelsSchema(etal.LabelsSchema):
         self.add_events(frame_labels.events)
 
     def add_image_labels(self, image_labels):
-        '''Adds the image labels to the schema.
+        """Adds the image labels to the schema.
 
         Args:
             image_labels: an ImageLabels
-        '''
+        """
         self.add_frame_labels(image_labels)
 
     def add_video_labels(self, video_labels):
-        '''Adds the video labels to the schema.
+        """Adds the video labels to the schema.
 
         Args:
             video_labels: a VideoLabels
-        '''
+        """
         self.add_constant_attributes(video_labels.attrs)
         self.add_objects(video_labels.objects)
         self.add_events(video_labels.events)
@@ -1179,62 +1210,62 @@ class FrameLabelsSchema(etal.LabelsSchema):
             self.add_frame_labels(frame_labels)
 
     def is_valid_constant_attribute(self, attr):
-        '''Whether the constant attribute is compliant with the schema.
+        """Whether the constant attribute is compliant with the schema.
 
         Args:
             attr: an Attribute
 
         Returns:
             True/False
-        '''
+        """
         return self.attrs.is_valid_attribute(attr)
 
     def is_valid_constant_attributes(self, attrs):
-        '''Whether the constant attributes are compliant with the schema.
+        """Whether the constant attributes are compliant with the schema.
 
         Args:
             attrs: an AttributeContainer
 
         Returns:
             True/False
-        '''
+        """
         return self.attrs.is_valid_attributes(attrs)
 
     def is_valid_frame_attribute(self, attr):
-        '''Whether the frame-level attribute is compliant with the schema.
+        """Whether the frame-level attribute is compliant with the schema.
 
         Args:
             attr: an Attribute
 
         Returns:
             True/False
-        '''
+        """
         return self.frames.is_valid_attribute(attr)
 
     def is_valid_frame_attributes(self, attrs):
-        '''Whether the frame-level attributes are compliant with the schema.
+        """Whether the frame-level attributes are compliant with the schema.
 
         Args:
             attrs: an AttributeContainer
 
         Returns:
             True/False
-        '''
+        """
         return self.frames.is_valid_attributes(attrs)
 
     def is_valid_object_label(self, label):
-        '''Whether the object label is compliant with the schema.
+        """Whether the object label is compliant with the schema.
 
         Args:
             label: an object label
 
         Returns:
             True/False
-        '''
+        """
         return self.objects.is_valid_object_label(label)
 
     def is_valid_object_attribute(self, label, attr):
-        '''Whether the object-level attribute for the object with the given
+        """Whether the object-level attribute for the object with the given
         label is compliant with the schema.
 
         Args:
@@ -1243,11 +1274,11 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Returns:
             True/False
-        '''
+        """
         return self.objects.is_valid_object_attribute(label, attr)
 
     def is_valid_object_attributes(self, label, attrs):
-        '''Whether the object-level attributes for the object with the given
+        """Whether the object-level attributes for the object with the given
         label are compliant with the schema.
 
         Args:
@@ -1256,11 +1287,11 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Returns:
             True/False
-        '''
+        """
         return self.objects.is_valid_object_attributes(label, attrs)
 
     def is_valid_object_frame_attribute(self, label, attr):
-        '''Whether the frame-level attribute for the object with the given
+        """Whether the frame-level attribute for the object with the given
         label is compliant with the schema.
 
         Args:
@@ -1269,11 +1300,11 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Returns:
             True/False
-        '''
+        """
         return self.objects.is_valid_frame_attribute(label, attr)
 
     def is_valid_object_frame_attributes(self, label, attrs):
-        '''Whether the frame-level attributes for the object with the given
+        """Whether the frame-level attributes for the object with the given
         label are compliant with the schema.
 
         Args:
@@ -1282,44 +1313,44 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Returns:
             True/False
-        '''
+        """
         return self.objects.is_valid_frame_attributes(label, attrs)
 
     def is_valid_object(self, obj):
-        '''Whether the given object is compliant with the schema.
+        """Whether the given object is compliant with the schema.
 
         Args:
             obj: a VideoObject or DetectedObject
 
         Returns:
             True/False
-        '''
+        """
         return self.objects.is_valid_object(obj)
 
     def is_valid_objects(self, objects):
-        '''Whether the given objects are compliant with the schema.
+        """Whether the given objects are compliant with the schema.
 
         Args:
             objects: a VideoObjectContainer or DetectedObjectContainer
 
         Returns:
             True/False
-        '''
+        """
         return self.objects.is_valid(objects)
 
     def is_valid_event_label(self, label):
-        '''Whether the event label is compliant with the schema.
+        """Whether the event label is compliant with the schema.
 
         Args:
             label: an event label
 
         Returns:
             True/False
-        '''
+        """
         return self.events.is_valid_event_label(label)
 
     def is_valid_event_attribute(self, label, attr):
-        '''Whether the event-level attribute for the event with the given label
+        """Whether the event-level attribute for the event with the given label
         is compliant with the schema.
 
         Args:
@@ -1328,11 +1359,11 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Returns:
             True/False
-        '''
+        """
         return self.events.is_valid_event_attribute(label, attr)
 
     def is_valid_event_attributes(self, label, attrs):
-        '''Whether the event-level attributes for the event with the given
+        """Whether the event-level attributes for the event with the given
         label are compliant with the schema.
 
         Args:
@@ -1341,11 +1372,11 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Returns:
             True/False
-        '''
+        """
         return self.events.is_valid_event_attributes(label, attrs)
 
     def is_valid_event_frame_attribute(self, label, attr):
-        '''Whether the frame-level attribute for the event with the given label
+        """Whether the frame-level attribute for the event with the given label
         is compliant with the schema.
 
         Args:
@@ -1354,11 +1385,11 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Returns:
             True/False
-        '''
+        """
         return self.events.is_valid_frame_attribute(label, attr)
 
     def is_valid_event_frame_attributes(self, label, attrs):
-        '''Whether the frame-level attributes for the event with the given
+        """Whether the frame-level attributes for the event with the given
         label are compliant with the schema.
 
         Args:
@@ -1367,11 +1398,11 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Returns:
             True/False
-        '''
+        """
         return self.events.is_valid_frame_attributes(label, attrs)
 
     def is_valid_event_object_label(self, event_label, obj_label):
-        '''Whether the object label for the event with the given label is
+        """Whether the object label for the event with the given label is
         compliant with the schema.
 
         Args:
@@ -1380,11 +1411,11 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Returns:
             True/False
-        '''
+        """
         return self.events.is_valid_object_label(event_label, obj_label)
 
     def is_valid_event_object_attribute(self, event_label, obj_label, attr):
-        '''Whether the object-level attribute for the object with the given
+        """Whether the object-level attribute for the object with the given
         label for the event with the given label is compliant with the schema.
 
         Args:
@@ -1394,12 +1425,13 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Returns:
             True/False
-        '''
+        """
         return self.events.is_valid_object_attribute(
-            event_label, obj_label, attr)
+            event_label, obj_label, attr
+        )
 
     def is_valid_event_object_attributes(self, event_label, obj_label, attrs):
-        '''Whether the AttributeContainer of object-level attributes for the
+        """Whether the AttributeContainer of object-level attributes for the
         object with the given label for the event with the given label is
         compliant with the schema.
 
@@ -1410,13 +1442,15 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Returns:
             True/False
-        '''
+        """
         return self.events.is_valid_object_attributes(
-            event_label, obj_label, attrs)
+            event_label, obj_label, attrs
+        )
 
     def is_valid_event_object_frame_attribute(
-            self, event_label, obj_label, attr):
-        '''Whether the frame-level attribute for the object with the given
+        self, event_label, obj_label, attr
+    ):
+        """Whether the frame-level attribute for the object with the given
         label for the event with the given label is compliant with the schema.
 
         Args:
@@ -1426,13 +1460,15 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Returns:
             True/False
-        '''
+        """
         return self.events.is_valid_object_frame_attribute(
-            event_label, obj_label, attr)
+            event_label, obj_label, attr
+        )
 
     def is_valid_event_object_frame_attributes(
-            self, event_label, obj_label, attrs):
-        '''Whether the AttributeContainer of frame-level attributes for the
+        self, event_label, obj_label, attrs
+    ):
+        """Whether the AttributeContainer of frame-level attributes for the
         object with the given label for the event with the given label is
         compliant with the schema.
 
@@ -1443,12 +1479,13 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Returns:
             True/False
-        '''
+        """
         return self.events.is_valid_object_frame_attributes(
-            event_label, obj_label, attrs)
+            event_label, obj_label, attrs
+        )
 
     def is_valid_event_object(self, event_label, obj):
-        '''Whether the object for the event with the given label is compliant
+        """Whether the object for the event with the given label is compliant
         with the schema.
 
         Args:
@@ -1457,11 +1494,11 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Returns:
             True/False
-        '''
+        """
         return self.events.is_valid_object(event_label, obj)
 
     def is_valid_event_objects(self, event_label, objects):
-        '''Whether the objects for the event with the given label are compliant
+        """Whether the objects for the event with the given label are compliant
         with the schema.
 
         Args:
@@ -1470,40 +1507,40 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Returns:
             True/False
-        '''
+        """
         return self.events.is_valid_objects(event_label, objects)
 
     def is_valid_event(self, event):
-        '''Whether the given event is compliant with the schema.
+        """Whether the given event is compliant with the schema.
 
         Args:
             event: a VideoEvent or DetectedEvent
 
         Returns:
             True/False
-        '''
+        """
         return self.events.is_valid_event(event)
 
     def is_valid_events(self, events):
-        '''Whether the given events are compliant with the schema.
+        """Whether the given events are compliant with the schema.
 
         Args:
             event: a VideoEventContainer or DetectedEventContainer
 
         Returns:
             True/False
-        '''
+        """
         return self.events.is_valid(events)
 
     def is_valid_frame_labels(self, frame_labels):
-        '''Whether the given frame labels are compliant with the schema.
+        """Whether the given frame labels are compliant with the schema.
 
         Args:
             frame_labels: a FrameLabels
 
         Returns:
             True/False
-        '''
+        """
         try:
             self.validate_frame_labels(frame_labels)
             return True
@@ -1511,14 +1548,14 @@ class FrameLabelsSchema(etal.LabelsSchema):
             return False
 
     def is_valid_image_labels(self, image_labels):
-        '''Whether the given image labels are compliant with the schema.
+        """Whether the given image labels are compliant with the schema.
 
         Args:
             image_labels: an ImageLabels
 
         Returns:
             True/False
-        '''
+        """
         try:
             self.validate_image_labels(image_labels)
             return True
@@ -1526,14 +1563,14 @@ class FrameLabelsSchema(etal.LabelsSchema):
             return False
 
     def is_valid_video_labels(self, video_labels):
-        '''Whether the given video labels are compliant with the schema.
+        """Whether the given video labels are compliant with the schema.
 
         Args:
             video_labels: a VideoLabels
 
         Returns:
             True/False
-        '''
+        """
         try:
             self.validate_video_labels(video_labels)
             return True
@@ -1541,18 +1578,18 @@ class FrameLabelsSchema(etal.LabelsSchema):
             return False
 
     def validate_constant_attribute(self, attr):
-        '''Validates that the constant attribute is compliant with the schema.
+        """Validates that the constant attribute is compliant with the schema.
 
         Args:
             attr: an Attribute
 
         Raises:
             LabelsSchemaError: if the attribute violates the schema
-        '''
+        """
         self.attrs.validate_attribute(attr)
 
     def validate_constant_attributes(self, attrs):
-        '''Validates that the constant attributes are compliant with the
+        """Validates that the constant attributes are compliant with the
         schema.
 
         Args:
@@ -1560,11 +1597,11 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Raises:
             LabelsSchemaError: if the attributes violate the schema
-        '''
+        """
         self.attrs.validate(attrs)
 
     def validate_frame_attribute(self, attr):
-        '''Validates that the frame-level attribute is compliant with the
+        """Validates that the frame-level attribute is compliant with the
         schema.
 
         Args:
@@ -1572,11 +1609,11 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Raises:
             LabelsSchemaError: if the attribute violates the schema
-        '''
+        """
         self.frames.validate_attribute(attr)
 
     def validate_frame_attributes(self, attrs):
-        '''Validates that the frame-level attributes are compliant with the
+        """Validates that the frame-level attributes are compliant with the
         schema.
 
         Args:
@@ -1584,22 +1621,22 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Raises:
             LabelsSchemaError: if the attributes violate the schema
-        '''
+        """
         self.frames.validate(attrs)
 
     def validate_object_label(self, label):
-        '''Validates that the object label is compliant with the schema.
+        """Validates that the object label is compliant with the schema.
 
         Args:
             label: an object label
 
         Raises:
             LabelsSchemaError: if the object label violates the schema
-        '''
+        """
         self.objects.validate_object_label(label)
 
     def validate_object_attribute(self, label, attr):
-        '''Validates that the object-level attribute for the object with the
+        """Validates that the object-level attribute for the object with the
         given label is compliant with the schema.
 
         Args:
@@ -1608,11 +1645,11 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Raises:
             LabelsSchemaError: if the attribute violates the schema
-        '''
+        """
         self.objects.validate_object_attribute(label, attr)
 
     def validate_object_attributes(self, label, attrs):
-        '''Validates that the object-level attributes for the object with the
+        """Validates that the object-level attributes for the object with the
         given label are compliant with the schema.
 
         Args:
@@ -1621,11 +1658,11 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Raises:
             LabelsSchemaError: if the attributes violate the schema
-        '''
+        """
         self.objects.validate_object_attributes(label, attrs)
 
     def validate_object_frame_attribute(self, label, attr):
-        '''Validates that the frame-level attribute for the object with the
+        """Validates that the frame-level attribute for the object with the
         given label is compliant with the schema.
 
         Args:
@@ -1634,11 +1671,11 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Raises:
             LabelsSchemaError: if the attribute violates the schema
-        '''
+        """
         self.objects.validate_frame_attribute(label, attr)
 
     def validate_object_frame_attributes(self, label, attrs):
-        '''Validates that the frame-level attributes for the object with the
+        """Validates that the frame-level attributes for the object with the
         given label are compliant with the schema.
 
         Args:
@@ -1647,44 +1684,44 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Raises:
             LabelsSchemaError: if the attributes violate the schema
-        '''
+        """
         self.objects.validate_frame_attributes(label, attrs)
 
     def validate_object(self, obj):
-        '''Validates that the object is compliant with the schema.
+        """Validates that the object is compliant with the schema.
 
         Args:
             obj: a VideoObject or DetectedObject
 
         Raises:
             LabelsSchemaError: if the object violates the schema
-        '''
+        """
         self.objects.validate_object(obj)
 
     def validate_objects(self, objects):
-        '''Validates that the objects are compliant with the schema.
+        """Validates that the objects are compliant with the schema.
 
         Args:
             objects: a VideoObjectContainer or DetectedObjectContainer
 
         Raises:
             LabelsSchemaError: if the objects violate the schema
-        '''
+        """
         self.objects.validate(objects)
 
     def validate_event_label(self, label):
-        '''Validates that the event label is compliant with the schema.
+        """Validates that the event label is compliant with the schema.
 
         Args:
             label: an event label
 
         Raises:
             LabelsSchemaError: if the event label violates the schema
-        '''
+        """
         self.events.validate_event_label(label)
 
     def validate_event_attribute(self, label, attr):
-        '''Validates that the event-level attribute for the event with the
+        """Validates that the event-level attribute for the event with the
         given label is compliant with the schema.
 
         Args:
@@ -1693,11 +1730,11 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Raises:
             LabelsSchemaError: if the attribute violates the schema
-        '''
+        """
         self.events.validate_event_attribute(label, attr)
 
     def validate_event_attributes(self, label, attrs):
-        '''Validates that the event-level attributes for the event with the
+        """Validates that the event-level attributes for the event with the
         given label are compliant with the schema.
 
         Args:
@@ -1706,11 +1743,11 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Raises:
             LabelsSchemaError: if the attributes violate the schema
-        '''
+        """
         self.events.validate_event_attributes(label, attrs)
 
     def validate_event_frame_attribute(self, label, attr):
-        '''Validates that the frame-level attribute for the event with the
+        """Validates that the frame-level attribute for the event with the
         given label is compliant with the schema.
 
         Args:
@@ -1719,11 +1756,11 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Raises:
             LabelsSchemaError: if the attribute violates the schema
-        '''
+        """
         self.events.validate_frame_attribute(label, attr)
 
     def validate_event_frame_attributes(self, label, attrs):
-        '''Validates that the frame-level attributes for the event with the
+        """Validates that the frame-level attributes for the event with the
         given label are compliant with the schema.
 
         Args:
@@ -1732,11 +1769,11 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Raises:
             LabelsSchemaError: if the attributes violate the schema
-        '''
+        """
         self.events.validate_frame_attributes(label, attrs)
 
     def validate_event_object_label(self, event_label, obj_label):
-        '''Validates that the object label for the event with the given label
+        """Validates that the object label for the event with the given label
         is compliant with the schema.
 
         Args:
@@ -1746,11 +1783,11 @@ class FrameLabelsSchema(etal.LabelsSchema):
         Raises:
             LabelsSchemaError: if the obect label is not compliant with the
                 schema
-        '''
+        """
         self.events.validate_object_label(event_label, obj_label)
 
     def validate_event_object_attribute(self, event_label, obj_label, attr):
-        '''Validates that the object-level attribute for the object with the
+        """Validates that the object-level attribute for the object with the
         given label for the event with the given label is compliant with the
         schema.
 
@@ -1762,11 +1799,11 @@ class FrameLabelsSchema(etal.LabelsSchema):
         Raises:
             LabelsSchemaError: if the attribute is not compliant with the
                 schema
-        '''
+        """
         self.events.validate_object_attribute(event_label, obj_label, attr)
 
     def validate_event_object_attributes(self, event_label, obj_label, attrs):
-        '''Validates that the AttributeContainer of object-level attributes for
+        """Validates that the AttributeContainer of object-level attributes for
         the object with the given label for the event with the given label is
         compliant with the schema.
 
@@ -1778,12 +1815,13 @@ class FrameLabelsSchema(etal.LabelsSchema):
         Raises:
             LabelsSchemaError: if the attributes are not compliant with the
                 schema
-        '''
+        """
         self.events.validate_object_attributes(event_label, obj_label, attrs)
 
     def validate_event_object_frame_attribute(
-            self, event_label, obj_label, attr):
-        '''Validates that the frame-level attribute for the object with the
+        self, event_label, obj_label, attr
+    ):
+        """Validates that the frame-level attribute for the object with the
         given label for the event with the given label is compliant with the
         schema.
 
@@ -1795,13 +1833,15 @@ class FrameLabelsSchema(etal.LabelsSchema):
         Raises:
             LabelsSchemaError: if the attribute is not compliant with the
                 schema
-        '''
+        """
         self.events.validate_object_frame_attribute(
-            event_label, obj_label, attr)
+            event_label, obj_label, attr
+        )
 
     def validate_event_object_frame_attributes(
-            self, event_label, obj_label, attrs):
-        '''Validates that the AttributeContainer of frame-level attributes for
+        self, event_label, obj_label, attrs
+    ):
+        """Validates that the AttributeContainer of frame-level attributes for
         the object with the given label for the event with the given label is
         compliant with the schema.
 
@@ -1813,12 +1853,13 @@ class FrameLabelsSchema(etal.LabelsSchema):
         Raises:
             LabelsSchemaError: if the attribute is not compliant with the
                 schema
-        '''
+        """
         self.events.validate_object_frame_attributes(
-            event_label, obj_label, attrs)
+            event_label, obj_label, attrs
+        )
 
     def validate_event_object(self, event_label, obj):
-        '''Validates that the object for the given event label is compliant
+        """Validates that the object for the given event label is compliant
         with the schema.
 
         Args:
@@ -1827,11 +1868,11 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Raises:
             LabelsSchemaError: if the object is not compliant with the schema
-        '''
+        """
         self.events.validate_object(event_label, obj)
 
     def validate_event_objects(self, event_label, objects):
-        '''Validates that the objects for the given event label are compliant
+        """Validates that the objects for the given event label are compliant
         with the schema.
 
         Args:
@@ -1840,40 +1881,40 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Raises:
             LabelsSchemaError: if the object is not compliant with the schema
-        '''
+        """
         self.events.validate_objects(event_label, objects)
 
     def validate_event(self, event):
-        '''Validates that the event is compliant with the schema.
+        """Validates that the event is compliant with the schema.
 
         Args:
             event: a VideoEvent or DetectedEvent
 
         Raises:
             LabelsSchemaError: if the event violates the schema
-        '''
+        """
         self.events.validate_event(event)
 
     def validate_events(self, events):
-        '''Validates that the events are compliant with the schema.
+        """Validates that the events are compliant with the schema.
 
         Args:
             events: a VideoEventContainer or DetectedEventContainer
 
         Raises:
             LabelsSchemaError: if the events violate the schema
-        '''
+        """
         self.events.validate(events)
 
     def validate_frame_labels(self, frame_labels):
-        '''Validates that the frame labels are compliant with the schema.
+        """Validates that the frame labels are compliant with the schema.
 
         Args:
             frame_labels: a FrameLabels
 
         Raises:
             LabelsSchemaError: if the labels violate the schema
-        '''
+        """
         for attr in frame_labels.attrs:
             if attr.constant:
                 self.validate_constant_attribute(attr)
@@ -1884,25 +1925,25 @@ class FrameLabelsSchema(etal.LabelsSchema):
         self.validate_events(frame_labels.events)
 
     def validate_image_labels(self, image_labels):
-        '''Validates that the image labels are compliant with the schema.
+        """Validates that the image labels are compliant with the schema.
 
         Args:
             image_labels: an ImageLabels
 
         Raises:
             LabelsSchemaError: if the labels violate the schema
-        '''
+        """
         self.validate_frame_labels(image_labels)
 
     def validate_video_labels(self, video_labels):
-        '''Validates that the video labels are compliant with the schema.
+        """Validates that the video labels are compliant with the schema.
 
         Args:
             video_labels: a VideoLabels
 
         Raises:
             LabelsSchemaError: if the labels violate the schema
-        '''
+        """
         self.validate_constant_attributes(video_labels.attrs)
         self.validate_objects(video_labels.objects)
         self.validate_events(video_labels.events)
@@ -1910,18 +1951,18 @@ class FrameLabelsSchema(etal.LabelsSchema):
             self.validate_frame_labels(frame_labels)
 
     def validate(self, frame_labels):
-        '''Validates that the labels are compliant with the schema.
+        """Validates that the labels are compliant with the schema.
 
         Args:
             frame_labels: a FrameLabels
 
         Raises:
             LabelsSchemaError: if the labels violate the schema
-        '''
+        """
         self.validate_frame_labels(frame_labels)
 
     def validate_subset_of_schema(self, schema):
-        '''Validates that this schema is a subset of the given schema.
+        """Validates that this schema is a subset of the given schema.
 
         Args:
             schema: a FrameLabelsSchema
@@ -1929,7 +1970,7 @@ class FrameLabelsSchema(etal.LabelsSchema):
         Raises:
             LabelsSchemaError: if this schema is not a subset of the given
                 schema
-        '''
+        """
         self.validate_schema_type(schema)
         self.attrs.validate_subset_of_schema(schema.attrs)
         self.frames.validate_subset_of_schema(schema.frames)
@@ -1937,11 +1978,11 @@ class FrameLabelsSchema(etal.LabelsSchema):
         self.events.validate_subset_of_schema(schema.events)
 
     def merge_schema(self, schema):
-        '''Merges the given FrameLabelsSchema into this schema.
+        """Merges the given FrameLabelsSchema into this schema.
 
         Args:
             schema: a FrameLabelsSchema
-        '''
+        """
         self.attrs.merge_schema(schema.attrs)
         self.frames.merge_schema(schema.frames)
         self.objects.merge_schema(schema.objects)
@@ -1949,7 +1990,7 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
     @classmethod
     def build_active_schema_for_object(cls, obj):
-        '''Builds a FrameLabelsSchema that describes the active schema of the
+        """Builds a FrameLabelsSchema that describes the active schema of the
         given object.
 
         Args:
@@ -1957,14 +1998,14 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Returns:
             a FrameLabelsSchema
-        '''
+        """
         schema = cls()
         schema.add_object(obj)
         return schema
 
     @classmethod
     def build_active_schema_for_objects(cls, objects):
-        '''Builds a FrameLabelsSchema that describes the active schema of the
+        """Builds a FrameLabelsSchema that describes the active schema of the
         given objects.
 
         Args:
@@ -1972,14 +2013,14 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Returns:
             a FrameLabelsSchema
-        '''
+        """
         schema = cls()
         schema.add_objects(objects)
         return schema
 
     @classmethod
     def build_active_schema_for_event(cls, event):
-        '''Builds a FrameLabelsSchema that describes the active schema of the
+        """Builds a FrameLabelsSchema that describes the active schema of the
         given event.
 
         Args:
@@ -1987,14 +2028,14 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Returns:
             a FrameLabelsSchema
-        '''
+        """
         schema = cls()
         schema.add_event(event)
         return schema
 
     @classmethod
     def build_active_schema_for_events(cls, events):
-        '''Builds a FrameLabelsSchema that describes the active schema of the
+        """Builds a FrameLabelsSchema that describes the active schema of the
         given events.
 
         Args:
@@ -2002,14 +2043,14 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Returns:
             a FrameLabelsSchema
-        '''
+        """
         schema = cls()
         schema.add_events(events)
         return schema
 
     @classmethod
     def build_active_schema_for_frame_labels(cls, frame_labels):
-        '''Builds a FrameLabelsSchema that describes the active schema of the
+        """Builds a FrameLabelsSchema that describes the active schema of the
         given frame labels.
 
         Args:
@@ -2017,14 +2058,14 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Returns:
             a FrameLabelsSchema
-        '''
+        """
         schema = cls()
         schema.add_frame_labels(frame_labels)
         return schema
 
     @classmethod
     def build_active_schema_for_image_labels(cls, image_labels):
-        '''Builds a FrameLabelsSchema that describes the active schema of the
+        """Builds a FrameLabelsSchema that describes the active schema of the
         given image labels.
 
         Args:
@@ -2032,14 +2073,14 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Returns:
             a FrameLabelsSchema
-        '''
+        """
         schema = cls()
         schema.add_image_labels(image_labels)
         return schema
 
     @classmethod
     def build_active_schema_for_video_labels(cls, video_labels):
-        '''Builds a FrameLabelsSchema that describes the active schema of the
+        """Builds a FrameLabelsSchema that describes the active schema of the
         given video labels.
 
         Args:
@@ -2047,14 +2088,14 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Returns:
             a FrameLabelsSchema
-        '''
+        """
         schema = cls()
         schema.add_video_labels(video_labels)
         return schema
 
     @classmethod
     def build_active_schema(cls, frame_labels):
-        '''Builds a FrameLabelsSchema that describes the active schema of the
+        """Builds a FrameLabelsSchema that describes the active schema of the
         given FrameLabels.
 
         Args:
@@ -2062,55 +2103,56 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
         Returns:
             a FrameLabelsSchema
-        '''
+        """
         return cls.build_active_schema_for_frame_labels(frame_labels)
 
     @classmethod
     def from_frame_labels_schema(cls, frame_labels_schema):
-        '''Creates a FrameLabelsSchema from another FrameLabelsSchema.
+        """Creates a FrameLabelsSchema from another FrameLabelsSchema.
 
         Args:
             frame_labels_schema: a FrameLabelsSchema
 
         Returns:
             a FrameLabelsSchema
-        '''
+        """
         return cls(
             attrs=frame_labels_schema.attrs,
             frames=frame_labels_schema.frames,
             objects=frame_labels_schema.objects,
-            events=frame_labels_schema.events)
+            events=frame_labels_schema.events,
+        )
 
     @classmethod
     def from_image_labels_schema(cls, image_labels_schema):
-        '''Creates a FrameLabelsSchema from an ImageLabelsSchema.
+        """Creates a FrameLabelsSchema from an ImageLabelsSchema.
 
         Args:
             image_labels_schema: an ImageLabelsSchema
 
         Returns:
             a FrameLabelsSchema
-        '''
+        """
         return cls.from_frame_labels_schema(image_labels_schema)
 
     @classmethod
     def from_video_labels_schema(cls, video_labels_schema):
-        '''Creates a FrameLabelsSchema from a VideoLabelsSchema.
+        """Creates a FrameLabelsSchema from a VideoLabelsSchema.
 
         Args:
             video_labels_schema: a VideoLabelsSchema
 
         Returns:
             a FrameLabelsSchema
-        '''
+        """
         return cls.from_frame_labels_schema(video_labels_schema)
 
     def attributes(self):
-        '''Returns the list of class attributes that will be serialized.
+        """Returns the list of class attributes that will be serialized.
 
         Returns:
             a list of attribute names
-        '''
+        """
         _attrs = []
         if self.attrs:
             _attrs.append("attrs")
@@ -2124,14 +2166,14 @@ class FrameLabelsSchema(etal.LabelsSchema):
 
     @classmethod
     def from_dict(cls, d):
-        '''Constructs a FrameLabelsSchema from a JSON dictionary.
+        """Constructs a FrameLabelsSchema from a JSON dictionary.
 
         Args:
             d: a JSON dictionary
 
         Returns:
             a FrameLabelsSchema
-        '''
+        """
         attrs = d.get("attrs", None)
         if attrs is not None:
             attrs = etad.AttributeContainerSchema.from_dict(attrs)

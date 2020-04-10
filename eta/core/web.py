@@ -1,9 +1,9 @@
-'''
+"""
 Core tools for downloading files from the web.
 
 Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
-'''
+"""
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
 # pragma pylint: disable=wildcard-import
@@ -13,6 +13,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
 from future.utils import iteritems
+
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
@@ -30,24 +31,26 @@ import eta.core.utils as etau
 logger = logging.getLogger(__name__)
 
 
-URL_REGEX = re.compile(r'http://|https://|ftp://|file://|file:\\')
+URL_REGEX = re.compile(r"http://|https://|ftp://|file://|file:\\")
 
 
 def is_url(filename):
-    '''Return True if string is an http or ftp path.
+    """Return True if string is an http or ftp path.
 
     Args:
         filename: a string
 
     Returns:
         True/False if the filename is a url
-    '''
-    return (isinstance(filename, six.string_types) and
-            URL_REGEX.match(filename) is not None)
+    """
+    return (
+        isinstance(filename, six.string_types)
+        and URL_REGEX.match(filename) is not None
+    )
 
 
 def download_file(url, path=None, chunk_size=None):
-    '''Downloads a file from a URL. If a path is specified, the file is written
+    """Downloads a file from a URL. If a path is specified, the file is written
     there. Otherwise, the content is returned as a binary string.
 
     Args:
@@ -60,13 +63,13 @@ def download_file(url, path=None, chunk_size=None):
 
     Raises:
         WebSessionError: if the download failed
-    '''
+    """
     sess = WebSession(chunk_size=chunk_size)
     return sess.write(path, url) if path else sess.get(url)
 
 
 def download_google_drive_file(fid, path=None, chunk_size=None):
-    '''Downloads the Google Drive file with the given ID. If a path is
+    """Downloads the Google Drive file with the given ID. If a path is
     specified, the file is written there. Otherwise, the file contents are
     returned as a binary string.
 
@@ -80,22 +83,22 @@ def download_google_drive_file(fid, path=None, chunk_size=None):
 
     Raises:
         WebSessionError: if the download failed
-    '''
+    """
     sess = GoogleDriveSession(chunk_size=chunk_size)
     return sess.write(path, fid) if path else sess.get(fid)
 
 
 class WebSession(object):
-    '''Class for downloading files from the web.'''
+    """Class for downloading files from the web."""
 
     DEFAULT_CHUNK_SIZE = None
 
     def __init__(self, chunk_size=None):
-        '''Creates a WebSession instance.
+        """Creates a WebSession instance.
 
         chunk_size: an optional chunk size (in bytes) to use for downloads.
             By default, `DEFAULT_CHUNK_SIZE` is used
-        '''
+        """
         self.sess = requests.Session()
         self.chunk_size = chunk_size or self.DEFAULT_CHUNK_SIZE
 
@@ -104,7 +107,7 @@ class WebSession(object):
         self.sess.headers.update({"User-Agent": header})
 
     def get(self, url, params=None):
-        '''Gets the content from the URL.
+        """Gets the content from the URL.
 
         Args:
             url: the URL to get
@@ -115,12 +118,12 @@ class WebSession(object):
 
         Raises:
             WebSessionError: if the download failed
-        '''
+        """
         r = self._get_streaming_response(url, params=params)
         return r.content
 
     def write(self, path, url, params=None):
-        '''Writes the URL content to the given local path.
+        """Writes the URL content to the given local path.
 
         The download is performed in chunks, so arbitrarily large files can
         be downloaded. The output directory is created, if necessary.
@@ -132,7 +135,7 @@ class WebSession(object):
 
         Raises:
             WebSessionError: if the download failed
-        '''
+        """
         r = self._get_streaming_response(url, params=params)
         etau.ensure_basedir(path)
 
@@ -155,12 +158,13 @@ class WebSession(object):
 
 
 class WebSessionError(Exception):
-    '''Exception raised when there is a problem with a web session.'''
+    """Exception raised when there is a problem with a web session."""
+
     pass
 
 
 class GoogleDriveSession(WebSession):
-    '''Class for downloading Google Drive files.'''
+    """Class for downloading Google Drive files."""
 
     BASE_URL = "https://drive.google.com/uc?export=download"
 

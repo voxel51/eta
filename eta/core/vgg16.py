@@ -1,4 +1,4 @@
-'''
+"""
 TensorFlow implementation of the popular VGG-16 network.
 
 This implementation is hard-coded for the model architecture and weights that
@@ -13,7 +13,7 @@ https://gist.github.com/ksimonyan/211839e770f7b538e2d8#file-readme-md
 
 Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
-'''
+"""
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
 # pragma pylint: disable=wildcard-import
@@ -22,6 +22,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
+
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
@@ -45,25 +46,27 @@ logger = logging.getLogger(__name__)
 
 
 class VGG16Config(Config):
-    '''Configuration settings for the VGG-16 network.
+    """Configuration settings for the VGG-16 network.
 
     Attributes:
         model_name: the name of the VGG-16 model to load
         labels_map: path to the labels map to load
-    '''
+    """
 
     def __init__(self, d):
         self.model_name = self.parse_string(
-            d, "model_name", default="vgg16-imagenet")
+            d, "model_name", default="vgg16-imagenet"
+        )
         self.labels_map = self.parse_string(d, "labels_map", default=None)
 
         if self.labels_map is None:
             self.labels_map = os.path.join(
-                etac.RESOURCES_DIR, "vgg16-imagenet-labels.txt")
+                etac.RESOURCES_DIR, "vgg16-imagenet-labels.txt"
+            )
 
 
 class VGG16(Configurable, UsesTFSession):
-    '''TensorFlow implementation of the VGG-16 network architecture for the
+    """TensorFlow implementation of the VGG-16 network architecture for the
     1000 classes from ImageNet.
 
     This implementation is hard-coded to process a tensor of images of size
@@ -74,10 +77,10 @@ class VGG16(Configurable, UsesTFSession):
 
     Instances of this class must either use the context manager interface or
     manually call `close()` when finished to release memory.
-    '''
+    """
 
     def __init__(self, config=None, sess=None, imgs=None):
-        '''Creates a VGG16 instance.
+        """Creates a VGG16 instance.
 
         Args:
             config: an optional VGG16Config instance. If omitted, the default
@@ -89,7 +92,7 @@ class VGG16(Configurable, UsesTFSession):
             imgs: an optional tf.placeholder of size [XXXX, 224, 224, 3] to
                 use. By default, a placeholder of size [None, 224, 224, 3] is
                 used so you can evaluate any number of images at once
-        '''
+        """
         UsesTFSession.__init__(self)
 
         if config is None:
@@ -115,27 +118,27 @@ class VGG16(Configurable, UsesTFSession):
 
     @property
     def num_classes(self):
-        '''The number of classes for the model.'''
+        """The number of classes for the model."""
         return self._num_classes
 
     @property
     def class_labels(self):
-        '''The list of class labels for the model.'''
+        """The list of class labels for the model."""
         return self._class_labels
 
     def get_label(self, idx):
-        '''Gets the label for the given output index.
+        """Gets the label for the given output index.
 
         Args:
             idx: the zero-based output index
 
         Returns:
             the class label string
-        '''
+        """
         return self.class_labels[idx]
 
     def evaluate(self, imgs, tensors):
-        '''Feed-forward evaluation through the network.
+        """Feed-forward evaluation through the network.
 
         Args:
             imgs: an array of size [XXXX, 224, 224, 3] containing image(s) to
@@ -145,12 +148,12 @@ class VGG16(Configurable, UsesTFSession):
         Returns:
             a list of outputs for the requested tensors. The first dimension of
                 each output will be XXXX
-        '''
+        """
         return self.sess.run(tensors, feed_dict={self.imgs: imgs})
 
     @staticmethod
     def preprocess_image(img):
-        '''Pre-processes the image for evaluation by converting it to a
+        """Pre-processes the image for evaluation by converting it to a
         224 x 224 RGB image.
 
         Args:
@@ -158,7 +161,7 @@ class VGG16(Configurable, UsesTFSession):
 
         Returns:
             224 x 224 RGB image
-        '''
+        """
         if etai.is_gray(img):
             img = etai.gray_to_rgb(img)
         elif etai.has_alpha(img):
@@ -181,7 +184,8 @@ class VGG16(Configurable, UsesTFSession):
         with tf.name_scope("conv1_1") as scope:
             kernel = tf.Variable(
                 tf.truncated_normal(
-                    [3, 3, 3, 64], dtype=tf.float32, stddev=1e-1),
+                    [3, 3, 3, 64], dtype=tf.float32, stddev=1e-1
+                ),
                 name="weights",
             )
             conv = tf.nn.conv2d(images, kernel, [1, 1, 1, 1], padding="SAME")
@@ -197,11 +201,13 @@ class VGG16(Configurable, UsesTFSession):
         with tf.name_scope("conv1_2") as scope:
             kernel = tf.Variable(
                 tf.truncated_normal(
-                    [3, 3, 64, 64], dtype=tf.float32, stddev=1e-1),
+                    [3, 3, 64, 64], dtype=tf.float32, stddev=1e-1
+                ),
                 name="weights",
             )
             conv = tf.nn.conv2d(
-                self.conv1_1, kernel, [1, 1, 1, 1], padding="SAME")
+                self.conv1_1, kernel, [1, 1, 1, 1], padding="SAME"
+            )
             biases = tf.Variable(
                 tf.constant(0.0, shape=[64], dtype=tf.float32),
                 trainable=True,
@@ -222,11 +228,13 @@ class VGG16(Configurable, UsesTFSession):
         with tf.name_scope("conv2_1") as scope:
             kernel = tf.Variable(
                 tf.truncated_normal(
-                    [3, 3, 64, 128], dtype=tf.float32, stddev=1e-1),
+                    [3, 3, 64, 128], dtype=tf.float32, stddev=1e-1
+                ),
                 name="weights",
             )
             conv = tf.nn.conv2d(
-                self.pool1, kernel, [1, 1, 1, 1], padding="SAME")
+                self.pool1, kernel, [1, 1, 1, 1], padding="SAME"
+            )
             biases = tf.Variable(
                 tf.constant(0.0, shape=[128], dtype=tf.float32),
                 trainable=True,
@@ -239,11 +247,13 @@ class VGG16(Configurable, UsesTFSession):
         with tf.name_scope("conv2_2") as scope:
             kernel = tf.Variable(
                 tf.truncated_normal(
-                    [3, 3, 128, 128], dtype=tf.float32, stddev=1e-1),
+                    [3, 3, 128, 128], dtype=tf.float32, stddev=1e-1
+                ),
                 name="weights",
             )
             conv = tf.nn.conv2d(
-                self.conv2_1, kernel, [1, 1, 1, 1], padding="SAME")
+                self.conv2_1, kernel, [1, 1, 1, 1], padding="SAME"
+            )
             biases = tf.Variable(
                 tf.constant(0.0, shape=[128], dtype=tf.float32),
                 trainable=True,
@@ -264,11 +274,13 @@ class VGG16(Configurable, UsesTFSession):
         with tf.name_scope("conv3_1") as scope:
             kernel = tf.Variable(
                 tf.truncated_normal(
-                    [3, 3, 128, 256], dtype=tf.float32, stddev=1e-1),
+                    [3, 3, 128, 256], dtype=tf.float32, stddev=1e-1
+                ),
                 name="weights",
             )
             conv = tf.nn.conv2d(
-                self.pool2, kernel, [1, 1, 1, 1], padding="SAME")
+                self.pool2, kernel, [1, 1, 1, 1], padding="SAME"
+            )
             biases = tf.Variable(
                 tf.constant(0.0, shape=[256], dtype=tf.float32),
                 trainable=True,
@@ -281,11 +293,13 @@ class VGG16(Configurable, UsesTFSession):
         with tf.name_scope("conv3_2") as scope:
             kernel = tf.Variable(
                 tf.truncated_normal(
-                    [3, 3, 256, 256], dtype=tf.float32, stddev=1e-1),
+                    [3, 3, 256, 256], dtype=tf.float32, stddev=1e-1
+                ),
                 name="weights",
             )
             conv = tf.nn.conv2d(
-                self.conv3_1, kernel, [1, 1, 1, 1], padding="SAME")
+                self.conv3_1, kernel, [1, 1, 1, 1], padding="SAME"
+            )
             biases = tf.Variable(
                 tf.constant(0.0, shape=[256], dtype=tf.float32),
                 trainable=True,
@@ -298,11 +312,13 @@ class VGG16(Configurable, UsesTFSession):
         with tf.name_scope("conv3_3") as scope:
             kernel = tf.Variable(
                 tf.truncated_normal(
-                    [3, 3, 256, 256], dtype=tf.float32, stddev=1e-1),
+                    [3, 3, 256, 256], dtype=tf.float32, stddev=1e-1
+                ),
                 name="weights",
             )
             conv = tf.nn.conv2d(
-                self.conv3_2, kernel, [1, 1, 1, 1], padding="SAME")
+                self.conv3_2, kernel, [1, 1, 1, 1], padding="SAME"
+            )
             biases = tf.Variable(
                 tf.constant(0.0, shape=[256], dtype=tf.float32),
                 trainable=True,
@@ -323,11 +339,13 @@ class VGG16(Configurable, UsesTFSession):
         with tf.name_scope("conv4_1") as scope:
             kernel = tf.Variable(
                 tf.truncated_normal(
-                    [3, 3, 256, 512], dtype=tf.float32, stddev=1e-1),
+                    [3, 3, 256, 512], dtype=tf.float32, stddev=1e-1
+                ),
                 name="weights",
             )
             conv = tf.nn.conv2d(
-                self.pool3, kernel, [1, 1, 1, 1], padding="SAME")
+                self.pool3, kernel, [1, 1, 1, 1], padding="SAME"
+            )
             biases = tf.Variable(
                 tf.constant(0.0, shape=[512], dtype=tf.float32),
                 trainable=True,
@@ -340,11 +358,13 @@ class VGG16(Configurable, UsesTFSession):
         with tf.name_scope("conv4_2") as scope:
             kernel = tf.Variable(
                 tf.truncated_normal(
-                    [3, 3, 512, 512], dtype=tf.float32, stddev=1e-1),
+                    [3, 3, 512, 512], dtype=tf.float32, stddev=1e-1
+                ),
                 name="weights",
             )
             conv = tf.nn.conv2d(
-                self.conv4_1, kernel, [1, 1, 1, 1], padding="SAME")
+                self.conv4_1, kernel, [1, 1, 1, 1], padding="SAME"
+            )
             biases = tf.Variable(
                 tf.constant(0.0, shape=[512], dtype=tf.float32),
                 trainable=True,
@@ -357,11 +377,13 @@ class VGG16(Configurable, UsesTFSession):
         with tf.name_scope("conv4_3") as scope:
             kernel = tf.Variable(
                 tf.truncated_normal(
-                    [3, 3, 512, 512], dtype=tf.float32, stddev=1e-1),
+                    [3, 3, 512, 512], dtype=tf.float32, stddev=1e-1
+                ),
                 name="weights",
             )
             conv = tf.nn.conv2d(
-                self.conv4_2, kernel, [1, 1, 1, 1], padding="SAME")
+                self.conv4_2, kernel, [1, 1, 1, 1], padding="SAME"
+            )
             biases = tf.Variable(
                 tf.constant(0.0, shape=[512], dtype=tf.float32),
                 trainable=True,
@@ -382,11 +404,13 @@ class VGG16(Configurable, UsesTFSession):
         with tf.name_scope("conv5_1") as scope:
             kernel = tf.Variable(
                 tf.truncated_normal(
-                    [3, 3, 512, 512], dtype=tf.float32, stddev=1e-1),
+                    [3, 3, 512, 512], dtype=tf.float32, stddev=1e-1
+                ),
                 name="weights",
             )
             conv = tf.nn.conv2d(
-                self.pool4, kernel, [1, 1, 1, 1], padding="SAME")
+                self.pool4, kernel, [1, 1, 1, 1], padding="SAME"
+            )
             biases = tf.Variable(
                 tf.constant(0.0, shape=[512], dtype=tf.float32),
                 trainable=True,
@@ -399,11 +423,13 @@ class VGG16(Configurable, UsesTFSession):
         with tf.name_scope("conv5_2") as scope:
             kernel = tf.Variable(
                 tf.truncated_normal(
-                    [3, 3, 512, 512], dtype=tf.float32, stddev=1e-1),
+                    [3, 3, 512, 512], dtype=tf.float32, stddev=1e-1
+                ),
                 name="weights",
             )
             conv = tf.nn.conv2d(
-                self.conv5_1, kernel, [1, 1, 1, 1], padding="SAME")
+                self.conv5_1, kernel, [1, 1, 1, 1], padding="SAME"
+            )
             biases = tf.Variable(
                 tf.constant(0.0, shape=[512], dtype=tf.float32),
                 trainable=True,
@@ -416,11 +442,13 @@ class VGG16(Configurable, UsesTFSession):
         with tf.name_scope("conv5_3") as scope:
             kernel = tf.Variable(
                 tf.truncated_normal(
-                    [3, 3, 512, 512], dtype=tf.float32, stddev=1e-1),
+                    [3, 3, 512, 512], dtype=tf.float32, stddev=1e-1
+                ),
                 name="weights",
             )
             conv = tf.nn.conv2d(
-                self.conv5_2, kernel, [1, 1, 1, 1], padding="SAME")
+                self.conv5_2, kernel, [1, 1, 1, 1], padding="SAME"
+            )
             biases = tf.Variable(
                 tf.constant(0.0, shape=[512], dtype=tf.float32),
                 trainable=True,
@@ -443,7 +471,8 @@ class VGG16(Configurable, UsesTFSession):
             shape = int(np.prod(self.pool5.get_shape()[1:]))
             fc1w = tf.Variable(
                 tf.truncated_normal(
-                    [shape, 4096], dtype=tf.float32, stddev=1e-1),
+                    [shape, 4096], dtype=tf.float32, stddev=1e-1
+                ),
                 name="weights",
             )
             fc1b = tf.Variable(
@@ -459,7 +488,8 @@ class VGG16(Configurable, UsesTFSession):
         with tf.name_scope("fc2"):
             fc2w = tf.Variable(
                 tf.truncated_normal(
-                    [4096, 4096], dtype=tf.float32, stddev=1e-1),
+                    [4096, 4096], dtype=tf.float32, stddev=1e-1
+                ),
                 name="weights",
             )
             fc2b = tf.Variable(
@@ -475,7 +505,8 @@ class VGG16(Configurable, UsesTFSession):
         with tf.name_scope("fc3"):
             fc3w = tf.Variable(
                 tf.truncated_normal(
-                    [4096, 1000], dtype=tf.float32, stddev=1e-1),
+                    [4096, 1000], dtype=tf.float32, stddev=1e-1
+                ),
                 name="weights",
             )
             fc3b = tf.Variable(
@@ -496,48 +527,49 @@ class VGG16(Configurable, UsesTFSession):
 
 
 class VGG16FeaturizerConfig(VGG16Config):
-    '''Configuration settings for a VGG16Featurizer.
+    """Configuration settings for a VGG16Featurizer.
 
     Attributes:
         model_name: the name of the VGG-16 model to load
         labels_map: path to the labels map to load
-    '''
+    """
+
     pass
 
 
 class VGG16Featurizer(ImageFeaturizer):
-    '''Featurizer that embeds images into the VGG-16 feature space.'''
+    """Featurizer that embeds images into the VGG-16 feature space."""
 
     def __init__(self, config=None):
-        '''Creates a VGG16Featurizer instance.
+        """Creates a VGG16Featurizer instance.
 
         Args:
             config: an optional VGG16FeaturizerConfig instance. If omitted,
                 the default VGG16FeaturizerConfig is used
-        '''
+        """
         super(VGG16Featurizer, self).__init__()
         self.config = config or VGG16FeaturizerConfig.default()
         self.validate(self.config)
         self.vgg16 = None
 
     def dim(self):
-        '''The dimension of the features extracted by this Featurizer.'''
+        """The dimension of the features extracted by this Featurizer."""
         return 4096
 
     def _start(self):
-        '''Starts a TensorFlow session and loads the network.'''
+        """Starts a TensorFlow session and loads the network."""
         if self.vgg16 is None:
             self.vgg16 = VGG16(self.config)
             self.vgg16.__enter__()
 
     def _stop(self):
-        '''Closes the TensorFlow session and frees up the network.'''
+        """Closes the TensorFlow session and frees up the network."""
         if self.vgg16:
             self.vgg16.__exit__()
             self.vgg16 = None
 
     def _featurize(self, img):
-        '''Featurizes the input image using VGG-16.
+        """Featurizes the input image using VGG-16.
 
         The image is resized to 224 x 224 internally, if necessary.
 
@@ -546,7 +578,7 @@ class VGG16Featurizer(ImageFeaturizer):
 
         Returns:
             the feature vector, a 1D array of length 4096
-        '''
+        """
         imgs = [VGG16.preprocess_image(img)]
         tensors = [self.vgg16.fc2l]
         output = self.vgg16.evaluate(imgs, tensors)[0]

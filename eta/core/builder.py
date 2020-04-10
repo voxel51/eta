@@ -1,9 +1,9 @@
-'''
+"""
 Core pipeline building system.
 
 Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
-'''
+"""
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
 # pragma pylint: disable=wildcard-import
@@ -13,6 +13,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
 from future.utils import iteritems, itervalues
+
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
@@ -45,7 +46,7 @@ MODULE_CONFIG_EXT = ".json"
 
 
 def find_last_built_pipeline():
-    '''Finds the pipeline config file for the last built pipeline.
+    """Finds the pipeline config file for the last built pipeline.
 
     The last built pipeline is the pipeline whose generated configuration
     directory has the most recent timestamp.
@@ -53,7 +54,7 @@ def find_last_built_pipeline():
     Returns:
         the path to the pipline config file for the last built pipeline, or
             None if no config directories were found
-    '''
+    """
     builds = glob.glob(eta.config.config_dir + "/*/*")
     if not builds:
         return None
@@ -63,17 +64,17 @@ def find_last_built_pipeline():
 
 
 def find_all_built_pipelines():
-    '''Finds the pipeline config files for all built pipelines.
+    """Finds the pipeline config files for all built pipelines.
 
     Returns:
         a list of paths to pipline config files
-    '''
+    """
     builds = glob.glob(eta.config.config_dir + "/*/*")
     return [os.path.join(b, PIPELINE_CONFIG_FILE) for b in builds]
 
 
 def cleanup_pipeline(pipeline_config_path):
-    '''Cleans up the given built pipeline.
+    """Cleans up the given built pipeline.
 
     This function simply deletes the generated config and output directories
     for the pipeline, if necessary. Published outputs are not deleted.
@@ -85,18 +86,20 @@ def cleanup_pipeline(pipeline_config_path):
     Raises:
         OSError: if the pipeline was not a generated pipeline in the ETA config
             directory
-    '''
+    """
     eta_config_dir = os.path.realpath(eta.config.config_dir)
     eta_output_dir = os.path.realpath(eta.config.output_dir)
 
     config_dir = os.path.dirname(os.path.realpath(pipeline_config_path))
     output_dir = os.path.join(
-        eta_output_dir, config_dir[(len(eta_config_dir) + 1):])
+        eta_output_dir, config_dir[(len(eta_config_dir) + 1) :]
+    )
 
     if not config_dir.startswith(eta_config_dir):
         raise OSError(
-            "Expected pipeline '%s' to be in the ETA config directory '%s'" %
-            (pipeline_config_path, eta_config_dir))
+            "Expected pipeline '%s' to be in the ETA config directory '%s'"
+            % (pipeline_config_path, eta_config_dir)
+        )
 
     logger.info("Cleaning up pipeline '%s'", pipeline_config_path)
 
@@ -114,17 +117,17 @@ def cleanup_pipeline(pipeline_config_path):
 
 
 def cleanup_all_pipelines():
-    '''Cleans up all built pipelines.'''
+    """Cleans up all built pipelines."""
     for pipeline_config_path in find_all_built_pipelines():
         cleanup_pipeline(pipeline_config_path)
 
 
 class ModuleConfig(etam.BaseModuleConfig):
-    '''Module configuration class.
+    """Module configuration class.
 
     This generic class is used by `PipelineBuilder` to build module
     configuration files of any type.
-    '''
+    """
 
     def __init__(self, d):
         super(ModuleConfig, self).__init__(d)
@@ -133,7 +136,7 @@ class ModuleConfig(etam.BaseModuleConfig):
 
 
 class PipelineBuildRequestConfig(Config):
-    '''Pipeline build request configuration class.'''
+    """Pipeline build request configuration class."""
 
     def __init__(self, d):
         self.name = self.parse_string(d, "name", default=None)
@@ -143,11 +146,12 @@ class PipelineBuildRequestConfig(Config):
         self.parameters = self.parse_dict(d, "parameters", default={})
         self.eta_config = self.parse_dict(d, "eta_config", default={})
         self.logging_config = self.parse_object(
-            d, "logging_config", etal.LoggingConfig, default=None)
+            d, "logging_config", etal.LoggingConfig, default=None
+        )
 
 
 class PipelineBuildRequest(Configurable):
-    '''Pipeline build request class.
+    """Pipeline build request class.
 
     A pipeline build request is valid if all of the following are true:
         - a pipeline of the specified name exists
@@ -172,17 +176,17 @@ class PipelineBuildRequest(Configurable):
         eta_config: a dictionary of custom ETA config settings for the pipeline
             (if any)
         logging_config: the LoggingConfig for the pipeline (if any)
-    '''
+    """
 
     def __init__(self, config):
-        '''Creates a new PipelineBuildRequest instance.
+        """Creates a new PipelineBuildRequest instance.
 
         Args:
             config: a PipelineBuildRequestConfig instance.
 
         Raises:
             PipelineBuildRequestError: if the pipeline request was invalid
-        '''
+        """
         self.validate(config)
 
         self.name = config.name
@@ -203,11 +207,13 @@ class PipelineBuildRequest(Configurable):
         for iname, ipath in iteritems(self.inputs):
             if not self.metadata.has_input(iname):
                 raise PipelineBuildRequestError(
-                    "Pipeline '%s' has no input '%s'" % (self.pipeline, iname))
+                    "Pipeline '%s' has no input '%s'" % (self.pipeline, iname)
+                )
             if not self.metadata.is_valid_input(iname, ipath):
                 raise PipelineBuildRequestError(
                     "'%s' is not a valid value for input '%s' of pipeline "
-                    "'%s'" % (ipath, iname, self.pipeline))
+                    "'%s'" % (ipath, iname, self.pipeline)
+                )
             # Convert to absolute paths
             self.inputs[iname] = os.path.abspath(ipath)
 
@@ -216,21 +222,23 @@ class PipelineBuildRequest(Configurable):
             if miobj.is_required and miname not in self.inputs:
                 raise PipelineBuildRequestError(
                     "Required input '%s' of pipeline '%s' was not "
-                    "supplied" % (miname, self.pipeline))
+                    "supplied" % (miname, self.pipeline)
+                )
 
     def _validate_outputs(self):
         # Validate outputs
         for oname, opath in iteritems(self.outputs):
             if not self.metadata.has_output(oname):
                 raise PipelineBuildRequestError(
-                    "Pipeline '%s' has no output '%s'" %
-                    (self.pipeline, oname))
+                    "Pipeline '%s' has no output '%s'" % (self.pipeline, oname)
+                )
             if not opath:
                 continue
             if not self.metadata.is_valid_output(oname, opath):
                 raise PipelineBuildRequestError(
                     "'%s' is not a valid value for output '%s' of pipeline "
-                    "'%s'" % (opath, oname, self.pipeline))
+                    "'%s'" % (opath, oname, self.pipeline)
+                )
             # Convert to absolute paths
             self.outputs[oname] = os.path.abspath(opath)
 
@@ -239,12 +247,14 @@ class PipelineBuildRequest(Configurable):
         for pname, pval in iteritems(self.parameters):
             if not self.metadata.has_tunable_parameter(pname):
                 raise PipelineBuildRequestError(
-                    "Pipeline '%s' has no tunable parameter '%s'" % (
-                        self.pipeline, pname))
+                    "Pipeline '%s' has no tunable parameter '%s'"
+                    % (self.pipeline, pname)
+                )
             if not self.metadata.is_valid_parameter(pname, pval):
                 raise PipelineBuildRequestError(
                     "'%s' is not a valid value for parameter '%s' of pipeline "
-                    "'%s'" % (pval, pname, self.pipeline))
+                    "'%s'" % (pval, pname, self.pipeline)
+                )
             # Convert any data parameters to absolute paths
             if self.metadata.parameters[pname].is_data:
                 self.parameters[pname] = os.path.abspath(pval)
@@ -254,16 +264,18 @@ class PipelineBuildRequest(Configurable):
             if mpobj.is_required and mpname not in self.parameters:
                 raise PipelineBuildRequestError(
                     "Required parameter '%s' of pipeline '%s' was not "
-                    "specified" % (mpname, self.pipeline))
+                    "specified" % (mpname, self.pipeline)
+                )
 
 
 class PipelineBuildRequestError(Exception):
-    '''Exception raised when an invalid PipelineBuildRequest is encountered.'''
+    """Exception raised when an invalid PipelineBuildRequest is encountered."""
+
     pass
 
 
 class PipelineBuilder(object):
-    '''Class for building a pipeline based on a PipelineBuildRequest.
+    """Class for building a pipeline based on a PipelineBuildRequest.
 
     Attributes:
         request: the PipelineBuildRequest instance used to build the pipeline
@@ -293,14 +305,14 @@ class PipelineBuilder(object):
             the pipeline is not optimized, it will also contain paths in
             `output_dir` for any pipeline outputs that were not included in the
             outputs dictionary
-    '''
+    """
 
     def __init__(self, request):
-        '''Creates a PipelineBuilder instance.
+        """Creates a PipelineBuilder instance.
 
         Args:
             request: a PipelineBuildRequest instance
-        '''
+        """
         self.request = request
 
         self.optimized = None
@@ -321,7 +333,7 @@ class PipelineBuilder(object):
         self.reset()
 
     def reset(self):
-        '''Resets the builder so that another pipeline can be built.'''
+        """Resets the builder so that another pipeline can be built."""
         self.optimized = None
         self.timestamp = None
         self.config_dir = None
@@ -336,13 +348,13 @@ class PipelineBuilder(object):
         self.pipeline_outputs = {}
 
     def build(self, optimized=True):
-        '''Builds the pipeline and writes the associated config files.
+        """Builds the pipeline and writes the associated config files.
 
         Args:
             optimized: whether to optimize the pipeline by omitting any modules
                 that are not necessary to generate the requested outputs. By
                 default, this is True
-        '''
+        """
         self.reset()
         self.optimized = optimized
 
@@ -377,48 +389,51 @@ class PipelineBuilder(object):
         self._build_module_configs()
 
     def run(self):
-        '''Runs the built pipeline.
+        """Runs the built pipeline.
 
         Returns:
             True/False whether the pipeline completed successfully
 
         Raises:
             PipelineBuilderError: if the pipeline hasn't been built
-        '''
+        """
         if not self.pipeline_config_path:
             raise PipelineBuilderError(
                 "No pipeline config found; you must build the pipeline before "
-                "running it")
+                "running it"
+            )
 
         return etap.run(self.pipeline_config_path)
 
     def get_status(self):
-        '''Gets the PipelineStatus for the last run pipeline.
+        """Gets the PipelineStatus for the last run pipeline.
 
         Returns:
             a PipelineStatus instance
 
         Raises:
             PipelineBuilderError: if the pipeline hasn't been built and run
-        '''
+        """
         if not os.path.exists(self.pipeline_status_path):
             raise PipelineBuilderError(
                 "No pipeline status found; you must build and run the "
-                "pipeline before getting its status")
+                "pipeline before getting its status"
+            )
 
         return etas.PipelineStatus.from_json(self.pipeline_status_path)
 
     def cleanup(self):
-        '''Cleans up the configs and output files generated when the pipeline
+        """Cleans up the configs and output files generated when the pipeline
         was run, if necessary. Published outputs are NOT deleted.
 
         Raises:
             PipelineBuilderError: if the pipeline hasn't been built
-        '''
+        """
         if not self.config_dir or not self.output_dir:
             raise PipelineBuilderError(
                 "You must build and run the pipeline before you can clean "
-                "it up")
+                "it up"
+            )
 
         try:
             etau.delete_dir(self.config_dir)
@@ -493,7 +508,8 @@ class PipelineBuilder(object):
         active_inputs = defaultdict(set)
         active_outputs = defaultdict(set)
         queue = [
-            pmeta.get_output_source(oname) for oname in self.request.outputs]
+            pmeta.get_output_source(oname) for oname in self.request.outputs
+        ]
         while queue:
             node = queue.pop(0)
             active_outputs[node.module].add(node.node)
@@ -520,12 +536,16 @@ class PipelineBuilder(object):
                     if not mmeta.get_output(oname).is_required:
                         logger.debug(
                             "*** Pruning unnecessary output '%s' from module "
-                            "'%s'", oname, module)
+                            "'%s'",
+                            oname,
+                            module,
+                        )
                         del self.module_outputs[module][oname]
 
         # Update execution order
         self.execution_order = [
-            module for module in self.execution_order
+            module
+            for module in self.execution_order
             if module in active_modules
         ]
 
@@ -537,10 +557,11 @@ class PipelineBuilder(object):
             metadata = self.request.metadata.modules[module].metadata
             jobs.append(
                 etaj.JobConfig.builder()
-                    .set(name=module)
-                    .set(script=etam.find_exe(module_metadata=metadata))
-                    .set(config_path=self._get_module_config_path(module))
-                    .validate())
+                .set(name=module)
+                .set(script=etam.find_exe(module_metadata=metadata))
+                .set(config_path=self._get_module_config_path(module))
+                .validate()
+            )
         if not jobs:
             logger.warning("Pipeline contains no jobs...")
 
@@ -554,20 +575,24 @@ class PipelineBuilder(object):
                 # Generate a pipeline log in our automated location
                 logging_config.filename = self.pipeline_logfile_path
         else:
-            logging_config = (etal.LoggingConfig.builder()
+            logging_config = (
+                etal.LoggingConfig.builder()
                 .set(filename=self.pipeline_logfile_path)
-                .validate())
+                .validate()
+            )
 
         # Build pipeline config
         name = self.request.name or self.request.pipeline
-        pipeline_config = (etap.PipelineConfig.builder()
+        pipeline_config = (
+            etap.PipelineConfig.builder()
             .set(name=name)
             .set(status_path=self.pipeline_status_path)
             .set(overwrite=False)
             .set(jobs=jobs)
             .set(eta_config=self.request.eta_config)
             .set(logging_config=logging_config)
-            .validate())
+            .validate()
+        )
 
         # Write pipeline config
         logger.info("Writing pipeline config '%s'", self.pipeline_config_path)
@@ -577,11 +602,14 @@ class PipelineBuilder(object):
         for module in self.execution_order:
             # Build module config
             data = etau.join_dicts(
-                self.module_inputs[module], self.module_outputs[module])
-            module_config = (ModuleConfig.builder()
+                self.module_inputs[module], self.module_outputs[module]
+            )
+            module_config = (
+                ModuleConfig.builder()
                 .set(data=[data])
                 .set(parameters=self.module_parameters[module])
-                .validate())
+                .validate()
+            )
 
             # Write module config
             module_config_path = self._get_module_config_path(module)
@@ -594,12 +622,14 @@ class PipelineBuilder(object):
     def _get_config_dir(self):
         time_str = self._get_timestamp_str()
         return os.path.join(
-            eta.config.config_dir, self.request.pipeline, time_str)
+            eta.config.config_dir, self.request.pipeline, time_str
+        )
 
     def _get_output_dir(self):
         time_str = self._get_timestamp_str()
         return os.path.join(
-            eta.config.output_dir, self.request.pipeline, time_str)
+            eta.config.output_dir, self.request.pipeline, time_str
+        )
 
     def _make_pipeline_config_path(self):
         return os.path.join(self.config_dir, PIPELINE_CONFIG_FILE)
@@ -620,13 +650,14 @@ class PipelineBuilder(object):
 
 
 class PipelineBuilderError(Exception):
-    '''Exception raised when an invalid action is taken with a PipelineBuilder.
-    '''
+    """Exception raised when an invalid action is taken with a PipelineBuilder.
+    """
+
     pass
 
 
 def _get_param_value(param, request):
-    '''Gets the value for the parameter.
+    """Gets the value for the parameter.
 
     Args:
         param: a PipelineParameter instance describing the parameter
@@ -634,7 +665,7 @@ def _get_param_value(param, request):
 
     Returns:
         val: the parameter value
-    '''
+    """
     if param.param_str in request.parameters:
         # User-set parameter
         val = request.parameters[param.param_str]

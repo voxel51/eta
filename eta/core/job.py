@@ -1,9 +1,9 @@
-'''
+"""
 Core job infrastructure for running modules in a pipeline.
 
 Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
-'''
+"""
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
 # pragma pylint: disable=wildcard-import
@@ -12,6 +12,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
+
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
@@ -29,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 
 def run(job_config, pipeline_status, overwrite=True):
-    '''Run the job specified by the JobConfig.
+    """Run the job specified by the JobConfig.
 
     If the job completes succesfully, the hash of the config file is written to
     disk.
@@ -48,7 +49,7 @@ def run(job_config, pipeline_status, overwrite=True):
 
     Raises:
         JobConfigError: if the JobConfig was invalid
-    '''
+    """
     job_status = pipeline_status.add_job(job_config.name)
 
     with etau.WorkingDir(job_config.working_dir):
@@ -94,22 +95,22 @@ def run(job_config, pipeline_status, overwrite=True):
 def _run(job_config):
     # Construct command
     if job_config.binary:
-        args = [job_config.binary]      # binary
+        args = [job_config.binary]  # binary
     elif job_config.script:
         args = [
-            job_config.interpreter,     # interpreter
-            job_config.script,          # script
+            job_config.interpreter,  # interpreter
+            job_config.script,  # script
         ]
     elif job_config.custom:
         # Run custom command-line
-        args = job_config.custom        # custom args
+        args = job_config.custom  # custom args
     else:
         raise JobConfigError("Invalid JobConfig")
 
     # Add config files
-    args.append(job_config.config_path)                 # module config
+    args.append(job_config.config_path)  # module config
     if job_config.pipeline_config_path:
-        args.append(job_config.pipeline_config_path)    # pipeline config
+        args.append(job_config.pipeline_config_path)  # pipeline config
 
     # Run command
     etal.flush()  # must flush because subprocess will append to same logfile
@@ -119,21 +120,24 @@ def _run(job_config):
 
 
 class JobConfigError(Exception):
-    '''Exception raised when an invalid JobConfig is encountered.'''
+    """Exception raised when an invalid JobConfig is encountered."""
+
     pass
 
 
 class JobConfig(Config):
-    '''Job configuration settings'''
+    """Job configuration settings"""
 
     def __init__(self, d):
         self.name = self.parse_string(d, "name", default="job")
         self.working_dir = self.parse_string(d, "working_dir", default=None)
         self.interpreter = self.parse_string(
-            d, "interpreter", default="python")
+            d, "interpreter", default="python"
+        )
         self.script = self.parse_string(d, "script", default=None)
         self.binary = self.parse_string(d, "binary", default=None)
         self.custom = self.parse_array(d, "custom", default=None)
         self.config_path = self.parse_string(d, "config_path")
         self.pipeline_config_path = self.parse_string(
-            d, "pipeline_config_path", default=None)
+            d, "pipeline_config_path", default=None
+        )
