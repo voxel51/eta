@@ -10,7 +10,7 @@
     "modules": {
         "format_videos": {
             "name": "format_videos",
-            "tunable_parameters": ["ffmpeg_out_opts", "size", "max_size"],
+            "tunable_parameters": ["size", "max_size", "ffmpeg_out_opts"],
             "set_parameters": {}
         },
         "visualize_labels": {
