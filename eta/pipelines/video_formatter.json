@@ -2,7 +2,7 @@
     "info": {
         "name": "video_formatter",
         "type": "eta.core.types.Pipeline",
-        "version": "0.1.0",
+        "version": "0.2",
         "description": "A pipeline for resampling, resizing, and reformatting videos"
     },
     "inputs": ["video"],
@@ -11,9 +11,17 @@
         "format_videos": {
             "name": "format_videos",
             "tunable_parameters": [
-                "fps", "size", "scale", "max_fps", "max_size"
+                "fps",
+                "size",
+                "scale",
+                "max_fps",
+                "max_size",
+                "force_formatting",
+                "ffmpeg_out_opts"
             ],
-            "set_parameters": {}
+            "set_parameters": {
+                "force_formatting": true
+            }
         }
     },
     "connections": [
