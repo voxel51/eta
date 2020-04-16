@@ -2,7 +2,7 @@
     "info": {
         "name": "visualize_labels",
         "type": "eta.core.types.Pipeline",
-        "version": "0.1",
+        "version": "0.2",
         "description": "A pipeline for visualizing labels on a video"
     },
     "inputs": ["video", "video_labels"],
@@ -10,10 +10,8 @@
     "modules": {
         "format_videos": {
             "name": "format_videos",
-            "tunable_parameters": ["size"],
-            "set_parameters": {
-                "max_size": [-1, 1080]
-            }
+            "tunable_parameters": ["ffmpeg_out_opts", "size", "max_size"],
+            "set_parameters": {}
         },
         "visualize_labels": {
             "name": "visualize_labels",
