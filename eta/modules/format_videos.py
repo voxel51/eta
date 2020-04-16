@@ -134,6 +134,9 @@ class ParametersConfig(Config):
         max_size (eta.core.types.Array): [None] A maximum (width, height)
             allowed for the video. Dimensions can be -1, in which case no
             constraint is applied to them
+        force_formatting (eta.core.types.Boolean): [False] Whether to force
+            formatting of the video, even if the frame rate, frame size, and
+            encoding of the video are not explicitly being changed
         ffmpeg_out_opts (eta.core.types.Array): [None] An array of ffmpeg
             output options
     """
@@ -144,6 +147,9 @@ class ParametersConfig(Config):
         self.scale = self.parse_number(d, "scale", default=None)
         self.size = self.parse_array(d, "size", default=None)
         self.max_size = self.parse_array(d, "max_size", default=None)
+        self.force_formatting = self.parse_bool(
+            d, "force_formatting", default=False
+        )
         self.ffmpeg_out_opts = self.parse_array(
             d, "ffmpeg_out_opts", default=None
         )
@@ -178,6 +184,7 @@ def _process_video(input_path, output_path, parameters):
     scale = parameters.scale
     size = parameters.size
     max_size = parameters.max_size
+    force_formatting = parameters.force_formatting
     ffmpeg_out_opts = parameters.ffmpeg_out_opts
 
     # Get video metadata, logging generously
@@ -210,11 +217,24 @@ def _process_video(input_path, output_path, parameters):
         msize = etai.parse_frame_size(max_size)
         osize = etai.clamp_frame_size(osize, msize)
 
+    #
     # Handle no-ops efficiently
+    #
+
     same_fps = ifps == ofps
     same_size = osize == isize
     same_format = etav.is_same_video_file_format(input_path, output_path)
-    if same_fps and same_size and same_format:
+    default_opts = ffmpeg_out_opts is None
+
+    should_format = (
+        not same_fps
+        or not same_size
+        or not same_format
+        or not default_opts
+        or force_formatting
+    )
+
+    if not should_format:
         logger.info(
             "Same frame rate, frame size, and video format detected, so no "
             "computation is required. Just symlinking %s to %s",
@@ -242,8 +262,11 @@ def _process_video(input_path, output_path, parameters):
     else:
         osize = None  # omit unused argument
 
+    if not default_opts:
+        logger.info("*** using ffmpeg output options %s", ffmpeg_out_opts)
+
     ffmpeg = etav.FFmpeg(fps=ofps, size=osize, out_opts=ffmpeg_out_opts)
-    ffmpeg.run(input_path, output_path)
+    ffmpeg.run(input_path, output_path, verbose=True)
 
 
 def run(config_path, pipeline_config_path=None):
