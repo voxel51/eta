@@ -83,6 +83,13 @@
             "default": null
         },
         {
+            "name": "force_formatting",
+            "type": "eta.core.types.Boolean",
+            "description": "Whether to force formatting of the video, even if the frame rate, frame size, and encoding of the video are not explicitly being changed",
+            "required": false,
+            "default": false
+        },
+        {
             "name": "ffmpeg_out_opts",
             "type": "eta.core.types.Array",
             "description": "An array of ffmpeg output options",
