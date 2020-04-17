@@ -29,5 +29,6 @@ setuptools==44.0.0;python_version<"3"
 setuptools==45.2.0;python_version>="3"
 simplejson==3.8.1
 six==1.11.0
+sortedcontainers==2.1.0
 tabulate==0.8.5
 tzlocal==2.0.0
