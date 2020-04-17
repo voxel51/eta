@@ -1,9 +1,9 @@
-'''
+"""
 ETA package-wide constants.
 
 Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
-'''
+"""
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
 # pragma pylint: disable=wildcard-import
@@ -12,6 +12,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
+
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
@@ -41,7 +42,8 @@ CONFIG_JSON_PATH = os.path.join(BASE_DIR, "config.json")
 ASCII_ART_PATH = os.path.join(RESOURCES_DIR, "eta-ascii.txt")
 DEFAULT_FONT_PATH = os.path.join(RESOURCES_DIR, "lato-regular.ttf")
 DEFAULT_LOGO_CONFIG_PATH = os.path.join(
-    RESOURCES_DIR, "default-logo-config.json")
+    RESOURCES_DIR, "default-logo-config.json"
+)
 
 
 # Package metadata
@@ -51,6 +53,6 @@ VERSION = _META["version"]
 DESCRIPTION = _META["summary"]
 AUTHOR = _META["author"]
 AUTHOR_EMAIL = _META["author-email"]
-URL = _META["url"]
+URL = _META["home-page"]
 LICENSE = _META["license"]
 VERSION_LONG = "%s v%s, %s" % (NAME, VERSION, AUTHOR)
