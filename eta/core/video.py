@@ -38,6 +38,7 @@ import threading
 import cv2
 import dateutil.parser
 import numpy as np
+from sortedcontainers import SortedDict
 
 import eta.core.data as etad
 import eta.core.events as etae
@@ -544,7 +545,7 @@ class VideoLabels(
         mask_index: (optional) a MaskIndex describing the semantics of all
             segmentation masks in the video
         attrs: an AttributeContainer of video-level attributes
-        frames: a dictionary mapping frame numbers to VideoFrameLabels
+        frames: a SortedDict mapping frame numbers to VideoFrameLabels
         objects: a VideoObjectContainer of objects
         events: a VideoEventContainer of events
         schema: (optional) a VideoLabelsSchema describing the video's schema
@@ -582,7 +583,7 @@ class VideoLabels(
         self.metadata = metadata
         self.mask_index = mask_index
         self.attrs = attrs or etad.AttributeContainer()
-        self.frames = frames or {}
+        self.frames = SortedDict(frames or {})
         self.objects = objects or etao.VideoObjectContainer()
         self.events = events or etae.VideoEventContainer()
         etal.HasLabelsSchema.__init__(self, schema=schema)
@@ -628,7 +629,7 @@ class VideoLabels(
         Returns:
             an iterator over frame numbers
         """
-        return iter(sorted(self.frames))
+        return iter(self.frames)
 
     def iter_attributes(self):
         """Returns an iterator over the video-level attributes in the video.
@@ -656,6 +657,8 @@ class VideoLabels(
 
     def iter_frames(self):
         """Returns an iterator over the VideoFrameLabels in the video.
+
+        The frames are traversed in sorted order.
 
         Returns:
             an iterator over VideoFrameLabels
@@ -806,24 +809,24 @@ class VideoLabels(
         Returns:
             a list of frame numbers
         """
-        return sorted(self.frames.keys())
+        return list(self.frames.keys())
 
     def get_frame_numbers_with_masks(self):
         """Returns a sorted list of frames with frame-level masks.
 
         Returns:
-            a sorted list of frame numbers
+            a list of frame numbers
         """
-        return sorted([fn for fn in self if self[fn].has_mask])
+        return [fn for fn in self if self[fn].has_mask]
 
     def get_frame_numbers_with_attributes(self):
         """Returns a sorted list of frames with one or more frame-level
         attributes.
 
         Returns:
-            a sorted list of frame numbers
+            a list of frame numbers
         """
-        return sorted([fn for fn in self if self[fn].has_frame_attributes])
+        return [fn for fn in self if self[fn].has_frame_attributes]
 
     def get_frame_numbers_with_objects(self):
         """Returns a sorted list of frames with one or more `DetectedObject`s.
@@ -831,7 +834,7 @@ class VideoLabels(
         Returns:
             a list of frame numbers
         """
-        return sorted([fn for fn in self if self[fn].has_objects])
+        return [fn for fn in self if self[fn].has_objects]
 
     def get_frame_numbers_with_events(self):
         """Returns a sorted list of frames with one or more `DetectedEvent`s.
@@ -839,7 +842,7 @@ class VideoLabels(
         Returns:
             a list of frame numbers
         """
-        return sorted([fn for fn in self if self[fn].has_events])
+        return [fn for fn in self if self[fn].has_events]
 
     def get_object_indexes(self):
         """Returns the set of `index`es of all objects in the video.
@@ -1045,13 +1048,13 @@ class VideoLabels(
 
     def clear_frames(self):
         """Removes all VideoFrameLabels from the video."""
-        self.frames = {}
+        self.frames.clear()
 
     def remove_empty_frames(self):
         """Removes all empty VideoFrameLabels from the video."""
-        self.frames = {
-            fn: vfl for fn, vfl in iteritems(self.frames) if not vfl.is_empty
-        }
+        self.frames = SortedDict(
+            {fn: vfl for fn, vfl in iteritems(self.frames) if not vfl.is_empty}
+        )
 
     def merge_labels(self, video_labels, reindex=False):
         """Merges the given VideoLabels into this labels.

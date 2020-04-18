@@ -715,7 +715,7 @@ class ProgressBar(object):
         """Whether the task is 100%% complete."""
         return self.iteration >= self.total
 
-    def set_iteration(self, iteration, prefix=None, suffix=None):
+    def set_iteration(self, iteration, prefix=None, suffix=None, draw=False):
         """Sets the current iteration.
 
         Args:
@@ -724,6 +724,8 @@ class ProgressBar(object):
                 bar. By default, the prefix is unchanged
             suffix: an optional new suffix string to append to the progress
                 bar. By default, the suffix is unchanged
+            draw: whether to call `draw()` at the end of this method. By
+                default, this is False
         """
         self._iteration = max(0, min(iteration, self.total))
         if prefix is not None:
@@ -731,6 +733,9 @@ class ProgressBar(object):
 
         if suffix is not None:
             self._suffix = self._parse_suffix(suffix)
+
+        if draw:
+            self.draw()
 
     def pause(self):
         """Pauses the progress bar so that other information can be printed.
