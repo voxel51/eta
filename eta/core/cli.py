@@ -752,10 +752,18 @@ class ConstantsCommand(Command):
                 for k, v in iteritems(vars(etac))
                 if not k.startswith("_") and k == k.upper()
             }
-            print_constants_table(d)
+            _print_constants_table(d)
 
         if args.constant:
             print(getattr(etac, args.constant))
+
+
+def _print_constants_table(d):
+    contents = sorted(d.items(), key=lambda kv: kv[0])
+    table_str = tabulate(
+        contents, headers=["constant", "value"], tablefmt=TABLE_FORMAT
+    )
+    print(table_str)
 
 
 class ConfigCommand(Command):
@@ -3301,14 +3309,6 @@ def _parse_google_drive_mime_type(mime_type):
     if mime_type == "application/vnd.google-apps.folder":
         mime_type = "(folder)"
     return mime_type
-
-
-def print_constants_table(d):
-    contents = sorted(d.items(), key=lambda kv: kv[0])
-    table_str = tabulate(
-        contents, headers=["constant", "value"], tablefmt=TABLE_FORMAT
-    )
-    print(table_str)
 
 
 def _parse_datetime(datetime_or_str):
