@@ -469,23 +469,23 @@ class LabeledDataset(object):
         self.dataset_index.description = description
         return self
 
-    def write_manifest(self, filename, description=None):
+    def write_manifest(self, filename=None):
         """Writes the current manifest to disk inside `dataset_dir`.
 
         Use this method to serialize the current state of a dataset after
         performing some manipulations on it.
 
         Args:
-            filename: the name of a new manifest file to be written in
-                `dataset_dir`
-            description: optional description for the new manifest. If not
-                specified, the existing description is retained
+            filename: an optional name for the manifest to be written inside
+                `dataset_dir`. By default, the name of the current manifest
+                from `manifest_path` is used
         """
-        if description is not None:
-            self.set_description(description)
+        if filename is None:
+            manifest_path = self.manifest_path
+        else:
+            manifest_path = os.path.join(self.dataset_dir, filename)
 
-        out_path = os.path.join(self.dataset_dir, filename)
-        self.dataset_index.write_json(out_path)
+        self.dataset_index.write_json(manifest_path)
 
     def sample(self, k):
         """Randomly downsamples the dataset to k samples.

@@ -5,7 +5,6 @@ managing and applying a series of `DatasetTransformer`s to `LabeledDataset`s.
 Copyright 2017-2020 Voxel51, Inc.
 voxel51.com
 
-Matthew Lightman, matthew@voxel51.com
 Ben Kane, ben@voxel51.com
 Tyler Ganter, tyler@voxel51.com
 """
@@ -169,7 +168,8 @@ class LabeledDatasetBuilder(object):
             # placed directly into the dataset directory by `record.build()`.
             dataset.add_file(data_path, labels_path)
 
-        dataset.write_manifest(os.path.basename(manifest_path))
+        dataset.write_manifest()
+
         return dataset
 
 
