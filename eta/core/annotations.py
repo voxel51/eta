@@ -559,6 +559,9 @@ def annotate_image(img, frame_labels, annotation_config=None):
     if annotation_config is None:
         annotation_config = _DEFAULT_ANNOTATION_CONFIG
 
+    if etai.is_gray(img):
+        img = etai.gray_to_rgb(img)
+
     # Set media size
     annotation_config.set_media_size(img=img)
 
