@@ -1014,7 +1014,7 @@ class AttributeContainer(etal.LabelsContainer):
         return [attr.value for attr in self.get_attrs_with_name(name)]
 
     def get_attr_value_with_name(self, name, default=no_default):
-        """Get the value of the single Attribute with the given name
+        """Gets the value of the single Attribute with the given name.
 
         Args:
             name: the Attribute name
