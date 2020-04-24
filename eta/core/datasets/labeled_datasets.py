@@ -707,7 +707,9 @@ class LabeledDataset(object):
         self._build_index_map()
         return self
 
-    def copy(self, manifest_path, file_method=FileMethods.COPY):
+    def copy(
+        self, manifest_path, file_method=FileMethods.COPY, overwrite=False
+    ):
         """Copies the dataset to another directory.
 
         If the dataset index has been manipulated, this will be reflected in
@@ -721,11 +723,18 @@ class LabeledDataset(object):
                 how to add the files to the dataset. This value can be a
                 two-element tuple specifying separate file methods for data and
                 labels, respectively. The default is `FileMethods.COPY`
+            overwrite: whether to delete an existing dataset in the base
+                directory of `manifest_path`, if necessary. By default, this is
+                False
 
         Returns:
             a LabeledDataset instance that points to the new directory
+
+        Raises:
+            ValueError: if `overwrite == False` and the base directory of the
+                specified `manifest_path` already exists
         """
-        self._ensure_empty_dataset(manifest_path)
+        self._ensure_empty_dataset(manifest_path, overwrite)
         self.dataset_index.write_json(manifest_path)
 
         dataset = self.__class__(manifest_path)
@@ -1020,17 +1029,26 @@ class LabeledDataset(object):
                 labels.write_json(labels_path)
 
     @classmethod
-    def create_empty_dataset(cls, manifest_path, description=None):
+    def create_empty_dataset(
+        cls, manifest_path, description=None, overwrite=False
+    ):
         """Creates an empty LabeledDataset.
 
         Args:
             manifest_path: the path for the LabeledDatasetIndex of the dataset
             description: an optional description for the dataset
+            overwrite: whether to delete an existing dataset in the base
+                directory of `manifest_path`, if necessary. By default, this is
+                False
 
         Returns:
             a LabeledDataset instance pointing to the empty dataset
+
+        Raises:
+            ValueError: if `overwrite == False` and the base directory of the
+                specified `manifest_path` already exists
         """
-        cls._ensure_empty_dataset(manifest_path)
+        cls._ensure_empty_dataset(manifest_path, overwrite)
         dataset_index = LabeledDatasetIndex(
             etau.get_class_name(cls), description=description
         )
@@ -1219,16 +1237,21 @@ class LabeledDataset(object):
         return data_filenames_to_merge
 
     @classmethod
-    def _ensure_empty_dataset(cls, manifest_path):
+    def _ensure_empty_dataset(cls, manifest_path, overwrite):
         dataset_dir = os.path.dirname(manifest_path)
+
+        if os.path.isdir(dataset_dir):
+            if overwrite:
+                logger.warning(
+                    "Deleting existing dataset directory '%s'", dataset_dir
+                )
+                etau.delete_dir(dataset_dir)
+            elif os.listdir(dataset_dir):
+                raise ValueError(
+                    "Dataset directory '%s' must be empty" % dataset_dir
+                )
+
         etau.ensure_dir(dataset_dir)
-
-        if os.listdir(dataset_dir):
-            raise ValueError(
-                "Cannot create a new dataset in non-empty directory '%s'"
-                % dataset_dir
-            )
-
         etau.ensure_dir(os.path.join(dataset_dir, cls._DATA_SUBDIR))
         etau.ensure_dir(os.path.join(dataset_dir, cls._LABELS_SUBDIR))
 
