@@ -40,10 +40,10 @@ class ETAConfig(EnvConfig):
 
     def __init__(self, d):
         self.config_dir = self.parse_string(
-            d, "config_dir", env_var="ETA_CONFIG_DIR", default=""
+            d, "config_dir", env_var="ETA_CONFIG_DIR", default=None
         )
         self.output_dir = self.parse_string(
-            d, "output_dir", env_var="ETA_OUTPUT_DIR", default=""
+            d, "output_dir", env_var="ETA_OUTPUT_DIR", default=None
         )
         self.module_dirs = self.parse_string_array(
             d, "module_dirs", env_var="ETA_MODULE_DIRS", default=[]
@@ -101,8 +101,16 @@ class ETAConfig(EnvConfig):
             default=".pdf",
         )
 
+        self._fill_defaults()
         self._parse_patterns()
         self._fill_patterns()
+
+    def _fill_defaults(self):
+        if not self.config_dir:
+            self.config_dir = os.path.join(etac.ETA_CONFIG_DIR, "configs")
+
+        if not self.output_dir:
+            self.output_dir = os.path.join(etac.ETA_CONFIG_DIR, "out")
 
     def _parse_patterns(self):
         #
