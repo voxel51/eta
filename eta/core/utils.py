@@ -90,7 +90,7 @@ def standarize_strs(arg):
     if isinstance(arg, list):
         return [standarize_strs(e) for e in arg]
 
-    if isinstance(arg, six.string_types):
+    if is_str(arg):
         return str(arg)
 
     return arg
@@ -845,19 +845,13 @@ class ProgressBar(object):
         sys.stdout.write("\r" + " " * self._max_len + "\r")
 
     def draw(self):
-        """Draws the progress bar at its current progress.
-
-        If the progress is 100%%, a newline is appended.
-        """
+        """Draws the progress bar at its current progress."""
         if self.capturing_stdout:
             self._flush_capture()
 
         sys.stdout.write("\r" + self._render_progress())
 
-        if self.complete:
-            sys.stdout.write("\n")
-            sys.stdout.flush()
-        elif self.capturing_stdout:
+        if self.capturing_stdout:
             self._start_capture()
 
         sys.stdout.flush()
