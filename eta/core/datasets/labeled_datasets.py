@@ -47,7 +47,7 @@ def get_manifest_path_from_dir(dataset_dir):
     directory, and returns the path to that file.
 
     Args:
-        dataset_dir: path to a `LabeledDataset` directory
+        dataset_dir: path to a LabeledDataset directory
 
     Returns:
         path to the manifest inside the directory `dirpath`
@@ -104,7 +104,7 @@ def load_dataset(manifest_path_or_dataset_dir):
 
 
 class LabeledDatasetIndex(Serializable):
-    """Class that encapsulates the index of a `LabeledDataset`.
+    """Class that encapsulates the index of a LabeledDataset.
 
     The index is stored on disk in the following format::
 
@@ -122,7 +122,7 @@ class LabeledDatasetIndex(Serializable):
         }
 
     Attributes:
-        type: the fully-qualified name of the `LabeledDataset` subclass that
+        type: the fully-qualified name of the LabeledDataset subclass that
             encapsulates the dataset
         index: a list of `LabeledDataRecord`s
         description: an optional description of the dataset
@@ -1526,18 +1526,48 @@ class LabeledVideoDataset(LabeledDataset):
         return np.mean(video_durations)
 
     def read_data(self, path):
+        """Returns a video reader for the given path.
+
+        Args:
+            path: the path to the video to read
+
+        Returns:
+            an `eta.core.video.FFmpegVideoReader`
+        """
         return etav.FFmpegVideoReader(path)
 
     def read_labels(self, path):
+        """Reads the VideoLabels from the given path.
+
+        Args:
+            path: the path to the VideoLabels to read
+
+        Returns:
+            an `eta.core.video.VideoLabels`
+        """
         return etav.VideoLabels.from_json(path)
 
-    def write_data(self, data, path):
-        writer = etav.FFmpegVideoWriter(path, data.frame_rate, data.frame_size)
+    def write_data(self, video_reader, path):
+        """Writes the video to the given path.
+
+        Args:
+            video_reader: an `eta.core.video.FFmpegVideoReader`
+            path: the path to write the video
+        """
+        writer = etav.FFmpegVideoWriter(
+            path, video_reader.frame_rate, video_reader.frame_size,
+        )
         with writer:
-            for img in data:
+            for img in video_reader:
                 writer.write(img)
 
     def write_labels(self, labels, path):
+        """Writes the labels to the given path.
+
+        Args:
+            labels: an `eta.core.video.VideoLabels`
+            path: the path to write the labels
+        """
         labels.write_json(path)
 
     def _build_metadata(self, path):
@@ -1655,16 +1685,44 @@ class LabeledImageDataset(LabeledDataset):
                     "Unsupported labels format: %s" % labels_path
                 )
 
-    def read_data(self, path):
-        return etai.read(path)
+    def read_data(self, image_path):
+        """Reads the image from the given path.
+
+        Args:
+            image_path: the path to the image to read
+
+        Returns:
+            the image
+        """
+        return etai.read(image_path)
 
     def read_labels(self, path):
+        """Reads the ImageLabels from the given path.
+
+        Args:
+            path: the path to the ImageLabels to read
+
+        Returns:
+            an `eta.core.image.ImageLabels`
+        """
         return etai.ImageLabels.from_json(path)
 
-    def write_data(self, data, path):
-        etai.write(data, path)
+    def write_data(self, img, path):
+        """Writes the image to the given path.
+
+        Args:
+            img: an image
+            path: the path to write the image
+        """
+        etai.write(img, path)
 
     def write_labels(self, labels, path):
+        """Writes the labels to the given path.
+
+        Args:
+            labels: an `eta.core.image.ImageLabels`
+            path: the path to write the labels
+        """
         labels.write_json(path)
 
     def _build_metadata(self, path):
