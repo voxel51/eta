@@ -1504,19 +1504,6 @@ class LabeledVideoDataset(LabeledDataset):
                     "Unsupported labels format: %s" % labels_path
                 )
 
-    def compute_average_video_duration(self):
-        """Computes the average duration over all videos in the dataset.
-
-        Returns:
-             the average duration in seconds
-        """
-        video_durations = [
-            etav.VideoMetadata.build_for(data_path).duration
-            for data_path in self.iter_data_paths()
-        ]
-
-        return np.mean(video_durations)
-
     def read_data(self, path):
         """Returns a video reader for the given path.
 
