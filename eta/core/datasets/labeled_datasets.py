@@ -109,9 +109,8 @@ class LabeledDatasetIndex(Serializable):
     The index is stored on disk in the following format::
 
         {
-            "description": "",
             "type": "eta.core.datasets.LabeledDataset",
-            ...
+            "description": "",
             "index": [
                 {
                     "data": "data/video1.mp4",
@@ -128,17 +127,21 @@ class LabeledDatasetIndex(Serializable):
         description: an optional description of the dataset
     """
 
-    def __init__(self, type, index=None, description=None):
+    def __init__(self, type_or_cls, index=None, description=None):
         """Creates a LabeledDatasetIndex.
 
         Args:
-            type: the fully qualified class name of the LabeledDataset subclass
-                that encapsulates the dataset
+            type: the LabeledDataset subclass or its fully-qualified class name
             index: a list of `LabeledDataRecord`s. By default and empty list is
                 created
             description: an optional description of the dataset
         """
-        self.type = type
+        if etau.is_str(type_or_cls):
+            type_ = type_or_cls
+        else:
+            type_ = etau.get_class_name(type_or_cls)
+
+        self.type = type_
         self.description = description or ""
         self.index = index or []
 
@@ -288,10 +291,10 @@ class LabeledDataset(object):
         /path/to/dataset/
             manifest.json
             data/
-                image1.png (or) video1.mp4
+                <data1>.<ext>
                 ...
             labels/
-                image1.json (or) video1.json
+                <labels1>.<ext>
                 ...
 
     Here, `manifest.json` is a LabeledDatasetIndex that specifies the contents
