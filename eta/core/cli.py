@@ -84,20 +84,20 @@ class ETACommand(Command):
     @staticmethod
     def setup(parser):
         subparsers = parser.add_subparsers(title="available commands")
-        register_command(subparsers, "build", BuildCommand)
-        register_command(subparsers, "run", RunCommand)
-        register_command(subparsers, "clean", CleanCommand)
-        register_command(subparsers, "models", ModelsCommand)
-        register_command(subparsers, "modules", ModulesCommand)
-        register_command(subparsers, "pipelines", PipelinesCommand)
-        register_command(subparsers, "constants", ConstantsCommand)
-        register_command(subparsers, "config", ConfigCommand)
-        register_command(subparsers, "auth", AuthCommand)
-        register_command(subparsers, "s3", S3Command)
-        register_command(subparsers, "gcs", GCSCommand)
-        register_command(subparsers, "gdrive", GoogleDriveStorageCommand)
-        register_command(subparsers, "http", HTTPStorageCommand)
-        register_command(subparsers, "sftp", SFTPStorageCommand)
+        _register_command(subparsers, "build", BuildCommand)
+        _register_command(subparsers, "run", RunCommand)
+        _register_command(subparsers, "clean", CleanCommand)
+        _register_command(subparsers, "models", ModelsCommand)
+        _register_command(subparsers, "modules", ModulesCommand)
+        _register_command(subparsers, "pipelines", PipelinesCommand)
+        _register_command(subparsers, "constants", ConstantsCommand)
+        _register_command(subparsers, "config", ConfigCommand)
+        _register_command(subparsers, "auth", AuthCommand)
+        _register_command(subparsers, "s3", S3Command)
+        _register_command(subparsers, "gcs", GCSCommand)
+        _register_command(subparsers, "gdrive", GoogleDriveStorageCommand)
+        _register_command(subparsers, "http", HTTPStorageCommand)
+        _register_command(subparsers, "sftp", SFTPStorageCommand)
 
     @staticmethod
     def run(parser, args):
@@ -802,9 +802,9 @@ class AuthCommand(Command):
     @staticmethod
     def setup(parser):
         subparsers = parser.add_subparsers(title="available commands")
-        register_command(subparsers, "show", ShowAuthCommand)
-        register_command(subparsers, "activate", ActivateAuthCommand)
-        register_command(subparsers, "deactivate", DeactivateAuthCommand)
+        _register_command(subparsers, "show", ShowAuthCommand)
+        _register_command(subparsers, "activate", ActivateAuthCommand)
+        _register_command(subparsers, "deactivate", DeactivateAuthCommand)
 
     @staticmethod
     def run(parser, args):
@@ -1012,16 +1012,16 @@ class S3Command(Command):
     @staticmethod
     def setup(parser):
         subparsers = parser.add_subparsers(title="available commands")
-        register_command(subparsers, "info", S3InfoCommand)
-        register_command(subparsers, "list", S3ListCommand)
-        register_command(subparsers, "upload", S3UploadCommand)
-        register_command(subparsers, "upload-dir", S3UploadDirectoryCommand)
-        register_command(subparsers, "download", S3DownloadCommand)
-        register_command(
+        _register_command(subparsers, "info", S3InfoCommand)
+        _register_command(subparsers, "list", S3ListCommand)
+        _register_command(subparsers, "upload", S3UploadCommand)
+        _register_command(subparsers, "upload-dir", S3UploadDirectoryCommand)
+        _register_command(subparsers, "download", S3DownloadCommand)
+        _register_command(
             subparsers, "download-dir", S3DownloadDirectoryCommand
         )
-        register_command(subparsers, "delete", S3DeleteCommand)
-        register_command(subparsers, "delete-dir", S3DeleteDirCommand)
+        _register_command(subparsers, "delete", S3DeleteCommand)
+        _register_command(subparsers, "delete-dir", S3DeleteDirCommand)
 
     @staticmethod
     def run(parser, args):
@@ -1487,16 +1487,16 @@ class GCSCommand(Command):
     @staticmethod
     def setup(parser):
         subparsers = parser.add_subparsers(title="available commands")
-        register_command(subparsers, "info", GCSInfoCommand)
-        register_command(subparsers, "list", GCSListCommand)
-        register_command(subparsers, "upload", GCSUploadCommand)
-        register_command(subparsers, "upload-dir", GCSUploadDirectoryCommand)
-        register_command(subparsers, "download", GCSDownloadCommand)
-        register_command(
+        _register_command(subparsers, "info", GCSInfoCommand)
+        _register_command(subparsers, "list", GCSListCommand)
+        _register_command(subparsers, "upload", GCSUploadCommand)
+        _register_command(subparsers, "upload-dir", GCSUploadDirectoryCommand)
+        _register_command(subparsers, "download", GCSDownloadCommand)
+        _register_command(
             subparsers, "download-dir", GCSDownloadDirectoryCommand
         )
-        register_command(subparsers, "delete", GCSDeleteCommand)
-        register_command(subparsers, "delete-dir", GCSDeleteDirCommand)
+        _register_command(subparsers, "delete", GCSDeleteCommand)
+        _register_command(subparsers, "delete-dir", GCSDeleteDirCommand)
 
     @staticmethod
     def run(parser, args):
@@ -1992,18 +1992,20 @@ class GoogleDriveStorageCommand(Command):
     @staticmethod
     def setup(parser):
         subparsers = parser.add_subparsers(title="available commands")
-        register_command(subparsers, "info", GoogleDriveInfoCommand)
-        register_command(subparsers, "list", GoogleDriveListCommand)
-        register_command(subparsers, "upload", GoogleDriveUploadCommand)
-        register_command(
+        _register_command(subparsers, "info", GoogleDriveInfoCommand)
+        _register_command(subparsers, "list", GoogleDriveListCommand)
+        _register_command(subparsers, "upload", GoogleDriveUploadCommand)
+        _register_command(
             subparsers, "upload-dir", GoogleDriveUploadDirectoryCommand
         )
-        register_command(subparsers, "download", GoogleDriveDownloadCommand)
-        register_command(
+        _register_command(subparsers, "download", GoogleDriveDownloadCommand)
+        _register_command(
             subparsers, "download-dir", GoogleDriveDownloadDirectoryCommand
         )
-        register_command(subparsers, "delete", GoogleDriveDeleteCommand)
-        register_command(subparsers, "delete-dir", GoogleDriveDeleteDirCommand)
+        _register_command(subparsers, "delete", GoogleDriveDeleteCommand)
+        _register_command(
+            subparsers, "delete-dir", GoogleDriveDeleteDirCommand
+        )
 
     @staticmethod
     def run(parser, args):
@@ -2547,9 +2549,9 @@ class HTTPStorageCommand(Command):
     @staticmethod
     def setup(parser):
         subparsers = parser.add_subparsers(title="available commands")
-        register_command(subparsers, "upload", HTTPUploadCommand)
-        register_command(subparsers, "download", HTTPDownloadCommand)
-        register_command(subparsers, "delete", HTTPDeleteCommand)
+        _register_command(subparsers, "upload", HTTPUploadCommand)
+        _register_command(subparsers, "download", HTTPDownloadCommand)
+        _register_command(subparsers, "delete", HTTPDeleteCommand)
 
     @staticmethod
     def run(parser, args):
@@ -2680,12 +2682,12 @@ class SFTPStorageCommand(Command):
     @staticmethod
     def setup(parser):
         subparsers = parser.add_subparsers(title="available commands")
-        register_command(subparsers, "upload", SFTPUploadCommand)
-        register_command(subparsers, "upload-dir", SFTPUploadDirCommand)
-        register_command(subparsers, "download", SFTPDownloadCommand)
-        register_command(subparsers, "download-dir", SFTPDownloadDirCommand)
-        register_command(subparsers, "delete", SFTPDeleteCommand)
-        register_command(subparsers, "delete-dir", SFTPDeleteDirCommand)
+        _register_command(subparsers, "upload", SFTPUploadCommand)
+        _register_command(subparsers, "upload-dir", SFTPUploadDirCommand)
+        _register_command(subparsers, "download", SFTPDownloadCommand)
+        _register_command(subparsers, "download-dir", SFTPDownloadDirCommand)
+        _register_command(subparsers, "delete", SFTPDeleteCommand)
+        _register_command(subparsers, "delete-dir", SFTPDeleteDirCommand)
 
     @staticmethod
     def run(parser, args):
@@ -3378,7 +3380,7 @@ class _RecursiveHelpAction(argparse._HelpAction):
             _RecursiveHelpAction._recurse(subparser)
 
 
-def register_main_command(command, version=None, recursive_help=True):
+def _register_main_command(command, version=None, recursive_help=True):
     parser = argparse.ArgumentParser(description=command.__doc__.rstrip())
 
     parser.set_defaults(run=lambda args: command.run(parser, args))
@@ -3404,7 +3406,7 @@ def register_main_command(command, version=None, recursive_help=True):
     return parser
 
 
-def register_command(parent, name, command, recursive_help=True):
+def _register_command(parent, name, command, recursive_help=True):
     parser = parent.add_parser(
         name,
         help=command.__doc__.splitlines()[0],
@@ -3427,6 +3429,6 @@ def register_command(parent, name, command, recursive_help=True):
 
 def main():
     """Executes the `eta` tool with the given command-line args."""
-    parser = register_main_command(ETACommand, version=etac.VERSION_LONG)
+    parser = _register_main_command(ETACommand, version=etac.VERSION_LONG)
     args = parser.parse_args()
     args.run(args)
