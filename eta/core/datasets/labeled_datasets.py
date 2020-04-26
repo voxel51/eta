@@ -356,15 +356,18 @@ class LabeledDataset(object):
         self._data_to_labels_map = None
         self.set_dataset_index(dataset_index)
 
-    # @todo this should return (data, labels) directly, for consistency with
-    # other common dataset implementations like TF and PyTorch
     def __getitem__(self, idx):
-        """Gets the LabeledDataRecord for the sample with the given index.
+        """Gets the (data, labels) pair for the sample with the given index.
 
         Args:
             idx: the index
+
+        Returns:
+            a (data, labels) pair
         """
-        return self.dataset_index[idx]
+        data = self.get_data(idx)
+        labels = self.get_labels(idx)
+        return (data, labels)
 
     def __len__(self):
         """The number of samples in the dataset."""
@@ -418,20 +421,6 @@ class LabeledDataset(object):
     def labels_dir(self):
         """The absolute path to the labels directory of the dataset."""
         return self._labels_dir
-
-    def get(self, idx):
-        """Gets the data and labels for the sample with the given index.
-
-        Args:
-            idx: the index
-
-        Returns:
-            a (data, labels) tuple
-        """
-        data_path, labels_path = self.get_paths(idx)
-        data = self.read_data(data_path)
-        labels = self.read_labels(labels_path)
-        return data, labels
 
     def get_paths(self, idx):
         """Gets the data path and labels path for the sample with the given
