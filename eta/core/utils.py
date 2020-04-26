@@ -619,23 +619,39 @@ class CaptureStdout(object):
 
 class ProgressBar(object):
     """Class for printing a self-updating progress bar to stdout that tracks
-    the progress of an iterative count towards completion (i.e., a total).
+    the progress of an iterative process towards completion.
 
-    The progress of the bar is updated via `set_iteration()`, and,
-    independently, the progress bar is drawn via `draw()`, which includes a
-    spinning icon to convey that a task is active between changes to its
-    iteration.
+    The simplest use is to simply wrap an iterable in a `ProgressBar()`
+    constructor, which will pass through elements of the iterable, updating
+    the progress bar each time an element is emitted.
+
+    Alternatively, the progress bar can be updated manually by calling either
+    `update()`, which will increment the iteration count by 1, or via
+    `set_iteration()`, which lets you manually specify the new iteration
+    status. By default, both methods will automatically redraw the progress
+    bar. If manual control over drawing is required, you can pass `draw=False`
+    to either method and then manually call `draw()` as desired.
 
     The progress bar can be paused via `pause()`, which allows for other
     information to be printed to stdout without creating duplicate copies of
     the bar in your terminal.
 
-    Alternatively, this class can be invoked via the context manager interface,
-    in which case stdout is automatically cached between calls to `draw()` and
-    flushed each time `draw()` is called without interfering with the progress
-    bar. This obviates the need to call `pause()`.
+    Alternatively, you can call `start()`, in which case stdout is
+    automatically cached between calls to `draw()` and flushed each time
+    `draw()` is called without interfering with the progress bar. This obviates
+    the need to call `pause()`. This behavior is automatically activated when
+    an iterable is passed as input *or* if the progress bar is invoked via the
+    context manager interface.
 
-    Example::
+    Example (wrapping an iterator)::
+
+        import time
+        import eta.core.utils as etau
+
+        for _ in etau.ProgressBar(range(100)):
+            time.sleep(0.05)
+
+    Example (as a context manager)::
 
         import time
         import eta.core.utils as etau
@@ -645,47 +661,85 @@ class ProgressBar(object):
                 if bar.iteration in {25, 50, 75}:
                     print("Progress = %.2f" % bar.progress)
 
-                bar.set_iteration(bar.iteration + 1)
-                bar.draw()
                 time.sleep(0.05)
+                bar.update()
     """
 
     def __init__(
-        self, total, prefix=None, suffix=None, num_decimals=1, bar_length=70
+        self,
+        iter_or_total,
+        show_elapsed_time=False,
+        show_remaining_time=False,
+        num_decimals=1,
+        max_width=79,
     ):
         """Creates a ProgressBar instance.
 
         Args:
-            total: the total number of iterations for the progress bar to
-            prefix: an optional prefix string to prepend to the progress bar
-            suffix: an optional suffix string to append to the progress bar
+            iter_or_total: an iterator with `len()` or the total number of
+                iterations to track
+            show_elapsed_time: whether to print the elapsed time at the end of
+                the progress bar. By default, this is False
+            show_remaining_time: whether to print the estimated remaining time
+                at the end of the progress bar. By default, this is False
             num_decimals: the number of percentage decimals to print. The
                 default is 1
-            bar_length: the length of the bar, in characters. The default is 70
+            max_width: the maximum allowed with of the bar, in characters. The
+                default is 79
         """
+        try:
+            self._total = len(iter_or_total)
+            self._iterable = iter_or_total
+        except TypeError:
+            self._total = iter_or_total
+            self._iterable = None
+
+        self._timer = Timer()
+        self._iterator = None
         self._iteration = 0
-        self._total = total
+        self._num_decimals = num_decimals
         self._pctfmt = "%%%d.%df" % (num_decimals + 4, num_decimals)
-        self._bar_len = bar_length
+        self._max_width = max_width
         self._max_len = 0
         self._spinner = it.cycle("|/-\\|/-\\")
-        self._prefix = self._parse_prefix(prefix)
-        self._suffix = self._parse_suffix(suffix)
+        self._show_elapsed_time = show_elapsed_time
+        self._show_remaining_time = show_remaining_time
+        self._suffix = ""
         self._complete = False
-
         self._capturing_stdout = False
         self._cap_obj = None
 
     def __enter__(self):
-        self._capturing_stdout = True
-        self._cap_obj = CaptureStdout()
-        self._start_capture()
+        self.start()
         return self
 
     def __exit__(self, *args):
-        self._flush_capture()
-        self._capturing_stdout = False
-        self._cap_obj = None
+        self.close()
+
+    def __len__(self):
+        return self.total
+
+    def __iter__(self):
+        self._ensure_iterable()
+        self._iterator = iter(self._iterable)
+        self.start()
+        return self
+
+    def __next__(self):
+        self._ensure_iterable()
+        try:
+            val = next(self._iterator)
+        except StopIteration:
+            self.close()
+            raise StopIteration
+
+        self.update()
+        return val
+
+    @property
+    def is_iterable(self):
+        """Whether this progress bar is tracking an iterable."""
+        return self._iterable is not None
 
     @property
     def capturing_stdout(self):
@@ -715,21 +769,46 @@ class ProgressBar(object):
         """Whether the task is 100%% complete."""
         return self.iteration >= self.total
 
-    def set_iteration(self, iteration, prefix=None, suffix=None, draw=False):
-        """Sets the current iteration.
+    def start(self):
+        """Starts the ProgressBar instance."""
+        self._timer.start()
+        self._capturing_stdout = True
+        self._cap_obj = CaptureStdout()
+        self._start_capture()
+
+    def close(self):
+        """Closes the ProgressBar instance."""
+        self._timer.stop()
+        self._flush_capture()
+        self._capturing_stdout = False
+        self._cap_obj = None
+
+    def update(self, suffix=None, draw=True):
+        """Increments the current iteration count by 1 and draws the progress
+        bar (unless otherwise specified).
+
+        This method is shorthand for `self.set_iteration(self.iteration + 1)`.
+
+        Args:
+            suffix: an optional suffix string to append to the progress bar. By
+                default, the suffix is unchanged
+            draw: whether to call `draw()` at the end of this method. By
+                default, this is True
+        """
+        self.set_iteration(self.iteration + 1, suffix=suffix, draw=draw)
+
+    def set_iteration(self, iteration, suffix=None, draw=True):
+        """Sets the current iteration and draws the progress bar (unless
+        otherwise specified).
 
         Args:
             iteration: the new iteration
-            prefix: an optional new prefix string to prepend to the progress
-                bar. By default, the prefix is unchanged
-            suffix: an optional new suffix string to append to the progress
-                bar. By default, the suffix is unchanged
+            suffix: an optional suffix string to append to the progress bar. By
+                default, the suffix is unchanged
             draw: whether to call `draw()` at the end of this method. By
-                default, this is False
+                default, this is True
         """
         self._iteration = max(0, min(iteration, self.total))
-        if prefix is not None:
-            self._prefix = self._parse_prefix(prefix)
 
         if suffix is not None:
             self._suffix = self._parse_suffix(suffix)
@@ -764,6 +843,10 @@ class ProgressBar(object):
 
         sys.stdout.flush()
 
+    def _ensure_iterable(self):
+        if not self.is_iterable:
+            raise TypeError("This ProgressBar is not iterable")
+
     def _start_capture(self):
         self._cap_obj.start()
 
@@ -778,22 +861,40 @@ class ProgressBar(object):
 
     def _render_progress(self):
         istr = next(self._spinner)
-        plen = int(self._bar_len * self.progress)
-        bstr = "\u2588" * plen
-        if plen < self._bar_len:
-            bstr += istr + "-" * max(0, self._bar_len - 1 - plen)
+
+        if self._suffix:
+            suffix = self._suffix
+            dx = len(suffix)
+        elif self._show_elapsed_time:
+            suffix = self._parse_suffix(
+                "(%s elapsed)" % self._timer.elapsed_time_str
+            )
+            dx = 23  # leave room for max possible length here
+        elif self._show_remaining_time:
+            time_remaining = self._timer.elapsed_time * (
+                (self.total - self.iteration) / self.iteration
+            )
+            suffix = self._parse_suffix(
+                "(%s remaining)" % to_human_time_str(time_remaining)
+            )
+            dx = 25  # leave room for max possible length here
+        else:
+            suffix = ""
+            dx = 0
+
+        bar_len = self._max_width - 9 - self._num_decimals - dx
+        progress_len = int(bar_len * self.progress)
+        bstr = "\u2588" * progress_len
+        if progress_len < bar_len:
+            bstr += istr + "-" * max(0, bar_len - 1 - progress_len)
 
         pctstr = self._pctfmt % (100.0 * self.progress)
-        pstr = "%s|%s| %s%%%s " % (self._prefix, bstr, pctstr, self._suffix)
-        len_pstr = len(pstr)
+        pstr = "|%s| %s%%%s " % (bstr, pctstr, suffix)
+        pstr_len = len(pstr)
 
-        self._max_len = max(self._max_len, len_pstr)
-        pstr += " " * (self._max_len - len_pstr)
+        self._max_len = max(self._max_len, pstr_len)
+        pstr += " " * (self._max_len - pstr_len)
         return pstr
-
-    @staticmethod
-    def _parse_prefix(prefix):
-        return prefix + " " if prefix else ""
 
     @staticmethod
     def _parse_suffix(suffix):
@@ -879,16 +980,22 @@ class Timer(object):
 
     Example::
 
-        with Timer() as t:
-            # your commands here
+        import time
+        import eta.core.utils as etau
 
-        print("Request took %s" % t.elapsed_time_str)
+        with etau.Timer() as t:
+            time.sleep(1.5)
+
+        print("Elapsed time: %s" % t.elapsed_time_str)
     """
 
     def __init__(self):
         """Creates a Timer instance."""
-        self.start_time = None
-        self.stop_time = None
+        self._start_time = None
+        self._stop_time = None
+        self._is_running = None
+        self._elapsed_time = None
+        self.reset()
 
     def __enter__(self):
         self.start()
@@ -898,31 +1005,52 @@ class Timer(object):
         self.stop()
 
     @property
+    def is_running(self):
+        """Whether the timer is currently running."""
+        return self._is_running
+
+    @property
     def elapsed_time(self):
         """The number of elapsed seconds."""
-        return self.stop_time - self.start_time
+        elapsed_time = self._elapsed_time
+        if self.is_running:
+            elapsed_time += self._get_current_time() - self._start_time
+
+        return elapsed_time
 
     @property
     def elapsed_time_str(self):
         """The human-readable elapsed time string."""
-        return self.get_elapsed_time_str()
+        return to_human_time_str(self.elapsed_time)
 
-    def get_elapsed_time_str(self, decimals=1):
-        """Gets the elapsed time as a human-readable string.
+    def start(self, reset=True):
+        """Starts the timer.
 
         Args:
-            decimals: the desired number of decimal points to show in the
-                string. The default is 1
+            reset: whether to reset the timer. By default, this is True
         """
-        return to_human_time_str(self.elapsed_time, decimals=decimals)
+        if reset:
+            self.reset()
 
-    def start(self):
-        """Starts the timer."""
-        self.start_time = timeit.default_timer()
+        self._start_time = self._get_current_time()
+        self._is_running = True
 
     def stop(self):
         """Stops the timer."""
-        self.stop_time = timeit.default_timer()
+        self._stop_time = self._get_current_time()
+        self._elapsed_time += self._stop_time - self._start_time
+        self._is_running = False
+
+    def reset(self):
+        """Resets the timer."""
+        self._elapsed_time = 0.0
+        self._is_running = False
+        self._start_time = None
+        self._stop_time = None
+
+    @staticmethod
+    def _get_current_time():
+        return timeit.default_timer()
 
 
 def guess_mime_type(filepath):

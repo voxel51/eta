@@ -165,7 +165,7 @@ class LabeledDatasetBuilder(object):
             )
 
             # The `file_method` is irrelevant because the files were already
-            # placed directly into the dataset directory by `record.build()`.
+            # placed directly into the dataset directory by `record.build()`
             dataset.add_file(data_path, labels_path)
 
         dataset.write_manifest()

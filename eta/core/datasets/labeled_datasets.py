@@ -22,12 +22,9 @@ import six
 # pragma pylint: enable=wildcard-import
 
 import copy
-import glob
 import logging
 import os
 import random
-
-import numpy as np
 
 import eta.core.annotations as etaa
 from eta.core.data import BaseDataRecord
@@ -43,72 +40,75 @@ from .utils import FileMethods
 logger = logging.getLogger(__name__)
 
 
-def get_manifest_path_from_dir(dirpath):
+def get_manifest_path_from_dir(dataset_dir):
     """Infers the filename of the manifest within the given LabeledDataset
     directory, and returns the path to that file.
 
     Args:
-        dirpath: path to a `LabeledDataset` directory
+        dataset_dir: path to a LabeledDataset directory
 
     Returns:
         path to the manifest inside the directory `dirpath`
     """
     candidate_manifests = {
         os.path.basename(path)
-        for path in glob.glob(os.path.join(dirpath, "*.json"))
+        for path in etau.get_glob_matches(os.path.join(dataset_dir, "*.json"))
     }
 
     if not candidate_manifests:
         raise ValueError(
             "Directory '%s' contains no JSON files to use as a manifest"
-            % dirpath
+            % dataset_dir
         )
 
     if "manifest.json" in candidate_manifests:
-        return os.path.join(dirpath, "manifest.json")
+        return os.path.join(dataset_dir, "manifest.json")
 
-    starts_with_manifest = [
-        filename
-        for filename in candidate_manifests
-        if filename.startswith("manifest")
-    ]
-    if starts_with_manifest:
-        return os.path.join(dirpath, starts_with_manifest[0])
+    manifest_path = os.path.join(dataset_dir, candidate_manifests.pop())
 
-    return os.path.join(dirpath, candidate_manifests.pop())
+    if len(candidate_manifests) > 1:
+        logger.warning("Multiple JSON files found in ")
+
+    return manifest_path
 
 
-def load_dataset(manifest_path):
-    """Loads a `LabeledDataset` instance from the manifest JSON at the given
-    path.
+def load_dataset(manifest_path_or_dataset_dir):
+    """Loads the LabeledDataset at the given location, which can either be the
+    path to the manifest JSON or the parent directory.
 
-    The manifest JSON is assumed to sit inside a LabeledDataset directory
-    structure, as outlined in the LabeledDataset documentation. This function
-    will read the specific subclass of LabeledDataset that should be used to
-    load the dataset from the manifest, and return an instance of that
-    subclass.
+    If a directory is provided, the manifest JSON file is located by calling
+    `get_manifest_path_from_dir()`.
+
+    This function will return the appropriate LabeledDataset subclass specified
+    by the manifest JSON.
 
     Args:
-        manifest_path: path to a `manifest.json` within a LabeledDataset
-            directory
+        manifest_path_or_dataset_dir: the path to a manifest JSON file or a
+            dataset directory containing one
 
     Returns:
         a LabeledDataset
     """
+    if os.path.isdir(manifest_path_or_dataset_dir):
+        manifest_path = get_manifest_path_from_dir(
+            manifest_path_or_dataset_dir
+        )
+    else:
+        manifest_path = manifest_path_or_dataset_dir
+
     index = LabeledDatasetIndex.from_json(manifest_path)
     dataset_cls = etau.get_class(index.type)
-    return dataset_cls(manifest_path)
+    return dataset_cls(manifest_path, manifest=index)
 
 
 class LabeledDatasetIndex(Serializable):
-    """Class that encapsulates the index of a `LabeledDataset`.
+    """Class that encapsulates the index of a LabeledDataset.
 
     The index is stored on disk in the following format::
 
         {
-            "description": "",
             "type": "eta.core.datasets.LabeledDataset",
-            ...
+            "description": "",
             "index": [
                 {
                     "data": "data/video1.mp4",
@@ -119,23 +119,27 @@ class LabeledDatasetIndex(Serializable):
         }
 
     Attributes:
-        type: the fully-qualified name of the `LabeledDataset` subclass that
+        type: the fully-qualified name of the LabeledDataset subclass that
             encapsulates the dataset
         index: a list of `LabeledDataRecord`s
         description: an optional description of the dataset
     """
 
-    def __init__(self, type, index=None, description=None):
+    def __init__(self, type_or_cls, index=None, description=None):
         """Creates a LabeledDatasetIndex.
 
         Args:
-            type: the fully qualified class name of the LabeledDataset subclass
-                that encapsulates the dataset
+            type: the LabeledDataset subclass or its fully-qualified class name
             index: a list of `LabeledDataRecord`s. By default and empty list is
                 created
             description: an optional description of the dataset
         """
-        self.type = type
+        if etau.is_str(type_or_cls):
+            type_ = type_or_cls
+        else:
+            type_ = etau.get_class_name(type_or_cls)
+
+        self.type = type_
         self.description = description or ""
         self.index = index or []
 
@@ -285,10 +289,10 @@ class LabeledDataset(object):
         /path/to/dataset/
             manifest.json
             data/
-                image1.png (or) video1.mp4
+                <data1>.<ext>
                 ...
             labels/
-                image1.json (or) video1.json
+                <labels1>.<ext>
                 ...
 
     Here, `manifest.json` is a LabeledDatasetIndex that specifies the contents
@@ -312,17 +316,24 @@ class LabeledDataset(object):
     _DATA_SUBDIR = "data"
     _LABELS_SUBDIR = "labels"
 
-    def __init__(self, manifest_path):
+    def __init__(self, manifest_path, manifest=None):
         """Creates a LabeledDataset instance.
 
         Args:
             manifest_path: the path to the LabeledDatasetIndex for the dataset
+            manifest: the LabeledDatasetIndex instance itself, if it has
+                already been loaded. If not provided, the index is loaded from
+                `manifest_path`
 
         Raises:
-            LabeledDatasetError: if the class reading the dataset is not a
-                subclass of the dataset class recorded in the manifest
+            LabeledDatasetError: if `type(self)` is not a subclass of the
+                `type` recorded in the manifest
         """
-        dataset_index = LabeledDatasetIndex.from_json(manifest_path)
+        if manifest is not None:
+            dataset_index = manifest
+        else:
+            dataset_index = LabeledDatasetIndex.from_json(manifest_path)
+
         if not isinstance(self, etau.get_class(dataset_index.type)):
             raise LabeledDatasetError(
                 "Tried to read dataset of type '%s' from location '%s', but "
@@ -343,13 +354,18 @@ class LabeledDataset(object):
         self._data_to_labels_map = None
         self.set_dataset_index(dataset_index)
 
-    def __getitem__(self, key):
-        """Gets the LabeledDataRecord with the given key.
+    def __getitem__(self, idx):
+        """Gets the (data, labels) pair for the sample with the given index.
 
         Args:
-            key: an integer index into `dataset_index`
+            idx: the index
+
+        Returns:
+            a (data, labels) pair
         """
-        return self.dataset_index[key]
+        data = self.get_data(idx)
+        labels = self.get_labels(idx)
+        return (data, labels)
 
     def __len__(self):
         """The number of samples in the dataset."""
@@ -404,6 +420,88 @@ class LabeledDataset(object):
         """The absolute path to the labels directory of the dataset."""
         return self._labels_dir
 
+    def get_paths(self, idx):
+        """Gets the data path and labels path for the sample with the given
+        index.
+
+        Args:
+            idx: the index
+
+        Returns:
+            a (data path, labels path) tuple
+        """
+        data_path = self.get_data_path(idx)
+        labels_path = self.get_labels_path(idx)
+        return data_path, labels_path
+
+    def get_data(self, idx):
+        """Gets the data for the sample with the given index.
+
+        Args:
+            idx: the index
+
+        Returns:
+            the data read via `read_data()`
+        """
+        data_path = self.get_data_path(idx)
+        return self.read_data(data_path)
+
+    def get_data_path(self, idx):
+        """Gets the data path for the sample with the given index.
+
+        Args:
+            idx: the index
+
+        Returns:
+            the data path
+        """
+        return os.path.join(self.dataset_dir, self.dataset_index[idx].data)
+
+    def get_labels(self, idx):
+        """Gets the labels for the sample with the given index.
+
+        Args:
+            idx: the index
+
+        Returns:
+            the labels read via `read_labels()`
+        """
+        labels_path = self.get_labels_path(idx)
+        return self.read_labels(labels_path)
+
+    def get_labels_path(self, idx):
+        """Gets the data path for the sample with the given index.
+
+        Args:
+            idx: the index
+
+        Returns:
+            the data path
+        """
+        return os.path.join(self.dataset_dir, self.dataset_index[idx].labels)
+
+    def iter(self):
+        """Returns an iterator over the data and labels in the dataset.
+
+        Returns:
+            an iterator over (data, labels) tuples
+        """
+        for data_path, labels_path in self.iter_paths():
+            data = self.read_data(data_path)
+            labels = self.read_labels(labels_path)
+            yield data, labels
+
+    def iter_paths(self):
+        """Returns an iterator over the data and labels paths in the dataset.
+
+        Returns:
+            an iterator over (data path, labels path) tuples
+        """
+        for record in self.dataset_index:
+            data_path = os.path.join(self.dataset_dir, record.data)
+            labels_path = os.path.join(self.dataset_dir, record.labels)
+            yield data_path, labels_path
+
     def iter_data(self):
         """Returns an iterator over the data in the dataset.
 
@@ -439,14 +537,6 @@ class LabeledDataset(object):
         """
         for record in self.dataset_index:
             yield os.path.join(self.dataset_dir, record.labels)
-
-    def iter_paths(self):
-        """Returns an iterator over the data and labels paths in the dataset.
-
-        Returns:
-            an iterator over (data path, labels path) tuples
-        """
-        return zip(self.iter_data_paths(), self.iter_labels_paths())
 
     def set_dataset_index(self, dataset_index):
         """Sets the LabeledDatasetIndex for the dataset.
@@ -486,6 +576,34 @@ class LabeledDataset(object):
             manifest_path = os.path.join(self.dataset_dir, filename)
 
         self.dataset_index.write_json(manifest_path)
+
+    @staticmethod
+    def from_manifest(manifest_path):
+        """Creates a LabeledDataset from the given LabeledDatasetIndex.
+
+        Args:
+            manifest_path: the path to a LabeledDatasetIndex
+
+        Returns:
+            a LabeledDataset
+        """
+        return load_dataset(manifest_path)
+
+    @staticmethod
+    def from_dir(dataset_dir):
+        """Creates a LabeledDataset from the given directory, which must
+        contain a LabeledDatasetIndex.
+
+        This method uses `get_manifest_path_from_dir(dataset_dir)` to locate
+        the manifest in the directory.
+
+        Args:
+            dataset_dir: the LabeledDataset directory
+
+        Returns:
+            a LabeledDataset
+        """
+        return load_dataset(dataset_dir)
 
     def sample(self, k):
         """Randomly downsamples the dataset to k samples.
@@ -1384,32 +1502,49 @@ class LabeledVideoDataset(LabeledDataset):
                     "Unsupported labels format: %s" % labels_path
                 )
 
-    def compute_average_video_duration(self):
-        """Computes the average duration over all videos in the dataset.
+    def read_data(self, path):
+        """Returns a video reader for the given path.
+
+        Args:
+            path: the path to the video to read
 
         Returns:
-             the average duration in seconds
+            an `eta.core.video.FFmpegVideoReader`
         """
-        video_durations = [
-            etav.VideoMetadata.build_for(data_path).duration
-            for data_path in self.iter_data_paths()
-        ]
-
-        return np.mean(video_durations)
-
-    def read_data(self, path):
         return etav.FFmpegVideoReader(path)
 
     def read_labels(self, path):
+        """Reads the VideoLabels from the given path.
+
+        Args:
+            path: the path to the VideoLabels to read
+
+        Returns:
+            an `eta.core.video.VideoLabels`
+        """
         return etav.VideoLabels.from_json(path)
 
-    def write_data(self, data, path):
-        writer = etav.FFmpegVideoWriter(path, data.frame_rate, data.frame_size)
+    def write_data(self, video_reader, path):
+        """Writes the video to the given path.
+
+        Args:
+            video_reader: an `eta.core.video.FFmpegVideoReader`
+            path: the path to write the video
+        """
+        writer = etav.FFmpegVideoWriter(
+            path, video_reader.frame_rate, video_reader.frame_size,
+        )
         with writer:
-            for img in data:
+            for img in video_reader:
                 writer.write(img)
 
     def write_labels(self, labels, path):
+        """Writes the labels to the given path.
+
+        Args:
+            labels: an `eta.core.video.VideoLabels`
+            path: the path to write the labels
+        """
         labels.write_json(path)
 
     def _build_metadata(self, path):
@@ -1527,16 +1662,44 @@ class LabeledImageDataset(LabeledDataset):
                     "Unsupported labels format: %s" % labels_path
                 )
 
-    def read_data(self, path):
-        return etai.read(path)
+    def read_data(self, image_path):
+        """Reads the image from the given path.
+
+        Args:
+            image_path: the path to the image to read
+
+        Returns:
+            the image
+        """
+        return etai.read(image_path)
 
     def read_labels(self, path):
+        """Reads the ImageLabels from the given path.
+
+        Args:
+            path: the path to the ImageLabels to read
+
+        Returns:
+            an `eta.core.image.ImageLabels`
+        """
         return etai.ImageLabels.from_json(path)
 
-    def write_data(self, data, path):
-        etai.write(data, path)
+    def write_data(self, img, path):
+        """Writes the image to the given path.
+
+        Args:
+            img: an image
+            path: the path to write the image
+        """
+        etai.write(img, path)
 
     def write_labels(self, labels, path):
+        """Writes the labels to the given path.
+
+        Args:
+            labels: an `eta.core.image.ImageLabels`
+            path: the path to write the labels
+        """
         labels.write_json(path)
 
     def _build_metadata(self, path):
