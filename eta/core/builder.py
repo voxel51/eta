@@ -120,7 +120,14 @@ def cleanup_pipeline(pipeline_config_path):
         pass
 
 
-def cleanup_all_pipelines():
+def cleanup_last_built_pipeline():
+    """Cleans up the last built pipeline, if any."""
+    pipeline_config_path = find_last_built_pipeline()
+    if pipeline_config_path:
+        cleanup_pipeline(pipeline_config_path)
+
+
+def cleanup_all_built_pipelines():
     """Cleans up all built pipelines."""
     for pipeline_config_path in find_all_built_pipelines():
         cleanup_pipeline(pipeline_config_path)
