@@ -20,7 +20,6 @@ from future.utils import iteritems, itervalues
 
 from collections import defaultdict
 import copy
-import glob
 import logging
 import os
 import time
@@ -55,7 +54,7 @@ def find_last_built_pipeline():
         the path to the pipline config file for the last built pipeline, or
             None if no config directories were found
     """
-    builds = glob.glob(eta.config.config_dir + "/*/*")
+    builds = _list_all_built_pipelines()
     if not builds:
         return None
 
@@ -69,8 +68,13 @@ def find_all_built_pipelines():
     Returns:
         a list of paths to pipline config files
     """
-    builds = glob.glob(eta.config.config_dir + "/*/*")
+    builds = _list_all_built_pipelines()
     return [os.path.join(b, PIPELINE_CONFIG_FILE) for b in builds]
+
+
+def _list_all_built_pipelines():
+    config_patt = os.path.join(eta.config.config_dir, "*", "*")
+    return etau.get_glob_matches(config_patt)
 
 
 def cleanup_pipeline(pipeline_config_path):
