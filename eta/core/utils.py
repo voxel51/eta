@@ -40,6 +40,7 @@ import itertools as it
 import logging
 import math
 import mimetypes
+import numbers
 import os
 import pytz
 import random
@@ -63,6 +64,11 @@ logger = logging.getLogger(__name__)
 def is_str(val):
     """Returns True/False whether the given value is a string."""
     return isinstance(val, six.string_types)
+
+
+def is_numeric(val):
+    """Returns True/False whether the given value is numeric."""
+    return isinstance(val, numbers.Number)
 
 
 def standarize_strs(arg):
@@ -668,6 +674,7 @@ class ProgressBar(object):
     def __init__(
         self,
         iter_or_total,
+        total=None,
         show_elapsed_time=False,
         show_remaining_time=False,
         num_decimals=1,
@@ -676,8 +683,11 @@ class ProgressBar(object):
         """Creates a ProgressBar instance.
 
         Args:
-            iter_or_total: an iterator with `len()` or the total number of
-                iterations to track
+            iter_or_total: an iterable or the total number of iterations to
+                track
+            total: the total number of iterations to track in `iter_or_total`,
+                which only needs to be specified if `iter_or_total` does not
+                implement `len()`
             show_elapsed_time: whether to print the elapsed time at the end of
                 the progress bar. By default, this is False
             show_remaining_time: whether to print the estimated remaining time
@@ -687,12 +697,21 @@ class ProgressBar(object):
             max_width: the maximum allowed with of the bar, in characters. The
                 default is 79
         """
-        try:
-            self._total = len(iter_or_total)
-            self._iterable = iter_or_total
-        except TypeError:
-            self._total = iter_or_total
+        if is_numeric(iter_or_total):
             self._iterable = None
+            self._total = iter_or_total
+        else:
+            self._iterable = iter_or_total
+            if total is not None:
+                self._total = total
+            else:
+                try:
+                    self._total = len(iter_or_total)
+                except TypeError:
+                    raise ValueError(
+                        "Must provide `total` when tracking the progress of "
+                        "an iterable that does not implement `len()`"
+                    )
 
         self._timer = Timer()
         self._iterator = None
