@@ -350,14 +350,10 @@ class CleanCommand(Command):
             etab.cleanup_pipeline(args.config)
 
         if args.last:
-            config = etab.find_last_built_pipeline()
-            if config:
-                etab.cleanup_pipeline(config)
-            else:
-                print("No built pipelines found...")
+            etab.cleanup_last_built_pipeline()
 
         if args.all:
-            etab.cleanup_all_pipelines()
+            etab.cleanup_all_built_pipelines()
 
 
 class ModelsCommand(Command):
