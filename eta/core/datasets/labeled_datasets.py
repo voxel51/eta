@@ -15,7 +15,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
-import six
 
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
@@ -1309,7 +1308,7 @@ class LabeledDataset(object):
     def _parse_dataset(self, labeled_dataset_or_path):
         cls_name = etau.get_class_name(self)
         cls = etau.get_class(cls_name)
-        if isinstance(labeled_dataset_or_path, six.string_types):
+        if etau.is_str(labeled_dataset_or_path):
             labeled_dataset = cls(labeled_dataset_or_path)
         else:
             labeled_dataset = labeled_dataset_or_path

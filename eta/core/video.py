@@ -22,7 +22,6 @@ from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
 from future.utils import iteritems, itervalues
-import six
 
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
@@ -2411,14 +2410,14 @@ def extract_clip(
     #
     in_opts = ["-vsync", "0"]
     if start_time is not None:
-        if not isinstance(start_time, six.string_types):
+        if not etau.is_str(start_time):
             start_time = "%.3f" % start_time
 
         in_opts.extend(["-ss", start_time])
 
     out_opts = ["-vsync", "0"]
     if duration is not None:
-        if not isinstance(duration, six.string_types):
+        if not etau.is_str(duration):
             duration = "%.3f" % duration
 
         out_opts.extend(["-t", duration])
@@ -2504,8 +2503,9 @@ def extract_frame(video_path, output_path, start_time=None):
     """
     in_opts = ["-vsync", "0"]
     if start_time is not None:
-        if not isinstance(start_time, six.string_types):
+        if not etau.is_str(start_time):
             start_time = "%.3f" % start_time
+
         in_opts.extend(["-ss", start_time])
 
     ffmpeg = FFmpeg(in_opts=in_opts, out_opts=["-vsync", "0", "-vframes", "1"])
@@ -2707,7 +2707,7 @@ def sample_first_frames(imgs_or_video_path, k, stride=1, size=None):
         a numpy array of size [k, height, width, num_channels]
     """
     # Read frames ...
-    if isinstance(imgs_or_video_path, six.string_types):
+    if etau.is_str(imgs_or_video_path):
         # ... from disk
         video_path = imgs_or_video_path
         frames = [i for i in range(1, stride * k + 1, stride)]
@@ -2753,7 +2753,7 @@ def uniformly_sample_frames(imgs_or_video_path, k, size=None):
     Returns:
         a numpy array of size [k, height, width, num_channels]
     """
-    is_video = isinstance(imgs_or_video_path, six.string_types)
+    is_video = etau.is_str(imgs_or_video_path)
     if is_video:
         video_path = imgs_or_video_path
     else:
@@ -2797,7 +2797,7 @@ def sliding_window_sample_frames(imgs_or_video_path, k, stride, size=None):
     Returns:
         a numpy array of size [XXXX, k, height, width, num_channels]
     """
-    is_video = isinstance(imgs_or_video_path, six.string_types)
+    is_video = etau.is_str(imgs_or_video_path)
     if is_video:
         video_path = imgs_or_video_path
     else:

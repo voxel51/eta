@@ -13,7 +13,6 @@ from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
 from future.utils import iteritems, itervalues
-import six
 
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
@@ -942,7 +941,7 @@ class Set(Serializable):
         return _set
 
     def _get_elements_with_keys(self, keys):
-        if isinstance(keys, six.string_types):
+        if etau.is_str(keys):
             logger.debug("Wrapping single key as a list")
             keys = [keys]
 

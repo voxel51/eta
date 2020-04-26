@@ -21,7 +21,6 @@ from future.utils import iteritems
 import logging
 import re
 import requests
-import six
 from time import time
 
 import eta.constants as etac
@@ -43,10 +42,7 @@ def is_url(filename):
     Returns:
         True/False if the filename is a url
     """
-    return (
-        isinstance(filename, six.string_types)
-        and URL_REGEX.match(filename) is not None
-    )
+    return etau.is_str(filename) and URL_REGEX.match(filename) is not None
 
 
 def download_file(url, path=None, chunk_size=None):

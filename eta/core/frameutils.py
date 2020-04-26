@@ -12,7 +12,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
-import six
 
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
@@ -68,7 +67,7 @@ def timestamp_to_seconds(timestamp):
     Returns:
         a timestamp in seconds
     """
-    if isinstance(timestamp, six.string_types):
+    if etau.is_str(timestamp):
         return timestamp_str_to_seconds(timestamp)
 
     return timestamp
@@ -136,7 +135,7 @@ def parse_frame_ranges(frames):
     Returns:
         a FrameRanges instance describing the frames
     """
-    if isinstance(frames, six.string_types):
+    if etau.is_str(frames):
         # Human-readable frames string
         frame_ranges = FrameRanges.from_human_str(frames)
     elif isinstance(frames, FrameRange):
@@ -173,7 +172,7 @@ class FrameRanges(etas.Serializable):
         self._started = False
 
         if ranges is not None:
-            if isinstance(ranges, six.string_types):
+            if etau.is_str(ranges):
                 ranges = self._parse_frames_str(ranges)
 
             self._set_ranges(ranges)

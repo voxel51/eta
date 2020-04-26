@@ -22,7 +22,6 @@ import six
 # pragma pylint: enable=wildcard-import
 
 import logging
-import numbers
 import os
 
 import eta
@@ -192,7 +191,7 @@ class String(Builtin):
 
     @staticmethod
     def is_valid_value(val):
-        return isinstance(val, six.string_types)
+        return etau.is_str(val)
 
 
 class Number(Builtin):
@@ -200,7 +199,7 @@ class Number(Builtin):
 
     @staticmethod
     def is_valid_value(val):
-        return isinstance(val, numbers.Number)
+        return etau.is_numeric(val)
 
 
 class Object(Builtin):
