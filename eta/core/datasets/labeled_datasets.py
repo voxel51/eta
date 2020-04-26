@@ -26,8 +26,6 @@ import logging
 import os
 import random
 
-import numpy as np
-
 import eta.core.annotations as etaa
 from eta.core.data import BaseDataRecord
 import eta.core.image as etai
