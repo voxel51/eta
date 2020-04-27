@@ -916,19 +916,20 @@ class ProgressBar(object):
         return " " + suffix if suffix else ""
 
 
-def call(args):
+def call(args, **kwargs):
     """Runs the command via `subprocess.call()`.
 
-    stdout and stderr are streamed live during execution. If you want to
-    capture these streams, use `communicate()`.
+    stdout and stderr are streamed live during execution. `**kwargs` may be used to
+    override this. Or, if you want to capture these streams, use `communicate()`.
 
     Args:
         args: the command specified as a ["list", "of", "strings"]
+        **kwargs: keyword arguments to be passed through to `subprocess.call()`.
 
     Returns:
         True/False: if the command executed successfully
     """
-    return subprocess.call(args) == 0
+    return subprocess.call(args, **kwargs) == 0
 
 
 def communicate(args, decode=False):
