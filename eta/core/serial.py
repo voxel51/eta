@@ -73,8 +73,9 @@ def load_json(path_or_str):
             # Try to parse comma-seperated list of key=value pairs
             d = {}
             for chunk in path_or_str.split(","):
-                key, value = chunk.split("=")
-                d[key] = _load_json(value)
+                k, v = etau.remove_escape_chars(chunk, ",").split("=")
+                d[k] = _load_json(v)
+
             return d
         except ValueError:
             raise ValueError("Unable to load JSON from '%s'" % path_or_str)
