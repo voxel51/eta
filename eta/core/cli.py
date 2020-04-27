@@ -53,7 +53,7 @@ class Command(object):
     """Interface for defining commands.
 
     Command instances must implement the `setup()` method, and they should
-    implement the `run()` method if they perform any functionality beyond
+    implement the `execute()` method if they perform any functionality beyond
     defining subparsers.
     """
 
@@ -67,7 +67,7 @@ class Command(object):
         raise NotImplementedError("subclass must implement setup()")
 
     @staticmethod
-    def run(parser, args):
+    def execute(parser, args):
         """Executes the command on the given args.
 
         args:
@@ -75,7 +75,7 @@ class Command(object):
             args: an `argparse.Namespace` instance containing the arguments
                 for the command
         """
-        raise NotImplementedError("subclass must implement run()")
+        raise NotImplementedError("subclass must implement execute()")
 
 
 class ETACommand(Command):
@@ -100,7 +100,7 @@ class ETACommand(Command):
         _register_command(subparsers, "sftp", SFTPStorageCommand)
 
     @staticmethod
-    def run(parser, args):
+    def execute(parser, args):
         parser.print_help()
 
 
@@ -206,7 +206,7 @@ class BuildCommand(Command):
         )
 
     @staticmethod
-    def run(parser, args):
+    def execute(parser, args):
         d = args.request or {
             "inputs": {},
             "outputs": {},
@@ -304,7 +304,7 @@ class RunCommand(Command):
         )
 
     @staticmethod
-    def run(parser, args):
+    def execute(parser, args):
         if args.module:
             print("Running module '%s'" % args.module)
             etamodu.run(args.module, args.config)
@@ -364,7 +364,7 @@ class CleanCommand(Command):
         )
 
     @staticmethod
-    def run(parser, args):
+    def execute(parser, args):
         if args.config:
             etab.cleanup_pipeline(args.config)
 
@@ -485,7 +485,7 @@ class ModelsCommand(Command):
         )
 
     @staticmethod
-    def run(parser, args):
+    def execute(parser, args):
         if args.list:
             models = etamode.find_all_models()
             print(_render_names_in_dirs_str(models))
@@ -617,7 +617,7 @@ class ModulesCommand(Command):
         )
 
     @staticmethod
-    def run(parser, args):
+    def execute(parser, args):
         if args.list:
             modules = etamodu.find_all_metadata()
             print(_render_names_in_dirs_str(modules))
@@ -708,7 +708,7 @@ class PipelinesCommand(Command):
         )
 
     @staticmethod
-    def run(parser, args):
+    def execute(parser, args):
         if args.list:
             pipelines = etap.find_all_metadata()
             print(_render_names_in_dirs_str(pipelines))
@@ -760,7 +760,7 @@ class ConstantsCommand(Command):
         )
 
     @staticmethod
-    def run(parser, args):
+    def execute(parser, args):
         if args.all:
             d = {
                 k: v
@@ -802,7 +802,7 @@ class ConfigCommand(Command):
         )
 
     @staticmethod
-    def run(parser, args):
+    def execute(parser, args):
         if args.print:
             if args.field:
                 field = getattr(eta.config, args.field)
@@ -822,7 +822,7 @@ class AuthCommand(Command):
         _register_command(subparsers, "deactivate", DeactivateAuthCommand)
 
     @staticmethod
-    def run(parser, args):
+    def execute(parser, args):
         parser.print_help()
 
 
@@ -862,7 +862,7 @@ class ShowAuthCommand(Command):
         )
 
     @staticmethod
-    def run(parser, args):
+    def execute(parser, args):
         if args.google:
             _print_google_credentials_info()
 
@@ -960,7 +960,7 @@ class ActivateAuthCommand(Command):
         )
 
     @staticmethod
-    def run(parser, args):
+    def execute(parser, args):
         if args.google:
             etast.NeedsGoogleCredentials.activate_credentials(args.google)
 
@@ -1010,7 +1010,7 @@ class DeactivateAuthCommand(Command):
         )
 
     @staticmethod
-    def run(parser, args):
+    def execute(parser, args):
         if args.google or args.all:
             etast.NeedsGoogleCredentials.deactivate_credentials()
 
@@ -1039,7 +1039,7 @@ class S3Command(Command):
         _register_command(subparsers, "delete-dir", S3DeleteDirCommand)
 
     @staticmethod
-    def run(parser, args):
+    def execute(parser, args):
         parser.print_help()
 
 
@@ -1070,7 +1070,7 @@ class S3InfoCommand(Command):
         )
 
     @staticmethod
-    def run(parser, args):
+    def execute(parser, args):
         client = etast.S3StorageClient()
 
         if args.folder:
@@ -1224,7 +1224,7 @@ class S3ListCommand(Command):
         )
 
     @staticmethod
-    def run(parser, args):
+    def execute(parser, args):
         client = etast.S3StorageClient()
 
         metadata = client.list_files_in_folder(
@@ -1273,7 +1273,7 @@ class S3UploadCommand(Command):
         )
 
     @staticmethod
-    def run(parser, args):
+    def execute(parser, args):
         client = etast.S3StorageClient()
 
         print("Uploading '%s' to '%s'" % (args.local_path, args.cloud_path))
@@ -1327,7 +1327,7 @@ class S3UploadDirectoryCommand(Command):
         )
 
     @staticmethod
-    def run(parser, args):
+    def execute(parser, args):
         client = etast.S3StorageClient()
 
         if args.sync:
@@ -1377,7 +1377,7 @@ class S3DownloadCommand(Command):
         )
 
     @staticmethod
-    def run(parser, args):
+    def execute(parser, args):
         client = etast.S3StorageClient()
 
         if args.print:
@@ -1436,7 +1436,7 @@ class S3DownloadDirectoryCommand(Command):
         )
 
     @staticmethod
-    def run(parser, args):
+    def execute(parser, args):
         client = etast.S3StorageClient()
 
         if args.sync:
@@ -1467,7 +1467,7 @@ class S3DeleteCommand(Command):
         )
 
     @staticmethod
-    def run(parser, args):
+    def execute(parser, args):
         client = etast.S3StorageClient()
 
         print("Deleting '%s'" % args.cloud_path)
@@ -1489,7 +1489,7 @@ class S3DeleteDirCommand(Command):
         )
 
     @staticmethod
-    def run(parser, args):
+    def execute(parser, args):
         client = etast.S3StorageClient()
 
         print("Deleting '%s'" % args.cloud_dir)
@@ -1514,7 +1514,7 @@ class GCSCommand(Command):
         _register_command(subparsers, "delete-dir", GCSDeleteDirCommand)
 
     @staticmethod
-    def run(parser, args):
+    def execute(parser, args):
         parser.print_help()
 
 
@@ -1545,7 +1545,7 @@ class GCSInfoCommand(Command):
         )
 
     @staticmethod
-    def run(parser, args):
+    def execute(parser, args):
         client = etast.GoogleCloudStorageClient()
 
         if args.folder:
@@ -1699,7 +1699,7 @@ class GCSListCommand(Command):
         )
 
     @staticmethod
-    def run(parser, args):
+    def execute(parser, args):
         client = etast.GoogleCloudStorageClient()
 
         metadata = client.list_files_in_folder(
@@ -1755,7 +1755,7 @@ class GCSUploadCommand(Command):
         )
 
     @staticmethod
-    def run(parser, args):
+    def execute(parser, args):
         client = etast.GoogleCloudStorageClient(chunk_size=args.chunk_size)
 
         print("Uploading '%s' to '%s'" % (args.local_path, args.cloud_path))
@@ -1816,7 +1816,7 @@ class GCSUploadDirectoryCommand(Command):
         )
 
     @staticmethod
-    def run(parser, args):
+    def execute(parser, args):
         client = etast.GoogleCloudStorageClient(chunk_size=args.chunk_size)
 
         if args.sync:
@@ -1873,7 +1873,7 @@ class GCSDownloadCommand(Command):
         )
 
     @staticmethod
-    def run(parser, args):
+    def execute(parser, args):
         client = etast.GoogleCloudStorageClient(chunk_size=args.chunk_size)
 
         if args.print:
@@ -1939,7 +1939,7 @@ class GCSDownloadDirectoryCommand(Command):
         )
 
     @staticmethod
-    def run(parser, args):
+    def execute(parser, args):
         client = etast.GoogleCloudStorageClient(chunk_size=args.chunk_size)
 
         if args.sync:
@@ -1970,7 +1970,7 @@ class GCSDeleteCommand(Command):
         )
 
     @staticmethod
-    def run(parser, args):
+    def execute(parser, args):
         client = etast.GoogleCloudStorageClient()
 
         print("Deleting '%s'" % args.cloud_path)
@@ -1994,7 +1994,7 @@ class GCSDeleteDirCommand(Command):
         )
 
     @staticmethod
-    def run(parser, args):
+    def execute(parser, args):
         client = etast.GoogleCloudStorageClient()
 
         print("Deleting '%s'" % args.cloud_dir)
@@ -2023,7 +2023,7 @@ class GoogleDriveStorageCommand(Command):
         )
 
     @staticmethod
-    def run(parser, args):
+    def execute(parser, args):
         parser.print_help()
 
 
@@ -2054,7 +2054,7 @@ class GoogleDriveInfoCommand(Command):
         )
 
     @staticmethod
-    def run(parser, args):
+    def execute(parser, args):
         client = etast.GoogleDriveStorageClient()
 
         if args.folder:
@@ -2211,7 +2211,7 @@ class GoogleDriveListCommand(Command):
         )
 
     @staticmethod
-    def run(parser, args):
+    def execute(parser, args):
         client = etast.GoogleDriveStorageClient()
 
         metadata = client.list_files_in_folder(
@@ -2273,7 +2273,7 @@ class GoogleDriveUploadCommand(Command):
         )
 
     @staticmethod
-    def run(parser, args):
+    def execute(parser, args):
         client = etast.GoogleDriveStorageClient(chunk_size=args.chunk_size)
 
         print("Uploading '%s' to '%s'" % (args.path, args.folder_id))
@@ -2333,7 +2333,7 @@ class GoogleDriveUploadDirectoryCommand(Command):
         )
 
     @staticmethod
-    def run(parser, args):
+    def execute(parser, args):
         client = etast.GoogleDriveStorageClient(chunk_size=args.chunk_size)
 
         client.upload_files_in_folder(
@@ -2394,7 +2394,7 @@ class GoogleDriveDownloadCommand(Command):
         )
 
     @staticmethod
-    def run(parser, args):
+    def execute(parser, args):
         #
         # Download publicly available file
         #
@@ -2481,7 +2481,7 @@ class GoogleDriveDownloadDirectoryCommand(Command):
         )
 
     @staticmethod
-    def run(parser, args):
+    def execute(parser, args):
         client = etast.GoogleDriveStorageClient(chunk_size=args.chunk_size)
 
         client.download_files_in_folder(
@@ -2508,7 +2508,7 @@ class GoogleDriveDeleteCommand(Command):
         )
 
     @staticmethod
-    def run(parser, args):
+    def execute(parser, args):
         client = etast.GoogleDriveStorageClient()
 
         print("Deleting '%s'" % args.id)
@@ -2546,7 +2546,7 @@ class GoogleDriveDeleteDirCommand(Command):
         )
 
     @staticmethod
-    def run(parser, args):
+    def execute(parser, args):
         client = etast.GoogleDriveStorageClient()
 
         if args.contents_only:
@@ -2569,7 +2569,7 @@ class HTTPStorageCommand(Command):
         _register_command(subparsers, "delete", HTTPDeleteCommand)
 
     @staticmethod
-    def run(parser, args):
+    def execute(parser, args):
         parser.print_help()
 
 
@@ -2609,7 +2609,7 @@ class HTTPUploadCommand(Command):
         )
 
     @staticmethod
-    def run(parser, args):
+    def execute(parser, args):
         set_content_type = bool(args.content_type)
         client = etast.HTTPStorageClient(set_content_type=set_content_type)
 
@@ -2661,7 +2661,7 @@ class HTTPDownloadCommand(Command):
         )
 
     @staticmethod
-    def run(parser, args):
+    def execute(parser, args):
         client = etast.HTTPStorageClient(chunk_size=args.chunk_size)
 
         if args.print:
@@ -2685,7 +2685,7 @@ class HTTPDeleteCommand(Command):
         parser.add_argument("url", metavar="URL", help="the URL to DELETE")
 
     @staticmethod
-    def run(parser, args):
+    def execute(parser, args):
         client = etast.HTTPStorageClient()
         print("Deleting '%s'" % args.url)
         client.delete(args.url)
@@ -2705,7 +2705,7 @@ class SFTPStorageCommand(Command):
         _register_command(subparsers, "delete-dir", SFTPDeleteDirCommand)
 
     @staticmethod
-    def run(parser, args):
+    def execute(parser, args):
         parser.print_help()
 
 
@@ -2737,7 +2737,7 @@ class SFTPUploadCommand(Command):
         )
 
     @staticmethod
-    def run(parser, args):
+    def execute(parser, args):
         hostname, username, remote_path = _parse_remote_path(
             args.remote_path, args.host, args.user
         )
@@ -2776,7 +2776,7 @@ class SFTPUploadDirCommand(Command):
         )
 
     @staticmethod
-    def run(parser, args):
+    def execute(parser, args):
         hostname, username, remote_dir = _parse_remote_path(
             args.remote_dir, args.host, args.user
         )
@@ -2827,7 +2827,7 @@ class SFTPDownloadCommand(Command):
         )
 
     @staticmethod
-    def run(parser, args):
+    def execute(parser, args):
         hostname, username, remote_path = _parse_remote_path(
             args.remote_path, args.host, args.user
         )
@@ -2870,7 +2870,7 @@ class SFTPDownloadDirCommand(Command):
         )
 
     @staticmethod
-    def run(parser, args):
+    def execute(parser, args):
         hostname, username, remote_dir = _parse_remote_path(
             args.remote_dir, args.host, args.user
         )
@@ -2904,7 +2904,7 @@ class SFTPDeleteCommand(Command):
         )
 
     @staticmethod
-    def run(parser, args):
+    def execute(parser, args):
         hostname, username, remote_path = _parse_remote_path(
             args.remote_path, args.host, args.user
         )
@@ -2938,7 +2938,7 @@ class SFTPDeleteDirCommand(Command):
         )
 
     @staticmethod
-    def run(parser, args):
+    def execute(parser, args):
         hostname, username, remote_dir = _parse_remote_path(
             args.remote_dir, args.host, args.user
         )
@@ -3394,7 +3394,7 @@ class _RecursiveHelpAction(argparse._HelpAction):
 def _register_main_command(command, version=None, recursive_help=True):
     parser = argparse.ArgumentParser(description=command.__doc__.rstrip())
 
-    parser.set_defaults(run=lambda args: command.run(parser, args))
+    parser.set_defaults(execute=lambda args: command.execute(parser, args))
     command.setup(parser)
 
     if version:
@@ -3425,7 +3425,7 @@ def _register_command(parent, name, command, recursive_help=True):
         formatter_class=argparse.RawTextHelpFormatter,
     )
 
-    parser.set_defaults(run=lambda args: command.run(parser, args))
+    parser.set_defaults(execute=lambda args: command.execute(parser, args))
     command.setup(parser)
 
     if recursive_help and _has_subparsers(parser):
@@ -3442,4 +3442,4 @@ def main():
     """Executes the `eta` tool with the given command-line args."""
     parser = _register_main_command(ETACommand, version=etac.VERSION_LONG)
     args = parser.parse_args()
-    args.run(args)
+    args.execute(args)
