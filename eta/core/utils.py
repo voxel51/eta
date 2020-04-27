@@ -338,10 +338,12 @@ def parse_kvps(kvps_str):
     if kvps_str:
         try:
             for pair in kvps_str.split(","):
-                k, v = pair.strip().split("=")
+                k, v = remove_escape_chars(pair, ",").strip().split("=")
                 kvps[k.strip()] = v.strip()
+
         except ValueError:
             raise ValueError("Invalid key-value pair string '%s'" % kvps_str)
+
     return kvps
 
 
@@ -2519,6 +2521,33 @@ def replace_strings(s, replacers):
     return sout
 
 
+def escape_chars(s, chars):
+    """Escapes any occurances of the the given characters in the given string.
+
+    Args:
+        s: a string
+        chars: the iterable (e.g., string or list) of characters to escape
+
+    Returns:
+        the escaped string
+    """
+    return re.sub(r"([%s])" % "".join(chars), r"\\\1", s)
+
+
+def remove_escape_chars(s, chars):
+    """Removes escapes from any escaped occurances of the given characters in
+    the given string.
+
+    Args:
+        s: a string
+        chars: the iterable (e.g., string or list) of characters to unescape
+
+    Returns:
+        the unescaped string
+    """
+    return re.sub(r"\\([%s])" % "".join(chars), r"\1", s)
+
+
 def join_dicts(*args):
     """Joins any number of dictionaries into a new single dictionary.
 
@@ -2531,6 +2560,7 @@ def join_dicts(*args):
     d = {}
     for di in args:
         d.update(di)
+
     return d
 
 
