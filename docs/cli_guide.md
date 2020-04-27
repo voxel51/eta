@@ -44,7 +44,7 @@ eval `register-python-argcomplete --shell tcsh eta`
 
 The following usage information was generated via `eta --all-help`:
 
-> Last generated on 2020/04/08
+> Last generated on 2020/04/26
 
 ```
 *******************************************************************************
@@ -109,17 +109,17 @@ request arguments:
   -r REQUEST, --request REQUEST
                         path to a PipelineBuildRequest file
   -i 'KEY=VAL,...', --inputs 'KEY=VAL,...'
-                        pipeline inputs
+                        pipeline inputs (can be repeated)
   -o 'KEY=VAL,...', --outputs 'KEY=VAL,...'
-                        pipeline outputs
+                        pipeline outputs (can be repeated)
   -p 'KEY=VAL,...', --parameters 'KEY=VAL,...'
-                        pipeline parameters
+                        pipeline parameters (can be repeated)
   -e 'KEY=VAL,...', --eta-config 'KEY=VAL,...'
-                        ETA config settings
+                        ETA config settings (can be repeated)
   -l 'KEY=VAL,...', --logging 'KEY=VAL,...'
-                        logging config settings
+                        logging config settings (can be repeated)
   --patterns 'KEY=VAL,...'
-                        patterns to replace in the build request
+                        patterns to replace in the build request (can be repeated)
 
 
 *******************************************************************************
