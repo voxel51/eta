@@ -66,7 +66,11 @@ def get_manifest_path_from_dir(dataset_dir):
     manifest_path = os.path.join(dataset_dir, candidate_manifests.pop())
 
     if len(candidate_manifests) > 1:
-        logger.warning("Multiple JSON files found in ")
+        logger.warning(
+            "Multiple JSON files found in '%s'; using manifest '%s'",
+            dataset_dir,
+            manifest_path,
+        )
 
     return manifest_path
 
@@ -95,7 +99,16 @@ def load_dataset(manifest_path_or_dataset_dir):
     else:
         manifest_path = manifest_path_or_dataset_dir
 
-    index = LabeledDatasetIndex.from_json(manifest_path)
+    try:
+        index = LabeledDatasetIndex.from_json(manifest_path)
+    except:
+        logger.warning(
+            "Failed to load LabeledDatasetIndex from '%s' with the following "
+            "error:",
+            manifest_path,
+        )
+        raise
+
     dataset_cls = etau.get_class(index.type)
     return dataset_cls(manifest_path, manifest=index)
 
