@@ -851,7 +851,7 @@ class LabeledDataset(object):
             ValueError: if `overwrite == False` and the base directory of the
                 specified `manifest_path` already exists
         """
-        self._ensure_empty_dataset(manifest_path, overwrite)
+        self._ensure_empty_dataset(manifest_path, overwrite=overwrite)
         self.dataset_index.write_json(manifest_path)
 
         dataset = self.__class__(manifest_path)
@@ -1149,7 +1149,7 @@ class LabeledDataset(object):
     def create_empty_dataset(
         cls, manifest_path, description=None, overwrite=False
     ):
-        """Creates an empty LabeledDataset.
+        """Creates an empty LabeledDataset with the specified manifest path.
 
         Args:
             manifest_path: the path for the LabeledDatasetIndex of the dataset
@@ -1165,7 +1165,7 @@ class LabeledDataset(object):
             ValueError: if `overwrite == False` and the base directory of the
                 specified `manifest_path` already exists
         """
-        cls._ensure_empty_dataset(manifest_path, overwrite)
+        cls._ensure_empty_dataset(manifest_path, overwrite=overwrite)
         dataset_index = LabeledDatasetIndex(
             etau.get_class_name(cls), description=description
         )
@@ -1354,7 +1354,9 @@ class LabeledDataset(object):
         return data_filenames_to_merge
 
     @classmethod
-    def _ensure_empty_dataset(cls, manifest_path, overwrite):
+    def _ensure_empty_dataset(
+        cls, manifest_path, overwrite=False, warn_if_not_empty=True
+    ):
         dataset_dir = os.path.dirname(manifest_path)
 
         if os.path.isdir(dataset_dir):
@@ -1364,9 +1366,14 @@ class LabeledDataset(object):
                 )
                 etau.delete_dir(dataset_dir)
             elif os.listdir(dataset_dir):
-                raise ValueError(
-                    "Dataset directory '%s' must be empty" % dataset_dir
-                )
+                if warn_if_not_empty:
+                    logger.warning(
+                        "Dataset directory '%s' is not empty", dataset_dir
+                    )
+                else:
+                    raise ValueError(
+                        "Dataset directory '%s' must be empty" % dataset_dir
+                    )
 
         etau.ensure_dir(dataset_dir)
         etau.ensure_dir(os.path.join(dataset_dir, cls._DATA_SUBDIR))
