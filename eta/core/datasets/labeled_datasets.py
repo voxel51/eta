@@ -587,7 +587,7 @@ class LabeledDataset(object):
         else:
             manifest_path = os.path.join(self.dataset_dir, filename)
 
-        self.dataset_index.write_json(manifest_path)
+        self.dataset_index.write_json(manifest_path, pretty_print=True)
 
     @staticmethod
     def from_manifest(manifest_path):
@@ -865,7 +865,7 @@ class LabeledDataset(object):
                 specified `manifest_path` already exists
         """
         self._ensure_empty_dataset(manifest_path, overwrite=overwrite)
-        self.dataset_index.write_json(manifest_path)
+        self.dataset_index.write_json(manifest_path, pretty_print=True)
 
         dataset = self.__class__(manifest_path)
 
@@ -1194,7 +1194,7 @@ class LabeledDataset(object):
         dataset_index = LabeledDatasetIndex(
             etau.get_class_name(cls), description=description
         )
-        dataset_index.write_json(manifest_path)
+        dataset_index.write_json(manifest_path, pretty_print=True)
         dataset = cls(manifest_path)
 
         cls.validate_dataset(manifest_path)
