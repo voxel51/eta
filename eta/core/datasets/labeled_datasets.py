@@ -1160,12 +1160,15 @@ class LabeledDataset(object):
 
     @classmethod
     def create_empty_dataset(
-        cls, manifest_path, description=None, overwrite=False
+        cls, manifest_path_or_dataset_dir, description=None, overwrite=False
     ):
-        """Creates an empty LabeledDataset with the specified manifest path.
+        """Creates an empty LabeledDataset with the specified manifest path or
+        in the given directory.
 
         Args:
-            manifest_path: the path for the LabeledDatasetIndex of the dataset
+            manifest_path_or_dataset_dir: the path to write the
+                LabeledDatasetIndex of the dataset, or a directory in which to
+                create the dataset
             description: an optional description for the dataset
             overwrite: whether to delete an existing dataset in the base
                 directory of `manifest_path`, if necessary. By default, this is
@@ -1178,6 +1181,15 @@ class LabeledDataset(object):
             ValueError: if `overwrite == False` and the base directory of the
                 specified `manifest_path` already exists
         """
+        if not os.path.splitext(manifest_path_or_dataset_dir)[1]:
+            # Found a directory
+            manifest_path = os.path.join(
+                manifest_path_or_dataset_dir, "manifest.json"
+            )
+        else:
+            # Found a manifest path
+            manifest_path = manifest_path_or_dataset_dir
+
         cls._ensure_empty_dataset(manifest_path, overwrite=overwrite)
         dataset_index = LabeledDatasetIndex(
             etau.get_class_name(cls), description=description
