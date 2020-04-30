@@ -680,7 +680,7 @@ class ProgressBar(object):
         show_elapsed_time=False,
         show_remaining_time=False,
         num_decimals=1,
-        max_width=79,
+        max_width=None,
     ):
         """Creates a ProgressBar instance.
 
@@ -696,8 +696,8 @@ class ProgressBar(object):
                 at the end of the progress bar. By default, this is False
             num_decimals: the number of percentage decimals to print. The
                 default is 1
-            max_width: the maximum allowed with of the bar, in characters. The
-                default is 79
+            max_width: the maximum allowed with of the bar, in characters. By
+                default, the bar is fitted to your Terminal window
         """
         if is_numeric(iter_or_total):
             self._iterable = None
@@ -714,6 +714,9 @@ class ProgressBar(object):
                         "Must provide `total` when tracking the progress of "
                         "an iterable that does not implement `len()`"
                     )
+
+        if max_width is None:
+            max_width = get_terminal_size()[0]
 
         self._timer = Timer()
         self._iterator = None
@@ -2864,3 +2867,25 @@ def validate_type(obj, expected_type):
             "Unexpected argument type:\n\tExpected: %s\n\tActual: %s"
             % (get_class_name(expected_type), get_class_name(obj))
         )
+
+
+def get_terminal_size():
+    """Gets the size of your current Terminal window.
+
+    Returns:
+        the (width, height) of the Termainl
+    """
+    try:
+        return tuple(os.get_terminal_size())
+    except AttributeError:
+        # Fallback for Python 2.X
+        # https://stackoverflow.com/a/3010495
+        import fcntl, termios, struct
+
+        h, w, hp, wp = struct.unpack(
+            "HHHH",
+            fcntl.ioctl(
+                0, termios.TIOCGWINSZ, struct.pack("HHHH", 0, 0, 0, 0)
+            ),
+        )
+        return w, h
