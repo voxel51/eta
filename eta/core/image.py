@@ -455,6 +455,7 @@ def read(path_or_url, include_alpha=False, flag=None):
     img_bgr = cv2.imread(path_or_url, flag)
     if img_bgr is None:
         raise OSError("Image not found '%s'" % path_or_url)
+
     return _exchange_rb(img_bgr)
 
 
@@ -1098,7 +1099,7 @@ def is_gray(img):
     Returns:
         True/False
     """
-    return img.ndim == 2
+    return img.ndim == 2 or (img.ndim == 3 and img.shape[2] == 1)
 
 
 def is_color(img):
@@ -1689,6 +1690,7 @@ def rgb_to_gray(img):
     """
     if is_gray(img):
         return img
+
     return cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
 
 
@@ -1703,6 +1705,7 @@ def bgr_to_gray(img):
     """
     if is_gray(img):
         return img
+
     return cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
 
@@ -1768,4 +1771,5 @@ def _exchange_rb(img):
     """
     if is_gray(img):
         return img
+
     return img[..., [2, 1, 0] + list(range(3, img.shape[2]))]
