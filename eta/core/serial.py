@@ -2839,4 +2839,6 @@ class ETAJSONEncoder(json.JSONEncoder):
             return obj.tolist()
         if isinstance(obj, (dt.datetime, dt.date)):
             return obj.isoformat()
+        if isinstance(obj, bytes):
+            return obj.decode("ascii")
         return super(ETAJSONEncoder, self).default(obj)
