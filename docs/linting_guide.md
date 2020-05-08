@@ -1,33 +1,34 @@
 # ETA Linting Guide
 
 The ETA project uses the following tools for linting and code style:
-- [Black](https://github.com/psf/black)
-- [Pylint](https://www.pylint.org)
+
+-   [Black](https://github.com/psf/black)
+-   [Prettier](https://prettier.io)
+-   [Pylint](https://www.pylint.org)
 
 We maintain customized configurations for these tools in the root directory of
 the repository:
 
-- Black configuration: `[tool.black]` section of `pyproject.toml`
-- Pylint configuration: `pylintrc`
-
+-   Black configuration: `[tool.black]` section of `pyproject.toml`
+-   Prettier configuration: `.prettierrc`
+-   Pylint configuration: `pylintrc`
 
 ## Pre-commit hooks
 
-When you installed ETA, pre-commit hooks were automatically installed that
-run Black and Pylint on any files you modified in your commit. If these tools
-produced any errors or changes to your code, you will need to recommit to
+When you installed ETA, pre-commit hooks were automatically installed that run
+Black, Pylint, and Prettier on any files you modified in your commit. If these
+tools produced any errors or changes to your code, you will need to recommit to
 accept the changes.
 
 The `.pre-commit-config.yaml` file in the repository root contains the
 definition of these hooks.
-
 
 ## Linting a file
 
 To manually lint a file, run the following:
 
 ```shell
-# Run Black and Pylint as configured in the pre-commit hook
+# Manually run linting configured in the pre-commit hook
 pre-commit run --files <file>
 ```
 
@@ -38,7 +39,6 @@ full output, run:
 pylint <file>
 ```
 
-
 ## Customizing Black
 
 You don't customize Black, silly! From the docs:
@@ -46,6 +46,11 @@ You don't customize Black, silly! From the docs:
 > Pro-tip: If you’re asking yourself “Do I need to configure anything?” the
 > answer is “No”. Black is all about sensible defaults.
 
+## Customizing Prettier
+
+We currently use Prettier only for Markdown files. See `.prettierrc` for the
+configuration, and see https://prettier.io/docs/en/configuration.html for
+configuration documentation.
 
 ## Customizing Pylint
 
@@ -84,8 +89,6 @@ from builtins import *
 See the [Pylint user guide](https://pylint.readthedocs.io/en/latest/) for more
 information.
 
-
 ## Copyright
 
-Copyright 2017-2020, Voxel51, Inc.<br>
-voxel51.com
+Copyright 2017-2020, Voxel51, Inc.<br> voxel51.com
