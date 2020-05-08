@@ -58,7 +58,7 @@ bash /your/command/here
 -   All Markdown files must include the following copyright block at the
     bottom:
 
-```md
+```
 ## Copyright
 
 Copyright 2017-2020, Voxel51, Inc.<br> voxel51.com

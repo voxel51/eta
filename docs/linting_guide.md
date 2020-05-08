@@ -49,8 +49,10 @@ You don't customize Black, silly! From the docs:
 ## Customizing Prettier
 
 We currently use Prettier only for Markdown files. See `.prettierrc` for the
-configuration, and see https://prettier.io/docs/en/configuration.html for
-configuration documentation.
+configuration.
+
+See https://prettier.io/docs/en/configuration.html for configuration
+documentation.
 
 ## Customizing Pylint
 
