@@ -737,11 +737,11 @@ class ConstantsCommand(Command):
     """Print constants from `eta.constants`.
 
     Examples:
-        # Print the specified constant
-        eta constants <CONSTANT>
-
         # Print all constants
-        eta constants --all
+        eta constants
+
+        # Print a specific constant
+        eta constants <CONSTANT>
     """
 
     @staticmethod
@@ -752,25 +752,21 @@ class ConstantsCommand(Command):
             metavar="CONSTANT",
             help="the constant to print",
         )
-        parser.add_argument(
-            "-a",
-            "--all",
-            action="store_true",
-            help="print all available constants",
-        )
 
     @staticmethod
     def execute(parser, args):
-        if args.all:
-            d = {
+        if args.constant:
+            print(getattr(etac, args.constant))
+            return
+
+        # Print all constants
+        _print_constants_table(
+            {
                 k: v
                 for k, v in iteritems(vars(etac))
                 if not k.startswith("_") and k == k.upper()
             }
-            _print_constants_table(d)
-
-        if args.constant:
-            print(getattr(etac, args.constant))
+        )
 
 
 def _print_constants_table(d):
