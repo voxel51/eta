@@ -781,11 +781,11 @@ class ConfigCommand(Command):
     """Tools for working with your ETA config.
 
     Examples:
-        # Print your entire ETA config
-        eta config --print
+        # Print your entire config
+        eta config
 
         # Print a specific config field
-        eta config --print <field>
+        eta config <field>
     """
 
     @staticmethod
@@ -793,18 +793,17 @@ class ConfigCommand(Command):
         parser.add_argument(
             "field", nargs="?", metavar="FIELD", help="a config field"
         )
-        parser.add_argument(
-            "-p", "--print", action="store_true", help="print your ETA config"
-        )
 
     @staticmethod
     def execute(parser, args):
-        if args.print:
-            if args.field:
-                field = getattr(eta.config, args.field)
-                print(etase.json_to_str(field))
+        if args.field:
+            field = getattr(eta.config, args.field)
+            if etau.is_str(field):
+                print(field)
             else:
-                print(eta.config)
+                print(etase.json_to_str(field))
+        else:
+            print(eta.config)
 
 
 class AuthCommand(Command):
