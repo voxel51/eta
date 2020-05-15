@@ -679,8 +679,10 @@ class ProgressBar(object):
         total=None,
         show_elapsed_time=False,
         show_remaining_time=False,
+        show_iters_rate=False,
         num_decimals=1,
         max_width=None,
+        max_fps=24,
     ):
         """Creates a ProgressBar instance.
 
@@ -694,10 +696,14 @@ class ProgressBar(object):
                 the progress bar. By default, this is False
             show_remaining_time: whether to print the estimated remaining time
                 at the end of the progress bar. By default, this is False
+            show_iters_rate: whether to show the average iterations per second
+                being processed. By default, this is False
             num_decimals: the number of percentage decimals to print. The
                 default is 1
             max_width: the maximum allowed with of the bar, in characters. By
                 default, the bar is fitted to your Terminal window
+            max_fps: the maximum allowed frames per second at which `draw()`
+                will be executed. The default is 15
         """
         if is_numeric(iter_or_total):
             self._iterable = None
@@ -710,15 +716,21 @@ class ProgressBar(object):
                 try:
                     self._total = len(iter_or_total)
                 except TypeError:
-                    raise ValueError(
-                        "Must provide `total` when tracking the progress of "
-                        "an iterable that does not implement `len()`"
-                    )
+                    self._total = None
+
+                    # Show something interesting if length is not available
+                    show_elapsed_time = True
+                    show_remaining_time = False
+                    show_iters_rate = True
 
         if max_width is None:
             max_width = get_terminal_size()[0]
 
         self._timer = Timer()
+        self._is_running = False
+        self._last_draw_time = -1
+        self._last_draw_iter = -1
+        self._max_fps = max_fps
         self._iterator = None
         self._iteration = 0
         self._num_decimals = num_decimals
@@ -728,6 +740,7 @@ class ProgressBar(object):
         self._spinner = it.cycle("|/-\\|/-\\")
         self._show_elapsed_time = show_elapsed_time
         self._show_remaining_time = show_remaining_time
+        self._show_iters_rate = show_iters_rate
         self._suffix = ""
         self._complete = False
         self._capturing_stdout = False
@@ -750,7 +763,6 @@ class ProgressBar(object):
         return self
 
     def __next__(self):
-        self._ensure_iterable()
         try:
             val = next(self._iterator)
         except StopIteration:
@@ -766,9 +778,26 @@ class ProgressBar(object):
         return self._iterable is not None
 
     @property
+    def is_running(self):
+        """Whether this progress bar is running, i.e., between `start()` and
+        `close()` calls.
+        """
+        return self._is_running
+
+    @property
     def capturing_stdout(self):
         """Whether stdout is being captured between calls to `draw()`."""
         return self._capturing_stdout
+
+    @property
+    def has_total(self):
+        """Whether this progress bar has a total iteration count."""
+        return self._total is not None
+
+    @property
+    def total(self):
+        """The total iterations, or None if not available."""
+        return self._total
 
     @property
     def iteration(self):
@@ -776,13 +805,13 @@ class ProgressBar(object):
         return self._iteration
 
     @property
-    def total(self):
-        """The total iterations."""
-        return self._total
-
-    @property
     def progress(self):
-        """The current progress, in [0, 1]."""
+        """The current progress, in [0, 1], or None if this progress bar has
+        no total.
+        """
+        if not self.has_total:
+            return None
+
         if self.total <= 0:
             return 1.0
 
@@ -790,7 +819,12 @@ class ProgressBar(object):
 
     @property
     def complete(self):
-        """Whether the task is 100%% complete."""
+        """Whether the task is 100%% complete, or None if this progress bar
+        has no total.
+        """
+        if not self.has_total:
+            return None
+
         return self.iteration >= self.total
 
     def start(self):
@@ -799,6 +833,7 @@ class ProgressBar(object):
         self._capturing_stdout = True
         self._cap_obj = CaptureStdout()
         self._start_capture()
+        self._is_running = True
 
     def close(self):
         """Closes the ProgressBar instance."""
@@ -806,6 +841,7 @@ class ProgressBar(object):
         self._flush_capture()
         self._capturing_stdout = False
         self._cap_obj = None
+        self._is_running = False
 
     def update(self, suffix=None, draw=True):
         """Increments the current iteration count by 1 and draws the progress
@@ -832,7 +868,7 @@ class ProgressBar(object):
             draw: whether to call `draw()` at the end of this method. By
                 default, this is True
         """
-        self._iteration = max(0, min(iteration, self.total))
+        self._iteration = iteration
 
         if suffix is not None:
             self._suffix = self._parse_suffix(suffix)
@@ -851,10 +887,22 @@ class ProgressBar(object):
 
     def draw(self):
         """Draws the progress bar at its current progress."""
+        elapsed_time = self._timer.elapsed_time
+
+        if (
+            self.is_running
+            and (elapsed_time - self._last_draw_time) * self._max_fps < 1
+        ):
+            # Avoid rendering at greater than `max_fps`
+            return
+
         if self.capturing_stdout:
             self._flush_capture()
 
-        sys.stdout.write("\r" + self._render_progress())
+        sys.stdout.write("\r" + self._render_progress(elapsed_time))
+
+        self._last_draw_time = elapsed_time
+        self._last_draw_iter = self.iteration
 
         if self.capturing_stdout:
             self._start_capture()
@@ -877,41 +925,54 @@ class ProgressBar(object):
         sys.stdout.write(out)
         sys.stdout.flush()
 
-    def _render_progress(self):
-        istr = next(self._spinner)
-
+    def _render_progress(self, elapsed_time):
+        # Render suffix
         if self._suffix:
             suffix = self._suffix
             dx = len(suffix)
-        elif self._show_elapsed_time:
-            suffix = self._parse_suffix(
-                "(%s elapsed)" % self._timer.elapsed_time_str
-            )
-            dx = 23  # leave room for max possible length here
-        elif self._show_remaining_time:
-            time_remaining = self._timer.elapsed_time * (
-                (self.total - self.iteration) / self.iteration
-            )
-            suffix = self._parse_suffix(
-                "(%s remaining)" % to_human_time_str(time_remaining)
-            )
-            dx = 25  # leave room for max possible length here
         else:
             suffix = ""
             dx = 0
 
-        bar_len = self._max_width - 9 - self._num_decimals - dx
-        progress_len = int(bar_len * self.progress)
-        bstr = "\u2588" * progress_len
-        if progress_len < bar_len:
-            bstr += istr + "-" * max(0, bar_len - 1 - progress_len)
+            if self.is_running:
+                if self._show_elapsed_time:
+                    suffix += " (%s elapsed)" % to_human_time_str(elapsed_time)
+                    dx += 23  # leave room for max possible length here
 
-        pctstr = self._pctfmt % (100.0 * self.progress)
-        pstr = "|%s| %s%%%s " % (bstr, pctstr, suffix)
+                if self._show_remaining_time:
+                    suffix += " (%s remaining)" % to_human_time_str(
+                        elapsed_time
+                        * ((self.total - self.iteration) / self.iteration)
+                    )
+                    dx += 25  # leave room for max possible length here
+
+                if self._show_iters_rate:
+                    suffix += " [%s iters/s]" % to_human_decimal_str(
+                        (self.iteration - self._last_draw_iter)
+                        / (elapsed_time - self._last_draw_time)
+                    )
+                    dx += 19  # leave room for max possible length here
+
+        # Render progress bar
+        if self.has_total:
+            bar_len = self._max_width - 9 - self._num_decimals - dx
+            progress_len = int(bar_len * self.progress)
+            bstr = "\u2588" * progress_len
+            if progress_len < bar_len:
+                istr = next(self._spinner)
+                bstr += istr + "-" * max(0, bar_len - 1 - progress_len)
+
+            pct_str = self._pctfmt % (100.0 * self.progress)
+            bar_str = "|%s| %s%%" % (bstr, pct_str)
+        else:
+            bar_str = ""
+
+        # Render progress string
+        pstr = bar_str + suffix + " "
         pstr_len = len(pstr)
-
         self._max_len = max(self._max_len, pstr_len)
         pstr += " " * (self._max_len - pstr_len)
+
         return pstr
 
     @staticmethod
