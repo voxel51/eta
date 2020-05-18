@@ -46,6 +46,7 @@ import pytz
 import random
 import re
 import shutil
+import signal
 import string
 import subprocess
 import sys
@@ -791,8 +792,6 @@ class ProgressBar(object):
         self._draw_iters = deque([0], maxlen=10)
         self._num_decimals = num_decimals
         self._pctfmt = "%%%d.%df" % (num_decimals + 4, num_decimals)
-        self._width_refresh_delta = 0.5  # @todo remove?
-        self._last_width_time = -1
         self._max_len = 0
         self._spinner = it.cycle("|/-\\|/-\\")
         self._suffix = ""
@@ -806,6 +805,7 @@ class ProgressBar(object):
 
         if self._has_dynamic_width:
             self._update_max_width()
+            signal.signal(signal.SIGWINCH, self._update_max_width)
 
     def __enter__(self):
         if self.has_total:
@@ -973,6 +973,9 @@ class ProgressBar(object):
         self._is_running = False
         self._is_finalized = True
 
+        if self.has_dynamic_width:
+            signal.signal(signal.SIGWINCH, signal.SIG_DFL)
+
     def update(self, suffix=None, draw=True):
         """Increments the current iteration count by 1.
 
@@ -1037,7 +1040,7 @@ class ProgressBar(object):
         """
         self._draw(force=force)
 
-    def _update_max_width(self):
+    def _update_max_width(self, *args, **kwargs):
         self._max_width = get_terminal_size()[0]
 
     def _start_capture(self):
@@ -1064,14 +1067,6 @@ class ProgressBar(object):
 
         if self.is_capturing_stdout:
             self._flush_capture()
-
-        if self.is_running and self.has_dynamic_width:
-            if (
-                elapsed_time
-                > self._last_width_time + self._width_refresh_delta
-            ):
-                self._update_max_width()
-                self._last_width_time = elapsed_time
 
         sys.stdout.write("\r" + self._render_progress(elapsed_time))
 
