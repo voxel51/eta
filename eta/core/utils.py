@@ -1028,6 +1028,10 @@ class ProgressBar(object):
         suffix = ""
         dx = 0
 
+        if self._suffix:
+            suffix += " " + self._suffix
+            dx += len(self._suffix) + 1
+
         if elapsed_time is not None:
             # Update time remaining/iteration rate estimates
             self._update_estimates(elapsed_time)
@@ -1061,10 +1065,6 @@ class ProgressBar(object):
                 _suffix = " [%s %s/s]" % (_iters_rate_str, self._iters_str)
                 suffix += _suffix + " " * (_max_len - len(_suffix))
                 dx += _max_len
-
-        if self._suffix:
-            suffix += " " + self._suffix
-            dx += len(self._suffix) + 1
 
         #
         # Render bar
