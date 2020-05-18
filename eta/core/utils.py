@@ -19,7 +19,7 @@ import six
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-from collections import defaultdict
+from collections import defaultdict, deque
 from datetime import datetime
 import dateutil.parser
 import errno
@@ -677,12 +677,13 @@ class ProgressBar(object):
         self,
         iter_or_total,
         total=None,
-        show_elapsed_time=False,
-        show_remaining_time=False,
-        show_iters_rate=False,
+        show_elapsed_time=True,
+        show_remaining_time=True,
+        show_iters_rate=True,
+        iters_str="iters",
         num_decimals=1,
         max_width=None,
-        max_fps=24,
+        max_fps=15,
     ):
         """Creates a ProgressBar instance.
 
@@ -698,6 +699,8 @@ class ProgressBar(object):
                 at the end of the progress bar. By default, this is False
             show_iters_rate: whether to show the average iterations per second
                 being processed. By default, this is False
+            iters_str: the string to print when `show_iters_rate == True`. The
+                default is "iters"
             num_decimals: the number of percentage decimals to print. The
                 default is 1
             max_width: the maximum allowed with of the bar, in characters. By
@@ -723,28 +726,35 @@ class ProgressBar(object):
                     show_remaining_time = False
                     show_iters_rate = True
 
-        if max_width is None:
-            max_width = get_terminal_size()[0]
-
         self._timer = Timer()
-        self._is_running = False
+        self._is_timing = False
         self._last_draw_time = -1
-        self._last_draw_iter = -1
+        self._draw_times = deque([0], maxlen=10)
+        self._draw_iters = deque([0], maxlen=10)
         self._max_fps = max_fps
         self._iterator = None
         self._iteration = 0
         self._num_decimals = num_decimals
         self._pctfmt = "%%%d.%df" % (num_decimals + 4, num_decimals)
         self._max_width = max_width
+        self._has_dynamic_width = max_width is None
+        self._width_refresh_delta = 0.5  # spacing for refreshing dynamic width
+        self._last_width_time = -1
         self._max_len = 0
         self._spinner = it.cycle("|/-\\|/-\\")
         self._show_elapsed_time = show_elapsed_time
         self._show_remaining_time = show_remaining_time
         self._show_iters_rate = show_iters_rate
+        self._iters_str = iters_str
         self._suffix = ""
         self._complete = False
-        self._capturing_stdout = False
+        self._is_capturing_stdout = False
         self._cap_obj = None
+        self._is_finalized = False
+        self._final_elapsed_time = None
+
+        if self._has_dynamic_width:
+            self._update_max_width()
 
     def __enter__(self):
         self.start()
@@ -757,7 +767,9 @@ class ProgressBar(object):
         return self.total
 
     def __iter__(self):
-        self._ensure_iterable()
+        if not self.is_iterable:
+            raise TypeError("This ProgressBar is not iterable")
+
         self._iterator = iter(self._iterable)
         self.start()
         return self
@@ -778,16 +790,30 @@ class ProgressBar(object):
         return self._iterable is not None
 
     @property
-    def is_running(self):
-        """Whether this progress bar is running, i.e., between `start()` and
-        `close()` calls.
+    def is_timing(self):
+        """Whether this progress bar is timing its progress, i.e., it is
+        between `start()` and `close()` calls.
         """
-        return self._is_running
+        return self._is_timing
 
     @property
-    def capturing_stdout(self):
+    def is_finalized(self):
+        """Whether this progress bar is finalized, i.e., it has been
+        `close()`d.
+        """
+        return self._is_finalized
+
+    @property
+    def is_capturing_stdout(self):
         """Whether stdout is being captured between calls to `draw()`."""
-        return self._capturing_stdout
+        return self._is_capturing_stdout
+
+    @property
+    def has_dynamic_width(self):
+        """Whether this progress bar's width is adjusted dynamically based on
+        the width of the terminal window.
+        """
+        return self._has_dynamic_width
 
     @property
     def has_total(self):
@@ -827,21 +853,39 @@ class ProgressBar(object):
 
         return self.iteration >= self.total
 
+    @property
+    def elapsed_time(self):
+        """The elapsed time since the task was started, or None if this
+        progress bar is not timing.
+        """
+        if self.is_finalized:
+            return self._final_elapsed_time
+
+        if not self.is_timing:
+            return None
+
+        return self._timer.elapsed_time
+
     def start(self):
-        """Starts the ProgressBar instance."""
-        self._timer.start()
-        self._capturing_stdout = True
+        """Starts the progress bar."""
+        if self.is_finalized:
+            raise Exception("Cannot start a finalized ProgressBar")
+
+        self._is_capturing_stdout = True
         self._cap_obj = CaptureStdout()
         self._start_capture()
-        self._is_running = True
+        self._timer.start()
+        self._is_timing = True
 
     def close(self):
-        """Closes the ProgressBar instance."""
-        self._timer.stop()
+        """Closes the progress bar."""
         self._flush_capture()
-        self._capturing_stdout = False
+        self._is_capturing_stdout = False
         self._cap_obj = None
-        self._is_running = False
+        self._draw(last=True)
+        self._timer.stop()
+        self._is_timing = False
+        self._is_finalized = True
 
     def update(self, suffix=None, draw=True):
         """Increments the current iteration count by 1 and draws the progress
@@ -863,15 +907,24 @@ class ProgressBar(object):
 
         Args:
             iteration: the new iteration
-            suffix: an optional suffix string to append to the progress bar. By
-                default, the suffix is unchanged
+            suffix: an optional suffix string to append to the progress bar.
+                Once a custom suffix is provided, it will remain unchanged
+                until you update it or remove it by passing `suffix == ""`
             draw: whether to call `draw()` at the end of this method. By
                 default, this is True
         """
-        self._iteration = iteration
+        if self.is_finalized:
+            raise Exception(
+                "The iteration of a finalized ProgressBar cannot be changed"
+            )
+
+        if self.has_total:
+            iteration = min(iteration, self.total)
+
+        self._iteration = max(0, iteration)
 
         if suffix is not None:
-            self._suffix = self._parse_suffix(suffix)
+            self._suffix = suffix
 
         if draw:
             self.draw()
@@ -887,97 +940,143 @@ class ProgressBar(object):
 
     def draw(self):
         """Draws the progress bar at its current progress."""
-        elapsed_time = self._timer.elapsed_time
+        self._draw()
+
+    def _update_max_width(self):
+        self._max_width = get_terminal_size()[0]
+
+    def _start_capture(self):
+        self._cap_obj.start()
+
+    def _draw(self, last=False):
+        elapsed_time = self.elapsed_time
+        if last:
+            self._final_elapsed_time = elapsed_time
 
         if (
-            self.is_running
+            self.is_timing
             and (elapsed_time - self._last_draw_time) * self._max_fps < 1
         ):
             # Avoid rendering at greater than `max_fps`
             return
 
-        if self.capturing_stdout:
+        self._last_draw_time = elapsed_time
+        if self.iteration > self._draw_iters[-1]:
+            self._draw_times.append(elapsed_time)
+            self._draw_iters.append(self.iteration)
+
+        if self.is_capturing_stdout:
             self._flush_capture()
+
+        if self.is_timing and self.has_dynamic_width:
+            if (
+                elapsed_time
+                > self._last_width_time + self._width_refresh_delta
+            ):
+                self._update_max_width()
+                self._last_width_time = elapsed_time
 
         sys.stdout.write("\r" + self._render_progress(elapsed_time))
 
-        self._last_draw_time = elapsed_time
-        self._last_draw_iter = self.iteration
-
-        if self.capturing_stdout:
+        if last:
+            sys.stdout.write("\n")
+        elif self.is_capturing_stdout:
             self._start_capture()
 
         sys.stdout.flush()
 
-    def _ensure_iterable(self):
-        if not self.is_iterable:
-            raise TypeError("This ProgressBar is not iterable")
+    def _render_progress(self, elapsed_time):
+        #
+        # Render suffix
+        #
 
-    def _start_capture(self):
-        self._cap_obj.start()
+        suffix = ""
+        dx = 0
+
+        if elapsed_time is not None:
+            if self._show_elapsed_time:
+                _max_len = 23
+                _suffix = " (%s elapsed)" % to_human_time_str(elapsed_time)
+                suffix += _suffix + " " * (_max_len - len(_suffix))
+                dx += _max_len
+
+            if self._show_remaining_time:
+                _max_len = 25
+                if self.iteration > 0:
+                    _time_remaining_str = to_human_time_str(
+                        elapsed_time
+                        * ((self.total - self.iteration) / self.iteration)
+                    )
+                else:
+                    _time_remaining_str = "?"
+
+                _suffix = " [%s remaining]" % _time_remaining_str
+                suffix += _suffix + " " * (_max_len - len(_suffix))
+                dx += _max_len
+
+            if self._show_iters_rate:
+                _max_len = 14 + len(self._iters_str)
+                try:
+                    _iters_rate_str = to_human_decimal_str(
+                        (self._draw_iters[-1] - self._draw_iters[0])
+                        / (self._draw_times[-1] - self._draw_times[0])
+                    )
+                except ZeroDivisionError:
+                    _iters_rate_str = "0"
+
+                _suffix = " [%s %s/s]" % (_iters_rate_str, self._iters_str)
+                suffix += _suffix + " " * (_max_len - len(_suffix))
+                dx += _max_len
+
+        if self._suffix:
+            suffix += " " + self._suffix
+            dx += len(self._suffix) + 1
+
+        #
+        # Render bar
+        #
+
+        if self.has_total:
+            bar_len = self._max_width - 9 - self._num_decimals - dx
+            if bar_len >= 0:
+                progress_len = int(bar_len * self.progress)
+                bstr = "\u2588" * progress_len
+                if progress_len < bar_len:
+                    istr = next(self._spinner)
+                    bstr += istr + "-" * max(0, bar_len - 1 - progress_len)
+
+                bar_str = "|%s|" % bstr
+            else:
+                bar_str = ""
+
+            pct_str = self._pctfmt % (100.0 * self.progress)
+            bar_str += " %s%%" % pct_str
+        else:
+            bar_str = ""
+
+        #
+        # Combine bar and suffix
+        #
+
+        pstr = bar_str + suffix + " "
+        pstr_len = len(pstr)
+        if pstr_len > self._max_width:
+            pstr = pstr[: self._max_width]
+            pstr_len = self._max_width
+
+        self._max_len = min(max(pstr_len, self._max_len), self._max_width)
+        pstr += " " * (self._max_len - pstr_len)
+
+        return pstr
 
     def _flush_capture(self):
-        if not self._cap_obj.is_started:
+        if self._cap_obj is None or not self._cap_obj.is_started:
             return
 
         out = self._cap_obj.stop()
         self.pause()
         sys.stdout.write(out)
         sys.stdout.flush()
-
-    def _render_progress(self, elapsed_time):
-        # Render suffix
-        if self._suffix:
-            suffix = self._suffix
-            dx = len(suffix)
-        else:
-            suffix = ""
-            dx = 0
-
-            if self.is_running:
-                if self._show_elapsed_time:
-                    suffix += " (%s elapsed)" % to_human_time_str(elapsed_time)
-                    dx += 23  # leave room for max possible length here
-
-                if self._show_remaining_time:
-                    suffix += " (%s remaining)" % to_human_time_str(
-                        elapsed_time
-                        * ((self.total - self.iteration) / self.iteration)
-                    )
-                    dx += 25  # leave room for max possible length here
-
-                if self._show_iters_rate:
-                    suffix += " [%s iters/s]" % to_human_decimal_str(
-                        (self.iteration - self._last_draw_iter)
-                        / (elapsed_time - self._last_draw_time)
-                    )
-                    dx += 19  # leave room for max possible length here
-
-        # Render progress bar
-        if self.has_total:
-            bar_len = self._max_width - 9 - self._num_decimals - dx
-            progress_len = int(bar_len * self.progress)
-            bstr = "\u2588" * progress_len
-            if progress_len < bar_len:
-                istr = next(self._spinner)
-                bstr += istr + "-" * max(0, bar_len - 1 - progress_len)
-
-            pct_str = self._pctfmt % (100.0 * self.progress)
-            bar_str = "|%s| %s%%" % (bstr, pct_str)
-        else:
-            bar_str = ""
-
-        # Render progress string
-        pstr = bar_str + suffix + " "
-        pstr_len = len(pstr)
-        self._max_len = max(self._max_len, pstr_len)
-        pstr += " " * (self._max_len - pstr_len)
-
-        return pstr
-
-    @staticmethod
-    def _parse_suffix(suffix):
-        return " " + suffix if suffix else ""
 
 
 def call(args, **kwargs):
