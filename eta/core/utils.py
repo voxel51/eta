@@ -696,9 +696,8 @@ class ProgressBar(object):
         show_remaining_time=True,
         show_iters_rate=True,
         iters_str="iters",
-        num_decimals=1,
         max_width=None,
-        max_fps=15,
+        max_fps=10,
     ):
         """Creates a ProgressBar instance.
 
@@ -716,8 +715,6 @@ class ProgressBar(object):
                 being processed. By default, this is False
             iters_str: the string to print when `show_iters_rate == True`. The
                 default is "iters"
-            num_decimals: the number of percentage decimals to print. The
-                default is 1
             max_width: the maximum allowed with of the bar, in characters. By
                 default, the bar is fitted to your Terminal window
             max_fps: the maximum allowed frames per second at which `draw()`
@@ -741,6 +738,9 @@ class ProgressBar(object):
                     show_remaining_time = False
                     show_iters_rate = True
 
+        num_decimals = 1
+        width_refresh_delta = 0.5
+
         self._timer = Timer()
         self._is_timing = False
         self._last_draw_time = -1
@@ -753,7 +753,7 @@ class ProgressBar(object):
         self._pctfmt = "%%%d.%df" % (num_decimals + 4, num_decimals)
         self._max_width = max_width
         self._has_dynamic_width = max_width is None
-        self._width_refresh_delta = 0.5  # spacing for refreshing dynamic width
+        self._width_refresh_delta = width_refresh_delta
         self._last_width_time = -1
         self._max_len = 0
         self._spinner = it.cycle("|/-\\|/-\\")
@@ -970,6 +970,7 @@ class ProgressBar(object):
 
         if (
             self.is_timing
+            and (self._max_fps is not None)
             and (elapsed_time - self._last_draw_time) * self._max_fps < 1
         ):
             # Avoid rendering at greater than `max_fps`
