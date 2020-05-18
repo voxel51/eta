@@ -633,23 +633,38 @@ class ProgressBar(object):
     constructor, which will pass through elements of the iterable, updating
     the progress bar each time an element is emitted.
 
-    Alternatively, the progress bar can be updated manually by calling either
-    `update()`, which will increment the iteration count by 1, or via
-    `set_iteration()`, which lets you manually specify the new iteration
-    status. By default, both methods will automatically redraw the progress
-    bar. If manual control over drawing is required, you can pass `draw=False`
-    to either method and then manually call `draw()` as desired.
+    Alternatively, a progress bar can be created to track the progress of a
+    task towards a total iteration count, where the current iteration is
+    updated manually by calling either `update()`, which will increment the
+    iteration count by 1, or via `set_iteration()`, which lets you manually
+    specify the new iteration status. By default, both methods will
+    automatically redraw the progress bar. If manual control over drawing is
+    required, you can pass `draw=False` to either method and then manually call
+    `draw()` as desired. The simplest way to use a `ProgressBar` with this
+    approach is to invoke its context manager interface via the `with` keyword,
+    which will automatically handle starting and finalizing the progress bar
+    and initialize the bar's stdout management, as described below.
 
-    The progress bar can be paused via `pause()`, which allows for other
-    information to be printed to stdout without creating duplicate copies of
-    the bar in your terminal.
+    When `start()` is called on the progress bar, an internal timer is started
+    to track the elapsed time of the task. In addition, stdout is automatically
+    cached between calls to `draw()` and flushed each time `draw()` is called,
+    which means that you can freely mix `print` statements into your task
+    without interfering with the progress bar. When you are done tracking the
+    task, call the `close()` method to finalize the progress bar. Both of these
+    actions are automatically taken when an iterable is passed as input *or* if
+    the progress bar is invoked via the context manager interface.
 
-    Alternatively, you can call `start()`, in which case stdout is
-    automatically cached between calls to `draw()` and flushed each time
-    `draw()` is called without interfering with the progress bar. This obviates
-    the need to call `pause()`. This behavior is automatically activated when
-    an iterable is passed as input *or* if the progress bar is invoked via the
-    context manager interface.
+    If you want want to full manual control over the progress bar, call
+    `start()` to start the task, call `pause()` before any `print` statements,
+    and call `close()` when the task is finalized.
+
+    The progress bar can optionally be configured to print any of the following
+    statistics about the task:
+
+    -   the elapsed time since the task was started
+    -   the estimated time remaining until the task completes
+    -   the current iteration rate of the task, in iterations per second
+    -   customized status messages passed via the `suffix` argument
 
     Example (wrapping an iterator)::
 
