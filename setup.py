@@ -37,6 +37,7 @@ setup(
         "retrying",
         "six",
         "sortedcontainers",
+        "Sphinx",
         "tabulate",
         "tzlocal",
     ],
