@@ -767,6 +767,8 @@ class ProgressBar(object):
         self._cap_obj = None
         self._is_finalized = False
         self._final_elapsed_time = None
+        self._time_remaining = None
+        self._iters_rate = None
 
         if self._has_dynamic_width:
             self._update_max_width()
@@ -880,6 +882,20 @@ class ProgressBar(object):
             return None
 
         return self._timer.elapsed_time
+
+    @property
+    def time_remaining(self):
+        """The estimated time remaining for the task, or None if this progress
+        bar has no total or is not timing.
+        """
+        return self._time_remaining
+
+    @property
+    def iters_rate(self):
+        """The current iteration rate, in iterations per second, of the task,
+        or None if this progress bar is not timing.
+        """
+        return self._iters_rate
 
     def start(self):
         """Starts the progress bar."""
@@ -1013,6 +1029,9 @@ class ProgressBar(object):
         dx = 0
 
         if elapsed_time is not None:
+            # Update time remaining/iteration rate estimates
+            self._update_estimates(elapsed_time)
+
             if self._show_elapsed_time:
                 _max_len = 23
                 _suffix = " (%s elapsed)" % to_human_time_str(elapsed_time)
@@ -1021,10 +1040,9 @@ class ProgressBar(object):
 
             if self._show_remaining_time:
                 _max_len = 25
-                if self.iteration > 0:
+                if self._time_remaining is not None:
                     _time_remaining_str = to_human_time_str(
-                        elapsed_time
-                        * ((self.total - self.iteration) / self.iteration)
+                        self._time_remaining
                     )
                 else:
                     _time_remaining_str = "?"
@@ -1035,13 +1053,10 @@ class ProgressBar(object):
 
             if self._show_iters_rate:
                 _max_len = 14 + len(self._iters_str)
-                try:
-                    _iters_rate_str = to_human_decimal_str(
-                        (self._draw_iters[-1] - self._draw_iters[0])
-                        / (self._draw_times[-1] - self._draw_times[0])
-                    )
-                except ZeroDivisionError:
-                    _iters_rate_str = "0"
+                if self._iters_rate is not None:
+                    _iters_rate_str = to_human_decimal_str(self._iters_rate)
+                else:
+                    _iters_rate_str = "?"
 
                 _suffix = " [%s %s/s]" % (_iters_rate_str, self._iters_str)
                 suffix += _suffix + " " * (_max_len - len(_suffix))
@@ -1087,6 +1102,23 @@ class ProgressBar(object):
         pstr += " " * (self._max_len - pstr_len)
 
         return pstr
+
+    def _update_estimates(self, elapsed_time):
+        # Estimate iteration rate
+        try:
+            self._iters_rate = (self._draw_iters[-1] - self._draw_iters[0]) / (
+                self._draw_times[-1] - self._draw_times[0]
+            )
+        except ZeroDivisionError:
+            self._iters_rate = None
+
+        # Estimate time remaining
+        if self.has_total and self.iteration > 0:
+            self._time_remaining = elapsed_time * (
+                (self.total - self.iteration) / self.iteration
+            )
+        else:
+            self._time_remaining = None
 
     def _flush_capture(self):
         if self._cap_obj is None or not self._cap_obj.is_started:
