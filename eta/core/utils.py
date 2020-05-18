@@ -566,6 +566,29 @@ class CaptureStdout(object):
     This class works by temporarily redirecting `sys.stdout` (and any stream
     handlers of the root logger that are streaming to `sys.stdout`) to a
     string buffer in between calls to `start()` and `stop()`.
+
+    Example (suppressing stdout)::
+
+        import eta.core.utils as etau
+
+        print("foo")
+        with etau.CaptureStdout():
+            print("Hello, world!")
+
+        print("bar")
+
+    Example (capturing stdout)::
+
+        import eta.core.utils as etau
+
+        cap = etau.CaptureStdout()
+
+        print("foo")
+        with cap:
+            print("Hello, world!")
+
+        print("bar")
+        print(cap.stdout)
     """
 
     def __init__(self):
@@ -574,17 +597,33 @@ class CaptureStdout(object):
         self._orig_stdout = None
         self._cache_stdout = None
         self._handler_inds = None
+        self._stdout_str = None
+
+    def __enter__(self):
+        self.start()
+        return self
+
+    def __exit__(self, *args):
+        self.stop()
 
     @property
-    def is_started(self):
+    def is_capturing(self):
         """Whether stdout is currently being captured."""
         return self._cache_stdout is not None
 
+    @property
+    def stdout(self):
+        """The stdout string captured by the last use of this instance, or None
+        if no stdout has been captured.
+        """
+        return self._stdout_str
+
     def start(self):
         """Start capturing stdout."""
-        if self.is_started:
+        if self.is_capturing:
             return
 
+        self._stdout_str = None
         self._orig_stdout = sys.stdout
         self._cache_stdout = _StringIO()
         self._handler_inds = []
@@ -606,10 +645,10 @@ class CaptureStdout(object):
         Returns:
             a string containing the captured stdout
         """
-        if not self.is_started:
+        if not self.is_capturing:
             return ""
 
-        out = self._cache_stdout.getvalue()
+        self._stdout_str = self._cache_stdout.getvalue()
         self._cache_stdout.close()
         self._cache_stdout = None
 
@@ -622,7 +661,7 @@ class CaptureStdout(object):
         # Revert `sys.stdout`
         sys.stdout = self._orig_stdout
 
-        return out
+        return self.stdout
 
 
 class ProgressBar(object):
@@ -1121,7 +1160,7 @@ class ProgressBar(object):
             self._time_remaining = None
 
     def _flush_capture(self):
-        if self._cap_obj is None or not self._cap_obj.is_started:
+        if self._cap_obj is None or not self._cap_obj.is_capturing:
             return
 
         out = self._cap_obj.stop()
