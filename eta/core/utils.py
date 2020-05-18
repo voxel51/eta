@@ -883,6 +883,9 @@ class ProgressBar(object):
 
     def start(self):
         """Starts the progress bar."""
+        if self.is_timing:
+            return
+
         if self.is_finalized:
             raise Exception("Cannot start a finalized ProgressBar")
 
