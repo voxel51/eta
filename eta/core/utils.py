@@ -668,36 +668,39 @@ class ProgressBar(object):
     """Class for printing a self-updating progress bar to stdout that tracks
     the progress of an iterative process towards completion.
 
-    The simplest use is to simply wrap an iterable in a `ProgressBar()`
-    constructor, which will pass through elements of the iterable, updating
-    the progress bar each time an element is emitted.
+    The simplest use of `ProgressBar` is to create an instance and then call it
+    (`__call__`) with an iterable argument, which will pass through elements of
+    the iterable when iterating over it, updating the progress bar each time an
+    element is emitted.
 
-    Alternatively, a progress bar can be created to track the progress of a
-    task towards a total iteration count, where the current iteration is
-    updated manually by calling either `update()`, which will increment the
-    iteration count by 1, or via `set_iteration()`, which lets you manually
-    specify the new iteration status. By default, both methods will
-    automatically redraw the progress bar. If manual control over drawing is
-    required, you can pass `draw=False` to either method and then manually call
-    `draw()` as desired. The simplest way to use a `ProgressBar` with this
-    approach is to invoke its context manager interface via the `with` keyword,
-    which will automatically handle starting and finalizing the progress bar
-    and initialize the bar's stdout management, as described below.
+    Alternatively, `ProgressBar`s can track the progress of a task towards a
+    total iteration count, where the current iteration is updated manually by
+    calling either `update()`, which will increment the iteration count by 1,
+    or via `set_iteration()`, which lets you manually specify the new iteration
+    status. By default, both methods will automatically redraw the bar. If
+    manual control over drawing is required, you can pass `draw=False` to
+    either method and then manually call `draw()` as desired.
 
-    When `start()` is called on the progress bar, an internal timer is started
-    to track the elapsed time of the task. In addition, stdout is automatically
-    cached between calls to `draw()` and flushed each time `draw()` is called,
-    which means that you can freely mix `print` statements into your task
-    without interfering with the progress bar. When you are done tracking the
-    task, call the `close()` method to finalize the progress bar. Both of these
-    actions are automatically taken when an iterable is passed as input *or* if
-    the progress bar is invoked via the context manager interface.
+    It is highly recommended that you always invoke `ProgressBar`s using their
+    context manager interface via the `with` keyword, which will automatically
+    handle calling `start()` and `close()` to appropriately initialize and
+    finalize the task. Among other things, this ensures that stdout redirection
+    is appropriately ended when an exception is encountered.
+
+    When `start()` is called on the a `ProgressBar`, an internal timer is
+    started to track the elapsed time of the task. In addition, stdout is
+    automatically cached between calls to `draw()` and flushed each time
+    `draw()` is called, which means that you can freely mix `print` statements
+    into your task without interfering with the progress bar. When you are done
+    tracking the task, call the `close()` method to finalize the progress bar.
+    Both of these actions are automatically taken when the bar's context
+    manager interface is invoked or when it is called with an iterable.
 
     If you want want to full manual control over the progress bar, call
     `start()` to start the task, call `pause()` before any `print` statements,
     and call `close()` when the task is finalized.
 
-    The progress bar can optionally be configured to print any of the following
+    `ProgressBar`s can optionally be configured to print any of the following
     statistics about the task:
 
     -   the elapsed time since the task was started
@@ -710,10 +713,11 @@ class ProgressBar(object):
         import time
         import eta.core.utils as etau
 
-        for _ in etau.ProgressBar(range(100)):
-            time.sleep(0.05)
+        with etau.ProgressBar() as bar:
+            for _ in bar(range(100)):
+                time.sleep(0.05)
 
-    Example (as a context manager)::
+    Example (with print statements interleaved)::
 
         import time
         import eta.core.utils as etau
@@ -725,27 +729,36 @@ class ProgressBar(object):
 
                 time.sleep(0.05)
                 bar.update()
+
+    Example (with a custom increment)::
+
+        import random
+        import time
+        import eta.core.utils as etau
+
+        with etau.ProgressBar(100000) as bar:
+            while not bar.complete:
+                bar.set_iteration(bar.iteration + random.randint(1, 1000))
+                time.sleep(0.05)
     """
 
     def __init__(
         self,
-        iter_or_total,
         total=None,
         show_elapsed_time=True,
         show_remaining_time=True,
         show_iters_rate=True,
         iters_str="iters",
         max_width=None,
+        num_decimals=1,
         max_fps=10,
     ):
         """Creates a ProgressBar instance.
 
         Args:
-            iter_or_total: an iterable or the total number of iterations to
-                track
-            total: the total number of iterations to track in `iter_or_total`,
-                which only needs to be specified if `iter_or_total` does not
-                implement `len()`
+            total: the total number of iterations to track. If omitted, it is
+                assumed you intend to use this instance to track an iterable
+                via the `__call__` syntax
             show_elapsed_time: whether to print the elapsed time at the end of
                 the progress bar. By default, this is False
             show_remaining_time: whether to print the estimated remaining time
@@ -756,50 +769,32 @@ class ProgressBar(object):
                 default is "iters"
             max_width: the maximum allowed with of the bar, in characters. By
                 default, the bar is fitted to your Terminal window
+            num_decimals: the number of decimal places to show when rendering
+                the percentage completion of the task. The default is 1
             max_fps: the maximum allowed frames per second at which `draw()`
                 will be executed. The default is 15
         """
-        if is_numeric(iter_or_total):
-            self._iterable = None
-            self._total = iter_or_total
-        else:
-            self._iterable = iter_or_total
-            if total is not None:
-                self._total = total
-            else:
-                try:
-                    self._total = len(iter_or_total)
-                except TypeError:
-                    self._total = None
-
-                    # Show something interesting if length is not available
-                    show_elapsed_time = True
-                    show_remaining_time = False
-                    show_iters_rate = True
-
-        num_decimals = 1
-        width_refresh_delta = 0.5
-
-        self._timer = Timer()
-        self._is_timing = False
-        self._last_draw_time = -1
-        self._draw_times = deque([0], maxlen=10)
-        self._draw_iters = deque([0], maxlen=10)
-        self._max_fps = max_fps
+        self._total = total
         self._iterator = None
         self._iteration = 0
-        self._num_decimals = num_decimals
-        self._pctfmt = "%%%d.%df" % (num_decimals + 4, num_decimals)
-        self._max_width = max_width
-        self._has_dynamic_width = max_width is None
-        self._width_refresh_delta = width_refresh_delta
-        self._last_width_time = -1
-        self._max_len = 0
-        self._spinner = it.cycle("|/-\\|/-\\")
         self._show_elapsed_time = show_elapsed_time
         self._show_remaining_time = show_remaining_time
         self._show_iters_rate = show_iters_rate
         self._iters_str = iters_str
+        self._max_width = max_width
+        self._has_dynamic_width = max_width is None
+        self._max_fps = max_fps
+        self._timer = Timer()
+        self._is_running = False
+        self._last_draw_time = -1
+        self._draw_times = deque([0], maxlen=10)
+        self._draw_iters = deque([0], maxlen=10)
+        self._num_decimals = num_decimals
+        self._pctfmt = "%%%d.%df" % (num_decimals + 4, num_decimals)
+        self._width_refresh_delta = 0.5  # @todo remove?
+        self._last_width_time = -1
+        self._max_len = 0
+        self._spinner = it.cycle("|/-\\|/-\\")
         self._suffix = ""
         self._complete = False
         self._is_capturing_stdout = False
@@ -813,7 +808,9 @@ class ProgressBar(object):
             self._update_max_width()
 
     def __enter__(self):
-        self.start()
+        if self.has_total:
+            self.start()
+
         return self
 
     def __exit__(self, *args):
@@ -822,11 +819,24 @@ class ProgressBar(object):
     def __len__(self):
         return self.total
 
+    def __call__(self, iterable):
+        try:
+            self._total = len(iterable)
+        except:
+            self._total = None
+
+            # Show something interesting if length is not available
+            self._show_elapsed_time = True
+            self._show_remaining_time = False
+            self._show_iters_rate = True
+
+        self._iterator = iter(iterable)
+        return self
+
     def __iter__(self):
         if not self.is_iterable:
             raise TypeError("This ProgressBar is not iterable")
 
-        self._iterator = iter(self._iterable)
         self.start()
         return self
 
@@ -835,27 +845,27 @@ class ProgressBar(object):
             val = next(self._iterator)
         except StopIteration:
             self.close()
-            raise StopIteration
+            raise
 
         self.update()
         return val
 
     @property
     def is_iterable(self):
-        """Whether this progress bar is tracking an iterable."""
-        return self._iterable is not None
+        """Whether the progress bar is tracking an iterable."""
+        return self._iterator is not None
 
     @property
-    def is_timing(self):
-        """Whether this progress bar is timing its progress, i.e., it is
-        between `start()` and `close()` calls.
+    def is_running(self):
+        """Whether the progress bar is running, i.e., it is between `start()`
+        and `close()` calls.
         """
-        return self._is_timing
+        return self._is_running
 
     @property
     def is_finalized(self):
-        """Whether this progress bar is finalized, i.e., it has been
-        `close()`d.
+        """Whether the progress bar is finalized, i.e., `close()` has been
+        called.
         """
         return self._is_finalized
 
@@ -866,14 +876,14 @@ class ProgressBar(object):
 
     @property
     def has_dynamic_width(self):
-        """Whether this progress bar's width is adjusted dynamically based on
+        """Whether the progress bar's width is adjusted dynamically based on
         the width of the terminal window.
         """
         return self._has_dynamic_width
 
     @property
     def has_total(self):
-        """Whether this progress bar has a total iteration count."""
+        """Whether the progress bar has a total iteration count."""
         return self._total is not None
 
     @property
@@ -888,8 +898,8 @@ class ProgressBar(object):
 
     @property
     def progress(self):
-        """The current progress, in [0, 1], or None if this progress bar has
-        no total.
+        """The current progress, in [0, 1], or None if the progress bar has no
+        total.
         """
         if not self.has_total:
             return None
@@ -901,8 +911,8 @@ class ProgressBar(object):
 
     @property
     def complete(self):
-        """Whether the task is 100%% complete, or None if this progress bar
-        has no total.
+        """Whether the task is 100%% complete, or None if the progress bar has
+        no total.
         """
         if not self.has_total:
             return None
@@ -917,14 +927,14 @@ class ProgressBar(object):
         if self.is_finalized:
             return self._final_elapsed_time
 
-        if not self.is_timing:
+        if not self.is_running:
             return None
 
         return self._timer.elapsed_time
 
     @property
     def time_remaining(self):
-        """The estimated time remaining for the task, or None if this progress
+        """The estimated time remaining for the task, or None if the progress
         bar has no total or is not timing.
         """
         return self._time_remaining
@@ -932,13 +942,13 @@ class ProgressBar(object):
     @property
     def iters_rate(self):
         """The current iteration rate, in iterations per second, of the task,
-        or None if this progress bar is not timing.
+        or None if the progress bar is not running.
         """
         return self._iters_rate
 
     def start(self):
         """Starts the progress bar."""
-        if self.is_timing:
+        if self.is_running:
             return
 
         if self.is_finalized:
@@ -948,24 +958,23 @@ class ProgressBar(object):
         self._cap_obj = CaptureStdout()
         self._start_capture()
         self._timer.start()
-        self._is_timing = True
+        self._is_running = True
 
     def close(self):
         """Closes the progress bar."""
-        if self.is_finalized:
+        if self.is_finalized or not self.is_running:
             return
 
         self._flush_capture()
         self._is_capturing_stdout = False
         self._cap_obj = None
-        self._draw(last=True)
+        self._draw(force=True, last=True)
         self._timer.stop()
-        self._is_timing = False
+        self._is_running = False
         self._is_finalized = True
 
     def update(self, suffix=None, draw=True):
-        """Increments the current iteration count by 1 and draws the progress
-        bar (unless otherwise specified).
+        """Increments the current iteration count by 1.
 
         This method is shorthand for `self.set_iteration(self.iteration + 1)`.
 
@@ -978,8 +987,7 @@ class ProgressBar(object):
         self.set_iteration(self.iteration + 1, suffix=suffix, draw=draw)
 
     def set_iteration(self, iteration, suffix=None, draw=True):
-        """Sets the current iteration and draws the progress bar (unless
-        otherwise specified).
+        """Sets the current iteration.
 
         Args:
             iteration: the new iteration
@@ -992,6 +1000,12 @@ class ProgressBar(object):
         if self.is_finalized:
             raise Exception(
                 "The iteration of a finalized ProgressBar cannot be changed"
+            )
+
+        if not self.has_total and not self.is_iterable:
+            raise Exception(
+                "You must provide either a total or an iterable in order to "
+                "use a ProgressBar"
             )
 
         if self.has_total:
@@ -1014,9 +1028,14 @@ class ProgressBar(object):
         """
         sys.stdout.write("\r" + " " * self._max_len + "\r")
 
-    def draw(self):
-        """Draws the progress bar at its current progress."""
-        self._draw()
+    def draw(self, force=False):
+        """Draws the progress bar at its current progress.
+
+        Args:
+            force: whether to force the progress bar to be drawn. By default,
+                it is only redrawn a maximum of `self.max_fps` times per second
+        """
+        self._draw(force=force)
 
     def _update_max_width(self):
         self._max_width = get_terminal_size()[0]
@@ -1024,13 +1043,14 @@ class ProgressBar(object):
     def _start_capture(self):
         self._cap_obj.start()
 
-    def _draw(self, last=False):
+    def _draw(self, force=False, last=False):
         elapsed_time = self.elapsed_time
         if last:
             self._final_elapsed_time = elapsed_time
 
         if (
-            self.is_timing
+            self.is_running
+            and not force
             and (self._max_fps is not None)
             and (elapsed_time - self._last_draw_time) * self._max_fps < 1
         ):
@@ -1045,7 +1065,7 @@ class ProgressBar(object):
         if self.is_capturing_stdout:
             self._flush_capture()
 
-        if self.is_timing and self.has_dynamic_width:
+        if self.is_running and self.has_dynamic_width:
             if (
                 elapsed_time
                 > self._last_width_time + self._width_refresh_delta
