@@ -748,7 +748,8 @@ class ProgressBar(object):
         total=None,
         show_elapsed_time=True,
         show_remaining_time=True,
-        show_iters_rate=True,
+        show_iter_rate=True,
+        show_bit_rate=False,
         iters_str="iters",
         max_width=None,
         num_decimals=1,
@@ -764,9 +765,13 @@ class ProgressBar(object):
                 the progress bar. By default, this is False
             show_remaining_time: whether to print the estimated remaining time
                 at the end of the progress bar. By default, this is False
-            show_iters_rate: whether to show the average iterations per second
+            show_iter_rate: whether to show the current iterations per second
                 being processed. By default, this is False
-            iters_str: the string to print when `show_iters_rate == True`. The
+            show_bit_rate: whether to show the current bit rate being
+                processed, treating `total` as a number of bits. If specified,
+                this takes precedence over `show_iter_rate`. By default, this
+                is False
+            iters_str: the string to print when `show_iter_rate == True`. The
                 default is "iters"
             max_width: the maximum allowed with of the bar, in characters. By
                 default, the bar is fitted to your Terminal window
@@ -780,7 +785,8 @@ class ProgressBar(object):
         self._iteration = 0
         self._show_elapsed_time = show_elapsed_time
         self._show_remaining_time = show_remaining_time
-        self._show_iters_rate = show_iters_rate
+        self._show_iter_rate = show_iter_rate
+        self._show_bit_rate = show_bit_rate
         self._iters_str = iters_str
         self._max_width = max_width
         self._has_dynamic_width = max_width is None
@@ -801,7 +807,7 @@ class ProgressBar(object):
         self._is_finalized = False
         self._final_elapsed_time = None
         self._time_remaining = None
-        self._iters_rate = None
+        self._iter_rate = None
 
         if self._has_dynamic_width:
             self._update_max_width()
@@ -824,11 +830,7 @@ class ProgressBar(object):
             self._total = len(iterable)
         except:
             self._total = None
-
-            # Show something interesting if length is not available
-            self._show_elapsed_time = True
-            self._show_remaining_time = False
-            self._show_iters_rate = True
+            self._show_remaining_time = None
 
         self._iterator = iter(iterable)
         return self
@@ -940,11 +942,11 @@ class ProgressBar(object):
         return self._time_remaining
 
     @property
-    def iters_rate(self):
+    def iter_rate(self):
         """The current iteration rate, in iterations per second, of the task,
         or None if the progress bar is not running.
         """
-        return self._iters_rate
+        return self._iter_rate
 
     def start(self):
         """Starts the progress bar."""
@@ -1083,11 +1085,11 @@ class ProgressBar(object):
         #
 
         suffix = ""
-        dx = 0
+        ds = 0
 
         if self._suffix:
             suffix += " " + self._suffix
-            dx += len(self._suffix) + 1
+            ds += len(self._suffix) + 1
 
         if elapsed_time is not None:
             # Update time remaining/iteration rate estimates
@@ -1095,40 +1097,49 @@ class ProgressBar(object):
 
             if self._show_elapsed_time:
                 _max_len = 23
-                _suffix = " (%s elapsed)" % to_human_time_str(elapsed_time)
-                suffix += _suffix + " " * (_max_len - len(_suffix))
-                dx += _max_len
+                _msg = " (%s elapsed)" % to_human_time_str(elapsed_time)
+                suffix += _msg + " " * (_max_len - len(_msg))
+                ds += _max_len
 
             if self._show_remaining_time:
                 _max_len = 25
-                if self._time_remaining is not None:
-                    _time_remaining_str = to_human_time_str(
-                        self._time_remaining
-                    )
+                if self.time_remaining is not None:
+                    _tr_str = to_human_time_str(self.time_remaining)
                 else:
-                    _time_remaining_str = "?"
+                    _tr_str = "?"
 
-                _suffix = " [%s remaining]" % _time_remaining_str
-                suffix += _suffix + " " * (_max_len - len(_suffix))
-                dx += _max_len
+                _msg = " [%s remaining]" % _tr_str
+                suffix += _msg + " " * (_max_len - len(_msg))
+                ds += _max_len
 
-            if self._show_iters_rate:
+            if self._show_bit_rate:
+                _max_len = 12
+                if self.iter_rate is not None:
+                    _br_str = to_human_bits_str(self.iter_rate)
+                else:
+                    _br_str = "?b"
+
+                _msg = " [%s/s]" % _br_str
+                suffix += _msg + " " * (_max_len - len(_msg))
+                ds += _max_len
+
+            elif self._show_iter_rate:
                 _max_len = 14 + len(self._iters_str)
-                if self._iters_rate is not None:
-                    _iters_rate_str = to_human_decimal_str(self._iters_rate)
+                if self.iter_rate is not None:
+                    _ir_str = to_human_decimal_str(self.iter_rate)
                 else:
-                    _iters_rate_str = "?"
+                    _ir_str = "?"
 
-                _suffix = " [%s %s/s]" % (_iters_rate_str, self._iters_str)
-                suffix += _suffix + " " * (_max_len - len(_suffix))
-                dx += _max_len
+                _msg = " [%s %s/s]" % (_ir_str, self._iters_str)
+                suffix += _msg + " " * (_max_len - len(_msg))
+                ds += _max_len
 
         #
         # Render bar
         #
 
         if self.has_total:
-            bar_len = self._max_width - 9 - self._num_decimals - dx
+            bar_len = self._max_width - 9 - self._num_decimals - ds
             if bar_len >= 0:
                 progress_len = int(bar_len * self.progress)
                 bstr = "\u2588" * progress_len
@@ -1163,11 +1174,11 @@ class ProgressBar(object):
     def _update_estimates(self, elapsed_time):
         # Estimate iteration rate
         try:
-            self._iters_rate = (self._draw_iters[-1] - self._draw_iters[0]) / (
+            self._iter_rate = (self._draw_iters[-1] - self._draw_iters[0]) / (
                 self._draw_times[-1] - self._draw_times[0]
             )
         except ZeroDivisionError:
-            self._iters_rate = None
+            self._iter_rate = None
 
         # Estimate time remaining
         if self.has_total and self.iteration > 0:
