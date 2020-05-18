@@ -952,6 +952,9 @@ class ProgressBar(object):
 
     def close(self):
         """Closes the progress bar."""
+        if self.is_finalized:
+            return
+
         self._flush_capture()
         self._is_capturing_stdout = False
         self._cap_obj = None
