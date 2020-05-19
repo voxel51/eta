@@ -9,7 +9,7 @@ from setuptools import setup, find_packages
 
 
 setup(
-    name="ETA",
+    name="voxel51-eta",
     version="0.1.0",
     description="Extensible Toolkit for Analytics",
     author="Voxel51, Inc.",

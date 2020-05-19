@@ -47,7 +47,7 @@ DEFAULT_LOGO_CONFIG_PATH = os.path.join(
 
 
 # Package metadata
-_META = metadata("ETA")
+_META = metadata("voxel51-eta")
 NAME = _META["name"]
 VERSION = _META["version"]
 DESCRIPTION = _META["summary"]
