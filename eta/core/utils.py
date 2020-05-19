@@ -280,18 +280,22 @@ def has_gpu():
         return False
 
 
-def get_int_pattern_with_capacity(max_number):
-    """Gets a zero-padded integer pattern like "%%02d" or "%%03d" with
-    sufficient capacity for the given number.
+def get_int_pattern_with_capacity(max_number, zero_padded=True):
+    """Gets an integer pattern like "%%03d" or "%%4d" with sufficient capacity
+    for the given number.
 
     Args:
         max_number: the maximum number you intend to pass to the pattern
+        zero_padded: whether to left-pad with zeros. By default, this is True
 
     Returns:
-        a zero-padded integer formatting pattern
+        an integer formatting pattern
     """
     num_digits = max(1, math.ceil(math.log10(1 + max_number)))
-    return "%%0%dd" % num_digits
+    if zero_padded:
+        return "%%0%dd" % num_digits
+
+    return "%%%dd" % num_digits
 
 
 def fill_patterns(string, patterns):
