@@ -737,7 +737,7 @@ class ProgressBar(object):
         import time
         import eta.core.utils as etau
 
-        with etau.ProgressBar(100000) as bar:
+        with etau.ProgressBar(100000, show_bit_rate=True) as bar:
             while not bar.complete:
                 bar.set_iteration(bar.iteration + random.randint(1, 1000))
                 time.sleep(0.05)
