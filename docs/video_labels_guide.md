@@ -76,8 +76,8 @@ video_labels.add_video_attributes(vattrs)
 
 # Add a frame
 frame_labels = etav.VideoFrameLabels(1)
-frame_labels.add_frame_attribute(fattr1)
-frame_labels.add_frame_attribute(fattr2)
+frame_labels.add_attribute(fattr1)
+frame_labels.add_attribute(fattr2)
 frame_labels.add_object(obj1)
 video_labels.add_frame(frame_labels)
 
