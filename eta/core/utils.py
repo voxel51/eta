@@ -1927,6 +1927,76 @@ _BYTES_UNITS = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"]
 _BITS_UNITS = ["b", "Kb", "Mb", "Gb", "Tb", "Pb", "Eb", "Zb", "Yb"]
 
 
+def to_time_str(num_seconds, decimals=0, fixed_width=False):
+    """Converts the given number of seconds to a time string in "HH:MM:SS.XXX"
+    format.
+
+    By default, zero hours/minutes/milliseconds are omitted from the time
+    string, i.e., the return format is `[[HH:]MM:]SS[.XXX]`.
+    Use `fixed_width == True` to always return `HH:MM:SS.XXX`.
+
+    Examples::
+
+           0.001  =>  "00"
+              60  =>  "01:00"
+              65  =>  "01:05"
+        60123123  =>  "16700:52:03"
+
+    Examples (`decimals == 1`, `fixed_width == True`)::
+
+           0.001  =>  "00:00:00.0"
+              60  =>  "00:01:00.0"
+              65  =>  "00:01:05.0"
+        60123123  =>  "16700:52:03.0"
+
+    Args:
+        num_seconds: the number of seconds
+        decimals: the desired number of millisecond decimals to show in the
+            string. The default is 0
+        fixed_width: whether to render the string with fixed width. See above
+            for details. By default, this is False
+
+    Returns:
+        the time string in "HH:MM:SS.XXX" format
+    """
+    hh, val = divmod(num_seconds, 3600)
+    mm, ss = divmod(val, 60)
+
+    ssf = "%%0%d.%df" % (2 + bool(decimals) + decimals, decimals)
+
+    if fixed_width:
+        time_str = ("%02d:%02d:" + ssf) % (hh, mm, ss)
+    else:
+        hhs = "%02d:" % hh if hh > 0 else ""
+        mms = "%02d:" % mm if max(hh, mm) > 0 else ""
+        time_str = hhs + mms + (ssf % ss)
+
+    return time_str
+
+
+def from_time_str(time_str):
+    """Parses the number of seconds from the given time string in
+    [[HH:]MM:]SS[.XXX] format.
+
+    Examples::
+
+                 "00.0"  =>  0.0
+              "01:00.0"  =>  60.0
+              "01:05.0"  =>  65.0
+        "16700:52:03.0"  =>  60123123.0
+
+    Args:
+        time_str: a time string in "HH:MM:SS.XXX" format
+
+    Returns:
+        the number of seconds
+    """
+    return sum(
+        float(n) * m
+        for n, m in zip(reversed(time_str.split(":")), (1, 60, 3600))
+    )
+
+
 def to_human_time_str(num_seconds, decimals=1, max_unit=None):
     """Converts the given number of seconds to a human-readable time string.
 
