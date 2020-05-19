@@ -735,26 +735,28 @@ class ProgressBar(object):
                 time.sleep(0.05)
                 bar.update()
 
-    Example (with a custom increment)::
+    Example (tracking a bit total)::
 
         import random
         import time
         import eta.core.utils as etau
 
-        with etau.ProgressBar(100000, show_bit_rate=True) as bar:
+        with etau.ProgressBar(1024 ** 2, use_bits=True) as bar:
             while not bar.complete:
-                bar.set_iteration(bar.iteration + random.randint(1, 1000))
+                bar.set_iteration(bar.iteration + random.randint(1, 10 * 1024))
                 time.sleep(0.05)
     """
 
     def __init__(
         self,
         total=None,
+        show_percentage=True,
+        show_iteration=True,
         show_elapsed_time=True,
         show_remaining_time=True,
         show_iter_rate=True,
-        show_bit_rate=False,
-        iters_str="iters",
+        iters_str="it",
+        use_bits=False,
         max_width=None,
         num_decimals=1,
         max_fps=10,
@@ -765,32 +767,39 @@ class ProgressBar(object):
             total: the total number of iterations to track. If omitted, it is
                 assumed you intend to use this instance to track an iterable
                 via the `__call__` syntax
+            show_percentage: whether to show the percentage completion of the
+                task. By default, this is True
+            show_iteration: whether to show the current iteration count and the
+                total (if available). By default, this is True
             show_elapsed_time: whether to print the elapsed time at the end of
                 the progress bar. By default, this is False
             show_remaining_time: whether to print the estimated remaining time
                 at the end of the progress bar. By default, this is False
             show_iter_rate: whether to show the current iterations per second
                 being processed. By default, this is False
-            show_bit_rate: whether to show the current bit rate being
-                processed, treating `total` as a number of bits. If specified,
-                this takes precedence over `show_iter_rate`. By default, this
-                is False
             iters_str: the string to print when `show_iter_rate == True`. The
-                default is "iters"
+                default is "it"
+            use_bits: whether to interpret `iteration` and `total` as numbers
+                of bits when rendering iteration information. By default, this
+                is False
             max_width: the maximum allowed with of the bar, in characters. By
                 default, the bar is fitted to your Terminal window
             num_decimals: the number of decimal places to show when rendering
-                the percentage completion of the task. The default is 1
+                times. The default is 1
             max_fps: the maximum allowed frames per second at which `draw()`
                 will be executed. The default is 15
         """
+        num_pct_decimals = 0
+
         self._total = total
         self._iterator = None
         self._iteration = 0
+        self._show_percentage = show_percentage
+        self._show_iteration = show_iteration
         self._show_elapsed_time = show_elapsed_time
         self._show_remaining_time = show_remaining_time
         self._show_iter_rate = show_iter_rate
-        self._show_bit_rate = show_bit_rate
+        self._use_bits = use_bits
         self._iters_str = iters_str
         self._max_width = max_width
         self._has_dynamic_width = max_width is None
@@ -801,7 +810,11 @@ class ProgressBar(object):
         self._draw_times = deque([0], maxlen=10)
         self._draw_iters = deque([0], maxlen=10)
         self._num_decimals = num_decimals
-        self._pctfmt = "%%%d.%df" % (num_decimals + 4, num_decimals)
+        self._iter_fmt = None
+        self._pct_fmt = " %%%d.%df%%%% " % (
+            num_pct_decimals + 3 + bool(num_pct_decimals),
+            num_pct_decimals,
+        )
         self._max_len = 0
         self._spinner = it.cycle("|/-\\|/-\\")
         self._suffix = ""
@@ -1046,9 +1059,6 @@ class ProgressBar(object):
         """
         self._draw(force=force)
 
-    def _update_max_width(self, *args, **kwargs):
-        self._max_width = get_terminal_size()[0]
-
     def _start_capture(self):
         self._cap_obj.start()
 
@@ -1084,66 +1094,115 @@ class ProgressBar(object):
         sys.stdout.flush()
 
     def _render_progress(self, elapsed_time):
+        dw = 0
+
         #
         # Render suffix
         #
 
-        suffix = ""
-        ds = 0
-
         if self._suffix:
-            suffix += " " + self._suffix
-            ds += len(self._suffix) + 1
+            suffix_str = " " + self._suffix
+            dw += len(suffix_str)
+        else:
+            suffix_str = ""
+
+        #
+        # Render stats
+        #
 
         if elapsed_time is not None:
             # Update time remaining/iteration rate estimates
             self._update_estimates(elapsed_time)
 
-            if self._show_elapsed_time:
-                _max_len = 23
-                _msg = " (%s elapsed)" % to_human_time_str(elapsed_time)
-                suffix += _msg + " " * (_max_len - len(_msg))
-                ds += _max_len
+            _stats = []
 
+            # Elapsed time
+            if self._show_elapsed_time:
+                _max_len = 13 + self._num_decimals + bool(self._num_decimals)
+                _msg = "%s elapsed" % to_human_time_str(
+                    elapsed_time, short=True, decimals=self._num_decimals
+                )
+                _stats.append(_msg)
+                dw += _max_len
+
+            # Remaining time
             if self._show_remaining_time:
-                _max_len = 25
+                _max_len = 15 + self._num_decimals + bool(self._num_decimals)
                 if self.time_remaining is not None:
-                    _tr_str = to_human_time_str(self.time_remaining)
+                    _tr_str = to_human_time_str(
+                        self.time_remaining,
+                        short=True,
+                        decimals=self._num_decimals,
+                    )
                 else:
                     _tr_str = "?"
 
-                _msg = " [%s remaining]" % _tr_str
-                suffix += _msg + " " * (_max_len - len(_msg))
-                ds += _max_len
+                _msg = "%s remaining" % _tr_str
+                _stats.append(_msg)
+                dw += _max_len
 
-            if self._show_bit_rate:
-                _max_len = 12
-                if self.iter_rate is not None:
-                    _br_str = to_human_bits_str(self.iter_rate)
+            # Iteration rate
+            if self._show_iter_rate:
+                if self._use_bits:
+                    _max_len = 9
+                    if self.iter_rate is not None:
+                        _br_str = to_human_bits_str(self.iter_rate)
+                    else:
+                        _br_str = "?b"
+
+                    _msg = "%s/s" % _br_str
                 else:
-                    _br_str = "?b"
+                    _max_len = 8 + len(self._iters_str)
+                    if self.iter_rate is not None:
+                        _ir_str = to_human_decimal_str(self.iter_rate)
+                    else:
+                        _ir_str = "?"
 
-                _msg = " [%s/s]" % _br_str
-                suffix += _msg + " " * (_max_len - len(_msg))
-                ds += _max_len
+                    _msg = "%s %s/s" % (_ir_str, self._iters_str)
 
-            elif self._show_iter_rate:
-                _max_len = 14 + len(self._iters_str)
-                if self.iter_rate is not None:
-                    _ir_str = to_human_decimal_str(self.iter_rate)
-                else:
-                    _ir_str = "?"
+                _stats.append(_msg)
+                dw += _max_len
 
-                _msg = " [%s %s/s]" % (_ir_str, self._iters_str)
-                suffix += _msg + " " * (_max_len - len(_msg))
-                ds += _max_len
+            # Render final stats block
+            stats_str = " [%s]" % (", ".join(_stats))
+            dw += 2 * len(_stats) + 3
+        else:
+            stats_str = ""
+
+        #
+        # Render percentage
+        #
+
+        if self._show_percentage and self.has_total:
+            pct_str = self._pct_fmt % (100.0 * self.progress)
+            dw += len(pct_str)
+        else:
+            pct_str = ""
+
+        #
+        # Render iteration count
+        #
+
+        if self._show_iteration:
+            if self._iter_fmt is None:
+                self._update_iter_fmt()
+
+            if self._use_bits:
+                _iter = to_human_bits_str(self.iteration)
+            else:
+                _iter = self.iteration
+
+            iter_str = self._iter_fmt % _iter
+            dw += len(iter_str)
+        else:
+            iter_str = ""
 
         #
         # Render bar
         #
 
         if self.has_total:
-            bar_len = self._max_width - 9 - self._num_decimals - ds
+            bar_len = self._max_width - 3 - dw
             if bar_len >= 0:
                 progress_len = int(bar_len * self.progress)
                 bstr = "\u2588" * progress_len
@@ -1154,9 +1213,6 @@ class ProgressBar(object):
                 bar_str = "|%s|" % bstr
             else:
                 bar_str = ""
-
-            pct_str = self._pctfmt % (100.0 * self.progress)
-            bar_str += " %s%%" % pct_str
         else:
             bar_str = ""
 
@@ -1164,7 +1220,7 @@ class ProgressBar(object):
         # Combine bar and suffix
         #
 
-        pstr = bar_str + suffix + " "
+        pstr = pct_str + bar_str + iter_str + suffix_str + stats_str + " "
         pstr_len = len(pstr)
         if pstr_len > self._max_width:
             pstr = pstr[: self._max_width]
@@ -1186,9 +1242,16 @@ class ProgressBar(object):
 
         # Estimate time remaining
         if self.has_total and self.iteration > 0:
-            self._time_remaining = elapsed_time * (
-                (self.total - self.iteration) / self.iteration
-            )
+            _it = self.iteration
+            _it_rem = self.total - self.iteration
+            tr1 = elapsed_time * (_it_rem / _it)
+
+            if self._iter_rate is not None:
+                _prog = self.progress
+                tr2 = _it_rem / self._iter_rate
+                self._time_remaining = (1 - _prog) * tr1 + _prog * tr2
+            else:
+                self._time_remaining = tr1
         else:
             self._time_remaining = None
 
@@ -1200,6 +1263,24 @@ class ProgressBar(object):
         self.pause()
         sys.stdout.write(out)
         sys.stdout.flush()
+
+    def _update_iter_fmt(self):
+        if self.has_total:
+            if self._use_bits:
+                self._iter_fmt = " %%8s/%s" % to_human_bits_str(self.total)
+            else:
+                cap = get_int_pattern_with_capacity(
+                    self.total, zero_padded=False
+                )
+                self._iter_fmt = " %s/%d" % (cap, self.total)
+        else:
+            if self._use_bits:
+                self._iter_fmt = " %8s"
+            else:
+                self._iter_fmt = " %d"
+
+    def _update_max_width(self, *args, **kwargs):
+        self._max_width = get_terminal_size()[0]
 
 
 def call(args, **kwargs):
