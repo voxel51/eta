@@ -44,15 +44,22 @@ except ImportError:
 
 import dateutil.parser
 
-import boto3
-import google.api_core.exceptions as gae
-import google.cloud.storage as gcs
-import google.oauth2.service_account as gos
-import googleapiclient.discovery as gad
-import googleapiclient.http as gah
-import pysftp
 from retrying import retry
 import requests
+
+try:
+    import boto3
+    import google.api_core.exceptions as gae
+    import google.cloud.storage as gcs
+    import google.oauth2.service_account as gos
+    import googleapiclient.discovery as gad
+    import googleapiclient.http as gah
+    import pysftp
+except ImportError:
+    raise ImportError(
+        "This module requires extra dependencies; install "
+        '"voxel51-eta[storage]" to use it'
+    )
 
 import eta.constants as etac
 import eta.core.serial as etas

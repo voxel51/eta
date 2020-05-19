@@ -20,17 +20,13 @@ setup(
     include_package_data=True,
     install_requires=[
         "argcomplete",
-        "boto3",
         "dill",
         "future",
         "glob2",
-        "google-api-python-client",
-        "google-cloud-storage",
         "importlib-metadata; python_version<'3.8'",
         "numpy",
         "opencv-python-headless<5,>=4.1",
         "Pillow<7,>=6.2",
-        "pysftp",
         "python-dateutil",
         "pytz",
         "requests",
@@ -41,6 +37,14 @@ setup(
         "tabulate",
         "tzlocal",
     ],
+    extras_require={
+        "storage": [
+            "boto3",
+            "google-api-python-client",
+            "google-cloud-storage",
+            "pysftp",
+        ],
+    },
     classifiers=[
         "Operating System :: MacOS :: MacOS X",
         "Operating System :: POSIX :: Linux",
