@@ -33,7 +33,6 @@ import eta
 import eta.constants as etac
 from eta.core.config import Config, Configurable
 from eta.core.serial import read_pickle, Serializable
-import eta.core.storage as etas
 import eta.core.utils as etau
 import eta.core.web as etaw
 
@@ -1145,6 +1144,8 @@ class ETAModelManager(ModelManager):
                 # will only work for folks with credentials to the Drive
                 #
                 logger.warning("Trying GoogleDriveStorageClient instead...")
+                import eta.core.storage as etas
+
                 client = etas.GoogleDriveStorageClient()
                 client.download(gid, model_path)
                 logger.warning("Bandage applied")

@@ -40,9 +40,10 @@ import eta.core.models as etamode
 import eta.core.module as etamodu
 import eta.core.pipeline as etap
 import eta.core.serial as etase
-import eta.core.storage as etast
 import eta.core.utils as etau
 import eta.core.web as etaw
+
+etast = etau.import_defer_error("eta.core.storage")
 
 
 _MAX_NAME_COLUMN_WIDTH = None

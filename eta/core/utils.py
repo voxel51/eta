@@ -3100,3 +3100,31 @@ def get_terminal_size():
             ),
         )
         return w, h
+
+
+class _DeferredImportError(object):
+    def __init__(self, message):
+        self.message = message
+
+    def __getattr__(self, attr):
+        raise ImportError(self.message)
+
+
+def import_defer_error(module_name, message=None):
+    """Imports a module, if it exists. Otherwise, returns a proxy object that
+    will raise an ImportError when its attributes are accessed later.
+
+    Args:
+        module_name (str): the name of the module to import
+        message (str): an optional custom error message (defaults to the
+            message from the original ImportError)
+
+    Returns:
+        module or proxy object
+    """
+    try:
+        return __import__(module_name)
+    except ImportError as e:
+        if message is None:
+            message = str(e)
+        return _DeferredImportError(message)
