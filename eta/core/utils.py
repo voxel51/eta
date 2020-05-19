@@ -2003,11 +2003,12 @@ def to_human_time_str(num_seconds, decimals=1, max_unit=None):
     The supported units are ["ns", "us", "ms", "second", "minute", "hour",
     "day", "week", "month", "year"].
 
-    Examples:
-        0.001 => "1ms"
-        60 => "1 minute"
-        65 => "1.1 minutes"
-        60123123 => "1.9 years"
+    Examples::
+
+           0.001  =>  "1ms"
+              60  =>  "1 minute"
+              65  =>  "1.1 minutes"
+        60123123  =>  "1.9 years"
 
     Args:
         num_seconds: the number of seconds
@@ -2056,11 +2057,12 @@ def from_human_time_str(time_str):
     The supported units are ["ns", "us", "ms", "second", "minute", "hour",
     "day", "week", "month", "year"].
 
-    Examples:
-        "1ms" => 0.001
-        "1 minute" => 60.0
-        "1.1 minutes" => 66.0
-        "1.9 years" => 59918400.0
+    Examples::
+
+                "1ms"  =>  0.001
+           "1 minute"  =>  60.0
+        "1.1 minutes"  =>  66.0
+          "1.9 years"  =>  59918400.0
 
     Args:
         time_str: a human-readable time string
@@ -2087,10 +2089,11 @@ def to_human_decimal_str(num, decimals=1, max_unit=None):
 
     Supported units are ["", "K", "M", "B", "T"].
 
-    Examples:
-        65 => "65"
-        123456 => "123.5K"
-        1e7 => "10M"
+    Examples::
+
+            65  =>  "65"
+        123456  =>  "123.5K"
+           1e7  =>  "10M"
 
     Args:
         num: a number
@@ -2123,10 +2126,11 @@ def from_human_decimal_str(num_str):
 
     Supported units are ["", "K", "M", "B", "T"].
 
-    Examples:
-        "65" => 65.0
-        "123.5K" => 123450.0
-        "10M" => 1e7
+    Examples::
+
+            "65"  =>  65.0
+        "123.5K"  =>  123450.0
+           "10M"  =>  1e7
 
     Args:
         num_str: a human-readable decimal string
@@ -2149,10 +2153,11 @@ def to_human_bytes_str(num_bytes, decimals=1, max_unit=None):
 
     Supported units are ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"].
 
-    Examples:
-        123 => "123B"
-        123000 => "120.1KB"
-        1024 ** 4 => "1TB"
+    Examples::
+
+              123  =>  "123B"
+           123000  =>  "120.1KB"
+        1024 ** 4  =>  "1TB"
 
     Args:
         num_bytes: a number of bytes
@@ -2185,10 +2190,11 @@ def from_human_bytes_str(bytes_str):
 
     Supported units are ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"].
 
-    Examples:
-        "123B" => 123
-        "120.1KB" => 122982
-        "1TB" => 1024 ** 4
+    Examples::
+
+           "123B"  =>  123
+        "120.1KB"  =>  122982
+            "1TB"  =>  1024 ** 4
 
     Args:
         bytes_str: a human-readable bytes string
@@ -2210,10 +2216,11 @@ def to_human_bits_str(num_bits, decimals=1, max_unit=None):
 
     Supported units are ["b", "Kb", "Mb", "Gb", "Tb", "Pb", "Eb", "Zb", "Yb"].
 
-    Examples:
-        123 => "123b"
-        123000 => "120.1Kb"
-        1024 ** 4 => "1Tb"
+    Examples::
+
+              123  =>  "123b"
+           123000  =>  "120.1Kb"
+        1024 ** 4  =>  "1Tb"
 
     Args:
         num_bits: a number of bits
@@ -2246,10 +2253,11 @@ def from_human_bits_str(bits_str):
 
     Supported units are ["b", "Kb", "Mb", "Gb", "Tb", "Pb", "Eb", "Zb", "Yb"].
 
-    Examples:
-        "123b" => 123
-        "120.1Kb" => 122982
-        "1Tb" => 1024 ** 4
+    Examples::
+
+           "123b"  =>  123
+        "120.1Kb"  =>  122982
+            "1Tb"  =>  1024 ** 4
 
     Args:
         bits_str: a human-readable bits string
