@@ -831,9 +831,7 @@ class ProgressBar(object):
             signal.signal(signal.SIGWINCH, self._update_max_width)
 
     def __enter__(self):
-        if self.has_total:
-            self.start()
-
+        self.start()
         return self
 
     def __exit__(self, *args):
@@ -847,7 +845,7 @@ class ProgressBar(object):
             self._total = len(iterable)
         except:
             self._total = None
-            self._show_remaining_time = None
+            self._show_remaining_time = False
 
         self._iterator = iter(iterable)
         return self
@@ -856,7 +854,9 @@ class ProgressBar(object):
         if not self.is_iterable:
             raise TypeError("This ProgressBar is not iterable")
 
-        self.start()
+        if not self.is_running:
+            self.start()
+
         return self
 
     def __next__(self):
@@ -1022,12 +1022,6 @@ class ProgressBar(object):
         if self.is_finalized:
             raise Exception(
                 "The iteration of a finalized ProgressBar cannot be changed"
-            )
-
-        if not self.has_total and not self.is_iterable:
-            raise Exception(
-                "You must provide either a total or an iterable in order to "
-                "use a ProgressBar"
             )
 
         if self.has_total:
