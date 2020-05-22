@@ -1,5 +1,5 @@
 """
-Core module that defines the `eta` command-line interface (CLI).
+Definition of the `eta` command-line interface (CLI).
 
 Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
@@ -45,8 +45,8 @@ import eta.core.utils as etau
 import eta.core.web as etaw
 
 
-MAX_NAME_COLUMN_WIDTH = None
-TABLE_FORMAT = "simple"
+_MAX_NAME_COLUMN_WIDTH = None
+_TABLE_FORMAT = "simple"
 
 
 class Command(object):
@@ -737,11 +737,11 @@ class ConstantsCommand(Command):
     """Print constants from `eta.constants`.
 
     Examples:
-        # Print the specified constant
-        eta constants <CONSTANT>
-
         # Print all constants
-        eta constants --all
+        eta constants
+
+        # Print a specific constant
+        eta constants <CONSTANT>
     """
 
     @staticmethod
@@ -752,31 +752,27 @@ class ConstantsCommand(Command):
             metavar="CONSTANT",
             help="the constant to print",
         )
-        parser.add_argument(
-            "-a",
-            "--all",
-            action="store_true",
-            help="print all available constants",
-        )
 
     @staticmethod
     def execute(parser, args):
-        if args.all:
-            d = {
+        if args.constant:
+            print(getattr(etac, args.constant))
+            return
+
+        # Print all constants
+        _print_constants_table(
+            {
                 k: v
                 for k, v in iteritems(vars(etac))
                 if not k.startswith("_") and k == k.upper()
             }
-            _print_constants_table(d)
-
-        if args.constant:
-            print(getattr(etac, args.constant))
+        )
 
 
 def _print_constants_table(d):
     contents = sorted(d.items(), key=lambda kv: kv[0])
     table_str = tabulate(
-        contents, headers=["constant", "value"], tablefmt=TABLE_FORMAT
+        contents, headers=["constant", "value"], tablefmt=_TABLE_FORMAT
     )
     print(table_str)
 
@@ -785,11 +781,11 @@ class ConfigCommand(Command):
     """Tools for working with your ETA config.
 
     Examples:
-        # Print your entire ETA config
-        eta config --print
+        # Print your entire config
+        eta config
 
         # Print a specific config field
-        eta config --print <field>
+        eta config <field>
     """
 
     @staticmethod
@@ -797,18 +793,17 @@ class ConfigCommand(Command):
         parser.add_argument(
             "field", nargs="?", metavar="FIELD", help="a config field"
         )
-        parser.add_argument(
-            "-p", "--print", action="store_true", help="print your ETA config"
-        )
 
     @staticmethod
     def execute(parser, args):
-        if args.print:
-            if args.field:
-                field = getattr(eta.config, args.field)
-                print(etase.json_to_str(field))
+        if args.field:
+            field = getattr(eta.config, args.field)
+            if etau.is_str(field):
+                print(field)
             else:
-                print(eta.config)
+                print(etase.json_to_str(field))
+        else:
+            print(eta.config)
 
 
 class AuthCommand(Command):
@@ -3169,7 +3164,7 @@ def _print_s3_file_info_table(metadata, show_count=False):
     table_str = tabulate(
         records,
         headers=["bucket", "name", "size", "type", "last modified"],
-        tablefmt=TABLE_FORMAT,
+        tablefmt=_TABLE_FORMAT,
     )
 
     print(table_str)
@@ -3193,7 +3188,7 @@ def _print_s3_folder_info_table(metadata):
     table_str = tabulate(
         records,
         headers=["bucket", "path", "num files", "size", "last modified"],
-        tablefmt=TABLE_FORMAT,
+        tablefmt=_TABLE_FORMAT,
     )
 
     print(table_str)
@@ -3214,7 +3209,7 @@ def _print_gcs_file_info_table(metadata, show_count=False):
     table_str = tabulate(
         records,
         headers=["bucket", "name", "size", "type", "last modified"],
-        tablefmt=TABLE_FORMAT,
+        tablefmt=_TABLE_FORMAT,
     )
 
     print(table_str)
@@ -3238,7 +3233,7 @@ def _print_gcs_folder_info_table(metadata):
     table_str = tabulate(
         records,
         headers=["bucket", "path", "num files", "size", "last modified"],
-        tablefmt=TABLE_FORMAT,
+        tablefmt=_TABLE_FORMAT,
     )
 
     print(table_str)
@@ -3259,7 +3254,7 @@ def _print_google_drive_file_info_table(metadata):
     table_str = tabulate(
         records,
         headers=["drive name", "path", "size", "type", "last modified"],
-        tablefmt=TABLE_FORMAT,
+        tablefmt=_TABLE_FORMAT,
     )
 
     print(table_str)
@@ -3288,7 +3283,7 @@ def _print_google_drive_folder_info_table(metadata):
             "size",
             "last modified",
         ],
-        tablefmt=TABLE_FORMAT,
+        tablefmt=_TABLE_FORMAT,
     )
 
     print(table_str)
@@ -3309,7 +3304,7 @@ def _print_google_drive_list_files_table(metadata, show_count=False):
     table_str = tabulate(
         records,
         headers=["id", "name", "size", "type", "last modified"],
-        tablefmt=TABLE_FORMAT,
+        tablefmt=_TABLE_FORMAT,
     )
 
     print(table_str)
@@ -3321,6 +3316,7 @@ def _print_google_drive_list_files_table(metadata, show_count=False):
 def _parse_google_drive_mime_type(mime_type):
     if mime_type == "application/vnd.google-apps.folder":
         mime_type = "(folder)"
+
     return mime_type
 
 
@@ -3333,14 +3329,19 @@ def _parse_datetime(datetime_or_str):
 
 
 def _render_name(name):
-    if MAX_NAME_COLUMN_WIDTH is not None and len(name) > MAX_NAME_COLUMN_WIDTH:
-        name = name[: (MAX_NAME_COLUMN_WIDTH - 4)] + " ..."
+    if (
+        _MAX_NAME_COLUMN_WIDTH is not None
+        and len(name) > _MAX_NAME_COLUMN_WIDTH
+    ):
+        name = name[: (_MAX_NAME_COLUMN_WIDTH - 4)] + " ..."
+
     return name
 
 
 def _render_bytes(size):
     if size is None or size < 0:
         return "-"
+
     return etau.to_human_bytes_str(size)
 
 
@@ -3354,6 +3355,7 @@ def _render_names_in_dirs_str(d):
     for mdir in sorted(mdict):
         mstrs = ["  " + mname for mname in sorted(mdict[mdir])]
         chunks.append("[ %s ]\n" % mdir + "\n".join(mstrs))
+
     return "\n\n".join(chunks)
 
 
@@ -3361,6 +3363,7 @@ def _group_by_dir(d):
     dd = defaultdict(list)
     for name, path in iteritems(d):
         dd[os.path.dirname(path)].append(name)
+
     return dd
 
 

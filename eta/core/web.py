@@ -107,7 +107,7 @@ class WebSession(object):
 
         Args:
             url: the URL to get
-            params: optional dictionary of parameters for the URL
+            params: optional dictionary of parameters
 
         Returns:
             a string containing the raw bytes from the URL
@@ -127,7 +127,7 @@ class WebSession(object):
         Args:
             path: the output path
             url: the URL to get
-            params: optional dictionary of parameters for the URL
+            params: optional dictionary of parameters
 
         Raises:
             WebSessionError: if the download failed
@@ -135,19 +135,19 @@ class WebSession(object):
         r = self._get_streaming_response(url, params=params)
         etau.ensure_basedir(path)
 
-        num_bytes = 0
-        start_time = time()
-        with open(path, "wb") as f:
-            for chunk in r.iter_content(chunk_size=self.chunk_size):
-                num_bytes += len(chunk)
-                f.write(chunk)
+        size_bytes = _get_content_length(r)
+        size_bits = 8 * size_bytes if size_bytes is not None else None
 
-        time_elapsed = time() - start_time
-        _log_download_stats(num_bytes, time_elapsed)
+        with etau.ProgressBar(size_bits, use_bits=True) as progress:
+            with open(path, "wb") as f:
+                for chunk in r.iter_content(chunk_size=self.chunk_size):
+                    f.write(chunk)
+                    progress.update(8 * len(chunk))
 
-    def _get_streaming_response(self, url, params=None):
-        r = self.sess.get(url, params=params, stream=True)
-        if r.status_code != 200:
+    def _get_streaming_response(self, url, headers=None, params=None):
+        r = self.sess.get(url, headers=headers, params=params, stream=True)
+
+        if r.status_code not in (200, 206):
             raise WebSessionError("Unable to get '%s'" % url)
 
         return r
@@ -165,29 +165,48 @@ class GoogleDriveSession(WebSession):
     BASE_URL = "https://drive.google.com/uc?export=download"
 
     def get(self, fid):
-        return WebSession.get(self, self.BASE_URL, params={"id": fid})
+        return super(GoogleDriveSession, self).get(
+            self.BASE_URL, params={"id": fid}
+        )
 
     def write(self, path, fid):
-        return WebSession.write(self, path, self.BASE_URL, params={"id": fid})
+        return super(GoogleDriveSession, self).write(
+            path, self.BASE_URL, params={"id": fid}
+        )
 
     def _get_streaming_response(self, url, params=None):
-        r = WebSession._get_streaming_response(self, url, params=params)
+        # Include `Range` in request so that returned header will contain
+        # `Content-Range`
+        # https://stackoverflow.com/a/52044629
+        r = super(GoogleDriveSession, self)._get_streaming_response(
+            url, headers={"Range": "bytes=0-"}, params=params
+        )
 
         # Handle download warning for large files
+        # https://stackoverflow.com/a/39225272
         for key, token in iteritems(r.cookies):
             if key.startswith("download_warning"):
                 logger.debug("Retrying request with a confirm parameter")
                 r.close()
                 new = params.copy()
                 new["confirm"] = token
-                r = WebSession._get_streaming_response(self, url, params=new)
+                r = self._get_streaming_response(url, params=new)
                 break
 
         return r
 
 
-def _log_download_stats(num_bytes, time_elapsed):
-    bytes_str = etau.to_human_bytes_str(num_bytes)
-    time_str = etau.to_human_time_str(time_elapsed)
-    avg_speed = etau.to_human_bits_str(8 * num_bytes / time_elapsed) + "/s"
-    logger.info("%s downloaded in %s (%s)", bytes_str, time_str, avg_speed)
+def _get_content_length(r):
+    try:
+        return r.headers["Content-Length"]
+    except KeyError:
+        pass
+
+    try:
+        # <unit> <range-start>-<range-end>/<size>
+        range_str = r.headers["Content-Range"]
+        return int(range_str.partition("/")[-1])
+    except:
+        pass
+
+    return None
