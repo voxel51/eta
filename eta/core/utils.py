@@ -995,18 +995,21 @@ class ProgressBar(object):
         if self.has_dynamic_width:
             signal.signal(signal.SIGWINCH, signal.SIG_DFL)
 
-    def update(self, suffix=None, draw=True):
-        """Increments the current iteration count by 1.
+    def update(self, count=1, suffix=None, draw=True):
+        """Increments the current iteration count by the given value
+        (default = 1).
 
-        This method is shorthand for `self.set_iteration(self.iteration + 1)`.
+        This method is shorthand for
+        `self.set_iteration(self.iteration + count)`.
 
         Args:
+            count: the iteration increment. The default is 1
             suffix: an optional suffix string to append to the progress bar. By
                 default, the suffix is unchanged
             draw: whether to call `draw()` at the end of this method. By
                 default, this is True
         """
-        self.set_iteration(self.iteration + 1, suffix=suffix, draw=draw)
+        self.set_iteration(self.iteration + count, suffix=suffix, draw=draw)
 
     def set_iteration(self, iteration, suffix=None, draw=True):
         """Sets the current iteration.
