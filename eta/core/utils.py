@@ -2889,3 +2889,15 @@ def get_terminal_size():
             ),
         )
         return w, h
+
+
+def save_window_snapshot(window_name=None, file_path=None):
+    """Take a screenshot of a window of a given name and save it to an image on
+    disk.
+    """
+    if window_name is None:
+        raise ValueError("window_name cannot be None")
+    if file_path is None:
+        raise ValueError("window_name cannot be None")
+
+    _run_system_os_cmd(["import", "-window", window_name, file_path])
