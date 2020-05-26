@@ -841,11 +841,12 @@ class ProgressBar(object):
         return self.total
 
     def __call__(self, iterable):
-        try:
-            self._total = len(iterable)
-        except:
-            self._total = None
-            self._show_remaining_time = False
+        if self._total is None:
+            try:
+                self._total = len(iterable)
+            except:
+                self._total = None
+                self._show_remaining_time = False
 
         self._iterator = iter(iterable)
         return self
