@@ -46,6 +46,7 @@ import pytz
 import random
 import re
 import shutil
+import signal
 import string
 import subprocess
 import sys
@@ -279,18 +280,22 @@ def has_gpu():
         return False
 
 
-def get_int_pattern_with_capacity(max_number):
-    """Gets a zero-padded integer pattern like "%%02d" or "%%03d" with
-    sufficient capacity for the given number.
+def get_int_pattern_with_capacity(max_number, zero_padded=True):
+    """Gets an integer pattern like "%%03d" or "%%4d" with sufficient capacity
+    for the given number.
 
     Args:
         max_number: the maximum number you intend to pass to the pattern
+        zero_padded: whether to left-pad with zeros. By default, this is True
 
     Returns:
-        a zero-padded integer formatting pattern
+        an integer formatting pattern
     """
     num_digits = max(1, math.ceil(math.log10(1 + max_number)))
-    return "%%0%dd" % num_digits
+    if zero_padded:
+        return "%%0%dd" % num_digits
+
+    return "%%%dd" % num_digits
 
 
 def fill_patterns(string, patterns):
@@ -566,6 +571,29 @@ class CaptureStdout(object):
     This class works by temporarily redirecting `sys.stdout` (and any stream
     handlers of the root logger that are streaming to `sys.stdout`) to a
     string buffer in between calls to `start()` and `stop()`.
+
+    Example (suppressing stdout)::
+
+        import eta.core.utils as etau
+
+        print("foo")
+        with etau.CaptureStdout():
+            print("Hello, world!")
+
+        print("bar")
+
+    Example (capturing stdout)::
+
+        import eta.core.utils as etau
+
+        cap = etau.CaptureStdout()
+
+        print("foo")
+        with cap:
+            print("Hello, world!")
+
+        print("bar")
+        print(cap.stdout)
     """
 
     def __init__(self):
@@ -574,17 +602,33 @@ class CaptureStdout(object):
         self._orig_stdout = None
         self._cache_stdout = None
         self._handler_inds = None
+        self._stdout_str = None
+
+    def __enter__(self):
+        self.start()
+        return self
+
+    def __exit__(self, *args):
+        self.stop()
 
     @property
-    def is_started(self):
+    def is_capturing(self):
         """Whether stdout is currently being captured."""
         return self._cache_stdout is not None
 
+    @property
+    def stdout(self):
+        """The stdout string captured by the last use of this instance, or None
+        if no stdout has been captured.
+        """
+        return self._stdout_str
+
     def start(self):
         """Start capturing stdout."""
-        if self.is_started:
+        if self.is_capturing:
             return
 
+        self._stdout_str = None
         self._orig_stdout = sys.stdout
         self._cache_stdout = _StringIO()
         self._handler_inds = []
@@ -606,10 +650,10 @@ class CaptureStdout(object):
         Returns:
             a string containing the captured stdout
         """
-        if not self.is_started:
+        if not self.is_capturing:
             return ""
 
-        out = self._cache_stdout.getvalue()
+        self._stdout_str = self._cache_stdout.getvalue()
         self._cache_stdout.close()
         self._cache_stdout = None
 
@@ -622,43 +666,46 @@ class CaptureStdout(object):
         # Revert `sys.stdout`
         sys.stdout = self._orig_stdout
 
-        return out
+        return self.stdout
 
 
 class ProgressBar(object):
     """Class for printing a self-updating progress bar to stdout that tracks
     the progress of an iterative process towards completion.
 
-    The simplest use is to simply wrap an iterable in a `ProgressBar()`
-    constructor, which will pass through elements of the iterable, updating
-    the progress bar each time an element is emitted.
+    The simplest use of `ProgressBar` is to create an instance and then call it
+    (`__call__`) with an iterable argument, which will pass through elements of
+    the iterable when iterating over it, updating the progress bar each time an
+    element is emitted.
 
-    Alternatively, a progress bar can be created to track the progress of a
-    task towards a total iteration count, where the current iteration is
-    updated manually by calling either `update()`, which will increment the
-    iteration count by 1, or via `set_iteration()`, which lets you manually
-    specify the new iteration status. By default, both methods will
-    automatically redraw the progress bar. If manual control over drawing is
-    required, you can pass `draw=False` to either method and then manually call
-    `draw()` as desired. The simplest way to use a `ProgressBar` with this
-    approach is to invoke its context manager interface via the `with` keyword,
-    which will automatically handle starting and finalizing the progress bar
-    and initialize the bar's stdout management, as described below.
+    Alternatively, `ProgressBar`s can track the progress of a task towards a
+    total iteration count, where the current iteration is updated manually by
+    calling either `update()`, which will increment the iteration count by 1,
+    or via `set_iteration()`, which lets you manually specify the new iteration
+    status. By default, both methods will automatically redraw the bar. If
+    manual control over drawing is required, you can pass `draw=False` to
+    either method and then manually call `draw()` as desired.
 
-    When `start()` is called on the progress bar, an internal timer is started
-    to track the elapsed time of the task. In addition, stdout is automatically
-    cached between calls to `draw()` and flushed each time `draw()` is called,
-    which means that you can freely mix `print` statements into your task
-    without interfering with the progress bar. When you are done tracking the
-    task, call the `close()` method to finalize the progress bar. Both of these
-    actions are automatically taken when an iterable is passed as input *or* if
-    the progress bar is invoked via the context manager interface.
+    It is highly recommended that you always invoke `ProgressBar`s using their
+    context manager interface via the `with` keyword, which will automatically
+    handle calling `start()` and `close()` to appropriately initialize and
+    finalize the task. Among other things, this ensures that stdout redirection
+    is appropriately ended when an exception is encountered.
+
+    When `start()` is called on the a `ProgressBar`, an internal timer is
+    started to track the elapsed time of the task. In addition, stdout is
+    automatically cached between calls to `draw()` and flushed each time
+    `draw()` is called, which means that you can freely mix `print` statements
+    into your task without interfering with the progress bar. When you are done
+    tracking the task, call the `close()` method to finalize the progress bar.
+    Both of these actions are automatically taken when the bar's context
+    manager interface is invoked or when it is called with an iterable.
 
     If you want want to full manual control over the progress bar, call
     `start()` to start the task, call `pause()` before any `print` statements,
     and call `close()` when the task is finalized.
 
-    The progress bar can optionally be configured to print any of the following
+    `ProgressBar`s can optionally be configured to print any of the following
     statistics about the task:
 
     -   the elapsed time since the task was started
@@ -671,10 +718,11 @@ class ProgressBar(object):
         import time
         import eta.core.utils as etau
 
-        for _ in etau.ProgressBar(range(100)):
-            time.sleep(0.05)
+        with etau.ProgressBar() as bar:
+            for _ in bar(range(100)):
+                time.sleep(0.05)
 
-    Example (as a context manager)::
+    Example (with print statements interleaved)::
 
         import time
         import eta.core.utils as etau
@@ -686,81 +734,89 @@ class ProgressBar(object):
 
                 time.sleep(0.05)
                 bar.update()
+
+    Example (tracking a bit total)::
+
+        import random
+        import time
+        import eta.core.utils as etau
+
+        with etau.ProgressBar(1024 ** 2, use_bits=True) as bar:
+            while not bar.complete:
+                bar.set_iteration(bar.iteration + random.randint(1, 10 * 1024))
+                time.sleep(0.05)
     """
 
     def __init__(
         self,
-        iter_or_total,
         total=None,
+        show_percentage=True,
+        show_iteration=True,
         show_elapsed_time=True,
         show_remaining_time=True,
-        show_iters_rate=True,
-        iters_str="iters",
+        show_iter_rate=True,
+        iters_str="it",
+        use_bits=False,
         max_width=None,
+        num_decimals=1,
         max_fps=10,
     ):
         """Creates a ProgressBar instance.
 
         Args:
-            iter_or_total: an iterable or the total number of iterations to
-                track
-            total: the total number of iterations to track in `iter_or_total`,
-                which only needs to be specified if `iter_or_total` does not
-                implement `len()`
+            total: the total number of iterations to track. If omitted, it is
+                assumed you intend to use this instance to track an iterable
+                via the `__call__` syntax
+            show_percentage: whether to show the percentage completion of the
+                task. By default, this is True
+            show_iteration: whether to show the current iteration count and the
+                total (if available). By default, this is True
             show_elapsed_time: whether to print the elapsed time at the end of
                 the progress bar. By default, this is False
             show_remaining_time: whether to print the estimated remaining time
                 at the end of the progress bar. By default, this is False
-            show_iters_rate: whether to show the average iterations per second
+            show_iter_rate: whether to show the current iterations per second
                 being processed. By default, this is False
-            iters_str: the string to print when `show_iters_rate == True`. The
-                default is "iters"
+            iters_str: the string to print when `show_iter_rate == True`. The
+                default is "it"
+            use_bits: whether to interpret `iteration` and `total` as numbers
+                of bits when rendering iteration information. By default, this
+                is False
             max_width: the maximum allowed with of the bar, in characters. By
                 default, the bar is fitted to your Terminal window
+            num_decimals: the number of decimal places to show when rendering
+                times. The default is 1
             max_fps: the maximum allowed frames per second at which `draw()`
                 will be executed. The default is 15
         """
-        if is_numeric(iter_or_total):
-            self._iterable = None
-            self._total = iter_or_total
-        else:
-            self._iterable = iter_or_total
-            if total is not None:
-                self._total = total
-            else:
-                try:
-                    self._total = len(iter_or_total)
-                except TypeError:
-                    self._total = None
+        num_pct_decimals = 0
 
-                    # Show something interesting if length is not available
-                    show_elapsed_time = True
-                    show_remaining_time = False
-                    show_iters_rate = True
-
-        num_decimals = 1
-        width_refresh_delta = 0.5
-
+        self._total = total
+        self._iterator = None
+        self._iteration = 0
+        self._show_percentage = show_percentage
+        self._show_iteration = show_iteration
+        self._show_elapsed_time = show_elapsed_time
+        self._show_remaining_time = show_remaining_time
+        self._show_iter_rate = show_iter_rate
+        self._use_bits = use_bits
+        self._iters_str = iters_str
+        self._max_width = max_width
+        self._has_dynamic_width = max_width is None
+        self._max_fps = max_fps
         self._timer = Timer()
-        self._is_timing = False
+        self._is_running = False
         self._last_draw_time = -1
         self._draw_times = deque([0], maxlen=10)
         self._draw_iters = deque([0], maxlen=10)
-        self._max_fps = max_fps
-        self._iterator = None
-        self._iteration = 0
         self._num_decimals = num_decimals
-        self._pctfmt = "%%%d.%df" % (num_decimals + 4, num_decimals)
-        self._max_width = max_width
-        self._has_dynamic_width = max_width is None
-        self._width_refresh_delta = width_refresh_delta
-        self._last_width_time = -1
+        self._iter_fmt = None
+        self._pct_fmt = " %%%d.%df%%%% " % (
+            num_pct_decimals + 3 + bool(num_pct_decimals),
+            num_pct_decimals,
+        )
         self._max_len = 0
         self._spinner = it.cycle("|/-\\|/-\\")
-        self._show_elapsed_time = show_elapsed_time
-        self._show_remaining_time = show_remaining_time
-        self._show_iters_rate = show_iters_rate
-        self._iters_str = iters_str
         self._suffix = ""
         self._complete = False
         self._is_capturing_stdout = False
@@ -768,10 +824,11 @@ class ProgressBar(object):
         self._is_finalized = False
         self._final_elapsed_time = None
         self._time_remaining = None
-        self._iters_rate = None
+        self._iter_rate = None
 
         if self._has_dynamic_width:
             self._update_max_width()
+            signal.signal(signal.SIGWINCH, self._update_max_width)
 
     def __enter__(self):
         self.start()
@@ -783,12 +840,24 @@ class ProgressBar(object):
     def __len__(self):
         return self.total
 
+    def __call__(self, iterable):
+        if self._total is None:
+            try:
+                self._total = len(iterable)
+            except:
+                self._total = None
+                self._show_remaining_time = False
+
+        self._iterator = iter(iterable)
+        return self
+
     def __iter__(self):
         if not self.is_iterable:
             raise TypeError("This ProgressBar is not iterable")
 
-        self._iterator = iter(self._iterable)
-        self.start()
+        if not self.is_running:
+            self.start()
+
         return self
 
     def __next__(self):
@@ -796,27 +865,27 @@ class ProgressBar(object):
             val = next(self._iterator)
         except StopIteration:
             self.close()
-            raise StopIteration
+            raise
 
         self.update()
         return val
 
     @property
     def is_iterable(self):
-        """Whether this progress bar is tracking an iterable."""
-        return self._iterable is not None
+        """Whether the progress bar is tracking an iterable."""
+        return self._iterator is not None
 
     @property
-    def is_timing(self):
-        """Whether this progress bar is timing its progress, i.e., it is
-        between `start()` and `close()` calls.
+    def is_running(self):
+        """Whether the progress bar is running, i.e., it is between `start()`
+        and `close()` calls.
         """
-        return self._is_timing
+        return self._is_running
 
     @property
     def is_finalized(self):
-        """Whether this progress bar is finalized, i.e., it has been
-        `close()`d.
+        """Whether the progress bar is finalized, i.e., `close()` has been
+        called.
         """
         return self._is_finalized
 
@@ -827,14 +896,14 @@ class ProgressBar(object):
 
     @property
     def has_dynamic_width(self):
-        """Whether this progress bar's width is adjusted dynamically based on
+        """Whether the progress bar's width is adjusted dynamically based on
         the width of the terminal window.
         """
         return self._has_dynamic_width
 
     @property
     def has_total(self):
-        """Whether this progress bar has a total iteration count."""
+        """Whether the progress bar has a total iteration count."""
         return self._total is not None
 
     @property
@@ -849,8 +918,8 @@ class ProgressBar(object):
 
     @property
     def progress(self):
-        """The current progress, in [0, 1], or None if this progress bar has
-        no total.
+        """The current progress, in [0, 1], or None if the progress bar has no
+        total.
         """
         if not self.has_total:
             return None
@@ -862,8 +931,8 @@ class ProgressBar(object):
 
     @property
     def complete(self):
-        """Whether the task is 100%% complete, or None if this progress bar
-        has no total.
+        """Whether the task is 100%% complete, or None if the progress bar has
+        no total.
         """
         if not self.has_total:
             return None
@@ -878,28 +947,28 @@ class ProgressBar(object):
         if self.is_finalized:
             return self._final_elapsed_time
 
-        if not self.is_timing:
+        if not self.is_running:
             return None
 
         return self._timer.elapsed_time
 
     @property
     def time_remaining(self):
-        """The estimated time remaining for the task, or None if this progress
+        """The estimated time remaining for the task, or None if the progress
         bar has no total or is not timing.
         """
         return self._time_remaining
 
     @property
-    def iters_rate(self):
+    def iter_rate(self):
         """The current iteration rate, in iterations per second, of the task,
-        or None if this progress bar is not timing.
+        or None if the progress bar is not running.
         """
-        return self._iters_rate
+        return self._iter_rate
 
     def start(self):
         """Starts the progress bar."""
-        if self.is_timing:
+        if self.is_running:
             return
 
         if self.is_finalized:
@@ -909,35 +978,42 @@ class ProgressBar(object):
         self._cap_obj = CaptureStdout()
         self._start_capture()
         self._timer.start()
-        self._is_timing = True
+        self._is_running = True
 
     def close(self):
         """Closes the progress bar."""
+        if self.is_finalized or not self.is_running:
+            return
+
         self._flush_capture()
         self._is_capturing_stdout = False
         self._cap_obj = None
-        self._draw(last=True)
+        self._draw(force=True, last=True)
         self._timer.stop()
-        self._is_timing = False
+        self._is_running = False
         self._is_finalized = True
 
-    def update(self, suffix=None, draw=True):
-        """Increments the current iteration count by 1 and draws the progress
-        bar (unless otherwise specified).
+        if self.has_dynamic_width:
+            signal.signal(signal.SIGWINCH, signal.SIG_DFL)
 
-        This method is shorthand for `self.set_iteration(self.iteration + 1)`.
+    def update(self, count=1, suffix=None, draw=True):
+        """Increments the current iteration count by the given value
+        (default = 1).
+
+        This method is shorthand for
+        `self.set_iteration(self.iteration + count)`.
 
         Args:
+            count: the iteration increment. The default is 1
             suffix: an optional suffix string to append to the progress bar. By
                 default, the suffix is unchanged
             draw: whether to call `draw()` at the end of this method. By
                 default, this is True
         """
-        self.set_iteration(self.iteration + 1, suffix=suffix, draw=draw)
+        self.set_iteration(self.iteration + count, suffix=suffix, draw=draw)
 
     def set_iteration(self, iteration, suffix=None, draw=True):
-        """Sets the current iteration and draws the progress bar (unless
-        otherwise specified).
+        """Sets the current iteration.
 
         Args:
             iteration: the new iteration
@@ -972,23 +1048,26 @@ class ProgressBar(object):
         """
         sys.stdout.write("\r" + " " * self._max_len + "\r")
 
-    def draw(self):
-        """Draws the progress bar at its current progress."""
-        self._draw()
+    def draw(self, force=False):
+        """Draws the progress bar at its current progress.
 
-    def _update_max_width(self):
-        self._max_width = get_terminal_size()[0]
+        Args:
+            force: whether to force the progress bar to be drawn. By default,
+                it is only redrawn a maximum of `self.max_fps` times per second
+        """
+        self._draw(force=force)
 
     def _start_capture(self):
         self._cap_obj.start()
 
-    def _draw(self, last=False):
+    def _draw(self, force=False, last=False):
         elapsed_time = self.elapsed_time
         if last:
             self._final_elapsed_time = elapsed_time
 
         if (
-            self.is_timing
+            self.is_running
+            and not force
             and (self._max_fps is not None)
             and (elapsed_time - self._last_draw_time) * self._max_fps < 1
         ):
@@ -1003,14 +1082,6 @@ class ProgressBar(object):
         if self.is_capturing_stdout:
             self._flush_capture()
 
-        if self.is_timing and self.has_dynamic_width:
-            if (
-                elapsed_time
-                > self._last_width_time + self._width_refresh_delta
-            ):
-                self._update_max_width()
-                self._last_width_time = elapsed_time
-
         sys.stdout.write("\r" + self._render_progress(elapsed_time))
 
         if last:
@@ -1021,57 +1092,115 @@ class ProgressBar(object):
         sys.stdout.flush()
 
     def _render_progress(self, elapsed_time):
+        dw = 0
+
         #
         # Render suffix
         #
 
-        suffix = ""
-        dx = 0
-
         if self._suffix:
-            suffix += " " + self._suffix
-            dx += len(self._suffix) + 1
+            suffix_str = " " + self._suffix
+            dw += len(suffix_str)
+        else:
+            suffix_str = ""
+
+        #
+        # Render stats
+        #
 
         if elapsed_time is not None:
             # Update time remaining/iteration rate estimates
             self._update_estimates(elapsed_time)
 
-            if self._show_elapsed_time:
-                _max_len = 23
-                _suffix = " (%s elapsed)" % to_human_time_str(elapsed_time)
-                suffix += _suffix + " " * (_max_len - len(_suffix))
-                dx += _max_len
+            _stats = []
 
+            # Elapsed time
+            if self._show_elapsed_time:
+                _max_len = 13 + self._num_decimals + bool(self._num_decimals)
+                _msg = "%s elapsed" % to_human_time_str(
+                    elapsed_time, short=True, decimals=self._num_decimals
+                )
+                _stats.append(_msg)
+                dw += _max_len
+
+            # Remaining time
             if self._show_remaining_time:
-                _max_len = 25
-                if self._time_remaining is not None:
-                    _time_remaining_str = to_human_time_str(
-                        self._time_remaining
+                _max_len = 15 + self._num_decimals + bool(self._num_decimals)
+                if self.time_remaining is not None:
+                    _tr_str = to_human_time_str(
+                        self.time_remaining,
+                        short=True,
+                        decimals=self._num_decimals,
                     )
                 else:
-                    _time_remaining_str = "?"
+                    _tr_str = "?"
 
-                _suffix = " [%s remaining]" % _time_remaining_str
-                suffix += _suffix + " " * (_max_len - len(_suffix))
-                dx += _max_len
+                _msg = "%s remaining" % _tr_str
+                _stats.append(_msg)
+                dw += _max_len
 
-            if self._show_iters_rate:
-                _max_len = 14 + len(self._iters_str)
-                if self._iters_rate is not None:
-                    _iters_rate_str = to_human_decimal_str(self._iters_rate)
+            # Iteration rate
+            if self._show_iter_rate:
+                if self._use_bits:
+                    _max_len = 9
+                    if self.iter_rate is not None:
+                        _br_str = to_human_bits_str(self.iter_rate)
+                    else:
+                        _br_str = "?b"
+
+                    _msg = "%s/s" % _br_str
                 else:
-                    _iters_rate_str = "?"
+                    _max_len = 8 + len(self._iters_str)
+                    if self.iter_rate is not None:
+                        _ir_str = to_human_decimal_str(self.iter_rate)
+                    else:
+                        _ir_str = "?"
 
-                _suffix = " [%s %s/s]" % (_iters_rate_str, self._iters_str)
-                suffix += _suffix + " " * (_max_len - len(_suffix))
-                dx += _max_len
+                    _msg = "%s %s/s" % (_ir_str, self._iters_str)
+
+                _stats.append(_msg)
+                dw += _max_len
+
+            # Render final stats block
+            stats_str = " [%s]" % (", ".join(_stats))
+            dw += 2 * len(_stats) + 3
+        else:
+            stats_str = ""
+
+        #
+        # Render percentage
+        #
+
+        if self._show_percentage and self.has_total:
+            pct_str = self._pct_fmt % (100.0 * self.progress)
+            dw += len(pct_str)
+        else:
+            pct_str = ""
+
+        #
+        # Render iteration count
+        #
+
+        if self._show_iteration:
+            if self._iter_fmt is None:
+                self._update_iter_fmt()
+
+            if self._use_bits:
+                _iter = to_human_bits_str(self.iteration)
+            else:
+                _iter = self.iteration
+
+            iter_str = self._iter_fmt % _iter
+            dw += len(iter_str)
+        else:
+            iter_str = ""
 
         #
         # Render bar
         #
 
         if self.has_total:
-            bar_len = self._max_width - 9 - self._num_decimals - dx
+            bar_len = self._max_width - 3 - dw
             if bar_len >= 0:
                 progress_len = int(bar_len * self.progress)
                 bstr = "\u2588" * progress_len
@@ -1082,9 +1211,6 @@ class ProgressBar(object):
                 bar_str = "|%s|" % bstr
             else:
                 bar_str = ""
-
-            pct_str = self._pctfmt % (100.0 * self.progress)
-            bar_str += " %s%%" % pct_str
         else:
             bar_str = ""
 
@@ -1092,7 +1218,7 @@ class ProgressBar(object):
         # Combine bar and suffix
         #
 
-        pstr = bar_str + suffix + " "
+        pstr = pct_str + bar_str + iter_str + suffix_str + stats_str + " "
         pstr_len = len(pstr)
         if pstr_len > self._max_width:
             pstr = pstr[: self._max_width]
@@ -1106,28 +1232,53 @@ class ProgressBar(object):
     def _update_estimates(self, elapsed_time):
         # Estimate iteration rate
         try:
-            self._iters_rate = (self._draw_iters[-1] - self._draw_iters[0]) / (
+            self._iter_rate = (self._draw_iters[-1] - self._draw_iters[0]) / (
                 self._draw_times[-1] - self._draw_times[0]
             )
         except ZeroDivisionError:
-            self._iters_rate = None
+            self._iter_rate = None
 
         # Estimate time remaining
         if self.has_total and self.iteration > 0:
-            self._time_remaining = elapsed_time * (
-                (self.total - self.iteration) / self.iteration
-            )
+            _it = self.iteration
+            _it_rem = self.total - self.iteration
+            tr1 = elapsed_time * (_it_rem / _it)
+
+            if self._iter_rate is not None:
+                _prog = self.progress
+                tr2 = _it_rem / self._iter_rate
+                self._time_remaining = (1 - _prog) * tr1 + _prog * tr2
+            else:
+                self._time_remaining = tr1
         else:
             self._time_remaining = None
 
     def _flush_capture(self):
-        if self._cap_obj is None or not self._cap_obj.is_started:
+        if self._cap_obj is None or not self._cap_obj.is_capturing:
             return
 
         out = self._cap_obj.stop()
         self.pause()
         sys.stdout.write(out)
         sys.stdout.flush()
+
+    def _update_iter_fmt(self):
+        if self.has_total:
+            if self._use_bits:
+                self._iter_fmt = " %%8s/%s" % to_human_bits_str(self.total)
+            else:
+                cap = get_int_pattern_with_capacity(
+                    self.total, zero_padded=False
+                )
+                self._iter_fmt = " %s/%d" % (cap, self.total)
+        else:
+            if self._use_bits:
+                self._iter_fmt = " %8s"
+            else:
+                self._iter_fmt = " %d"
+
+    def _update_max_width(self, *args, **kwargs):
+        self._max_width = get_terminal_size()[0]
 
 
 def call(args, **kwargs):
@@ -1829,6 +1980,7 @@ _TIME_UNITS = [
     " month",
     " year",
 ]
+_TIME_UNITS_SHORT = ["ns", "us", "ms", "s", "m", "h", "d", "w", "mo", "y"]
 _TIME_CONVERSIONS = [
     1000,
     1000,
@@ -1859,22 +2011,109 @@ _BYTES_UNITS = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"]
 _BITS_UNITS = ["b", "Kb", "Mb", "Gb", "Tb", "Pb", "Eb", "Zb", "Yb"]
 
 
-def to_human_time_str(num_seconds, decimals=1, max_unit=None):
+def to_time_str(num_seconds, decimals=0, fixed_width=False):
+    """Converts the given number of seconds to a time string in "HH:MM:SS.XXX"
+    format.
+
+    By default, zero hours/minutes/milliseconds are omitted from the time
+    string, i.e., the return format is `[[HH:]MM:]SS[.XXX]`.
+    Use `fixed_width == True` to always return `HH:MM:SS.XXX`.
+
+    Examples::
+
+           0.001  =>  "00"
+              60  =>  "01:00"
+              65  =>  "01:05"
+        60123123  =>  "16700:52:03"
+
+    Examples (`decimals == 1`, `fixed_width == True`)::
+
+           0.001  =>  "00:00:00.0"
+              60  =>  "00:01:00.0"
+              65  =>  "00:01:05.0"
+        60123123  =>  "16700:52:03.0"
+
+    Args:
+        num_seconds: the number of seconds
+        decimals: the desired number of millisecond decimals to show in the
+            string. The default is 0
+        fixed_width: whether to render the string with fixed width. See above
+            for details. By default, this is False
+
+    Returns:
+        the time string in "HH:MM:SS.XXX" format
+    """
+    hh, val = divmod(num_seconds, 3600)
+    mm, ss = divmod(val, 60)
+
+    ssf = "%%0%d.%df" % (2 + bool(decimals) + decimals, decimals)
+
+    if fixed_width:
+        time_str = ("%02d:%02d:" + ssf) % (hh, mm, ss)
+    else:
+        hhs = "%02d:" % hh if hh > 0 else ""
+        mms = "%02d:" % mm if max(hh, mm) > 0 else ""
+        time_str = hhs + mms + (ssf % ss)
+
+    return time_str
+
+
+def from_time_str(time_str):
+    """Parses the number of seconds from the given time string in
+    [[HH:]MM:]SS[.XXX] format.
+
+    Examples::
+
+                 "00.0"  =>  0.0
+              "01:00.0"  =>  60.0
+              "01:05.0"  =>  65.0
+        "16700:52:03.0"  =>  60123123.0
+
+    Args:
+        time_str: a time string in "HH:MM:SS.XXX" format
+
+    Returns:
+        the number of seconds
+    """
+    return sum(
+        float(n) * m
+        for n, m in zip(reversed(time_str.split(":")), (1, 60, 3600))
+    )
+
+
+def to_human_time_str(
+    num_seconds, decimals=1, short=False, strip=False, max_unit=None
+):
     """Converts the given number of seconds to a human-readable time string.
 
-    The supported units are ["ns", "us", "ms", "second", "minute", "hour",
-    "day", "week", "month", "year"].
+    When `short == False`, the units used are::
 
-    Examples:
-        0.001 => "1ms"
-        60 => "1 minute"
-        65 => "1.1 minutes"
-        60123123 => "1.9 years"
+        ns, us, ms, second, minute, hour, day, week, month, year
+
+    When `short == True`, the units used are::
+
+        ns, us, ms, s, m, h, d, w, mo, y
+
+    Examples::
+
+           0.001  =>  "1ms"
+              60  =>  "1 minute"
+              65  =>  "1.1 minutes"
+        60123123  =>  "1.9 years"
+
+    Examples (short units)::
+
+           0.001  =>  "1ms"
+              60  =>  "1m"
+              65  =>  "1.1m"
+        60123123  =>  "1.9y"
 
     Args:
         num_seconds: the number of seconds
         decimals: the desired number of decimal points to show in the string.
             The default is 1
+        short: whether to use abbreviated units. By default, this is False
+        strip: whether to strip trailing zeros. By default, this is False
         max_unit: an optional max unit, e.g., "hour", beyond which to stop
             converting to larger units, e.g., "day". By default, no maximum
             unit is used
@@ -1883,46 +2122,66 @@ def to_human_time_str(num_seconds, decimals=1, max_unit=None):
         a human-readable time string like "1.5 minutes" or "20.1 days"
     """
     if num_seconds == 0:
-        return "0 seconds"
+        return "0s" if short else "0 seconds"
 
-    if max_unit and not any(u.strip() == max_unit for u in _TIME_UNITS):
+    units = _TIME_UNITS_SHORT if short else _TIME_UNITS
+
+    if max_unit and not any(u.strip() == max_unit for u in units):
         logger.warning("Unsupported max_unit = %s; ignoring", max_unit)
         max_unit = None
 
     num = 1e9 * num_seconds  # start with smallest unit
-    for unit, conv, plural in zip(
-        _TIME_UNITS, _TIME_CONVERSIONS, _TIME_PLURALS
-    ):
+    for unit, conv, plural in zip(units, _TIME_CONVERSIONS, _TIME_PLURALS):
         if abs(num) < conv:
             break
+
         if max_unit and unit.strip() == max_unit:
             break
+
         num /= conv
 
     # Convert to string with the desired number of decimals, UNLESS those
     # decimals are zeros, in which case they are removed
     str_fmt = "%." + str(decimals) + "f"
-    num_only_str = (str_fmt % num).rstrip("0").rstrip(".")
+    num_str = str_fmt % num
+    if strip:
+        num_str = num_str.rstrip("0").rstrip(".")
 
     # Add units
-    num_str = num_only_str + unit
-    if plural and num_only_str != "1":
-        num_str += "s"  # handle pluralization
+    time_str = num_str + unit
 
-    return num_str
+    # Handle pluralization
+    if not short and plural and num_str != "1":
+        time_str += "s"
+
+    return time_str
 
 
 def from_human_time_str(time_str):
     """Parses the number of seconds from the given human-readable time string.
 
-    The supported units are ["ns", "us", "ms", "second", "minute", "hour",
-    "day", "week", "month", "year"].
+    This function can parse any time string generated by `to_human_time_str()`,
+    including those with full units::
 
-    Examples:
-        "1ms" => 0.001
-        "1 minute" => 60.0
-        "1.1 minutes" => 66.0
-        "1.9 years" => 59918400.0
+        ns, us, ms, second, minute, hour, day, week, month, year
+
+    and short units::
+
+        ns, us, ms, s, m, h, d, w, mo, y
+
+    Examples::
+
+                "1ms"  =>  0.001
+           "1 minute"  =>  60.0
+        "1.1 minutes"  =>  66.0
+          "1.9 years"  =>  59918400.0
+
+    Examples (short units)::
+
+         "1ms"  =>  0.001
+          "1m"  =>  60.0
+        "1.1m"  =>  66.0
+        "1.9y"  =>  59918400.0
 
     Args:
         time_str: a human-readable time string
@@ -1933,31 +2192,45 @@ def from_human_time_str(time_str):
     # Handle unit == "" outside loop
     for idx in reversed(range(len(_TIME_UNITS))):
         unit = _TIME_UNITS[idx].strip()
-        can_be_plural = _TIME_PLURALS[idx]
         if time_str.endswith(unit):
             return float(time_str[: -len(unit)]) * _TIME_IN_SECS[idx]
 
+        can_be_plural = _TIME_PLURALS[idx]
         if can_be_plural and time_str.endswith(unit + "s"):
             return float(time_str[: -(len(unit) + 1)]) * _TIME_IN_SECS[idx]
+
+        short_unit = _TIME_UNITS_SHORT[idx]
+        if time_str.endswith(short_unit):
+            try:
+                return float(time_str[: -len(short_unit)]) * _TIME_IN_SECS[idx]
+            except ValueError:
+                if short_unit == "s":
+                    continue  # may have found (ns, us, ms)
+
+                raise
 
     return float(time_str)
 
 
-def to_human_decimal_str(num, decimals=1, max_unit=None):
+def to_human_decimal_str(num, decimals=1, strip=False, max_unit=None):
     """Returns a human-readable string representation of the given decimal
     (base-10) number.
 
-    Supported units are ["", "K", "M", "B", "T"].
+    The supported units are::
 
-    Examples:
-        65 => "65"
-        123456 => "123.5K"
-        1e7 => "10M"
+        "", K, M, B, T
+
+    Examples::
+
+            65  =>  "65"
+        123456  =>  "123.5K"
+           1e7  =>  "10M"
 
     Args:
         num: a number
         decimals: the desired number of digits after the decimal point to show.
             The default is 1
+        strip: whether to strip trailing zeros. By default, this is False
         max_unit: an optional max unit, e.g., "M", beyond which to stop
             converting to larger units, e.g., "B". By default, no maximum unit
             is used
@@ -1972,23 +2245,32 @@ def to_human_decimal_str(num, decimals=1, max_unit=None):
     for unit in _DECIMAL_UNITS:
         if abs(num) < 1000:
             break
+
         if max_unit is not None and unit == max_unit:
             break
+
         num /= 1000
 
     str_fmt = "%." + str(decimals) + "f"
-    return (str_fmt % num).rstrip("0").rstrip(".") + unit
+    num_str = str_fmt % num
+    if strip:
+        num_str = num_str.rstrip("0").rstrip(".")
+
+    return num_str + unit
 
 
 def from_human_decimal_str(num_str):
     """Parses the decimal number from the given human-readable decimal string.
 
-    Supported units are ["", "K", "M", "B", "T"].
+    The supported units are::
 
-    Examples:
-        "65" => 65.0
-        "123.5K" => 123450.0
-        "10M" => 1e7
+        "", K, M, B, T
+
+    Examples::
+
+            "65"  =>  65.0
+        "123.5K"  =>  123450.0
+           "10M"  =>  1e7
 
     Args:
         num_str: a human-readable decimal string
@@ -2005,21 +2287,25 @@ def from_human_decimal_str(num_str):
     return float(num_str)
 
 
-def to_human_bytes_str(num_bytes, decimals=1, max_unit=None):
+def to_human_bytes_str(num_bytes, decimals=1, strip=False, max_unit=None):
     """Returns a human-readable string representation of the given number of
     bytes.
 
-    Supported units are ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"].
+    The supported units are::
 
-    Examples:
-        123 => "123B"
-        123000 => "120.1KB"
-        1024 ** 4 => "1TB"
+        B, KB, MB, GB, TB, PB, EB, ZB, YB
+
+    Examples::
+
+              123  =>  "123B"
+           123000  =>  "120.1KB"
+        1024 ** 4  =>  "1TB"
 
     Args:
         num_bytes: a number of bytes
         decimals: the desired number of digits after the decimal point to show.
             The default is 1
+        strip: whether to strip trailing zeros. By default, this is False
         max_unit: an optional max unit, e.g., "TB", beyond which to stop
             converting to larger units, e.g., "PB". By default, no maximum
             unit is used
@@ -2034,23 +2320,32 @@ def to_human_bytes_str(num_bytes, decimals=1, max_unit=None):
     for unit in _BYTES_UNITS:
         if abs(num_bytes) < 1024:
             break
+
         if max_unit is not None and unit == max_unit:
             break
+
         num_bytes /= 1024
 
     str_fmt = "%." + str(decimals) + "f"
-    return (str_fmt % num_bytes).rstrip("0").rstrip(".") + unit
+    num_str = str_fmt % num_bytes
+    if strip:
+        num_str = num_str.rstrip("0").rstrip(".")
+
+    return num_str + unit
 
 
 def from_human_bytes_str(bytes_str):
     """Parses the number of bytes from the given human-readable bytes string.
 
-    Supported units are ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"].
+    The supported units are::
 
-    Examples:
-        "123B" => 123
-        "120.1KB" => 122982
-        "1TB" => 1024 ** 4
+        B, KB, MB, GB, TB, PB, EB, ZB, YB
+
+    Examples::
+
+           "123B"  =>  123
+        "120.1KB"  =>  122982
+            "1TB"  =>  1024 ** 4
 
     Args:
         bytes_str: a human-readable bytes string
@@ -2066,21 +2361,25 @@ def from_human_bytes_str(bytes_str):
     return int(bytes_str)
 
 
-def to_human_bits_str(num_bits, decimals=1, max_unit=None):
+def to_human_bits_str(num_bits, decimals=1, strip=False, max_unit=None):
     """Returns a human-readable string representation of the given number of
     bits.
 
-    Supported units are ["b", "Kb", "Mb", "Gb", "Tb", "Pb", "Eb", "Zb", "Yb"].
+    The supported units are::
 
-    Examples:
-        123 => "123b"
-        123000 => "120.1Kb"
-        1024 ** 4 => "1Tb"
+        b, Kb, Mb, Gb, Tb, Pb, Eb, Zb, Yb
+
+    Examples::
+
+              123  =>  "123b"
+           123000  =>  "120.1Kb"
+        1024 ** 4  =>  "1Tb"
 
     Args:
         num_bits: a number of bits
         decimals: the desired number of digits after the decimal point to show.
             The default is 1
+        strip: whether to strip trailing zeros. By default, this is False
         max_unit: an optional max unit, e.g., "Tb", beyond which to stop
             converting to larger units, e.g., "Pb". By default, no maximum
             unit is used
@@ -2095,23 +2394,32 @@ def to_human_bits_str(num_bits, decimals=1, max_unit=None):
     for unit in _BITS_UNITS:
         if abs(num_bits) < 1024:
             break
+
         if max_unit is not None and unit == max_unit:
             break
+
         num_bits /= 1024
 
     str_fmt = "%." + str(decimals) + "f"
-    return (str_fmt % num_bits).rstrip("0").rstrip(".") + unit
+    num_str = str_fmt % num_bits
+    if strip:
+        num_str = num_str.rstrip("0").rstrip(".")
+
+    return num_str + unit
 
 
 def from_human_bits_str(bits_str):
     """Parses the number of bits from the given human-readable bits string.
 
-    Supported units are ["b", "Kb", "Mb", "Gb", "Tb", "Pb", "Eb", "Zb", "Yb"].
+    The supported units are::
 
-    Examples:
-        "123b" => 123
-        "120.1Kb" => 122982
-        "1Tb" => 1024 ** 4
+        b, Kb, Mb, Gb, Tb, Pb, Eb, Zb, Yb
+
+    Examples::
+
+           "123b"  =>  123
+        "120.1Kb"  =>  122982
+            "1Tb"  =>  1024 ** 4
 
     Args:
         bits_str: a human-readable bits string
@@ -2136,10 +2444,13 @@ def _get_archive_format(archive_path):
 
     if ext == ".zip":
         return basepath, "zip"
+
     if ext == ".tar":
         return basepath, "tar"
+
     if ext in (".tar.gz", ".tgz"):
         return basepath, "gztar"
+
     if ext in (".tar.bz", ".tbz"):
         return basepath, "bztar"
 
@@ -3100,6 +3411,18 @@ def get_terminal_size():
             ),
         )
         return w, h
+
+
+def save_window_snapshot(window_name, filepath):
+    """Take a screenshot of the window with the given name and saves it to an
+    image on disk.
+
+    Args:
+        window_name: the name of the window
+        filepath: the path to write the snapshot image
+    """
+    ensure_basedir(filepath)
+    _run_system_os_cmd(["import", "-window", window_name, filepath])
 
 
 class _DeferredImportError(object):

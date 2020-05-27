@@ -36,6 +36,7 @@ def frame_number_to_timestamp(frame_number, total_frame_count, duration):
     """
     if total_frame_count == 1:
         return 0
+
     alpha = (frame_number - 1) / (total_frame_count - 1)
     return alpha * duration
 
