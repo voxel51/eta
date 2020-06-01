@@ -39,6 +39,7 @@ setup(
         "importlib-metadata; python_version<'3.8'",
         "numpy",
         "opencv-python-headless<5,>=4.1",
+        "packaging",
         "Pillow<7,>=6.2",
         "python-dateutil",
         "pytz",

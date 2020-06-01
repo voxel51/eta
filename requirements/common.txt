@@ -15,6 +15,7 @@ Jinja2==2.10.1
 lxml==4.3.0
 numpy==1.16.3
 opencv-python-headless==4.1.0.25
+packaging==19.2
 Pillow==6.2.2
 protobuf==3.6.1
 pysftp==0.2.9
