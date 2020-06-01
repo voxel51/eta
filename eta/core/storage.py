@@ -55,10 +55,13 @@ try:
     import googleapiclient.discovery as gad
     import googleapiclient.http as gah
     import pysftp
-except ImportError:
-    raise ImportError(
-        "This module requires extra dependencies; install "
-        '"voxel51-eta[storage]" to use it'
+except ImportError as e:
+    six.raise_from(
+        ImportError(
+            "The requested operation requires extra dependencies; install "
+            '"voxel51-eta[storage]" to use it'
+        ),
+        e,
     )
 
 import eta.constants as etac
@@ -745,7 +748,7 @@ class AWSCredentialsError(Exception):
             message: the error message
         """
         super(AWSCredentialsError, self).__init__(
-            "%s. Read the class docstring of "
+            "%s. Read the documentation for "
             "`eta.core.storage.NeedsAWSCredentials` for more information "
             "about authenticating with AWS services." % message
         )
