@@ -43,7 +43,8 @@ import eta.core.serial as etase
 import eta.core.utils as etau
 import eta.core.web as etaw
 
-etast = etau.import_defer_error("eta.core.storage")
+etast = etau.lazy_import("eta.core.storage")
+etat = etau.lazy_import("eta.core.tfutils")
 
 
 _MAX_NAME_COLUMN_WIDTH = None
@@ -515,12 +516,6 @@ class ModelsCommand(Command):
             etamode.download_model(args.force_download, force=True)
 
         if args.visualize_tf_graph:
-            #
-            # @note(lite) import this locally to avoid importing `tensorflow`
-            # unless absolutely necessary
-            #
-            import eta.core.tfutils as etat
-
             model_path = etamode.download_model(args.visualize_tf_graph)
             etat.visualize_frozen_graph(model_path)
 
