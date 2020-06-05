@@ -855,7 +855,7 @@ class ProgressBar(object):
         if not self.is_iterable:
             raise TypeError("This ProgressBar is not iterable")
 
-        if not self.is_running:
+        if not self.is_running and not self.is_finalized:
             self.start()
 
         return self
