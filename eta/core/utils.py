@@ -3533,19 +3533,25 @@ def get_terminal_size():
         the (width, height) of the Termainl
     """
     try:
-        return tuple(os.get_terminal_size())
-    except AttributeError:
-        # Fallback for Python 2.X
-        # https://stackoverflow.com/a/3010495
-        import fcntl, termios, struct
+        try:
+            return tuple(os.get_terminal_size())
+        except AttributeError:
+            # Fallback for Python 2.X
+            # https://stackoverflow.com/a/3010495
+            import fcntl, termios, struct
 
-        h, w, hp, wp = struct.unpack(
-            "HHHH",
-            fcntl.ioctl(
-                0, termios.TIOCGWINSZ, struct.pack("HHHH", 0, 0, 0, 0)
-            ),
-        )
-        return w, h
+            h, w, hp, wp = struct.unpack(
+                "HHHH",
+                fcntl.ioctl(
+                    0, termios.TIOCGWINSZ, struct.pack("HHHH", 0, 0, 0, 0)
+                ),
+            )
+            return w, h
+    except OSError as e:
+        if e.errno == getattr(errno, "ENOTTY", None):
+            return (80, 24)
+
+        raise
 
 
 def save_window_snapshot(window_name, filepath):
