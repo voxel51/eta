@@ -1,5 +1,5 @@
 """
-Core tools for downloading files from the web.
+Tools for downloading files from the web.
 
 Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
@@ -70,7 +70,7 @@ def download_google_drive_file(fid, path=None, chunk_size=None):
     returned as a binary string.
 
     Args:
-        fid: the ID of the Google Drive file (usually a 28 character string)
+        fid: the ID of the Google Drive file
         path: an optional path to write the file to
         chunk_size: an optional chunk size (in bytes) to use
 
