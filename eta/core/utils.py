@@ -1101,12 +1101,15 @@ class ProgressBar(object):
         if self.is_capturing_stdout:
             self._flush_capture()
 
-        sys.stdout.write("\r" + self._render_progress(elapsed_time))
+        progress_str = self._render_progress(elapsed_time)
 
         if last:
-            sys.stdout.write("\n")
-        elif self.is_capturing_stdout:
-            self._start_capture()
+            sys.stdout.write("\r")
+            logger.info(progress_str)
+        else:
+            sys.stdout.write("\r" + progress_str)
+            if self.is_capturing_stdout:
+                self._start_capture()
 
         sys.stdout.flush()
 
