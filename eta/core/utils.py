@@ -718,8 +718,8 @@ class ProgressBar(object):
         import time
         import eta.core.utils as etau
 
-        with etau.ProgressBar() as bar:
-            for _ in bar(range(100)):
+        with etau.ProgressBar() as pb:
+            for _ in pb(range(100)):
                 time.sleep(0.05)
 
     Example (with print statements interleaved)::
@@ -727,13 +727,13 @@ class ProgressBar(object):
         import time
         import eta.core.utils as etau
 
-        with etau.ProgressBar(100) as bar:
-            while not bar.complete:
-                if bar.iteration in {25, 50, 75}:
-                    print("Progress = %.2f" % bar.progress)
+        with etau.ProgressBar(100) as pb:
+            while not pb.complete:
+                if pb.iteration in {25, 50, 75}:
+                    print("Progress = %.2f" % pb.progress)
 
                 time.sleep(0.05)
-                bar.update()
+                pb.update()
 
     Example (tracking a bit total)::
 
@@ -741,9 +741,9 @@ class ProgressBar(object):
         import time
         import eta.core.utils as etau
 
-        with etau.ProgressBar(1024 ** 2, use_bits=True) as bar:
-            while not bar.complete:
-                bar.set_iteration(bar.iteration + random.randint(1, 10 * 1024))
+        with etau.ProgressBar(1024 ** 2, use_bits=True) as pb:
+            while not pb.complete:
+                pb.update(random.randint(1, 10 * 1024))
                 time.sleep(0.05)
     """
 
