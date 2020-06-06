@@ -61,14 +61,15 @@ def basic_setup(level=DEFAULT_BASIC_LEVEL, fmt=DEFAULT_BASIC_FORMAT):
     root_logger.addHandler(handler)
 
 
-def custom_setup(lc, rotate=False):
+def custom_setup(lc, rotate=False, verbose=True):
     """Sets up custom logging.
 
     Args:
         lc: a LoggingConfig instance
-        rotate: True/False. If True, any existing logs are rotated and
-            new messages are written to a new logfile. If False, new messages
-            are appended to the existing log (if any). The default is False
+        rotate: whether to rotate existing logs and start a new logfile. By
+            default, this is False
+        verbose: whether to log the ETA startup message and logging
+            configuration information. By default, this is True
     """
     # Messages to log after setup
     msgs = []
@@ -106,9 +107,10 @@ def custom_setup(lc, rotate=False):
     msgs.append("Logging initialized")
 
     # Initial logging output
-    eta.startup_message()
-    for msg in msgs:
-        logger.info(msg)
+    if verbose:
+        eta.startup_message()
+        for msg in msgs:
+            logger.info(msg)
 
 
 def set_logging_level(level):
