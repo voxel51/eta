@@ -764,9 +764,13 @@ class ProgressBar(object):
         """Creates a ProgressBar instance.
 
         Args:
-            total: the total number of iterations to track. If omitted, it is
-                assumed you intend to use this instance to track an iterable
-                via the `__call__` syntax
+            total: the total number of iterations to track, or an iterable that
+                implements `len()` from which the total can be computed. If you
+                intend to use this instance to track an iterable via the
+                `__call__` syntax, then this argument can be omitted.
+                Otherwise, if the provided value is non-numeric and doesn't
+                implement `len()`, then a raw count with no progress bar will
+                be displayed when this instance is used
             show_percentage: whether to show the percentage completion of the
                 task. By default, this is True
             show_iteration: whether to show the current iteration count and the
@@ -791,7 +795,7 @@ class ProgressBar(object):
         """
         num_pct_decimals = 0
 
-        self._total = total
+        self._total = self._get_total(total)
         self._iterator = None
         self._iteration = 0
         self._show_percentage = show_percentage
@@ -1056,6 +1060,16 @@ class ProgressBar(object):
                 it is only redrawn a maximum of `self.max_fps` times per second
         """
         self._draw(force=force)
+
+    @staticmethod
+    def _get_total(total):
+        if is_numeric(total) or total is None:
+            return total
+
+        try:
+            return len(total)
+        except:
+            return None
 
     def _start_capture(self):
         self._cap_obj.start()
