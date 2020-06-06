@@ -757,6 +757,7 @@ class ProgressBar(object):
         show_iter_rate=True,
         iters_str="it",
         use_bits=False,
+        use_bytes=False,
         max_width=None,
         num_decimals=1,
         max_fps=10,
@@ -786,6 +787,9 @@ class ProgressBar(object):
             use_bits: whether to interpret `iteration` and `total` as numbers
                 of bits when rendering iteration information. By default, this
                 is False
+            use_bytes: whether to interpret `iteration` and `total` as numbers
+                of bytes when rendering iteration information. By default, this
+                is False
             max_width: the maximum allowed with of the bar, in characters. By
                 default, the bar is fitted to your Terminal window
             num_decimals: the number of decimal places to show when rendering
@@ -804,6 +808,7 @@ class ProgressBar(object):
         self._show_remaining_time = show_remaining_time
         self._show_iter_rate = show_iter_rate
         self._use_bits = use_bits
+        self._use_bytes = use_bytes
         self._iters_str = iters_str
         self._max_width = max_width
         self._has_dynamic_width = max_width is None
@@ -1155,12 +1160,15 @@ class ProgressBar(object):
 
             # Iteration rate
             if self._show_iter_rate:
-                if self._use_bits:
+                if self._use_bits or self._use_bytes:
                     _max_len = 9
                     if self.iter_rate is not None:
-                        _br_str = to_human_bits_str(self.iter_rate)
+                        if self._use_bits:
+                            _br_str = to_human_bits_str(self.iter_rate)
+                        else:
+                            _br_str = to_human_bytes_str(self.iter_rate)
                     else:
-                        _br_str = "?b"
+                        _br_str = "?b" if self._use_bits else "?B"
 
                     _msg = "%s/s" % _br_str
                 else:
@@ -1201,6 +1209,8 @@ class ProgressBar(object):
 
             if self._use_bits:
                 _iter = to_human_bits_str(self.iteration)
+            elif self._use_bytes:
+                _iter = to_human_bytes_str(self.iteration)
             else:
                 _iter = self.iteration
 
@@ -1280,13 +1290,15 @@ class ProgressBar(object):
         if self.has_total:
             if self._use_bits:
                 self._iter_fmt = " %%8s/%s" % to_human_bits_str(self.total)
+            elif self._use_bytes:
+                self._iter_fmt = " %%8s/%s" % to_human_bytes_str(self.total)
             else:
                 cap = get_int_pattern_with_capacity(
                     self.total, zero_padded=False
                 )
                 self._iter_fmt = " %s/%d" % (cap, self.total)
         else:
-            if self._use_bits:
+            if self._use_bits or self._use_bytes:
                 self._iter_fmt = " %8s"
             else:
                 self._iter_fmt = " %d"
