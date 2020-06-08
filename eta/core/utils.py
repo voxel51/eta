@@ -761,6 +761,7 @@ class ProgressBar(object):
         max_width=None,
         num_decimals=1,
         max_fps=10,
+        quiet=False,
     ):
         """Creates a ProgressBar instance.
 
@@ -796,6 +797,7 @@ class ProgressBar(object):
                 times. The default is 1
             max_fps: the maximum allowed frames per second at which `draw()`
                 will be executed. The default is 15
+            quiet: whether to suppress printing of the bar
         """
         num_pct_decimals = 0
 
@@ -834,6 +836,7 @@ class ProgressBar(object):
         self._final_elapsed_time = None
         self._time_remaining = None
         self._iter_rate = None
+        self._quiet = quiet
 
         if self._has_dynamic_width:
             self._update_max_width()
@@ -975,6 +978,12 @@ class ProgressBar(object):
         """
         return self._iter_rate
 
+    @property
+    def quiet(self):
+        """Whether the progress bar is in quiet mode (no printing to stdout).
+        """
+        return self._quiet
+
     def start(self):
         """Starts the progress bar."""
         if self.is_running:
@@ -983,9 +992,11 @@ class ProgressBar(object):
         if self.is_finalized:
             raise Exception("Cannot start a finalized ProgressBar")
 
-        self._is_capturing_stdout = True
         self._cap_obj = CaptureStdout()
-        self._start_capture()
+        if not self.quiet:
+            self._is_capturing_stdout = True
+            self._start_capture()
+
         self._timer.start()
         self._is_running = True
 
@@ -997,8 +1008,9 @@ class ProgressBar(object):
         self._flush_capture()
         self._is_capturing_stdout = False
         self._cap_obj = None
-        self._draw(force=True, last=True)
+        self._final_elapsed_time = self.elapsed_time
         self._timer.stop()
+        self._draw(force=True, last=True)
         self._is_running = False
         self._is_finalized = True
 
@@ -1080,9 +1092,10 @@ class ProgressBar(object):
         self._cap_obj.start()
 
     def _draw(self, force=False, last=False):
+        if self.quiet:
+            return
+
         elapsed_time = self.elapsed_time
-        if last:
-            self._final_elapsed_time = elapsed_time
 
         if (
             self.is_running
