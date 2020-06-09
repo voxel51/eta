@@ -786,6 +786,12 @@ class ConfigCommand(Command):
 
         # Print a specific config field
         eta config <field>
+
+        # Print the location of your config
+        eta config --locate
+
+        # Save your current config to disk
+        eta config --save
     """
 
     @staticmethod
@@ -793,9 +799,44 @@ class ConfigCommand(Command):
         parser.add_argument(
             "field", nargs="?", metavar="FIELD", help="a config field"
         )
+        parser.add_argument(
+            "-l",
+            "--locate",
+            action="store_true",
+            help="print the location of your ETA config on disk",
+        )
+        parser.add_argument(
+            "-s",
+            "--save",
+            action="store_true",
+            help="save your current config to disk",
+        )
 
     @staticmethod
     def execute(parser, args):
+        if args.locate:
+            if os.path.isfile(etac.CONFIG_JSON_PATH):
+                print(etac.CONFIG_JSON_PATH)
+            else:
+                print(
+                    "No config file found at '%s'.\n" % etac.CONFIG_JSON_PATH
+                )
+                print(
+                    "To save your current config (which may differ from the "
+                    "default config if you\n"
+                    "have any `ETA_XXX` environment variables set), run:"
+                    "\n\n"
+                    "eta config --save"
+                    "\n"
+                )
+
+            return
+
+        if args.save:
+            eta.config.write_json(etac.CONFIG_JSON_PATH, pretty_print=True)
+            print("Config written to '%s'" % etac.CONFIG_JSON_PATH)
+            return
+
         if args.field:
             field = getattr(eta.config, args.field)
             if etau.is_str(field):
