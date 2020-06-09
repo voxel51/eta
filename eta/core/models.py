@@ -33,9 +33,10 @@ import eta
 import eta.constants as etac
 from eta.core.config import Config, Configurable
 from eta.core.serial import read_pickle, Serializable
-import eta.core.storage as etas
 import eta.core.utils as etau
 import eta.core.web as etaw
+
+etas = etau.lazy_import("eta.core.storage")
 
 
 logger = logging.getLogger(__name__)

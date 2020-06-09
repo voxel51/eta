@@ -31,6 +31,8 @@ import eta.core.learning as etal
 import eta.core.utils as etau
 import eta.core.video as etav
 
+etat = etau.lazy_import("eta.core.tfutils")
+
 
 logger = logging.getLogger(__name__)
 
@@ -1922,12 +1924,6 @@ class TFRecord(File, ConcreteData):
 
     @staticmethod
     def is_valid_path(path):
-        #
-        # @note(lite) import this locally to avoid importing `tensorflow`
-        # unless absolutely necessary
-        #
-        import eta.core.tfutils as etat
-
         return File.is_valid_path(path) and etat.is_valid_tf_record_path(path)
 
 

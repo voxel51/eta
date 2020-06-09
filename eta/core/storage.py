@@ -44,15 +44,25 @@ except ImportError:
 
 import dateutil.parser
 
-import boto3
-import google.api_core.exceptions as gae
-import google.cloud.storage as gcs
-import google.oauth2.service_account as gos
-import googleapiclient.discovery as gad
-import googleapiclient.http as gah
-import pysftp
 from retrying import retry
 import requests
+
+try:
+    import boto3
+    import google.api_core.exceptions as gae
+    import google.cloud.storage as gcs
+    import google.oauth2.service_account as gos
+    import googleapiclient.discovery as gad
+    import googleapiclient.http as gah
+    import pysftp
+except ImportError as e:
+    six.raise_from(
+        ImportError(
+            "The requested operation requires extra dependencies; install "
+            '"voxel51-eta[storage]" to use it'
+        ),
+        e,
+    )
 
 import eta.constants as etac
 import eta.core.serial as etas
@@ -738,7 +748,7 @@ class AWSCredentialsError(Exception):
             message: the error message
         """
         super(AWSCredentialsError, self).__init__(
-            "%s. Read the class docstring of "
+            "%s. Read the documentation for "
             "`eta.core.storage.NeedsAWSCredentials` for more information "
             "about authenticating with AWS services." % message
         )

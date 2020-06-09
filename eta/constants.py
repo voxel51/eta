@@ -20,9 +20,19 @@ from builtins import *
 import os
 
 try:
-    from importlib.metadata import metadata  # Python 3.8
+    import importlib.metadata as metadata  # Python 3.8
 except ImportError:
-    from importlib_metadata import metadata  # Python < 3.8
+    import importlib_metadata as metadata  # Python < 3.8
+
+
+try:
+    _META = metadata.metadata("voxel51-eta")
+except metadata.PackageNotFoundError as e:
+    try:
+        # Old installs may be under `eta`
+        _META = metadata.metadata("eta")
+    except metadata.PackageNotFoundError:
+        raise e
 
 
 # Directories
@@ -47,7 +57,6 @@ DEFAULT_LOGO_CONFIG_PATH = os.path.join(
 
 
 # Package metadata
-_META = metadata("ETA")
 NAME = _META["name"]
 VERSION = _META["version"]
 DESCRIPTION = _META["summary"]

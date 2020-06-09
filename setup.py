@@ -6,10 +6,18 @@ Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
 """
 from setuptools import setup, find_packages
+from wheel.bdist_wheel import bdist_wheel
+
+
+class BdistWheelCustom(bdist_wheel):
+    def finalize_options(self):
+        bdist_wheel.finalize_options(self)
+        # Pure Python, so build a wheel for any Python version
+        self.universal = True
 
 
 setup(
-    name="ETA",
+    name="voxel51-eta",
     version="0.1.0",
     description="Extensible Toolkit for Analytics",
     author="Voxel51, Inc.",
@@ -18,6 +26,34 @@ setup(
     license="BSD-4-Clause",
     packages=find_packages(),
     include_package_data=True,
+    install_requires=[
+        "argcomplete",
+        "dill",
+        "future",
+        "glob2",
+        "importlib-metadata; python_version<'3.8'",
+        "numpy",
+        "opencv-python-headless<5,>=4.1",
+        "packaging",
+        "Pillow<7,>=6.2",
+        "python-dateutil",
+        "pytz",
+        "requests",
+        "retrying",
+        "six",
+        "sortedcontainers",
+        "Sphinx",
+        "tabulate",
+        "tzlocal",
+    ],
+    extras_require={
+        "storage": [
+            "boto3",
+            "google-api-python-client",
+            "google-cloud-storage",
+            "pysftp",
+        ],
+    },
     classifiers=[
         "Operating System :: MacOS :: MacOS X",
         "Operating System :: POSIX :: Linux",
@@ -26,4 +62,5 @@ setup(
     ],
     scripts=["eta/eta"],
     python_requires=">=2.7",
+    cmdclass={"bdist_wheel": BdistWheelCustom},
 )
