@@ -106,6 +106,18 @@ SUPPORTED_VIDEO_FILE_FORMATS = {
 }
 
 
+def is_video_mime_type(filepath):
+    """Determines whether the given file has a `video` MIME type.
+
+    Args:
+        filepath: the path to the file
+
+    Returns:
+        True/False
+    """
+    return etau.guess_mime_type(filepath).startswith("video")
+
+
 def is_supported_video(path):
     """Determines whether the given filepath points to a supported video.
 

@@ -73,6 +73,18 @@ SUPPORTED_IMAGE_FORMATS = {
 }
 
 
+def is_image_mime_type(filepath):
+    """Determines whether the given file has a `image` MIME type.
+
+    Args:
+        filepath: the path to the file
+
+    Returns:
+        True/False
+    """
+    return etau.guess_mime_type(filepath).startswith("image")
+
+
 def is_supported_image(filepath):
     """Determines whether the given file has a supported image type."""
     return os.path.splitext(filepath)[1].lower() in SUPPORTED_IMAGE_FORMATS
