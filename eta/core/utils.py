@@ -1021,7 +1021,8 @@ class ProgressBar(object):
 
         if self._has_dynamic_width:
             self._update_max_width()
-            signal.signal(signal.SIGWINCH, self._update_max_width)
+            if hasattr(signal, "SIGWINCH"):
+                signal.signal(signal.SIGWINCH, self._update_max_width)
 
     def __enter__(self):
         self.start()
@@ -1195,7 +1196,7 @@ class ProgressBar(object):
         self._is_running = False
         self._is_finalized = True
 
-        if self.has_dynamic_width:
+        if self.has_dynamic_width and hasattr(signal, "SIGWINCH"):
             signal.signal(signal.SIGWINCH, signal.SIG_DFL)
 
     def update(self, count=1, suffix=None, draw=True):
