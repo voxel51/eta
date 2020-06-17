@@ -392,6 +392,52 @@ def parse_categorical_string(value, choices, ignore_case=True):
     return orig_value
 
 
+def parse_bool(val):
+    """Parses the boolean value as per the table below.
+
+    | Input                                         | Output  |
+    | --------------------------------------------- | ------- |
+    | None, "None", ""                              | None    |
+    | True, 1, "t", "T", "true", "True", "TrUe"     | True    |
+    | False, 0, "f", "F", "false", "False", "FaLsE" | False   |
+
+    Args:
+        val: the value to parse
+
+    Returns:
+        True, False, or None
+
+    Raises:
+        ValueError: if the provided value is not a valid boolean representation
+    """
+    if val is None:
+        return None
+
+    if isinstance(val, bool):
+        return val
+
+    if is_str(val):
+        val = val.lower()
+
+        if val in ("", "none"):
+            return None
+
+        if val in ("t", "true", "1"):
+            return True
+
+        if val in ("f", "false", "0"):
+            return False
+
+    if is_numeric(val):
+        if val == 0:
+            return False
+
+        if val == 1:
+            return True
+
+    raise ValueError("Failed to parse boolean from '%s'" % val)
+
+
 class FunctionEnum(object):
     """Base class for enums that support string-based lookup into a set of
     functions.
