@@ -7,15 +7,13 @@ and interacting with remote storage.
 
 This document provides an overview of using the CLI.
 
-
 ## Quickstart
 
 To see the available top-level commands, type `eta --help`.
 
 You can learn more about any available subcommand via `eta <command> --help`.
 
-For example, to see your current ETA config, you can `eta config --print`.
-
+For example, to see your current ETA config, you can execute `eta config`.
 
 ## Tab completion
 
@@ -39,12 +37,11 @@ To enable tab completion in `tcsh`, add these lines to your `~/.tcshrc`:
 eval `register-python-argcomplete --shell tcsh eta`
 ```
 
-
 ## Usage
 
 The following usage information was generated via `eta --all-help`:
 
-> Last generated on 2020/04/26
+> Last generated on 2020/06/18
 
 ```
 *******************************************************************************
@@ -321,43 +318,49 @@ optional arguments:
 
 
 *******************************************************************************
-usage: eta constants [-h] [-a] [CONSTANT]
+usage: eta constants [-h] [CONSTANT]
 
 Print constants from `eta.constants`.
 
     Examples:
-        # Print the specified constant
-        eta constants <CONSTANT>
-
         # Print all constants
-        eta constants --all
+        eta constants
+
+        # Print a specific constant
+        eta constants <CONSTANT>
 
 positional arguments:
   CONSTANT    the constant to print
 
 optional arguments:
   -h, --help  show this help message and exit
-  -a, --all   print all available constants
 
 
 *******************************************************************************
-usage: eta config [-h] [-p] [FIELD]
+usage: eta config [-h] [-l] [-s] [FIELD]
 
 Tools for working with your ETA config.
 
     Examples:
-        # Print your entire ETA config
-        eta config --print
+        # Print your entire config
+        eta config
 
         # Print a specific config field
-        eta config --print <field>
+        eta config <field>
+
+        # Print the location of your config
+        eta config --locate
+
+        # Save your current config to disk
+        eta config --save
 
 positional arguments:
-  FIELD        a config field
+  FIELD         a config field
 
 optional arguments:
-  -h, --help   show this help message and exit
-  -p, --print  print your ETA config
+  -h, --help    show this help message and exit
+  -l, --locate  print the location of your ETA config on disk
+  -s, --save    save your current config to disk
 
 
 *******************************************************************************
@@ -1536,8 +1539,6 @@ optional arguments:
   -p PORT, --port PORT  the port to use
 ```
 
-
 ## Copyright
 
-Copyright 2017-2020, Voxel51, Inc.<br>
-voxel51.com
+Copyright 2017-2020, Voxel51, Inc.<br> voxel51.com
