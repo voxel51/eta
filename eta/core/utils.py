@@ -3637,7 +3637,11 @@ def get_terminal_size():
             )
             return w, h
     except OSError as e:
-        if e.errno == getattr(errno, "ENOTTY", None):
+        if e.errno in (
+            getattr(errno, "ENOTTY", None),
+            getattr(errno, "ENXIO", None),
+            getattr(errno, "EBADF", None),
+        ):
             return (80, 24)
 
         raise
