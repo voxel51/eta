@@ -3619,7 +3619,7 @@ def get_terminal_size():
     """Gets the size of your current Terminal window.
 
     Returns:
-        the (width, height) of the Termainl
+        the (width, height) of the Terminal
     """
     try:
         try:

@@ -60,7 +60,7 @@ setup(
         "Programming Language :: Python :: 2.7",
         "Programming Language :: Python :: 3",
     ],
-    scripts=["eta/eta"],
+    entry_points={"console_scripts": ["eta=eta.core.cli:main"]},
     python_requires=">=2.7",
     cmdclass={"bdist_wheel": BdistWheelCustom},
 )
