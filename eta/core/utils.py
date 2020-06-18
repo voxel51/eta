@@ -1728,7 +1728,7 @@ def copy_file(inpath, outpath, check_ext=False):
         assert_same_extensions(inpath, outpath)
 
     ensure_basedir(outpath)
-    _run_system_os_cmd(["cp", inpath, outpath])
+    shutil.copy(inpath, outpath)
 
 
 def link_file(filepath, linkpath, check_ext=False):
@@ -1810,7 +1810,7 @@ def move_file(inpath, outpath, check_ext=False):
 
         ensure_basedir(outpath)
 
-    _run_system_os_cmd(["mv", inpath, outpath])
+    shutil.move(inpath, outpath)
 
 
 def move_dir(indir, outdir):
@@ -1830,7 +1830,7 @@ def move_dir(indir, outdir):
         delete_dir(outdir)
 
     ensure_basedir(outdir)
-    _run_system_os_cmd(["mv", indir, outdir])
+    shutil.move(indir, outdir)
 
 
 def partition_files(indir, outdir=None, num_parts=None, dir_size=None):
@@ -1988,7 +1988,7 @@ def copy_dir(indir, outdir):
         OSError if the copy failed
     """
     if os.path.isdir(outdir):
-        _run_system_os_cmd(["rm", "-rf", outdir])
+        shutil.rmtree(outdir)
 
     ensure_dir(outdir)
 
@@ -2013,7 +2013,7 @@ def delete_file(path):
     Raises:
         OSError if the deletion failed
     """
-    _run_system_os_cmd(["rm", "-f", path])
+    os.remove(path)
     try:
         os.removedirs(os.path.dirname(path))
     except OSError:
@@ -2032,7 +2032,7 @@ def delete_dir(dir_):
         OSError if the deletion failed
     """
     dir_ = os.path.normpath(dir_)
-    _run_system_os_cmd(["rm", "-rf", dir_])
+    shutil.rmtree(dir_)
     try:
         os.removedirs(os.path.dirname(dir_))
     except OSError:
