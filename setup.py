@@ -18,7 +18,7 @@ class BdistWheelCustom(bdist_wheel):
 
 setup(
     name="voxel51-eta",
-    version="0.1.0",
+    version="0.1.1",
     description="Extensible Toolkit for Analytics",
     author="Voxel51, Inc.",
     author_email="info@voxel51.com",
@@ -60,7 +60,7 @@ setup(
         "Programming Language :: Python :: 2.7",
         "Programming Language :: Python :: 3",
     ],
-    scripts=["eta/eta"],
+    entry_points={"console_scripts": ["eta=eta.core.cli:main"]},
     python_requires=">=2.7",
     cmdclass={"bdist_wheel": BdistWheelCustom},
 )

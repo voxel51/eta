@@ -1021,7 +1021,8 @@ class ProgressBar(object):
 
         if self._has_dynamic_width:
             self._update_max_width()
-            signal.signal(signal.SIGWINCH, self._update_max_width)
+            if hasattr(signal, "SIGWINCH"):
+                signal.signal(signal.SIGWINCH, self._update_max_width)
 
     def __enter__(self):
         self.start()
@@ -1195,7 +1196,7 @@ class ProgressBar(object):
         self._is_running = False
         self._is_finalized = True
 
-        if self.has_dynamic_width:
+        if self.has_dynamic_width and hasattr(signal, "SIGWINCH"):
             signal.signal(signal.SIGWINCH, signal.SIG_DFL)
 
     def update(self, count=1, suffix=None, draw=True):
@@ -1727,7 +1728,7 @@ def copy_file(inpath, outpath, check_ext=False):
         assert_same_extensions(inpath, outpath)
 
     ensure_basedir(outpath)
-    _run_system_os_cmd(["cp", inpath, outpath])
+    shutil.copy(inpath, outpath)
 
 
 def link_file(filepath, linkpath, check_ext=False):
@@ -1809,7 +1810,7 @@ def move_file(inpath, outpath, check_ext=False):
 
         ensure_basedir(outpath)
 
-    _run_system_os_cmd(["mv", inpath, outpath])
+    shutil.move(inpath, outpath)
 
 
 def move_dir(indir, outdir):
@@ -1829,7 +1830,7 @@ def move_dir(indir, outdir):
         delete_dir(outdir)
 
     ensure_basedir(outdir)
-    _run_system_os_cmd(["mv", indir, outdir])
+    shutil.move(indir, outdir)
 
 
 def partition_files(indir, outdir=None, num_parts=None, dir_size=None):
@@ -1987,7 +1988,7 @@ def copy_dir(indir, outdir):
         OSError if the copy failed
     """
     if os.path.isdir(outdir):
-        _run_system_os_cmd(["rm", "-rf", outdir])
+        shutil.rmtree(outdir, ignore_errors=True)
 
     ensure_dir(outdir)
 
@@ -2012,7 +2013,7 @@ def delete_file(path):
     Raises:
         OSError if the deletion failed
     """
-    _run_system_os_cmd(["rm", "-f", path])
+    os.remove(path)
     try:
         os.removedirs(os.path.dirname(path))
     except OSError:
@@ -2031,7 +2032,7 @@ def delete_dir(dir_):
         OSError if the deletion failed
     """
     dir_ = os.path.normpath(dir_)
-    _run_system_os_cmd(["rm", "-rf", dir_])
+    shutil.rmtree(dir_, ignore_errors=True)
     try:
         os.removedirs(os.path.dirname(dir_))
     except OSError:
@@ -3618,7 +3619,7 @@ def get_terminal_size():
     """Gets the size of your current Terminal window.
 
     Returns:
-        the (width, height) of the Termainl
+        the (width, height) of the Terminal
     """
     try:
         try:
@@ -3636,7 +3637,11 @@ def get_terminal_size():
             )
             return w, h
     except OSError as e:
-        if e.errno == getattr(errno, "ENOTTY", None):
+        if e.errno in (
+            getattr(errno, "ENOTTY", None),
+            getattr(errno, "ENXIO", None),
+            getattr(errno, "EBADF", None),
+        ):
             return (80, 24)
 
         raise

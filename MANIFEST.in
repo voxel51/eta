@@ -1,1 +1,2 @@
 global-include *
+global-exclude *.py[cod]
