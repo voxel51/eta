@@ -1988,7 +1988,7 @@ def copy_dir(indir, outdir):
         OSError if the copy failed
     """
     if os.path.isdir(outdir):
-        shutil.rmtree(outdir)
+        shutil.rmtree(outdir, ignore_errors=True)
 
     ensure_dir(outdir)
 
@@ -2032,7 +2032,7 @@ def delete_dir(dir_):
         OSError if the deletion failed
     """
     dir_ = os.path.normpath(dir_)
-    shutil.rmtree(dir_)
+    shutil.rmtree(dir_, ignore_errors=True)
     try:
         os.removedirs(os.path.dirname(dir_))
     except OSError:
