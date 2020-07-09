@@ -24,7 +24,11 @@ import os
 import re
 
 import numpy as np
-import tensorflow as tf
+try:
+    import tensorflow.compat.v1 as tf
+    tf.disable_v2_behavior()
+except:
+    import tensorflow as tf
 
 import eta
 import eta.core.image as etai
