@@ -22,7 +22,11 @@ import logging
 import os
 import sys
 
-import tensorflow as tf
+try:
+    import tensorflow.compat.v1 as tf
+    tf.disable_v2_behavior()
+except:
+    import tensorflow as tf
 
 import eta.constants as etac
 from eta.core.config import Config, ConfigError
