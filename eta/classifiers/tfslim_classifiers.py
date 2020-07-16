@@ -23,8 +23,12 @@ import sys
 
 import numpy as np
 import tensorflow as tf
+
 if not tf.__version__.startswith("1"):
-    raise RuntimeError("TF Slim Classifiers requires tensorflow version 1.x. Version found: %s" % tf.__version__)
+    raise RuntimeError(
+        "TF Slim Classifiers requires tensorflow version 1.x. Version found: %s"
+        % tf.__version__
+    )
 
 
 # pylint: disable=no-name-in-module
