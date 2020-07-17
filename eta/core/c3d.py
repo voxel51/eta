@@ -25,16 +25,13 @@ from builtins import *
 # pragma pylint: enable=wildcard-import
 
 import numpy as np
-try:
-    import tensorflow.compat.v1 as tf
-    tf.disable_v2_behavior()
-except:
-    import tensorflow as tf
 
 from eta.core.config import Config
 from eta.core.features import VideoFramesFeaturizer, VideoFeaturizer
 import eta.core.tfutils as etat
 import eta.core.video as etav
+
+tf = etat.import_tf1()
 
 
 class C3DConfig(Config):
