@@ -25,17 +25,24 @@ import re
 
 import numpy as np
 
-try:
-    import tensorflow.compat.v1 as tf
-
-    tf.disable_v2_behavior()
-except:
-    import tensorflow as tf
-
 import eta
 import eta.core.image as etai
 import eta.core.models as etam
 import eta.core.utils as etau
+
+
+def __import_tf1__():
+    try:
+        import tensorflow.compat.v1 as tf
+
+        tf.disable_v2_behavior()
+    except:
+        import tensorflow as tf
+
+    return tf
+
+
+tf = etau.lazy_object(__import_tf1__)
 
 
 logger = logging.getLogger(__name__)
