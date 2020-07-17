@@ -22,17 +22,6 @@ import logging
 import sys
 
 import numpy as np
-import tensorflow as tf
-
-if not tf.__version__.startswith("1"):
-    raise RuntimeError(
-        "TF Slim Classifiers requires tensorflow version 1.x. Version found: %s"
-        % tf.__version__
-    )
-
-
-# pylint: disable=no-name-in-module
-from tensorflow.python.tools import freeze_graph
 
 import eta.constants as etac
 from eta.core.config import Config, ConfigError
@@ -44,8 +33,11 @@ import eta.core.tfutils as etat
 import eta.core.utils as etau
 
 sys.path.insert(1, etac.TF_SLIM_DIR)
-from preprocessing import preprocessing_factory  # pylint: disable=import-error
-from nets import nets_factory  # pylint: disable=import-error
+
+_ensure_tf1 = lambda: etau.ensure_package("tensorflow", max_version="2")
+tf = etau.lazy_import("tensorflow", _ensure_tf1)
+pf = etau.lazy_import("preprocessing.preprocessing_factory", _ensure_tf1)
+nf = etau.lazy_import("nets.nets_factory", _ensure_tf1)
 
 
 logger = logging.getLogger(__name__)
@@ -201,7 +193,7 @@ class TFSlimClassifier(
 
         # Get network
         network_name = self.config.network_name
-        network_fn = nets_factory.get_network_fn(
+        network_fn = nf.get_network_fn(
             network_name, num_classes=self._num_classes, is_training=False
         )
         self.img_size = network_fn.default_image_size
@@ -424,11 +416,9 @@ class TFSlimClassifier(
 
         # Fallback to TF-slim preprocessing
         logger.info(
-            "Using TF-based preprocessing from preprocessing_factory for "
-            "network '%s'",
-            network_name,
+            "Using TF-based preprocessing for network '%s'", network_name,
         )
-        self._preprocessing_fcn = preprocessing_factory.get_preprocessing(
+        self._preprocessing_fcn = pf.get_preprocessing(
             network_name, is_training=False
         )
         self._preprocessing_sess = self.make_tf_session()
@@ -557,7 +547,11 @@ def export_frozen_inference_graph(
             + "for network '%s'" % network_name
         )
 
-    with tf.Graph().as_default() as graph:  # pylint: disable=not-context-manager
+    # pylint: disable=no-name-in-module
+    from tensorflow.python.tools import freeze_graph
+
+    # pylint: disable=not-context-manager
+    with tf.Graph().as_default() as graph:
         graph_def = _get_graph_def(graph, network_name, num_classes)
         freeze_graph.freeze_graph_with_def_protos(
             graph_def,
@@ -574,7 +568,7 @@ def export_frozen_inference_graph(
 
 def _get_graph_def(graph, network_name, num_classes):
     # Adapted from `tensorflow/models/research/slim/export_inference_graph.py`
-    network_fn = nets_factory.get_network_fn(
+    network_fn = nf.get_network_fn(
         network_name, num_classes=num_classes, is_training=False
     )
     img_size = network_fn.default_image_size
