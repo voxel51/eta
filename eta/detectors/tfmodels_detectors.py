@@ -22,8 +22,6 @@ import logging
 import os
 import sys
 
-import tensorflow as tf
-
 import eta.constants as etac
 from eta.core.config import Config, ConfigError
 from eta.core.geometry import BoundingBox
@@ -34,7 +32,10 @@ import eta.core.tfutils as etat
 import eta.core.utils as etau
 
 sys.path.append(os.path.join(etac.TF_OBJECT_DETECTION_DIR, "utils"))
-import label_map_util as gool  # pylint: disable=import-error
+
+_ensure_tf1 = lambda: etau.ensure_package("tensorflow", max_version="2")
+tf = etau.lazy_import("tensorflow", _ensure_tf1)
+gool = etau.lazy_import("label_map_util", _ensure_tf1)
 
 
 logger = logging.getLogger(__name__)

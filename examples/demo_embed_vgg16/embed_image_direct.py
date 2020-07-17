@@ -26,7 +26,6 @@ import logging
 import os
 import sys
 
-import tensorflow as tf
 import numpy as np
 
 import eta.core.image as etai

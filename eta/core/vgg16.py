@@ -31,7 +31,6 @@ import logging
 import os
 
 import numpy as np
-import tensorflow as tf
 
 import eta.constants as etac
 from eta.core.config import Config, Configurable
@@ -39,7 +38,10 @@ import eta.core.image as etai
 from eta.core.features import ImageFeaturizer
 import eta.core.learning as etal
 import eta.core.models as etam
-from eta.core.tfutils import UsesTFSession
+import eta.core.tfutils as etat
+import eta.core.utils as etau
+
+tf = etat.import_tf1()
 
 
 logger = logging.getLogger(__name__)
@@ -57,15 +59,17 @@ class VGG16Config(Config):
         self.model_name = self.parse_string(
             d, "model_name", default="vgg16-imagenet"
         )
-        self.labels_map = self.parse_string(d, "labels_map", default=None)
+        _labels_map = self.parse_string(d, "labels_map", default=None)
 
-        if self.labels_map is None:
-            self.labels_map = os.path.join(
+        if _labels_map is None:
+            _labels_map = os.path.join(
                 etac.RESOURCES_DIR, "vgg16-imagenet-labels.txt"
             )
 
+        self.labels_map = etau.fill_config_patterns(_labels_map)
 
-class VGG16(Configurable, UsesTFSession):
+
+class VGG16(Configurable, etat.UsesTFSession):
     """TensorFlow implementation of the VGG-16 network architecture for the
     1000 classes from ImageNet.
 
@@ -93,7 +97,7 @@ class VGG16(Configurable, UsesTFSession):
                 use. By default, a placeholder of size [None, 224, 224, 3] is
                 used so you can evaluate any number of images at once
         """
-        UsesTFSession.__init__(self)
+        etat.UsesTFSession.__init__(self)
 
         if config is None:
             config = VGG16Config.default()
