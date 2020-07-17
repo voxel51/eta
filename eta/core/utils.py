@@ -937,6 +937,8 @@ class ProgressBar(object):
         show_remaining_time=True,
         show_iter_rate=True,
         iters_str="it",
+        start_msg=None,
+        complete_msg=None,
         use_bits=False,
         use_bytes=False,
         max_width=None,
@@ -966,6 +968,10 @@ class ProgressBar(object):
                 being processed. By default, this is False
             iters_str: the string to print when `show_iter_rate == True`. The
                 default is "it"
+            start_msg: an optional message to log when the progress bar is
+                started
+            complete_msg: an optional message to log when the progress bar is
+                complete when it is closed
             use_bits: whether to interpret `iteration` and `total` as numbers
                 of bits when rendering iteration information. By default, this
                 is False
@@ -993,6 +999,8 @@ class ProgressBar(object):
         self._use_bits = use_bits
         self._use_bytes = use_bytes
         self._iters_str = iters_str
+        self._start_msg = start_msg
+        self._complete_msg = complete_msg
         self._max_width = max_width
         self._has_dynamic_width = max_width is None
         self._max_fps = max_fps
@@ -1029,7 +1037,7 @@ class ProgressBar(object):
         return self
 
     def __exit__(self, *args):
-        self.close()
+        self.close(*args)
 
     def __len__(self):
         return self.total
@@ -1040,7 +1048,9 @@ class ProgressBar(object):
                 self._total = len(iterable)
             except:
                 self._total = None
-                self._show_remaining_time = False
+
+        if self._total is None:
+            self._show_remaining_time = False
 
         self._iterator = iter(iterable)
         return self
@@ -1058,7 +1068,7 @@ class ProgressBar(object):
         try:
             val = next(self._iterator)
         except StopIteration:
-            self.close()
+            self.close(None, None, None)
             raise
 
         self.update()
@@ -1176,13 +1186,16 @@ class ProgressBar(object):
 
         self._cap_obj = CaptureStdout()
         if not self.quiet:
+            if self._start_msg:
+                logger.info(self._start_msg)
+
             self._is_capturing_stdout = True
             self._start_capture()
 
         self._timer.start()
         self._is_running = True
 
-    def close(self):
+    def close(self, *args):
         """Closes the progress bar."""
         if self.is_finalized or not self.is_running:
             return
@@ -1195,6 +1208,14 @@ class ProgressBar(object):
         self._draw(force=True, last=True)
         self._is_running = False
         self._is_finalized = True
+
+        if (
+            not self.quiet
+            and self._complete_msg  # have a complete message
+            and (not args or args[0] is None)  # no error
+            and (self.complete == True)  # progress bar completed
+        ):
+            logger.info(self._complete_msg)
 
         if self.has_dynamic_width and hasattr(signal, "SIGWINCH"):
             signal.signal(signal.SIGWINCH, signal.SIG_DFL)
