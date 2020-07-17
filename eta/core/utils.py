@@ -577,54 +577,40 @@ def get_function(function_name, module_name=None):
     return get_class(function_name, module_name=module_name)
 
 
-def ensure_tf(min_version=None):
-    """Verifies that TensorFlow is installed on the host machine.
-
-    Args:
-        min_version: an optional min version to enforce
-
-    Raises:
-        ImportError: if `tensorflow` could not be imported
-    """
-    ensure_package("tensorflow", min_version=min_version)
-
-
-def ensure_torch(min_version=None):
-    """Verifies that PyTorch is installed on the host machine.
-
-    Args:
-        min_version: an optional min Torch version to enforce
-
-    Raises:
-        ImportError: if `torch` or `torchvision` could not be imported
-    """
-    ensure_package("torch", min_version=min_version)
-    ensure_package("torchvision")
-
-
-def ensure_package(package_name, min_version=None):
+def ensure_package(package_name, min_version=None, max_version=None):
     """Ensures that the given package is installed on the host machine.
 
     Args:
         package_name: the name of the package
         min_version: an optional min version to enforce
+        max_version: an optional max version to enforce. If provided, the
+            package version must be strictly less than this version
 
     Raises:
         ImportError: if the package is not installed
     """
     has_min_ver = min_version is not None
+    has_max_ver = max_version is not None
 
     if has_min_ver:
         min_version = packaging.version.parse(min_version)
 
+    if has_max_ver:
+        max_version = packaging.version.parse(max_version)
+
+    if has_min_ver:
+        if has_max_ver:
+            pkg_str = "%s<=%s<%s" % (min_version, package_name, max_version)
+        else:
+            pkg_str = "%s>=%s" % (package_name, min_version)
+    elif has_max_ver:
+        pkg_str = "%s<%s" % (package_name, max_version)
+    else:
+        pkg_str = package_name
+
     try:
         pkg = importlib.import_module(package_name)
     except ImportError as e:
-        if has_min_ver:
-            pkg_str = "%s>=%s" % (package_name, min_version)
-        else:
-            pkg_str = package_name
-
         six.raise_from(
             ImportError(
                 "The requested operation requires that '%s' is installed on "
@@ -633,13 +619,16 @@ def ensure_package(package_name, min_version=None):
             e,
         )
 
-    if has_min_ver:
+    if has_min_ver or has_max_ver:
         pkg_version = packaging.version.parse(pkg.__version__)
-        if pkg_version < min_version:
+
+        if (has_min_ver and pkg_version < min_version) or (
+            has_max_ver and pkg_version >= max_version
+        ):
             raise ImportError(
-                "The requested operation requires that '%s>=%s' is installed "
+                "The requested operation requires that '%s' is installed "
                 "on your machine; found '%s==%s'"
-                % (package_name, min_version, package_name, pkg_version)
+                % (pkg_str, package_name, pkg_version)
             )
 
 
