@@ -638,8 +638,10 @@ def lazy_import(module_name, callback=None):
 
     Example usage::
 
+        import eta.core.utils as etau
+
         # Lazy version of `import tensorflow as tf`
-        tf = lazy_import("tensorflow")
+        tf = etau.lazy_import("tensorflow")
 
         # Other commands
 
@@ -652,9 +654,43 @@ def lazy_import(module_name, callback=None):
             module
 
     Returns:
-        a proxy module object that will be lazily imported when first used
+        a LazyModule
     """
     return LazyModule(module_name, callback=callback)
+
+
+def lazy_object(_callable):
+    """Returns a proxy object that will lazily be created by calling the
+    provided callable the first time it is used.
+
+    Example usage::
+
+        #
+        # Calls `import_tf1()` to import the TF 1.X namespace the first time
+        # that `tf` is used
+        #
+
+        import eta.core.utils as etau
+
+        def import_tf1():
+            try:
+                import tensorflow.compat.v1 as tf
+
+                tf.disable_v2_behavior()
+            except:
+                import tensorflow as tf
+
+            return tf
+
+        tf = etau.lazy_object(import_tf1)
+
+    Args:
+        _callable: a callable that returns the object when called
+
+    Returns:
+        a LazyObject
+    """
+    return LazyObject(_callable)
 
 
 class LazyModule(types.ModuleType):
@@ -696,6 +732,39 @@ class LazyModule(types.ModuleType):
         # Update this object's dict so that attribute references are efficient
         # (__getattr__ is only called on lookups that fail)
         self.__dict__.update(module.__dict__)
+
+
+class LazyObject(object):
+    """Proxy object that lazily constructs the object the first time it is
+    actually used.
+
+    Args:
+        _callable: a callable that returns the object when called
+    """
+
+    def __init__(self, _callable):
+        self._callable = _callable
+        self._obj = None
+
+    def __getattr__(self, attr):
+        if self._obj is None:
+            self._init()
+
+        return getattr(self._obj, attr)
+
+    def __dir__(self):
+        if self._obj is None:
+            self._init()
+
+        return dir(self._obj)
+
+    def _init(self):
+        # Actually construct the object
+        self._obj = self._callable()
+
+        # Update this object's dict so that attribute references are efficient
+        # (__getattr__ is only called on lookups that fail)
+        self.__dict__.update(self._obj.__dict__)
 
 
 def query_yes_no(question, default=None):
