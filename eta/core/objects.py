@@ -36,18 +36,21 @@ logger = logging.getLogger(__name__)
 class DetectedObject(etal.Labels, etag.HasBoundingBox):
     """A detected object in an image or frame of a video.
 
-    `DetectedObject`s are spatial concepts that describe information about an
-    object in a particular image or a particular frame of a video.
-    `DetectedObject`s can have labels with confidences, bounding boxes,
-    instance masks, and one or more additional attributes describing their
-    properties.
+    :class:`DetectedObject` is a spatial concept that describes information
+    about an object in a particular image or a particular frame of a video.
+    A :class:`DetectedObject` can have a name (i.e., a class), a label with a
+    confidence, a bounding box, an instance mask, and one or more additional
+    attributes describing its properties.
 
     Attributes:
         type: the fully-qualified class name of the object
         label: (optional) object label
-        bounding_box: (optional) a BoundingBox around the object
+        bounding_box: (optional) a :class:`eta.core.geometry.BoundingBox`
+            around the object
         mask: (optional) a mask for the object within its bounding box
         confidence: (optional) the label confidence, in [0, 1]
+        name: (optional) the name of the object, e.g., ``ground_truth`` or the
+            name of the model that produced it
         top_k_probs: (optional) dictionary mapping labels to probabilities
         index: (optional) an index assigned to the object
         score: (optional) a multipurpose score for the object
@@ -55,8 +58,28 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
             detected
         index_in_frame: (optional) the index of the object in the frame where
             it was detected
-        eval_type: (optional) an EvaluationType value
-        attrs: (optional) an AttributeContainer of attributes for the object
+        eval_type: (optional) an :class:`EvaluationType` value
+        attrs: (optional) an :class:`eta.core.data.AttributeContainer` of
+            attributes for the object
+
+    Args:
+        label (None): the object label
+        bounding_box (None): a :class:`eta.core.geometry.BoundingBox` for the
+            object
+        mask (None): a numpy array describing the mask for the object within
+            its bounding box
+        confidence (None): the label confidence, in ``[0, 1]``
+        name (None): a name for the object, e.g., ``ground_truth`` or the name
+            of the model that produced it
+        top_k_probs (None): a dict mapping labels to probabilities
+        index (None): an integer index assigned to the object
+        score (None): a score for the object
+        frame_number (None): the frame number in which this object was detected
+        index_in_frame (None): the index of the object in the frame where it
+            was detected
+        eval_type (None): an :class:`EvaluationType` for the object
+        attrs (None): an :class:`eta.core.data.AttributeContainer` of
+            attributes for the object
     """
 
     def __init__(
@@ -65,6 +88,7 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
         bounding_box=None,
         mask=None,
         confidence=None,
+        name=None,
         top_k_probs=None,
         index=None,
         score=None,
@@ -73,30 +97,12 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
         eval_type=None,
         attrs=None,
     ):
-        """Creates a DetectedObject instance.
-
-        Args:
-            label: (optional) object label
-            bounding_box: (optional) a BoundingBox around the object
-            mask: (optional) a numpy array describing the mask for the object
-                within its bounding box
-            confidence: (optional) the label confidence, in [0, 1]
-            top_k_probs: (optional) dictionary mapping labels to probabilities
-            index: (optional) an index assigned to the object
-            score: (optional) an optional score for the object
-            frame_number: (optional) the frame number in which this object was
-                detected
-            index_in_frame: (optional) the index of the object in the frame
-                where it was detected
-            eval_type: (optional) an EvaluationType value
-            attrs: (optional) an AttributeContainer of attributes for the
-                object
-        """
         self.type = etau.get_class_name(self)
         self.label = label
         self.bounding_box = bounding_box
         self.mask = mask
         self.confidence = confidence
+        self.name = name
         self.top_k_probs = top_k_probs
         self.index = index
         self.score = score
@@ -118,37 +124,42 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
 
     @property
     def has_label(self):
-        """Whether the object has a label."""
+        """Whether the object has a ``label``."""
         return self.label is not None
 
     @property
     def has_bounding_box(self):
-        """Whether the object has a bounding box."""
+        """Whether the object has a ``bounding_box``."""
         return self.bounding_box is not None
 
     @property
     def has_mask(self):
-        """Whether the object has a segmentation mask."""
+        """Whether the object has a ``mask``."""
         return self.mask is not None
 
     @property
     def has_confidence(self):
-        """Whether the object has a label confidence."""
+        """Whether the object has a label ``confidence``."""
         return self.confidence is not None
 
     @property
+    def has_name(self):
+        """Whether the object has a ``name``."""
+        return self.name is not None
+
+    @property
     def has_top_k_probs(self):
-        """Whether the object has top-k probabilities for its label."""
+        """Whether the object has ``top_k_probs``."""
         return self.top_k_probs is not None
 
     @property
     def has_index(self):
-        """Whether the object has an index."""
+        """Whether the object has an ``index``."""
         return self.index is not None
 
     @property
     def has_frame_number(self):
-        """Whether the object has a frame number."""
+        """Whether the object has a ``frame_number``."""
         return self.frame_number is not None
 
     @property
@@ -158,7 +169,7 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
 
     @classmethod
     def get_schema_cls(cls):
-        """Gets the schema class for `DetectedObject`s.
+        """Gets the schema class for :class:`DetectedObject`.
 
         Returns:
             the LabelsSchema class
@@ -166,15 +177,15 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
         return ObjectSchema
 
     def get_bounding_box(self):
-        """Returns the BoundingBox for the object.
+        """Returns the :class:`eta.core.geometry.BoundingBox` for the object.
 
         Returns:
-             a BoundingBox
+             a :class:`eta.core.geometry.BoundingBox`
         """
         return self.bounding_box
 
     def get_index(self):
-        """Returns the `index` of the object.
+        """Returns the ``index`` of the object.
 
         Returns:
             the index, or None if the object has no index
@@ -182,7 +193,7 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
         return self.index
 
     def offset_index(self, offset):
-        """Adds the given offset to the object's index.
+        """Adds the given offset to the object's ``index``.
 
         If the object has no index, this does nothing.
 
@@ -193,7 +204,7 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
             self.index += offset
 
     def clear_index(self):
-        """Clears the `index` of the object."""
+        """Clears the ``index`` of the object."""
         self.index = None
 
     def add_attribute(self, attr):
@@ -208,7 +219,7 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
         """Adds the attributes to the object.
 
         Args:
-            attrs: an AttributeContainer
+            attrs: an :class:`eta.core.data.AttributeContainer`
         """
         self.attrs.add_container(attrs)
 
@@ -216,7 +227,7 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
         """Pops the attributes from the object.
 
         Returns:
-            an AttributeContainer
+            an :class:`eta.core.data.AttributeContainer`
         """
         attrs = self.attrs
         self.clear_attributes()
@@ -229,16 +240,17 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
     def filter_by_schema(self, schema, allow_none_label=False):
         """Filters the object by the given schema.
 
-        The `label` of the DetectedObject must match the provided schema. Or,
-        it can be `None` when `allow_none_label == True`.
+        The ``label`` of the :class:`DetectedObject` must match the provided
+        schema. Or, it can be ``None`` when ``allow_none_label == True``.
 
         Args:
-            schema: an ObjectSchema
-            allow_none_label: whether to allow the object label to be `None`.
+            schema: an :class:`ObjectSchema`
+            allow_none_label: whether to allow the object label to be ``None``.
                 By default, this is False
 
         Raises:
-            LabelsSchemaError: if the object label does not match the schema
+            :class:`eta.core.labels.LabelsSchemaError`: if the object label
+            does not match the schema
         """
         if self.label is None:
             if not allow_none_label:
@@ -266,6 +278,7 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
             "bounding_box",
             "mask",
             "confidence",
+            "name",
             "top_k_probs",
             "index",
             "score",
@@ -282,15 +295,16 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
 
     @classmethod
     def _from_dict(cls, d):
-        """Internal implementation of `from_dict()`.
+        """Internal implementation of :meth:`DetectedObject.from_dict`.
 
-        Subclasses should implement this method, NOT `from_dict()`.
+        Subclasses should implement this method, not
+        :meth:`DetectedObject.from_dict`.
 
         Args:
             d: a JSON dictionary
 
         Returns:
-            a DetectedObject
+            a :class:`DetectedObject`
         """
         bounding_box = d.get("bounding_box", None)
         if bounding_box is not None:
@@ -309,6 +323,7 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
             bounding_box=bounding_box,
             mask=mask,
             confidence=d.get("confidence", None),
+            name=d.get("name", None),
             top_k_probs=d.get("top_k_probs", None),
             index=d.get("index", None),
             score=d.get("score", None),
@@ -320,13 +335,13 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
 
     @classmethod
     def from_dict(cls, d):
-        """Constructs a DetectedObject from a JSON dictionary.
+        """Constructs a :class:`DetectedObject` from a JSON dictionary.
 
         Args:
             d: a JSON dictionary
 
         Returns:
-            a DetectedObject
+            a :class:`DetectedObject`
         """
         if "type" in d:
             obj_cls = etau.get_class(d["type"])
@@ -337,16 +352,18 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
 
 
 class DetectedObjectContainer(etal.LabelsContainer):
-    """An `eta.core.serial.Container` of `DetectedObject`s."""
+    """An :class:`eta.core.serial.Container` of :class:`DetectedObject`
+    instances.
+    """
 
     _ELE_CLS = DetectedObject
     _ELE_CLS_FIELD = "_OBJ_CLS"
     _ELE_ATTR = "objects"
 
     def get_labels(self):
-        """Returns the set of `label`s of all objects in the container.
+        """Returns the set of ``label` values of all objects in the container.
 
-        `None` indexes are omitted.
+        ``None`` indexes are omitted.
 
         Returns:
             a set of labels
@@ -354,9 +371,9 @@ class DetectedObjectContainer(etal.LabelsContainer):
         return set(dobj.label for dobj in self)
 
     def get_indexes(self):
-        """Returns the set of `index`es of all objects in the container.
+        """Returns the set of ``index`` values of all objects in the container.
 
-        `None` indexes are omitted.
+        ``None`` indexes are omitted.
 
         Returns:
             a set of indexes
@@ -364,7 +381,7 @@ class DetectedObjectContainer(etal.LabelsContainer):
         return set(dobj.index for dobj in self if dobj.has_index)
 
     def offset_indexes(self, offset):
-        """Adds the given offset to all objects with `index`es.
+        """Adds the given offset to all objects with ``index`` values.
 
         Args:
             offset: the integer offset
@@ -373,47 +390,48 @@ class DetectedObjectContainer(etal.LabelsContainer):
             dobj.offset_index(offset)
 
     def clear_indexes(self):
-        """Clears the `index` of all objects in the container."""
+        """Clears the ``index`` of all objects in the container.
+        """
         for dobj in self:
             dobj.clear_index()
 
     def sort_by_confidence(self, reverse=False):
-        """Sorts the `DetectedObject`s by confidence.
+        """Sorts the :class:`DetectedObject` instances by confidence.
 
-        `DetectedObject`s whose confidence is None are always put last.
+        Objects whose confidence is ``None`` are always put last.
 
         Args:
-            reverse: whether to sort in descending order. The default is False
+            reverse (False): whether to sort in descending order
         """
         self.sort_by("confidence", reverse=reverse)
 
     def sort_by_index(self, reverse=False):
-        """Sorts the `DetectedObject`s by index.
+        """Sorts the :class:`DetectedObject` instances by index.
 
-        `DetectedObject`s whose index is None are always put last.
+        Objects whose index is ``None`` are always put last.
 
         Args:
-            reverse: whether to sort in descending order. The default is False
+            reverse (False): whether to sort in descending order
         """
         self.sort_by("index", reverse=reverse)
 
     def sort_by_score(self, reverse=False):
-        """Sorts the `DetectedObject`s by score.
+        """Sorts the :class:`DetectedObject` instances by score.
 
-        `DetectedObject`s whose score is None are always put last.
+        Objects whose score is ``None`` are always put last.
 
         Args:
-            reverse: whether to sort in descending order. The default is False
+            reverse (False): whether to sort in descending order
         """
         self.sort_by("score", reverse=reverse)
 
     def sort_by_frame_number(self, reverse=False):
-        """Sorts the `DetectedObject`s by frame number
+        """Sorts the :class:`DetectedObject` instances by frame number.
 
-        `DetectedObject`s whose frame number is None are always put last.
+        Objects whose frame number is ``None`` are always put last.
 
         Args:
-            reverse: whether to sort in descending order. The default is False
+            reverse (False): whether to sort in descending order
         """
         self.sort_by("frame_number", reverse=reverse)
 
@@ -421,7 +439,7 @@ class DetectedObjectContainer(etal.LabelsContainer):
         """Filters the objects in the container by the given schema.
 
         Args:
-            schema: an ObjectContainerSchema
+            schema: an :class:`ObjectContainerSchema`
         """
         # Remove objects with invalid labels
         filter_func = lambda obj: schema.has_object_label(obj.label)
@@ -436,9 +454,9 @@ class DetectedObjectContainer(etal.LabelsContainer):
         """Removes objects from this container that do not have attributes.
 
         Args:
-            labels: an optional list of object `label` strings to which to
-                restrict attention when filtering. By default, all objects are
-                processed
+            labels (None): an optional list of object
+                :class:`DetectedObject.label` strings to which to restrict
+                attention when filtering. By default, all objects are processed
         """
         filter_func = lambda obj: (
             (labels is not None and obj.label not in labels)
@@ -455,69 +473,81 @@ class VideoObject(
 ):
     """A spatiotemporal object in a video.
 
-    `VideoObject`s are spatiotemporal concepts that describe information about
-    an object over multiple frames in a video. `VideoObject`s can have labels
-    with confidences, object-level attributes that apply to the object over all
-    frames, and frame-level attributes such as bounding boxes and attributes
-    that apply to individual frames.
+    :class:`VideoObject` is a spatiotemporal concept that describes information
+    about an object over multiple frames in a video. A :class:`VideoObject` can
+    have a label with a confidence, a name (i.e., a class), object-level
+    attributes that apply to the object over all frames, and frame-level
+    attributes such as bounding boxes and attributes that apply to individual
+    frames.
 
-    Note that the VideoObject class implements the `HasFramewiseView` and
-    `HasSpatiotemporalView` mixins. This means that all VideoObject instances
-    can be rendered in both *framewise* and *spatiotemporal* format. Converting
-    between these formats is guaranteed to be lossless and idempotent.
+    Note that the :class:`VideoObject` class implements the
+    :class:`eta.core.labels.HasFramewiseView` and
+    :class:`eta.core.labels.HasSpatiotemporalView` mixins. This means that all
+    :class:`VideoObject` instances can be rendered in both *framewise* and
+    *spatiotemporal* format. Converting between these formats is guaranteed to
+    be lossless and idempotent.
 
-    In framewise format, `VideoObject`s store all information at the
-    frame-level in `DetectedObject`s. In particular, the following invariants
-    will hold:
+    In framewise format, a :class:`VideoObject` stores all information at the
+    frame-level in :class:`DetectedObject` instances. In particular, the
+    following invariants will hold:
 
-        - The `attrs` field will be empty. All object-level attributes will be
-          stored as frame-level `Attribute`s within `DetectedObject`s with
-          `constant == True`
+        - The :attr:`DetectedObject.attrs` field will be empty. All
+          object-level attributes will be stored as frame-level
+          :class:`eta.core.data.Attribute` instances within
+          :class:`DetectedObject` instances with ``constant == True``
 
-    In spatiotemporal format, `VideoObject`s store all possible information in
-    the highest-available video construct. In particular, the following
-    invariants will hold:
+    In spatiotemporal format, a :class:`VideoObject` store all possible
+    information in the highest-available video construct. In particular, the
+    following invariants will hold:
 
-        - The `attrs` fields of all `DetectedObject`s will contain only
-          non-constant `Attribute`s. All constant attributes will be upgraded
-          to object-level attributes in the top-level `attrs` field
+        - The :attr:`DetectedObject.attrs` fields of all
+          :class:`DetectedObject` instances will contain only non-constant
+          :class:`eta.core.data.Attribute` instances. All constant attributes
+          will be upgraded to object-level attributes in the top-level
+          :attr:`DetectedObject.attrs` field
 
     Attributes:
         type: the fully-qualified class name of the object
         label: (optional) the object label
-        confidence: (optional) label confidence in [0, 1]
+        confidence: (optional) label confidence in ``[0, 1]``
+        name: (optional) the name of the object, e.g., ``ground_truth`` or the
+            name of the model that generated it
         index: (optional) an index assigned to the object
-        support: a FrameRanges instance describing the support of the object
-        attrs: (optional) AttributeContainer of object-level attributes of the
-            object
-        frames: dictionary mapping frame numbers to DetectedObject instances
-            describing the frame-level attributes of the object
+        support: a :class:`eta.core.frameutils.FrameRanges` instance describing
+            the support of the object
+        attrs: (optional) an :class:`eta.core.data.AttributeContainer` of
+            object-level attributes of the object
+        frames: a dict mapping frame numbers to :class:`DetectedObject`
+            instances describing the frame-level attributes of the object
+
+    Args:
+        label (None): a label for the object
+        confidence (None): the label confidence in ``[0, 1]``
+        name (None): a name for the object, e.g., ``ground_truth`` or the name
+            of the model that generated it
+        index (None): an index assigned to the object
+        support (None): a :class:`eta.core.frameutils.FrameRanges` instance
+            describing the frozen support of the object
+        attrs (None): an :class:`eta.core.data.AttributeContainer` of
+            object-level attributes
+        frames (None): a dict mapping frame numbers to :class:`DetectedObject`
+            instances
     """
 
     def __init__(
         self,
         label=None,
         confidence=None,
+        name=None,
         index=None,
         support=None,
         attrs=None,
         frames=None,
     ):
-        """Creates a VideoObject instance.
-
-        Args:
-            label: (optional) the object label
-            confidence: (optional) the label confidence in [0, 1]
-            index: (optional) an index assigned to the object
-            support: (optional) a FrameRanges instance describing the frozen
-                support of the object
-            attrs: (optional) an AttributeContainer of object-level attributes
-            frames: (optional) a dictionary mapping frame numbers to
-                DetectedObject instances
-        """
         self.type = etau.get_class_name(self)
         self.label = label
         self.confidence = confidence
+        self.name = name
         self.index = index
         self.attrs = attrs or etad.AttributeContainer()
         self.frames = frames or {}
@@ -532,17 +562,22 @@ class VideoObject(
 
     @property
     def has_label(self):
-        """Whether the object has a label."""
+        """Whether the object has a ``label``."""
         return self.label is not None
 
     @property
     def has_confidence(self):
-        """Whether the object has a label confidence."""
+        """Whether the object has a ``confidence``."""
         return self.confidence is not None
 
     @property
+    def has_name(self):
+        """Whether the object has a ``name``."""
+        return self.name is not None
+
+    @property
     def has_index(self):
-        """Whether the object has an index."""
+        """Whether the object has an ``index``."""
         return self.index is not None
 
     @property
@@ -573,34 +608,37 @@ class VideoObject(
         """Returns an iterator over the object-level attributes of the object.
 
         Returns:
-            an iterator over `Attribute`s
+            an iterator over :class:`eta.core.dataAttribute` instances
         """
         return iter(self.attrs)
 
     def iter_detections(self):
-        """Returns an iterator over the `DetectedObject`s for each frame of the
-        object.
+        """Returns an iterator over the :class:`DetectedObject` instances for
+        each frame of the object.
 
         The frames are traversed in sorted order.
 
         Returns:
-            an iterator over `DetectedObject`s
+            an iterator over :class:`DetectedObject` instances
         """
         for frame_number in sorted(self.frames):
             yield self.frames[frame_number]
 
     @property
     def framewise_renderer_cls(self):
-        """The LabelsFrameRenderer used by this class."""
+        """The :class:`eta.core.labels.LabelsFrameRenderer` used by this class.
+        """
         return VideoObjectFrameRenderer
 
     @property
     def spatiotemporal_renderer_cls(self):
-        """The LabelsSpatiotemporalRenderer used by this class."""
+        """The :class:`eta.core.labels.LabelsSpatiotemporalRenderer` used by
+        this class.
+        """
         return VideoObjectSpatiotemporalRenderer
 
     def get_index(self):
-        """Returns the `index` of the object.
+        """Returns the ``index`` of the object.
 
         Returns:
             the index, or None if the object has no index
@@ -608,7 +646,7 @@ class VideoObject(
         return self.index
 
     def offset_index(self, offset):
-        """Adds the given offset to the object's index.
+        """Adds the given offset to the object's ``index``.
 
         If the object has no index, this does nothing.
 
@@ -621,7 +659,7 @@ class VideoObject(
                 dobj.offset_index(offset)
 
     def clear_index(self):
-        """Clears the `index` of the object."""
+        """Clears the ``index`` of the object."""
         self.index = None
         for dobj in self.iter_detections():
             dobj.clear_index()
@@ -644,7 +682,7 @@ class VideoObject(
             frame_number: the frame number
 
         Returns:
-            a DetectedObject, or None
+            a :class:`DetectedObject`, or ``None``
         """
         return self.frames.get(frame_number, None)
 
@@ -652,44 +690,46 @@ class VideoObject(
         """Adds the object-level attribute to the object.
 
         Args:
-            attr: an Attribute
+            attr: an :class:`eta.core.data.Attribute`
         """
         self.attrs.add(attr)
 
     def add_object_attributes(self, attrs):
-        """Adds the AttributeContainer of object-level attributes to the
-        object.
+        """Adds the :class:`eta.core.data.AttributeContainer` of object-level
+        attributes to the object.
 
         Args:
-            attrs: an AttributeContainer
+            attrs: an :class:`eta.core.data.AttributeContainer`
         """
         self.attrs.add_container(attrs)
 
     def add_detection(self, obj, frame_number=None):
         """Adds the detection to the object.
 
-        The detection will have its `label` and `index` scrubbed.
+        The detection will have its ``label`` and ``index`` scrubbed.
 
         Args:
-            obj: a DetectedObject
-            frame_number: a frame number. If omitted, the DetectedObject must
-                have its `frame_number` set
+            obj: a :class:`DetectedObject`
+            frame_number: a frame number. If omitted, the
+                :class:`DetectedObject` must have its ``frame_number`` set
         """
         self._add_detected_object(obj, frame_number)
 
     def add_detections(self, objects):
         """Adds the detections to the object.
 
-        The `DetectedObject`s must have their `frame_number`s set, and they
-        will have their `label`s and `index`es scrubbed.
+        The :class:`DetectedObject` instances must have their ``frame_number``
+        set, and they will have their ``label`` and ``index`` scrubbed.
 
         Args:
-            objects: a DetectedObjectContainer
+            objects: a :class:`DetectedObjectContainer`
         """
         self._add_detected_objects(objects)
 
     def remove_empty_frames(self):
-        """Removes all empty `DetectedObject`s from this object."""
+        """Removes all empty :class:`DetectedObject` instances from this
+        object.
+        """
         self.frames = {
             fn: dobj
             for fn, dobj in iteritems(self.frames)
@@ -711,17 +751,18 @@ class VideoObject(
             obj.clear_attributes()
 
     def clear_detections(self):
-        """Removes all `DetectedObject`s from the object."""
+        """Removes all :class:`DetectedObject` instance from the object."""
         self.frames = {}
 
     def filter_by_schema(self, schema):
         """Filters the object by the given schema.
 
         Args:
-            schema: an ObjectSchema
+            schema: an :class:`ObjectSchema`
 
         Raises:
-            LabelsSchemaError: if the object label does not match the schema
+            :class:`eta.core.labels.LabelsSchemaError`: if the object label
+            does not match the schema
         """
         schema.validate_label(self.label)
         self.attrs.filter_by_schema(schema.attrs)
@@ -739,6 +780,8 @@ class VideoObject(
             _attrs.append("label")
         if self.confidence is not None:
             _attrs.append("confidence")
+        if self.name is not None:
+            _attrs.append("name")
         if self.is_support_frozen:
             _attrs.append("support")
         if self.index is not None:
@@ -751,24 +794,27 @@ class VideoObject(
 
     @classmethod
     def from_detections(cls, objects):
-        """Builds a VideoObject from a container of `DetectedObject`s.
+        """Builds a :class:`VideoObject` from a container of
+        :class:`DetectedObject` instances.
 
-        The `DetectedObject`s must have their `frame_number`s set, and they
-        must all have the same `label` and `index` (which may be None).
+        The :class:`DetectedObject` instances must have their ``frame_number``
+        set, and they must all have the same ``label``, ``name``, and ``index``
+        (the latter two may be ``None``).
 
         The input objects are modified in-place and passed by reference to the
-        VideoObject.
+        :class:`VideoObject`.
 
         Args:
-            objects: a DetectedObjectContainer
+            objects: a :class:``DetectedObjectContainer``
 
         Returns:
-            a VideoObject
+            a :class:`VideoObject`
         """
         if not objects:
             return cls()
 
         label = objects[0].label
+        name = objects[0].name
         index = objects[0].index
 
         for dobj in objects:
@@ -776,6 +822,12 @@ class VideoObject(
                 raise ValueError(
                     "Object label '%s' does not match first label '%s'"
                     % (dobj.label, label)
+                )
+
+            if dobj.name != name:
+                raise ValueError(
+                    "Object name '%s' does not match first name '%s'"
+                    % (dobj.name, name)
                 )
 
             if dobj.index != index:
@@ -791,21 +843,22 @@ class VideoObject(
         objects.remove_empty_labels()
 
         # Build VideoObject
-        obj = cls(label=label, index=index, attrs=obj_attrs)
+        obj = cls(label=label, name=name, index=index, attrs=obj_attrs)
         obj.add_detections(objects)
         return obj
 
     @classmethod
     def _from_dict(cls, d):
-        """Internal implementation of `from_dict()`.
+        """Internal implementation of :class:`VideoObject.from_dict`.
 
-        Subclasses should implement this method, NOT `from_dict()`.
+        Subclasses should implement this method, not
+        :class:`VideoObject.from_dict`.
 
         Args:
             d: a JSON dictionary
 
         Returns:
-            a VideoObject
+            a :class:`VideoObject`
         """
         support = d.get("support", None)
         if support is not None:
@@ -825,6 +878,7 @@ class VideoObject(
         return cls(
             label=d.get("label", None),
             confidence=d.get("confidence", None),
+            name=d.get("name", None),
             index=d.get("index", None),
             support=support,
             frames=frames,
@@ -833,13 +887,13 @@ class VideoObject(
 
     @classmethod
     def from_dict(cls, d):
-        """Constructs a VideoObject from a JSON dictionary.
+        """Constructs a :class:`VideoObject` from a JSON dictionary.
 
         Args:
             d: a JSON dictionary
 
         Returns:
-            a VideoObject
+            a :class:`VideoObject`
         """
         if "type" in d:
             obj_cls = etau.get_class(d["type"])
@@ -866,6 +920,14 @@ class VideoObject(
                 self.label,
             )
 
+        if dobj.name is not None and dobj.name != self.name:
+            logger.warning(
+                "DetectedObject name '%s' does not match VideoObject name "
+                "'%s'",
+                dobj.name,
+                self.name,
+            )
+
         if dobj.index is not None and dobj.index != self.index:
             logger.warning(
                 "DetectedObject index '%s' does not match VideoObject index "
@@ -875,6 +937,7 @@ class VideoObject(
             )
 
         dobj.label = None
+        dobj.name = None
         dobj.index = None
         dobj.frame_number = frame_number
         self.frames[frame_number] = dobj
@@ -890,7 +953,9 @@ class VideoObject(
 class VideoObjectContainer(
     etal.LabelsContainer, etal.HasFramewiseView, etal.HasSpatiotemporalView
 ):
-    """An `eta.core.serial.Container` of `VideoObject`s."""
+    """An :class:`eta.core.serial.Container` of :class:`VideoObject`
+    instances.
+    """
 
     _ELE_CLS = VideoObject
     _ELE_CLS_FIELD = "_OBJ_CLS"
@@ -898,16 +963,19 @@ class VideoObjectContainer(
 
     @property
     def framewise_renderer_cls(self):
-        """The LabelsFrameRenderer used by this class."""
+        """The :class:`eta.core.labels.LabelsFrameRenderer` used by this class.
+        """
         return VideoObjectContainerFrameRenderer
 
     @property
     def spatiotemporal_renderer_cls(self):
-        """The LabelsSpatiotemporalRenderer used by this class."""
+        """The :class:`eta.core.labels.LabelsSpatiotemporalRenderer` used by
+        this class.
+        """
         return VideoObjectContainerSpatiotemporalRenderer
 
     def get_labels(self):
-        """Returns the set of `label`s of all objects in the container.
+        """Returns the set of ``label`` values of all objects in the container.
 
         Returns:
             a set of labels
@@ -915,9 +983,9 @@ class VideoObjectContainer(
         return set(obj.label for obj in self)
 
     def get_indexes(self):
-        """Returns the set of `index`es of all objects in the container.
+        """Returns the set of ``index`` values of all objects in the container.
 
-        `None` indexes are omitted.
+        ``None`` indexes are omitted.
 
         Returns:
             a set of indexes
@@ -925,7 +993,7 @@ class VideoObjectContainer(
         return set(obj.index for obj in self if obj.has_index)
 
     def offset_indexes(self, offset):
-        """Adds the given offset to all objects with `index`es.
+        """Adds the given offset to all objects with ``index`` values.
 
         Args:
             offset: the integer offset
@@ -934,27 +1002,27 @@ class VideoObjectContainer(
             obj.offset_index(offset)
 
     def clear_indexes(self):
-        """Clears the `index` of all objects in the container."""
+        """Clears the ``index`` of all objects in the container."""
         for obj in self:
             obj.clear_index()
 
     def sort_by_confidence(self, reverse=False):
-        """Sorts the `VideoObject`s by confidence.
+        """Sorts the :class:`VideoObject` instances by confidence.
 
-        `VideoObject`s whose confidence is None are always put last.
+        Objects whose confidence is ``None`` are always put last.
 
         Args:
-            reverse: whether to sort in descending order. The default is False
+            reverse (False): whether to sort in descending order
         """
         self.sort_by("confidence", reverse=reverse)
 
     def sort_by_index(self, reverse=False):
-        """Sorts the `VideoObject`s by index.
+        """Sorts the :class:`VideoObject` instances by index.
 
-        `VideoObject`s whose index is None are always put last.
+        Objects whose index is ``None`` are always put last.
 
         Args:
-            reverse: whether to sort in descending order. The default is False
+            reverse (False): whether to sort in descending order
         """
         self.sort_by("index", reverse=reverse)
 
@@ -962,7 +1030,7 @@ class VideoObjectContainer(
         """Filters the objects in the container by the given schema.
 
         Args:
-            schema: an ObjectContainerSchema
+            schema: an :class:`ObjectContainerSchema`
         """
         # Remove objects with invalid labels
         filter_func = lambda obj: schema.has_object_label(obj.label)
@@ -977,9 +1045,9 @@ class VideoObjectContainer(
         """Removes objects from this container that do not have attributes.
 
         Args:
-            labels: an optional list of object `label` strings to which to
-                restrict attention when filtering. By default, all objects are
-                processed
+            labels (None): an optional list of object ``label`` strings to
+                which to restrict attention when filtering. By default, all
+                objects are processed
         """
         filter_func = lambda obj: (
             (labels is not None and obj.label not in labels)
@@ -989,21 +1057,23 @@ class VideoObjectContainer(
 
     @classmethod
     def from_detections(cls, objects):
-        """Builds a VideoObjectContainer from a DetectedObjectContainer of
-        objects by constructing `VideoObject`s from the collections formed by
-        partitioning into (label, index) groups.
+        """Builds a :class:`VideoObjectContainer` from a
+        :class:`DetectedObjectContainer` of objects by constructing
+        :class:`VideoObject` instances from the collections of detections
+        constructed by partitioning into ``(label, index)`` groups.
 
-        The `DetectedObject`s must have their `frame_number`s set, and each
-        instance without an `index` is treated as a separate object.
+        The :class:`DetectedObject` instances must have their ``frame_number``
+        set, and each instance without an ``index`` is treated as a separate
+        object.
 
         The input objects may be modified in-place and are passed by reference
-        to the `VideoObject`s.
+        to the :class:`VideoObject` instances.
 
         Args:
-            objects: a DetectedObjectContainer
+            objects: a :class:`DetectedObjectContainer`
 
         Returns:
-            a VideoObjectContainer
+            a :class:`VideoObjectContainer`
         """
         # Group objects by (label, index)
         objects_map = defaultdict(DetectedObjectContainer)
@@ -1030,26 +1100,24 @@ class VideoObjectContainer(
 
 
 class ObjectSchema(etal.LabelsSchema):
-    """Schema for `VideoObject`s and `DetectedObject`s.
+    """Schema for :class:`VideoObject` and :class:`DetectedObject`.
 
     Attributes:
         label: the object label
-        attrs: an AttributeContainerSchema describing the object-level
-            attributes of the object
-        frames: an AttributeContainerSchema describing the frame-level
-            attributes of the object
+        attrs: an :class:`eta.core.data.AttributeContainerSchema` describing
+            the object-level attributes of the object
+        frames: an :class:`eta.core.data.AttributeContainerSchema` describing
+            the frame-level attributes of the object
+
+    Args:
+        label: the object label
+        attrs (None): an :class:`eta.core.data.AttributeContainerSchema`
+            describing the object-level attributes of the object
+        frames (None): an :class:`eta.core.data.AttributeContainerSchema`
+            describing the frame-level attributes of the object
     """
 
     def __init__(self, label, attrs=None, frames=None):
-        """Creates an ObjectSchema instance.
-
-        Args:
-            label: the object label
-            attrs: (optional) an AttributeContainerSchema describing the
-                object-level attributes of the object
-            frames: (optional) an AttributeContainerSchema describing the
-                frame-level attributes of the object
-        """
         self.label = label
         self.attrs = attrs or etad.AttributeContainerSchema()
         self.frames = frames or etad.AttributeContainerSchema()
@@ -1079,8 +1147,8 @@ class ObjectSchema(etal.LabelsSchema):
         return self.label
 
     def has_object_attribute(self, attr_name):
-        """Whether the schema has an object-level Attribute of the given
-        name.
+        """Whether the schema has an object-level
+        :class:`eta.core.data.Attribute` of the given name.
 
         Args:
             attr_name: the name
@@ -1091,31 +1159,32 @@ class ObjectSchema(etal.LabelsSchema):
         return self.attrs.has_attribute(attr_name)
 
     def get_object_attribute_schema(self, attr_name):
-        """Gets the AttributeSchema for the object-level attribute of the given
-        name.
+        """Gets the :class:`eta.core.data.AttributeSchema` for the object-level
+        attribute of the given name.
 
         Args:
             attr_name: the name
 
         Returns:
-            the AttributeSchema
+            the `eta.core.data.AttributeSchema`
         """
         return self.attrs.get_attribute_schema(attr_name)
 
     def get_object_attribute_class(self, attr_name):
-        """Gets the Attribute class for the object-level attribute of the given
-        name.
+        """Gets the `eta.core.data.Attribute` class for the object-level
+        attribute of the given name.
 
         Args:
             attr_name: the name
 
         Returns:
-            the Attribute
+            the `eta.core.data.Attribute`
         """
         return self.attrs.get_attribute_class(attr_name)
 
     def has_frame_attribute(self, attr_name):
-        """Whether the schema has a frame-level Attribute of the given name.
+        """Whether the schema has a frame-level `eta.core.data.Attribute` of
+        the given name.
 
         Args:
             attr_name: the name
@@ -1126,59 +1195,60 @@ class ObjectSchema(etal.LabelsSchema):
         return self.frames.has_attribute(attr_name)
 
     def get_frame_attribute_schema(self, attr_name):
-        """Gets the AttributeSchema for the frame-level attribute of the given
-        name.
+        """Gets the `eta.core.data.AttributeSchema` for the frame-level
+        attribute of the given name.
 
         Args:
             attr_name: the name
 
         Returns:
-            the AttributeSchema
+            the `eta.core.data.AttributeSchema`
         """
         return self.frames.get_attribute_schema(attr_name)
 
     def get_frame_attribute_class(self, attr_name):
-        """Gets the Attribute class for the frame-level attribute of the given
-        name.
+        """Gets the `eta.core.data.Attribute` class for the frame-level
+        attribute of the given name.
 
         Args:
             attr_name: the name
 
         Returns:
-            the Attribute
+            the `eta.core.data.Attribute`
         """
         return self.frames.get_attribute_class(attr_name)
 
     def add_object_attribute(self, attr):
-        """Adds the object-level Attribute to the schema.
+        """Adds the object-level `eta.core.data.Attribute` to the schema.
 
         Args:
-            attr: an Attribute
+            attr: an `eta.core.data.Attribute`
         """
         self.attrs.add_attribute(attr)
 
     def add_object_attributes(self, attrs):
-        """Adds the AttributeContainer of object-level attributes to the
-        schema.
+        """Adds the `eta.core.data.AttributeContainer` of object-level
+        attributes to the schema.
 
         Args:
-            attrs: an AttributeContainer
+            attrs: an `eta.core.data.AttributeContainer`
         """
         self.attrs.add_attributes(attrs)
 
     def add_frame_attribute(self, attr):
-        """Adds the frame-level Attribute to the schema.
+        """Adds the frame-level `eta.core.data.Attribute` to the schema.
 
         Args:
-            attr: an Attribute
+            attr: an `eta.core.data.Attribute`
         """
         self.frames.add_attribute(attr)
 
     def add_frame_attributes(self, attrs):
-        """Adds the AttributeContainer of frame-level attributes to the schema.
+        """Adds the `eta.core.data.AttributeContainer` of frame-level
+        attributes to the schema.
 
         Args:
-            attrs: an AttributeContainer
+            attrs: an `eta.core.data.AttributeContainer`
         """
         self.frames.add_attributes(attrs)
 
@@ -1186,7 +1256,7 @@ class ObjectSchema(etal.LabelsSchema):
         """Adds the object to the schema.
 
         Args:
-            obj: a VideoObject or DetectedObject
+            obj: a :class:`VideoObject` or :class:`DetectedObject`
         """
         if isinstance(obj, DetectedObject):
             self._add_detected_object(obj)
@@ -1194,11 +1264,12 @@ class ObjectSchema(etal.LabelsSchema):
             self._add_video_object(obj)
 
     def add_objects(self, objects):
-        """Adds the VideoObjectContainer or DetectedObjectContainer to the
-        schema.
+        """Adds the :class:`VideoObjectContainer` or
+        :class:`DetectedObjectContainer` to the schema.
 
         Args:
-            objects: an VideoObjectContainer or DetectedObjectContainer
+            objects: an :class:`VideoObjectContainer` or
+                :class:`DetectedObjectContainer`
         """
         for obj in objects:
             self.add_object(obj)
@@ -1222,7 +1293,7 @@ class ObjectSchema(etal.LabelsSchema):
         """Whether the object-level attribute is compliant with the schema.
 
         Args:
-            attr: an Attribute
+            attr: an `eta.core.data.Attribute`
 
         Returns:
             True/False
@@ -1234,11 +1305,11 @@ class ObjectSchema(etal.LabelsSchema):
             return False
 
     def is_valid_object_attributes(self, attrs):
-        """Whether the AttributeContainer of object-level attributes is
-        compliant with the schema.
+        """Whether the `eta.core.data.AttributeContainer` of object-level
+        attributes is compliant with the schema.
 
         Args:
-            attrs: an AttributeContainer
+            attrs: an `eta.core.data.AttributeContainer`
 
         Returns:
             True/False
@@ -1253,7 +1324,7 @@ class ObjectSchema(etal.LabelsSchema):
         """Whether the frame-level attribute is compliant with the schema.
 
         Args:
-            attr: an Attribute
+            attr: an `eta.core.data.Attribute`
 
         Returns:
             True/False
@@ -1265,11 +1336,11 @@ class ObjectSchema(etal.LabelsSchema):
             return False
 
     def is_valid_frame_attributes(self, attrs):
-        """Whether the AttributeContainer of frame-level attributes is
-        compliant with the schema.
+        """Whether the `eta.core.data.AttributeContainer` of frame-level
+        attributes is compliant with the schema.
 
         Args:
-            attrs: an AttributeContainer
+            attrs: an `eta.core.data.AttributeContainer`
 
         Returns:
             True/False
@@ -1287,7 +1358,8 @@ class ObjectSchema(etal.LabelsSchema):
             label: the label
 
         Raises:
-            LabelsSchemaError: if the label violates the schema
+            :class:`eta.core.labels.LabelsSchemaError`: if the label violates
+            the schema
         """
         if label != self.label:
             raise ObjectSchemaError(
@@ -1299,22 +1371,24 @@ class ObjectSchema(etal.LabelsSchema):
         schema.
 
         Args:
-            attr: an Attribute
+            attr: an `eta.core.data.Attribute`
 
         Raises:
-            LabelsSchemaError: if the attribute violates the schema
+            :class:`eta.core.labels.LabelsSchemaError`: if the attribute
+            violates the schema
         """
         self.attrs.validate_attribute(attr)
 
     def validate_object_attributes(self, attrs):
-        """Validates that the AttributeContainer of object-level attributes is
-        compliant with the schema.
+        """Validates that the `eta.core.data.AttributeContainer` of
+        object-level attributes is compliant with the schema.
 
         Args:
-            attrs: an AttributeContainer
+            attrs: an `eta.core.data.AttributeContainer`
 
         Raises:
-            LabelsSchemaError: if the attributes violate the schema
+            :class:`eta.core.labels.LabelsSchemaError`: if the attributes
+            violate the schema
         """
         self.attrs.validate(attrs)
 
@@ -1323,22 +1397,24 @@ class ObjectSchema(etal.LabelsSchema):
         schema.
 
         Args:
-            attr: an Attribute
+            attr: an `eta.core.data.Attribute`
 
         Raises:
-            LabelsSchemaError: if the attribute violates the schema
+            :class:`eta.core.labels.LabelsSchemaError`: if the attribute
+            violates the schema
         """
         self.frames.validate_attribute(attr)
 
     def validate_frame_attributes(self, attrs):
-        """Validates that the AttributeContainer of frame-level attributes is
-        compliant with the schema.
+        """Validates that the `eta.core.data.AttributeContainer` of frame-level
+        attributes is compliant with the schema.
 
         Args:
-            attrs: an AttributeContainer
+            attrs: an `eta.core.data.AttributeContainer`
 
         Raises:
-            LabelsSchemaError: if the attributes violate the schema
+            :class:`eta.core.labels.LabelsSchemaError`: if the attributes
+            violate the schema
         """
         self.frames.validate(attrs)
 
@@ -1346,10 +1422,11 @@ class ObjectSchema(etal.LabelsSchema):
         """Validates that the object is compliant with the schema.
 
         Args:
-            obj: a VideoObject or DetectedObject
+            obj: a :class:`VideoObject` or :class:`DetectedObject`
 
         Raises:
-            LabelsSchemaError: if the object violates the schema
+            :class:`eta.core.labels.LabelsSchemaError`: if the object violates
+            the schema
         """
         if isinstance(obj, DetectedObject):
             self._validate_detected_object(obj)
@@ -1360,11 +1437,11 @@ class ObjectSchema(etal.LabelsSchema):
         """Validates that this schema is a subset of the given schema.
 
         Args:
-            schema: an ObjectSchema
+            schema: an :class:`ObjectSchema`
 
         Raises:
-            LabelsSchemaError: if this schema is not a subset of the given
-                schema
+            :class:`eta.core.labels.LabelsSchemaError`: if this schema is not a
+            subset of the given schema
         """
         self.validate_schema_type(schema)
 
@@ -1378,10 +1455,10 @@ class ObjectSchema(etal.LabelsSchema):
         self.frames.validate_subset_of_schema(schema.frames)
 
     def merge_schema(self, schema):
-        """Merges the given ObjectSchema into this schema.
+        """Merges the given :class:`ObjectSchema` into this schema.
 
         Args:
-            schema: an ObjectSchema
+            schema: an :class:`ObjectSchema`
         """
         self.validate_label(schema.label)
         self.attrs.merge_schema(schema.attrs)
@@ -1389,14 +1466,14 @@ class ObjectSchema(etal.LabelsSchema):
 
     @classmethod
     def build_active_schema(cls, obj):
-        """Builds an ObjectSchema that describes the active schema of the
-        object.
+        """Builds an :class:`ObjectSchema` that describes the active schema of
+        the object.
 
         Args:
-            obj: a VideoObject or DetectedObject
+            obj: a :class:`VideoObject` or :class:`DetectedObject`
 
         Returns:
-            an ObjectSchema
+            an :class:`ObjectSchema`
         """
         schema = cls(obj.label)
         schema.add_object(obj)
@@ -1417,13 +1494,13 @@ class ObjectSchema(etal.LabelsSchema):
 
     @classmethod
     def from_dict(cls, d):
-        """Constructs an ObjectSchema from a JSON dictionary.
+        """Constructs an :class:`ObjectSchema` from a JSON dictionary.
 
         Args:
             d: a JSON dictionary
 
         Returns:
-            an ObjectSchema
+            an :class:`ObjectSchema`
         """
         attrs = d.get("attrs", None)
         if attrs is not None:
@@ -1469,25 +1546,24 @@ class ObjectSchema(etal.LabelsSchema):
 
 
 class ObjectSchemaError(etal.LabelsSchemaError):
-    """Error raised when an ObjectSchema is violated."""
+    """Error raised when an :class:`ObjectSchema` is violated."""
 
     pass
 
 
 class ObjectContainerSchema(etal.LabelsContainerSchema):
-    """Schema for `VideoObjectContainer`s and `DetectedObjectContainer`s.
+    """Schema for :class:`VideoObjectContainer` and
+    :class:`DetectedObjectContainer`.
 
     Attributes:
-        schema: a dictionary mapping object labels to ObjectSchema instances
+        schema: a dict mapping object labels to :class:`ObjectSchema` instances
+
+    Args:
+        schema (None): a dict mapping object labels to :class:`ObjectSchema`
+            instances
     """
 
     def __init__(self, schema=None):
-        """Creates an ObjectContainerSchema instance.
-
-        Args:
-            schema: (optional) a dictionary mapping object labels to
-                ObjectSchema instances
-        """
         self.schema = schema or {}
 
     @property
@@ -1504,11 +1580,11 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
         return iter(self.schema)
 
     def iter_objects(self):
-        """Returns an iterator over the (label, ObjectSchema) pairs in this
-        schema.
+        """Returns an iterator over the (label, :class:`ObjectSchema`) pairs in
+        this schema.
 
         Returns:
-            an iterator over (label, ObjectSchema) pairs
+            an iterator over (label, :class:`ObjectSchema`) pairs
         """
         return iteritems(self.schema)
 
@@ -1556,69 +1632,69 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
         return self.schema[label].has_frame_attribute(attr_name)
 
     def get_object_schema(self, label):
-        """Gets the ObjectSchema for the object with the given label.
+        """Gets the :class:`ObjectSchema` for the object with the given label.
 
         Args:
             label: the object label
 
         Returns:
-            an ObjectSchema
+            an :class:`ObjectSchema`
         """
         self.validate_object_label(label)
         return self.schema[label]
 
     def get_object_attribute_schema(self, label, attr_name):
-        """Gets the AttributeSchema for the object-level attribute of the given
-        name for the object with the given label.
+        """Gets the :class:`eta.core.data.AttributeSchema` for the object-level
+        attribute of the given name for the object with the given label.
 
         Args:
             label: the object label
             attr_name: the object-level attribute name
 
         Returns:
-            the AttributeSchema
+            the :class:`eta.core.data.AttributeSchema`
         """
         obj_schema = self.get_object_schema(label)
         return obj_schema.get_object_attribute_schema(attr_name)
 
     def get_object_attribute_class(self, label, attr_name):
-        """Gets the Attribute class for the object-level attribute of the given
-        name for the object with the given label.
+        """Gets the :class:`eta.core.data.Attribute` class for the object-level
+        attribute of the given name for the object with the given label.
 
         Args:
             label: the object label
             attr_name: the object-level attribute name
 
         Returns:
-            the Attribute
+            the :class:`eta.core.data.Attribute`
         """
         self.validate_object_label(label)
         return self.schema[label].get_object_attribute_class(attr_name)
 
     def get_frame_attribute_schema(self, label, attr_name):
-        """Gets the AttributeSchema for the frame-level attribute of the given
-        name for the object with the given label.
+        """Gets the :class:`eta.core.data.AttributeSchema` for the frame-level
+        attribute of the given name for the object with the given label.
 
         Args:
             label: the object label
             attr_name: the frame-level object attribute name
 
         Returns:
-            the AttributeSchema
+            the :class:`eta.core.data.AttributeSchema`
         """
         obj_schema = self.get_object_schema(label)
         return obj_schema.get_frame_attribute_schema(attr_name)
 
     def get_frame_attribute_class(self, label, attr_name):
-        """Gets the Attribute class for the frame-level attribute of the given
-        name for the object with the given label.
+        """Gets the :class:`eta.core.data.Attribute` class for the frame-level
+        attribute of the given name for the object with the given label.
 
         Args:
             label: the object label
             attr_name: the frame-level object attribute name
 
         Returns:
-            the Attribute
+            the :class:`eta.core.data.Attribute`
         """
         self.validate_object_label(label)
         return self.schema[label].get_frame_attribute_class(attr_name)
@@ -1632,45 +1708,45 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
         self._ensure_has_object_label(label)
 
     def add_object_attribute(self, label, attr):
-        """Adds the object-level Attribute for the object with the given label
-        to the schema.
+        """Adds the object-level :class:`eta.core.data.Attribute` for the
+        object with the given label to the schema.
 
         Args:
             label: an object label
-            attr: an Attribute
+            attr: an :class:`eta.core.data.Attribute`
         """
         self._ensure_has_object_label(label)
         self.schema[label].add_object_attribute(attr)
 
     def add_object_attributes(self, label, attrs):
-        """Adds the AttributeContainer of object-level attributes for the
-        object with the given label to the schema.
+        """Adds the :class:`eta.core.data.AttributeContainer` of object-level
+        attributes for the object with the given label to the schema.
 
         Args:
             label: an object label
-            attrs: an AttributeContainer
+            attrs: an :class:`eta.core.data.AttributeContainer`
         """
         self._ensure_has_object_label(label)
         self.schema[label].add_object_attributes(attrs)
 
     def add_frame_attribute(self, label, attr):
-        """Adds the frame-level Attribute for the object with the given label
-        to the schema.
+        """Adds the frame-level :class:`eta.core.data.Attribute` for the object
+        with the given label to the schema.
 
         Args:
             label: an object label
-            attr: an Attribute
+            attr: an :class:`eta.core.data.Attribute`
         """
         self._ensure_has_object_label(label)
         self.schema[label].add_frame_attribute(attr)
 
     def add_frame_attributes(self, label, attrs):
-        """Adds the AttributeContainer of frame-level attributes for the object
-        with the given label to the schema.
+        """Adds the :class:`eta.core.data.AttributeContainer` of frame-level
+        attributes for the object with the given label to the schema.
 
         Args:
             label: an object label
-            attrs: an AttributeContainer
+            attrs: an :class:`eta.core.data.AttributeContainer`
         """
         self._ensure_has_object_label(label)
         self.schema[label].add_frame_attributes(attrs)
@@ -1679,7 +1755,7 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
         """Adds the object to the schema.
 
         Args:
-            obj: a VideoObject or DetectedObject
+            obj: a :class:`VideoObject` or :class:`DetectedObject`
         """
         self._ensure_has_object_label(obj.label)
         self.schema[obj.label].add_object(obj)
@@ -1688,7 +1764,8 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
         """Adds the objects to the schema.
 
         Args:
-            objects: a VideoObjectContainer or DetectedObjectContainer
+            objects: a :class:`VideoObjectContainer` or
+                :class:`DetectedObjectContainer`
         """
         for obj in objects:
             self.add_object(obj)
@@ -1714,7 +1791,7 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
 
         Args:
             label: an object label
-            attr: an Attribute
+            attr: an :class:`eta.core.data.Attribute`
 
         Returns:
             True/False
@@ -1731,7 +1808,7 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
 
         Args:
             label: an object label
-            attrs: an AttributeContainer
+            attrs: an :class:`eta.core.data.AttributeContainer`
 
         Returns:
             True/False
@@ -1748,7 +1825,7 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
 
         Args:
             label: an object label
-            attr: an Attribute
+            attr: an :class:`eta.core.data.Attribute`
 
         Returns:
             True/False
@@ -1765,7 +1842,7 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
 
         Args:
             label: an object label
-            attrs: an AttributeContainer
+            attrs: an :class:`eta.core.data.AttributeContainer`
 
         Returns:
             True/False
@@ -1780,7 +1857,7 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
         """Whether the object is compliant with the schema.
 
         Args:
-            obj: a VideoObject or DetectedObject
+            obj: a :class:`VideoObject` or :class:`DetectedObject`
 
         Returns:
             True/False
@@ -1798,7 +1875,8 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
             label: an object label
 
         Raises:
-            LabelsSchemaError: if the object label violates the schema
+            :class:`eta.core.labels.LabelsSchemaError`: if the object label
+            violates the schema
         """
         if label not in self.schema:
             raise ObjectContainerSchemaError(
@@ -1806,57 +1884,63 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
             )
 
     def validate_object_attribute(self, label, attr):
-        """Validates that the object-level Attribute for the object with the
-        given label is compliant with the schema.
+        """Validates that the object-level :class:`eta.core.data.Attribute` for
+        the object with the given label is compliant with the schema.
 
         Args:
             label: an object label
-            attr: an Attribute
+            attr: an :class:`eta.core.data.Attribute`
 
         Raises:
-            LabelsSchemaError: if the attribute violates the schema
+            :class:`eta.core.labels.LabelsSchemaError`: if the attribute
+            violates the schema
         """
         self.validate_object_label(label)
         self.schema[label].validate_object_attribute(attr)
 
     def validate_object_attributes(self, label, attrs):
-        """Validates that the AttributeContainer of object-level attributes for
-        the object with the given label is compliant with the schema.
+        """Validates that the :class:`eta.core.data.AttributeContainer` of
+        object-level attributes for the object with the given label is
+        compliant with the schema.
 
         Args:
             label: an object label
-            attrs: an AttributeContainer
+            attrs: an :class:`eta.core.data.AttributeContainer`
 
         Raises:
-            LabelsSchemaError: if the attributes violate the schema
+            :class:`eta.core.labels.LabelsSchemaError`: if the attributes
+            violate the schema
         """
         self.validate_object_label(label)
         self.schema[label].validate_object_attributes(attrs)
 
     def validate_frame_attribute(self, label, attr):
-        """Validates that the frame-level Attribute for the object with the
-        given label is compliant with the schema.
+        """Validates that the frame-level :class:`eta.core.data.Attribute` for
+        the object with the given label is compliant with the schema.
 
         Args:
             label: an object label
-            attr: an Attribute
+            attr: an :class:`eta.core.data.Attribute`
 
         Raises:
-            LabelsSchemaError: if the attribute violates the schema
+            :class:`eta.core.labels.LabelsSchemaError`: if the attribute
+            violates the schema
         """
         self.validate_object_label(label)
         self.schema[label].validate_frame_attribute(attr)
 
     def validate_frame_attributes(self, label, attrs):
-        """Validates that the AttributeContainer of frame-level attributes for
-        the object with the given label is compliant with the schema.
+        """Validates that the :class:`eta.core.data.AttributeContainer` of
+        frame-level attributes for the object with the given label is compliant
+        with the schema.
 
         Args:
             label: an object label
-            attrs: an AttributeContainer
+            attrs: an :class:`eta.core.data.AttributeContainer`
 
         Raises:
-            LabelsSchemaError: if the attributes violate the schema
+            :class:`eta.core.labels.LabelsSchemaError`: if the attributes
+            violate the schema
         """
         self.validate_object_label(label)
         self.schema[label].validate_frame_attributes(attrs)
@@ -1865,10 +1949,11 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
         """Validates that the object is compliant with the schema.
 
         Args:
-            obj: a VideoObject or DetectedObject
+            obj: a :class:`VideoObject` or :class:`DetectedObject`
 
         Raises:
-            LabelsSchemaError: if the object violates the schema
+            :class:`eta.core.labels.LabelsSchemaError`: if the object violates
+            the schema
         """
         self.validate_object_label(obj.label)
         self.schema[obj.label].validate(obj)
@@ -1877,10 +1962,12 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
         """Validates that the objects are compliant with the schema.
 
         Args:
-            objects: a VideoObjectContainer or DetectedObjectContainer
+            objects: a :class:`VideoObjectContainer` or
+                :class:`DetectedObjectContainer`
 
         Raises:
-            LabelsSchemaError: if the objects violate the schema
+            :class:`eta.core.labels.LabelsSchemaError`: if the objects violate
+            the schema
         """
         for obj in objects:
             self.validate_object(obj)
@@ -1889,11 +1976,11 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
         """Validates that this schema is a subset of the given schema.
 
         Args:
-            schema: an ObjectContainerSchema
+            schema: an :class:`ObjectContainerSchema`
 
         Raises:
-            LabelsSchemaError: if this schema is not a subset of the given
-                schema
+            :class:`eta.core.labels.LabelsSchemaError`: if this schema is not a
+            subset of the given schema
         """
         self.validate_schema_type(schema)
 
@@ -1907,34 +1994,35 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
             obj_schema.validate_subset_of_schema(other_obj_schema)
 
     def merge_object_schema(self, obj_schema):
-        """Merges the given `ObjectSchema` into the schema.
+        """Merges the given :class:`ObjectSchema` into the schema.
 
         Args:
-            obj_schema: an ObjectSchema
+            obj_schema: an :class:`ObjectSchema`
         """
         label = obj_schema.label
         self._ensure_has_object_label(label)
         self.schema[label].merge_schema(obj_schema)
 
     def merge_schema(self, schema):
-        """Merges the given ObjectContainerSchema into this schema.
+        """Merges the given :class:`ObjectContainerSchema` into this schema.
 
         Args:
-            schema: an ObjectContainerSchema
+            schema: an :class:`ObjectContainerSchema`
         """
         for _, obj_schema in schema.iter_objects():
             self.merge_object_schema(obj_schema)
 
     @classmethod
     def build_active_schema(cls, objects):
-        """Builds an ObjectContainerSchema that describes the active schema
-        of the objects.
+        """Builds an :class:`ObjectContainerSchema` that describes the active
+        schema of the objects.
 
         Args:
-            objects: a VideoObjectContainer or DetectedObjectContainer
+            objects: a :class:`VideoObjectContainer` or
+                :class:`DetectedObjectContainer`
 
         Returns:
-            an ObjectContainerSchema
+            an :class:`ObjectContainerSchema`
         """
         schema = cls()
         schema.add_objects(objects)
@@ -1942,13 +2030,13 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
 
     @classmethod
     def from_dict(cls, d):
-        """Constructs an ObjectContainerSchema from a JSON dictionary.
+        """Constructs an :class:`ObjectContainerSchema` from a JSON dictionary.
 
         Args:
             d: a JSON dictionary
 
         Returns:
-            an ObjectContainerSchema
+            an :class:`ObjectContainerSchema`
         """
         schema = d.get("schema", None)
         if schema is not None:
@@ -1965,37 +2053,34 @@ class ObjectContainerSchema(etal.LabelsContainerSchema):
 
 
 class ObjectContainerSchemaError(etal.LabelsContainerSchemaError):
-    """Error raised when an ObjectContainerSchema is violated."""
+    """Error raised when an :class:`ObjectContainerSchema` is violated."""
 
     pass
 
 
 class VideoObjectFrameRenderer(etal.LabelsFrameRenderer):
-    """Class for rendering a VideoObject at the frame-level.
+    """Class for rendering a :class:`VideoObject` at the frame-level.
 
-    See the VideoObject class docstring for the framewise format spec.
+    See the :class:`VideoObject` class docstring for the framewise format spec.
+
+    Args:
+        obj: a :class:`VideoObject`
     """
 
     _LABELS_CLS = VideoObject
     _FRAME_LABELS_CLS = DetectedObject
 
     def __init__(self, obj):
-        """Creates an VideoObjectFrameRenderer instance.
-
-        Args:
-            obj: a VideoObject
-        """
         self._obj = obj
 
     def render(self, in_place=False):
-        """Renders the VideoObject in framewise format.
+        """Renders the :class:`VideoObject` in framewise format.
 
         Args:
-            in_place: whether to perform the rendering in-place. By default,
-                this is False
+            in_place (False): whether to perform the rendering in-place
 
         Returns:
-            a VideoObject
+            a :class:`VideoObject`
         """
         obj = self._obj
         frames = self.render_all_frames(in_place=in_place)
@@ -2025,15 +2110,15 @@ class VideoObjectFrameRenderer(etal.LabelsFrameRenderer):
         )
 
     def render_frame(self, frame_number, in_place=False):
-        """Renders the VideoObject for the given frame.
+        """Renders the :class:`VideoObject` for the given frame.
 
         Args:
             frame_number: the frame number
-            in_place: whether to perform the rendering in-place. By default,
-                this is False
+            in_place (False): whether to perform the rendering in-place
 
         Returns:
-            a DetectedObject, or None if no labels exist for the given frame
+            a :class:`DetectedObject`, or ``None`` if no labels exist for the
+            given frame
         """
         if frame_number not in self._obj.support:
             return None
@@ -2042,14 +2127,13 @@ class VideoObjectFrameRenderer(etal.LabelsFrameRenderer):
         return self._render_frame(frame_number, obj_attrs, in_place)
 
     def render_all_frames(self, in_place=False):
-        """Renders the VideoObject for all possible frames.
+        """Renders the :class:`VideoObject` for all possible frames.
 
         Args:
-            in_place: whether to perform the rendering in-place. By default,
-                this is False
+            in_place (False): whether to perform the rendering in-place
 
         Returns:
-            a dictionary mapping frame numbers to DetectedObject instances
+            a dict mapping frame numbers to :class:`DetectedObject` instances
         """
         obj_attrs = self._get_object_attrs()
 
@@ -2104,7 +2188,7 @@ class VideoObjectFrameRenderer(etal.LabelsFrameRenderer):
 
 
 class VideoObjectContainerFrameRenderer(etal.LabelsContainerFrameRenderer):
-    """Class for rendering labels for a VideoObjectContainer at the
+    """Class for rendering labels for a :class:`VideoObjectContainer` at the
     frame-level.
     """
 
@@ -2114,30 +2198,28 @@ class VideoObjectContainerFrameRenderer(etal.LabelsContainerFrameRenderer):
 
 
 class VideoObjectSpatiotemporalRenderer(etal.LabelsSpatiotemporalRenderer):
-    """Class for rendering a VideoObject in spatiotemporal format.
+    """Class for rendering a :class:`VideoObject` in spatiotemporal format.
 
-    See the VideoObject class docstring for the spatiotemporal format spec.
+    See the :class:`VideoObject` class docstring for the spatiotemporal format
+    spec.
+
+    Args:
+        obj: a :class:`VideoObject`
     """
 
     _LABELS_CLS = VideoObject
 
     def __init__(self, obj):
-        """Creates an VideoObjectSpatiotemporalRenderer instance.
-
-        Args:
-            obj: a VideoObject
-        """
         self._obj = obj
 
     def render(self, in_place=False):
-        """Renders the VideoObject in spatiotemporal format.
+        """Renders the :class:`VideoObject` in spatiotemporal format.
 
         Args:
-            in_place: whether to perform the rendering in-place. By default,
-                this is False
+            in_place (False): whether to perform the rendering in-place
 
         Returns:
-            a VideoObject
+            a :class:`VideoObject`
         """
         obj = self._obj
         if not in_place:
@@ -2156,8 +2238,8 @@ class VideoObjectSpatiotemporalRenderer(etal.LabelsSpatiotemporalRenderer):
 class VideoObjectContainerSpatiotemporalRenderer(
     etal.LabelsContainerSpatiotemporalRenderer
 ):
-    """Class for rendering labels for a VideoObjectContainer in spatiotemporal
-    format.
+    """Class for rendering labels for a :class:`VideoObjectContainer` in
+    spatiotemporal format.
     """
 
     _LABELS_CLS = VideoObjectContainer
@@ -2166,18 +2248,17 @@ class VideoObjectContainerSpatiotemporalRenderer(
 
 def strip_spatiotemporal_content_from_objects(objects):
     """Strips the spatiotemporal content from the given iterable of
-    `DetectedObject`s.
+    :class:`DetectedObject` instances.
 
     The input objects are modified in-place.
 
     Args:
-        objects: an iterable of `DetectedObject`s (e.g., a list or
-            DetectedObjectContainer)
+        objects: an iterable of :class:`DetectedObject` instances
 
     Returns:
-        an AttributeContainer of constant object attributes. By convention, the
-            returned attributes are no longer marked as constant, as this is
-            assumed to be implicit
+        an :class:`eta.core.data.AttributeContainer` of constant object
+        attributes. By convention, the returned attributes are no longer marked
+        as constant, as this is assumed to be implicit
     """
     # Extract spatiotemporal content from objects
     attrs_map = {}
@@ -2200,27 +2281,26 @@ def strip_spatiotemporal_content_from_objects(objects):
 
 
 class ObjectCount(etas.Serializable):
-    """The number of instances of an object found in an image."""
+    """The number of instances of an object found in an image.
+
+    Args:
+        label: the label
+        count: the count
+    """
 
     def __init__(self, label, count):
-        """Creates an ObjectCount instance.
-
-        Args:
-            label: the label
-            count: the count
-        """
         self.label = label
         self.count = count
 
     @classmethod
     def from_dict(cls, d):
-        """Constructs an ObjectCount from a JSON dictionary.
+        """Constructs an :class:`ObjectCount` from a JSON dictionary.
 
         Args:
             d: a JSON dictionary
 
         Returns:
-            an ObjectCount
+            an :class:`ObjectCount`
         """
         return cls(d["label"], d["count"])
 
@@ -2238,11 +2318,11 @@ class EvaluationType(object):
     the labels used for evaluating false positives.
 
     Attributes:
-        RECALL: this object is part of the subset that MUST be detected. If it
-            is not, it is considered a false negative
-        PRECISION: this object MAY be detected, and if so, is marked as a true
-            positive, however, if it is not, it is NOT considered a false
-            negative
+        RECALL: this object is part of the subset that **must** be detected. If
+            it is not, it is considered a false negative
+        PRECISION: this object **may** be detected, and if so, is marked as a
+            true positive, however, if it is not, it is **not** considered a
+            false negative
     """
 
     RECALL = "RECALL"
