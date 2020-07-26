@@ -122,7 +122,7 @@ class AnnotationConfig(Config):
         bbox_alpha: (0.75) the transparency of bounding boxes
         bbox_label_text_pad_pixels: (2) the padding, in pixels, around the text
             in bounding box labels
-        bbox_linewidth: (2) the linewidth, in pixels, of bounding boxes
+        bbox_linewidth: (3) the linewidth, in pixels, of bounding boxes
         mask_border_thickness: (2) the thickness, in pixels, to use when
             drawing the borders of segmentation masks
         mask_fill_alpha: (0.7) the transparency of segmentation masks
@@ -290,7 +290,7 @@ class AnnotationConfig(Config):
         self.bbox_label_text_pad_pixels = self.parse_number(
             d, "bbox_label_text_pad_pixels", default=2
         )
-        self.bbox_linewidth = self.parse_number(d, "bbox_linewidth", default=2)
+        self.bbox_linewidth = self.parse_number(d, "bbox_linewidth", default=3)
 
         # MASKS ###############################################################
 
