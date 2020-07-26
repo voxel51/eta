@@ -3209,7 +3209,7 @@ class VideoReader(object):
         self.close()
 
     def __len__(self):
-        return len(self.frames)
+        return len(self._ranges)
 
     def __iter__(self):
         return self
