@@ -34,6 +34,7 @@ from eta.core.config import Config, Configurable
 import eta.core.data as etad
 import eta.core.image as etai
 import eta.core.logo as etal
+import eta.core.utils as etau
 import eta.core.video as etav
 
 
@@ -596,21 +597,22 @@ def annotate_video(
     mask_index = video_labels.mask_index
 
     # Annotate video
-    with etav.VideoProcessor(input_path, out_video_path=output_path) as p:
+    with etav.VideoProcessor(input_path, out_video_path=output_path) as vp:
         # Set media size
-        annotation_config.set_media_size(frame_size=p.output_frame_size)
+        annotation_config.set_media_size(frame_size=vp.output_frame_size)
 
         # Annotate frames
-        for img in p:
-            logger.debug("Annotating frame %d", p.frame_number)
-            frame_labels = video_labels[p.frame_number]
-            img_anno = _annotate_video_frame(
-                img,
-                frame_labels,
-                mask_index=mask_index,
-                annotation_config=annotation_config,
-            )
-            p.write(img_anno)
+        with etau.ProgressBar() as pb:
+            for img in pb(vp):
+                logger.debug("Annotating frame %d", vp.frame_number)
+                frame_labels = video_labels[vp.frame_number]
+                img_anno = _annotate_video_frame(
+                    img,
+                    frame_labels,
+                    mask_index=mask_index,
+                    annotation_config=annotation_config,
+                )
+                vp.write(img_anno)
 
 
 def _annotate_video_frame(
