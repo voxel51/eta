@@ -43,6 +43,8 @@ class DetectedEvent(etal.Labels, etag.HasBoundingBox):
         bounding_box: (optional) a BoundingBox around the event
         mask: (optional) a mask for the event within its bounding box
         confidence: (optional) the label confidence, in [0, 1]
+        name: (optional) the name of the event, e.g., ``ground_truth`` or the
+            name of the model that produced it
         top_k_probs: (optional) dictionary mapping labels to probabilities
         index: (optional) an index assigned to the event
         frame_number: (optional) the frame number in which the event was
@@ -59,6 +61,7 @@ class DetectedEvent(etal.Labels, etag.HasBoundingBox):
         bounding_box=None,
         mask=None,
         confidence=None,
+        name=None,
         top_k_probs=None,
         index=None,
         frame_number=None,
@@ -73,6 +76,8 @@ class DetectedEvent(etal.Labels, etag.HasBoundingBox):
             mask: (optional) a numpy array describing the mask for the event
                 within its bounding box
             confidence: (optional) the label confidence, in [0, 1]
+            name (None): a name for the event, e.g., ``ground_truth`` or the
+                name of the model that produced it
             top_k_probs: (optional) dictionary mapping labels to probabilities
             index: (optional) an index assigned to the event
             frame_number: (optional) the frame number in which this event was
@@ -86,6 +91,7 @@ class DetectedEvent(etal.Labels, etag.HasBoundingBox):
         self.bounding_box = bounding_box
         self.mask = mask
         self.confidence = confidence
+        self.name = name
         self.top_k_probs = top_k_probs
         self.index = index
         self.frame_number = frame_number
@@ -122,6 +128,11 @@ class DetectedEvent(etal.Labels, etag.HasBoundingBox):
     def has_confidence(self):
         """Whether the event has a label confidence."""
         return self.confidence is not None
+
+    @property
+    def has_name(self):
+        """Whether the event has a name."""
+        return self.name is not None
 
     @property
     def has_top_k_probs(self):
@@ -343,6 +354,7 @@ class DetectedEvent(etal.Labels, etag.HasBoundingBox):
             "bounding_box",
             "mask",
             "confidence",
+            "name",
             "top_k_probs",
             "index",
             "frame_number",
@@ -388,6 +400,7 @@ class DetectedEvent(etal.Labels, etag.HasBoundingBox):
             bounding_box=bounding_box,
             mask=mask,
             confidence=d.get("confidence", None),
+            name=d.get("name", None),
             top_k_probs=d.get("top_k_probs", None),
             index=d.get("index", None),
             frame_number=d.get("frame_number", None),
@@ -574,6 +587,8 @@ class VideoEvent(
         type: the fully-qualified class name of the event
         label: (optional) the event label
         confidence: (optional) the label confidence in [0, 1]
+        name: (optional) the name of the event, e.g., ``ground_truth`` or the
+            name of the model that generated it
         index: (optional) an index assigned to the event
         support: a FrameRanges instance describing the support of the event
         attrs: an AttributeContainer of event-level attributes
@@ -585,6 +600,7 @@ class VideoEvent(
         self,
         label=None,
         confidence=None,
+        name=None,
         index=None,
         support=None,
         attrs=None,
@@ -596,6 +612,8 @@ class VideoEvent(
         Args:
             label: (optional) the event label
             confidence: (optional) the label confidence in [0, 1]
+            name (None): a name for the event, e.g., ``ground_truth`` or the
+                name of the model that generated it
             index: (optional) a index assigned to the event
             support: (optional) a FrameRanges instance describing the frozen
                 support of the event
@@ -607,6 +625,7 @@ class VideoEvent(
         self.type = etau.get_class_name(self)
         self.label = label
         self.confidence = confidence
+        self.name = name
         self.index = index
         self.attrs = attrs or etad.AttributeContainer()
         self.objects = objects or etao.VideoObjectContainer()
@@ -632,6 +651,11 @@ class VideoEvent(
     def has_confidence(self):
         """Whether the event has a label confidence."""
         return self.confidence is not None
+
+    @property
+    def has_name(self):
+        """Whether the event has a name."""
+        return self.name is not None
 
     @property
     def has_index(self):
@@ -952,6 +976,8 @@ class VideoEvent(
             _attrs.append("label")
         if self.confidence is not None:
             _attrs.append("confidence")
+        if self.name is not None:
+            _attrs.append("name")
         if self.index is not None:
             _attrs.append("index")
         if self.is_support_frozen:
@@ -988,7 +1014,8 @@ class VideoEvent(
         """Builds a VideoEvent from a container of `DetectedEvent`s.
 
         The `DetectedEvent`s must have their `frame_number`s set, and they must
-        all have the same `label` and `index` (which may be None).
+        all have the same `label`, `name`, and `index` (the latter two may be
+        None).
 
         The input events are modified in-place and passed by reference to the
         VideoEvent.
@@ -1003,6 +1030,7 @@ class VideoEvent(
             return cls()
 
         label = events[0].label
+        name = events[0].name
         index = events[0].index
 
         for event in events:
@@ -1010,6 +1038,12 @@ class VideoEvent(
                 raise ValueError(
                     "Event label '%s' does not match first label '%s'"
                     % (event.label, label)
+                )
+
+            if event.name != name:
+                raise ValueError(
+                    "Event name '%s' does not match first name '%s'"
+                    % (event.name, name)
                 )
 
             if event.index != index:
@@ -1026,7 +1060,11 @@ class VideoEvent(
 
         # Build VideoEvent
         event = cls(
-            label=label, index=index, attrs=event_attrs, objects=objects
+            label=label,
+            name=name,
+            index=index,
+            attrs=event_attrs,
+            objects=objects,
         )
         event.add_detections(events)
         return event
@@ -1065,6 +1103,7 @@ class VideoEvent(
         return cls(
             label=d.get("label", None),
             confidence=d.get("confidence", None),
+            name=d.get("name", None),
             index=d.get("index", None),
             support=support,
             attrs=attrs,
@@ -1125,21 +1164,29 @@ class VideoEvent(
 
         if devent.label is not None and devent.label != self.label:
             logger.warning(
-                "Erasing DetectedEvent label '%s' that does not match "
-                "VideoEvent label '%s'",
+                "DetectedEvent label '%s' does not match VideoEvent label "
+                "'%s'",
                 devent.label,
                 self.label,
             )
 
+        if devent.name is not None and devent.name != self.name:
+            logger.warning(
+                "DetectedEvent name '%s' does not match VideoEvent name '%s'",
+                devent.name,
+                self.name,
+            )
+
         if devent.index is not None and devent.index != self.index:
             logger.warning(
-                "Erasing DetectedEvent index '%s' that does not match "
-                "VideoEvent index '%s'",
+                "DetectedEvent index '%s' does not match VideoEvent index "
+                "'%s'",
                 devent.index,
                 self.index,
             )
 
         devent.label = None
+        devent.name = None
         devent.index = None
         devent.frame_number = frame_number
         self.frames[frame_number] = devent
