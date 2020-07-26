@@ -45,90 +45,130 @@ class AnnotationConfig(Config):
     rendered on images/videos.
 
     Attributes:
-        show_frame_attr_confidences: whether to render video/frame attribute
+        show_frame_attr_names (True): whether to render video/frame attribute
+            names, if available
+        show_frame_attr_confidences (False): whether to render video/frame
+            attribute confidences, if available
+        frame_attrs_box_gap ("1%"): the gap between the frame attributes box
+            and the upper left corner of the image. This value is parsed by
+            ``eta.core.image.Width(frame_attrs_box_gap)``
+        show_object_boxes (True): whether to render object bounding boxes, if
+            available. If this is ``False``, labels, confidences, attributes,
+            etc. are also hidden
+        show_object_names (True): whether to render object names, if available
+        show_object_labels (True): whether to render object labels, if
+            available
+        show_object_attrs (True): whether to render object attributes, if
+            available
+        show_object_confidences (False): whether to render object label
             confidences, if available
-        frame_attrs_box_gap: the gap between the frame attributes box and the
-            upper left corner of the image
-        show_object_boxes: whether to render object bounding boxes, if available.
-            If this is false, labels, confidences, attributes, etc. are also
-            hidden
-        show_object_labels: whether to render object labels, if available
-        show_object_attrs: whether to render object attributes, if available
-        show_object_confidences: whether to render object label confidences, if
+        per_object_name_colors (True): whether to render boxes for objects with
+            different names in different colors
+        per_object_label_colors (True): whether to render boxes for objects
+            with different labels in different colors
+        per_object_index_colors (True): whether to render boxes for objects
+            with different indexes in different colors
+        show_object_attr_names (True): whether to render object attribute
+            names, if available
+        show_object_attr_confidences (False): whether to render object
+            attribute confidences, if available
+        show_object_indices (True): whether to render object indices, if
             available
-        show_object_attr_confidences: whether to render object attribute
+        show_object_masks (True): whether to render object segmentation masks,
+            if available
+        occluded_object_attr ("occluded"): the name of the boolean attribute
+            indicating whether an object is occluded
+        hide_occluded_objects (False): whether to hide objects when they are
+            occluded
+        object_labels_whitelist (None): an optional whitelist of object labels.
+            If provided, only objects with labels in this list will be rendered
+        object_labels_blacklist (None): an optional blacklist of object labels.
+            If provided, object with labels in this list will not be rendered
+        show_event_boxes (True): whether to render event bounding boxes, if
+            available. If this is ``False``, all attributes, confidences, etc.
+            are also hidden
+        show_event_labels (True): whether to render event labels, if available
+        show_event_attrs (True): whether to render event attributes, if
+            available
+        show_event_names (True): whether to render event names, if available
+        show_event_confidences (False): whether to render event label
             confidences, if available
-        show_object_indices: whether to render object indices, if available
-        show_object_masks: whether to render object segmentation masks, if
-            available
-        occluded_object_attr: the name of the boolean attribute indicating
-            whether an object is occluded
-        hide_occluded_objects: whether to hide objects when they are occluded
-        object_labels_whitelist: an optional whitelist of object labels. If
-            provided, only objects with labels in this list will be rendered
-        object_labels_blacklist: an optional blacklist of object labels. If
-            provided, object with labels in this list will not be rendered
-        show_event_boxes: whether to render event bounding boxes, if available.
-            If this is false, all attributes, confidences, etc. are also hidden
-        show_event_labels: whether to render event labels, if available
-        show_event_attrs: whether to render event attributes, if available
-        show_event_confidences: whether to render event label confidences, if
-            available
-        show_event_attr_confidences: whether to render event attribute
+        per_event_name_colors (True): whether to render boxes for events with
+            different names in different colors
+        per_event_label_colors (True): whether to render boxes for events with
+            different labels in different colors
+        per_event_index_colors (True): whether to render boxes for events with
+            different indexes in different colors
+        show_event_attr_names (True): whether to render event attribute names,
+            if available
+        show_event_attr_confidences (False): whether to render event attribute
             confidences, if available
-        show_event_indices: whether to render event indices, if available. By
-            default, this is `True`
-        show_event_masks: whether to render event segmentation masks, if
+        show_event_indices (True): whether to render event indices, if
+            available. By default, this is ``True``
+        show_event_masks (True): whether to render event segmentation masks, if
             available
-        show_event_label_on_objects: whether to render event labels as
+        show_event_label_on_objects (True): whether to render event labels as
             attributes ob objects that belong to events
-        show_event_objects_in_same_color: whether to render objects that belong
-             to events in the same color as their parent event
-        occluded_event_attr: the name of the boolean attribute indicating
-            whether an event is occluded
-        hide_occluded_events: whether to hide events when they are occluded
-        event_labels_whitelist: an optional whitelist of event labels. If
-            provided, only events with labels in this list will be rendered
-        event_labels_blacklist: an optional blacklist of event labels. If
-            provided, events with labels in this list will not be rendered
-        bbox_alpha: the transparency of bounding boxes
-        bbox_label_text_pad_pixels: the padding, in pixels, around the text in
-            bounding box labels
-        bbox_linewidth: the linewidth, in pixels, of bounding boxes
-        mask_border_thickness: the thickness, in pixels, to use when drawing
-            the borders of segmentation masks
-        mask_fill_alpha: the transparency of segmentation masks
-        show_frame_mask_semantics: whether to render semantic labels for frame
-            mask regions, when mask indexes are available
-        attrs_box_render_method: the method used to render object attributes
-        attrs_box_bg_color: the background color for attributes boxes
-        attrs_box_bg_alpha: the transparency of attribute panel boxes
-        attrs_box_text_pad_pixels: the padding, in pixels, around the text in
-            attribute boxes
-        attrs_box_text_line_spacing_pixels: the padding, in pixels, between
+        show_event_objects_in_same_color (True): whether to render objects that
+            belong to events in the same color as their parent event
+        occluded_event_attr ("occluded"): the name of the boolean attribute
+            indicating whether an event is occluded
+        hide_occluded_events (False): whether to hide events when they are
+            occluded
+        event_labels_whitelist (None): an optional whitelist of event labels.
+            If provided, only events with labels in this list will be rendered
+        event_labels_blacklist (None): an optional blacklist of event labels.
+            If provided, events with labels in this list will not be rendered
+        bbox_alpha (0.75): the transparency of bounding boxes
+        bbox_label_text_pad_pixels (2): the padding, in pixels, around the text
+            in bounding box labels
+        bbox_linewidth (2): the linewidth, in pixels, of bounding boxes
+        mask_border_thickness (2): the thickness, in pixels, to use when
+            drawing the borders of segmentation masks
+        mask_fill_alpha (0.7): the transparency of segmentation masks
+        show_frame_mask_semantics (True): whether to render semantic labels for
+            frame mask regions, when mask indexes are available
+        attrs_box_render_method ("panel"): the method used to render object
+            attributes
+        attrs_box_bg_color ("#000000"): the background color for attributes
+            boxes
+        attrs_box_bg_alpha (0.5): the transparency of attribute panel boxes
+        attrs_box_text_pad_pixels (5): the padding, in pixels, around the text
+            in attribute boxes
+        attrs_box_text_line_spacing_pixels (1): the padding, in pixels, between
             each line of text in attribute boxes
-        show_all_confidences: whether to render all confidences, if available.
-            If set to `True`, this overrides all other confidence flags
-        hide_attr_values: an optional list of attribute values (of any kind)
-            to NOT RENDER
-        hide_false_boolean_attrs: whether to hide attributes (of any kind)
-            when they are False
-        confidence_scaled_alpha: whether to scale alpha values of objects
-            and events based on their associated confidences
-        colormap_config: the `eta.core.annotations.ColormapConfig` to use to
-            select colors for objects/event boxes
-        text_color: the annotation text color
-        font_path: the path to the `PIL.ImageFont` to use
-        font_size: the font size to use
-        scale_by_media_height: whether to scale font sizes and linewidths
-            according to the height of the media (relative to a height of 720
-            pixels)
-        add_logo: whether to add a logo to the video
-        logo_config: the `eta.core.logo.LogoConfig` describing the logo to use
+        show_all_names (False): whether to render all names, if available. If
+            set to ``True``, this overrides all other name flags
+        show_all_confidences (False): whether to render all confidences, if
+            available. If set to ``True``, this overrides all other confidence
+            flags
+        hide_attr_values (None): an optional list of attribute values (of any
+            kind) to _not render_
+        hide_false_boolean_attrs (False): whether to hide attributes (of any
+            kind) when they are ``False``
+        confidence_scaled_alpha (False): whether to scale alpha values of
+            objects and events based on their associated confidences
+        colormap_config (None): the ``eta.core.annotations.ColormapConfig`` to
+            use to select colors for objects/event boxes
+        text_color ("#FFFFFF"): the annotation text color
+        font_path (``eta.core.constants.DEFAULT_FONT_PATH``): the path to the
+            ``PIL.ImageFont`` to use
+        font_size (16): the font size to use
+        scale_by_media_height (True): whether to scale font sizes and
+            linewidths according to the height of the media (relative to a
+            height of 720 pixels)
+        add_logo (False): whether to add a logo to the frames
+        logo_config (None): the ``eta.core.logo.LogoConfig`` describing the
+            logo to use
     """
 
     def __init__(self, d):
-        ##### FRAME ATTRIBUTES #####
+
+        # FRAME ATTRIBUTES ####################################################
+
+        self.show_frame_attr_names = self.parse_bool(
+            d, "show_frame_attr_names", default=True
+        )
         self.show_frame_attr_confidences = self.parse_bool(
             d, "show_frame_attr_confidences", default=False
         )
@@ -136,9 +176,13 @@ class AnnotationConfig(Config):
             d, "frame_attrs_box_gap", default="1%"
         )
 
-        ##### OBJECTS #####
+        # OBJECTS #############################################################
+
         self.show_object_boxes = self.parse_bool(
             d, "show_object_boxes", default=True
+        )
+        self.show_object_names = self.parse_bool(
+            d, "show_object_names", default=True
         )
         self.show_object_labels = self.parse_bool(
             d, "show_object_labels", default=True
@@ -148,6 +192,18 @@ class AnnotationConfig(Config):
         )
         self.show_object_confidences = self.parse_bool(
             d, "show_object_confidences", default=False
+        )
+        self.per_object_name_colors = self.parse_bool(
+            d, "per_object_name_colors", default=True
+        )
+        self.per_object_label_colors = self.parse_bool(
+            d, "per_object_label_colors", default=True
+        )
+        self.per_object_index_colors = self.parse_bool(
+            d, "per_object_index_colors", default=True
+        )
+        self.show_object_attr_names = self.parse_bool(
+            d, "show_object_attr_names", default=True
         )
         self.show_object_attr_confidences = self.parse_bool(
             d, "show_object_attr_confidences", default=False
@@ -171,7 +227,8 @@ class AnnotationConfig(Config):
             d, "object_labels_blacklist", default=None
         )
 
-        ##### EVENTS #####
+        # EVENTS ##############################################################
+
         self.show_event_boxes = self.parse_bool(
             d, "show_event_boxes", default=True
         )
@@ -181,8 +238,23 @@ class AnnotationConfig(Config):
         self.show_event_attrs = self.parse_bool(
             d, "show_event_attrs", default=True
         )
+        self.show_event_names = self.parse_bool(
+            d, "show_event_names", default=True
+        )
         self.show_event_confidences = self.parse_bool(
             d, "show_event_confidences", default=False
+        )
+        self.per_event_name_colors = self.parse_bool(
+            d, "per_event_name_colors", default=True
+        )
+        self.per_event_label_colors = self.parse_bool(
+            d, "per_event_label_colors", default=True
+        )
+        self.per_event_index_colors = self.parse_bool(
+            d, "per_event_index_colors", default=True
+        )
+        self.show_event_attr_names = self.parse_bool(
+            d, "show_event_attr_names", default=True
         )
         self.show_event_attr_confidences = self.parse_bool(
             d, "show_event_attr_confidences", default=False
@@ -212,14 +284,16 @@ class AnnotationConfig(Config):
             d, "event_labels_blacklist", default=None
         )
 
-        ##### BOUNDING BOXES #####
+        # BOUNDING BOXES ######################################################
+
         self.bbox_alpha = self.parse_number(d, "bbox_alpha", default=0.75)
         self.bbox_label_text_pad_pixels = self.parse_number(
             d, "bbox_label_text_pad_pixels", default=2
         )
         self.bbox_linewidth = self.parse_number(d, "bbox_linewidth", default=2)
 
-        ##### MASKS #####
+        # MASKS ###############################################################
+
         self.mask_border_thickness = self.parse_number(
             d, "mask_border_thickness", default=2
         )
@@ -230,7 +304,8 @@ class AnnotationConfig(Config):
             d, "show_frame_mask_semantics", default=True
         )
 
-        ##### ATTRIBUTE BOXES #####
+        # ATTRIBUTE BOXES #####################################################
+
         self.attrs_box_render_method = self.parse_categorical(
             d, "attrs_box_render_method", ["list", "panel"], default="panel"
         )
@@ -247,7 +322,11 @@ class AnnotationConfig(Config):
             d, "attrs_box_text_line_spacing_pixels", default=1
         )
 
-        ##### ALL LABELS #####
+        # ALL LABELS ##########################################################
+
+        self.show_all_names = self.parse_bool(
+            d, "show_all_names", default=False
+        )
         self.show_all_confidences = self.parse_bool(
             d, "show_all_confidences", default=False
         )
@@ -261,7 +340,8 @@ class AnnotationConfig(Config):
             d, "confidence_scaled_alpha", default=False
         )
 
-        ##### FONTS AND COLORS #####
+        # FONTS AND COLORS ####################################################
+
         self.colormap_config = self.parse_object(
             d, "colormap_config", ColormapConfig, default=None
         )
@@ -274,8 +354,9 @@ class AnnotationConfig(Config):
             d, "scale_by_media_height", default=True
         )
 
-        ##### LOGO #####
-        self.add_logo = self.parse_bool(d, "add_logo", default=True)
+        # LOGO ################################################################
+
+        self.add_logo = self.parse_bool(d, "add_logo", default=False)
         self.logo_config = self.parse_object(
             d, "logo_config", etal.LogoConfig, default=None
         )
@@ -572,6 +653,10 @@ def _annotate_image(img, frame_labels, annotation_config, mask_index=None):
     # Parse config
     hide_attr_values = annotation_config.hide_attr_values
     hide_false_boolean_attrs = annotation_config.hide_false_boolean_attrs
+    show_attr_names = (
+        annotation_config.show_frame_attr_names
+        or annotation_config.show_all_names
+    )
     show_frame_attr_confidences = (
         annotation_config.show_frame_attr_confidences
         or annotation_config.show_all_confidences
@@ -637,6 +722,7 @@ def _annotate_image(img, frame_labels, annotation_config, mask_index=None):
                     frame_labels.attrs,
                     hide_attr_values,
                     hide_false_boolean_attrs,
+                    show_attr_names,
                     show_frame_attr_confidences,
                 )
             )
@@ -686,11 +772,18 @@ def _draw_event(img, event, annotation_config, color=None):
 
     # Parse config
     show_box = annotation_config.show_event_boxes
+    show_name = (
+        annotation_config.show_event_names or annotation_config.show_all_names
+    )
     show_label = annotation_config.show_event_labels
     show_attrs = annotation_config.show_event_attrs
     show_confidence = (
         annotation_config.show_event_confidences
         or annotation_config.show_all_confidences
+    )
+    show_attr_names = (
+        annotation_config.show_event_attr_names
+        or annotation_config.show_all_names
     )
     show_attr_confidences = (
         annotation_config.show_event_attr_confidences
@@ -706,6 +799,9 @@ def _draw_event(img, event, annotation_config, color=None):
     show_event_objects_in_same_color = (
         annotation_config.show_event_objects_in_same_color
     )
+    per_name_colors = annotation_config.per_event_name_colors
+    per_label_colors = annotation_config.per_event_label_colors
+    per_index_colors = annotation_config.per_event_index_colors
 
     # If the event has no bounding box, return event attributes for rendering
     # via another method
@@ -716,9 +812,11 @@ def _draw_event(img, event, annotation_config, color=None):
         event,
         annotation_config,
         show_box,
+        show_name,
         show_label,
         show_attrs,
         show_confidence,
+        show_attr_names,
         show_attr_confidences,
         show_index,
         occluded_attr,
@@ -726,6 +824,9 @@ def _draw_event(img, event, annotation_config, color=None):
         labels_whitelist,
         labels_blacklist,
         show_mask,
+        per_name_colors,
+        per_label_colors,
+        per_index_colors,
         color=color,
         return_attrs=return_attrs,
     )
@@ -762,11 +863,18 @@ def _draw_event(img, event, annotation_config, color=None):
 def _draw_object(img, obj, annotation_config, color=None, pre_attrs=None):
     # Parse config
     show_box = annotation_config.show_object_boxes
+    show_name = (
+        annotation_config.show_object_names or annotation_config.show_all_names
+    )
     show_label = annotation_config.show_object_labels
     show_attrs = annotation_config.show_object_attrs
     show_confidence = (
         annotation_config.show_object_confidences
         or annotation_config.show_all_confidences
+    )
+    show_attr_names = (
+        annotation_config.show_object_attr_names
+        or annotation_config.show_all_names
     )
     show_attr_confidences = (
         annotation_config.show_object_attr_confidences
@@ -778,15 +886,20 @@ def _draw_object(img, obj, annotation_config, color=None, pre_attrs=None):
     labels_whitelist = annotation_config.object_labels_whitelist
     labels_blacklist = annotation_config.object_labels_blacklist
     show_mask = annotation_config.show_object_masks
+    per_name_colors = annotation_config.per_object_name_colors
+    per_label_colors = annotation_config.per_object_label_colors
+    per_index_colors = annotation_config.per_object_index_colors
 
     img_anno, _, _ = _draw_bbox_with_attrs(
         img,
         obj,
         annotation_config,
         show_box,
+        show_name,
         show_label,
         show_attrs,
         show_confidence,
+        show_attr_names,
         show_attr_confidences,
         show_index,
         occluded_attr,
@@ -794,6 +907,9 @@ def _draw_object(img, obj, annotation_config, color=None, pre_attrs=None):
         labels_whitelist,
         labels_blacklist,
         show_mask,
+        per_name_colors,
+        per_label_colors,
+        per_index_colors,
         color=color,
         pre_attrs=pre_attrs,
     )
@@ -806,9 +922,11 @@ def _draw_bbox_with_attrs(
     obj_or_event,
     annotation_config,
     show_box,
+    show_name,
     show_label,
     show_attrs,
     show_confidence,
+    show_attr_names,
     show_attr_confidences,
     show_index,
     occluded_attr,
@@ -816,6 +934,9 @@ def _draw_bbox_with_attrs(
     labels_whitelist,
     labels_blacklist,
     show_mask,
+    per_name_colors,
+    per_label_colors,
+    per_index_colors,
     color=None,
     return_attrs=False,
     pre_attrs=None,
@@ -867,9 +988,13 @@ def _draw_bbox_with_attrs(
     # Render title string
     title_str, title_hash = _render_bbox_title(
         obj_or_event,
+        show_name=show_name,
         show_label=show_label,
         show_confidence=show_confidence,
         show_index=show_index,
+        per_name_colors=per_name_colors,
+        per_label_colors=per_label_colors,
+        per_index_colors=per_index_colors,
     )
 
     # Choose box color
@@ -933,6 +1058,7 @@ def _draw_bbox_with_attrs(
             attrs,
             hide_attr_values,
             hide_false_boolean_attrs,
+            show_attr_names,
             show_attr_confidences,
         )
 
@@ -1242,7 +1368,11 @@ def _make_event_attr(event, show_index=True):
 
 
 def _render_attrs(
-    attrs, hide_attr_values, hide_false_boolean_attrs, show_confidence
+    attrs,
+    hide_attr_values,
+    hide_false_boolean_attrs,
+    show_name,
+    show_confidence,
 ):
     attr_strs = []
     for attr in attrs:
@@ -1259,7 +1389,9 @@ def _render_attrs(
             continue
 
         attr_strs.append(
-            _render_attr_name_value(attr, show_confidence=show_confidence)
+            _render_attr_name_value(
+                attr, show_name=show_name, show_confidence=show_confidence,
+            )
         )
 
     return attr_strs
@@ -1277,15 +1409,19 @@ def _render_attr_value(attr, show_confidence=True):
     return attr_str
 
 
-def _render_attr_name_value(attr, show_confidence=True):
-    name = _clean_str(attr.name)
+def _render_attr_name_value(attr, show_name=True, show_confidence=True):
+    name = _clean_str(attr.name or "")
 
     if isinstance(attr, etad.NumericAttribute):
         value = _render_numeric_attr_value(attr)
     else:
         value = _clean_str(attr.value)
 
-    attr_str = "%s: %s" % (name, value)
+    if show_name and name:
+        attr_str = "%s: %s" % (name, value)
+    else:
+        attr_str = value
+
     if show_confidence and attr.confidence is not None:
         attr_str += " (%.2f)" % attr.confidence
 
@@ -1293,25 +1429,58 @@ def _render_attr_name_value(attr, show_confidence=True):
 
 
 def _render_bbox_title(
-    obj_or_event, show_label=True, show_confidence=False, show_index=True
+    obj_or_event,
+    show_name=True,
+    show_label=True,
+    show_confidence=False,
+    show_index=True,
+    per_name_colors=True,
+    per_label_colors=True,
+    per_index_colors=True,
 ):
+    name = obj_or_event.name
     label = obj_or_event.label
     confidence = obj_or_event.confidence
     index = obj_or_event.index
 
-    title_str = ""
-    title_hash = 0
+    # Render title string
 
-    if show_label and label is not None:
+    title_str = ""
+
+    if show_name and name:
+        _name = _clean_str(name).upper()
+    else:
+        _name = None
+
+    if show_label and label:
         _label = _clean_str(label).upper()
-        title_str += _label
-        title_hash += _label.__hash__()
+    else:
+        _label = None
+
+    if _name and _label:
+        title_str = "%s: %s" % (_name, _label)
+    elif _name:
+        title_str = _name
+    elif _label:
+        title_str = _label
 
     if show_confidence and confidence is not None:
         title_str += " (%.2f)" % confidence
 
     if show_index and index is not None:
         title_str += "     %d" % index
+
+    # Compute title hash
+
+    title_hash = 0
+
+    if _name and per_name_colors:
+        title_hash += _name.__hash__()
+
+    if _label and per_label_colors:
+        title_hash += _label.__hash__()
+
+    if index is not None and per_index_colors:
         title_hash += str(index).__hash__()
 
     return title_str, title_hash
