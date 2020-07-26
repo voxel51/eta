@@ -109,6 +109,7 @@ def _process_video(data, annotation_config):
         labels = etav.VideoLabels()
 
     # Annotate video
+    logger.info("Writing annotated video to '%s'", data.output_path)
     etaa.annotate_video(
         data.video_path,
         labels,
