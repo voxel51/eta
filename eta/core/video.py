@@ -3023,6 +3023,7 @@ class VideoProcessor(object):
             )
         else:
             self._reader = OpenCVVideoReader(inpath, frames=frames)
+
         self._video_clip_writer = None
         self._video_writer = None
         self._write_images = bool(out_images_path)
@@ -3057,6 +3058,9 @@ class VideoProcessor(object):
 
     def __exit__(self, *args):
         self.close()
+
+    def __len__(self):
+        return len(self._reader)
 
     def __iter__(self):
         return self
@@ -3194,6 +3198,7 @@ class VideoReader(object):
         # Parse frames
         if frames is None or frames == "*":
             frames = "1-%d" % self.total_frame_count
+
         self._ranges = etaf.parse_frame_ranges(frames)
         self.frames = self._ranges.to_human_str()
 
@@ -3202,6 +3207,9 @@ class VideoReader(object):
 
     def __exit__(self, *args):
         self.close()
+
+    def __len__(self):
+        return len(self.frames)
 
     def __iter__(self):
         return self
