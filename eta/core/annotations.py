@@ -44,121 +44,121 @@ class AnnotationConfig(Config):
     """Configuration class that controls the look-and-feel of the annotations
     rendered on images/videos.
 
-    Attributes:
-        show_frame_attr_names (True): whether to render video/frame attribute
+    Args:
+        show_frame_attr_names: (True) whether to render video/frame attribute
             names, if available
-        show_frame_attr_confidences (False): whether to render video/frame
+        show_frame_attr_confidences: (False) whether to render video/frame
             attribute confidences, if available
-        frame_attrs_box_gap ("1%"): the gap between the frame attributes box
+        frame_attrs_box_gap: ("1%") the gap between the frame attributes box
             and the upper left corner of the image. This value is parsed by
             ``eta.core.image.Width(frame_attrs_box_gap)``
-        show_object_boxes (True): whether to render object bounding boxes, if
+        show_object_boxes: (True) whether to render object bounding boxes, if
             available. If this is ``False``, labels, confidences, attributes,
             etc. are also hidden
-        show_object_names (True): whether to render object names, if available
-        show_object_labels (True): whether to render object labels, if
+        show_object_names: (True) whether to render object names, if available
+        show_object_labels: (True) whether to render object labels, if
             available
-        show_object_attrs (True): whether to render object attributes, if
+        show_object_attrs: (True) whether to render object attributes, if
             available
-        show_object_confidences (False): whether to render object label
+        show_object_confidences: (False) whether to render object label
             confidences, if available
-        per_object_name_colors (True): whether to render boxes for objects with
+        per_object_name_colors: (True) whether to render boxes for objects with
             different names in different colors
-        per_object_label_colors (True): whether to render boxes for objects
+        per_object_label_colors: (True) whether to render boxes for objects
             with different labels in different colors
-        per_object_index_colors (True): whether to render boxes for objects
+        per_object_index_colors: (True) whether to render boxes for objects
             with different indexes in different colors
-        show_object_attr_names (True): whether to render object attribute
+        show_object_attr_names: (True) whether to render object attribute
             names, if available
-        show_object_attr_confidences (False): whether to render object
+        show_object_attr_confidences: (False) whether to render object
             attribute confidences, if available
-        show_object_indices (True): whether to render object indices, if
+        show_object_indices: (True) whether to render object indices, if
             available
-        show_object_masks (True): whether to render object segmentation masks,
+        show_object_masks: (True) whether to render object segmentation masks,
             if available
-        occluded_object_attr ("occluded"): the name of the boolean attribute
+        occluded_object_attr: ("occluded") the name of the boolean attribute
             indicating whether an object is occluded
-        hide_occluded_objects (False): whether to hide objects when they are
+        hide_occluded_objects: (False) whether to hide objects when they are
             occluded
-        object_labels_whitelist (None): an optional whitelist of object labels.
+        object_labels_whitelist: (None) an optional whitelist of object labels.
             If provided, only objects with labels in this list will be rendered
-        object_labels_blacklist (None): an optional blacklist of object labels.
+        object_labels_blacklist: (None) an optional blacklist of object labels.
             If provided, object with labels in this list will not be rendered
-        show_event_boxes (True): whether to render event bounding boxes, if
+        show_event_boxes: (True) whether to render event bounding boxes, if
             available. If this is ``False``, all attributes, confidences, etc.
             are also hidden
-        show_event_labels (True): whether to render event labels, if available
-        show_event_attrs (True): whether to render event attributes, if
+        show_event_labels: (True) whether to render event labels, if available
+        show_event_attrs: (True) whether to render event attributes, if
             available
-        show_event_names (True): whether to render event names, if available
-        show_event_confidences (False): whether to render event label
+        show_event_names: (True) whether to render event names, if available
+        show_event_confidences: (False) whether to render event label
             confidences, if available
-        per_event_name_colors (True): whether to render boxes for events with
+        per_event_name_colors: (True) whether to render boxes for events with
             different names in different colors
-        per_event_label_colors (True): whether to render boxes for events with
+        per_event_label_colors: (True) whether to render boxes for events with
             different labels in different colors
-        per_event_index_colors (True): whether to render boxes for events with
+        per_event_index_colors: (True) whether to render boxes for events with
             different indexes in different colors
-        show_event_attr_names (True): whether to render event attribute names,
+        show_event_attr_names: (True) whether to render event attribute names,
             if available
-        show_event_attr_confidences (False): whether to render event attribute
+        show_event_attr_confidences: (False) whether to render event attribute
             confidences, if available
-        show_event_indices (True): whether to render event indices, if
+        show_event_indices: (True) whether to render event indices, if
             available. By default, this is ``True``
-        show_event_masks (True): whether to render event segmentation masks, if
+        show_event_masks: (True) whether to render event segmentation masks, if
             available
-        show_event_label_on_objects (True): whether to render event labels as
+        show_event_label_on_objects: (True) whether to render event labels as
             attributes ob objects that belong to events
-        show_event_objects_in_same_color (True): whether to render objects that
+        show_event_objects_in_same_color: (True) whether to render objects that
             belong to events in the same color as their parent event
-        occluded_event_attr ("occluded"): the name of the boolean attribute
+        occluded_event_attr: ("occluded") the name of the boolean attribute
             indicating whether an event is occluded
-        hide_occluded_events (False): whether to hide events when they are
+        hide_occluded_events: (False) whether to hide events when they are
             occluded
-        event_labels_whitelist (None): an optional whitelist of event labels.
+        event_labels_whitelist: (None) an optional whitelist of event labels.
             If provided, only events with labels in this list will be rendered
-        event_labels_blacklist (None): an optional blacklist of event labels.
+        event_labels_blacklist: (None) an optional blacklist of event labels.
             If provided, events with labels in this list will not be rendered
-        bbox_alpha (0.75): the transparency of bounding boxes
-        bbox_label_text_pad_pixels (2): the padding, in pixels, around the text
+        bbox_alpha: (0.75) the transparency of bounding boxes
+        bbox_label_text_pad_pixels: (2) the padding, in pixels, around the text
             in bounding box labels
-        bbox_linewidth (2): the linewidth, in pixels, of bounding boxes
-        mask_border_thickness (2): the thickness, in pixels, to use when
+        bbox_linewidth: (2) the linewidth, in pixels, of bounding boxes
+        mask_border_thickness: (2) the thickness, in pixels, to use when
             drawing the borders of segmentation masks
-        mask_fill_alpha (0.7): the transparency of segmentation masks
-        show_frame_mask_semantics (True): whether to render semantic labels for
+        mask_fill_alpha: (0.7) the transparency of segmentation masks
+        show_frame_mask_semantics: (True) whether to render semantic labels for
             frame mask regions, when mask indexes are available
-        attrs_box_render_method ("panel"): the method used to render object
+        attrs_box_render_method: ("panel") the method used to render object
             attributes
-        attrs_box_bg_color ("#000000"): the background color for attributes
+        attrs_box_bg_color: ("#000000") the background color for attributes
             boxes
-        attrs_box_bg_alpha (0.5): the transparency of attribute panel boxes
-        attrs_box_text_pad_pixels (5): the padding, in pixels, around the text
+        attrs_box_bg_alpha: (0.5) the transparency of attribute panel boxes
+        attrs_box_text_pad_pixels: (5) the padding, in pixels, around the text
             in attribute boxes
-        attrs_box_text_line_spacing_pixels (1): the padding, in pixels, between
+        attrs_box_text_line_spacing_pixels: (1) the padding, in pixels, between
             each line of text in attribute boxes
-        show_all_names (False): whether to render all names, if available. If
+        show_all_names: (False) whether to render all names, if available. If
             set to ``True``, this overrides all other name flags
-        show_all_confidences (False): whether to render all confidences, if
+        show_all_confidences: (False) whether to render all confidences, if
             available. If set to ``True``, this overrides all other confidence
             flags
-        hide_attr_values (None): an optional list of attribute values (of any
+        hide_attr_values: (None) an optional list of attribute values (of any
             kind) to _not render_
-        hide_false_boolean_attrs (False): whether to hide attributes (of any
+        hide_false_boolean_attrs: (False) whether to hide attributes (of any
             kind) when they are ``False``
-        confidence_scaled_alpha (False): whether to scale alpha values of
+        confidence_scaled_alpha: (False) whether to scale alpha values of
             objects and events based on their associated confidences
-        colormap_config (None): the ``eta.core.annotations.ColormapConfig`` to
+        colormap_config: (None) the ``eta.core.annotations.ColormapConfig`` to
             use to select colors for objects/event boxes
-        text_color ("#FFFFFF"): the annotation text color
-        font_path (``eta.core.constants.DEFAULT_FONT_PATH``): the path to the
+        text_color: ("#FFFFFF") the annotation text color
+        font_path: (``eta.core.constants.DEFAULT_FONT_PATH``) the path to the
             ``PIL.ImageFont`` to use
-        font_size (16): the font size to use
-        scale_by_media_height (True): whether to scale font sizes and
+        font_size: (16) the font size to use
+        scale_by_media_height: (True) whether to scale font sizes and
             linewidths according to the height of the media (relative to a
             height of 720 pixels)
-        add_logo (False): whether to add a logo to the frames
-        logo_config (None): the ``eta.core.logo.LogoConfig`` describing the
+        add_logo: (False) whether to add a logo to the frames
+        logo_config: (None) the ``eta.core.logo.LogoConfig`` describing the
             logo to use
     """
 
