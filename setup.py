@@ -23,7 +23,7 @@ setup(
     author="Voxel51, Inc.",
     author_email="info@voxel51.com",
     url="https://github.com/voxel51/eta",
-    license="BSD-4-Clause",
+    license="Apache",
     packages=find_packages(),
     include_package_data=True,
     install_requires=[
@@ -59,6 +59,7 @@ setup(
         "Operating System :: POSIX :: Linux",
         "Programming Language :: Python :: 2.7",
         "Programming Language :: Python :: 3",
+        "License :: OSI Approved :: Apache Software License",
     ],
     entry_points={"console_scripts": ["eta=eta.core.cli:main"]},
     python_requires=">=2.7",
