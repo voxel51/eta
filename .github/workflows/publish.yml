@@ -18,9 +18,11 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade pip setuptools wheel twine
-      - name: Validate version
+      - name: Install ETA
         run: |
           pip install --no-deps -e .
+      - name: Validate version
+        run: |
           SETUP_VERSION="$(pip list --format json | jq -r '.[] | select(.name=="voxel51-eta") | .version')"
           TAG_VERSION="$(echo "${{ github.ref }}" | sed 's/^refs\/tags\/v//')"
           echo "setup.py version: ${SETUP_VERSION}"
@@ -40,4 +42,4 @@ jobs:
           TWINE_PASSWORD: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
           TWINE_NON_INTERACTIVE: 1
         run: |
-          twine upload --repository-url https://pypi.voxel51.com downloads/*.whl
+          twine upload --repository-url https://pypi.voxel51.com dist/*.whl
