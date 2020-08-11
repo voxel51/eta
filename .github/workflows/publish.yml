@@ -1,0 +1,43 @@
+name: Publish
+
+on:
+  push:
+    tags:
+      - v*
+
+jobs:
+  publish:
+    runs-on: ubuntu-18.04
+    steps:
+      - name: Clone ETA
+        uses: actions/checkout@v2
+      - name: Set up Python 3
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip setuptools wheel twine
+      - name: Validate version
+        run: |
+          pip install -e .
+          SETUP_VERSION="$(pip list --format json | jq -r '.[] | select(.name=="voxel51-eta") | .version')"
+          TAG_VERSION="$(echo "${{ github.ref }}") | sed 's/^refs\/tags\/v//'"
+          echo "setup.py version: ${SETUP_VERSION}"
+          echo "tagged version: ${TAG_VERSION}"
+          test "${SETUP_VERSION}" = "${TAG_VERSION}"
+      - name: Build wheel
+        run: |
+          python setup.py bdist_wheel
+      - name: Upload wheel
+        uses: actions/upload-artifact@v2
+        with:
+          name: wheel
+          path: dist/*.whl
+      - name: Publish wheel
+        env:
+          TWINE_USERNAME: voxel51-ci
+          TWINE_PASSWORD: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
+          TWINE_NON_INTERACTIVE: 1
+        run: |
+          twine upload --repository-url https://pypi.voxel51.com downloads/*.whl
