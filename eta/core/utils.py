@@ -3363,6 +3363,10 @@ def escape_chars(s, chars):
     Returns:
         the escaped string
     """
+    # Must escape `]` and `-` because they have special meaning inside the
+    # regex we're using to do the escaping
+    chars = replace_strings(chars, [("]", "\]"), ("-", "\-")])
+
     return re.sub(r"([%s])" % "".join(chars), r"\\\1", s)
 
 
