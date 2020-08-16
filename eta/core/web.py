@@ -87,7 +87,8 @@ def download_google_drive_file(fid, path=None, chunk_size=None):
 class WebSession(object):
     """Class for downloading files from the web."""
 
-    DEFAULT_CHUNK_SIZE = None
+    # Chunk size, in bytes
+    DEFAULT_CHUNK_SIZE = 64 * 1024
 
     def __init__(self, chunk_size=None):
         """Creates a WebSession instance.
