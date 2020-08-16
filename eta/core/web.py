@@ -198,7 +198,7 @@ class GoogleDriveSession(WebSession):
 
 def _get_content_length(r):
     try:
-        return r.headers["Content-Length"]
+        return int(r.headers["Content-Length"])
     except KeyError:
         pass
 
