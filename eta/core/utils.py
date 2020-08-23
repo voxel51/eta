@@ -1673,11 +1673,12 @@ class Timer(object):
         with etau.Timer() as t:
             time.sleep(1.5)
 
-        print("Elapsed time: %s" % t.elapsed_time_str)
+    Args:
+        quiet (False): whether to suppress timing message when timer exits
     """
 
-    def __init__(self):
-        """Creates a Timer instance."""
+    def __init__(self, quiet=False):
+        self.quiet = quiet
         self._start_time = None
         self._stop_time = None
         self._is_running = None
@@ -1727,6 +1728,8 @@ class Timer(object):
         self._stop_time = self._get_current_time()
         self._elapsed_time += self._stop_time - self._start_time
         self._is_running = False
+        if not self.quiet:
+            logger.info("Time elapsed: %s", self.elapsed_time_str)
 
     def reset(self):
         """Resets the timer."""
