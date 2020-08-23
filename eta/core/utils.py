@@ -1062,7 +1062,7 @@ class ProgressBar(object):
         self._max_width = max_width
         self._has_dynamic_width = max_width is None
         self._max_fps = max_fps
-        self._timer = Timer()
+        self._timer = Timer(quiet=True)
         self._is_running = False
         self._last_draw_time = -1
         self._draw_times = deque([0], maxlen=10)
