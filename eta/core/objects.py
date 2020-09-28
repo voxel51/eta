@@ -361,9 +361,7 @@ class DetectedObjectContainer(etal.LabelsContainer):
     _ELE_ATTR = "objects"
 
     def get_labels(self):
-        """Returns the set of ``label` values of all objects in the container.
-
-        ``None`` indexes are omitted.
+        """Returns the set of ``label`` values of all objects in the container.
 
         Returns:
             a set of labels
