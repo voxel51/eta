@@ -19,6 +19,7 @@ from builtins import *
 
 import eta.core.data as etad
 import eta.core.events as etae
+import eta.core.geometry as etag
 import eta.core.labels as etal
 import eta.core.objects as etao
 import eta.core.serial as etas
@@ -29,15 +30,19 @@ class FrameLabels(etal.Labels):
 
     FrameLabels are spatial concepts that describe a collection of information
     about a specific frame. FrameLabels can have frame-level attributes,
-    object detections, event detections, and segmentation masks.
+    object detections, polylines, event detections, segmentation masks, and
+    keypoints.
 
     Attributes:
         frame_number: (optional) the frame number
         mask: (optional) a segmentation mask for the frame
         mask_index: (optional) a MaskIndex describing the semantics of the
             segmentation mask
+        keypoints: (optional) a Keypoints instance describing keypoints in the
+            frame
         attrs: an AttributeContainer of attributes of the frame
         objects: a DetectedObjectContainer of objects in the frame
+        polylines: (optional) a PolylineContainer of polylines in the frame
         events: a DetectedEventContainer of events in the frame
     """
 
@@ -46,8 +51,10 @@ class FrameLabels(etal.Labels):
         frame_number=None,
         mask=None,
         mask_index=None,
+        keypoints=None,
         attrs=None,
         objects=None,
+        polylines=None,
         events=None,
     ):
         """Creates a FrameLabels instance.
@@ -57,16 +64,22 @@ class FrameLabels(etal.Labels):
             mask: (optional) a segmentation mask for the frame
             mask_index: (optional) a MaskIndex describing the semantics of the
                 segmentation mask
+            keypoints: (optional) a Keypoints instance describing keypoints in
+                the frame
             attrs: (optional) an AttributeContainer of attributes for the frame
             objects: (optional) a DetectedObjectContainer of objects for the
+                frame
+            polylines: (optional) a PolylineContainer of polylines for the
                 frame
             events: (optional) a DetectedEventContainer of events for the frame
         """
         self.frame_number = frame_number
         self.mask = mask
         self.mask_index = mask_index
+        self.keypoints = keypoints or etag.Keypoints()
         self.attrs = attrs or etad.AttributeContainer()
         self.objects = objects or etao.DetectedObjectContainer()
+        self.polylines = polylines or etag.PolylineContainer()
         self.events = events or etae.DetectedEventContainer()
 
     @property
@@ -74,8 +87,10 @@ class FrameLabels(etal.Labels):
         """Whether the frame has no labels of any kind."""
         return not (
             self.has_mask
+            or self.has_keypoints
             or self.has_attributes
             or self.has_objects
+            or self.has_polylines
             or self.has_events
         )
 
@@ -95,6 +110,11 @@ class FrameLabels(etal.Labels):
         return self.mask_index is not None
 
     @property
+    def has_keypoints(self):
+        """Whether the frame has at least one keypoint."""
+        return bool(self.keypoints)
+
+    @property
     def has_attributes(self):
         """Whether the frame has at least one attribute."""
         return bool(self.attrs)
@@ -112,6 +132,11 @@ class FrameLabels(etal.Labels):
                 return True
 
         return False
+
+    @property
+    def has_polylines(self):
+        """Whether the frame has at least one polyline."""
+        return bool(self.polylines)
 
     @property
     def has_events(self):
@@ -142,6 +167,14 @@ class FrameLabels(etal.Labels):
             an iterator over `DetectedObject`s
         """
         return iter(self.objects)
+
+    def iter_polylines(self):
+        """Returns an iterator over the polylines in the frame.
+
+        Returns:
+            an iterator over `Polyline`s
+        """
+        return iter(self.polylines)
 
     def iter_events(self):
         """Returns an iterator over the events in the frame.
@@ -199,6 +232,14 @@ class FrameLabels(etal.Labels):
         """Clears the `index` of all events in the frame."""
         self.events.clear_indexes()
 
+    def add_keypoints(self, keypoints):
+        """Adds the keypoints to the frame.
+
+        Args:
+            keypoints: a Keypoints
+        """
+        self.keypoints.add(keypoints)
+
     def add_attribute(self, attr):
         """Adds the attribute to the frame.
 
@@ -231,6 +272,22 @@ class FrameLabels(etal.Labels):
         """
         self.objects.add_container(objs)
 
+    def add_polyline(self, polyline):
+        """Adds the polyline to the frame.
+
+        Args:
+            polyline: a Polyline
+        """
+        self.polylines.add(polyline)
+
+    def add_polylines(self, polylines):
+        """Adds the polylines to the frame.
+
+        Args:
+            polylines: a PolylineContainer
+        """
+        self.polylines.add_container(polylines)
+
     def add_event(self, event):
         """Adds the event to the frame.
 
@@ -246,6 +303,16 @@ class FrameLabels(etal.Labels):
             events: a DetectedEventContainer
         """
         self.events.add_container(events)
+
+    def pop_keypoints(self):
+        """Pops the keypoints from the frame.
+
+        Returns:
+            a Keypoints
+        """
+        keypoints = self.keypoints
+        self.clear_keypoints()
+        return keypoints
 
     def pop_attributes(self):
         """Pops the frame-level attributes from the frame.
@@ -267,6 +334,16 @@ class FrameLabels(etal.Labels):
         self.clear_objects()
         return objects
 
+    def pop_polylines(self):
+        """Pops the polylines from the frame.
+
+        Returns:
+            a PolylineContainer
+        """
+        polylines = self.polylines
+        self.clear_polylines()
+        return polylines
+
     def pop_events(self):
         """Pops the events from the frame.
 
@@ -277,6 +354,10 @@ class FrameLabels(etal.Labels):
         self.clear_events()
         return events
 
+    def clear_keypoints(self):
+        """Removes all keypoints from the frame."""
+        self.keypoints = etag.Keypoints()
+
     def clear_attributes(self):
         """Removes all frame-level attributes from the frame."""
         self.attrs = etad.AttributeContainer()
@@ -285,14 +366,22 @@ class FrameLabels(etal.Labels):
         """Removes all objects from the frame."""
         self.objects = etao.DetectedObjectContainer()
 
+    def clear_polylines(self):
+        """Removes all polylines from the frame."""
+        self.polylines = etag.PolylineContainer()
+
     def clear_events(self):
         """Removes all events from the frame."""
         self.events = etae.DetectedEventContainer()
 
     def clear(self):
         """Removes all labels from the frame."""
+        self.mask = None
+        self.mask_index = None
+        self.clear_keypoints()
         self.clear_attributes()
         self.clear_objects()
+        self.clear_polylines()
         self.clear_events()
 
     def merge_labels(self, frame_labels, reindex=False):
@@ -313,8 +402,10 @@ class FrameLabels(etal.Labels):
         if frame_labels.has_mask_index:
             self.mask_index = frame_labels.mask_index
 
+        self.add_keypoints(frame_labels.keypoints)
         self.add_attributes(frame_labels.attrs)
         self.add_objects(frame_labels.objects)
+        self.add_polylines(frame_labels.polylines)
         self.add_events(frame_labels.events)
 
     def filter_by_schema(self, schema):
@@ -353,12 +444,17 @@ class FrameLabels(etal.Labels):
             _attrs.append("mask")
         if self.has_mask_index:
             _attrs.append("mask_index")
+        if self.keypoints:
+            _attrs.append("keypoints")
         if self.attrs:
             _attrs.append("attrs")
         if self.objects:
             _attrs.append("objects")
+        if self.polylines:
+            _attrs.append("polylines")
         if self.events:
             _attrs.append("events")
+
         return _attrs
 
     @classmethod
@@ -368,7 +464,7 @@ class FrameLabels(etal.Labels):
         Args:
             d: a JSON dictionary
             **kwargs: keyword arguments that have already been parsed by a
-            subclass
+                subclass
 
         Returns:
             a FrameLabels
@@ -383,6 +479,10 @@ class FrameLabels(etal.Labels):
         if mask_index is not None:
             mask_index = etad.MaskIndex.from_dict(mask_index)
 
+        keypoints = d.get("keypoints", None)
+        if keypoints is not None:
+            keypoints = etag.Keypoints.from_dict(keypoints)
+
         attrs = d.get("attrs", None)
         if attrs is not None:
             attrs = etad.AttributeContainer.from_dict(attrs)
@@ -390,6 +490,10 @@ class FrameLabels(etal.Labels):
         objects = d.get("objects", None)
         if objects is not None:
             objects = etao.DetectedObjectContainer.from_dict(objects)
+
+        polylines = d.get("polylines", None)
+        if polylines is not None:
+            polylines = etag.PolylineContainer.from_dict(polylines)
 
         events = d.get("events", None)
         if events is not None:
@@ -399,8 +503,10 @@ class FrameLabels(etal.Labels):
             frame_number=frame_number,
             mask=mask,
             mask_index=mask_index,
+            keypoints=keypoints,
             attrs=attrs,
             objects=objects,
+            polylines=polylines,
             events=events,
             **kwargs
         )
