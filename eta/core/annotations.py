@@ -150,8 +150,8 @@ class AnnotationConfig(Config):
         per_polyline_label_colors: (True) whether to render polylines with
             different labels in different colors
         polyline_alpha: (0.75) the transparency of polylines
-        polyline_thickness: (1) the line thickness to use when rendering
-            non-filled polylines
+        polyline_linewidth: (3) the linewidth, in pixels, of non-filled
+            polylines
         fill_polylines: (True) whether to draw polylines as filled, when
             possible
         show_all_names: (False) whether to render all names, if available. If
@@ -369,8 +369,8 @@ class AnnotationConfig(Config):
         self.polyline_alpha = self.parse_number(
             d, "polyline_alpha", default=0.75
         )
-        self.polyline_thickness = self.parse_number(
-            d, "polyline_thickness", default=3
+        self.polyline_linewidth = self.parse_number(
+            d, "polyline_linewidth", default=3
         )
         self.fill_polylines = self.parse_bool(
             d, "fill_polylines", default=True
@@ -848,7 +848,7 @@ def _draw_polyline(img, polyline, annotation_config):
     thickness = int(
         round(
             annotation_config.scale_factor
-            * annotation_config.polyline_thickness
+            * annotation_config.polyline_linewidth
         )
     )
     fill_polylines = annotation_config.fill_polylines
