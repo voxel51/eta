@@ -156,6 +156,9 @@ class AnnotationConfig(Config):
             possible
         show_all_names: (False) whether to render all names, if available. If
             set to ``True``, this overrides all other name flags
+        show_name_only_titles: (False) whether to render titles that only
+            contain the ``name`` of the entity (i.e., no label, confidence,
+            index, etc)
         show_all_confidences: (False) whether to render all confidences, if
             available. If set to ``True``, this overrides all other confidence
             flags
@@ -377,6 +380,9 @@ class AnnotationConfig(Config):
 
         self.show_all_names = self.parse_bool(
             d, "show_all_names", default=False
+        )
+        self.show_name_only_titles = self.parse_bool(
+            d, "show_name_only_titles", default=False
         )
         self.show_all_confidences = self.parse_bool(
             d, "show_all_confidences", default=False
@@ -830,8 +836,12 @@ def _draw_logo(img, annotation_config):
 
 
 def _draw_polyline(img, polyline, annotation_config):
-    show_name = annotation_config.show_polyline_names
+    show_name = (
+        annotation_config.show_polyline_names
+        or annotation_config.show_all_names
+    )
     show_label = annotation_config.show_polyline_labels
+    show_name_only_titles = annotation_config.show_name_only_titles
     per_name_colors = annotation_config.per_polyline_name_colors
     per_label_colors = annotation_config.per_polyline_label_colors
     alpha = annotation_config.polyline_alpha
@@ -850,6 +860,7 @@ def _draw_polyline(img, polyline, annotation_config):
         polyline,
         show_name=show_name,
         show_label=show_label,
+        show_name_only_titles=show_name_only_titles,
         per_name_colors=per_name_colors,
         per_label_colors=per_label_colors,
     )
@@ -937,6 +948,7 @@ def _draw_event(img, event, annotation_config, color=None):
         or annotation_config.show_all_confidences
     )
     show_index = annotation_config.show_event_indices
+    show_name_only_titles = annotation_config.show_name_only_titles
     occluded_attr = annotation_config.occluded_event_attr
     hide_occluded = annotation_config.hide_occluded_events
     labels_whitelist = annotation_config.event_labels_whitelist
@@ -966,6 +978,7 @@ def _draw_event(img, event, annotation_config, color=None):
         show_attr_names,
         show_attr_confidences,
         show_index,
+        show_name_only_titles,
         occluded_attr,
         hide_occluded,
         labels_whitelist,
@@ -1028,6 +1041,7 @@ def _draw_object(img, obj, annotation_config, color=None, pre_attrs=None):
         or annotation_config.show_all_confidences
     )
     show_index = annotation_config.show_object_indices
+    show_name_only_titles = annotation_config.show_name_only_titles
     occluded_attr = annotation_config.occluded_object_attr
     hide_occluded = annotation_config.hide_occluded_objects
     labels_whitelist = annotation_config.object_labels_whitelist
@@ -1049,6 +1063,7 @@ def _draw_object(img, obj, annotation_config, color=None, pre_attrs=None):
         show_attr_names,
         show_attr_confidences,
         show_index,
+        show_name_only_titles,
         occluded_attr,
         hide_occluded,
         labels_whitelist,
@@ -1076,6 +1091,7 @@ def _draw_bbox_with_attrs(
     show_attr_names,
     show_attr_confidences,
     show_index,
+    show_name_only_titles,
     occluded_attr,
     hide_occluded,
     labels_whitelist,
@@ -1139,6 +1155,7 @@ def _draw_bbox_with_attrs(
         show_label=show_label,
         show_confidence=show_confidence,
         show_index=show_index,
+        show_name_only_titles=show_name_only_titles,
         per_name_colors=per_name_colors,
         per_label_colors=per_label_colors,
         per_index_colors=per_index_colors,
@@ -1581,6 +1598,7 @@ def _render_title(
     show_label=True,
     show_confidence=False,
     show_index=True,
+    show_name_only_titles=False,
     per_name_colors=True,
     per_label_colors=True,
     per_index_colors=True,
@@ -1635,6 +1653,9 @@ def _render_title(
 
     if show_index and index is not None:
         title_str += "     %d" % index
+
+    if title_str == _name and not show_name_only_titles:
+        title_str = ""
 
     # Compute title hash
 
