@@ -211,7 +211,7 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
         """Adds the attribute to the object.
 
         Args:
-            attr: an Attribute
+            attr: an :class:`eta.core.data.Attribute`
         """
         self.attrs.add(attr)
 

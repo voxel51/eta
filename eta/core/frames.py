@@ -22,6 +22,7 @@ import eta.core.events as etae
 import eta.core.geometry as etag
 import eta.core.labels as etal
 import eta.core.objects as etao
+import eta.core.polylines as etap
 import eta.core.serial as etas
 
 
@@ -78,7 +79,7 @@ class FrameLabels(etal.Labels):
         self.keypoints = keypoints or etag.Keypoints()
         self.attrs = attrs or etad.AttributeContainer()
         self.objects = objects or etao.DetectedObjectContainer()
-        self.polylines = polylines or etag.PolylineContainer()
+        self.polylines = polylines or etap.PolylineContainer()
         self.events = events or etae.DetectedEventContainer()
 
     @property
@@ -367,7 +368,7 @@ class FrameLabels(etal.Labels):
 
     def clear_polylines(self):
         """Removes all polylines from the frame."""
-        self.polylines = etag.PolylineContainer()
+        self.polylines = etap.PolylineContainer()
 
     def clear_events(self):
         """Removes all events from the frame."""
@@ -492,7 +493,7 @@ class FrameLabels(etal.Labels):
 
         polylines = d.get("polylines", None)
         if polylines is not None:
-            polylines = etag.PolylineContainer.from_dict(polylines)
+            polylines = etap.PolylineContainer.from_dict(polylines)
 
         events = d.get("events", None)
         if events is not None:
