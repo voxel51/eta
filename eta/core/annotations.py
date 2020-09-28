@@ -138,6 +138,22 @@ class AnnotationConfig(Config):
             in attribute boxes
         attrs_box_text_line_spacing_pixels: (1) the padding, in pixels, between
             each line of text in attribute boxes
+        keypoint_size: (4) the size to render keypoints
+        keypoint_color: ("#FF0000") the color to use when rendering keypoints
+        keypoint_alpha: (0.75) the transparency of keypoints
+        show_polyline_names: (True) whether to render polyline names, if
+            available
+        show_polyline_labels: (True) whether to render polyline labels, if
+            available
+        per_polyline_name_colors: (True) whether to render polylines with
+            different names in different colors
+        per_polyline_label_colors: (True) whether to render polylines with
+            different labels in different colors
+        polyline_alpha: (0.75) the transparency of polylines
+        polyline_thickness: (1) the line thickness to use when rendering
+            non-filled polylines
+        fill_polylines: (True) whether to draw polylines as filled, when
+            possible
         show_all_names: (False) whether to render all names, if available. If
             set to ``True``, this overrides all other name flags
         show_all_confidences: (False) whether to render all confidences, if
@@ -323,6 +339,40 @@ class AnnotationConfig(Config):
             d, "attrs_box_text_line_spacing_pixels", default=1
         )
 
+        # KEYPOINTS ###########################################################
+
+        self.keypoint_size = self.parse_number(d, "keypoint_size", default=4)
+        self.keypoint_color = self.parse_string(
+            d, "keypoint_color", default="#FF0000"
+        )
+        self.keypoint_alpha = self.parse_number(
+            d, "keypoint_alpha", default=0.75
+        )
+
+        # POLYLINES ###########################################################
+
+        self.show_polyline_names = self.parse_bool(
+            d, "show_polyline_names", default=True
+        )
+        self.show_polyline_labels = self.parse_bool(
+            d, "show_polyline_labels", default=True
+        )
+        self.per_polyline_name_colors = self.parse_bool(
+            d, "per_polyline_name_colors", default=True
+        )
+        self.per_polyline_label_colors = self.parse_bool(
+            d, "per_polyline_label_colors", default=True
+        )
+        self.polyline_alpha = self.parse_number(
+            d, "polyline_alpha", default=0.75
+        )
+        self.polyline_thickness = self.parse_number(
+            d, "polyline_thickness", default=3
+        )
+        self.fill_polylines = self.parse_bool(
+            d, "fill_polylines", default=True
+        )
+
         # ALL LABELS ##########################################################
 
         self.show_all_names = self.parse_bool(
@@ -363,6 +413,7 @@ class AnnotationConfig(Config):
         )
 
         self._media_height = None
+        self._scale_factor = None
         self._logo = None
         self._font = None
         self._linewidth = None
@@ -381,6 +432,10 @@ class AnnotationConfig(Config):
             self._colormap = self.colormap_config.build()
         else:
             self._colormap = Colormap.load_default()
+
+    @property
+    def scale_factor(self):
+        return self._scale_factor
 
     @property
     def colormap(self):
@@ -422,18 +477,19 @@ class AnnotationConfig(Config):
         # Set media height
         self._media_height = frame_size[1]
 
+        # Set scale factor
+        self._scale_factor = self._get_media_scale_factor()
+
         # Render logo, if necessary
         if self.add_logo and self.logo is not None:
             self._logo.render_for(frame_size=frame_size)
 
         # Render font
-        font_size = int(self.font_size * self._get_media_scale_factor())
+        font_size = int(self.scale_factor * self.font_size)
         self._font = ImageFont.truetype(self.font_path, font_size)
 
         # Render linewidth
-        self._linewidth = int(
-            self.bbox_linewidth * self._get_media_scale_factor()
-        )
+        self._linewidth = int(self.scale_factor * self.bbox_linewidth)
 
     def _get_media_scale_factor(self):
         if self.scale_by_media_height:
@@ -667,6 +723,8 @@ def _annotate_image(img, frame_labels, annotation_config, mask_index=None):
 
     # Parse inputs
     has_mask = frame_labels.has_mask
+    has_keypoints = frame_labels.has_keypoints
+    has_polylines = frame_labels.has_polylines
     has_events = frame_labels.has_events
     has_objects = frame_labels.has_objects
     has_attributes = frame_labels.has_attributes
@@ -685,6 +743,23 @@ def _annotate_image(img, frame_labels, annotation_config, mask_index=None):
         img = _draw_frame_mask(
             img, mask, annotation_config, mask_index=mask_index
         )
+
+    #
+    # Draw polylines
+    #
+
+    if has_polylines:
+        logger.debug("Rendering %d polylines", len(frame_labels.polylines))
+        for polyline in frame_labels.polylines:
+            img = _draw_polyline(img, polyline, annotation_config)
+
+    #
+    # Draw keypoints
+    #
+
+    if has_keypoints:
+        logger.debug("Rendering %d keypoints", len(frame_labels.keypoints))
+        img = _draw_keypoints(img, frame_labels.keypoints, annotation_config)
 
     #
     # Draw events
@@ -752,6 +827,76 @@ def _annotate_image(img, frame_labels, annotation_config, mask_index=None):
 def _draw_logo(img, annotation_config):
     logo = annotation_config.logo
     return logo.apply(img)
+
+
+def _draw_polyline(img, polyline, annotation_config):
+    show_name = annotation_config.show_polyline_names
+    show_label = annotation_config.show_polyline_labels
+    per_name_colors = annotation_config.per_polyline_name_colors
+    per_label_colors = annotation_config.per_polyline_label_colors
+    alpha = annotation_config.polyline_alpha
+    thickness = int(
+        round(
+            annotation_config.scale_factor
+            * annotation_config.polyline_thickness
+        )
+    )
+    fill_polylines = annotation_config.fill_polylines
+
+    colormap = annotation_config.colormap
+
+    # Render title string
+    title_str, title_hash = _render_title(
+        polyline,
+        show_name=show_name,
+        show_label=show_label,
+        per_name_colors=per_name_colors,
+        per_label_colors=per_label_colors,
+    )
+
+    # Choose polyline color based on hash of title
+    color = _parse_hex_color(colormap.get_color(title_hash))
+
+    # Render coordinates for image
+    # Note: OpenCV expects numpy arrays
+    points = np.array(polyline.coords_in(img=img), dtype=np.int32)
+
+    overlay = img.copy()
+
+    if polyline.filled and fill_polylines:
+        # Note: this function handles closed vs not closed automatically
+        overlay = cv2.fillPoly(overlay, [points], color)
+    else:
+        overlay = cv2.polylines(
+            overlay, [points], polyline.closed, color, thickness=thickness
+        )
+
+    img_anno = cv2.addWeighted(overlay, alpha, img, 1 - alpha, 0)
+
+    if title_str:
+        coords = tuple(np.mean(points, axis=0))
+        img_anno = _draw_attrs_panel(
+            img_anno, [title_str], annotation_config, center_coords=coords
+        )
+
+    return img_anno
+
+
+def _draw_keypoints(img, keypoints, annotation_config):
+    size = int(
+        round(annotation_config.scale_factor * annotation_config.keypoint_size)
+    )
+    color = _parse_hex_color(annotation_config.keypoint_color)
+    alpha = annotation_config.keypoint_alpha
+
+    points = keypoints.coords_in(img=img)
+
+    overlay = img.copy()
+
+    for x, y in points:
+        overlay = cv2.circle(overlay, (x, y), size, color, thickness=-1)
+
+    return cv2.addWeighted(overlay, alpha, img, 1 - alpha, 0)
 
 
 def _draw_frame_attrs(img, attr_strs, annotation_config):
@@ -988,7 +1133,7 @@ def _draw_bbox_with_attrs(
         mask_fill_alpha *= obj_or_event.confidence
 
     # Render title string
-    title_str, title_hash = _render_bbox_title(
+    title_str, title_hash = _render_title(
         obj_or_event,
         show_name=show_name,
         show_label=show_label,
@@ -1430,8 +1575,8 @@ def _render_attr_name_value(attr, show_name=True, show_confidence=True):
     return attr_str
 
 
-def _render_bbox_title(
-    obj_or_event,
+def _render_title(
+    obj_poly_event,
     show_name=True,
     show_label=True,
     show_confidence=False,
@@ -1440,10 +1585,29 @@ def _render_bbox_title(
     per_label_colors=True,
     per_index_colors=True,
 ):
-    name = obj_or_event.name
-    label = obj_or_event.label
-    confidence = obj_or_event.confidence
-    index = obj_or_event.index
+    try:
+        name = obj_poly_event.name
+    except:
+        name = None
+        show_name = False
+
+    try:
+        label = obj_poly_event.label
+    except:
+        label = None
+        show_label = False
+
+    try:
+        confidence = obj_poly_event.confidence
+    except:
+        confidence = None
+        show_confidence = False
+
+    try:
+        index = obj_poly_event.index
+    except:
+        index = None
+        show_index = False
 
     # Render title string
 
