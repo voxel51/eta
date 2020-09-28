@@ -136,10 +136,10 @@ class ImageLabels(FrameLabels):
         mask: (optiona) a segmentation mask for the image
         mask_index: (optional) a MaskIndex describing the semantics of the
             segmentation mask
-        keypoints: (optional) a Keypoints describing keypoints in the image
+        keypoints: a Keypoints of keypoints in the image
         attrs: an AttributeContainer of attributes of the image
         objects: a DetectedObjectContainer of objects in the image
-        polylines: (optional) a PolylineContainer of polylines in the image
+        polylines: a PolylineContainer of polylines in the image
         events: a DetectedEventContainer of events in the image
     """
 

@@ -38,11 +38,10 @@ class FrameLabels(etal.Labels):
         mask: (optional) a segmentation mask for the frame
         mask_index: (optional) a MaskIndex describing the semantics of the
             segmentation mask
-        keypoints: (optional) a Keypoints instance describing keypoints in the
-            frame
+        keypoints: a Keypoints of keypoints in the frame
         attrs: an AttributeContainer of attributes of the frame
         objects: a DetectedObjectContainer of objects in the frame
-        polylines: (optional) a PolylineContainer of polylines in the frame
+        polylines: a PolylineContainer of polylines in the frame
         events: a DetectedEventContainer of events in the frame
     """
 
