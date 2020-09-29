@@ -130,18 +130,31 @@ class AnnotationConfig(Config):
             in attribute boxes
         attrs_box_text_line_spacing_pixels: (1) the padding, in pixels, between
             each line of text in attribute boxes
-        keypoint_size: (4) the size to render keypoints
-        keypoint_color: ("#FF0000") the color to use when rendering keypoints
-        keypoint_alpha: (0.75) the transparency of keypoints
+        show_keypoints_names: (True) whether to render keypoints names, if
+            available
+        show_keypoints_labels: (True) whether to render keypoints labels, if
+            available
+        show_keypoints_attrs: (True) whether to render keypoints attributes, if
+            available
+        show_keypoints_attr_names: (True) whether to render keypoint attribute
+            names, if available
+        show_keypoints_attr_confidences: (False) whether to render keypoint
+            attribute confidences, if available
+        per_keypoints_name_colors: (True) whether to render keypoints with
+            different names in different colors
+        per_keypoints_label_colors: (True) whether to render keypoints with
+            different labels in different colors
+        keypoints_size: (4) the size to render keypoints
+        keypoints_alpha: (0.75) the transparency of keypoints
         show_polyline_names: (True) whether to render polyline names, if
             available
         show_polyline_labels: (True) whether to render polyline labels, if
             available
         show_polyline_attrs: (True) whether to render polyline attributes, if
             available
-        show_polyline_attr_names: (True) whether to render object attribute
+        show_polyline_attr_names: (True) whether to render polyline attribute
             names, if available
-        show_polyline_attr_confidences: (False) whether to render object
+        show_polyline_attr_confidences: (False) whether to render polyline
             attribute confidences, if available
         hide_non_filled_polyline_annos: (False) whether to override other
             settings and hide the annotation panels for non-filled polylines
@@ -345,12 +358,30 @@ class AnnotationConfig(Config):
 
         # KEYPOINTS ###########################################################
 
-        self.keypoint_size = self.parse_number(d, "keypoint_size", default=4)
-        self.keypoint_color = self.parse_string(
-            d, "keypoint_color", default="#FF0000"
+        self.show_keypoints_names = self.parse_bool(
+            d, "show_keypoints_names", default=True
         )
-        self.keypoint_alpha = self.parse_number(
-            d, "keypoint_alpha", default=0.75
+        self.show_keypoints_labels = self.parse_bool(
+            d, "show_keypoints_labels", default=True
+        )
+        self.show_keypoints_attrs = self.parse_bool(
+            d, "show_keypoints_attrs", default=True
+        )
+        self.show_keypoints_attr_names = self.parse_bool(
+            d, "show_keypoints_attr_names", default=True
+        )
+        self.show_keypoints_attr_confidences = self.parse_bool(
+            d, "show_keypoints_attr_confidences", default=True
+        )
+        self.per_keypoints_name_colors = self.parse_bool(
+            d, "per_keypoints_name_colors", default=True
+        )
+        self.per_keypoints_label_colors = self.parse_bool(
+            d, "per_keypoints_label_colors", default=True
+        )
+        self.keypoints_size = self.parse_number(d, "keypoints_size", default=4)
+        self.keypoints_alpha = self.parse_number(
+            d, "keypoints_alpha", default=0.75
         )
 
         # POLYLINES ###########################################################
@@ -794,7 +825,8 @@ def _annotate_image(img, frame_labels, annotation_config, mask_index=None):
 
     if has_keypoints:
         logger.debug("Rendering %d keypoints", len(frame_labels.keypoints))
-        img = _draw_keypoints(img, frame_labels.keypoints, annotation_config)
+        for keypoints in frame_labels.keypoints:
+            img = _draw_keypoints(img, keypoints, annotation_config)
 
     #
     # Draw events
@@ -896,6 +928,7 @@ def _draw_polyline(img, polyline, annotation_config):
             * annotation_config.polyline_linewidth
         )
     )
+    gap = annotation_config.linewidth
     fill_polylines = annotation_config.fill_polylines
     hide_non_filled_polyline_annos = (
         annotation_config.hide_non_filled_polyline_annos
@@ -1000,54 +1033,152 @@ def _draw_polyline(img, polyline, annotation_config):
         )
 
         ptlx = ttlx
-        ptly = ttly + th + thickness
+        ptly = ttly + th + gap
 
         if show_attrs and attr_strs:
             logger.debug("Rendering %d polyline attributes", len(attr_strs))
 
-            img_anno = _draw_polyline_attrs(
+            img_anno = _draw_attrs(
                 img_anno, (ptlx, ptly), attr_strs, annotation_config
             )
 
     return img_anno
 
 
-def _draw_polyline_attrs(img, top_left_coords, attr_strs, annotation_config):
-    # Parse config
-    font = annotation_config.font
-    attrs_render_method = annotation_config.attrs_box_render_method
-    text_color = tuple(_parse_hex_color(annotation_config.text_color))
-
-    # Method 1: comma-separated attributes list
-    if attrs_render_method == "list":
-        with Draw(img) as draw:
-            attrs_str = ", ".join(attr_strs)
-            draw.text(top_left_coords, attrs_str, font=font, fill=text_color)
-
-    # Method 2: attribute panel
-    if attrs_render_method == "panel":
-        img = _draw_attrs_panel(
-            img, attr_strs, annotation_config, top_left_coords=top_left_coords
-        )
-
-    return img
-
-
 def _draw_keypoints(img, keypoints, annotation_config):
+    # Parse config
+    show_name = (
+        annotation_config.show_keypoints_names
+        or annotation_config.show_all_names
+    ) and not annotation_config.hide_all_names
+    show_label = annotation_config.show_keypoints_labels
+    show_name_only_titles = annotation_config.show_name_only_titles
+    show_attrs = annotation_config.show_keypoints_attrs
+    show_attr_names = (
+        annotation_config.show_keypoints_attr_names
+        or annotation_config.show_all_names
+    ) and not annotation_config.hide_all_names
+    show_attr_confidences = (
+        annotation_config.show_keypoints_attr_confidences
+        or annotation_config.show_all_confidences
+    ) and not annotation_config.hide_all_confidences
+    attr_names_blacklist = annotation_config.attr_names_blacklist
+    attr_values_blacklist = annotation_config.attr_values_blacklist
+    hide_false_boolean_attrs = annotation_config.hide_false_boolean_attrs
+    labels_whitelist = annotation_config.labels_whitelist
+    labels_blacklist = annotation_config.labels_blacklist
+    per_name_colors = annotation_config.per_keypoints_name_colors
+    per_label_colors = annotation_config.per_keypoints_label_colors
+    alpha = annotation_config.keypoints_alpha
     size = int(
-        round(annotation_config.scale_factor * annotation_config.keypoint_size)
+        round(
+            annotation_config.scale_factor * annotation_config.keypoints_size
+        )
     )
-    color = _parse_hex_color(annotation_config.keypoint_color)
-    alpha = annotation_config.keypoint_alpha
+    gap = annotation_config.linewidth
 
+    colormap = annotation_config.colormap
+
+    has_attributes = keypoints.has_attributes
+
+    #
+    # Check for immediate return
+    #
+
+    return_now = False
+
+    # Check labels whitelist
+    if labels_whitelist is not None:
+        if keypoints.label not in labels_whitelist:
+            return_now = True
+
+    # Check labels blacklist
+    if labels_blacklist is not None:
+        if keypoints.label in labels_blacklist:
+            return_now = True
+
+    if not keypoints.points:
+        return_now = True
+
+    if return_now:
+        return img
+
+    # Render title string
+    title_str, title_hash = _render_title(
+        keypoints,
+        show_name=show_name,
+        show_label=show_label,
+        show_name_only_titles=show_name_only_titles,
+        per_name_colors=per_name_colors,
+        per_label_colors=per_label_colors,
+    )
+
+    # Choose keypoints color based on hash of title
+    color = _parse_hex_color(colormap.get_color(title_hash))
+
+    # Render coordinates for image
     points = keypoints.coords_in(img=img)
+
+    #
+    # Draw keypoints
+    #
 
     overlay = img.copy()
 
     for x, y in points:
         overlay = cv2.circle(overlay, (x, y), size, color, thickness=-1)
 
-    return cv2.addWeighted(overlay, alpha, img, 1 - alpha, 0)
+    img_anno = cv2.addWeighted(overlay, alpha, img, 1 - alpha, 0)
+
+    #
+    # Draw title string
+    #
+
+    tcx, tcy = points[int(round(0.5 * len(points)))]
+    tcx += size
+    tcy += size
+    ttlx, ttly, tw, th = _get_panel_coords(
+        [title_str], annotation_config, top_left_coords=(tcx, tcy)
+    )
+
+    if title_str:
+        img_anno = _draw_attrs_panel(
+            img_anno,
+            [title_str],
+            annotation_config,
+            top_left_coords=(ttlx, ttly),
+        )
+
+    #
+    # Draw attributes
+    #
+
+    if has_attributes:
+        # Alphabetize attributes by name
+        keypoints.attrs.sort_by_name()
+        attrs = keypoints.attrs
+
+        # Render attribute strings
+        attr_strs = _render_attrs(
+            attrs,
+            attr_names_blacklist,
+            attr_values_blacklist,
+            hide_false_boolean_attrs,
+            show_attr_names,
+            show_attr_confidences,
+        )
+
+        ptlx = ttlx
+        ptly = ttly + th + gap
+
+        if show_attrs and attr_strs:
+            logger.debug("Rendering %d keypoints attributes", len(attr_strs))
+
+            img_anno = _draw_attrs(
+                img_anno, (ptlx, ptly), attr_strs, annotation_config
+            )
+
+    return img_anno
 
 
 def _draw_frame_attrs(img, attr_strs, annotation_config):
@@ -1464,6 +1595,27 @@ def _draw_bounding_box(
             draw.text((txttlx, txttly), title_str, font=font, fill=text_color)
 
     return img_anno
+
+
+def _draw_attrs(img, top_left_coords, attr_strs, annotation_config):
+    # Parse config
+    font = annotation_config.font
+    attrs_render_method = annotation_config.attrs_box_render_method
+    text_color = tuple(_parse_hex_color(annotation_config.text_color))
+
+    # Method 1: comma-separated attributes list
+    if attrs_render_method == "list":
+        with Draw(img) as draw:
+            attrs_str = ", ".join(attr_strs)
+            draw.text(top_left_coords, attrs_str, font=font, fill=text_color)
+
+    # Method 2: attribute panel
+    if attrs_render_method == "panel":
+        img = _draw_attrs_panel(
+            img, attr_strs, annotation_config, top_left_coords=top_left_coords
+        )
+
+    return img
 
 
 def _get_panel_coords(
