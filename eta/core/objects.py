@@ -172,7 +172,7 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
         """Gets the schema class for :class:`DetectedObject`.
 
         Returns:
-            the LabelsSchema class
+            the :class:`eta.core.labels.LabelsSchema` class
         """
         return ObjectSchema
 
