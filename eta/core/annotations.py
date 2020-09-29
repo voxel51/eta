@@ -84,7 +84,7 @@ class AnnotationConfig(Config):
         object_labels_whitelist: (None) an optional whitelist of object labels.
             If provided, only objects with labels in this list will be rendered
         object_labels_blacklist: (None) an optional blacklist of object labels.
-            If provided, object with labels in this list will not be rendered
+            If provided, objects with labels in this list will not be rendered
         show_event_boxes: (True) whether to render event bounding boxes, if
             available. If this is ``False``, all attributes, confidences, etc.
             are also hidden
@@ -145,6 +145,21 @@ class AnnotationConfig(Config):
             available
         show_polyline_labels: (True) whether to render polyline labels, if
             available
+        show_polyline_attrs: (True) whether to render polyline attributes, if
+            available
+        show_polyline_attr_names: (True) whether to render object attribute
+            names, if available
+        show_polyline_attr_confidences: (False) whether to render object
+            attribute confidences, if available
+        polyline_labels_whitelist: (None) an optional whitelist of polyline
+            labels. If provided, only polylines with labels in this list will
+            be rendered
+        polyline_labels_blacklist: (None) an optional blacklist of polyline
+            labels. If provided, polylines with labels in this list will not be
+            rendered
+        hide_non_filled_polyline_annos: (False) whether to override other
+            settings and hide the annotation panels for non-filled polylines
+            (those with ``filled == False``)
         per_polyline_name_colors: (True) whether to render polylines with
             different names in different colors
         per_polyline_label_colors: (True) whether to render polylines with
@@ -359,6 +374,24 @@ class AnnotationConfig(Config):
         )
         self.show_polyline_labels = self.parse_bool(
             d, "show_polyline_labels", default=True
+        )
+        self.show_polyline_attrs = self.parse_bool(
+            d, "show_polyline_attrs", default=True
+        )
+        self.show_polyline_attr_names = self.parse_bool(
+            d, "show_polyline_attr_names", default=True
+        )
+        self.show_polyline_attr_confidences = self.parse_bool(
+            d, "show_polyline_attr_confidences", default=True
+        )
+        self.polyline_labels_whitelist = self.parse_array(
+            d, "polyline_labels_whitelist", default=None
+        )
+        self.polyline_labels_blacklist = self.parse_array(
+            d, "polyline_labels_blacklist", default=None
+        )
+        self.hide_non_filled_polyline_annos = self.parse_bool(
+            d, "hide_non_filled_polyline_annos", default=False
         )
         self.per_polyline_name_colors = self.parse_bool(
             d, "per_polyline_name_colors", default=True
@@ -836,12 +869,20 @@ def _draw_logo(img, annotation_config):
 
 
 def _draw_polyline(img, polyline, annotation_config):
+    # Parse config
     show_name = (
         annotation_config.show_polyline_names
         or annotation_config.show_all_names
     )
     show_label = annotation_config.show_polyline_labels
     show_name_only_titles = annotation_config.show_name_only_titles
+    show_attrs = annotation_config.show_polyline_attrs
+    show_attr_names = annotation_config.show_polyline_attr_names
+    show_attr_confidences = annotation_config.show_polyline_attr_confidences
+    hide_attr_values = annotation_config.hide_attr_values
+    hide_false_boolean_attrs = annotation_config.hide_false_boolean_attrs
+    labels_whitelist = annotation_config.polyline_labels_whitelist
+    labels_blacklist = annotation_config.polyline_labels_blacklist
     per_name_colors = annotation_config.per_polyline_name_colors
     per_label_colors = annotation_config.per_polyline_label_colors
     alpha = annotation_config.polyline_alpha
@@ -852,8 +893,35 @@ def _draw_polyline(img, polyline, annotation_config):
         )
     )
     fill_polylines = annotation_config.fill_polylines
+    hide_non_filled_polyline_annos = (
+        annotation_config.hide_non_filled_polyline_annos
+    )
 
     colormap = annotation_config.colormap
+
+    has_attributes = polyline.has_attributes
+
+    #
+    # Check for immediate return
+    #
+
+    return_now = False
+
+    # Check labels whitelist
+    if labels_whitelist is not None:
+        if polyline.label not in labels_whitelist:
+            return_now = True
+
+    # Check labels blacklist
+    if labels_blacklist is not None:
+        if polyline.label in labels_blacklist:
+            return_now = True
+
+    if not polyline.points:
+        return_now = True
+
+    if return_now:
+        return img
 
     # Render title string
     title_str, title_hash = _render_title(
@@ -872,6 +940,10 @@ def _draw_polyline(img, polyline, annotation_config):
     # Note: OpenCV expects numpy arrays
     points = np.array(polyline.coords_in(img=img), dtype=np.int32)
 
+    #
+    # Draw polyline
+    #
+
     overlay = img.copy()
 
     if polyline.filled and fill_polylines:
@@ -884,13 +956,76 @@ def _draw_polyline(img, polyline, annotation_config):
 
     img_anno = cv2.addWeighted(overlay, alpha, img, 1 - alpha, 0)
 
+    if hide_non_filled_polyline_annos and not polyline.filled:
+        return img_anno
+
+    #
+    # Draw title string
+    #
+
+    tcx, tcy = tuple(np.mean(points, axis=0))
+    ttlx, ttly, tw, th = _get_panel_coords(
+        [title_str], annotation_config, center_coords=(tcx, tcy)
+    )
+
     if title_str:
-        coords = tuple(np.mean(points, axis=0))
         img_anno = _draw_attrs_panel(
-            img_anno, [title_str], annotation_config, center_coords=coords
+            img_anno,
+            [title_str],
+            annotation_config,
+            top_left_coords=(ttlx, ttly),
         )
 
+    #
+    # Draw attributes
+    #
+
+    if has_attributes:
+        # Alphabetize attributes by name
+        polyline.attrs.sort_by_name()
+        attrs = polyline.attrs
+
+        # Render attribute strings
+        attr_strs = _render_attrs(
+            attrs,
+            hide_attr_values,
+            hide_false_boolean_attrs,
+            show_attr_names,
+            show_attr_confidences,
+        )
+
+        ptlx = ttlx
+        ptly = ttly + th + thickness
+
+        if show_attrs and attr_strs:
+            logger.debug("Rendering %d polyline attributes", len(attr_strs))
+
+            img_anno = _draw_polyline_attrs(
+                img_anno, (ptlx, ptly), attr_strs, annotation_config
+            )
+
     return img_anno
+
+
+def _draw_polyline_attrs(img, top_left_coords, attr_strs, annotation_config):
+    # Parse config
+    font = annotation_config.font
+    attrs_render_method = annotation_config.attrs_box_render_method
+    text_color = tuple(_parse_hex_color(annotation_config.text_color))
+
+    # Method 1: comma-separated attributes list
+    if attrs_render_method == "list":
+        with Draw(img) as draw:
+            attrs_str = ", ".join(attr_strs)
+            draw.text(top_left_coords, attrs_str, font=font, fill=text_color)
+
+    # Method 2: attribute panel
+    if attrs_render_method == "panel":
+        img = _draw_attrs_panel(
+            img, attr_strs, annotation_config, top_left_coords=top_left_coords
+        )
+
+    return img
 
 
 def _draw_keypoints(img, keypoints, annotation_config):
@@ -1324,6 +1459,36 @@ def _draw_bounding_box(
     return img_anno
 
 
+def _get_panel_coords(
+    text_strs, annotation_config, center_coords=None, top_left_coords=None
+):
+    font = annotation_config.font
+    box_pad = annotation_config.attrs_box_text_pad_pixels
+    line_gap = annotation_config.attrs_box_text_line_spacing_pixels
+
+    text_size = _compute_max_text_size(font, text_strs)  # width, height
+
+    num_attrs = len(text_strs)
+
+    # Dimensions of panel
+    w = text_size[0] + 2 * (box_pad + _DX)
+    h = num_attrs * text_size[1] + (num_attrs - 1) * line_gap + 2 * box_pad
+
+    # Top-left coordinates of panel
+    if center_coords:
+        cx, cy = center_coords
+        tlx = int(cx - 0.5 * w)
+        tly = int(cy - 0.5 * h)
+    elif top_left_coords:
+        tlx, tly = top_left_coords
+    else:
+        raise ValueError(
+            "Either `center_coords` or `top_left_coords` must be provided"
+        )
+
+    return tlx, tly, w, h
+
+
 def _draw_attrs_panel(
     img, attr_strs, annotation_config, center_coords=None, top_left_coords=None
 ):
@@ -1335,23 +1500,15 @@ def _draw_attrs_panel(
     text_color = tuple(_parse_hex_color(annotation_config.text_color))
     bg_color = _parse_hex_color(annotation_config.attrs_box_bg_color)
     bg_alpha = annotation_config.attrs_box_bg_alpha
-    num_attrs = len(attr_strs)
 
-    #
-    # Compute box coordinates
-    #
+    # Compute panel coordinates
+    bgtlx, bgtly, bgw, bgh = _get_panel_coords(
+        attr_strs,
+        annotation_config,
+        center_coords=center_coords,
+        top_left_coords=top_left_coords,
+    )
 
-    bgw = text_size[0] + 2 * (box_pad + _DX)
-    bgh = num_attrs * text_size[1] + (num_attrs - 1) * line_gap + 2 * box_pad
-    if center_coords:
-        cx, cy = center_coords
-        top_left_coords = (int(cx - 0.5 * bgw), int(cy - 0.5 * bgh))
-    if not top_left_coords:
-        raise ValueError(
-            "Either `center_coords` or `top_left_coords` must be provided"
-        )
-
-    bgtlx, bgtly = top_left_coords
     bgbrx = bgtlx + bgw
     bgbry = bgtly + bgh
 
