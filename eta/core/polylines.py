@@ -1,6 +1,5 @@
 """
-Core data structures for working with geometric concepts like points and
-bounding boxes.
+Core data structures for working with polylines and polygons.
 
 Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
@@ -39,7 +38,7 @@ class Polyline(etal.Labels):
         name: (optional) the name for the polyline, e.g., ``ground_truth`` or
             the name of the model that produced it
         label: (optional) polyline label
-        points: a list of (x, y) points in [0, 1] x [0, 1]
+        points: a list of ``(x, y)`` points in ``[0, 1] x [0, 1]``
             describing the vertices of the polyline
         closed: whether the polyline is closed, i.e., an edge should be drawn
             from the last vertex to the first vertex
@@ -52,7 +51,7 @@ class Polyline(etal.Labels):
         name (None): a name for the polyline, e.g., ``ground_truth`` or the
             name of the model that produced it
         label (None): a label for the polyline
-        points (None): a list of (x, y) points in [0, 1] x [0, 1]
+        points (None): a list of ``(x, y)`` points in ``[0, 1] x [0, 1]``
             describing the vertices of a curve
         closed (False): whether the polyline is closed, i.e., an edge
             should be drawn from the last vertex to the first vertex
@@ -84,8 +83,8 @@ class Polyline(etal.Labels):
         """Whether the polyline has labels of any kind."""
         return not (
             self.has_label
-            or self.has_vertices
             or self.has_name
+            or self.has_vertices
             or self.has_attributes
         )
 
