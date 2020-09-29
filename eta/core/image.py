@@ -255,6 +255,8 @@ class ImageLabelsSchema(FrameLabelsSchema):
             of the image(s)
         objects: an ObjectContainerSchema describing the objects in the
             image(s)
+        polylines: a PolylineContainerSchema describing the polylines in the
+            image(s)
         events: an EventContainerSchema describing the events in the image(s)
     """
 

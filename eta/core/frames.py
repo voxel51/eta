@@ -588,10 +588,19 @@ class FrameLabelsSchema(etal.LabelsSchema):
             attributes of the frame(s)
         objects: an ObjectContainerSchema describing the objects in the
             frame(s)
+        polylines: a PolylineContainerSchema describing the polylines in the
+            frame(s)
         events: an EventContainerSchema describing the events in the frame(s)
     """
 
-    def __init__(self, attrs=None, frames=None, objects=None, events=None):
+    def __init__(
+        self,
+        attrs=None,
+        frames=None,
+        objects=None,
+        polylines=None,
+        events=None,
+    ):
         """Creates a FrameLabelsSchema instance.
 
         Args:
@@ -601,12 +610,15 @@ class FrameLabelsSchema(etal.LabelsSchema):
                 frame-level attributes of the frame(s)
             objects: (optional) an ObjectContainerSchema describing the objects
                 in the frame(s)
+            polylines: (optional) a PolylineContainerSchema describing the
+                polylines in the frame(s)
             events: (optional) an EventContainerSchema describing the events
                 in the frame(s)
         """
         self.attrs = attrs or etad.AttributeContainerSchema()
         self.frames = frames or etad.AttributeContainerSchema()
         self.objects = objects or etao.ObjectContainerSchema()
+        self.polylines = polylines or etap.PolylineContainerSchema()
         self.events = events or etae.EventContainerSchema()
 
     @property
@@ -616,6 +628,7 @@ class FrameLabelsSchema(etal.LabelsSchema):
             self.has_constant_attributes
             or self.has_frame_attributes
             or self.has_objects
+            or self.has_polylines
             or self.has_events
         )
 
@@ -633,6 +646,11 @@ class FrameLabelsSchema(etal.LabelsSchema):
     def has_objects(self):
         """Whether the schema has at least one ObjectSchema."""
         return bool(self.objects)
+
+    @property
+    def has_polylines(self):
+        """Whether the schema has at least one PolylineSchema."""
+        return bool(self.polylines)
 
     @property
     def has_events(self):
@@ -809,6 +827,67 @@ class FrameLabelsSchema(etal.LabelsSchema):
             the Attribute class
         """
         return self.objects.get_frame_attribute_class(label, attr_name)
+
+    def has_polyline_label(self, label):
+        """Whether the schema has a polyline with the given label.
+
+        Args:
+            label: the polyline label
+
+        Returns:
+            True/False
+        """
+        return self.polylines.has_polyline_label(label)
+
+    def get_polyline_schema(self, label):
+        """Gets the ObjectSchema for the polyline with the given label.
+
+        Args:
+            label: the polyline label
+
+        Returns:
+            the ObjectSchema
+        """
+        return self.polylines.get_polyline_schema(label)
+
+    def has_polyline_attribute(self, label, attr_name):
+        """Whether the schema has a polyline with the given label with an
+        attribute with the given name.
+
+        Args:
+            label: the polyline label
+            attr_name: a polyline attribute name
+
+        Returns:
+            True/False
+        """
+        return self.polylines.has_polyline_attribute(label, attr_name)
+
+    def get_polyline_attribute_schema(self, label, attr_name):
+        """Gets the AttributeSchema for the attribute of the given name for the
+        polyline with the given label.
+
+        Args:
+            label: the polyline label
+            attr_name: a polyline attribute name
+
+        Returns:
+            the AttributeSchema
+        """
+        return self.polylines.get_polyline_attribute_schema(label, attr_name)
+
+    def get_polyline_attribute_class(self, label, attr_name):
+        """Gets the Attribute class for the attribute of the given name for the
+        polyline with the given label.
+
+        Args:
+            label: the polyline label
+            attr_name: a polyline attribute name
+
+        Returns:
+            the Attribute class
+        """
+        return self.polylines.get_polyline_attribute_class(label, attr_name)
 
     def has_event_label(self, label):
         """Whether the schema has an event with the given label.
@@ -1142,6 +1221,50 @@ class FrameLabelsSchema(etal.LabelsSchema):
         """
         self.objects.add_objects(objects)
 
+    def add_polyline_label(self, label):
+        """Adds the given polyline label to the schema.
+
+        Args:
+            label: a polyline label
+        """
+        self.polylines.add_polyline_label(label)
+
+    def add_polyline_attribute(self, label, attr):
+        """Adds the attribute for the polyline with the given label to the
+        schema.
+
+        Args:
+            label: a polyline label
+            attr: an Attribute
+        """
+        self.polylines.add_polyline_attribute(label, attr)
+
+    def add_polyline_attributes(self, label, attrs):
+        """Adds the attributes for the polyline with the given label to the
+        schema.
+
+        Args:
+            label: a polyline label
+            attrs: an AttributeContainer
+        """
+        self.polylines.add_polyline_attributes(label, attrs)
+
+    def add_polyline(self, polyline):
+        """Adds the polyline to the schema.
+
+        Args:
+            polyline: a Polyline
+        """
+        self.polylines.add_polyline(polyline)
+
+    def add_polylines(self, polylines):
+        """Adds the polylines to the schema.
+
+        Args:
+            polylines: a PolylineContainer
+        """
+        self.polylines.add_polylines(polylines)
+
     def add_event_label(self, label):
         """Adds the given event label to the schema.
 
@@ -1293,6 +1416,7 @@ class FrameLabelsSchema(etal.LabelsSchema):
                 self.add_frame_attribute(attr)
 
         self.add_objects(frame_labels.objects)
+        self.add_polylines(frame_labels.polylines)
         self.add_events(frame_labels.events)
 
     def add_image_labels(self, image_labels):
@@ -1443,6 +1567,65 @@ class FrameLabelsSchema(etal.LabelsSchema):
             True/False
         """
         return self.objects.is_valid(objects)
+
+    def is_valid_polyline_label(self, label):
+        """Whether the polyline label is compliant with the schema.
+
+        Args:
+            label: a polyline label
+
+        Returns:
+            True/False
+        """
+        return self.polylines.is_valid_polyline_label(label)
+
+    def is_valid_polyline_attribute(self, label, attr):
+        """Whether the attribute for the polyline with the given label is
+        compliant with the schema.
+
+        Args:
+            label: a polyline label
+            attr: an Attribute
+
+        Returns:
+            True/False
+        """
+        return self.polylines.is_valid_polyline_attribute(label, attr)
+
+    def is_valid_polyline_attributes(self, label, attrs):
+        """Whether the attributes for the polyline with the given label are
+        compliant with the schema.
+
+        Args:
+            label: a polyline label
+            attrs: an AttributeContainer
+
+        Returns:
+            True/False
+        """
+        return self.polylines.is_valid_polyline_attributes(label, attrs)
+
+    def is_valid_polyline(self, polyline):
+        """Whether the given polyline is compliant with the schema.
+
+        Args:
+            polyline: a Polyline
+
+        Returns:
+            True/False
+        """
+        return self.polylines.is_valid_polyline(polyline)
+
+    def is_valid_polylines(self, polylines):
+        """Whether the given polylines are compliant with the schema.
+
+        Args:
+            polylines: a PolylineContainer
+
+        Returns:
+            True/False
+        """
+        return self.polylines.is_valid(polylines)
 
     def is_valid_event_label(self, label):
         """Whether the event label is compliant with the schema.
@@ -1815,6 +1998,65 @@ class FrameLabelsSchema(etal.LabelsSchema):
         """
         self.objects.validate(objects)
 
+    def validate_polyline_label(self, label):
+        """Validates that the polyline label is compliant with the schema.
+
+        Args:
+            label: a polyline label
+
+        Raises:
+            LabelsSchemaError: if the polyline label violates the schema
+        """
+        self.polylines.validate_polyline_label(label)
+
+    def validate_polyline_attribute(self, label, attr):
+        """Validates that the attribute for the polyline with the given label
+        is compliant with the schema.
+
+        Args:
+            label: a polyline label
+            attr: an Attribute
+
+        Raises:
+            LabelsSchemaError: if the attribute violates the schema
+        """
+        self.polylines.validate_polyline_attribute(label, attr)
+
+    def validate_polyline_attributes(self, label, attrs):
+        """Validates that the attributes for the polyline with the given label
+        are compliant with the schema.
+
+        Args:
+            label: a polyline label
+            attrs: an AttributeContainer
+
+        Raises:
+            LabelsSchemaError: if the attributes violate the schema
+        """
+        self.polylines.validate_polyline_attributes(label, attrs)
+
+    def validate_polyline(self, polyline):
+        """Validates that the polyline is compliant with the schema.
+
+        Args:
+            polyline: a Polyline
+
+        Raises:
+            LabelsSchemaError: if the polyline violates the schema
+        """
+        self.polylines.validate_polyline(polyline)
+
+    def validate_polylines(self, polylines):
+        """Validates that the polylines are compliant with the schema.
+
+        Args:
+            polylines: a PolylineContainer
+
+        Raises:
+            LabelsSchemaError: if the polylines violate the schema
+        """
+        self.polylines.validate(polylines)
+
     def validate_event_label(self, label):
         """Validates that the event label is compliant with the schema.
 
@@ -2028,6 +2270,7 @@ class FrameLabelsSchema(etal.LabelsSchema):
                 self.validate_frame_attribute(attr)
 
         self.validate_objects(frame_labels.objects)
+        self.validate_polylines(frame_labels.polylines)
         self.validate_events(frame_labels.events)
 
     def validate_image_labels(self, image_labels):
@@ -2081,6 +2324,7 @@ class FrameLabelsSchema(etal.LabelsSchema):
         self.attrs.validate_subset_of_schema(schema.attrs)
         self.frames.validate_subset_of_schema(schema.frames)
         self.objects.validate_subset_of_schema(schema.objects)
+        self.polylines.validate_subset_of_schema(schema.polylines)
         self.events.validate_subset_of_schema(schema.events)
 
     def merge_schema(self, schema):
@@ -2092,6 +2336,7 @@ class FrameLabelsSchema(etal.LabelsSchema):
         self.attrs.merge_schema(schema.attrs)
         self.frames.merge_schema(schema.frames)
         self.objects.merge_schema(schema.objects)
+        self.polylines.merge_schema(schema.polylines)
         self.events.merge_schema(schema.events)
 
     @classmethod
@@ -2122,6 +2367,36 @@ class FrameLabelsSchema(etal.LabelsSchema):
         """
         schema = cls()
         schema.add_objects(objects)
+        return schema
+
+    @classmethod
+    def build_active_schema_for_polyline(cls, polyline):
+        """Builds a FrameLabelsSchema that describes the active schema of the
+        given polyline.
+
+        Args:
+            polyline: a Polyline
+
+        Returns:
+            a FrameLabelsSchema
+        """
+        schema = cls()
+        schema.add_polyline(polyline)
+        return schema
+
+    @classmethod
+    def build_active_schema_for_polylines(cls, polylines):
+        """Builds a FrameLabelsSchema that describes the active schema of the
+        given polylines.
+
+        Args:
+            polylines: a PolylineContainer
+
+        Returns:
+            a FrameLabelsSchema
+        """
+        schema = cls()
+        schema.add_polylines(polylines)
         return schema
 
     @classmethod
@@ -2226,6 +2501,7 @@ class FrameLabelsSchema(etal.LabelsSchema):
             attrs=frame_labels_schema.attrs,
             frames=frame_labels_schema.frames,
             objects=frame_labels_schema.objects,
+            polylines=frame_labels_schema.polylines,
             events=frame_labels_schema.events,
         )
 
@@ -2266,6 +2542,8 @@ class FrameLabelsSchema(etal.LabelsSchema):
             _attrs.append("frames")
         if self.objects:
             _attrs.append("objects")
+        if self.polylines:
+            _attrs.append("polylines")
         if self.events:
             _attrs.append("events")
         return _attrs
@@ -2292,8 +2570,18 @@ class FrameLabelsSchema(etal.LabelsSchema):
         if objects is not None:
             objects = etao.ObjectContainerSchema.from_dict(objects)
 
+        polylines = d.get("objects", None)
+        if polylines is not None:
+            polylines = etap.PolylineContainerSchema.from_dict(polylines)
+
         events = d.get("events", None)
         if events is not None:
             events = etae.EventContainerSchema.from_dict(events)
 
-        return cls(attrs=attrs, frames=frames, objects=objects, events=events)
+        return cls(
+            attrs=attrs,
+            frames=frames,
+            objects=objects,
+            polylines=polylines,
+            events=events,
+        )

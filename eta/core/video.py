@@ -1394,6 +1394,8 @@ class VideoLabelsSchema(FrameLabelsSchema):
             attributes of the video(s)
         objects: an ObjectContainerSchema describing the objects of the
             video(s)
+        polylines: a PolylineContainerSchema describing the polylines of the
+            video(s)
         events: an EventContainerSchema describing the events of the video(s)
     """
 
