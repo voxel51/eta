@@ -13,18 +13,18 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
+from future.utils import iteritems
 
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
 import eta.core.data as etad
-from eta.core.serial import Container, Serializable
+import eta.core.labels as etal
 import eta.core.utils as etau
 
 
-# @todo make Polyline a subclass of `eta.core.labels.Labels`
-class Polyline(Serializable):
+class Polyline(etal.Labels):
     """A list of points describing a polyline or polygon in an image.
 
     :class:`Polyline` is a spatial concept that describes information about a
@@ -79,13 +79,6 @@ class Polyline(Serializable):
         self.filled = filled
         self.attrs = attrs or etad.AttributeContainer()
 
-    def __bool__(self):
-        # @todo remove when Polyline(Labels)
-        return not self.is_empty
-
-    def __len__(self):
-        return len(self.points)
-
     @property
     def is_empty(self):
         """Whether the polyline has labels of any kind."""
@@ -115,6 +108,15 @@ class Polyline(Serializable):
     def has_attributes(self):
         """Whether the polyline has attributes."""
         return bool(self.attrs)
+
+    @classmethod
+    def get_schema_cls(cls):
+        """Gets the schema class for :class:`Polyline`.
+
+        Returns:
+            the :class:`eta.core.labels.LabelsSchema` class
+        """
+        return PolylineSchema
 
     def add_attribute(self, attr):
         """Adds the attribute to the polyline.
@@ -163,6 +165,35 @@ class Polyline(Serializable):
         """
         w, h = _to_frame_size(frame_size=frame_size, shape=shape, img=img)
         return [(int(round(x * w)), int(round(y * h))) for x, y in self.points]
+
+    def filter_by_schema(self, schema, allow_none_label=False):
+        """Filters the polyline by the given schema.
+
+        The ``label`` of the :class:`Polyline` must match the provided
+        schema. Or, it can be ``None`` when ``allow_none_label == True``.
+
+        Args:
+            schema: a :class:`PolylineSchema`
+            allow_none_label: whether to allow the object label to be ``None``.
+                By default, this is False
+
+        Raises:
+            :class:`eta.core.labels.LabelsSchemaError`: if the object label
+            does not match the schema
+        """
+        if self.label is None:
+            if not allow_none_label:
+                raise PolylineSchemaError(
+                    "None polyline label is not allowed by the schema"
+                )
+        elif self.label != schema.get_label():
+            raise PolylineSchemaError(
+                "Label '%s' does not match polyline schema" % self.label
+            )
+
+        self.attrs.filter_by_schema(
+            schema.frames, constant_schema=schema.attrs
+        )
 
     def attributes(self):
         """Returns the list of class attributes that will be serialized.
@@ -256,10 +287,11 @@ class Polyline(Serializable):
         )
 
 
-class PolylineContainer(Container):
+class PolylineContainer(etal.LabelsContainer):
     """A ``eta.core.serial.Container`` of :class:`Polyline` instances."""
 
     _ELE_CLS = Polyline
+    _ELE_CLS_FIELD = "_POLY_CLS"
     _ELE_ATTR = "polylines"
 
     def get_labels(self):
@@ -270,6 +302,21 @@ class PolylineContainer(Container):
             a set of labels
         """
         return set(polyline.label for polyline in self)
+
+    def filter_by_schema(self, schema):
+        """Filters the polylines in the container by the given schema.
+
+        Args:
+            schema: a :class:`PolylineContainerSchema`
+        """
+        # Remove polylines with invalid labels
+        filter_func = lambda poly: schema.has_polyline_label(poly.label)
+        self.filter_elements([filter_func])
+
+        # Filter polylines by their schemas
+        for poly in self:
+            poly_schema = schema.get_polyline_schema(poly.label)
+            poly.filter_by_schema(poly_schema)
 
     def remove_polylines_without_attrs(self, labels=None):
         """Removes polylines from this container that do not have attributes.
@@ -284,6 +331,673 @@ class PolylineContainer(Container):
             or polyline.has_attributes
         )
         self.filter_elements([filter_func])
+
+
+class PolylineSchema(etal.LabelsSchema):
+    """Schema for :class:`Polyline` instances.
+
+    Attributes:
+        label: the polyline label
+        attrs: an :class:`eta.core.data.AttributeContainerSchema` describing
+            the attributes of the polyline
+
+    Args:
+        label: the polyline label
+        attrs (None): an :class:`eta.core.data.AttributeContainerSchema`
+            describing the attributes of the polyline
+    """
+
+    def __init__(self, label, attrs=None):
+        self.label = label
+        self.attrs = attrs or etad.AttributeContainerSchema()
+
+    @property
+    def is_empty(self):
+        """Whether this schema has no labels of any kind."""
+        return False
+
+    def has_label(self, label):
+        """Whether the schema has the given polyline label.
+
+        Args:
+            label: the polyline label
+
+        Returns:
+            True/False
+        """
+        return label == self.label
+
+    def get_label(self):
+        """Gets the polyline label for the schema.
+
+        Returns:
+            the polyline label
+        """
+        return self.label
+
+    def has_attribute(self, attr_name):
+        """Whether the schema has an :class:`eta.core.data.Attribute` of the
+        given name.
+
+        Args:
+            attr_name: the name
+
+        Returns:
+            True/False
+        """
+        return self.attrs.has_attribute(attr_name)
+
+    def get_attribute_schema(self, attr_name):
+        """Gets the :class:`eta.core.data.AttributeSchema` for the attribute of
+        the given name.
+
+        Args:
+            attr_name: the name
+
+        Returns:
+            the `eta.core.data.AttributeSchema`
+        """
+        return self.attrs.get_attribute_schema(attr_name)
+
+    def get_attribute_class(self, attr_name):
+        """Gets the `eta.core.data.Attribute` class for the attribute of the
+        given name.
+
+        Args:
+            attr_name: the name
+
+        Returns:
+            the `eta.core.data.Attribute`
+        """
+        return self.attrs.get_attribute_class(attr_name)
+
+    def add_attribute(self, attr):
+        """Adds the `eta.core.data.Attribute` to the schema.
+
+        Args:
+            attr: an `eta.core.data.Attribute`
+        """
+        self.attrs.add_attribute(attr)
+
+    def add_attributes(self, attrs):
+        """Adds the `eta.core.data.AttributeContainer` of attributes to the
+        schema.
+
+        Args:
+            attrs: an `eta.core.data.AttributeContainer`
+        """
+        self.attrs.add_attributes(attrs)
+
+    def add_polyline(self, polyline):
+        """Adds the polyline to the schema.
+
+        Args:
+            polyline: a :class:`Polyline`
+        """
+        self.validate_label(polyline.label)
+        for attr in polyline.attrs:
+            self.add_attribute(attr)
+
+    def add_polylines(self, polylines):
+        """Adds the :class:`PolylineContainer` to the schema.
+
+        Args:
+            polylines: a :class:`PolylineContainer`
+        """
+        for polyline in polylines:
+            self.add_polyline(polyline)
+
+    def is_valid_label(self, label):
+        """Whether the polyline label is compliant with the schema.
+
+        Args:
+            label: a polyline label
+
+        Returns:
+            True/False
+        """
+        try:
+            self.validate_label(label)
+            return True
+        except etal.LabelsSchemaError:
+            return False
+
+    def is_valid_attribute(self, attr):
+        """Whether the attribute is compliant with the schema.
+
+        Args:
+            attr: an `eta.core.data.Attribute`
+
+        Returns:
+            True/False
+        """
+        try:
+            self.validate_attribute(attr)
+            return True
+        except etal.LabelsSchemaError:
+            return False
+
+    def is_valid_attributes(self, attrs):
+        """Whether the `eta.core.data.AttributeContainer` of attributes is
+        compliant with the schema.
+
+        Args:
+            attrs: an `eta.core.data.AttributeContainer`
+
+        Returns:
+            True/False
+        """
+        try:
+            self.validate_attributes(attrs)
+            return True
+        except etal.LabelsSchemaError:
+            return False
+
+    def validate_label(self, label):
+        """Validates that the polyline label is compliant with the schema.
+
+        Args:
+            label: the label
+
+        Raises:
+            :class:`eta.core.labels.LabelsSchemaError`: if the label violates
+            the schema
+        """
+        if label != self.label:
+            raise PolylineSchemaError(
+                "Label '%s' does not match polyline schema" % label
+            )
+
+    def validate_attribute(self, attr):
+        """Validates that the attribute is compliant with the schema.
+
+        Args:
+            attr: an `eta.core.data.Attribute`
+
+        Raises:
+            :class:`eta.core.labels.LabelsSchemaError`: if the attribute
+            violates the schema
+        """
+        self.attrs.validate_attribute(attr)
+
+    def validate_attributes(self, attrs):
+        """Validates that the `eta.core.data.AttributeContainer` of attributes
+        is compliant with the schema.
+
+        Args:
+            attrs: an `eta.core.data.AttributeContainer`
+
+        Raises:
+            :class:`eta.core.labels.LabelsSchemaError`: if the attributes
+            violate the schema
+        """
+        self.attrs.validate(attrs)
+
+    def validate(self, polyline):
+        """Validates that the polyline is compliant with the schema.
+
+        Args:
+            polyline: a :class:`Polyline`
+
+        Raises:
+            :class:`eta.core.labels.LabelsSchemaError`: if the polyline
+            violates the schema
+        """
+        self.validate_label(polyline.label)
+        for attr in polyline.attrs:
+            self.validate_attribute(attr)
+
+    def validate_subset_of_schema(self, schema):
+        """Validates that this schema is a subset of the given schema.
+
+        Args:
+            schema: a :class:`PolylineSchema`
+
+        Raises:
+            :class:`eta.core.labels.LabelsSchemaError`: if this schema is not a
+            subset of the given schema
+        """
+        self.validate_schema_type(schema)
+
+        if self.label != schema.label:
+            raise PolylineSchemaError(
+                "Expected polyline label '%s'; found '%s'"
+                % (schema.label, self.label)
+            )
+
+        self.attrs.validate_subset_of_schema(schema.attrs)
+
+    def merge_schema(self, schema):
+        """Merges the given :class:`PolylineSchema` into this schema.
+
+        Args:
+            schema: a :class:`PolylineSchema`
+        """
+        self.validate_label(schema.label)
+        self.attrs.merge_schema(schema.attrs)
+
+    @classmethod
+    def build_active_schema(cls, polyline):
+        """Builds an :class:`PolylineSchema` that describes the active schema
+        of the polyline.
+
+        Args:
+            polyline: a :class:`Polyline`
+
+        Returns:
+            an :class:`PolylineSchema`
+        """
+        schema = cls(polyline.label)
+        schema.add_polyline(polyline)
+        return schema
+
+    def attributes(self):
+        """Returns the list of class attributes that will be serialized.
+
+        Args:
+            a list of attribute names
+        """
+        _attrs = ["label"]
+        if self.attrs:
+            _attrs.append("attrs")
+        return _attrs
+
+    @classmethod
+    def from_dict(cls, d):
+        """Constructs an :class:`PolylineSchema` from a JSON dictionary.
+
+        Args:
+            d: a JSON dictionary
+
+        Returns:
+            an :class:`PolylineSchema`
+        """
+        attrs = d.get("attrs", None)
+        if attrs is not None:
+            attrs = etad.AttributeContainerSchema.from_dict(attrs)
+
+        return cls(d["label"], attrs=attrs)
+
+
+class PolylineSchemaError(etal.LabelsSchemaError):
+    """Error raised when a :class:`PolylineSchema` is violated."""
+
+    pass
+
+
+class PolylineContainerSchema(etal.LabelsContainerSchema):
+    """Schema for :class:`PolylineContainer`,
+
+    Attributes:
+        schema: a dict mapping polyline labels to :class:`PolylineSchema`
+            instances
+
+    Args:
+        schema (None): a dict mapping polyline labels to
+            :class:`PolylineSchema` instances
+    """
+
+    def __init__(self, schema=None):
+        self.schema = schema or {}
+
+    @property
+    def is_empty(self):
+        """Whether this schema has no labels of any kind."""
+        return not bool(self.schema)
+
+    def iter_object_labels(self):
+        """Returns an iterator over the polyline labels in this schema.
+
+        Returns:
+            an iterator over polyline labels
+        """
+        return iter(self.schema)
+
+    def iter_objects(self):
+        """Returns an iterator over the (label, :class:`PolylineSchema`) pairs
+        in this schema.
+
+        Returns:
+            an iterator over (label, :class:`PolylineSchema`) pairs
+        """
+        return iteritems(self.schema)
+
+    def has_polyline_label(self, label):
+        """Whether the schema has a polyline with the given label.
+
+        Args:
+            label: the polyline label
+
+        Returns:
+            True/False
+        """
+        return label in self.schema
+
+    def has_polyline_attribute(self, label, attr_name):
+        """Whether the schema has a polyline with the given label with an
+        attribute of the given name.
+
+        Args:
+            label: the polyline label
+            attr_name: the attribute name
+
+        Returns:
+            True/False
+        """
+        if not self.has_polyline_label(label):
+            return False
+
+        return self.schema[label].has_attribute(attr_name)
+
+    def get_polyline_schema(self, label):
+        """Gets the :class:`PolylineSchema` for the polyline with the given
+        label.
+
+        Args:
+            label: the polyline label
+
+        Returns:
+            a :class:`PolylineSchema`
+        """
+        self.validate_polyline_label(label)
+        return self.schema[label]
+
+    def get_polyline_attribute_schema(self, label, attr_name):
+        """Gets the :class:`eta.core.data.AttributeSchema` for the attribute of
+        the given name for the polyline with the given label.
+
+        Args:
+            label: the polyline label
+            attr_name: the attribute name
+
+        Returns:
+            the :class:`eta.core.data.AttributeSchema`
+        """
+        poly_schema = self.get_polyline_schema(label)
+        return poly_schema.get_attribute_schema(attr_name)
+
+    def get_polyline_attribute_class(self, label, attr_name):
+        """Gets the :class:`eta.core.data.Attribute` class for the attribute of
+        the given name for the polyline with the given label.
+
+        Args:
+            label: the polyline label
+            attr_name: the attribute name
+
+        Returns:
+            the :class:`eta.core.data.Attribute`
+        """
+        self.validate_polyline_label(label)
+        return self.schema[label].get_attribute_class(attr_name)
+
+    def add_polyline_label(self, label):
+        """Adds the given polyline label to the schema.
+
+        Args:
+            label: a polyline label
+        """
+        self._ensure_has_polyline_label(label)
+
+    def add_polyline_attribute(self, label, attr):
+        """Adds the :class:`eta.core.data.Attribute` for the polyline with the
+        given label to the schema.
+
+        Args:
+            label: a polyline label
+            attr: an :class:`eta.core.data.Attribute`
+        """
+        self._ensure_has_polyline_label(label)
+        self.schema[label].add_attribute(attr)
+
+    def add_polyline_attributes(self, label, attrs):
+        """Adds the :class:`eta.core.data.AttributeContainer` of attributes for
+        the polyline with the given label to the schema.
+
+        Args:
+            label: a polyline label
+            attrs: an :class:`eta.core.data.AttributeContainer`
+        """
+        self._ensure_has_polyline_label(label)
+        self.schema[label].add_attributes(attrs)
+
+    def add_polyline(self, polyline):
+        """Adds the polyline to the schema.
+
+        Args:
+            polyline: a :class:`Polyline`
+        """
+        self._ensure_has_polyline_label(polyline.label)
+        self.schema[polyline.label].add_polyline(polyline)
+
+    def add_polylines(self, polylines):
+        """Adds the objects to the schema.
+
+        Args:
+            polylines: a :class:`PolylineContainer`
+        """
+        for polyline in polylines:
+            self.add_polyline(polyline)
+
+    def is_valid_polyline_label(self, label):
+        """Whether the polyline label is compliant with the schema.
+
+        Args:
+            label: a polyline label
+
+        Returns:
+            True/False
+        """
+        try:
+            self.validate_polyline_label(label)
+            return True
+        except etal.LabelsSchemaError:
+            return False
+
+    def is_valid_polyline_attribute(self, label, attr):
+        """Whether the attribute for the polyline with the given label is
+        compliant with the schema.
+
+        Args:
+            label: a polyline label
+            attr: an :class:`eta.core.data.Attribute`
+
+        Returns:
+            True/False
+        """
+        try:
+            self.validate_polyline_attribute(label, attr)
+            return True
+        except etal.LabelsSchemaError:
+            return False
+
+    def is_valid_polyline_attributes(self, label, attrs):
+        """Whether the attributes for the polyline with the given label are
+        compliant with the schema.
+
+        Args:
+            label: a polyline label
+            attrs: an :class:`eta.core.data.AttributeContainer`
+
+        Returns:
+            True/False
+        """
+        try:
+            self.validate_polyline_attributes(label, attrs)
+            return True
+        except etal.LabelsSchemaError:
+            return False
+
+    def is_valid_polyline(self, polyline):
+        """Whether the polyline is compliant with the schema.
+
+        Args:
+            polyline: a :class:`Polyline`
+
+        Returns:
+            True/False
+        """
+        try:
+            self.validate_polyline(polyline)
+            return True
+        except etal.LabelsSchemaError:
+            return False
+
+    def validate_polyline_label(self, label):
+        """Validates that the polyline label is compliant with the schema.
+
+        Args:
+            label: a polyline label
+
+        Raises:
+            :class:`eta.core.labels.LabelsSchemaError`: if the polyline label
+            violates the schema
+        """
+        if label not in self.schema:
+            raise PolylineContainerSchemaError(
+                "Polyline label '%s' is not allowed by the schema" % label
+            )
+
+    def validate_polyline_attribute(self, label, attr):
+        """Validates that the :class:`eta.core.data.Attribute` for the polyline
+        with the given label is compliant with the schema.
+
+        Args:
+            label: a polyline label
+            attr: an :class:`eta.core.data.Attribute`
+
+        Raises:
+            :class:`eta.core.labels.LabelsSchemaError`: if the attribute
+            violates the schema
+        """
+        self.validate_polyline_label(label)
+        self.schema[label].validate_polyline_attribute(attr)
+
+    def validate_polyline_attributes(self, label, attrs):
+        """Validates that the :class:`eta.core.data.AttributeContainer` of
+        attributes for the polyline with the given label is compliant with the
+        schema.
+
+        Args:
+            label: a polyline label
+            attrs: an :class:`eta.core.data.AttributeContainer`
+
+        Raises:
+            :class:`eta.core.labels.LabelsSchemaError`: if the attributes
+            violate the schema
+        """
+        self.validate_polyline_label(label)
+        self.schema[label].validate_polyline_attributes(attrs)
+
+    def validate_polyline(self, polyline):
+        """Validates that the polyline is compliant with the schema.
+
+        Args:
+            polyline: a :class:`Polyline`
+
+        Raises:
+            :class:`eta.core.labels.LabelsSchemaError`: if the polyline
+            violates the schema
+        """
+        self.validate_polyline_label(polyline.label)
+        self.schema[polyline.label].validate(polyline)
+
+    def validate(self, polylines):
+        """Validates that the polylines are compliant with the schema.
+
+        Args:
+            polylines: a :class:`PolylineContainer`
+
+        Raises:
+            :class:`eta.core.labels.LabelsSchemaError`: if the polyline violate
+            the schema
+        """
+        for polyline in polylines:
+            self.validate_polyline(polyline)
+
+    def validate_subset_of_schema(self, schema):
+        """Validates that this schema is a subset of the given schema.
+
+        Args:
+            schema: an :class:`PolylineContainerSchema`
+
+        Raises:
+            :class:`eta.core.labels.LabelsSchemaError`: if this schema is not a
+            subset of the given schema
+        """
+        self.validate_schema_type(schema)
+
+        for label, poly_schema in iteritems(self.schema):
+            if not schema.has_polyline_label(label):
+                raise PolylineContainerSchemaError(
+                    "Polyline label '%s' does not appear in schema" % label
+                )
+
+            other_polyline_schema = schema.get_polyline_schema(label)
+            poly_schema.validate_subset_of_schema(other_polyline_schema)
+
+    def merge_polyline_schema(self, poly_schema):
+        """Merges the given :class:`PolylineSchema` into the schema.
+
+        Args:
+            poly_schema: an :class:`PolylineSchema`
+        """
+        label = poly_schema.label
+        self._ensure_has_polyline_label(label)
+        self.schema[label].merge_schema(poly_schema)
+
+    def merge_schema(self, schema):
+        """Merges the given :class:`PolylineContainerSchema` into this schema.
+
+        Args:
+            schema: an :class:`PolylineContainerSchema`
+        """
+        for _, poly_schema in schema.iter_objects():
+            self.merge_polyline_schema(poly_schema)
+
+    @classmethod
+    def build_active_schema(cls, polylines):
+        """Builds an :class:`PolylineContainerSchema` that describes the active
+        schema of the polylines.
+
+        Args:
+            polyliness: a :class:`PolylineContainer`
+
+        Returns:
+            an :class:`PolylineContainerSchema`
+        """
+        schema = cls()
+        schema.add_polylines(polylines)
+        return schema
+
+    @classmethod
+    def from_dict(cls, d):
+        """Constructs an :class:`PolylineContainerSchema` from a JSON
+        dictionary.
+
+        Args:
+            d: a JSON dictionary
+
+        Returns:
+            an :class:`PolylineContainerSchema`
+        """
+        schema = d.get("schema", None)
+        if schema is not None:
+            schema = {
+                label: PolylineSchema.from_dict(psd)
+                for label, psd in iteritems(schema)
+            }
+
+        return cls(schema=schema)
+
+    def _ensure_has_polyline_label(self, label):
+        if not self.has_polyline_label(label):
+            self.schema[label] = PolylineSchema(label)
+
+
+class PolylineContainerSchemaError(etal.LabelsContainerSchemaError):
+    """Error raised when a :class:`PolylineContainerSchema` is violated."""
+
+    pass
 
 
 def _to_frame_size(frame_size=None, shape=None, img=None):
