@@ -245,8 +245,8 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
 
         Args:
             schema: an :class:`ObjectSchema`
-            allow_none_label: whether to allow the object label to be ``None``.
-                By default, this is False
+            allow_none_label (False): whether to allow the object label to be
+                ``None``
 
         Raises:
             :class:`eta.core.labels.LabelsSchemaError`: if the object label

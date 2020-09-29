@@ -46,7 +46,7 @@ class Polyline(etal.Labels):
         filled: whether the polyline represents a shape that can be filled when
             rendering it
         attrs: (optional) an :class:`eta.core.data.AttributeContainer` of
-            attributes for the object
+            attributes for the polyline
 
     Args:
         name (None): a name for the polyline, e.g., ``ground_truth`` or the
@@ -174,11 +174,11 @@ class Polyline(etal.Labels):
 
         Args:
             schema: a :class:`PolylineSchema`
-            allow_none_label: whether to allow the object label to be ``None``.
-                By default, this is False
+            allow_none_label (False): whether to allow the polyline label to be
+                ``None``
 
         Raises:
-            :class:`eta.core.labels.LabelsSchemaError`: if the object label
+            :class:`eta.core.labels.LabelsSchemaError`: if the polyline label
             does not match the schema
         """
         if self.label is None:
@@ -645,7 +645,7 @@ class PolylineContainerSchema(etal.LabelsContainerSchema):
         """Whether this schema has no labels of any kind."""
         return not bool(self.schema)
 
-    def iter_object_labels(self):
+    def iter_polyline_labels(self):
         """Returns an iterator over the polyline labels in this schema.
 
         Returns:
@@ -653,7 +653,7 @@ class PolylineContainerSchema(etal.LabelsContainerSchema):
         """
         return iter(self.schema)
 
-    def iter_objects(self):
+    def iter_polylines(self):
         """Returns an iterator over the (label, :class:`PolylineSchema`) pairs
         in this schema.
 
@@ -770,7 +770,7 @@ class PolylineContainerSchema(etal.LabelsContainerSchema):
         self.schema[polyline.label].add_polyline(polyline)
 
     def add_polylines(self, polylines):
-        """Adds the objects to the schema.
+        """Adds the polylines to the schema.
 
         Args:
             polylines: a :class:`PolylineContainer`
@@ -951,7 +951,7 @@ class PolylineContainerSchema(etal.LabelsContainerSchema):
         Args:
             schema: an :class:`PolylineContainerSchema`
         """
-        for _, poly_schema in schema.iter_objects():
+        for _, poly_schema in schema.iter_polylines():
             self.merge_polyline_schema(poly_schema)
 
     @classmethod
