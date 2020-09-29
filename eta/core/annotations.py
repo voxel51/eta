@@ -171,10 +171,15 @@ class AnnotationConfig(Config):
             possible
         show_all_names: (False) whether to render all names, if available. If
             set to ``True``, this overrides all other name flags
+        hide_all_names: (False) whether to hide all names, if available. If
+            set to ``True``, this overrides all other name flags
         show_name_only_titles: (False) whether to render titles that only
             contain the ``name`` of the entity (i.e., no label, confidence,
             index, etc)
         show_all_confidences: (False) whether to render all confidences, if
+            available. If set to ``True``, this overrides all other confidence
+            flags
+        hide_all_confidences: (False) whether to hide all confidences, if
             available. If set to ``True``, this overrides all other confidence
             flags
         hide_attr_values: (None) an optional list of attribute values (of any
@@ -414,11 +419,17 @@ class AnnotationConfig(Config):
         self.show_all_names = self.parse_bool(
             d, "show_all_names", default=False
         )
+        self.hide_all_names = self.parse_bool(
+            d, "hide_all_names", default=False
+        )
         self.show_name_only_titles = self.parse_bool(
             d, "show_name_only_titles", default=False
         )
         self.show_all_confidences = self.parse_bool(
             d, "show_all_confidences", default=False
+        )
+        self.hide_all_confidences = self.parse_bool(
+            d, "hide_all_confidences", default=False
         )
         self.hide_attr_values = self.parse_array(
             d, "hide_attr_values", default=None
@@ -753,11 +764,11 @@ def _annotate_image(img, frame_labels, annotation_config, mask_index=None):
     show_attr_names = (
         annotation_config.show_frame_attr_names
         or annotation_config.show_all_names
-    )
+    ) and not annotation_config.hide_all_names
     show_frame_attr_confidences = (
         annotation_config.show_frame_attr_confidences
         or annotation_config.show_all_confidences
-    )
+    ) and not annotation_config.hide_all_confidences
     add_logo = annotation_config.add_logo
 
     # Parse inputs
@@ -873,7 +884,7 @@ def _draw_polyline(img, polyline, annotation_config):
     show_name = (
         annotation_config.show_polyline_names
         or annotation_config.show_all_names
-    )
+    ) and not annotation_config.hide_all_names
     show_label = annotation_config.show_polyline_labels
     show_name_only_titles = annotation_config.show_name_only_titles
     show_attrs = annotation_config.show_polyline_attrs
@@ -1067,21 +1078,21 @@ def _draw_event(img, event, annotation_config, color=None):
     show_box = annotation_config.show_event_boxes
     show_name = (
         annotation_config.show_event_names or annotation_config.show_all_names
-    )
+    ) and not annotation_config.hide_all_names
     show_label = annotation_config.show_event_labels
     show_attrs = annotation_config.show_event_attrs
     show_confidence = (
         annotation_config.show_event_confidences
         or annotation_config.show_all_confidences
-    )
+    ) and not annotation_config.hide_all_confidences
     show_attr_names = (
         annotation_config.show_event_attr_names
         or annotation_config.show_all_names
-    )
+    ) and not annotation_config.hide_all_names
     show_attr_confidences = (
         annotation_config.show_event_attr_confidences
         or annotation_config.show_all_confidences
-    )
+    ) and not annotation_config.hide_all_confidences
     show_index = annotation_config.show_event_indices
     show_name_only_titles = annotation_config.show_name_only_titles
     occluded_attr = annotation_config.occluded_event_attr
@@ -1160,21 +1171,21 @@ def _draw_object(img, obj, annotation_config, color=None, pre_attrs=None):
     show_box = annotation_config.show_object_boxes
     show_name = (
         annotation_config.show_object_names or annotation_config.show_all_names
-    )
+    ) and not annotation_config.hide_all_names
     show_label = annotation_config.show_object_labels
     show_attrs = annotation_config.show_object_attrs
     show_confidence = (
         annotation_config.show_object_confidences
         or annotation_config.show_all_confidences
-    )
+    ) and not annotation_config.hide_all_confidences
     show_attr_names = (
         annotation_config.show_object_attr_names
         or annotation_config.show_all_names
-    )
+    ) and not annotation_config.hide_all_names
     show_attr_confidences = (
         annotation_config.show_object_attr_confidences
         or annotation_config.show_all_confidences
-    )
+    ) and not annotation_config.hide_all_confidences
     show_index = annotation_config.show_object_indices
     show_name_only_titles = annotation_config.show_name_only_titles
     occluded_attr = annotation_config.occluded_object_attr
