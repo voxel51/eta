@@ -888,8 +888,14 @@ def _draw_polyline(img, polyline, annotation_config):
     show_label = annotation_config.show_polyline_labels
     show_name_only_titles = annotation_config.show_name_only_titles
     show_attrs = annotation_config.show_polyline_attrs
-    show_attr_names = annotation_config.show_polyline_attr_names
-    show_attr_confidences = annotation_config.show_polyline_attr_confidences
+    show_attr_names = (
+        annotation_config.show_polyline_attr_names
+        or annotation_config.show_all_names
+    ) and not annotation_config.hide_all_names
+    show_attr_confidences = (
+        annotation_config.show_polyline_attr_confidences
+        or annotation_config.show_all_confidences
+    ) and not annotation_config.hide_all_confidences
     hide_attr_values = annotation_config.hide_attr_values
     hide_false_boolean_attrs = annotation_config.hide_false_boolean_attrs
     labels_whitelist = annotation_config.polyline_labels_whitelist
