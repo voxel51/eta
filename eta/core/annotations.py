@@ -81,10 +81,6 @@ class AnnotationConfig(Config):
             indicating whether an object is occluded
         hide_occluded_objects: (False) whether to hide objects when they are
             occluded
-        object_labels_whitelist: (None) an optional whitelist of object labels.
-            If provided, only objects with labels in this list will be rendered
-        object_labels_blacklist: (None) an optional blacklist of object labels.
-            If provided, objects with labels in this list will not be rendered
         show_event_boxes: (True) whether to render event bounding boxes, if
             available. If this is ``False``, all attributes, confidences, etc.
             are also hidden
@@ -116,10 +112,6 @@ class AnnotationConfig(Config):
             indicating whether an event is occluded
         hide_occluded_events: (False) whether to hide events when they are
             occluded
-        event_labels_whitelist: (None) an optional whitelist of event labels.
-            If provided, only events with labels in this list will be rendered
-        event_labels_blacklist: (None) an optional blacklist of event labels.
-            If provided, events with labels in this list will not be rendered
         bbox_alpha: (0.75) the transparency of bounding boxes
         bbox_label_text_pad_pixels: (2) the padding, in pixels, around the text
             in bounding box labels
@@ -151,12 +143,6 @@ class AnnotationConfig(Config):
             names, if available
         show_polyline_attr_confidences: (False) whether to render object
             attribute confidences, if available
-        polyline_labels_whitelist: (None) an optional whitelist of polyline
-            labels. If provided, only polylines with labels in this list will
-            be rendered
-        polyline_labels_blacklist: (None) an optional blacklist of polyline
-            labels. If provided, polylines with labels in this list will not be
-            rendered
         hide_non_filled_polyline_annos: (False) whether to override other
             settings and hide the annotation panels for non-filled polylines
             (those with ``filled == False``)
@@ -182,8 +168,15 @@ class AnnotationConfig(Config):
         hide_all_confidences: (False) whether to hide all confidences, if
             available. If set to ``True``, this overrides all other confidence
             flags
-        hide_attr_values: (None) an optional list of attribute values (of any
-            kind) to _not render_
+        labels_whitelist: (None) an optional whitelist of labels (of any kind).
+            If provided, only entities whose ``label`` is in this list will be
+            rendered
+        labels_blacklist: (None) an optional list of labels (of any kind) to
+            not render
+        attr_names_blacklist: (None) an optional list of attribute names (of
+            any kind) to not render
+        attr_values_blacklist: (None) an optional list of attribute values (of
+            any kind) to not render
         hide_false_boolean_attrs: (False) whether to hide attributes (of any
             kind) when they are ``False``
         confidence_scaled_alpha: (False) whether to scale alpha values of
@@ -260,12 +253,6 @@ class AnnotationConfig(Config):
         self.hide_occluded_objects = self.parse_bool(
             d, "hide_occluded_objects", default=False
         )
-        self.object_labels_whitelist = self.parse_array(
-            d, "object_labels_whitelist", default=None
-        )
-        self.object_labels_blacklist = self.parse_array(
-            d, "object_labels_blacklist", default=None
-        )
 
         # EVENTS ##############################################################
 
@@ -316,12 +303,6 @@ class AnnotationConfig(Config):
         )
         self.hide_occluded_events = self.parse_bool(
             d, "hide_occluded_events", default=False
-        )
-        self.event_labels_whitelist = self.parse_array(
-            d, "event_labels_whitelist", default=None
-        )
-        self.event_labels_blacklist = self.parse_array(
-            d, "event_labels_blacklist", default=None
         )
 
         # BOUNDING BOXES ######################################################
@@ -389,12 +370,6 @@ class AnnotationConfig(Config):
         self.show_polyline_attr_confidences = self.parse_bool(
             d, "show_polyline_attr_confidences", default=True
         )
-        self.polyline_labels_whitelist = self.parse_array(
-            d, "polyline_labels_whitelist", default=None
-        )
-        self.polyline_labels_blacklist = self.parse_array(
-            d, "polyline_labels_blacklist", default=None
-        )
         self.hide_non_filled_polyline_annos = self.parse_bool(
             d, "hide_non_filled_polyline_annos", default=False
         )
@@ -431,8 +406,17 @@ class AnnotationConfig(Config):
         self.hide_all_confidences = self.parse_bool(
             d, "hide_all_confidences", default=False
         )
-        self.hide_attr_values = self.parse_array(
-            d, "hide_attr_values", default=None
+        self.labels_whitelist = self.parse_array(
+            d, "labels_whitelist", default=None
+        )
+        self.labels_blacklist = self.parse_array(
+            d, "labels_blacklist", default=None
+        )
+        self.attr_names_blacklist = self.parse_array(
+            d, "attr_names_blacklist", default=None
+        )
+        self.attr_values_blacklist = self.parse_array(
+            d, "attr_values_blacklist", default=None
         )
         self.hide_false_boolean_attrs = self.parse_bool(
             d, "hide_false_boolean_attrs", default=False
@@ -759,7 +743,8 @@ def annotate_image(img, frame_labels, annotation_config=None):
 
 def _annotate_image(img, frame_labels, annotation_config, mask_index=None):
     # Parse config
-    hide_attr_values = annotation_config.hide_attr_values
+    attr_names_blacklist = annotation_config.attr_names_blacklist
+    attr_values_blacklist = annotation_config.attr_values_blacklist
     hide_false_boolean_attrs = annotation_config.hide_false_boolean_attrs
     show_attr_names = (
         annotation_config.show_frame_attr_names
@@ -847,7 +832,8 @@ def _annotate_image(img, frame_labels, annotation_config, mask_index=None):
             attr_strs.extend(
                 _render_attrs(
                     frame_labels.attrs,
-                    hide_attr_values,
+                    attr_names_blacklist,
+                    attr_values_blacklist,
                     hide_false_boolean_attrs,
                     show_attr_names,
                     show_frame_attr_confidences,
@@ -896,10 +882,11 @@ def _draw_polyline(img, polyline, annotation_config):
         annotation_config.show_polyline_attr_confidences
         or annotation_config.show_all_confidences
     ) and not annotation_config.hide_all_confidences
-    hide_attr_values = annotation_config.hide_attr_values
+    attr_names_blacklist = annotation_config.attr_names_blacklist
+    attr_values_blacklist = annotation_config.attr_values_blacklist
     hide_false_boolean_attrs = annotation_config.hide_false_boolean_attrs
-    labels_whitelist = annotation_config.polyline_labels_whitelist
-    labels_blacklist = annotation_config.polyline_labels_blacklist
+    labels_whitelist = annotation_config.labels_whitelist
+    labels_blacklist = annotation_config.labels_blacklist
     per_name_colors = annotation_config.per_polyline_name_colors
     per_label_colors = annotation_config.per_polyline_label_colors
     alpha = annotation_config.polyline_alpha
@@ -1005,7 +992,8 @@ def _draw_polyline(img, polyline, annotation_config):
         # Render attribute strings
         attr_strs = _render_attrs(
             attrs,
-            hide_attr_values,
+            attr_names_blacklist,
+            attr_values_blacklist,
             hide_false_boolean_attrs,
             show_attr_names,
             show_attr_confidences,
@@ -1103,8 +1091,8 @@ def _draw_event(img, event, annotation_config, color=None):
     show_name_only_titles = annotation_config.show_name_only_titles
     occluded_attr = annotation_config.occluded_event_attr
     hide_occluded = annotation_config.hide_occluded_events
-    labels_whitelist = annotation_config.event_labels_whitelist
-    labels_blacklist = annotation_config.event_labels_blacklist
+    labels_whitelist = annotation_config.labels_whitelist
+    labels_blacklist = annotation_config.labels_blacklist
     show_mask = annotation_config.show_event_masks
     show_event_label_on_objects = annotation_config.show_event_label_on_objects
     show_event_objects_in_same_color = (
@@ -1196,8 +1184,8 @@ def _draw_object(img, obj, annotation_config, color=None, pre_attrs=None):
     show_name_only_titles = annotation_config.show_name_only_titles
     occluded_attr = annotation_config.occluded_object_attr
     hide_occluded = annotation_config.hide_occluded_objects
-    labels_whitelist = annotation_config.object_labels_whitelist
-    labels_blacklist = annotation_config.object_labels_blacklist
+    labels_whitelist = annotation_config.labels_whitelist
+    labels_blacklist = annotation_config.labels_blacklist
     show_mask = annotation_config.show_object_masks
     per_name_colors = annotation_config.per_object_name_colors
     per_label_colors = annotation_config.per_object_label_colors
@@ -1257,7 +1245,8 @@ def _draw_bbox_with_attrs(
     pre_attrs=None,
 ):
     # Parse config
-    hide_attr_values = annotation_config.hide_attr_values
+    attr_names_blacklist = annotation_config.attr_names_blacklist
+    attr_values_blacklist = annotation_config.attr_values_blacklist
     hide_false_boolean_attrs = annotation_config.hide_false_boolean_attrs
     colormap = annotation_config.colormap
     bbox_alpha = annotation_config.bbox_alpha
@@ -1372,7 +1361,8 @@ def _draw_bbox_with_attrs(
         # Render attribute strings
         attr_strs = _render_attrs(
             attrs,
-            hide_attr_values,
+            attr_names_blacklist,
+            attr_values_blacklist,
             hide_false_boolean_attrs,
             show_attr_names,
             show_attr_confidences,
@@ -1707,14 +1697,25 @@ def _make_event_attr(event, show_index=True):
 
 def _render_attrs(
     attrs,
-    hide_attr_values,
+    attr_names_blacklist,
+    attr_values_blacklist,
     hide_false_boolean_attrs,
     show_name,
     show_confidence,
 ):
     attr_strs = []
     for attr in attrs:
-        if hide_attr_values is not None and attr.value in hide_attr_values:
+        if (
+            attr_names_blacklist is not None
+            and attr.name in attr_names_blacklist
+        ):
+            # Hide this attribute
+            continue
+
+        if (
+            attr_values_blacklist is not None
+            and attr.value in attr_values_blacklist
+        ):
             # Hide this attribute
             continue
 
