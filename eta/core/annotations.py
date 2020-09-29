@@ -550,11 +550,11 @@ class AnnotationConfig(Config):
             self._logo.render_for(frame_size=frame_size)
 
         # Render font
-        font_size = int(self.scale_factor * self.font_size)
+        font_size = int(round(self.scale_factor * self.font_size))
         self._font = ImageFont.truetype(self.font_path, font_size)
 
         # Render linewidth
-        self._linewidth = int(self.scale_factor * self.bbox_linewidth)
+        self._linewidth = int(round(self.scale_factor * self.bbox_linewidth))
 
     def _get_media_scale_factor(self):
         if self.scale_by_media_height:
