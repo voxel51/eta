@@ -136,9 +136,9 @@ class ImageLabels(FrameLabels):
         mask: (optiona) a segmentation mask for the image
         mask_index: (optional) a MaskIndex describing the semantics of the
             segmentation mask
-        keypoints: a Keypoints of keypoints in the image
         attrs: an AttributeContainer of attributes of the image
         objects: a DetectedObjectContainer of objects in the image
+        keypoints: a KeypointsContainer of keypoints in the image
         polylines: a PolylineContainer of polylines in the image
         events: a DetectedEventContainer of events in the image
     """
@@ -203,9 +203,9 @@ class ImageLabels(FrameLabels):
             metadata=metadata,
             mask=frame_labels.mask,
             mask_index=frame_labels.mask_index,
-            keypoints=frame_labels.keypoints,
             attrs=frame_labels.attrs,
             objects=frame_labels.objects,
+            keypoints=frame_labels.keypoints,
             polylines=frame_labels.polylines,
             events=frame_labels.events,
         )
@@ -254,6 +254,8 @@ class ImageLabelsSchema(FrameLabelsSchema):
         frames: an AttributeContainerSchema describing frame-level attributes
             of the image(s)
         objects: an ObjectContainerSchema describing the objects in the
+            image(s)
+        keypoints: a KeypointsContainerSchema describing the keypoints in the
             image(s)
         polylines: a PolylineContainerSchema describing the polylines in the
             image(s)

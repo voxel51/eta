@@ -20,6 +20,7 @@ from builtins import *
 import eta.core.data as etad
 import eta.core.events as etae
 import eta.core.geometry as etag
+import eta.core.keypoints as etak
 import eta.core.labels as etal
 import eta.core.objects as etao
 import eta.core.polylines as etap
@@ -31,17 +32,17 @@ class FrameLabels(etal.Labels):
 
     FrameLabels are spatial concepts that describe a collection of information
     about a specific frame. FrameLabels can have frame-level attributes,
-    object detections, polylines, event detections, segmentation masks, and
-    keypoints.
+    object detections, keypoints, polylines, event detections, and
+    segmentation masks.
 
     Attributes:
         frame_number: (optional) the frame number
         mask: (optional) a segmentation mask for the frame
         mask_index: (optional) a MaskIndex describing the semantics of the
             segmentation mask
-        keypoints: a Keypoints of keypoints in the frame
         attrs: an AttributeContainer of attributes of the frame
         objects: a DetectedObjectContainer of objects in the frame
+        keypoints: a KeypointsContainer of keypoints in the frame
         polylines: a PolylineContainer of polylines in the frame
         events: a DetectedEventContainer of events in the frame
     """
@@ -51,9 +52,9 @@ class FrameLabels(etal.Labels):
         frame_number=None,
         mask=None,
         mask_index=None,
-        keypoints=None,
         attrs=None,
         objects=None,
+        keypoints=None,
         polylines=None,
         events=None,
     ):
@@ -64,10 +65,10 @@ class FrameLabels(etal.Labels):
             mask: (optional) a segmentation mask for the frame
             mask_index: (optional) a MaskIndex describing the semantics of the
                 segmentation mask
-            keypoints: (optional) a Keypoints instance describing keypoints in
-                the frame
             attrs: (optional) an AttributeContainer of attributes for the frame
             objects: (optional) a DetectedObjectContainer of objects for the
+                frame
+            keypoints: (optional) a KeypointsContainer of keypoints for the
                 frame
             polylines: (optional) a PolylineContainer of polylines for the
                 frame
@@ -76,9 +77,9 @@ class FrameLabels(etal.Labels):
         self.frame_number = frame_number
         self.mask = mask
         self.mask_index = mask_index
-        self.keypoints = keypoints or etag.Keypoints()
         self.attrs = attrs or etad.AttributeContainer()
         self.objects = objects or etao.DetectedObjectContainer()
+        self.keypoints = keypoints or etak.KeypointsContainer()
         self.polylines = polylines or etap.PolylineContainer()
         self.events = events or etae.DetectedEventContainer()
 
@@ -87,9 +88,9 @@ class FrameLabels(etal.Labels):
         """Whether the frame has no labels of any kind."""
         return not (
             self.has_mask
-            or self.has_keypoints
             or self.has_attributes
             or self.has_objects
+            or self.has_keypoints
             or self.has_polylines
             or self.has_events
         )
@@ -108,11 +109,6 @@ class FrameLabels(etal.Labels):
     def has_mask_index(self):
         """Whether this frame has a segmentation mask index."""
         return self.mask_index is not None
-
-    @property
-    def has_keypoints(self):
-        """Whether the frame has at least one keypoint."""
-        return bool(self.keypoints)
 
     @property
     def has_attributes(self):
@@ -134,9 +130,32 @@ class FrameLabels(etal.Labels):
         return False
 
     @property
+    def has_keypoints(self):
+        """Whether the frame has at least one keypoint."""
+        return bool(self.keypoints)
+
+    @property
+    def has_keypoints_attributes(self):
+        """Whether the frame has at least one keypoints with attributes."""
+        for k in self.keypoints:
+            if k.has_attributes:
+                return True
+
+        return False
+
+    @property
     def has_polylines(self):
         """Whether the frame has at least one polyline."""
         return bool(self.polylines)
+
+    @property
+    def has_polylines_attributes(self):
+        """Whether the frame has at least one polyline with attributes."""
+        for polyline in self.polylines:
+            if polyline.has_attributes:
+                return True
+
+        return False
 
     @property
     def has_events(self):
@@ -167,6 +186,14 @@ class FrameLabels(etal.Labels):
             an iterator over `DetectedObject`s
         """
         return iter(self.objects)
+
+    def iter_keypoints(self):
+        """Returns an iterator over the keypoints in the frame.
+
+        Returns:
+            an iterator over `Keypoints`s
+        """
+        return iter(self.keypoints)
 
     def iter_polylines(self):
         """Returns an iterator over the polylines in the frame.
@@ -232,14 +259,6 @@ class FrameLabels(etal.Labels):
         """Clears the `index` of all events in the frame."""
         self.events.clear_indexes()
 
-    def add_keypoints(self, keypoints):
-        """Adds the keypoints to the frame.
-
-        Args:
-            keypoints: a Keypoints
-        """
-        self.keypoints.add(keypoints)
-
     def add_attribute(self, attr):
         """Adds the attribute to the frame.
 
@@ -271,6 +290,17 @@ class FrameLabels(etal.Labels):
             objs: a DetectedObjectContainer
         """
         self.objects.add_container(objs)
+
+    def add_keypoints(self, keypoints):
+        """Adds the keypoints to the frame.
+
+        Args:
+            keypoints: a Keypoints or KeypointsContainer
+        """
+        if isinstance(keypoints, etak.KeypointsContainer):
+            self.keypoints.add_container(keypoints)
+        else:
+            self.keypoints.add(keypoints)
 
     def add_polyline(self, polyline):
         """Adds the polyline to the frame.
@@ -304,16 +334,6 @@ class FrameLabels(etal.Labels):
         """
         self.events.add_container(events)
 
-    def pop_keypoints(self):
-        """Pops the keypoints from the frame.
-
-        Returns:
-            a Keypoints
-        """
-        keypoints = self.keypoints
-        self.clear_keypoints()
-        return keypoints
-
     def pop_attributes(self):
         """Pops the frame-level attributes from the frame.
 
@@ -333,6 +353,16 @@ class FrameLabels(etal.Labels):
         objects = self.objects
         self.clear_objects()
         return objects
+
+    def pop_keypoints(self):
+        """Pops the keypoints from the frame.
+
+        Returns:
+            a KeypointsContainer
+        """
+        keypoints = self.keypoints
+        self.clear_keypoints()
+        return keypoints
 
     def pop_polylines(self):
         """Pops the polylines from the frame.
@@ -354,10 +384,6 @@ class FrameLabels(etal.Labels):
         self.clear_events()
         return events
 
-    def clear_keypoints(self):
-        """Removes all keypoints from the frame."""
-        self.keypoints = etag.Keypoints()
-
     def clear_attributes(self):
         """Removes all frame-level attributes from the frame."""
         self.attrs = etad.AttributeContainer()
@@ -365,6 +391,10 @@ class FrameLabels(etal.Labels):
     def clear_objects(self):
         """Removes all objects from the frame."""
         self.objects = etao.DetectedObjectContainer()
+
+    def clear_keypoints(self):
+        """Removes all keypoints from the frame."""
+        self.keypoints = etak.KeypointsContainer()
 
     def clear_polylines(self):
         """Removes all polylines from the frame."""
@@ -378,9 +408,9 @@ class FrameLabels(etal.Labels):
         """Removes all labels from the frame."""
         self.mask = None
         self.mask_index = None
-        self.clear_keypoints()
         self.clear_attributes()
         self.clear_objects()
+        self.clear_keypoints()
         self.clear_polylines()
         self.clear_events()
 
@@ -402,9 +432,9 @@ class FrameLabels(etal.Labels):
         if frame_labels.has_mask_index:
             self.mask_index = frame_labels.mask_index
 
-        self.add_keypoints(frame_labels.keypoints)
         self.add_attributes(frame_labels.attrs)
         self.add_objects(frame_labels.objects)
+        self.add_keypoints(frame_labels.keypoints)
         self.add_polylines(frame_labels.polylines)
         self.add_events(frame_labels.events)
 
@@ -418,6 +448,8 @@ class FrameLabels(etal.Labels):
             schema.frames, constant_schema=schema.attrs
         )
         self.objects.filter_by_schema(schema.objects)
+        self.keypoints.filter_by_schema(schema.keypoints)
+        self.polylines.filter_by_schema(schema.polylines)
         self.events.filter_by_schema(schema.events)
 
     def remove_objects_without_attrs(self, labels=None):
@@ -444,12 +476,12 @@ class FrameLabels(etal.Labels):
             _attrs.append("mask")
         if self.has_mask_index:
             _attrs.append("mask_index")
-        if self.keypoints:
-            _attrs.append("keypoints")
         if self.attrs:
             _attrs.append("attrs")
         if self.objects:
             _attrs.append("objects")
+        if self.keypoints:
+            _attrs.append("keypoints")
         if self.polylines:
             _attrs.append("polylines")
         if self.events:
@@ -479,10 +511,6 @@ class FrameLabels(etal.Labels):
         if mask_index is not None:
             mask_index = etad.MaskIndex.from_dict(mask_index)
 
-        keypoints = d.get("keypoints", None)
-        if keypoints is not None:
-            keypoints = etag.Keypoints.from_dict(keypoints)
-
         attrs = d.get("attrs", None)
         if attrs is not None:
             attrs = etad.AttributeContainer.from_dict(attrs)
@@ -490,6 +518,10 @@ class FrameLabels(etal.Labels):
         objects = d.get("objects", None)
         if objects is not None:
             objects = etao.DetectedObjectContainer.from_dict(objects)
+
+        keypoints = d.get("keypoints", None)
+        if keypoints is not None:
+            keypoints = etak.KeypointsContainer.from_dict(keypoints)
 
         polylines = d.get("polylines", None)
         if polylines is not None:
@@ -503,9 +535,9 @@ class FrameLabels(etal.Labels):
             frame_number=frame_number,
             mask=mask,
             mask_index=mask_index,
-            keypoints=keypoints,
             attrs=attrs,
             objects=objects,
+            keypoints=keypoints,
             polylines=polylines,
             events=events,
             **kwargs
@@ -588,6 +620,8 @@ class FrameLabelsSchema(etal.LabelsSchema):
             attributes of the frame(s)
         objects: an ObjectContainerSchema describing the objects in the
             frame(s)
+        keypoints: a KeypointsContainerSchema describing the polylines in the
+            frame(s)
         polylines: a PolylineContainerSchema describing the polylines in the
             frame(s)
         events: an EventContainerSchema describing the events in the frame(s)
@@ -598,6 +632,7 @@ class FrameLabelsSchema(etal.LabelsSchema):
         attrs=None,
         frames=None,
         objects=None,
+        keypoints=None,
         polylines=None,
         events=None,
     ):
@@ -610,6 +645,8 @@ class FrameLabelsSchema(etal.LabelsSchema):
                 frame-level attributes of the frame(s)
             objects: (optional) an ObjectContainerSchema describing the objects
                 in the frame(s)
+            keypoints: (optional) a KeypointsContainerSchema describing the
+                keypoints in the frame(s)
             polylines: (optional) a PolylineContainerSchema describing the
                 polylines in the frame(s)
             events: (optional) an EventContainerSchema describing the events
@@ -618,6 +655,7 @@ class FrameLabelsSchema(etal.LabelsSchema):
         self.attrs = attrs or etad.AttributeContainerSchema()
         self.frames = frames or etad.AttributeContainerSchema()
         self.objects = objects or etao.ObjectContainerSchema()
+        self.keypoints = keypoints or etak.KeypointsContainerSchema()
         self.polylines = polylines or etap.PolylineContainerSchema()
         self.events = events or etae.EventContainerSchema()
 
@@ -628,6 +666,7 @@ class FrameLabelsSchema(etal.LabelsSchema):
             self.has_constant_attributes
             or self.has_frame_attributes
             or self.has_objects
+            or self.has_keypoints
             or self.has_polylines
             or self.has_events
         )
@@ -646,6 +685,11 @@ class FrameLabelsSchema(etal.LabelsSchema):
     def has_objects(self):
         """Whether the schema has at least one ObjectSchema."""
         return bool(self.objects)
+
+    @property
+    def has_keypoints(self):
+        """Whether the schema has at least one KeypointsSchema."""
+        return bool(self.keypoints)
 
     @property
     def has_polylines(self):
@@ -828,6 +872,67 @@ class FrameLabelsSchema(etal.LabelsSchema):
         """
         return self.objects.get_frame_attribute_class(label, attr_name)
 
+    def has_keypoints_label(self, label):
+        """Whether the schema has a keypoints with the given label.
+
+        Args:
+            label: the keypoints label
+
+        Returns:
+            True/False
+        """
+        return self.keypoints.has_keypoints_label(label)
+
+    def get_keypoints_schema(self, label):
+        """Gets the KeypointsSchema for the keypoints with the given label.
+
+        Args:
+            label: the keypoints label
+
+        Returns:
+            the KeypointsSchema
+        """
+        return self.keypoints.get_keypoints_schema(label)
+
+    def has_keypoints_attribute(self, label, attr_name):
+        """Whether the schema has a keypoints with the given label with an
+        attribute with the given name.
+
+        Args:
+            label: the keypoints label
+            attr_name: a keypoints attribute name
+
+        Returns:
+            True/False
+        """
+        return self.keypoints.has_keypoints_attribute(label, attr_name)
+
+    def get_keypoints_attribute_schema(self, label, attr_name):
+        """Gets the AttributeSchema for the attribute of the given name for the
+        keypoints with the given label.
+
+        Args:
+            label: the keypoints label
+            attr_name: a keypoints attribute name
+
+        Returns:
+            the AttributeSchema
+        """
+        return self.keypoints.get_keypoints_attribute_schema(label, attr_name)
+
+    def get_keypoints_attribute_class(self, label, attr_name):
+        """Gets the Attribute class for the attribute of the given name for the
+        keypoints with the given label.
+
+        Args:
+            label: the keypoints label
+            attr_name: a keypoints attribute name
+
+        Returns:
+            the Attribute class
+        """
+        return self.keypoints.get_keypoints_attribute_class(label, attr_name)
+
     def has_polyline_label(self, label):
         """Whether the schema has a polyline with the given label.
 
@@ -840,13 +945,13 @@ class FrameLabelsSchema(etal.LabelsSchema):
         return self.polylines.has_polyline_label(label)
 
     def get_polyline_schema(self, label):
-        """Gets the ObjectSchema for the polyline with the given label.
+        """Gets the PolylineSchema for the polyline with the given label.
 
         Args:
             label: the polyline label
 
         Returns:
-            the ObjectSchema
+            the PolylineSchema
         """
         return self.polylines.get_polyline_schema(label)
 
@@ -1221,6 +1326,42 @@ class FrameLabelsSchema(etal.LabelsSchema):
         """
         self.objects.add_objects(objects)
 
+    def add_keypoints_label(self, label):
+        """Adds the given keypoints label to the schema.
+
+        Args:
+            label: a keypoints label
+        """
+        self.keypoints.add_keypoints_label(label)
+
+    def add_keypoints_attribute(self, label, attr):
+        """Adds the attribute for the keypoints with the given label to the
+        schema.
+
+        Args:
+            label: a keypoints label
+            attr: an Attribute
+        """
+        self.keypoints.add_keypoints_attribute(label, attr)
+
+    def add_keypoints_attributes(self, label, attrs):
+        """Adds the attributes for the keypoints with the given label to the
+        schema.
+
+        Args:
+            label: a keypoints label
+            attrs: an AttributeContainer
+        """
+        self.keypoints.add_keypoints_attributes(label, attrs)
+
+    def add_keypoints(self, keypoints):
+        """Adds the keypoints to the schema.
+
+        Args:
+            keypoints: a Keypoints or KeypointsContainer
+        """
+        self.keypoints.add_keypoints(keypoints)
+
     def add_polyline_label(self, label):
         """Adds the given polyline label to the schema.
 
@@ -1416,6 +1557,7 @@ class FrameLabelsSchema(etal.LabelsSchema):
                 self.add_frame_attribute(attr)
 
         self.add_objects(frame_labels.objects)
+        self.add_keypoints(frame_labels.keypoints)
         self.add_polylines(frame_labels.polylines)
         self.add_events(frame_labels.events)
 
@@ -1567,6 +1709,57 @@ class FrameLabelsSchema(etal.LabelsSchema):
             True/False
         """
         return self.objects.is_valid(objects)
+
+    def is_valid_keypoints_label(self, label):
+        """Whether the keypoints label is compliant with the schema.
+
+        Args:
+            label: a keypoints label
+
+        Returns:
+            True/False
+        """
+        return self.keypoints.is_valid_keypoints_label(label)
+
+    def is_valid_keypoints_attribute(self, label, attr):
+        """Whether the attribute for the keypoints with the given label is
+        compliant with the schema.
+
+        Args:
+            label: a keypoints label
+            attr: an Attribute
+
+        Returns:
+            True/False
+        """
+        return self.keypoints.is_valid_keypoints_attribute(label, attr)
+
+    def is_valid_keypoints_attributes(self, label, attrs):
+        """Whether the attributes for the keypoints with the given label are
+        compliant with the schema.
+
+        Args:
+            label: a keypoints label
+            attrs: an AttributeContainer
+
+        Returns:
+            True/False
+        """
+        return self.keypoints.is_valid_keypoints_attributes(label, attrs)
+
+    def is_valid_keypoints(self, keypoints):
+        """Whether the given keypoints are compliant with the schema.
+
+        Args:
+            keypoints: a Keypoints or KeypointsContainer
+
+        Returns:
+            True/False
+        """
+        if isinstance(keypoints, etak.KeypointsContainer):
+            return self.keypoints.is_valid(keypoints)
+
+        return self.keypoints.is_valid_keypoints(keypoints)
 
     def is_valid_polyline_label(self, label):
         """Whether the polyline label is compliant with the schema.
@@ -1998,6 +2191,57 @@ class FrameLabelsSchema(etal.LabelsSchema):
         """
         self.objects.validate(objects)
 
+    def validate_keypoints_label(self, label):
+        """Validates that the keypoints label is compliant with the schema.
+
+        Args:
+            label: a keypoints label
+
+        Raises:
+            LabelsSchemaError: if the keypoints label violates the schema
+        """
+        self.keypoints.validate_keypoints_label(label)
+
+    def validate_keypoints_attribute(self, label, attr):
+        """Validates that the attribute for the keypoints with the given label
+        is compliant with the schema.
+
+        Args:
+            label: a keypoints label
+            attr: an Attribute
+
+        Raises:
+            LabelsSchemaError: if the attribute violates the schema
+        """
+        self.keypoints.validate_keypoints_attribute(label, attr)
+
+    def validate_keypoints_attributes(self, label, attrs):
+        """Validates that the attributes for the keypoints with the given label
+        are compliant with the schema.
+
+        Args:
+            label: a keypoints label
+            attrs: an AttributeContainer
+
+        Raises:
+            LabelsSchemaError: if the attributes violate the schema
+        """
+        self.keypoints.validate_keypoints_attributes(label, attrs)
+
+    def validate_keypoints(self, keypoints):
+        """Validates that the keypoints are compliant with the schema.
+
+        Args:
+            keypoints: a Keypoints or KeypointsContainer
+
+        Raises:
+            LabelsSchemaError: if the keypoints violate the schema
+        """
+        if isinstance(keypoints, etak.KeypointsContainer):
+            self.keypoints.validate(keypoints)
+        else:
+            self.keypoints.validate_keypoints(keypoints)
+
     def validate_polyline_label(self, label):
         """Validates that the polyline label is compliant with the schema.
 
@@ -2270,6 +2514,7 @@ class FrameLabelsSchema(etal.LabelsSchema):
                 self.validate_frame_attribute(attr)
 
         self.validate_objects(frame_labels.objects)
+        self.validate_keypoints(frame_labels.keypoints)
         self.validate_polylines(frame_labels.polylines)
         self.validate_events(frame_labels.events)
 
@@ -2324,6 +2569,7 @@ class FrameLabelsSchema(etal.LabelsSchema):
         self.attrs.validate_subset_of_schema(schema.attrs)
         self.frames.validate_subset_of_schema(schema.frames)
         self.objects.validate_subset_of_schema(schema.objects)
+        self.keypoints.validate_subset_of_schema(schema.keypoints)
         self.polylines.validate_subset_of_schema(schema.polylines)
         self.events.validate_subset_of_schema(schema.events)
 
@@ -2336,6 +2582,7 @@ class FrameLabelsSchema(etal.LabelsSchema):
         self.attrs.merge_schema(schema.attrs)
         self.frames.merge_schema(schema.frames)
         self.objects.merge_schema(schema.objects)
+        self.keypoints.merge_schema(schema.keypoints)
         self.polylines.merge_schema(schema.polylines)
         self.events.merge_schema(schema.events)
 
@@ -2367,6 +2614,21 @@ class FrameLabelsSchema(etal.LabelsSchema):
         """
         schema = cls()
         schema.add_objects(objects)
+        return schema
+
+    @classmethod
+    def build_active_schema_for_keypoints(cls, keypoints):
+        """Builds a FrameLabelsSchema that describes the active schema of the
+        given keypoints.
+
+        Args:
+            keypoints: a Keypoints or KeypointsContainer
+
+        Returns:
+            a FrameLabelsSchema
+        """
+        schema = cls()
+        schema.add_keypoints(keypoints)
         return schema
 
     @classmethod
@@ -2501,6 +2763,7 @@ class FrameLabelsSchema(etal.LabelsSchema):
             attrs=frame_labels_schema.attrs,
             frames=frame_labels_schema.frames,
             objects=frame_labels_schema.objects,
+            keypoints=frame_labels_schema.keypoints,
             polylines=frame_labels_schema.polylines,
             events=frame_labels_schema.events,
         )
@@ -2542,6 +2805,8 @@ class FrameLabelsSchema(etal.LabelsSchema):
             _attrs.append("frames")
         if self.objects:
             _attrs.append("objects")
+        if self.keypoints:
+            _attrs.append("keypoints")
         if self.polylines:
             _attrs.append("polylines")
         if self.events:
@@ -2570,7 +2835,11 @@ class FrameLabelsSchema(etal.LabelsSchema):
         if objects is not None:
             objects = etao.ObjectContainerSchema.from_dict(objects)
 
-        polylines = d.get("objects", None)
+        keypoints = d.get("keypoints", None)
+        if keypoints is not None:
+            keypoints = etak.KeypointsContainerSchema.from_dict(keypoints)
+
+        polylines = d.get("polylines", None)
         if polylines is not None:
             polylines = etap.PolylineContainerSchema.from_dict(polylines)
 
@@ -2582,6 +2851,7 @@ class FrameLabelsSchema(etal.LabelsSchema):
             attrs=attrs,
             frames=frames,
             objects=objects,
+            keypoints=keypoints,
             polylines=polylines,
             events=events,
         )
