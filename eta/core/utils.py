@@ -1060,7 +1060,7 @@ class ProgressBar(object):
         self._start_msg = start_msg
         self._complete_msg = complete_msg
         self._max_width = max_width
-        self._has_dynamic_width = max_width is None
+        self._has_dynamic_width = max_width is None and not quiet
         self._max_fps = max_fps
         self._timer = Timer(quiet=True)
         self._is_running = False
