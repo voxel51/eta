@@ -144,7 +144,7 @@ class AnnotationConfig(Config):
             available. If set to ``True``, this overrides all other confidence
             flags
         hide_attr_values: (None) an optional list of attribute values (of any
-            kind) to _not render_
+            kind) to *not render*
         hide_false_boolean_attrs: (False) whether to hide attributes (of any
             kind) when they are ``False``
         confidence_scaled_alpha: (False) whether to scale alpha values of

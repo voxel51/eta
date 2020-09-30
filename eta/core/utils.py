@@ -1060,7 +1060,7 @@ class ProgressBar(object):
         self._start_msg = start_msg
         self._complete_msg = complete_msg
         self._max_width = max_width
-        self._has_dynamic_width = max_width is None
+        self._has_dynamic_width = max_width is None and not quiet
         self._max_fps = max_fps
         self._timer = Timer(quiet=True)
         self._is_running = False
@@ -1088,7 +1088,11 @@ class ProgressBar(object):
         if self._has_dynamic_width:
             self._update_max_width()
             if hasattr(signal, "SIGWINCH"):
-                signal.signal(signal.SIGWINCH, self._update_max_width)
+                try:
+                    signal.signal(signal.SIGWINCH, self._update_max_width)
+                except ValueError:
+                    # for example, called from a non-main thread
+                    pass
 
     def __enter__(self):
         self.start()
@@ -1276,7 +1280,10 @@ class ProgressBar(object):
             logger.info(self._complete_msg)
 
         if self.has_dynamic_width and hasattr(signal, "SIGWINCH"):
-            signal.signal(signal.SIGWINCH, signal.SIG_DFL)
+            try:
+                signal.signal(signal.SIGWINCH, signal.SIG_DFL)
+            except ValueError:
+                pass
 
     def update(self, count=1, suffix=None, draw=True):
         """Increments the current iteration count by the given value
