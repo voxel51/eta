@@ -18,7 +18,7 @@ class BdistWheelCustom(bdist_wheel):
 
 setup(
     name="voxel51-eta",
-    version="0.1.6",
+    version="0.1.7b1",
     description="Extensible Toolkit for Analytics",
     author="Voxel51, Inc.",
     author_email="info@voxel51.com",
