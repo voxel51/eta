@@ -448,6 +448,8 @@ class VideoFrameLabels(FrameLabels):
             segmentation mask
         attrs: an AttributeContainer of attributes of the frame
         objects: a DetectedObjectContainer of objects in the frame
+        keypoints: a KeypointsContainer of keypoints in the frame
+        polylines: a PolylineContainer of polylines in the frame
         events: a DetectedEventContainer of events in the frame
     """
 
@@ -468,6 +470,8 @@ class VideoFrameLabels(FrameLabels):
             mask_index=image_labels.mask_index,
             attrs=image_labels.attrs,
             objects=image_labels.objects,
+            keypoints=image_labels.keypoints,
+            polylines=image_labels.polylines,
             events=image_labels.events,
         )
 
@@ -487,6 +491,8 @@ class VideoFrameLabels(FrameLabels):
             mask_index=frame_labels.mask_index,
             attrs=frame_labels.attrs,
             objects=frame_labels.objects,
+            keypoints=frame_labels.keypoints,
+            polylines=frame_labels.polylines,
             events=frame_labels.events,
         )
 
@@ -503,7 +509,8 @@ class VideoLabels(
     VideoLabels are spatiotemporal concepts that describe the content of a
     video. VideoLabels can have video-level attributes that apply to the entire
     video, frame-level attributes, frame-level object detections, frame-level
-    event detections, spatiotemporal objects, and spatiotemporal events.
+    keypoints/polylines/polygons/masks, frame-level event detections,
+    spatiotemporal objects, and spatiotemporal events.
 
     Note that the VideoLabels class implements the `HasFramewiseView` and
     `HasSpatiotemporalView` mixins. This means that all VideoLabels instances
@@ -759,6 +766,24 @@ class VideoLabels(
         return self.has_video_events or self.has_detected_events
 
     @property
+    def has_keypoints(self):
+        """Whether the video has at least one frame with keypoints."""
+        for frame_labels in self.iter_frames():
+            if frame_labels.has_keypoints:
+                return True
+
+        return False
+
+    @property
+    def has_polylines(self):
+        """Whether the video has at least one frame with polylines."""
+        for frame_labels in self.iter_frames():
+            if frame_labels.has_polylines:
+                return True
+
+        return False
+
+    @property
     def has_frame_labels(self):
         """Whether the video has at least one VideoFrameLabels."""
         return bool(self.frames)
@@ -846,6 +871,22 @@ class VideoLabels(
             a list of frame numbers
         """
         return [fn for fn in self if self[fn].has_objects]
+
+    def get_frame_numbers_with_keypoints(self):
+        """Returns a sorted list of frames with frame-level `Keypoints`s.
+
+        Returns:
+            a list of frame numbers
+        """
+        return [fn for fn in self if self[fn].has_keypoints]
+
+    def get_frame_numbers_with_polylines(self):
+        """Returns a sorted list of frames with frame-level `Polyline`s.
+
+        Returns:
+            a list of frame numbers
+        """
+        return [fn for fn in self if self[fn].has_polylines]
 
     def get_frame_numbers_with_events(self):
         """Returns a sorted list of frames with one or more `DetectedEvent`s.
@@ -1352,6 +1393,10 @@ class VideoLabelsSchema(FrameLabelsSchema):
         frames: an AttributeContainerSchema describing the frame-level
             attributes of the video(s)
         objects: an ObjectContainerSchema describing the objects of the
+            video(s)
+        keypoints: a KeypointsContainerSchema describing the keypoints of the
+            video(s)
+        polylines: a PolylineContainerSchema describing the polylines of the
             video(s)
         events: an EventContainerSchema describing the events of the video(s)
     """

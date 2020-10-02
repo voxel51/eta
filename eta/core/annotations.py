@@ -81,10 +81,6 @@ class AnnotationConfig(Config):
             indicating whether an object is occluded
         hide_occluded_objects: (False) whether to hide objects when they are
             occluded
-        object_labels_whitelist: (None) an optional whitelist of object labels.
-            If provided, only objects with labels in this list will be rendered
-        object_labels_blacklist: (None) an optional blacklist of object labels.
-            If provided, object with labels in this list will not be rendered
         show_event_boxes: (True) whether to render event bounding boxes, if
             available. If this is ``False``, all attributes, confidences, etc.
             are also hidden
@@ -116,10 +112,6 @@ class AnnotationConfig(Config):
             indicating whether an event is occluded
         hide_occluded_events: (False) whether to hide events when they are
             occluded
-        event_labels_whitelist: (None) an optional whitelist of event labels.
-            If provided, only events with labels in this list will be rendered
-        event_labels_blacklist: (None) an optional blacklist of event labels.
-            If provided, events with labels in this list will not be rendered
         bbox_alpha: (0.75) the transparency of bounding boxes
         bbox_label_text_pad_pixels: (2) the padding, in pixels, around the text
             in bounding box labels
@@ -138,13 +130,66 @@ class AnnotationConfig(Config):
             in attribute boxes
         attrs_box_text_line_spacing_pixels: (1) the padding, in pixels, between
             each line of text in attribute boxes
+        show_keypoints_names: (True) whether to render keypoints names, if
+            available
+        show_keypoints_labels: (True) whether to render keypoints labels, if
+            available
+        show_keypoints_attrs: (True) whether to render keypoints attributes, if
+            available
+        show_keypoints_attr_names: (True) whether to render keypoint attribute
+            names, if available
+        show_keypoints_attr_confidences: (False) whether to render keypoint
+            attribute confidences, if available
+        per_keypoints_name_colors: (True) whether to render keypoints with
+            different names in different colors
+        per_keypoints_label_colors: (True) whether to render keypoints with
+            different labels in different colors
+        keypoints_size: (4) the size to render keypoints
+        keypoints_alpha: (0.75) the transparency of keypoints
+        show_polyline_names: (True) whether to render polyline names, if
+            available
+        show_polyline_labels: (True) whether to render polyline labels, if
+            available
+        show_polyline_attrs: (True) whether to render polyline attributes, if
+            available
+        show_polyline_attr_names: (True) whether to render polyline attribute
+            names, if available
+        show_polyline_attr_confidences: (False) whether to render polyline
+            attribute confidences, if available
+        hide_non_filled_polyline_annos: (False) whether to override other
+            settings and hide the annotation panels for non-filled polylines
+            (those with ``filled == False``)
+        per_polyline_name_colors: (True) whether to render polylines with
+            different names in different colors
+        per_polyline_label_colors: (True) whether to render polylines with
+            different labels in different colors
+        polyline_alpha: (0.75) the transparency of polylines
+        polyline_linewidth: (3) the linewidth, in pixels, of non-filled
+            polylines
+        fill_polylines: (True) whether to draw polylines as filled, when
+            possible
         show_all_names: (False) whether to render all names, if available. If
             set to ``True``, this overrides all other name flags
+        hide_all_names: (False) whether to hide all names, if available. If
+            set to ``True``, this overrides all other name flags
+        show_name_only_titles: (False) whether to render titles that only
+            contain the ``name`` of the entity (i.e., no label, confidence,
+            index, etc)
         show_all_confidences: (False) whether to render all confidences, if
             available. If set to ``True``, this overrides all other confidence
             flags
-        hide_attr_values: (None) an optional list of attribute values (of any
-            kind) to *not render*
+        hide_all_confidences: (False) whether to hide all confidences, if
+            available. If set to ``True``, this overrides all other confidence
+            flags
+        labels_whitelist: (None) an optional whitelist of labels (of any kind).
+            If provided, only entities whose ``label`` is in this list will be
+            rendered
+        labels_blacklist: (None) an optional list of labels (of any kind) to
+            not render
+        attr_names_blacklist: (None) an optional list of attribute names (of
+            any kind) to not render
+        attr_values_blacklist: (None) an optional list of attribute values (of
+            any kind) to not render
         hide_false_boolean_attrs: (False) whether to hide attributes (of any
             kind) when they are ``False``
         confidence_scaled_alpha: (False) whether to scale alpha values of
@@ -221,12 +266,6 @@ class AnnotationConfig(Config):
         self.hide_occluded_objects = self.parse_bool(
             d, "hide_occluded_objects", default=False
         )
-        self.object_labels_whitelist = self.parse_array(
-            d, "object_labels_whitelist", default=None
-        )
-        self.object_labels_blacklist = self.parse_array(
-            d, "object_labels_blacklist", default=None
-        )
 
         # EVENTS ##############################################################
 
@@ -278,12 +317,6 @@ class AnnotationConfig(Config):
         self.hide_occluded_events = self.parse_bool(
             d, "hide_occluded_events", default=False
         )
-        self.event_labels_whitelist = self.parse_array(
-            d, "event_labels_whitelist", default=None
-        )
-        self.event_labels_blacklist = self.parse_array(
-            d, "event_labels_blacklist", default=None
-        )
 
         # BOUNDING BOXES ######################################################
 
@@ -323,16 +356,98 @@ class AnnotationConfig(Config):
             d, "attrs_box_text_line_spacing_pixels", default=1
         )
 
+        # KEYPOINTS ###########################################################
+
+        self.show_keypoints_names = self.parse_bool(
+            d, "show_keypoints_names", default=True
+        )
+        self.show_keypoints_labels = self.parse_bool(
+            d, "show_keypoints_labels", default=True
+        )
+        self.show_keypoints_attrs = self.parse_bool(
+            d, "show_keypoints_attrs", default=True
+        )
+        self.show_keypoints_attr_names = self.parse_bool(
+            d, "show_keypoints_attr_names", default=True
+        )
+        self.show_keypoints_attr_confidences = self.parse_bool(
+            d, "show_keypoints_attr_confidences", default=True
+        )
+        self.per_keypoints_name_colors = self.parse_bool(
+            d, "per_keypoints_name_colors", default=True
+        )
+        self.per_keypoints_label_colors = self.parse_bool(
+            d, "per_keypoints_label_colors", default=True
+        )
+        self.keypoints_size = self.parse_number(d, "keypoints_size", default=4)
+        self.keypoints_alpha = self.parse_number(
+            d, "keypoints_alpha", default=0.75
+        )
+
+        # POLYLINES ###########################################################
+
+        self.show_polyline_names = self.parse_bool(
+            d, "show_polyline_names", default=True
+        )
+        self.show_polyline_labels = self.parse_bool(
+            d, "show_polyline_labels", default=True
+        )
+        self.show_polyline_attrs = self.parse_bool(
+            d, "show_polyline_attrs", default=True
+        )
+        self.show_polyline_attr_names = self.parse_bool(
+            d, "show_polyline_attr_names", default=True
+        )
+        self.show_polyline_attr_confidences = self.parse_bool(
+            d, "show_polyline_attr_confidences", default=True
+        )
+        self.hide_non_filled_polyline_annos = self.parse_bool(
+            d, "hide_non_filled_polyline_annos", default=False
+        )
+        self.per_polyline_name_colors = self.parse_bool(
+            d, "per_polyline_name_colors", default=True
+        )
+        self.per_polyline_label_colors = self.parse_bool(
+            d, "per_polyline_label_colors", default=True
+        )
+        self.polyline_alpha = self.parse_number(
+            d, "polyline_alpha", default=0.75
+        )
+        self.polyline_linewidth = self.parse_number(
+            d, "polyline_linewidth", default=3
+        )
+        self.fill_polylines = self.parse_bool(
+            d, "fill_polylines", default=True
+        )
+
         # ALL LABELS ##########################################################
 
         self.show_all_names = self.parse_bool(
             d, "show_all_names", default=False
         )
+        self.hide_all_names = self.parse_bool(
+            d, "hide_all_names", default=False
+        )
+        self.show_name_only_titles = self.parse_bool(
+            d, "show_name_only_titles", default=False
+        )
         self.show_all_confidences = self.parse_bool(
             d, "show_all_confidences", default=False
         )
-        self.hide_attr_values = self.parse_array(
-            d, "hide_attr_values", default=None
+        self.hide_all_confidences = self.parse_bool(
+            d, "hide_all_confidences", default=False
+        )
+        self.labels_whitelist = self.parse_array(
+            d, "labels_whitelist", default=None
+        )
+        self.labels_blacklist = self.parse_array(
+            d, "labels_blacklist", default=None
+        )
+        self.attr_names_blacklist = self.parse_array(
+            d, "attr_names_blacklist", default=None
+        )
+        self.attr_values_blacklist = self.parse_array(
+            d, "attr_values_blacklist", default=None
         )
         self.hide_false_boolean_attrs = self.parse_bool(
             d, "hide_false_boolean_attrs", default=False
@@ -363,6 +478,7 @@ class AnnotationConfig(Config):
         )
 
         self._media_height = None
+        self._scale_factor = None
         self._logo = None
         self._font = None
         self._linewidth = None
@@ -381,6 +497,10 @@ class AnnotationConfig(Config):
             self._colormap = self.colormap_config.build()
         else:
             self._colormap = Colormap.load_default()
+
+    @property
+    def scale_factor(self):
+        return self._scale_factor
 
     @property
     def colormap(self):
@@ -422,18 +542,19 @@ class AnnotationConfig(Config):
         # Set media height
         self._media_height = frame_size[1]
 
+        # Set scale factor
+        self._scale_factor = self._get_media_scale_factor()
+
         # Render logo, if necessary
         if self.add_logo and self.logo is not None:
             self._logo.render_for(frame_size=frame_size)
 
         # Render font
-        font_size = int(self.font_size * self._get_media_scale_factor())
+        font_size = int(round(self.scale_factor * self.font_size))
         self._font = ImageFont.truetype(self.font_path, font_size)
 
         # Render linewidth
-        self._linewidth = int(
-            self.bbox_linewidth * self._get_media_scale_factor()
-        )
+        self._linewidth = int(round(self.scale_factor * self.bbox_linewidth))
 
     def _get_media_scale_factor(self):
         if self.scale_by_media_height:
@@ -653,20 +774,23 @@ def annotate_image(img, frame_labels, annotation_config=None):
 
 def _annotate_image(img, frame_labels, annotation_config, mask_index=None):
     # Parse config
-    hide_attr_values = annotation_config.hide_attr_values
+    attr_names_blacklist = annotation_config.attr_names_blacklist
+    attr_values_blacklist = annotation_config.attr_values_blacklist
     hide_false_boolean_attrs = annotation_config.hide_false_boolean_attrs
     show_attr_names = (
         annotation_config.show_frame_attr_names
         or annotation_config.show_all_names
-    )
+    ) and not annotation_config.hide_all_names
     show_frame_attr_confidences = (
         annotation_config.show_frame_attr_confidences
         or annotation_config.show_all_confidences
-    )
+    ) and not annotation_config.hide_all_confidences
     add_logo = annotation_config.add_logo
 
     # Parse inputs
     has_mask = frame_labels.has_mask
+    has_keypoints = frame_labels.has_keypoints
+    has_polylines = frame_labels.has_polylines
     has_events = frame_labels.has_events
     has_objects = frame_labels.has_objects
     has_attributes = frame_labels.has_attributes
@@ -685,6 +809,24 @@ def _annotate_image(img, frame_labels, annotation_config, mask_index=None):
         img = _draw_frame_mask(
             img, mask, annotation_config, mask_index=mask_index
         )
+
+    #
+    # Draw polylines
+    #
+
+    if has_polylines:
+        logger.debug("Rendering %d polylines", len(frame_labels.polylines))
+        for polyline in frame_labels.polylines:
+            img = _draw_polyline(img, polyline, annotation_config)
+
+    #
+    # Draw keypoints
+    #
+
+    if has_keypoints:
+        logger.debug("Rendering %d keypoints", len(frame_labels.keypoints))
+        for keypoints in frame_labels.keypoints:
+            img = _draw_keypoints(img, keypoints, annotation_config)
 
     #
     # Draw events
@@ -722,7 +864,8 @@ def _annotate_image(img, frame_labels, annotation_config, mask_index=None):
             attr_strs.extend(
                 _render_attrs(
                     frame_labels.attrs,
-                    hide_attr_values,
+                    attr_names_blacklist,
+                    attr_values_blacklist,
                     hide_false_boolean_attrs,
                     show_attr_names,
                     show_frame_attr_confidences,
@@ -754,6 +897,290 @@ def _draw_logo(img, annotation_config):
     return logo.apply(img)
 
 
+def _draw_polyline(img, polyline, annotation_config):
+    # Parse config
+    show_name = (
+        annotation_config.show_polyline_names
+        or annotation_config.show_all_names
+    ) and not annotation_config.hide_all_names
+    show_label = annotation_config.show_polyline_labels
+    show_name_only_titles = annotation_config.show_name_only_titles
+    show_attrs = annotation_config.show_polyline_attrs
+    show_attr_names = (
+        annotation_config.show_polyline_attr_names
+        or annotation_config.show_all_names
+    ) and not annotation_config.hide_all_names
+    show_attr_confidences = (
+        annotation_config.show_polyline_attr_confidences
+        or annotation_config.show_all_confidences
+    ) and not annotation_config.hide_all_confidences
+    attr_names_blacklist = annotation_config.attr_names_blacklist
+    attr_values_blacklist = annotation_config.attr_values_blacklist
+    hide_false_boolean_attrs = annotation_config.hide_false_boolean_attrs
+    labels_whitelist = annotation_config.labels_whitelist
+    labels_blacklist = annotation_config.labels_blacklist
+    per_name_colors = annotation_config.per_polyline_name_colors
+    per_label_colors = annotation_config.per_polyline_label_colors
+    alpha = annotation_config.polyline_alpha
+    thickness = int(
+        round(
+            annotation_config.scale_factor
+            * annotation_config.polyline_linewidth
+        )
+    )
+    gap = annotation_config.linewidth
+    fill_polylines = annotation_config.fill_polylines
+    hide_non_filled_polyline_annos = (
+        annotation_config.hide_non_filled_polyline_annos
+    )
+
+    colormap = annotation_config.colormap
+
+    has_attributes = polyline.has_attributes
+
+    #
+    # Check for immediate return
+    #
+
+    return_now = False
+
+    # Check labels whitelist
+    if labels_whitelist is not None:
+        if polyline.label not in labels_whitelist:
+            return_now = True
+
+    # Check labels blacklist
+    if labels_blacklist is not None:
+        if polyline.label in labels_blacklist:
+            return_now = True
+
+    if not polyline.points:
+        return_now = True
+
+    if return_now:
+        return img
+
+    # Render title string
+    title_str, title_hash = _render_title(
+        polyline,
+        show_name=show_name,
+        show_label=show_label,
+        show_name_only_titles=show_name_only_titles,
+        per_name_colors=per_name_colors,
+        per_label_colors=per_label_colors,
+    )
+
+    # Choose polyline color based on hash of title
+    color = _parse_hex_color(colormap.get_color(title_hash))
+
+    # Render coordinates for image
+    # Note: OpenCV expects numpy arrays
+    points = np.array(polyline.coords_in(img=img), dtype=np.int32)
+
+    #
+    # Draw polyline
+    #
+
+    overlay = img.copy()
+
+    if polyline.filled and fill_polylines:
+        # Note: this function handles closed vs not closed automatically
+        overlay = cv2.fillPoly(overlay, [points], color)
+    else:
+        overlay = cv2.polylines(
+            overlay, [points], polyline.closed, color, thickness=thickness
+        )
+
+    img_anno = cv2.addWeighted(overlay, alpha, img, 1 - alpha, 0)
+
+    if hide_non_filled_polyline_annos and not polyline.filled:
+        return img_anno
+
+    #
+    # Draw title string
+    #
+
+    tcx, tcy = tuple(np.mean(points, axis=0))
+    ttlx, ttly, tw, th = _get_panel_coords(
+        [title_str], annotation_config, center_coords=(tcx, tcy)
+    )
+
+    if title_str:
+        img_anno = _draw_attrs_panel(
+            img_anno,
+            [title_str],
+            annotation_config,
+            top_left_coords=(ttlx, ttly),
+        )
+
+    #
+    # Draw attributes
+    #
+
+    if has_attributes:
+        # Alphabetize attributes by name
+        polyline.attrs.sort_by_name()
+        attrs = polyline.attrs
+
+        # Render attribute strings
+        attr_strs = _render_attrs(
+            attrs,
+            attr_names_blacklist,
+            attr_values_blacklist,
+            hide_false_boolean_attrs,
+            show_attr_names,
+            show_attr_confidences,
+        )
+
+        ptlx = ttlx
+        ptly = ttly + th + gap
+
+        if show_attrs and attr_strs:
+            logger.debug("Rendering %d polyline attributes", len(attr_strs))
+
+            img_anno = _draw_attrs(
+                img_anno, (ptlx, ptly), attr_strs, annotation_config
+            )
+
+    return img_anno
+
+
+def _draw_keypoints(img, keypoints, annotation_config):
+    # Parse config
+    show_name = (
+        annotation_config.show_keypoints_names
+        or annotation_config.show_all_names
+    ) and not annotation_config.hide_all_names
+    show_label = annotation_config.show_keypoints_labels
+    show_name_only_titles = annotation_config.show_name_only_titles
+    show_attrs = annotation_config.show_keypoints_attrs
+    show_attr_names = (
+        annotation_config.show_keypoints_attr_names
+        or annotation_config.show_all_names
+    ) and not annotation_config.hide_all_names
+    show_attr_confidences = (
+        annotation_config.show_keypoints_attr_confidences
+        or annotation_config.show_all_confidences
+    ) and not annotation_config.hide_all_confidences
+    attr_names_blacklist = annotation_config.attr_names_blacklist
+    attr_values_blacklist = annotation_config.attr_values_blacklist
+    hide_false_boolean_attrs = annotation_config.hide_false_boolean_attrs
+    labels_whitelist = annotation_config.labels_whitelist
+    labels_blacklist = annotation_config.labels_blacklist
+    per_name_colors = annotation_config.per_keypoints_name_colors
+    per_label_colors = annotation_config.per_keypoints_label_colors
+    alpha = annotation_config.keypoints_alpha
+    size = int(
+        round(
+            annotation_config.scale_factor * annotation_config.keypoints_size
+        )
+    )
+    gap = annotation_config.linewidth
+
+    colormap = annotation_config.colormap
+
+    has_attributes = keypoints.has_attributes
+
+    #
+    # Check for immediate return
+    #
+
+    return_now = False
+
+    # Check labels whitelist
+    if labels_whitelist is not None:
+        if keypoints.label not in labels_whitelist:
+            return_now = True
+
+    # Check labels blacklist
+    if labels_blacklist is not None:
+        if keypoints.label in labels_blacklist:
+            return_now = True
+
+    if not keypoints.points:
+        return_now = True
+
+    if return_now:
+        return img
+
+    # Render title string
+    title_str, title_hash = _render_title(
+        keypoints,
+        show_name=show_name,
+        show_label=show_label,
+        show_name_only_titles=show_name_only_titles,
+        per_name_colors=per_name_colors,
+        per_label_colors=per_label_colors,
+    )
+
+    # Choose keypoints color based on hash of title
+    color = _parse_hex_color(colormap.get_color(title_hash))
+
+    # Render coordinates for image
+    points = keypoints.coords_in(img=img)
+
+    #
+    # Draw keypoints
+    #
+
+    overlay = img.copy()
+
+    for x, y in points:
+        overlay = cv2.circle(overlay, (x, y), size, color, thickness=-1)
+
+    img_anno = cv2.addWeighted(overlay, alpha, img, 1 - alpha, 0)
+
+    #
+    # Draw title string
+    #
+
+    tcx, tcy = points[int(round(0.5 * len(points)))]
+    tcx += size
+    tcy += size
+    ttlx, ttly, tw, th = _get_panel_coords(
+        [title_str], annotation_config, top_left_coords=(tcx, tcy)
+    )
+
+    if title_str:
+        img_anno = _draw_attrs_panel(
+            img_anno,
+            [title_str],
+            annotation_config,
+            top_left_coords=(ttlx, ttly),
+        )
+
+    #
+    # Draw attributes
+    #
+
+    if has_attributes:
+        # Alphabetize attributes by name
+        keypoints.attrs.sort_by_name()
+        attrs = keypoints.attrs
+
+        # Render attribute strings
+        attr_strs = _render_attrs(
+            attrs,
+            attr_names_blacklist,
+            attr_values_blacklist,
+            hide_false_boolean_attrs,
+            show_attr_names,
+            show_attr_confidences,
+        )
+
+        ptlx = ttlx
+        ptly = ttly + th + gap
+
+        if show_attrs and attr_strs:
+            logger.debug("Rendering %d keypoints attributes", len(attr_strs))
+
+            img_anno = _draw_attrs(
+                img_anno, (ptlx, ptly), attr_strs, annotation_config
+            )
+
+    return img_anno
+
+
 def _draw_frame_attrs(img, attr_strs, annotation_config):
     # Compute upper-left corner of attrs panel
     width = etai.Width(annotation_config.frame_attrs_box_gap)
@@ -776,26 +1203,27 @@ def _draw_event(img, event, annotation_config, color=None):
     show_box = annotation_config.show_event_boxes
     show_name = (
         annotation_config.show_event_names or annotation_config.show_all_names
-    )
+    ) and not annotation_config.hide_all_names
     show_label = annotation_config.show_event_labels
     show_attrs = annotation_config.show_event_attrs
     show_confidence = (
         annotation_config.show_event_confidences
         or annotation_config.show_all_confidences
-    )
+    ) and not annotation_config.hide_all_confidences
     show_attr_names = (
         annotation_config.show_event_attr_names
         or annotation_config.show_all_names
-    )
+    ) and not annotation_config.hide_all_names
     show_attr_confidences = (
         annotation_config.show_event_attr_confidences
         or annotation_config.show_all_confidences
-    )
+    ) and not annotation_config.hide_all_confidences
     show_index = annotation_config.show_event_indices
+    show_name_only_titles = annotation_config.show_name_only_titles
     occluded_attr = annotation_config.occluded_event_attr
     hide_occluded = annotation_config.hide_occluded_events
-    labels_whitelist = annotation_config.event_labels_whitelist
-    labels_blacklist = annotation_config.event_labels_blacklist
+    labels_whitelist = annotation_config.labels_whitelist
+    labels_blacklist = annotation_config.labels_blacklist
     show_mask = annotation_config.show_event_masks
     show_event_label_on_objects = annotation_config.show_event_label_on_objects
     show_event_objects_in_same_color = (
@@ -821,6 +1249,7 @@ def _draw_event(img, event, annotation_config, color=None):
         show_attr_names,
         show_attr_confidences,
         show_index,
+        show_name_only_titles,
         occluded_attr,
         hide_occluded,
         labels_whitelist,
@@ -867,26 +1296,27 @@ def _draw_object(img, obj, annotation_config, color=None, pre_attrs=None):
     show_box = annotation_config.show_object_boxes
     show_name = (
         annotation_config.show_object_names or annotation_config.show_all_names
-    )
+    ) and not annotation_config.hide_all_names
     show_label = annotation_config.show_object_labels
     show_attrs = annotation_config.show_object_attrs
     show_confidence = (
         annotation_config.show_object_confidences
         or annotation_config.show_all_confidences
-    )
+    ) and not annotation_config.hide_all_confidences
     show_attr_names = (
         annotation_config.show_object_attr_names
         or annotation_config.show_all_names
-    )
+    ) and not annotation_config.hide_all_names
     show_attr_confidences = (
         annotation_config.show_object_attr_confidences
         or annotation_config.show_all_confidences
-    )
+    ) and not annotation_config.hide_all_confidences
     show_index = annotation_config.show_object_indices
+    show_name_only_titles = annotation_config.show_name_only_titles
     occluded_attr = annotation_config.occluded_object_attr
     hide_occluded = annotation_config.hide_occluded_objects
-    labels_whitelist = annotation_config.object_labels_whitelist
-    labels_blacklist = annotation_config.object_labels_blacklist
+    labels_whitelist = annotation_config.labels_whitelist
+    labels_blacklist = annotation_config.labels_blacklist
     show_mask = annotation_config.show_object_masks
     per_name_colors = annotation_config.per_object_name_colors
     per_label_colors = annotation_config.per_object_label_colors
@@ -904,6 +1334,7 @@ def _draw_object(img, obj, annotation_config, color=None, pre_attrs=None):
         show_attr_names,
         show_attr_confidences,
         show_index,
+        show_name_only_titles,
         occluded_attr,
         hide_occluded,
         labels_whitelist,
@@ -931,6 +1362,7 @@ def _draw_bbox_with_attrs(
     show_attr_names,
     show_attr_confidences,
     show_index,
+    show_name_only_titles,
     occluded_attr,
     hide_occluded,
     labels_whitelist,
@@ -944,7 +1376,8 @@ def _draw_bbox_with_attrs(
     pre_attrs=None,
 ):
     # Parse config
-    hide_attr_values = annotation_config.hide_attr_values
+    attr_names_blacklist = annotation_config.attr_names_blacklist
+    attr_values_blacklist = annotation_config.attr_values_blacklist
     hide_false_boolean_attrs = annotation_config.hide_false_boolean_attrs
     colormap = annotation_config.colormap
     bbox_alpha = annotation_config.bbox_alpha
@@ -988,12 +1421,13 @@ def _draw_bbox_with_attrs(
         mask_fill_alpha *= obj_or_event.confidence
 
     # Render title string
-    title_str, title_hash = _render_bbox_title(
+    title_str, title_hash = _render_title(
         obj_or_event,
         show_name=show_name,
         show_label=show_label,
         show_confidence=show_confidence,
         show_index=show_index,
+        show_name_only_titles=show_name_only_titles,
         per_name_colors=per_name_colors,
         per_label_colors=per_label_colors,
         per_index_colors=per_index_colors,
@@ -1058,7 +1492,8 @@ def _draw_bbox_with_attrs(
         # Render attribute strings
         attr_strs = _render_attrs(
             attrs,
-            hide_attr_values,
+            attr_names_blacklist,
+            attr_values_blacklist,
             hide_false_boolean_attrs,
             show_attr_names,
             show_attr_confidences,
@@ -1162,6 +1597,57 @@ def _draw_bounding_box(
     return img_anno
 
 
+def _draw_attrs(img, top_left_coords, attr_strs, annotation_config):
+    # Parse config
+    font = annotation_config.font
+    attrs_render_method = annotation_config.attrs_box_render_method
+    text_color = tuple(_parse_hex_color(annotation_config.text_color))
+
+    # Method 1: comma-separated attributes list
+    if attrs_render_method == "list":
+        with Draw(img) as draw:
+            attrs_str = ", ".join(attr_strs)
+            draw.text(top_left_coords, attrs_str, font=font, fill=text_color)
+
+    # Method 2: attribute panel
+    if attrs_render_method == "panel":
+        img = _draw_attrs_panel(
+            img, attr_strs, annotation_config, top_left_coords=top_left_coords
+        )
+
+    return img
+
+
+def _get_panel_coords(
+    text_strs, annotation_config, center_coords=None, top_left_coords=None
+):
+    font = annotation_config.font
+    box_pad = annotation_config.attrs_box_text_pad_pixels
+    line_gap = annotation_config.attrs_box_text_line_spacing_pixels
+
+    text_size = _compute_max_text_size(font, text_strs)  # width, height
+
+    num_attrs = len(text_strs)
+
+    # Dimensions of panel
+    w = text_size[0] + 2 * (box_pad + _DX)
+    h = num_attrs * text_size[1] + (num_attrs - 1) * line_gap + 2 * box_pad
+
+    # Top-left coordinates of panel
+    if center_coords:
+        cx, cy = center_coords
+        tlx = int(cx - 0.5 * w)
+        tly = int(cy - 0.5 * h)
+    elif top_left_coords:
+        tlx, tly = top_left_coords
+    else:
+        raise ValueError(
+            "Either `center_coords` or `top_left_coords` must be provided"
+        )
+
+    return tlx, tly, w, h
+
+
 def _draw_attrs_panel(
     img, attr_strs, annotation_config, center_coords=None, top_left_coords=None
 ):
@@ -1173,23 +1659,15 @@ def _draw_attrs_panel(
     text_color = tuple(_parse_hex_color(annotation_config.text_color))
     bg_color = _parse_hex_color(annotation_config.attrs_box_bg_color)
     bg_alpha = annotation_config.attrs_box_bg_alpha
-    num_attrs = len(attr_strs)
 
-    #
-    # Compute box coordinates
-    #
+    # Compute panel coordinates
+    bgtlx, bgtly, bgw, bgh = _get_panel_coords(
+        attr_strs,
+        annotation_config,
+        center_coords=center_coords,
+        top_left_coords=top_left_coords,
+    )
 
-    bgw = text_size[0] + 2 * (box_pad + _DX)
-    bgh = num_attrs * text_size[1] + (num_attrs - 1) * line_gap + 2 * box_pad
-    if center_coords:
-        cx, cy = center_coords
-        top_left_coords = (int(cx - 0.5 * bgw), int(cy - 0.5 * bgh))
-    if not top_left_coords:
-        raise ValueError(
-            "Either `center_coords` or `top_left_coords` must be provided"
-        )
-
-    bgtlx, bgtly = top_left_coords
     bgbrx = bgtlx + bgw
     bgbry = bgtly + bgh
 
@@ -1371,14 +1849,25 @@ def _make_event_attr(event, show_index=True):
 
 def _render_attrs(
     attrs,
-    hide_attr_values,
+    attr_names_blacklist,
+    attr_values_blacklist,
     hide_false_boolean_attrs,
     show_name,
     show_confidence,
 ):
     attr_strs = []
     for attr in attrs:
-        if hide_attr_values is not None and attr.value in hide_attr_values:
+        if (
+            attr_names_blacklist is not None
+            and attr.name in attr_names_blacklist
+        ):
+            # Hide this attribute
+            continue
+
+        if (
+            attr_values_blacklist is not None
+            and attr.value in attr_values_blacklist
+        ):
             # Hide this attribute
             continue
 
@@ -1430,20 +1919,40 @@ def _render_attr_name_value(attr, show_name=True, show_confidence=True):
     return attr_str
 
 
-def _render_bbox_title(
-    obj_or_event,
+def _render_title(
+    obj_poly_event,
     show_name=True,
     show_label=True,
     show_confidence=False,
     show_index=True,
+    show_name_only_titles=False,
     per_name_colors=True,
     per_label_colors=True,
     per_index_colors=True,
 ):
-    name = obj_or_event.name
-    label = obj_or_event.label
-    confidence = obj_or_event.confidence
-    index = obj_or_event.index
+    try:
+        name = obj_poly_event.name
+    except:
+        name = None
+        show_name = False
+
+    try:
+        label = obj_poly_event.label
+    except:
+        label = None
+        show_label = False
+
+    try:
+        confidence = obj_poly_event.confidence
+    except:
+        confidence = None
+        show_confidence = False
+
+    try:
+        index = obj_poly_event.index
+    except:
+        index = None
+        show_index = False
 
     # Render title string
 
@@ -1471,6 +1980,9 @@ def _render_bbox_title(
 
     if show_index and index is not None:
         title_str += "     %d" % index
+
+    if title_str == _name and not show_name_only_titles:
+        title_str = ""
 
     # Compute title hash
 

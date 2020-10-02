@@ -172,7 +172,7 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
         """Gets the schema class for :class:`DetectedObject`.
 
         Returns:
-            the LabelsSchema class
+            the :class:`eta.core.labels.LabelsSchema` class
         """
         return ObjectSchema
 
@@ -211,7 +211,7 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
         """Adds the attribute to the object.
 
         Args:
-            attr: an Attribute
+            attr: an :class:`eta.core.data.Attribute`
         """
         self.attrs.add(attr)
 
@@ -245,8 +245,8 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
 
         Args:
             schema: an :class:`ObjectSchema`
-            allow_none_label: whether to allow the object label to be ``None``.
-                By default, this is False
+            allow_none_label (False): whether to allow the object label to be
+                ``None``
 
         Raises:
             :class:`eta.core.labels.LabelsSchemaError`: if the object label
@@ -361,9 +361,7 @@ class DetectedObjectContainer(etal.LabelsContainer):
     _ELE_ATTR = "objects"
 
     def get_labels(self):
-        """Returns the set of ``label` values of all objects in the container.
-
-        ``None`` indexes are omitted.
+        """Returns the set of ``label`` values of all objects in the container.
 
         Returns:
             a set of labels

@@ -1,6 +1,6 @@
 """
-Core data structures for working with geometric concepts like points,
-bounding boxes, etc.
+Core data structures for working with geometric concepts like points and
+bounding boxes.
 
 Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
@@ -422,7 +422,9 @@ class HasBoundingBox(object):
 
 
 class RelativePoint(Serializable):
-    """A point in an image, represented as (x, y) coordinates in [0, 1]."""
+    """A point in an image, represented as (x, y) coordinates in
+    [0, 1] x [0, 1].
+    """
 
     def __init__(self, x, y):
         """Constructs a RelativePoint instance.
