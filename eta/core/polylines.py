@@ -221,7 +221,7 @@ class Polyline(etal.Labels):
         frame_size=None,
         shape=None,
         img=None,
-        **kwargs,
+        **kwargs
     ):
         """Constructs a :class:`Polyline` from absolute pixel coordinates.
 
