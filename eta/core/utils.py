@@ -1044,6 +1044,9 @@ class ProgressBar(object):
                 will be executed. The default is 15
             quiet: whether to suppress printing of the bar
         """
+        if not eta.config.show_progress_bars:
+            quiet = True
+
         num_pct_decimals = 0
 
         self._total = self._get_total(total)

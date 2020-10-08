@@ -723,7 +723,7 @@ def annotate_video(
         annotation_config.set_media_size(frame_size=vp.output_frame_size)
 
         # Annotate frames
-        with etau.ProgressBar() as pb:
+        with etau.ProgressBar(iters_str="frames") as pb:
             for img in pb(vp):
                 logger.debug("Annotating frame %d", vp.frame_number)
                 frame_labels = video_labels[vp.frame_number]

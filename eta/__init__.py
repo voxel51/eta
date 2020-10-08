@@ -100,6 +100,12 @@ class ETAConfig(EnvConfig):
             env_var="ETA_DEFAULT_FIGURE_EXT",
             default=".pdf",
         )
+        self.show_progress_bars = self.parse_bool(
+            d,
+            "show_progress_bars",
+            env_var="ETA_SHOW_PROGRESS_BARS",
+            default=True,
+        )
 
         self._fill_defaults()
         self._parse_patterns()
@@ -118,10 +124,12 @@ class ETAConfig(EnvConfig):
         #
         if "{{eta}}" in self.patterns:
             logger.warning("Overwriting existing {{eta}} pattern")
+
         self.patterns["{{eta}}"] = etac.BASE_DIR
 
         if "{{eta-resources}}" in self.patterns:
             logger.warning("Overwriting existing {{eta-resources}} pattern")
+
         self.patterns["{{eta-resources}}"] = etac.RESOURCES_DIR
 
         #
