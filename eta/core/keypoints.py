@@ -37,6 +37,7 @@ class Keypoints(etal.Labels):
         name: (optional) the name for the keypoints, e.g., ``ground_truth`` or
             the name of the model that produced it
         label: (optional) keypoints label
+        index: (optional) an index assigned to the keypoints
         points: a list of ``(x, y)`` keypoints in ``[0, 1] x [0, 1]``
         attrs: (optional) an :class:`eta.core.data.AttributeContainer` of
             attributes for the keypoints
@@ -45,15 +46,19 @@ class Keypoints(etal.Labels):
         name (None): a name for the keypoints, e.g., ``ground_truth`` or the
             name of the model that produced it
         label (None): a label for the keypoints
+        index (None): an integer index assigned to the keypoints
         points (None): a list of ``(x, y)`` keypoints in ``[0, 1] x [0, 1]``
         attrs (None): an :class:`eta.core.data.AttributeContainer` of
             attributes for the keypoints
     """
 
-    def __init__(self, name=None, label=None, points=None, attrs=None):
+    def __init__(
+        self, name=None, label=None, index=None, points=None, attrs=None
+    ):
         self.type = etau.get_class_name(self)
         self.name = name
         self.label = label
+        self.index = index
         self.points = points or []
         self.attrs = attrs or etad.AttributeContainer()
 
@@ -71,6 +76,11 @@ class Keypoints(etal.Labels):
     def has_label(self):
         """Whether the keypoints has a ``label``."""
         return self.label is not None
+
+    @property
+    def has_index(self):
+        """Whether the keypoints has an ``index``."""
+        return self.index is not None
 
     @property
     def has_points(self):
@@ -95,6 +105,29 @@ class Keypoints(etal.Labels):
             the :class:`eta.core.labels.LabelsSchema` class
         """
         return KeypointsSchema
+
+    def get_index(self):
+        """Returns the ``index`` of the keypoints.
+
+        Returns:
+            the index, or None if the keypoints has no index
+        """
+        return self.index
+
+    def offset_index(self, offset):
+        """Adds the given offset to the keypoints' ``index``.
+
+        If the keypoints has no index, this does nothing.
+
+        Args:
+            offset: the integer offset
+        """
+        if self.has_index:
+            self.index += offset
+
+    def clear_index(self):
+        """Clears the ``index`` of the keypoints."""
+        self.index = None
 
     def add_attribute(self, attr):
         """Adds the attribute to the keypoints.
@@ -182,6 +215,8 @@ class Keypoints(etal.Labels):
             _attrs.append("name")
         if self.label:
             _attrs.append("label")
+        if self.index:
+            _attrs.append("index")
         if self.attrs:
             _attrs.append("attrs")
         return _attrs + ["points"]
@@ -241,13 +276,16 @@ class Keypoints(etal.Labels):
         """
         name = d.get("name", None)
         label = d.get("label", None)
+        index = (d.get("index", None),)
         points = d.get("points", None)
 
         attrs = d.get("attrs", None)
         if attrs is not None:
             attrs = etad.AttributeContainer.from_dict(attrs)
 
-        return cls(name=name, label=label, points=points, attrs=attrs,)
+        return cls(
+            name=name, label=label, index=index, points=points, attrs=attrs,
+        )
 
 
 class KeypointsContainer(etal.LabelsContainer):
@@ -265,6 +303,41 @@ class KeypointsContainer(etal.LabelsContainer):
             a set of labels
         """
         return set(k.label for k in self)
+
+    def get_indexes(self):
+        """Returns the set of ``index`` values of all keypoints in the container.
+
+        ``None`` indexes are omitted.
+
+        Returns:
+            a set of indexes
+        """
+        return set(k.index for k in self if k.has_index)
+
+    def offset_indexes(self, offset):
+        """Adds the given offset to all keypoints with ``index`` values.
+
+        Args:
+            offset: the integer offset
+        """
+        for keypoints in self:
+            keypoints.offset_index(offset)
+
+    def clear_indexes(self):
+        """Clears the ``index`` of all keypoints in the container.
+        """
+        for keypoints in self:
+            keypoints.clear_index()
+
+    def sort_by_index(self, reverse=False):
+        """Sorts the :class:`Keypoints` instances by index.
+
+        Keypoints whose index is ``None`` are always put last.
+
+        Args:
+            reverse (False): whether to sort in descending order
+        """
+        self.sort_by("index", reverse=reverse)
 
     def filter_by_schema(self, schema):
         """Filters the keypoints in the container by the given schema.
