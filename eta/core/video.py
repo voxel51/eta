@@ -929,6 +929,62 @@ class VideoLabels(
         for frame_labels in self.iter_frames():
             frame_labels.clear_object_indexes()
 
+    def get_keypoints_indexes(self):
+        """Returns the set of `index`es of all keypoints in the video.
+
+        `None` indexes are omitted.
+
+        Returns:
+            a set of indexes
+        """
+        keypoints_indexes = set()
+        for frame_labels in self.iter_frames():
+            keypoints_indexes.update(frame_labels.get_keypoints_indexes())
+
+        return keypoints_indexes
+
+    def offset_keypoints_indexes(self, offset):
+        """Adds the given offset to all keypoints with `index`es in the video.
+
+        Args:
+            offset: the integer offset
+        """
+        for frame_labels in self.iter_frames():
+            frame_labels.offset_keypoints_indexes(offset)
+
+    def clear_keypoints_indexes(self):
+        """Clears the `index` of all keypoints in the video."""
+        for frame_labels in self.iter_frames():
+            frame_labels.clear_keypoints_indexes()
+
+    def get_polyline_indexes(self):
+        """Returns the set of `index`es of all polylines in the video.
+
+        `None` indexes are omitted.
+
+        Returns:
+            a set of indexes
+        """
+        polyline_indexes = set()
+        for frame_labels in self.iter_frames():
+            polyline_indexes.update(frame_labels.get_polyline_indexes())
+
+        return polyline_indexes
+
+    def offset_polyline_indexes(self, offset):
+        """Adds the given offset to all polylines with `index`es in the video.
+
+        Args:
+            offset: the integer offset
+        """
+        for frame_labels in self.iter_frames():
+            frame_labels.offset_polyline_indexes(offset)
+
+    def clear_polyline_indexes(self):
+        """Clears the `index` of all polylines in the video."""
+        for frame_labels in self.iter_frames():
+            frame_labels.clear_polyline_indexes()
+
     def get_event_indexes(self):
         """Returns the set of `index`es of all events in the video.
 
@@ -1113,12 +1169,14 @@ class VideoLabels(
 
         Args:
             video_labels: a VideoLabels
-            reindex: whether to offset the `index` fields of objects and events
-                in `video_labels` before merging so that all indexes are
-                unique. The default is False
+            reindex: whether to offset the `index` fields of objects,
+                polylines, keypoints, and events in `video_labels` before
+                merging so that all indexes are unique. The default is False
         """
         if reindex:
             self._reindex_objects(video_labels)
+            self._reindex_keypoints(video_labels)
+            self._reindex_polylines(video_labels)
             self._reindex_events(video_labels)
 
         # Merge metadata
@@ -1366,6 +1424,30 @@ class VideoLabels(
 
         offset = max(self_indexes) + 1 - min(new_indexes)
         video_labels.offset_object_indexes(offset)
+
+    def _reindex_keypoints(self, video_labels):
+        self_indexes = self.get_keypoints_indexes()
+        if not self_indexes:
+            return
+
+        new_indexes = video_labels.get_keypoints_indexes()
+        if not new_indexes:
+            return
+
+        offset = max(self_indexes) + 1 - min(new_indexes)
+        video_labels.offset_keypoints_indexes(offset)
+
+    def _reindex_polylines(self, video_labels):
+        self_indexes = self.get_polyline_indexes()
+        if not self_indexes:
+            return
+
+        new_indexes = video_labels.get_polyline_indexes()
+        if not new_indexes:
+            return
+
+        offset = max(self_indexes) + 1 - min(new_indexes)
+        video_labels.offset_polyline_indexes(offset)
 
     def _reindex_events(self, video_labels):
         self_indexes = self.get_event_indexes()
