@@ -38,6 +38,7 @@ class Polyline(etal.Labels):
         name: (optional) the name for the polyline, e.g., ``ground_truth`` or
             the name of the model that produced it
         label: (optional) polyline label
+        index: (optional) an index assigned to the polyline
         points: a list of ``(x, y)`` points in ``[0, 1] x [0, 1]``
             describing the vertices of the polyline
         closed: whether the polyline is closed, i.e., an edge should be drawn
@@ -51,6 +52,7 @@ class Polyline(etal.Labels):
         name (None): a name for the polyline, e.g., ``ground_truth`` or the
             name of the model that produced it
         label (None): a label for the polyline
+        index (None): an integer index assigned to the polyline
         points (None): a list of ``(x, y)`` points in ``[0, 1] x [0, 1]``
             describing the vertices of a curve
         closed (False): whether the polyline is closed, i.e., an edge
@@ -65,6 +67,7 @@ class Polyline(etal.Labels):
         self,
         name=None,
         label=None,
+        index=None,
         points=None,
         closed=False,
         filled=False,
@@ -73,6 +76,7 @@ class Polyline(etal.Labels):
         self.type = etau.get_class_name(self)
         self.name = name
         self.label = label
+        self.index = index
         self.points = points or []
         self.closed = closed
         self.filled = filled
@@ -104,6 +108,11 @@ class Polyline(etal.Labels):
         return self.name is not None
 
     @property
+    def has_index(self):
+        """Whether the polyline has an ``index``."""
+        return self.index is not None
+
+    @property
     def has_attributes(self):
         """Whether the polyline has attributes."""
         return bool(self.attrs)
@@ -116,6 +125,29 @@ class Polyline(etal.Labels):
             the :class:`eta.core.labels.LabelsSchema` class
         """
         return PolylineSchema
+
+    def get_index(self):
+        """Returns the ``index`` of the polyline.
+
+        Returns:
+            the index, or None if the polyline has no index
+        """
+        return self.index
+
+    def offset_index(self, offset):
+        """Adds the given offset to the polyline's ``index``.
+
+        If the polyline has no index, this does nothing.
+
+        Args:
+            offset: the integer offset
+        """
+        if self.has_index:
+            self.index += offset
+
+    def clear_index(self):
+        """Clears the ``index`` of the polyline."""
+        self.index = None
 
     def add_attribute(self, attr):
         """Adds the attribute to the polyline.
@@ -205,6 +237,8 @@ class Polyline(etal.Labels):
             _attrs.append("name")
         if self.label:
             _attrs.append("label")
+        if self.index:
+            _attrs.append("index")
         if self.closed:
             _attrs.append("closed")
         if self.filled:
@@ -268,6 +302,7 @@ class Polyline(etal.Labels):
         """
         name = d.get("name", None)
         label = d.get("label", None)
+        index = (d.get("index", None),)
         points = d.get("points", None)
         closed = d.get("closed", False)
         filled = d.get("filled", False)
@@ -279,6 +314,7 @@ class Polyline(etal.Labels):
         return cls(
             name=name,
             label=label,
+            index=index,
             points=points,
             closed=closed,
             filled=filled,
@@ -301,6 +337,42 @@ class PolylineContainer(etal.LabelsContainer):
             a set of labels
         """
         return set(polyline.label for polyline in self)
+
+    def get_indexes(self):
+        """Returns the set of ``index`` values of all polylines in the
+        container.
+
+        ``None`` indexes are omitted.
+
+        Returns:
+            a set of indexes
+        """
+        return set(poly.index for poly in self if poly.has_index)
+
+    def offset_indexes(self, offset):
+        """Adds the given offset to all polylines with ``index`` values.
+
+        Args:
+            offset: the integer offset
+        """
+        for poly in self:
+            poly.offset_index(offset)
+
+    def clear_indexes(self):
+        """Clears the ``index`` of all polylines in the container.
+        """
+        for poly in self:
+            poly.clear_index()
+
+    def sort_by_index(self, reverse=False):
+        """Sorts the :class:`Polyline` instances by index.
+
+        Polylines whose index is ``None`` are always put last.
+
+        Args:
+            reverse (False): whether to sort in descending order
+        """
+        self.sort_by("index", reverse=reverse)
 
     def filter_by_schema(self, schema):
         """Filters the polylines in the container by the given schema.
