@@ -237,6 +237,50 @@ class FrameLabels(etal.Labels):
         self.objects.clear_indexes()
         self.events.clear_object_indexes()
 
+    def get_keypoint_indexes(self):
+        """Returns the set of `index`es of all keypoints in the frame.
+
+        `None` indexes are omitted.
+
+        Returns:
+            a set of indexes
+        """
+        return self.keypoints.get_indexes()
+
+    def offset_keypoint_indexes(self, offset):
+        """Adds the given offset to all keypoints with `index`es in the frame.
+
+        Args:
+            offset: the integer offset
+        """
+        self.keypoints.offset_indexes(offset)
+
+    def clear_keypoint_indexes(self):
+        """Clears the `index` of all keypoints in the frame."""
+        self.keypoints.clear_indexes()
+
+    def get_polyline_indexes(self):
+        """Returns the set of `index`es of all polylines in the frame.
+
+        `None` indexes are omitted.
+
+        Returns:
+            a set of indexes
+        """
+        return self.polylines.get_indexes()
+
+    def offset_polyline_indexes(self, offset):
+        """Adds the given offset to all polylines with `index`es in the frame.
+
+        Args:
+            offset: the integer offset
+        """
+        self.polylines.offset_indexes(offset)
+
+    def clear_polyline_indexes(self):
+        """Clears the `index` of all polylines in the frame."""
+        self.polylines.clear_indexes()
+
     def get_event_indexes(self):
         """Returns the set of `index`es of all events in the frame.
 
@@ -419,12 +463,14 @@ class FrameLabels(etal.Labels):
 
         Args:
             frame_labels: a FrameLabels
-            reindex: whether to offset the `index` fields of objects and events
-                in `frame_labels` before merging so that all indices are
-                unique. The default is False
+            reindex: whether to offset the `index` fields of objects,
+                polylines, keypoints, and events in `frame_labels` before
+                merging so that all indices are unique. The default is False
         """
         if reindex:
             self._reindex_objects(frame_labels)
+            self._reindex_keypoints(frame_labels)
+            self._reindex_polylines(frame_labels)
             self._reindex_events(frame_labels)
 
         if frame_labels.has_mask:
@@ -580,6 +626,62 @@ class FrameLabels(etal.Labels):
             for obj in event.objects:
                 if obj.index is not None:
                     obj.index += offset
+
+    def _reindex_keypoints(self, frame_labels):
+        self_indices = self._get_keypoints_indices(self)
+        if not self_indices:
+            return
+
+        new_indices = self._get_keypoints_indices(frame_labels)
+        if not new_indices:
+            return
+
+        offset = max(self_indices) + 1 - min(new_indices)
+        self._offset_keypoints_indices(frame_labels, offset)
+
+    @staticmethod
+    def _get_keypoints_indices(frame_labels):
+        keypoints_indices = set()
+
+        for keypoints in frame_labels.keypoints:
+            if keypoints.index is not None:
+                keypoints_indices.add(keypoints.index)
+
+        return keypoints_indices
+
+    @staticmethod
+    def _offset_keypoints_indices(frame_labels, offset):
+        for keypoints in frame_labels.keypoints:
+            if keypoints.index is not None:
+                keypoints.index += offset
+
+    def _reindex_polylines(self, frame_labels):
+        self_indices = self._get_polyline_indices(self)
+        if not self_indices:
+            return
+
+        new_indices = self._get_polyline_indices(frame_labels)
+        if not new_indices:
+            return
+
+        offset = max(self_indices) + 1 - min(new_indices)
+        self._offset_polyline_indices(frame_labels, offset)
+
+    @staticmethod
+    def _get_polyline_indices(frame_labels):
+        polyline_indices = set()
+
+        for polyline in frame_labels.polylines:
+            if polyline.index is not None:
+                polyline_indices.add(polyline.index)
+
+        return polyline_indices
+
+    @staticmethod
+    def _offset_polyline_indices(frame_labels, offset):
+        for polyline in frame_labels.polylines:
+            if polyline.index is not None:
+                polyline.index += offset
 
     def _reindex_events(self, frame_labels):
         self_indices = self._get_event_indices(self)
