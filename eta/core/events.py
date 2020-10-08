@@ -1,6 +1,8 @@
 """
 Core tools and data structures for working with events in images and videos.
 
+@todo add support for storing polylines and keypoints within events
+
 Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
 """
