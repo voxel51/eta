@@ -1534,6 +1534,10 @@ class ProgressBar(object):
 
         self._max_len = min(max(pstr_len, self._max_len), self._max_width)
         pstr += " " * (self._max_len - pstr_len)
+        # substitute any characters that can't be printed to stdout
+        pstr = pstr.encode(sys.stdout.encoding, errors="replace").decode(
+            sys.stdout.encoding
+        )
 
         return pstr
 
