@@ -36,6 +36,7 @@ import numpy as np
 
 import eta
 from eta.core.frames import FrameLabels, FrameLabelsSchema
+import eta.core.geometry as etag
 import eta.core.labels as etal
 import eta.core.serial as etas
 import eta.core.utils as etau
@@ -1006,6 +1007,54 @@ def get_contour_band_mask(mask, bandwidth):
         cv2.drawContours(band_mask, contours, -1, 1, bandwidth)
 
     return band_mask.astype(bool)
+
+
+def render_bounding_box_and_mask(polyline, mask_size):
+    """Renders a tight BoundingBox and instance mask for the given Polyline.
+
+    Args:
+        polyline: a Polyline
+        mask_size: the `(width, height)` at which to render the mask
+
+    Returns:
+        a `(BoundingBox, mask)` tuple
+    """
+    points = polyline.points
+
+    # Compute bounding box
+    xx, yy = zip(*points)
+    xtl = min(xx)
+    ytl = min(yy)
+    xbr = max(xx)
+    ybr = max(yy)
+    bounding_box = etag.BoundingBox.from_coords(xtl, ytl, xbr, ybr)
+
+    # Compute absolute coordinates within `mask_size` image on bounding box
+    w_box = xbr - xtl
+    h_box = ybr - ytl
+    w_mask, h_mask = mask_size
+    abs_points = []
+    for x, y in points:
+        xabs = int(round(((x - xtl) / w_box) * w_mask))
+        yabs = int(round(((y - ytl) / h_box) * h_mask))
+        abs_points.append((xabs, yabs))
+
+    # Render mask
+
+    mask = np.zeros(mask_size, dtype=np.uint8)
+    abs_points = np.array(abs_points, dtype=np.int32)
+
+    if polyline.filled:
+        # Note: this function handles closed vs not closed automatically
+        mask = cv2.fillPoly(mask, [abs_points], 255)
+    else:
+        mask = cv2.polylines(
+            mask, [abs_points], polyline.closed, 255, thickness=1
+        )
+
+    mask = mask.astype(bool)
+
+    return bounding_box, mask
 
 
 def to_double(img):
