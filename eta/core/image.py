@@ -1019,9 +1019,6 @@ def convert_object_to_polygon(dobj, tolerance=2, filled=True):
     If the object an instance mask, the polyline will trace the boundary of the
     mask; otherwise, the polyline will trace the bounding box itself.
 
-    If the object's mask contains multiple connected components, the polyline
-    will only describe the first component.
-
     Args:
         dobj: a DetectedObject
         tolerance (2): a tolerance, in pixels, when generating an approximate
@@ -1034,34 +1031,26 @@ def convert_object_to_polygon(dobj, tolerance=2, filled=True):
     if dobj.has_mask:
         mask_polygons = _mask_to_polygons(dobj.mask, tolerance=tolerance)
 
-        num_polygons = len(mask_polygons)
+        x0 = dobj.bounding_box.top_left.x
+        y0 = dobj.bounding_box.top_left.y
+        w_box = dobj.bounding_box.width()
+        h_box = dobj.bounding_box.height()
 
-        if num_polygons == 0:
-            points = _get_bounding_box_points(dobj.bounding_box)
-        else:
-            if num_polygons > 1:
-                msg = (
-                    "Found object whose mask has more than one connected "
-                    "component; only returning first component"
-                )
-                warnings.warn(msg)
+        h_mask, w_mask = dobj.mask.shape[:2]
 
-            x0 = dobj.bounding_box.top_left.x
-            y0 = dobj.bounding_box.top_left.y
-            w_box = dobj.bounding_box.width()
-            h_box = dobj.bounding_box.height()
-
-            h_mask, w_mask = dobj.mask.shape[:2]
-
-            points = []
-            for x, y in mask_polygons[0]:
+        points = []
+        for mask_polygon in mask_polygons:
+            ppoints = []
+            for x, y in mask_polygon:
                 xp = x0 + (x / w_mask) * w_box
                 yp = y0 + (y / h_mask) * h_box
 
-                points.append((xp, yp))
+                ppoints.append((xp, yp))
 
+            points.append(ppoints)
     else:
-        points = _get_bounding_box_points(dobj.bounding_box)
+        tlx, tly, brx, bry = dobj.bounding_box.to_coords()
+        points = [[(tlx, tly), (brx, tly), (brx, bry), (tlx, bry)]]
 
     return etap.Polyline(
         name=dobj.name,
@@ -1072,11 +1061,6 @@ def convert_object_to_polygon(dobj, tolerance=2, filled=True):
         filled=filled,
         attrs=dobj.attrs,
     )
-
-
-def _get_bounding_box_points(bounding_box):
-    tlx, tly, brx, bry = bounding_box.to_coords()
-    return [(tlx, tly), (brx, tly), (brx, bry), (tlx, bry)]
 
 
 def _mask_to_polygons(mask, tolerance=2):
