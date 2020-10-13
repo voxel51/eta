@@ -26,6 +26,7 @@ from builtins import *
 
 import colorsys
 import errno
+import itertools
 import logging
 import os
 import operator
@@ -1022,7 +1023,7 @@ def render_bounding_box_and_mask(polyline, mask_size):
     points = polyline.points
 
     # Compute bounding box
-    xx, yy = zip(*points)
+    xx, yy = zip(*list(itertools.chain(*points)))
     xtl = min(xx)
     ytl = min(yy)
     xbr = max(xx)
@@ -1034,10 +1035,14 @@ def render_bounding_box_and_mask(polyline, mask_size):
     h_box = ybr - ytl
     w_mask, h_mask = mask_size
     abs_points = []
-    for x, y in points:
-        xabs = int(round(((x - xtl) / w_box) * w_mask))
-        yabs = int(round(((y - ytl) / h_box) * h_mask))
-        abs_points.append((xabs, yabs))
+    for shape in points:
+        abs_shape = []
+        for x, y in shape:
+            xabs = int(round(((x - xtl) / w_box) * w_mask))
+            yabs = int(round(((y - ytl) / h_box) * h_mask))
+            abs_shape.append((xabs, yabs))
+
+        abs_points.append(abs_shape)
 
     # Render mask
 
@@ -1046,10 +1051,10 @@ def render_bounding_box_and_mask(polyline, mask_size):
 
     if polyline.filled:
         # Note: this function handles closed vs not closed automatically
-        mask = cv2.fillPoly(mask, [abs_points], 255)
+        mask = cv2.fillPoly(mask, abs_points, 255)
     else:
         mask = cv2.polylines(
-            mask, [abs_points], polyline.closed, 255, thickness=1
+            mask, abs_points, polyline.closed, 255, thickness=1
         )
 
     mask = mask.astype(bool)

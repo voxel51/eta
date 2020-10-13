@@ -954,7 +954,7 @@ def _draw_polyline(img, polyline, annotation_config):
         if polyline.label in labels_blacklist:
             return_now = True
 
-    if not polyline.points:
+    if not polyline.has_vertices:
         return_now = True
 
     if return_now:
@@ -985,10 +985,10 @@ def _draw_polyline(img, polyline, annotation_config):
 
     if polyline.filled and fill_polylines:
         # Note: this function handles closed vs not closed automatically
-        overlay = cv2.fillPoly(overlay, [points], color)
+        overlay = cv2.fillPoly(overlay, points, color)
     else:
         overlay = cv2.polylines(
-            overlay, [points], polyline.closed, color, thickness=thickness
+            overlay, points, polyline.closed, color, thickness=thickness
         )
 
     img_anno = cv2.addWeighted(overlay, alpha, img, 1 - alpha, 0)
@@ -1000,7 +1000,7 @@ def _draw_polyline(img, polyline, annotation_config):
     # Draw title string
     #
 
-    tcx, tcy = tuple(np.mean(points, axis=0))
+    tcx, tcy = tuple(np.mean(points, axis=(0, 1)))
     ttlx, ttly, tw, th = _get_panel_coords(
         [title_str], annotation_config, center_coords=(tcx, tcy)
     )
@@ -1097,7 +1097,7 @@ def _draw_keypoints(img, keypoints, annotation_config):
         if keypoints.label in labels_blacklist:
             return_now = True
 
-    if not keypoints.points:
+    if not keypoints.has_points:
         return_now = True
 
     if return_now:

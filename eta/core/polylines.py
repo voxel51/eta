@@ -24,27 +24,27 @@ import eta.core.utils as etau
 
 
 class Polyline(etal.Labels):
-    """A list of points describing a polyline or polygon in an image.
+    """A set of semantically related polylines or polygons in an image.
 
     :class:`Polyline` is a spatial concept that describes information about a
-    polyline (collection of line segments) or polygon in a particular image or
-    a particular frame of a video. A :class:`Polyline` can have a name (i.e.,
-    a class), a label, a list of vertices, and one or more additional
-    attributes describing its properties. The shape can be closed, filled, or
-    neither.
+    semantically related set of polylines (collection of line segments) or
+    polygons in a particular image or a particular frame of a video. A
+    :class:`Polyline` can have a name (i.e., a class), a label, a list of lists
+    of vertices, and one or more additional attributes describing its
+    properties. The shapes can be closed, filled, or neither.
 
     Attributes:
         type: the fully-qualified class name of the polyline
         name: (optional) the name for the polyline, e.g., ``ground_truth`` or
             the name of the model that produced it
-        label: (optional) polyline label
+        label: (optional) a label for the polyline
         index: (optional) an index assigned to the polyline
-        points: a list of ``(x, y)`` points in ``[0, 1] x [0, 1]``
-            describing the vertices of the polyline
+        points: a list of lists of ``(x, y)`` points in ``[0, 1] x [0, 1]``
+            describing the vertices of each shape in the polyline
         closed: whether the polyline is closed, i.e., an edge should be drawn
-            from the last vertex to the first vertex
-        filled: whether the polyline represents a shape that can be filled when
-            rendering it
+            from the last vertex to the first vertex of each shape
+        filled: whether the polyline represents polygons, i.e., shapes that
+            should be filled when rendering them
         attrs: (optional) an :class:`eta.core.data.AttributeContainer` of
             attributes for the polyline
 
@@ -53,12 +53,14 @@ class Polyline(etal.Labels):
             name of the model that produced it
         label (None): a label for the polyline
         index (None): an integer index assigned to the polyline
-        points (None): a list of ``(x, y)`` points in ``[0, 1] x [0, 1]``
-            describing the vertices of a curve
+        points (None): a list of lists of ``(x, y)`` points in
+            ``[0, 1] x [0, 1]`` describing the vertices of the shapes in the
+            polyline
         closed (False): whether the polyline is closed, i.e., an edge
-            should be drawn from the last vertex to the first vertex
-        filled (False): whether the polyline represents a shape that can
-            be filled when rendering it
+            should be drawn from the last vertex to the first vertex of each
+            shape
+        filled (False): whether the polyline contains polygons, i.e., shapes
+            that should be filled when rendering them
         attrs (None): an :class:`eta.core.data.AttributeContainer` of
             attributes for the polyline
     """
@@ -100,7 +102,7 @@ class Polyline(etal.Labels):
     @property
     def has_vertices(self):
         """Whether the polyline has at least one vertex."""
-        return bool(self.points)
+        return any(bool(shape) for shape in self.points)
 
     @property
     def has_name(self):
@@ -192,10 +194,13 @@ class Polyline(etal.Labels):
             img (None): the image itself
 
         Returns:
-            a list of ``(x, y)`` vertices in pixels
+            a list of lists of ``(x, y)`` vertices in pixels
         """
         w, h = _to_frame_size(frame_size=frame_size, shape=shape, img=img)
-        return [(int(round(x * w)), int(round(y * h))) for x, y in self.points]
+        return [
+            [(int(round(x * w)), int(round(y * h))) for x, y in shape]
+            for shape in self.points
+        ]
 
     def filter_by_schema(self, schema, allow_none_label=False):
         """Filters the polyline by the given schema.
@@ -262,8 +267,8 @@ class Polyline(etal.Labels):
         One of ``frame_size``, ``shape``, or ``img`` must be provided.
 
         Args:
-            points: a list of ``(x, y)``` keypoints in ``[0, 1] x [0, 1]``
-                describing the vertices of the polyline
+            points: a list of lists of ``(x, y)``` keypoints in
+                ``[0, 1] x [0, 1]`` describing the vertices of the polyline
             clamp (True): whether to clamp the relative points to
                 ``[0, 1] x [0, 1]``, if necessary
             frame_size (None): the ``(width, height)`` of the image
@@ -279,14 +284,18 @@ class Polyline(etal.Labels):
         w, h = _to_frame_size(frame_size=frame_size, shape=shape, img=img)
 
         rpoints = []
-        for x, y in points:
-            xr = x / w
-            yr = y / h
-            if clamp:
-                xr = max(0, min(xr, 1))
-                yr = max(0, min(yr, 1))
+        for shape in points:
+            rshape = []
+            for x, y in shape:
+                xr = x / w
+                yr = y / h
+                if clamp:
+                    xr = max(0, min(xr, 1))
+                    yr = max(0, min(yr, 1))
 
-            rpoints.append((xr, yr))
+                rshape.append((xr, yr))
+
+            rpoints.append(rshape)
 
         return cls(points=rpoints, **kwargs)
 
