@@ -41,6 +41,7 @@ setup(
         "requests",
         "retrying",
         "six",
+        "scikit-image",
         "sortedcontainers",
         "Sphinx",
         "tabulate",

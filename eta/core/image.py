@@ -30,14 +30,17 @@ import logging
 import os
 import operator
 from subprocess import Popen, PIPE
+import warnings
 
 import cv2
 import numpy as np
+from skimage import measure
 
 import eta
 from eta.core.frames import FrameLabels, FrameLabelsSchema
 import eta.core.geometry as etag
 import eta.core.labels as etal
+import eta.core.polylines as etap
 import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.web as etaw
@@ -994,7 +997,7 @@ def get_contour_band_mask(mask, bandwidth):
             mask. A typical value for this parameter is 5 pixels
 
     Returns:
-        a binary mask indicating the countour bands
+        a binary mask indicating the contour bands
     """
     mask = np.asarray(mask)
     band_mask = np.zeros(mask.shape, dtype=np.uint8)
@@ -1007,6 +1010,103 @@ def get_contour_band_mask(mask, bandwidth):
         cv2.drawContours(band_mask, contours, -1, 1, bandwidth)
 
     return band_mask.astype(bool)
+
+
+def convert_object_to_polygon(dobj, tolerance=2, filled=True):
+    """Converts the DetectedObject to a Polyline.
+
+    If the object an instance mask, the polyline will trace the boundary of the
+    mask; otherwise, the polyline will trace the bounding box itself.
+
+    If the object's mask contains multiple connected components, the polyline
+    will only describe the first component.
+
+    Args:
+        dobj: a DetectedObject
+        tolerance (2): a tolerance, in pixels, when generating an approximate
+            polyline for the instance mask
+        filled (True): whether the polyline should be filled
+
+    Returns:
+        a Polyline
+    """
+    if dobj.has_mask:
+        mask_polygons = _mask_to_polygons(dobj.mask, tolerance=tolerance)
+
+        num_polygons = len(mask_polygons)
+
+        if num_polygons == 0:
+            points = _get_bounding_box_points(dobj.bounding_box)
+        else:
+            if num_polygons > 1:
+                msg = (
+                    "Found object whose mask has more than one connected "
+                    "component; only returning first component"
+                )
+                warnings.warn(msg)
+
+            x0 = dobj.bounding_box.top_left.x
+            y0 = dobj.bounding_box.top_left.y
+            w_box = dobj.bounding_box.width()
+            h_box = dobj.bounding_box.height()
+
+            h_mask, w_mask = dobj.mask.shape[:2]
+
+            points = []
+            for x, y in mask_polygons[0]:
+                xp = x0 + (x / w_mask) * w_box
+                yp = y0 + (y / h_mask) * h_box
+
+                points.append((xp, yp))
+
+    else:
+        points = _get_bounding_box_points(dobj.bounding_box)
+
+    return etap.Polyline(
+        name=dobj.name,
+        label=dobj.label,
+        index=dobj.index,
+        points=points,
+        closed=True,
+        filled=filled,
+        attrs=dobj.attrs,
+    )
+
+
+def _get_bounding_box_points(bounding_box):
+    tlx, tly, brx, bry = bounding_box.to_coords()
+    return [(tlx, tly), (brx, tly), (brx, bry), (tlx, bry)]
+
+
+def _mask_to_polygons(mask, tolerance=2):
+    # Pad mask to close contours of shapes which start and end at an edge
+    padded_mask = np.pad(mask, pad_width=1, mode="constant", constant_values=0)
+
+    contours = measure.find_contours(padded_mask, 0.5)
+    contours = np.subtract(contours, 1)  # undo padding
+
+    polygons = []
+    for contour in contours:
+        contour = _close_contour(contour)
+        contour = measure.approximate_polygon(contour, tolerance)
+        if len(contour) < 3:
+            continue
+
+        # After padding and subtracting 1 there may be -0.5 points
+        contour = np.maximum(contour, 0)
+
+        contour = contour[:-1]  # store as open contour
+        contour = np.flip(contour, axis=1)
+        polygons.append(contour.tolist())
+
+    return polygons
+
+
+def _close_contour(contour):
+    if not np.array_equal(contour[0], contour[-1]):
+        contour = np.vstack((contour, contour[0]))
+
+    return contour
 
 
 def render_bounding_box_and_mask(polyline, mask_size):
