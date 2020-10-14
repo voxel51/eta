@@ -975,7 +975,8 @@ def _draw_polyline(img, polyline, annotation_config):
 
     # Render coordinates for image
     # Note: OpenCV expects numpy arrays
-    points = np.array(polyline.coords_in(img=img), dtype=np.int32)
+    points = polyline.coords_in(img=img)
+    points = [np.array(shape, dtype=np.int32) for shape in points]
 
     #
     # Draw polyline
@@ -1000,7 +1001,7 @@ def _draw_polyline(img, polyline, annotation_config):
     # Draw title string
     #
 
-    tcx, tcy = tuple(np.mean(points, axis=(0, 1)))
+    tcx, tcy = np.mean([np.mean(shape, axis=0) for shape in points], axis=0)
     ttlx, ttly, tw, th = _get_panel_coords(
         [title_str], annotation_config, center_coords=(tcx, tcy)
     )
