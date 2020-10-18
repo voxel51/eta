@@ -35,6 +35,7 @@ setup(
         "numpy",
         "opencv-python-headless<5,>=4.1",
         "packaging",
+        "patool",
         "Pillow<7,>=6.2",
         "python-dateutil",
         "pytz",

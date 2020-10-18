@@ -44,6 +44,7 @@ import mimetypes
 import numbers
 import os
 import packaging.version
+import patoolib
 import pytz
 import random
 import re
@@ -2843,8 +2844,12 @@ def make_zip64(dir_path, zip_path):
 def extract_archive(archive_path, outdir=None, delete_archive=False):
     """Extracts the contents of an archive.
 
-    Supported formats include `.zip`, `.tar`, `.tar.gz`, `.tgz`, `.tar.bz`,
-    and `.tbz`.
+    The following formats are guaranteed to work:
+    `.zip`, `.tar`, `.tar.gz`, `.tgz`, `.tar.bz`, `.tbz`.
+
+    If an archive *not* in the above list is found, extraction will be
+    attempted via the `patool` package, which supports many formats but may
+    require that additional system packages be installed.
 
     Args:
         archive_path: the path to the archive file
@@ -2853,14 +2858,52 @@ def extract_archive(archive_path, outdir=None, delete_archive=False):
         delete_archive: whether to delete the archive after extraction. By
             default, this is False
     """
-    #
-    # One could use `shutil.unpack_archive` in Python 3...
-    # https://docs.python.org/3/library/shutil.html#shutil.unpack_archive
-    #
     if archive_path.endswith(".zip"):
         extract_zip(archive_path, outdir=outdir, delete_zip=delete_archive)
-    else:
+    elif archive_path.endswith(".rar"):
+        extract_rar(archive_path, outdir=outdir, delete_rar=delete_archive)
+    elif archive_path.endswidth(
+        (".tar", ".tar.gz", ".tgz", ".tar.bz", ".tbz")
+    ):
         extract_tar(archive_path, outdir=outdir, delete_tar=delete_archive)
+    else:
+        # Fallback to `patoolib`, which handles a lot of stuff, possibly
+        # requiring the user to install system packages
+        _extract_archive_patoolib(
+            archive_path, outdir=outdir, delete_archive=delete_archive
+        )
+
+
+def extract_rar(rar_path, outdir=None, delete_rar=False):
+    """Extracts the contents of a .rar file.
+
+    This method will complain if you do not have a system package like `unrar`
+    installed that can perform the actual extraction.
+
+    Args:
+        rar_path: the path to the RAR file
+        outdir: the directory into which to extract the RAR contents. By
+            default, the directory containing the RAR file is used
+        delete_rar: whether to delete the RAR after extraction. By default,
+            this is False
+    """
+    try:
+        _extract_archive_patoolib(
+            rar_path, outdir=outdir, delete_archive=delete_rar
+        )
+    except patoolib.util.PatoolError as e:
+        # Provide a more verbose message to the user explaining how they might
+        # get this to work...
+        six.raise_from(
+            IOError(
+                "Failed to extract RAR file '%s'. Extracting RAR files "
+                "requires a system package like `unrar` to be installed on "
+                "your machine. Try installing it via "
+                "`sudo apt-get install unrar` on Linux or "
+                "`brew install unrar` on macOS" % rar_path
+            ),
+            e,
+        )
 
 
 def extract_zip(zip_path, outdir=None, delete_zip=False):
@@ -2912,6 +2955,19 @@ def extract_tar(tar_path, outdir=None, delete_tar=False):
 
     if delete_tar:
         delete_file(tar_path)
+
+
+def _extract_archive_patoolib(archive_path, outdir=None, delete_archive=False):
+    outdir = outdir or os.path.dirname(archive_path) or "."
+
+    ensure_dir(outdir)
+
+    patoolib.extract_archive(
+        archive_path, outdir=outdir, verbosity=-1, interactive=False
+    )
+
+    if delete_archive:
+        delete_file(archive_path)
 
 
 def multiglob(*patterns, **kwargs):
