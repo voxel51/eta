@@ -311,7 +311,7 @@ class Polyline(etal.Labels):
         """
         name = d.get("name", None)
         label = d.get("label", None)
-        index = (d.get("index", None),)
+        index = d.get("index", None)
         points = d.get("points", None)
         closed = d.get("closed", False)
         filled = d.get("filled", False)
