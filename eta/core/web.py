@@ -21,7 +21,6 @@ from future.utils import iteritems
 import logging
 import re
 import requests
-from time import time
 
 import eta.constants as etac
 import eta.core.utils as etau
@@ -45,7 +44,7 @@ def is_url(filename):
     return etau.is_str(filename) and URL_REGEX.match(filename) is not None
 
 
-def download_file(url, path=None, chunk_size=None):
+def download_file(url, path=None, chunk_size=None, verify=True):
     """Downloads a file from a URL. If a path is specified, the file is written
     there. Otherwise, the content is returned as a binary string.
 
@@ -53,6 +52,8 @@ def download_file(url, path=None, chunk_size=None):
         url: the URL to get
         path: an optional path to write the file to
         chunk_size: an optional chunk size (in bytes) to use
+        verify: whether to verify SSL certificates before downloading. Set this
+            parameter to `False` to bypasses certificate validation
 
     Returns:
         the binary string if path is not specified; otherwise None
@@ -60,7 +61,7 @@ def download_file(url, path=None, chunk_size=None):
     Raises:
         WebSessionError: if the download failed
     """
-    sess = WebSession(chunk_size=chunk_size)
+    sess = WebSession(chunk_size=chunk_size, verify=verify)
     return sess.write(path, url) if path else sess.get(url)
 
 
@@ -90,14 +91,17 @@ class WebSession(object):
     # Chunk size, in bytes
     DEFAULT_CHUNK_SIZE = 64 * 1024
 
-    def __init__(self, chunk_size=None):
+    def __init__(self, chunk_size=None, verify=True):
         """Creates a WebSession instance.
 
         chunk_size: an optional chunk size (in bytes) to use for downloads.
             By default, `DEFAULT_CHUNK_SIZE` is used
+        verify: whether to verify SSL certificates before downloading. Set this
+            parameter to `False` to bypasses certificate validation
         """
         self.sess = requests.Session()
         self.chunk_size = chunk_size or self.DEFAULT_CHUNK_SIZE
+        self.verify = verify
 
         # Tell the website who is downloading
         header = "%s v%s, %s" % (etac.NAME, etac.VERSION, etac.AUTHOR)
@@ -146,7 +150,13 @@ class WebSession(object):
                     progress.update(8 * len(chunk))
 
     def _get_streaming_response(self, url, headers=None, params=None):
-        r = self.sess.get(url, headers=headers, params=params, stream=True)
+        r = self.sess.get(
+            url,
+            headers=headers,
+            params=params,
+            stream=True,
+            verify=self.verify,
+        )
 
         if r.status_code not in (200, 206):
             raise WebSessionError("Unable to get '%s'" % url)
