@@ -31,7 +31,6 @@ import logging
 import os
 import operator
 from subprocess import Popen, PIPE
-import warnings
 
 import cv2
 import numpy as np
