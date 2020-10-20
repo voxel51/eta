@@ -45,7 +45,6 @@ import numbers
 import os
 import packaging.version
 import patoolib
-import platform
 import pytz
 import random
 import re
@@ -2935,13 +2934,10 @@ def extract_rar(rar_path, outdir=None, delete_rar=False):
     except patoolib.util.PatoolError as e:
         message = (
             "Failed to extract RAR file '%s'. Extracting RAR files requires a "
-            "system package like `unrar` to be installed on your machine."
+            "system package like `unrar` to be installed on your machine, "
+            "which you may need to install. Check the error message above for "
+            "more information."
         ) % rar_path
-
-        install_str = _get_install_str("unrar")
-        if install_str:
-            message += " You may need to install it via `%s`" % install_str
-
         six.raise_from(IOError(message), e)
 
 
@@ -3788,10 +3784,6 @@ class ExecutableNotFoundError(Exception):
                 "machine."
             ) % exe
 
-            install_str = _get_install_str(exe)
-            if install_str:
-                message += " Try installing it via `%s`" % install_str
-
         super(ExecutableNotFoundError, self).__init__(message)
 
 
@@ -3801,17 +3793,6 @@ class ExecutableRuntimeError(Exception):
     def __init__(self, cmd, err):
         message = "Command '%s' failed with error:\n%s" % (cmd, err)
         super(ExecutableRuntimeError, self).__init__(message)
-
-
-def _get_install_str(package_name):
-    system = platform.system()
-    if system == "Linux":
-        return "sudo apt-get %s" % package_name
-
-    if system == "Darwin":
-        return "brew install %s" % package_name
-
-    return None
 
 
 def validate_type(obj, expected_type):
