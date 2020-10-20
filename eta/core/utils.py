@@ -2289,6 +2289,46 @@ def split_path(path):
     return all_parts
 
 
+def make_unique_path(path, suffix=""):
+    """Make a unique path based on the given path by possibly appending
+    characters *before* the file extension.
+
+    The returned path is::
+
+        root, ext = os.path.splitext(path)
+        outpath = root + suffix + ext
+
+    where random chacters are appended to `suffix`, if necessary, until no
+    existing path conflicts on disk.
+
+    Args:
+        path: a path
+        suffix: an optional suffix. The default is ""
+
+    Returns:
+        the unique path
+    """
+    if suffix:
+        root, ext = os.path.splitext(path)
+        path = root + suffix + ext
+
+    if not os.path.isfile(path):
+        return path
+
+    suffix += "_" + _get_random_characters(6)
+
+    while os.path.isfile(root + suffix + ext):
+        suffix += _get_random_characters(1)
+
+    return root + suffix + ext
+
+
+def _get_random_characters(n):
+    return "".join(
+        random.choice(string.ascii_lowercase + string.digits) for _ in range(n)
+    )
+
+
 _TIME_UNITS = [
     "ns",
     "us",
