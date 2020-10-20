@@ -4011,7 +4011,7 @@ class FFprobe(object):
             self._p = Popen(self._args, stdout=PIPE, stderr=PIPE)
         except EnvironmentError as e:
             if e.errno == errno.ENOENT:
-                raise etau.ExecutableNotFoundError("ffprobe")
+                raise etau.ExecutableNotFoundError(exe="ffprobe")
 
             raise
 
@@ -4183,7 +4183,7 @@ class FFmpeg(object):
             self._p = Popen(self._args, stdin=PIPE, stdout=PIPE, stderr=PIPE)
         except EnvironmentError as e:
             if e.errno == errno.ENOENT:
-                raise etau.ExecutableNotFoundError("ffmpeg")
+                raise etau.ExecutableNotFoundError(exe="ffmpeg")
 
             raise
 

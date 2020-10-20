@@ -45,6 +45,7 @@ import numbers
 import os
 import packaging.version
 import patoolib
+import platform
 import pytz
 import random
 import re
@@ -1665,7 +1666,7 @@ def communicate_or_die(args, decode=False):
         return out
     except EnvironmentError as e:
         if e.errno == errno.ENOENT:
-            raise ExecutableNotFoundError(args[0])
+            raise ExecutableNotFoundError(exe=args[0])
 
         raise
 
@@ -2932,18 +2933,16 @@ def extract_rar(rar_path, outdir=None, delete_rar=False):
             rar_path, outdir=outdir, delete_archive=delete_rar
         )
     except patoolib.util.PatoolError as e:
-        # Provide a more verbose message to the user explaining how they might
-        # get this to work...
-        six.raise_from(
-            IOError(
-                "Failed to extract RAR file '%s'. Extracting RAR files "
-                "requires a system package like `unrar` to be installed on "
-                "your machine. Try installing it via "
-                "`sudo apt-get install unrar` on Linux or "
-                "`brew install unrar` on macOS" % rar_path
-            ),
-            e,
-        )
+        message = (
+            "Failed to extract RAR file '%s'. Extracting RAR files requires a "
+            "system package like `unrar` to be installed on your machine."
+        ) % rar_path
+
+        install_str = _get_install_str("unrar")
+        if install_str:
+            message += " You may need to install it via `%s`" % install_str
+
+        six.raise_from(IOError(message), e)
 
 
 def extract_zip(zip_path, outdir=None, delete_zip=False):
@@ -3781,8 +3780,18 @@ class WorkingDir(object):
 class ExecutableNotFoundError(Exception):
     """Exception raised when an executable file is not found."""
 
-    def __init__(self, executable):
-        message = "Executable '%s' not found" % executable
+    def __init__(self, message=None, exe=None):
+        if exe is not None:
+            message = (
+                "The requested operation failed because the `%s` executable "
+                "could not be found. You may need to install it on your "
+                "machine."
+            ) % exe
+
+            install_str = _get_install_str(exe)
+            if install_str:
+                message += " Try installing it via `%s`" % install_str
+
         super(ExecutableNotFoundError, self).__init__(message)
 
 
@@ -3792,6 +3801,17 @@ class ExecutableRuntimeError(Exception):
     def __init__(self, cmd, err):
         message = "Command '%s' failed with error:\n%s" % (cmd, err)
         super(ExecutableRuntimeError, self).__init__(message)
+
+
+def _get_install_str(package_name):
+    system = platform.system()
+    if system == "Linux":
+        return "sudo apt-get %s" % package_name
+
+    if system == "Darwin":
+        return "brew install %s" % package_name
+
+    return None
 
 
 def validate_type(obj, expected_type):

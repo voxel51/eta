@@ -1226,7 +1226,7 @@ class Convert(object):
             self._p = Popen(self._args, stdin=PIPE, stdout=PIPE, stderr=PIPE)
         except EnvironmentError as e:
             if e.errno == errno.ENOENT:
-                raise etau.ExecutableNotFoundError(self._executable)
+                raise etau.ExecutableNotFoundError(exe=self._executable)
             raise
 
         out, err = self._p.communicate()
