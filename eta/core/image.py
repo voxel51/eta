@@ -458,12 +458,12 @@ def download(url, include_alpha=False, flag=None):
 
 
 def read(path_or_url, include_alpha=False, flag=None):
-    """Reads image from a file path or url.
+    """Reads image from a file path or URL.
 
     By default, images are returned as color images with no alpha channel.
 
     Args:
-        path_or_url: the file path or url to the image
+        path_or_url: the file path or URL to the image
         include_alpha: whether to include the alpha channel of the image, if
             present, in the returned array. By default, this is False
         flag: an optional OpenCV image format flag to use. If provided, this
@@ -1093,6 +1093,23 @@ def _close_contour(contour):
     return contour
 
 
+def render_bounding_box(polyline):
+    """Renders a tight BoundingBox around the given Polyline.
+
+    Args:
+        polyline: a Polyline
+
+    Returns:
+        a BoundingBox
+    """
+    xx, yy = zip(*list(itertools.chain(*polyline.points)))
+    xtl = min(xx)
+    ytl = min(yy)
+    xbr = max(xx)
+    ybr = max(yy)
+    return etag.BoundingBox.from_coords(xtl, ytl, xbr, ybr)
+
+
 def render_bounding_box_and_mask(polyline, mask_size):
     """Renders a tight BoundingBox and instance mask for the given Polyline.
 
@@ -1103,22 +1120,16 @@ def render_bounding_box_and_mask(polyline, mask_size):
     Returns:
         a `(BoundingBox, mask)` tuple
     """
-    points = polyline.points
-
     # Compute bounding box
-    xx, yy = zip(*list(itertools.chain(*points)))
-    xtl = min(xx)
-    ytl = min(yy)
-    xbr = max(xx)
-    ybr = max(yy)
-    bounding_box = etag.BoundingBox.from_coords(xtl, ytl, xbr, ybr)
+    bounding_box = render_bounding_box(polyline)
 
     # Compute absolute coordinates within `mask_size` image on bounding box
+    xtl, ytl, xbr, ybr = bounding_box.to_coords()
     w_box = xbr - xtl
     h_box = ybr - ytl
     w_mask, h_mask = mask_size
     abs_points = []
-    for shape in points:
+    for shape in polyline.points:
         abs_shape = []
         for x, y in shape:
             xabs = int(round(((x - xtl) / w_box) * w_mask))
