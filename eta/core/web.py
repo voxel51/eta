@@ -44,7 +44,7 @@ def is_url(filename):
     return etau.is_str(filename) and URL_REGEX.match(filename) is not None
 
 
-def download_file(url, path=None, chunk_size=None, verify=True):
+def download_file(url, path=None, chunk_size=None, verify=True, quiet=False):
     """Downloads a file from a URL. If a path is specified, the file is written
     there. Otherwise, the content is returned as a binary string.
 
@@ -54,6 +54,7 @@ def download_file(url, path=None, chunk_size=None, verify=True):
         chunk_size: an optional chunk size (in bytes) to use
         verify: whether to verify SSL certificates before downloading. Set this
             parameter to `False` to bypasses certificate validation
+        quiet: whether to NOT show a progress bar tracking the download
 
     Returns:
         the binary string if path is not specified; otherwise None
@@ -61,11 +62,11 @@ def download_file(url, path=None, chunk_size=None, verify=True):
     Raises:
         WebSessionError: if the download failed
     """
-    sess = WebSession(chunk_size=chunk_size, verify=verify)
+    sess = WebSession(chunk_size=chunk_size, verify=verify, quiet=quiet)
     return sess.write(path, url) if path else sess.get(url)
 
 
-def download_google_drive_file(fid, path=None, chunk_size=None):
+def download_google_drive_file(fid, path=None, chunk_size=None, quiet=False):
     """Downloads the Google Drive file with the given ID. If a path is
     specified, the file is written there. Otherwise, the file contents are
     returned as a binary string.
@@ -74,6 +75,7 @@ def download_google_drive_file(fid, path=None, chunk_size=None):
         fid: the ID of the Google Drive file
         path: an optional path to write the file to
         chunk_size: an optional chunk size (in bytes) to use
+        quiet: whether to NOT show a progress bar tracking the download
 
     Returns:
         the binary string if path is not specified; otherwise None
@@ -81,7 +83,7 @@ def download_google_drive_file(fid, path=None, chunk_size=None):
     Raises:
         WebSessionError: if the download failed
     """
-    sess = GoogleDriveSession(chunk_size=chunk_size)
+    sess = GoogleDriveSession(chunk_size=chunk_size, quiet=quiet)
     return sess.write(path, fid) if path else sess.get(fid)
 
 
@@ -91,17 +93,19 @@ class WebSession(object):
     # Chunk size, in bytes
     DEFAULT_CHUNK_SIZE = 64 * 1024
 
-    def __init__(self, chunk_size=None, verify=True):
+    def __init__(self, chunk_size=None, verify=True, quiet=False):
         """Creates a WebSession instance.
 
         chunk_size: an optional chunk size (in bytes) to use for downloads.
             By default, `DEFAULT_CHUNK_SIZE` is used
         verify: whether to verify SSL certificates before downloading. Set this
             parameter to `False` to bypasses certificate validation
+        quiet: whether to NOT show progress bars tracking downloads
         """
         self.sess = requests.Session()
         self.chunk_size = chunk_size or self.DEFAULT_CHUNK_SIZE
         self.verify = verify
+        self.quiet = quiet
 
         # Tell the website who is downloading
         header = "%s v%s, %s" % (etac.NAME, etac.VERSION, etac.AUTHOR)
@@ -143,7 +147,7 @@ class WebSession(object):
         size_bytes = _get_content_length(r)
         size_bits = 8 * size_bytes if size_bytes is not None else None
 
-        with etau.ProgressBar(size_bits, use_bits=True) as progress:
+        with etau.ProgressBar(size_bits, use_bits=True, quiet=self.quiet) as progress:
             with open(path, "wb") as f:
                 for chunk in r.iter_content(chunk_size=self.chunk_size):
                     f.write(chunk)
