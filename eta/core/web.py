@@ -18,7 +18,7 @@ from future.utils import iteritems
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-from io import BytesIO
+import io
 import logging
 import re
 import requests
@@ -126,7 +126,7 @@ class WebSession(object):
             WebSessionError: if the download failed
         """
         r = self._get_streaming_response(url, params=params)
-        with BytesIO() as f:
+        with io.BytesIO() as f:
             self._do_download(r, f)
             return f.getvalue()
 
@@ -146,7 +146,6 @@ class WebSession(object):
         """
         r = self._get_streaming_response(url, params=params)
         etau.ensure_basedir(path)
-
         with open(path, "wb") as f:
             self._do_download(r, f)
 
