@@ -34,6 +34,7 @@ import pprint
 from uuid import uuid4
 import zlib
 
+import ndjson
 import numpy as np
 
 import eta.core.utils as etau
@@ -109,7 +110,7 @@ def read_json(path):
 
 
 def write_json(obj, path, pretty_print=False):
-    """Writes JSON object to file, creating the output directory if necessary.
+    """Writes JSON object to file.
 
     Args:
         obj: is either an object that can be directly dumped to a JSON file or
@@ -122,6 +123,32 @@ def write_json(obj, path, pretty_print=False):
     etau.ensure_basedir(path)
     with open(path, "wt") as f:
         f.write(s)
+
+
+def read_ndjson(path):
+    """Reads the NDJSON from file.
+
+    Args:
+        path: the path to the NDJSON file
+
+    Returns:
+        a list of JSON dicts
+    """
+    with open(path, "rt") as f:
+        return ndjson.load(f)
+
+
+def write_ndjson(obj, path, append=False):
+    """Writes the list of JSON dicts to disk in NDJSON format.
+
+    Args:
+        obj: a list of JSON dicts
+        path: the output path
+        append: whether to append to an existing file, if necessary
+    """
+    mode = "at" if append else "wt"
+    with open(path, mode) as f:
+        f.write(ndjson.dumps(obj))
 
 
 def json_to_str(obj, pretty_print=True):

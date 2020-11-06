@@ -32,6 +32,7 @@ setup(
         "future",
         "glob2",
         "importlib-metadata; python_version<'3.8'",
+        "ndjson",
         "numpy",
         "opencv-python-headless<5,>=4.1",
         "packaging",
