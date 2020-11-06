@@ -18,6 +18,7 @@ from future.utils import iteritems
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+from io import BytesIO
 import logging
 import re
 import requests
@@ -125,7 +126,9 @@ class WebSession(object):
             WebSessionError: if the download failed
         """
         r = self._get_streaming_response(url, params=params)
-        return r.content
+        with BytesIO() as f:
+            self._do_download(r, f)
+            return f.getvalue()
 
     def write(self, path, url, params=None):
         """Writes the URL content to the given local path.
@@ -144,14 +147,8 @@ class WebSession(object):
         r = self._get_streaming_response(url, params=params)
         etau.ensure_basedir(path)
 
-        size_bytes = _get_content_length(r)
-        size_bits = 8 * size_bytes if size_bytes is not None else None
-
-        with etau.ProgressBar(size_bits, use_bits=True, quiet=self.quiet) as pb:
-            with open(path, "wb") as f:
-                for chunk in r.iter_content(chunk_size=self.chunk_size):
-                    f.write(chunk)
-                    pb.update(8 * len(chunk))
+        with open(path, "wb") as f:
+            self._do_download(r, f)
 
     def _get_streaming_response(self, url, headers=None, params=None):
         r = self.sess.get(
@@ -166,6 +163,16 @@ class WebSession(object):
             raise WebSessionError("Unable to get '%s'" % url)
 
         return r
+
+    def _do_download(self, r, f):
+        size_bytes = _get_content_length(r)
+        size_bits = 8 * size_bytes if size_bytes is not None else None
+        with etau.ProgressBar(
+            size_bits, use_bits=True, quiet=self.quiet
+        ) as pb:
+            for chunk in r.iter_content(chunk_size=self.chunk_size):
+                f.write(chunk)
+                pb.update(8 * len(chunk))
 
 
 class WebSessionError(Exception):
