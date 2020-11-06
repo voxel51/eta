@@ -2206,7 +2206,7 @@ def ensure_empty_file(path):
         path: the filepath
     """
     ensure_path(path)
-    with open(path) as f:
+    with open(path, "wt") as f:
         pass
 
 
