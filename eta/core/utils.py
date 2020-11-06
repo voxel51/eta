@@ -2192,10 +2192,22 @@ def ensure_path(path):
         path: the filepath
     """
     if os.path.isfile(path):
-        logger.debug("Deleting '%s'", path)
         delete_file(path)
 
     ensure_basedir(path)
+
+
+def ensure_empty_file(path):
+    """Ensures that an empty file exists at the given path.
+
+    Any existing file is deleted.
+
+    Args:
+        path: the filepath
+    """
+    ensure_path(path)
+    with open(path) as f:
+        pass
 
 
 def ensure_basedir(path):
