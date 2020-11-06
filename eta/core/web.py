@@ -147,11 +147,11 @@ class WebSession(object):
         size_bytes = _get_content_length(r)
         size_bits = 8 * size_bytes if size_bytes is not None else None
 
-        with etau.ProgressBar(size_bits, use_bits=True, quiet=self.quiet) as progress:
+        with etau.ProgressBar(size_bits, use_bits=True, quiet=self.quiet) as pb:
             with open(path, "wb") as f:
                 for chunk in r.iter_content(chunk_size=self.chunk_size):
                     f.write(chunk)
-                    progress.update(8 * len(chunk))
+                    pb.update(8 * len(chunk))
 
     def _get_streaming_response(self, url, headers=None, params=None):
         r = self.sess.get(
