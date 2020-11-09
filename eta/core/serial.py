@@ -138,6 +138,36 @@ def read_ndjson(path):
         return ndjson.load(f)
 
 
+def load_ndjson(path_or_str):
+    """Loads NDJSON from the input argument.
+
+    The input argument can be any of the following:
+        (a) the path to a NDJSON file on disk
+        (b) a string that can be directly parsed via `ndjson.loads`
+
+    Args:
+        path_or_str: the NDJSON path or string
+
+    Returns:
+        the loaded NDJSON
+
+    Raises:
+        ValueError: if no NDJSON could be decoded
+    """
+    if os.path.isfile(path_or_str):
+        return read_ndjson(path_or_str)
+
+    return _load_ndjson(path_or_str)
+
+
+def _load_ndjson(str_or_bytes):
+    try:
+        return ndjson.loads(str_or_bytes)
+    except TypeError:
+        # Must be a Python version for which ndjson.loads() cannot handle bytes
+        return ndjson.loads(str_or_bytes.decode("utf-8"))
+
+
 def write_ndjson(obj, path, append=False):
     """Writes the list of JSON dicts to disk in NDJSON format.
 
