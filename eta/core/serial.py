@@ -146,9 +146,16 @@ def write_ndjson(obj, path, append=False):
         path: the output path
         append: whether to append to an existing file, if necessary
     """
+    etau.ensure_basedir(path)
+
+    if append and os.path.exists(path) and os.path.getsize(path) > 0:
+        prefix = os.linesep
+    else:
+        prefix = ""
+
     mode = "at" if append else "wt"
     with open(path, mode) as f:
-        f.write(ndjson.dumps(obj))
+        f.write(prefix + ndjson.dumps(obj))
 
 
 def json_to_str(obj, pretty_print=True):
