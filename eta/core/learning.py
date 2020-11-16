@@ -128,10 +128,32 @@ def load_default_deployment_model(model_name):
     Returns:
         the loaded `Model` instance described by the default deployment for the
             specified model
+
+    Raises:
+        ImportError: if a required package is not installed or does not meet
+            the specified requirements
     """
     model = etam.get_model(model_name)
+    model.ensure_requirements()
     config = ModelConfig.from_dict(model.default_deployment_config_dict)
     return config.build()
+
+
+def ensure_requirements(model_name):
+    """Ensures that the package requirements for the model with the given name
+    are satisfied.
+
+    Args:
+        model_name: the name of the model, which can have "@<ver>" appended to
+            refer to a specific version of the model. If no version is
+            specified, the latest version of the model is assumed
+
+    Raises:
+        ImportError: if a required package is not installed or does not meet
+            the specified requirements
+    """
+    model = etam.get_model(model_name)
+    model.ensure_requirements()
 
 
 class HasDefaultDeploymentConfig(object):
@@ -249,6 +271,22 @@ class Model(Configurable):
 
     def __exit__(self, *args):
         pass
+
+    @staticmethod
+    def ensure_requirements(model_name):
+        """Ensures that the package requirements for the model are satisfied.
+
+        The model must be findable via `eta.core.models.get_model(model_name)`.
+
+        Args:
+            model_name: the name of the model
+
+        Raises:
+            ImportError: if a required package is not installed or does not
+                meet the specified requirements
+        """
+        model = etam.get_model(model_name)
+        model.ensure_requirements()
 
 
 class ImageModelConfig(ModelConfig):

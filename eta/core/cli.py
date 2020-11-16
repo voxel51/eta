@@ -402,6 +402,9 @@ class ModelsCommand(Command):
         # Force download model
         eta models --force-download <model-name>
 
+        # Ensures that the package requirements for the model are satisfied
+        eta models --ensure-requirements <model-name>
+
         # Visualize graph for model in TensorBoard (TF models only)
         eta models --visualize-tf-graph <model-name>
 
@@ -461,6 +464,14 @@ class ModelsCommand(Command):
             help="force download the model with the given name",
         )
         parser.add_argument(
+            "--ensure-requirements",
+            metavar="NAME",
+            help=(
+                "ensure that the required packages for the model with the "
+                "given name are installed"
+            ),
+        )
+        parser.add_argument(
             "--visualize-tf-graph",
             metavar="NAME",
             help="visualize the TF graph for the model with the given name",
@@ -514,6 +525,10 @@ class ModelsCommand(Command):
 
         if args.force_download:
             etamode.download_model(args.force_download, force=True)
+
+        if args.ensure_requirements:
+            model = etamode.get_model(args.ensure_requirements)
+            model.ensure_requirements()
 
         if args.visualize_tf_graph:
             model_path = etamode.download_model(args.visualize_tf_graph)

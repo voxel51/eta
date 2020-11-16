@@ -43,7 +43,7 @@ import math
 import mimetypes
 import numbers
 import os
-import packaging.version
+from packaging.requirements import Requirement
 import patoolib
 import pytz
 import random
@@ -578,59 +578,37 @@ def get_function(function_name, module_name=None):
     return get_class(function_name, module_name=module_name)
 
 
-def ensure_package(package_name, min_version=None, max_version=None):
+def ensure_package(requirement_str):
     """Ensures that the given package is installed on the host machine.
 
     Args:
-        package_name: the name of the package
-        min_version: an optional min version to enforce
-        max_version: an optional max version to enforce. If provided, the
-            package version must be strictly less than this version
+        requirement_str: a PEP 440 compliant package requirement, like
+            "tensorflow", "tensorflow<2", "tensorflow==2.3.0", and
+            "tensorflow>=1.13,<1.15"
 
     Raises:
-        ImportError: if the package is not installed
+        ImportError: if the package is not installed or does not meet the
+            specified requirements
     """
-    has_min_ver = min_version is not None
-    has_max_ver = max_version is not None
-
-    if has_min_ver:
-        min_version = packaging.version.parse(min_version)
-
-    if has_max_ver:
-        max_version = packaging.version.parse(max_version)
-
-    if has_min_ver:
-        if has_max_ver:
-            pkg_str = "%s<=%s<%s" % (min_version, package_name, max_version)
-        else:
-            pkg_str = "%s>=%s" % (package_name, min_version)
-    elif has_max_ver:
-        pkg_str = "%s<%s" % (package_name, max_version)
-    else:
-        pkg_str = package_name
+    req = Requirement(requirement_str)
 
     try:
-        pkg = importlib.import_module(package_name)
+        pkg = importlib.import_module(req.name)
     except ImportError as e:
         six.raise_from(
             ImportError(
                 "The requested operation requires that '%s' is installed on "
-                "your machine" % pkg_str
+                "your machine" % str(req)
             ),
             e,
         )
 
-    if has_min_ver or has_max_ver:
-        pkg_version = packaging.version.parse(pkg.__version__)
-
-        if (has_min_ver and pkg_version < min_version) or (
-            has_max_ver and pkg_version >= max_version
-        ):
-            raise ImportError(
-                "The requested operation requires that '%s' is installed "
-                "on your machine; found '%s==%s'"
-                % (pkg_str, package_name, pkg_version)
-            )
+    if not req.specifier.contains(pkg.__version__):
+        raise ImportError(
+            "The requested operation requires that '%s' is installed "
+            "on your machine; found '%s==%s'"
+            % (str(req), req.name, pkg.__version__)
+        )
 
 
 def lazy_import(module_name, callback=None):

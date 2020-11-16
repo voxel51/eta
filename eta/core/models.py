@@ -491,6 +491,7 @@ def register_model_dry_run(name, base_filename, models_dir):
     base_names = [mm[0].base_name for mm in itervalues(models)]
     if name in models:
         raise ModelError("Model '%s' already exists" % name)
+
     if name in base_names:
         raise ModelError(
             "A versioned model with base name '%s' already exists, and "
@@ -498,6 +499,7 @@ def register_model_dry_run(name, base_filename, models_dir):
             "model can lead to unexpected behavior. Please choose another "
             "model name." % name
         )
+
     if base_name in models:
         raise ModelError(
             "A versionless model with name '%s' already exists, and "
@@ -612,6 +614,7 @@ def delete_model(name, force=False):
 def _find_model(name):
     if Model.has_version_str(name):
         return _find_exact_model(name)
+
     return _find_latest_model(name)
 
 
@@ -637,6 +640,7 @@ def _find_latest_model(base_name):
 
     if _model is None:
         raise ModelError("No models found with base name '%s'" % base_name)
+
     if _model.has_version:
         logger.debug(
             "Found version %s of model '%s'", _model.version, base_name
@@ -657,6 +661,7 @@ def _list_models(downloaded_only=False):
                 raise ModelError(
                     "Found two '%s' models. Names must be unique" % model.name
                 )
+
             if not downloaded_only or model.is_in_dir(mdir):
                 models[model.name] = (model, mdir)
 
@@ -722,11 +727,13 @@ class ModelsManifest(Serializable):
             raise ModelError(
                 "Manifest already contains model called '%s'" % model.name
             )
+
         if self.has_model_with_filename(model.filename):
             raise ModelError(
                 "Manifest already contains model with filename '%s'"
                 % (model.filename)
             )
+
         if self.has_model_with_name(model.base_name):
             raise ModelError(
                 "Manifest already contains a versionless model called '%s', "
@@ -746,6 +753,7 @@ class ModelsManifest(Serializable):
         """
         if not self.has_model_with_name(name):
             raise ModelError("Manifest does not contain model '%s'" % name)
+
         self.models = [model for model in self.models if model.name != name]
 
     def get_model_with_name(self, name):
@@ -847,6 +855,8 @@ class Model(Serializable):
         default_deployment_config_dict: a dictionary representation of an
             `eta.core.learning.ModelConfig` describing the recommended settings
             for deploying the model
+        requirements: (optional) a list of `setuptools`-style package
+            requirements in order to use the model
         date_created: the datetime that the model was created (if any)
     """
 
@@ -858,6 +868,7 @@ class Model(Serializable):
         version=None,
         description=None,
         default_deployment_config_dict=None,
+        requirements=None,
         date_created=None,
     ):
         """Creates a Model instance.
@@ -871,6 +882,8 @@ class Model(Serializable):
             default_deployment_config_dict: (optional) a dictionary
                 representation of an `eta.core.learning.ModelConfig` describing
                 the recommended settings for deploying the model
+            requirements: (optional) a list of `setuptools`-style package
+                requirements in order to use the model
             date_created: (optional) the datetime that the model was created
         """
         self.base_name = base_name
@@ -879,6 +892,7 @@ class Model(Serializable):
         self.version = version or None
         self.description = description
         self.default_deployment_config_dict = default_deployment_config_dict
+        self.requirements = requirements
         self.date_created = date_created
 
     @property
@@ -886,6 +900,7 @@ class Model(Serializable):
         """The version-aware name of the model."""
         if not self.has_version:
             return self.base_name
+
         base, ext = os.path.splitext(self.base_name)
         return base + "@" + self.version + ext
 
@@ -894,6 +909,7 @@ class Model(Serializable):
         """The version-aware filename of the model."""
         if not self.has_version:
             return self.base_filename
+
         base, ext = os.path.splitext(self.base_filename)
         return base + "-v" + self.version + ext
 
@@ -910,6 +926,25 @@ class Model(Serializable):
         Models with no version are given a version of 0.0.0.
         """
         return LooseVersion(self.version or "0.0.0")
+
+    @property
+    def has_requirements(self):
+        """Whether this model has package requirements in order to be used."""
+        return self.requirements is not None
+
+    def ensure_requirements(self):
+        """Ensures that any package requirement(s) for this model are
+        satisfied.
+
+        Raises:
+            ImportError: if a required package is not installed or does not
+                meet the specified requirements
+        """
+        if not self.has_requirements:
+            return
+
+        for requirement_str in self.requirements:
+            etau.ensure_package(requirement_str)
 
     def get_path_in_dir(self, models_dir):
         """Gets the model path for the model in the given models directory."""
@@ -940,8 +975,10 @@ class Model(Serializable):
         chunks = name.split("@")
         if len(chunks) == 1:
             return name, None
+
         if chunks[1] == "" or len(chunks) > 2:
             raise ModelError("Invalid model name '%s'" % name)
+
         return chunks[0], chunks[1]
 
     @staticmethod
@@ -958,6 +995,7 @@ class Model(Serializable):
             "description",
             "manager",
             "default_deployment_config_dict",
+            "requirements",
             "date_created",
         ]
 
@@ -974,6 +1012,7 @@ class Model(Serializable):
             default_deployment_config_dict=d.get(
                 "default_deployment_config_dict", None
             ),
+            requirements=d.get("requirements", None),
             date_created=date_created,
         )
 
@@ -1076,6 +1115,7 @@ class ModelManager(Configurable, Serializable):
                     "Model downloading is currently disabled. Modify your ETA "
                     "config to change this setting."
                 )
+
             etau.ensure_basedir(model_path)
             self._download_model(model_path)
 

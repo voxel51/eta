@@ -33,7 +33,7 @@ import eta.core.utils as etau
 
 sys.path.append(os.path.join(etac.TF_OBJECT_DETECTION_DIR, "utils"))
 
-_ensure_tf1 = lambda: etau.ensure_package("tensorflow", max_version="2")
+_ensure_tf1 = lambda: etau.ensure_package("tensorflow<2")
 tf = etau.lazy_import("tensorflow", _ensure_tf1)
 gool = etau.lazy_import("label_map_util", _ensure_tf1)
 
