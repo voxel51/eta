@@ -15,6 +15,8 @@ class BdistWheelCustom(bdist_wheel):
         # Pure Python, so build a wheel for any Python version
         self.universal = True
 
+with open("README.md", "r") as fh:
+    long_description = fh.read()
 
 setup(
     name="voxel51-eta",
@@ -24,6 +26,7 @@ setup(
     author_email="info@voxel51.com",
     url="https://github.com/voxel51/eta",
     license="Apache",
+    long_description=long_description,
     packages=find_packages(),
     include_package_data=True,
     install_requires=[
