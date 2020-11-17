@@ -46,9 +46,7 @@ jobs:
                 echo "::set-env name=TWINE_PASSWORD::${{ secrets.FIFTYONE_TEST_PYPI_TOKEN }}"
                 echo "::set-env name=TWINE_REPOSITORY_URL::https://test.pypi.org"
              else
-                echo Non-numeric
                 echo "::set-env name=TWINE_PASSWORD::${{ secrets.FIFTYONE_PYPI_TOKEN }}"
                 echo "::set-env name=TWINE_REPOSITORY_URL::https://pypi.org"
              fi
-        run: |
-          twine upload dist/*.whl
+             twine upload dist/*.whl
