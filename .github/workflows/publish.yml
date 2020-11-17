@@ -37,9 +37,6 @@ jobs:
           name: wheel
           path: dist/*.whl
       - name: Set environment
-        env:
-          TWINE_USERNAME: __token__
-          TWINE_NON_INTERACTIVE: 1
           RELEASE_TAG: ${{ github.ref }}
         run: |
              if [[ $RELEASE_TAG =~ ^refs\/tags\/v.*-rc\.*$ ]]; then
@@ -50,4 +47,7 @@ jobs:
                 echo "TWINE_REPOSITORY=pypi" >> $GITHUB_ENV
              fi
       - name: Publish wheel
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_NON_INTERACTIVE: 1
         run: twine upload dist/*.whl
