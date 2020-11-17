@@ -611,6 +611,58 @@ def ensure_package(requirement_str):
         )
 
 
+def get_cuda_version():
+    """Gets the CUDA version installed on the machine, if possible.
+
+    The `CUDA_HOME` environment variable will be used, if set, to locate the
+    CUDA installation.
+
+    Returns:
+        the CUDA version string, or None if CUDA is not installed or the
+        installation could not be located
+    """
+    cuda_home_dir = os.environ.get("CUDA_HOME", "/usr/local/cuda")
+    cuda_version_path = os.path.join(cuda_home_dir, "version.txt")
+    if not os.path.isfile(cuda_version_path):
+        return None
+
+    contents = read_file(cuda_version_path)
+    return contents[len("CUDA Version ") :].strip()
+
+
+def get_cudnn_version():
+    """Gets the cuDNN version installed on the machine, if possible.
+
+    The `CUDA_HOME` environment variable will be used, if set, to locate the
+    CUDA installation.
+
+    Returns:
+        the cuDNN version string, or None if cuDNN is not installed or the
+        installation could not be located
+    """
+    cuda_home_dir = os.environ.get("CUDA_HOME", "/usr/local/cuda")
+    cudnn_header_path = os.path.join(cuda_home_dir, "include", "cudnn.h")
+    if not os.path.isfile(cudnn_header_path):
+        return None
+
+    major = None
+    minor = None
+    patch = None
+    with open(cudnn_header_path, "rt") as f:
+        for line in f.readlines():
+            if line.startswith("#define CUDNN_MAJOR"):
+                major = line[len("#define CUDNN_MAJOR") :].strip()
+
+            if line.startswith("#define CUDNN_MINOR"):
+                minor = line[len("#define CUDNN_MINOR")].strip()
+
+            if line.startswith("#define CUDNN_PATCHLEVEL"):
+                patch = line[len("#define CUDNN_PATCHLEVEL")].strip()
+
+    ver = [v for v in (major, minor, patch) if v is not None]
+    return ".".join(ver)
+
+
 def lazy_import(module_name, callback=None):
     """Returns a proxy module object that will lazily import the given module
     the first time it is used.
@@ -1615,6 +1667,7 @@ def communicate(args, decode=False):
     if decode:
         out = out.decode()
         err = err.decode()
+
     return p.returncode == 0, out, err
 
 

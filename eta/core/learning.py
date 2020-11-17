@@ -53,6 +53,7 @@ def load_labels_map(labels_map_path):
         for line in f:
             idx, label = line.split(":")
             labels_map[int(idx)] = label.strip()
+
     return labels_map
 
 
