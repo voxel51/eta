@@ -52,4 +52,4 @@ jobs:
         env:
           TWINE_USERNAME: __token__
           TWINE_NON_INTERACTIVE: 1
-        run: twine upload dist/*.whl
+        run: twine upload dist/*
