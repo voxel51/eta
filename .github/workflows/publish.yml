@@ -37,6 +37,7 @@ jobs:
           name: wheel
           path: dist/*.whl
       - name: Set environment
+        env:
           RELEASE_TAG: ${{ github.ref }}
         run: |
              if [[ $RELEASE_TAG =~ ^refs\/tags\/v.*-rc\.*$ ]]; then
