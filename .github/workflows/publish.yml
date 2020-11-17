@@ -40,7 +40,7 @@ jobs:
         env:
           RELEASE_TAG: ${{ github.ref }}
         run: |
-             if [[ $RELEASE_TAG =~ ^refs\/tags\/v.*-rc\.*$ ]]; then
+             if [[ $RELEASE_TAG =~ ^refs\/tags\/v.*-rc\..*$ ]]; then
                 echo "TWINE_PASSWORD=${{ secrets.FIFTYONE_TEST_PYPI_TOKEN }}" >> $GITHUB_ENV
                 echo "TWINE_REPOSITORY=testpypi" >> $GITHUB_ENV
              else
