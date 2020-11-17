@@ -20,7 +20,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="voxel51-eta",
-    version="0.1.12",
+    version="0.1.13",
     description="Extensible Toolkit for Analytics",
     author="Voxel51, Inc.",
     author_email="info@voxel51.com",
