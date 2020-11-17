@@ -44,10 +44,10 @@ jobs:
         run: |
              if [[ $RELEASE_TAG =~ ^refs\/tags\/v.*-rc\.*$ ]]; then
                 echo "TWINE_PASSWORD=${{ secrets.FIFTYONE_TEST_PYPI_TOKEN }}" >> $GITHUB_ENV
-                echo "TWINE_REPOSITORY_URL=https://test.pypi.org" >> $GITHUB_ENV
+                echo "TWINE_REPOSITORY=testpypi" >> $GITHUB_ENV
              else
                 echo "TWINE_PASSWORD=${{ secrets.FIFTYONE_PYPI_TOKEN }}" >> $GITHUB_ENV
-                echo "TWINE_REPOSITORY_URL=https://pypi.org" >> $GITHUB_ENV
+                echo "TWINE_REPOSITORY=pypi" >> $GITHUB_ENV
              fi
       - name: Publish wheel
         run: twine upload dist/*.whl
