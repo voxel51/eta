@@ -12,23 +12,31 @@ from wheel.bdist_wheel import bdist_wheel
 
 VERSION = "0.1.13"
 
+
 class BdistWheelCustom(bdist_wheel):
     def finalize_options(self):
         bdist_wheel.finalize_options(self)
         # Pure Python, so build a wheel for any Python version
         self.universal = True
 
+
 with open("README.md", "r") as fh:
     long_description = fh.read()
+
 
 def get_version():
     if "RELEASE_VERSION" in os.environ:
         version = os.environ["RELEASE_VERSION"]
         if not version.startswith(VERSION):
-            raise ValueError("Release version doest not match version: %s and %s" (version, VERSION))
+            raise ValueError(
+                "Release version doest not match version: %s and %s"(
+                    version, VERSION
+                )
+            )
         return version
 
     return VERSION
+
 
 setup(
     name="voxel51-eta",
@@ -39,6 +47,7 @@ setup(
     url="https://github.com/voxel51/eta",
     license="Apache",
     long_description=long_description,
+    long_description_content_type="text/markdown",
     packages=find_packages(),
     include_package_data=True,
     install_requires=[
