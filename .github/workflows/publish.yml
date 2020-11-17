@@ -38,8 +38,17 @@ jobs:
           path: dist/*.whl
       - name: Publish wheel
         env:
-          TWINE_USERNAME: voxel51-ci
-          TWINE_PASSWORD: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
+          TWINE_USERNAME: __token__
           TWINE_NON_INTERACTIVE: 1
+          RELEASE_TAG: ${{ github.ref }}
         run: |
-          twine upload --repository-url https://pypi.voxel51.com dist/*.whl
+             if [[ $RELEASE_TAG =~ ^refs\/tags\/v.*-rc\.*$ ]]; then
+                echo "::set-env name=TWINE_PASSWORD::${{ secrets.FIFTYONE_TEST_PYPI_TOKEN }}"
+                echo "::set-env name=TWINE_REPOSITORY_URL::https://test.pypi.org"
+             else
+                echo Non-numeric
+                echo "::set-env name=TWINE_PASSWORD::${{ secrets.FIFTYONE_PYPI_TOKEN }}"
+                echo "::set-env name=TWINE_REPOSITORY_URL::https://pypi.org"
+             fi
+        run: |
+          twine upload dist/*.whl
