@@ -36,17 +36,18 @@ jobs:
         with:
           name: wheel
           path: dist/*.whl
-      - name: Publish wheel
+      - name: Set environment
         env:
           TWINE_USERNAME: __token__
           TWINE_NON_INTERACTIVE: 1
           RELEASE_TAG: ${{ github.ref }}
         run: |
              if [[ $RELEASE_TAG =~ ^refs\/tags\/v.*-rc\.*$ ]]; then
-                echo "::set-env name=TWINE_PASSWORD::${{ secrets.FIFTYONE_TEST_PYPI_TOKEN }}"
-                echo "::set-env name=TWINE_REPOSITORY_URL::https://test.pypi.org"
+                echo "TWINE_PASSWORD=${{ secrets.FIFTYONE_TEST_PYPI_TOKEN }}" >> $GITHUB_ENV
+                echo "TWINE_REPOSITORY_URL=https://test.pypi.org" >> $GITHUB_ENV
              else
-                echo "::set-env name=TWINE_PASSWORD::${{ secrets.FIFTYONE_PYPI_TOKEN }}"
-                echo "::set-env name=TWINE_REPOSITORY_URL::https://pypi.org"
+                echo "TWINE_PASSWORD=${{ secrets.FIFTYONE_PYPI_TOKEN }}" >> $GITHUB_ENV
+                echo "TWINE_REPOSITORY_URL=https://pypi.org" >> $GITHUB_ENV
              fi
-             twine upload dist/*.whl
+      - name: Publish wheel
+        run: twine upload dist/*.whl
