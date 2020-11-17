@@ -31,6 +31,7 @@ jobs:
       - name: Build wheel
         run: |
           RELEASE_VERSION=$(echo "${{ github.ref }}" | sed 's/^refs\/tags\/v//') python setup.py bdist_wheel
+          RELEASE_VERSION=$(echo "${{ github.ref }}" | sed 's/^refs\/tags\/v//') python setup.py sdist
       - name: Upload wheel
         uses: actions/upload-artifact@v2
         with:
