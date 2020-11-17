@@ -654,10 +654,10 @@ def get_cudnn_version():
                 major = line[len("#define CUDNN_MAJOR") :].strip()
 
             if line.startswith("#define CUDNN_MINOR"):
-                minor = line[len("#define CUDNN_MINOR")].strip()
+                minor = line[len("#define CUDNN_MINOR") :].strip()
 
             if line.startswith("#define CUDNN_PATCHLEVEL"):
-                patch = line[len("#define CUDNN_PATCHLEVEL")].strip()
+                patch = line[len("#define CUDNN_PATCHLEVEL") :].strip()
 
     ver = [v for v in (major, minor, patch) if v is not None]
     return ".".join(ver)
