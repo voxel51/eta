@@ -842,6 +842,207 @@ class ModelsManifest(Serializable):
         return cls(models=[Model.from_dict(md) for md in d["models"]])
 
 
+class ModelRequirements(Serializable):
+    """Requirements for running a model.
+
+    Example requirements::
+
+        {
+            "packages": [
+                "numpy==1.14.0",
+            ],
+            "cpu": {
+                "support": true,
+                "packages": [
+                    "tensorflow>=1.14,<2"
+                ]
+            },
+            "gpu": {
+                "support": false,
+                "cuda_version": ">=9",
+                "cudnn_version": ">=7.5",
+                "packages": [
+                    "tensorflow-gpu>=1.14,<2"
+                ]
+            }
+        }
+
+    Attributes:
+        packages: (optional) a list of `setuptools`-style package requirements
+            in order to use the model
+        cpu: (optional) a CPU requirements dict
+        gpu: (optional) a GPU requirements dict
+    """
+
+    def __init__(self, packages=None, cpu=None, gpu=None):
+        self.packages = packages
+        self.cpu = cpu
+        self.gpu = gpu
+
+    @property
+    def supports_cpu(self):
+        """Whether the model supports CPU (True), or not (False), or unknown
+        (None).
+        """
+        if self.cpu is None:
+            return None
+
+        return self.cpu.get("support", None)
+
+    @property
+    def supports_gpu(self):
+        """Whether the model supports GPU (True), or not (False), or unknown
+        (None).
+        """
+        if self.gpu is None:
+            return None
+
+        return self.gpu.get("support", None)
+
+    def install_base_requirements(self, error_level=0):
+        """Installs any base package requirements for the model.
+
+        Args:
+            error_level: the error level to use, defined as:
+
+                0: raise error if a package install fails
+                1: log warning if a package install fails
+                2: ignore package install fails
+        """
+        if self.packages is None:
+            return
+
+        for requirement_str in self.packages:
+            etau.install_package(requirement_str, error_level=error_level)
+
+    def install_cpu_requirements(self, error_level=0):
+        """Installs any CPU package requirements for the model.
+
+        Args:
+            error_level: the error level to use, defined as:
+
+                0: raise error if a package install fails
+                1: log warning if a package install fails
+                2: ignore package install fails
+        """
+        if self.cpu is None:
+            return
+
+        for requirement_str in self.cpu.get("packages", []):
+            etau.install_package(requirement_str, error_level=error_level)
+
+    def install_gpu_requirements(self, error_level=0):
+        """Installs any GPU package requirements for the model.
+
+        Args:
+            error_level: the error level to use, defined as:
+
+                0: raise error if a package install fails
+                1: log warning if a package install fails
+                2: ignore package install fails
+        """
+        if self.gpu is None:
+            return
+
+        self._ensure_cuda(error_level)
+        for requirement_str in self.gpu.get("packages", []):
+            etau.install_package(requirement_str, error_level=error_level)
+
+    def ensure_base_requirements(self, error_level=0):
+        """Ensures that any base package requirements for the model are
+        satisfied.
+
+        Args:
+            error_level: the error level to use, defined as:
+
+                0: raise error if a requirement is not satisfied
+                1: log warning if a requirement is not satisifed
+                2: ignore unsatisifed requirements
+        """
+        if self.packages is None:
+            return
+
+        for requirement_str in self.packages:
+            etau.ensure_package(requirement_str, error_level=error_level)
+
+    def ensure_cpu_requirements(self, error_level=0):
+        """Ensures that any CPU package requirements for the model are
+        satisfied.
+
+        Args:
+            error_level: the error level to use, defined as:
+
+                0: raise error if a requirement is not satisfied
+                1: log warning if a requirement is not satisifed
+                2: ignore unsatisifed requirements
+        """
+        if self.cpu is None:
+            return
+
+        for requirement_str in self.cpu.get("packages", []):
+            etau.ensure_package(requirement_str, error_level=error_level)
+
+    def ensure_gpu_requirements(self, error_level=0):
+        """Ensures that any GPU package requirements for the model are
+        satisfied.
+
+        Args:
+            error_level: the error level to use, defined as:
+
+                0: raise error if a requirement is not satisfied
+                1: log warning if a requirement is not satisifed
+                2: ignore unsatisifed requirements
+        """
+        if self.gpu is None:
+            return
+
+        self._ensure_cuda(error_level)
+        for requirement_str in self.gpu.get("packages", []):
+            etau.ensure_package(requirement_str, error_level=error_level)
+
+    def _ensure_cuda(self, error_level):
+        if self.gpu is None:
+            return
+
+        cuda_version = self.gpu.get("cuda_version", None)
+        if cuda_version is not None:
+            etau.ensure_cuda_version(cuda_version, error_level=error_level)
+
+        cudnn_version = self.gpu.get("cudnn_version", None)
+        if cudnn_version is not None:
+            etau.ensure_cudnn_version(cudnn_version, error_level=error_level)
+
+    def attributes(self):
+        """Returns the list of class attributes that will be serialized.
+
+        Returns:
+            a list of attributes
+        """
+        _attrs = []
+        if self.packages is not None:
+            _attrs.append("packages")
+        if self.cpu is not None:
+            _attrs.append("cpu")
+        if self.gpu is not None:
+            _attrs.append("gpu")
+        return _attrs
+
+    @classmethod
+    def from_dict(cls, d):
+        """Creates a ModelRequirements from a JSON dict.
+
+        Args:
+            d: a JSON dict
+
+        Returns:
+            a ModelRequirements instance
+        """
+        packages = d.get("packages", None)
+        cpu = d.get("cpu", None)
+        gpu = d.get("gpu", None)
+        return cls(packages=packages, cpu=cpu, gpu=gpu)
+
+
 class Model(Serializable):
     """Class that describes a model.
 
@@ -855,8 +1056,7 @@ class Model(Serializable):
         default_deployment_config_dict: a dictionary representation of an
             `eta.core.learning.ModelConfig` describing the recommended settings
             for deploying the model
-        requirements: (optional) a list of `setuptools`-style package
-            requirements in order to use the model
+        requirements: the ModelRequirements for the model (if any)
         date_created: the datetime that the model was created (if any)
     """
 
@@ -882,8 +1082,7 @@ class Model(Serializable):
             default_deployment_config_dict: (optional) a dictionary
                 representation of an `eta.core.learning.ModelConfig` describing
                 the recommended settings for deploying the model
-            requirements: (optional) a list of `setuptools`-style package
-                requirements in order to use the model
+            requirements: (optional) a ModelRequirements for the model
             date_created: (optional) the datetime that the model was created
         """
         self.base_name = base_name
@@ -929,22 +1128,105 @@ class Model(Serializable):
 
     @property
     def has_requirements(self):
-        """Whether this model has package requirements in order to be used."""
+        """Whether this model has requirements in order to be used."""
         return self.requirements is not None
 
-    def ensure_requirements(self):
-        """Ensures that any package requirement(s) for this model are
-        satisfied.
+    @property
+    def supports_cpu(self):
+        """Whether the model supports CPU (True), or not (False), or unknown
+        (None).
+        """
+        if not self.has_requirements:
+            return None
 
-        Raises:
-            ImportError: if a required package is not installed or does not
-                meet the specified requirements
+        return self.requirements.supports_cpu
+
+    @property
+    def supports_gpu(self):
+        """Whether the model supports GPU (True), or not (False), or unknown
+        (None).
+        """
+        if not self.has_requirements:
+            return None
+
+        return self.requirements.supports_gpu
+
+    def install_requirements(self, error_level=0):
+        """Installs any necessary requirement(s) for this model.
+
+        Args:
+            error_level: the error level to use, defined as:
+
+                0: raise error if an install fails
+                1: log warning if an install fails
+                2: ignore install fails
         """
         if not self.has_requirements:
             return
 
-        for requirement_str in self.requirements:
-            etau.ensure_package(requirement_str)
+        # Install base requirements
+        self.requirements.install_base_requirements(error_level=error_level)
+
+        found_gpu = self._ensure_environment(error_level)
+
+        if found_gpu:
+            # Install GPU requirements
+            self.requirements.install_gpu_requirements(error_level=error_level)
+        else:
+            # Install CPU requirements
+            self.requirements.install_cpu_requirements(error_level=error_level)
+
+    def ensure_requirements(self, error_level=0):
+        """Ensures that any requirement(s) for this model are satisfied.
+
+        Args:
+            error_level: the error level to use, defined as:
+
+                0: raise error if a requirement is not satisfied
+                1: log warning if a requirement is not satisifed
+                2: ignore unsatisifed requirements
+        """
+        if not self.has_requirements:
+            return
+
+        # Ensure any base requirements
+        self.requirements.ensure_base_requirements(error_level=error_level)
+
+        found_gpu = self._ensure_environment(error_level)
+
+        if found_gpu:
+            # Ensure GPU requirements
+            self.requirements.ensure_gpu_requirements(error_level=error_level)
+        else:
+            # Ensure CPU requirements
+            self.requirements.ensure_cpu_requirements(error_level=error_level)
+
+    def _ensure_environment(self, error_level):
+        if not self.has_requirements:
+            return
+
+        found_gpu = etau.has_gpu()
+
+        if found_gpu:
+            if self.requirements.supports_gpu == False:  # False, not None
+                etau.handle_error(
+                    ModelError(
+                        "Model '%s' requires GPU but no GPU was found"
+                        % self.name
+                    ),
+                    error_level,
+                )
+        else:
+            if self.requirements.supports_cpu == False:  # False not None
+                etau.handle_error(
+                    ModelError(
+                        "Model '%s' does not support CPU and no GPU was found"
+                        % self.name
+                    ),
+                    error_level,
+                )
+
+        return found_gpu
 
     def get_path_in_dir(self, models_dir):
         """Gets the model path for the model in the given models directory."""
@@ -1001,18 +1283,32 @@ class Model(Serializable):
 
     @classmethod
     def from_dict(cls, d):
-        """Constructs a Model from a JSON dictionary."""
+        """Constructs a Model from a JSON dictionary.
+
+        Args:
+            d: a JSON dict
+
+        Returns:
+            a Model instance
+        """
+        model_manager = ModelManager.from_dict(d["manager"])
+
+        requirements = d.get("requirements", None)
+        if requirements is not None:
+            requirements = ModelRequirements.from_dict(requirements)
+
         date_created = etau.parse_isotime(d.get("date_created"))
+
         return cls(
             d["base_name"],
             d["base_filename"],
-            ModelManager.from_dict(d["manager"]),
+            model_manager,
             version=d.get("version", None),
             description=d.get("description", None),
             default_deployment_config_dict=d.get(
                 "default_deployment_config_dict", None
             ),
-            requirements=d.get("requirements", None),
+            requirements=requirements,
             date_created=date_created,
         )
 
