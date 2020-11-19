@@ -578,37 +578,152 @@ def get_function(function_name, module_name=None):
     return get_class(function_name, module_name=module_name)
 
 
-def ensure_package(requirement_str):
+def install_package(requirement_str, error_level=0):
+    """Installs the newest compliant version of the package.
+
+    Args:
+        requirement_str: a PEP 440 compliant package requirement, like
+            "tensorflow", "tensorflow<2", "tensorflow==2.3.0", or
+            "tensorflow>=1.13,<1.15"
+        error_level: the error level to use, defined as:
+
+            0: raise error if the install fails
+            1: log warning if the install fails
+            2: ignore install fails
+    """
+    args = [sys.executable, "-m", "pip", "install", requirement_str]
+    p = subprocess.Popen(args, stderr=subprocess.PIPE)
+    _, err = p.communicate()
+
+    if p.returncode != 0:
+        handle_error(
+            OSError(
+                "Failed to install package '%s'\n\n%s"
+                % (requirement_str, err.decode())
+            ),
+            error_level,
+        )
+
+
+def ensure_package(requirement_str, error_level=0):
     """Ensures that the given package is installed on the host machine.
 
     Args:
         requirement_str: a PEP 440 compliant package requirement, like
-            "tensorflow", "tensorflow<2", "tensorflow==2.3.0", and
+            "tensorflow", "tensorflow<2", "tensorflow==2.3.0", or
             "tensorflow>=1.13,<1.15"
+        error_level: the error level to use, defined as:
 
-    Raises:
-        ImportError: if the package is not installed or does not meet the
-            specified requirements
+            0: raise error if requirement is not satisfied
+            1: log warning if requirement is not satisifed
+            2: ignore unsatisifed requirements
     """
     req = Requirement(requirement_str)
 
     try:
         pkg = importlib.import_module(req.name)
+        version = pkg.__version__
+        import_error = None
     except ImportError as e:
-        six.raise_from(
-            ImportError(
+        version = None
+        import_error = e
+
+    _ensure_requirement(req, version, error_level, import_error=import_error)
+
+
+def _ensure_requirement(
+    req, version, error_level, error_cls=ImportError, import_error=None
+):
+    if version is None:
+        handle_error(
+            error_cls(
                 "The requested operation requires that '%s' is installed on "
                 "your machine" % str(req)
             ),
-            e,
+            error_level,
+            import_error,
         )
 
-    if not req.specifier.contains(pkg.__version__):
-        raise ImportError(
-            "The requested operation requires that '%s' is installed "
-            "on your machine; found '%s==%s'"
-            % (str(req), req.name, pkg.__version__)
+    if not req.specifier.contains(version):
+        handle_error(
+            error_cls(
+                "The requested operation requires that '%s' is installed "
+                "on your machine; found '%s==%s'"
+                % (str(req), req.name, version)
+            ),
+            error_level,
         )
+
+
+def handle_error(error, error_level, base_error=None):
+    """Handles the error at the specified error level.
+
+    Args:
+        error: an Exception instance
+        error_level: the error level to use, defined as:
+
+            0: raise the error
+            1: log the error as a warning
+            2: ignore the error
+
+        base_error: (optional) a base Exception from which to raise `error`
+    """
+    if error_level <= 0:
+        if base_error is not None:
+            six.raise_from(error, base_error)
+        else:
+            raise error
+
+    if error_level == 1:
+        logger.warning(error)
+
+
+def ensure_cuda_version(requirement_str, error_level=0):
+    """Ensures that a compliant version of CUDA is installed.
+
+    Args:
+        requirement_str: the version component of a PEP 440 compliant package
+            requirement, like "", "<10", "==9.1.0", or ">=9,<10"
+        error_level: the error level to use, defined as:
+
+            0: raise error if the requirement is not satisfied
+            1: log warning if the requirement is not satisifed
+            2: ignore unsatisifed requirements
+
+    Raises:
+        CUDAError: if CUDA is not installed or does not meet the specified
+            requirements and `error_level == 0`
+    """
+    req = Requirement("CUDA" + requirement_str)
+    version = get_cuda_version()
+    _ensure_requirement(req, version, error_level, error_cls=CUDAError)
+
+
+def ensure_cudnn_version(requirement_str, error_level=0):
+    """Ensures that a compliant version of cuDNN is installed.
+
+    Args:
+        requirement_str: the version component of a PEP 440 compliant package
+            requirement, like "", "<8", "==7.5.1", or ">=7,<8"
+        error_level: the error level to use, defined as:
+
+            0: raise error if the requirement is not satisfied
+            1: log warning if the requirement is not satisifed
+            2: ignore unsatisifed requirements
+
+    Raises:
+        CUDAError: if cuDNN is not installed or does not meet the specified
+            requirements and `error_level == 0`
+    """
+    req = Requirement("cuDNN" + requirement_str)
+    version = get_cudnn_version()
+    _ensure_requirement(req, version, error_level, error_cls=CUDAError)
+
+
+class CUDAError(Exception):
+    """An error raised when a problem with CUDA installation occurs."""
+
+    pass
 
 
 def get_cuda_version():
