@@ -959,7 +959,7 @@ class ModelRequirements(Serializable):
                 1: log warning if a requirement is not satisifed
                 2: ignore unsatisifed requirements
         """
-        if self.packages is None:
+        if self.packages is None or error_level >= 2:
             return
 
         for requirement_str in self.packages:
@@ -976,7 +976,7 @@ class ModelRequirements(Serializable):
                 1: log warning if a requirement is not satisifed
                 2: ignore unsatisifed requirements
         """
-        if self.cpu is None:
+        if self.cpu is None or error_level >= 2:
             return
 
         for requirement_str in self.cpu.get("packages", []):
@@ -993,7 +993,7 @@ class ModelRequirements(Serializable):
                 1: log warning if a requirement is not satisifed
                 2: ignore unsatisifed requirements
         """
-        if self.gpu is None:
+        if self.gpu is None or error_level >= 2:
             return
 
         self._ensure_cuda(error_level)
@@ -1001,7 +1001,7 @@ class ModelRequirements(Serializable):
             etau.ensure_package(requirement_str, error_level=error_level)
 
     def _ensure_cuda(self, error_level):
-        if self.gpu is None:
+        if self.gpu is None or error_level >= 2:
             return
 
         cuda_version = self.gpu.get("cuda_version", None)
@@ -1186,7 +1186,7 @@ class Model(Serializable):
                 1: log warning if a requirement is not satisifed
                 2: ignore unsatisifed requirements
         """
-        if not self.has_requirements:
+        if not self.has_requirements or error_level >= 2:
             return
 
         # Ensure any base requirements
