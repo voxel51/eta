@@ -303,40 +303,6 @@ class Model(Configurable):
     def __exit__(self, *args):
         pass
 
-    @staticmethod
-    def install_requirements(model_name, error_level=0):
-        """Installs any package requirements for the model with the given name.
-
-        The model must be findable via `eta.core.models.get_model(model_name)`.
-
-        Args:
-            model_name: the name of the model
-            error_level: the error level to use, defined as:
-
-                0: raise error if a requirement is not satisfied
-                1: log warning if a requirement is not satisifed
-                2: ignore unsatisifed requirements
-        """
-        model = etam.get_model(model_name)
-        model.install_requirements(error_level=error_level)
-
-    @staticmethod
-    def ensure_requirements(model_name, error_level=0):
-        """Ensures that the package requirements for the model are satisfied.
-
-        The model must be findable via `eta.core.models.get_model(model_name)`.
-
-        Args:
-            model_name: the name of the model
-            error_level: the error level to use, defined as:
-
-                0: raise error if a requirement is not satisfied
-                1: log warning if a requirement is not satisifed
-                2: ignore unsatisifed requirements
-        """
-        model = etam.get_model(model_name)
-        model.ensure_requirements(error_level=error_level)
-
 
 class ImageModelConfig(ModelConfig):
     """Base configuration class that encapsulates the name of an `ImageModel`
