@@ -464,11 +464,29 @@ class ModelsCommand(Command):
             help="force download the model with the given name",
         )
         parser.add_argument(
+            "--install-requirements",
+            metavar="NAME",
+            help=(
+                "install any required packages for the model with the given "
+                "name"
+            ),
+        )
+        parser.add_argument(
             "--ensure-requirements",
             metavar="NAME",
             help=(
                 "ensure that the required packages for the model with the "
                 "given name are installed"
+            ),
+        )
+        parser.add_argument(
+            "--error-level",
+            metavar="LEVEL",
+            type=int,
+            default=0,
+            help=(
+                "the error level in {0, 1, 2} to use when installing or "
+                "ensuring model requirements"
             ),
         )
         parser.add_argument(
@@ -526,9 +544,13 @@ class ModelsCommand(Command):
         if args.force_download:
             etamode.download_model(args.force_download, force=True)
 
+        if args.install_requirements:
+            model = etamode.get_model(args.install_requirements)
+            model.install_requirements(error_level=args.error_level)
+
         if args.ensure_requirements:
             model = etamode.get_model(args.ensure_requirements)
-            model.ensure_requirements()
+            model.ensure_requirements(error_level=args.error_level)
 
         if args.visualize_tf_graph:
             model_path = etamode.download_model(args.visualize_tf_graph)
