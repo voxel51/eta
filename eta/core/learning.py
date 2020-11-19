@@ -116,31 +116,60 @@ def has_default_deployment_model(model_name):
     return model.default_deployment_config_dict is not None
 
 
-def load_default_deployment_model(model_name):
+def load_default_deployment_model(
+    model_name, install_requirements=False, error_level=0
+):
     """Loads the default deployment for the model with the given name.
 
     The model must be findable via `eta.core.models.get_model(model_name)`.
+
+    By default, any requirement(s) specified by the model are validated prior
+    to loading it. Use `error_level` to configure this behavior, if desired.
 
     Args:
         model_name: the name of the model, which can have "@<ver>" appended to
             refer to a specific version of the model. If no version is
             specified, the latest version of the model is assumed
+        install_requirements: whether to install any requirements before
+            loading the model. By default, this is False
+        error_level: the error level to use, defined as:
+
+            0: raise error if a requirement is not satisfied
+            1: log warning if a requirement is not satisifed
+            2: ignore unsatisifed requirements
 
     Returns:
         the loaded `Model` instance described by the default deployment for the
             specified model
-
-    Raises:
-        ImportError: if a required package is not installed or does not meet
-            the specified requirements
     """
     model = etam.get_model(model_name)
-    model.ensure_requirements()
+    if install_requirements:
+        model.install_requirements(error_level=error_level)
+    else:
+        model.ensure_requirements(error_level=error_level)
+
     config = ModelConfig.from_dict(model.default_deployment_config_dict)
     return config.build()
 
 
-def ensure_requirements(model_name):
+def install_requirements(model_name, error_level=0):
+    """Installs any package requirements for the model with the given name.
+
+    Args:
+        model_name: the name of the model, which can have "@<ver>" appended to
+            refer to a specific version of the model. If no version is
+            specified, the latest version of the model is assumed
+        error_level: the error level to use, defined as:
+
+            0: raise error if a requirement install fails
+            1: log warning if a requirement install fails
+            2: ignore install fails
+    """
+    model = etam.get_model(model_name)
+    model.install_requirements(error_level=error_level)
+
+
+def ensure_requirements(model_name, error_level=0):
     """Ensures that the package requirements for the model with the given name
     are satisfied.
 
@@ -148,13 +177,14 @@ def ensure_requirements(model_name):
         model_name: the name of the model, which can have "@<ver>" appended to
             refer to a specific version of the model. If no version is
             specified, the latest version of the model is assumed
+        error_level: the error level to use, defined as:
 
-    Raises:
-        ImportError: if a required package is not installed or does not meet
-            the specified requirements
+            0: raise error if a requirement is not satisfied
+            1: log warning if a requirement is not satisifed
+            2: ignore unsatisifed requirements
     """
     model = etam.get_model(model_name)
-    model.ensure_requirements()
+    model.ensure_requirements(error_level=error_level)
 
 
 class HasDefaultDeploymentConfig(object):
@@ -274,20 +304,38 @@ class Model(Configurable):
         pass
 
     @staticmethod
-    def ensure_requirements(model_name):
+    def install_requirements(model_name, error_level=0):
+        """Installs any package requirements for the model with the given name.
+
+        The model must be findable via `eta.core.models.get_model(model_name)`.
+
+        Args:
+            model_name: the name of the model
+            error_level: the error level to use, defined as:
+
+                0: raise error if a requirement is not satisfied
+                1: log warning if a requirement is not satisifed
+                2: ignore unsatisifed requirements
+        """
+        model = etam.get_model(model_name)
+        model.install_requirements(error_level=error_level)
+
+    @staticmethod
+    def ensure_requirements(model_name, error_level=0):
         """Ensures that the package requirements for the model are satisfied.
 
         The model must be findable via `eta.core.models.get_model(model_name)`.
 
         Args:
             model_name: the name of the model
+            error_level: the error level to use, defined as:
 
-        Raises:
-            ImportError: if a required package is not installed or does not
-                meet the specified requirements
+                0: raise error if a requirement is not satisfied
+                1: log warning if a requirement is not satisifed
+                2: ignore unsatisifed requirements
         """
         model = etam.get_model(model_name)
-        model.ensure_requirements()
+        model.ensure_requirements(error_level=error_level)
 
 
 class ImageModelConfig(ModelConfig):
