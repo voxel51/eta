@@ -778,7 +778,7 @@ def get_cudnn_version():
     return ".".join(ver)
 
 
-def lazy_import(module_name, callback=None):
+def lazy_import(module_name, callback=None, error_msg=None):
     """Returns a proxy module object that will lazily import the given module
     the first time it is used.
 
@@ -798,11 +798,12 @@ def lazy_import(module_name, callback=None):
         module_name: the fully-qualified module name to import
         callback (None): a callback function to call before importing the
             module
+        error_msg (None): an error message to print if the import fails
 
     Returns:
         a LazyModule
     """
-    return LazyModule(module_name, callback=callback)
+    return LazyModule(module_name, callback=callback, error_msg=error_msg)
 
 
 def lazy_object(_callable):
@@ -847,12 +848,14 @@ class LazyModule(types.ModuleType):
         module_name: the fully-qualified module name to import
         callback (None): a callback function to call before importing the
             module
+        error_msg (None): an error message to print if the import fails
     """
 
-    def __init__(self, module_name, callback=None):
+    def __init__(self, module_name, callback=None, error_msg=None):
         super(LazyModule, self).__init__(module_name)
         self._module = None
         self._callback = callback
+        self._error_msg = error_msg
 
     def __getattr__(self, item):
         if self._module is None:
@@ -872,8 +875,14 @@ class LazyModule(types.ModuleType):
             self._callback()
 
         # Actually import the module
-        module = importlib.import_module(self.__name__)
-        self._module = module
+        try:
+            module = importlib.import_module(self.__name__)
+            self._module = module
+        except ImportError as e:
+            if self._error_msg is not None:
+                six.raise_from(ImportError(self._error_msg), e)
+
+            raise
 
         # Update this object's dict so that attribute references are efficient
         # (__getattr__ is only called on lookups that fail)
@@ -3060,9 +3069,7 @@ def extract_archive(archive_path, outdir=None, delete_archive=False):
         extract_zip(archive_path, outdir=outdir, delete_zip=delete_archive)
     elif archive_path.endswith(".rar"):
         extract_rar(archive_path, outdir=outdir, delete_rar=delete_archive)
-    elif archive_path.endswidth(
-        (".tar", ".tar.gz", ".tgz", ".tar.bz", ".tbz")
-    ):
+    elif archive_path.endswith((".tar", ".tar.gz", ".tgz", ".tar.bz", ".tbz")):
         extract_tar(archive_path, outdir=outdir, delete_tar=delete_archive)
     else:
         # Fallback to `patoolib`, which handles a lot of stuff, possibly

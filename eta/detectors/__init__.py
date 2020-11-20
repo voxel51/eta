@@ -12,3 +12,7 @@ from .tfmodels_detectors import (
     TFModelsInstanceSegmenter,
     TFModelsInstanceSegmenterConfig,
 )
+from .yolo import (
+    YOLODetector,
+    YOLODetectorConfig,
+)
