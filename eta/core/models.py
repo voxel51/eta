@@ -699,195 +699,6 @@ def _warn_if_not_on_search_path(models_dir):
         )
 
 
-class ModelsManifest(Serializable):
-    """Class that describes the contents of a models directory."""
-
-    _MODEL_CLS = Model
-
-    def __init__(self, models=None):
-        """Creates a ModelsManifest instance.
-
-        Args:
-            models: a list of Model instances
-        """
-        self.models = models or []
-
-    def __iter__(self):
-        return iter(self.models)
-
-    def add_model(self, model):
-        """Adds the given model to the manifest.
-
-        Args:
-            model: a Model instance
-
-        Raises:
-            ModelError: if the model conflicts with an existing model in the
-                manifest
-        """
-        if self.has_model_with_name(model.name):
-            raise ModelError(
-                "Manifest already contains model called '%s'" % model.name
-            )
-
-        if self.has_model_with_filename(model.filename):
-            raise ModelError(
-                "Manifest already contains model with filename '%s'"
-                % (model.filename)
-            )
-
-        if self.has_model_with_name(model.base_name):
-            raise ModelError(
-                "Manifest already contains a versionless model called '%s', "
-                "so a versioned model is not allowed" % model.base_name
-            )
-
-        self.models.append(model)
-
-    def remove_model(self, name):
-        """Removes the model with the given name from the ModelsManifest.
-
-        Args:
-            name: the name of the model
-
-        Raises:
-            ModelError: if the model was not found
-        """
-        if not self.has_model_with_name(name):
-            raise ModelError("Manifest does not contain model '%s'" % name)
-
-        self.models = [model for model in self.models if model.name != name]
-
-    def get_model_with_name(self, name):
-        """Gets the model with the given name.
-
-        Args:
-            name: the name of the model
-
-        Returns:
-            the Model instance
-
-        Raises:
-            ModelError: if the model was not found
-        """
-        for model in self.models:
-            if name == model.name:
-                return model
-
-        raise ModelError("Manifest does not contain model '%s'" % name)
-
-    def get_latest_model_with_base_name(self, base_name):
-        """Gets the Model instance for the latest version of the model with the
-        given base name.
-
-        Args:
-            base_name: the base name of the model
-
-        Returns:
-            the Model instance
-
-        Raises:
-            ModelError: if the model was not found
-        """
-        _model = None
-        for model in self.models:
-            if base_name == model.base_name:
-                if _model is None or model.comp_version > _model.comp_version:
-                    _model = model
-
-        if _model is None:
-            raise ModelError(
-                "Manifest does not contain model '%s'" % base_name
-            )
-
-        return _model
-
-    def has_model_with_name(self, name):
-        """Determines whether this manifest contains the model with the
-        given name.
-
-        Args:
-            name: the model name
-
-        Returns:
-            True/False
-        """
-        return any(name == model.name for model in self.models)
-
-    def has_model_with_filename(self, filename):
-        """Determines whether this manifest contains a model with the given
-        filename.
-
-        Args:
-            filename: the filename
-
-        Returns:
-            True/False
-        """
-        return any(filename == model.filename for model in self.models)
-
-    @staticmethod
-    def make_manifest_path(models_dir):
-        """Makes the manifest path for the given models directory.
-
-        Args:
-            models_dir: the models directory
-
-        Returns:
-             the manifest path
-        """
-        return os.path.join(models_dir, MODELS_MANIFEST_JSON)
-
-    @staticmethod
-    def dir_has_manifest(models_dir):
-        """Determines whether the given directory has a models manifest.
-
-        Args:
-            models_dir: the models directory
-
-        Returns:
-            True/False
-        """
-        return os.path.isfile(ModelsManifest.make_manifest_path(models_dir))
-
-    def write_to_dir(self, models_dir):
-        """Writes the ModelsManifest to the given models directory.
-
-        Args:
-            models_dir: the models directory
-        """
-        self.write_json(self.make_manifest_path(models_dir))
-
-    @classmethod
-    def from_dir(cls, models_dir):
-        """Loads the ModelsManifest from the given models directory.
-
-        Args:
-            models_dir: the models directory
-
-        Returns:
-            a ModelsManifest
-        """
-        if not cls.dir_has_manifest(models_dir):
-            raise ModelError(
-                "Directory '%s' has no models manifest" % models_dir
-            )
-
-        return cls.from_json(cls.make_manifest_path(models_dir))
-
-    @classmethod
-    def from_dict(cls, d):
-        """Constructs a ModelsManifest from a JSON dictionary.
-
-        Args:
-            d: a JSON dictionary
-
-        Returns:
-            a ModelsManifest
-        """
-        return cls(models=[cls._MODEL_CLS.from_dict(md) for md in d["models"]])
-
-
 class ModelRequirements(Serializable):
     """Requirements for running a model.
 
@@ -1357,6 +1168,195 @@ class Model(Serializable):
             requirements=requirements,
             date_created=date_created,
         )
+
+
+class ModelsManifest(Serializable):
+    """Class that describes the contents of a models directory."""
+
+    _MODEL_CLS = Model
+
+    def __init__(self, models=None):
+        """Creates a ModelsManifest instance.
+
+        Args:
+            models: a list of Model instances
+        """
+        self.models = models or []
+
+    def __iter__(self):
+        return iter(self.models)
+
+    def add_model(self, model):
+        """Adds the given model to the manifest.
+
+        Args:
+            model: a Model instance
+
+        Raises:
+            ModelError: if the model conflicts with an existing model in the
+                manifest
+        """
+        if self.has_model_with_name(model.name):
+            raise ModelError(
+                "Manifest already contains model called '%s'" % model.name
+            )
+
+        if self.has_model_with_filename(model.filename):
+            raise ModelError(
+                "Manifest already contains model with filename '%s'"
+                % (model.filename)
+            )
+
+        if self.has_model_with_name(model.base_name):
+            raise ModelError(
+                "Manifest already contains a versionless model called '%s', "
+                "so a versioned model is not allowed" % model.base_name
+            )
+
+        self.models.append(model)
+
+    def remove_model(self, name):
+        """Removes the model with the given name from the ModelsManifest.
+
+        Args:
+            name: the name of the model
+
+        Raises:
+            ModelError: if the model was not found
+        """
+        if not self.has_model_with_name(name):
+            raise ModelError("Manifest does not contain model '%s'" % name)
+
+        self.models = [model for model in self.models if model.name != name]
+
+    def get_model_with_name(self, name):
+        """Gets the model with the given name.
+
+        Args:
+            name: the name of the model
+
+        Returns:
+            the Model instance
+
+        Raises:
+            ModelError: if the model was not found
+        """
+        for model in self.models:
+            if name == model.name:
+                return model
+
+        raise ModelError("Manifest does not contain model '%s'" % name)
+
+    def get_latest_model_with_base_name(self, base_name):
+        """Gets the Model instance for the latest version of the model with the
+        given base name.
+
+        Args:
+            base_name: the base name of the model
+
+        Returns:
+            the Model instance
+
+        Raises:
+            ModelError: if the model was not found
+        """
+        _model = None
+        for model in self.models:
+            if base_name == model.base_name:
+                if _model is None or model.comp_version > _model.comp_version:
+                    _model = model
+
+        if _model is None:
+            raise ModelError(
+                "Manifest does not contain model '%s'" % base_name
+            )
+
+        return _model
+
+    def has_model_with_name(self, name):
+        """Determines whether this manifest contains the model with the
+        given name.
+
+        Args:
+            name: the model name
+
+        Returns:
+            True/False
+        """
+        return any(name == model.name for model in self.models)
+
+    def has_model_with_filename(self, filename):
+        """Determines whether this manifest contains a model with the given
+        filename.
+
+        Args:
+            filename: the filename
+
+        Returns:
+            True/False
+        """
+        return any(filename == model.filename for model in self.models)
+
+    @staticmethod
+    def make_manifest_path(models_dir):
+        """Makes the manifest path for the given models directory.
+
+        Args:
+            models_dir: the models directory
+
+        Returns:
+             the manifest path
+        """
+        return os.path.join(models_dir, MODELS_MANIFEST_JSON)
+
+    @staticmethod
+    def dir_has_manifest(models_dir):
+        """Determines whether the given directory has a models manifest.
+
+        Args:
+            models_dir: the models directory
+
+        Returns:
+            True/False
+        """
+        return os.path.isfile(ModelsManifest.make_manifest_path(models_dir))
+
+    def write_to_dir(self, models_dir):
+        """Writes the ModelsManifest to the given models directory.
+
+        Args:
+            models_dir: the models directory
+        """
+        self.write_json(self.make_manifest_path(models_dir))
+
+    @classmethod
+    def from_dir(cls, models_dir):
+        """Loads the ModelsManifest from the given models directory.
+
+        Args:
+            models_dir: the models directory
+
+        Returns:
+            a ModelsManifest
+        """
+        if not cls.dir_has_manifest(models_dir):
+            raise ModelError(
+                "Directory '%s' has no models manifest" % models_dir
+            )
+
+        return cls.from_json(cls.make_manifest_path(models_dir))
+
+    @classmethod
+    def from_dict(cls, d):
+        """Constructs a ModelsManifest from a JSON dictionary.
+
+        Args:
+            d: a JSON dictionary
+
+        Returns:
+            a ModelsManifest
+        """
+        return cls(models=[cls._MODEL_CLS.from_dict(md) for md in d["models"]])
 
 
 class PublishedModel(object):
