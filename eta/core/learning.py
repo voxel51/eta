@@ -238,6 +238,85 @@ class HasDefaultDeploymentConfig(object):
         return dd
 
 
+class HasPublishedModel(Config):
+    """Mixin class for `eta.core.learning.ModelConfig`s whose models are
+    published via the `eta.core.models` infrastructure.
+
+    This class provides the following functionality:
+
+    -   The model to load can be specified either by:
+
+        (a) providing a `model_name`, which specifies the published model to
+            load. The model will be downloaded, if necessary
+
+        (b) providing a `model_path`, which directly specifies the path to the
+            model to load
+
+    -   `ModelConfig` definitions that use published models with default
+        deployments will have default values for any unspecified parameters
+        loaded and applied at runtime
+
+    Attributes:
+        model_name: the name of the published model to load. If this value is
+            provided, `model_path` does not need to be
+        model_path: the path to a model to load. If this value is provided,
+            `model_name` does not need to be
+    """
+
+    def init(self, d):
+        """Initializes the published model config.
+
+        This method should be called by `ModelConfig.__init__()`, and it
+        performs the following tasks:
+
+        -   Parses the `model_name` and `model_path` parameters
+        -   Populates any default parameters in the provided ModelConfig dict
+
+        Args:
+            d: a ModelConfig dict
+
+        Returns:
+            a ModelConfig dict with any default parameters populated
+        """
+        self.model_name = self.parse_string(d, "model_name", default=None)
+        self.model_path = self.parse_string(d, "model_path", default=None)
+
+        if not self.model_name and not self.model_path:
+            raise ConfigError(
+                "Either `model_name` or `model_path` must be provided"
+            )
+
+        if self.model_name:
+            d = self._load_default_deployment_params(d, self.model_name)
+
+        return d
+
+    def download_model_if_necessary(self):
+        """Downloads the published model specified by the config, if necessary.
+
+        After this method is called, the `model_path` attribute will always
+        contain the path to the model on disk.
+        """
+        if self.model_path is None:
+            self.model_path = etam.download_model(self.model_name)
+
+    @classmethod
+    def _load_default_deployment_params(cls, d, model_name):
+        model = cls._get_model(model_name)
+
+        deploy_config_dict = model.default_deployment_config_dict
+        if deploy_config_dict is None:
+            return d
+
+        dd = deploy_config_dict["config"]
+        dd.update(d)
+        return dd
+
+    @classmethod
+    def _get_model(cls, model_name):
+        return etam.get_model(model_name)
+
+
 class ModelConfig(Config):
     """Base configuration class that encapsulates the name of a `Model`
     subclass and an instance of its associated Config class.
