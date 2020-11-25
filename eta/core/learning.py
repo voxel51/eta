@@ -238,7 +238,7 @@ class HasDefaultDeploymentConfig(object):
         return dd
 
 
-class HasPublishedModel(Config):
+class HasPublishedModel(object):
     """Mixin class for `eta.core.learning.ModelConfig`s whose models are
     published via the `eta.core.models` infrastructure.
 
@@ -278,6 +278,7 @@ class HasPublishedModel(Config):
         Returns:
             a ModelConfig dict with any default parameters populated
         """
+        # pylint: disable=no-member
         self.model_name = self.parse_string(d, "model_name", default=None)
         self.model_path = self.parse_string(d, "model_path", default=None)
 
