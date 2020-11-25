@@ -702,6 +702,8 @@ def _warn_if_not_on_search_path(models_dir):
 class ModelsManifest(Serializable):
     """Class that describes the contents of a models directory."""
 
+    _MODEL_CLS = Model
+
     def __init__(self, models=None):
         """Creates a ModelsManifest instance.
 
@@ -803,32 +805,69 @@ class ModelsManifest(Serializable):
     def has_model_with_name(self, name):
         """Determines whether this manifest contains the model with the
         given name.
+
+        Args:
+            name: the model name
+
+        Returns:
+            True/False
         """
         return any(name == model.name for model in self.models)
 
     def has_model_with_filename(self, filename):
         """Determines whether this manifest contains a model with the given
         filename.
+
+        Args:
+            filename: the filename
+
+        Returns:
+            True/False
         """
         return any(filename == model.filename for model in self.models)
 
     @staticmethod
     def make_manifest_path(models_dir):
-        """Makes the manifest path for the given models directory."""
+        """Makes the manifest path for the given models directory.
+
+        Args:
+            models_dir: the models directory
+
+        Returns:
+             the manifest path
+        """
         return os.path.join(models_dir, MODELS_MANIFEST_JSON)
 
     @staticmethod
     def dir_has_manifest(models_dir):
-        """Determines whether the given directory has a models manifest."""
+        """Determines whether the given directory has a models manifest.
+
+        Args:
+            models_dir: the models directory
+
+        Returns:
+            True/False
+        """
         return os.path.isfile(ModelsManifest.make_manifest_path(models_dir))
 
     def write_to_dir(self, models_dir):
-        """Writes the ModelsManifest to the given models directory."""
+        """Writes the ModelsManifest to the given models directory.
+
+        Args:
+            models_dir: the models directory
+        """
         self.write_json(self.make_manifest_path(models_dir))
 
     @classmethod
     def from_dir(cls, models_dir):
-        """Loads the ModelsManifest from the given models directory."""
+        """Loads the ModelsManifest from the given models directory.
+
+        Args:
+            models_dir: the models directory
+
+        Returns:
+            a ModelsManifest
+        """
         if not cls.dir_has_manifest(models_dir):
             raise ModelError(
                 "Directory '%s' has no models manifest" % models_dir
@@ -838,8 +877,15 @@ class ModelsManifest(Serializable):
 
     @classmethod
     def from_dict(cls, d):
-        """Constructs a ModelsManifest from a JSON dictionary."""
-        return cls(models=[Model.from_dict(md) for md in d["models"]])
+        """Constructs a ModelsManifest from a JSON dictionary.
+
+        Args:
+            d: a JSON dictionary
+
+        Returns:
+            a ModelsManifest
+        """
+        return cls(models=[cls._MODEL_CLS.from_dict(md) for md in d["models"]])
 
 
 class ModelRequirements(Serializable):
