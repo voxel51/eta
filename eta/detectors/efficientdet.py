@@ -133,10 +133,10 @@ class EfficientDet(etal.ObjectDetector, etat.UsesTFSession):
         model_path = self.config.model_path
 
         # Extract archive, if necessary
-        model_dir = os.path.splitext(model_path)[0]
+        model_dir = etau.split_archive(model_path)[0]
         if not os.path.isdir(model_dir):
             logger.info("Extracting archive '%s'", model_path)
-            etau.extract_archive(model_path)
+            etau.extract_archive(model_path, delete_archive=True)
 
         # Load model
         logger.info("Loading model from '%s'", model_dir)

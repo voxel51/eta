@@ -200,8 +200,7 @@ def flush_model(name):
         ModelError: if the model could not be found
     """
     model, models_dir, _ = _find_model(name)
-    if model.is_in_dir(models_dir):
-        _delete_model_from_dir(model, models_dir)
+    model.flush_model_from_dir(models_dir)
 
 
 def flush_old_models():
@@ -240,7 +239,7 @@ def flush_old_models():
                 base_name,
             )
             for model, models_dir in reversed(models_list[max_vers:]):
-                _delete_model_from_dir(model, models_dir)
+                model.flush_model_from_dir(models_dir)
 
 
 def flush_models_directory(models_dir):
@@ -257,8 +256,7 @@ def flush_models_directory(models_dir):
     """
     _warn_if_not_on_search_path(models_dir)
     for model in ModelsManifest.from_dir(models_dir):
-        if model.is_in_dir(models_dir):
-            _delete_model_from_dir(model, models_dir)
+        model.flush_model_from_dir(models_dir)
 
 
 def flush_all_models():
@@ -666,14 +664,6 @@ def _list_models(downloaded_only=False):
                 models[model.name] = (model, mdir)
 
     return models, manifests
-
-
-def _delete_model_from_dir(model, models_dir):
-    model_path = model.get_path_in_dir(models_dir)
-    logger.info(
-        "Deleting local copy of model '%s' from '%s'", model.name, model_path
-    )
-    os.remove(model_path)
 
 
 def _get_models_search_path():
@@ -1086,14 +1076,60 @@ class Model(Serializable):
         return found_gpu
 
     def get_path_in_dir(self, models_dir):
-        """Gets the model path for the model in the given models directory."""
+        """Gets the model path for the model in the given models directory.
+
+        Args:
+            models_dir: the models directory
+
+        Returns:
+            the model path
+        """
         return os.path.join(models_dir, self.filename)
 
     def is_in_dir(self, models_dir):
         """Determines whether a copy of the model exists in the given models
         directory.
+
+        Args:
+            models_dir: the models directory
+
+        Returns:
+            True/False
         """
-        return os.path.isfile(self.get_path_in_dir(models_dir))
+        model_path = self.get_path_in_dir(models_dir)
+        return self.is_model_downloaded(model_path)
+
+    def is_model_downloaded(self, model_path):
+        """Determines whether the model is downloaded to the given location.
+
+        If `model_path` is an archive, this method will also return `True` if a
+        directory with the same basename as `model_path` exists.
+
+        Args:
+            model_path: the path on disk for the model
+
+        Returns:
+            True/False
+        """
+        return self.manager.is_model_downloaded(model_path)
+
+    def flush_model(self, model_path):
+        """Flushes the copy of the model at the given local path, if necessary.
+
+        Args:
+            model_path: the path on disk for the model
+        """
+        self.manager.flush_model(model_path)
+
+    def flush_model_from_dir(self, models_dir):
+        """Flushes the copy of the model in the given models directory, if
+        necessary.
+
+        Args:
+            models_dir: the models directory
+        """
+        model_path = self.get_path_in_dir(models_dir)
+        self.flush_model(model_path)
 
     @staticmethod
     def parse_name(name):
@@ -1122,11 +1158,22 @@ class Model(Serializable):
 
     @staticmethod
     def has_version_str(name):
-        """Determines whether the given model name has a version string."""
+        """Determines whether the given model name has a version string.
+
+        Args:
+            name: the model name
+
+        Returns:
+            True/False
+        """
         return bool(Model.parse_name(name)[1])
 
     def attributes(self):
-        """Returns a list of class attributes to be serialized."""
+        """Returns a list of class attributes to be serialized.
+
+        Returns:
+            a list of class attributes
+        """
         return [
             "base_name",
             "base_filename",
@@ -1143,7 +1190,7 @@ class Model(Serializable):
         """Constructs a Model from a JSON dictionary.
 
         Args:
-            d: a JSON dict
+            d: a JSON dictionary
 
         Returns:
             a Model instance
@@ -1435,6 +1482,26 @@ class ModelManager(Configurable, Serializable):
     def upload_model(model_path, *args, **kwargs):
         raise NotImplementedError("subclass must implement upload_model()")
 
+    def is_model_downloaded(self, model_path):
+        """Determines whether the model is downloaded to the given location.
+
+        If `model_path` is an archive, this method will also return `True` if a
+        directory with the same basename as `model_path` exists.
+
+        Args:
+            model_path: the path on disk for the model
+
+        Returns:
+            True/False
+        """
+        if etau.is_archive(model_path):
+            archive_dir = etau.split_archive(model_path)[0]
+            if os.path.isdir(archive_dir):
+                # Extracted archive already exists
+                return True
+
+        return os.path.isfile(model_path)
+
     def download_model(self, model_path, force=False):
         """Downloads the model to the given local path.
 
@@ -1451,50 +1518,121 @@ class ModelManager(Configurable, Serializable):
         Raises:
             ModelError: if model downloading is not currently allowed
         """
-        if force or not os.path.isfile(model_path):
-            if not eta.config.allow_model_downloads:
-                raise ModelError(
-                    "Model downloading is currently disabled. Modify your ETA "
-                    "config to change this setting."
-                )
+        if not force and self.is_model_downloaded(model_path):
+            return
 
-            etau.ensure_basedir(model_path)
-            self._download_model(model_path)
+        if not eta.config.allow_model_downloads:
+            raise ModelError(
+                "Model downloading is currently disabled. Modify your ETA "
+                "config to change this setting."
+            )
+
+        etau.ensure_basedir(model_path)
+        self._download_model(model_path)
+
+        if self.config.extract_archive:
+            if self.config.delete_archive is not None:
+                delete_archive = self.config.delete_archive
+            else:
+                delete_archive = False
+
+            etau.extract_archive(model_path, delete_archive=delete_archive)
+
+    def flush_model(self, model_path):
+        """Flushes the copy of the model at the given local path, if necessary.
+
+        Args:
+            model_path: the path on disk for the model
+        """
+        if etau.is_archive(model_path):
+            archive_dir = etau.split_archive(model_path)[0]
+            if os.path.isdir(archive_dir):
+                etau.delete_dir(archive_dir)
+
+        if os.path.isfile(model_path):
+            etau.delete_file(model_path)
 
     def delete_model(self):
+        """Deletes the model from remote storage."""
         raise NotImplementedError("subclass must implement delete_model()")
 
     def _download_model(self, model_path):
+        """Subclass implementation of downloading the model to the given path.
+
+        Args:
+            model_path: the path to which to download the model
+        """
         raise NotImplementedError("subclass must implement _download_model()")
 
     def attributes(self):
-        """Returns a list of attributes to be serialized."""
+        """Returns a list of attributes to be serialized.
+
+        Returns:
+            a list of attributes
+        """
         return ["type", "config"]
 
     @classmethod
     def from_dict(cls, d):
-        """Builds the ModelManager subclass from a JSON dictionary."""
+        """Builds the ModelManager subclass from a JSON dictionary.
+
+        Args:
+            d: a JSON dictionary
+
+        Returns:
+            a ModelManager instance
+        """
         manager_cls, config_cls = cls.parse(d["type"])
         return manager_cls(config_cls.from_dict(d["config"]))
 
 
-class ETAModelManagerConfig(Config):
-    """Configuration settings for an ETAModelManager instance.
+class ModelManagerConfig(Config):
+    """Base configuration settings for a ModelManager instance.
 
-    Exactly one of the attributes should be set.
+    All ModelManagerConfig subclasses must call `super().__init__()`.
+
+    Attributes:
+        extract_archive: whether to extract the downloaded model, which is
+            assumed to be an archive
+        delete_archive: whether to delete the archive after extracting it, if
+            applicable
+    """
+
+    def __init__(self, d):
+        self.extract_archive = self.parse_bool(
+            d, "extract_archive", default=None
+        )
+        self.delete_archive = self.parse_bool(
+            d, "delete_archive", default=None
+        )
+
+
+class ETAModelManagerConfig(ModelManagerConfig):
+    """Configuration settings for an ETAModelManager instance.
 
     Attributes:
         url: the URL of the file
         google_drive_id: the ID of the file in Google Drive
+        extract_archive: whether to extract the downloaded model, which is
+            assumed to be an archive
+        delete_archive: whether to delete the archive after extracting it, if
+            applicable
     """
 
     def __init__(self, d):
+        super(ETAModelManagerConfig, self).__init__(d)
+
         self.url = self.parse_string(d, "url", default=None)
         self.google_drive_id = self.parse_string(
             d, "google_drive_id", default=None
         )
 
     def attributes(self):
+        """Returns a list of attributes to be serialized.
+
+        Returns:
+            a list of attributes
+        """
         # Omit attributes with no value, for clarity
         return [a for a in vars(self) if getattr(self, a) is not None]
 
@@ -1552,11 +1690,3 @@ class ModelError(Exception):
     """Exception raised when an invalid model is encountered."""
 
     pass
-
-
-#
-# The first time this module is loaded, perform any necessary flushing of old
-# models as per the value of the `eta.config.max_model_versions_to_keep`
-# setting
-#
-flush_old_models()

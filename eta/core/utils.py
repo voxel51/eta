@@ -3048,6 +3048,40 @@ def make_zip64(dir_path, zip_path):
                 f.write(src_path, dest_path)
 
 
+def is_archive(filepath):
+    """Determines whether the given filepath has an archive extension from the
+    following list:
+
+    `.zip`, `.rar`, `.tar`, `.tar.gz`, `.tgz`, `.tar.bz`, `.tbz`.
+
+    Args:
+        filepath: a filepath
+
+    Returns:
+        True/False
+    """
+    return filepath.endswith(
+        (".zip", ".rar", ".tar", ".tar.gz", ".tgz", ".tar.bz", ".tbz")
+    )
+
+
+def split_archive(archive_path):
+    """Splits the archive extension off of the given path.
+
+    Similar to `os.path.splitext` but handles extensions like `.tar.gz`.
+
+    Args:
+        archive_path: the archive path
+
+    Returns:
+        a `(root, ext)` tuple
+    """
+    if archive_path.endswith((".tar.gz", ".tar.bz")):
+        return archive_path[:-7], archive_path[-7:]
+
+    return os.path.splitext(archive_path)
+
+
 def extract_archive(archive_path, outdir=None, delete_archive=False):
     """Extracts the contents of an archive.
 
