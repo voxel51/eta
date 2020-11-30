@@ -696,7 +696,7 @@ class ModelRequirements(Serializable):
 
         {
             "packages": [
-                "numpy==1.14.0",
+                "numpy==1.14.0"
             ],
             "cpu": {
                 "support": true,

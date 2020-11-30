@@ -402,6 +402,9 @@ class ModelsCommand(Command):
         # Force download model
         eta models --force-download <model-name>
 
+        # Installs the requirements for the model
+        eta models --install-requirements <model-name>
+
         # Ensures that the package requirements for the model are satisfied
         eta models --ensure-requirements <model-name>
 
