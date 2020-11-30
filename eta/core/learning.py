@@ -187,57 +187,6 @@ def ensure_requirements(model_name, error_level=0):
     model.ensure_requirements(error_level=error_level)
 
 
-class HasDefaultDeploymentConfig(object):
-    """Mixin class for `eta.core.learning.ModelConfig`s who support loading
-    default deployment configs for their model name fields.
-
-    This class allows `ModelConfig` definitions that have published models
-    with default deployments to automatically load any settings from the
-    default deployment and add them to model configs at runtime.
-
-    This is helpful to avoid, for example, specifying redundant parameters such
-    as label map paths in every pipeline that uses a particular model.
-    """
-
-    @staticmethod
-    def load_default_deployment_params(d, model_name):
-        """Loads the default deployment ModelConfig dictionary for the model
-        with the given name and populates any missing fields in `d` with its
-        values.
-
-        Args:
-            d: a ModelConfig dictionary
-            model_name: the name of the model whose default deployment config
-                dictionary to load
-
-        Returns:
-            a copy of `d` with any missing fields populated from the default
-                deployment dictionary for the model
-        """
-        model = etam.get_model(model_name)
-        deploy_config_dict = model.default_deployment_config_dict
-        if deploy_config_dict is None:
-            logger.info(
-                "Model '%s' has no default deployment config; returning the "
-                "input dict",
-                model_name,
-            )
-            return d
-
-        logger.info(
-            "Loaded default deployment config for model '%s'", model_name
-        )
-
-        dd = deploy_config_dict["config"]
-        dd.update(d)
-        logger.info(
-            "Applied %d setting(s) from default deployment config",
-            len(dd) - len(d),
-        )
-
-        return dd
-
-
 class HasPublishedModel(object):
     """Mixin class for `eta.core.learning.ModelConfig`s whose models are
     published via the `eta.core.models` infrastructure.

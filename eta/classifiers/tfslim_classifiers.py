@@ -28,7 +28,6 @@ from eta.core.config import Config, ConfigError
 import eta.core.data as etad
 from eta.core.features import ImageFeaturizer
 import eta.core.learning as etal
-import eta.core.models as etam
 import eta.core.tfutils as etat
 import eta.core.utils as etau
 
@@ -74,18 +73,13 @@ _DEFAULT_OUTPUT_NAMES = {
 }
 
 
-class TFSlimClassifierConfig(Config, etal.HasDefaultDeploymentConfig):
+class TFSlimClassifierConfig(Config, etal.HasPublishedModel):
     """Configuration class for loading a TensorFlow classifier whose network
     architecture is defined in `tf.slim.nets`.
 
     Note that `labels_path` is passed through
     `eta.core.utils.fill_config_patterns` at load time, so it can contain
     patterns to be resolved.
-
-    Note that this class implements the `HasDefaultDeploymentConfig` mixin, so
-    if a published model is provided via the `model_name` attribute, then any
-    omitted fields present in the default deployment config for the published
-    model will be automatically populated.
 
     Attributes:
         model_name: the name of the published model to load. If this value is
@@ -112,12 +106,7 @@ class TFSlimClassifierConfig(Config, etal.HasDefaultDeploymentConfig):
     """
 
     def __init__(self, d):
-        self.model_name = self.parse_string(d, "model_name", default=None)
-        self.model_path = self.parse_string(d, "model_path", default=None)
-
-        # Loads any default deployment parameters, if possible
-        if self.model_name:
-            d = self.load_default_deployment_params(d, self.model_name)
+        d = self.init(d)
 
         self.attr_name = self.parse_string(d, "attr_name")
         self.network_name = self.parse_string(d, "network_name")
@@ -138,14 +127,6 @@ class TFSlimClassifierConfig(Config, etal.HasDefaultDeploymentConfig):
         self.generate_features = self.parse_bool(
             d, "generate_features", default=False
         )
-
-        self._validate()
-
-    def _validate(self):
-        if not self.model_name and not self.model_path:
-            raise ConfigError(
-                "Either `model_name` or `model_path` must be provided"
-            )
 
 
 class TFSlimClassifier(
@@ -174,11 +155,8 @@ class TFSlimClassifier(
         etat.UsesTFSession.__init__(self)
 
         # Get path to model
-        if self.config.model_path:
-            model_path = self.config.model_path
-        else:
-            # Downloads the published model, if necessary
-            model_path = etam.download_model(self.config.model_name)
+        self.config.download_model_if_necessary()
+        model_path = self.config.model_path
 
         # Load model
         logger.info("Loading graph from '%s'", model_path)
