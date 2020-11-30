@@ -1,9 +1,6 @@
 """
-ETA interface to the YOLOv4 object detection model.
-
-This module assumes that the
-`voxel51/darkflow <https://github.com/voxel51/darkflow>`_ repository has been
-cloned and pip-installed on your machine.
+Tnterface to the YOLOv4 object detection library available at
+https://github.com/voxel51/darkflow.
 
 Copyright 2017-2020, Voxel51, Inc.
 voxel51.com

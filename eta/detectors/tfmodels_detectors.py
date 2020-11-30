@@ -1,6 +1,6 @@
 """
 Interface to the TF-Models Object Detection Library available at
-https://github.com/tensorflow/models/tree/master/research/object_detection.
+https://github.com/voxel51/models/tree/master/research/object_detection.
 
 Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
@@ -32,9 +32,14 @@ import eta.core.utils as etau
 
 
 def _setup():
-    # Modify the path here in case `sys.path` has changed since the module
-    # was originally imported
-    sys.path.insert(1, os.path.join(etac.TF_OBJECT_DETECTION_DIR, "utils"))
+    utils_dir = os.path.join(etac.TF_OBJECT_DETECTION_DIR, "utils")
+
+    try:
+        sys.path.remove(utils_dir)
+    except ValueError:
+        pass
+
+    sys.path.insert(1, utils_dir)
 
 
 _ensure_tf1 = lambda: etau.ensure_package("tensorflow<2")

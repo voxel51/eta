@@ -1,11 +1,7 @@
 """
 Interface to the EfficientDet object detection model.
 
-This module assumes that the
-`voxel51/automl <https://github.com/voxel51/automl>`_ repository has been
-cloned on your machine.
-
-In particulr, this model wraps the EfficientDet implementation at
+This module wraps the EfficientDet implementation at
 https://github.com/voxel51/automl/tree/master/efficientdet.
 
 Copyright 2017-2020 Voxel51, Inc.
@@ -55,15 +51,16 @@ git clone https://github.com/voxel51/automl '{0}'
 
 def _setup():
     try:
-        #
         # Prevents possible name clashes when
         # `{{eta}}/tensorflow/models/research/object_detection` has previously
         # been imported
-        #
-        # @todo find a better solution for this
-        #
         sys.modules.pop("object_detection")
     except KeyError:
+        pass
+
+    try:
+        sys.path.remove(etac.EFFICIENTDET_DIR)
+    except ValueError:
         pass
 
     sys.path.insert(1, etac.EFFICIENTDET_DIR)

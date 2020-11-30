@@ -1,6 +1,6 @@
 """
 Interface to the TF-Slim image classification library available at
-https://github.com/tensorflow/models/tree/master/research/slim.
+https://github.com/voxel51/models/tree/master/research/slim.
 
 Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
