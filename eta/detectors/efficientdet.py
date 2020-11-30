@@ -26,8 +26,6 @@ import logging
 import os
 import sys
 
-import tensorflow as tf
-
 import eta.constants as etac
 from eta.core.config import Config, ConfigError
 import eta.core.geometry as etag
@@ -65,6 +63,9 @@ def _setup():
 
     sys.path.insert(1, etac.EFFICIENTDET_DIR)
 
+
+_ensure_tf1 = lambda: etau.ensure_package("tensorflow>=1.14,<2")
+tf = etau.lazy_import("tensorflow", callback=_ensure_tf1)
 
 efficientdet_arch = etau.lazy_import("efficientdet_arch", error_msg=_ERROR_MSG)
 hparams_config = etau.lazy_import("hparams_config", error_msg=_ERROR_MSG)

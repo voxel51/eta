@@ -44,6 +44,10 @@ pip install -e '{0}'
     etac.DARKFLOW_DIR
 )
 
+
+_ensure_tf1 = lambda: etau.ensure_package("tensorflow<2")
+etau.lazy_import("tensorflow", callback=_ensure_tf1)
+
 dnb = etau.lazy_import("darkflow.net.build", error_msg=_ERROR_MSG)
 
 
