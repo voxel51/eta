@@ -30,11 +30,16 @@ from eta.core.objects import DetectedObject, DetectedObjectContainer
 import eta.core.tfutils as etat
 import eta.core.utils as etau
 
-sys.path.append(os.path.join(etac.TF_OBJECT_DETECTION_DIR, "utils"))
+
+def _setup():
+    # Modify the path here in case `sys.path` has changed since the module
+    # was originally imported
+    sys.path.insert(1, os.path.join(etac.TF_OBJECT_DETECTION_DIR, "utils"))
+
 
 _ensure_tf1 = lambda: etau.ensure_package("tensorflow<2")
-tf = etau.lazy_import("tensorflow", _ensure_tf1)
-gool = etau.lazy_import("label_map_util", _ensure_tf1)
+tf = etau.lazy_import("tensorflow", callback=_ensure_tf1)
+gool = etau.lazy_import("label_map_util", callback=_ensure_tf1)
 
 
 logger = logging.getLogger(__name__)
@@ -758,6 +763,8 @@ def _parse_labels_map(labels_path):
             for all IDs sequentially from `min(1, min(category_index))` to
             `max(category_index)`
     """
+    _setup()
+
     labelmap = gool.load_labelmap(labels_path)
     category_index = _parse_labelmap_proto(labelmap)
 

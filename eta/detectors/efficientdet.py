@@ -52,19 +52,23 @@ git clone https://github.com/voxel51/automl '{0}'
     etac.AUTOML_DIR
 )
 
-try:
-    #
-    # Prevents possible name clashes when
-    # `{{eta}}/tensorflow/models/research/object_detection` has previously
-    # been imported
-    #
-    # @todo find a better solution for this
-    #
-    sys.modules.pop("object_detection")
-except KeyError:
-    pass
 
-sys.path.insert(1, etac.EFFICIENTDET_DIR)
+def _setup():
+    try:
+        #
+        # Prevents possible name clashes when
+        # `{{eta}}/tensorflow/models/research/object_detection` has previously
+        # been imported
+        #
+        # @todo find a better solution for this
+        #
+        sys.modules.pop("object_detection")
+    except KeyError:
+        pass
+
+    sys.path.insert(1, etac.EFFICIENTDET_DIR)
+
+
 efficientdet_arch = etau.lazy_import("efficientdet_arch", error_msg=_ERROR_MSG)
 hparams_config = etau.lazy_import("hparams_config", error_msg=_ERROR_MSG)
 inference = etau.lazy_import("inference", error_msg=_ERROR_MSG)
@@ -205,6 +209,8 @@ def _load_efficientdet_model(sess, architecture_name, model_dir):
         img_tensor: the input image `tf.Tensor`
         detections: the output detections `tf.Tensor`
     """
+    _setup()
+
     # Get model parameters
     params = hparams_config.get_detection_config(architecture_name).as_dict()
     params.update(dict(is_training_bn=False, use_bfloat16=False))
