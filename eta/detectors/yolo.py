@@ -69,6 +69,8 @@ class YOLODetectorConfig(Config, etal.HasPublishedModel):
             need to be
         config_dir: path to the darkflow configuration directory
         config_path: path to the darkflow model architecture file
+        confidence_thresh: a confidence threshold to apply to candidate
+            detections
     """
 
     def __init__(self, d):
@@ -79,6 +81,9 @@ class YOLODetectorConfig(Config, etal.HasPublishedModel):
         )
         self.config_path = etau.fill_config_patterns(
             self.parse_string(d, "config_path")
+        )
+        self.confidence_thresh = self.parse_number(
+            d, "confidence_thresh", default=0
         )
 
 
@@ -131,7 +136,11 @@ class YOLODetector(etal.ObjectDetector):
                 in the image
         """
         result = self._tfnet.return_predict(img)
-        objects = [_to_detected_object(yd, img) for yd in result]
+        objects = [
+            _to_detected_object(yd, img)
+            for yd in result
+            if yd["confidence"] >= self.config.confidence_thresh
+        ]
         return etao.DetectedObjectContainer(objects=objects)
 
 

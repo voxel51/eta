@@ -176,6 +176,7 @@ class VGG16Classifier(
         # Save data, if necessary
         if self.exposes_features:
             self._last_features = features  # n x features_dim
+
         self._last_probs = probs[:, np.newaxis, :]  # n x 1 x num_classes
 
         return predictions
