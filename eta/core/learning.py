@@ -231,11 +231,6 @@ class HasPublishedModel(object):
         self.model_name = self.parse_string(d, "model_name", default=None)
         self.model_path = self.parse_string(d, "model_path", default=None)
 
-        if not self.model_name and not self.model_path:
-            raise ConfigError(
-                "Either `model_name` or `model_path` must be provided"
-            )
-
         if self.model_name:
             d = self._load_default_deployment_params(d, self.model_name)
 
@@ -247,6 +242,11 @@ class HasPublishedModel(object):
         After this method is called, the `model_path` attribute will always
         contain the path to the model on disk.
         """
+        if not self.model_name and not self.model_path:
+            raise ConfigError(
+                "Either `model_name` or `model_path` must be provided"
+            )
+
         if self.model_path is None:
             self.model_path = etam.download_model(self.model_name)
 
