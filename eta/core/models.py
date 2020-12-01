@@ -1276,6 +1276,15 @@ class ModelsManifest(Serializable):
 
         self.models = [model for model in self.models if model.name != name]
 
+    def merge(self, models_manifest):
+        """Merges the models manifest into this one.
+
+        Args:
+            models_manifest: a ModelsManifest
+        """
+        for model in models_manifest:
+            self.add_model(model)
+
     def get_model_with_name(self, name):
         """Gets the model with the given name.
 
