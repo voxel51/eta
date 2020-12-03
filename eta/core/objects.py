@@ -48,7 +48,7 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
         bounding_box: (optional) a :class:`eta.core.geometry.BoundingBox`
             around the object
         mask: (optional) a mask for the object within its bounding box
-        confidence: (optional) the label confidence, in [0, 1]
+        confidence: (optional) a confidence for the object, in ``[0, 1]``
         name: (optional) the name of the object, e.g., ``ground_truth`` or the
             name of the model that produced it
         top_k_probs: (optional) dictionary mapping labels to probabilities
@@ -68,7 +68,7 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
             object
         mask (None): a numpy array describing the mask for the object within
             its bounding box
-        confidence (None): the label confidence, in ``[0, 1]``
+        confidence (None): a confidence for the detection, in ``[0, 1]``
         name (None): a name for the object, e.g., ``ground_truth`` or the name
             of the model that produced it
         top_k_probs (None): a dict mapping labels to probabilities
@@ -139,7 +139,7 @@ class DetectedObject(etal.Labels, etag.HasBoundingBox):
 
     @property
     def has_confidence(self):
-        """Whether the object has a label ``confidence``."""
+        """Whether the object has a ``confidence``."""
         return self.confidence is not None
 
     @property
@@ -507,7 +507,7 @@ class VideoObject(
     Attributes:
         type: the fully-qualified class name of the object
         label: (optional) the object label
-        confidence: (optional) label confidence in ``[0, 1]``
+        confidence: (optional) a confidence for the object, in ``[0, 1]``
         name: (optional) the name of the object, e.g., ``ground_truth`` or the
             name of the model that generated it
         index: (optional) an index assigned to the object

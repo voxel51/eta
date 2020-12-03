@@ -76,7 +76,7 @@ class Attribute(etal.Labels):
         type: the fully-qualified class name of the attribute
         name: the name of the attribute
         value: the value of the attribute
-        confidence: (optional) the confidence of the attribute, in [0, 1]
+        confidence: (optional) the confidence of the attribute, in ``[0, 1]``
         constant: whether this attribute is constant, i.e., all attributes of
             the same `name` must be identical to this attribute throughout the
             life of its parent entity
@@ -88,8 +88,7 @@ class Attribute(etal.Labels):
         Args:
             name: the attribute name
             value: the attribute value
-            confidence: an optional confidence of the value, in [0, 1]. By
-                default, no confidence is stored
+            confidence: an optional confidence of the value, in ``[0, 1]``
             constant: whether this attribute is constant, i.e., all attributes
                 of the same `name` must be identical to this attribute
                 throughout the life of its parent entity. By default, this is
@@ -173,7 +172,7 @@ class CategoricalAttribute(Attribute):
     Attributes:
         name: the name of the attribute
         value: the value of the attribute
-        confidence: (optional) the confidence of the attribute, in [0, 1]
+        confidence: (optional) the confidence of the attribute, in ``[0, 1]``
         top_k_probs: (optional) an optional dictionary mapping values to
             probabilities
         constant: whether this attribute is constant, i.e., all attributes of
@@ -189,8 +188,7 @@ class CategoricalAttribute(Attribute):
         Args:
             name: the attribute name
             value: the attribute value
-            confidence: an optional confidence of the value, in [0, 1]. By
-                default, no confidence is stored
+            confidence: an optional confidence of the value, in ``[0, 1]``
             top_k_probs: an optional dictionary mapping values to
                 probabilities. By default, no probabilities are stored
             constant: whether this attribute is constant, i.e., all attributes
@@ -240,7 +238,7 @@ class NumericAttribute(Attribute):
     Attributes:
         name: the name of the attribute
         value: the value of the attribute
-        confidence: (optional) the confidence of the attribute, in [0, 1]
+        confidence: (optional) the confidence of the attribute, in ``[0, 1]``
         constant: whether this attribute is constant, i.e., all attributes of
             the same `name` must be identical to this attribute throughout the
             life of its parent entity
@@ -265,7 +263,7 @@ class BooleanAttribute(Attribute):
     Attributes:
         name: the name of the attribute
         value: the value of the attribute
-        confidence: (optional) the confidence of the attribute, in [0, 1]
+        confidence: (optional) the confidence of the attribute, in ``[0, 1]``
         constant: whether this attribute is constant, i.e., all attributes of
             the same `name` must be identical to this attribute throughout the
             life of its parent entity
