@@ -1615,6 +1615,15 @@ class ModelManagerConfig(Config):
             d, "delete_archive", default=None
         )
 
+    def attributes(self):
+        """Returns a list of attributes to be serialized.
+
+        Returns:
+            a list of attributes
+        """
+        # Omit attributes with no value, for clarity
+        return [a for a in vars(self) if getattr(self, a) is not None]
+
 
 class ETAModelManagerConfig(ModelManagerConfig):
     """Configuration settings for an ETAModelManager instance.
@@ -1635,15 +1644,6 @@ class ETAModelManagerConfig(ModelManagerConfig):
         self.google_drive_id = self.parse_string(
             d, "google_drive_id", default=None
         )
-
-    def attributes(self):
-        """Returns a list of attributes to be serialized.
-
-        Returns:
-            a list of attributes
-        """
-        # Omit attributes with no value, for clarity
-        return [a for a in vars(self) if getattr(self, a) is not None]
 
 
 class ETAModelManager(ModelManager):
