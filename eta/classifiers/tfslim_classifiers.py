@@ -160,7 +160,7 @@ class TFSlimClassifier(
         model_path = self.config.model_path
 
         # Load model
-        logger.info("Loading graph from '%s'", model_path)
+        logger.debug("Loading graph from '%s'", model_path)
         self._prefix = "main"
         self._graph = etat.load_graph(model_path, prefix=self._prefix)
         self._sess = self.make_tf_session(graph=self._graph)
@@ -379,7 +379,7 @@ class TFSlimClassifier(
     def _make_preprocessing_fcn(self, network_name, preprocessing_fcn):
         # Use user-specified preprocessing, if provided
         if preprocessing_fcn:
-            logger.info(
+            logger.debug(
                 "Using user-provided preprocessing function '%s'",
                 preprocessing_fcn,
             )
@@ -391,7 +391,7 @@ class TFSlimClassifier(
         # Use numpy-based preprocessing if supported
         preproc_fcn_np = _NUMPY_PREPROC_FUNCTIONS.get(network_name, None)
         if preproc_fcn_np is not None:
-            logger.info(
+            logger.debug(
                 "Found numpy-based preprocessing implementation for network "
                 "'%s'",
                 network_name,
@@ -401,7 +401,7 @@ class TFSlimClassifier(
             )
 
         # Fallback to TF-slim preprocessing
-        logger.info(
+        logger.debug(
             "Using TF-based preprocessing for network '%s'", network_name,
         )
         self._preprocessing_fcn = pf.get_preprocessing(
