@@ -27,7 +27,6 @@ import numpy as np
 
 import eta
 import eta.core.image as etai
-import eta.core.models as etam
 import eta.core.utils as etau
 
 
@@ -231,29 +230,6 @@ def _launch_tensorboard(graph, log_dir=None, port=None):
         "Launching TensorBoard via the command:\n    %s\n", " ".join(args)
     )
     etau.call(args)
-
-
-class TFModelCheckpoint(etam.PublishedModel):
-    """Class that can load a published TensorFlow model checkpoint stored as a
-    .model file.
-    """
-
-    def __init__(self, model_name, sess):
-        """Initializes a TFModelCheckpoint instance.
-
-        Args:
-            model_name: the model to load
-            sess: the tf.Session in which to load the checkpoint
-
-        Raises:
-            ModelError: if the model was not found
-        """
-        super(TFModelCheckpoint, self).__init__(model_name)
-        self._sess = sess
-
-    def _load(self):
-        saver = tf.train.Saver()
-        saver.restore(self._sess, self.model_path)
 
 
 class UsesTFSession(object):

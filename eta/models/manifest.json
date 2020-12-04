@@ -987,10 +987,8 @@
                 "type": "eta.classifiers.VGG16Classifier",
                 "config": {
                     "attr_name": "imagenet",
-                    "config": {
-                        "model_name": "vgg16-imagenet",
-                        "labels_map": "{{eta-resources}}/vgg16-imagenet-labels.txt"
-                    }
+                    "model_name": "vgg16-imagenet",
+                    "labels_path": "{{eta-resources}}/vgg16-imagenet-labels.txt"
                 }
             },
             "date_created": "2018-06-20 17:35:53"

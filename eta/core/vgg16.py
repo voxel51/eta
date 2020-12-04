@@ -47,26 +47,36 @@ tf = etat.import_tf1()
 logger = logging.getLogger(__name__)
 
 
-class VGG16Config(Config):
+class VGG16Config(Config, etal.HasPublishedModel):
     """Configuration settings for the VGG-16 network.
 
+    Use `VGG16Config.default()` to load the default configuration.
+
     Attributes:
-        model_name: the name of the VGG-16 model to load
-        labels_map: path to the labels map to load
+        model_name: the name of the published model to load. If this value is
+            provided, `model_path` does not need to be
+        model_path: the path to a frozen inference graph to load. If this value
+            is provided, `model_name` does not need to be
+        labels_path: path to the labels map to load
     """
 
     def __init__(self, d):
-        self.model_name = self.parse_string(
-            d, "model_name", default="vgg16-imagenet"
+        d = self.init(d)
+
+        self.labels_path = etau.fill_config_patterns(
+            self.parse_string(d, "labels_path")
         )
-        _labels_map = self.parse_string(d, "labels_map", default=None)
 
-        if _labels_map is None:
-            _labels_map = os.path.join(
-                etac.RESOURCES_DIR, "vgg16-imagenet-labels.txt"
-            )
-
-        self.labels_map = etau.fill_config_patterns(_labels_map)
+    @classmethod
+    def default(cls):
+        return cls(
+            {
+                "model_name": "vgg16-imagenet",
+                "labels_path": os.path.join(
+                    etac.RESOURCES_DIR, "vgg16-imagenet-labels.txt"
+                ),
+            }
+        )
 
 
 class VGG16(Configurable, etat.UsesTFSession):
@@ -101,8 +111,10 @@ class VGG16(Configurable, etat.UsesTFSession):
 
         if config is None:
             config = VGG16Config.default()
+
         if sess is None:
             sess = self.make_tf_session()
+
         if imgs is None:
             imgs = tf.placeholder(tf.float32, [None, 224, 224, 3])
 
@@ -110,15 +122,18 @@ class VGG16(Configurable, etat.UsesTFSession):
         self.sess = sess
         self.imgs = imgs
 
-        labels_map = etal.load_labels_map(self.config.labels_map)
-        self._class_labels = [labels_map[k] for k in sorted(labels_map.keys())]
-        self._num_classes = len(self._class_labels)
-
         self._build_conv_layers()
         self._build_fc_layers()
         self._build_output_layer()
 
-        self._load_model(self.config.model_name)
+        # Load model
+        self.config.download_model_if_necessary()
+        self._load_model(self.config.model_path)
+
+        # Load labels
+        labels_map = etal.load_labels_map(self.config.labels_path)
+        self._class_labels = [labels_map[k] for k in sorted(labels_map.keys())]
+        self._num_classes = len(self._class_labels)
 
     @property
     def num_classes(self):
@@ -524,8 +539,8 @@ class VGG16(Configurable, etat.UsesTFSession):
     def _build_output_layer(self):
         self.probs = tf.nn.softmax(self.fc3)
 
-    def _load_model(self, model_name):
-        weights = etam.NpzModelWeights(model_name).load()
+    def _load_model(self, model_path):
+        weights = np.load(model_path)
         for i, k in enumerate(sorted(weights)):
             self.sess.run(self.parameters[i].assign(weights[k]))
 
@@ -533,9 +548,14 @@ class VGG16(Configurable, etat.UsesTFSession):
 class VGG16FeaturizerConfig(VGG16Config):
     """Configuration settings for a VGG16Featurizer.
 
+    Use `VGG16Config.default()` to load the default configuration.
+
     Attributes:
-        model_name: the name of the VGG-16 model to load
-        labels_map: path to the labels map to load
+        model_name: the name of the published model to load. If this value is
+            provided, `model_path` does not need to be
+        model_path: the path to a frozen inference graph to load. If this value
+            is provided, `model_name` does not need to be
+        labels_path: path to the labels map to load
     """
 
     pass

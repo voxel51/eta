@@ -23,21 +23,30 @@ import numpy as np
 from eta.core.config import Config
 import eta.core.data as etad
 import eta.core.learning as etal
+import eta.core.utils as etau
 from eta.core.vgg16 import VGG16, VGG16Config
 
 
-class VGG16ClassifierConfig(Config):
+class VGG16ClassifierConfig(Config, etal.HasPublishedModel):
     """VGG16Classifier configuration settings.
 
     Attributes:
+        model_name: the name of the published model to load. If this value is
+            provided, `model_path` does not need to be
+        model_path: the path to a frozen inference graph to load. If this value
+            is provided, `model_name` does not need to be
+        labels_path: the path to the labels map for the model
         attr_name: the name of the attribute that the classifier predicts
-        config: an `eta.core.vgg16.VGG16Config` specifying the model to use
         generate_features: whether to generate features for predictions
     """
 
     def __init__(self, d):
+        d = self.init(d)
+
+        self.labels_path = etau.fill_config_patterns(
+            self.parse_string(d, "labels_path")
+        )
         self.attr_name = self.parse_string(d, "attr_name", default="imagenet")
-        self.config = self.parse_object(d, "config", VGG16Config, default=None)
         self.generate_features = self.parse_bool(
             d, "generate_features", default=False
         )
@@ -46,23 +55,24 @@ class VGG16ClassifierConfig(Config):
 class VGG16Classifier(
     etal.ImageClassifier, etal.ExposesFeatures, etal.ExposesProbabilities
 ):
-    """Classifier interface for evaluating an `eta.core.vgg16.VGG16` instance
-    on images.
+    """Interface for evaluating an `eta.core.vgg16.VGG16` instance on images.
 
     Instances of this class must either use the context manager interface or
     manually call `close()` when finished to release memory.
     """
 
-    def __init__(self, config=None):
+    def __init__(self, config):
         """Creates a VGG16Classifier instance.
 
         Args:
-            config: an optional VGG16ClassifierConfig instance. If omitted, the
-                default VGG16ClassifierConfig is used
+            config: a VGG16ClassifierConfig instance
         """
-        self.config = config or VGG16ClassifierConfig.default()
-        self._vgg16 = VGG16(config=config.config)
+        self.config = config
 
+        # Download model if necessary
+        self.config.download_model_if_necessary()
+
+        self._vgg16 = VGG16(config=VGG16Config(self.config.serialize()))
         self._last_features = None
         self._last_probs = None
 
