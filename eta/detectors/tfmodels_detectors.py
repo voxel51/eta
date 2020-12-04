@@ -166,7 +166,7 @@ class TFModelsDetector(
         model_path = self.config.model_path
 
         # Load model
-        logger.info("Loading graph from '%s'", model_path)
+        logger.debug("Loading graph from '%s'", model_path)
         self._graph = etat.load_graph(model_path)
         self._sess = self.make_tf_session(graph=self._graph)
 
@@ -493,7 +493,7 @@ class TFModelsInstanceSegmenter(
         model_path = self.config.model_path
 
         # Load model
-        logger.info("Loading graph from '%s'", model_path)
+        logger.debug("Loading graph from '%s'", model_path)
         self._graph = etat.load_graph(model_path)
         self._sess = self.make_tf_session(graph=self._graph)
 

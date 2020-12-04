@@ -133,18 +133,18 @@ class EfficientDet(etal.ObjectDetector, etat.UsesTFSession):
         # Extract archive, if necessary
         model_dir = etau.split_archive(model_path)[0]
         if not os.path.isdir(model_dir):
-            logger.info("Extracting archive '%s'", model_path)
+            logger.debug("Extracting archive '%s'", model_path)
             etau.extract_archive(model_path, delete_archive=True)
 
         # Load model
-        logger.info("Loading model from '%s'", model_dir)
+        logger.debug("Loading model from '%s'", model_dir)
         self._sess = self.make_tf_session()
         self._img_tensor, self._detections = _load_efficientdet_model(
             self._sess, self.config.architecture_name, model_dir
         )
 
         # Load class labels
-        logger.info("Loading class labels from '%s'", self.config.labels_path)
+        logger.debug("Loading class labels from '%s'", self.config.labels_path)
         self._labels_map = etal.load_labels_map(self.config.labels_path)
 
     def __enter__(self):

@@ -106,7 +106,7 @@ class TFSemanticSegmenter(
         model_path = self.config.model_path
 
         # Load model
-        logger.info("Loading graph from '%s'", model_path)
+        logger.debug("Loading graph from '%s'", model_path)
         self._graph = etat.load_graph(model_path)
         self._sess = self.make_tf_session(graph=self._graph)
 
@@ -205,5 +205,5 @@ class TFSemanticSegmenter(
         return self._sess.run(out_tensors, feed_dict={in_tensor: imgs})
 
     def _make_preprocessing_fcn(self, preprocessing_fcn):
-        logger.info("Using preprocessing function '%s'", preprocessing_fcn)
+        logger.debug("Using preprocessing function '%s'", preprocessing_fcn)
         self._preprocessing_fcn = etau.get_function(preprocessing_fcn)
