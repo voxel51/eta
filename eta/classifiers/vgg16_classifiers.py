@@ -88,6 +88,13 @@ class VGG16Classifier(
         self._vgg16 = None
 
     @property
+    def is_multilabel(self):
+        """Whether the classifier generates single labels (False) or multiple
+        labels (True) per prediction.
+        """
+        return False
+
+    @property
     def exposes_features(self):
         """Whether this classifier exposes features for predictions."""
         return self.config.generate_features

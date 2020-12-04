@@ -428,11 +428,20 @@ class ClassifierConfig(ModelConfig):
 class Classifier(Model):
     """Interface for classifiers.
 
-    Subclasses of `Classifier` must implement the `predict()` method.
+    Subclasses of `Classifier` must implement the `predict()` method, and they
+    should declare via the `is_multilabel` property whether they output single
+    or multiple labels per prediction.
 
     Subclasses can optionally implement the context manager interface to
     perform any necessary setup and teardown.
     """
+
+    @property
+    def is_multilabel(self):
+        """Whether the classifier generates single labels (False) or multiple
+        labels (True) per prediction.
+        """
+        raise NotImplementedError("subclasses must implement is_multilabel")
 
     def predict(self, arg):
         """Peforms prediction on the given argument.
@@ -464,11 +473,12 @@ class ImageClassifierConfig(ClassifierConfig):
 class ImageClassifier(Classifier):
     """Base class for classifiers that operate on single images.
 
-    `ImageClassifier`s may output single or multiple labels per image.
-
     Subclasses of `ImageClassifier` must implement the `predict()` method, and
     they can optionally provide a custom (efficient) implementation of the
     `predict_all()` method.
+
+    `ImageClassifier`s may output single or multiple labels per image, and
+    should declare such via the `is_multilabel` property.
 
     Subclasses can optionally implement the context manager interface to
     perform any necessary setup and teardown, e.g., operating a `Featurizer`
@@ -523,7 +533,7 @@ class VideoFramesClassifier(Classifier):
     as tensors of images.
 
     `VideoFramesClassifier`s may output single or multiple labels per video
-    clip.
+    clip, and should declare such via the `is_multilabel` property.
 
     Subclasses of `VideoFramesClassifier` must implement the `predict()`
     method.
@@ -566,7 +576,7 @@ class VideoClassifier(Classifier):
     """Base class for classifiers that operate on entire videos.
 
     `VideoClassifier`s may output single or multiple (video-level) labels per
-    video.
+    video, and should declare such via the `is_multilabel` property.
 
     Subclasses of `VideoClassifier` must implement the `predict()` method.
 

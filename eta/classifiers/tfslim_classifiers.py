@@ -227,6 +227,13 @@ class TFSlimClassifier(
         self.close()
 
     @property
+    def is_multilabel(self):
+        """Whether the classifier generates single labels (False) or multiple
+        labels (True) per prediction.
+        """
+        return False
+
+    @property
     def exposes_features(self):
         """Whether this classifier exposes features for predictions."""
         return self._features_op is not None
