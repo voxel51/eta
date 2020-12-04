@@ -312,8 +312,12 @@ def fill_patterns(string, patterns):
     Returns:
         a copy of string with any patterns replaced
     """
+    if string is None:
+        return None
+
     for patt, val in iteritems(patterns):
         string = string.replace(patt, val)
+
     return string
 
 
