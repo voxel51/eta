@@ -30,16 +30,12 @@ from eta.core.objects import DetectedObject, DetectedObjectContainer
 import eta.core.tfutils as etat
 import eta.core.utils as etau
 
+from .utils import reset_path
+
 
 def _setup():
-    utils_dir = os.path.join(etac.TF_OBJECT_DETECTION_DIR, "utils")
-
-    try:
-        sys.path.remove(utils_dir)
-    except ValueError:
-        pass
-
-    sys.path.insert(1, utils_dir)
+    reset_path()
+    sys.path.insert(1, os.path.join(etac.TF_OBJECT_DETECTION_DIR, "utils"))
 
 
 _ensure_tf1 = lambda: etau.ensure_package("tensorflow<2")

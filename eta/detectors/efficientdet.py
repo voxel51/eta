@@ -34,6 +34,8 @@ import eta.core.objects as etao
 import eta.core.tfutils as etat
 import eta.core.utils as etau
 
+from .utils import reset_path
+
 
 _ERROR_MSG = """
 
@@ -48,19 +50,7 @@ git clone https://github.com/voxel51/automl '{0}'
 
 
 def _setup():
-    try:
-        # Prevents possible name clashes when
-        # `{{eta}}/tensorflow/models/research/object_detection` has previously
-        # been imported
-        sys.modules.pop("object_detection")
-    except KeyError:
-        pass
-
-    try:
-        sys.path.remove(etac.EFFICIENTDET_DIR)
-    except ValueError:
-        pass
-
+    reset_path()
     sys.path.insert(1, etac.EFFICIENTDET_DIR)
 
 
