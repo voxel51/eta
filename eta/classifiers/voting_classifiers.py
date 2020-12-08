@@ -60,6 +60,13 @@ class VideoFramesVotingClassifier(etal.VideoFramesClassifier):
     def __exit__(self, *args):
         self.image_classifier.__exit__(*args)
 
+    @property
+    def is_multilabel(self):
+        """Whether the classifier generates single labels (False) or multiple
+        labels (True) per prediction.
+        """
+        return self.image_classifier.is_multilabel
+
     def predict(self, imgs):
         """Peforms prediction on the given video represented as a tensor of
         images.

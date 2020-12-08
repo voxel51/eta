@@ -44,7 +44,7 @@ class DetectedEvent(etal.Labels, etag.HasBoundingBox):
         label: (optional) event label
         bounding_box: (optional) a BoundingBox around the event
         mask: (optional) a mask for the event within its bounding box
-        confidence: (optional) the label confidence, in [0, 1]
+        confidence: (optional) a confidence for the event, in ``[0, 1]``
         name: (optional) the name of the event, e.g., ``ground_truth`` or the
             name of the model that produced it
         top_k_probs: (optional) dictionary mapping labels to probabilities
@@ -77,7 +77,7 @@ class DetectedEvent(etal.Labels, etag.HasBoundingBox):
             bounding_box: (optional) a BoundingBox around the event
             mask: (optional) a numpy array describing the mask for the event
                 within its bounding box
-            confidence: (optional) the label confidence, in [0, 1]
+            confidence: (optional) a confidence for the event, in ``[0, 1]``
             name (None): a name for the event, e.g., ``ground_truth`` or the
                 name of the model that produced it
             top_k_probs: (optional) dictionary mapping labels to probabilities
@@ -128,7 +128,7 @@ class DetectedEvent(etal.Labels, etag.HasBoundingBox):
 
     @property
     def has_confidence(self):
-        """Whether the event has a label confidence."""
+        """Whether the event has a confidence."""
         return self.confidence is not None
 
     @property
@@ -588,7 +588,7 @@ class VideoEvent(
     Attributes:
         type: the fully-qualified class name of the event
         label: (optional) the event label
-        confidence: (optional) the label confidence in [0, 1]
+        confidence: (optional) a confidence for the event, in ``[0, 1]``
         name: (optional) the name of the event, e.g., ``ground_truth`` or the
             name of the model that generated it
         index: (optional) an index assigned to the event
@@ -613,7 +613,7 @@ class VideoEvent(
 
         Args:
             label: (optional) the event label
-            confidence: (optional) the label confidence in [0, 1]
+            confidence: (optional) a confidence for the event, in ``[0, 1]``
             name (None): a name for the event, e.g., ``ground_truth`` or the
                 name of the model that generated it
             index: (optional) a index assigned to the event
@@ -651,7 +651,7 @@ class VideoEvent(
 
     @property
     def has_confidence(self):
-        """Whether the event has a label confidence."""
+        """Whether the event has a confidence."""
         return self.confidence is not None
 
     @property
@@ -1000,7 +1000,7 @@ class VideoEvent(
             first: the first frame of the event
             last: the last frame of the event
             label: the event label
-            confidence: (optional) confidence in [0, 1]
+            confidence: (optional) confidence in ``[0, 1]``
             index: (optional) an index for the event
 
         Returns:

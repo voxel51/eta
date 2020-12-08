@@ -1,6 +1,6 @@
 """
 Interface to the TF-Slim image classification library available at
-https://github.com/tensorflow/models/tree/master/research/slim.
+https://github.com/voxel51/models/tree/master/research/slim.
 
 Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
@@ -28,16 +28,16 @@ from eta.core.config import Config, ConfigError
 import eta.core.data as etad
 from eta.core.features import ImageFeaturizer
 import eta.core.learning as etal
-import eta.core.models as etam
 import eta.core.tfutils as etat
 import eta.core.utils as etau
 
 sys.path.insert(1, etac.TF_SLIM_DIR)
 
 _ensure_tf1 = lambda: etau.ensure_package("tensorflow<2")
-tf = etau.lazy_import("tensorflow", _ensure_tf1)
-pf = etau.lazy_import("preprocessing.preprocessing_factory", _ensure_tf1)
-nf = etau.lazy_import("nets.nets_factory", _ensure_tf1)
+tf = etau.lazy_import("tensorflow", callback=_ensure_tf1)
+
+pf = etau.lazy_import("preprocessing.preprocessing_factory")
+nf = etau.lazy_import("nets.nets_factory")
 
 
 logger = logging.getLogger(__name__)
@@ -74,18 +74,13 @@ _DEFAULT_OUTPUT_NAMES = {
 }
 
 
-class TFSlimClassifierConfig(Config, etal.HasDefaultDeploymentConfig):
+class TFSlimClassifierConfig(Config, etal.HasPublishedModel):
     """Configuration class for loading a TensorFlow classifier whose network
     architecture is defined in `tf.slim.nets`.
 
     Note that `labels_path` is passed through
     `eta.core.utils.fill_config_patterns` at load time, so it can contain
     patterns to be resolved.
-
-    Note that this class implements the `HasDefaultDeploymentConfig` mixin, so
-    if a published model is provided via the `model_name` attribute, then any
-    omitted fields present in the default deployment config for the published
-    model will be automatically populated.
 
     Attributes:
         model_name: the name of the published model to load. If this value is
@@ -112,12 +107,7 @@ class TFSlimClassifierConfig(Config, etal.HasDefaultDeploymentConfig):
     """
 
     def __init__(self, d):
-        self.model_name = self.parse_string(d, "model_name", default=None)
-        self.model_path = self.parse_string(d, "model_path", default=None)
-
-        # Loads any default deployment parameters, if possible
-        if self.model_name:
-            d = self.load_default_deployment_params(d, self.model_name)
+        d = self.init(d)
 
         self.attr_name = self.parse_string(d, "attr_name")
         self.network_name = self.parse_string(d, "network_name")
@@ -138,14 +128,6 @@ class TFSlimClassifierConfig(Config, etal.HasDefaultDeploymentConfig):
         self.generate_features = self.parse_bool(
             d, "generate_features", default=False
         )
-
-        self._validate()
-
-    def _validate(self):
-        if not self.model_name and not self.model_path:
-            raise ConfigError(
-                "Either `model_name` or `model_path` must be provided"
-            )
 
 
 class TFSlimClassifier(
@@ -174,14 +156,11 @@ class TFSlimClassifier(
         etat.UsesTFSession.__init__(self)
 
         # Get path to model
-        if self.config.model_path:
-            model_path = self.config.model_path
-        else:
-            # Downloads the published model, if necessary
-            model_path = etam.download_model(self.config.model_name)
+        self.config.download_model_if_necessary()
+        model_path = self.config.model_path
 
         # Load model
-        logger.info("Loading graph from '%s'", model_path)
+        logger.debug("Loading graph from '%s'", model_path)
         self._prefix = "main"
         self._graph = etat.load_graph(model_path, prefix=self._prefix)
         self._sess = self.make_tf_session(graph=self._graph)
@@ -246,6 +225,13 @@ class TFSlimClassifier(
 
     def __exit__(self, *args):
         self.close()
+
+    @property
+    def is_multilabel(self):
+        """Whether the classifier generates single labels (False) or multiple
+        labels (True) per prediction.
+        """
+        return False
 
     @property
     def exposes_features(self):
@@ -393,7 +379,7 @@ class TFSlimClassifier(
     def _make_preprocessing_fcn(self, network_name, preprocessing_fcn):
         # Use user-specified preprocessing, if provided
         if preprocessing_fcn:
-            logger.info(
+            logger.debug(
                 "Using user-provided preprocessing function '%s'",
                 preprocessing_fcn,
             )
@@ -405,7 +391,7 @@ class TFSlimClassifier(
         # Use numpy-based preprocessing if supported
         preproc_fcn_np = _NUMPY_PREPROC_FUNCTIONS.get(network_name, None)
         if preproc_fcn_np is not None:
-            logger.info(
+            logger.debug(
                 "Found numpy-based preprocessing implementation for network "
                 "'%s'",
                 network_name,
@@ -415,7 +401,7 @@ class TFSlimClassifier(
             )
 
         # Fallback to TF-slim preprocessing
-        logger.info(
+        logger.debug(
             "Using TF-based preprocessing for network '%s'", network_name,
         )
         self._preprocessing_fcn = pf.get_preprocessing(

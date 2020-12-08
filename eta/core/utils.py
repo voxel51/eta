@@ -312,8 +312,12 @@ def fill_patterns(string, patterns):
     Returns:
         a copy of string with any patterns replaced
     """
+    if string is None:
+        return None
+
     for patt, val in iteritems(patterns):
         string = string.replace(patt, val)
+
     return string
 
 
@@ -578,40 +582,207 @@ def get_function(function_name, module_name=None):
     return get_class(function_name, module_name=module_name)
 
 
-def ensure_package(requirement_str):
+def install_package(requirement_str, error_level=0):
+    """Installs the newest compliant version of the package.
+
+    Args:
+        requirement_str: a PEP 440 compliant package requirement, like
+            "tensorflow", "tensorflow<2", "tensorflow==2.3.0", or
+            "tensorflow>=1.13,<1.15"
+        error_level: the error level to use, defined as:
+
+            0: raise error if the install fails
+            1: log warning if the install fails
+            2: ignore install fails
+    """
+    args = [sys.executable, "-m", "pip", "install", requirement_str]
+    p = subprocess.Popen(args, stderr=subprocess.PIPE)
+    _, err = p.communicate()
+
+    if p.returncode != 0:
+        handle_error(
+            OSError(
+                "Failed to install package '%s'\n\n%s"
+                % (requirement_str, err.decode())
+            ),
+            error_level,
+        )
+
+
+def ensure_package(requirement_str, error_level=0):
     """Ensures that the given package is installed on the host machine.
 
     Args:
         requirement_str: a PEP 440 compliant package requirement, like
-            "tensorflow", "tensorflow<2", "tensorflow==2.3.0", and
+            "tensorflow", "tensorflow<2", "tensorflow==2.3.0", or
             "tensorflow>=1.13,<1.15"
+        error_level: the error level to use, defined as:
 
-    Raises:
-        ImportError: if the package is not installed or does not meet the
-            specified requirements
+            0: raise error if requirement is not satisfied
+            1: log warning if requirement is not satisifed
+            2: ignore unsatisifed requirements
     """
     req = Requirement(requirement_str)
 
     try:
         pkg = importlib.import_module(req.name)
+        version = pkg.__version__
+        import_error = None
     except ImportError as e:
-        six.raise_from(
-            ImportError(
+        version = None
+        import_error = e
+
+    _ensure_requirement(req, version, error_level, import_error=import_error)
+
+
+def _ensure_requirement(
+    req, version, error_level, error_cls=ImportError, import_error=None
+):
+    if version is None:
+        handle_error(
+            error_cls(
                 "The requested operation requires that '%s' is installed on "
                 "your machine" % str(req)
             ),
-            e,
+            error_level,
+            import_error,
         )
 
-    if not req.specifier.contains(pkg.__version__):
-        raise ImportError(
-            "The requested operation requires that '%s' is installed "
-            "on your machine; found '%s==%s'"
-            % (str(req), req.name, pkg.__version__)
+    if not req.specifier.contains(version):
+        handle_error(
+            error_cls(
+                "The requested operation requires that '%s' is installed "
+                "on your machine; found '%s==%s'"
+                % (str(req), req.name, version)
+            ),
+            error_level,
         )
 
 
-def lazy_import(module_name, callback=None):
+def handle_error(error, error_level, base_error=None):
+    """Handles the error at the specified error level.
+
+    Args:
+        error: an Exception instance
+        error_level: the error level to use, defined as:
+
+            0: raise the error
+            1: log the error as a warning
+            2: ignore the error
+
+        base_error: (optional) a base Exception from which to raise `error`
+    """
+    if error_level <= 0:
+        if base_error is not None:
+            six.raise_from(error, base_error)
+        else:
+            raise error
+
+    if error_level == 1:
+        logger.warning(error)
+
+
+def ensure_cuda_version(requirement_str, error_level=0):
+    """Ensures that a compliant version of CUDA is installed.
+
+    Args:
+        requirement_str: the version component of a PEP 440 compliant package
+            requirement, like "", "<10", "==9.1.0", or ">=9,<10"
+        error_level: the error level to use, defined as:
+
+            0: raise error if the requirement is not satisfied
+            1: log warning if the requirement is not satisifed
+            2: ignore unsatisifed requirements
+
+    Raises:
+        CUDAError: if CUDA is not installed or does not meet the specified
+            requirements and `error_level == 0`
+    """
+    req = Requirement("CUDA" + requirement_str)
+    version = get_cuda_version()
+    _ensure_requirement(req, version, error_level, error_cls=CUDAError)
+
+
+def ensure_cudnn_version(requirement_str, error_level=0):
+    """Ensures that a compliant version of cuDNN is installed.
+
+    Args:
+        requirement_str: the version component of a PEP 440 compliant package
+            requirement, like "", "<8", "==7.5.1", or ">=7,<8"
+        error_level: the error level to use, defined as:
+
+            0: raise error if the requirement is not satisfied
+            1: log warning if the requirement is not satisifed
+            2: ignore unsatisifed requirements
+
+    Raises:
+        CUDAError: if cuDNN is not installed or does not meet the specified
+            requirements and `error_level == 0`
+    """
+    req = Requirement("cuDNN" + requirement_str)
+    version = get_cudnn_version()
+    _ensure_requirement(req, version, error_level, error_cls=CUDAError)
+
+
+class CUDAError(Exception):
+    """An error raised when a problem with CUDA installation occurs."""
+
+    pass
+
+
+def get_cuda_version():
+    """Gets the CUDA version installed on the machine, if possible.
+
+    The `CUDA_HOME` environment variable will be used, if set, to locate the
+    CUDA installation.
+
+    Returns:
+        the CUDA version string, or None if CUDA is not installed or the
+        installation could not be located
+    """
+    cuda_home_dir = os.environ.get("CUDA_HOME", "/usr/local/cuda")
+    cuda_version_path = os.path.join(cuda_home_dir, "version.txt")
+    if not os.path.isfile(cuda_version_path):
+        return None
+
+    contents = read_file(cuda_version_path)
+    return contents[len("CUDA Version ") :].strip()
+
+
+def get_cudnn_version():
+    """Gets the cuDNN version installed on the machine, if possible.
+
+    The `CUDA_HOME` environment variable will be used, if set, to locate the
+    CUDA installation.
+
+    Returns:
+        the cuDNN version string, or None if cuDNN is not installed or the
+        installation could not be located
+    """
+    cuda_home_dir = os.environ.get("CUDA_HOME", "/usr/local/cuda")
+    cudnn_header_path = os.path.join(cuda_home_dir, "include", "cudnn.h")
+    if not os.path.isfile(cudnn_header_path):
+        return None
+
+    major = None
+    minor = None
+    patch = None
+    with open(cudnn_header_path, "rt") as f:
+        for line in f.readlines():
+            if line.startswith("#define CUDNN_MAJOR"):
+                major = line[len("#define CUDNN_MAJOR") :].strip()
+
+            if line.startswith("#define CUDNN_MINOR"):
+                minor = line[len("#define CUDNN_MINOR") :].strip()
+
+            if line.startswith("#define CUDNN_PATCHLEVEL"):
+                patch = line[len("#define CUDNN_PATCHLEVEL") :].strip()
+
+    ver = [v for v in (major, minor, patch) if v is not None]
+    return ".".join(ver)
+
+
+def lazy_import(module_name, callback=None, error_msg=None):
     """Returns a proxy module object that will lazily import the given module
     the first time it is used.
 
@@ -631,11 +802,12 @@ def lazy_import(module_name, callback=None):
         module_name: the fully-qualified module name to import
         callback (None): a callback function to call before importing the
             module
+        error_msg (None): an error message to print if the import fails
 
     Returns:
         a LazyModule
     """
-    return LazyModule(module_name, callback=callback)
+    return LazyModule(module_name, callback=callback, error_msg=error_msg)
 
 
 def lazy_object(_callable):
@@ -680,12 +852,14 @@ class LazyModule(types.ModuleType):
         module_name: the fully-qualified module name to import
         callback (None): a callback function to call before importing the
             module
+        error_msg (None): an error message to print if the import fails
     """
 
-    def __init__(self, module_name, callback=None):
+    def __init__(self, module_name, callback=None, error_msg=None):
         super(LazyModule, self).__init__(module_name)
         self._module = None
         self._callback = callback
+        self._error_msg = error_msg
 
     def __getattr__(self, item):
         if self._module is None:
@@ -705,8 +879,14 @@ class LazyModule(types.ModuleType):
             self._callback()
 
         # Actually import the module
-        module = importlib.import_module(self.__name__)
-        self._module = module
+        try:
+            module = importlib.import_module(self.__name__)
+            self._module = module
+        except ImportError as e:
+            if self._error_msg is not None:
+                six.raise_from(ImportError(self._error_msg), e)
+
+            raise
 
         # Update this object's dict so that attribute references are efficient
         # (__getattr__ is only called on lookups that fail)
@@ -1615,6 +1795,7 @@ def communicate(args, decode=False):
     if decode:
         out = out.decode()
         err = err.decode()
+
     return p.returncode == 0, out, err
 
 
@@ -2871,6 +3052,40 @@ def make_zip64(dir_path, zip_path):
                 f.write(src_path, dest_path)
 
 
+def is_archive(filepath):
+    """Determines whether the given filepath has an archive extension from the
+    following list:
+
+    `.zip`, `.rar`, `.tar`, `.tar.gz`, `.tgz`, `.tar.bz`, `.tbz`.
+
+    Args:
+        filepath: a filepath
+
+    Returns:
+        True/False
+    """
+    return filepath.endswith(
+        (".zip", ".rar", ".tar", ".tar.gz", ".tgz", ".tar.bz", ".tbz")
+    )
+
+
+def split_archive(archive_path):
+    """Splits the archive extension off of the given path.
+
+    Similar to `os.path.splitext` but handles extensions like `.tar.gz`.
+
+    Args:
+        archive_path: the archive path
+
+    Returns:
+        a `(root, ext)` tuple
+    """
+    if archive_path.endswith((".tar.gz", ".tar.bz")):
+        return archive_path[:-7], archive_path[-7:]
+
+    return os.path.splitext(archive_path)
+
+
 def extract_archive(archive_path, outdir=None, delete_archive=False):
     """Extracts the contents of an archive.
 
@@ -2892,9 +3107,7 @@ def extract_archive(archive_path, outdir=None, delete_archive=False):
         extract_zip(archive_path, outdir=outdir, delete_zip=delete_archive)
     elif archive_path.endswith(".rar"):
         extract_rar(archive_path, outdir=outdir, delete_rar=delete_archive)
-    elif archive_path.endswidth(
-        (".tar", ".tar.gz", ".tgz", ".tar.bz", ".tbz")
-    ):
+    elif archive_path.endswith((".tar", ".tar.gz", ".tgz", ".tar.bz", ".tbz")):
         extract_tar(archive_path, outdir=outdir, delete_tar=delete_archive)
     else:
         # Fallback to `patoolib`, which handles a lot of stuff, possibly

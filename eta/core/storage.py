@@ -77,6 +77,63 @@ logging.getLogger("googleapiclient").setLevel(logging.ERROR)
 logging.getLogger("paramiko").setLevel(logging.ERROR)
 
 
+def ensure_file(filepath, remote_path):
+    """Ensures that the file exists at the given `filepath` by downloading it
+    from the remote location, if necessary.
+
+    Args:
+        filepath: the local path
+        remote_path: the remote location of the file, which can be a URL, cloud
+            storage object, or Google Drive ID
+    """
+    if os.path.exists(filepath):
+        return
+
+    client, _ = _parse_remote_path(remote_path)
+    client.download(remote_path, filepath)
+
+
+def ensure_archive(dirpath, remote_path):
+    """Ensures that the directory exists at the given `dirpath` by downloading
+    and extracting an archived version of it from the remote location, if
+    necessary.
+
+    Args:
+        dirpath: the local directory
+        remote_path: the remote location of the archived directory, which can
+            be a URL, cloud storage object, or Google Drive ID
+    """
+    if os.path.exists(dirpath):
+        return
+
+    client, filename = _parse_remote_path(remote_path)
+
+    archive_path = dirpath + os.path.splitext(filename)[1]
+    if not os.path.isfile(archive_path):
+        client.download(remote_path, archive_path)
+
+    etau.extract_archive(archive_path, delete_archive=True)
+
+
+def _parse_remote_path(remote_path):
+    if remote_path.startswith("http"):
+        client = HTTPStorageClient()
+        filename = client.get_filename(remote_path)
+    elif remote_path.startswith("gs://"):
+        client = GoogleCloudStorageClient()
+        filename = os.path.basename(remote_path)
+    elif remote_path.startswith("s3://"):
+        client = S3StorageClient()
+        filename = os.path.basename(remote_path)
+    elif len(remote_path) == 33:
+        client = GoogleDriveStorageClient()
+        filename = client.get_file_metadata(remote_path)["name"]
+    else:
+        raise ValueError("Unknown remote path '%s'" % remote_path)
+
+    return client, filename
+
+
 def google_cloud_api_retry(func):
     """Decorator for handling retry of Google API errors.
 

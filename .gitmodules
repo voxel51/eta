@@ -2,3 +2,11 @@
 	path = tensorflow/models
 	url = https://github.com/voxel51/models
     ignore = dirty
+[submodule "tensorflow/darkflow"]
+	path = tensorflow/darkflow
+	url = https://github.com/voxel51/darkflow
+    ignore = dirty
+[submodule "tensorflow/automl"]
+	path = tensorflow/automl
+	url = https://github.com/voxel51/automl
+    ignore = dirty

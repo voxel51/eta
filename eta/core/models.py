@@ -200,8 +200,7 @@ def flush_model(name):
         ModelError: if the model could not be found
     """
     model, models_dir, _ = _find_model(name)
-    if model.is_in_dir(models_dir):
-        _delete_model_from_dir(model, models_dir)
+    model.flush_model_from_dir(models_dir)
 
 
 def flush_old_models():
@@ -240,7 +239,7 @@ def flush_old_models():
                 base_name,
             )
             for model, models_dir in reversed(models_list[max_vers:]):
-                _delete_model_from_dir(model, models_dir)
+                model.flush_model_from_dir(models_dir)
 
 
 def flush_models_directory(models_dir):
@@ -257,8 +256,7 @@ def flush_models_directory(models_dir):
     """
     _warn_if_not_on_search_path(models_dir)
     for model in ModelsManifest.from_dir(models_dir):
-        if model.is_in_dir(models_dir):
-            _delete_model_from_dir(model, models_dir)
+        model.flush_model_from_dir(models_dir)
 
 
 def flush_all_models():
@@ -668,14 +666,6 @@ def _list_models(downloaded_only=False):
     return models, manifests
 
 
-def _delete_model_from_dir(model, models_dir):
-    model_path = model.get_path_in_dir(models_dir)
-    logger.info(
-        "Deleting local copy of model '%s' from '%s'", model.name, model_path
-    )
-    os.remove(model_path)
-
-
 def _get_models_search_path():
     mdirs = []
     for mdir in etau.make_search_path(eta.config.models_dirs):
@@ -699,8 +689,538 @@ def _warn_if_not_on_search_path(models_dir):
         )
 
 
+class ModelRequirements(Serializable):
+    """Requirements for running a model.
+
+    Example requirements::
+
+        {
+            "packages": [
+                "numpy==1.14.0"
+            ],
+            "cpu": {
+                "support": true,
+                "packages": [
+                    "tensorflow>=1.14,<2"
+                ]
+            },
+            "gpu": {
+                "support": false,
+                "cuda_version": ">=9",
+                "cudnn_version": ">=7.5",
+                "packages": [
+                    "tensorflow-gpu>=1.14,<2"
+                ]
+            }
+        }
+
+    Attributes:
+        packages: (optional) a list of `setuptools`-style package requirements
+            in order to use the model
+        cpu: (optional) a CPU requirements dict
+        gpu: (optional) a GPU requirements dict
+    """
+
+    def __init__(self, packages=None, cpu=None, gpu=None):
+        self.packages = packages
+        self.cpu = cpu
+        self.gpu = gpu
+
+    @property
+    def supports_cpu(self):
+        """Whether the model supports CPU (True), or not (False), or unknown
+        (None).
+        """
+        if self.cpu is None:
+            return None
+
+        return self.cpu.get("support", None)
+
+    @property
+    def supports_gpu(self):
+        """Whether the model supports GPU (True), or not (False), or unknown
+        (None).
+        """
+        if self.gpu is None:
+            return None
+
+        return self.gpu.get("support", None)
+
+    def install_base_requirements(self, error_level=0):
+        """Installs any base package requirements for the model.
+
+        Args:
+            error_level: the error level to use, defined as:
+
+                0: raise error if a package install fails
+                1: log warning if a package install fails
+                2: ignore package install fails
+        """
+        if self.packages is None:
+            return
+
+        for requirement_str in self.packages:
+            etau.install_package(requirement_str, error_level=error_level)
+
+    def install_cpu_requirements(self, error_level=0):
+        """Installs any CPU package requirements for the model.
+
+        Args:
+            error_level: the error level to use, defined as:
+
+                0: raise error if a package install fails
+                1: log warning if a package install fails
+                2: ignore package install fails
+        """
+        if self.cpu is None:
+            return
+
+        for requirement_str in self.cpu.get("packages", []):
+            etau.install_package(requirement_str, error_level=error_level)
+
+    def install_gpu_requirements(self, error_level=0):
+        """Installs any GPU package requirements for the model.
+
+        Args:
+            error_level: the error level to use, defined as:
+
+                0: raise error if a package install fails
+                1: log warning if a package install fails
+                2: ignore package install fails
+        """
+        if self.gpu is None:
+            return
+
+        self._ensure_cuda(error_level)
+        for requirement_str in self.gpu.get("packages", []):
+            etau.install_package(requirement_str, error_level=error_level)
+
+    def ensure_base_requirements(self, error_level=0):
+        """Ensures that any base package requirements for the model are
+        satisfied.
+
+        Args:
+            error_level: the error level to use, defined as:
+
+                0: raise error if a requirement is not satisfied
+                1: log warning if a requirement is not satisifed
+                2: ignore unsatisifed requirements
+        """
+        if self.packages is None or error_level >= 2:
+            return
+
+        for requirement_str in self.packages:
+            etau.ensure_package(requirement_str, error_level=error_level)
+
+    def ensure_cpu_requirements(self, error_level=0):
+        """Ensures that any CPU package requirements for the model are
+        satisfied.
+
+        Args:
+            error_level: the error level to use, defined as:
+
+                0: raise error if a requirement is not satisfied
+                1: log warning if a requirement is not satisifed
+                2: ignore unsatisifed requirements
+        """
+        if self.cpu is None or error_level >= 2:
+            return
+
+        for requirement_str in self.cpu.get("packages", []):
+            etau.ensure_package(requirement_str, error_level=error_level)
+
+    def ensure_gpu_requirements(self, error_level=0):
+        """Ensures that any GPU package requirements for the model are
+        satisfied.
+
+        Args:
+            error_level: the error level to use, defined as:
+
+                0: raise error if a requirement is not satisfied
+                1: log warning if a requirement is not satisifed
+                2: ignore unsatisifed requirements
+        """
+        if self.gpu is None or error_level >= 2:
+            return
+
+        self._ensure_cuda(error_level)
+        for requirement_str in self.gpu.get("packages", []):
+            etau.ensure_package(requirement_str, error_level=error_level)
+
+    def _ensure_cuda(self, error_level):
+        if self.gpu is None or error_level >= 2:
+            return
+
+        cuda_version = self.gpu.get("cuda_version", None)
+        if cuda_version is not None:
+            etau.ensure_cuda_version(cuda_version, error_level=error_level)
+
+        cudnn_version = self.gpu.get("cudnn_version", None)
+        if cudnn_version is not None:
+            etau.ensure_cudnn_version(cudnn_version, error_level=error_level)
+
+    def attributes(self):
+        """Returns the list of class attributes that will be serialized.
+
+        Returns:
+            a list of attributes
+        """
+        _attrs = []
+        if self.packages is not None:
+            _attrs.append("packages")
+        if self.cpu is not None:
+            _attrs.append("cpu")
+        if self.gpu is not None:
+            _attrs.append("gpu")
+        return _attrs
+
+    @classmethod
+    def from_dict(cls, d):
+        """Creates a ModelRequirements from a JSON dict.
+
+        Args:
+            d: a JSON dict
+
+        Returns:
+            a ModelRequirements instance
+        """
+        packages = d.get("packages", None)
+        cpu = d.get("cpu", None)
+        gpu = d.get("gpu", None)
+        return cls(packages=packages, cpu=cpu, gpu=gpu)
+
+
+class Model(Serializable):
+    """Class that describes a model.
+
+    Attributes:
+        base_name: the base name of the model (no version info)
+        base_filename: the base filename of the model (no version info)
+        manager: the ModelManager instance that describes the remote storage
+            location of the models_dir
+        version: the version of the model (if any)
+        description: a description of the model (if any)
+        default_deployment_config_dict: a dictionary representation of an
+            `eta.core.learning.ModelConfig` describing the recommended settings
+            for deploying the model
+        requirements: the ModelRequirements for the model (if any)
+        date_created: the datetime that the model was created (if any)
+    """
+
+    def __init__(
+        self,
+        base_name,
+        base_filename,
+        manager,
+        version=None,
+        description=None,
+        default_deployment_config_dict=None,
+        requirements=None,
+        date_created=None,
+    ):
+        """Creates a Model instance.
+
+        Args:
+            base_name: the base name of the model
+            base_filename: the base filename for the model
+            manager: the ModelManager for the model
+            version: (optional) the model version
+            description: (optional) a description of the model
+            default_deployment_config_dict: (optional) a dictionary
+                representation of an `eta.core.learning.ModelConfig` describing
+                the recommended settings for deploying the model
+            requirements: (optional) a ModelRequirements for the model
+            date_created: (optional) the datetime that the model was created
+        """
+        self.base_name = base_name
+        self.base_filename = base_filename
+        self.manager = manager
+        self.version = version or None
+        self.description = description
+        self.default_deployment_config_dict = default_deployment_config_dict
+        self.requirements = requirements
+        self.date_created = date_created
+
+    @property
+    def name(self):
+        """The version-aware name of the model."""
+        if not self.has_version:
+            return self.base_name
+
+        base, ext = os.path.splitext(self.base_name)
+        return base + "@" + self.version + ext
+
+    @property
+    def filename(self):
+        """The version-aware filename of the model."""
+        if not self.has_version:
+            return self.base_filename
+
+        base, ext = os.path.splitext(self.base_filename)
+        return base + "-v" + self.version + ext
+
+    @property
+    def has_version(self):
+        """Determines whether the model has a version."""
+        return self.version is not None
+
+    @property
+    def comp_version(self):
+        """The version of this model expressed as a
+        `distutils.version.LooseVersion` intended for comparison operations.
+
+        Models with no version are given a version of 0.0.0.
+        """
+        return LooseVersion(self.version or "0.0.0")
+
+    @property
+    def has_requirements(self):
+        """Whether this model has requirements in order to be used."""
+        return self.requirements is not None
+
+    @property
+    def supports_cpu(self):
+        """Whether the model supports CPU (True), or not (False), or unknown
+        (None).
+        """
+        if not self.has_requirements:
+            return None
+
+        return self.requirements.supports_cpu
+
+    @property
+    def supports_gpu(self):
+        """Whether the model supports GPU (True), or not (False), or unknown
+        (None).
+        """
+        if not self.has_requirements:
+            return None
+
+        return self.requirements.supports_gpu
+
+    def install_requirements(self, error_level=0):
+        """Installs any necessary requirement(s) for this model.
+
+        Args:
+            error_level: the error level to use, defined as:
+
+                0: raise error if an install fails
+                1: log warning if an install fails
+                2: ignore install fails
+        """
+        if not self.has_requirements:
+            return
+
+        # Install base requirements
+        self.requirements.install_base_requirements(error_level=error_level)
+
+        found_gpu = self._ensure_environment(error_level)
+
+        if found_gpu:
+            # Install GPU requirements
+            self.requirements.install_gpu_requirements(error_level=error_level)
+        else:
+            # Install CPU requirements
+            self.requirements.install_cpu_requirements(error_level=error_level)
+
+    def ensure_requirements(self, error_level=0):
+        """Ensures that any requirement(s) for this model are satisfied.
+
+        Args:
+            error_level: the error level to use, defined as:
+
+                0: raise error if a requirement is not satisfied
+                1: log warning if a requirement is not satisifed
+                2: ignore unsatisifed requirements
+        """
+        if not self.has_requirements or error_level >= 2:
+            return
+
+        # Ensure any base requirements
+        self.requirements.ensure_base_requirements(error_level=error_level)
+
+        found_gpu = self._ensure_environment(error_level)
+
+        if found_gpu:
+            # Ensure GPU requirements
+            self.requirements.ensure_gpu_requirements(error_level=error_level)
+        else:
+            # Ensure CPU requirements
+            self.requirements.ensure_cpu_requirements(error_level=error_level)
+
+    def _ensure_environment(self, error_level):
+        if not self.has_requirements:
+            return
+
+        found_gpu = etau.has_gpu()
+
+        if found_gpu:
+            if self.requirements.supports_gpu == False:  # False, not None
+                etau.handle_error(
+                    ModelError(
+                        "Model '%s' requires GPU but no GPU was found"
+                        % self.name
+                    ),
+                    error_level,
+                )
+        else:
+            if self.requirements.supports_cpu == False:  # False not None
+                etau.handle_error(
+                    ModelError(
+                        "Model '%s' does not support CPU and no GPU was found"
+                        % self.name
+                    ),
+                    error_level,
+                )
+
+        return found_gpu
+
+    def get_path_in_dir(self, models_dir):
+        """Gets the model path for the model in the given models directory.
+
+        Args:
+            models_dir: the models directory
+
+        Returns:
+            the model path
+        """
+        return os.path.join(models_dir, self.filename)
+
+    def is_in_dir(self, models_dir):
+        """Determines whether a copy of the model exists in the given models
+        directory.
+
+        Args:
+            models_dir: the models directory
+
+        Returns:
+            True/False
+        """
+        model_path = self.get_path_in_dir(models_dir)
+        return self.is_model_downloaded(model_path)
+
+    def is_model_downloaded(self, model_path):
+        """Determines whether the model is downloaded to the given location.
+
+        If `model_path` is an archive, this method will also return `True` if a
+        directory with the same basename as `model_path` exists.
+
+        Args:
+            model_path: the path on disk for the model
+
+        Returns:
+            True/False
+        """
+        return self.manager.is_model_downloaded(model_path)
+
+    def flush_model(self, model_path):
+        """Flushes the copy of the model at the given local path, if necessary.
+
+        Args:
+            model_path: the path on disk for the model
+        """
+        self.manager.flush_model(model_path)
+
+    def flush_model_from_dir(self, models_dir):
+        """Flushes the copy of the model in the given models directory, if
+        necessary.
+
+        Args:
+            models_dir: the models directory
+        """
+        model_path = self.get_path_in_dir(models_dir)
+        self.flush_model(model_path)
+
+    @staticmethod
+    def parse_name(name):
+        """Parses the model name, returning the base name and the version,
+        if any.
+
+        Args:
+            name: the name of the model, which can have "@<ver>" appended to
+                refer to a specific version of the model
+
+        Returns:
+            base_name: the base name of the model
+            version: the version of the model, or None if no version was found
+
+        Raises:
+            ModelError: if the model name was invalid
+        """
+        chunks = name.split("@")
+        if len(chunks) == 1:
+            return name, None
+
+        if chunks[1] == "" or len(chunks) > 2:
+            raise ModelError("Invalid model name '%s'" % name)
+
+        return chunks[0], chunks[1]
+
+    @staticmethod
+    def has_version_str(name):
+        """Determines whether the given model name has a version string.
+
+        Args:
+            name: the model name
+
+        Returns:
+            True/False
+        """
+        return bool(Model.parse_name(name)[1])
+
+    def attributes(self):
+        """Returns a list of class attributes to be serialized.
+
+        Returns:
+            a list of class attributes
+        """
+        return [
+            "base_name",
+            "base_filename",
+            "version",
+            "description",
+            "manager",
+            "default_deployment_config_dict",
+            "requirements",
+            "date_created",
+        ]
+
+    @classmethod
+    def from_dict(cls, d):
+        """Constructs a Model from a JSON dictionary.
+
+        Args:
+            d: a JSON dictionary
+
+        Returns:
+            a Model instance
+        """
+        model_manager = ModelManager.from_dict(d["manager"])
+
+        requirements = d.get("requirements", None)
+        if requirements is not None:
+            requirements = ModelRequirements.from_dict(requirements)
+
+        date_created = etau.parse_isotime(d.get("date_created"))
+
+        return cls(
+            d["base_name"],
+            d["base_filename"],
+            model_manager,
+            version=d.get("version", None),
+            description=d.get("description", None),
+            default_deployment_config_dict=d.get(
+                "default_deployment_config_dict", None
+            ),
+            requirements=requirements,
+            date_created=date_created,
+        )
+
+
 class ModelsManifest(Serializable):
     """Class that describes the contents of a models directory."""
+
+    _MODEL_CLS = Model
 
     def __init__(self, models=None):
         """Creates a ModelsManifest instance.
@@ -756,6 +1276,15 @@ class ModelsManifest(Serializable):
 
         self.models = [model for model in self.models if model.name != name]
 
+    def merge(self, models_manifest):
+        """Merges the models manifest into this one.
+
+        Args:
+            models_manifest: a ModelsManifest
+        """
+        for model in models_manifest:
+            self.add_model(model)
+
     def get_model_with_name(self, name):
         """Gets the model with the given name.
 
@@ -803,32 +1332,69 @@ class ModelsManifest(Serializable):
     def has_model_with_name(self, name):
         """Determines whether this manifest contains the model with the
         given name.
+
+        Args:
+            name: the model name
+
+        Returns:
+            True/False
         """
         return any(name == model.name for model in self.models)
 
     def has_model_with_filename(self, filename):
         """Determines whether this manifest contains a model with the given
         filename.
+
+        Args:
+            filename: the filename
+
+        Returns:
+            True/False
         """
         return any(filename == model.filename for model in self.models)
 
     @staticmethod
     def make_manifest_path(models_dir):
-        """Makes the manifest path for the given models directory."""
+        """Makes the manifest path for the given models directory.
+
+        Args:
+            models_dir: the models directory
+
+        Returns:
+             the manifest path
+        """
         return os.path.join(models_dir, MODELS_MANIFEST_JSON)
 
     @staticmethod
     def dir_has_manifest(models_dir):
-        """Determines whether the given directory has a models manifest."""
+        """Determines whether the given directory has a models manifest.
+
+        Args:
+            models_dir: the models directory
+
+        Returns:
+            True/False
+        """
         return os.path.isfile(ModelsManifest.make_manifest_path(models_dir))
 
     def write_to_dir(self, models_dir):
-        """Writes the ModelsManifest to the given models directory."""
+        """Writes the ModelsManifest to the given models directory.
+
+        Args:
+            models_dir: the models directory
+        """
         self.write_json(self.make_manifest_path(models_dir))
 
     @classmethod
     def from_dir(cls, models_dir):
-        """Loads the ModelsManifest from the given models directory."""
+        """Loads the ModelsManifest from the given models directory.
+
+        Args:
+            models_dir: the models directory
+
+        Returns:
+            a ModelsManifest
+        """
         if not cls.dir_has_manifest(models_dir):
             raise ModelError(
                 "Directory '%s' has no models manifest" % models_dir
@@ -838,237 +1404,15 @@ class ModelsManifest(Serializable):
 
     @classmethod
     def from_dict(cls, d):
-        """Constructs a ModelsManifest from a JSON dictionary."""
-        return cls(models=[Model.from_dict(md) for md in d["models"]])
-
-
-class Model(Serializable):
-    """Class that describes a model.
-
-    Attributes:
-        base_name: the base name of the model (no version info)
-        base_filename: the base filename of the model (no version info)
-        manager: the ModelManager instance that describes the remote storage
-            location of the models_dir
-        version: the version of the model (if any)
-        description: a description of the model (if any)
-        default_deployment_config_dict: a dictionary representation of an
-            `eta.core.learning.ModelConfig` describing the recommended settings
-            for deploying the model
-        requirements: (optional) a list of `setuptools`-style package
-            requirements in order to use the model
-        date_created: the datetime that the model was created (if any)
-    """
-
-    def __init__(
-        self,
-        base_name,
-        base_filename,
-        manager,
-        version=None,
-        description=None,
-        default_deployment_config_dict=None,
-        requirements=None,
-        date_created=None,
-    ):
-        """Creates a Model instance.
+        """Constructs a ModelsManifest from a JSON dictionary.
 
         Args:
-            base_name: the base name of the model
-            base_filename: the base filename for the model
-            manager: the ModelManager for the model
-            version: (optional) the model version
-            description: (optional) a description of the model
-            default_deployment_config_dict: (optional) a dictionary
-                representation of an `eta.core.learning.ModelConfig` describing
-                the recommended settings for deploying the model
-            requirements: (optional) a list of `setuptools`-style package
-                requirements in order to use the model
-            date_created: (optional) the datetime that the model was created
-        """
-        self.base_name = base_name
-        self.base_filename = base_filename
-        self.manager = manager
-        self.version = version or None
-        self.description = description
-        self.default_deployment_config_dict = default_deployment_config_dict
-        self.requirements = requirements
-        self.date_created = date_created
-
-    @property
-    def name(self):
-        """The version-aware name of the model."""
-        if not self.has_version:
-            return self.base_name
-
-        base, ext = os.path.splitext(self.base_name)
-        return base + "@" + self.version + ext
-
-    @property
-    def filename(self):
-        """The version-aware filename of the model."""
-        if not self.has_version:
-            return self.base_filename
-
-        base, ext = os.path.splitext(self.base_filename)
-        return base + "-v" + self.version + ext
-
-    @property
-    def has_version(self):
-        """Determines whether the model has a version."""
-        return self.version is not None
-
-    @property
-    def comp_version(self):
-        """The version of this model expressed as a
-        `distutils.version.LooseVersion` intended for comparison operations.
-
-        Models with no version are given a version of 0.0.0.
-        """
-        return LooseVersion(self.version or "0.0.0")
-
-    @property
-    def has_requirements(self):
-        """Whether this model has package requirements in order to be used."""
-        return self.requirements is not None
-
-    def ensure_requirements(self):
-        """Ensures that any package requirement(s) for this model are
-        satisfied.
-
-        Raises:
-            ImportError: if a required package is not installed or does not
-                meet the specified requirements
-        """
-        if not self.has_requirements:
-            return
-
-        for requirement_str in self.requirements:
-            etau.ensure_package(requirement_str)
-
-    def get_path_in_dir(self, models_dir):
-        """Gets the model path for the model in the given models directory."""
-        return os.path.join(models_dir, self.filename)
-
-    def is_in_dir(self, models_dir):
-        """Determines whether a copy of the model exists in the given models
-        directory.
-        """
-        return os.path.isfile(self.get_path_in_dir(models_dir))
-
-    @staticmethod
-    def parse_name(name):
-        """Parses the model name, returning the base name and the version,
-        if any.
-
-        Args:
-            name: the name of the model, which can have "@<ver>" appended to
-                refer to a specific version of the model
+            d: a JSON dictionary
 
         Returns:
-            base_name: the base name of the model
-            version: the version of the model, or None if no version was found
-
-        Raises:
-            ModelError: if the model name was invalid
+            a ModelsManifest
         """
-        chunks = name.split("@")
-        if len(chunks) == 1:
-            return name, None
-
-        if chunks[1] == "" or len(chunks) > 2:
-            raise ModelError("Invalid model name '%s'" % name)
-
-        return chunks[0], chunks[1]
-
-    @staticmethod
-    def has_version_str(name):
-        """Determines whether the given model name has a version string."""
-        return bool(Model.parse_name(name)[1])
-
-    def attributes(self):
-        """Returns a list of class attributes to be serialized."""
-        return [
-            "base_name",
-            "base_filename",
-            "version",
-            "description",
-            "manager",
-            "default_deployment_config_dict",
-            "requirements",
-            "date_created",
-        ]
-
-    @classmethod
-    def from_dict(cls, d):
-        """Constructs a Model from a JSON dictionary."""
-        date_created = etau.parse_isotime(d.get("date_created"))
-        return cls(
-            d["base_name"],
-            d["base_filename"],
-            ModelManager.from_dict(d["manager"]),
-            version=d.get("version", None),
-            description=d.get("description", None),
-            default_deployment_config_dict=d.get(
-                "default_deployment_config_dict", None
-            ),
-            requirements=d.get("requirements", None),
-            date_created=date_created,
-        )
-
-
-class PublishedModel(object):
-    """Base class for classes that encapsulate published models.
-
-    This class can load the model locally or from remote storage as needed.
-
-    Subclasses must implement the `_load` method to perform the actual loading.
-
-    Attributes:
-        model_name: the name of the model
-        model_path: the local path to the model on disk
-    """
-
-    def __init__(self, model_name):
-        """Initializes a PublishedModel instance.
-
-        Args:
-            model_name: the model to load
-
-        Raises:
-            ModelError: if the model was not found
-        """
-        self.model_name = model_name
-        self.model_path = find_model(self.model_name)
-
-    def load(self):
-        """Loads the model, downloading them from remote storage if necessary.
-
-        Returns:
-            the model
-        """
-        download_model(self.model_name, force=False)
-        return self._load()
-
-    def _load(self):
-        raise NotImplementedError("subclass must implement _load()")
-
-
-class PickledModel(PublishedModel):
-    """Class that can load a published model stored as a .pkl file."""
-
-    def _load(self):
-        return read_pickle(self.model_path)
-
-
-class NpzModelWeights(PublishedModel, dict):
-    """Class that provides a dictionary interface to a collection of published
-    model weights, which must be stored in an .npz file.
-    """
-
-    def _load(self):
-        self.update(np.load(self.model_path))
-        return self
+        return cls(models=[cls._MODEL_CLS.from_dict(md) for md in d["models"]])
 
 
 class ModelManager(Configurable, Serializable):
@@ -1093,6 +1437,26 @@ class ModelManager(Configurable, Serializable):
     def upload_model(model_path, *args, **kwargs):
         raise NotImplementedError("subclass must implement upload_model()")
 
+    def is_model_downloaded(self, model_path):
+        """Determines whether the model is downloaded to the given location.
+
+        If `model_path` is an archive, this method will also return `True` if a
+        directory with the same basename as `model_path` exists.
+
+        Args:
+            model_path: the path on disk for the model
+
+        Returns:
+            True/False
+        """
+        if etau.is_archive(model_path):
+            archive_dir = etau.split_archive(model_path)[0]
+            if os.path.isdir(archive_dir):
+                # Extracted archive already exists
+                return True
+
+        return os.path.isfile(model_path)
+
     def download_model(self, model_path, force=False):
         """Downloads the model to the given local path.
 
@@ -1109,52 +1473,123 @@ class ModelManager(Configurable, Serializable):
         Raises:
             ModelError: if model downloading is not currently allowed
         """
-        if force or not os.path.isfile(model_path):
-            if not eta.config.allow_model_downloads:
-                raise ModelError(
-                    "Model downloading is currently disabled. Modify your ETA "
-                    "config to change this setting."
-                )
+        if not force and self.is_model_downloaded(model_path):
+            return
 
-            etau.ensure_basedir(model_path)
-            self._download_model(model_path)
+        if not eta.config.allow_model_downloads:
+            raise ModelError(
+                "Model downloading is currently disabled. Modify your ETA "
+                "config to change this setting."
+            )
+
+        etau.ensure_basedir(model_path)
+        self._download_model(model_path)
+
+        if self.config.extract_archive:
+            if self.config.delete_archive is not None:
+                delete_archive = self.config.delete_archive
+            else:
+                delete_archive = False
+
+            etau.extract_archive(model_path, delete_archive=delete_archive)
+
+    def flush_model(self, model_path):
+        """Flushes the copy of the model at the given local path, if necessary.
+
+        Args:
+            model_path: the path on disk for the model
+        """
+        if etau.is_archive(model_path):
+            archive_dir = etau.split_archive(model_path)[0]
+            if os.path.isdir(archive_dir):
+                etau.delete_dir(archive_dir)
+
+        if os.path.isfile(model_path):
+            etau.delete_file(model_path)
 
     def delete_model(self):
+        """Deletes the model from remote storage."""
         raise NotImplementedError("subclass must implement delete_model()")
 
     def _download_model(self, model_path):
+        """Subclass implementation of downloading the model to the given path.
+
+        Args:
+            model_path: the path to which to download the model
+        """
         raise NotImplementedError("subclass must implement _download_model()")
 
     def attributes(self):
-        """Returns a list of attributes to be serialized."""
+        """Returns a list of attributes to be serialized.
+
+        Returns:
+            a list of attributes
+        """
         return ["type", "config"]
 
     @classmethod
     def from_dict(cls, d):
-        """Builds the ModelManager subclass from a JSON dictionary."""
+        """Builds the ModelManager subclass from a JSON dictionary.
+
+        Args:
+            d: a JSON dictionary
+
+        Returns:
+            a ModelManager instance
+        """
         manager_cls, config_cls = cls.parse(d["type"])
         return manager_cls(config_cls.from_dict(d["config"]))
 
 
-class ETAModelManagerConfig(Config):
-    """Configuration settings for an ETAModelManager instance.
+class ModelManagerConfig(Config):
+    """Base configuration settings for a ModelManager instance.
 
-    Exactly one of the attributes should be set.
+    All ModelManagerConfig subclasses must call `super().__init__()`.
+
+    Attributes:
+        extract_archive: whether to extract the downloaded model, which is
+            assumed to be an archive
+        delete_archive: whether to delete the archive after extracting it, if
+            applicable
+    """
+
+    def __init__(self, d):
+        self.extract_archive = self.parse_bool(
+            d, "extract_archive", default=None
+        )
+        self.delete_archive = self.parse_bool(
+            d, "delete_archive", default=None
+        )
+
+    def attributes(self):
+        """Returns a list of attributes to be serialized.
+
+        Returns:
+            a list of attributes
+        """
+        # Omit attributes with no value, for clarity
+        return [a for a in vars(self) if getattr(self, a) is not None]
+
+
+class ETAModelManagerConfig(ModelManagerConfig):
+    """Configuration settings for an ETAModelManager instance.
 
     Attributes:
         url: the URL of the file
         google_drive_id: the ID of the file in Google Drive
+        extract_archive: whether to extract the downloaded model, which is
+            assumed to be an archive
+        delete_archive: whether to delete the archive after extracting it, if
+            applicable
     """
 
     def __init__(self, d):
+        super(ETAModelManagerConfig, self).__init__(d)
+
         self.url = self.parse_string(d, "url", default=None)
         self.google_drive_id = self.parse_string(
             d, "google_drive_id", default=None
         )
-
-    def attributes(self):
-        # Omit attributes with no value, for clarity
-        return [a for a in vars(self) if getattr(self, a) is not None]
 
 
 class ETAModelManager(ModelManager):
@@ -1210,11 +1645,3 @@ class ModelError(Exception):
     """Exception raised when an invalid model is encountered."""
 
     pass
-
-
-#
-# The first time this module is loaded, perform any necessary flushing of old
-# models as per the value of the `eta.config.max_model_versions_to_keep`
-# setting
-#
-flush_old_models()

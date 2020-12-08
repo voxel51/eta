@@ -53,6 +53,7 @@ def load_labels_map(labels_map_path):
         for line in f:
             idx, label = line.split(":")
             labels_map[int(idx)] = label.strip()
+
     return labels_map
 
 
@@ -115,31 +116,60 @@ def has_default_deployment_model(model_name):
     return model.default_deployment_config_dict is not None
 
 
-def load_default_deployment_model(model_name):
+def load_default_deployment_model(
+    model_name, install_requirements=False, error_level=0
+):
     """Loads the default deployment for the model with the given name.
 
     The model must be findable via `eta.core.models.get_model(model_name)`.
+
+    By default, any requirement(s) specified by the model are validated prior
+    to loading it. Use `error_level` to configure this behavior, if desired.
 
     Args:
         model_name: the name of the model, which can have "@<ver>" appended to
             refer to a specific version of the model. If no version is
             specified, the latest version of the model is assumed
+        install_requirements: whether to install any requirements before
+            loading the model. By default, this is False
+        error_level: the error level to use, defined as:
+
+            0: raise error if a requirement is not satisfied
+            1: log warning if a requirement is not satisifed
+            2: ignore unsatisifed requirements
 
     Returns:
         the loaded `Model` instance described by the default deployment for the
             specified model
-
-    Raises:
-        ImportError: if a required package is not installed or does not meet
-            the specified requirements
     """
     model = etam.get_model(model_name)
-    model.ensure_requirements()
+    if install_requirements:
+        model.install_requirements(error_level=error_level)
+    else:
+        model.ensure_requirements(error_level=error_level)
+
     config = ModelConfig.from_dict(model.default_deployment_config_dict)
     return config.build()
 
 
-def ensure_requirements(model_name):
+def install_requirements(model_name, error_level=0):
+    """Installs any package requirements for the model with the given name.
+
+    Args:
+        model_name: the name of the model, which can have "@<ver>" appended to
+            refer to a specific version of the model. If no version is
+            specified, the latest version of the model is assumed
+        error_level: the error level to use, defined as:
+
+            0: raise error if a requirement install fails
+            1: log warning if a requirement install fails
+            2: ignore install fails
+    """
+    model = etam.get_model(model_name)
+    model.install_requirements(error_level=error_level)
+
+
+def ensure_requirements(model_name, error_level=0):
     """Ensures that the package requirements for the model with the given name
     are satisfied.
 
@@ -147,64 +177,94 @@ def ensure_requirements(model_name):
         model_name: the name of the model, which can have "@<ver>" appended to
             refer to a specific version of the model. If no version is
             specified, the latest version of the model is assumed
+        error_level: the error level to use, defined as:
 
-    Raises:
-        ImportError: if a required package is not installed or does not meet
-            the specified requirements
+            0: raise error if a requirement is not satisfied
+            1: log warning if a requirement is not satisifed
+            2: ignore unsatisifed requirements
     """
     model = etam.get_model(model_name)
-    model.ensure_requirements()
+    model.ensure_requirements(error_level=error_level)
 
 
-class HasDefaultDeploymentConfig(object):
-    """Mixin class for `eta.core.learning.ModelConfig`s who support loading
-    default deployment configs for their model name fields.
+class HasPublishedModel(object):
+    """Mixin class for `eta.core.learning.ModelConfig`s whose models are
+    published via the `eta.core.models` infrastructure.
 
-    This class allows `ModelConfig` definitions that have published models
-    with default deployments to automatically load any settings from the
-    default deployment and add them to model configs at runtime.
+    This class provides the following functionality:
 
-    This is helpful to avoid, for example, specifying redundant parameters such
-    as label map paths in every pipeline that uses a particular model.
+    -   The model to load can be specified either by:
+
+        (a) providing a `model_name`, which specifies the published model to
+            load. The model will be downloaded, if necessary
+
+        (b) providing a `model_path`, which directly specifies the path to the
+            model to load
+
+    -   `ModelConfig` definitions that use published models with default
+        deployments will have default values for any unspecified parameters
+        loaded and applied at runtime
+
+    Attributes:
+        model_name: the name of the published model to load. If this value is
+            provided, `model_path` does not need to be
+        model_path: the path to a model to load. If this value is provided,
+            `model_name` does not need to be
     """
 
-    @staticmethod
-    def load_default_deployment_params(d, model_name):
-        """Loads the default deployment ModelConfig dictionary for the model
-        with the given name and populates any missing fields in `d` with its
-        values.
+    def init(self, d):
+        """Initializes the published model config.
+
+        This method should be called by `ModelConfig.__init__()`, and it
+        performs the following tasks:
+
+        -   Parses the `model_name` and `model_path` parameters
+        -   Populates any default parameters in the provided ModelConfig dict
 
         Args:
-            d: a ModelConfig dictionary
-            model_name: the name of the model whose default deployment config
-                dictionary to load
+            d: a ModelConfig dict
 
         Returns:
-            a copy of `d` with any missing fields populated from the default
-                deployment dictionary for the model
+            a ModelConfig dict with any default parameters populated
         """
-        model = etam.get_model(model_name)
+        # pylint: disable=no-member
+        self.model_name = self.parse_string(d, "model_name", default=None)
+        self.model_path = self.parse_string(d, "model_path", default=None)
+
+        if self.model_name:
+            d = self._load_default_deployment_params(d, self.model_name)
+
+        return d
+
+    def download_model_if_necessary(self):
+        """Downloads the published model specified by the config, if necessary.
+
+        After this method is called, the `model_path` attribute will always
+        contain the path to the model on disk.
+        """
+        if not self.model_name and not self.model_path:
+            raise ConfigError(
+                "Either `model_name` or `model_path` must be provided"
+            )
+
+        if self.model_path is None:
+            self.model_path = etam.download_model(self.model_name)
+
+    @classmethod
+    def _load_default_deployment_params(cls, d, model_name):
+        model = cls._get_model(model_name)
+
         deploy_config_dict = model.default_deployment_config_dict
         if deploy_config_dict is None:
-            logger.info(
-                "Model '%s' has no default deployment config; returning the "
-                "input dict",
-                model_name,
-            )
             return d
-
-        logger.info(
-            "Loaded default deployment config for model '%s'", model_name
-        )
 
         dd = deploy_config_dict["config"]
         dd.update(d)
-        logger.info(
-            "Applied %d setting(s) from default deployment config",
-            len(dd) - len(d),
-        )
-
         return dd
+
+    @classmethod
+    def _get_model(cls, model_name):
+        return etam.get_model(model_name)
 
 
 class ModelConfig(Config):
@@ -271,22 +331,6 @@ class Model(Configurable):
 
     def __exit__(self, *args):
         pass
-
-    @staticmethod
-    def ensure_requirements(model_name):
-        """Ensures that the package requirements for the model are satisfied.
-
-        The model must be findable via `eta.core.models.get_model(model_name)`.
-
-        Args:
-            model_name: the name of the model
-
-        Raises:
-            ImportError: if a required package is not installed or does not
-                meet the specified requirements
-        """
-        model = etam.get_model(model_name)
-        model.ensure_requirements()
 
 
 class ImageModelConfig(ModelConfig):
@@ -384,11 +428,20 @@ class ClassifierConfig(ModelConfig):
 class Classifier(Model):
     """Interface for classifiers.
 
-    Subclasses of `Classifier` must implement the `predict()` method.
+    Subclasses of `Classifier` must implement the `predict()` method, and they
+    should declare via the `is_multilabel` property whether they output single
+    or multiple labels per prediction.
 
     Subclasses can optionally implement the context manager interface to
     perform any necessary setup and teardown.
     """
+
+    @property
+    def is_multilabel(self):
+        """Whether the classifier generates single labels (False) or multiple
+        labels (True) per prediction.
+        """
+        raise NotImplementedError("subclasses must implement is_multilabel")
 
     def predict(self, arg):
         """Peforms prediction on the given argument.
@@ -420,11 +473,12 @@ class ImageClassifierConfig(ClassifierConfig):
 class ImageClassifier(Classifier):
     """Base class for classifiers that operate on single images.
 
-    `ImageClassifier`s may output single or multiple labels per image.
-
     Subclasses of `ImageClassifier` must implement the `predict()` method, and
     they can optionally provide a custom (efficient) implementation of the
     `predict_all()` method.
+
+    `ImageClassifier`s may output single or multiple labels per image, and
+    should declare such via the `is_multilabel` property.
 
     Subclasses can optionally implement the context manager interface to
     perform any necessary setup and teardown, e.g., operating a `Featurizer`
@@ -479,7 +533,7 @@ class VideoFramesClassifier(Classifier):
     as tensors of images.
 
     `VideoFramesClassifier`s may output single or multiple labels per video
-    clip.
+    clip, and should declare such via the `is_multilabel` property.
 
     Subclasses of `VideoFramesClassifier` must implement the `predict()`
     method.
@@ -522,7 +576,7 @@ class VideoClassifier(Classifier):
     """Base class for classifiers that operate on entire videos.
 
     `VideoClassifier`s may output single or multiple (video-level) labels per
-    video.
+    video, and should declare such via the `is_multilabel` property.
 
     Subclasses of `VideoClassifier` must implement the `predict()` method.
 

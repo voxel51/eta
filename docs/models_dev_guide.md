@@ -3,7 +3,6 @@
 This document describes the design of the model management system in ETA and
 best practices for using it.
 
-
 ## Motivation
 
 The ETA library relies on a number of large models in order to power its
@@ -14,15 +13,14 @@ train it on evolving datasets. In addition, models are valuable, so they need
 to be archived and backed up to ensure that they remain secure and readily
 accessible.
 
-The ETA library provides a simple, yet powerful interface that satisifies
-these constraints.
-
+The ETA library provides a simple, yet powerful interface that satisifies these
+constraints.
 
 ## Design
 
 The `eta.core.models` module implements the core interface for managing models
-in ETA. The underlying design principle of the interface is that all models
-are stored in cloud storage and can be easily downloaded to a local ETA
+in ETA. The underlying design principle of the interface is that all models are
+stored in cloud storage and can be easily downloaded to a local ETA
 installation as needed using a simple version-aware naming system.
 
 ### Model versions
@@ -31,11 +29,11 @@ Each model is identified by a unique string of the form `<name>@<version>`,
 where `<name>` is the canonical name of the model and `<version>` is an
 optional version of the model.
 
-If a model is registered without a version, it can be referenced simply by
-its `<name>`. If a model is registered with a version, it can be referenced
-explicitly using the `<name>@<version>` syntax. The `<name>` syntax can
-also be used with versioned models, in which case the latest version of the
-model (i.e. the largest version number) will be referenced.
+If a model is registered without a version, it can be referenced simply by its
+`<name>`. If a model is registered with a version, it can be referenced
+explicitly using the `<name>@<version>` syntax. The `<name>` syntax can also be
+used with versioned models, in which case the latest version of the model (i.e.
+the largest version number) will be referenced.
 
 #### Models search path
 
@@ -51,9 +49,9 @@ describes the models that have been registered in that directory. The manifest
 files are lightweight and are maintained in version control in the repository.
 
 The manifest file contains the names and versions of each model registered in
-its parent directory; it also contain the necessary information to locate
-each model in cloud storage. When a model is downloaded, it will be stored
-in the same directory as its corresponding manifest file.
+its parent directory; it also contain the necessary information to locate each
+model in cloud storage. When a model is downloaded, it will be stored in the
+same directory as its corresponding manifest file.
 
 The following is an example contents of a `manifest.json` file:
 
@@ -85,13 +83,13 @@ The following is an example contents of a `manifest.json` file:
 }
 ```
 
-The `manager` and `default_deployment_config_dict` entries of the manifest
-are described in the following sections.
+The `manager` and `default_deployment_config_dict` entries of the manifest are
+described in the following sections.
 
 #### Model managers
 
-The `eta.core.models.ModelManager` class defines the base implementation of
-a model manager, which is a class that can upload, download, and delete a model
+The `eta.core.models.ModelManager` class defines the base implementation of a
+model manager, which is a class that can upload, download, and delete a model
 from remote storage. Each entry in a manifest file contains a `manager` field
 that describes the model manager instance for that model.
 
@@ -135,6 +133,7 @@ print(objects)
 ```
 
 Example output:
+
 ```json
 {
     "objects": [
@@ -155,13 +154,12 @@ Example output:
         }
     ]
 }
-````
-
+```
 
 ## Basic Usage
 
-The following sections provide a brief overview of the basic usage of the
-model management system. They assume that the following import has been issued:
+The following sections provide a brief overview of the basic usage of the model
+management system. They assume that the following import has been issued:
 
 ```py
 import eta.core.models as etam
@@ -175,9 +173,9 @@ To generate a list of available models, run:
 models = etam.list_models()
 ```
 
-The above function lists the names of all models registered in manifests on
-the current model search path, regardless of whether they are currently
-downloaded to your machine.
+The above function lists the names of all models registered in manifests on the
+current model search path, regardless of whether they are currently downloaded
+to your machine.
 
 #### Downloading a model
 
@@ -197,8 +195,8 @@ The above function downloads the model (if necessary) from cloud storage and
 stores it in the models directory whose `manifest.json` file contains the model
 definition.
 
-Recall that model versions can be easily configured in the `name` argument.
-For example:
+Recall that model versions can be easily configured in the `name` argument. For
+example:
 
 ```py
 etam.list_models()
@@ -268,8 +266,8 @@ etam.publish_public_model(
 ```
 
 The above publishing process adds an entry to the `manifest.json` file for your
-new model in the models directory that you specified (or the first directory
-in `eta.config.models_dir` if none is specified). The new model will now be
+new model in the models directory that you specified (or the first directory in
+`eta.config.models_dir` if none is specified). The new model will now be
 findable by all of the model-related functionality in `eta.core.models` as long
 as the models directory you chose above remains on your models search path.
 
@@ -278,13 +276,12 @@ the models directly specified above (i.e. the directory whose `manifest.json`
 file contains the model definition) and an appropriate filename will be dervied
 from the base filename and version number of the model.
 
-Internally, the models an `eta.core.models.ETAModelManager` to manage
-access to the model in the public Google Drive folder. However, the publishing
-process can be easily extended to custom cloud storage solutions. To do so,
-one should implement a new subclass of `eta.core.models.ModelManager` and use
-it together with the `eta.core.models.register_model` function to implement a
-custom publishing workflow.
-
+Internally, the models an `eta.core.models.ETAModelManager` to manage access to
+the model in the public Google Drive folder. However, the publishing process
+can be easily extended to custom cloud storage solutions. To do so, one should
+implement a new subclass of `eta.core.models.ModelManager` and use it together
+with the `eta.core.models.register_model` function to implement a custom
+publishing workflow.
 
 #### Flushing local models
 
@@ -312,9 +309,7 @@ you to configure the maximum number of versions of a given model to keep on
 disk. If this limit is execeeded, the oldest versions of a model are deleted
 until the limit is satisifed again.
 
-The ETA library automatically checks this condition and performs the necessary
-cleanup each time the `eta.core.models` module is loaded. However, you can
-manually invoke the cleanup at any time by running:
+You can enforce this limit at any time by running:
 
 ```py
 etam.flush_old_models()
@@ -331,8 +326,6 @@ etam.delete_model(name)
 The above command deletes the model from both local and cloud storage, and it
 deletes the associated entry from the `manifest.json` file.
 
-
 ## Copyright
 
-Copyright 2017-2020, Voxel51, Inc.<br>
-voxel51.com
+Copyright 2017-2020, Voxel51, Inc.<br> voxel51.com

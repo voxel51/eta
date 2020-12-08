@@ -28,23 +28,29 @@ import numpy as np
 
 from eta.core.config import Config
 from eta.core.features import VideoFramesFeaturizer, VideoFeaturizer
+import eta.core.learning as etal
 import eta.core.tfutils as etat
 import eta.core.video as etav
 
 tf = etat.import_tf1()
 
 
-class C3DConfig(Config):
+class C3DConfig(Config, etal.HasPublishedModel):
     """Configuration settings for the C3D network.
 
     Attributes:
-        model_name: the name of the C3D UCF101 model to load
+        model_name: the name of the published model to load. If this value is
+            provided, `model_path` does not need to be
+        model_path: the path to a frozen inference graph to load. If this value
+            is provided, `model_name` does not need to be
     """
 
     def __init__(self, d):
-        self.model_name = self.parse_string(
-            d, "model_name", default="c3d-ucf101"
-        )
+        d = self.init(d)
+
+    @classmethod
+    def default(cls):
+        return cls({"model_name": "c3d-ucf101"})
 
 
 class C3D(object):
@@ -67,7 +73,10 @@ class C3D(object):
                 computing
             clips: an optional tf.placeholder of size [XXXX, 16, 112, 112, 3]
         """
-        self.config = config or C3DConfig.default()
+        if config is None:
+            config = C3DConfig.default()
+
+        self.config = config
         self.sess = sess or etat.make_tf_session()
         self.clips = clips or tf.placeholder(
             tf.float32, [None, 16, 112, 112, 3]
@@ -80,7 +89,9 @@ class C3D(object):
             self._build_fc_layers()
             self._build_output_layer()
 
-        self._load_model(self.config.model_name)
+        # Load model
+        self.config.download_model_if_necessary()
+        self._load_model(self.config.model_path)
 
     def __enter__(self):
         return self
@@ -216,10 +227,11 @@ class C3D(object):
     def _build_output_layer(self):
         self.probs = tf.nn.softmax(self.fc3l)
 
-    def _load_model(self, model_name):
+    def _load_model(self, model_path):
         init = tf.global_variables_initializer()
         self.sess.run(init)
-        etat.TFModelCheckpoint(model_name, self.sess).load()
+        saver = tf.train.Saver()
+        saver.restore(self.sess, model_path)
 
 
 def _tf_variable_with_weight_decay(name, shape, stddev, decay):
@@ -253,7 +265,10 @@ class C3DFeaturizerConfig(C3DConfig):
     """Configuration settings for a C3DFeaturizer.
 
     Attributes:
-        model_name: the name of the C3D UCF101 model to load
+        model_name: the name of the published model to load. If this value is
+            provided, `model_path` does not need to be
+        model_path: the path to a frozen inference graph to load. If this value
+            is provided, `model_name` does not need to be
         sample_method: the frame sampling method to use. The possible values
             are "first", "uniform", and "sliding_window"
         stride: the stride to use. When the sampling method is
@@ -280,8 +295,11 @@ class C3DFeaturizer(VideoFramesFeaturizer, VideoFeaturizer):
             config: an optional C3DFeaturizerConfig instance. If omitted, the
                 default C3DFeaturizerConfig is used
         """
+        if config is None:
+            config = C3DFeaturizerConfig.default()
+
         super(C3DFeaturizer, self).__init__()
-        self.config = config or C3DFeaturizerConfig.default()
+        self.config = config
         self.validate(self.config)
         self.c3d = None
 

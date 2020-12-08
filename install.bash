@@ -280,6 +280,13 @@ MSG "Initializing submodules"
 CRITICAL git submodule init
 CRITICAL git submodule update
 
+# Install `tensorflow/darkflow`
+MSG "Installing tensorflow/darkflow"
+cd tensorflow/darkflow
+pip install -e .
+cd ../..
+
+# Install `tensorflow/models`
 MSG "Installing tensorflow/models"
 cd tensorflow/models
 INFO command -v protoc

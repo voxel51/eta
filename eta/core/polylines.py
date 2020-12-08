@@ -38,6 +38,7 @@ class Polyline(etal.Labels):
         name: (optional) the name for the polyline, e.g., ``ground_truth`` or
             the name of the model that produced it
         label: (optional) a label for the polyline
+        confidence: (optional) a confidence for the polyline, in ``[0, 1]``
         index: (optional) an index assigned to the polyline
         points: a list of lists of ``(x, y)`` points in ``[0, 1] x [0, 1]``
             describing the vertices of each shape in the polyline
@@ -52,6 +53,7 @@ class Polyline(etal.Labels):
         name (None): a name for the polyline, e.g., ``ground_truth`` or the
             name of the model that produced it
         label (None): a label for the polyline
+        confidence (None): a confidence for the polyline, in ``[0, 1]``
         index (None): an integer index assigned to the polyline
         points (None): a list of lists of ``(x, y)`` points in
             ``[0, 1] x [0, 1]`` describing the vertices of the shapes in the
@@ -69,6 +71,7 @@ class Polyline(etal.Labels):
         self,
         name=None,
         label=None,
+        confidence=None,
         index=None,
         points=None,
         closed=False,
@@ -78,6 +81,7 @@ class Polyline(etal.Labels):
         self.type = etau.get_class_name(self)
         self.name = name
         self.label = label
+        self.confidence = confidence
         self.index = index
         self.points = points or []
         self.closed = closed
@@ -108,6 +112,11 @@ class Polyline(etal.Labels):
     def has_name(self):
         """Whether the polyline has a ``name``."""
         return self.name is not None
+
+    @property
+    def has_confidence(self):
+        """Whether the polyline has a ``confidence``."""
+        return self.confidence is not None
 
     @property
     def has_index(self):
@@ -242,6 +251,8 @@ class Polyline(etal.Labels):
             _attrs.append("name")
         if self.label:
             _attrs.append("label")
+        if self.confidence:
+            _attrs.append("confidence")
         if self.index:
             _attrs.append("index")
         if self.closed:
@@ -311,6 +322,7 @@ class Polyline(etal.Labels):
         """
         name = d.get("name", None)
         label = d.get("label", None)
+        confidence = d.get("confidence", None)
         index = d.get("index", None)
         points = d.get("points", None)
         closed = d.get("closed", False)
@@ -323,6 +335,7 @@ class Polyline(etal.Labels):
         return cls(
             name=name,
             label=label,
+            confidence=confidence,
             index=index,
             points=points,
             closed=closed,
@@ -372,6 +385,16 @@ class PolylineContainer(etal.LabelsContainer):
         """
         for poly in self:
             poly.clear_index()
+
+    def sort_by_confidence(self, reverse=False):
+        """Sorts the :class:`Polyline` instances by confidence.
+
+        Polylines whose confidence is ``None`` are always put last.
+
+        Args:
+            reverse (False): whether to sort in descending order
+        """
+        self.sort_by("confidence", reverse=reverse)
 
     def sort_by_index(self, reverse=False):
         """Sorts the :class:`Polyline` instances by index.
