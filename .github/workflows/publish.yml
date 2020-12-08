@@ -31,7 +31,6 @@ jobs:
       - name: Build wheel
         run: |
           RELEASE_VERSION=$(echo "${{ github.ref }}" | sed 's/^refs\/tags\/v//') python setup.py bdist_wheel
-          RELEASE_VERSION=$(echo "${{ github.ref }}" | sed 's/^refs\/tags\/v//') python setup.py sdist
       - name: Upload wheel
         uses: actions/upload-artifact@v2
         with:
@@ -41,13 +40,13 @@ jobs:
         env:
           RELEASE_TAG: ${{ github.ref }}
         run: |
-             if [[ $RELEASE_TAG =~ ^refs\/tags\/v.*-rc\..*$ ]]; then
-                echo "TWINE_PASSWORD=${{ secrets.FIFTYONE_TEST_PYPI_TOKEN }}" >> $GITHUB_ENV
-                echo "TWINE_REPOSITORY=testpypi" >> $GITHUB_ENV
-             else
-                echo "TWINE_PASSWORD=${{ secrets.FIFTYONE_PYPI_TOKEN }}" >> $GITHUB_ENV
-                echo "TWINE_REPOSITORY=pypi" >> $GITHUB_ENV
-             fi
+          if [[ $RELEASE_TAG =~ ^refs\/tags\/v.*-rc\..*$ ]]; then
+             echo "TWINE_PASSWORD=${{ secrets.FIFTYONE_TEST_PYPI_TOKEN }}" >> $GITHUB_ENV
+             echo "TWINE_REPOSITORY=testpypi" >> $GITHUB_ENV
+          else
+             echo "TWINE_PASSWORD=${{ secrets.FIFTYONE_PYPI_TOKEN }}" >> $GITHUB_ENV
+             echo "TWINE_REPOSITORY=pypi" >> $GITHUB_ENV
+          fi
       - name: Publish wheel
         env:
           TWINE_USERNAME: __token__
