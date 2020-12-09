@@ -27,7 +27,7 @@ import os
 import sys
 
 import eta.constants as etac
-from eta.core.config import Config, ConfigError
+from eta.core.config import Config
 import eta.core.geometry as etag
 import eta.core.learning as etal
 import eta.core.objects as etao
@@ -102,9 +102,6 @@ class EfficientDet(etal.ObjectDetector, etat.UsesTFSession):
 
     This class uses `eta.core.tfutils.UsesTFSession` to create TF sessions, so
     it automatically applies settings in your `eta.config.tf_config`.
-
-    Instances of this class must either use the context manager interface or
-    manually call `close()` when finished to release memory.
     """
 
     def __init__(self, config):
@@ -121,23 +118,24 @@ class EfficientDet(etal.ObjectDetector, etat.UsesTFSession):
         model_path = self.config.model_path
 
         # Extract archive, if necessary
-        model_dir = etau.split_archive(model_path)[0]
-        if not os.path.isdir(model_dir):
+        self._model_dir = etau.split_archive(model_path)[0]
+        if not os.path.isdir(self._model_dir):
             logger.debug("Extracting archive '%s'", model_path)
             etau.extract_archive(model_path, delete_archive=True)
 
-        # Load model
-        logger.debug("Loading model from '%s'", model_dir)
-        self._sess = self.make_tf_session()
-        self._img_tensor, self._detections = _load_efficientdet_model(
-            self._sess, self.config.architecture_name, model_dir
-        )
-
         # Load class labels
-        logger.debug("Loading class labels from '%s'", self.config.labels_path)
         self._labels_map = etal.load_labels_map(self.config.labels_path)
 
+        # Load model
+        self._sess = None
+        self._img = None
+        self._detections = None
+
     def __enter__(self):
+        self._sess = self.make_tf_session()
+        self._img, self._detections = _load_efficientdet_model(
+            self._sess, self.config.architecture_name, self._model_dir
+        )
         return self
 
     def __exit__(self, *args):
@@ -156,10 +154,8 @@ class EfficientDet(etal.ObjectDetector, etat.UsesTFSession):
         return self._detect(img)
 
     def _detect(self, img):
-        # Perform inference
         detections = self._evaluate(img)
 
-        # Parse detections
         objects = etao.DetectedObjectContainer()
         for detection in detections:
             # detection = [image_id, x, y, width, height, score, class]
@@ -179,9 +175,7 @@ class EfficientDet(etal.ObjectDetector, etat.UsesTFSession):
         return objects
 
     def _evaluate(self, img):
-        return self._sess.run(
-            self._detections, feed_dict={self._img_tensor: img}
-        )
+        return self._sess.run(self._detections, feed_dict={self._img: img})
 
 
 def _load_efficientdet_model(sess, architecture_name, model_dir):

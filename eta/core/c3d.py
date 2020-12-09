@@ -26,7 +26,7 @@ from builtins import *
 
 import numpy as np
 
-from eta.core.config import Config
+from eta.core.config import Config, Configurable
 from eta.core.features import VideoFramesFeaturizer, VideoFeaturizer
 import eta.core.learning as etal
 import eta.core.tfutils as etat
@@ -53,7 +53,7 @@ class C3DConfig(Config, etal.HasPublishedModel):
         return cls({"model_name": "c3d-ucf101"})
 
 
-class C3D(object):
+class C3D(Configurable, etat.UsesTFSession):
     """TensorFlow implementation of the C3D network architecture for the
     101 classes from UCF101.
 
@@ -61,26 +61,21 @@ class C3D(object):
     size [XXXX, 16, 112, 112, 3].
     """
 
-    def __init__(self, config=None, sess=None, clips=None):
+    def __init__(self, config=None):
         """Creates a C3D instance.
 
         Args:
             config: an optional C3DConfig instance. If omitted, the default
                 ETA configuration will be used
-            sess: an optional tf.Session to use. If none is provided, a new
-                tf.Session instance is created, and you are responsible for
-                scalling the close() method of this class when you are done
-                computing
-            clips: an optional tf.placeholder of size [XXXX, 16, 112, 112, 3]
         """
         if config is None:
             config = C3DConfig.default()
 
         self.config = config
-        self.sess = sess or etat.make_tf_session()
-        self.clips = clips or tf.placeholder(
-            tf.float32, [None, 16, 112, 112, 3]
-        )
+        etat.UsesTFSession.__init__(self)
+
+        self._clips = tf.placeholder(tf.float32, [None, 16, 112, 112, 3])
+        self._sess = None
 
         # The source (https://github.com/hx173149/C3D-tensorflow) of the models
         # we use picked this variable scope, so we must use it too
@@ -89,11 +84,11 @@ class C3D(object):
             self._build_fc_layers()
             self._build_output_layer()
 
-        # Load model
         self.config.download_model_if_necessary()
-        self._load_model(self.config.model_path)
 
     def __enter__(self):
+        self._sess = etat.make_tf_session()
+        self._load_model(self.config.model_path)
         return self
 
     def __exit__(self, *args):
@@ -115,17 +110,8 @@ class C3D(object):
         """
         if layer is None:
             layer = self.probs
-        return self.sess.run(layer, feed_dict={self.clips: clips})
 
-    def close(self):
-        """Closes the TensorFlow session used by this instance, if necessary.
-
-        Users who did not pass their own tf.Session to the constructor **must**
-        call this method to free up the network.
-        """
-        if self.sess:
-            self.sess.close()
-            self.sess = None
+        return self._sess.run(layer, feed_dict={self._clips: clips})
 
     def _build_conv_layers(self):
         with tf.name_scope("conv1") as scope:
@@ -133,7 +119,7 @@ class C3D(object):
                 "wc1", [3, 3, 3, 3, 64], 0.04, 0.00
             )
             biases = _tf_variable_with_weight_decay("bc1", [64], 0.04, 0.0)
-            conv = _conv3d(self.clips, weights, biases)
+            conv = _conv3d(self._clips, weights, biases)
             self.conv1 = tf.nn.relu(conv, name=scope)
             self.pool1 = _max_pool("pool1", self.conv1, k=1)
 
@@ -228,10 +214,9 @@ class C3D(object):
         self.probs = tf.nn.softmax(self.fc3l)
 
     def _load_model(self, model_path):
-        init = tf.global_variables_initializer()
-        self.sess.run(init)
+        self._sess.run(tf.global_variables_initializer())
         saver = tf.train.Saver()
-        saver.restore(self.sess, model_path)
+        saver.restore(self._sess, model_path)
 
 
 def _tf_variable_with_weight_decay(name, shape, stddev, decay):
@@ -298,25 +283,21 @@ class C3DFeaturizer(VideoFramesFeaturizer, VideoFeaturizer):
         if config is None:
             config = C3DFeaturizerConfig.default()
 
-        super(C3DFeaturizer, self).__init__()
         self.config = config
         self.validate(self.config)
-        self.c3d = None
+
+        super(C3DFeaturizer, self).__init__()
+        self._c3d = C3D(self.config)
 
     def dim(self):
         """The dimension of the features extracted by this Featurizer."""
         return 4096
 
     def _start(self):
-        """Starts a TensorFlow session and loads the network."""
-        if self.c3d is None:
-            self.c3d = C3D(self.config)
+        self._c3d.__enter__()
 
     def _stop(self):
-        """Closes the TensorFlow session and frees up the network."""
-        if self.c3d:
-            self.c3d.close()
-            self.c3d = None
+        self._c3d.__exit__()
 
     def _featurize(self, imgs_or_video_path):
         """Featurizes the input.
@@ -332,7 +313,7 @@ class C3DFeaturizer(VideoFramesFeaturizer, VideoFeaturizer):
         """
         clips = self._sample_clips(imgs_or_video_path)
 
-        features = self.c3d.evaluate(clips, layer=self.c3d.fc2l)
+        features = self._c3d.evaluate(clips, layer=self._c3d.fc2l)
         if self.config.sample_method == "sliding_window":
             # Average over sliding window clips
             features = np.mean(features, axis=0)

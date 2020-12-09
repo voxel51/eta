@@ -56,9 +56,6 @@ class VGG16Classifier(
     etal.ImageClassifier, etal.ExposesFeatures, etal.ExposesProbabilities
 ):
     """Interface for evaluating an `eta.core.vgg16.VGG16` instance on images.
-
-    Instances of this class must either use the context manager interface or
-    manually call `close()` when finished to release memory.
     """
 
     def __init__(self, config):
@@ -77,15 +74,11 @@ class VGG16Classifier(
         self._last_probs = None
 
     def __enter__(self):
+        self._vgg16.__enter__()
         return self
 
     def __exit__(self, *args):
-        self.close()
-
-    def close(self):
-        """Closes the session and releases any memory."""
-        self._vgg16.close()
-        self._vgg16 = None
+        self._vgg16.__exit__(*args)
 
     @property
     def is_multilabel(self):

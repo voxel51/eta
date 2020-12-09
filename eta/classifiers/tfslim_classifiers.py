@@ -24,7 +24,7 @@ import sys
 import numpy as np
 
 import eta.constants as etac
-from eta.core.config import Config, ConfigError
+from eta.core.config import Config
 import eta.core.data as etad
 from eta.core.features import ImageFeaturizer
 import eta.core.learning as etal
@@ -141,9 +141,6 @@ class TFSlimClassifier(
 
     This class uses `eta.core.tfutils.UsesTFSession` to create TF sessions, so
     it automatically applies settings in your `eta.config.tf_config`.
-
-    Instances of this class must either use the context manager interface or
-    manually call `close()` when finished to release memory.
     """
 
     def __init__(self, config):
@@ -160,10 +157,9 @@ class TFSlimClassifier(
         model_path = self.config.model_path
 
         # Load model
-        logger.debug("Loading graph from '%s'", model_path)
         self._prefix = "main"
         self._graph = etat.load_graph(model_path, prefix=self._prefix)
-        self._sess = self.make_tf_session(graph=self._graph)
+        self._sess = None
 
         # Load class labels
         labels_map = etal.load_labels_map(self.config.labels_path)
@@ -219,6 +215,7 @@ class TFSlimClassifier(
         self._last_probs = None
 
     def __enter__(self):
+        self._sess = self.make_tf_session(graph=self._graph)
         return self
 
     def __exit__(self, *args):

@@ -22,7 +22,7 @@ import logging
 
 import numpy as np
 
-from eta.core.config import Config, ConfigError
+from eta.core.config import Config
 import eta.core.data as etad
 import eta.core.image as etai
 import eta.core.learning as etal
@@ -87,9 +87,6 @@ class TFSemanticSegmenter(
 
     This class uses `eta.core.tfutils.UsesTFSession` to create TF sessions, so
     it automatically applies settings in your `eta.config.tf_config`.
-
-    Instances of this class must either use the context manager interface or
-    manually call `close()` when finished to release memory.
     """
 
     def __init__(self, config):
@@ -106,9 +103,8 @@ class TFSemanticSegmenter(
         model_path = self.config.model_path
 
         # Load model
-        logger.debug("Loading graph from '%s'", model_path)
         self._graph = etat.load_graph(model_path)
-        self._sess = self.make_tf_session(graph=self._graph)
+        self._sess = None
 
         # Load labels
         self._labels_map = None
@@ -131,6 +127,7 @@ class TFSemanticSegmenter(
         )
 
     def __enter__(self):
+        self._sess = self.make_tf_session(graph=self._graph)
         return self
 
     def __exit__(self, *args):

@@ -23,7 +23,7 @@ import os
 import sys
 
 import eta.constants as etac
-from eta.core.config import Config, ConfigError
+from eta.core.config import Config
 from eta.core.geometry import BoundingBox
 import eta.core.learning as etal
 from eta.core.objects import DetectedObject, DetectedObjectContainer
@@ -143,9 +143,6 @@ class TFModelsDetector(
     Zoo must be re-exported in order for this node to be populated
     (https://stackoverflow.com/a/57536793). Unfortunately, as of December 2019,
     this re-export process only seemed to work for Faster R-CNN models.
-
-    Instances of this class must either use the context manager interface or
-    manually call `close()` when finished to release memory.
     """
 
     def __init__(self, config):
@@ -162,9 +159,8 @@ class TFModelsDetector(
         model_path = self.config.model_path
 
         # Load model
-        logger.debug("Loading graph from '%s'", model_path)
         self._graph = etat.load_graph(model_path)
-        self._sess = self.make_tf_session(graph=self._graph)
+        self._sess = None
 
         # Load labels
         self._category_index, self._class_labels = _parse_labels_map(
@@ -202,6 +198,7 @@ class TFModelsDetector(
         self._last_probs = None
 
     def __enter__(self):
+        self._sess = self.make_tf_session(graph=self._graph)
         return self
 
     def __exit__(self, *args):
@@ -470,9 +467,6 @@ class TFModelsInstanceSegmenter(
     Zoo must be re-exported in order for this node to be populated
     (https://stackoverflow.com/a/57536793). Unfortunately, as of December 2019,
     this re-export process only seemed to work for Faster R-CNN models.
-
-    Instances of this class must either use the context manager interface or
-    manually call `close()` when finished to release memory.
     """
 
     def __init__(self, config):
@@ -489,9 +483,8 @@ class TFModelsInstanceSegmenter(
         model_path = self.config.model_path
 
         # Load model
-        logger.debug("Loading graph from '%s'", model_path)
         self._graph = etat.load_graph(model_path)
-        self._sess = self.make_tf_session(graph=self._graph)
+        self._sess = None
 
         # Load labels
         self._category_index, self._class_labels = _parse_labels_map(
@@ -532,6 +525,7 @@ class TFModelsInstanceSegmenter(
         self._last_probs = None
 
     def __enter__(self):
+        self._sess = self.make_tf_session(graph=self._graph)
         return self
 
     def __exit__(self, *args):
