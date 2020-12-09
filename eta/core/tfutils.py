@@ -414,111 +414,92 @@ IMG_MEAN_VOC = np.array(
 ).reshape(1, 1, 3)
 
 
-def float_preprocessing_numpy(imgs):
-    """Preprocesses the images by converting them to float32 in [0, 1].
+def float_preprocessing_numpy(img):
+    """Converts the image to float32 in [0, 1].
 
     Args:
-        imgs: a list of images
+        img: an image
 
     Returns:
-        the preprocessed images, in float32 format
+        the preprocessed image, in float32 format
     """
-    imgs_out = []
-    for img in imgs:
-        if etai.is_gray(img):
-            img = etai.gray_to_rgb(img)
-        elif etai.has_alpha(img):
-            img = img[:, :, :3]
+    if etai.is_gray(img):
+        img = etai.gray_to_rgb(img)
+    elif etai.has_alpha(img):
+        img = img[:, :, :3]
 
-        img = etai.to_float(img)
-        imgs_out.append(img)
-
-    return imgs_out
+    return etai.to_float(img)
 
 
-def inception_preprocessing_numpy(imgs, height, width):
-    """Performs Inception-style preprocessing of images using numpy.
+def inception_preprocessing_numpy(img, height, width):
+    """Performs inception-style preprocessing of an image.
 
-    Specifically, the images are resized and then scaled to [-1, 1] in float32
-    format.
+    The image is resized and then scaled to [-1, 1] in float32 format.
 
     Args:
-        imgs: a list of images
+        img: an image
         height: desired image height after preprocessing
         width: desired image width after preprocessing
 
     Returns:
-        the preprocessed images, in float32 format
+        the preprocessed image, in float32 format
     """
-    imgs_out = []
-    for img in imgs:
-        if etai.is_gray(img):
-            img = etai.gray_to_rgb(img)
-        elif etai.has_alpha(img):
-            img = img[:, :, :3]
+    if etai.is_gray(img):
+        img = etai.gray_to_rgb(img)
+    elif etai.has_alpha(img):
+        img = img[:, :, :3]
 
-        img = etai.resize(img, height, width)
-        img = 2.0 * (etai.to_float(img) - 0.5)
-        imgs_out.append(img)
-
-    return imgs_out
+    img = etai.resize(img, height, width)
+    img = 2.0 * (etai.to_float(img) - 0.5)
+    return img
 
 
-def voc_preprocessing_numpy(imgs):
-    """Performs PASCAL VOC-style preprocessing of images using numpy.
+def voc_preprocessing_numpy(img):
+    """Performs VOC-style preprocessing of an image.
 
-    Specifically, the images are centered by `IMG_MEAN_VOC` and returned in
-    float32 format.
+    The image is centered by `IMG_MEAN_VOC` and returned in float32 format.
 
     Args:
-        imgs: a list of images
+        img: an image
 
     Returns:
-        the preprocessed images, in float32 format
+        the preprocessed image, in float32 format
     """
-    imgs_out = []
-    for img in imgs:
-        if etai.is_gray(img):
-            img = etai.gray_to_rgb(img)
-        elif etai.has_alpha(img):
-            img = img[:, :, :3]
+    if etai.is_gray(img):
+        img = etai.gray_to_rgb(img)
+    elif etai.has_alpha(img):
+        img = img[:, :, :3]
 
-        img = np.asarray(img, dtype=np.float32)
-        img -= IMG_MEAN_VOC
-        imgs_out.append(img)
-
-    return imgs_out
+    img = np.asarray(img, dtype=np.float32)
+    img -= IMG_MEAN_VOC
+    return img
 
 
-def vgg_preprocessing_numpy(imgs, height, width):
-    """Performs VGG-style preprocessing of images using numpy.
+def vgg_preprocessing_numpy(img, height, width):
+    """Performs VGG-style preprocessing of an image.
 
-    Specifically, the images are resized (aspect-preserving) to the desired
-    size and then centered by `IMG_MEAN_IMAGENET`
+    The image is resized (aspect-preserving) to the desired size and then
+    centered by `IMG_MEAN_IMAGENET`.
 
     Args:
-        imgs: a list of images
+        img: an image
         height: desired height after preprocessing
         width: desired width after preprocessing
 
     Returns:
         the preprocessed images, in float32 format
     """
-    imgs_out = []
-    for img in imgs:
-        if etai.is_gray(img):
-            img = etai.gray_to_rgb(img)
-        elif etai.has_alpha(img):
-            img = img[:, :, :3]
+    if etai.is_gray(img):
+        img = etai.gray_to_rgb(img)
+    elif etai.has_alpha(img):
+        img = img[:, :, :3]
 
-        # Aspect preserving resize
-        if img.shape[0] < img.shape[1]:
-            img = etai.resize(img, height=256)
-        else:
-            img = etai.resize(img, width=256)
+    # Aspect preserving resize
+    if img.shape[0] < img.shape[1]:
+        img = etai.resize(img, height=256)
+    else:
+        img = etai.resize(img, width=256)
 
-        img = etai.central_crop(img, shape=(height, width))
-        img = np.asarray(img, dtype=np.float32) - IMG_MEAN_IMAGENET
-        imgs_out.append(img)
-
-    return imgs_out
+    img = etai.central_crop(img, shape=(height, width))
+    img = np.asarray(img, dtype=np.float32) - IMG_MEAN_IMAGENET
+    return img

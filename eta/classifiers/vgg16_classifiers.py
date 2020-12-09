@@ -95,6 +95,13 @@ class VGG16Classifier(
         return False
 
     @property
+    def transforms(self):
+        """The preprocessing transformation that will be applied to each image
+        before prediction.
+        """
+        return VGG16.preprocess_image
+
+    @property
     def exposes_features(self):
         """Whether this classifier exposes features for predictions."""
         return self.config.generate_features
@@ -176,7 +183,7 @@ class VGG16Classifier(
 
     def _predict(self, imgs):
         # Perform preprocessing
-        imgs = [VGG16.preprocess_image(img) for img in imgs]
+        imgs = self._preprocess_batch(imgs)
 
         # Perform inference
         if self.exposes_features:
@@ -197,6 +204,9 @@ class VGG16Classifier(
         self._last_probs = probs[:, np.newaxis, :]  # n x 1 x num_classes
 
         return predictions
+
+    def _preprocess_batch(self, imgs):
+        return [self.transforms(img) for img in imgs]
 
     def _parse_prediction(self, probs):
         idx = np.argmax(probs)

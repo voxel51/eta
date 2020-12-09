@@ -211,9 +211,7 @@ class TFSlimClassifier(
         )
 
         # Setup preprocessing
-        self._preprocessing_fcn = None
-        self._preprocessing_sess = None
-        self.preprocessing_fcn = self._make_preprocessing_fcn(
+        self._transforms = self._make_preprocessing_fcn(
             network_name, self.config.preprocessing_fcn
         )
 
@@ -232,6 +230,13 @@ class TFSlimClassifier(
         labels (True) per prediction.
         """
         return False
+
+    @property
+    def transforms(self):
+        """The preprocessing transformation that will be applied to each image
+        before prediction.
+        """
+        return self._transforms
 
     @property
     def exposes_features(self):
@@ -321,7 +326,7 @@ class TFSlimClassifier(
 
     def _predict(self, imgs):
         # Perform preprocessing
-        imgs = self.preprocessing_fcn(imgs)
+        imgs = self._preprocess_batch(imgs)
 
         # Perform inference
         if self.exposes_features:
@@ -355,6 +360,9 @@ class TFSlimClassifier(
 
         return predictions
 
+    def _preprocess_batch(self, imgs):
+        return [self.transforms(img) for img in imgs]
+
     def _evaluate(self, imgs, ops):
         in_tensor = self._input_op.outputs[0]
         out_tensors = [op.outputs[0] for op in ops]
@@ -377,55 +385,34 @@ class TFSlimClassifier(
         return attrs, keep
 
     def _make_preprocessing_fcn(self, network_name, preprocessing_fcn):
+        dim = self.img_size
+
         # Use user-specified preprocessing, if provided
         if preprocessing_fcn:
             logger.debug(
-                "Using user-provided preprocessing function '%s'",
-                preprocessing_fcn,
+                "Using user-provided preprocessing '%s'", preprocessing_fcn
             )
-            preproc_fcn_user = etau.get_function(preprocessing_fcn)
-            return lambda imgs: preproc_fcn_user(
-                imgs, self.img_size, self.img_size
-            )
+            user_fcn = etau.get_function(preprocessing_fcn)
+            return lambda img: user_fcn(img, dim, dim)
 
         # Use numpy-based preprocessing if supported
-        preproc_fcn_np = _NUMPY_PREPROC_FUNCTIONS.get(network_name, None)
-        if preproc_fcn_np is not None:
+        numpy_fcn = _NUMPY_PREPROC_FUNCTIONS.get(network_name, None)
+        if numpy_fcn is not None:
             logger.debug(
-                "Found numpy-based preprocessing implementation for network "
-                "'%s'",
+                "Using numpy-based preprocessing for network '%s'",
                 network_name,
             )
-            return lambda imgs: preproc_fcn_np(
-                imgs, self.img_size, self.img_size
-            )
+            return lambda img: numpy_fcn(img, dim, dim)
 
-        # Fallback to TF-slim preprocessing
+        # TF-slim preprocessing
         logger.debug(
-            "Using TF-based preprocessing for network '%s'", network_name,
+            "Using TF-based preprocessing for network '%s'", network_name
         )
-        self._preprocessing_fcn = pf.get_preprocessing(
-            network_name, is_training=False
-        )
-        self._preprocessing_sess = self.make_tf_session()
-
-        return self._builtin_preprocessing_tf
-
-    def _builtin_preprocessing_tf(self, imgs):
-        _imgs = tf.placeholder("uint8", [None, None, 3])
-        _imgs_proc = tf.expand_dims(
-            self._preprocessing_fcn(_imgs, self.img_size, self.img_size), 0
-        )
-
-        imgs_out = []
-        for img in imgs:
-            imgs_out.append(
-                self._preprocessing_sess.run(
-                    _imgs_proc, feed_dict={_imgs: img}
-                )
-            )
-
-        return imgs_out
+        tfslim_fcn = pf.get_preprocessing(network_name, is_training=False)
+        sess = self.make_tf_session()
+        _img = tf.placeholder("uint8", [None, None, 3])
+        _img_out = tfslim_fcn(_img, dim, dim)
+        return lambda img: sess.run(_img_out, feed_dict={_img: img})
 
 
 class TFSlimFeaturizerConfig(TFSlimClassifierConfig):

@@ -118,7 +118,9 @@ class TFSemanticSegmenter(
         # Setup preprocessing
         self._preprocessing_fcn = None
         if self.config.preprocessing_fcn:
-            self._make_preprocessing_fcn(self.config.preprocessing_fcn)
+            self._preprocessing_fcn = self._make_preprocessing_fcn(
+                self.config.preprocessing_fcn
+            )
 
         # Get operations
         self._input_op = self._graph.get_operation_by_name(
@@ -176,7 +178,7 @@ class TFSemanticSegmenter(
         return self._segment(imgs)
 
     def _segment(self, imgs):
-        imgs = self._preprocess(imgs)
+        imgs = self._preprocess_batch(imgs)
 
         masks = self._evaluate(imgs, [self._output_op])[0]
 
@@ -187,7 +189,7 @@ class TFSemanticSegmenter(
         masks = np.asarray(masks, dtype=np.uint8)
         return [etai.ImageLabels(mask=mask) for mask in masks]
 
-    def _preprocess(self, imgs):
+    def _preprocess_batch(self, imgs):
         if self.config.resize_to_max_dim is not None:
             imgs = [
                 etai.resize_to_fit_max(img, self.config.resize_to_max_dim)
@@ -195,7 +197,7 @@ class TFSemanticSegmenter(
             ]
 
         if self._preprocessing_fcn is not None:
-            imgs = self._preprocessing_fcn(imgs)
+            imgs = [self._preprocessing_fcn(img) for img in imgs]
 
         return imgs
 
@@ -206,4 +208,4 @@ class TFSemanticSegmenter(
 
     def _make_preprocessing_fcn(self, preprocessing_fcn):
         logger.debug("Using preprocessing function '%s'", preprocessing_fcn)
-        self._preprocessing_fcn = etau.get_function(preprocessing_fcn)
+        return etau.get_function(preprocessing_fcn)
