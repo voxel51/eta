@@ -53,7 +53,7 @@ _NUMPY_PREPROC_FUNCTIONS = {
     "inception_resnet_v2": etat.inception_preprocessing_numpy,
 }
 
-# Networks for which we provicde default `features_name`s
+# Networks for which we provide default `features_name`s
 _DEFAULT_FEATURES_NAMES = {
     "resnet_v1_50": "resnet_v1_50/pool5",
     "resnet_v2_50": "resnet_v2_50/pool5",
