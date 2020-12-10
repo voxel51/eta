@@ -126,17 +126,15 @@ class EfficientDet(etal.ObjectDetector, etat.UsesTFSession):
         # Load class labels
         self._labels_map = etal.load_labels_map(self.config.labels_path)
 
-        # Load model
         self._sess = None
         self._img = None
         self._detections = None
 
     def __enter__(self):
-        tf.reset_default_graph()
-        self._sess = self.make_tf_session()
-        self._img, self._detections = _load_efficientdet_model(
-            self._sess, self.config.architecture_name, self._model_dir
-        )
+        sess, img, detections = self._load_model(self.config)
+        self._sess = sess
+        self._img = img
+        self._detections = detections
         return self
 
     def __exit__(self, *args):
@@ -192,6 +190,24 @@ class EfficientDet(etal.ObjectDetector, etat.UsesTFSession):
 
     def _evaluate(self, img):
         return self._sess.run(self._detections, feed_dict={self._img: img})
+
+    def _load_model(self, config):
+        tf.reset_default_graph()
+        sess = self.make_tf_session()
+
+        """
+        with etat.TFLoggingLevel(tf.logging.ERROR):
+            with etau.CaptureStdout():
+                img, detections = _load_efficientdet_model(
+                    sess, config.architecture_name, self._model_dir
+                )
+        """
+
+        img, detections = _load_efficientdet_model(
+            sess, config.architecture_name, self._model_dir
+        )
+
+        return sess, img, detections
 
 
 def _load_efficientdet_model(sess, architecture_name, model_dir):
