@@ -22,6 +22,8 @@ import logging
 import os
 import sys
 
+import numpy as np
+
 import eta.constants as etac
 from eta.core.config import Config
 from eta.core.geometry import BoundingBox
@@ -275,7 +277,7 @@ class TFModelsDetector(
             an `eta.core.objects.DetectedObjectContainer` describing the
                 detections
         """
-        return self._detect([img])[0]
+        return self._detect_all([img])[0]
 
     def detect_all(self, imgs):
         """Performs detection on the given tensor of images.
@@ -287,9 +289,9 @@ class TFModelsDetector(
             a list of `eta.core.objects.DetectedObjectContainer`s describing
                 the detections
         """
-        return self._detect(imgs)
+        return self._detect_all(imgs)
 
-    def _detect(self, imgs):
+    def _detect_all(self, imgs):
         output_ops = [self._boxes_op, self._scores_op, self._classes_op]
 
         if self.exposes_features and self.exposes_probabilities:
@@ -358,6 +360,19 @@ class TFModelsDetector(
         return detections
 
     def _evaluate(self, imgs, ops):
+        if not isinstance(imgs, list):
+            return self._do_inference(imgs, ops)
+
+        # Model doesn't support ragged batches, so we must run inference one
+        # at a time
+        outputs = []
+        for img in imgs:
+            output = self._do_inference([img], ops)
+            outputs.append(output)
+
+        return tuple(np.concatenate(chunks) for chunks in zip(*outputs))
+
+    def _do_inference(self, imgs, ops):
         in_tensor = self._input_op.outputs[0]
         out_tensors = [op.outputs[0] for op in ops]
         return self._sess.run(out_tensors, feed_dict={in_tensor: imgs})
@@ -602,7 +617,7 @@ class TFModelsInstanceSegmenter(
             an `eta.core.objects.DetectedObjectContainer` describing the
                 detections
         """
-        return self._detect([img])[0]
+        return self._detect_all([img])[0]
 
     def detect_all(self, imgs):
         """Performs detection on the given tensor of images.
@@ -614,9 +629,9 @@ class TFModelsInstanceSegmenter(
             a list of `eta.core.objects.DetectedObjectContainer`s describing
                 the detections
         """
-        return self._detect(imgs)
+        return self._detect_all(imgs)
 
-    def _detect(self, imgs):
+    def _detect_all(self, imgs):
         output_ops = [
             self._boxes_op,
             self._scores_op,
@@ -700,6 +715,19 @@ class TFModelsInstanceSegmenter(
         return detections
 
     def _evaluate(self, imgs, ops):
+        if not isinstance(imgs, list):
+            return self._do_inference(imgs, ops)
+
+        # Model doesn't support ragged batches, so we must run inference one
+        # at a time
+        outputs = []
+        for img in imgs:
+            output = self._do_inference([img], ops)
+            outputs.append(output)
+
+        return tuple(np.concatenate(chunks) for chunks in zip(*outputs))
+
+    def _do_inference(self, imgs, ops):
         in_tensor = self._input_op.outputs[0]
         out_tensors = [op.outputs[0] for op in ops]
         return self._sess.run(out_tensors, feed_dict={in_tensor: imgs})
