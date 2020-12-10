@@ -195,17 +195,11 @@ class EfficientDet(etal.ObjectDetector, etat.UsesTFSession):
         tf.reset_default_graph()
         sess = self.make_tf_session()
 
-        """
         with etat.TFLoggingLevel(tf.logging.ERROR):
             with etau.CaptureStdout():
                 img, detections = _load_efficientdet_model(
                     sess, config.architecture_name, self._model_dir
                 )
-        """
-
-        img, detections = _load_efficientdet_model(
-            sess, config.architecture_name, self._model_dir
-        )
 
         return sess, img, detections
 
