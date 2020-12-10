@@ -34,7 +34,7 @@ import eta.core.utils as etau
 
 _ERROR_MSG = """
 
-You must clone and install a repository in order to use a YOLO model:
+You must clone and install a repository in order to use this model:
 
 mkdir -p '{0}'
 git clone https://github.com/voxel51/darkflow '{0}'

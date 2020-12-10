@@ -39,7 +39,7 @@ from .utils import reset_path
 
 _ERROR_MSG = """
 
-You must clone a GitHub repository in order to use an EfficientDet model:
+You must clone a GitHub repository in order to use this model:
 
 mkdir -p '{0}'
 git clone https://github.com/voxel51/automl '{0}'
