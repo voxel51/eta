@@ -199,7 +199,7 @@ class TFSemanticSegmenter(
 
     def _preprocess_batch(self, imgs):
         if self._transforms is not None:
-            imgs = [self._transforms[img] for img in imgs]
+            imgs = [self._transforms(img) for img in imgs]
 
         return imgs
 
