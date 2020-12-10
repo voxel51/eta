@@ -132,6 +132,7 @@ class EfficientDet(etal.ObjectDetector, etat.UsesTFSession):
         self._detections = None
 
     def __enter__(self):
+        tf.reset_default_graph()
         self._sess = self.make_tf_session()
         self._img, self._detections = _load_efficientdet_model(
             self._sess, self.config.architecture_name, self._model_dir
