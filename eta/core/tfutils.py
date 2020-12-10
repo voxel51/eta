@@ -232,6 +232,23 @@ def _launch_tensorboard(graph, log_dir=None, port=None):
     etau.call(args)
 
 
+class TFLoggingLevel(object):
+    """Context manager that enables temporarily changing the ``tf.logging``
+    verbosity level.
+    """
+
+    def __init__(self, level):
+        self._orig_level = None
+        self._level = level
+
+    def __enter__(self):
+        self._orig_level = tf.logging.get_verbosity()
+        tf.logging.set_verbosity(self._level)
+
+    def __exit__(self, *args):
+        tf.logging.set_verbosity(self._orig_level)
+
+
 class UsesTFSession(object):
     """Mixin for classes that use one or more `tf.Session`s.
 
