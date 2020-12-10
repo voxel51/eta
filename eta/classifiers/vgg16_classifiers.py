@@ -88,9 +88,17 @@ class VGG16Classifier(
         return False
 
     @property
+    def ragged_batches(self):
+        """True/False whether :meth:`transforms` may return images of different
+        sizes and therefore passing ragged lists of images to
+        :meth:`predict_all` is not allowed.
+        """
+        return False
+
+    @property
     def transforms(self):
         """The preprocessing transformation that will be applied to each image
-        before prediction.
+        before prediction, or `None` if no preprocessing is performed.
         """
         return VGG16.preprocess_image
 

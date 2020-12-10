@@ -125,6 +125,21 @@ class YOLODetector(etal.ObjectDetector):
                 }
             )
 
+    @property
+    def ragged_batches(self):
+        """True/False whether :meth:`transforms` may return images of different
+        sizes and therefore passing ragged lists of images to
+        :meth:`detect_all` is not allowed.
+        """
+        return True
+
+    @property
+    def transforms(self):
+        """The preprocessing transformation that will be applied to each image
+        before detection, or ``None`` if no preprocessing is performed.
+        """
+        return None
+
     def detect(self, img):
         """Performs object detection on the input image.
 

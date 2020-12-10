@@ -207,6 +207,21 @@ class TFModelsDetector(
         self.close()
 
     @property
+    def ragged_batches(self):
+        """True/False whether :meth:`transforms` may return images of different
+        sizes and therefore passing ragged lists of images to
+        :meth:`detect_all` is not allowed.
+        """
+        return True
+
+    @property
+    def transforms(self):
+        """The preprocessing transformation that will be applied to each image
+        before detection, or ``None`` if no preprocessing is performed.
+        """
+        return None
+
+    @property
     def exposes_features(self):
         """Whether this detector exposes features for its detections."""
         return self._features_op is not None
@@ -327,7 +342,7 @@ class TFModelsDetector(
                     classj in self._category_index
                     and scorej > self.config.confidence_thresh
                 ):
-                    # Construct DetectecObject for detection
+                    # Construct DetectedObject for detection
                     keep.append(j)
                     obj = _to_detected_object(
                         boxj, scorej, classj, self._category_index
@@ -360,19 +375,6 @@ class TFModelsDetector(
         return detections
 
     def _evaluate(self, imgs, ops):
-        if not isinstance(imgs, list):
-            return self._do_inference(imgs, ops)
-
-        # Model doesn't support ragged batches, so we must run inference one
-        # at a time
-        outputs = []
-        for img in imgs:
-            output = self._do_inference([img], ops)
-            outputs.append(output)
-
-        return tuple(np.concatenate(chunks) for chunks in zip(*outputs))
-
-    def _do_inference(self, imgs, ops):
         in_tensor = self._input_op.outputs[0]
         out_tensors = [op.outputs[0] for op in ops]
         return self._sess.run(out_tensors, feed_dict={in_tensor: imgs})
@@ -547,6 +549,21 @@ class TFModelsInstanceSegmenter(
         self.close()
 
     @property
+    def ragged_batches(self):
+        """True/False whether :meth:`transforms` may return images of different
+        sizes and therefore passing ragged lists of images to
+        :meth:`detect_all` is not allowed.
+        """
+        return True
+
+    @property
+    def transforms(self):
+        """The preprocessing transformation that will be applied to each image
+        before detection, or ``None`` if no preprocessing is performed.
+        """
+        return None
+
+    @property
     def exposes_features(self):
         """Whether this detector exposes features for its detections."""
         return self._features_op is not None
@@ -715,19 +732,6 @@ class TFModelsInstanceSegmenter(
         return detections
 
     def _evaluate(self, imgs, ops):
-        if not isinstance(imgs, list):
-            return self._do_inference(imgs, ops)
-
-        # Model doesn't support ragged batches, so we must run inference one
-        # at a time
-        outputs = []
-        for img in imgs:
-            output = self._do_inference([img], ops)
-            outputs.append(output)
-
-        return tuple(np.concatenate(chunks) for chunks in zip(*outputs))
-
-    def _do_inference(self, imgs, ops):
         in_tensor = self._input_op.outputs[0]
         out_tensors = [op.outputs[0] for op in ops]
         return self._sess.run(out_tensors, feed_dict={in_tensor: imgs})
