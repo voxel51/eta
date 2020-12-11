@@ -33,7 +33,7 @@ import eta.core.utils as etau
 
 
 _ensure_tf1 = lambda: etau.ensure_package("tensorflow<2")
-etau.lazy_import("tensorflow", callback=_ensure_tf1)
+tf = etau.lazy_import("tensorflow", callback=_ensure_tf1)
 
 _ERROR_MSG = "You must run `eta install darkflow` in order to use this model"
 dnb = etau.lazy_import("darkflow.net.build", error_msg=_ERROR_MSG)
@@ -90,15 +90,8 @@ class YOLODetector(etal.ObjectDetector):
         self.config.download_model_if_necessary()
         model_path = self.config.model_path
 
-        try:
-            # Get GPU usage from ETA
-            tf_config = etat.make_tf_config()
-            gpu = tf_config.gpu_options.per_process_gpu_memory_fraction
-            logger.debug("Sending gpu: %g (from ETA config) to TFNet", gpu)
-        except AttributeError:
-            # By default, try to use all GPU
-            gpu = 1.0
-            logger.debug("Sending gpu: %g (default) to TFNet", gpu)
+        # Get GPU usage
+        gpu = _get_gpu_usage()
 
         # Block logging and warnings that we don't care about
         with etau.CaptureStdout():
@@ -146,6 +139,19 @@ class YOLODetector(etal.ObjectDetector):
             if yd["confidence"] >= self.config.confidence_thresh
         ]
         return etao.DetectedObjectContainer(objects=objects)
+
+
+def _get_gpu_usage():
+    # By default, use all GPU
+    gpu = float(etat.is_gpu_available())
+
+    # Allow ETA to override
+    config_proto = tf.ConfigProto()
+    config_proto.gpu_options.per_process_gpu_memory_fraction = gpu
+    tf_config = etat.make_tf_config(config_proto=config_proto)
+    gpu = tf_config.gpu_options.per_process_gpu_memory_fraction
+
+    return gpu
 
 
 def _to_detected_object(yd, img):
