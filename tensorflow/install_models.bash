@@ -20,14 +20,14 @@ if [ $? -eq 0 ]; then
 else
     echo "Installing protoc"
     if [ $(uname -s) == "Darwin" ]; then
-        PROTOC_ZIP=protoc-3.6.1-osx-x86_64.zip
+        PROTOC_ZIP=protoc-3.7.1-osx-x86_64.zip
     else
-        PROTOC_ZIP=protoc-3.6.1-linux-x86_64.zip
+        PROTOC_ZIP=protoc-3.7.1-linux-x86_64.zip
     fi
 
-    curl -OL https://github.com/google/protobuf/releases/download/v3.6.1/${PROTOC_ZIP}
-    sudo unzip -o ${PROTOC_ZIP} -d /usr/local bin/protoc
-    sudo unzip -o ${PROTOC_ZIP} -d /usr/local include/*
+    curl -OL https://github.com/google/protobuf/releases/download/v3.7.1/${PROTOC_ZIP}
+    unzip -o ${PROTOC_ZIP} -d /usr/local bin/protoc
+    unzip -o ${PROTOC_ZIP} -d /usr/local include/*
     rm -f ${PROTOC_ZIP}
 fi
 
