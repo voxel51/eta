@@ -548,14 +548,14 @@ def register_model(name, base_filename, models_dir, manager, description=None):
     # Create model
     logger.info("Creating a new model '%s'", name)
     base_name, version = Model.parse_name(name)
-    date_created = etau.get_localtime()
+    date_added = etau.get_localtime()
     model = Model(
         base_name,
         base_filename,
         manager,
         version=version,
         description=description,
-        date_created=date_created,
+        date_added=date_added,
     )
 
     # Initialize models directory, if necessary
@@ -905,7 +905,7 @@ class Model(Serializable):
             for deploying the model
         requirements: the ModelRequirements for the model (if any)
         tags: a list of tags for the model (if any)
-        date_created: the datetime that the model was created (if any)
+        date_added: the datetime that the model was added (if any)
     """
 
     def __init__(
@@ -918,7 +918,7 @@ class Model(Serializable):
         default_deployment_config_dict=None,
         requirements=None,
         tags=None,
-        date_created=None,
+        date_added=None,
     ):
         """Creates a Model instance.
 
@@ -933,7 +933,7 @@ class Model(Serializable):
                 the recommended settings for deploying the model
             requirements: (optional) a ModelRequirements for the model
             tags: (optional) a list of tags for the model
-            date_created: (optional) the datetime that the model was created
+            date_added: (optional) the datetime that the model was created
         """
         self.base_name = base_name
         self.base_filename = base_filename
@@ -943,7 +943,7 @@ class Model(Serializable):
         self.default_deployment_config_dict = default_deployment_config_dict
         self.requirements = requirements
         self.tags = tags
-        self.date_created = date_created
+        self.date_added = date_added
 
     @property
     def name(self):
@@ -1206,7 +1206,7 @@ class Model(Serializable):
             "default_deployment_config_dict",
             "requirements",
             "tags",
-            "date_created",
+            "date_added",
         ]
 
     @classmethod
@@ -1227,7 +1227,7 @@ class Model(Serializable):
 
         tags = d.get("tags", None)
 
-        date_created = etau.parse_isotime(d.get("date_created"))
+        date_added = etau.parse_isotime(d.get("date_added"))
 
         return cls(
             d["base_name"],
@@ -1240,7 +1240,7 @@ class Model(Serializable):
             ),
             requirements=requirements,
             tags=tags,
-            date_created=date_created,
+            date_added=date_added,
         )
 
 

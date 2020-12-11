@@ -76,7 +76,7 @@ The following is an example contents of a `manifest.json` file:
                     "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_label_map.pbtxt"
                 }
             },
-            "date_created": "2019-04-11 12:01:29"
+            "date_added": "2019-04-11 12:01:29"
         },
         ...
     ]
