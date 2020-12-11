@@ -275,51 +275,10 @@ if [[ ${LITE_INSTALL} = true ]]; then
 fi
 
 
-# Initialize submodules
 MSG "Initializing submodules"
-CRITICAL git submodule init
-CRITICAL git submodule update
-
-# Install `tensorflow/darkflow`
-MSG "Installing tensorflow/darkflow"
-cd tensorflow/darkflow
-pip install -e .
-cd ../..
-
-# Install `tensorflow/models`
-MSG "Installing tensorflow/models"
-cd tensorflow/models
-INFO command -v protoc
-if [ $? -eq 0 ]; then
-    MSG "protoc already installed"
-else
-    MSG "Installing protoc"
-    if [ "${OS}" == "Darwin" ]; then
-        # Mac - Download Protoc from GitHub
-        CRITICAL curl -OL https://github.com/protocolbuffers/protobuf/releases/download/v3.6.1/protoc-3.6.1-osx-x86_64.zip
-        CRITICAL unzip protoc-3.6.1-osx-x86_64.zip -d protoc3
-        CRITICAL rm -rf protoc-3.6.1-osx-x86_64.zip
-     else
-        # Linux - Download Protoc from GitHub
-        CRITICAL curl -OL https://github.com/protocolbuffers/protobuf/releases/download/v3.6.1/protoc-3.6.1-linux-x86_64.zip
-        CRITICAL unzip protoc-3.6.1-linux-x86_64.zip -d protoc3
-        CRITICAL rm -rf protoc-3.6.1-linux-x86_64.zip
-    fi
-
-    # Move protoc to /usr/local
-    CRITICAL sudo mv protoc3/bin/* /usr/local/bin/
-    CRITICAL sudo mv protoc3/include/* /usr/local/include/
-    CRITICAL rm -rf protoc3
-fi
-
-MSG "Compiling protocol buffers"
-CRITICAL protoc research/object_detection/protos/*.proto \
-    --proto_path=research \
-    --python_out=research
-MSG "You must have '$(pwd)/research' in 'pythonpath_dirs' in your ETA config"
-MSG "You must have '$(pwd)/research/slim' in 'pythonpath_dirs' in your ETA config"
-
-cd ../..
+CRITICAL bash tensorflow/install_darkflow.bash
+CRITICAL bash tensorflow/install_automl.bash
+CRITICAL bash tensorflow/install_models.bash
 
 
 EXIT "INSTALLATION COMPLETE"
